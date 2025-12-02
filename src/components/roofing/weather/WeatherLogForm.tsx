@@ -82,14 +82,17 @@ export function WeatherLogForm({ open, onOpenChange, onSubmit, initialData, isLo
                 render={({ field }) => (
                   <FormItem>
                     <FormLabel>Project</FormLabel>
-                    <Select onValueChange={field.onChange} value={field.value || ""}>
+                    <Select 
+                      onValueChange={(val) => field.onChange(val === "__none__" ? "" : val)} 
+                      value={field.value || "__none__"}
+                    >
                       <FormControl>
                         <SelectTrigger>
                           <SelectValue placeholder="Select project" />
                         </SelectTrigger>
                       </FormControl>
                       <SelectContent>
-                        <SelectItem value="">No project</SelectItem>
+                        <SelectItem value="__none__">No project</SelectItem>
                         {projects?.map((project) => (
                           <SelectItem key={project.id} value={project.id}>
                             {project.name}
@@ -124,13 +127,17 @@ export function WeatherLogForm({ open, onOpenChange, onSubmit, initialData, isLo
                 render={({ field }) => (
                   <FormItem>
                     <FormLabel>Conditions</FormLabel>
-                    <Select onValueChange={field.onChange} value={field.value || ""}>
+                    <Select 
+                      onValueChange={(val) => field.onChange(val === "__none__" ? "" : val)} 
+                      value={field.value || "__none__"}
+                    >
                       <FormControl>
                         <SelectTrigger>
                           <SelectValue placeholder="Select conditions" />
                         </SelectTrigger>
                       </FormControl>
                       <SelectContent>
+                        <SelectItem value="__none__">Not specified</SelectItem>
                         <SelectItem value="sunny">Sunny</SelectItem>
                         <SelectItem value="partly_cloudy">Partly Cloudy</SelectItem>
                         <SelectItem value="cloudy">Cloudy</SelectItem>

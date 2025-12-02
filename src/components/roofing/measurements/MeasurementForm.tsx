@@ -97,14 +97,17 @@ export function MeasurementForm({ open, onOpenChange, onSubmit, initialData, isL
                 render={({ field }) => (
                   <FormItem>
                     <FormLabel>Project</FormLabel>
-                    <Select onValueChange={field.onChange} value={field.value || ""}>
+                    <Select 
+                      onValueChange={(val) => field.onChange(val === "__none__" ? "" : val)} 
+                      value={field.value || "__none__"}
+                    >
                       <FormControl>
                         <SelectTrigger>
                           <SelectValue placeholder="Select project" />
                         </SelectTrigger>
                       </FormControl>
                       <SelectContent>
-                        <SelectItem value="">No project</SelectItem>
+                        <SelectItem value="__none__">No project</SelectItem>
                         {filteredProjects.map((project) => (
                           <SelectItem key={project.id} value={project.id}>
                             {project.name}
@@ -139,13 +142,17 @@ export function MeasurementForm({ open, onOpenChange, onSubmit, initialData, isL
                 render={({ field }) => (
                   <FormItem>
                     <FormLabel>Roof Type</FormLabel>
-                    <Select onValueChange={field.onChange} value={field.value || ""}>
+                    <Select 
+                      onValueChange={(val) => field.onChange(val === "__none__" ? undefined : val)} 
+                      value={field.value || "__none__"}
+                    >
                       <FormControl>
                         <SelectTrigger>
                           <SelectValue placeholder="Select type" />
                         </SelectTrigger>
                       </FormControl>
                       <SelectContent>
+                        <SelectItem value="__none__">Not specified</SelectItem>
                         <SelectItem value="gable">Gable</SelectItem>
                         <SelectItem value="hip">Hip</SelectItem>
                         <SelectItem value="flat">Flat</SelectItem>
