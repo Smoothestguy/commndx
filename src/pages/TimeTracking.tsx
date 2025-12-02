@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { PageLayout } from "@/components/layout/PageLayout";
 import { Button } from "@/components/ui/button";
 import { Plus, Users } from "lucide-react";
@@ -10,17 +11,16 @@ import { EnhancedTimeEntryForm } from "@/components/time-tracking/EnhancedTimeEn
 import { WeeklyTimesheet } from "@/components/time-tracking/WeeklyTimesheet";
 import { WeekNavigator } from "@/components/time-tracking/WeekNavigator";
 import { ProjectAssignmentsSection } from "@/components/time-tracking/ProjectAssignmentsSection";
-import { BulkTimeEntryForm } from "@/components/time-tracking/BulkTimeEntryForm";
 import { PersonnelAssignmentDialog } from "@/components/time-tracking/PersonnelAssignmentDialog";
 import { useAllTimeEntries, useTimeEntries, useBulkDeleteTimeEntries, TimeEntryWithDetails } from "@/integrations/supabase/hooks/useTimeEntries";
 import { useUserRole } from "@/hooks/useUserRole";
 import { SEO } from "@/components/SEO";
 
 export default function TimeTracking() {
+  const navigate = useNavigate();
   const [projectFilter, setProjectFilter] = useState<string>();
   const [personnelFilter, setPersonnelFilter] = useState<string>();
   const [formOpen, setFormOpen] = useState(false);
-  const [bulkFormOpen, setBulkFormOpen] = useState(false);
   const [assignmentDialogOpen, setAssignmentDialogOpen] = useState(false);
   const [selectedEntry, setSelectedEntry] = useState<TimeEntryWithDetails | undefined>();
   const [weeklyViewWeek, setWeeklyViewWeek] = useState(() => new Date());
@@ -81,7 +81,7 @@ export default function TimeTracking() {
                 <Users className="h-4 w-4 mr-2" />
                 Manage Personnel
               </Button>
-              <Button variant="secondary" onClick={() => setBulkFormOpen(true)}>
+              <Button variant="secondary" onClick={() => navigate("/team-timesheet")}>
                 <Users className="h-4 w-4 mr-2" />
                 Log Team Time
               </Button>
@@ -144,18 +144,12 @@ export default function TimeTracking() {
           entry={selectedEntry}
         />
 
-        {/* Bulk Time Entry Form for Admins/Managers */}
+        {/* Personnel Assignment Dialog for Admins/Managers */}
         {canManageTeam && (
-          <>
-            <BulkTimeEntryForm
-              open={bulkFormOpen}
-              onOpenChange={setBulkFormOpen}
-            />
-            <PersonnelAssignmentDialog
-              open={assignmentDialogOpen}
-              onOpenChange={setAssignmentDialogOpen}
-            />
-          </>
+          <PersonnelAssignmentDialog
+            open={assignmentDialogOpen}
+            onOpenChange={setAssignmentDialogOpen}
+          />
         )}
       </div>
     </PageLayout>
