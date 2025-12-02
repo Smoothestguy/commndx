@@ -1,7 +1,7 @@
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Ruler, Calendar, Eye, Trash2 } from "lucide-react";
+import { Ruler, Calendar, Eye, Trash2, Square } from "lucide-react";
 import { format } from "date-fns";
 import type { RoofMeasurement } from "@/types/roofing";
 
@@ -42,38 +42,34 @@ export function MeasurementCard({ measurement, onView, onDelete }: MeasurementCa
           </div>
         )}
 
-        <div className="grid grid-cols-2 gap-2 text-sm">
-          {measurement.total_squares && (
+        {/* Key area measurement */}
+        {measurement.total_roof_area && (
+          <div className="flex items-center gap-2 p-2 bg-muted rounded-lg">
+            <Square className="h-4 w-4 text-primary" />
             <div>
-              <span className="text-muted-foreground">Squares: </span>
-              <span className="font-medium">{measurement.total_squares}</span>
+              <p className="text-xs text-muted-foreground">Total Roof Area</p>
+              <p className="font-semibold">{measurement.total_roof_area.toLocaleString()} sqft</p>
             </div>
-          )}
+          </div>
+        )}
+
+        <div className="grid grid-cols-2 gap-2 text-sm">
           {measurement.pitch && (
             <div>
               <span className="text-muted-foreground">Pitch: </span>
               <span className="font-medium">{measurement.pitch}</span>
             </div>
           )}
-        </div>
-
-        <div className="grid grid-cols-3 gap-2 text-sm">
-          {measurement.ridges_length && (
+          {measurement.total_facets && (
             <div>
-              <span className="text-muted-foreground">Ridges: </span>
-              <span className="font-medium">{measurement.ridges_length}'</span>
+              <span className="text-muted-foreground">Facets: </span>
+              <span className="font-medium">{measurement.total_facets}</span>
             </div>
           )}
-          {measurement.valleys_length && (
+          {measurement.total_squares && (
             <div>
-              <span className="text-muted-foreground">Valleys: </span>
-              <span className="font-medium">{measurement.valleys_length}'</span>
-            </div>
-          )}
-          {measurement.eaves_length && (
-            <div>
-              <span className="text-muted-foreground">Eaves: </span>
-              <span className="font-medium">{measurement.eaves_length}'</span>
+              <span className="text-muted-foreground">Squares: </span>
+              <span className="font-medium">{measurement.total_squares}</span>
             </div>
           )}
         </div>

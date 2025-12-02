@@ -45,13 +45,27 @@ export interface RoofMeasurement {
   project_id?: string;
   customer_id: string;
   measurement_date: string;
+  // Area measurements
+  total_roof_area?: number;
+  total_pitched_area?: number;
+  total_flat_area?: number;
+  total_facets?: number;
   total_squares?: number;
   pitch?: string;
   roof_type?: RoofType;
-  areas: { name: string; length: number; width: number; area: number }[];
-  ridges_length?: number;
-  valleys_length?: number;
+  // Linear measurements
   eaves_length?: number;
+  valleys_length?: number;
+  hips_length?: number;
+  ridges_length?: number;
+  rakes_length?: number;
+  wall_flashing_length?: number;
+  step_flashing_length?: number;
+  transitions_length?: number;
+  parapet_wall_length?: number;
+  unspecified_length?: number;
+  // JSON fields
+  areas: { name: string; length: number; width: number; area: number }[];
   penetrations: { type: string; count: number }[];
   notes?: string;
   created_at: string;
