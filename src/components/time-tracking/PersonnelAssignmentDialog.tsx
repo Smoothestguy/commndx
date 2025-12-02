@@ -1,4 +1,4 @@
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
@@ -16,10 +16,17 @@ import { Badge } from "@/components/ui/badge";
 interface PersonnelAssignmentDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
+  defaultProjectId?: string;
+  onAssignmentChange?: () => void;
 }
 
-export function PersonnelAssignmentDialog({ open, onOpenChange }: PersonnelAssignmentDialogProps) {
-  const [selectedProject, setSelectedProject] = useState("");
+export function PersonnelAssignmentDialog({ 
+  open, 
+  onOpenChange, 
+  defaultProjectId,
+  onAssignmentChange 
+}: PersonnelAssignmentDialogProps) {
+  const [selectedProject, setSelectedProject] = useState(defaultProjectId || "");
   const [selectedPersonnel, setSelectedPersonnel] = useState<Set<string>>(new Set());
 
   const { data: projects = [] } = useProjects();
@@ -27,6 +34,13 @@ export function PersonnelAssignmentDialog({ open, onOpenChange }: PersonnelAssig
   const { data: assignedPersonnel = [], isLoading } = usePersonnelByProject(selectedProject);
   const assignMutation = useBulkAssignPersonnelToProject();
   const removeMutation = useRemovePersonnelFromProject();
+
+  // Set project from prop when dialog opens
+  useEffect(() => {
+    if (open && defaultProjectId) {
+      setSelectedProject(defaultProjectId);
+    }
+  }, [open, defaultProjectId]);
 
   const activeProjects = useMemo(() => 
     projects.filter(p => p.status === "active"), 
@@ -67,12 +81,17 @@ export function PersonnelAssignmentDialog({ open, onOpenChange }: PersonnelAssig
     }, {
       onSuccess: () => {
         setSelectedPersonnel(new Set());
+        onAssignmentChange?.();
       },
     });
   };
 
   const handleRemove = (assignmentId: string) => {
-    removeMutation.mutate(assignmentId);
+    removeMutation.mutate(assignmentId, {
+      onSuccess: () => {
+        onAssignmentChange?.();
+      },
+    });
   };
 
   return (
