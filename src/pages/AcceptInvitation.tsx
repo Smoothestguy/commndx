@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { useNavigate, useSearchParams } from "react-router-dom";
+import { useNavigate, useSearchParams, Link } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
-import { Loader2, Mail, Lock, User } from "lucide-react";
+import { Loader2, Mail, Lock, User, LogOut } from "lucide-react";
 import type { Database } from "@/integrations/supabase/types";
 
 type AppRole = Database["public"]["Enums"]["app_role"];
@@ -23,7 +23,7 @@ interface Invitation {
 export default function AcceptInvitation() {
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
-  const { user } = useAuth();
+  const { user, signOut } = useAuth();
   const { toast } = useToast();
   const token = searchParams.get("token");
 
@@ -34,20 +34,24 @@ export default function AcceptInvitation() {
   const [confirmPassword, setConfirmPassword] = useState("");
   const [firstName, setFirstName] = useState("");
   const [lastName, setLastName] = useState("");
+  const [userEmail, setUserEmail] = useState<string | null>(null);
 
   useEffect(() => {
-    if (user) {
-      navigate("/");
-      return;
-    }
-
     if (!token) {
       navigate("/auth");
       return;
     }
 
     loadInvitation();
-  }, [token, user, navigate]);
+  }, [token, navigate]);
+
+  useEffect(() => {
+    if (user) {
+      supabase.auth.getUser().then(({ data }) => {
+        setUserEmail(data.user?.email || null);
+      });
+    }
+  }, [user]);
 
   const loadInvitation = async () => {
     if (!token) return;
@@ -105,6 +109,74 @@ export default function AcceptInvitation() {
     }
   };
 
+  const handleAcceptAsExistingUser = async () => {
+    if (!invitation || !user) return;
+
+    setIsSubmitting(true);
+
+    try {
+      // Update user's role (delete existing and insert new)
+      await supabase.from("user_roles").delete().eq("user_id", user.id);
+      
+      const { error: roleError } = await supabase
+        .from("user_roles")
+        .insert({ user_id: user.id, role: invitation.role });
+
+      if (roleError) throw roleError;
+
+      // Mark invitation as accepted
+      const { error: updateError } = await supabase
+        .from("invitations")
+        .update({ status: "accepted", used_at: new Date().toISOString() })
+        .eq("id", invitation.id);
+
+      if (updateError) throw updateError;
+
+      // Log accepted event to activity log
+      await supabase.from('invitation_activity_log').insert({
+        invitation_id: invitation.id,
+        action: 'accepted',
+        performed_by: user.id,
+        performed_by_email: userEmail,
+        target_email: invitation.email,
+        target_role: invitation.role,
+        metadata: {
+          accepted_at: new Date().toISOString(),
+        },
+      });
+
+      // Notify the admin who sent the invitation
+      try {
+        await supabase.functions.invoke("notify-invitation-accepted", {
+          body: {
+            invitationId: invitation.id,
+            newUserEmail: invitation.email,
+            newUserName: userEmail || "User",
+            role: invitation.role,
+          },
+        });
+      } catch (notifyError) {
+        console.error("Failed to send notification to admin:", notifyError);
+      }
+
+      toast({
+        title: "Invitation accepted!",
+        description: `Your role has been updated to ${invitation.role}.`,
+      });
+
+      navigate("/");
+    } catch (error: any) {
+      console.error("Error accepting invitation:", error);
+      toast({
+        title: "Error accepting invitation",
+        description: error.message || "Failed to accept invitation. Please try again.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
   const handleAcceptInvitation = async (e: React.FormEvent) => {
     e.preventDefault();
 
@@ -144,7 +216,18 @@ export default function AcceptInvitation() {
         },
       });
 
-      if (signUpError) throw signUpError;
+      if (signUpError) {
+        if (signUpError.message?.includes("already") || signUpError.message?.includes("registered")) {
+          toast({
+            title: "Account already exists",
+            description: "Please log in with your existing account to accept this invitation.",
+            variant: "destructive",
+          });
+          setIsSubmitting(false);
+          return;
+        }
+        throw signUpError;
+      }
 
       if (!authData.user) {
         throw new Error("Failed to create user");
@@ -226,6 +309,86 @@ export default function AcceptInvitation() {
     return null;
   }
 
+  // If logged in and email matches invitation
+  if (user && userEmail === invitation.email) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-background p-4">
+        <Card className="w-full max-w-md">
+          <CardHeader className="space-y-1">
+            <div className="flex items-center gap-3 mb-2">
+              <div className="flex h-12 w-12 items-center justify-center rounded-lg bg-primary/10">
+                <span className="text-2xl font-bold text-primary">X</span>
+              </div>
+              <div>
+                <CardTitle className="text-2xl">Accept Invitation</CardTitle>
+                <CardDescription>Update your role</CardDescription>
+              </div>
+            </div>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div className="p-4 bg-muted rounded-lg">
+              <p className="text-sm text-muted-foreground mb-1">You've been invited as:</p>
+              <p className="font-semibold text-lg capitalize">{invitation.role}</p>
+              <p className="text-sm text-muted-foreground mt-2">{invitation.email}</p>
+            </div>
+            <p className="text-sm text-muted-foreground">
+              You're already logged in. Click below to accept this invitation and update your role.
+            </p>
+            <Button 
+              onClick={handleAcceptAsExistingUser} 
+              className="w-full"
+              disabled={isSubmitting}
+            >
+              {isSubmitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+              Accept Invitation
+            </Button>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
+
+  // If logged in but email doesn't match invitation
+  if (user && userEmail && userEmail !== invitation.email) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-background p-4">
+        <Card className="w-full max-w-md">
+          <CardHeader className="space-y-1">
+            <div className="flex items-center gap-3 mb-2">
+              <div className="flex h-12 w-12 items-center justify-center rounded-lg bg-primary/10">
+                <span className="text-2xl font-bold text-primary">X</span>
+              </div>
+              <div>
+                <CardTitle className="text-2xl">Email Mismatch</CardTitle>
+                <CardDescription>Wrong account</CardDescription>
+              </div>
+            </div>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div className="p-4 bg-destructive/10 border border-destructive/20 rounded-lg">
+              <p className="text-sm font-medium mb-2">This invitation was sent to:</p>
+              <p className="font-semibold">{invitation.email}</p>
+              <p className="text-sm text-muted-foreground mt-3">But you're currently logged in as:</p>
+              <p className="font-semibold">{userEmail}</p>
+            </div>
+            <p className="text-sm text-muted-foreground">
+              Please log out and log in with the correct account to accept this invitation.
+            </p>
+            <Button 
+              onClick={() => signOut()} 
+              className="w-full"
+              variant="outline"
+            >
+              <LogOut className="mr-2 h-4 w-4" />
+              Log Out
+            </Button>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
+
+  // Not logged in - show signup form
   return (
     <div className="min-h-screen flex items-center justify-center bg-background p-4">
       <Card className="w-full max-w-md">
@@ -330,6 +493,13 @@ export default function AcceptInvitation() {
               Create Account & Accept Invitation
             </Button>
           </form>
+
+          <div className="mt-4 text-center text-sm">
+            <span className="text-muted-foreground">Already have an account? </span>
+            <Link to="/auth" className="text-primary hover:underline">
+              Log in
+            </Link>
+          </div>
         </CardContent>
       </Card>
     </div>
