@@ -66,7 +66,7 @@ const handler = async (req: Request): Promise<Response> => {
 
     // Send notification email to admin
     const emailResponse = await resend.emails.send({
-      from: "Command X <onboarding@resend.dev>",
+      from: "COMMNDX <no-reply@commndx.com>",
       to: [adminProfile.email],
       subject: "User Invitation Accepted",
       html: `

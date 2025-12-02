@@ -107,7 +107,7 @@ const handler = async (req: Request): Promise<Response> => {
 
     // Send email
     const emailResponse = await resend.emails.send({
-      from: "Command X <onboarding@resend.dev>",
+      from: "COMMNDX <no-reply@commndx.com>",
       to: [vendor.email],
       subject: `Purchase Order ${po.number} from Command X`,
       html: `
