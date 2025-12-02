@@ -1,11 +1,12 @@
 import { useState, useMemo } from "react";
 import { format } from "date-fns";
-import { ChevronDown, ChevronRight, Pencil, Trash2 } from "lucide-react";
+import { ChevronDown, ChevronRight, Pencil, Trash2, AlertTriangle, Gift } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Badge } from "@/components/ui/badge";
 import { StatusBadge } from "@/components/shared/StatusBadge";
 import { TimeEntryWithDetails } from "@/integrations/supabase/hooks/useTimeEntries";
+import { useCompanySettings } from "@/integrations/supabase/hooks/useCompanySettings";
 import {
   Collapsible,
   CollapsibleContent,
@@ -45,6 +46,9 @@ interface PersonnelGroup {
   project: string;
   customer: string;
   totalHours: number;
+  regularHours: number;
+  overtimeHours: number;
+  holidayHours: number;
   totalCost: number;
   entries: TimeEntryWithDetails[];
 }
@@ -65,6 +69,10 @@ export function GroupedTimeTrackingTable({
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [expandedGroups, setExpandedGroups] = useState<Set<string>>(new Set());
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
+
+  const { data: companySettings } = useCompanySettings();
+  const overtimeMultiplier = companySettings?.overtime_multiplier ?? 1.5;
+  const holidayMultiplier = companySettings?.holiday_multiplier ?? 1.5;
 
   const getPersonnelName = (entry: TimeEntryWithDetails) => {
     if (entry.personnel_id && entry.personnel) {
@@ -91,6 +99,24 @@ export function GroupedTimeTrackingTable({
     return statusMap[status] || "pending";
   };
 
+  // Calculate cost for a single entry with multipliers
+  const getEntryCost = (entry: TimeEntryWithDetails) => {
+    const hourlyRate = getHourlyRate(entry);
+    const regular = Number(entry.regular_hours || entry.hours);
+    const overtime = Number(entry.overtime_hours || 0);
+    const isHoliday = entry.is_holiday;
+    
+    let regularCost = regular * hourlyRate;
+    let overtimeCost = overtime * hourlyRate * overtimeMultiplier;
+    
+    if (isHoliday) {
+      regularCost *= holidayMultiplier;
+      overtimeCost *= holidayMultiplier;
+    }
+    
+    return regularCost + overtimeCost;
+  };
+
   // Group entries by personnel
   const groupedEntries = useMemo(() => {
     const groups = new Map<string, PersonnelGroup>();
@@ -98,7 +124,6 @@ export function GroupedTimeTrackingTable({
     entries.forEach((entry) => {
       const personnelKey = entry.personnel_id || entry.user_id;
       const personnelName = getPersonnelName(entry);
-      const hourlyRate = getHourlyRate(entry);
 
       if (!groups.has(personnelKey)) {
         groups.set(personnelKey, {
@@ -107,6 +132,9 @@ export function GroupedTimeTrackingTable({
           project: entry.projects?.name || "Unknown",
           customer: entry.projects?.customers?.name || "-",
           totalHours: 0,
+          regularHours: 0,
+          overtimeHours: 0,
+          holidayHours: 0,
           totalCost: 0,
           entries: [],
         });
@@ -114,7 +142,12 @@ export function GroupedTimeTrackingTable({
 
       const group = groups.get(personnelKey)!;
       group.totalHours += Number(entry.hours);
-      group.totalCost += Number(entry.hours) * Number(hourlyRate);
+      group.regularHours += Number(entry.regular_hours || entry.hours);
+      group.overtimeHours += Number(entry.overtime_hours || 0);
+      if (entry.is_holiday) {
+        group.holidayHours += Number(entry.hours);
+      }
+      group.totalCost += getEntryCost(entry);
       group.entries.push(entry);
     });
 
@@ -126,7 +159,7 @@ export function GroupedTimeTrackingTable({
     });
 
     return Array.from(groups.values());
-  }, [entries]);
+  }, [entries, overtimeMultiplier, holidayMultiplier]);
 
   const toggleGroup = (key: string) => {
     const newExpanded = new Set(expandedGroups);
@@ -241,6 +274,19 @@ export function GroupedTimeTrackingTable({
                     <div className="text-sm md:text-right">
                       <span className="font-semibold text-foreground">{group.totalHours.toFixed(2)}</span>
                       <span className="text-muted-foreground ml-1">hrs</span>
+                      {/* Show breakdown badges */}
+                      <div className="flex gap-1 mt-1 justify-end flex-wrap">
+                        {group.overtimeHours > 0 && (
+                          <Badge variant="outline" className="text-xs bg-orange-500/10 text-orange-500 border-orange-500/20">
+                            OT: {group.overtimeHours.toFixed(1)}h
+                          </Badge>
+                        )}
+                        {group.holidayHours > 0 && (
+                          <Badge variant="outline" className="text-xs bg-purple-500/10 text-purple-500 border-purple-500/20">
+                            Holiday: {group.holidayHours.toFixed(1)}h
+                          </Badge>
+                        )}
+                      </div>
                     </div>
                     <div className="text-sm md:text-right">
                       <span className="font-semibold text-foreground">${group.totalCost.toFixed(2)}</span>
@@ -258,51 +304,72 @@ export function GroupedTimeTrackingTable({
               <CollapsibleContent>
                 <div className="border-t border-border/30 bg-muted/10">
                   <div className="divide-y divide-border/20">
-                    {group.entries.map((entry) => (
-                      <div
-                        key={entry.id}
-                        className="flex items-center gap-3 px-4 py-3 hover:bg-muted/20 transition-colors"
-                      >
-                        {onBulkDelete && (
-                          <div className="pl-8">
-                            <Checkbox
-                              checked={selectedIds.has(entry.id)}
-                              onCheckedChange={(checked) => handleSelectOne(entry.id, !!checked)}
-                              aria-label={`Select entry for ${format(new Date(entry.entry_date), "MMM dd, yyyy")}`}
-                            />
-                          </div>
-                        )}
+                    {group.entries.map((entry) => {
+                      const hasOvertime = Number(entry.overtime_hours || 0) > 0;
+                      const isHoliday = entry.is_holiday;
+                      const entryCost = getEntryCost(entry);
+                      
+                      return (
+                        <div
+                          key={entry.id}
+                          className="flex items-center gap-3 px-4 py-3 hover:bg-muted/20 transition-colors"
+                        >
+                          {onBulkDelete && (
+                            <div className="pl-8">
+                              <Checkbox
+                                checked={selectedIds.has(entry.id)}
+                                onCheckedChange={(checked) => handleSelectOne(entry.id, !!checked)}
+                                aria-label={`Select entry for ${format(new Date(entry.entry_date), "MMM dd, yyyy")}`}
+                              />
+                            </div>
+                          )}
 
-                        <div className={`flex-1 grid grid-cols-2 md:grid-cols-6 gap-2 md:gap-4 items-center ${!onBulkDelete ? 'pl-12' : ''}`}>
-                          <div className="text-sm text-foreground">
-                            {format(new Date(entry.entry_date), "MMM dd, yyyy")}
-                          </div>
-                          <div className="text-sm text-right md:text-left">
-                            <span className="font-medium">{Number(entry.hours).toFixed(2)}</span>
-                            <span className="text-muted-foreground ml-1">hrs</span>
-                          </div>
-                          <div className="text-sm text-foreground">
-                            ${(Number(entry.hours) * getHourlyRate(entry)).toFixed(2)}
-                          </div>
-                          <div>
-                            <StatusBadge status={getStatus(entry)} />
-                          </div>
-                          <div className="text-sm text-muted-foreground truncate md:col-span-1" title={entry.description || ""}>
-                            {entry.description || "-"}
-                          </div>
-                          <div className="flex justify-end">
-                            <Button
-                              variant="ghost"
-                              size="icon"
-                              onClick={() => onEdit(entry)}
-                              className="h-8 w-8"
-                            >
-                              <Pencil className="h-4 w-4" />
-                            </Button>
+                          <div className={`flex-1 grid grid-cols-2 md:grid-cols-7 gap-2 md:gap-4 items-center ${!onBulkDelete ? 'pl-12' : ''}`}>
+                            <div className="text-sm text-foreground">
+                              {format(new Date(entry.entry_date), "MMM dd, yyyy")}
+                            </div>
+                            <div className="text-sm text-right md:text-left">
+                              <span className="font-medium">{Number(entry.hours).toFixed(2)}</span>
+                              <span className="text-muted-foreground ml-1">hrs</span>
+                            </div>
+                            <div className="text-sm text-foreground">
+                              ${entryCost.toFixed(2)}
+                            </div>
+                            <div>
+                              <StatusBadge status={getStatus(entry)} />
+                            </div>
+                            {/* OT/Holiday badges */}
+                            <div className="flex gap-1">
+                              {hasOvertime && (
+                                <Badge variant="outline" className="text-xs bg-orange-500/10 text-orange-500 border-orange-500/20 gap-1">
+                                  <AlertTriangle className="h-3 w-3" />
+                                  OT +{Number(entry.overtime_hours).toFixed(1)}h
+                                </Badge>
+                              )}
+                              {isHoliday && (
+                                <Badge variant="outline" className="text-xs bg-purple-500/10 text-purple-500 border-purple-500/20 gap-1">
+                                  <Gift className="h-3 w-3" />
+                                  Holiday
+                                </Badge>
+                              )}
+                            </div>
+                            <div className="text-sm text-muted-foreground truncate md:col-span-1" title={entry.description || ""}>
+                              {entry.description || "-"}
+                            </div>
+                            <div className="flex justify-end">
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                onClick={() => onEdit(entry)}
+                                className="h-8 w-8"
+                              >
+                                <Pencil className="h-4 w-4" />
+                              </Button>
+                            </div>
                           </div>
                         </div>
-                      </div>
-                    ))}
+                      );
+                    })}
                   </div>
                 </div>
               </CollapsibleContent>

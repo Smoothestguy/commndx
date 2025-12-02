@@ -19,6 +19,7 @@ export interface CompanySettings {
   overtime_threshold: number;
   weekly_overtime_threshold: number;
   overtime_multiplier: number;
+  holiday_multiplier: number;
   invoice_footer: string | null;
   estimate_footer: string | null;
   created_at: string;

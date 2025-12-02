@@ -136,6 +136,7 @@ export type Database = {
           default_tax_rate: number | null
           email: string | null
           estimate_footer: string | null
+          holiday_multiplier: number | null
           id: string
           invoice_footer: string | null
           legal_name: string | null
@@ -158,6 +159,7 @@ export type Database = {
           default_tax_rate?: number | null
           email?: string | null
           estimate_footer?: string | null
+          holiday_multiplier?: number | null
           id?: string
           invoice_footer?: string | null
           legal_name?: string | null
@@ -180,6 +182,7 @@ export type Database = {
           default_tax_rate?: number | null
           email?: string | null
           estimate_footer?: string | null
+          holiday_multiplier?: number | null
           id?: string
           invoice_footer?: string | null
           legal_name?: string | null
@@ -1459,6 +1462,7 @@ export type Database = {
           id: string
           invoice_id: string | null
           invoiced_at: string | null
+          is_holiday: boolean | null
           job_order_id: string | null
           overtime_hours: number | null
           personnel_id: string | null
@@ -1477,6 +1481,7 @@ export type Database = {
           id?: string
           invoice_id?: string | null
           invoiced_at?: string | null
+          is_holiday?: boolean | null
           job_order_id?: string | null
           overtime_hours?: number | null
           personnel_id?: string | null
@@ -1495,6 +1500,7 @@ export type Database = {
           id?: string
           invoice_id?: string | null
           invoiced_at?: string | null
+          is_holiday?: boolean | null
           job_order_id?: string | null
           overtime_hours?: number | null
           personnel_id?: string | null

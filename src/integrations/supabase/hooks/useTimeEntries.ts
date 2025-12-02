@@ -12,6 +12,7 @@ export interface TimeEntry {
   hours: number;
   regular_hours?: number | null;
   overtime_hours?: number | null;
+  is_holiday?: boolean | null;
   description?: string | null;
   billable: boolean;
   status?: string;
@@ -46,8 +47,16 @@ export interface TimeEntryInsert {
   hours: number;
   regular_hours?: number;
   overtime_hours?: number;
+  is_holiday?: boolean;
   description?: string | null;
   billable?: boolean;
+}
+
+// Calculate regular and overtime hours based on daily threshold
+export function calculateOvertimeHours(totalHours: number, dailyThreshold: number = 8) {
+  const regularHours = Math.min(totalHours, dailyThreshold);
+  const overtimeHours = Math.max(0, totalHours - dailyThreshold);
+  return { regularHours, overtimeHours };
 }
 
 // Get existing daily hours for overtime calculation
@@ -176,10 +185,18 @@ export const useAddTimeEntry = () => {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) throw new Error("Not authenticated");
 
+      // Calculate overtime
+      const { regularHours, overtimeHours } = calculateOvertimeHours(entry.hours);
+
       const { data, error } = await supabase
         .from("time_entries")
         .upsert(
-          { ...entry, user_id: user.id },
+          { 
+            ...entry, 
+            user_id: user.id,
+            regular_hours: regularHours,
+            overtime_hours: overtimeHours,
+          },
           { onConflict: 'user_id,project_id,entry_date' }
         )
         .select()
@@ -204,6 +221,13 @@ export const useUpdateTimeEntry = () => {
 
   return useMutation({
     mutationFn: async ({ id, ...updates }: Partial<TimeEntry> & { id: string }) => {
+      // If hours are being updated, recalculate overtime
+      if (updates.hours !== undefined) {
+        const { regularHours, overtimeHours } = calculateOvertimeHours(updates.hours);
+        updates.regular_hours = regularHours;
+        updates.overtime_hours = overtimeHours;
+      }
+
       const { data, error } = await supabase
         .from("time_entries")
         .update(updates)
@@ -317,10 +341,18 @@ export const useBulkAddTimeEntries = () => {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) throw new Error("Not authenticated");
 
-      // Filter out entries with 0 or no hours
+      // Filter out entries with 0 or no hours and calculate overtime
       const validEntries = entries
         .filter(e => e.hours && e.hours > 0)
-        .map(entry => ({ ...entry, user_id: user.id }));
+        .map(entry => {
+          const { regularHours, overtimeHours } = calculateOvertimeHours(entry.hours);
+          return { 
+            ...entry, 
+            user_id: user.id,
+            regular_hours: regularHours,
+            overtime_hours: overtimeHours,
+          };
+        });
 
       if (validEntries.length === 0) {
         throw new Error("No valid entries to save");
@@ -357,6 +389,7 @@ export interface PersonnelTimeEntryInsert {
   hours: number;
   regular_hours?: number;
   overtime_hours?: number;
+  is_holiday?: boolean;
   description?: string | null;
 }
 
@@ -368,14 +401,19 @@ export const useBulkAddPersonnelTimeEntries = () => {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) throw new Error("Not authenticated");
 
-      // Filter out entries with 0 or no hours
+      // Filter out entries with 0 or no hours and calculate overtime
       const validEntries = entries
         .filter(e => e.hours && e.hours > 0)
-        .map(entry => ({ 
-          ...entry, 
-          user_id: user.id, // The user who logged this entry
-          billable: true,
-        }));
+        .map(entry => {
+          const { regularHours, overtimeHours } = calculateOvertimeHours(entry.hours);
+          return { 
+            ...entry, 
+            user_id: user.id, // The user who logged this entry
+            billable: true,
+            regular_hours: regularHours,
+            overtime_hours: overtimeHours,
+          };
+        });
 
       if (validEntries.length === 0) {
         throw new Error("No valid entries to save");
