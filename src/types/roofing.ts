@@ -5,6 +5,21 @@ export type RoofType = 'gable' | 'hip' | 'flat' | 'mansard' | 'gambrel' | 'shed'
 export type WarrantyType = 'manufacturer' | 'workmanship' | 'extended';
 export type WarrantyStatus = 'active' | 'expired' | 'claimed' | 'voided';
 
+// Activity types
+export type ActivityType = 'call' | 'email' | 'meeting' | 'note' | 'site_visit' | 'follow_up';
+export type ActivityPriority = 'low' | 'medium' | 'high' | 'urgent';
+
+// Appointment types
+export type AppointmentType = 'inspection' | 'estimate' | 'installation' | 'follow_up' | 'consultation' | 'warranty_service';
+export type AppointmentStatus = 'scheduled' | 'confirmed' | 'in_progress' | 'completed' | 'cancelled' | 'no_show';
+
+// Insurance Claim types
+export type ClaimStatus = 'filed' | 'pending_adjuster' | 'adjuster_scheduled' | 'approved' | 'denied' | 'in_progress' | 'completed';
+
+// Task types
+export type TaskStatus = 'pending' | 'in_progress' | 'completed' | 'cancelled';
+export type TaskPriority = 'low' | 'medium' | 'high' | 'urgent';
+
 export interface RoofInspection {
   id: string;
   project_id?: string;
@@ -20,7 +35,6 @@ export interface RoofInspection {
   recommendations?: string;
   created_at: string;
   updated_at: string;
-  // Joined fields
   customer?: { name: string; company?: string };
   project?: { name: string };
   inspector?: { first_name: string; last_name: string };
@@ -42,7 +56,6 @@ export interface RoofMeasurement {
   notes?: string;
   created_at: string;
   updated_at: string;
-  // Joined fields
   customer?: { name: string; company?: string };
   project?: { name: string };
 }
@@ -62,7 +75,6 @@ export interface RoofWarranty {
   notifications_enabled: boolean;
   created_at: string;
   updated_at: string;
-  // Joined fields
   customer?: { name: string; company?: string };
   project?: { name: string };
 }
@@ -80,6 +92,87 @@ export interface WeatherLog {
   work_suitable: boolean;
   notes?: string;
   created_at: string;
-  // Joined fields
   project?: { name: string };
+}
+
+export interface Activity {
+  id: string;
+  customer_id: string;
+  project_id?: string;
+  activity_type: ActivityType;
+  subject: string;
+  description?: string;
+  activity_date: string;
+  created_by: string;
+  priority?: ActivityPriority;
+  follow_up_date?: string;
+  created_at: string;
+  updated_at: string;
+  customer?: { name: string; company?: string };
+  project?: { name: string };
+  creator?: { first_name: string; last_name: string };
+}
+
+export interface Appointment {
+  id: string;
+  customer_id: string;
+  project_id?: string;
+  appointment_type: AppointmentType;
+  title: string;
+  description?: string;
+  start_time: string;
+  end_time: string;
+  location?: string;
+  assigned_to?: string;
+  status: AppointmentStatus;
+  notes?: string;
+  created_at: string;
+  updated_at: string;
+  customer?: { name: string; company?: string; address?: string };
+  project?: { name: string };
+  assignee?: { first_name: string; last_name: string };
+}
+
+export interface InsuranceClaim {
+  id: string;
+  customer_id: string;
+  project_id?: string;
+  claim_number?: string;
+  insurance_company: string;
+  policy_number?: string;
+  adjuster_name?: string;
+  adjuster_phone?: string;
+  adjuster_email?: string;
+  date_of_loss: string;
+  damage_description?: string;
+  status: ClaimStatus;
+  filed_date?: string;
+  adjuster_visit_date?: string;
+  approved_amount?: number;
+  deductible?: number;
+  documents: string[];
+  notes?: string;
+  created_at: string;
+  updated_at: string;
+  customer?: { name: string; company?: string };
+  project?: { name: string };
+}
+
+export interface Task {
+  id: string;
+  customer_id?: string;
+  project_id?: string;
+  title: string;
+  description?: string;
+  due_date?: string;
+  assigned_to?: string;
+  status: TaskStatus;
+  priority: TaskPriority;
+  completed_at?: string;
+  created_by: string;
+  created_at: string;
+  updated_at: string;
+  customer?: { name: string; company?: string };
+  project?: { name: string };
+  assignee?: { first_name: string; last_name: string };
 }
