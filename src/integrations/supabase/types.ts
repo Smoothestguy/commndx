@@ -1558,6 +1558,10 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      accept_invitation: {
+        Args: { _invitation_id: string; _user_id: string }
+        Returns: Json
+      }
       expire_old_invitations: { Args: never; Returns: undefined }
       generate_estimate_number: { Args: never; Returns: string }
       generate_invoice_number: { Args: never; Returns: string }
