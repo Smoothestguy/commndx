@@ -23,6 +23,7 @@ import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { useProducts, useAddProduct, useUpdateProduct, useDeleteProduct, Product, ItemType } from "@/integrations/supabase/hooks/useProducts";
 import { useProductCategories, useAddProductCategory } from "@/integrations/supabase/hooks/useProductCategories";
+import { useProductUnits, useAddProductUnit } from "@/integrations/supabase/hooks/useProductUnits";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { ProductCard } from "@/components/products/ProductCard";
 import { ProductStats } from "@/components/products/ProductStats";
@@ -35,19 +36,17 @@ const typeConfig: Record<ItemType, { icon: typeof Package; label: string; defaul
   labor: { icon: HardHat, label: "Labor", defaultUnit: "hour", showSku: false },
 };
 
-const unitOptions: Record<ItemType, string[]> = {
-  product: ["each", "bundle", "sq ft", "linear ft", "piece", "box", "roll", "gallon"],
-  service: ["each", "flat rate", "visit", "inspection"],
-  labor: ["hour", "day", "half day", "job"],
-};
+const marginPresets = ["15", "20", "25", "30", "35", "40", "45", "50"];
 
 const Products = () => {
   const { data: products, isLoading, error, refetch, isFetching } = useProducts();
   const { data: categories } = useProductCategories();
+  const { data: units } = useProductUnits();
   const addProduct = useAddProduct();
   const updateProduct = useUpdateProduct();
   const deleteProduct = useDeleteProduct();
   const addCategory = useAddProductCategory();
+  const addUnit = useAddProductUnit();
   const isMobile = useIsMobile();
   
   const [search, setSearch] = useState("");
@@ -61,11 +60,14 @@ const Products = () => {
     name: "",
     description: "",
     cost: "",
-    margin: "",
+    margin: "30",
     unit: "each",
     category: "",
     is_taxable: true,
   });
+  const [showCustomMargin, setShowCustomMargin] = useState(false);
+  const [showNewUnitInput, setShowNewUnitInput] = useState(false);
+  const [newUnitName, setNewUnitName] = useState("");
 
   // Update unit when item type changes (only for new items)
   useEffect(() => {
@@ -169,17 +171,19 @@ const Products = () => {
 
   const handleEdit = (product: Product) => {
     setEditingProduct(product);
+    const marginStr = product.markup.toString();
     setFormData({
       item_type: product.item_type || "product",
       sku: product.sku || "",
       name: product.name,
       description: product.description || "",
       cost: product.cost.toString(),
-      margin: product.markup.toString(),
+      margin: marginStr,
       unit: product.unit,
       category: product.category,
       is_taxable: product.is_taxable ?? true,
     });
+    setShowCustomMargin(!marginPresets.includes(marginStr));
     setIsDialogOpen(true);
   };
 
@@ -231,13 +235,16 @@ const Products = () => {
       name: "",
       description: "",
       cost: "",
-      margin: "",
+      margin: "30",
       unit: "each",
       category: "",
       is_taxable: true,
     });
     setShowNewCategoryInput(false);
     setNewCategoryName("");
+    setShowCustomMargin(false);
+    setShowNewUnitInput(false);
+    setNewUnitName("");
   };
 
   const openNewDialog = () => {
@@ -481,21 +488,83 @@ const Products = () => {
                 </div>
                 <div className="space-y-2">
                   <Label htmlFor="unit">Unit</Label>
-                  <Select
-                    value={formData.unit}
-                    onValueChange={(value) => setFormData({ ...formData, unit: value })}
-                  >
-                    <SelectTrigger className="bg-secondary border-border">
-                      <SelectValue placeholder="Select unit" />
-                    </SelectTrigger>
-                    <SelectContent className="bg-popover border-border">
-                      {unitOptions[formData.item_type].map((unit) => (
-                        <SelectItem key={unit} value={unit}>
-                          {unit}
+                  {!showNewUnitInput ? (
+                    <Select
+                      value={formData.unit}
+                      onValueChange={(value) => {
+                        if (value === "__new__") {
+                          setShowNewUnitInput(true);
+                          setNewUnitName("");
+                        } else {
+                          setFormData({ ...formData, unit: value });
+                        }
+                      }}
+                    >
+                      <SelectTrigger className="bg-secondary border-border">
+                        <SelectValue placeholder="Select unit" />
+                      </SelectTrigger>
+                      <SelectContent className="bg-popover border-border">
+                        {units?.map((unit) => (
+                          <SelectItem key={unit.id} value={unit.name}>
+                            {unit.name}
+                          </SelectItem>
+                        ))}
+                        <SelectItem value="__new__" className="text-primary font-medium">
+                          + Add new unit...
                         </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
+                      </SelectContent>
+                    </Select>
+                  ) : (
+                    <div className="space-y-2">
+                      <Input
+                        autoFocus
+                        value={newUnitName}
+                        placeholder="Enter new unit name"
+                        className="bg-secondary border-border"
+                        onChange={(e) => setNewUnitName(e.target.value)}
+                        onKeyDown={async (e) => {
+                          if (e.key === "Enter" && newUnitName.trim()) {
+                            e.preventDefault();
+                            await addUnit.mutateAsync({ name: newUnitName.trim() });
+                            setFormData({ ...formData, unit: newUnitName.trim() });
+                            setShowNewUnitInput(false);
+                            setNewUnitName("");
+                          } else if (e.key === "Escape") {
+                            setShowNewUnitInput(false);
+                            setNewUnitName("");
+                          }
+                        }}
+                      />
+                      <div className="flex gap-2">
+                        <Button
+                          type="button"
+                          size="sm"
+                          variant="outline"
+                          onClick={() => {
+                            setShowNewUnitInput(false);
+                            setNewUnitName("");
+                          }}
+                        >
+                          Cancel
+                        </Button>
+                        <Button
+                          type="button"
+                          size="sm"
+                          disabled={!newUnitName.trim()}
+                          onClick={async () => {
+                            if (newUnitName.trim()) {
+                              await addUnit.mutateAsync({ name: newUnitName.trim() });
+                              setFormData({ ...formData, unit: newUnitName.trim() });
+                              setShowNewUnitInput(false);
+                              setNewUnitName("");
+                            }
+                          }}
+                        >
+                          Save
+                        </Button>
+                      </div>
+                    </div>
+                  )}
                 </div>
               </div>
 
@@ -524,15 +593,58 @@ const Products = () => {
                 </div>
                 <div className="space-y-2">
                   <Label htmlFor="margin">Margin (%) *</Label>
-                  <Input
-                    id="margin"
-                    type="number"
-                    max="99.99"
-                    value={formData.margin}
-                    onChange={(e) => setFormData({ ...formData, margin: e.target.value })}
-                    required
-                    className="bg-secondary border-border"
-                  />
+                  {!showCustomMargin ? (
+                    <Select
+                      value={marginPresets.includes(formData.margin) ? formData.margin : "__custom__"}
+                      onValueChange={(value) => {
+                        if (value === "__custom__") {
+                          setShowCustomMargin(true);
+                        } else {
+                          setFormData({ ...formData, margin: value });
+                        }
+                      }}
+                    >
+                      <SelectTrigger className="bg-secondary border-border">
+                        <SelectValue placeholder="Select margin" />
+                      </SelectTrigger>
+                      <SelectContent className="bg-popover border-border">
+                        {marginPresets.map((preset) => (
+                          <SelectItem key={preset} value={preset}>
+                            {preset}%
+                          </SelectItem>
+                        ))}
+                        <SelectItem value="__custom__" className="text-primary font-medium">
+                          Custom...
+                        </SelectItem>
+                      </SelectContent>
+                    </Select>
+                  ) : (
+                    <div className="flex gap-2">
+                      <Input
+                        id="margin"
+                        type="number"
+                        max="99.99"
+                        value={formData.margin}
+                        onChange={(e) => setFormData({ ...formData, margin: e.target.value })}
+                        required
+                        autoFocus
+                        className="bg-secondary border-border"
+                      />
+                      <Button
+                        type="button"
+                        size="sm"
+                        variant="outline"
+                        onClick={() => {
+                          setShowCustomMargin(false);
+                          if (!marginPresets.includes(formData.margin)) {
+                            setFormData({ ...formData, margin: "30" });
+                          }
+                        }}
+                      >
+                        Done
+                      </Button>
+                    </div>
+                  )}
                 </div>
               </div>
 
