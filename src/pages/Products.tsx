@@ -1,9 +1,16 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { SEO } from "@/components/SEO";
 import { PageLayout } from "@/components/layout/PageLayout";
 import { DataTable } from "@/components/shared/DataTable";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { Plus, Search, Edit, Trash2, Loader2, Package, Wrench, HardHat } from "lucide-react";
 import { PullToRefreshWrapper } from "@/components/shared/PullToRefreshWrapper";
 import {
@@ -25,6 +32,12 @@ const typeConfig: Record<ItemType, { icon: typeof Package; label: string; defaul
   product: { icon: Package, label: "Product", defaultUnit: "each", showSku: true },
   service: { icon: Wrench, label: "Service", defaultUnit: "each", showSku: false },
   labor: { icon: HardHat, label: "Labor", defaultUnit: "hour", showSku: false },
+};
+
+const unitOptions: Record<ItemType, string[]> = {
+  product: ["each", "bundle", "sq ft", "linear ft", "piece", "box", "roll", "gallon"],
+  service: ["each", "flat rate", "visit", "inspection"],
+  labor: ["hour", "day", "half day", "job"],
 };
 
 const Products = () => {
@@ -64,6 +77,16 @@ const Products = () => {
   }, [formData.item_type, editingProduct]);
 
   const uniqueCategories = Array.from(new Set(products?.map((p) => p.category) || []));
+
+  // Get categories filtered by item type for the form dropdown
+  const categoriesForType = useMemo(() => {
+    if (!products) return [];
+    return Array.from(new Set(
+      products
+        .filter(p => p.item_type === formData.item_type)
+        .map(p => p.category)
+    )).sort();
+  }, [products, formData.item_type]);
 
   const filteredProducts = products?.filter((p) => {
     const matchesSearch = p.name.toLowerCase().includes(search.toLowerCase()) ||
@@ -364,24 +387,61 @@ const Products = () => {
               <div className="grid gap-4 sm:grid-cols-2">
                 <div className="space-y-2">
                   <Label htmlFor="category">Category *</Label>
-                  <Input
-                    id="category"
+                  <Select
                     value={formData.category}
-                    onChange={(e) => setFormData({ ...formData, category: e.target.value })}
-                    placeholder={formData.item_type === "labor" ? "e.g., Installation" : "e.g., Materials"}
-                    required
-                    className="bg-secondary border-border"
-                  />
+                    onValueChange={(value) => setFormData({ ...formData, category: value })}
+                  >
+                    <SelectTrigger className="bg-secondary border-border">
+                      <SelectValue placeholder="Select category" />
+                    </SelectTrigger>
+                    <SelectContent className="bg-popover border-border">
+                      {categoriesForType.map((cat) => (
+                        <SelectItem key={cat} value={cat}>
+                          {cat}
+                        </SelectItem>
+                      ))}
+                      {categoriesForType.length > 0 && (
+                        <SelectItem value="__new__" className="text-primary font-medium">
+                          + Add new category...
+                        </SelectItem>
+                      )}
+                      {categoriesForType.length === 0 && (
+                        <SelectItem value="__new__" className="text-primary font-medium">
+                          + Create first category...
+                        </SelectItem>
+                      )}
+                    </SelectContent>
+                  </Select>
+                  {formData.category === "__new__" && (
+                    <Input
+                      autoFocus
+                      placeholder="Enter new category name"
+                      className="bg-secondary border-border mt-2"
+                      onChange={(e) => {
+                        if (e.target.value) {
+                          setFormData({ ...formData, category: e.target.value });
+                        }
+                      }}
+                    />
+                  )}
                 </div>
                 <div className="space-y-2">
                   <Label htmlFor="unit">Unit</Label>
-                  <Input
-                    id="unit"
+                  <Select
                     value={formData.unit}
-                    onChange={(e) => setFormData({ ...formData, unit: e.target.value })}
-                    placeholder={currentTypeConfig.defaultUnit}
-                    className="bg-secondary border-border"
-                  />
+                    onValueChange={(value) => setFormData({ ...formData, unit: value })}
+                  >
+                    <SelectTrigger className="bg-secondary border-border">
+                      <SelectValue placeholder="Select unit" />
+                    </SelectTrigger>
+                    <SelectContent className="bg-popover border-border">
+                      {unitOptions[formData.item_type].map((unit) => (
+                        <SelectItem key={unit} value={unit}>
+                          {unit}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
                 </div>
               </div>
 
