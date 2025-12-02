@@ -348,10 +348,11 @@ export const useBulkAddPersonnelTimeEntries = () => {
       }
 
       // Use upsert to update existing entries or insert new ones
+      // Personnel entries use personnel_id as the conflict target
       const { data, error } = await supabase
         .from("time_entries")
         .upsert(validEntries, { 
-          onConflict: 'user_id,project_id,entry_date',
+          onConflict: 'personnel_id,project_id,entry_date',
           ignoreDuplicates: false 
         })
         .select();
