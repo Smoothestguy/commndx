@@ -161,7 +161,7 @@ export const useTimeEntriesByWeek = (weekStartDate: Date) => {
   });
 };
 
-// Add a new time entry
+// Add or update a time entry (upsert to handle duplicates)
 export const useAddTimeEntry = () => {
   const queryClient = useQueryClient();
 
@@ -172,7 +172,10 @@ export const useAddTimeEntry = () => {
 
       const { data, error } = await supabase
         .from("time_entries")
-        .insert({ ...entry, user_id: user.id })
+        .upsert(
+          { ...entry, user_id: user.id },
+          { onConflict: 'user_id,project_id,entry_date' }
+        )
         .select()
         .single();
 
@@ -181,14 +184,10 @@ export const useAddTimeEntry = () => {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["time-entries"] });
-      toast.success("Time entry added successfully");
+      toast.success("Time entry saved successfully");
     },
-    onError: (error: any) => {
-      if (error.code === "23505") {
-        toast.error("You already have a time entry for this project on this date");
-      } else {
-        toast.error("Failed to add time entry");
-      }
+    onError: () => {
+      toast.error("Failed to save time entry");
     },
   });
 };
@@ -348,9 +347,13 @@ export const useBulkAddPersonnelTimeEntries = () => {
         throw new Error("No valid entries to save");
       }
 
+      // Use upsert to update existing entries or insert new ones
       const { data, error } = await supabase
         .from("time_entries")
-        .insert(validEntries)
+        .upsert(validEntries, { 
+          onConflict: 'user_id,project_id,entry_date',
+          ignoreDuplicates: false 
+        })
         .select();
 
       if (error) throw error;
@@ -359,10 +362,10 @@ export const useBulkAddPersonnelTimeEntries = () => {
     onSuccess: (data) => {
       queryClient.invalidateQueries({ queryKey: ["time-entries"] });
       queryClient.invalidateQueries({ queryKey: ["all-time-entries"] });
-      toast.success(`Logged time for ${data.length} personnel`);
+      toast.success(`Time entries saved for ${data.length} personnel`);
     },
     onError: (error: any) => {
-      toast.error(error.message || "Failed to log time entries");
+      toast.error(error.message || "Failed to save time entries");
     },
   });
 };
