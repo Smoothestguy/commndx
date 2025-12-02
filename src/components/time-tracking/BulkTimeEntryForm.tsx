@@ -34,6 +34,8 @@ export function BulkTimeEntryForm({ open, onOpenChange }: BulkTimeEntryFormProps
   const [initialized, setInitialized] = useState(false);
   const [quickAddOpen, setQuickAddOpen] = useState(false);
   const [assignExistingOpen, setAssignExistingOpen] = useState(false);
+  const [bulkHours, setBulkHours] = useState("");
+  const [bulkNotes, setBulkNotes] = useState("");
 
   const { data: projects = [] } = useProjects();
   const { data: assignedPersonnel = [], isLoading: loadingPersonnel, refetch: refetchPersonnel } = usePersonnelByProject(selectedProject);
@@ -79,8 +81,31 @@ export function BulkTimeEntryForm({ open, onOpenChange }: BulkTimeEntryFormProps
       setPersonnelHours(new Map());
       setExpandedPersonnel(new Set());
       setInitialized(false);
+      setBulkHours("");
+      setBulkNotes("");
     }
   }, [open]);
+
+  const applyBulkHours = () => {
+    if (!bulkHours || parseFloat(bulkHours) <= 0) {
+      toast.error("Please enter valid hours to apply");
+      return;
+    }
+    const newMap = new Map(personnelHours);
+    let count = 0;
+    personnelHours.forEach((value, key) => {
+      if (value.selected) {
+        newMap.set(key, { 
+          ...value, 
+          hours: bulkHours,
+          notes: bulkNotes || value.notes 
+        });
+        count++;
+      }
+    });
+    setPersonnelHours(newMap);
+    toast.success(`Applied ${bulkHours}h to ${count} personnel`);
+  };
 
   const togglePersonnel = (personnelId: string) => {
     const newMap = new Map(personnelHours);
@@ -400,8 +425,51 @@ export function BulkTimeEntryForm({ open, onOpenChange }: BulkTimeEntryFormProps
 
           {/* Personnel Hours - Expandable rows */}
           {anyPersonnelSelected && (
-            <div className="space-y-2">
-              <Label>Enter Hours (click to expand)</Label>
+            <div className="space-y-3">
+              {/* Bulk Entry Section */}
+              <div className="p-3 bg-secondary/30 rounded-lg border">
+                <Label className="text-sm font-medium mb-2 block">Quick Entry - Apply to All Selected</Label>
+                <div className="flex gap-2 items-end">
+                  <div className="flex-1">
+                    <Label htmlFor="bulk-hours" className="text-xs text-muted-foreground">Hours</Label>
+                    <Input
+                      id="bulk-hours"
+                      type="number"
+                      step="0.5"
+                      min="0"
+                      max="24"
+                      placeholder="8"
+                      value={bulkHours}
+                      onChange={(e) => setBulkHours(e.target.value)}
+                      className="h-9"
+                    />
+                  </div>
+                  <div className="flex-[2]">
+                    <Label htmlFor="bulk-notes" className="text-xs text-muted-foreground">Notes (optional)</Label>
+                    <Input
+                      id="bulk-notes"
+                      placeholder="Work description..."
+                      value={bulkNotes}
+                      onChange={(e) => setBulkNotes(e.target.value)}
+                      className="h-9"
+                    />
+                  </div>
+                  <Button 
+                    type="button" 
+                    onClick={applyBulkHours}
+                    className="h-9"
+                  >
+                    Apply to All
+                  </Button>
+                </div>
+              </div>
+
+              <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                <div className="flex-1 border-t" />
+                <span>or customize individually</span>
+                <div className="flex-1 border-t" />
+              </div>
+
               <div className="border rounded-lg overflow-hidden">
                 <div className="max-h-60 overflow-y-auto">
                   {Array.from(personnelHours.entries())
