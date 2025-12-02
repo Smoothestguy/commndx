@@ -43,6 +43,12 @@ import Personnel from "./pages/Personnel";
 import PersonnelDetail from "./pages/PersonnelDetail";
 import PersonnelRegister from "./pages/PersonnelRegister";
 import BadgeTemplates from "./pages/BadgeTemplates";
+import RoofInspections from "./pages/RoofInspections";
+import RoofInspectionDetail from "./pages/RoofInspectionDetail";
+import RoofMeasurements from "./pages/RoofMeasurements";
+import Warranties from "./pages/Warranties";
+import WarrantyDetail from "./pages/WarrantyDetail";
+import WeatherTracking from "./pages/WeatherTracking";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -293,6 +299,54 @@ const App = () => {
                   element={
                     <ProtectedRoute>
                       <BadgeTemplates />
+                    </ProtectedRoute>
+                  }
+                />
+                <Route
+                  path="/roof-inspections"
+                  element={
+                    <ProtectedRoute>
+                      <RoofInspections />
+                    </ProtectedRoute>
+                  }
+                />
+                <Route
+                  path="/roof-inspections/:id"
+                  element={
+                    <ProtectedRoute>
+                      <RoofInspectionDetail />
+                    </ProtectedRoute>
+                  }
+                />
+                <Route
+                  path="/roof-measurements"
+                  element={
+                    <ProtectedRoute>
+                      <RoofMeasurements />
+                    </ProtectedRoute>
+                  }
+                />
+                <Route
+                  path="/warranties"
+                  element={
+                    <ProtectedRoute>
+                      <Warranties />
+                    </ProtectedRoute>
+                  }
+                />
+                <Route
+                  path="/warranties/:id"
+                  element={
+                    <ProtectedRoute>
+                      <WarrantyDetail />
+                    </ProtectedRoute>
+                  }
+                />
+                <Route
+                  path="/weather-tracking"
+                  element={
+                    <ProtectedRoute>
+                      <WeatherTracking />
                     </ProtectedRoute>
                   }
                 />

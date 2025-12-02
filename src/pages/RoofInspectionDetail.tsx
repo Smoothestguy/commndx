@@ -4,7 +4,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
-import { ClipboardCheck, Calendar, User, Building, Edit, ArrowLeft } from "lucide-react";
+import { ClipboardCheck, Calendar, User, Building, ArrowLeft } from "lucide-react";
 import { format } from "date-fns";
 import { useRoofInspection } from "@/integrations/supabase/hooks/useRoofInspections";
 
@@ -30,7 +30,7 @@ export default function RoofInspectionDetail() {
 
   if (isLoading) {
     return (
-      <DetailPageLayout title="Loading..." onBack={() => navigate("/roof-inspections")}>
+      <DetailPageLayout title="Loading..." backPath="/roof-inspections">
         <div className="space-y-4">
           <Skeleton className="h-32 w-full" />
           <Skeleton className="h-64 w-full" />
@@ -41,7 +41,7 @@ export default function RoofInspectionDetail() {
 
   if (!inspection) {
     return (
-      <DetailPageLayout title="Inspection Not Found" onBack={() => navigate("/roof-inspections")}>
+      <DetailPageLayout title="Inspection Not Found" backPath="/roof-inspections">
         <div className="text-center py-12">
           <p className="text-muted-foreground">The requested inspection could not be found.</p>
           <Button className="mt-4" onClick={() => navigate("/roof-inspections")}>
@@ -56,7 +56,7 @@ export default function RoofInspectionDetail() {
   return (
     <DetailPageLayout
       title={`Inspection - ${inspection.customer?.name || "Unknown"}`}
-      onBack={() => navigate("/roof-inspections")}
+      backPath="/roof-inspections"
     >
       <div className="space-y-6">
         <div className="flex flex-wrap gap-2">
