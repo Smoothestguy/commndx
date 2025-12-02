@@ -39,7 +39,7 @@ type PersonnelFormData = z.infer<typeof personnelSchema>;
 
 interface PersonnelFormProps {
   personnel?: Personnel;
-  onSuccess?: () => void;
+  onSuccess?: (newPersonnelId?: string) => void;
   onCancel?: () => void;
 }
 
@@ -89,11 +89,11 @@ export const PersonnelForm = ({ personnel, onSuccess, onCancel }: PersonnelFormP
         id: personnel.id,
         updates: formData,
       });
+      onSuccess?.();
     } else {
-      await addMutation.mutateAsync(formData as any);
+      const result = await addMutation.mutateAsync(formData as any);
+      onSuccess?.(result?.id);
     }
-
-    onSuccess?.();
   };
 
   return (
