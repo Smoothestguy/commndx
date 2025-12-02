@@ -49,6 +49,11 @@ import RoofMeasurements from "./pages/RoofMeasurements";
 import Warranties from "./pages/Warranties";
 import WarrantyDetail from "./pages/WarrantyDetail";
 import WeatherTracking from "./pages/WeatherTracking";
+import Activities from "./pages/Activities";
+import Appointments from "./pages/Appointments";
+import InsuranceClaims from "./pages/InsuranceClaims";
+import Tasks from "./pages/Tasks";
+import RoofingDashboard from "./pages/RoofingDashboard";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -347,6 +352,46 @@ const App = () => {
                   element={
                     <ProtectedRoute>
                       <WeatherTracking />
+                    </ProtectedRoute>
+                  }
+                />
+                <Route
+                  path="/activities"
+                  element={
+                    <ProtectedRoute>
+                      <Activities />
+                    </ProtectedRoute>
+                  }
+                />
+                <Route
+                  path="/appointments"
+                  element={
+                    <ProtectedRoute>
+                      <Appointments />
+                    </ProtectedRoute>
+                  }
+                />
+                <Route
+                  path="/insurance-claims"
+                  element={
+                    <ProtectedRoute>
+                      <InsuranceClaims />
+                    </ProtectedRoute>
+                  }
+                />
+                <Route
+                  path="/tasks"
+                  element={
+                    <ProtectedRoute>
+                      <Tasks />
+                    </ProtectedRoute>
+                  }
+                />
+                <Route
+                  path="/roofing-dashboard"
+                  element={
+                    <ProtectedRoute>
+                      <RoofingDashboard />
                     </ProtectedRoute>
                   }
                 />
