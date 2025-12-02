@@ -5,7 +5,7 @@ import { Plus, Users } from "lucide-react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { TimeTrackingStats } from "@/components/time-tracking/TimeTrackingStats";
 import { TimeTrackingFilters } from "@/components/time-tracking/TimeTrackingFilters";
-import { TimeTrackingTable } from "@/components/time-tracking/TimeTrackingTable";
+import { GroupedTimeTrackingTable } from "@/components/time-tracking/GroupedTimeTrackingTable";
 import { EnhancedTimeEntryForm } from "@/components/time-tracking/EnhancedTimeEntryForm";
 import { WeeklyTimesheet } from "@/components/time-tracking/WeeklyTimesheet";
 import { WeekNavigator } from "@/components/time-tracking/WeekNavigator";
@@ -113,8 +113,8 @@ export default function TimeTracking() {
               onPersonnelChange={handlePersonnelChange}
             />
 
-            {/* Table */}
-            <TimeTrackingTable 
+            {/* Grouped Table */}
+            <GroupedTimeTrackingTable 
               entries={entries} 
               onEdit={handleEdit} 
               onBulkDelete={canManageTeam ? (ids) => bulkDelete.mutate(ids) : undefined}
