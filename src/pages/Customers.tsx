@@ -42,6 +42,7 @@ const Customers = () => {
     address: "",
     customer_type: "commercial" as "residential" | "commercial" | "government" | "non_profit" | "other",
     notes: "",
+    tax_exempt: false,
   });
 
   const filteredCustomers = customers?.filter(
@@ -123,6 +124,7 @@ const Customers = () => {
       address: customer.address || "",
       customer_type: "commercial",
       notes: "",
+      tax_exempt: customer.tax_exempt || false,
     });
     setIsDialogOpen(true);
   };
@@ -152,7 +154,8 @@ const Customers = () => {
       company: "", 
       address: "", 
       customer_type: "commercial",
-      notes: "" 
+      notes: "",
+      tax_exempt: false,
     });
   };
 
@@ -165,7 +168,8 @@ const Customers = () => {
       company: "", 
       address: "", 
       customer_type: "commercial",
-      notes: "" 
+      notes: "",
+      tax_exempt: false,
     });
     setIsDialogOpen(true);
   };

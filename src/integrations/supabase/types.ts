@@ -350,6 +350,7 @@ export type Database = {
           name: string
           notes: string | null
           phone: string | null
+          tax_exempt: boolean | null
           updated_at: string
         }
         Insert: {
@@ -362,6 +363,7 @@ export type Database = {
           name: string
           notes?: string | null
           phone?: string | null
+          tax_exempt?: boolean | null
           updated_at?: string
         }
         Update: {
@@ -374,6 +376,7 @@ export type Database = {
           name?: string
           notes?: string | null
           phone?: string | null
+          tax_exempt?: boolean | null
           updated_at?: string
         }
         Relationships: []
@@ -428,6 +431,7 @@ export type Database = {
           description: string
           estimate_id: string
           id: string
+          is_taxable: boolean | null
           markup: number
           pricing_type: string | null
           product_id: string | null
@@ -440,6 +444,7 @@ export type Database = {
           description: string
           estimate_id: string
           id?: string
+          is_taxable?: boolean | null
           markup: number
           pricing_type?: string | null
           product_id?: string | null
@@ -452,6 +457,7 @@ export type Database = {
           description?: string
           estimate_id?: string
           id?: string
+          is_taxable?: boolean | null
           markup?: number
           pricing_type?: string | null
           product_id?: string | null
@@ -1407,6 +1413,7 @@ export type Database = {
           created_at: string
           description: string | null
           id: string
+          is_taxable: boolean | null
           markup: number
           name: string
           price: number
@@ -1419,6 +1426,7 @@ export type Database = {
           created_at?: string
           description?: string | null
           id?: string
+          is_taxable?: boolean | null
           markup: number
           name: string
           price: number
@@ -1431,6 +1439,7 @@ export type Database = {
           created_at?: string
           description?: string | null
           id?: string
+          is_taxable?: boolean | null
           markup?: number
           name?: string
           price?: number

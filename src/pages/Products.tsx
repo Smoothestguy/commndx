@@ -38,6 +38,7 @@ const Products = () => {
     margin: "",
     unit: "",
     category: "",
+    is_taxable: true,
   });
 
   const uniqueCategories = Array.from(new Set(products?.map((p) => p.category) || []));
@@ -109,6 +110,7 @@ const Products = () => {
       margin: product.markup.toString(),
       unit: product.unit,
       category: product.category,
+      is_taxable: product.is_taxable ?? true,
     });
     setIsDialogOpen(true);
   };
@@ -139,6 +141,7 @@ const Products = () => {
         cost,
         markup: margin, // DB column is still named "markup"
         price,
+        is_taxable: formData.is_taxable,
       });
     } else {
       await addProduct.mutateAsync({
@@ -149,17 +152,18 @@ const Products = () => {
         cost,
         markup: margin, // DB column is still named "markup"
         price,
+        is_taxable: formData.is_taxable,
       });
     }
 
     setIsDialogOpen(false);
     setEditingProduct(null);
-    setFormData({ name: "", description: "", cost: "", margin: "", unit: "", category: "" });
+    setFormData({ name: "", description: "", cost: "", margin: "", unit: "", category: "", is_taxable: true });
   };
 
   const openNewDialog = () => {
     setEditingProduct(null);
-    setFormData({ name: "", description: "", cost: "", margin: "", unit: "", category: "" });
+    setFormData({ name: "", description: "", cost: "", margin: "", unit: "", category: "", is_taxable: true });
     setIsDialogOpen(true);
   };
 

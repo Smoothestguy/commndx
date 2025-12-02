@@ -11,6 +11,7 @@ export interface Product {
   price: number;
   unit: string;
   category: string;
+  is_taxable: boolean;
   created_at: string;
   updated_at: string;
 }
