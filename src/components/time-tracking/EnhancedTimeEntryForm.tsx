@@ -78,12 +78,12 @@ interface EnhancedTimeEntryFormProps {
 type EntryType = "daily" | "weekly";
 
 interface WeeklyHours {
-  [key: string]: number;
+  [key: string]: string;
 }
 
 // Per-personnel hours: key = `${personnelId}_${dateKey}`
 interface PersonnelHours {
-  [key: string]: number;
+  [key: string]: string;
 }
 
 // Holiday days: key = dateKey, value = boolean
@@ -183,7 +183,7 @@ export function EnhancedTimeEntryForm({
 
   // Calculate weekly totals (for old single-user mode)
   const weeklyTotals = useMemo(() => {
-    const total = Object.values(weeklyHours).reduce((sum, h) => sum + (h || 0), 0);
+    const total = Object.values(weeklyHours).reduce((sum, h) => sum + (parseFloat(h) || 0), 0);
     const regular = Math.min(total, 40);
     const overtime = Math.max(0, total - 40);
     return { total, regular, overtime };
@@ -197,7 +197,7 @@ export function EnhancedTimeEntryForm({
     
     weekDays.forEach(day => {
       const dateKey = format(day, "yyyy-MM-dd");
-      const hours = personnelHours[`${personnelId}_${dateKey}`] || 0;
+      const hours = parseFloat(personnelHours[`${personnelId}_${dateKey}`]) || 0;
       total += hours;
     });
     
@@ -273,27 +273,25 @@ export function EnhancedTimeEntryForm({
     selectedPersonnel.forEach(personnelId => {
       weekDays.forEach(day => {
         const dateKey = format(day, "yyyy-MM-dd");
-        newPersonnelHours[`${personnelId}_${dateKey}`] = templateHours[dateKey] || 0;
+        newPersonnelHours[`${personnelId}_${dateKey}`] = templateHours[dateKey] || "";
       });
     });
     setPersonnelHours(newPersonnelHours);
   };
 
-  // Update template hour
+  // Update template hour (store raw string)
   const updateTemplateHour = (dateKey: string, value: string) => {
-    const hours = parseFloat(value) || 0;
     setTemplateHours(prev => ({
       ...prev,
-      [dateKey]: hours,
+      [dateKey]: value,
     }));
   };
 
-  // Update personnel hour
+  // Update personnel hour (store raw string)
   const updatePersonnelHour = (personnelId: string, dateKey: string, value: string) => {
-    const hours = parseFloat(value) || 0;
     setPersonnelHours(prev => ({
       ...prev,
-      [`${personnelId}_${dateKey}`]: hours,
+      [`${personnelId}_${dateKey}`]: value,
     }));
   };
 
@@ -344,8 +342,8 @@ export function EnhancedTimeEntryForm({
       selectedPersonnel.forEach(personnelId => {
         weekDays.forEach(day => {
           const dateKey = format(day, "yyyy-MM-dd");
-          const hours = personnelHours[`${personnelId}_${dateKey}`];
-          if (hours && hours > 0) {
+          const hours = parseFloat(personnelHours[`${personnelId}_${dateKey}`]) || 0;
+          if (hours > 0) {
             entries.push({
               project_id: weeklyProjectId,
               entry_date: dateKey,
@@ -375,7 +373,8 @@ export function EnhancedTimeEntryForm({
       // No personnel selected, use single user weekly hours
       const daysWithHours = weekDays.filter(day => {
         const dateKey = format(day, "yyyy-MM-dd");
-        return weeklyHours[dateKey] && weeklyHours[dateKey] > 0;
+        const hours = parseFloat(weeklyHours[dateKey]) || 0;
+        return hours > 0;
       });
 
       if (daysWithHours.length === 0) {
@@ -387,7 +386,7 @@ export function EnhancedTimeEntryForm({
         return {
           project_id: weeklyProjectId,
           entry_date: dateKey,
-          hours: weeklyHours[dateKey],
+          hours: parseFloat(weeklyHours[dateKey]) || 0,
           description: weeklyDescription || undefined,
           billable: weeklyBillable,
           is_holiday: holidayDays[dateKey] || false,
@@ -406,10 +405,9 @@ export function EnhancedTimeEntryForm({
   };
 
   const updateWeeklyHour = (date: string, value: string) => {
-    const hours = parseFloat(value) || 0;
     setWeeklyHours(prev => ({
       ...prev,
-      [date]: hours,
+      [date]: value,
     }));
   };
 
@@ -724,7 +722,7 @@ export function EnhancedTimeEntryForm({
                   const dateKey = format(day, "yyyy-MM-dd");
                   let dayTotal = 0;
                   selectedPersonnel.forEach(personnelId => {
-                    dayTotal += personnelHours[`${personnelId}_${dateKey}`] || 0;
+                    dayTotal += parseFloat(personnelHours[`${personnelId}_${dateKey}`]) || 0;
                   });
                   return (
                     <TableCell key={dateKey} className="text-center text-sm">
