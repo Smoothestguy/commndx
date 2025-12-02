@@ -28,7 +28,7 @@ export default function WarrantyDetail() {
 
   if (isLoading) {
     return (
-      <DetailPageLayout title="Loading..." onBack={() => navigate("/warranties")}>
+      <DetailPageLayout title="Loading..." backPath="/warranties">
         <div className="space-y-4">
           <Skeleton className="h-32 w-full" />
           <Skeleton className="h-64 w-full" />
@@ -39,7 +39,7 @@ export default function WarrantyDetail() {
 
   if (!warranty) {
     return (
-      <DetailPageLayout title="Warranty Not Found" onBack={() => navigate("/warranties")}>
+      <DetailPageLayout title="Warranty Not Found" backPath="/warranties">
         <div className="text-center py-12">
           <p className="text-muted-foreground">The requested warranty could not be found.</p>
           <Button className="mt-4" onClick={() => navigate("/warranties")}>
@@ -60,7 +60,7 @@ export default function WarrantyDetail() {
   return (
     <DetailPageLayout
       title={`Warranty - ${warranty.customer?.name || "Unknown"}`}
-      onBack={() => navigate("/warranties")}
+      backPath="/warranties"
     >
       <div className="space-y-6">
         <div className="flex flex-wrap gap-2">

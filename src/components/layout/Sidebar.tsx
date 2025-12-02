@@ -22,6 +22,10 @@ import {
   Clock,
   UserCog,
   UserCheck,
+  ClipboardCheck,
+  Ruler,
+  Cloud,
+  ShieldCheck,
 } from "lucide-react";
 const navigation = [
   { name: "Dashboard", href: "/", icon: LayoutDashboard },
@@ -39,6 +43,13 @@ const navigation = [
 const staffingNavigation = [
   { name: "Time Tracking", href: "/time-tracking", icon: Clock },
   { name: "Project Assignments", href: "/project-assignments", icon: UserCog, requiresManager: true },
+];
+
+const roofingNavigation = [
+  { name: "Roof Inspections", href: "/roof-inspections", icon: ClipboardCheck },
+  { name: "Measurements", href: "/roof-measurements", icon: Ruler },
+  { name: "Weather", href: "/weather-tracking", icon: Cloud },
+  { name: "Warranties", href: "/warranties", icon: ShieldCheck },
 ];
 export function Sidebar() {
   const location = useLocation();
@@ -94,6 +105,41 @@ export function Sidebar() {
             </div>
             {staffingNavigation.map((item) => {
               if (item.requiresManager && !isAdmin && !isManager) return null;
+              const isActive = location.pathname === item.href;
+              return (
+                <Link
+                  key={item.name}
+                  to={item.href}
+                  className={cn(
+                    "group flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-all duration-200",
+                    isActive
+                      ? "bg-primary/10 text-primary"
+                      : "text-muted-foreground hover:bg-sidebar-accent hover:text-foreground"
+                  )}
+                >
+                  <item.icon
+                    className={cn(
+                      "h-5 w-5 transition-colors",
+                      isActive
+                        ? "text-primary"
+                        : "text-muted-foreground group-hover:text-foreground"
+                    )}
+                  />
+                  {item.name}
+                  {isActive && (
+                    <ChevronRight className="ml-auto h-4 w-4 text-primary" />
+                  )}
+                </Link>
+              );
+            })}
+          </div>
+
+          {/* Roofing Section */}
+          <div className="mt-4 pt-4 border-t border-sidebar-border">
+            <div className="px-3 py-2 text-xs font-semibold text-muted-foreground uppercase tracking-wider">
+              Roofing
+            </div>
+            {roofingNavigation.map((item) => {
               const isActive = location.pathname === item.href;
               return (
                 <Link
