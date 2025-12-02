@@ -42,7 +42,7 @@ import AcceptInvitation from "./pages/AcceptInvitation";
 import ApproveEstimate from "./pages/ApproveEstimate";
 import Personnel from "./pages/Personnel";
 import PersonnelDetail from "./pages/PersonnelDetail";
-import PersonnelRegister from "./pages/PersonnelRegister";
+import PersonnelRegistrationPortal from "./pages/PersonnelRegistrationPortal";
 import BadgeTemplates from "./pages/BadgeTemplates";
 import RoofInspections from "./pages/RoofInspections";
 import RoofInspectionDetail from "./pages/RoofInspectionDetail";
@@ -83,7 +83,7 @@ const App = () => {
                 />
                 <Route
                   path="/personnel/register"
-                  element={<PersonnelRegister />}
+                  element={<PersonnelRegistrationPortal />}
                 />
                 <Route
                   path="/"
