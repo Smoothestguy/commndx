@@ -1,5 +1,5 @@
 import { useState, useEffect, useMemo } from "react";
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -135,6 +135,11 @@ export function BulkTimeEntryForm({ open, onOpenChange }: BulkTimeEntryFormProps
     setExpandedPersonnel(newExpanded);
   };
 
+  // Check if ANY personnel is selected (for showing hours entry section)
+  const anyPersonnelSelected = useMemo(() => {
+    return Array.from(personnelHours.values()).some(data => data.selected);
+  }, [personnelHours]);
+
   const selectedPersonnelList = useMemo(() => {
     return Array.from(personnelHours.entries())
       .filter(([_, data]) => data.selected && parseFloat(data.hours) > 0)
@@ -255,6 +260,7 @@ export function BulkTimeEntryForm({ open, onOpenChange }: BulkTimeEntryFormProps
       <DialogContent className="sm:max-w-2xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle>Log Team Time</DialogTitle>
+          <DialogDescription>Log time entries for multiple team members at once.</DialogDescription>
         </DialogHeader>
         <form onSubmit={handleSubmit} className="space-y-4">
           <div className="grid grid-cols-2 gap-4">
@@ -393,7 +399,7 @@ export function BulkTimeEntryForm({ open, onOpenChange }: BulkTimeEntryFormProps
           </div>
 
           {/* Personnel Hours - Expandable rows */}
-          {selectedPersonnelList.length > 0 && (
+          {anyPersonnelSelected && (
             <div className="space-y-2">
               <Label>Enter Hours (click to expand)</Label>
               <div className="border rounded-lg overflow-hidden">
