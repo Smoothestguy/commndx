@@ -14,6 +14,146 @@ export type Database = {
   }
   public: {
     Tables: {
+      activities: {
+        Row: {
+          activity_date: string
+          activity_type: Database["public"]["Enums"]["activity_type"]
+          created_at: string
+          created_by: string
+          customer_id: string
+          description: string | null
+          follow_up_date: string | null
+          id: string
+          priority: Database["public"]["Enums"]["activity_priority"] | null
+          project_id: string | null
+          subject: string
+          updated_at: string
+        }
+        Insert: {
+          activity_date?: string
+          activity_type?: Database["public"]["Enums"]["activity_type"]
+          created_at?: string
+          created_by: string
+          customer_id: string
+          description?: string | null
+          follow_up_date?: string | null
+          id?: string
+          priority?: Database["public"]["Enums"]["activity_priority"] | null
+          project_id?: string | null
+          subject: string
+          updated_at?: string
+        }
+        Update: {
+          activity_date?: string
+          activity_type?: Database["public"]["Enums"]["activity_type"]
+          created_at?: string
+          created_by?: string
+          customer_id?: string
+          description?: string | null
+          follow_up_date?: string | null
+          id?: string
+          priority?: Database["public"]["Enums"]["activity_priority"] | null
+          project_id?: string | null
+          subject?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "activities_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "activities_customer_id_fkey"
+            columns: ["customer_id"]
+            isOneToOne: false
+            referencedRelation: "customers"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "activities_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "projects"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      appointments: {
+        Row: {
+          appointment_type: Database["public"]["Enums"]["appointment_type"]
+          assigned_to: string | null
+          created_at: string
+          customer_id: string
+          description: string | null
+          end_time: string
+          id: string
+          location: string | null
+          notes: string | null
+          project_id: string | null
+          start_time: string
+          status: Database["public"]["Enums"]["appointment_status"]
+          title: string
+          updated_at: string
+        }
+        Insert: {
+          appointment_type?: Database["public"]["Enums"]["appointment_type"]
+          assigned_to?: string | null
+          created_at?: string
+          customer_id: string
+          description?: string | null
+          end_time: string
+          id?: string
+          location?: string | null
+          notes?: string | null
+          project_id?: string | null
+          start_time: string
+          status?: Database["public"]["Enums"]["appointment_status"]
+          title: string
+          updated_at?: string
+        }
+        Update: {
+          appointment_type?: Database["public"]["Enums"]["appointment_type"]
+          assigned_to?: string | null
+          created_at?: string
+          customer_id?: string
+          description?: string | null
+          end_time?: string
+          id?: string
+          location?: string | null
+          notes?: string | null
+          project_id?: string | null
+          start_time?: string
+          status?: Database["public"]["Enums"]["appointment_status"]
+          title?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "appointments_assigned_to_fkey"
+            columns: ["assigned_to"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "appointments_customer_id_fkey"
+            columns: ["customer_id"]
+            isOneToOne: false
+            referencedRelation: "customers"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "appointments_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "projects"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       assignment_removal_log: {
         Row: {
           assignment_id: string
@@ -410,6 +550,90 @@ export type Database = {
           },
           {
             foreignKeyName: "estimates_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "projects"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      insurance_claims: {
+        Row: {
+          adjuster_email: string | null
+          adjuster_name: string | null
+          adjuster_phone: string | null
+          adjuster_visit_date: string | null
+          approved_amount: number | null
+          claim_number: string | null
+          created_at: string
+          customer_id: string
+          damage_description: string | null
+          date_of_loss: string
+          deductible: number | null
+          documents: Json | null
+          filed_date: string | null
+          id: string
+          insurance_company: string
+          notes: string | null
+          policy_number: string | null
+          project_id: string | null
+          status: Database["public"]["Enums"]["claim_status"]
+          updated_at: string
+        }
+        Insert: {
+          adjuster_email?: string | null
+          adjuster_name?: string | null
+          adjuster_phone?: string | null
+          adjuster_visit_date?: string | null
+          approved_amount?: number | null
+          claim_number?: string | null
+          created_at?: string
+          customer_id: string
+          damage_description?: string | null
+          date_of_loss: string
+          deductible?: number | null
+          documents?: Json | null
+          filed_date?: string | null
+          id?: string
+          insurance_company: string
+          notes?: string | null
+          policy_number?: string | null
+          project_id?: string | null
+          status?: Database["public"]["Enums"]["claim_status"]
+          updated_at?: string
+        }
+        Update: {
+          adjuster_email?: string | null
+          adjuster_name?: string | null
+          adjuster_phone?: string | null
+          adjuster_visit_date?: string | null
+          approved_amount?: number | null
+          claim_number?: string | null
+          created_at?: string
+          customer_id?: string
+          damage_description?: string | null
+          date_of_loss?: string
+          deductible?: number | null
+          documents?: Json | null
+          filed_date?: string | null
+          id?: string
+          insurance_company?: string
+          notes?: string | null
+          policy_number?: string | null
+          project_id?: string | null
+          status?: Database["public"]["Enums"]["claim_status"]
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "insurance_claims_customer_id_fkey"
+            columns: ["customer_id"]
+            isOneToOne: false
+            referencedRelation: "customers"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "insurance_claims_project_id_fkey"
             columns: ["project_id"]
             isOneToOne: false
             referencedRelation: "projects"
@@ -1666,6 +1890,83 @@ export type Database = {
           },
         ]
       }
+      tasks: {
+        Row: {
+          assigned_to: string | null
+          completed_at: string | null
+          created_at: string
+          created_by: string
+          customer_id: string | null
+          description: string | null
+          due_date: string | null
+          id: string
+          priority: Database["public"]["Enums"]["task_priority"]
+          project_id: string | null
+          status: Database["public"]["Enums"]["task_status"]
+          title: string
+          updated_at: string
+        }
+        Insert: {
+          assigned_to?: string | null
+          completed_at?: string | null
+          created_at?: string
+          created_by: string
+          customer_id?: string | null
+          description?: string | null
+          due_date?: string | null
+          id?: string
+          priority?: Database["public"]["Enums"]["task_priority"]
+          project_id?: string | null
+          status?: Database["public"]["Enums"]["task_status"]
+          title: string
+          updated_at?: string
+        }
+        Update: {
+          assigned_to?: string | null
+          completed_at?: string | null
+          created_at?: string
+          created_by?: string
+          customer_id?: string | null
+          description?: string | null
+          due_date?: string | null
+          id?: string
+          priority?: Database["public"]["Enums"]["task_priority"]
+          project_id?: string | null
+          status?: Database["public"]["Enums"]["task_status"]
+          title?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "tasks_assigned_to_fkey"
+            columns: ["assigned_to"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "tasks_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "tasks_customer_id_fkey"
+            columns: ["customer_id"]
+            isOneToOne: false
+            referencedRelation: "customers"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "tasks_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "projects"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       time_entries: {
         Row: {
           billable: boolean | null
@@ -1957,7 +2258,37 @@ export type Database = {
       }
     }
     Enums: {
+      activity_priority: "low" | "medium" | "high" | "urgent"
+      activity_type:
+        | "call"
+        | "email"
+        | "meeting"
+        | "note"
+        | "site_visit"
+        | "follow_up"
       app_role: "admin" | "manager" | "user"
+      appointment_status:
+        | "scheduled"
+        | "confirmed"
+        | "in_progress"
+        | "completed"
+        | "cancelled"
+        | "no_show"
+      appointment_type:
+        | "inspection"
+        | "estimate"
+        | "installation"
+        | "follow_up"
+        | "consultation"
+        | "warranty_service"
+      claim_status:
+        | "filed"
+        | "pending_adjuster"
+        | "adjuster_scheduled"
+        | "approved"
+        | "denied"
+        | "in_progress"
+        | "completed"
       customer_type:
         | "residential"
         | "commercial"
@@ -1999,6 +2330,8 @@ export type Database = {
         | "gambrel"
         | "shed"
         | "combination"
+      task_priority: "low" | "medium" | "high" | "urgent"
+      task_status: "pending" | "in_progress" | "completed" | "cancelled"
       vendor_status: "active" | "inactive"
       warranty_status: "active" | "expired" | "claimed" | "voided"
       warranty_type: "manufacturer" | "workmanship" | "extended"
@@ -2135,7 +2468,41 @@ export type CompositeTypes<
 export const Constants = {
   public: {
     Enums: {
+      activity_priority: ["low", "medium", "high", "urgent"],
+      activity_type: [
+        "call",
+        "email",
+        "meeting",
+        "note",
+        "site_visit",
+        "follow_up",
+      ],
       app_role: ["admin", "manager", "user"],
+      appointment_status: [
+        "scheduled",
+        "confirmed",
+        "in_progress",
+        "completed",
+        "cancelled",
+        "no_show",
+      ],
+      appointment_type: [
+        "inspection",
+        "estimate",
+        "installation",
+        "follow_up",
+        "consultation",
+        "warranty_service",
+      ],
+      claim_status: [
+        "filed",
+        "pending_adjuster",
+        "adjuster_scheduled",
+        "approved",
+        "denied",
+        "in_progress",
+        "completed",
+      ],
       customer_type: [
         "residential",
         "commercial",
@@ -2182,6 +2549,8 @@ export const Constants = {
         "shed",
         "combination",
       ],
+      task_priority: ["low", "medium", "high", "urgent"],
+      task_status: ["pending", "in_progress", "completed", "cancelled"],
       vendor_status: ["active", "inactive"],
       warranty_status: ["active", "expired", "claimed", "voided"],
       warranty_type: ["manufacturer", "workmanship", "extended"],
