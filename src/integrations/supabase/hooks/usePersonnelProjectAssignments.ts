@@ -1,0 +1,240 @@
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { supabase } from "@/integrations/supabase/client";
+import { toast } from "sonner";
+
+export interface PersonnelProjectAssignment {
+  id: string;
+  personnel_id: string;
+  project_id: string;
+  assigned_by: string | null;
+  assigned_at: string;
+  status: string;
+  created_at: string | null;
+  updated_at: string | null;
+}
+
+export interface PersonnelWithAssignment {
+  id: string;
+  first_name: string;
+  last_name: string;
+  hourly_rate: number | null;
+  email: string;
+  phone: string | null;
+  status: string | null;
+}
+
+export interface AssignmentWithDetails extends PersonnelProjectAssignment {
+  personnel: PersonnelWithAssignment | null;
+  projects: {
+    id: string;
+    name: string;
+    status: string;
+    customers: { name: string; company: string | null } | null;
+  } | null;
+}
+
+// Get all personnel assigned to a specific project
+export function usePersonnelByProject(projectId: string | undefined) {
+  return useQuery({
+    queryKey: ["personnel-project-assignments", "by-project", projectId],
+    queryFn: async () => {
+      if (!projectId) return [];
+      
+      const { data, error } = await supabase
+        .from("personnel_project_assignments")
+        .select(`
+          id,
+          personnel_id,
+          project_id,
+          assigned_by,
+          assigned_at,
+          status,
+          created_at,
+          updated_at,
+          personnel (
+            id,
+            first_name,
+            last_name,
+            hourly_rate,
+            email,
+            phone,
+            status
+          )
+        `)
+        .eq("project_id", projectId)
+        .eq("status", "active");
+
+      if (error) throw error;
+      return data as (PersonnelProjectAssignment & { personnel: PersonnelWithAssignment | null })[];
+    },
+    enabled: !!projectId,
+  });
+}
+
+// Get all personnel assignments (for admin view)
+export function useAllPersonnelProjectAssignments() {
+  return useQuery({
+    queryKey: ["personnel-project-assignments", "all"],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("personnel_project_assignments")
+        .select(`
+          id,
+          personnel_id,
+          project_id,
+          assigned_by,
+          assigned_at,
+          status,
+          created_at,
+          updated_at,
+          personnel (
+            id,
+            first_name,
+            last_name,
+            hourly_rate,
+            email,
+            phone,
+            status
+          ),
+          projects (
+            id,
+            name,
+            status,
+            customers (
+              name,
+              company
+            )
+          )
+        `)
+        .order("assigned_at", { ascending: false });
+
+      if (error) throw error;
+      return data as AssignmentWithDetails[];
+    },
+  });
+}
+
+// Assign personnel to a project
+export function useAssignPersonnelToProject() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async ({
+      personnelId,
+      projectId,
+    }: {
+      personnelId: string;
+      projectId: string;
+    }) => {
+      const { data: { user } } = await supabase.auth.getUser();
+      
+      const { data, error } = await supabase
+        .from("personnel_project_assignments")
+        .insert({
+          personnel_id: personnelId,
+          project_id: projectId,
+          assigned_by: user?.id || null,
+        })
+        .select()
+        .single();
+
+      if (error) throw error;
+      return data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["personnel-project-assignments"] });
+      toast.success("Personnel assigned to project");
+    },
+    onError: (error: Error) => {
+      if (error.message.includes("duplicate")) {
+        toast.error("Personnel is already assigned to this project");
+      } else {
+        toast.error("Failed to assign personnel");
+      }
+    },
+  });
+}
+
+// Bulk assign multiple personnel to a project
+export function useBulkAssignPersonnelToProject() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async ({
+      personnelIds,
+      projectId,
+    }: {
+      personnelIds: string[];
+      projectId: string;
+    }) => {
+      const { data: { user } } = await supabase.auth.getUser();
+      
+      const assignments = personnelIds.map((personnelId) => ({
+        personnel_id: personnelId,
+        project_id: projectId,
+        assigned_by: user?.id || null,
+      }));
+
+      const { data, error } = await supabase
+        .from("personnel_project_assignments")
+        .upsert(assignments, { onConflict: "personnel_id,project_id" })
+        .select();
+
+      if (error) throw error;
+      return data;
+    },
+    onSuccess: (data) => {
+      queryClient.invalidateQueries({ queryKey: ["personnel-project-assignments"] });
+      toast.success(`${data.length} personnel assigned to project`);
+    },
+    onError: () => {
+      toast.error("Failed to assign personnel");
+    },
+  });
+}
+
+// Remove personnel from a project (soft delete by changing status)
+export function useRemovePersonnelFromProject() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async (assignmentId: string) => {
+      const { error } = await supabase
+        .from("personnel_project_assignments")
+        .update({ status: "removed" })
+        .eq("id", assignmentId);
+
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["personnel-project-assignments"] });
+      toast.success("Personnel removed from project");
+    },
+    onError: () => {
+      toast.error("Failed to remove personnel");
+    },
+  });
+}
+
+// Hard delete assignment
+export function useDeletePersonnelAssignment() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async (assignmentId: string) => {
+      const { error } = await supabase
+        .from("personnel_project_assignments")
+        .delete()
+        .eq("id", assignmentId);
+
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["personnel-project-assignments"] });
+      toast.success("Assignment deleted");
+    },
+    onError: () => {
+      toast.error("Failed to delete assignment");
+    },
+  });
+}
