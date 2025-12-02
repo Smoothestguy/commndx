@@ -1414,9 +1414,11 @@ export type Database = {
           description: string | null
           id: string
           is_taxable: boolean | null
+          item_type: Database["public"]["Enums"]["item_type"]
           markup: number
           name: string
           price: number
+          sku: string | null
           unit: string
           updated_at: string
         }
@@ -1427,9 +1429,11 @@ export type Database = {
           description?: string | null
           id?: string
           is_taxable?: boolean | null
+          item_type?: Database["public"]["Enums"]["item_type"]
           markup: number
           name: string
           price: number
+          sku?: string | null
           unit: string
           updated_at?: string
         }
@@ -1440,9 +1444,11 @@ export type Database = {
           description?: string | null
           id?: string
           is_taxable?: boolean | null
+          item_type?: Database["public"]["Enums"]["item_type"]
           markup?: number
           name?: string
           price?: number
+          sku?: string | null
           unit?: string
           updated_at?: string
         }
@@ -2358,6 +2364,7 @@ export type Database = {
         | "warranty"
         | "storm_damage"
       invoice_status: "draft" | "sent" | "paid" | "overdue"
+      item_type: "product" | "service" | "labor"
       job_order_status: "active" | "in-progress" | "completed" | "on-hold"
       personnel_status: "active" | "inactive" | "do_not_hire"
       project_status: "active" | "completed" | "on-hold"
@@ -2575,6 +2582,7 @@ export const Constants = {
         "storm_damage",
       ],
       invoice_status: ["draft", "sent", "paid", "overdue"],
+      item_type: ["product", "service", "labor"],
       job_order_status: ["active", "in-progress", "completed", "on-hold"],
       personnel_status: ["active", "inactive", "do_not_hire"],
       project_status: ["active", "completed", "on-hold"],

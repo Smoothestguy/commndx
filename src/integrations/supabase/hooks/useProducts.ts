@@ -2,6 +2,8 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "../client";
 import { toast } from "sonner";
 
+export type ItemType = 'product' | 'service' | 'labor';
+
 export interface Product {
   id: string;
   name: string;
@@ -12,6 +14,8 @@ export interface Product {
   unit: string;
   category: string;
   is_taxable: boolean;
+  item_type: ItemType;
+  sku: string | null;
   created_at: string;
   updated_at: string;
 }
@@ -47,10 +51,10 @@ export const useAddProduct = () => {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["products"] });
-      toast.success("Product added successfully");
+      toast.success("Item added successfully");
     },
     onError: (error: Error) => {
-      toast.error(`Failed to add product: ${error.message}`);
+      toast.error(`Failed to add item: ${error.message}`);
     },
   });
 };
@@ -72,10 +76,10 @@ export const useUpdateProduct = () => {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["products"] });
-      toast.success("Product updated successfully");
+      toast.success("Item updated successfully");
     },
     onError: (error: Error) => {
-      toast.error(`Failed to update product: ${error.message}`);
+      toast.error(`Failed to update item: ${error.message}`);
     },
   });
 };
@@ -91,10 +95,10 @@ export const useDeleteProduct = () => {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["products"] });
-      toast.success("Product deleted successfully");
+      toast.success("Item deleted successfully");
     },
     onError: (error: Error) => {
-      toast.error(`Failed to delete product: ${error.message}`);
+      toast.error(`Failed to delete item: ${error.message}`);
     },
   });
 };
