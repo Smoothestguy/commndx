@@ -1,0 +1,633 @@
+import { useState, useMemo } from "react";
+import { useParams, Navigate, useNavigate } from "react-router-dom";
+import { useProjects } from "@/integrations/supabase/hooks/useProjects";
+import { useCustomers } from "@/integrations/supabase/hooks/useCustomers";
+import { useEstimates } from "@/integrations/supabase/hooks/useEstimates";
+import { useJobOrders } from "@/integrations/supabase/hooks/useJobOrders";
+import { useInvoices } from "@/integrations/supabase/hooks/useInvoices";
+import { useMilestonesByProject, useAddMilestone, useUpdateMilestone, useDeleteMilestone, Milestone } from "@/integrations/supabase/hooks/useMilestones";
+import { PageLayout } from "@/components/layout/PageLayout";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { StatusBadge } from "@/components/shared/StatusBadge";
+import { DataTable } from "@/components/shared/DataTable";
+import { Progress } from "@/components/ui/progress";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { ArrowLeft, Calendar, User, Loader2, FileText, Briefcase, Receipt, Target, Plus, Edit, Trash2, Download } from "lucide-react";
+import { format } from "date-fns";
+import { generateProjectReportPDF } from "@/utils/pdfExport";
+
+const ProjectDetail = () => {
+  const { id } = useParams<{ id: string }>();
+  const navigate = useNavigate();
+
+  const { data: projects, isLoading: projectsLoading } = useProjects();
+  const { data: customers } = useCustomers();
+  const { data: estimates } = useEstimates();
+  const { data: jobOrders } = useJobOrders();
+  const { data: invoices } = useInvoices();
+  const { data: milestones } = useMilestonesByProject(id);
+
+  const addMilestone = useAddMilestone();
+  const updateMilestone = useUpdateMilestone();
+  const deleteMilestone = useDeleteMilestone();
+
+  const [isMilestoneDialogOpen, setIsMilestoneDialogOpen] = useState(false);
+  const [editingMilestone, setEditingMilestone] = useState<Milestone | null>(null);
+  const [milestoneFormData, setMilestoneFormData] = useState({
+    title: "",
+    description: "",
+    due_date: "",
+    status: "pending" as "pending" | "in-progress" | "completed" | "delayed",
+    completion_percentage: 0,
+  });
+
+  const project = projects?.find((p) => p.id === id);
+  const customer = customers?.find((c) => c.id === project?.customer_id);
+
+  // Filter related documents
+  const projectEstimates = useMemo(
+    () => estimates?.filter((e) => e.project_id === id) || [],
+    [estimates, id]
+  );
+
+  const projectJobOrders = useMemo(
+    () => jobOrders?.filter((j) => j.project_id === id) || [],
+    [jobOrders, id]
+  );
+
+  const projectInvoices = useMemo(() => {
+    const jobOrderIds = projectJobOrders.map((j) => j.id);
+    return invoices?.filter((i) => i.job_order_id && jobOrderIds.includes(i.job_order_id)) || [];
+  }, [invoices, projectJobOrders]);
+
+  // Calculate totals
+  const totals = useMemo(() => {
+    const estimatesTotal = projectEstimates.reduce((sum, e) => sum + e.total, 0);
+    const jobOrdersTotal = projectJobOrders.reduce((sum, j) => sum + j.total, 0);
+    const invoicesTotal = projectInvoices.reduce((sum, i) => sum + i.total, 0);
+    const paidTotal = projectInvoices
+      .filter((i) => i.status === "paid")
+      .reduce((sum, i) => sum + i.total, 0);
+
+    return { estimatesTotal, jobOrdersTotal, invoicesTotal, paidTotal };
+  }, [projectEstimates, projectJobOrders, projectInvoices]);
+
+  // Calculate overall project completion
+  const overallCompletion = useMemo(() => {
+    if (!milestones || milestones.length === 0) {
+      // Fallback to job order completion
+      if (projectJobOrders.length === 0) return 0;
+      const completedJobs = projectJobOrders.filter((j) => j.status === "completed").length;
+      return Math.round((completedJobs / projectJobOrders.length) * 100);
+    }
+    
+    const avgCompletion = milestones.reduce((sum, m) => sum + m.completion_percentage, 0) / milestones.length;
+    return Math.round(avgCompletion);
+  }, [milestones, projectJobOrders]);
+
+  const handleExportPDF = () => {
+    if (!project || !customer) return;
+
+    generateProjectReportPDF({
+      project: {
+        name: project.name,
+        status: project.status,
+        start_date: project.start_date,
+        end_date: project.end_date,
+      },
+      customer: {
+        name: customer.name,
+        company: customer.company,
+        email: customer.email,
+        phone: customer.phone,
+      },
+      estimates: projectEstimates.map((e) => ({
+        number: e.number,
+        status: e.status,
+        total: e.total,
+        created_at: e.created_at,
+      })),
+      jobOrders: projectJobOrders.map((j) => ({
+        number: j.number,
+        status: j.status,
+        total: j.total,
+        start_date: j.start_date,
+      })),
+      invoices: projectInvoices.map((i) => ({
+        number: i.number,
+        status: i.status,
+        total: i.total,
+        due_date: i.due_date,
+      })),
+      milestones: milestones?.map((m) => ({
+        title: m.title,
+        status: m.status,
+        due_date: m.due_date,
+        completion_percentage: m.completion_percentage,
+      })) || [],
+      totals,
+      overallCompletion,
+    });
+  };
+
+  const handleEditMilestone = (milestone: Milestone) => {
+    setEditingMilestone(milestone);
+    setMilestoneFormData({
+      title: milestone.title,
+      description: milestone.description || "",
+      due_date: milestone.due_date,
+      status: milestone.status,
+      completion_percentage: milestone.completion_percentage,
+    });
+    setIsMilestoneDialogOpen(true);
+  };
+
+  const handleDeleteMilestone = (milestoneId: string) => {
+    deleteMilestone.mutate(milestoneId);
+  };
+
+  const handleMilestoneSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!id) return;
+
+    if (editingMilestone) {
+      await updateMilestone.mutateAsync({
+        id: editingMilestone.id,
+        ...milestoneFormData,
+      });
+    } else {
+      await addMilestone.mutateAsync({
+        project_id: id,
+        ...milestoneFormData,
+      });
+    }
+
+    setIsMilestoneDialogOpen(false);
+    setEditingMilestone(null);
+    setMilestoneFormData({
+      title: "",
+      description: "",
+      due_date: "",
+      status: "pending",
+      completion_percentage: 0,
+    });
+  };
+
+  const openNewMilestoneDialog = () => {
+    setEditingMilestone(null);
+    setMilestoneFormData({
+      title: "",
+      description: "",
+      due_date: "",
+      status: "pending",
+      completion_percentage: 0,
+    });
+    setIsMilestoneDialogOpen(true);
+  };
+
+  if (!id) {
+    return <Navigate to="/projects" replace />;
+  }
+
+  if (projectsLoading) {
+    return (
+      <PageLayout title="Loading..." description="">
+        <div className="flex justify-center py-12">
+          <Loader2 className="h-8 w-8 animate-spin text-primary" />
+        </div>
+      </PageLayout>
+    );
+  }
+
+  if (!project) {
+    return <Navigate to="/projects" replace />;
+  }
+
+  const estimateColumns = [
+    { key: "number", header: "Estimate #" },
+    { key: "customer_name", header: "Customer" },
+    {
+      key: "status",
+      header: "Status",
+      render: (item: any) => <StatusBadge status={item.status} />,
+    },
+    {
+      key: "total",
+      header: "Total",
+      render: (item: any) => <span className="font-medium">${item.total.toFixed(2)}</span>,
+    },
+    {
+      key: "created_at",
+      header: "Created",
+      render: (item: any) => format(new Date(item.created_at), "MMM dd, yyyy"),
+    },
+  ];
+
+  const jobOrderColumns = [
+    { key: "number", header: "Job Order #" },
+    {
+      key: "status",
+      header: "Status",
+      render: (item: any) => <StatusBadge status={item.status} />,
+    },
+    {
+      key: "total",
+      header: "Total",
+      render: (item: any) => <span className="font-medium">${item.total.toFixed(2)}</span>,
+    },
+    {
+      key: "start_date",
+      header: "Start Date",
+      render: (item: any) => format(new Date(item.start_date), "MMM dd, yyyy"),
+    },
+  ];
+
+  const invoiceColumns = [
+    { key: "number", header: "Invoice #" },
+    {
+      key: "status",
+      header: "Status",
+      render: (item: any) => <StatusBadge status={item.status} />,
+    },
+    {
+      key: "total",
+      header: "Amount",
+      render: (item: any) => <span className="font-medium">${item.total.toFixed(2)}</span>,
+    },
+    {
+      key: "due_date",
+      header: "Due Date",
+      render: (item: any) => format(new Date(item.due_date), "MMM dd, yyyy"),
+    },
+  ];
+
+  return (
+    <PageLayout
+      title={project.name}
+      description="Project details and timeline"
+      actions={
+        <div className="flex gap-2">
+          <Button variant="outline" onClick={handleExportPDF}>
+            <Download className="h-4 w-4 mr-2" />
+            Export PDF
+          </Button>
+          <Button variant="outline" onClick={() => navigate("/projects")}>
+            <ArrowLeft className="h-4 w-4 mr-2" />
+            Back
+          </Button>
+        </div>
+      }
+    >
+      {/* Progress Overview */}
+      <Card className="glass border-border mb-6">
+        <CardHeader>
+          <CardTitle className="font-heading flex items-center gap-2">
+            <Target className="h-5 w-5 text-primary" />
+            Project Progress
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="space-y-3">
+            <div className="flex justify-between text-sm">
+              <span className="text-muted-foreground">Overall Completion</span>
+              <span className="font-bold text-primary">{overallCompletion}%</span>
+            </div>
+            <Progress value={overallCompletion} className="h-3" />
+            <p className="text-xs text-muted-foreground">
+              {milestones && milestones.length > 0
+                ? `Based on ${milestones.length} milestone${milestones.length > 1 ? "s" : ""}`
+                : `Based on ${projectJobOrders.length} job order${projectJobOrders.length !== 1 ? "s" : ""}`}
+            </p>
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* Project Info */}
+      <div className="grid gap-6 lg:grid-cols-3 mb-8">
+        <Card className="glass border-border">
+          <CardHeader>
+            <CardTitle className="font-heading text-sm text-muted-foreground">
+              Status
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <StatusBadge status={project.status} />
+          </CardContent>
+        </Card>
+
+        <Card className="glass border-border">
+          <CardHeader className="flex flex-row items-center gap-2">
+            <User className="h-4 w-4 text-muted-foreground" />
+            <CardTitle className="font-heading text-sm text-muted-foreground">
+              Customer
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <p className="text-lg font-medium">{customer?.name || "Unknown"}</p>
+            {customer?.company && (
+              <p className="text-sm text-muted-foreground">{customer.company}</p>
+            )}
+          </CardContent>
+        </Card>
+
+        <Card className="glass border-border">
+          <CardHeader className="flex flex-row items-center gap-2">
+            <Calendar className="h-4 w-4 text-muted-foreground" />
+            <CardTitle className="font-heading text-sm text-muted-foreground">
+              Timeline
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <p className="text-sm">
+              <span className="font-medium">Start:</span>{" "}
+              {format(new Date(project.start_date), "MMM dd, yyyy")}
+            </p>
+            <p className="text-sm">
+              <span className="font-medium">End:</span>{" "}
+              {project.end_date
+                ? format(new Date(project.end_date), "MMM dd, yyyy")
+                : "Ongoing"}
+            </p>
+          </CardContent>
+        </Card>
+      </div>
+
+      {/* Financial Overview */}
+      <Card className="glass border-border mb-8">
+        <CardHeader>
+          <CardTitle className="font-heading">Financial Overview</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+            <div>
+              <p className="text-sm text-muted-foreground">Total Estimated</p>
+              <p className="text-2xl font-bold text-primary">
+                ${totals.estimatesTotal.toFixed(2)}
+              </p>
+            </div>
+            <div>
+              <p className="text-sm text-muted-foreground">Job Orders Total</p>
+              <p className="text-2xl font-bold">${totals.jobOrdersTotal.toFixed(2)}</p>
+            </div>
+            <div>
+              <p className="text-sm text-muted-foreground">Invoiced</p>
+              <p className="text-2xl font-bold">${totals.invoicesTotal.toFixed(2)}</p>
+            </div>
+            <div>
+              <p className="text-sm text-muted-foreground">Paid</p>
+              <p className="text-2xl font-bold text-green-500">${totals.paidTotal.toFixed(2)}</p>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* Milestones */}
+      <div className="space-y-4 mb-8">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <Target className="h-5 w-5 text-primary" />
+            <h3 className="font-heading text-lg font-semibold">
+              Milestones ({milestones?.length || 0})
+            </h3>
+          </div>
+          <Button variant="outline" size="sm" onClick={openNewMilestoneDialog}>
+            <Plus className="h-4 w-4 mr-2" />
+            Add Milestone
+          </Button>
+        </div>
+
+        {!milestones || milestones.length === 0 ? (
+          <Card className="glass border-border">
+            <CardContent className="py-8 text-center text-muted-foreground">
+              No milestones yet. Add milestones to track project progress.
+            </CardContent>
+          </Card>
+        ) : (
+          <div className="space-y-3">
+            {milestones.map((milestone) => (
+              <Card key={milestone.id} className="glass border-border">
+                <CardContent className="pt-6">
+                  <div className="flex items-start justify-between mb-3">
+                    <div className="flex-1">
+                      <div className="flex items-center gap-3 mb-2">
+                        <h4 className="font-medium">{milestone.title}</h4>
+                        <StatusBadge status={milestone.status} />
+                      </div>
+                      {milestone.description && (
+                        <p className="text-sm text-muted-foreground mb-2">
+                          {milestone.description}
+                        </p>
+                      )}
+                      <p className="text-xs text-muted-foreground">
+                        Due: {format(new Date(milestone.due_date), "MMM dd, yyyy")}
+                      </p>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        onClick={() => handleEditMilestone(milestone)}
+                      >
+                        <Edit className="h-4 w-4" />
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        onClick={() => handleDeleteMilestone(milestone.id)}
+                      >
+                        <Trash2 className="h-4 w-4 text-destructive" />
+                      </Button>
+                    </div>
+                  </div>
+                  <div className="space-y-2">
+                    <div className="flex justify-between text-xs">
+                      <span className="text-muted-foreground">Progress</span>
+                      <span className="font-medium">{milestone.completion_percentage}%</span>
+                    </div>
+                    <Progress value={milestone.completion_percentage} className="h-2" />
+                  </div>
+                </CardContent>
+              </Card>
+            ))}
+          </div>
+        )}
+      </div>
+
+      {/* Estimates */}
+      <div className="space-y-4 mb-8">
+        <div className="flex items-center gap-2">
+          <FileText className="h-5 w-5 text-primary" />
+          <h3 className="font-heading text-lg font-semibold">
+            Estimates ({projectEstimates.length})
+          </h3>
+        </div>
+        {projectEstimates.length === 0 ? (
+          <Card className="glass border-border">
+            <CardContent className="py-8 text-center text-muted-foreground">
+              No estimates for this project yet.
+            </CardContent>
+          </Card>
+        ) : (
+          <DataTable
+            data={projectEstimates}
+            columns={estimateColumns}
+            onRowClick={(item) => navigate(`/estimates/${item.id}`)}
+          />
+        )}
+      </div>
+
+      {/* Job Orders */}
+      <div className="space-y-4 mb-8">
+        <div className="flex items-center gap-2">
+          <Briefcase className="h-5 w-5 text-primary" />
+          <h3 className="font-heading text-lg font-semibold">
+            Job Orders ({projectJobOrders.length})
+          </h3>
+        </div>
+        {projectJobOrders.length === 0 ? (
+          <Card className="glass border-border">
+            <CardContent className="py-8 text-center text-muted-foreground">
+              No job orders for this project yet.
+            </CardContent>
+          </Card>
+        ) : (
+          <DataTable
+            data={projectJobOrders}
+            columns={jobOrderColumns}
+            onRowClick={(item) => navigate(`/job-orders/${item.id}`)}
+          />
+        )}
+      </div>
+
+      {/* Invoices */}
+      <div className="space-y-4">
+        <div className="flex items-center gap-2">
+          <Receipt className="h-5 w-5 text-primary" />
+          <h3 className="font-heading text-lg font-semibold">
+            Invoices ({projectInvoices.length})
+          </h3>
+        </div>
+        {projectInvoices.length === 0 ? (
+          <Card className="glass border-border">
+            <CardContent className="py-8 text-center text-muted-foreground">
+              No invoices for this project yet.
+            </CardContent>
+          </Card>
+        ) : (
+          <DataTable
+            data={projectInvoices}
+            columns={invoiceColumns}
+            onRowClick={(item) => navigate(`/invoices/${item.id}`)}
+          />
+        )}
+      </div>
+
+      {/* Milestone Dialog */}
+      <Dialog open={isMilestoneDialogOpen} onOpenChange={setIsMilestoneDialogOpen}>
+        <DialogContent className="bg-card border-border">
+          <DialogHeader>
+            <DialogTitle className="font-heading">
+              {editingMilestone ? "Edit Milestone" : "Add New Milestone"}
+            </DialogTitle>
+          </DialogHeader>
+          <form onSubmit={handleMilestoneSubmit} className="space-y-4">
+            <div className="space-y-2">
+              <Label htmlFor="title">Title</Label>
+              <Input
+                id="title"
+                value={milestoneFormData.title}
+                onChange={(e) =>
+                  setMilestoneFormData({ ...milestoneFormData, title: e.target.value })
+                }
+                required
+                className="bg-secondary border-border"
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="description">Description</Label>
+              <Textarea
+                id="description"
+                value={milestoneFormData.description}
+                onChange={(e) =>
+                  setMilestoneFormData({ ...milestoneFormData, description: e.target.value })
+                }
+                className="bg-secondary border-border"
+              />
+            </div>
+            <div className="grid gap-4 sm:grid-cols-2">
+              <div className="space-y-2">
+                <Label htmlFor="due_date">Due Date</Label>
+                <Input
+                  id="due_date"
+                  type="date"
+                  value={milestoneFormData.due_date}
+                  onChange={(e) =>
+                    setMilestoneFormData({ ...milestoneFormData, due_date: e.target.value })
+                  }
+                  required
+                  className="bg-secondary border-border"
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="status">Status</Label>
+                <Select
+                  value={milestoneFormData.status}
+                  onValueChange={(value: any) =>
+                    setMilestoneFormData({ ...milestoneFormData, status: value })
+                  }
+                >
+                  <SelectTrigger className="bg-secondary border-border">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="pending">Pending</SelectItem>
+                    <SelectItem value="in-progress">In Progress</SelectItem>
+                    <SelectItem value="completed">Completed</SelectItem>
+                    <SelectItem value="delayed">Delayed</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="completion_percentage">Completion Percentage (%)</Label>
+              <Input
+                id="completion_percentage"
+                type="number"
+                min="0"
+                max="100"
+                value={milestoneFormData.completion_percentage}
+                onChange={(e) =>
+                  setMilestoneFormData({
+                    ...milestoneFormData,
+                    completion_percentage: parseInt(e.target.value) || 0,
+                  })
+                }
+                required
+                className="bg-secondary border-border"
+              />
+            </div>
+            <div className="flex justify-end gap-3">
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => setIsMilestoneDialogOpen(false)}
+              >
+                Cancel
+              </Button>
+              <Button type="submit" variant="glow">
+                {editingMilestone ? "Save Changes" : "Add Milestone"}
+              </Button>
+            </div>
+          </form>
+        </DialogContent>
+      </Dialog>
+    </PageLayout>
+  );
+};
+
+export default ProjectDetail;

@@ -1,0 +1,30 @@
+import { Helmet } from "react-helmet-async";
+
+interface SEOProps {
+  title?: string;
+  description?: string;
+  keywords?: string;
+  noIndex?: boolean;
+}
+
+export const SEO = ({ 
+  title = "Command X", 
+  description = "Business management platform for projects, estimates, and invoices",
+  keywords,
+  noIndex = false 
+}: SEOProps) => {
+  const fullTitle = title === "Command X" ? title : `${title} | Command X`;
+  
+  return (
+    <Helmet>
+      <title>{fullTitle}</title>
+      <meta name="description" content={description} />
+      {keywords && <meta name="keywords" content={keywords} />}
+      {noIndex && <meta name="robots" content="noindex, nofollow" />}
+      <meta property="og:title" content={fullTitle} />
+      <meta property="og:description" content={description} />
+      <meta name="twitter:title" content={fullTitle} />
+      <meta name="twitter:description" content={description} />
+    </Helmet>
+  );
+};

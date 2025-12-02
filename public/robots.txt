@@ -1,0 +1,13 @@
+User-agent: *
+Allow: /
+Disallow: /auth
+Disallow: /accept-invitation
+Disallow: /approve-estimate
+
+User-agent: Googlebot
+Allow: /
+
+User-agent: Bingbot
+Allow: /
+
+Sitemap: https://yourapp.lovable.app/sitemap.xml

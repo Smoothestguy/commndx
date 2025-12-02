@@ -1,0 +1,61 @@
+import { X } from "lucide-react";
+import { Button } from "@/components/ui/button";
+
+type JobOrderStatus = "active" | "in-progress" | "completed" | "on-hold";
+
+interface JobOrderFiltersProps {
+  selectedStatus: JobOrderStatus | "";
+  onStatusChange: (status: JobOrderStatus | "") => void;
+}
+
+const statuses: { value: JobOrderStatus | ""; label: string }[] = [
+  { value: "", label: "All Job Orders" },
+  { value: "active", label: "Active" },
+  { value: "in-progress", label: "In Progress" },
+  { value: "completed", label: "Completed" },
+  { value: "on-hold", label: "On Hold" },
+];
+
+export function JobOrderFilters({
+  selectedStatus,
+  onStatusChange,
+}: JobOrderFiltersProps) {
+  return (
+    <div className="space-y-3 mb-6">
+      {/* Status Pills */}
+      <div className="flex flex-wrap gap-2">
+        {statuses.map((status) => (
+          <button
+            key={status.value}
+            onClick={() => onStatusChange(status.value)}
+            className={`px-4 py-2 rounded-full text-sm font-medium transition-all duration-200 ${
+              selectedStatus === status.value
+                ? "bg-primary text-primary-foreground shadow-lg shadow-primary/25"
+                : "bg-secondary text-muted-foreground hover:bg-secondary/80"
+            }`}
+          >
+            {status.label}
+          </button>
+        ))}
+      </div>
+
+      {/* Active Filter Display */}
+      {selectedStatus && (
+        <div className="flex items-center gap-2">
+          <span className="text-sm text-muted-foreground">Active filter:</span>
+          <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-primary/10 text-primary border border-primary/20">
+            <span className="text-sm font-medium capitalize">{selectedStatus.replace("-", " ")}</span>
+            <Button
+              variant="ghost"
+              size="icon"
+              className="h-4 w-4 p-0 hover:bg-transparent"
+              onClick={() => onStatusChange("")}
+            >
+              <X className="h-3 w-3" />
+            </Button>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
