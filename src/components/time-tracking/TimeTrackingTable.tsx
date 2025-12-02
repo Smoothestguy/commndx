@@ -1,9 +1,28 @@
+import { useState } from "react";
 import { format } from "date-fns";
-import { Pencil } from "lucide-react";
+import { Pencil, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { DataTable } from "@/components/shared/DataTable";
+import { Checkbox } from "@/components/ui/checkbox";
 import { StatusBadge } from "@/components/shared/StatusBadge";
 import { TimeEntryWithDetails } from "@/integrations/supabase/hooks/useTimeEntries";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 
 type Status = 
   | "draft" 
@@ -25,104 +44,197 @@ type Status =
 interface TimeTrackingTableProps {
   entries: TimeEntryWithDetails[];
   onEdit: (entry: TimeEntryWithDetails) => void;
+  onBulkDelete?: (ids: string[]) => void;
+  isDeleting?: boolean;
 }
 
-export function TimeTrackingTable({ entries, onEdit }: TimeTrackingTableProps) {
-  const columns = [
-    {
-      key: "entry_date",
-      header: "Date",
-      render: (entry: TimeEntryWithDetails) => format(new Date(entry.entry_date), "MMM dd, yyyy"),
-      className: "w-[120px]",
-    },
-    {
-      key: "personnel",
-      header: "Personnel",
-      render: (entry: TimeEntryWithDetails) => {
-        // If personnel_id exists, show personnel name (for entries logged for personnel)
-        if (entry.personnel_id && entry.personnel) {
-          return `${entry.personnel.first_name} ${entry.personnel.last_name}`;
-        }
-        // Otherwise show the profile (user who logged the entry)
-        const profile = entry.profiles;
-        if (profile?.first_name && profile?.last_name) {
-          return `${profile.first_name} ${profile.last_name}`;
-        }
-        return profile?.email || "Unknown";
-      },
-      className: "min-w-[150px]",
-    },
-    {
-      key: "project",
-      header: "Project",
-      render: (entry: TimeEntryWithDetails) => entry.projects?.name || "Unknown",
-      className: "min-w-[150px]",
-    },
-    {
-      key: "customer",
-      header: "Customer",
-      render: (entry: TimeEntryWithDetails) => entry.projects?.customers?.name || "-",
-      className: "min-w-[150px]",
-    },
-    {
-      key: "hours",
-      header: "Hours",
-      render: (entry: TimeEntryWithDetails) => Number(entry.hours).toFixed(2),
-      className: "w-[80px] text-right",
-    },
-    {
-      key: "cost",
-      header: "Cost",
-      render: (entry: TimeEntryWithDetails) => {
-        // Use personnel hourly rate if available, otherwise profile rate
-        const hourlyRate = entry.personnel?.hourly_rate || entry.profiles?.hourly_rate || 0;
-        const cost = Number(entry.hours) * Number(hourlyRate);
-        return `$${cost.toFixed(2)}`;
-      },
-      className: "w-[100px] text-right",
-    },
-    {
-      key: "status",
-      header: "Status",
-      render: (entry: TimeEntryWithDetails) => {
-        const status = entry.status || "pending";
-        // Map time entry statuses to StatusBadge statuses
-        const statusMap: Record<string, Status> = {
-          pending: "pending",
-          invoiced: "paid",
-          approved: "approved",
-        };
-        const mappedStatus = statusMap[status] || "pending";
-        return <StatusBadge status={mappedStatus} />;
-      },
-      className: "w-[100px]",
-    },
-    {
-      key: "description",
-      header: "Notes",
-      render: (entry: TimeEntryWithDetails) => (
-        <div className="max-w-[200px] truncate" title={entry.description || ""}>
-          {entry.description || "-"}
-        </div>
-      ),
-      className: "min-w-[150px]",
-    },
-    {
-      key: "actions",
-      header: "",
-      render: (entry: TimeEntryWithDetails) => (
-        <Button
-          variant="ghost"
-          size="icon"
-          onClick={() => onEdit(entry)}
-          className="h-8 w-8"
-        >
-          <Pencil className="h-4 w-4" />
-        </Button>
-      ),
-      className: "w-[50px]",
-    },
-  ];
+export function TimeTrackingTable({ entries, onEdit, onBulkDelete, isDeleting }: TimeTrackingTableProps) {
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+  const [showDeleteDialog, setShowDeleteDialog] = useState(false);
 
-  return <DataTable data={entries} columns={columns} />;
+  const allSelected = entries.length > 0 && selectedIds.size === entries.length;
+  const someSelected = selectedIds.size > 0 && selectedIds.size < entries.length;
+
+  const handleSelectAll = (checked: boolean) => {
+    if (checked) {
+      setSelectedIds(new Set(entries.map(e => e.id)));
+    } else {
+      setSelectedIds(new Set());
+    }
+  };
+
+  const handleSelectOne = (id: string, checked: boolean) => {
+    const newSelection = new Set(selectedIds);
+    if (checked) {
+      newSelection.add(id);
+    } else {
+      newSelection.delete(id);
+    }
+    setSelectedIds(newSelection);
+  };
+
+  const handleConfirmDelete = () => {
+    if (onBulkDelete && selectedIds.size > 0) {
+      onBulkDelete(Array.from(selectedIds));
+      setSelectedIds(new Set());
+    }
+    setShowDeleteDialog(false);
+  };
+
+  const getPersonnelName = (entry: TimeEntryWithDetails) => {
+    if (entry.personnel_id && entry.personnel) {
+      return `${entry.personnel.first_name} ${entry.personnel.last_name}`;
+    }
+    const profile = entry.profiles;
+    if (profile?.first_name && profile?.last_name) {
+      return `${profile.first_name} ${profile.last_name}`;
+    }
+    return profile?.email || "Unknown";
+  };
+
+  const getCost = (entry: TimeEntryWithDetails) => {
+    const hourlyRate = entry.personnel?.hourly_rate || entry.profiles?.hourly_rate || 0;
+    const cost = Number(entry.hours) * Number(hourlyRate);
+    return `$${cost.toFixed(2)}`;
+  };
+
+  const getStatus = (entry: TimeEntryWithDetails) => {
+    const status = entry.status || "pending";
+    const statusMap: Record<string, Status> = {
+      pending: "pending",
+      invoiced: "paid",
+      approved: "approved",
+    };
+    return statusMap[status] || "pending";
+  };
+
+  return (
+    <>
+      {/* Bulk Actions Bar */}
+      {selectedIds.size > 0 && onBulkDelete && (
+        <div className="flex items-center justify-between p-3 mb-4 glass rounded-lg border border-border/50">
+          <span className="text-sm text-muted-foreground">
+            {selectedIds.size} {selectedIds.size === 1 ? 'entry' : 'entries'} selected
+          </span>
+          <Button 
+            variant="destructive" 
+            size="sm"
+            onClick={() => setShowDeleteDialog(true)}
+            disabled={isDeleting}
+          >
+            <Trash2 className="h-4 w-4 mr-2" />
+            Delete Selected
+          </Button>
+        </div>
+      )}
+
+      <div className="glass rounded-xl overflow-hidden">
+        <Table>
+          <TableHeader>
+            <TableRow className="border-border/50 hover:bg-transparent">
+              {onBulkDelete && (
+                <TableHead className="w-[50px]">
+                  <Checkbox
+                    checked={allSelected}
+                    ref={(el) => {
+                      if (el) {
+                        (el as HTMLButtonElement & { indeterminate: boolean }).indeterminate = someSelected;
+                      }
+                    }}
+                    onCheckedChange={handleSelectAll}
+                    aria-label="Select all"
+                  />
+                </TableHead>
+              )}
+              <TableHead className="w-[120px] text-muted-foreground font-medium">Date</TableHead>
+              <TableHead className="min-w-[150px] text-muted-foreground font-medium">Personnel</TableHead>
+              <TableHead className="min-w-[150px] text-muted-foreground font-medium">Project</TableHead>
+              <TableHead className="min-w-[150px] text-muted-foreground font-medium">Customer</TableHead>
+              <TableHead className="w-[80px] text-right text-muted-foreground font-medium">Hours</TableHead>
+              <TableHead className="w-[100px] text-right text-muted-foreground font-medium">Cost</TableHead>
+              <TableHead className="w-[100px] text-muted-foreground font-medium">Status</TableHead>
+              <TableHead className="min-w-[150px] text-muted-foreground font-medium">Notes</TableHead>
+              <TableHead className="w-[50px]"></TableHead>
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {entries.map((entry) => (
+              <TableRow
+                key={entry.id}
+                className="border-border/30 transition-colors duration-200"
+              >
+                {onBulkDelete && (
+                  <TableCell>
+                    <Checkbox
+                      checked={selectedIds.has(entry.id)}
+                      onCheckedChange={(checked) => handleSelectOne(entry.id, !!checked)}
+                      aria-label={`Select entry for ${getPersonnelName(entry)}`}
+                    />
+                  </TableCell>
+                )}
+                <TableCell className="text-foreground">
+                  {format(new Date(entry.entry_date), "MMM dd, yyyy")}
+                </TableCell>
+                <TableCell className="text-foreground">
+                  {getPersonnelName(entry)}
+                </TableCell>
+                <TableCell className="text-foreground">
+                  {entry.projects?.name || "Unknown"}
+                </TableCell>
+                <TableCell className="text-foreground">
+                  {entry.projects?.customers?.name || "-"}
+                </TableCell>
+                <TableCell className="text-foreground text-right">
+                  {Number(entry.hours).toFixed(2)}
+                </TableCell>
+                <TableCell className="text-foreground text-right">
+                  {getCost(entry)}
+                </TableCell>
+                <TableCell>
+                  <StatusBadge status={getStatus(entry)} />
+                </TableCell>
+                <TableCell className="text-foreground">
+                  <div className="max-w-[200px] truncate" title={entry.description || ""}>
+                    {entry.description || "-"}
+                  </div>
+                </TableCell>
+                <TableCell>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    onClick={() => onEdit(entry)}
+                    className="h-8 w-8"
+                  >
+                    <Pencil className="h-4 w-4" />
+                  </Button>
+                </TableCell>
+              </TableRow>
+            ))}
+          </TableBody>
+        </Table>
+      </div>
+
+      {/* Delete Confirmation Dialog */}
+      <AlertDialog open={showDeleteDialog} onOpenChange={setShowDeleteDialog}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete Time Entries</AlertDialogTitle>
+            <AlertDialogDescription>
+              Are you sure you want to delete {selectedIds.size} time {selectedIds.size === 1 ? 'entry' : 'entries'}? 
+              This action cannot be undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction 
+              onClick={handleConfirmDelete}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              Delete
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+    </>
+  );
 }

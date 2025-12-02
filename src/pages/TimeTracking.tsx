@@ -12,7 +12,7 @@ import { WeekNavigator } from "@/components/time-tracking/WeekNavigator";
 import { ProjectAssignmentsSection } from "@/components/time-tracking/ProjectAssignmentsSection";
 import { BulkTimeEntryForm } from "@/components/time-tracking/BulkTimeEntryForm";
 import { PersonnelAssignmentDialog } from "@/components/time-tracking/PersonnelAssignmentDialog";
-import { useAllTimeEntries, useTimeEntries, TimeEntryWithDetails } from "@/integrations/supabase/hooks/useTimeEntries";
+import { useAllTimeEntries, useTimeEntries, useBulkDeleteTimeEntries, TimeEntryWithDetails } from "@/integrations/supabase/hooks/useTimeEntries";
 import { useUserRole } from "@/hooks/useUserRole";
 import { SEO } from "@/components/SEO";
 
@@ -36,6 +36,7 @@ export default function TimeTracking() {
   );
   
   const { data: userEntries = [] } = useTimeEntries();
+  const bulkDelete = useBulkDeleteTimeEntries();
 
   // Convert userEntries to match TimeEntryWithDetails structure for consistent rendering
   const userEntriesWithDetails: TimeEntryWithDetails[] = userEntries.map(entry => ({
@@ -113,7 +114,12 @@ export default function TimeTracking() {
             />
 
             {/* Table */}
-            <TimeTrackingTable entries={entries} onEdit={handleEdit} />
+            <TimeTrackingTable 
+              entries={entries} 
+              onEdit={handleEdit} 
+              onBulkDelete={canManageTeam ? (ids) => bulkDelete.mutate(ids) : undefined}
+              isDeleting={bulkDelete.isPending}
+            />
           </TabsContent>
 
           <TabsContent value="weekly" className="space-y-4 mt-4">
