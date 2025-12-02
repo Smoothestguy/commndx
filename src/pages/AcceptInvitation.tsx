@@ -117,22 +117,13 @@ export default function AcceptInvitation() {
     setIsSubmitting(true);
 
     try {
-      // Update user's role (delete existing and insert new)
-      await supabase.from("user_roles").delete().eq("user_id", user.id);
-      
-      const { error: roleError } = await supabase
-        .from("user_roles")
-        .insert({ user_id: user.id, role: invitation.role });
+      // Call the secure database function to accept the invitation
+      const { data, error } = await supabase.rpc('accept_invitation', {
+        _invitation_id: invitation.id,
+        _user_id: user.id
+      });
 
-      if (roleError) throw roleError;
-
-      // Mark invitation as accepted
-      const { error: updateError } = await supabase
-        .from("invitations")
-        .update({ status: "accepted", used_at: new Date().toISOString() })
-        .eq("id", invitation.id);
-
-      if (updateError) throw updateError;
+      if (error) throw error;
 
       // Log accepted event to activity log
       await supabase.from('invitation_activity_log').insert({
@@ -198,23 +189,13 @@ export default function AcceptInvitation() {
         throw new Error("Failed to log in");
       }
 
-      // After successful login, accept the invitation
-      // Update user's role
-      await supabase.from("user_roles").delete().eq("user_id", data.user.id);
-      
-      const { error: roleError } = await supabase
-        .from("user_roles")
-        .insert({ user_id: data.user.id, role: invitation.role });
+      // After successful login, accept the invitation using secure function
+      const { error: acceptError } = await supabase.rpc('accept_invitation', {
+        _invitation_id: invitation.id,
+        _user_id: data.user.id
+      });
 
-      if (roleError) throw roleError;
-
-      // Mark invitation as accepted
-      const { error: updateError } = await supabase
-        .from("invitations")
-        .update({ status: "accepted", used_at: new Date().toISOString() })
-        .eq("id", invitation.id);
-
-      if (updateError) throw updateError;
+      if (acceptError) throw acceptError;
 
       // Log accepted event
       await supabase.from('invitation_activity_log').insert({
