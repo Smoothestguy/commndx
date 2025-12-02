@@ -29,7 +29,7 @@ interface LineItem {
   description: string;
   quantity: number;
   unitPrice: number;
-  markup: number;
+  margin: number;
   total: number;
 }
 
@@ -44,7 +44,7 @@ export function InvoiceForm({ onSubmit, initialData, jobOrderId }: InvoiceFormPr
   const [selectedJobOrderId, setSelectedJobOrderId] = useState<string | undefined>(jobOrderId);
   const { data: jobOrderWithLineItems } = useJobOrder(selectedJobOrderId || "");
   const [lineItems, setLineItems] = useState<LineItem[]>([
-    { id: "1", description: "", quantity: 1, unitPrice: 0, markup: 0, total: 0 },
+    { id: "1", description: "", quantity: 1, unitPrice: 0, margin: 0, total: 0 },
   ]);
   const [selectedJobOrder, setSelectedJobOrder] = useState<any>(null);
   const [dueDate, setDueDate] = useState<Date>();
@@ -79,7 +79,7 @@ export function InvoiceForm({ onSubmit, initialData, jobOrderId }: InvoiceFormPr
         description: item.description,
         quantity: item.quantity,
         unitPrice: item.unit_price,
-        markup: item.markup,
+        margin: item.markup, // DB column is still "markup"
         total: item.total,
       }));
       setLineItems(copiedItems);
@@ -104,7 +104,7 @@ export function InvoiceForm({ onSubmit, initialData, jobOrderId }: InvoiceFormPr
         description: item.description,
         quantity: item.quantity,
         unitPrice: item.unit_price,
-        markup: item.markup,
+        margin: item.markup, // DB column is still "markup"
         total: item.total,
       }));
       setLineItems(copiedItems);
@@ -114,7 +114,7 @@ export function InvoiceForm({ onSubmit, initialData, jobOrderId }: InvoiceFormPr
   const addLineItem = () => {
     setLineItems([
       ...lineItems,
-      { id: Date.now().toString(), description: "", quantity: 1, unitPrice: 0, markup: 0, total: 0 },
+      { id: Date.now().toString(), description: "", quantity: 1, unitPrice: 0, margin: 0, total: 0 },
     ]);
   };
 
@@ -129,9 +129,12 @@ export function InvoiceForm({ onSubmit, initialData, jobOrderId }: InvoiceFormPr
       lineItems.map((item) => {
         if (item.id === id) {
           const updated = { ...item, [field]: value };
-          if (field === "quantity" || field === "unitPrice" || field === "markup") {
+          if (field === "quantity" || field === "unitPrice" || field === "margin") {
             const baseTotal = updated.quantity * updated.unitPrice;
-            updated.total = baseTotal * (1 + updated.markup / 100);
+            // Margin-based pricing: total = base / (1 - margin/100)
+            updated.total = updated.margin > 0 && updated.margin < 100 
+              ? baseTotal / (1 - updated.margin / 100) 
+              : baseTotal;
           }
           return updated;
         }
@@ -170,7 +173,7 @@ export function InvoiceForm({ onSubmit, initialData, jobOrderId }: InvoiceFormPr
         description: item.description,
         quantity: item.quantity,
         unit_price: item.unitPrice,
-        markup: item.markup,
+        markup: item.margin, // DB column is still "markup"
         total: item.total,
       })),
     });
@@ -362,12 +365,13 @@ export function InvoiceForm({ onSubmit, initialData, jobOrderId }: InvoiceFormPr
               
               <div className="grid grid-cols-2 gap-3">
                 <div className="space-y-2">
-                  <Label>Markup %</Label>
+                  <Label>Margin %</Label>
                   <Input
                     type="number"
                     step="0.01"
-                    value={item.markup}
-                    onChange={(e) => updateLineItem(item.id, "markup", parseFloat(e.target.value) || 0)}
+                    max="99.99"
+                    value={item.margin}
+                    onChange={(e) => updateLineItem(item.id, "margin", parseFloat(e.target.value) || 0)}
                   />
                 </div>
                 <div className="space-y-2">

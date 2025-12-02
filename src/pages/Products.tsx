@@ -35,7 +35,7 @@ const Products = () => {
     name: "",
     description: "",
     cost: "",
-    markup: "",
+    margin: "",
     unit: "",
     category: "",
   });
@@ -59,7 +59,7 @@ const Products = () => {
     },
     {
       key: "markup",
-      header: "Markup",
+      header: "Margin",
       render: (item: Product) => `${item.markup}%`,
     },
     {
@@ -104,9 +104,9 @@ const Products = () => {
     setEditingProduct(product);
     setFormData({
       name: product.name,
-      description: product.description,
+      description: product.description || "",
       cost: product.cost.toString(),
-      markup: product.markup.toString(),
+      margin: product.markup.toString(),
       unit: product.unit,
       category: product.category,
     });
@@ -120,34 +120,46 @@ const Products = () => {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     const cost = parseFloat(formData.cost);
-    const markup = parseFloat(formData.markup);
-    const price = cost * (1 + markup / 100);
+    const margin = parseFloat(formData.margin);
+    
+    // Margin-based pricing: price = cost / (1 - margin/100)
+    // Margin cannot be >= 100%
+    if (margin >= 100) {
+      return;
+    }
+    const price = margin > 0 ? cost / (1 - margin / 100) : cost;
 
     if (editingProduct) {
       await updateProduct.mutateAsync({
         id: editingProduct.id,
-        ...formData,
+        name: formData.name,
+        description: formData.description,
+        category: formData.category,
+        unit: formData.unit,
         cost,
-        markup,
+        markup: margin, // DB column is still named "markup"
         price,
       });
     } else {
       await addProduct.mutateAsync({
-        ...formData,
+        name: formData.name,
+        description: formData.description,
+        category: formData.category,
+        unit: formData.unit,
         cost,
-        markup,
+        markup: margin, // DB column is still named "markup"
         price,
       });
     }
 
     setIsDialogOpen(false);
     setEditingProduct(null);
-    setFormData({ name: "", description: "", cost: "", markup: "", unit: "", category: "" });
+    setFormData({ name: "", description: "", cost: "", margin: "", unit: "", category: "" });
   };
 
   const openNewDialog = () => {
     setEditingProduct(null);
-    setFormData({ name: "", description: "", cost: "", markup: "", unit: "", category: "" });
+    setFormData({ name: "", description: "", cost: "", margin: "", unit: "", category: "" });
     setIsDialogOpen(true);
   };
 
@@ -284,12 +296,13 @@ const Products = () => {
                 />
               </div>
               <div className="space-y-2">
-                <Label htmlFor="markup">Markup (%)</Label>
+                <Label htmlFor="margin">Margin (%)</Label>
                 <Input
-                  id="markup"
+                  id="margin"
                   type="number"
-                  value={formData.markup}
-                  onChange={(e) => setFormData({ ...formData, markup: e.target.value })}
+                  max="99.99"
+                  value={formData.margin}
+                  onChange={(e) => setFormData({ ...formData, margin: e.target.value })}
                   required
                   className="bg-secondary border-border"
                 />
@@ -305,13 +318,19 @@ const Products = () => {
                 />
               </div>
             </div>
-            {formData.cost && formData.markup && (
+            {formData.cost && formData.margin && parseFloat(formData.margin) < 100 && (
               <div className="p-3 rounded-lg bg-primary/10 border border-primary/20">
                 <p className="text-sm text-muted-foreground">Calculated Price:</p>
                 <p className="text-2xl font-heading font-bold text-primary">
-                  ${(parseFloat(formData.cost) * (1 + parseFloat(formData.markup) / 100)).toFixed(2)}
+                  ${(parseFloat(formData.margin) > 0 
+                    ? parseFloat(formData.cost) / (1 - parseFloat(formData.margin) / 100) 
+                    : parseFloat(formData.cost)
+                  ).toFixed(2)}
                 </p>
               </div>
+            )}
+            {formData.margin && parseFloat(formData.margin) >= 100 && (
+              <p className="text-sm text-destructive">Margin must be less than 100%</p>
             )}
             <div className="flex justify-end gap-3">
               <Button type="button" variant="outline" onClick={() => setIsDialogOpen(false)}>

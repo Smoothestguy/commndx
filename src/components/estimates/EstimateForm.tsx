@@ -23,7 +23,7 @@ const lineItemSchema = z.object({
   description: z.string().min(1, "Description is required").max(500),
   quantity: z.number().positive("Quantity must be positive"),
   unit_price: z.number().positive("Unit price must be positive"),
-  markup: z.number().min(0, "Markup cannot be negative").max(1000),
+  margin: z.number().min(0, "Margin cannot be negative").max(99.99, "Margin must be less than 100%"),
 });
 
 const estimateSchema = z.object({
@@ -38,7 +38,7 @@ interface LineItem {
   description: string;
   quantity: string;
   unit_price: string;
-  markup: string;
+  margin: string;
   total: number;
 }
 
@@ -58,7 +58,7 @@ export const EstimateForm = () => {
   const { data: projects } = useProjectsByCustomer(selectedCustomerId);
 
   const [lineItems, setLineItems] = useState<LineItem[]>([
-    { description: "", quantity: "1", unit_price: "", markup: "0", total: 0 },
+    { description: "", quantity: "1", unit_price: "", margin: "0", total: 0 },
   ]);
 
   const [errors, setErrors] = useState<Record<string, string>>({});
@@ -71,11 +71,12 @@ export const EstimateForm = () => {
     return `EST-${year}-${random}`;
   };
 
-  const calculateLineItemTotal = (quantity: string, unitPrice: string, markup: string) => {
+  const calculateLineItemTotal = (quantity: string, unitPrice: string, margin: string) => {
     const qty = parseFloat(quantity) || 0;
     const price = parseFloat(unitPrice) || 0;
-    const mkp = parseFloat(markup) || 0;
-    return qty * price * (1 + mkp / 100);
+    const mgn = parseFloat(margin) || 0;
+    // Margin-based pricing: total = qty * price / (1 - margin/100)
+    return mgn > 0 && mgn < 100 ? qty * price / (1 - mgn / 100) : qty * price;
   };
 
   const updateLineItem = (index: number, field: keyof LineItem, value: string) => {
@@ -83,11 +84,11 @@ export const EstimateForm = () => {
     newLineItems[index] = { ...newLineItems[index], [field]: value };
 
     // Recalculate total for this line item
-    if (field === "quantity" || field === "unit_price" || field === "markup") {
+    if (field === "quantity" || field === "unit_price" || field === "margin") {
       newLineItems[index].total = calculateLineItemTotal(
         newLineItems[index].quantity,
         newLineItems[index].unit_price,
-        newLineItems[index].markup
+        newLineItems[index].margin
       );
     }
 
@@ -97,7 +98,7 @@ export const EstimateForm = () => {
   const addLineItem = () => {
     setLineItems([
       ...lineItems,
-      { description: "", quantity: "1", unit_price: "", markup: "0", total: 0 },
+      { description: "", quantity: "1", unit_price: "", margin: "0", total: 0 },
     ]);
   };
 
@@ -113,15 +114,15 @@ export const EstimateForm = () => {
       const newLineItems = [...lineItems];
       const quantity = newLineItems[index].quantity;
       const unitPrice = product.price.toString();
-      const markup = product.markup.toString();
+      const margin = product.markup.toString(); // DB column is still "markup"
       
       newLineItems[index] = {
         ...newLineItems[index],
         product_id: productId,
         description: product.name,
         unit_price: unitPrice,
-        markup: markup,
-        total: calculateLineItemTotal(quantity, unitPrice, markup),
+        margin: margin,
+        total: calculateLineItemTotal(quantity, unitPrice, margin),
       };
       
       setLineItems(newLineItems);
@@ -157,7 +158,7 @@ export const EstimateForm = () => {
           description: item.description,
           quantity: parseFloat(item.quantity),
           unit_price: parseFloat(item.unit_price),
-          markup: parseFloat(item.markup),
+          margin: parseFloat(item.margin),
         });
       } catch (error) {
         if (error instanceof z.ZodError) {
@@ -204,7 +205,7 @@ export const EstimateForm = () => {
         description: item.description,
         quantity: parseFloat(item.quantity),
         unit_price: parseFloat(item.unit_price),
-        markup: parseFloat(item.markup),
+        markup: parseFloat(item.margin), // DB column is still "markup"
         total: item.total,
       })),
     };
@@ -409,12 +410,13 @@ export const EstimateForm = () => {
                 </div>
 
                 <div className="space-y-2">
-                  <Label>Markup (%)</Label>
+                  <Label>Margin (%)</Label>
                   <Input
                     type="number"
                     step="0.01"
-                    value={item.markup}
-                    onChange={(e) => updateLineItem(index, "markup", e.target.value)}
+                    max="99.99"
+                    value={item.margin}
+                    onChange={(e) => updateLineItem(index, "margin", e.target.value)}
                     className="bg-secondary border-border"
                   />
                 </div>
