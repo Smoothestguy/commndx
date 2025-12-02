@@ -1761,51 +1761,84 @@ export type Database = {
           created_at: string | null
           customer_id: string
           eaves_length: number | null
+          hips_length: number | null
           id: string
           measurement_date: string
           notes: string | null
+          parapet_wall_length: number | null
           penetrations: Json | null
           pitch: string | null
           project_id: string | null
+          rakes_length: number | null
           ridges_length: number | null
           roof_type: Database["public"]["Enums"]["roof_type"] | null
+          step_flashing_length: number | null
+          total_facets: number | null
+          total_flat_area: number | null
+          total_pitched_area: number | null
+          total_roof_area: number | null
           total_squares: number | null
+          transitions_length: number | null
+          unspecified_length: number | null
           updated_at: string | null
           valleys_length: number | null
+          wall_flashing_length: number | null
         }
         Insert: {
           areas?: Json | null
           created_at?: string | null
           customer_id: string
           eaves_length?: number | null
+          hips_length?: number | null
           id?: string
           measurement_date?: string
           notes?: string | null
+          parapet_wall_length?: number | null
           penetrations?: Json | null
           pitch?: string | null
           project_id?: string | null
+          rakes_length?: number | null
           ridges_length?: number | null
           roof_type?: Database["public"]["Enums"]["roof_type"] | null
+          step_flashing_length?: number | null
+          total_facets?: number | null
+          total_flat_area?: number | null
+          total_pitched_area?: number | null
+          total_roof_area?: number | null
           total_squares?: number | null
+          transitions_length?: number | null
+          unspecified_length?: number | null
           updated_at?: string | null
           valleys_length?: number | null
+          wall_flashing_length?: number | null
         }
         Update: {
           areas?: Json | null
           created_at?: string | null
           customer_id?: string
           eaves_length?: number | null
+          hips_length?: number | null
           id?: string
           measurement_date?: string
           notes?: string | null
+          parapet_wall_length?: number | null
           penetrations?: Json | null
           pitch?: string | null
           project_id?: string | null
+          rakes_length?: number | null
           ridges_length?: number | null
           roof_type?: Database["public"]["Enums"]["roof_type"] | null
+          step_flashing_length?: number | null
+          total_facets?: number | null
+          total_flat_area?: number | null
+          total_pitched_area?: number | null
+          total_roof_area?: number | null
           total_squares?: number | null
+          transitions_length?: number | null
+          unspecified_length?: number | null
           updated_at?: string | null
           valleys_length?: number | null
+          wall_flashing_length?: number | null
         }
         Relationships: [
           {

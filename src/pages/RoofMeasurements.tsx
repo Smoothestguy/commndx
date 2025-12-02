@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { PageLayout } from "@/components/layout/PageLayout";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -11,6 +12,7 @@ import { toast } from "sonner";
 import { useUserRole } from "@/hooks/useUserRole";
 
 export default function RoofMeasurements() {
+  const navigate = useNavigate();
   const [searchQuery, setSearchQuery] = useState("");
   const [formOpen, setFormOpen] = useState(false);
   const { isAdmin, isManager } = useUserRole();
@@ -51,8 +53,7 @@ export default function RoofMeasurements() {
   };
 
   const handleView = (id: string) => {
-    // For now, just show a toast. Could navigate to detail page later.
-    toast.info("Detail view coming soon");
+    navigate(`/roof-measurements/${id}`);
   };
 
   return (

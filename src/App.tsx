@@ -46,6 +46,7 @@ import BadgeTemplates from "./pages/BadgeTemplates";
 import RoofInspections from "./pages/RoofInspections";
 import RoofInspectionDetail from "./pages/RoofInspectionDetail";
 import RoofMeasurements from "./pages/RoofMeasurements";
+import RoofMeasurementDetail from "./pages/RoofMeasurementDetail";
 import Warranties from "./pages/Warranties";
 import WarrantyDetail from "./pages/WarrantyDetail";
 import WeatherTracking from "./pages/WeatherTracking";
@@ -328,6 +329,14 @@ const App = () => {
                   element={
                     <ProtectedRoute>
                       <RoofMeasurements />
+                    </ProtectedRoute>
+                  }
+                />
+                <Route
+                  path="/roof-measurements/:id"
+                  element={
+                    <ProtectedRoute>
+                      <RoofMeasurementDetail />
                     </ProtectedRoute>
                   }
                 />
