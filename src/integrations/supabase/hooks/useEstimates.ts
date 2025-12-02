@@ -324,3 +324,115 @@ export const useConvertEstimateToJobOrder = () => {
     },
   });
 };
+
+export const useConvertEstimateToInvoice = () => {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async (estimateId: string) => {
+      // Fetch estimate with line items
+      const { data: estimate, error: estimateError } = await supabase
+        .from("estimates")
+        .select("*")
+        .eq("id", estimateId)
+        .single();
+
+      if (estimateError) throw estimateError;
+
+      const { data: lineItems, error: lineItemsError } = await supabase
+        .from("estimate_line_items")
+        .select("*")
+        .eq("estimate_id", estimateId);
+
+      if (lineItemsError) throw lineItemsError;
+
+      // Validate estimate
+      if (estimate.status !== "approved") {
+        throw new Error("Only approved estimates can be converted to invoices");
+      }
+
+      // Check if already converted to invoice
+      const { data: existingInvoice } = await supabase
+        .from("invoices")
+        .select("id")
+        .eq("estimate_id", estimateId)
+        .maybeSingle();
+
+      if (existingInvoice) {
+        throw new Error("This estimate has already been converted to an invoice");
+      }
+
+      // Generate invoice number
+      const { data: latestInvoice } = await supabase
+        .from("invoices")
+        .select("number")
+        .order("created_at", { ascending: false })
+        .limit(1)
+        .maybeSingle();
+
+      let nextNumber = 1;
+      if (latestInvoice?.number) {
+        const match = latestInvoice.number.match(/INV-\d{2}(\d+)/);
+        if (match) {
+          nextNumber = parseInt(match[1]) + 1;
+        }
+      }
+
+      const year = new Date().getFullYear().toString().slice(-2);
+      const invoiceNumber = `INV-${year}${String(nextNumber).padStart(5, "0")}`;
+
+      // Calculate due date (30 days from now)
+      const dueDate = new Date();
+      dueDate.setDate(dueDate.getDate() + 30);
+
+      // Create invoice
+      const { data: invoice, error: invoiceError } = await supabase
+        .from("invoices")
+        .insert([
+          {
+            number: invoiceNumber,
+            estimate_id: estimateId,
+            customer_id: estimate.customer_id,
+            customer_name: estimate.customer_name,
+            project_name: estimate.project_name,
+            status: "draft",
+            subtotal: estimate.subtotal,
+            tax_rate: estimate.tax_rate,
+            tax_amount: estimate.tax_amount,
+            total: estimate.total,
+            due_date: dueDate.toISOString().split("T")[0],
+          },
+        ])
+        .select()
+        .single();
+
+      if (invoiceError) throw invoiceError;
+
+      // Create invoice line items
+      const invoiceLineItems = lineItems.map((item) => ({
+        invoice_id: invoice.id,
+        description: item.description,
+        quantity: item.quantity,
+        unit_price: item.unit_price,
+        markup: item.markup,
+        total: item.total,
+      }));
+
+      const { error: lineItemsInsertError } = await supabase
+        .from("invoice_line_items")
+        .insert(invoiceLineItems);
+
+      if (lineItemsInsertError) throw lineItemsInsertError;
+
+      return invoice;
+    },
+    onSuccess: (invoice) => {
+      queryClient.invalidateQueries({ queryKey: ["estimates"] });
+      queryClient.invalidateQueries({ queryKey: ["invoices"] });
+      toast.success(`Invoice ${invoice.number} created successfully`);
+    },
+    onError: (error: Error) => {
+      toast.error(`Failed to convert estimate to invoice: ${error.message}`);
+    },
+  });
+};

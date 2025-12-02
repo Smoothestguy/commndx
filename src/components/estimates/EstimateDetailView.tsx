@@ -34,8 +34,9 @@ import {
   useUpdateEstimate,
   useDeleteEstimate,
   useConvertEstimateToJobOrder,
+  useConvertEstimateToInvoice,
 } from "@/integrations/supabase/hooks/useEstimates";
-import { Edit, Trash2, Briefcase, MoreVertical, Loader2, Send, Copy, CheckCircle } from "lucide-react";
+import { Edit, Trash2, Briefcase, MoreVertical, Loader2, Send, Copy, CheckCircle, FileText } from "lucide-react";
 import { format } from "date-fns";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
@@ -53,6 +54,7 @@ export function EstimateDetailView({ estimateId }: EstimateDetailViewProps) {
   const updateEstimate = useUpdateEstimate();
   const deleteEstimate = useDeleteEstimate();
   const convertToJobOrder = useConvertEstimateToJobOrder();
+  const convertToInvoice = useConvertEstimateToInvoice();
   const [isSending, setIsSending] = useState(false);
 
   const handleStatusChange = async (status: "draft" | "pending" | "approved" | "sent") => {
@@ -74,6 +76,14 @@ export function EstimateDetailView({ estimateId }: EstimateDetailViewProps) {
     convertToJobOrder.mutate(estimateId, {
       onSuccess: (jobOrder) => {
         navigate(`/job-orders/${jobOrder.id}`);
+      },
+    });
+  };
+
+  const handleConvertToInvoice = async () => {
+    convertToInvoice.mutate(estimateId, {
+      onSuccess: (invoice) => {
+        navigate(`/invoices/${invoice.id}`);
       },
     });
   };
@@ -130,7 +140,8 @@ export function EstimateDetailView({ estimateId }: EstimateDetailViewProps) {
     );
   }
 
-  const canConvert = estimate.status === "approved" && estimate.project_id;
+  const canConvertToJobOrder = estimate.status === "approved" && estimate.project_id;
+  const canConvertToInvoice = estimate.status === "approved";
 
   return (
     <PageLayout
@@ -172,7 +183,7 @@ export function EstimateDetailView({ estimateId }: EstimateDetailViewProps) {
                 Edit
               </Button>
 
-              {canConvert && (
+              {canConvertToJobOrder && (
                 <AlertDialog>
                   <AlertDialogTrigger asChild>
                     <Button disabled={convertToJobOrder.isPending}>
@@ -195,6 +206,33 @@ export function EstimateDetailView({ estimateId }: EstimateDetailViewProps) {
                     <AlertDialogFooter>
                       <AlertDialogCancel>Cancel</AlertDialogCancel>
                       <AlertDialogAction onClick={handleConvert}>Convert</AlertDialogAction>
+                    </AlertDialogFooter>
+                  </AlertDialogContent>
+                </AlertDialog>
+              )}
+
+              {canConvertToInvoice && (
+                <AlertDialog>
+                  <AlertDialogTrigger asChild>
+                    <Button variant="secondary" disabled={convertToInvoice.isPending}>
+                      {convertToInvoice.isPending ? (
+                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                      ) : (
+                        <FileText className="mr-2 h-4 w-4" />
+                      )}
+                      Convert to Invoice
+                    </Button>
+                  </AlertDialogTrigger>
+                  <AlertDialogContent>
+                    <AlertDialogHeader>
+                      <AlertDialogTitle>Convert to Invoice</AlertDialogTitle>
+                      <AlertDialogDescription>
+                        This will create a new invoice from this estimate for direct billing. Continue?
+                      </AlertDialogDescription>
+                    </AlertDialogHeader>
+                    <AlertDialogFooter>
+                      <AlertDialogCancel>Cancel</AlertDialogCancel>
+                      <AlertDialogAction onClick={handleConvertToInvoice}>Convert</AlertDialogAction>
                     </AlertDialogFooter>
                   </AlertDialogContent>
                 </AlertDialog>
@@ -223,7 +261,7 @@ export function EstimateDetailView({ estimateId }: EstimateDetailViewProps) {
                     <Edit className="mr-2 h-4 w-4" />
                     Edit Estimate
                   </DropdownMenuItem>
-                  {canConvert && (
+                  {canConvertToJobOrder && (
                     <AlertDialog>
                       <AlertDialogTrigger asChild>
                         <DropdownMenuItem onSelect={(e) => e.preventDefault()}>
@@ -242,6 +280,28 @@ export function EstimateDetailView({ estimateId }: EstimateDetailViewProps) {
                         <AlertDialogFooter>
                           <AlertDialogCancel>Cancel</AlertDialogCancel>
                           <AlertDialogAction onClick={handleConvert}>Convert</AlertDialogAction>
+                        </AlertDialogFooter>
+                      </AlertDialogContent>
+                    </AlertDialog>
+                  )}
+                  {canConvertToInvoice && (
+                    <AlertDialog>
+                      <AlertDialogTrigger asChild>
+                        <DropdownMenuItem onSelect={(e) => e.preventDefault()}>
+                          <FileText className="mr-2 h-4 w-4" />
+                          Convert to Invoice
+                        </DropdownMenuItem>
+                      </AlertDialogTrigger>
+                      <AlertDialogContent>
+                        <AlertDialogHeader>
+                          <AlertDialogTitle>Convert to Invoice</AlertDialogTitle>
+                          <AlertDialogDescription>
+                            This will create a new invoice from this estimate for direct billing. Continue?
+                          </AlertDialogDescription>
+                        </AlertDialogHeader>
+                        <AlertDialogFooter>
+                          <AlertDialogCancel>Cancel</AlertDialogCancel>
+                          <AlertDialogAction onClick={handleConvertToInvoice}>Convert</AlertDialogAction>
                         </AlertDialogFooter>
                       </AlertDialogContent>
                     </AlertDialog>
@@ -462,54 +522,74 @@ export function EstimateDetailView({ estimateId }: EstimateDetailViewProps) {
                 </CardTitle>
               </CardHeader>
               <CardContent className="space-y-3">
-                {canConvert ? (
-                  <>
-                    <p className="text-sm text-muted-foreground">
-                      This estimate is ready to be converted into a job order. This will copy all line items and begin the work phase.
-                    </p>
-                    <AlertDialog>
-                      <AlertDialogTrigger asChild>
-                        <Button 
-                          className="w-full" 
-                          disabled={convertToJobOrder.isPending}
-                        >
-                          {convertToJobOrder.isPending ? (
-                            <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                          ) : (
-                            <Briefcase className="mr-2 h-4 w-4" />
-                          )}
-                          Convert to Job Order
-                        </Button>
-                      </AlertDialogTrigger>
-                      <AlertDialogContent>
-                        <AlertDialogHeader>
-                          <AlertDialogTitle>Convert to Job Order</AlertDialogTitle>
-                          <AlertDialogDescription>
-                            This will create a new job order from this estimate, copying all line
-                            items and customer information. Continue?
-                          </AlertDialogDescription>
-                        </AlertDialogHeader>
-                        <AlertDialogFooter>
-                          <AlertDialogCancel>Cancel</AlertDialogCancel>
-                          <AlertDialogAction onClick={handleConvert}>Convert</AlertDialogAction>
-                        </AlertDialogFooter>
-                      </AlertDialogContent>
-                    </AlertDialog>
-                  </>
-                ) : (
-                  <>
-                    <p className="text-sm text-muted-foreground">
-                      To convert this estimate to a job order, you need to assign it to a project first.
-                    </p>
+                <p className="text-sm text-muted-foreground">
+                  This estimate is ready to be converted. Choose how to proceed:
+                </p>
+                
+                {canConvertToJobOrder && (
+                  <AlertDialog>
+                    <AlertDialogTrigger asChild>
+                      <Button 
+                        className="w-full" 
+                        disabled={convertToJobOrder.isPending}
+                      >
+                        {convertToJobOrder.isPending ? (
+                          <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                        ) : (
+                          <Briefcase className="mr-2 h-4 w-4" />
+                        )}
+                        Convert to Job Order
+                      </Button>
+                    </AlertDialogTrigger>
+                    <AlertDialogContent>
+                      <AlertDialogHeader>
+                        <AlertDialogTitle>Convert to Job Order</AlertDialogTitle>
+                        <AlertDialogDescription>
+                          This will create a new job order from this estimate, copying all line
+                          items and customer information. Continue?
+                        </AlertDialogDescription>
+                      </AlertDialogHeader>
+                      <AlertDialogFooter>
+                        <AlertDialogCancel>Cancel</AlertDialogCancel>
+                        <AlertDialogAction onClick={handleConvert}>Convert</AlertDialogAction>
+                      </AlertDialogFooter>
+                    </AlertDialogContent>
+                  </AlertDialog>
+                )}
+
+                <AlertDialog>
+                  <AlertDialogTrigger asChild>
                     <Button 
-                      variant="outline" 
-                      className="w-full"
-                      onClick={() => navigate(`/estimates/${estimateId}/edit`)}
+                      variant={canConvertToJobOrder ? "secondary" : "default"}
+                      className="w-full" 
+                      disabled={convertToInvoice.isPending}
                     >
-                      <Edit className="mr-2 h-4 w-4" />
-                      Add Project to Estimate
+                      {convertToInvoice.isPending ? (
+                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                      ) : (
+                        <FileText className="mr-2 h-4 w-4" />
+                      )}
+                      Convert to Invoice
                     </Button>
-                  </>
+                  </AlertDialogTrigger>
+                  <AlertDialogContent>
+                    <AlertDialogHeader>
+                      <AlertDialogTitle>Convert to Invoice</AlertDialogTitle>
+                      <AlertDialogDescription>
+                        This will create a new invoice from this estimate for direct billing. Continue?
+                      </AlertDialogDescription>
+                    </AlertDialogHeader>
+                    <AlertDialogFooter>
+                      <AlertDialogCancel>Cancel</AlertDialogCancel>
+                      <AlertDialogAction onClick={handleConvertToInvoice}>Convert</AlertDialogAction>
+                    </AlertDialogFooter>
+                  </AlertDialogContent>
+                </AlertDialog>
+
+                {!canConvertToJobOrder && (
+                  <p className="text-xs text-muted-foreground">
+                    To convert to a job order, assign this estimate to a project first.
+                  </p>
                 )}
               </CardContent>
             </Card>
@@ -520,7 +600,7 @@ export function EstimateDetailView({ estimateId }: EstimateDetailViewProps) {
             <Card className="border-dashed">
               <CardContent className="py-4">
                 <p className="text-xs text-muted-foreground text-center">
-                  💡 Once approved, you can convert this estimate to a job order
+                  💡 Once approved, you can convert this estimate to a job order or invoice
                 </p>
               </CardContent>
             </Card>
