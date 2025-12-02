@@ -1,6 +1,6 @@
 import { Button } from "@/components/ui/button";
-import { Edit, Trash2, Package } from "lucide-react";
-import { Product } from "@/integrations/supabase/hooks/useProducts";
+import { Edit, Trash2, Package, Wrench, HardHat } from "lucide-react";
+import { Product, ItemType } from "@/integrations/supabase/hooks/useProducts";
 
 interface ProductCardProps {
   product: Product;
@@ -9,7 +9,28 @@ interface ProductCardProps {
   index: number;
 }
 
+const typeConfig: Record<ItemType, { icon: typeof Package; label: string; className: string }> = {
+  product: {
+    icon: Package,
+    label: "Product",
+    className: "bg-blue-500/10 text-blue-500 border-blue-500/20",
+  },
+  service: {
+    icon: Wrench,
+    label: "Service",
+    className: "bg-purple-500/10 text-purple-500 border-purple-500/20",
+  },
+  labor: {
+    icon: HardHat,
+    label: "Labor",
+    className: "bg-orange-500/10 text-orange-500 border-orange-500/20",
+  },
+};
+
 export function ProductCard({ product, onEdit, onDelete, index }: ProductCardProps) {
+  const config = typeConfig[product.item_type] || typeConfig.product;
+  const TypeIcon = config.icon;
+
   return (
     <div
       className="glass rounded-xl p-5 hover:shadow-lg hover:shadow-primary/5 transition-all duration-300 border-l-4 border-primary/60 animate-fade-in min-h-[160px] flex flex-col justify-between"
@@ -19,14 +40,28 @@ export function ProductCard({ product, onEdit, onDelete, index }: ProductCardPro
         {/* Header */}
         <div className="flex items-start justify-between gap-3">
           <div className="flex items-center gap-2 flex-1 min-w-0">
-            <Package className="h-5 w-5 text-primary flex-shrink-0" />
+            <TypeIcon className="h-5 w-5 text-primary flex-shrink-0" />
             <h3 className="font-heading font-semibold text-lg text-foreground truncate">
               {product.name}
             </h3>
           </div>
-          <span className="px-2.5 py-1 rounded-full text-xs font-medium bg-primary/10 text-primary border border-primary/20 whitespace-nowrap">
+          <div className="flex items-center gap-2 flex-shrink-0">
+            <span className={`px-2 py-0.5 rounded-full text-xs font-medium border ${config.className}`}>
+              {config.label}
+            </span>
+          </div>
+        </div>
+
+        {/* Category & SKU */}
+        <div className="flex items-center gap-2 flex-wrap">
+          <span className="px-2.5 py-1 rounded-full text-xs font-medium bg-primary/10 text-primary border border-primary/20">
             {product.category}
           </span>
+          {product.sku && (
+            <span className="text-xs text-muted-foreground">
+              SKU: {product.sku}
+            </span>
+          )}
         </div>
 
         {/* Description */}
@@ -61,6 +96,9 @@ export function ProductCard({ product, onEdit, onDelete, index }: ProductCardPro
         {/* Unit */}
         <div className="flex items-center gap-2 text-sm text-muted-foreground">
           <span className="capitalize">{product.unit}</span>
+          {!product.is_taxable && (
+            <span className="text-xs px-2 py-0.5 bg-muted rounded">Non-taxable</span>
+          )}
         </div>
       </div>
 

@@ -1,4 +1,4 @@
-import { Package, Tag, TrendingUp, DollarSign } from "lucide-react";
+import { Package, Wrench, HardHat, DollarSign } from "lucide-react";
 import { Product } from "@/integrations/supabase/hooks/useProducts";
 
 interface ProductStatsProps {
@@ -6,33 +6,31 @@ interface ProductStatsProps {
 }
 
 export function ProductStats({ products }: ProductStatsProps) {
-  const totalProducts = products.length;
-  const uniqueCategories = new Set(products.map((p) => p.category)).size;
-  const avgMarkup = products.length > 0 
-    ? (products.reduce((sum, p) => sum + p.markup, 0) / products.length).toFixed(1)
-    : "0";
+  const productCount = products.filter((p) => p.item_type === "product").length;
+  const serviceCount = products.filter((p) => p.item_type === "service").length;
+  const laborCount = products.filter((p) => p.item_type === "labor").length;
   const highestPrice = products.length > 0
     ? Math.max(...products.map((p) => p.price))
     : 0;
 
   const stats = [
     {
-      label: "Total Products",
-      value: totalProducts,
+      label: "Products",
+      value: productCount,
       icon: Package,
-      color: "text-primary",
+      color: "text-blue-500",
     },
     {
-      label: "Categories",
-      value: uniqueCategories,
-      icon: Tag,
-      color: "text-primary",
+      label: "Services",
+      value: serviceCount,
+      icon: Wrench,
+      color: "text-purple-500",
     },
     {
-      label: "Avg Markup",
-      value: `${avgMarkup}%`,
-      icon: TrendingUp,
-      color: "text-warning",
+      label: "Labor",
+      value: laborCount,
+      icon: HardHat,
+      color: "text-orange-500",
     },
     {
       label: "Highest Price",
