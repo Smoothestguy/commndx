@@ -429,6 +429,7 @@ export type Database = {
           estimate_id: string
           id: string
           markup: number
+          pricing_type: string | null
           product_id: string | null
           quantity: number
           total: number
@@ -440,6 +441,7 @@ export type Database = {
           estimate_id: string
           id?: string
           markup: number
+          pricing_type?: string | null
           product_id?: string | null
           quantity: number
           total: number
@@ -451,6 +453,7 @@ export type Database = {
           estimate_id?: string
           id?: string
           markup?: number
+          pricing_type?: string | null
           product_id?: string | null
           quantity?: number
           total?: number
@@ -482,6 +485,7 @@ export type Database = {
           customer_approved: boolean | null
           customer_id: string
           customer_name: string
+          default_pricing_type: string | null
           id: string
           notes: string | null
           number: string
@@ -504,6 +508,7 @@ export type Database = {
           customer_approved?: boolean | null
           customer_id: string
           customer_name: string
+          default_pricing_type?: string | null
           id?: string
           notes?: string | null
           number: string
@@ -526,6 +531,7 @@ export type Database = {
           customer_approved?: boolean | null
           customer_id?: string
           customer_name?: string
+          default_pricing_type?: string | null
           id?: string
           notes?: string | null
           number?: string
