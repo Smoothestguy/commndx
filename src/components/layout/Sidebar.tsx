@@ -24,61 +24,21 @@ import {
   UserCheck,
 } from "lucide-react";
 const navigation = [
-  {
-    name: "Dashboard",
-    href: "/",
-    icon: LayoutDashboard,
-  },
-  {
-    name: "Products",
-    href: "/products",
-    icon: Package,
-  },
-  {
-    name: "Customers",
-    href: "/customers",
-    icon: Users,
-  },
-  {
-    name: "Projects",
-    href: "/projects",
-    icon: FolderKanban,
-  },
-  {
-    name: "Personnel",
-    href: "/personnel",
-    icon: UserCheck,
-  },
-  {
-    name: "Vendors",
-    href: "/vendors",
-    icon: Truck,
-  },
-  {
-    name: "Estimates",
-    href: "/estimates",
-    icon: FileText,
-  },
-  {
-    name: "Job Orders",
-    href: "/job-orders",
-    icon: Briefcase,
-  },
-  {
-    name: "Purchase Orders",
-    href: "/purchase-orders",
-    icon: ShoppingCart,
-  },
-  {
-    name: "Invoices",
-    href: "/invoices",
-    icon: Receipt,
-  },
-  {
-    name: "Time Tracking",
-    href: "/time-tracking",
-    icon: Clock,
-  },
+  { name: "Dashboard", href: "/", icon: LayoutDashboard },
+  { name: "Products", href: "/products", icon: Package },
+  { name: "Customers", href: "/customers", icon: Users },
+  { name: "Projects", href: "/projects", icon: FolderKanban },
+  { name: "Personnel", href: "/personnel", icon: UserCheck },
+  { name: "Vendors", href: "/vendors", icon: Truck },
+  { name: "Estimates", href: "/estimates", icon: FileText },
+  { name: "Job Orders", href: "/job-orders", icon: Briefcase },
+  { name: "Purchase Orders", href: "/purchase-orders", icon: ShoppingCart },
+  { name: "Invoices", href: "/invoices", icon: Receipt },
+];
+
+const staffingNavigation = [
+  { name: "Time Tracking", href: "/time-tracking", icon: Clock },
+  { name: "Project Assignments", href: "/project-assignments", icon: UserCog, requiresManager: true },
 ];
 export function Sidebar() {
   const location = useLocation();
@@ -127,30 +87,41 @@ export function Sidebar() {
             );
           })}
 
-          {(isAdmin || isManager) && (
-            <Link
-              to="/project-assignments"
-              className={cn(
-                "group flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-all duration-200",
-                location.pathname === "/project-assignments"
-                  ? "bg-primary/10 text-primary"
-                  : "text-muted-foreground hover:bg-sidebar-accent hover:text-foreground"
-              )}
-            >
-              <UserCog
-                className={cn(
-                  "h-5 w-5 transition-colors",
-                  location.pathname === "/project-assignments"
-                    ? "text-primary"
-                    : "text-muted-foreground group-hover:text-foreground"
-                )}
-              />
-              Project Assignments
-              {location.pathname === "/project-assignments" && (
-                <ChevronRight className="ml-auto h-4 w-4 text-primary" />
-              )}
-            </Link>
-          )}
+          {/* Staffing Section */}
+          <div className="mt-4 pt-4 border-t border-sidebar-border">
+            <div className="px-3 py-2 text-xs font-semibold text-muted-foreground uppercase tracking-wider">
+              Staffing
+            </div>
+            {staffingNavigation.map((item) => {
+              if (item.requiresManager && !isAdmin && !isManager) return null;
+              const isActive = location.pathname === item.href;
+              return (
+                <Link
+                  key={item.name}
+                  to={item.href}
+                  className={cn(
+                    "group flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-all duration-200",
+                    isActive
+                      ? "bg-primary/10 text-primary"
+                      : "text-muted-foreground hover:bg-sidebar-accent hover:text-foreground"
+                  )}
+                >
+                  <item.icon
+                    className={cn(
+                      "h-5 w-5 transition-colors",
+                      isActive
+                        ? "text-primary"
+                        : "text-muted-foreground group-hover:text-foreground"
+                    )}
+                  />
+                  {item.name}
+                  {isActive && (
+                    <ChevronRight className="ml-auto h-4 w-4 text-primary" />
+                  )}
+                </Link>
+              );
+            })}
+          </div>
         </nav>
 
         {/* Settings & Profile */}

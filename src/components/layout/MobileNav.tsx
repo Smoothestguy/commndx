@@ -20,6 +20,8 @@ import {
   LogOut,
   Shield,
   Menu,
+  Clock,
+  UserCog,
 } from "lucide-react";
 
 const navigation = [
@@ -34,12 +36,17 @@ const navigation = [
   { name: "Invoices", href: "/invoices", icon: Receipt },
 ];
 
+const staffingNavigation = [
+  { name: "Time Tracking", href: "/time-tracking", icon: Clock },
+  { name: "Project Assignments", href: "/project-assignments", icon: UserCog, requiresManager: true },
+];
+
 export function MobileNav() {
   const [open, setOpen] = useState(false);
   const location = useLocation();
   const navigate = useNavigate();
   const { signOut, user } = useAuth();
-  const { isAdmin } = useUserRole();
+  const { isAdmin, isManager } = useUserRole();
 
   const handleNavigation = (href: string) => {
     navigate(href);
@@ -90,6 +97,37 @@ export function MobileNav() {
                 </button>
               );
             })}
+
+            {/* Staffing Section */}
+            <div className="mt-4 pt-4 border-t border-sidebar-border">
+              <div className="px-4 py-2 text-xs font-semibold text-muted-foreground uppercase tracking-wider">
+                Staffing
+              </div>
+              {staffingNavigation.map((item) => {
+                if (item.requiresManager && !isAdmin && !isManager) return null;
+                const isActive = location.pathname === item.href;
+                return (
+                  <button
+                    key={item.name}
+                    onClick={() => handleNavigation(item.href)}
+                    className={cn(
+                      "w-full group flex items-center gap-3 rounded-lg px-4 py-3 text-base font-medium transition-all duration-200 min-h-[48px]",
+                      isActive
+                        ? "bg-primary/10 text-primary"
+                        : "text-muted-foreground hover:bg-sidebar-accent hover:text-foreground"
+                    )}
+                  >
+                    <item.icon
+                      className={cn(
+                        "h-6 w-6 transition-colors flex-shrink-0",
+                        isActive ? "text-primary" : "text-muted-foreground group-hover:text-foreground"
+                      )}
+                    />
+                    {item.name}
+                  </button>
+                );
+              })}
+            </div>
           </nav>
 
           {/* Settings & Profile */}
