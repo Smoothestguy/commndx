@@ -6,6 +6,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useToast } from "@/hooks/use-toast";
 import { Loader2, Mail, Lock, User, LogOut } from "lucide-react";
 import type { Database } from "@/integrations/supabase/types";
@@ -35,6 +36,7 @@ export default function AcceptInvitation() {
   const [firstName, setFirstName] = useState("");
   const [lastName, setLastName] = useState("");
   const [userEmail, setUserEmail] = useState<string | null>(null);
+  const [loginPassword, setLoginPassword] = useState("");
 
   useEffect(() => {
     if (!token) {
@@ -177,6 +179,88 @@ export default function AcceptInvitation() {
     }
   };
 
+  const handleLoginAndAccept = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!invitation) return;
+
+    setIsSubmitting(true);
+
+    try {
+      // Sign in with the invitation email
+      const { data, error } = await supabase.auth.signInWithPassword({
+        email: invitation.email,
+        password: loginPassword,
+      });
+
+      if (error) throw error;
+
+      if (!data.user) {
+        throw new Error("Failed to log in");
+      }
+
+      // After successful login, accept the invitation
+      // Update user's role
+      await supabase.from("user_roles").delete().eq("user_id", data.user.id);
+      
+      const { error: roleError } = await supabase
+        .from("user_roles")
+        .insert({ user_id: data.user.id, role: invitation.role });
+
+      if (roleError) throw roleError;
+
+      // Mark invitation as accepted
+      const { error: updateError } = await supabase
+        .from("invitations")
+        .update({ status: "accepted", used_at: new Date().toISOString() })
+        .eq("id", invitation.id);
+
+      if (updateError) throw updateError;
+
+      // Log accepted event
+      await supabase.from('invitation_activity_log').insert({
+        invitation_id: invitation.id,
+        action: 'accepted',
+        performed_by: data.user.id,
+        performed_by_email: data.user.email,
+        target_email: invitation.email,
+        target_role: invitation.role,
+        metadata: {
+          accepted_at: new Date().toISOString(),
+        },
+      });
+
+      // Notify admin
+      try {
+        await supabase.functions.invoke("notify-invitation-accepted", {
+          body: {
+            invitationId: invitation.id,
+            newUserEmail: invitation.email,
+            newUserName: data.user.email || "User",
+            role: invitation.role,
+          },
+        });
+      } catch (notifyError) {
+        console.error("Failed to send notification to admin:", notifyError);
+      }
+
+      toast({
+        title: "Invitation accepted!",
+        description: `Welcome back! Your role has been updated to ${invitation.role}.`,
+      });
+
+      navigate("/");
+    } catch (error: any) {
+      console.error("Error logging in:", error);
+      toast({
+        title: "Login failed",
+        description: error.message || "Failed to log in. Please check your password.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
   const handleAcceptInvitation = async (e: React.FormEvent) => {
     e.preventDefault();
 
@@ -220,7 +304,7 @@ export default function AcceptInvitation() {
         if (signUpError.message?.includes("already") || signUpError.message?.includes("registered")) {
           toast({
             title: "Account already exists",
-            description: "Please log in with your existing account to accept this invitation.",
+            description: "Please use the 'Existing Account' tab to log in.",
             variant: "destructive",
           });
           setIsSubmitting(false);
@@ -410,96 +494,137 @@ export default function AcceptInvitation() {
             <p className="text-sm text-muted-foreground mt-2">{invitation.email}</p>
           </div>
 
-          <form onSubmit={handleAcceptInvitation} className="space-y-4">
-            <div className="grid grid-cols-2 gap-4">
-              <div>
-                <Label htmlFor="firstName">First Name</Label>
-                <div className="relative mt-1.5">
-                  <User className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                  <Input
-                    id="firstName"
-                    value={firstName}
-                    onChange={(e) => setFirstName(e.target.value)}
-                    placeholder="John"
-                    className="pl-9"
-                    required
-                  />
+          <Tabs defaultValue="signup" className="w-full">
+            <TabsList className="grid w-full grid-cols-2">
+              <TabsTrigger value="signup">New Account</TabsTrigger>
+              <TabsTrigger value="login">Existing Account</TabsTrigger>
+            </TabsList>
+
+            <TabsContent value="signup" className="space-y-4">
+              <form onSubmit={handleAcceptInvitation} className="space-y-4">
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <Label htmlFor="firstName">First Name</Label>
+                    <div className="relative mt-1.5">
+                      <User className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                      <Input
+                        id="firstName"
+                        value={firstName}
+                        onChange={(e) => setFirstName(e.target.value)}
+                        placeholder="John"
+                        className="pl-9"
+                        required
+                      />
+                    </div>
+                  </div>
+                  <div>
+                    <Label htmlFor="lastName">Last Name</Label>
+                    <div className="relative mt-1.5">
+                      <User className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                      <Input
+                        id="lastName"
+                        value={lastName}
+                        onChange={(e) => setLastName(e.target.value)}
+                        placeholder="Doe"
+                        className="pl-9"
+                        required
+                      />
+                    </div>
+                  </div>
                 </div>
-              </div>
-              <div>
-                <Label htmlFor="lastName">Last Name</Label>
-                <div className="relative mt-1.5">
-                  <User className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                  <Input
-                    id="lastName"
-                    value={lastName}
-                    onChange={(e) => setLastName(e.target.value)}
-                    placeholder="Doe"
-                    className="pl-9"
-                    required
-                  />
+
+                <div>
+                  <Label htmlFor="email">Email</Label>
+                  <div className="relative mt-1.5">
+                    <Mail className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                    <Input
+                      id="email"
+                      type="email"
+                      value={invitation.email}
+                      disabled
+                      className="pl-9 bg-muted"
+                    />
+                  </div>
                 </div>
-              </div>
-            </div>
 
-            <div>
-              <Label htmlFor="email">Email</Label>
-              <div className="relative mt-1.5">
-                <Mail className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                <Input
-                  id="email"
-                  type="email"
-                  value={invitation.email}
-                  disabled
-                  className="pl-9 bg-muted"
-                />
-              </div>
-            </div>
+                <div>
+                  <Label htmlFor="password">Password</Label>
+                  <div className="relative mt-1.5">
+                    <Lock className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                    <Input
+                      id="password"
+                      type="password"
+                      value={password}
+                      onChange={(e) => setPassword(e.target.value)}
+                      placeholder="Create a password"
+                      className="pl-9"
+                      required
+                    />
+                  </div>
+                </div>
 
-            <div>
-              <Label htmlFor="password">Password</Label>
-              <div className="relative mt-1.5">
-                <Lock className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                <Input
-                  id="password"
-                  type="password"
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  placeholder="Create a password"
-                  className="pl-9"
-                  required
-                />
-              </div>
-            </div>
+                <div>
+                  <Label htmlFor="confirmPassword">Confirm Password</Label>
+                  <div className="relative mt-1.5">
+                    <Lock className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                    <Input
+                      id="confirmPassword"
+                      type="password"
+                      value={confirmPassword}
+                      onChange={(e) => setConfirmPassword(e.target.value)}
+                      placeholder="Confirm your password"
+                      className="pl-9"
+                      required
+                    />
+                  </div>
+                </div>
 
-            <div>
-              <Label htmlFor="confirmPassword">Confirm Password</Label>
-              <div className="relative mt-1.5">
-                <Lock className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                <Input
-                  id="confirmPassword"
-                  type="password"
-                  value={confirmPassword}
-                  onChange={(e) => setConfirmPassword(e.target.value)}
-                  placeholder="Confirm your password"
-                  className="pl-9"
-                  required
-                />
-              </div>
-            </div>
+                <Button type="submit" className="w-full" disabled={isSubmitting}>
+                  {isSubmitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                  Create Account & Accept Invitation
+                </Button>
+              </form>
+            </TabsContent>
 
-            <Button type="submit" className="w-full" disabled={isSubmitting}>
-              {isSubmitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-              Create Account & Accept Invitation
-            </Button>
-          </form>
+            <TabsContent value="login" className="space-y-4">
+              <form onSubmit={handleLoginAndAccept} className="space-y-4">
+                <div>
+                  <Label htmlFor="loginEmail">Email</Label>
+                  <div className="relative mt-1.5">
+                    <Mail className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                    <Input
+                      id="loginEmail"
+                      type="email"
+                      value={invitation.email}
+                      disabled
+                      className="pl-9 bg-muted"
+                    />
+                  </div>
+                </div>
 
-          <div className="mt-4 text-center text-sm">
-            <span className="text-muted-foreground">Already have an account? </span>
-            <Link to="/auth" className="text-primary hover:underline">
-              Log in
-            </Link>
-          </div>
+                <div>
+                  <Label htmlFor="loginPassword">Password</Label>
+                  <div className="relative mt-1.5">
+                    <Lock className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                    <Input
+                      id="loginPassword"
+                      type="password"
+                      value={loginPassword}
+                      onChange={(e) => setLoginPassword(e.target.value)}
+                      placeholder="Enter your password"
+                      className="pl-9"
+                      required
+                    />
+                  </div>
+                </div>
+
+                <Button type="submit" className="w-full" disabled={isSubmitting}>
+                  {isSubmitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                  Log In & Accept Invitation
+                </Button>
+              </form>
+            </TabsContent>
+          </Tabs>
         </CardContent>
       </Card>
     </div>
