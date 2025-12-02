@@ -39,6 +39,11 @@ export function TimeTrackingTable({ entries, onEdit }: TimeTrackingTableProps) {
       key: "personnel",
       header: "Personnel",
       render: (entry: TimeEntryWithDetails) => {
+        // If personnel_id exists, show personnel name (for entries logged for personnel)
+        if (entry.personnel_id && entry.personnel) {
+          return `${entry.personnel.first_name} ${entry.personnel.last_name}`;
+        }
+        // Otherwise show the profile (user who logged the entry)
         const profile = entry.profiles;
         if (profile?.first_name && profile?.last_name) {
           return `${profile.first_name} ${profile.last_name}`;
@@ -69,7 +74,8 @@ export function TimeTrackingTable({ entries, onEdit }: TimeTrackingTableProps) {
       key: "cost",
       header: "Cost",
       render: (entry: TimeEntryWithDetails) => {
-        const hourlyRate = entry.profiles?.hourly_rate || 0;
+        // Use personnel hourly rate if available, otherwise profile rate
+        const hourlyRate = entry.personnel?.hourly_rate || entry.profiles?.hourly_rate || 0;
         const cost = Number(entry.hours) * Number(hourlyRate);
         return `$${cost.toFixed(2)}`;
       },

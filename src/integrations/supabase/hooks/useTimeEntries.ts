@@ -20,10 +20,16 @@ export interface TimeEntry {
 }
 
 export interface TimeEntryWithDetails extends TimeEntry {
+  personnel_id?: string | null;
   profiles?: {
     first_name: string | null;
     last_name: string | null;
     email: string | null;
+    hourly_rate: number | null;
+  } | null;
+  personnel?: {
+    first_name: string;
+    last_name: string;
     hourly_rate: number | null;
   } | null;
   projects?: {
@@ -251,6 +257,7 @@ export const useAllTimeEntries = (projectFilter?: string, personnelFilter?: stri
         .select(`
           *,
           profiles:user_id(first_name, last_name, email, hourly_rate),
+          personnel:personnel_id(first_name, last_name, hourly_rate),
           projects:project_id(
             name,
             customers:customer_id(name)
