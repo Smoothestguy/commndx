@@ -1,23 +1,25 @@
 import { useState } from "react";
 import { PageLayout } from "@/components/layout/PageLayout";
 import { Button } from "@/components/ui/button";
-import { Plus, Table, Calendar as CalendarIcon } from "lucide-react";
+import { Plus } from "lucide-react";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { TimeTrackingStats } from "@/components/time-tracking/TimeTrackingStats";
 import { TimeTrackingFilters } from "@/components/time-tracking/TimeTrackingFilters";
 import { TimeTrackingTable } from "@/components/time-tracking/TimeTrackingTable";
-import { TimeEntryForm } from "@/components/time-tracking/TimeEntryForm";
+import { EnhancedTimeEntryForm } from "@/components/time-tracking/EnhancedTimeEntryForm";
 import { WeeklyTimesheet } from "@/components/time-tracking/WeeklyTimesheet";
+import { WeekNavigator } from "@/components/time-tracking/WeekNavigator";
+import { ProjectAssignmentsSection } from "@/components/time-tracking/ProjectAssignmentsSection";
 import { useAllTimeEntries, useTimeEntries, TimeEntryWithDetails } from "@/integrations/supabase/hooks/useTimeEntries";
 import { useUserRole } from "@/hooks/useUserRole";
 import { SEO } from "@/components/SEO";
-import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 
 export default function TimeTracking() {
   const [projectFilter, setProjectFilter] = useState<string>();
   const [personnelFilter, setPersonnelFilter] = useState<string>();
   const [formOpen, setFormOpen] = useState(false);
-  const [weeklySheetOpen, setWeeklySheetOpen] = useState(false);
   const [selectedEntry, setSelectedEntry] = useState<TimeEntryWithDetails | undefined>();
+  const [weeklyViewWeek, setWeeklyViewWeek] = useState(() => new Date());
   
   const { isAdmin, isManager } = useUserRole();
   const showAllEntries = isAdmin || isManager;
@@ -66,21 +68,7 @@ export default function TimeTracking() {
       
       <div className="space-y-6">
         {/* Header Actions */}
-        <div className="flex flex-wrap gap-3 justify-end">
-          <Button
-            variant="outline"
-            onClick={() => setWeeklySheetOpen(true)}
-          >
-            <Table className="h-4 w-4 mr-2" />
-            Weekly Timesheet
-          </Button>
-          <Button
-            variant="outline"
-            onClick={() => setWeeklySheetOpen(true)}
-          >
-            <CalendarIcon className="h-4 w-4 mr-2" />
-            Weekly Entry
-          </Button>
+        <div className="flex justify-end">
           <Button onClick={() => setFormOpen(true)}>
             <Plus className="h-4 w-4 mr-2" />
             Log Time
@@ -90,35 +78,48 @@ export default function TimeTracking() {
         {/* Stats */}
         <TimeTrackingStats entries={entries} />
 
-        {/* Filters */}
-        <TimeTrackingFilters
-          projectFilter={projectFilter}
-          personnelFilter={personnelFilter}
-          onProjectChange={handleProjectChange}
-          onPersonnelChange={handlePersonnelChange}
-        />
+        {/* Tabs */}
+        <Tabs defaultValue="entries" className="w-full">
+          <TabsList className="grid w-full grid-cols-3 lg:w-[400px]">
+            <TabsTrigger value="entries">Time Entries</TabsTrigger>
+            <TabsTrigger value="weekly">Weekly View</TabsTrigger>
+            <TabsTrigger value="assignments">My Assignments</TabsTrigger>
+          </TabsList>
 
-        {/* Table */}
-        <TimeTrackingTable entries={entries} onEdit={handleEdit} />
+          <TabsContent value="entries" className="space-y-4 mt-4">
+            {/* Filters */}
+            <TimeTrackingFilters
+              projectFilter={projectFilter}
+              personnelFilter={personnelFilter}
+              onProjectChange={handleProjectChange}
+              onPersonnelChange={handlePersonnelChange}
+            />
 
-        {/* Time Entry Form Dialog */}
-        <TimeEntryForm
+            {/* Table */}
+            <TimeTrackingTable entries={entries} onEdit={handleEdit} />
+          </TabsContent>
+
+          <TabsContent value="weekly" className="space-y-4 mt-4">
+            {/* Week Navigator */}
+            <div className="flex justify-center">
+              <WeekNavigator currentWeek={weeklyViewWeek} onWeekChange={setWeeklyViewWeek} />
+            </div>
+            
+            {/* Weekly Timesheet */}
+            <WeeklyTimesheet currentWeek={weeklyViewWeek} />
+          </TabsContent>
+
+          <TabsContent value="assignments" className="mt-4">
+            <ProjectAssignmentsSection />
+          </TabsContent>
+        </Tabs>
+
+        {/* Enhanced Time Entry Form Dialog */}
+        <EnhancedTimeEntryForm
           open={formOpen}
           onOpenChange={handleCloseForm}
           entry={selectedEntry}
         />
-
-        {/* Weekly Timesheet Sheet */}
-        <Sheet open={weeklySheetOpen} onOpenChange={setWeeklySheetOpen}>
-          <SheetContent side="right" className="w-full sm:max-w-4xl overflow-y-auto">
-            <SheetHeader>
-              <SheetTitle>Weekly Timesheet</SheetTitle>
-            </SheetHeader>
-            <div className="mt-6">
-              <WeeklyTimesheet currentWeek={new Date()} />
-            </div>
-          </SheetContent>
-        </Sheet>
       </div>
     </PageLayout>
   );

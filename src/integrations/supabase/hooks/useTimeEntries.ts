@@ -276,3 +276,44 @@ export const useAllTimeEntries = (projectFilter?: string, personnelFilter?: stri
     },
   });
 };
+
+// Bulk add/update time entries (for weekly entry)
+export const useBulkAddTimeEntries = () => {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async (entries: TimeEntryInsert[]) => {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) throw new Error("Not authenticated");
+
+      // Filter out entries with 0 or no hours
+      const validEntries = entries
+        .filter(e => e.hours && e.hours > 0)
+        .map(entry => ({ ...entry, user_id: user.id }));
+
+      if (validEntries.length === 0) {
+        throw new Error("No valid entries to save");
+      }
+
+      // Use upsert to update existing entries or insert new ones
+      const { data, error } = await supabase
+        .from("time_entries")
+        .upsert(validEntries, { 
+          onConflict: 'user_id,project_id,entry_date',
+          ignoreDuplicates: false 
+        })
+        .select();
+
+      if (error) throw error;
+      return data;
+    },
+    onSuccess: (data) => {
+      queryClient.invalidateQueries({ queryKey: ["time-entries"] });
+      queryClient.invalidateQueries({ queryKey: ["all-time-entries"] });
+      toast.success(`${data.length} time entries saved successfully`);
+    },
+    onError: (error: any) => {
+      toast.error(error.message || "Failed to save time entries");
+    },
+  });
+};
