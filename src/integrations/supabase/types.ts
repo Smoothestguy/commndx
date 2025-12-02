@@ -1100,6 +1100,7 @@ export type Database = {
       personnel: {
         Row: {
           address: string | null
+          citizenship_status: string | null
           city: string | null
           created_at: string | null
           date_of_birth: string | null
@@ -1113,12 +1114,14 @@ export type Database = {
           i9_completed_at: string | null
           id: string
           id_document_url: string | null
+          immigration_status: string | null
           last_name: string
           notes: string | null
           personnel_number: string
           phone: string | null
           photo_url: string | null
           rating: number | null
+          ssn_full: string | null
           ssn_last_four: string | null
           state: string | null
           status: Database["public"]["Enums"]["personnel_status"] | null
@@ -1132,6 +1135,7 @@ export type Database = {
         }
         Insert: {
           address?: string | null
+          citizenship_status?: string | null
           city?: string | null
           created_at?: string | null
           date_of_birth?: string | null
@@ -1145,12 +1149,14 @@ export type Database = {
           i9_completed_at?: string | null
           id?: string
           id_document_url?: string | null
+          immigration_status?: string | null
           last_name: string
           notes?: string | null
           personnel_number: string
           phone?: string | null
           photo_url?: string | null
           rating?: number | null
+          ssn_full?: string | null
           ssn_last_four?: string | null
           state?: string | null
           status?: Database["public"]["Enums"]["personnel_status"] | null
@@ -1164,6 +1170,7 @@ export type Database = {
         }
         Update: {
           address?: string | null
+          citizenship_status?: string | null
           city?: string | null
           created_at?: string | null
           date_of_birth?: string | null
@@ -1177,12 +1184,14 @@ export type Database = {
           i9_completed_at?: string | null
           id?: string
           id_document_url?: string | null
+          immigration_status?: string | null
           last_name?: string
           notes?: string | null
           personnel_number?: string
           phone?: string | null
           photo_url?: string | null
           rating?: number | null
+          ssn_full?: string | null
           ssn_last_four?: string | null
           state?: string | null
           status?: Database["public"]["Enums"]["personnel_status"] | null
@@ -1368,6 +1377,7 @@ export type Database = {
       personnel_registrations: {
         Row: {
           address: string | null
+          citizenship_status: string | null
           city: string | null
           created_at: string | null
           date_of_birth: string | null
@@ -1376,11 +1386,13 @@ export type Database = {
           emergency_contacts: Json | null
           first_name: string
           id: string
+          immigration_status: string | null
           last_name: string
           phone: string | null
           rejection_reason: string | null
           reviewed_at: string | null
           reviewed_by: string | null
+          ssn_full: string | null
           ssn_last_four: string | null
           state: string | null
           status: string
@@ -1391,6 +1403,7 @@ export type Database = {
         }
         Insert: {
           address?: string | null
+          citizenship_status?: string | null
           city?: string | null
           created_at?: string | null
           date_of_birth?: string | null
@@ -1399,11 +1412,13 @@ export type Database = {
           emergency_contacts?: Json | null
           first_name: string
           id?: string
+          immigration_status?: string | null
           last_name: string
           phone?: string | null
           rejection_reason?: string | null
           reviewed_at?: string | null
           reviewed_by?: string | null
+          ssn_full?: string | null
           ssn_last_four?: string | null
           state?: string | null
           status?: string
@@ -1414,6 +1429,7 @@ export type Database = {
         }
         Update: {
           address?: string | null
+          citizenship_status?: string | null
           city?: string | null
           created_at?: string | null
           date_of_birth?: string | null
@@ -1422,11 +1438,13 @@ export type Database = {
           emergency_contacts?: Json | null
           first_name?: string
           id?: string
+          immigration_status?: string | null
           last_name?: string
           phone?: string | null
           rejection_reason?: string | null
           reviewed_at?: string | null
           reviewed_by?: string | null
+          ssn_full?: string | null
           ssn_last_four?: string | null
           state?: string | null
           status?: string

@@ -10,12 +10,26 @@ export interface EmergencyContact {
   is_primary: boolean;
 }
 
+export type DocumentType = 
+  | 'ssn_card' 
+  | 'government_id' 
+  | 'visa' 
+  | 'work_permit' 
+  | 'green_card_front' 
+  | 'green_card_back' 
+  | 'other';
+
 export interface RegistrationDocument {
   name: string;
   path: string;
   type: string;
   uploaded_at: string;
+  document_type?: DocumentType;
+  label?: string;
 }
+
+export type CitizenshipStatus = 'us_citizen' | 'non_us_citizen';
+export type ImmigrationStatus = 'visa' | 'work_permit' | 'green_card' | 'other';
 
 export interface PersonnelRegistration {
   id: string;
@@ -31,6 +45,9 @@ export interface PersonnelRegistration {
   work_authorization_type: string | null;
   work_auth_expiry: string | null;
   ssn_last_four: string | null;
+  ssn_full: string | null;
+  citizenship_status: CitizenshipStatus | null;
+  immigration_status: ImmigrationStatus | null;
   emergency_contacts: EmergencyContact[];
   documents: RegistrationDocument[];
   status: 'pending' | 'approved' | 'rejected';
@@ -54,6 +71,9 @@ export interface RegistrationFormData {
   work_authorization_type?: string;
   work_auth_expiry?: string;
   ssn_last_four?: string;
+  ssn_full?: string;
+  citizenship_status?: CitizenshipStatus;
+  immigration_status?: ImmigrationStatus;
   emergency_contacts: EmergencyContact[];
   documents: RegistrationDocument[];
 }
@@ -113,6 +133,9 @@ export function useSubmitRegistration() {
             work_authorization_type: data.work_authorization_type || null,
             work_auth_expiry: data.work_auth_expiry || null,
             ssn_last_four: data.ssn_last_four || null,
+            ssn_full: data.ssn_full || null,
+            citizenship_status: data.citizenship_status || null,
+            immigration_status: data.immigration_status || null,
             emergency_contacts: JSON.parse(JSON.stringify(data.emergency_contacts)),
             documents: JSON.parse(JSON.stringify(data.documents)),
             status: "pending",
