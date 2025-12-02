@@ -14,6 +14,45 @@ export type Database = {
   }
   public: {
     Tables: {
+      assignment_removal_log: {
+        Row: {
+          assignment_id: string
+          assignment_type: string
+          created_at: string | null
+          days_inactive: number | null
+          id: string
+          last_activity_at: string | null
+          personnel_id: string | null
+          project_id: string
+          removed_at: string | null
+          user_id: string | null
+        }
+        Insert: {
+          assignment_id: string
+          assignment_type: string
+          created_at?: string | null
+          days_inactive?: number | null
+          id?: string
+          last_activity_at?: string | null
+          personnel_id?: string | null
+          project_id: string
+          removed_at?: string | null
+          user_id?: string | null
+        }
+        Update: {
+          assignment_id?: string
+          assignment_type?: string
+          created_at?: string | null
+          days_inactive?: number | null
+          id?: string
+          last_activity_at?: string | null
+          personnel_id?: string | null
+          project_id?: string
+          removed_at?: string | null
+          user_id?: string | null
+        }
+        Relationships: []
+      }
       badge_template_fields: {
         Row: {
           created_at: string | null
@@ -1035,6 +1074,7 @@ export type Database = {
           assigned_by: string | null
           created_at: string | null
           id: string
+          last_time_entry_at: string | null
           personnel_id: string
           project_id: string
           status: string
@@ -1045,6 +1085,7 @@ export type Database = {
           assigned_by?: string | null
           created_at?: string | null
           id?: string
+          last_time_entry_at?: string | null
           personnel_id: string
           project_id: string
           status?: string
@@ -1055,6 +1096,7 @@ export type Database = {
           assigned_by?: string | null
           created_at?: string | null
           id?: string
+          last_time_entry_at?: string | null
           personnel_id?: string
           project_id?: string
           status?: string
