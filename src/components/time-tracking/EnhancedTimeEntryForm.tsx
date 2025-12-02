@@ -46,6 +46,7 @@ import {
 import {
   useAssignedProjects,
   useAddTimeEntry,
+  useUpdateTimeEntry,
   useBulkAddTimeEntries,
   useBulkAddPersonnelTimeEntries,
   calculateOvertimeHours,
@@ -120,6 +121,7 @@ export function EnhancedTimeEntryForm({
   const { data: projects = [] } = useAssignedProjects();
   const { data: companySettings } = useCompanySettings();
   const addTimeEntry = useAddTimeEntry();
+  const updateTimeEntry = useUpdateTimeEntry();
   const bulkAddTimeEntries = useBulkAddTimeEntries();
   const bulkAddPersonnelTimeEntries = useBulkAddPersonnelTimeEntries();
 
@@ -298,6 +300,22 @@ export function EnhancedTimeEntryForm({
   const handleDailySubmit = async (values: z.infer<typeof dailyFormSchema>) => {
     try {
       const { project_id, entry_date, hours, description, billable, is_holiday } = values;
+      
+      // If editing an existing entry, use update instead of insert
+      if (entry) {
+        await updateTimeEntry.mutateAsync({
+          id: entry.id,
+          project_id,
+          entry_date,
+          hours,
+          description: description || null,
+          billable,
+          is_holiday,
+        });
+        onOpenChange(false);
+        form.reset();
+        return;
+      }
       
       // If personnel are selected, create entries for each using personnel hook
       if (selectedPersonnel.size > 0) {
