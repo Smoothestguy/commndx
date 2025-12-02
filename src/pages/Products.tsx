@@ -266,6 +266,7 @@ const Products = () => {
 
               {/* Filters */}
               <ProductFilters
+                products={products || []}
                 categories={uniqueCategories}
                 selectedCategory={selectedCategory}
                 onCategoryChange={setSelectedCategory}
