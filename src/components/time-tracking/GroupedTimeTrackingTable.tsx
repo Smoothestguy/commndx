@@ -215,6 +215,18 @@ export function GroupedTimeTrackingTable({
     return selectedCount > 0 && selectedCount < group.entries.length;
   };
 
+  // Select All logic
+  const allSelected = entries.length > 0 && entries.every(e => selectedIds.has(e.id));
+  const someSelected = entries.some(e => selectedIds.has(e.id)) && !allSelected;
+
+  const handleSelectAll = (checked: boolean) => {
+    if (checked) {
+      setSelectedIds(new Set(entries.map(e => e.id)));
+    } else {
+      setSelectedIds(new Set());
+    }
+  };
+
   const handleConfirmDelete = () => {
     if (onBulkDelete && selectedIds.size > 0) {
       onBulkDelete(Array.from(selectedIds));
@@ -244,6 +256,27 @@ export function GroupedTimeTrackingTable({
       )}
 
       <div className="space-y-3">
+        {/* Select All Header */}
+        {onBulkDelete && groupedEntries.length > 0 && (
+          <div className="glass rounded-xl border border-border/50 p-3">
+            <div className="flex items-center gap-3">
+              <Checkbox
+                checked={allSelected}
+                ref={(el) => {
+                  if (el) {
+                    (el as HTMLButtonElement & { indeterminate: boolean }).indeterminate = someSelected;
+                  }
+                }}
+                onCheckedChange={(checked) => handleSelectAll(!!checked)}
+                aria-label="Select all entries"
+              />
+              <span className="text-sm font-medium">
+                Select All ({entries.length} {entries.length === 1 ? "entry" : "entries"})
+              </span>
+            </div>
+          </div>
+        )}
+
         {groupedEntries.map((group) => (
           <Collapsible
             key={group.personnelKey}
