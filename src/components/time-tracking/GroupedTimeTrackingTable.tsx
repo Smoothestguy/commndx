@@ -73,6 +73,7 @@ export function GroupedTimeTrackingTable({
   const { data: companySettings } = useCompanySettings();
   const overtimeMultiplier = companySettings?.overtime_multiplier ?? 1.5;
   const holidayMultiplier = companySettings?.holiday_multiplier ?? 1.5;
+  const weeklyOvertimeThreshold = companySettings?.weekly_overtime_threshold ?? 40;
 
   const getPersonnelName = (entry: TimeEntryWithDetails) => {
     if (entry.personnel_id && entry.personnel) {
@@ -142,24 +143,36 @@ export function GroupedTimeTrackingTable({
 
       const group = groups.get(personnelKey)!;
       group.totalHours += Number(entry.hours);
-      group.regularHours += Number(entry.regular_hours || entry.hours);
-      group.overtimeHours += Number(entry.overtime_hours || 0);
       if (entry.is_holiday) {
         group.holidayHours += Number(entry.hours);
       }
-      group.totalCost += getEntryCost(entry);
       group.entries.push(entry);
     });
 
-    // Sort entries within each group by date (newest first)
+    // Calculate weekly overtime for each group (hours over threshold)
     groups.forEach((group) => {
+      // Calculate weekly overtime based on total hours vs threshold
+      group.regularHours = Math.min(group.totalHours, weeklyOvertimeThreshold);
+      group.overtimeHours = Math.max(0, group.totalHours - weeklyOvertimeThreshold);
+      
+      // Recalculate total cost with weekly overtime
+      const hourlyRate = group.entries[0] ? getHourlyRate(group.entries[0]) : 0;
+      const regularCost = group.regularHours * hourlyRate;
+      const overtimeCost = group.overtimeHours * hourlyRate * overtimeMultiplier;
+      
+      // Add holiday multiplier for holiday hours
+      const holidayBonus = group.holidayHours * hourlyRate * (holidayMultiplier - 1);
+      
+      group.totalCost = regularCost + overtimeCost + holidayBonus;
+      
+      // Sort entries within each group by date (newest first)
       group.entries.sort((a, b) => 
         new Date(b.entry_date).getTime() - new Date(a.entry_date).getTime()
       );
     });
 
     return Array.from(groups.values());
-  }, [entries, overtimeMultiplier, holidayMultiplier]);
+  }, [entries, overtimeMultiplier, holidayMultiplier, weeklyOvertimeThreshold]);
 
   const toggleGroup = (key: string) => {
     const newExpanded = new Set(expandedGroups);
