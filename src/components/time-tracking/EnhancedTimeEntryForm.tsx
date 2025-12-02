@@ -31,7 +31,6 @@ import { Button } from "@/components/ui/button";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Label } from "@/components/ui/label";
 import { WeekNavigator } from "./WeekNavigator";
-import { useJobOrders } from "@/integrations/supabase/hooks/useJobOrders";
 import {
   useAssignedProjects,
   useAddTimeEntry,
@@ -44,7 +43,6 @@ import { format, addDays, startOfWeek } from "date-fns";
 
 const dailyFormSchema = z.object({
   project_id: z.string().min(1, "Project is required"),
-  job_order_id: z.string().optional(),
   entry_date: z.string().min(1, "Date is required"),
   hours: z.coerce.number().min(0.01, "Hours must be greater than 0").max(24, "Hours cannot exceed 24"),
   description: z.string().optional(),
@@ -79,12 +77,10 @@ export function EnhancedTimeEntryForm({
   const [currentWeek, setCurrentWeek] = useState(() => new Date());
   const [weeklyHours, setWeeklyHours] = useState<WeeklyHours>({});
   const [weeklyProjectId, setWeeklyProjectId] = useState("");
-  const [weeklyJobOrderId, setWeeklyJobOrderId] = useState("");
   const [weeklyDescription, setWeeklyDescription] = useState("");
   const [weeklyBillable, setWeeklyBillable] = useState(true);
 
   const { data: projects = [] } = useAssignedProjects();
-  const { data: jobOrders } = useJobOrders();
   const { data: companySettings } = useCompanySettings();
   const addTimeEntry = useAddTimeEntry();
   const bulkAddTimeEntries = useBulkAddTimeEntries();
@@ -95,7 +91,6 @@ export function EnhancedTimeEntryForm({
     resolver: zodResolver(dailyFormSchema),
     defaultValues: {
       project_id: defaultProjectId || "",
-      job_order_id: "",
       entry_date: defaultDate || format(new Date(), "yyyy-MM-dd"),
       hours: 0,
       description: "",
@@ -122,7 +117,6 @@ export function EnhancedTimeEntryForm({
     if (entry) {
       form.reset({
         project_id: entry.project_id,
-        job_order_id: entry.job_order_id || "",
         entry_date: entry.entry_date,
         hours: Number(entry.hours),
         description: entry.description || "",
@@ -132,7 +126,6 @@ export function EnhancedTimeEntryForm({
     } else {
       form.reset({
         project_id: defaultProjectId || "",
-        job_order_id: "",
         entry_date: defaultDate || format(new Date(), "yyyy-MM-dd"),
         hours: 0,
         description: "",
@@ -151,7 +144,6 @@ export function EnhancedTimeEntryForm({
     if (open && !entry) {
       setWeeklyHours({});
       setWeeklyProjectId("");
-      setWeeklyJobOrderId("");
       setWeeklyDescription("");
       setWeeklyBillable(true);
     }
@@ -187,7 +179,6 @@ export function EnhancedTimeEntryForm({
         const dateKey = format(day, "yyyy-MM-dd");
         return {
           project_id: weeklyProjectId,
-          job_order_id: weeklyJobOrderId || undefined,
           entry_date: dateKey,
           hours: weeklyHours[dateKey],
           description: weeklyDescription || undefined,
@@ -215,9 +206,6 @@ export function EnhancedTimeEntryForm({
       [date]: hours,
     }));
   };
-
-  const selectedProject = entryType === "daily" ? form.watch("project_id") : weeklyProjectId;
-  const filteredJobOrders = jobOrders?.filter((jo) => jo.project_id === selectedProject);
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -287,31 +275,6 @@ export function EnhancedTimeEntryForm({
                         {projects?.map((project) => (
                           <SelectItem key={project.id} value={project.id}>
                             {project.name}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-
-              <FormField
-                control={form.control}
-                name="job_order_id"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Job Order (Optional)</FormLabel>
-                    <Select onValueChange={field.onChange} value={field.value}>
-                      <FormControl>
-                        <SelectTrigger>
-                          <SelectValue placeholder="Select a job order" />
-                        </SelectTrigger>
-                      </FormControl>
-                      <SelectContent>
-                        {filteredJobOrders?.map((jo) => (
-                          <SelectItem key={jo.id} value={jo.id}>
-                            {jo.number}
                           </SelectItem>
                         ))}
                       </SelectContent>
@@ -411,23 +374,6 @@ export function EnhancedTimeEntryForm({
               </Select>
             </div>
 
-            {/* Job Order Selection */}
-            <div className="space-y-2">
-              <Label>Job Order (Optional)</Label>
-              <Select value={weeklyJobOrderId} onValueChange={setWeeklyJobOrderId}>
-                <SelectTrigger>
-                  <SelectValue placeholder="Select a job order" />
-                </SelectTrigger>
-                <SelectContent>
-                  {filteredJobOrders?.map((jo) => (
-                    <SelectItem key={jo.id} value={jo.id}>
-                      {jo.number}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-
             {/* Daily Hours Input */}
             <div className="space-y-3">
               <Label>Hours per Day</Label>
@@ -503,11 +449,12 @@ export function EnhancedTimeEntryForm({
                 Cancel
               </Button>
               <Button
+                type="button"
                 onClick={handleWeeklySubmit}
                 className="flex-1"
                 disabled={!weeklyProjectId || weeklyTotals.total === 0 || bulkAddTimeEntries.isPending}
               >
-                Save Week ({Object.values(weeklyHours).filter(h => h > 0).length} entries)
+                Save Week
               </Button>
             </div>
           </div>

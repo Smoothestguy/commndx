@@ -8,7 +8,6 @@ export interface TimeEntry {
   id: string;
   user_id: string;
   project_id: string;
-  job_order_id?: string | null;
   entry_date: string;
   hours: number;
   regular_hours?: number | null;
@@ -37,7 +36,6 @@ export interface TimeEntryWithDetails extends TimeEntry {
 
 export interface TimeEntryInsert {
   project_id: string;
-  job_order_id?: string | null;
   entry_date: string;
   hours: number;
   regular_hours?: number;

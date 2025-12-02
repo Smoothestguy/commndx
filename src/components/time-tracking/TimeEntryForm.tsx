@@ -28,7 +28,6 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Switch } from "@/components/ui/switch";
 import { Button } from "@/components/ui/button";
-import { useJobOrders } from "@/integrations/supabase/hooks/useJobOrders";
 import { useAssignedProjects, useExistingDailyHours } from "@/integrations/supabase/hooks/useTimeEntries";
 import {
   TimeEntry,
@@ -41,7 +40,6 @@ import { format } from "date-fns";
 
 const formSchema = z.object({
   project_id: z.string().min(1, "Project is required"),
-  job_order_id: z.string().optional(),
   entry_date: z.string().min(1, "Date is required"),
   hours: z.coerce.number().min(0.01, "Hours must be greater than 0").max(24, "Hours cannot exceed 24"),
   description: z.string().optional(),
@@ -64,7 +62,6 @@ export function TimeEntryForm({
   defaultProjectId,
 }: TimeEntryFormProps) {
   const { data: projects = [] } = useAssignedProjects();
-  const { data: jobOrders } = useJobOrders();
   const { data: companySettings } = useCompanySettings();
   const addTimeEntry = useAddTimeEntry();
   const updateTimeEntry = useUpdateTimeEntry();
@@ -77,7 +74,6 @@ export function TimeEntryForm({
     resolver: zodResolver(formSchema),
     defaultValues: {
       project_id: defaultProjectId || "",
-      job_order_id: "",
       entry_date: defaultDate || format(new Date(), "yyyy-MM-dd"),
       hours: 0,
       description: "",
@@ -113,7 +109,6 @@ export function TimeEntryForm({
     if (entry) {
       form.reset({
         project_id: entry.project_id,
-        job_order_id: entry.job_order_id || "",
         entry_date: entry.entry_date,
         hours: Number(entry.hours),
         description: entry.description || "",
@@ -122,7 +117,6 @@ export function TimeEntryForm({
     } else {
       form.reset({
         project_id: defaultProjectId || "",
-        job_order_id: "",
         entry_date: defaultDate || format(new Date(), "yyyy-MM-dd"),
         hours: 0,
         description: "",
@@ -166,9 +160,6 @@ export function TimeEntryForm({
     }
   };
 
-  const selectedProject = form.watch("project_id");
-  const filteredJobOrders = jobOrders?.filter((jo) => jo.project_id === selectedProject);
-
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-[500px]">
@@ -208,31 +199,6 @@ export function TimeEntryForm({
                       {projects?.map((project) => (
                         <SelectItem key={project.id} value={project.id}>
                           {project.name}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-
-            <FormField
-              control={form.control}
-              name="job_order_id"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Job Order (Optional)</FormLabel>
-                  <Select onValueChange={field.onChange} value={field.value}>
-                    <FormControl>
-                      <SelectTrigger>
-                        <SelectValue placeholder="Select a job order" />
-                      </SelectTrigger>
-                    </FormControl>
-                    <SelectContent>
-                      {filteredJobOrders?.map((jo) => (
-                        <SelectItem key={jo.id} value={jo.id}>
-                          {jo.number}
                         </SelectItem>
                       ))}
                     </SelectContent>
