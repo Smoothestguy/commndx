@@ -2,7 +2,7 @@ import { useState, useEffect, useMemo } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
-import { Clock, AlertCircle, Calendar, CalendarDays, Users, UserPlus, UserCheck } from "lucide-react";
+import { Clock, AlertCircle, Calendar, CalendarDays, Users, UserPlus, UserCheck, Gift, AlertTriangle } from "lucide-react";
 import {
   Dialog,
   DialogContent,
@@ -31,6 +31,7 @@ import { Button } from "@/components/ui/button";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Label } from "@/components/ui/label";
 import { Checkbox } from "@/components/ui/checkbox";
+import { Badge } from "@/components/ui/badge";
 import { WeekNavigator } from "./WeekNavigator";
 import { QuickAddPersonnelDialog } from "./QuickAddPersonnelDialog";
 import { PersonnelAssignmentDialog } from "./PersonnelAssignmentDialog";
@@ -47,6 +48,7 @@ import {
   useAddTimeEntry,
   useBulkAddTimeEntries,
   useBulkAddPersonnelTimeEntries,
+  calculateOvertimeHours,
   TimeEntry,
   TimeEntryInsert,
   PersonnelTimeEntryInsert,
@@ -62,6 +64,7 @@ const dailyFormSchema = z.object({
   hours: z.coerce.number().min(0.01, "Hours must be greater than 0").max(24, "Hours cannot exceed 24"),
   description: z.string().optional(),
   billable: z.boolean().default(true),
+  is_holiday: z.boolean().default(false),
 });
 
 interface EnhancedTimeEntryFormProps {
@@ -81,6 +84,11 @@ interface WeeklyHours {
 // Per-personnel hours: key = `${personnelId}_${dateKey}`
 interface PersonnelHours {
   [key: string]: number;
+}
+
+// Holiday days: key = dateKey, value = boolean
+interface HolidayDays {
+  [key: string]: boolean;
 }
 
 export function EnhancedTimeEntryForm({
@@ -106,6 +114,8 @@ export function EnhancedTimeEntryForm({
   // New states for per-personnel hours and template
   const [personnelHours, setPersonnelHours] = useState<PersonnelHours>({});
   const [templateHours, setTemplateHours] = useState<WeeklyHours>({});
+  // Holiday tracking for weekly mode
+  const [holidayDays, setHolidayDays] = useState<HolidayDays>({});
 
   const { data: projects = [] } = useAssignedProjects();
   const { data: companySettings } = useCompanySettings();
@@ -115,6 +125,9 @@ export function EnhancedTimeEntryForm({
 
   const overtimeThreshold = companySettings?.overtime_threshold ?? 8;
 
+  const overtimeMultiplier = companySettings?.overtime_multiplier ?? 1.5;
+  const holidayMultiplier = companySettings?.holiday_multiplier ?? 1.5;
+
   const form = useForm<z.infer<typeof dailyFormSchema>>({
     resolver: zodResolver(dailyFormSchema),
     defaultValues: {
@@ -123,8 +136,13 @@ export function EnhancedTimeEntryForm({
       hours: 0,
       description: "",
       billable: true,
+      is_holiday: false,
     },
   });
+
+  // Watch hours for overtime preview
+  const watchedHours = form.watch("hours");
+  const watchedIsHoliday = form.watch("is_holiday");
 
   // Get current project ID based on entry type
   const currentProjectId = entryType === "daily" ? form.watch("project_id") : weeklyProjectId;
@@ -209,6 +227,7 @@ export function EnhancedTimeEntryForm({
         hours: Number(entry.hours),
         description: entry.description || "",
         billable: entry.billable,
+        is_holiday: entry.is_holiday || false,
       });
       setEntryType("daily");
     } else {
@@ -218,6 +237,7 @@ export function EnhancedTimeEntryForm({
         hours: 0,
         description: "",
         billable: true,
+        is_holiday: false,
       });
     }
   }, [entry, defaultDate, defaultProjectId, form]);
@@ -237,6 +257,7 @@ export function EnhancedTimeEntryForm({
       setSelectedPersonnel(new Set());
       setPersonnelHours({});
       setTemplateHours({});
+      setHolidayDays({});
     }
   }, [open, entry]);
 
@@ -278,7 +299,7 @@ export function EnhancedTimeEntryForm({
 
   const handleDailySubmit = async (values: z.infer<typeof dailyFormSchema>) => {
     try {
-      const { project_id, entry_date, hours, description, billable } = values;
+      const { project_id, entry_date, hours, description, billable, is_holiday } = values;
       
       // If personnel are selected, create entries for each using personnel hook
       if (selectedPersonnel.size > 0) {
@@ -288,6 +309,7 @@ export function EnhancedTimeEntryForm({
           hours,
           personnel_id: personnelId,
           description: description || undefined,
+          is_holiday,
         }));
         await bulkAddPersonnelTimeEntries.mutateAsync(entries);
       } else {
@@ -298,6 +320,7 @@ export function EnhancedTimeEntryForm({
           hours,
           description,
           billable,
+          is_holiday,
         });
       }
       
@@ -329,6 +352,7 @@ export function EnhancedTimeEntryForm({
               hours,
               personnel_id: personnelId,
               description: weeklyDescription || undefined,
+              is_holiday: holidayDays[dateKey] || false,
             });
           }
         });
@@ -343,6 +367,7 @@ export function EnhancedTimeEntryForm({
         onOpenChange(false);
         setPersonnelHours({});
         setSelectedPersonnel(new Set());
+        setHolidayDays({});
       } catch (error) {
         console.error("Failed to save weekly entries:", error);
       }
@@ -365,6 +390,7 @@ export function EnhancedTimeEntryForm({
           hours: weeklyHours[dateKey],
           description: weeklyDescription || undefined,
           billable: weeklyBillable,
+          is_holiday: holidayDays[dateKey] || false,
         };
       });
 
@@ -372,6 +398,7 @@ export function EnhancedTimeEntryForm({
         await bulkAddTimeEntries.mutateAsync(entries);
         onOpenChange(false);
         setWeeklyHours({});
+        setHolidayDays({});
       } catch (error) {
         console.error("Failed to save weekly entries:", error);
       }
@@ -847,20 +874,70 @@ export function EnhancedTimeEntryForm({
                   )}
                 />
 
-                <FormField
-                  control={form.control}
-                  name="billable"
-                  render={({ field }) => (
-                    <FormItem className="flex items-center justify-between rounded-lg border p-3">
-                      <div className="space-y-0.5">
-                        <FormLabel>Billable</FormLabel>
-                      </div>
-                      <FormControl>
-                        <Switch checked={field.value} onCheckedChange={field.onChange} />
-                      </FormControl>
-                    </FormItem>
-                  )}
-                />
+                {/* Overtime Preview */}
+                {watchedHours > 0 && (
+                  <div className="rounded-lg border p-3 bg-muted/30 space-y-2">
+                    <div className="flex items-center gap-2 text-sm font-medium">
+                      <Clock className="h-4 w-4" />
+                      Hours Breakdown
+                    </div>
+                    {(() => {
+                      const { regularHours, overtimeHours } = calculateOvertimeHours(watchedHours, overtimeThreshold);
+                      return (
+                        <div className="grid grid-cols-2 gap-2 text-sm">
+                          <div className="flex items-center justify-between">
+                            <span className="text-muted-foreground">Regular:</span>
+                            <span className="font-medium">{regularHours.toFixed(2)}h</span>
+                          </div>
+                          {overtimeHours > 0 && (
+                            <div className="flex items-center justify-between">
+                              <span className="text-orange-500 flex items-center gap-1">
+                                <AlertTriangle className="h-3 w-3" />
+                                Overtime:
+                              </span>
+                              <span className="font-medium text-orange-500">+{overtimeHours.toFixed(2)}h</span>
+                            </div>
+                          )}
+                        </div>
+                      );
+                    })()}
+                  </div>
+                )}
+
+                <div className="grid grid-cols-2 gap-3">
+                  <FormField
+                    control={form.control}
+                    name="billable"
+                    render={({ field }) => (
+                      <FormItem className="flex items-center justify-between rounded-lg border p-3">
+                        <div className="space-y-0.5">
+                          <FormLabel>Billable</FormLabel>
+                        </div>
+                        <FormControl>
+                          <Switch checked={field.value} onCheckedChange={field.onChange} />
+                        </FormControl>
+                      </FormItem>
+                    )}
+                  />
+
+                  <FormField
+                    control={form.control}
+                    name="is_holiday"
+                    render={({ field }) => (
+                      <FormItem className="flex items-center justify-between rounded-lg border p-3 bg-purple-500/5 border-purple-500/20">
+                        <div className="space-y-0.5">
+                          <FormLabel className="flex items-center gap-1">
+                            <Gift className="h-4 w-4 text-purple-500" />
+                            Holiday
+                          </FormLabel>
+                        </div>
+                        <FormControl>
+                          <Switch checked={field.value} onCheckedChange={field.onChange} />
+                        </FormControl>
+                      </FormItem>
+                    )}
+                  />
+                </div>
 
                 <div className="flex gap-2">
                   <Button

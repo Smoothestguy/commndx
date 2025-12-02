@@ -1,12 +1,18 @@
 import { Card } from "@/components/ui/card";
-import { Clock, DollarSign, FileText, AlertCircle } from "lucide-react";
+import { Clock, DollarSign, FileText, AlertCircle, Gift } from "lucide-react";
 import { TimeEntryWithDetails } from "@/integrations/supabase/hooks/useTimeEntries";
+import { useCompanySettings } from "@/integrations/supabase/hooks/useCompanySettings";
 
 interface TimeTrackingStatsProps {
   entries: TimeEntryWithDetails[];
 }
 
 export function TimeTrackingStats({ entries }: TimeTrackingStatsProps) {
+  const { data: companySettings } = useCompanySettings();
+  
+  const overtimeMultiplier = companySettings?.overtime_multiplier ?? 1.5;
+  const holidayMultiplier = companySettings?.holiday_multiplier ?? 1.5;
+
   const totalHours = entries.reduce((sum, entry) => sum + Number(entry.hours), 0);
   
   const regularHours = entries.reduce(
@@ -18,10 +24,29 @@ export function TimeTrackingStats({ entries }: TimeTrackingStatsProps) {
     (sum, entry) => sum + Number(entry.overtime_hours || 0),
     0
   );
+
+  const holidayHours = entries
+    .filter((entry) => entry.is_holiday)
+    .reduce((sum, entry) => sum + Number(entry.hours), 0);
   
+  // Calculate total cost with proper multipliers
   const totalCost = entries.reduce((sum, entry) => {
-    const hourlyRate = entry.profiles?.hourly_rate || 0;
-    return sum + (Number(entry.hours) * Number(hourlyRate));
+    const hourlyRate = entry.personnel?.hourly_rate || entry.profiles?.hourly_rate || 0;
+    const regular = Number(entry.regular_hours || entry.hours);
+    const overtime = Number(entry.overtime_hours || 0);
+    const isHoliday = entry.is_holiday;
+    
+    // Calculate base costs
+    let regularCost = regular * hourlyRate;
+    let overtimeCost = overtime * hourlyRate * overtimeMultiplier;
+    
+    // Apply holiday multiplier if applicable
+    if (isHoliday) {
+      regularCost *= holidayMultiplier;
+      overtimeCost *= holidayMultiplier;
+    }
+    
+    return sum + regularCost + overtimeCost;
   }, 0);
   
   const uninvoicedHours = entries
@@ -50,27 +75,27 @@ export function TimeTrackingStats({ entries }: TimeTrackingStatsProps) {
       color: "text-orange-500",
     },
     {
+      label: "Holiday Hours",
+      value: holidayHours.toFixed(2),
+      icon: Gift,
+      color: "text-purple-500",
+    },
+    {
       label: "Total Cost",
       value: `$${totalCost.toFixed(2)}`,
       icon: DollarSign,
       color: "text-success",
     },
     {
-      label: "Uninvoiced Hours",
+      label: "Uninvoiced",
       value: uninvoicedHours.toFixed(2),
-      icon: AlertCircle,
-      color: "text-warning",
-    },
-    {
-      label: "Entries",
-      value: entryCount.toString(),
       icon: FileText,
-      color: "text-accent",
+      color: "text-warning",
     },
   ];
 
   return (
-    <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+    <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
       {stats.map((stat) => {
         const Icon = stat.icon;
         return (
@@ -80,8 +105,8 @@ export function TimeTrackingStats({ entries }: TimeTrackingStatsProps) {
                 <Icon className="h-5 w-5" />
               </div>
               <div>
-                <p className="text-sm text-muted-foreground">{stat.label}</p>
-                <p className="text-2xl font-bold">{stat.value}</p>
+                <p className="text-xs text-muted-foreground">{stat.label}</p>
+                <p className="text-xl font-bold">{stat.value}</p>
               </div>
             </div>
           </Card>
