@@ -55,7 +55,7 @@ export const EstimateForm = () => {
 
   const [selectedCustomerId, setSelectedCustomerId] = useState<string>("");
   const [selectedProjectId, setSelectedProjectId] = useState<string>("");
-  const [taxRate, setTaxRate] = useState<string>("8.5");
+  const [taxRate, setTaxRate] = useState<string>("8.25");
   const [validUntil, setValidUntil] = useState<string>("");
   const [notes, setNotes] = useState<string>("");
   const [status, setStatus] = useState<"draft" | "pending" | "sent" | "approved">("draft");
