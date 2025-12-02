@@ -8,9 +8,11 @@ import { useProjects } from "@/integrations/supabase/hooks/useProjects";
 import { usePersonnelByProject } from "@/integrations/supabase/hooks/usePersonnelProjectAssignments";
 import { useBulkAddPersonnelTimeEntries } from "@/integrations/supabase/hooks/useTimeEntries";
 import { toast } from "sonner";
-import { Users, ChevronDown, ChevronRight } from "lucide-react";
+import { Users, ChevronDown, ChevronRight, UserPlus, UserCheck } from "lucide-react";
 import { startOfWeek, format } from "date-fns";
 import { supabase } from "@/integrations/supabase/client";
+import { QuickAddPersonnelDialog } from "./QuickAddPersonnelDialog";
+import { PersonnelAssignmentDialog } from "./PersonnelAssignmentDialog";
 
 interface BulkTimeEntryFormProps {
   open: boolean;
@@ -30,9 +32,11 @@ export function BulkTimeEntryForm({ open, onOpenChange }: BulkTimeEntryFormProps
   const [personnelHours, setPersonnelHours] = useState<Map<string, PersonnelHours>>(new Map());
   const [expandedPersonnel, setExpandedPersonnel] = useState<Set<string>>(new Set());
   const [initialized, setInitialized] = useState(false);
+  const [quickAddOpen, setQuickAddOpen] = useState(false);
+  const [assignExistingOpen, setAssignExistingOpen] = useState(false);
 
   const { data: projects = [] } = useProjects();
-  const { data: assignedPersonnel = [], isLoading: loadingPersonnel } = usePersonnelByProject(selectedProject);
+  const { data: assignedPersonnel = [], isLoading: loadingPersonnel, refetch: refetchPersonnel } = usePersonnelByProject(selectedProject);
   const bulkAddMutation = useBulkAddPersonnelTimeEntries();
 
   const activeProjects = useMemo(() => 
@@ -305,42 +309,86 @@ export function BulkTimeEntryForm({ open, onOpenChange }: BulkTimeEntryFormProps
                 Select a project first
               </div>
             ) : assignedPersonnel.length === 0 ? (
-              <div className="py-4 text-center text-muted-foreground">
-                No personnel assigned to this project
+              <div className="py-6 text-center border rounded-lg bg-secondary/30">
+                <p className="text-muted-foreground mb-3">No personnel assigned to this project</p>
+                <div className="flex justify-center gap-2">
+                  <Button 
+                    type="button" 
+                    variant="outline" 
+                    size="sm"
+                    onClick={() => setQuickAddOpen(true)}
+                  >
+                    <UserPlus className="h-4 w-4 mr-1" />
+                    Add New Personnel
+                  </Button>
+                  <Button 
+                    type="button" 
+                    variant="outline" 
+                    size="sm"
+                    onClick={() => setAssignExistingOpen(true)}
+                  >
+                    <UserCheck className="h-4 w-4 mr-1" />
+                    Assign Existing
+                  </Button>
+                </div>
               </div>
             ) : (
-              <div className="grid grid-cols-2 gap-2 max-h-32 overflow-y-auto p-2 border rounded-lg">
-                {assignedPersonnel.map((assignment) => {
-                  const person = assignment.personnel;
-                  if (!person) return null;
-                  const selected = personnelHours.get(person.id)?.selected || false;
-                  return (
-                    <div
-                      key={person.id}
-                      className={`flex items-center gap-2 p-2 rounded cursor-pointer transition-colors ${
-                        selected ? "bg-primary/20" : "hover:bg-secondary"
-                      }`}
-                      onClick={() => togglePersonnel(person.id)}
-                    >
-                      <span
-                        className={`flex h-4 w-4 items-center justify-center rounded border text-[10px] font-bold ${
-                          selected
-                            ? "border-primary bg-primary text-primary-foreground"
-                            : "border-muted-foreground/40 text-transparent"
+              <>
+                <div className="grid grid-cols-2 gap-2 max-h-32 overflow-y-auto p-2 border rounded-lg">
+                  {assignedPersonnel.map((assignment) => {
+                    const person = assignment.personnel;
+                    if (!person) return null;
+                    const selected = personnelHours.get(person.id)?.selected || false;
+                    return (
+                      <div
+                        key={person.id}
+                        className={`flex items-center gap-2 p-2 rounded cursor-pointer transition-colors ${
+                          selected ? "bg-primary/20" : "hover:bg-secondary"
                         }`}
+                        onClick={() => togglePersonnel(person.id)}
                       >
-                        ✓
-                      </span>
-                      <span className="text-sm truncate">
-                        {person.first_name} {person.last_name}
-                      </span>
-                      <span className="text-xs text-muted-foreground ml-auto">
-                        ${person.hourly_rate || 0}/hr
-                      </span>
-                    </div>
-                  );
-                })}
-              </div>
+                        <span
+                          className={`flex h-4 w-4 items-center justify-center rounded border text-[10px] font-bold ${
+                            selected
+                              ? "border-primary bg-primary text-primary-foreground"
+                              : "border-muted-foreground/40 text-transparent"
+                          }`}
+                        >
+                          ✓
+                        </span>
+                        <span className="text-sm truncate">
+                          {person.first_name} {person.last_name}
+                        </span>
+                        <span className="text-xs text-muted-foreground ml-auto">
+                          ${person.hourly_rate || 0}/hr
+                        </span>
+                      </div>
+                    );
+                  })}
+                </div>
+                <div className="flex gap-2 mt-2">
+                  <Button 
+                    type="button" 
+                    variant="ghost" 
+                    size="sm"
+                    className="text-xs"
+                    onClick={() => setQuickAddOpen(true)}
+                  >
+                    <UserPlus className="h-3 w-3 mr-1" />
+                    Add New
+                  </Button>
+                  <Button 
+                    type="button" 
+                    variant="ghost" 
+                    size="sm"
+                    className="text-xs"
+                    onClick={() => setAssignExistingOpen(true)}
+                  >
+                    <UserCheck className="h-3 w-3 mr-1" />
+                    Assign Existing
+                  </Button>
+                </div>
+              </>
             )}
           </div>
 
@@ -458,6 +506,29 @@ export function BulkTimeEntryForm({ open, onOpenChange }: BulkTimeEntryFormProps
           </div>
         </form>
       </DialogContent>
+
+      {/* Quick Add Personnel Dialog */}
+      <QuickAddPersonnelDialog
+        open={quickAddOpen}
+        onOpenChange={setQuickAddOpen}
+        projectId={selectedProject}
+        projectName={activeProjects.find(p => p.id === selectedProject)?.name}
+        onSuccess={() => {
+          setInitialized(false);
+          refetchPersonnel();
+        }}
+      />
+
+      {/* Assign Existing Personnel Dialog */}
+      <PersonnelAssignmentDialog
+        open={assignExistingOpen}
+        onOpenChange={setAssignExistingOpen}
+        defaultProjectId={selectedProject}
+        onAssignmentChange={() => {
+          setInitialized(false);
+          refetchPersonnel();
+        }}
+      />
     </Dialog>
   );
 }
