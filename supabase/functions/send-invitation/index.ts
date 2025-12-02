@@ -96,7 +96,7 @@ Deno.serve(async (req: Request) => {
     const invitationUrl = `${siteUrl}/accept-invitation?token=${token}`;
 
     const emailResponse = await resend.emails.send({
-      from: "Command X <onboarding@resend.dev>",
+      from: "COMMNDX <no-reply@commndx.com>",
       to: [email],
       subject: `You've been invited to join Command X as ${role}`,
       html: `
