@@ -1,8 +1,10 @@
+import { useEffect } from "react";
 import { X, Package, Wrench, HardHat } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { ItemType } from "@/integrations/supabase/hooks/useProducts";
+import { ItemType, Product } from "@/integrations/supabase/hooks/useProducts";
 
 interface ProductFiltersProps {
+  products: Product[];
   categories: string[];
   selectedCategory: string;
   onCategoryChange: (category: string) => void;
@@ -18,12 +20,25 @@ const typeOptions: { value: ItemType | ""; label: string; icon: typeof Package }
 ];
 
 export function ProductFilters({
+  products,
   categories,
   selectedCategory,
   onCategoryChange,
   selectedType,
   onTypeChange,
 }: ProductFiltersProps) {
+  // Filter categories based on selected type
+  const filteredCategories = selectedType
+    ? Array.from(new Set(products.filter(p => p.item_type === selectedType).map(p => p.category)))
+    : categories;
+
+  // Auto-reset category if it doesn't exist in filtered list
+  useEffect(() => {
+    if (selectedCategory && !filteredCategories.includes(selectedCategory)) {
+      onCategoryChange("");
+    }
+  }, [selectedType, filteredCategories, selectedCategory, onCategoryChange]);
+
   return (
     <div className="space-y-4 mb-6">
       {/* Type Filter */}
@@ -59,7 +74,7 @@ export function ProductFilters({
         >
           All Categories
         </button>
-        {categories.map((category) => (
+        {filteredCategories.map((category) => (
           <button
             key={category}
             onClick={() => onCategoryChange(category)}
