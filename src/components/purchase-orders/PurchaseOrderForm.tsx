@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -12,8 +12,8 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Plus, Trash2, Loader2, AlertCircle } from "lucide-react";
-import { useJobOrders } from "@/integrations/supabase/hooks/useJobOrders";
+import { Plus, Trash2, Loader2, AlertCircle, Info } from "lucide-react";
+import { useJobOrders, useJobOrder } from "@/integrations/supabase/hooks/useJobOrders";
 import { useVendors } from "@/integrations/supabase/hooks/useVendors";
 import { useAddPurchaseOrder } from "@/integrations/supabase/hooks/usePurchaseOrders";
 import { useAuth } from "@/contexts/AuthContext";
@@ -45,9 +45,13 @@ interface LineItem {
 
 export const PurchaseOrderForm = () => {
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+  const jobOrderIdFromUrl = searchParams.get("jobOrderId");
+  
   const { user } = useAuth();
   const { data: jobOrders, isLoading: jobOrdersLoading } = useJobOrders();
   const { data: vendors, isLoading: vendorsLoading } = useVendors();
+  const { data: prefillJobOrder, isLoading: prefillLoading } = useJobOrder(jobOrderIdFromUrl || "");
   const addPurchaseOrder = useAddPurchaseOrder();
 
   const [selectedJobOrderId, setSelectedJobOrderId] = useState<string>("");
@@ -55,6 +59,7 @@ export const PurchaseOrderForm = () => {
   const [taxRate, setTaxRate] = useState<string>("8.5");
   const [dueDate, setDueDate] = useState<string>("");
   const [notes, setNotes] = useState<string>("");
+  const [isPrefilled, setIsPrefilled] = useState(false);
 
   const [lineItems, setLineItems] = useState<LineItem[]>([
     { description: "", quantity: "1", unit_price: "", margin: "0", total: 0 },
@@ -206,7 +211,39 @@ export const PurchaseOrderForm = () => {
     setDueDate(date.toISOString().split("T")[0]);
   }, []);
 
-  if (jobOrdersLoading || vendorsLoading) {
+  // Auto-populate from job order when navigating from job order detail
+  useEffect(() => {
+    if (prefillJobOrder && jobOrderIdFromUrl && !isPrefilled) {
+      // Set job order selection
+      setSelectedJobOrderId(prefillJobOrder.id);
+      
+      // Set tax rate from job order
+      setTaxRate(prefillJobOrder.tax_rate.toString());
+      
+      // Map job order line items to purchase order line items
+      if (prefillJobOrder.line_items && prefillJobOrder.line_items.length > 0) {
+        const mappedLineItems: LineItem[] = prefillJobOrder.line_items.map((item) => {
+          const total = calculateLineItemTotal(
+            item.quantity.toString(),
+            item.unit_price.toString(),
+            (item.markup || 0).toString()
+          );
+          return {
+            description: item.description,
+            quantity: item.quantity.toString(),
+            unit_price: item.unit_price.toString(),
+            margin: (item.markup || 0).toString(),
+            total,
+          };
+        });
+        setLineItems(mappedLineItems);
+      }
+      
+      setIsPrefilled(true);
+    }
+  }, [prefillJobOrder, jobOrderIdFromUrl, isPrefilled]);
+
+  if (jobOrdersLoading || vendorsLoading || (jobOrderIdFromUrl && prefillLoading)) {
     return (
       <div className="flex justify-center py-12">
         <Loader2 className="h-8 w-8 animate-spin text-primary" />
@@ -216,6 +253,17 @@ export const PurchaseOrderForm = () => {
 
   return (
     <form onSubmit={handleSubmit} className="space-y-6">
+      {/* Info Alert about Prefill */}
+      {isPrefilled && prefillJobOrder && (
+        <Alert className="border-primary/50 bg-primary/5">
+          <Info className="h-4 w-4 text-primary" />
+          <AlertDescription>
+            This purchase order is linked to Job Order <strong>{prefillJobOrder.number}</strong>. 
+            Line items have been pre-filled from the job order. You can edit them as needed.
+          </AlertDescription>
+        </Alert>
+      )}
+
       {/* Info Alert */}
       <Alert>
         <AlertCircle className="h-4 w-4" />
