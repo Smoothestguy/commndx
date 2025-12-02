@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { PageLayout } from "@/components/layout/PageLayout";
 import { Button } from "@/components/ui/button";
-import { Plus } from "lucide-react";
+import { Plus, Users } from "lucide-react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { TimeTrackingStats } from "@/components/time-tracking/TimeTrackingStats";
 import { TimeTrackingFilters } from "@/components/time-tracking/TimeTrackingFilters";
@@ -10,6 +10,8 @@ import { EnhancedTimeEntryForm } from "@/components/time-tracking/EnhancedTimeEn
 import { WeeklyTimesheet } from "@/components/time-tracking/WeeklyTimesheet";
 import { WeekNavigator } from "@/components/time-tracking/WeekNavigator";
 import { ProjectAssignmentsSection } from "@/components/time-tracking/ProjectAssignmentsSection";
+import { BulkTimeEntryForm } from "@/components/time-tracking/BulkTimeEntryForm";
+import { PersonnelAssignmentDialog } from "@/components/time-tracking/PersonnelAssignmentDialog";
 import { useAllTimeEntries, useTimeEntries, TimeEntryWithDetails } from "@/integrations/supabase/hooks/useTimeEntries";
 import { useUserRole } from "@/hooks/useUserRole";
 import { SEO } from "@/components/SEO";
@@ -18,10 +20,13 @@ export default function TimeTracking() {
   const [projectFilter, setProjectFilter] = useState<string>();
   const [personnelFilter, setPersonnelFilter] = useState<string>();
   const [formOpen, setFormOpen] = useState(false);
+  const [bulkFormOpen, setBulkFormOpen] = useState(false);
+  const [assignmentDialogOpen, setAssignmentDialogOpen] = useState(false);
   const [selectedEntry, setSelectedEntry] = useState<TimeEntryWithDetails | undefined>();
   const [weeklyViewWeek, setWeeklyViewWeek] = useState(() => new Date());
   
   const { isAdmin, isManager } = useUserRole();
+  const canManageTeam = isAdmin || isManager;
   const showAllEntries = isAdmin || isManager;
 
   // Fetch data based on role
@@ -68,7 +73,19 @@ export default function TimeTracking() {
       
       <div className="space-y-6">
         {/* Header Actions */}
-        <div className="flex justify-end">
+        <div className="flex justify-end gap-2">
+          {canManageTeam && (
+            <>
+              <Button variant="outline" onClick={() => setAssignmentDialogOpen(true)}>
+                <Users className="h-4 w-4 mr-2" />
+                Manage Personnel
+              </Button>
+              <Button variant="secondary" onClick={() => setBulkFormOpen(true)}>
+                <Users className="h-4 w-4 mr-2" />
+                Log Team Time
+              </Button>
+            </>
+          )}
           <Button onClick={() => setFormOpen(true)}>
             <Plus className="h-4 w-4 mr-2" />
             Log Time
@@ -120,6 +137,20 @@ export default function TimeTracking() {
           onOpenChange={handleCloseForm}
           entry={selectedEntry}
         />
+
+        {/* Bulk Time Entry Form for Admins/Managers */}
+        {canManageTeam && (
+          <>
+            <BulkTimeEntryForm
+              open={bulkFormOpen}
+              onOpenChange={setBulkFormOpen}
+            />
+            <PersonnelAssignmentDialog
+              open={assignmentDialogOpen}
+              onOpenChange={setAssignmentDialogOpen}
+            />
+          </>
+        )}
       </div>
     </PageLayout>
   );

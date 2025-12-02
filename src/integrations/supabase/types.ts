@@ -1029,6 +1029,61 @@ export type Database = {
           },
         ]
       }
+      personnel_project_assignments: {
+        Row: {
+          assigned_at: string
+          assigned_by: string | null
+          created_at: string | null
+          id: string
+          personnel_id: string
+          project_id: string
+          status: string
+          updated_at: string | null
+        }
+        Insert: {
+          assigned_at?: string
+          assigned_by?: string | null
+          created_at?: string | null
+          id?: string
+          personnel_id: string
+          project_id: string
+          status?: string
+          updated_at?: string | null
+        }
+        Update: {
+          assigned_at?: string
+          assigned_by?: string | null
+          created_at?: string | null
+          id?: string
+          personnel_id?: string
+          project_id?: string
+          status?: string
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "personnel_project_assignments_assigned_by_fkey"
+            columns: ["assigned_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "personnel_project_assignments_personnel_id_fkey"
+            columns: ["personnel_id"]
+            isOneToOne: false
+            referencedRelation: "personnel"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "personnel_project_assignments_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "projects"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       po_line_items: {
         Row: {
           created_at: string
@@ -1364,6 +1419,7 @@ export type Database = {
           invoiced_at: string | null
           job_order_id: string | null
           overtime_hours: number | null
+          personnel_id: string | null
           project_id: string
           regular_hours: number | null
           status: string | null
@@ -1381,6 +1437,7 @@ export type Database = {
           invoiced_at?: string | null
           job_order_id?: string | null
           overtime_hours?: number | null
+          personnel_id?: string | null
           project_id: string
           regular_hours?: number | null
           status?: string | null
@@ -1398,6 +1455,7 @@ export type Database = {
           invoiced_at?: string | null
           job_order_id?: string | null
           overtime_hours?: number | null
+          personnel_id?: string | null
           project_id?: string
           regular_hours?: number | null
           status?: string | null
@@ -1417,6 +1475,13 @@ export type Database = {
             columns: ["job_order_id"]
             isOneToOne: false
             referencedRelation: "job_orders"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "time_entries_personnel_id_fkey"
+            columns: ["personnel_id"]
+            isOneToOne: false
+            referencedRelation: "personnel"
             referencedColumns: ["id"]
           },
           {

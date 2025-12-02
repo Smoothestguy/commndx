@@ -317,3 +317,54 @@ export const useBulkAddTimeEntries = () => {
     },
   });
 };
+
+// Bulk add time entries for personnel (admin/manager use)
+export interface PersonnelTimeEntryInsert {
+  personnel_id: string;
+  project_id: string;
+  entry_date: string;
+  hours: number;
+  regular_hours?: number;
+  overtime_hours?: number;
+  description?: string | null;
+}
+
+export const useBulkAddPersonnelTimeEntries = () => {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async (entries: PersonnelTimeEntryInsert[]) => {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) throw new Error("Not authenticated");
+
+      // Filter out entries with 0 or no hours
+      const validEntries = entries
+        .filter(e => e.hours && e.hours > 0)
+        .map(entry => ({ 
+          ...entry, 
+          user_id: user.id, // The user who logged this entry
+          billable: true,
+        }));
+
+      if (validEntries.length === 0) {
+        throw new Error("No valid entries to save");
+      }
+
+      const { data, error } = await supabase
+        .from("time_entries")
+        .insert(validEntries)
+        .select();
+
+      if (error) throw error;
+      return data;
+    },
+    onSuccess: (data) => {
+      queryClient.invalidateQueries({ queryKey: ["time-entries"] });
+      queryClient.invalidateQueries({ queryKey: ["all-time-entries"] });
+      toast.success(`Logged time for ${data.length} personnel`);
+    },
+    onError: (error: any) => {
+      toast.error(error.message || "Failed to log time entries");
+    },
+  });
+};
