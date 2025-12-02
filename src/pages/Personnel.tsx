@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Plus, Upload, Download, CheckSquare, XSquare, Printer } from "lucide-react";
+import { Plus, Upload, Download, CheckSquare, XSquare, Printer, Link, Copy } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import {
@@ -17,10 +17,14 @@ import { PersonnelEmptyState } from "@/components/personnel/PersonnelEmptyState"
 import { PersonnelForm } from "@/components/personnel/PersonnelForm";
 import { PersonnelImportDialog } from "@/components/personnel/PersonnelImportDialog";
 import { BulkBadgeGenerator } from "@/components/badges/BulkBadgeGenerator";
+import { PendingRegistrations } from "@/components/personnel/PendingRegistrations";
 import { usePersonnel } from "@/integrations/supabase/hooks/usePersonnel";
+import { usePendingRegistrationsCount } from "@/integrations/supabase/hooks/usePersonnelRegistrations";
 import { generateSampleCSV, downloadCSV } from "@/utils/csvPersonnelParser";
 import { Loader2 } from "lucide-react";
 import { toast } from "sonner";
+import { Badge } from "@/components/ui/badge";
+import { useUserRole } from "@/hooks/useUserRole";
 
 const Personnel = () => {
   const [search, setSearch] = useState("");
@@ -31,6 +35,17 @@ const Personnel = () => {
   const [bulkBadgeDialogOpen, setBulkBadgeDialogOpen] = useState(false);
   const [selectionMode, setSelectionMode] = useState(false);
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
+
+  const { isAdmin, isManager } = useUserRole();
+  const { data: pendingCount } = usePendingRegistrationsCount();
+  const canManage = isAdmin || isManager;
+
+  const registrationUrl = `${window.location.origin}/personnel/register`;
+
+  const handleCopyRegistrationLink = () => {
+    navigator.clipboard.writeText(registrationUrl);
+    toast.success("Registration link copied to clipboard");
+  };
 
   const handleDownloadTemplate = () => {
     const csv = generateSampleCSV();
@@ -80,6 +95,9 @@ const Personnel = () => {
       <div className="space-y-6">
         <PersonnelStats />
 
+        {/* Pending Registrations */}
+        {canManage && <PendingRegistrations />}
+
         <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
           <PersonnelFilters
             search={search}
@@ -116,11 +134,18 @@ const Personnel = () => {
                       <Download className="mr-2 h-4 w-4" />
                       Download Template
                     </DropdownMenuItem>
+                    <DropdownMenuItem onClick={handleCopyRegistrationLink}>
+                      <Link className="mr-2 h-4 w-4" />
+                      Copy Registration Link
+                    </DropdownMenuItem>
                   </DropdownMenuContent>
                 </DropdownMenu>
                 <Button onClick={() => setAddDialogOpen(true)} className="w-full sm:w-auto">
                   <Plus className="mr-2 h-4 w-4" />
                   Add Personnel
+                  {pendingCount && pendingCount > 0 && (
+                    <Badge variant="secondary" className="ml-2">{pendingCount}</Badge>
+                  )}
                 </Button>
               </>
             ) : (

@@ -1365,6 +1365,78 @@ export type Database = {
           },
         ]
       }
+      personnel_registrations: {
+        Row: {
+          address: string | null
+          city: string | null
+          created_at: string | null
+          date_of_birth: string | null
+          documents: Json | null
+          email: string
+          emergency_contacts: Json | null
+          first_name: string
+          id: string
+          last_name: string
+          phone: string | null
+          rejection_reason: string | null
+          reviewed_at: string | null
+          reviewed_by: string | null
+          ssn_last_four: string | null
+          state: string | null
+          status: string
+          updated_at: string | null
+          work_auth_expiry: string | null
+          work_authorization_type: string | null
+          zip: string | null
+        }
+        Insert: {
+          address?: string | null
+          city?: string | null
+          created_at?: string | null
+          date_of_birth?: string | null
+          documents?: Json | null
+          email: string
+          emergency_contacts?: Json | null
+          first_name: string
+          id?: string
+          last_name: string
+          phone?: string | null
+          rejection_reason?: string | null
+          reviewed_at?: string | null
+          reviewed_by?: string | null
+          ssn_last_four?: string | null
+          state?: string | null
+          status?: string
+          updated_at?: string | null
+          work_auth_expiry?: string | null
+          work_authorization_type?: string | null
+          zip?: string | null
+        }
+        Update: {
+          address?: string | null
+          city?: string | null
+          created_at?: string | null
+          date_of_birth?: string | null
+          documents?: Json | null
+          email?: string
+          emergency_contacts?: Json | null
+          first_name?: string
+          id?: string
+          last_name?: string
+          phone?: string | null
+          rejection_reason?: string | null
+          reviewed_at?: string | null
+          reviewed_by?: string | null
+          ssn_last_four?: string | null
+          state?: string | null
+          status?: string
+          updated_at?: string | null
+          work_auth_expiry?: string | null
+          work_authorization_type?: string | null
+          zip?: string | null
+        }
+        Relationships: []
+      }
       po_line_items: {
         Row: {
           created_at: string
