@@ -9,6 +9,7 @@ export interface EstimateLineItem {
   quantity: number;
   unit_price: number;
   markup: number;
+  pricing_type?: 'markup' | 'margin';
   total: number;
 }
 
@@ -33,6 +34,7 @@ export interface Estimate {
   approval_token?: string;
   sent_at?: string;
   customer_approved?: boolean;
+  default_pricing_type?: 'markup' | 'margin';
 }
 
 export interface EstimateWithLineItems extends Estimate {
