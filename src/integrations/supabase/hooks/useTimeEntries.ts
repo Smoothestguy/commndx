@@ -8,6 +8,7 @@ export interface TimeEntry {
   id: string;
   user_id: string;
   project_id: string;
+  personnel_id?: string | null;
   entry_date: string;
   hours: number;
   regular_hours?: number | null;
@@ -173,6 +174,30 @@ export const useTimeEntriesByWeek = (weekStartDate: Date) => {
       if (error) throw error;
       return data as TimeEntry[];
     },
+  });
+};
+
+// Fetch personnel time entries for a specific project and week
+export const usePersonnelTimeEntriesByWeek = (projectId: string, weekStartDate: Date) => {
+  const weekStart = startOfWeek(weekStartDate, { weekStartsOn: 1 });
+  const weekEnd = endOfWeek(weekStartDate, { weekStartsOn: 1 });
+
+  return useQuery({
+    queryKey: ["personnel-time-entries", projectId, weekStart.toISOString()],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("time_entries")
+        .select("*")
+        .eq("project_id", projectId)
+        .not("personnel_id", "is", null)
+        .gte("entry_date", weekStart.toISOString().split("T")[0])
+        .lte("entry_date", weekEnd.toISOString().split("T")[0])
+        .order("entry_date", { ascending: true });
+
+      if (error) throw error;
+      return data as TimeEntry[];
+    },
+    enabled: !!projectId,
   });
 };
 

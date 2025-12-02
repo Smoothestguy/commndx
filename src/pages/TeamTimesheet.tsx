@@ -7,11 +7,10 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useProjects } from "@/integrations/supabase/hooks/useProjects";
 import { usePersonnelByProject } from "@/integrations/supabase/hooks/usePersonnelProjectAssignments";
-import { useBulkAddPersonnelTimeEntries } from "@/integrations/supabase/hooks/useTimeEntries";
+import { useBulkAddPersonnelTimeEntries, usePersonnelTimeEntriesByWeek } from "@/integrations/supabase/hooks/useTimeEntries";
 import { toast } from "sonner";
 import { Users, UserPlus, UserCheck, X, ArrowLeft } from "lucide-react";
-import { startOfWeek, format, addDays } from "date-fns";
-import { supabase } from "@/integrations/supabase/client";
+import { startOfWeek, format, addDays, getDay } from "date-fns";
 import { QuickAddPersonnelDialog } from "@/components/time-tracking/QuickAddPersonnelDialog";
 import { PersonnelAssignmentDialog } from "@/components/time-tracking/PersonnelAssignmentDialog";
 import { WeekNavigator } from "@/components/time-tracking/WeekNavigator";
@@ -40,6 +39,13 @@ interface TemplateHours {
 const DAYS: DayKey[] = ["mon", "tue", "wed", "thu", "fri", "sat", "sun"];
 const DAY_LABELS = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
 
+// Helper to convert date to day index (0 = Monday, 6 = Sunday)
+const getDayIndexFromDate = (dateStr: string): number => {
+  const date = new Date(dateStr + "T00:00:00");
+  const jsDay = getDay(date); // 0 = Sunday, 1 = Monday, etc.
+  return jsDay === 0 ? 6 : jsDay - 1; // Convert to 0 = Monday, 6 = Sunday
+};
+
 export default function TeamTimesheet() {
   const navigate = useNavigate();
   const [selectedProject, setSelectedProject] = useState("");
@@ -54,6 +60,7 @@ export default function TeamTimesheet() {
 
   const { data: projects = [] } = useProjects();
   const { data: assignedPersonnel = [], isLoading: loadingPersonnel, refetch: refetchPersonnel } = usePersonnelByProject(selectedProject);
+  const { data: existingEntries = [], isLoading: loadingEntries } = usePersonnelTimeEntriesByWeek(selectedProject, selectedWeek);
   const bulkAddMutation = useBulkAddPersonnelTimeEntries();
 
   const activeProjects = useMemo(() => 
@@ -66,31 +73,50 @@ export default function TeamTimesheet() {
     return DAYS.map((_, index) => addDays(selectedWeek, index));
   }, [selectedWeek]);
 
-  // Reset when project changes
+  // Reset when project OR week changes
   useEffect(() => {
     if (selectedProject) {
       setInitialized(false);
     }
-  }, [selectedProject]);
+  }, [selectedProject, selectedWeek]);
 
-  // Initialize personnel hours map when personnel data loads
+  // Initialize personnel hours map with existing data
   useEffect(() => {
-    if (assignedPersonnel.length > 0 && !initialized) {
+    if (assignedPersonnel.length > 0 && !initialized && !loadingEntries) {
       const newHoursMap = new Map<string, PersonnelWeeklyHours>();
+      
       assignedPersonnel.forEach((assignment) => {
         if (assignment.personnel) {
-          newHoursMap.set(assignment.personnel.id, {
-            personnelId: assignment.personnel.id,
+          const personnelId = assignment.personnel.id;
+          
+          // Find existing entries for this personnel
+          const personnelEntries = existingEntries.filter(
+            e => e.personnel_id === personnelId
+          );
+          
+          // Build days object with existing hours pre-filled
+          const days: Record<DayKey, string> = { mon: "", tue: "", wed: "", thu: "", fri: "", sat: "", sun: "" };
+          
+          personnelEntries.forEach(entry => {
+            const dayIndex = getDayIndexFromDate(entry.entry_date);
+            if (dayIndex >= 0 && dayIndex < DAYS.length) {
+              days[DAYS[dayIndex]] = entry.hours.toString();
+            }
+          });
+          
+          newHoursMap.set(personnelId, {
+            personnelId,
             selected: true,
             hourlyRate: assignment.personnel.hourly_rate || 0,
-            days: { mon: "", tue: "", wed: "", thu: "", fri: "", sat: "", sun: "" },
+            days,
           });
         }
       });
+      
       setWeeklyHours(newHoursMap);
       setInitialized(true);
     }
-  }, [assignedPersonnel, initialized]);
+  }, [assignedPersonnel, existingEntries, initialized, loadingEntries]);
 
   const applyTemplateToAll = () => {
     const hasAnyHours = Object.values(templateHours).some(h => h && parseFloat(h) > 0);
@@ -222,20 +248,6 @@ export default function TeamTimesheet() {
         
         if (hours > 0) {
           const entryDate = format(weekDates[dayIndex], "yyyy-MM-dd");
-          
-          // Check for existing entry
-          const { data: existingEntry } = await supabase
-            .from("time_entries")
-            .select("id")
-            .eq("project_id", selectedProject)
-            .eq("personnel_id", person.id)
-            .eq("entry_date", entryDate)
-            .maybeSingle();
-
-          if (existingEntry) {
-            toast.error(`Entry already exists for ${person.firstName} ${person.lastName} on ${format(weekDates[dayIndex], "MMM d")}`);
-            return;
-          }
 
           // Calculate regular vs overtime
           let regularHours = hours;
