@@ -22,6 +22,7 @@ import {
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { useProducts, useAddProduct, useUpdateProduct, useDeleteProduct, Product, ItemType } from "@/integrations/supabase/hooks/useProducts";
+import { useProductCategories, useAddProductCategory } from "@/integrations/supabase/hooks/useProductCategories";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { ProductCard } from "@/components/products/ProductCard";
 import { ProductStats } from "@/components/products/ProductStats";
@@ -42,9 +43,11 @@ const unitOptions: Record<ItemType, string[]> = {
 
 const Products = () => {
   const { data: products, isLoading, error, refetch, isFetching } = useProducts();
+  const { data: categories } = useProductCategories();
   const addProduct = useAddProduct();
   const updateProduct = useUpdateProduct();
   const deleteProduct = useDeleteProduct();
+  const addCategory = useAddProductCategory();
   const isMobile = useIsMobile();
   
   const [search, setSearch] = useState("");
@@ -78,15 +81,18 @@ const Products = () => {
 
   const uniqueCategories = Array.from(new Set(products?.map((p) => p.category) || []));
 
-  // Get categories filtered by item type for the form dropdown
+  // Get categories filtered by item type for the form dropdown (from dedicated table)
   const categoriesForType = useMemo(() => {
-    if (!products) return [];
-    return Array.from(new Set(
-      products
-        .filter(p => p.item_type === formData.item_type)
-        .map(p => p.category)
-    )).sort();
-  }, [products, formData.item_type]);
+    if (!categories) return [];
+    return categories
+      .filter(c => c.item_type === formData.item_type)
+      .map(c => c.name)
+      .sort();
+  }, [categories, formData.item_type]);
+
+  // State for new category input
+  const [showNewCategoryInput, setShowNewCategoryInput] = useState(false);
+  const [newCategoryName, setNewCategoryName] = useState("");
 
   const filteredProducts = products?.filter((p) => {
     const matchesSearch = p.name.toLowerCase().includes(search.toLowerCase()) ||
@@ -230,6 +236,8 @@ const Products = () => {
       category: "",
       is_taxable: true,
     });
+    setShowNewCategoryInput(false);
+    setNewCategoryName("");
   };
 
   const openNewDialog = () => {
@@ -387,42 +395,88 @@ const Products = () => {
               <div className="grid gap-4 sm:grid-cols-2">
                 <div className="space-y-2">
                   <Label htmlFor="category">Category *</Label>
-                  <Select
-                    value={formData.category}
-                    onValueChange={(value) => setFormData({ ...formData, category: value })}
-                  >
-                    <SelectTrigger className="bg-secondary border-border">
-                      <SelectValue placeholder="Select category" />
-                    </SelectTrigger>
-                    <SelectContent className="bg-popover border-border">
-                      {categoriesForType.map((cat) => (
-                        <SelectItem key={cat} value={cat}>
-                          {cat}
-                        </SelectItem>
-                      ))}
-                      {categoriesForType.length > 0 && (
+                  {!showNewCategoryInput ? (
+                    <Select
+                      value={formData.category}
+                      onValueChange={(value) => {
+                        if (value === "__new__") {
+                          setShowNewCategoryInput(true);
+                          setNewCategoryName("");
+                        } else {
+                          setFormData({ ...formData, category: value });
+                        }
+                      }}
+                    >
+                      <SelectTrigger className="bg-secondary border-border">
+                        <SelectValue placeholder="Select category" />
+                      </SelectTrigger>
+                      <SelectContent className="bg-popover border-border">
+                        {categoriesForType.map((cat) => (
+                          <SelectItem key={cat} value={cat}>
+                            {cat}
+                          </SelectItem>
+                        ))}
                         <SelectItem value="__new__" className="text-primary font-medium">
                           + Add new category...
                         </SelectItem>
-                      )}
-                      {categoriesForType.length === 0 && (
-                        <SelectItem value="__new__" className="text-primary font-medium">
-                          + Create first category...
-                        </SelectItem>
-                      )}
-                    </SelectContent>
-                  </Select>
-                  {formData.category === "__new__" && (
-                    <Input
-                      autoFocus
-                      placeholder="Enter new category name"
-                      className="bg-secondary border-border mt-2"
-                      onChange={(e) => {
-                        if (e.target.value) {
-                          setFormData({ ...formData, category: e.target.value });
-                        }
-                      }}
-                    />
+                      </SelectContent>
+                    </Select>
+                  ) : (
+                    <div className="space-y-2">
+                      <Input
+                        autoFocus
+                        value={newCategoryName}
+                        placeholder="Enter new category name"
+                        className="bg-secondary border-border"
+                        onChange={(e) => setNewCategoryName(e.target.value)}
+                        onKeyDown={async (e) => {
+                          if (e.key === "Enter" && newCategoryName.trim()) {
+                            e.preventDefault();
+                            await addCategory.mutateAsync({ 
+                              name: newCategoryName.trim(), 
+                              item_type: formData.item_type 
+                            });
+                            setFormData({ ...formData, category: newCategoryName.trim() });
+                            setShowNewCategoryInput(false);
+                            setNewCategoryName("");
+                          } else if (e.key === "Escape") {
+                            setShowNewCategoryInput(false);
+                            setNewCategoryName("");
+                          }
+                        }}
+                      />
+                      <div className="flex gap-2">
+                        <Button
+                          type="button"
+                          size="sm"
+                          variant="outline"
+                          onClick={() => {
+                            setShowNewCategoryInput(false);
+                            setNewCategoryName("");
+                          }}
+                        >
+                          Cancel
+                        </Button>
+                        <Button
+                          type="button"
+                          size="sm"
+                          disabled={!newCategoryName.trim()}
+                          onClick={async () => {
+                            if (newCategoryName.trim()) {
+                              await addCategory.mutateAsync({ 
+                                name: newCategoryName.trim(), 
+                                item_type: formData.item_type 
+                              });
+                              setFormData({ ...formData, category: newCategoryName.trim() });
+                              setShowNewCategoryInput(false);
+                              setNewCategoryName("");
+                            }
+                          }}
+                        >
+                          Save
+                        </Button>
+                      </div>
+                    </div>
                   )}
                 </div>
                 <div className="space-y-2">
