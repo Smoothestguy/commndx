@@ -10,6 +10,7 @@ export interface EstimateLineItem {
   unit_price: number;
   markup: number;
   pricing_type?: 'markup' | 'margin';
+  is_taxable?: boolean;
   total: number;
 }
 

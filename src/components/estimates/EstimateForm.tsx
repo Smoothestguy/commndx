@@ -12,11 +12,13 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Plus, Trash2, Loader2 } from "lucide-react";
+import { Switch } from "@/components/ui/switch";
+import { Plus, Trash2, Loader2, AlertTriangle } from "lucide-react";
 import { useCustomers } from "@/integrations/supabase/hooks/useCustomers";
 import { useProjectsByCustomer } from "@/integrations/supabase/hooks/useProjects";
 import { useProducts } from "@/integrations/supabase/hooks/useProducts";
 import { useAddEstimate } from "@/integrations/supabase/hooks/useEstimates";
+import { useCompanySettings } from "@/integrations/supabase/hooks/useCompanySettings";
 import { z } from "zod";
 
 const lineItemSchema = z.object({
@@ -40,6 +42,7 @@ interface LineItem {
   unit_price: string;
   margin: string;
   pricing_type: 'markup' | 'margin';
+  is_taxable: boolean;
   total: number;
 }
 
@@ -47,6 +50,7 @@ export const EstimateForm = () => {
   const navigate = useNavigate();
   const { data: customers, isLoading: customersLoading } = useCustomers();
   const { data: products, isLoading: productsLoading } = useProducts();
+  const { data: companySettings } = useCompanySettings();
   const addEstimate = useAddEstimate();
 
   const [selectedCustomerId, setSelectedCustomerId] = useState<string>("");
@@ -60,7 +64,7 @@ export const EstimateForm = () => {
   const { data: projects } = useProjectsByCustomer(selectedCustomerId);
 
   const [lineItems, setLineItems] = useState<LineItem[]>([
-    { description: "", quantity: "1", unit_price: "", margin: "0", pricing_type: "margin", total: 0 },
+    { description: "", quantity: "1", unit_price: "", margin: "0", pricing_type: "margin", is_taxable: true, total: 0 },
   ]);
 
   const [errors, setErrors] = useState<Record<string, string>>({});
@@ -87,9 +91,15 @@ export const EstimateForm = () => {
     }
   };
 
-  const updateLineItem = (index: number, field: keyof LineItem, value: string) => {
+  const updateLineItem = (index: number, field: keyof LineItem, value: string | boolean) => {
     const newLineItems = [...lineItems];
-    newLineItems[index] = { ...newLineItems[index], [field]: value };
+    
+    // Handle boolean fields properly
+    if (field === "is_taxable") {
+      newLineItems[index] = { ...newLineItems[index], [field]: value === "true" || value === true };
+    } else {
+      newLineItems[index] = { ...newLineItems[index], [field]: value };
+    }
 
     // Recalculate total for this line item
     if (field === "quantity" || field === "unit_price" || field === "margin" || field === "pricing_type") {
@@ -107,7 +117,7 @@ export const EstimateForm = () => {
   const addLineItem = () => {
     setLineItems([
       ...lineItems,
-      { description: "", quantity: "1", unit_price: "", margin: "0", pricing_type: defaultPricingType, total: 0 },
+      { description: "", quantity: "1", unit_price: "", margin: "0", pricing_type: defaultPricingType, is_taxable: true, total: 0 },
     ]);
   };
 
@@ -132,6 +142,7 @@ export const EstimateForm = () => {
         description: product.name,
         unit_price: unitPrice,
         margin: margin,
+        is_taxable: product.is_taxable ?? true,
         total: calculateLineItemTotal(quantity, unitPrice, margin, pricingType),
       };
       
@@ -139,10 +150,24 @@ export const EstimateForm = () => {
     }
   };
 
-  // Calculate totals
+  // Get selected customer for tax exempt check
+  const selectedCustomer = customers?.find(c => c.id === selectedCustomerId);
+  const isCustomerTaxExempt = selectedCustomer?.tax_exempt ?? false;
+
+  // Calculate totals with smart tax (only on taxable items)
   const subtotal = lineItems.reduce((sum, item) => sum + item.total, 0);
-  const taxAmount = subtotal * (parseFloat(taxRate) || 0) / 100;
+  const taxableSubtotal = lineItems.filter(item => item.is_taxable).reduce((sum, item) => sum + item.total, 0);
+  const nonTaxableSubtotal = subtotal - taxableSubtotal;
+  const effectiveTaxRate = isCustomerTaxExempt ? 0 : (parseFloat(taxRate) || 0);
+  const taxAmount = taxableSubtotal * effectiveTaxRate / 100;
   const total = subtotal + taxAmount;
+
+  // Load default tax rate from company settings
+  useEffect(() => {
+    if (companySettings?.default_tax_rate) {
+      setTaxRate(companySettings.default_tax_rate.toString());
+    }
+  }, [companySettings]);
 
   const validateForm = () => {
     const newErrors: Record<string, string> = {};
@@ -204,7 +229,7 @@ export const EstimateForm = () => {
         project_name: project?.name || undefined,
         status,
         subtotal,
-        tax_rate: parseFloat(taxRate),
+        tax_rate: effectiveTaxRate,
         tax_amount: taxAmount,
         total,
         notes: notes || undefined,
@@ -218,6 +243,7 @@ export const EstimateForm = () => {
         unit_price: parseFloat(item.unit_price),
         markup: parseFloat(item.margin), // DB column is still "markup"
         pricing_type: item.pricing_type,
+        is_taxable: item.is_taxable,
         total: item.total,
       })),
     };
@@ -364,7 +390,20 @@ export const EstimateForm = () => {
               className="p-4 rounded-lg bg-secondary/50 border border-border space-y-3"
             >
               <div className="flex items-center justify-between mb-2">
-                <span className="text-sm font-medium">Item {index + 1}</span>
+                <div className="flex items-center gap-3">
+                  <span className="text-sm font-medium">Item {index + 1}</span>
+                  <div className="flex items-center gap-2">
+                    <Switch
+                      id={`taxable-${index}`}
+                      checked={item.is_taxable}
+                      onCheckedChange={(checked) => updateLineItem(index, "is_taxable", checked.toString())}
+                      disabled={isCustomerTaxExempt}
+                    />
+                    <Label htmlFor={`taxable-${index}`} className="text-xs text-muted-foreground">
+                      Taxable
+                    </Label>
+                  </div>
+                </div>
                 {lineItems.length > 1 && (
                   <Button
                     type="button"
@@ -500,14 +539,32 @@ export const EstimateForm = () => {
       {/* Totals */}
       <Card className="glass border-border">
         <CardContent className="pt-6">
+          {isCustomerTaxExempt && (
+            <div className="flex items-center gap-2 p-3 mb-4 rounded-lg bg-amber-500/10 border border-amber-500/20 text-amber-600 dark:text-amber-400">
+              <AlertTriangle className="h-4 w-4" />
+              <span className="text-sm font-medium">Tax Exempt Customer - No tax will be applied</span>
+            </div>
+          )}
           <div className="space-y-2">
+            {nonTaxableSubtotal > 0 && (
+              <>
+                <div className="flex justify-between text-sm">
+                  <span className="text-muted-foreground">Taxable Subtotal:</span>
+                  <span className="font-medium">${taxableSubtotal.toFixed(2)}</span>
+                </div>
+                <div className="flex justify-between text-sm">
+                  <span className="text-muted-foreground">Non-Taxable Subtotal:</span>
+                  <span className="font-medium">${nonTaxableSubtotal.toFixed(2)}</span>
+                </div>
+              </>
+            )}
             <div className="flex justify-between text-sm">
               <span className="text-muted-foreground">Subtotal:</span>
               <span className="font-medium">${subtotal.toFixed(2)}</span>
             </div>
             <div className="flex justify-between text-sm">
               <span className="text-muted-foreground">
-                Tax ({taxRate}%):
+                Tax ({effectiveTaxRate}%{isCustomerTaxExempt ? ' - Exempt' : ''}):
               </span>
               <span className="font-medium">${taxAmount.toFixed(2)}</span>
             </div>
