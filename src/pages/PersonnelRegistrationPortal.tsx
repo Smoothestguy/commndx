@@ -19,14 +19,19 @@ import {
 } from "@/components/ui/card";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Progress } from "@/components/ui/progress";
+import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
+import { Alert, AlertDescription } from "@/components/ui/alert";
 import { SEO } from "@/components/SEO";
 import { EmergencyContactForm } from "@/components/personnel/registration/EmergencyContactForm";
-import { RegistrationDocumentUpload } from "@/components/personnel/registration/RegistrationDocumentUpload";
+import { SSNInput } from "@/components/personnel/registration/SSNInput";
+import { CategoryDocumentUpload } from "@/components/personnel/registration/CategoryDocumentUpload";
 import {
   useSubmitRegistration,
   type EmergencyContact,
   type RegistrationDocument,
   type RegistrationFormData,
+  type CitizenshipStatus,
+  type ImmigrationStatus,
 } from "@/integrations/supabase/hooks/usePersonnelRegistrations";
 import {
   ChevronLeft,
@@ -37,6 +42,7 @@ import {
   Users,
   CheckCircle,
   Loader2,
+  Info,
 } from "lucide-react";
 
 const STEPS = [
@@ -47,13 +53,24 @@ const STEPS = [
   { id: 5, title: "Review & Submit", icon: CheckCircle },
 ];
 
-const WORK_AUTH_TYPES = [
-  { value: "citizen", label: "U.S. Citizen" },
-  { value: "permanent_resident", label: "Permanent Resident" },
-  { value: "work_visa", label: "Work Visa (H-1B, L-1, etc.)" },
-  { value: "ead", label: "Employment Authorization Document (EAD)" },
+const IMMIGRATION_STATUS_OPTIONS = [
+  { value: "visa", label: "Visa" },
+  { value: "work_permit", label: "Work Permit (EAD - Employment Authorization Document)" },
+  { value: "green_card", label: "Green Card (Permanent Resident)" },
   { value: "other", label: "Other" },
 ];
+
+const CITIZENSHIP_LABELS: Record<string, string> = {
+  us_citizen: "U.S. Citizen",
+  non_us_citizen: "Non-U.S. Citizen",
+};
+
+const IMMIGRATION_LABELS: Record<string, string> = {
+  visa: "Visa",
+  work_permit: "Work Permit (EAD)",
+  green_card: "Green Card",
+  other: "Other",
+};
 
 const PersonnelRegistrationPortal = () => {
   const navigate = useNavigate();
@@ -83,12 +100,36 @@ const PersonnelRegistrationPortal = () => {
     work_authorization_type: "",
     work_auth_expiry: "",
     ssn_last_four: "",
+    ssn_full: "",
+    citizenship_status: undefined,
+    immigration_status: undefined,
     emergency_contacts: [],
     documents: [],
   });
 
-  const updateField = (field: keyof RegistrationFormData, value: string) => {
+  const updateField = (field: keyof RegistrationFormData, value: string | CitizenshipStatus | ImmigrationStatus | undefined) => {
     setFormData((prev) => ({ ...prev, [field]: value }));
+  };
+
+  // Helper to get document by type
+  const getDocumentByType = (docType: RegistrationDocument["document_type"]) => {
+    return formData.documents.find((d) => d.document_type === docType);
+  };
+
+  // Helper to add/update document
+  const handleDocumentUpload = (doc: RegistrationDocument) => {
+    setFormData((prev) => ({
+      ...prev,
+      documents: [...prev.documents.filter((d) => d.document_type !== doc.document_type), doc],
+    }));
+  };
+
+  // Helper to remove document by type
+  const handleDocumentRemove = (docType: RegistrationDocument["document_type"]) => {
+    setFormData((prev) => ({
+      ...prev,
+      documents: prev.documents.filter((d) => d.document_type !== docType),
+    }));
   };
 
   const progress = (currentStep / STEPS.length) * 100;
@@ -103,8 +144,35 @@ const PersonnelRegistrationPortal = () => {
         );
       case 2:
         return true; // Address is optional
-      case 3:
-        return formData.work_authorization_type !== "";
+      case 3: {
+        // Required for all: SSN (9 digits), SSN card, citizenship status
+        const hasValidSSN = formData.ssn_full?.length === 9;
+        const hasSSNCard = !!getDocumentByType("ssn_card");
+        const hasCitizenship = !!formData.citizenship_status;
+
+        if (!hasValidSSN || !hasSSNCard || !hasCitizenship) return false;
+
+        // Citizenship-specific requirements
+        if (formData.citizenship_status === "us_citizen") {
+          return !!getDocumentByType("government_id");
+        } else {
+          // Non-US citizen needs immigration status and appropriate documents
+          if (!formData.immigration_status) return false;
+
+          switch (formData.immigration_status) {
+            case "visa":
+              return !!getDocumentByType("visa");
+            case "work_permit":
+              return !!getDocumentByType("work_permit");
+            case "green_card":
+              return !!getDocumentByType("green_card_front") && !!getDocumentByType("green_card_back");
+            case "other":
+              return !!getDocumentByType("other");
+            default:
+              return false;
+          }
+        }
+      }
       case 4:
         return (
           formData.emergency_contacts.length > 0 &&
@@ -359,86 +427,237 @@ const PersonnelRegistrationPortal = () => {
               </div>
             )}
 
-            {/* Step 3: Work Authorization */}
+            {/* Step 3: Work Authorization & Employment Verification */}
             {currentStep === 3 && (
               <div className="space-y-6">
+                <Alert>
+                  <Info className="h-4 w-4" />
+                  <AlertDescription>
+                    This information is required for E-Verify employment verification. All documents will be securely stored and only accessible to authorized personnel.
+                  </AlertDescription>
+                </Alert>
+
+                {/* Social Security Section */}
                 <div className="space-y-4">
+                  <h3 className="text-sm font-semibold text-foreground uppercase tracking-wide">
+                    Social Security Information
+                  </h3>
+                  
                   <div className="space-y-2">
-                    <Label htmlFor="work_auth_type">
-                      Work Authorization Type *
+                    <Label htmlFor="ssn_full">
+                      Social Security Number *
                     </Label>
-                    <Select
-                      value={formData.work_authorization_type}
-                      onValueChange={(value) =>
-                        updateField("work_authorization_type", value)
-                      }
-                    >
-                      <SelectTrigger>
-                        <SelectValue placeholder="Select authorization type" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {WORK_AUTH_TYPES.map((type) => (
-                          <SelectItem key={type.value} value={type.value}>
-                            {type.label}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </div>
-
-                  {formData.work_authorization_type &&
-                    formData.work_authorization_type !== "citizen" && (
-                      <div className="space-y-2">
-                        <Label htmlFor="work_auth_expiry">
-                          Authorization Expiry Date
-                        </Label>
-                        <Input
-                          id="work_auth_expiry"
-                          type="date"
-                          value={formData.work_auth_expiry}
-                          onChange={(e) =>
-                            updateField("work_auth_expiry", e.target.value)
-                          }
-                        />
-                      </div>
-                    )}
-
-                  <div className="space-y-2">
-                    <Label htmlFor="ssn_last_four">
-                      Last 4 Digits of SSN (optional)
-                    </Label>
-                    <Input
-                      id="ssn_last_four"
-                      value={formData.ssn_last_four}
-                      onChange={(e) =>
-                        updateField(
-                          "ssn_last_four",
-                          e.target.value.replace(/\D/g, "").slice(0, 4)
-                        )
-                      }
-                      placeholder="1234"
-                      maxLength={4}
+                    <SSNInput
+                      value={formData.ssn_full || ""}
+                      onChange={(value) => updateField("ssn_full", value)}
+                      required
                     />
                     <p className="text-xs text-muted-foreground">
-                      Used for verification purposes only
+                      Required for E-Verify employment verification
                     </p>
                   </div>
-                </div>
 
-                <div className="space-y-2">
-                  <Label>Supporting Documents</Label>
-                  <p className="text-sm text-muted-foreground mb-2">
-                    Upload ID, work authorization documents, or other relevant
-                    files
-                  </p>
-                  <RegistrationDocumentUpload
-                    documents={formData.documents}
-                    onChange={(docs) =>
-                      setFormData((prev) => ({ ...prev, documents: docs }))
-                    }
+                  <CategoryDocumentUpload
+                    documentType="ssn_card"
+                    label="Social Security Card"
+                    helperText="Upload a clear image of your Social Security card"
+                    required
+                    existingDocument={getDocumentByType("ssn_card")}
+                    onUpload={handleDocumentUpload}
+                    onRemove={() => handleDocumentRemove("ssn_card")}
                     sessionId={sessionId}
                   />
                 </div>
+
+                <div className="border-t pt-6">
+                  {/* Citizenship Status */}
+                  <div className="space-y-4">
+                    <h3 className="text-sm font-semibold text-foreground uppercase tracking-wide">
+                      Citizenship Status
+                    </h3>
+                    
+                    <div className="space-y-2">
+                      <Label>Are you a U.S. Citizen? *</Label>
+                      <RadioGroup
+                        value={formData.citizenship_status || ""}
+                        onValueChange={(value) => {
+                          updateField("citizenship_status", value as CitizenshipStatus);
+                          // Reset immigration status when citizenship changes
+                          if (value === "us_citizen") {
+                            updateField("immigration_status", undefined);
+                          }
+                        }}
+                        className="flex gap-4"
+                      >
+                        <div className="flex items-center space-x-2">
+                          <RadioGroupItem value="us_citizen" id="us_citizen" />
+                          <Label htmlFor="us_citizen" className="font-normal cursor-pointer">
+                            U.S. Citizen
+                          </Label>
+                        </div>
+                        <div className="flex items-center space-x-2">
+                          <RadioGroupItem value="non_us_citizen" id="non_us_citizen" />
+                          <Label htmlFor="non_us_citizen" className="font-normal cursor-pointer">
+                            Non-U.S. Citizen
+                          </Label>
+                        </div>
+                      </RadioGroup>
+                    </div>
+                  </div>
+                </div>
+
+                {/* US Citizen - Government ID Required */}
+                {formData.citizenship_status === "us_citizen" && (
+                  <div className="border-t pt-6 space-y-4">
+                    <h3 className="text-sm font-semibold text-foreground uppercase tracking-wide">
+                      Identity Verification
+                    </h3>
+                    <CategoryDocumentUpload
+                      documentType="government_id"
+                      label="Government-Issued ID"
+                      helperText="Driver's License, State ID, or Passport"
+                      required
+                      existingDocument={getDocumentByType("government_id")}
+                      onUpload={handleDocumentUpload}
+                      onRemove={() => handleDocumentRemove("government_id")}
+                      sessionId={sessionId}
+                    />
+                  </div>
+                )}
+
+                {/* Non-US Citizen - Immigration Status */}
+                {formData.citizenship_status === "non_us_citizen" && (
+                  <div className="border-t pt-6 space-y-4">
+                    <h3 className="text-sm font-semibold text-foreground uppercase tracking-wide">
+                      Immigration Status
+                    </h3>
+                    
+                    <div className="space-y-2">
+                      <Label htmlFor="immigration_status">Immigration Status *</Label>
+                      <Select
+                        value={formData.immigration_status || ""}
+                        onValueChange={(value) => updateField("immigration_status", value as ImmigrationStatus)}
+                      >
+                        <SelectTrigger>
+                          <SelectValue placeholder="Select your immigration status" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {IMMIGRATION_STATUS_OPTIONS.map((option) => (
+                            <SelectItem key={option.value} value={option.value}>
+                              {option.label}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+
+                    {/* Visa Documents */}
+                    {formData.immigration_status === "visa" && (
+                      <div className="space-y-4">
+                        <CategoryDocumentUpload
+                          documentType="visa"
+                          label="Visa Documentation"
+                          helperText="Upload your visa stamp or I-94"
+                          required
+                          existingDocument={getDocumentByType("visa")}
+                          onUpload={handleDocumentUpload}
+                          onRemove={() => handleDocumentRemove("visa")}
+                          sessionId={sessionId}
+                        />
+                        <div className="space-y-2">
+                          <Label htmlFor="work_auth_expiry">Visa Expiry Date</Label>
+                          <Input
+                            id="work_auth_expiry"
+                            type="date"
+                            value={formData.work_auth_expiry || ""}
+                            onChange={(e) => updateField("work_auth_expiry", e.target.value)}
+                          />
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Work Permit (EAD) Documents */}
+                    {formData.immigration_status === "work_permit" && (
+                      <div className="space-y-4">
+                        <CategoryDocumentUpload
+                          documentType="work_permit"
+                          label="Employment Authorization Document (EAD)"
+                          helperText="Upload your EAD card (front)"
+                          required
+                          existingDocument={getDocumentByType("work_permit")}
+                          onUpload={handleDocumentUpload}
+                          onRemove={() => handleDocumentRemove("work_permit")}
+                          sessionId={sessionId}
+                        />
+                        <div className="space-y-2">
+                          <Label htmlFor="work_auth_expiry">EAD Expiry Date</Label>
+                          <Input
+                            id="work_auth_expiry"
+                            type="date"
+                            value={formData.work_auth_expiry || ""}
+                            onChange={(e) => updateField("work_auth_expiry", e.target.value)}
+                          />
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Green Card Documents - Front and Back Required */}
+                    {formData.immigration_status === "green_card" && (
+                      <div className="space-y-4">
+                        <p className="text-sm text-muted-foreground">
+                          For E-Verify purposes, please upload both sides of your Green Card.
+                        </p>
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                          <CategoryDocumentUpload
+                            documentType="green_card_front"
+                            label="Green Card (Front)"
+                            helperText="Front side with photo"
+                            required
+                            existingDocument={getDocumentByType("green_card_front")}
+                            onUpload={handleDocumentUpload}
+                            onRemove={() => handleDocumentRemove("green_card_front")}
+                            sessionId={sessionId}
+                          />
+                          <CategoryDocumentUpload
+                            documentType="green_card_back"
+                            label="Green Card (Back)"
+                            helperText="Back side with number"
+                            required
+                            existingDocument={getDocumentByType("green_card_back")}
+                            onUpload={handleDocumentUpload}
+                            onRemove={() => handleDocumentRemove("green_card_back")}
+                            sessionId={sessionId}
+                          />
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Other Immigration Status */}
+                    {formData.immigration_status === "other" && (
+                      <div className="space-y-4">
+                        <CategoryDocumentUpload
+                          documentType="other"
+                          label="Work Authorization Document"
+                          helperText="Upload relevant work authorization documentation"
+                          required
+                          existingDocument={getDocumentByType("other")}
+                          onUpload={handleDocumentUpload}
+                          onRemove={() => handleDocumentRemove("other")}
+                          sessionId={sessionId}
+                        />
+                        <div className="space-y-2">
+                          <Label htmlFor="work_auth_expiry">Authorization Expiry Date</Label>
+                          <Input
+                            id="work_auth_expiry"
+                            type="date"
+                            value={formData.work_auth_expiry || ""}
+                            onChange={(e) => updateField("work_auth_expiry", e.target.value)}
+                          />
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                )}
               </div>
             )}
 
@@ -507,31 +726,39 @@ const PersonnelRegistrationPortal = () => {
                   </div>
                 )}
 
-                {/* Work Authorization Review */}
+                {/* Employment Verification Review */}
                 <div className="space-y-2">
-                  <h4 className="font-medium">Work Authorization</h4>
-                  <div className="bg-muted rounded-lg p-4 text-sm space-y-1">
+                  <h4 className="font-medium">Employment Verification</h4>
+                  <div className="bg-muted rounded-lg p-4 text-sm space-y-2">
                     <p>
-                      <span className="text-muted-foreground">Type:</span>{" "}
-                      {WORK_AUTH_TYPES.find(
-                        (t) => t.value === formData.work_authorization_type
-                      )?.label || "-"}
+                      <span className="text-muted-foreground">SSN:</span>{" "}
+                      •••-••-{formData.ssn_full?.slice(-4) || "****"}
                     </p>
+                    <p>
+                      <span className="text-muted-foreground">Citizenship:</span>{" "}
+                      {formData.citizenship_status ? CITIZENSHIP_LABELS[formData.citizenship_status] : "-"}
+                    </p>
+                    {formData.citizenship_status === "non_us_citizen" && formData.immigration_status && (
+                      <p>
+                        <span className="text-muted-foreground">Immigration Status:</span>{" "}
+                        {IMMIGRATION_LABELS[formData.immigration_status]}
+                      </p>
+                    )}
                     {formData.work_auth_expiry && (
                       <p>
-                        <span className="text-muted-foreground">Expires:</span>{" "}
-                        {new Date(
-                          formData.work_auth_expiry
-                        ).toLocaleDateString()}
+                        <span className="text-muted-foreground">Authorization Expires:</span>{" "}
+                        {new Date(formData.work_auth_expiry).toLocaleDateString()}
                       </p>
                     )}
                     {formData.documents.length > 0 && (
-                      <p>
-                        <span className="text-muted-foreground">
-                          Documents:
-                        </span>{" "}
-                        {formData.documents.length} file(s) uploaded
-                      </p>
+                      <div className="pt-2 border-t mt-2">
+                        <span className="text-muted-foreground">Documents Uploaded:</span>
+                        <ul className="list-disc list-inside mt-1">
+                          {formData.documents.map((doc, i) => (
+                            <li key={i}>{doc.label || doc.name}</li>
+                          ))}
+                        </ul>
+                      </div>
                     )}
                   </div>
                 </div>

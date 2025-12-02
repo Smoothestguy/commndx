@@ -50,6 +50,28 @@ const WORK_AUTH_TYPES: Record<string, string> = {
   other: "Other",
 };
 
+const CITIZENSHIP_LABELS: Record<string, string> = {
+  us_citizen: "U.S. Citizen",
+  non_us_citizen: "Non-U.S. Citizen",
+};
+
+const IMMIGRATION_LABELS: Record<string, string> = {
+  visa: "Visa",
+  work_permit: "Work Permit (EAD)",
+  green_card: "Green Card",
+  other: "Other",
+};
+
+const DOCUMENT_TYPE_LABELS: Record<string, string> = {
+  ssn_card: "Social Security Card",
+  government_id: "Government-Issued ID",
+  visa: "Visa Documentation",
+  work_permit: "Work Permit (EAD)",
+  green_card_front: "Green Card (Front)",
+  green_card_back: "Green Card (Back)",
+  other: "Other Document",
+};
+
 interface RegistrationReviewDialogProps {
   registration: PersonnelRegistration | null;
   open: boolean;
@@ -182,24 +204,40 @@ export const RegistrationReviewDialog = ({
                 </>
               )}
 
-              {/* Work Authorization */}
+              {/* Work Authorization / Employment Verification */}
               <section className="space-y-3">
                 <div className="flex items-center gap-2 text-sm font-medium">
                   <Shield className="h-4 w-4" />
-                  Work Authorization
+                  Employment Verification
                 </div>
                 <div className="bg-muted rounded-lg p-4 space-y-2 text-sm">
-                  <div>
-                    <p className="text-muted-foreground">Type</p>
-                    <p className="font-medium">
-                      {WORK_AUTH_TYPES[
-                        registration.work_authorization_type || ""
-                      ] || "-"}
-                    </p>
-                  </div>
+                  {registration.ssn_full && (
+                    <div>
+                      <p className="text-muted-foreground">SSN</p>
+                      <p className="font-medium font-mono">
+                        •••-••-{registration.ssn_full.slice(-4)}
+                      </p>
+                    </div>
+                  )}
+                  {registration.citizenship_status && (
+                    <div>
+                      <p className="text-muted-foreground">Citizenship Status</p>
+                      <p className="font-medium">
+                        {CITIZENSHIP_LABELS[registration.citizenship_status] || registration.citizenship_status}
+                      </p>
+                    </div>
+                  )}
+                  {registration.citizenship_status === "non_us_citizen" && registration.immigration_status && (
+                    <div>
+                      <p className="text-muted-foreground">Immigration Status</p>
+                      <p className="font-medium">
+                        {IMMIGRATION_LABELS[registration.immigration_status] || registration.immigration_status}
+                      </p>
+                    </div>
+                  )}
                   {registration.work_auth_expiry && (
                     <div>
-                      <p className="text-muted-foreground">Expiry Date</p>
+                      <p className="text-muted-foreground">Authorization Expiry</p>
                       <p className="font-medium">
                         {format(
                           new Date(registration.work_auth_expiry),
@@ -208,7 +246,7 @@ export const RegistrationReviewDialog = ({
                       </p>
                     </div>
                   )}
-                  {registration.ssn_last_four && (
+                  {!registration.ssn_full && registration.ssn_last_four && (
                     <div>
                       <p className="text-muted-foreground">SSN (Last 4)</p>
                       <p className="font-medium">
@@ -237,9 +275,16 @@ export const RegistrationReviewDialog = ({
                         >
                           <div className="flex items-center gap-2">
                             <FileText className="h-4 w-4 text-muted-foreground" />
-                            <span className="text-sm font-medium">
-                              {doc.name}
-                            </span>
+                            <div>
+                              <span className="text-sm font-medium block">
+                                {doc.document_type ? DOCUMENT_TYPE_LABELS[doc.document_type] || doc.label : doc.name}
+                              </span>
+                              {doc.document_type && (
+                                <span className="text-xs text-muted-foreground">
+                                  {doc.name}
+                                </span>
+                              )}
+                            </div>
                           </div>
                           <Button
                             variant="ghost"
