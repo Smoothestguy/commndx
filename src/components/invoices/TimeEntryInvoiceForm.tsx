@@ -23,7 +23,7 @@ export const TimeEntryInvoiceForm = () => {
   const [startDate, setStartDate] = useState("");
   const [endDate, setEndDate] = useState("");
   const [selectedEntries, setSelectedEntries] = useState<Set<string>>(new Set());
-  const [markup, setMarkup] = useState(0);
+  const [margin, setMargin] = useState(0);
   const [taxRate, setTaxRate] = useState(0);
 
   const { data: timeEntries, isLoading } = useAllTimeEntries(selectedProjectId);
@@ -46,10 +46,11 @@ export const TimeEntryInvoiceForm = () => {
     return sum + (Number(entry.hours) * rate);
   }, 0) || 0;
 
-  const markupAmount = subtotal * (markup / 100);
-  const subtotalWithMarkup = subtotal + markupAmount;
-  const taxAmount = subtotalWithMarkup * (taxRate / 100);
-  const total = subtotalWithMarkup + taxAmount;
+  // Margin-based pricing: subtotalWithMargin = subtotal / (1 - margin/100)
+  const subtotalWithMargin = margin > 0 && margin < 100 ? subtotal / (1 - margin / 100) : subtotal;
+  const marginAmount = subtotalWithMargin - subtotal;
+  const taxAmount = subtotalWithMargin * (taxRate / 100);
+  const total = subtotalWithMargin + taxAmount;
 
   const handleToggleEntry = (entryId: string) => {
     const newSelected = new Set(selectedEntries);
@@ -74,12 +75,15 @@ export const TimeEntryInvoiceForm = () => {
       const lineItems = selectedEntriesData?.map((entry) => {
         const rate = entry.profiles?.hourly_rate || 0;
         const hours = Number(entry.hours);
+        const baseTotal = hours * rate;
+        // Margin-based pricing
+        const itemTotal = margin > 0 && margin < 100 ? baseTotal / (1 - margin / 100) : baseTotal;
         return {
           description: `${entry.profiles?.first_name} ${entry.profiles?.last_name} - ${entry.description || "Time entry"} (${hours} hrs)`,
           quantity: hours,
           unit_price: rate,
-          markup: markup,
-          total: hours * rate * (1 + markup / 100),
+          markup: margin, // DB column is still "markup"
+          total: itemTotal,
         };
       }) || [];
 
@@ -204,13 +208,14 @@ export const TimeEntryInvoiceForm = () => {
         <CardContent className="space-y-4">
           <div className="grid gap-4 md:grid-cols-2">
             <div className="space-y-2">
-              <Label htmlFor="markup">Markup (%)</Label>
+              <Label htmlFor="margin">Margin (%)</Label>
               <Input
-                id="markup"
+                id="margin"
                 type="number"
                 step="0.1"
-                value={markup}
-                onChange={(e) => setMarkup(parseFloat(e.target.value) || 0)}
+                max="99.99"
+                value={margin}
+                onChange={(e) => setMargin(parseFloat(e.target.value) || 0)}
               />
             </div>
 
@@ -231,10 +236,10 @@ export const TimeEntryInvoiceForm = () => {
               <span>Subtotal:</span>
               <span>${subtotal.toFixed(2)}</span>
             </div>
-            {markup > 0 && (
+            {margin > 0 && (
               <div className="flex justify-between text-muted-foreground">
-                <span>Markup ({markup}%):</span>
-                <span>${markupAmount.toFixed(2)}</span>
+                <span>Margin ({margin}%):</span>
+                <span>${marginAmount.toFixed(2)}</span>
               </div>
             )}
             {taxRate > 0 && (
