@@ -1,10 +1,15 @@
-import { useState } from "react";
-import { Link, useLocation, useNavigate } from "react-router-dom";
+import { useState, useEffect } from "react";
+import { useLocation, useNavigate } from "react-router-dom";
 import { cn } from "@/lib/utils";
 import { useAuth } from "@/contexts/AuthContext";
 import { useUserRole } from "@/hooks/useUserRole";
 import { Button } from "@/components/ui/button";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
+import {
+  Collapsible,
+  CollapsibleContent,
+  CollapsibleTrigger,
+} from "@/components/ui/collapsible";
 import logo from "@/assets/logo.png";
 import {
   LayoutDashboard,
@@ -31,6 +36,7 @@ import {
   CheckSquare,
   FileWarning,
   BarChart3,
+  ChevronDown,
 } from "lucide-react";
 
 const navigation = [
@@ -71,6 +77,22 @@ export function MobileNav() {
   const navigate = useNavigate();
   const { signOut, user } = useAuth();
   const { isAdmin, isManager } = useUserRole();
+
+  // Collapsible state
+  const [staffingOpen, setStaffingOpen] = useState(false);
+  const [roofingCrmOpen, setRoofingCrmOpen] = useState(false);
+  const [roofingOpsOpen, setRoofingOpsOpen] = useState(false);
+
+  // Auto-expand section if current route is within it
+  useEffect(() => {
+    const staffingRoutes = staffingNavigation.map((item) => item.href);
+    const crmRoutes = roofingCrmNavigation.map((item) => item.href);
+    const opsRoutes = roofingOpsNavigation.map((item) => item.href);
+
+    if (staffingRoutes.some((r) => location.pathname === r)) setStaffingOpen(true);
+    if (crmRoutes.some((r) => location.pathname === r)) setRoofingCrmOpen(true);
+    if (opsRoutes.some((r) => location.pathname === r)) setRoofingOpsOpen(true);
+  }, [location.pathname]);
 
   const handleNavigation = (href: string) => {
     navigate(href);
@@ -123,95 +145,125 @@ export function MobileNav() {
             })}
 
             {/* Staffing Section */}
-            <div className="mt-4 pt-4 border-t border-sidebar-border">
-              <div className="px-4 py-2 text-xs font-semibold text-muted-foreground uppercase tracking-wider">
-                Staffing
-              </div>
-              {staffingNavigation.map((item) => {
-                if (item.requiresManager && !isAdmin && !isManager) return null;
-                const isActive = location.pathname === item.href;
-                return (
-                  <button
-                    key={item.name}
-                    onClick={() => handleNavigation(item.href)}
+            <Collapsible open={staffingOpen} onOpenChange={setStaffingOpen}>
+              <div className="mt-4 pt-4 border-t border-sidebar-border">
+                <CollapsibleTrigger className="flex items-center justify-between w-full px-4 py-2 text-xs font-semibold text-muted-foreground uppercase tracking-wider hover:text-foreground transition-colors">
+                  <span>Staffing</span>
+                  <ChevronDown
                     className={cn(
-                      "w-full group flex items-center gap-3 rounded-lg px-4 py-3 text-base font-medium transition-all duration-200 min-h-[48px]",
-                      isActive
-                        ? "bg-primary/10 text-primary"
-                        : "text-muted-foreground hover:bg-sidebar-accent hover:text-foreground"
+                      "h-4 w-4 transition-transform duration-200",
+                      staffingOpen && "rotate-180"
                     )}
-                  >
-                    <item.icon
-                      className={cn(
-                        "h-6 w-6 transition-colors flex-shrink-0",
-                        isActive ? "text-primary" : "text-muted-foreground group-hover:text-foreground"
-                      )}
-                    />
-                    {item.name}
-                  </button>
-                );
-              })}
-            </div>
+                  />
+                </CollapsibleTrigger>
+                <CollapsibleContent className="space-y-1">
+                  {staffingNavigation.map((item) => {
+                    if (item.requiresManager && !isAdmin && !isManager) return null;
+                    const isActive = location.pathname === item.href;
+                    return (
+                      <button
+                        key={item.name}
+                        onClick={() => handleNavigation(item.href)}
+                        className={cn(
+                          "w-full group flex items-center gap-3 rounded-lg px-4 py-3 text-base font-medium transition-all duration-200 min-h-[48px]",
+                          isActive
+                            ? "bg-primary/10 text-primary"
+                            : "text-muted-foreground hover:bg-sidebar-accent hover:text-foreground"
+                        )}
+                      >
+                        <item.icon
+                          className={cn(
+                            "h-6 w-6 transition-colors flex-shrink-0",
+                            isActive ? "text-primary" : "text-muted-foreground group-hover:text-foreground"
+                          )}
+                        />
+                        {item.name}
+                      </button>
+                    );
+                  })}
+                </CollapsibleContent>
+              </div>
+            </Collapsible>
 
             {/* Roofing CRM Section */}
-            <div className="mt-4 pt-4 border-t border-sidebar-border">
-              <div className="px-4 py-2 text-xs font-semibold text-muted-foreground uppercase tracking-wider">
-                Roofing CRM
-              </div>
-              {roofingCrmNavigation.map((item) => {
-                const isActive = location.pathname === item.href;
-                return (
-                  <button
-                    key={item.name}
-                    onClick={() => handleNavigation(item.href)}
+            <Collapsible open={roofingCrmOpen} onOpenChange={setRoofingCrmOpen}>
+              <div className="mt-4 pt-4 border-t border-sidebar-border">
+                <CollapsibleTrigger className="flex items-center justify-between w-full px-4 py-2 text-xs font-semibold text-muted-foreground uppercase tracking-wider hover:text-foreground transition-colors">
+                  <span>Roofing CRM</span>
+                  <ChevronDown
                     className={cn(
-                      "w-full group flex items-center gap-3 rounded-lg px-4 py-3 text-base font-medium transition-all duration-200 min-h-[48px]",
-                      isActive
-                        ? "bg-primary/10 text-primary"
-                        : "text-muted-foreground hover:bg-sidebar-accent hover:text-foreground"
+                      "h-4 w-4 transition-transform duration-200",
+                      roofingCrmOpen && "rotate-180"
                     )}
-                  >
-                    <item.icon
-                      className={cn(
-                        "h-6 w-6 transition-colors flex-shrink-0",
-                        isActive ? "text-primary" : "text-muted-foreground group-hover:text-foreground"
-                      )}
-                    />
-                    {item.name}
-                  </button>
-                );
-              })}
-            </div>
+                  />
+                </CollapsibleTrigger>
+                <CollapsibleContent className="space-y-1">
+                  {roofingCrmNavigation.map((item) => {
+                    const isActive = location.pathname === item.href;
+                    return (
+                      <button
+                        key={item.name}
+                        onClick={() => handleNavigation(item.href)}
+                        className={cn(
+                          "w-full group flex items-center gap-3 rounded-lg px-4 py-3 text-base font-medium transition-all duration-200 min-h-[48px]",
+                          isActive
+                            ? "bg-primary/10 text-primary"
+                            : "text-muted-foreground hover:bg-sidebar-accent hover:text-foreground"
+                        )}
+                      >
+                        <item.icon
+                          className={cn(
+                            "h-6 w-6 transition-colors flex-shrink-0",
+                            isActive ? "text-primary" : "text-muted-foreground group-hover:text-foreground"
+                          )}
+                        />
+                        {item.name}
+                      </button>
+                    );
+                  })}
+                </CollapsibleContent>
+              </div>
+            </Collapsible>
 
             {/* Roofing Operations Section */}
-            <div className="mt-4 pt-4 border-t border-sidebar-border">
-              <div className="px-4 py-2 text-xs font-semibold text-muted-foreground uppercase tracking-wider">
-                Roofing Ops
-              </div>
-              {roofingOpsNavigation.map((item) => {
-                const isActive = location.pathname === item.href;
-                return (
-                  <button
-                    key={item.name}
-                    onClick={() => handleNavigation(item.href)}
+            <Collapsible open={roofingOpsOpen} onOpenChange={setRoofingOpsOpen}>
+              <div className="mt-4 pt-4 border-t border-sidebar-border">
+                <CollapsibleTrigger className="flex items-center justify-between w-full px-4 py-2 text-xs font-semibold text-muted-foreground uppercase tracking-wider hover:text-foreground transition-colors">
+                  <span>Roofing Ops</span>
+                  <ChevronDown
                     className={cn(
-                      "w-full group flex items-center gap-3 rounded-lg px-4 py-3 text-base font-medium transition-all duration-200 min-h-[48px]",
-                      isActive
-                        ? "bg-primary/10 text-primary"
-                        : "text-muted-foreground hover:bg-sidebar-accent hover:text-foreground"
+                      "h-4 w-4 transition-transform duration-200",
+                      roofingOpsOpen && "rotate-180"
                     )}
-                  >
-                    <item.icon
-                      className={cn(
-                        "h-6 w-6 transition-colors flex-shrink-0",
-                        isActive ? "text-primary" : "text-muted-foreground group-hover:text-foreground"
-                      )}
-                    />
-                    {item.name}
-                  </button>
-                );
-              })}
-            </div>
+                  />
+                </CollapsibleTrigger>
+                <CollapsibleContent className="space-y-1">
+                  {roofingOpsNavigation.map((item) => {
+                    const isActive = location.pathname === item.href;
+                    return (
+                      <button
+                        key={item.name}
+                        onClick={() => handleNavigation(item.href)}
+                        className={cn(
+                          "w-full group flex items-center gap-3 rounded-lg px-4 py-3 text-base font-medium transition-all duration-200 min-h-[48px]",
+                          isActive
+                            ? "bg-primary/10 text-primary"
+                            : "text-muted-foreground hover:bg-sidebar-accent hover:text-foreground"
+                        )}
+                      >
+                        <item.icon
+                          className={cn(
+                            "h-6 w-6 transition-colors flex-shrink-0",
+                            isActive ? "text-primary" : "text-muted-foreground group-hover:text-foreground"
+                          )}
+                        />
+                        {item.name}
+                      </button>
+                    );
+                  })}
+                </CollapsibleContent>
+              </div>
+            </Collapsible>
           </nav>
 
           {/* Settings & Profile */}
