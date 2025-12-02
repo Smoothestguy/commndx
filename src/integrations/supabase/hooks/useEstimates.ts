@@ -214,7 +214,13 @@ export const useConvertEstimateToJobOrder = () => {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: async (estimateId: string) => {
+    mutationFn: async (params: { 
+      estimateId: string; 
+      projectId?: string; 
+      projectName?: string;
+    }) => {
+      const { estimateId, projectId: overrideProjectId, projectName: overrideProjectName } = params;
+      
       // Fetch estimate with line items
       const { data: estimate, error: estimateError } = await supabase
         .from("estimates")
@@ -236,8 +242,12 @@ export const useConvertEstimateToJobOrder = () => {
         throw new Error("Only approved estimates can be converted to job orders");
       }
 
-      if (!estimate.project_id) {
-        throw new Error("Estimate must have a project to convert to job order");
+      // Use override project or estimate's project
+      const projectId = overrideProjectId || estimate.project_id;
+      const projectName = overrideProjectName || estimate.project_name;
+
+      if (!projectId) {
+        throw new Error("A project must be selected to convert to job order");
       }
 
       // Check if already converted
@@ -279,8 +289,8 @@ export const useConvertEstimateToJobOrder = () => {
             estimate_id: estimateId,
             customer_id: estimate.customer_id,
             customer_name: estimate.customer_name,
-            project_id: estimate.project_id,
-            project_name: estimate.project_name,
+            project_id: projectId,
+            project_name: projectName,
             status: "active",
             subtotal: estimate.subtotal,
             tax_rate: estimate.tax_rate,

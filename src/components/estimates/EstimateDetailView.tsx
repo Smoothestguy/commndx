@@ -36,6 +36,7 @@ import {
   useConvertEstimateToJobOrder,
   useConvertEstimateToInvoice,
 } from "@/integrations/supabase/hooks/useEstimates";
+import { ConvertToJobOrderDialog } from "./ConvertToJobOrderDialog";
 import { Edit, Trash2, Briefcase, MoreVertical, Loader2, Send, Copy, CheckCircle, FileText } from "lucide-react";
 import { format } from "date-fns";
 import { toast } from "sonner";
@@ -72,12 +73,15 @@ export function EstimateDetailView({ estimateId }: EstimateDetailViewProps) {
     });
   };
 
-  const handleConvert = async () => {
-    convertToJobOrder.mutate(estimateId, {
-      onSuccess: (jobOrder) => {
-        navigate(`/job-orders/${jobOrder.id}`);
-      },
-    });
+  const handleConvert = async (projectId: string, projectName: string) => {
+    convertToJobOrder.mutate(
+      { estimateId, projectId, projectName },
+      {
+        onSuccess: (jobOrder) => {
+          navigate(`/job-orders/${jobOrder.id}`);
+        },
+      }
+    );
   };
 
   const handleConvertToInvoice = async () => {
@@ -140,7 +144,7 @@ export function EstimateDetailView({ estimateId }: EstimateDetailViewProps) {
     );
   }
 
-  const canConvertToJobOrder = estimate.status === "approved" && estimate.project_id;
+  const canConvertToJobOrder = estimate.status === "approved";
   const canConvertToInvoice = estimate.status === "approved";
 
   return (
@@ -184,8 +188,8 @@ export function EstimateDetailView({ estimateId }: EstimateDetailViewProps) {
               </Button>
 
               {canConvertToJobOrder && (
-                <AlertDialog>
-                  <AlertDialogTrigger asChild>
+                <ConvertToJobOrderDialog
+                  trigger={
                     <Button disabled={convertToJobOrder.isPending}>
                       {convertToJobOrder.isPending ? (
                         <Loader2 className="mr-2 h-4 w-4 animate-spin" />
@@ -194,21 +198,13 @@ export function EstimateDetailView({ estimateId }: EstimateDetailViewProps) {
                       )}
                       Convert to Job Order
                     </Button>
-                  </AlertDialogTrigger>
-                  <AlertDialogContent>
-                    <AlertDialogHeader>
-                      <AlertDialogTitle>Convert to Job Order</AlertDialogTitle>
-                      <AlertDialogDescription>
-                        This will create a new job order from this estimate, copying all line
-                        items and customer information. Continue?
-                      </AlertDialogDescription>
-                    </AlertDialogHeader>
-                    <AlertDialogFooter>
-                      <AlertDialogCancel>Cancel</AlertDialogCancel>
-                      <AlertDialogAction onClick={handleConvert}>Convert</AlertDialogAction>
-                    </AlertDialogFooter>
-                  </AlertDialogContent>
-                </AlertDialog>
+                  }
+                  customerId={estimate.customer_id}
+                  estimateProjectId={estimate.project_id}
+                  estimateProjectName={estimate.project_name}
+                  isPending={convertToJobOrder.isPending}
+                  onConvert={handleConvert}
+                />
               )}
 
               {canConvertToInvoice && (
@@ -262,27 +258,19 @@ export function EstimateDetailView({ estimateId }: EstimateDetailViewProps) {
                     Edit Estimate
                   </DropdownMenuItem>
                   {canConvertToJobOrder && (
-                    <AlertDialog>
-                      <AlertDialogTrigger asChild>
+                    <ConvertToJobOrderDialog
+                      trigger={
                         <DropdownMenuItem onSelect={(e) => e.preventDefault()}>
                           <Briefcase className="mr-2 h-4 w-4" />
                           Convert to Job Order
                         </DropdownMenuItem>
-                      </AlertDialogTrigger>
-                      <AlertDialogContent>
-                        <AlertDialogHeader>
-                          <AlertDialogTitle>Convert to Job Order</AlertDialogTitle>
-                          <AlertDialogDescription>
-                            This will create a new job order from this estimate, copying all line
-                            items and customer information. Continue?
-                          </AlertDialogDescription>
-                        </AlertDialogHeader>
-                        <AlertDialogFooter>
-                          <AlertDialogCancel>Cancel</AlertDialogCancel>
-                          <AlertDialogAction onClick={handleConvert}>Convert</AlertDialogAction>
-                        </AlertDialogFooter>
-                      </AlertDialogContent>
-                    </AlertDialog>
+                      }
+                      customerId={estimate.customer_id}
+                      estimateProjectId={estimate.project_id}
+                      estimateProjectName={estimate.project_name}
+                      isPending={convertToJobOrder.isPending}
+                      onConvert={handleConvert}
+                    />
                   )}
                   {canConvertToInvoice && (
                     <AlertDialog>
@@ -527,8 +515,8 @@ export function EstimateDetailView({ estimateId }: EstimateDetailViewProps) {
                 </p>
                 
                 {canConvertToJobOrder && (
-                  <AlertDialog>
-                    <AlertDialogTrigger asChild>
+                  <ConvertToJobOrderDialog
+                    trigger={
                       <Button 
                         className="w-full" 
                         disabled={convertToJobOrder.isPending}
@@ -540,27 +528,19 @@ export function EstimateDetailView({ estimateId }: EstimateDetailViewProps) {
                         )}
                         Convert to Job Order
                       </Button>
-                    </AlertDialogTrigger>
-                    <AlertDialogContent>
-                      <AlertDialogHeader>
-                        <AlertDialogTitle>Convert to Job Order</AlertDialogTitle>
-                        <AlertDialogDescription>
-                          This will create a new job order from this estimate, copying all line
-                          items and customer information. Continue?
-                        </AlertDialogDescription>
-                      </AlertDialogHeader>
-                      <AlertDialogFooter>
-                        <AlertDialogCancel>Cancel</AlertDialogCancel>
-                        <AlertDialogAction onClick={handleConvert}>Convert</AlertDialogAction>
-                      </AlertDialogFooter>
-                    </AlertDialogContent>
-                  </AlertDialog>
+                    }
+                    customerId={estimate.customer_id}
+                    estimateProjectId={estimate.project_id}
+                    estimateProjectName={estimate.project_name}
+                    isPending={convertToJobOrder.isPending}
+                    onConvert={handleConvert}
+                  />
                 )}
 
                 <AlertDialog>
                   <AlertDialogTrigger asChild>
                     <Button 
-                      variant={canConvertToJobOrder ? "secondary" : "default"}
+                      variant="secondary"
                       className="w-full" 
                       disabled={convertToInvoice.isPending}
                     >
@@ -585,12 +565,6 @@ export function EstimateDetailView({ estimateId }: EstimateDetailViewProps) {
                     </AlertDialogFooter>
                   </AlertDialogContent>
                 </AlertDialog>
-
-                {!canConvertToJobOrder && (
-                  <p className="text-xs text-muted-foreground">
-                    To convert to a job order, assign this estimate to a project first.
-                  </p>
-                )}
               </CardContent>
             </Card>
           )}
