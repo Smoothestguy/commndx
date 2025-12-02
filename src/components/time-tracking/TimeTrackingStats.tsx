@@ -12,42 +12,30 @@ export function TimeTrackingStats({ entries }: TimeTrackingStatsProps) {
   
   const overtimeMultiplier = companySettings?.overtime_multiplier ?? 1.5;
   const holidayMultiplier = companySettings?.holiday_multiplier ?? 1.5;
+  const weeklyOvertimeThreshold = companySettings?.weekly_overtime_threshold ?? 40;
 
   const totalHours = entries.reduce((sum, entry) => sum + Number(entry.hours), 0);
   
-  const regularHours = entries.reduce(
-    (sum, entry) => sum + Number(entry.regular_hours || entry.hours),
-    0
-  );
-
-  const overtimeHours = entries.reduce(
-    (sum, entry) => sum + Number(entry.overtime_hours || 0),
-    0
-  );
+  // Calculate weekly overtime (hours over threshold)
+  const regularHours = Math.min(totalHours, weeklyOvertimeThreshold);
+  const overtimeHours = Math.max(0, totalHours - weeklyOvertimeThreshold);
 
   const holidayHours = entries
     .filter((entry) => entry.is_holiday)
     .reduce((sum, entry) => sum + Number(entry.hours), 0);
   
-  // Calculate total cost with proper multipliers
-  const totalCost = entries.reduce((sum, entry) => {
-    const hourlyRate = entry.personnel?.hourly_rate || entry.profiles?.hourly_rate || 0;
-    const regular = Number(entry.regular_hours || entry.hours);
-    const overtime = Number(entry.overtime_hours || 0);
-    const isHoliday = entry.is_holiday;
-    
-    // Calculate base costs
-    let regularCost = regular * hourlyRate;
-    let overtimeCost = overtime * hourlyRate * overtimeMultiplier;
-    
-    // Apply holiday multiplier if applicable
-    if (isHoliday) {
-      regularCost *= holidayMultiplier;
-      overtimeCost *= holidayMultiplier;
-    }
-    
-    return sum + regularCost + overtimeCost;
-  }, 0);
+  // Calculate total cost with weekly overtime
+  const avgHourlyRate = entries.length > 0
+    ? entries.reduce((sum, entry) => {
+        return sum + (entry.personnel?.hourly_rate || entry.profiles?.hourly_rate || 0);
+      }, 0) / entries.length
+    : 0;
+  
+  const regularCost = regularHours * avgHourlyRate;
+  const overtimeCost = overtimeHours * avgHourlyRate * overtimeMultiplier;
+  const holidayBonus = holidayHours * avgHourlyRate * (holidayMultiplier - 1);
+  
+  const totalCost = regularCost + overtimeCost + holidayBonus;
   
   const uninvoicedHours = entries
     .filter((entry) => entry.status !== "invoiced")
