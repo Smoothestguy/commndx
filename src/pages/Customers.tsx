@@ -18,6 +18,7 @@ import {
 } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
+import { Switch } from "@/components/ui/switch";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import { useCustomers, useAddCustomer, useUpdateCustomer, useDeleteCustomer, Customer } from "@/integrations/supabase/hooks/useCustomers";
@@ -346,6 +347,19 @@ const Customers = () => {
                 value={formData.address}
                 onChange={(e) => setFormData({ ...formData, address: e.target.value })}
                 className="bg-secondary border-border"
+              />
+            </div>
+            <div className="flex items-center justify-between rounded-lg border border-border p-4">
+              <div className="space-y-0.5">
+                <Label htmlFor="tax-exempt">Tax Exempt</Label>
+                <p className="text-sm text-muted-foreground">
+                  No tax will be applied to estimates for this customer
+                </p>
+              </div>
+              <Switch
+                id="tax-exempt"
+                checked={formData.tax_exempt}
+                onCheckedChange={(checked) => setFormData({ ...formData, tax_exempt: checked })}
               />
             </div>
             <div className="flex justify-end gap-3">

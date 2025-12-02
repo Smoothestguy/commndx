@@ -1,5 +1,6 @@
 import { Building2, Mail, Phone, FolderOpen, Edit, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
 import { Customer } from "@/integrations/supabase/hooks/useCustomers";
 
 interface CustomerCardProps {
@@ -24,9 +25,16 @@ export const CustomerCard = ({
     >
       <div className="flex items-start justify-between mb-3">
         <div className="flex-1">
-          <h3 className="font-heading font-semibold text-lg text-foreground mb-1">
-            {customer.name}
-          </h3>
+          <div className="flex items-center gap-2 mb-1">
+            <h3 className="font-heading font-semibold text-lg text-foreground">
+              {customer.name}
+            </h3>
+            {customer.tax_exempt && (
+              <Badge variant="secondary" className="text-xs">
+                Tax Exempt
+              </Badge>
+            )}
+          </div>
           {customer.company && (
             <div className="flex items-center gap-2 text-sm text-muted-foreground mb-2">
               <Building2 className="h-4 w-4" />
