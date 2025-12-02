@@ -1452,6 +1452,220 @@ export type Database = {
           },
         ]
       }
+      roof_inspections: {
+        Row: {
+          created_at: string | null
+          customer_id: string
+          findings: Json | null
+          id: string
+          inspection_date: string
+          inspection_type: Database["public"]["Enums"]["inspection_type"]
+          inspector_id: string | null
+          notes: string | null
+          overall_condition:
+            | Database["public"]["Enums"]["roof_condition"]
+            | null
+          photos: Json | null
+          project_id: string | null
+          recommendations: string | null
+          status: Database["public"]["Enums"]["inspection_status"]
+          updated_at: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          customer_id: string
+          findings?: Json | null
+          id?: string
+          inspection_date: string
+          inspection_type?: Database["public"]["Enums"]["inspection_type"]
+          inspector_id?: string | null
+          notes?: string | null
+          overall_condition?:
+            | Database["public"]["Enums"]["roof_condition"]
+            | null
+          photos?: Json | null
+          project_id?: string | null
+          recommendations?: string | null
+          status?: Database["public"]["Enums"]["inspection_status"]
+          updated_at?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          customer_id?: string
+          findings?: Json | null
+          id?: string
+          inspection_date?: string
+          inspection_type?: Database["public"]["Enums"]["inspection_type"]
+          inspector_id?: string | null
+          notes?: string | null
+          overall_condition?:
+            | Database["public"]["Enums"]["roof_condition"]
+            | null
+          photos?: Json | null
+          project_id?: string | null
+          recommendations?: string | null
+          status?: Database["public"]["Enums"]["inspection_status"]
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "roof_inspections_customer_id_fkey"
+            columns: ["customer_id"]
+            isOneToOne: false
+            referencedRelation: "customers"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "roof_inspections_inspector_id_fkey"
+            columns: ["inspector_id"]
+            isOneToOne: false
+            referencedRelation: "personnel"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "roof_inspections_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "projects"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      roof_measurements: {
+        Row: {
+          areas: Json | null
+          created_at: string | null
+          customer_id: string
+          eaves_length: number | null
+          id: string
+          measurement_date: string
+          notes: string | null
+          penetrations: Json | null
+          pitch: string | null
+          project_id: string | null
+          ridges_length: number | null
+          roof_type: Database["public"]["Enums"]["roof_type"] | null
+          total_squares: number | null
+          updated_at: string | null
+          valleys_length: number | null
+        }
+        Insert: {
+          areas?: Json | null
+          created_at?: string | null
+          customer_id: string
+          eaves_length?: number | null
+          id?: string
+          measurement_date?: string
+          notes?: string | null
+          penetrations?: Json | null
+          pitch?: string | null
+          project_id?: string | null
+          ridges_length?: number | null
+          roof_type?: Database["public"]["Enums"]["roof_type"] | null
+          total_squares?: number | null
+          updated_at?: string | null
+          valleys_length?: number | null
+        }
+        Update: {
+          areas?: Json | null
+          created_at?: string | null
+          customer_id?: string
+          eaves_length?: number | null
+          id?: string
+          measurement_date?: string
+          notes?: string | null
+          penetrations?: Json | null
+          pitch?: string | null
+          project_id?: string | null
+          ridges_length?: number | null
+          roof_type?: Database["public"]["Enums"]["roof_type"] | null
+          total_squares?: number | null
+          updated_at?: string | null
+          valleys_length?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "roof_measurements_customer_id_fkey"
+            columns: ["customer_id"]
+            isOneToOne: false
+            referencedRelation: "customers"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "roof_measurements_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "projects"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      roof_warranties: {
+        Row: {
+          coverage_details: string | null
+          created_at: string | null
+          customer_id: string
+          documents: Json | null
+          end_date: string
+          id: string
+          notifications_enabled: boolean | null
+          project_id: string | null
+          provider: string
+          start_date: string
+          status: Database["public"]["Enums"]["warranty_status"]
+          updated_at: string | null
+          warranty_number: string | null
+          warranty_type: Database["public"]["Enums"]["warranty_type"]
+        }
+        Insert: {
+          coverage_details?: string | null
+          created_at?: string | null
+          customer_id: string
+          documents?: Json | null
+          end_date: string
+          id?: string
+          notifications_enabled?: boolean | null
+          project_id?: string | null
+          provider: string
+          start_date: string
+          status?: Database["public"]["Enums"]["warranty_status"]
+          updated_at?: string | null
+          warranty_number?: string | null
+          warranty_type?: Database["public"]["Enums"]["warranty_type"]
+        }
+        Update: {
+          coverage_details?: string | null
+          created_at?: string | null
+          customer_id?: string
+          documents?: Json | null
+          end_date?: string
+          id?: string
+          notifications_enabled?: boolean | null
+          project_id?: string | null
+          provider?: string
+          start_date?: string
+          status?: Database["public"]["Enums"]["warranty_status"]
+          updated_at?: string | null
+          warranty_number?: string | null
+          warranty_type?: Database["public"]["Enums"]["warranty_type"]
+        }
+        Relationships: [
+          {
+            foreignKeyName: "roof_warranties_customer_id_fkey"
+            columns: ["customer_id"]
+            isOneToOne: false
+            referencedRelation: "customers"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "roof_warranties_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "projects"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       time_entries: {
         Row: {
           billable: boolean | null
@@ -1666,6 +1880,59 @@ export type Database = {
         }
         Relationships: []
       }
+      weather_logs: {
+        Row: {
+          conditions: string | null
+          created_at: string | null
+          id: string
+          location: string
+          log_date: string
+          notes: string | null
+          precipitation: number | null
+          project_id: string | null
+          temperature_high: number | null
+          temperature_low: number | null
+          wind_speed: number | null
+          work_suitable: boolean | null
+        }
+        Insert: {
+          conditions?: string | null
+          created_at?: string | null
+          id?: string
+          location: string
+          log_date?: string
+          notes?: string | null
+          precipitation?: number | null
+          project_id?: string | null
+          temperature_high?: number | null
+          temperature_low?: number | null
+          wind_speed?: number | null
+          work_suitable?: boolean | null
+        }
+        Update: {
+          conditions?: string | null
+          created_at?: string | null
+          id?: string
+          location?: string
+          log_date?: string
+          notes?: string | null
+          precipitation?: number | null
+          project_id?: string | null
+          temperature_high?: number | null
+          temperature_low?: number | null
+          wind_speed?: number | null
+          work_suitable?: boolean | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "weather_logs_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "projects"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
     }
     Views: {
       [_ in never]: never
@@ -1704,6 +1971,13 @@ export type Database = {
         | "rejected"
         | "expired"
         | "not_required"
+      inspection_status: "scheduled" | "in_progress" | "completed" | "cancelled"
+      inspection_type:
+        | "initial"
+        | "progress"
+        | "final"
+        | "warranty"
+        | "storm_damage"
       invoice_status: "draft" | "sent" | "paid" | "overdue"
       job_order_status: "active" | "in-progress" | "completed" | "on-hold"
       personnel_status: "active" | "inactive" | "do_not_hire"
@@ -1716,7 +1990,18 @@ export type Database = {
         | "in-progress"
         | "completed"
         | "cancelled"
+      roof_condition: "excellent" | "good" | "fair" | "poor" | "critical"
+      roof_type:
+        | "gable"
+        | "hip"
+        | "flat"
+        | "mansard"
+        | "gambrel"
+        | "shed"
+        | "combination"
       vendor_status: "active" | "inactive"
+      warranty_status: "active" | "expired" | "claimed" | "voided"
+      warranty_type: "manufacturer" | "workmanship" | "extended"
       work_auth_type:
         | "citizen"
         | "permanent_resident"
@@ -1866,6 +2151,14 @@ export const Constants = {
         "expired",
         "not_required",
       ],
+      inspection_status: ["scheduled", "in_progress", "completed", "cancelled"],
+      inspection_type: [
+        "initial",
+        "progress",
+        "final",
+        "warranty",
+        "storm_damage",
+      ],
       invoice_status: ["draft", "sent", "paid", "overdue"],
       job_order_status: ["active", "in-progress", "completed", "on-hold"],
       personnel_status: ["active", "inactive", "do_not_hire"],
@@ -1879,7 +2172,19 @@ export const Constants = {
         "completed",
         "cancelled",
       ],
+      roof_condition: ["excellent", "good", "fair", "poor", "critical"],
+      roof_type: [
+        "gable",
+        "hip",
+        "flat",
+        "mansard",
+        "gambrel",
+        "shed",
+        "combination",
+      ],
       vendor_status: ["active", "inactive"],
+      warranty_status: ["active", "expired", "claimed", "voided"],
+      warranty_type: ["manufacturer", "workmanship", "extended"],
       work_auth_type: [
         "citizen",
         "permanent_resident",
