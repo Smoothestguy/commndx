@@ -247,6 +247,33 @@ export const useDeleteTimeEntry = () => {
   });
 };
 
+// Bulk delete time entries
+export const useBulkDeleteTimeEntries = () => {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async (ids: string[]) => {
+      if (ids.length === 0) throw new Error("No entries to delete");
+
+      const { error } = await supabase
+        .from("time_entries")
+        .delete()
+        .in("id", ids);
+
+      if (error) throw error;
+      return ids.length;
+    },
+    onSuccess: (count) => {
+      queryClient.invalidateQueries({ queryKey: ["time-entries"] });
+      queryClient.invalidateQueries({ queryKey: ["all-time-entries"] });
+      toast.success(`${count} time ${count === 1 ? 'entry' : 'entries'} deleted`);
+    },
+    onError: () => {
+      toast.error("Failed to delete time entries");
+    },
+  });
+};
+
 // Fetch all time entries with details (for admin/manager view)
 export const useAllTimeEntries = (projectFilter?: string, personnelFilter?: string) => {
   return useQuery({
