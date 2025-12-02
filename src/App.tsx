@@ -6,6 +6,7 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { AuthProvider } from "@/contexts/AuthContext";
 import { ProtectedRoute } from "@/components/ProtectedRoute";
+import { ThemeProvider } from "@/components/ThemeProvider";
 import { BottomNav } from "@/components/layout/BottomNav";
 import { MoreMenu } from "@/components/layout/MoreMenu";
 import Index from "./pages/Index";
@@ -48,57 +49,278 @@ const queryClient = new QueryClient();
 
 const App = () => {
   const [moreMenuOpen, setMoreMenuOpen] = useState(false);
-  
+
   return (
     <QueryClientProvider client={queryClient}>
-      <TooltipProvider>
-        <Toaster />
-        <Sonner />
-        <BrowserRouter>
-          <AuthProvider>
-            <Routes>
-            <Route path="/auth" element={<Auth />} />
-            <Route path="/accept-invitation" element={<AcceptInvitation />} />
-            <Route path="/approve-estimate/:token" element={<ApproveEstimate />} />
-            <Route path="/personnel/register" element={<PersonnelRegister />} />
-            <Route path="/" element={<ProtectedRoute><Index /></ProtectedRoute>} />
-            <Route path="/products" element={<ProtectedRoute><Products /></ProtectedRoute>} />
-            <Route path="/customers" element={<ProtectedRoute><Customers /></ProtectedRoute>} />
-            <Route path="/projects" element={<ProtectedRoute><Projects /></ProtectedRoute>} />
-            <Route path="/projects/:id" element={<ProtectedRoute><ProjectDetail /></ProtectedRoute>} />
-            <Route path="/vendors" element={<ProtectedRoute><Vendors /></ProtectedRoute>} />
-            <Route path="/vendors/:id" element={<ProtectedRoute><VendorDetail /></ProtectedRoute>} />
-            <Route path="/jobs" element={<ProtectedRoute><Jobs /></ProtectedRoute>} />
-            <Route path="/sales" element={<ProtectedRoute><Sales /></ProtectedRoute>} />
-            <Route path="/estimates" element={<ProtectedRoute><Estimates /></ProtectedRoute>} />
-            <Route path="/estimates/new" element={<ProtectedRoute><NewEstimate /></ProtectedRoute>} />
-            <Route path="/estimates/:id" element={<ProtectedRoute><EstimateDetail /></ProtectedRoute>} />
-            <Route path="/estimates/:id/edit" element={<ProtectedRoute><EditEstimate /></ProtectedRoute>} />
-            <Route path="/job-orders" element={<ProtectedRoute><JobOrders /></ProtectedRoute>} />
-            <Route path="/job-orders/:id" element={<ProtectedRoute><JobOrderDetail /></ProtectedRoute>} />
-            <Route path="/job-orders/:id/edit" element={<ProtectedRoute><EditJobOrder /></ProtectedRoute>} />
-            <Route path="/purchase-orders" element={<ProtectedRoute><PurchaseOrders /></ProtectedRoute>} />
-            <Route path="/purchase-orders/new" element={<ProtectedRoute><NewPurchaseOrder /></ProtectedRoute>} />
-            <Route path="/purchase-orders/:id" element={<ProtectedRoute><PurchaseOrderDetail /></ProtectedRoute>} />
-            <Route path="/invoices" element={<ProtectedRoute><Invoices /></ProtectedRoute>} />
-            <Route path="/invoices/new" element={<ProtectedRoute><NewInvoice /></ProtectedRoute>} />
-            <Route path="/invoices/new-from-time" element={<ProtectedRoute><NewTimeEntryInvoice /></ProtectedRoute>} />
-            <Route path="/invoices/:id" element={<ProtectedRoute><InvoiceDetail /></ProtectedRoute>} />
-            <Route path="/time-tracking" element={<ProtectedRoute><TimeTracking /></ProtectedRoute>} />
-            <Route path="/project-assignments" element={<ProtectedRoute><ProjectAssignments /></ProtectedRoute>} />
-            <Route path="/personnel" element={<ProtectedRoute><Personnel /></ProtectedRoute>} />
-            <Route path="/personnel/:id" element={<ProtectedRoute><PersonnelDetail /></ProtectedRoute>} />
-            <Route path="/badge-templates" element={<ProtectedRoute><BadgeTemplates /></ProtectedRoute>} />
-            <Route path="/settings" element={<ProtectedRoute><Settings /></ProtectedRoute>} />
-            <Route path="/user-management" element={<ProtectedRoute><UserManagement /></ProtectedRoute>} />
-            <Route path="*" element={<NotFound />} />
-          </Routes>
-          <BottomNav onMoreClick={() => setMoreMenuOpen(true)} />
-          <MoreMenu open={moreMenuOpen} onOpenChange={setMoreMenuOpen} />
-        </AuthProvider>
-      </BrowserRouter>
-    </TooltipProvider>
-  </QueryClientProvider>
+      <ThemeProvider>
+        <TooltipProvider>
+          <Toaster />
+          <Sonner />
+          <BrowserRouter>
+            <AuthProvider>
+              <Routes>
+                <Route path="/auth" element={<Auth />} />
+                <Route
+                  path="/accept-invitation"
+                  element={<AcceptInvitation />}
+                />
+                <Route
+                  path="/approve-estimate/:token"
+                  element={<ApproveEstimate />}
+                />
+                <Route
+                  path="/personnel/register"
+                  element={<PersonnelRegister />}
+                />
+                <Route
+                  path="/"
+                  element={
+                    <ProtectedRoute>
+                      <Index />
+                    </ProtectedRoute>
+                  }
+                />
+                <Route
+                  path="/products"
+                  element={
+                    <ProtectedRoute>
+                      <Products />
+                    </ProtectedRoute>
+                  }
+                />
+                <Route
+                  path="/customers"
+                  element={
+                    <ProtectedRoute>
+                      <Customers />
+                    </ProtectedRoute>
+                  }
+                />
+                <Route
+                  path="/projects"
+                  element={
+                    <ProtectedRoute>
+                      <Projects />
+                    </ProtectedRoute>
+                  }
+                />
+                <Route
+                  path="/projects/:id"
+                  element={
+                    <ProtectedRoute>
+                      <ProjectDetail />
+                    </ProtectedRoute>
+                  }
+                />
+                <Route
+                  path="/vendors"
+                  element={
+                    <ProtectedRoute>
+                      <Vendors />
+                    </ProtectedRoute>
+                  }
+                />
+                <Route
+                  path="/vendors/:id"
+                  element={
+                    <ProtectedRoute>
+                      <VendorDetail />
+                    </ProtectedRoute>
+                  }
+                />
+                <Route
+                  path="/jobs"
+                  element={
+                    <ProtectedRoute>
+                      <Jobs />
+                    </ProtectedRoute>
+                  }
+                />
+                <Route
+                  path="/sales"
+                  element={
+                    <ProtectedRoute>
+                      <Sales />
+                    </ProtectedRoute>
+                  }
+                />
+                <Route
+                  path="/estimates"
+                  element={
+                    <ProtectedRoute>
+                      <Estimates />
+                    </ProtectedRoute>
+                  }
+                />
+                <Route
+                  path="/estimates/new"
+                  element={
+                    <ProtectedRoute>
+                      <NewEstimate />
+                    </ProtectedRoute>
+                  }
+                />
+                <Route
+                  path="/estimates/:id"
+                  element={
+                    <ProtectedRoute>
+                      <EstimateDetail />
+                    </ProtectedRoute>
+                  }
+                />
+                <Route
+                  path="/estimates/:id/edit"
+                  element={
+                    <ProtectedRoute>
+                      <EditEstimate />
+                    </ProtectedRoute>
+                  }
+                />
+                <Route
+                  path="/job-orders"
+                  element={
+                    <ProtectedRoute>
+                      <JobOrders />
+                    </ProtectedRoute>
+                  }
+                />
+                <Route
+                  path="/job-orders/:id"
+                  element={
+                    <ProtectedRoute>
+                      <JobOrderDetail />
+                    </ProtectedRoute>
+                  }
+                />
+                <Route
+                  path="/job-orders/:id/edit"
+                  element={
+                    <ProtectedRoute>
+                      <EditJobOrder />
+                    </ProtectedRoute>
+                  }
+                />
+                <Route
+                  path="/purchase-orders"
+                  element={
+                    <ProtectedRoute>
+                      <PurchaseOrders />
+                    </ProtectedRoute>
+                  }
+                />
+                <Route
+                  path="/purchase-orders/new"
+                  element={
+                    <ProtectedRoute>
+                      <NewPurchaseOrder />
+                    </ProtectedRoute>
+                  }
+                />
+                <Route
+                  path="/purchase-orders/:id"
+                  element={
+                    <ProtectedRoute>
+                      <PurchaseOrderDetail />
+                    </ProtectedRoute>
+                  }
+                />
+                <Route
+                  path="/invoices"
+                  element={
+                    <ProtectedRoute>
+                      <Invoices />
+                    </ProtectedRoute>
+                  }
+                />
+                <Route
+                  path="/invoices/new"
+                  element={
+                    <ProtectedRoute>
+                      <NewInvoice />
+                    </ProtectedRoute>
+                  }
+                />
+                <Route
+                  path="/invoices/new-from-time"
+                  element={
+                    <ProtectedRoute>
+                      <NewTimeEntryInvoice />
+                    </ProtectedRoute>
+                  }
+                />
+                <Route
+                  path="/invoices/:id"
+                  element={
+                    <ProtectedRoute>
+                      <InvoiceDetail />
+                    </ProtectedRoute>
+                  }
+                />
+                <Route
+                  path="/time-tracking"
+                  element={
+                    <ProtectedRoute>
+                      <TimeTracking />
+                    </ProtectedRoute>
+                  }
+                />
+                <Route
+                  path="/project-assignments"
+                  element={
+                    <ProtectedRoute>
+                      <ProjectAssignments />
+                    </ProtectedRoute>
+                  }
+                />
+                <Route
+                  path="/personnel"
+                  element={
+                    <ProtectedRoute>
+                      <Personnel />
+                    </ProtectedRoute>
+                  }
+                />
+                <Route
+                  path="/personnel/:id"
+                  element={
+                    <ProtectedRoute>
+                      <PersonnelDetail />
+                    </ProtectedRoute>
+                  }
+                />
+                <Route
+                  path="/badge-templates"
+                  element={
+                    <ProtectedRoute>
+                      <BadgeTemplates />
+                    </ProtectedRoute>
+                  }
+                />
+                <Route
+                  path="/settings"
+                  element={
+                    <ProtectedRoute>
+                      <Settings />
+                    </ProtectedRoute>
+                  }
+                />
+                <Route
+                  path="/user-management"
+                  element={
+                    <ProtectedRoute>
+                      <UserManagement />
+                    </ProtectedRoute>
+                  }
+                />
+                <Route path="*" element={<NotFound />} />
+              </Routes>
+              <BottomNav onMoreClick={() => setMoreMenuOpen(true)} />
+              <MoreMenu open={moreMenuOpen} onOpenChange={setMoreMenuOpen} />
+            </AuthProvider>
+          </BrowserRouter>
+        </TooltipProvider>
+      </ThemeProvider>
+    </QueryClientProvider>
   );
 };
 

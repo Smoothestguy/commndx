@@ -4,6 +4,7 @@ import { useSwipeNavigation } from "@/hooks/useSwipeNavigation";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { cn } from "@/lib/utils";
 import logo from "@/assets/logo.png";
+import { ThemeToggleSimple } from "@/components/ThemeToggle";
 
 interface PageLayoutProps {
   children: ReactNode;
@@ -12,22 +13,28 @@ interface PageLayoutProps {
   actions?: ReactNode;
 }
 
-export function PageLayout({ children, title, description, actions }: PageLayoutProps) {
+export function PageLayout({
+  children,
+  title,
+  description,
+  actions,
+}: PageLayoutProps) {
   const { swipeRef } = useSwipeNavigation();
   const isMobile = useIsMobile();
 
   return (
     <div className="min-h-screen bg-background">
       <Sidebar />
-      
+
       {/* Simplified Mobile Header */}
       <header className="lg:hidden sticky top-0 z-50 h-14 border-b border-border glass safe-area-top">
-        <div className="flex h-full items-center px-4">
-          <img 
-            src={logo} 
-            alt="Command X" 
-            className="h-8 sm:h-9 md:h-10 w-auto max-w-[180px] sm:max-w-[200px] md:max-w-[220px] object-contain" 
+        <div className="flex h-full items-center justify-between px-4">
+          <img
+            src={logo}
+            alt="Command X"
+            className="h-8 sm:h-9 md:h-10 w-auto max-w-[180px] sm:max-w-[200px] md:max-w-[220px] object-contain"
           />
+          <ThemeToggleSimple />
         </div>
       </header>
 
