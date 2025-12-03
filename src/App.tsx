@@ -57,6 +57,7 @@ import Appointments from "./pages/Appointments";
 import InsuranceClaims from "./pages/InsuranceClaims";
 import Tasks from "./pages/Tasks";
 import RoofingDashboard from "./pages/RoofingDashboard";
+import QuickBooksSettings from "./pages/QuickBooksSettings";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -435,6 +436,14 @@ const App = () => {
                   element={
                     <ProtectedRoute>
                       <UserManagement />
+                    </ProtectedRoute>
+                  }
+                />
+                <Route
+                  path="/settings/quickbooks"
+                  element={
+                    <ProtectedRoute>
+                      <QuickBooksSettings />
                     </ProtectedRoute>
                   }
                 />
