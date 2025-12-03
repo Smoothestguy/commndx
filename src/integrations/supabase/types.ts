@@ -2116,6 +2116,36 @@ export type Database = {
         }
         Relationships: []
       }
+      quickbooks_sync_logs: {
+        Row: {
+          created_at: string | null
+          details: Json | null
+          error_message: string | null
+          id: string
+          records_synced: number | null
+          status: string
+          sync_type: string
+        }
+        Insert: {
+          created_at?: string | null
+          details?: Json | null
+          error_message?: string | null
+          id?: string
+          records_synced?: number | null
+          status: string
+          sync_type: string
+        }
+        Update: {
+          created_at?: string | null
+          details?: Json | null
+          error_message?: string | null
+          id?: string
+          records_synced?: number | null
+          status?: string
+          sync_type?: string
+        }
+        Relationships: []
+      }
       quickbooks_vendor_mappings: {
         Row: {
           conflict_data: Json | null
