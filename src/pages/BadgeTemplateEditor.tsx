@@ -9,6 +9,7 @@ import { Switch } from "@/components/ui/switch";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { ArrowLeft, Save, Eye, Loader2, Building2, Trash2 } from "lucide-react";
+import companyLogo from "@/assets/logo.png";
 import {
   Select,
   SelectContent,
@@ -321,7 +322,7 @@ export default function BadgeTemplateEditor() {
                   <Button
                     type="button"
                     variant="outline"
-                    onClick={() => setTemplate({ ...template, company_logo_url: "/logo.png" })}
+                    onClick={() => setTemplate({ ...template, company_logo_url: companyLogo })}
                     className="gap-2"
                   >
                     <Building2 className="h-4 w-4" />
@@ -530,7 +531,11 @@ export default function BadgeTemplateEditor() {
                 {/* Header */}
                 <div className="p-4 text-white" style={{ backgroundColor: template.header_color }}>
                   {template.company_logo_url && (
-                    <img src={template.company_logo_url} alt="Logo" className="h-12 mb-2 object-contain" />
+                    <img 
+                      src={template.company_logo_url} 
+                      alt="Logo" 
+                      className="h-12 mb-2 object-contain brightness-0 invert"
+                    />
                   )}
                   <h2 className="text-xl font-bold">{template.company_name}</h2>
                   <p className="text-sm opacity-90">Personnel ID Badge</p>
