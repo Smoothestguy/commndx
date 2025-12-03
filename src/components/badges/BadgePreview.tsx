@@ -1,9 +1,36 @@
 import { Card } from "@/components/ui/card";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { Badge } from "@/components/ui/badge";
-import type { Database } from "@/integrations/supabase/types";
+import { Separator } from "@/components/ui/separator";
 
-type Personnel = Database["public"]["Tables"]["personnel"]["Row"];
+interface PersonnelCertification {
+  id: string;
+  certification_name: string;
+}
+
+interface PersonnelCapability {
+  id: string;
+  capability: string;
+}
+
+interface PersonnelLanguage {
+  id: string;
+  language: string;
+}
+
+interface Personnel {
+  id: string;
+  first_name: string;
+  last_name: string;
+  personnel_number: string;
+  phone?: string | null;
+  email?: string | null;
+  photo_url?: string | null;
+  work_authorization_type?: string | null;
+  everify_status?: string | null;
+  personnel_certifications?: PersonnelCertification[];
+  personnel_capabilities?: PersonnelCapability[];
+  personnel_languages?: PersonnelLanguage[];
+}
 
 interface BadgePreviewProps {
   personnel: Personnel;
@@ -64,6 +91,10 @@ export const BadgePreview = ({ personnel, template }: BadgePreviewProps) => {
 
   const isLandscape = template.orientation === "landscape";
 
+  const certifications = personnel.personnel_certifications || [];
+  const capabilities = personnel.personnel_capabilities || [];
+  const languages = personnel.personnel_languages || [];
+
   return (
     <Card
       className={`overflow-hidden flex flex-col ${isLandscape ? "w-[400px] h-[250px]" : "w-[250px] h-[400px]"}`}
@@ -88,11 +119,11 @@ export const BadgePreview = ({ personnel, template }: BadgePreviewProps) => {
       </div>
 
       {/* Body Section */}
-      <div className="flex-1 p-3 flex flex-col items-center justify-center gap-2">
+      <div className="flex-1 p-3 flex flex-col items-center gap-2 overflow-hidden">
         {isEnabled("photo") && (
-          <Avatar className="h-16 w-16 border-2 border-muted">
+          <Avatar className="h-14 w-14 border-2 border-muted">
             <AvatarImage src={personnel.photo_url || ""} />
-            <AvatarFallback className="text-lg bg-muted">
+            <AvatarFallback className="text-base bg-muted">
               {personnel.first_name[0]}
               {personnel.last_name[0]}
             </AvatarFallback>
@@ -101,7 +132,7 @@ export const BadgePreview = ({ personnel, template }: BadgePreviewProps) => {
 
         {/* Name */}
         <h3
-          className="text-base font-bold text-center"
+          className="text-sm font-bold text-center leading-tight"
           style={{ color: template.name_color || "#1f2937" }}
         >
           {personnel.first_name} {personnel.last_name}
@@ -109,52 +140,128 @@ export const BadgePreview = ({ personnel, template }: BadgePreviewProps) => {
 
         {isEnabled("personnel_number") && (
           <div
-            className="text-xs font-mono"
+            className="text-[10px] font-mono"
             style={{ color: template.personnel_number_color || "#6b7280" }}
           >
             {personnel.personnel_number}
           </div>
         )}
 
-        {/* Contact Info */}
-        <div className="space-y-1 text-center w-full">
+        {/* Contact & Status Info */}
+        <div className="w-full space-y-0.5 text-[9px]">
           {isEnabled("phone") && personnel.phone && (
-            <div className="flex justify-between text-xs px-2">
-              <span style={{ color: template.label_color || "#6b7280" }}>Phone:</span>
-              <span style={{ color: template.value_color || "#374151" }}>{personnel.phone}</span>
-            </div>
+            <>
+              <div className="flex justify-between px-1">
+                <span style={{ color: template.label_color || "#6b7280" }}>Phone:</span>
+                <span style={{ color: template.value_color || "#374151" }}>{personnel.phone}</span>
+              </div>
+              <Separator className="my-0.5" />
+            </>
           )}
 
           {isEnabled("email") && personnel.email && (
-            <div className="flex justify-between text-xs px-2">
-              <span style={{ color: template.label_color || "#6b7280" }}>Email:</span>
-              <span
-                className="truncate max-w-[120px]"
-                style={{ color: template.value_color || "#374151" }}
-              >
-                {personnel.email}
-              </span>
-            </div>
+            <>
+              <div className="flex justify-between px-1">
+                <span style={{ color: template.label_color || "#6b7280" }}>Email:</span>
+                <span
+                  className="truncate max-w-[100px]"
+                  style={{ color: template.value_color || "#374151" }}
+                >
+                  {personnel.email}
+                </span>
+              </div>
+              <Separator className="my-0.5" />
+            </>
           )}
 
           {isEnabled("work_authorization") && personnel.work_authorization_type && (
-            <div className="flex justify-between text-xs px-2">
-              <span style={{ color: template.label_color || "#6b7280" }}>Work Auth:</span>
-              <span style={{ color: template.value_color || "#374151" }}>
-                {personnel.work_authorization_type}
-              </span>
-            </div>
+            <>
+              <div className="flex justify-between px-1">
+                <span style={{ color: template.label_color || "#6b7280" }}>Auth:</span>
+                <span style={{ color: template.value_color || "#374151" }}>
+                  {personnel.work_authorization_type}
+                </span>
+              </div>
+              <Separator className="my-0.5" />
+            </>
+          )}
+
+          {isEnabled("everify_status") && personnel.everify_status && (
+            <>
+              <div className="flex justify-between px-1">
+                <span style={{ color: template.label_color || "#6b7280" }}>E-Verify:</span>
+                <span 
+                  className="capitalize"
+                  style={{ 
+                    color: personnel.everify_status === "verified" ? "#16a34a" : template.value_color || "#374151" 
+                  }}
+                >
+                  {personnel.everify_status}
+                </span>
+              </div>
+              <Separator className="my-0.5" />
+            </>
           )}
         </div>
 
-        {isEnabled("everify_status") && personnel.everify_status === "verified" && (
-          <Badge className="bg-green-600 text-white text-[10px]">E-Verified</Badge>
+        {/* Certifications Section */}
+        {isEnabled("certifications") && certifications.length > 0 && (
+          <div className="w-full bg-muted/50 rounded p-1.5">
+            <div className="text-[8px] font-semibold mb-0.5" style={{ color: template.label_color || "#6b7280" }}>
+              Certifications
+            </div>
+            <div className="text-[8px] space-y-0.5" style={{ color: template.value_color || "#374151" }}>
+              {certifications.slice(0, 3).map((cert) => (
+                <div key={cert.id} className="flex items-center gap-1">
+                  <span className="text-[6px]">•</span>
+                  <span className="truncate">{cert.certification_name}</span>
+                </div>
+              ))}
+              {certifications.length > 3 && (
+                <div className="text-[7px] opacity-70">+{certifications.length - 3} more</div>
+              )}
+            </div>
+          </div>
+        )}
+
+        {/* Capabilities Section */}
+        {isEnabled("capabilities") && capabilities.length > 0 && (
+          <div className="w-full bg-muted/50 rounded p-1.5">
+            <div className="text-[8px] font-semibold mb-0.5" style={{ color: template.label_color || "#6b7280" }}>
+              Capabilities
+            </div>
+            <div className="text-[8px] space-y-0.5" style={{ color: template.value_color || "#374151" }}>
+              {capabilities.slice(0, 3).map((cap) => (
+                <div key={cap.id} className="flex items-center gap-1">
+                  <span className="text-[6px]">•</span>
+                  <span className="truncate">{cap.capability}</span>
+                </div>
+              ))}
+              {capabilities.length > 3 && (
+                <div className="text-[7px] opacity-70">+{capabilities.length - 3} more</div>
+              )}
+            </div>
+          </div>
+        )}
+
+        {/* Languages Section */}
+        {isEnabled("languages") && languages.length > 0 && (
+          <div className="w-full bg-muted/50 rounded p-1.5">
+            <div className="text-[8px] font-semibold mb-0.5" style={{ color: template.label_color || "#6b7280" }}>
+              Languages
+            </div>
+            <div className="text-[8px] flex flex-wrap gap-1" style={{ color: template.value_color || "#374151" }}>
+              {languages.map((lang) => (
+                <span key={lang.id}>{lang.language}</span>
+              ))}
+            </div>
+          </div>
         )}
       </div>
 
       {/* Footer Section */}
       <div
-        className="px-2 py-1.5 text-center text-[9px] bg-muted/50"
+        className="px-2 py-1.5 text-center text-[8px] bg-muted/50"
         style={{ color: template.footer_color || "#6b7280" }}
       >
         Must be worn visibly at all times

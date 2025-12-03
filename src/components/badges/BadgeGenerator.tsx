@@ -4,7 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { useBadgeTemplates, useDefaultBadgeTemplate } from "@/integrations/supabase/hooks/useBadgeTemplates";
-import { usePersonnel } from "@/integrations/supabase/hooks/usePersonnel";
+import { usePersonnel, usePersonnelById } from "@/integrations/supabase/hooks/usePersonnel";
 import { BadgePreview } from "./BadgePreview";
 import { generateBadgePDF, generateBulkBadgePDF } from "@/utils/badgePdfExport";
 import { toast } from "sonner";
@@ -30,6 +30,9 @@ export const BadgeGenerator = ({
   const { data: templates } = useBadgeTemplates();
   const { data: defaultTemplate } = useDefaultBadgeTemplate();
   const { data: personnelList } = usePersonnel({ status: "active" });
+  
+  // Fetch complete personnel data with relations for preview
+  const { data: selectedPersonnelFull } = usePersonnelById(selectedPersonnelIds[0]);
 
   // Auto-select default template when dialog opens
   useEffect(() => {
@@ -39,9 +42,6 @@ export const BadgeGenerator = ({
   }, [open, defaultTemplate, selectedTemplateId]);
 
   const selectedTemplate = templates?.find((t) => t.id === selectedTemplateId);
-  const selectedPersonnel = personnelList?.find(
-    (p) => p.id === selectedPersonnelIds[0]
-  );
 
   const handleGenerate = async () => {
     if (!selectedTemplate) {
@@ -57,14 +57,9 @@ export const BadgeGenerator = ({
     setIsGenerating(true);
 
     try {
-      if (selectedPersonnelIds.length === 1) {
-        const personnel = personnelList?.find(
-          (p) => p.id === selectedPersonnelIds[0]
-        );
-        if (personnel) {
-          await generateBadgePDF(personnel, selectedTemplate);
-          toast.success("Badge generated successfully");
-        }
+      if (selectedPersonnelIds.length === 1 && selectedPersonnelFull) {
+        await generateBadgePDF(selectedPersonnelFull, selectedTemplate);
+        toast.success("Badge generated successfully");
       } else {
         const selectedPersonnelData = personnelList?.filter((p) =>
           selectedPersonnelIds.includes(p.id)
@@ -135,10 +130,10 @@ export const BadgeGenerator = ({
               )}
             </div>
 
-            {selectedTemplate && selectedPersonnel && (
+            {selectedTemplate && selectedPersonnelFull && (
               <div className="flex justify-center p-6 bg-muted rounded-lg overflow-x-auto">
                 <BadgePreview
-                  personnel={selectedPersonnel}
+                  personnel={selectedPersonnelFull}
                   template={selectedTemplate}
                 />
               </div>
