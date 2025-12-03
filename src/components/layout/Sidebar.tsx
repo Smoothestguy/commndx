@@ -294,6 +294,11 @@ export function Sidebar() {
               />
             </CollapsibleTrigger>
             <CollapsibleContent className="space-y-1">
+              {user && (
+                <div className="flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium text-muted-foreground">
+                  <span className="truncate">{user.email}</span>
+                </div>
+              )}
               <div className="flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium text-muted-foreground hover:bg-sidebar-accent hover:text-foreground transition-all duration-200 cursor-pointer">
                 <ThemeToggle />
                 <span>Toggle Theme</span>
@@ -334,13 +339,6 @@ export function Sidebar() {
               </Button>
             </CollapsibleContent>
           </Collapsible>
-          {user && (
-            <div className="px-3 py-2 mt-2 border-t border-sidebar-border">
-              <span className="text-xs text-muted-foreground truncate block">
-                {user.email}
-              </span>
-            </div>
-          )}
         </div>
       </div>
     </aside>
