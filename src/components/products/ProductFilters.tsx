@@ -10,6 +10,8 @@ interface ProductFiltersProps {
   onCategoryChange: (category: string) => void;
   selectedType: ItemType | "";
   onTypeChange: (type: ItemType | "") => void;
+  selectedLetter: string;
+  onLetterChange: (letter: string) => void;
 }
 
 const typeOptions: { value: ItemType | ""; label: string; icon: typeof Package }[] = [
@@ -19,6 +21,9 @@ const typeOptions: { value: ItemType | ""; label: string; icon: typeof Package }
   { value: "labor", label: "Labor", icon: HardHat },
 ];
 
+const alphabet = ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'J', 'K', 'L', 'M', 
+                  'N', 'O', 'P', 'Q', 'R', 'S', 'T', 'U', 'V', 'W', 'X', 'Y', 'Z', '#'];
+
 export function ProductFilters({
   products,
   categories,
@@ -26,6 +31,8 @@ export function ProductFilters({
   onCategoryChange,
   selectedType,
   onTypeChange,
+  selectedLetter,
+  onLetterChange,
 }: ProductFiltersProps) {
   // Filter categories based on selected type
   const filteredCategories = selectedType
@@ -38,6 +45,35 @@ export function ProductFilters({
       onCategoryChange("");
     }
   }, [selectedType, filteredCategories, selectedCategory, onCategoryChange]);
+
+  // Auto-reset letter if no products match (after type change)
+  useEffect(() => {
+    if (selectedLetter) {
+      const hasProducts = products.some(p => {
+        const matchesType = !selectedType || p.item_type === selectedType;
+        const firstChar = p.name.charAt(0).toUpperCase();
+        const matchesLetter = selectedLetter === '#' 
+          ? /[0-9]/.test(firstChar) 
+          : firstChar === selectedLetter;
+        return matchesType && matchesLetter;
+      });
+      if (!hasProducts) {
+        onLetterChange("");
+      }
+    }
+  }, [selectedType, products, selectedLetter, onLetterChange]);
+
+  // Check if a letter has any matching products
+  const hasProductsForLetter = (letter: string) => {
+    return products.some(p => {
+      const matchesType = !selectedType || p.item_type === selectedType;
+      const firstChar = p.name.charAt(0).toUpperCase();
+      const matchesLetter = letter === '#' 
+        ? /[0-9]/.test(firstChar) 
+        : firstChar === letter;
+      return matchesType && matchesLetter;
+    });
+  };
 
   return (
     <div className="space-y-4 mb-6">
@@ -57,6 +93,39 @@ export function ProductFilters({
             >
               <Icon className="h-4 w-4" />
               {option.label}
+            </button>
+          );
+        })}
+      </div>
+
+      {/* A-Z Filter */}
+      <div className="flex flex-wrap gap-1">
+        <button
+          onClick={() => onLetterChange("")}
+          className={`px-3 py-1.5 rounded text-sm font-medium transition-all duration-200 ${
+            selectedLetter === ""
+              ? "bg-primary text-primary-foreground shadow-lg shadow-primary/25"
+              : "bg-secondary text-muted-foreground hover:bg-secondary/80"
+          }`}
+        >
+          All
+        </button>
+        {alphabet.map((letter) => {
+          const hasProducts = hasProductsForLetter(letter);
+          return (
+            <button
+              key={letter}
+              onClick={() => hasProducts && onLetterChange(letter)}
+              disabled={!hasProducts}
+              className={`w-8 h-8 rounded text-sm font-medium transition-all duration-200 ${
+                selectedLetter === letter
+                  ? "bg-primary text-primary-foreground shadow-lg shadow-primary/25"
+                  : hasProducts 
+                    ? "bg-secondary text-muted-foreground hover:bg-secondary/80"
+                    : "bg-secondary/50 text-muted-foreground/30 cursor-not-allowed"
+              }`}
+            >
+              {letter}
             </button>
           );
         })}
@@ -90,7 +159,7 @@ export function ProductFilters({
       </div>
 
       {/* Active Filters Display */}
-      {(selectedCategory || selectedType) && (
+      {(selectedCategory || selectedType || selectedLetter) && (
         <div className="flex items-center gap-2 flex-wrap">
           <span className="text-sm text-muted-foreground">Active filters:</span>
           {selectedType && (
@@ -101,6 +170,21 @@ export function ProductFilters({
                 size="icon"
                 className="h-4 w-4 p-0 hover:bg-transparent"
                 onClick={() => onTypeChange("")}
+              >
+                <X className="h-3 w-3" />
+              </Button>
+            </div>
+          )}
+          {selectedLetter && (
+            <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-primary/10 text-primary border border-primary/20">
+              <span className="text-sm font-medium">
+                Starts with: {selectedLetter === '#' ? 'Number' : selectedLetter}
+              </span>
+              <Button
+                variant="ghost"
+                size="icon"
+                className="h-4 w-4 p-0 hover:bg-transparent"
+                onClick={() => onLetterChange("")}
               >
                 <X className="h-3 w-3" />
               </Button>
