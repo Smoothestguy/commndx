@@ -1050,6 +1050,57 @@ export type Database = {
           },
         ]
       }
+      messages: {
+        Row: {
+          content: string
+          created_at: string | null
+          error_message: string | null
+          external_id: string | null
+          id: string
+          message_type: string
+          recipient_id: string
+          recipient_name: string
+          recipient_phone: string
+          recipient_type: string
+          sent_at: string | null
+          sent_by: string | null
+          status: string
+          updated_at: string | null
+        }
+        Insert: {
+          content: string
+          created_at?: string | null
+          error_message?: string | null
+          external_id?: string | null
+          id?: string
+          message_type?: string
+          recipient_id: string
+          recipient_name: string
+          recipient_phone: string
+          recipient_type: string
+          sent_at?: string | null
+          sent_by?: string | null
+          status?: string
+          updated_at?: string | null
+        }
+        Update: {
+          content?: string
+          created_at?: string | null
+          error_message?: string | null
+          external_id?: string | null
+          id?: string
+          message_type?: string
+          recipient_id?: string
+          recipient_name?: string
+          recipient_phone?: string
+          recipient_type?: string
+          sent_at?: string | null
+          sent_by?: string | null
+          status?: string
+          updated_at?: string | null
+        }
+        Relationships: []
+      }
       milestones: {
         Row: {
           completion_percentage: number

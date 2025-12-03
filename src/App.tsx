@@ -58,6 +58,7 @@ import InsuranceClaims from "./pages/InsuranceClaims";
 import Tasks from "./pages/Tasks";
 import RoofingDashboard from "./pages/RoofingDashboard";
 import QuickBooksSettings from "./pages/QuickBooksSettings";
+import Messages from "./pages/Messages";
 import PrivacyPolicy from "./pages/legal/PrivacyPolicy";
 import EULA from "./pages/legal/EULA";
 import NotFound from "./pages/NotFound";
@@ -448,6 +449,14 @@ const App = () => {
                   element={
                     <ProtectedRoute>
                       <QuickBooksSettings />
+                    </ProtectedRoute>
+                  }
+                />
+                <Route
+                  path="/messages"
+                  element={
+                    <ProtectedRoute>
+                      <Messages />
                     </ProtectedRoute>
                   }
                 />
