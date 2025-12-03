@@ -1,4 +1,4 @@
-import { Building2, Mail, Phone, Star, Edit, Trash2, Tag } from "lucide-react";
+import { Building2, Mail, Phone, Edit, Trash2, Tag } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -102,14 +102,6 @@ export const VendorCard = ({ vendor, onEdit, onDelete, index, isSelected, onSele
             )}
           </div>
 
-          {vendor.rating && (
-            <div className="flex items-center gap-2 pt-3 border-t border-border/50">
-              <Star className="h-4 w-4 fill-warning text-warning" />
-              <span className="text-sm font-medium text-foreground">
-                {vendor.rating.toFixed(1)} Rating
-              </span>
-            </div>
-          )}
         </div>
       </div>
     </div>

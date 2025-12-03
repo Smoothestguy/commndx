@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Checkbox } from "@/components/ui/checkbox";
-import { Plus, Search, Edit, Trash2, Star, Loader2, Tag, X } from "lucide-react";
+import { Plus, Search, Edit, Trash2, Loader2, Tag, X } from "lucide-react";
 import { PullToRefreshWrapper } from "@/components/shared/PullToRefreshWrapper";
 import { VendorCard } from "@/components/vendors/VendorCard";
 import { VendorStats } from "@/components/vendors/VendorStats";
@@ -107,9 +107,6 @@ const Vendors = () => {
   const total = vendors?.length || 0;
   const active = vendors?.filter((v) => v.status === "active").length || 0;
   const inactive = vendors?.filter((v) => v.status === "inactive").length || 0;
-  const averageRating = vendors?.length
-    ? vendors.reduce((sum, v) => sum + (v.rating || 0), 0) / vendors.filter((v) => v.rating).length
-    : 0;
 
   // Selection handlers
   const handleSelectVendor = (id: string) => {
@@ -169,16 +166,6 @@ const Vendors = () => {
       ),
     },
     { key: "email", header: "Email" },
-    {
-      key: "rating",
-      header: "Rating",
-      render: (item: Vendor) => (
-        <div className="flex items-center gap-1">
-          <Star className="h-4 w-4 fill-warning text-warning" />
-          <span className="font-medium">{item.rating ? item.rating.toFixed(1) : "N/A"}</span>
-        </div>
-      ),
-    },
     {
       key: "status",
       header: "Status",
@@ -306,7 +293,7 @@ const Vendors = () => {
       >
         <PullToRefreshWrapper onRefresh={refetch} isRefreshing={isFetching}>
           {/* Stats */}
-          <VendorStats total={total} active={active} inactive={inactive} averageRating={averageRating} />
+          <VendorStats total={total} active={active} inactive={inactive} />
 
           {/* Search */}
           <div className="mb-6 relative max-w-md">
