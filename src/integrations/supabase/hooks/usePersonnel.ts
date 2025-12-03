@@ -42,6 +42,41 @@ export const usePersonnel = (filters?: {
   });
 };
 
+export const usePersonnelWithRelations = (filters?: {
+  status?: string;
+  search?: string;
+}) => {
+  return useQuery({
+    queryKey: ["personnel-with-relations", filters],
+    queryFn: async () => {
+      let query = supabase
+        .from("personnel")
+        .select(`
+          *,
+          certifications:personnel_certifications(*),
+          languages:personnel_languages(*),
+          capabilities:personnel_capabilities(*)
+        `)
+        .order("created_at", { ascending: false });
+
+      if (filters?.status && filters.status !== "all") {
+        query = query.eq("status", filters.status as any);
+      }
+
+      if (filters?.search) {
+        query = query.or(
+          `first_name.ilike.%${filters.search}%,last_name.ilike.%${filters.search}%,email.ilike.%${filters.search}%,personnel_number.ilike.%${filters.search}%`
+        );
+      }
+
+      const { data, error } = await query;
+
+      if (error) throw error;
+      return data;
+    },
+  });
+};
+
 export const usePersonnelById = (id: string | undefined) => {
   return useQuery({
     queryKey: ["personnel", id],
