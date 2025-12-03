@@ -53,3 +53,6 @@ verify_jwt = false
 
 [functions.quickbooks-get-next-number]
 verify_jwt = false
+
+[functions.send-sms]
+verify_jwt = false

@@ -42,6 +42,8 @@ import {
   Link2,
 } from "lucide-react";
 
+import { Send } from "lucide-react";
+
 const navigation = [
   { name: "Dashboard", href: "/", icon: LayoutDashboard },
   { name: "Products", href: "/products", icon: Package },
@@ -53,6 +55,7 @@ const navigation = [
   { name: "Job Orders", href: "/job-orders", icon: Briefcase },
   { name: "Purchase Orders", href: "/purchase-orders", icon: ShoppingCart },
   { name: "Invoices", href: "/invoices", icon: Receipt },
+  { name: "Messages", href: "/messages", icon: Send },
   { name: "QuickBooks", href: "/settings/quickbooks", icon: Link2 },
 ];
 
