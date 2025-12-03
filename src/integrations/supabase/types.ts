@@ -652,6 +652,7 @@ export type Database = {
           deductible: number | null
           documents: Json | null
           filed_date: string | null
+          has_adjuster: boolean | null
           id: string
           insurance_company: string
           notes: string | null
@@ -674,6 +675,7 @@ export type Database = {
           deductible?: number | null
           documents?: Json | null
           filed_date?: string | null
+          has_adjuster?: boolean | null
           id?: string
           insurance_company: string
           notes?: string | null
@@ -696,6 +698,7 @@ export type Database = {
           deductible?: number | null
           documents?: Json | null
           filed_date?: string | null
+          has_adjuster?: boolean | null
           id?: string
           insurance_company?: string
           notes?: string | null

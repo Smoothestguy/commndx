@@ -25,6 +25,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { Switch } from "@/components/ui/switch";
 import { useCustomers } from "@/integrations/supabase/hooks/useCustomers";
 import { useProjects } from "@/integrations/supabase/hooks/useProjects";
 import { useCreateInsuranceClaim, useUpdateInsuranceClaim } from "@/integrations/supabase/hooks/useInsuranceClaims";
@@ -36,6 +37,7 @@ const claimSchema = z.object({
   claim_number: z.string().optional(),
   insurance_company: z.string().min(1, "Insurance company is required"),
   policy_number: z.string().optional(),
+  has_adjuster: z.boolean(),
   adjuster_name: z.string().optional(),
   adjuster_phone: z.string().optional(),
   adjuster_email: z.string().email().optional().or(z.literal("")),
@@ -81,6 +83,7 @@ export function ClaimForm({ open, onOpenChange, claim }: ClaimFormProps) {
       claim_number: claim?.claim_number || "",
       insurance_company: claim?.insurance_company || "",
       policy_number: claim?.policy_number || "",
+      has_adjuster: claim?.has_adjuster ?? true,
       adjuster_name: claim?.adjuster_name || "",
       adjuster_phone: claim?.adjuster_phone || "",
       adjuster_email: claim?.adjuster_email || "",
@@ -98,6 +101,8 @@ export function ClaimForm({ open, onOpenChange, claim }: ClaimFormProps) {
   const selectedCustomerId = form.watch("customer_id");
   const filteredProjects = projects?.filter(p => p.customer_id === selectedCustomerId);
 
+  const hasAdjuster = form.watch("has_adjuster");
+
   const onSubmit = async (data: ClaimFormData) => {
     try {
       const payload = {
@@ -105,6 +110,13 @@ export function ClaimForm({ open, onOpenChange, claim }: ClaimFormProps) {
         approved_amount: data.approved_amount ? parseFloat(data.approved_amount) : undefined,
         deductible: data.deductible ? parseFloat(data.deductible) : undefined,
         adjuster_email: data.adjuster_email || undefined,
+        // Clear adjuster fields if no adjuster involved
+        ...(data.has_adjuster ? {} : {
+          adjuster_name: undefined,
+          adjuster_phone: undefined,
+          adjuster_email: undefined,
+          adjuster_visit_date: undefined,
+        }),
       };
 
       if (claim) {
@@ -241,50 +253,75 @@ export function ClaimForm({ open, onOpenChange, claim }: ClaimFormProps) {
             </div>
 
             <div className="border-t pt-4">
-              <h4 className="font-medium mb-3">Adjuster Information</h4>
-              <div className="grid grid-cols-3 gap-4">
-                <FormField
-                  control={form.control}
-                  name="adjuster_name"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Adjuster Name</FormLabel>
-                      <FormControl>
-                        <Input {...field} placeholder="Name" />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
+              <FormField
+                control={form.control}
+                name="has_adjuster"
+                render={({ field }) => (
+                  <FormItem className="flex flex-row items-center justify-between rounded-lg border p-3 mb-4">
+                    <div className="space-y-0.5">
+                      <FormLabel>Is an adjuster involved?</FormLabel>
+                      <p className="text-sm text-muted-foreground">
+                        Toggle off if no adjuster is required for this claim
+                      </p>
+                    </div>
+                    <FormControl>
+                      <Switch
+                        checked={field.value}
+                        onCheckedChange={field.onChange}
+                      />
+                    </FormControl>
+                  </FormItem>
+                )}
+              />
 
-                <FormField
-                  control={form.control}
-                  name="adjuster_phone"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Phone</FormLabel>
-                      <FormControl>
-                        <Input {...field} placeholder="Phone" />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
+              {hasAdjuster && (
+                <>
+                  <h4 className="font-medium mb-3">Adjuster Information</h4>
+                  <div className="grid grid-cols-3 gap-4">
+                    <FormField
+                      control={form.control}
+                      name="adjuster_name"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Adjuster Name</FormLabel>
+                          <FormControl>
+                            <Input {...field} placeholder="Name" />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
 
-                <FormField
-                  control={form.control}
-                  name="adjuster_email"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Email</FormLabel>
-                      <FormControl>
-                        <Input type="email" {...field} placeholder="Email" />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-              </div>
+                    <FormField
+                      control={form.control}
+                      name="adjuster_phone"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Phone</FormLabel>
+                          <FormControl>
+                            <Input {...field} placeholder="Phone" />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+
+                    <FormField
+                      control={form.control}
+                      name="adjuster_email"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Email</FormLabel>
+                          <FormControl>
+                            <Input type="email" {...field} placeholder="Email" />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                  </div>
+                </>
+              )}
             </div>
 
             <div className="grid grid-cols-3 gap-4">
@@ -363,19 +400,21 @@ export function ClaimForm({ open, onOpenChange, claim }: ClaimFormProps) {
                 )}
               />
 
-              <FormField
-                control={form.control}
-                name="adjuster_visit_date"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Adjuster Visit Date</FormLabel>
-                    <FormControl>
-                      <Input type="date" {...field} />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
+              {hasAdjuster && (
+                <FormField
+                  control={form.control}
+                  name="adjuster_visit_date"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Adjuster Visit Date</FormLabel>
+                      <FormControl>
+                        <Input type="date" {...field} />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+              )}
             </div>
 
             <FormField
