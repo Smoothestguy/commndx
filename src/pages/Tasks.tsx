@@ -1,5 +1,6 @@
 import { useState } from "react";
-import { Plus, Search, Filter, CheckSquare, Clock, AlertTriangle } from "lucide-react";
+import { Plus, Filter, CheckSquare, Clock, AlertTriangle } from "lucide-react";
+import { SearchInput } from "@/components/ui/search-input";
 import { PageLayout } from "@/components/layout/PageLayout";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -153,13 +154,11 @@ export default function Tasks() {
 
         {/* Filters */}
         <div className="flex flex-col sm:flex-row gap-4">
-          <div className="relative flex-1">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-            <Input
+          <div className="flex-1">
+            <SearchInput
               placeholder="Search tasks..."
               value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              className="pl-10"
+              onChange={setSearchQuery}
             />
           </div>
           <Select value={priorityFilter} onValueChange={(v) => setPriorityFilter(v as TaskPriority | "all")}>

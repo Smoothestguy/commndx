@@ -4,7 +4,8 @@ import { PageLayout } from "@/components/layout/PageLayout";
 import { DataTable } from "@/components/shared/DataTable";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Plus, Search, Edit, Trash2, FolderOpen, Loader2, Cloud, RefreshCw } from "lucide-react";
+import { Plus, Edit, Trash2, FolderOpen, Loader2, Cloud, RefreshCw } from "lucide-react";
+import { SearchInput } from "@/components/ui/search-input";
 import { PullToRefreshWrapper } from "@/components/shared/PullToRefreshWrapper";
 import { CustomerCard } from "@/components/customers/CustomerCard";
 import { CustomerStats } from "@/components/customers/CustomerStats";
@@ -248,13 +249,12 @@ const Customers = () => {
         )}
 
         {/* Search */}
-        <div className="mb-6 relative max-w-md">
-          <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-          <Input
+        <div className="mb-6 max-w-md">
+          <SearchInput
             placeholder="Search customers..."
             value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            className="pl-10 bg-secondary border-border"
+            onChange={setSearch}
+            className="bg-secondary border-border"
           />
         </div>
 

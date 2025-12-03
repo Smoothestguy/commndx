@@ -6,7 +6,8 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { Loader2, Search } from "lucide-react";
+import { Loader2 } from "lucide-react";
+import { SearchInput } from "@/components/ui/search-input";
 import { useBadgeTemplates, useDefaultBadgeTemplate } from "@/integrations/supabase/hooks/useBadgeTemplates";
 import { generateBulkBadgePDF } from "@/utils/badgePdfExport";
 import { toast } from "sonner";
@@ -124,15 +125,11 @@ export const BulkBadgeGenerator = ({
           </div>
 
           {/* Search */}
-          <div className="relative">
-            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-            <Input
-              placeholder="Search personnel..."
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              className="pl-10"
-            />
-          </div>
+          <SearchInput
+            placeholder="Search personnel..."
+            value={searchQuery}
+            onChange={setSearchQuery}
+          />
 
           {/* Selection Controls */}
           <div className="flex items-center justify-between">

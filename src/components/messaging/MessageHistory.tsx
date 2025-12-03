@@ -1,7 +1,6 @@
 import { useState } from "react";
 import { useMessages, Message } from "@/integrations/supabase/hooks/useMessages";
 import { MessageCard } from "./MessageCard";
-import { Input } from "@/components/ui/input";
 import {
   Select,
   SelectContent,
@@ -10,7 +9,8 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Search, MessageSquare } from "lucide-react";
+import { MessageSquare } from "lucide-react";
+import { SearchInput } from "@/components/ui/search-input";
 
 interface MessageHistoryProps {
   recipientType?: 'customer' | 'personnel';
@@ -50,13 +50,11 @@ export function MessageHistory({ recipientType, recipientId }: MessageHistoryPro
     <div className="space-y-4">
       {!recipientId && (
         <div className="flex flex-col sm:flex-row gap-4">
-          <div className="relative flex-1">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-            <Input
+          <div className="flex-1">
+            <SearchInput
               placeholder="Search messages..."
               value={search}
-              onChange={(e) => setSearch(e.target.value)}
-              className="pl-9"
+              onChange={setSearch}
             />
           </div>
 

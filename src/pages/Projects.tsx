@@ -6,7 +6,8 @@ import { DataTable } from "@/components/shared/DataTable";
 import { StatusBadge } from "@/components/shared/StatusBadge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Plus, Search, Edit, Trash2, Loader2, Filter, X } from "lucide-react";
+import { Plus, Edit, Trash2, Loader2, Filter, X } from "lucide-react";
+import { SearchInput } from "@/components/ui/search-input";
 import { Card, CardContent } from "@/components/ui/card";
 import { PullToRefreshWrapper } from "@/components/shared/PullToRefreshWrapper";
 import { ProjectCard } from "@/components/projects/ProjectCard";
@@ -237,13 +238,12 @@ const Projects = () => {
         {/* Search & Filters */}
         <div className="mb-6 space-y-4">
           <div className="flex gap-3">
-            <div className="relative flex-1">
-              <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-              <Input
+            <div className="flex-1">
+              <SearchInput
                 placeholder="Search projects..."
                 value={search}
-                onChange={(e) => setSearch(e.target.value)}
-                className="pl-10 bg-secondary border-border"
+                onChange={setSearch}
+                className="bg-secondary border-border"
               />
             </div>
             {!isMobile && (

@@ -6,7 +6,8 @@ import { DataTable } from "@/components/shared/DataTable";
 import { StatusBadge } from "@/components/shared/StatusBadge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Plus, Search, Eye, FileText, Loader2 } from "lucide-react";
+import { Plus, Eye, FileText, Loader2 } from "lucide-react";
+import { SearchInput } from "@/components/ui/search-input";
 import { useEstimates, Estimate } from "@/integrations/supabase/hooks/useEstimates";
 import { PullToRefreshWrapper } from "@/components/shared/PullToRefreshWrapper";
 import { useIsMobile } from "@/hooks/use-mobile";
@@ -96,13 +97,12 @@ const Estimates = () => {
     >
       <PullToRefreshWrapper onRefresh={refetch} isRefreshing={isFetching}>
         {/* Search */}
-        <div className="mb-6 relative max-w-md">
-          <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-          <Input
+        <div className="mb-6 max-w-md">
+          <SearchInput
             placeholder="Search estimates..."
             value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            className="pl-10 bg-secondary border-border"
+            onChange={setSearch}
+            className="bg-secondary border-border"
           />
         </div>
 
