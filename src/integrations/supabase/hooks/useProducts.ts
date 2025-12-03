@@ -124,3 +124,63 @@ export const useDeleteProducts = () => {
     },
   });
 };
+
+export interface BulkUpdateData {
+  category?: string;
+  markup?: number;
+  unit?: string;
+  is_taxable?: boolean;
+}
+
+export const useBulkUpdateProducts = () => {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async ({ 
+      ids, 
+      updates, 
+      products 
+    }: { 
+      ids: string[]; 
+      updates: BulkUpdateData;
+      products: Product[];
+    }) => {
+      // If updating margin, we need to recalculate prices for each product
+      if (updates.markup !== undefined) {
+        const selectedProducts = products.filter(p => ids.includes(p.id));
+        
+        for (const product of selectedProducts) {
+          const newMargin = updates.markup;
+          const newPrice = newMargin > 0 && newMargin < 100
+            ? product.cost / (1 - newMargin / 100) 
+            : product.cost;
+          
+          const { error } = await supabase
+            .from("products")
+            .update({
+              ...updates,
+              price: newPrice,
+            })
+            .eq("id", product.id);
+
+          if (error) throw error;
+        }
+      } else {
+        // No margin update, can do a bulk update
+        const { error } = await supabase
+          .from("products")
+          .update(updates)
+          .in("id", ids);
+
+        if (error) throw error;
+      }
+    },
+    onSuccess: (_, { ids }) => {
+      queryClient.invalidateQueries({ queryKey: ["products"] });
+      toast.success(`${ids.length} item(s) updated successfully`);
+    },
+    onError: (error: Error) => {
+      toast.error(`Failed to update items: ${error.message}`);
+    },
+  });
+};
