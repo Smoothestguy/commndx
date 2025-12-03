@@ -61,6 +61,16 @@ const QuickBooksSettings = () => {
     
     if (code && realmId) {
       const redirectUri = `${window.location.origin}/settings/quickbooks`;
+      
+      // Debug logging for OAuth callback
+      console.log('=== OAuth Callback Debug ===');
+      console.log('window.location.origin:', window.location.origin);
+      console.log('window.location.href:', window.location.href);
+      console.log('Code received:', code?.substring(0, 10) + '...');
+      console.log('Realm ID:', realmId);
+      console.log('Redirect URI for exchange:', redirectUri);
+      console.log('============================');
+      
       connectMutation.mutate({ code, realmId, redirectUri }, {
         onSuccess: () => {
           // Clear URL params
@@ -73,11 +83,22 @@ const QuickBooksSettings = () => {
   const handleConnect = async () => {
     try {
       const redirectUri = `${window.location.origin}/settings/quickbooks`;
+      
+      // Debug logging before OAuth initiation
+      console.log('=== QuickBooks Connect Debug ===');
+      console.log('window.location.origin:', window.location.origin);
+      console.log('window.location.href:', window.location.href);
+      console.log('Redirect URI being sent:', redirectUri);
+      console.log('================================');
+      
       const result = await getAuthUrl.mutateAsync(redirectUri);
+      
+      console.log('Auth URL received:', result.authUrl);
       
       // Open QuickBooks auth in new window or redirect
       window.location.href = result.authUrl;
     } catch (error) {
+      console.error('QuickBooks connect error:', error);
       toast.error("Failed to initiate connection");
     }
   };

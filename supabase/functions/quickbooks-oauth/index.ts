@@ -15,6 +15,17 @@ const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
 const QB_AUTH_URL = 'https://appcenter.intuit.com/connect/oauth2';
 const QB_TOKEN_URL = 'https://oauth.platform.intuit.com/oauth2/v1/tokens/bearer';
 
+// Normalize redirect URI for consistency
+function normalizeRedirectUri(uri: string): string {
+  let normalized = uri;
+  // Remove trailing slash
+  normalized = normalized.replace(/\/$/, '');
+  // Ensure lowercase path (but keep domain case-sensitive for some providers)
+  const url = new URL(normalized);
+  url.pathname = url.pathname.toLowerCase();
+  return url.toString();
+}
+
 serve(async (req) => {
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders });
@@ -24,14 +35,32 @@ serve(async (req) => {
     const { action, code, realmId, redirectUri } = await req.json();
     const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
 
+    // Debug logging
+    console.log('=== QuickBooks OAuth Debug ===');
+    console.log('Action:', action);
+    console.log('Redirect URI received:', redirectUri);
+    console.log('Client ID (first 10 chars):', QUICKBOOKS_CLIENT_ID?.substring(0, 10) + '...');
+    console.log('Client ID length:', QUICKBOOKS_CLIENT_ID?.length);
+    console.log('Client Secret set:', !!QUICKBOOKS_CLIENT_SECRET);
+    console.log('==============================');
+
     if (action === 'get-auth-url') {
       // Generate OAuth URL for QuickBooks authorization
       const state = crypto.randomUUID();
       const scope = 'com.intuit.quickbooks.accounting';
       
-      const authUrl = `${QB_AUTH_URL}?client_id=${QUICKBOOKS_CLIENT_ID}&response_type=code&scope=${encodeURIComponent(scope)}&redirect_uri=${encodeURIComponent(redirectUri)}&state=${state}`;
+      // Normalize the redirect URI
+      const normalizedRedirectUri = normalizeRedirectUri(redirectUri);
       
-      console.log('Generated QuickBooks auth URL');
+      console.log('=== Auth URL Generation ===');
+      console.log('Original redirect_uri:', redirectUri);
+      console.log('Normalized redirect_uri:', normalizedRedirectUri);
+      console.log('Encoded redirect_uri:', encodeURIComponent(normalizedRedirectUri));
+      
+      const authUrl = `${QB_AUTH_URL}?client_id=${QUICKBOOKS_CLIENT_ID}&response_type=code&scope=${encodeURIComponent(scope)}&redirect_uri=${encodeURIComponent(normalizedRedirectUri)}&state=${state}`;
+      
+      console.log('Full auth URL:', authUrl);
+      console.log('===========================');
       
       return new Response(JSON.stringify({ authUrl, state }), {
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
@@ -40,9 +69,24 @@ serve(async (req) => {
 
     if (action === 'exchange-code') {
       // Exchange authorization code for tokens
-      console.log('Exchanging authorization code for tokens...');
+      console.log('=== Token Exchange ===');
+      console.log('Code received (first 10 chars):', code?.substring(0, 10) + '...');
+      console.log('Realm ID:', realmId);
+      console.log('Redirect URI for exchange:', redirectUri);
+      
+      const normalizedRedirectUri = normalizeRedirectUri(redirectUri);
+      console.log('Normalized redirect URI:', normalizedRedirectUri);
       
       const credentials = btoa(`${QUICKBOOKS_CLIENT_ID}:${QUICKBOOKS_CLIENT_SECRET}`);
+      
+      const tokenBody = new URLSearchParams({
+        grant_type: 'authorization_code',
+        code: code,
+        redirect_uri: normalizedRedirectUri,
+      });
+      
+      console.log('Token request body:', tokenBody.toString());
+      console.log('======================');
       
       const tokenResponse = await fetch(QB_TOKEN_URL, {
         method: 'POST',
@@ -51,16 +95,13 @@ serve(async (req) => {
           'Authorization': `Basic ${credentials}`,
           'Content-Type': 'application/x-www-form-urlencoded',
         },
-        body: new URLSearchParams({
-          grant_type: 'authorization_code',
-          code: code,
-          redirect_uri: redirectUri,
-        }),
+        body: tokenBody,
       });
 
       if (!tokenResponse.ok) {
         const errorText = await tokenResponse.text();
         console.error('Token exchange failed:', errorText);
+        console.error('Token response status:', tokenResponse.status);
         throw new Error(`Token exchange failed: ${errorText}`);
       }
 
