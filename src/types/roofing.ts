@@ -154,6 +154,7 @@ export interface InsuranceClaim {
   claim_number?: string;
   insurance_company: string;
   policy_number?: string;
+  has_adjuster?: boolean;
   adjuster_name?: string;
   adjuster_phone?: string;
   adjuster_email?: string;
