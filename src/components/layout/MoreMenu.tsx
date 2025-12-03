@@ -1,4 +1,4 @@
-import { Users, Package, ShoppingCart, Settings, UserCog, LogOut, X, Clock, UserCheck, IdCard } from "lucide-react";
+import { Users, Package, ShoppingCart, Settings, UserCog, LogOut, X, Clock, UserCheck, IdCard, Link2 } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
 import { useUserRole } from "@/hooks/useUserRole";
@@ -31,6 +31,7 @@ const menuSections = [
       { icon: ShoppingCart, label: "Purchase Orders", path: "/purchase-orders", color: "text-orange-500" },
       { icon: Clock, label: "Time Tracking", path: "/time-tracking", color: "text-teal-500" },
       { icon: IdCard, label: "Badge Templates", path: "/badge-templates", color: "text-indigo-500" },
+      { icon: Link2, label: "QuickBooks", path: "/settings/quickbooks", color: "text-green-500" },
     ],
   },
 ];

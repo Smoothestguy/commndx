@@ -39,6 +39,7 @@ import {
   FileWarning,
   BarChart3,
   IdCard,
+  Link2,
 } from "lucide-react";
 
 const navigation = [
@@ -52,6 +53,7 @@ const navigation = [
   { name: "Job Orders", href: "/job-orders", icon: Briefcase },
   { name: "Purchase Orders", href: "/purchase-orders", icon: ShoppingCart },
   { name: "Invoices", href: "/invoices", icon: Receipt },
+  { name: "QuickBooks", href: "/settings/quickbooks", icon: Link2 },
 ];
 
 const staffingNavigation = [
