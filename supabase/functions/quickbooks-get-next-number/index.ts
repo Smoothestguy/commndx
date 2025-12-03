@@ -85,19 +85,65 @@ async function qbQuery(query: string, accessToken: string, realmId: string) {
 }
 
 function extractNextNumber(docNumbers: string[], prefix: string): string {
-  // Find the highest number with the given prefix
-  const numbers = docNumbers
-    .filter(num => num && num.startsWith(prefix))
-    .map(num => {
-      const match = num.match(/(\d+)$/);
-      return match ? parseInt(match[1], 10) : 0;
-    })
-    .filter(n => !isNaN(n));
-
-  const maxNum = numbers.length > 0 ? Math.max(...numbers) : 0;
-  const nextNum = maxNum + 1;
+  // Log sample for debugging
+  console.log("Sample doc numbers from QB:", docNumbers.slice(0, 10));
   
-  // Pad to at least 4 digits
+  // Extract numbers from ALL document numbers, regardless of prefix
+  const allNumbers = docNumbers
+    .map(num => {
+      if (!num) return { original: num, value: 0 };
+      // Extract any trailing number from the string
+      const match = num.match(/(\d+)$/);
+      return { 
+        original: num, 
+        value: match ? parseInt(match[1], 10) : 0 
+      };
+    })
+    .filter(item => item.value > 0);
+
+  if (allNumbers.length === 0) {
+    // No valid numbers found, start fresh with our format
+    return `${prefix}0001`;
+  }
+
+  // Find the highest number
+  const maxItem = allNumbers.reduce((max, item) => 
+    item.value > max.value ? item : max
+  );
+  
+  console.log(`Highest number found: ${maxItem.original} (value: ${maxItem.value})`);
+  
+  const nextNum = maxItem.value + 1;
+  
+  // Check if the highest number uses the expected prefix format
+  if (maxItem.original.startsWith(prefix)) {
+    // Match the existing format with proper padding
+    const paddingMatch = maxItem.original.match(new RegExp(`^${prefix}(\\d+)$`));
+    if (paddingMatch) {
+      const paddingLength = paddingMatch[1].length;
+      return `${prefix}${nextNum.toString().padStart(paddingLength, '0')}`;
+    }
+    return `${prefix}${nextNum.toString().padStart(4, '0')}`;
+  }
+  
+  // QB uses a different format - detect and match it
+  const sampleNum = maxItem.original;
+  
+  // Check if it's a plain number (possibly with leading zeros)
+  if (/^\d+$/.test(sampleNum)) {
+    return nextNum.toString().padStart(sampleNum.length, '0');
+  }
+  
+  // Check for any prefix pattern (e.g., "Invoice-", "Inv", etc.)
+  const prefixMatch = sampleNum.match(/^([A-Za-z-]+)(\d+)$/);
+  if (prefixMatch) {
+    const detectedPrefix = prefixMatch[1];
+    const numberPart = prefixMatch[2];
+    console.log(`Detected QB prefix: "${detectedPrefix}", padding: ${numberPart.length}`);
+    return `${detectedPrefix}${nextNum.toString().padStart(numberPart.length, '0')}`;
+  }
+  
+  // Fallback: use our standard format
   return `${prefix}${nextNum.toString().padStart(4, '0')}`;
 }
 
