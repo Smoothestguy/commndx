@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { Link } from "react-router-dom";
 import { SEO } from "@/components/SEO";
 import { PageLayout } from "@/components/layout/PageLayout";
 import { useAuth } from "@/contexts/AuthContext";
@@ -8,18 +9,20 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
-import { Loader2 } from "lucide-react";
+import { Loader2, Cloud, ChevronRight } from "lucide-react";
 import { useTheme } from "next-themes";
 import { Switch } from "@/components/ui/switch";
 import { useUserRole } from "@/hooks/useUserRole";
 import { Badge } from "@/components/ui/badge";
 import { CompanySettingsForm } from "@/components/settings/CompanySettingsForm";
+import { useQuickBooksConfig } from "@/integrations/supabase/hooks/useQuickBooks";
 
 export default function Settings() {
   const { user, signOut } = useAuth();
   const { toast } = useToast();
   const { theme, setTheme } = useTheme();
   const { role, loading: roleLoading } = useUserRole();
+  const { data: qbConfig } = useQuickBooksConfig();
   const [isChangingPassword, setIsChangingPassword] = useState(false);
   const [newPassword, setNewPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
@@ -80,6 +83,39 @@ export default function Settings() {
       <div className="max-w-4xl space-y-6">
         {/* Company Settings Section (Admin Only) */}
         {role === "admin" && <CompanySettingsForm />}
+
+        {/* Integrations Section */}
+        <Card>
+          <CardHeader>
+            <CardTitle>Integrations</CardTitle>
+            <CardDescription>Connect external services</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <Link to="/settings/quickbooks">
+              <div className="flex items-center justify-between p-4 rounded-lg border hover:bg-muted/50 transition-colors cursor-pointer">
+                <div className="flex items-center gap-3">
+                  <div className={`p-2 rounded-lg ${qbConfig?.is_connected ? 'bg-green-500/10' : 'bg-muted'}`}>
+                    <Cloud className={`h-5 w-5 ${qbConfig?.is_connected ? 'text-green-500' : 'text-muted-foreground'}`} />
+                  </div>
+                  <div>
+                    <p className="font-medium">QuickBooks Online</p>
+                    <p className="text-sm text-muted-foreground">
+                      {qbConfig?.is_connected 
+                        ? `Connected to ${qbConfig.company_name}`
+                        : 'Sync products, customers, and invoices'}
+                    </p>
+                  </div>
+                </div>
+                <div className="flex items-center gap-2">
+                  <Badge variant={qbConfig?.is_connected ? "default" : "secondary"}>
+                    {qbConfig?.is_connected ? "Connected" : "Not Connected"}
+                  </Badge>
+                  <ChevronRight className="h-4 w-4 text-muted-foreground" />
+                </div>
+              </div>
+            </Link>
+          </CardContent>
+        </Card>
 
         {/* Profile Section */}
         <Card>

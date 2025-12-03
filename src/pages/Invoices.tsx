@@ -6,18 +6,20 @@ import { DataTable } from "@/components/shared/DataTable";
 import { StatusBadge } from "@/components/shared/StatusBadge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Plus, Search, Eye, Receipt, Clock } from "lucide-react";
+import { Plus, Search, Eye, Receipt, Clock, Cloud, CheckCircle } from "lucide-react";
 import { useInvoices } from "@/integrations/supabase/hooks/useInvoices";
 import { PullToRefreshWrapper } from "@/components/shared/PullToRefreshWrapper";
 import { InvoiceCard } from "@/components/invoices/InvoiceCard";
 import { InvoiceFilters } from "@/components/invoices/InvoiceFilters";
 import { InvoiceEmptyState } from "@/components/invoices/InvoiceEmptyState";
 import { useIsMobile } from "@/hooks/use-mobile";
+import { useQuickBooksConfig } from "@/integrations/supabase/hooks/useQuickBooks";
 
 const Invoices = () => {
   const navigate = useNavigate();
   const { data: allInvoices = [], isLoading, error, refetch, isFetching } = useInvoices();
   const isMobile = useIsMobile();
+  const { data: qbConfig } = useQuickBooksConfig();
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState<"all" | "draft" | "sent" | "paid" | "overdue">("all");
 
@@ -152,6 +154,16 @@ const Invoices = () => {
       }
     >
       <PullToRefreshWrapper onRefresh={refetch} isRefreshing={isFetching}>
+        {/* QuickBooks Auto-Sync Notice */}
+        {qbConfig?.is_connected && (
+          <div className="mb-4 p-3 rounded-lg bg-green-500/10 border border-green-500/20">
+            <div className="flex items-center gap-2 text-sm text-green-600">
+              <CheckCircle className="h-4 w-4" />
+              <span>Auto-sync enabled: New invoices will automatically sync to QuickBooks</span>
+            </div>
+          </div>
+        )}
+
         {/* Search */}
         <div className="mb-6 relative max-w-md">
           <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />

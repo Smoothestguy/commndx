@@ -11,7 +11,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Plus, Search, Edit, Trash2, Loader2, Package, Wrench, HardHat } from "lucide-react";
+import { Plus, Search, Edit, Trash2, Loader2, Package, Wrench, HardHat, Cloud, RefreshCw } from "lucide-react";
 import { PullToRefreshWrapper } from "@/components/shared/PullToRefreshWrapper";
 import {
   Dialog,
@@ -29,6 +29,9 @@ import { ProductCard } from "@/components/products/ProductCard";
 import { ProductStats } from "@/components/products/ProductStats";
 import { ProductFilters } from "@/components/products/ProductFilters";
 import { ProductEmptyState } from "@/components/products/ProductEmptyState";
+import { useQuickBooksConfig, useImportProductsFromQB, useExportProductsToQB, useQuickBooksConflicts } from "@/integrations/supabase/hooks/useQuickBooks";
+import { ProductConflictDialog } from "@/components/quickbooks/ProductConflictDialog";
+import { Badge } from "@/components/ui/badge";
 
 const typeConfig: Record<ItemType, { icon: typeof Package; label: string; defaultUnit: string; showSku: boolean }> = {
   product: { icon: Package, label: "Product", defaultUnit: "each", showSku: true },
@@ -48,6 +51,13 @@ const Products = () => {
   const addCategory = useAddProductCategory();
   const addUnit = useAddProductUnit();
   const isMobile = useIsMobile();
+  
+  // QuickBooks hooks
+  const { data: qbConfig } = useQuickBooksConfig();
+  const { data: qbConflicts } = useQuickBooksConflicts();
+  const importProducts = useImportProductsFromQB();
+  const exportProducts = useExportProductsToQB();
+  const [selectedConflict, setSelectedConflict] = useState<any>(null);
   
   const [search, setSearch] = useState("");
   const [selectedCategory, setSelectedCategory] = useState("");
@@ -301,6 +311,62 @@ const Products = () => {
             <>
               {/* Stats */}
               <ProductStats products={products || []} />
+
+              {/* QuickBooks Sync Section */}
+              {qbConfig?.is_connected && (
+                <div className="mb-6 p-4 rounded-lg border bg-card">
+                  <div className="flex flex-wrap items-center justify-between gap-4">
+                    <div className="flex items-center gap-3">
+                      <Cloud className="h-5 w-5 text-green-500" />
+                      <div>
+                        <p className="font-medium text-sm">QuickBooks Connected</p>
+                        {qbConflicts && qbConflicts.length > 0 && (
+                          <p className="text-xs text-orange-500">
+                            {qbConflicts.length} price conflict{qbConflicts.length > 1 ? 's' : ''} to resolve
+                          </p>
+                        )}
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      {qbConflicts && qbConflicts.length > 0 && (
+                        <Button 
+                          variant="outline" 
+                          size="sm"
+                          onClick={() => setSelectedConflict(qbConflicts[0])}
+                        >
+                          Resolve Conflicts
+                        </Button>
+                      )}
+                      <Button 
+                        variant="outline" 
+                        size="sm"
+                        onClick={() => importProducts.mutate()}
+                        disabled={importProducts.isPending || exportProducts.isPending}
+                      >
+                        {importProducts.isPending ? (
+                          <RefreshCw className="h-4 w-4 mr-1 animate-spin" />
+                        ) : (
+                          <Cloud className="h-4 w-4 mr-1" />
+                        )}
+                        Import
+                      </Button>
+                      <Button 
+                        variant="outline" 
+                        size="sm"
+                        onClick={() => exportProducts.mutate()}
+                        disabled={importProducts.isPending || exportProducts.isPending}
+                      >
+                        {exportProducts.isPending ? (
+                          <RefreshCw className="h-4 w-4 mr-1 animate-spin" />
+                        ) : (
+                          <Cloud className="h-4 w-4 mr-1" />
+                        )}
+                        Export
+                      </Button>
+                    </div>
+                  </div>
+                </div>
+              )}
 
               {/* Filters */}
               <ProductFilters
@@ -686,6 +752,13 @@ const Products = () => {
             </form>
           </DialogContent>
         </Dialog>
+
+        {/* QuickBooks Conflict Dialog */}
+        <ProductConflictDialog
+          open={!!selectedConflict}
+          onOpenChange={(open) => !open && setSelectedConflict(null)}
+          conflict={selectedConflict}
+        />
       </PageLayout>
     </>
   );
