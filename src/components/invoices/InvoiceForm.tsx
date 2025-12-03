@@ -10,6 +10,7 @@ import { Trash2, Plus, Copy, Loader2, Check, ChevronsUpDown } from "lucide-react
 import { useState, useEffect } from "react";
 import { useJobOrders, useJobOrder } from "@/integrations/supabase/hooks/useJobOrders";
 import { useCustomers } from "@/integrations/supabase/hooks/useCustomers";
+import { useProducts, Product } from "@/integrations/supabase/hooks/useProducts";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Calendar } from "@/components/ui/calendar";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
@@ -42,6 +43,7 @@ const formSchema = z.object({
 
 interface LineItem {
   id: string;
+  productId?: string;
   description: string;
   quantity: number;
   unitPrice: number;
@@ -58,6 +60,7 @@ interface InvoiceFormProps {
 export function InvoiceForm({ onSubmit, initialData, jobOrderId }: InvoiceFormProps) {
   const { data: jobOrders = [], isLoading: jobOrdersLoading } = useJobOrders();
   const { data: customers = [], isLoading: customersLoading } = useCustomers();
+  const { data: products = [], isLoading: productsLoading } = useProducts();
   const [invoiceType, setInvoiceType] = useState<"job_order" | "customer">(jobOrderId ? "job_order" : "job_order");
   const [selectedJobOrderId, setSelectedJobOrderId] = useState<string | undefined>(jobOrderId);
   const [selectedCustomerId, setSelectedCustomerId] = useState<string | undefined>();
@@ -69,6 +72,7 @@ export function InvoiceForm({ onSubmit, initialData, jobOrderId }: InvoiceFormPr
   const [selectedCustomer, setSelectedCustomer] = useState<any>(null);
   const [dueDate, setDueDate] = useState<Date>();
   const [customerComboboxOpen, setCustomerComboboxOpen] = useState(false);
+  const [productComboboxOpen, setProductComboboxOpen] = useState<Record<string, boolean>>({});
 
   // QuickBooks integration
   const { data: qbConfig } = useQuickBooksConfig();
@@ -180,8 +184,35 @@ export function InvoiceForm({ onSubmit, initialData, jobOrderId }: InvoiceFormPr
   const addLineItem = () => {
     setLineItems([
       ...lineItems,
-      { id: Date.now().toString(), description: "", quantity: 1, unitPrice: 0, margin: 0, total: 0 },
+      { id: Date.now().toString(), productId: undefined, description: "", quantity: 1, unitPrice: 0, margin: 0, total: 0 },
     ]);
+  };
+
+  const handleProductSelect = (lineItemId: string, product: Product) => {
+    setLineItems((prev) =>
+      prev.map((item) => {
+        if (item.id === lineItemId) {
+          const baseTotal = item.quantity * product.cost;
+          const total = product.markup > 0 && product.markup < 100
+            ? baseTotal / (1 - product.markup / 100)
+            : baseTotal;
+          return {
+            ...item,
+            productId: product.id,
+            description: product.name,
+            unitPrice: product.cost,
+            margin: product.markup,
+            total,
+          };
+        }
+        return item;
+      })
+    );
+    setProductComboboxOpen((prev) => ({ ...prev, [lineItemId]: false }));
+  };
+
+  const getProductsByType = (type: 'product' | 'service' | 'labor') => {
+    return products.filter((p) => p.item_type === type);
   };
 
   const removeLineItem = (id: string) => {
@@ -259,7 +290,7 @@ export function InvoiceForm({ onSubmit, initialData, jobOrderId }: InvoiceFormPr
     }
   };
 
-  const isLoading = jobOrdersLoading || customersLoading;
+  const isLoading = jobOrdersLoading || customersLoading || productsLoading;
 
   if (isLoading) {
     return <div>Loading...</div>;
@@ -546,8 +577,120 @@ export function InvoiceForm({ onSubmit, initialData, jobOrderId }: InvoiceFormPr
             </div>
             
             <div className="space-y-3">
+              {/* Product Selection */}
               <div className="space-y-2">
-                <Label>Description</Label>
+                <Label>Product (Optional)</Label>
+                <Popover
+                  open={productComboboxOpen[item.id] || false}
+                  onOpenChange={(open) =>
+                    setProductComboboxOpen((prev) => ({ ...prev, [item.id]: open }))
+                  }
+                >
+                  <PopoverTrigger asChild>
+                    <Button
+                      variant="outline"
+                      role="combobox"
+                      aria-expanded={productComboboxOpen[item.id] || false}
+                      className="w-full justify-between font-normal"
+                    >
+                      {item.productId
+                        ? products.find((p) => p.id === item.productId)?.name || "Select product..."
+                        : "Search products..."}
+                      <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                    </Button>
+                  </PopoverTrigger>
+                  <PopoverContent className="w-[--radix-popover-trigger-width] p-0 z-50 bg-popover" align="start">
+                    <Command>
+                      <CommandInput placeholder="Search by name, SKU, or category..." />
+                      <CommandList>
+                        <CommandEmpty>No products found.</CommandEmpty>
+                        {getProductsByType('product').length > 0 && (
+                          <CommandGroup heading="Products">
+                            {getProductsByType('product').map((product) => (
+                              <CommandItem
+                                key={product.id}
+                                value={`${product.name} ${product.sku || ""} ${product.category}`}
+                                onSelect={() => handleProductSelect(item.id, product)}
+                              >
+                                <Check
+                                  className={cn(
+                                    "mr-2 h-4 w-4",
+                                    item.productId === product.id ? "opacity-100" : "opacity-0"
+                                  )}
+                                />
+                                <div className="flex flex-col">
+                                  <span>{product.name}</span>
+                                  <span className="text-xs text-muted-foreground">
+                                    {product.category} • ${product.price.toFixed(2)} / {product.unit}
+                                  </span>
+                                </div>
+                              </CommandItem>
+                            ))}
+                          </CommandGroup>
+                        )}
+                        {getProductsByType('service').length > 0 && (
+                          <CommandGroup heading="Services">
+                            {getProductsByType('service').map((product) => (
+                              <CommandItem
+                                key={product.id}
+                                value={`${product.name} ${product.sku || ""} ${product.category}`}
+                                onSelect={() => handleProductSelect(item.id, product)}
+                              >
+                                <Check
+                                  className={cn(
+                                    "mr-2 h-4 w-4",
+                                    item.productId === product.id ? "opacity-100" : "opacity-0"
+                                  )}
+                                />
+                                <div className="flex flex-col">
+                                  <span>{product.name}</span>
+                                  <span className="text-xs text-muted-foreground">
+                                    {product.category} • ${product.price.toFixed(2)} / {product.unit}
+                                  </span>
+                                </div>
+                              </CommandItem>
+                            ))}
+                          </CommandGroup>
+                        )}
+                        {getProductsByType('labor').length > 0 && (
+                          <CommandGroup heading="Labor">
+                            {getProductsByType('labor').map((product) => (
+                              <CommandItem
+                                key={product.id}
+                                value={`${product.name} ${product.sku || ""} ${product.category}`}
+                                onSelect={() => handleProductSelect(item.id, product)}
+                              >
+                                <Check
+                                  className={cn(
+                                    "mr-2 h-4 w-4",
+                                    item.productId === product.id ? "opacity-100" : "opacity-0"
+                                  )}
+                                />
+                                <div className="flex flex-col">
+                                  <span>{product.name}</span>
+                                  <span className="text-xs text-muted-foreground">
+                                    {product.category} • ${product.price.toFixed(2)} / {product.unit}
+                                  </span>
+                                </div>
+                              </CommandItem>
+                            ))}
+                          </CommandGroup>
+                        )}
+                      </CommandList>
+                    </Command>
+                  </PopoverContent>
+                </Popover>
+              </div>
+
+              <div className="space-y-2">
+                <div className="flex items-center gap-2">
+                  <Label>Description</Label>
+                  {item.productId && (
+                    <Badge variant="outline" className="text-xs">
+                      {products.find((p) => p.id === item.productId)?.unit}
+                    </Badge>
+                  )}
+                </div>
                 <Input
                   value={item.description}
                   onChange={(e) => updateLineItem(item.id, "description", e.target.value)}
