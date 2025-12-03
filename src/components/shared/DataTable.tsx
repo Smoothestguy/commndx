@@ -8,12 +8,14 @@ import {
 } from "@/components/ui/table";
 import { Checkbox } from "@/components/ui/checkbox";
 import { cn } from "@/lib/utils";
+import { ArrowUp, ArrowDown, ArrowUpDown } from "lucide-react";
 
 interface Column<T> {
   key: keyof T | string;
   header: string | React.ReactNode;
   render?: (item: T) => React.ReactNode;
   className?: string;
+  sortable?: boolean;
 }
 
 interface DataTableProps<T> {
@@ -23,6 +25,9 @@ interface DataTableProps<T> {
   selectable?: boolean;
   selectedIds?: Set<string>;
   onSelectionChange?: (ids: Set<string>) => void;
+  sortKey?: string;
+  sortDirection?: 'asc' | 'desc';
+  onSort?: (key: string) => void;
 }
 
 export function DataTable<T extends { id: string | number }>({
@@ -32,6 +37,9 @@ export function DataTable<T extends { id: string | number }>({
   selectable = false,
   selectedIds = new Set(),
   onSelectionChange,
+  sortKey,
+  sortDirection,
+  onSort,
 }: DataTableProps<T>) {
   const allSelected = data.length > 0 && data.every(item => selectedIds.has(String(item.id)));
   const someSelected = data.some(item => selectedIds.has(String(item.id))) && !allSelected;
@@ -79,17 +87,34 @@ export function DataTable<T extends { id: string | number }>({
                 />
               </TableHead>
             )}
-            {columns.map((column) => (
-              <TableHead
-                key={String(column.key)}
-                className={cn(
-                  "text-muted-foreground font-medium",
-                  column.className
-                )}
-              >
-                {column.header}
-              </TableHead>
-            ))}
+            {columns.map((column) => {
+              const isSorted = sortKey === String(column.key);
+              const SortIcon = isSorted
+                ? sortDirection === 'asc' ? ArrowUp : ArrowDown
+                : ArrowUpDown;
+              
+              return (
+                <TableHead
+                  key={String(column.key)}
+                  className={cn(
+                    "text-muted-foreground font-medium",
+                    column.sortable && onSort && "cursor-pointer select-none hover:text-foreground transition-colors",
+                    column.className
+                  )}
+                  onClick={() => column.sortable && onSort?.(String(column.key))}
+                >
+                  <div className="flex items-center gap-1">
+                    {column.header}
+                    {column.sortable && onSort && (
+                      <SortIcon className={cn(
+                        "h-4 w-4",
+                        isSorted ? "text-primary" : "text-muted-foreground/50"
+                      )} />
+                    )}
+                  </div>
+                </TableHead>
+              );
+            })}
           </TableRow>
         </TableHeader>
         <TableBody>

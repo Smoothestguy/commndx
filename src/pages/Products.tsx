@@ -75,6 +75,8 @@ const Products = () => {
   const [selectedCategory, setSelectedCategory] = useState("");
   const [selectedType, setSelectedType] = useState<ItemType | "">("");
   const [selectedLetter, setSelectedLetter] = useState("");
+  const [sortKey, setSortKey] = useState<string>("");
+  const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('asc');
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [editingProduct, setEditingProduct] = useState<Product | null>(null);
   const [formData, setFormData] = useState({
@@ -142,8 +144,32 @@ const Products = () => {
     return matchesSearch && matchesCategory && matchesType && matchesLetter;
   }) || [];
 
+  const sortedProducts = useMemo(() => {
+    if (!sortKey) return filteredProducts;
+    
+    return [...filteredProducts].sort((a, b) => {
+      const aVal = String((a as any)[sortKey] || '').toLowerCase();
+      const bVal = String((b as any)[sortKey] || '').toLowerCase();
+      
+      if (sortDirection === 'asc') {
+        return aVal.localeCompare(bVal);
+      } else {
+        return bVal.localeCompare(aVal);
+      }
+    });
+  }, [filteredProducts, sortKey, sortDirection]);
+
+  const handleSort = (key: string) => {
+    if (sortKey === key) {
+      setSortDirection(prev => prev === 'asc' ? 'desc' : 'asc');
+    } else {
+      setSortKey(key);
+      setSortDirection('asc');
+    }
+  };
+
   const columns = [
-    { key: "name", header: "Name" },
+    { key: "name", header: "Name", sortable: true },
     {
       key: "item_type",
       header: "Type",
@@ -158,7 +184,7 @@ const Products = () => {
         );
       },
     },
-    { key: "category", header: "Category" },
+    { key: "category", header: "Category", sortable: true },
     {
       key: "cost",
       header: "Cost",
@@ -477,7 +503,7 @@ const Products = () => {
                 />
               ) : isMobile ? (
                 <div className="grid gap-4 sm:grid-cols-2">
-                  {filteredProducts.map((product, index) => (
+                  {sortedProducts.map((product, index) => (
                     <ProductCard
                       key={product.id}
                       product={product}
@@ -492,11 +518,14 @@ const Products = () => {
                 </div>
               ) : (
                 <DataTable 
-                  data={filteredProducts} 
+                  data={sortedProducts} 
                   columns={columns}
                   selectable
                   selectedIds={selectedProductIds}
                   onSelectionChange={setSelectedProductIds}
+                  sortKey={sortKey}
+                  sortDirection={sortDirection}
+                  onSort={handleSort}
                 />
               )}
             </>
