@@ -110,7 +110,7 @@ serve(async (req) => {
 
         const productData = {
           name: item.Name,
-          description: item.Description || null,
+          description: item.Description || item.PurchaseDesc || null,
           price: parseFloat(item.UnitPrice || '0'),
           cost: parseFloat(item.PurchaseCost || '0'),
           markup: item.UnitPrice && item.PurchaseCost && parseFloat(item.PurchaseCost) > 0
