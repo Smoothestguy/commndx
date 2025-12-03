@@ -237,35 +237,88 @@ export type Database = {
       badge_templates: {
         Row: {
           background_color: string | null
+          company_logo_url: string | null
+          company_name: string | null
           created_at: string | null
+          custom_fields: Json | null
           description: string | null
+          header_color: string | null
           id: string
           is_default: boolean | null
           name: string
           orientation: string | null
+          project_id: string | null
+          show_capabilities: boolean | null
+          show_certifications: boolean | null
+          show_email: boolean | null
+          show_everify_status: boolean | null
+          show_languages: boolean | null
+          show_personnel_number: boolean | null
+          show_phone: boolean | null
+          show_photo: boolean | null
+          show_work_authorization: boolean | null
+          template_name: string | null
           updated_at: string | null
         }
         Insert: {
           background_color?: string | null
+          company_logo_url?: string | null
+          company_name?: string | null
           created_at?: string | null
+          custom_fields?: Json | null
           description?: string | null
+          header_color?: string | null
           id?: string
           is_default?: boolean | null
           name: string
           orientation?: string | null
+          project_id?: string | null
+          show_capabilities?: boolean | null
+          show_certifications?: boolean | null
+          show_email?: boolean | null
+          show_everify_status?: boolean | null
+          show_languages?: boolean | null
+          show_personnel_number?: boolean | null
+          show_phone?: boolean | null
+          show_photo?: boolean | null
+          show_work_authorization?: boolean | null
+          template_name?: string | null
           updated_at?: string | null
         }
         Update: {
           background_color?: string | null
+          company_logo_url?: string | null
+          company_name?: string | null
           created_at?: string | null
+          custom_fields?: Json | null
           description?: string | null
+          header_color?: string | null
           id?: string
           is_default?: boolean | null
           name?: string
           orientation?: string | null
+          project_id?: string | null
+          show_capabilities?: boolean | null
+          show_certifications?: boolean | null
+          show_email?: boolean | null
+          show_everify_status?: boolean | null
+          show_languages?: boolean | null
+          show_personnel_number?: boolean | null
+          show_phone?: boolean | null
+          show_photo?: boolean | null
+          show_work_authorization?: boolean | null
+          template_name?: string | null
           updated_at?: string | null
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "badge_templates_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "projects"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       company_settings: {
         Row: {

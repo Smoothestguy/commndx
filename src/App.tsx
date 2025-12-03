@@ -44,6 +44,7 @@ import Personnel from "./pages/Personnel";
 import PersonnelDetail from "./pages/PersonnelDetail";
 import PersonnelRegistrationPortal from "./pages/PersonnelRegistrationPortal";
 import BadgeTemplates from "./pages/BadgeTemplates";
+import BadgeTemplateEditor from "./pages/BadgeTemplateEditor";
 import RoofInspections from "./pages/RoofInspections";
 import RoofInspectionDetail from "./pages/RoofInspectionDetail";
 import RoofMeasurements from "./pages/RoofMeasurements";
@@ -314,6 +315,14 @@ const App = () => {
                   element={
                     <ProtectedRoute>
                       <BadgeTemplates />
+                    </ProtectedRoute>
+                  }
+                />
+                <Route
+                  path="/badge-templates/:id"
+                  element={
+                    <ProtectedRoute>
+                      <BadgeTemplateEditor />
                     </ProtectedRoute>
                   }
                 />

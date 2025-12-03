@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { Plus, Edit, Trash2, Copy, CheckCircle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -20,14 +21,13 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import { BadgeTemplateEditor } from "@/components/badges/BadgeTemplateEditor";
 
 const BadgeTemplates = () => {
+  const navigate = useNavigate();
   const { data: templates, isLoading } = useBadgeTemplates();
   const deleteMutation = useDeleteBadgeTemplate();
   const setDefaultMutation = useSetDefaultTemplate();
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
-  const [editorOpen, setEditorOpen] = useState(false);
   const [selectedTemplateId, setSelectedTemplateId] = useState<string>("");
 
   const handleDelete = async () => {
@@ -54,7 +54,7 @@ const BadgeTemplates = () => {
           <p className="text-muted-foreground">
             Create and manage customizable badge templates for your personnel
           </p>
-          <Button onClick={() => setEditorOpen(true)}>
+          <Button onClick={() => navigate("/badge-templates/new")}>
             <Plus className="mr-2 h-4 w-4" />
             Create Template
           </Button>
@@ -106,7 +106,11 @@ const BadgeTemplates = () => {
                           Set Default
                         </Button>
                       )}
-                      <Button variant="outline" size="sm">
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => navigate(`/badge-templates/${template.id}`)}
+                      >
                         <Edit className="h-4 w-4" />
                       </Button>
                       <Button variant="outline" size="sm">
@@ -134,7 +138,7 @@ const BadgeTemplates = () => {
               <p className="text-muted-foreground mb-4">
                 No badge templates yet. Create your first template to get started.
               </p>
-              <Button onClick={() => setEditorOpen(true)}>
+              <Button onClick={() => navigate("/badge-templates/new")}>
                 <Plus className="mr-2 h-4 w-4" />
                 Create Template
               </Button>
@@ -142,8 +146,6 @@ const BadgeTemplates = () => {
           </Card>
         )}
       </div>
-
-      <BadgeTemplateEditor open={editorOpen} onOpenChange={setEditorOpen} />
 
       <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
         <AlertDialogContent>
