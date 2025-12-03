@@ -6,7 +6,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Card } from "@/components/ui/card";
-import { Trash2, Plus, Copy, Loader2 } from "lucide-react";
+import { Trash2, Plus, Copy, Loader2, Check, ChevronsUpDown } from "lucide-react";
 import { useState, useEffect } from "react";
 import { useJobOrders, useJobOrder } from "@/integrations/supabase/hooks/useJobOrders";
 import { useCustomers } from "@/integrations/supabase/hooks/useCustomers";
@@ -19,6 +19,7 @@ import { cn } from "@/lib/utils";
 import { useQuickBooksConfig, useQuickBooksNextNumber } from "@/integrations/supabase/hooks/useQuickBooks";
 import { Badge } from "@/components/ui/badge";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
+import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "@/components/ui/command";
 
 const formSchema = z.object({
   number: z.string().min(1, "Invoice number is required"),
@@ -67,6 +68,7 @@ export function InvoiceForm({ onSubmit, initialData, jobOrderId }: InvoiceFormPr
   const [selectedJobOrder, setSelectedJobOrder] = useState<any>(null);
   const [selectedCustomer, setSelectedCustomer] = useState<any>(null);
   const [dueDate, setDueDate] = useState<Date>();
+  const [customerComboboxOpen, setCustomerComboboxOpen] = useState(false);
 
   // QuickBooks integration
   const { data: qbConfig } = useQuickBooksConfig();
@@ -330,21 +332,54 @@ export function InvoiceForm({ onSubmit, initialData, jobOrderId }: InvoiceFormPr
           ) : (
             <div>
               <Label htmlFor="customerId">Customer</Label>
-              <Select
-                value={form.watch("customerId")}
-                onValueChange={handleCustomerChange}
-              >
-                <SelectTrigger>
-                  <SelectValue placeholder="Select customer" />
-                </SelectTrigger>
-                <SelectContent>
-                  {customers.map((c: any) => (
-                    <SelectItem key={c.id} value={c.id}>
-                      {c.name} {c.company ? `(${c.company})` : ""}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+              <Popover open={customerComboboxOpen} onOpenChange={setCustomerComboboxOpen}>
+                <PopoverTrigger asChild>
+                  <Button
+                    variant="outline"
+                    role="combobox"
+                    aria-expanded={customerComboboxOpen}
+                    className="w-full justify-between font-normal"
+                  >
+                    {selectedCustomer
+                      ? `${selectedCustomer.name}${selectedCustomer.company ? ` (${selectedCustomer.company})` : ""}`
+                      : "Search customer..."}
+                    <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent className="w-[--radix-popover-trigger-width] p-0 z-50 bg-popover" align="start">
+                  <Command>
+                    <CommandInput placeholder="Search customers..." />
+                    <CommandList>
+                      <CommandEmpty>No customer found.</CommandEmpty>
+                      <CommandGroup>
+                        {customers.map((c: any) => (
+                          <CommandItem
+                            key={c.id}
+                            value={`${c.name} ${c.company || ""} ${c.email || ""}`}
+                            onSelect={() => {
+                              handleCustomerChange(c.id);
+                              setCustomerComboboxOpen(false);
+                            }}
+                          >
+                            <Check
+                              className={cn(
+                                "mr-2 h-4 w-4",
+                                selectedCustomerId === c.id ? "opacity-100" : "opacity-0"
+                              )}
+                            />
+                            <div className="flex flex-col">
+                              <span>{c.name}</span>
+                              {c.company && (
+                                <span className="text-xs text-muted-foreground">{c.company}</span>
+                              )}
+                            </div>
+                          </CommandItem>
+                        ))}
+                      </CommandGroup>
+                    </CommandList>
+                  </Command>
+                </PopoverContent>
+              </Popover>
               {form.formState.errors.customerId && (
                 <p className="text-destructive text-sm mt-1">{form.formState.errors.customerId.message}</p>
               )}
