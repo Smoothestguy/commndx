@@ -8,19 +8,21 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { Mail, Phone, MapPin, Calendar, DollarSign, AlertTriangle, IdCard } from "lucide-react";
+import { Mail, Phone, MapPin, Calendar, DollarSign, AlertTriangle, IdCard, MessageSquare, Edit } from "lucide-react";
 import { format } from "date-fns";
 import { useState } from "react";
 import { BadgeGenerator } from "@/components/badges/BadgeGenerator";
 import { PersonnelForm } from "@/components/personnel/PersonnelForm";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { Edit } from "lucide-react";
+import { SendSMSDialog } from "@/components/messaging/SendSMSDialog";
+import { MessageHistory } from "@/components/messaging/MessageHistory";
 
 const PersonnelDetail = () => {
   const { id } = useParams<{ id: string }>();
   const { data: personnel, isLoading } = usePersonnelById(id);
   const [badgeDialogOpen, setBadgeDialogOpen] = useState(false);
   const [editDialogOpen, setEditDialogOpen] = useState(false);
+  const [smsDialogOpen, setSmsDialogOpen] = useState(false);
 
   if (isLoading) {
     return (
@@ -115,6 +117,15 @@ const PersonnelDetail = () => {
                     <IdCard className="mr-2 h-4 w-4" />
                     Generate Badge
                   </Button>
+                  <Button 
+                    variant="outline" 
+                    size="sm" 
+                    onClick={() => setSmsDialogOpen(true)}
+                    disabled={!personnel.phone}
+                  >
+                    <MessageSquare className="mr-2 h-4 w-4" />
+                    Send SMS
+                  </Button>
                 </div>
               </div>
             </div>
@@ -123,7 +134,7 @@ const PersonnelDetail = () => {
 
         <Tabs defaultValue="personal" className="w-full">
           <ScrollArea className="w-full">
-            <TabsList className="inline-flex w-full sm:grid sm:grid-cols-5">
+            <TabsList className="inline-flex w-full sm:grid sm:grid-cols-6">
               <TabsTrigger value="personal" className="whitespace-nowrap">
                 <span className="sm:hidden">Info</span>
                 <span className="hidden sm:inline">Personal</span>
@@ -140,6 +151,10 @@ const PersonnelDetail = () => {
               <TabsTrigger value="emergency" className="whitespace-nowrap">
                 <span className="sm:hidden">Contact</span>
                 <span className="hidden sm:inline">Emergency</span>
+              </TabsTrigger>
+              <TabsTrigger value="messages" className="whitespace-nowrap">
+                <span className="sm:hidden">SMS</span>
+                <span className="hidden sm:inline">Messages</span>
               </TabsTrigger>
             </TabsList>
           </ScrollArea>
@@ -362,6 +377,28 @@ const PersonnelDetail = () => {
               </CardContent>
             </Card>
           </TabsContent>
+
+          <TabsContent value="messages">
+            <Card>
+              <CardHeader className="flex flex-row items-center justify-between">
+                <CardTitle>Message History</CardTitle>
+                <Button 
+                  size="sm" 
+                  onClick={() => setSmsDialogOpen(true)}
+                  disabled={!personnel.phone}
+                >
+                  <MessageSquare className="mr-2 h-4 w-4" />
+                  Send SMS
+                </Button>
+              </CardHeader>
+              <CardContent>
+                <MessageHistory 
+                  recipientType="personnel" 
+                  recipientId={personnel.id} 
+                />
+              </CardContent>
+            </Card>
+          </TabsContent>
         </Tabs>
       </div>
 
@@ -383,6 +420,15 @@ const PersonnelDetail = () => {
           />
         </DialogContent>
       </Dialog>
+
+      <SendSMSDialog
+        open={smsDialogOpen}
+        onOpenChange={setSmsDialogOpen}
+        recipientType="personnel"
+        recipientId={personnel.id}
+        recipientName={`${personnel.first_name} ${personnel.last_name}`}
+        recipientPhone={personnel.phone || ""}
+      />
     </DetailPageLayout>
   );
 };
