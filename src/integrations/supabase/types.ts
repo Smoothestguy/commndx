@@ -1900,6 +1900,222 @@ export type Database = {
           },
         ]
       }
+      quickbooks_config: {
+        Row: {
+          access_token: string | null
+          company_name: string | null
+          created_at: string | null
+          id: string
+          is_connected: boolean | null
+          last_sync_at: string | null
+          realm_id: string | null
+          refresh_token: string | null
+          token_expires_at: string | null
+          updated_at: string | null
+        }
+        Insert: {
+          access_token?: string | null
+          company_name?: string | null
+          created_at?: string | null
+          id?: string
+          is_connected?: boolean | null
+          last_sync_at?: string | null
+          realm_id?: string | null
+          refresh_token?: string | null
+          token_expires_at?: string | null
+          updated_at?: string | null
+        }
+        Update: {
+          access_token?: string | null
+          company_name?: string | null
+          created_at?: string | null
+          id?: string
+          is_connected?: boolean | null
+          last_sync_at?: string | null
+          realm_id?: string | null
+          refresh_token?: string | null
+          token_expires_at?: string | null
+          updated_at?: string | null
+        }
+        Relationships: []
+      }
+      quickbooks_customer_mappings: {
+        Row: {
+          created_at: string | null
+          customer_id: string
+          id: string
+          last_synced_at: string | null
+          quickbooks_customer_id: string
+          sync_status:
+            | Database["public"]["Enums"]["quickbooks_sync_status"]
+            | null
+          updated_at: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          customer_id: string
+          id?: string
+          last_synced_at?: string | null
+          quickbooks_customer_id: string
+          sync_status?:
+            | Database["public"]["Enums"]["quickbooks_sync_status"]
+            | null
+          updated_at?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          customer_id?: string
+          id?: string
+          last_synced_at?: string | null
+          quickbooks_customer_id?: string
+          sync_status?:
+            | Database["public"]["Enums"]["quickbooks_sync_status"]
+            | null
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "quickbooks_customer_mappings_customer_id_fkey"
+            columns: ["customer_id"]
+            isOneToOne: true
+            referencedRelation: "customers"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      quickbooks_invoice_mappings: {
+        Row: {
+          created_at: string | null
+          id: string
+          invoice_id: string
+          quickbooks_doc_number: string | null
+          quickbooks_invoice_id: string
+          sync_status:
+            | Database["public"]["Enums"]["quickbooks_sync_status"]
+            | null
+          synced_at: string | null
+          updated_at: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          id?: string
+          invoice_id: string
+          quickbooks_doc_number?: string | null
+          quickbooks_invoice_id: string
+          sync_status?:
+            | Database["public"]["Enums"]["quickbooks_sync_status"]
+            | null
+          synced_at?: string | null
+          updated_at?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          id?: string
+          invoice_id?: string
+          quickbooks_doc_number?: string | null
+          quickbooks_invoice_id?: string
+          sync_status?:
+            | Database["public"]["Enums"]["quickbooks_sync_status"]
+            | null
+          synced_at?: string | null
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "quickbooks_invoice_mappings_invoice_id_fkey"
+            columns: ["invoice_id"]
+            isOneToOne: true
+            referencedRelation: "invoices"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      quickbooks_product_mappings: {
+        Row: {
+          conflict_data: Json | null
+          created_at: string | null
+          id: string
+          last_synced_at: string | null
+          product_id: string
+          quickbooks_item_id: string
+          sync_direction: string | null
+          sync_status:
+            | Database["public"]["Enums"]["quickbooks_sync_status"]
+            | null
+          updated_at: string | null
+        }
+        Insert: {
+          conflict_data?: Json | null
+          created_at?: string | null
+          id?: string
+          last_synced_at?: string | null
+          product_id: string
+          quickbooks_item_id: string
+          sync_direction?: string | null
+          sync_status?:
+            | Database["public"]["Enums"]["quickbooks_sync_status"]
+            | null
+          updated_at?: string | null
+        }
+        Update: {
+          conflict_data?: Json | null
+          created_at?: string | null
+          id?: string
+          last_synced_at?: string | null
+          product_id?: string
+          quickbooks_item_id?: string
+          sync_direction?: string | null
+          sync_status?:
+            | Database["public"]["Enums"]["quickbooks_sync_status"]
+            | null
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "quickbooks_product_mappings_product_id_fkey"
+            columns: ["product_id"]
+            isOneToOne: true
+            referencedRelation: "products"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      quickbooks_sync_log: {
+        Row: {
+          action: string
+          created_at: string | null
+          details: Json | null
+          entity_id: string | null
+          entity_type: string
+          error_message: string | null
+          id: string
+          quickbooks_id: string | null
+          status: string
+        }
+        Insert: {
+          action: string
+          created_at?: string | null
+          details?: Json | null
+          entity_id?: string | null
+          entity_type: string
+          error_message?: string | null
+          id?: string
+          quickbooks_id?: string | null
+          status: string
+        }
+        Update: {
+          action?: string
+          created_at?: string | null
+          details?: Json | null
+          entity_id?: string | null
+          entity_type?: string
+          error_message?: string | null
+          id?: string
+          quickbooks_id?: string | null
+          status?: string
+        }
+        Relationships: []
+      }
       roof_inspections: {
         Row: {
           created_at: string | null
@@ -2579,6 +2795,7 @@ export type Database = {
         | "in-progress"
         | "completed"
         | "cancelled"
+      quickbooks_sync_status: "synced" | "pending" | "conflict" | "error"
       roof_condition: "excellent" | "good" | "fair" | "poor" | "critical"
       roof_type:
         | "gable"
@@ -2798,6 +3015,7 @@ export const Constants = {
         "completed",
         "cancelled",
       ],
+      quickbooks_sync_status: ["synced", "pending", "conflict", "error"],
       roof_condition: ["excellent", "good", "fair", "poor", "critical"],
       roof_type: [
         "gable",

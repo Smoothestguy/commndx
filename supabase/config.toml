@@ -1,1 +1,49 @@
 project_id = "xfjjvznxkcckuwxmcsdc"
+
+[functions.approve-estimate]
+verify_jwt = false
+
+[functions.approve-personnel-registration]
+verify_jwt = false
+
+[functions.approve-purchase-order]
+verify_jwt = false
+
+[functions.check-expiring-invitations]
+verify_jwt = false
+
+[functions.get-estimate-for-approval]
+verify_jwt = false
+
+[functions.notify-invitation-accepted]
+verify_jwt = false
+
+[functions.notify-po-status-change]
+verify_jwt = false
+
+[functions.remove-inactive-assignments]
+verify_jwt = false
+
+[functions.send-estimate]
+verify_jwt = false
+
+[functions.send-invitation]
+verify_jwt = false
+
+[functions.send-invoice]
+verify_jwt = false
+
+[functions.send-purchase-order]
+verify_jwt = false
+
+[functions.quickbooks-oauth]
+verify_jwt = false
+
+[functions.quickbooks-sync-products]
+verify_jwt = false
+
+[functions.quickbooks-sync-customers]
+verify_jwt = false
+
+[functions.quickbooks-create-invoice]
+verify_jwt = false
