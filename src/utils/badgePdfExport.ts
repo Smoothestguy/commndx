@@ -16,7 +16,23 @@ interface BadgeTemplate {
   name: string;
   orientation: string;
   background_color?: string | null;
-  fields: Array<{
+  header_color?: string | null;
+  company_name?: string | null;
+  company_logo_url?: string | null;
+  // Field visibility (show_* booleans)
+  show_photo?: boolean | null;
+  show_personnel_number?: boolean | null;
+  show_phone?: boolean | null;
+  show_email?: boolean | null;
+  show_everify_status?: boolean | null;
+  // Text colors
+  name_color?: string | null;
+  personnel_number_color?: string | null;
+  label_color?: string | null;
+  value_color?: string | null;
+  footer_color?: string | null;
+  // Legacy support for fields array
+  fields?: Array<{
     field_name: string;
     is_enabled: boolean;
   }>;
@@ -36,149 +52,230 @@ const generateQRCodeDataURL = async (text: string): Promise<string> => {
   }
 };
 
+// Helper to convert hex color to RGB
+const hexToRgb = (hex: string): { r: number; g: number; b: number } => {
+  const result = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex);
+  return result
+    ? {
+        r: parseInt(result[1], 16),
+        g: parseInt(result[2], 16),
+        b: parseInt(result[3], 16),
+      }
+    : { r: 0, g: 0, b: 0 };
+};
+
+// Helper to check if a field is enabled (supports both show_* booleans and legacy fields array)
+const isFieldEnabled = (fieldName: string, template: BadgeTemplate): boolean => {
+  const showFieldMap: Record<string, keyof BadgeTemplate> = {
+    photo: "show_photo",
+    personnel_number: "show_personnel_number",
+    phone: "show_phone",
+    email: "show_email",
+    everify_status: "show_everify_status",
+  };
+
+  const showKey = showFieldMap[fieldName];
+  if (showKey && template[showKey] !== undefined && template[showKey] !== null) {
+    return template[showKey] as boolean;
+  }
+
+  // Fallback to fields array (legacy)
+  if (template.fields) {
+    const field = template.fields.find((f) => f.field_name === fieldName);
+    if (field) {
+      return field.is_enabled;
+    }
+  }
+
+  // Default to true for name fields
+  if (fieldName === "first_name" || fieldName === "last_name") {
+    return true;
+  }
+
+  return true;
+};
+
+// Helper to fetch image as base64
+const fetchImageAsBase64 = async (url: string): Promise<string | null> => {
+  try {
+    const response = await fetch(url);
+    const blob = await response.blob();
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onloadend = () => resolve(reader.result as string);
+      reader.onerror = reject;
+      reader.readAsDataURL(blob);
+    });
+  } catch (error) {
+    console.error("Failed to fetch image:", error);
+    return null;
+  }
+};
+
 export const generateBadgePDF = async (
   personnel: BadgeData,
   template: BadgeTemplate
 ): Promise<void> => {
+  const badgeWidth = 3.375;
+  const badgeHeight = 2.125;
+  const headerHeight = 0.4;
+
   const pdf = new jsPDF({
     orientation: template.orientation === "landscape" ? "l" : "p",
     unit: "in",
-    format: [3.375, 2.125], // CR80 standard badge size
+    format: [badgeWidth, badgeHeight],
   });
 
   // Set background color
-  if (template.background_color) {
-    pdf.setFillColor(template.background_color);
-    pdf.rect(0, 0, 3.375, 2.125, "F");
-  } else {
-    pdf.setFillColor(255, 255, 255);
-    pdf.rect(0, 0, 3.375, 2.125, "F");
+  const bgColor = hexToRgb(template.background_color || "#ffffff");
+  pdf.setFillColor(bgColor.r, bgColor.g, bgColor.b);
+  pdf.rect(0, 0, badgeWidth, badgeHeight, "F");
+
+  // Draw header bar
+  const headerColor = hexToRgb(template.header_color || "#1e40af");
+  pdf.setFillColor(headerColor.r, headerColor.g, headerColor.b);
+  pdf.rect(0, 0, badgeWidth, headerHeight, "F");
+
+  // Add company logo to header if available
+  let logoEndX = 0.1;
+  if (template.company_logo_url) {
+    try {
+      const logoBase64 = await fetchImageAsBase64(template.company_logo_url);
+      if (logoBase64) {
+        const logoSize = 0.28;
+        pdf.addImage(logoBase64, "PNG", 0.1, 0.06, logoSize, logoSize);
+        logoEndX = 0.1 + logoSize + 0.08;
+      }
+    } catch (error) {
+      console.error("Failed to add company logo:", error);
+    }
   }
 
-  const enabledFields = template.fields.filter((f) => f.is_enabled);
+  // Add company name to header
+  if (template.company_name) {
+    pdf.setFontSize(10);
+    pdf.setFont(undefined, "bold");
+    pdf.setTextColor(255, 255, 255);
+    pdf.text(template.company_name, logoEndX, 0.26);
+  }
 
   // Generate QR code if enabled
   let qrCodeDataUrl: string | null = null;
-  if (enabledFields.some((f) => f.field_name === "qr_code")) {
+  if (isFieldEnabled("qr_code", template)) {
     try {
-      const siteUrl = import.meta.env.VITE_SUPABASE_URL?.replace('/supabase', '') || window.location.origin;
-      qrCodeDataUrl = await generateQRCodeDataURL(`${siteUrl}/personnel/${personnel.id}`);
+      const siteUrl =
+        import.meta.env.VITE_SUPABASE_URL?.replace("/supabase", "") ||
+        window.location.origin;
+      qrCodeDataUrl = await generateQRCodeDataURL(
+        `${siteUrl}/personnel/${personnel.id}`
+      );
     } catch (error) {
       console.error("Failed to generate QR code:", error);
     }
   }
 
-  // Add photo if available - LEFT SIDE
-  if (
-    enabledFields.some((f) => f.field_name === "photo") &&
-    personnel.photo_url
-  ) {
+  // Add photo if available - LEFT SIDE (below header)
+  const contentStartY = headerHeight + 0.1;
+  if (isFieldEnabled("photo", template) && personnel.photo_url) {
     try {
-      // Fetch and embed the actual photo
-      const response = await fetch(personnel.photo_url);
-      const blob = await response.blob();
-      const reader = new FileReader();
-      
-      await new Promise((resolve, reject) => {
-        reader.onloadend = () => {
-          try {
-            const base64data = reader.result as string;
-            // Add photo on LEFT side (0.2, 0.4) with size (0.9, 0.9) inches
-            pdf.addImage(base64data, 'JPEG', 0.2, 0.4, 0.9, 0.9);
-            resolve(null);
-          } catch (err) {
-            reject(err);
-          }
-        };
-        reader.onerror = reject;
-        reader.readAsDataURL(blob);
-      });
+      const photoBase64 = await fetchImageAsBase64(personnel.photo_url);
+      if (photoBase64) {
+        pdf.addImage(photoBase64, "JPEG", 0.15, contentStartY, 0.85, 0.85);
+      }
     } catch (error) {
       console.error("Failed to add photo:", error);
       // Fallback to placeholder circle
       pdf.setDrawColor(200, 200, 200);
       pdf.setFillColor(240, 240, 240);
-      pdf.circle(0.65, 0.85, 0.4, "FD");
+      pdf.circle(0.57, contentStartY + 0.42, 0.38, "FD");
     }
   }
 
-  // Text content on RIGHT SIDE starting at x = 1.3
-  let yPosition = 0.35;
-  const textStartX = 1.3;
+  // Text content on RIGHT SIDE
+  let yPosition = contentStartY + 0.1;
+  const textStartX = 1.15;
 
-  // Add personnel number (top right, small and gray)
-  if (enabledFields.some((f) => f.field_name === "personnel_number")) {
-    pdf.setFontSize(9);
-    pdf.setTextColor(120, 120, 120);
+  // Get colors from template
+  const nameColor = hexToRgb(template.name_color || "#000000");
+  const personnelNumberColor = hexToRgb(template.personnel_number_color || "#ea580c");
+  const labelColor = hexToRgb(template.label_color || "#374151");
+  const valueColor = hexToRgb(template.value_color || "#1f2937");
+  const footerColor = hexToRgb(template.footer_color || "#6b7280");
+
+  // Add personnel number
+  if (isFieldEnabled("personnel_number", template)) {
+    pdf.setFontSize(10);
+    pdf.setFont(undefined, "bold");
+    pdf.setTextColor(personnelNumberColor.r, personnelNumberColor.g, personnelNumberColor.b);
     pdf.text(personnel.personnel_number, textStartX, yPosition);
-    yPosition += 0.25;
+    yPosition += 0.22;
   }
 
-  // Add name (large and bold)
-  if (
-    enabledFields.some(
-      (f) => f.field_name === "first_name" || f.field_name === "last_name"
-    )
-  ) {
-    pdf.setFontSize(13);
+  // Add name
+  if (isFieldEnabled("first_name", template) || isFieldEnabled("last_name", template)) {
+    pdf.setFontSize(14);
     pdf.setFont(undefined, "bold");
-    pdf.setTextColor(0, 0, 0);
-    pdf.text(
-      `${personnel.first_name} ${personnel.last_name}`,
-      textStartX,
-      yPosition
-    );
-    yPosition += 0.3;
+    pdf.setTextColor(nameColor.r, nameColor.g, nameColor.b);
+    pdf.text(`${personnel.first_name} ${personnel.last_name}`, textStartX, yPosition);
+    yPosition += 0.28;
   }
 
   // Add phone with label
-  if (
-    enabledFields.some((f) => f.field_name === "phone") &&
-    personnel.phone
-  ) {
+  if (isFieldEnabled("phone", template) && personnel.phone) {
     pdf.setFontSize(8);
+    pdf.setFont(undefined, "bold");
+    pdf.setTextColor(labelColor.r, labelColor.g, labelColor.b);
+    pdf.text("Phone: ", textStartX, yPosition);
+    
     pdf.setFont(undefined, "normal");
-    pdf.setTextColor(60, 60, 60);
-    pdf.text(`Phone: ${personnel.phone}`, textStartX, yPosition);
+    pdf.setTextColor(valueColor.r, valueColor.g, valueColor.b);
+    pdf.text(personnel.phone, textStartX + 0.38, yPosition);
+    yPosition += 0.18;
+  }
+
+  // Add email with label
+  if (isFieldEnabled("email", template) && personnel.email) {
+    pdf.setFontSize(7);
+    pdf.setFont(undefined, "bold");
+    pdf.setTextColor(labelColor.r, labelColor.g, labelColor.b);
+    pdf.text("Email: ", textStartX, yPosition);
+    
+    pdf.setFont(undefined, "normal");
+    pdf.setTextColor(valueColor.r, valueColor.g, valueColor.b);
+    const emailText =
+      personnel.email.length > 22
+        ? personnel.email.substring(0, 22) + "..."
+        : personnel.email;
+    pdf.text(emailText, textStartX + 0.33, yPosition);
     yPosition += 0.2;
   }
 
-  // Add email with label (smaller font for email)
+  // Add E-Verify status badge at bottom
   if (
-    enabledFields.some((f) => f.field_name === "email") &&
-    personnel.email
-  ) {
-    pdf.setFontSize(7);
-    const emailText = personnel.email.length > 25 
-      ? personnel.email.substring(0, 25) + "..." 
-      : personnel.email;
-    pdf.text(`Email: ${emailText}`, textStartX, yPosition);
-    yPosition += 0.25;
-  }
-
-  // Add E-Verify status badge at bottom left
-  if (
-    enabledFields.some((f) => f.field_name === "everify_status") &&
+    isFieldEnabled("everify_status", template) &&
     personnel.everify_status === "verified"
   ) {
-    yPosition = 1.85; // Position at bottom
+    const eVerifyY = badgeHeight - 0.25;
     pdf.setFontSize(8);
     pdf.setFont(undefined, "bold");
     pdf.setTextColor(0, 120, 0);
-    
+
     // Draw rounded rectangle background
     pdf.setFillColor(220, 255, 220);
-    pdf.roundedRect(textStartX - 0.05, yPosition - 0.12, 1.1, 0.18, 0.05, 0.05, "F");
-    
-    // Add text
-    pdf.text("E-VERIFIED", textStartX, yPosition);
+    pdf.roundedRect(textStartX - 0.05, eVerifyY - 0.12, 1.0, 0.18, 0.05, 0.05, "F");
+
+    pdf.text("E-VERIFIED", textStartX, eVerifyY);
   }
+
+  // Add footer text
+  pdf.setFontSize(6);
+  pdf.setTextColor(footerColor.r, footerColor.g, footerColor.b);
 
   // Add QR code at bottom right
   if (qrCodeDataUrl) {
-    const qrSize = 0.6; // 0.6 inches square
-    const qrX = 3.375 - qrSize - 0.15; // Right side with margin
-    const qrY = 2.125 - qrSize - 0.15; // Bottom with margin
+    const qrSize = 0.55;
+    const qrX = badgeWidth - qrSize - 0.1;
+    const qrY = badgeHeight - qrSize - 0.1;
     pdf.addImage(qrCodeDataUrl, "PNG", qrX, qrY, qrSize, qrSize);
   }
 
@@ -198,18 +295,30 @@ export const generateBulkBadgePDF = async (
     format: "letter",
   });
 
-  const badgesPerPage = 8; // 2 columns x 4 rows
+  const badgesPerPage = 8;
   const badgeWidth = 3.375;
   const badgeHeight = 2.125;
+  const headerHeight = 0.4;
   const marginX = 0.5;
   const marginY = 0.5;
   const spacingX = 4.0;
   const spacingY = 2.5;
 
-  const enabledFields = template.fields.filter((f) => f.is_enabled);
+  // Get colors from template
+  const bgColor = hexToRgb(template.background_color || "#ffffff");
+  const headerColor = hexToRgb(template.header_color || "#1e40af");
+  const nameColor = hexToRgb(template.name_color || "#000000");
+  const personnelNumberColor = hexToRgb(template.personnel_number_color || "#ea580c");
+  const labelColor = hexToRgb(template.label_color || "#374151");
+  const valueColor = hexToRgb(template.value_color || "#1f2937");
+
+  // Pre-fetch company logo if available
+  let logoBase64: string | null = null;
+  if (template.company_logo_url) {
+    logoBase64 = await fetchImageAsBase64(template.company_logo_url);
+  }
 
   for (let i = 0; i < personnelList.length; i++) {
-    // Add new page if needed
     if (i > 0 && i % badgesPerPage === 0) {
       pdf.addPage();
     }
@@ -224,137 +333,142 @@ export const generateBulkBadgePDF = async (
     const personnel = personnelList[i];
 
     // Set background color
-    if (template.background_color) {
-      pdf.setFillColor(template.background_color);
-      pdf.rect(x, y, badgeWidth, badgeHeight, "F");
-    } else {
-      pdf.setFillColor(255, 255, 255);
-      pdf.rect(x, y, badgeWidth, badgeHeight, "F");
-    }
+    pdf.setFillColor(bgColor.r, bgColor.g, bgColor.b);
+    pdf.rect(x, y, badgeWidth, badgeHeight, "F");
 
     // Draw badge border
     pdf.setDrawColor(200, 200, 200);
     pdf.setLineWidth(0.01);
     pdf.rect(x, y, badgeWidth, badgeHeight);
 
+    // Draw header bar
+    pdf.setFillColor(headerColor.r, headerColor.g, headerColor.b);
+    pdf.rect(x, y, badgeWidth, headerHeight, "F");
+
+    // Add company logo to header
+    let logoEndX = x + 0.1;
+    if (logoBase64) {
+      try {
+        const logoSize = 0.28;
+        pdf.addImage(logoBase64, "PNG", x + 0.1, y + 0.06, logoSize, logoSize);
+        logoEndX = x + 0.1 + logoSize + 0.08;
+      } catch (error) {
+        console.error("Failed to add company logo:", error);
+      }
+    }
+
+    // Add company name to header
+    if (template.company_name) {
+      pdf.setFontSize(10);
+      pdf.setFont(undefined, "bold");
+      pdf.setTextColor(255, 255, 255);
+      pdf.text(template.company_name, logoEndX, y + 0.26);
+    }
+
     // Generate QR code if enabled
     let qrCodeDataUrl: string | null = null;
-    if (enabledFields.some((f) => f.field_name === "qr_code")) {
+    if (isFieldEnabled("qr_code", template)) {
       try {
-        const siteUrl = import.meta.env.VITE_SUPABASE_URL?.replace('/supabase', '') || window.location.origin;
-        qrCodeDataUrl = await generateQRCodeDataURL(`${siteUrl}/personnel/${personnel.id}`);
+        const siteUrl =
+          import.meta.env.VITE_SUPABASE_URL?.replace("/supabase", "") ||
+          window.location.origin;
+        qrCodeDataUrl = await generateQRCodeDataURL(
+          `${siteUrl}/personnel/${personnel.id}`
+        );
       } catch (error) {
         console.error("Failed to generate QR code:", error);
       }
     }
 
-    // Add photo if available - LEFT SIDE
-    if (
-      enabledFields.some((f) => f.field_name === "photo") &&
-      personnel.photo_url
-    ) {
+    // Add photo if available - LEFT SIDE (below header)
+    const contentStartY = y + headerHeight + 0.1;
+    if (isFieldEnabled("photo", template) && personnel.photo_url) {
       try {
-        const response = await fetch(personnel.photo_url);
-        const blob = await response.blob();
-        const reader = new FileReader();
-        
-        await new Promise((resolve, reject) => {
-          reader.onloadend = () => {
-            try {
-              const base64data = reader.result as string;
-              pdf.addImage(base64data, 'JPEG', x + 0.2, y + 0.4, 0.9, 0.9);
-              resolve(null);
-            } catch (err) {
-              reject(err);
-            }
-          };
-          reader.onerror = reject;
-          reader.readAsDataURL(blob);
-        });
+        const photoBase64 = await fetchImageAsBase64(personnel.photo_url);
+        if (photoBase64) {
+          pdf.addImage(photoBase64, "JPEG", x + 0.15, contentStartY, 0.85, 0.85);
+        }
       } catch (error) {
         console.error("Failed to add photo:", error);
-        // Fallback to placeholder circle
         pdf.setDrawColor(200, 200, 200);
         pdf.setFillColor(240, 240, 240);
-        pdf.circle(x + 0.65, y + 0.85, 0.4, "FD");
+        pdf.circle(x + 0.57, contentStartY + 0.42, 0.38, "FD");
       }
     }
 
     // Text content on RIGHT SIDE
-    let yPos = y + 0.35;
-    const textX = x + 1.3;
+    let yPos = contentStartY + 0.1;
+    const textX = x + 1.15;
 
     // Add personnel number
-    if (enabledFields.some((f) => f.field_name === "personnel_number")) {
-      pdf.setFontSize(9);
-      pdf.setTextColor(120, 120, 120);
+    if (isFieldEnabled("personnel_number", template)) {
+      pdf.setFontSize(10);
+      pdf.setFont(undefined, "bold");
+      pdf.setTextColor(personnelNumberColor.r, personnelNumberColor.g, personnelNumberColor.b);
       pdf.text(personnel.personnel_number, textX, yPos);
-      yPos += 0.25;
+      yPos += 0.22;
     }
 
     // Add name
-    if (
-      enabledFields.some(
-        (f) => f.field_name === "first_name" || f.field_name === "last_name"
-      )
-    ) {
-      pdf.setFontSize(13);
+    if (isFieldEnabled("first_name", template) || isFieldEnabled("last_name", template)) {
+      pdf.setFontSize(14);
       pdf.setFont(undefined, "bold");
-      pdf.setTextColor(0, 0, 0);
-      pdf.text(
-        `${personnel.first_name} ${personnel.last_name}`,
-        textX,
-        yPos
-      );
-      yPos += 0.3;
+      pdf.setTextColor(nameColor.r, nameColor.g, nameColor.b);
+      pdf.text(`${personnel.first_name} ${personnel.last_name}`, textX, yPos);
+      yPos += 0.28;
     }
 
     // Add phone
-    if (
-      enabledFields.some((f) => f.field_name === "phone") &&
-      personnel.phone
-    ) {
+    if (isFieldEnabled("phone", template) && personnel.phone) {
       pdf.setFontSize(8);
+      pdf.setFont(undefined, "bold");
+      pdf.setTextColor(labelColor.r, labelColor.g, labelColor.b);
+      pdf.text("Phone: ", textX, yPos);
+      
       pdf.setFont(undefined, "normal");
-      pdf.setTextColor(60, 60, 60);
-      pdf.text(`Phone: ${personnel.phone}`, textX, yPos);
-      yPos += 0.2;
+      pdf.setTextColor(valueColor.r, valueColor.g, valueColor.b);
+      pdf.text(personnel.phone, textX + 0.38, yPos);
+      yPos += 0.18;
     }
 
     // Add email
-    if (
-      enabledFields.some((f) => f.field_name === "email") &&
-      personnel.email
-    ) {
+    if (isFieldEnabled("email", template) && personnel.email) {
       pdf.setFontSize(7);
-      const emailText = personnel.email.length > 25 
-        ? personnel.email.substring(0, 25) + "..." 
-        : personnel.email;
-      pdf.text(`Email: ${emailText}`, textX, yPos);
-      yPos += 0.25;
+      pdf.setFont(undefined, "bold");
+      pdf.setTextColor(labelColor.r, labelColor.g, labelColor.b);
+      pdf.text("Email: ", textX, yPos);
+      
+      pdf.setFont(undefined, "normal");
+      pdf.setTextColor(valueColor.r, valueColor.g, valueColor.b);
+      const emailText =
+        personnel.email.length > 22
+          ? personnel.email.substring(0, 22) + "..."
+          : personnel.email;
+      pdf.text(emailText, textX + 0.33, yPos);
+      yPos += 0.2;
     }
 
-    // Add E-Verify status at bottom left
+    // Add E-Verify status at bottom
     if (
-      enabledFields.some((f) => f.field_name === "everify_status") &&
+      isFieldEnabled("everify_status", template) &&
       personnel.everify_status === "verified"
     ) {
-      const eVerifyY = y + 1.85;
+      const eVerifyY = y + badgeHeight - 0.25;
       pdf.setFontSize(8);
       pdf.setFont(undefined, "bold");
       pdf.setTextColor(0, 120, 0);
-      
+
       pdf.setFillColor(220, 255, 220);
-      pdf.roundedRect(textX - 0.05, eVerifyY - 0.12, 1.1, 0.18, 0.05, 0.05, "F");
-      
+      pdf.roundedRect(textX - 0.05, eVerifyY - 0.12, 1.0, 0.18, 0.05, 0.05, "F");
+
       pdf.text("E-VERIFIED", textX, eVerifyY);
     }
 
     // Add QR code at bottom right
     if (qrCodeDataUrl) {
-      const qrSize = 0.6;
-      const qrX = x + badgeWidth - qrSize - 0.15;
-      const qrY = y + badgeHeight - qrSize - 0.15;
+      const qrSize = 0.55;
+      const qrX = x + badgeWidth - qrSize - 0.1;
+      const qrY = y + badgeHeight - qrSize - 0.1;
       pdf.addImage(qrCodeDataUrl, "PNG", qrX, qrY, qrSize, qrSize);
     }
   }
