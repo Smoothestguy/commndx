@@ -8,7 +8,8 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { Mail, Phone, MapPin, Calendar, DollarSign, AlertTriangle, IdCard, MessageSquare, Edit } from "lucide-react";
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
+import { Mail, Phone, MapPin, Calendar, DollarSign, AlertTriangle, IdCard, MessageSquare, Edit, Flag } from "lucide-react";
 import { format } from "date-fns";
 import { useState } from "react";
 import { BadgeGenerator } from "@/components/badges/BadgeGenerator";
@@ -73,6 +74,65 @@ const PersonnelDetail = () => {
     }
   };
 
+  const getComplianceIssues = () => {
+    const issues: { type: string; message: string; severity: 'warning' | 'critical' }[] = [];
+    const today = new Date();
+    const thirtyDaysFromNow = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000);
+
+    // E-Verify status issues
+    if (personnel.everify_status === 'rejected') {
+      issues.push({ type: 'everify', message: 'E-Verify rejected', severity: 'critical' });
+    } else if (personnel.everify_status === 'expired') {
+      issues.push({ type: 'everify', message: 'E-Verify expired', severity: 'critical' });
+    }
+
+    // E-Verify expiry
+    if (personnel.everify_expiry) {
+      const expiryDate = new Date(personnel.everify_expiry);
+      if (expiryDate < today) {
+        issues.push({ type: 'everify_expiry', message: 'E-Verify has expired', severity: 'critical' });
+      } else if (expiryDate < thirtyDaysFromNow) {
+        issues.push({ type: 'everify_expiry', message: 'E-Verify expiring soon', severity: 'warning' });
+      }
+    }
+
+    // Work authorization expiry
+    if (personnel.work_auth_expiry) {
+      const expiryDate = new Date(personnel.work_auth_expiry);
+      if (expiryDate < today) {
+        issues.push({ type: 'work_auth', message: 'Work authorization expired', severity: 'critical' });
+      } else if (expiryDate < thirtyDaysFromNow) {
+        issues.push({ type: 'work_auth', message: 'Work authorization expiring soon', severity: 'warning' });
+      }
+    }
+
+    // I-9 not completed
+    if (!personnel.i9_completed_at) {
+      issues.push({ type: 'i9', message: 'I-9 not completed', severity: 'warning' });
+    }
+
+    // Expired certifications
+    if (personnel.certifications?.length > 0) {
+      const expiredCerts = personnel.certifications.filter(
+        cert => cert.expiry_date && new Date(cert.expiry_date) < today
+      );
+      const expiringCerts = personnel.certifications.filter(
+        cert => cert.expiry_date && new Date(cert.expiry_date) >= today && new Date(cert.expiry_date) < thirtyDaysFromNow
+      );
+      
+      if (expiredCerts.length > 0) {
+        issues.push({ type: 'cert', message: `${expiredCerts.length} expired certification(s)`, severity: 'critical' });
+      }
+      if (expiringCerts.length > 0) {
+        issues.push({ type: 'cert_warning', message: `${expiringCerts.length} certification(s) expiring soon`, severity: 'warning' });
+      }
+    }
+
+    return issues;
+  };
+
+  const complianceIssues = getComplianceIssues();
+
   return (
     <DetailPageLayout
       title={`${personnel.first_name} ${personnel.last_name}`}
@@ -106,6 +166,12 @@ const PersonnelDetail = () => {
                 <div className="flex flex-wrap gap-2">
                   {getStatusBadge()}
                   {getEVerifyBadge()}
+                  {complianceIssues.length > 0 && (
+                    <Badge variant="destructive" className="gap-1 animate-pulse">
+                      <Flag className="h-3 w-3" />
+                      Out of Compliance
+                    </Badge>
+                  )}
                 </div>
 
                 <div className="flex flex-wrap gap-2">
@@ -131,6 +197,25 @@ const PersonnelDetail = () => {
             </div>
           </CardContent>
         </Card>
+
+        {complianceIssues.length > 0 && (
+          <Alert variant="destructive" className="border-destructive/50 bg-destructive/10">
+            <Flag className="h-5 w-5" />
+            <AlertTitle className="flex items-center gap-2">
+              Out of Compliance
+              <Badge variant="destructive">{complianceIssues.length} issue(s)</Badge>
+            </AlertTitle>
+            <AlertDescription>
+              <ul className="mt-2 space-y-1 list-disc list-inside">
+                {complianceIssues.map((issue, idx) => (
+                  <li key={idx} className={issue.severity === 'critical' ? 'text-destructive font-medium' : 'text-amber-600 dark:text-amber-500'}>
+                    {issue.message}
+                  </li>
+                ))}
+              </ul>
+            </AlertDescription>
+          </Alert>
+        )}
 
         <Tabs defaultValue="personal" className="w-full">
           <ScrollArea className="w-full">
