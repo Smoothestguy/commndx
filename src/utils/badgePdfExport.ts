@@ -90,6 +90,9 @@ const hexToRgb = (hex: string): { r: number; g: number; b: number } => {
 
 // Helper to check if a field is enabled (supports both show_* booleans and legacy fields array)
 const isFieldEnabled = (fieldName: string, template: BadgeTemplate): boolean => {
+  // QR code is always enabled by default
+  if (fieldName === "qr_code") return true;
+  
   const showFieldMap: Record<string, keyof BadgeTemplate> = {
     photo: "show_photo",
     personnel_number: "show_personnel_number",
@@ -123,10 +126,31 @@ const isFieldEnabled = (fieldName: string, template: BadgeTemplate): boolean => 
   return true;
 };
 
+// Helper to truncate text to fit within a max width
+const truncateText = (pdf: jsPDF, text: string, maxWidth: number): string => {
+  const textWidth = pdf.getTextWidth(text);
+  if (textWidth <= maxWidth) return text;
+  
+  let truncated = text;
+  while (pdf.getTextWidth(truncated + "...") > maxWidth && truncated.length > 0) {
+    truncated = truncated.slice(0, -1);
+  }
+  return truncated + "...";
+};
+
 // Helper to fetch image as base64
 const fetchImageAsBase64 = async (url: string): Promise<string | null> => {
   try {
+    // Skip local paths that won't work with fetch
+    if (!url || url.startsWith('/') || url.startsWith('./')) {
+      console.warn("Skipping local path for image:", url);
+      return null;
+    }
     const response = await fetch(url);
+    if (!response.ok) {
+      console.error("Failed to fetch image, status:", response.status);
+      return null;
+    }
     const blob = await response.blob();
     return new Promise((resolve, reject) => {
       const reader = new FileReader();
@@ -145,12 +169,35 @@ const formatWorkAuthType = (type: string | null | undefined): string => {
   if (!type) return "";
   const typeMap: Record<string, string> = {
     us_citizen: "US Citizen",
+    citizen: "US Citizen",
     permanent_resident: "Permanent Resident",
+    green_card: "Green Card",
     work_visa: "Work Visa",
+    h1b: "H-1B Visa",
     ead: "EAD",
+    opt: "OPT",
+    tn_visa: "TN Visa",
     other: "Other",
   };
-  return typeMap[type] || type.replace(/_/g, " ").replace(/\b\w/g, (l) => l.toUpperCase());
+  return typeMap[type.toLowerCase()] || type.replace(/_/g, " ").replace(/\b\w/g, (l) => l.toUpperCase());
+};
+
+// Helper to draw placeholder with initials
+const drawPhotoPlaceholder = (pdf: jsPDF, x: number, y: number, size: number, firstName: string, lastName: string) => {
+  const centerX = x + size / 2;
+  const centerY = y + size / 2;
+  const radius = size / 2 - 0.02;
+  
+  pdf.setDrawColor(180, 180, 180);
+  pdf.setFillColor(230, 230, 230);
+  pdf.circle(centerX, centerY, radius, "FD");
+  
+  // Add initials
+  const initials = `${(firstName || "?")[0]}${(lastName || "?")[0]}`.toUpperCase();
+  pdf.setTextColor(100, 100, 100);
+  pdf.setFontSize(18);
+  pdf.setFont(undefined, "bold");
+  pdf.text(initials, centerX, centerY + 0.07, { align: "center" });
 };
 
 export const generateBadgePDF = async (
@@ -217,18 +264,23 @@ export const generateBadgePDF = async (
 
   // Add photo if available - LEFT SIDE (below header)
   const contentStartY = headerHeight + 0.1;
-  if (isFieldEnabled("photo", template) && personnel.photo_url) {
-    try {
-      const photoBase64 = await fetchImageAsBase64(personnel.photo_url);
-      if (photoBase64) {
-        pdf.addImage(photoBase64, "JPEG", 0.15, contentStartY, 0.85, 0.85);
+  const photoSize = 0.85;
+  if (isFieldEnabled("photo", template)) {
+    let photoAdded = false;
+    if (personnel.photo_url) {
+      try {
+        const photoBase64 = await fetchImageAsBase64(personnel.photo_url);
+        if (photoBase64) {
+          pdf.addImage(photoBase64, "JPEG", 0.15, contentStartY, photoSize, photoSize);
+          photoAdded = true;
+        }
+      } catch (error) {
+        console.error("Failed to add photo:", error);
       }
-    } catch (error) {
-      console.error("Failed to add photo:", error);
-      // Fallback to placeholder circle
-      pdf.setDrawColor(200, 200, 200);
-      pdf.setFillColor(240, 240, 240);
-      pdf.circle(0.57, contentStartY + 0.42, 0.38, "FD");
+    }
+    // Show placeholder if no photo or failed to load
+    if (!photoAdded) {
+      drawPhotoPlaceholder(pdf, 0.15, contentStartY, photoSize, personnel.first_name, personnel.last_name);
     }
   }
 
@@ -252,25 +304,30 @@ export const generateBadgePDF = async (
     yPosition += 0.22;
   }
 
-  // Add name
+  // Add name with truncation
   if (isFieldEnabled("first_name", template) || isFieldEnabled("last_name", template)) {
     pdf.setFontSize(14);
     pdf.setFont(undefined, "bold");
     pdf.setTextColor(nameColor.r, nameColor.g, nameColor.b);
-    pdf.text(`${personnel.first_name} ${personnel.last_name}`, textStartX, yPosition);
+    const fullName = `${personnel.first_name} ${personnel.last_name}`;
+    const maxNameWidth = 2.0; // Max width in inches for name
+    const displayName = truncateText(pdf, fullName, maxNameWidth);
+    pdf.text(displayName, textStartX, yPosition);
     yPosition += 0.22;
   }
 
-  // Add work authorization
+  // Add work authorization with dynamic spacing
   if (isFieldEnabled("work_authorization", template) && personnel.work_authorization_type) {
     pdf.setFontSize(7);
     pdf.setFont(undefined, "bold");
     pdf.setTextColor(labelColor.r, labelColor.g, labelColor.b);
-    pdf.text("Work Auth: ", textStartX, yPosition);
+    const workAuthLabel = "Work Auth: ";
+    pdf.text(workAuthLabel, textStartX, yPosition);
+    const labelWidth = pdf.getTextWidth(workAuthLabel);
     
     pdf.setFont(undefined, "normal");
     pdf.setTextColor(valueColor.r, valueColor.g, valueColor.b);
-    pdf.text(formatWorkAuthType(personnel.work_authorization_type), textStartX + 0.45, yPosition);
+    pdf.text(formatWorkAuthType(personnel.work_authorization_type), textStartX + labelWidth, yPosition);
     yPosition += 0.14;
   }
 
@@ -500,17 +557,23 @@ export const generateBulkBadgePDF = async (
 
     // Add photo if available - LEFT SIDE (below header)
     const contentStartY = y + headerHeight + 0.1;
-    if (isFieldEnabled("photo", template) && personnel.photo_url) {
-      try {
-        const photoBase64 = await fetchImageAsBase64(personnel.photo_url);
-        if (photoBase64) {
-          pdf.addImage(photoBase64, "JPEG", x + 0.15, contentStartY, 0.85, 0.85);
+    const photoSize = 0.85;
+    if (isFieldEnabled("photo", template)) {
+      let photoAdded = false;
+      if (personnel.photo_url) {
+        try {
+          const photoBase64 = await fetchImageAsBase64(personnel.photo_url);
+          if (photoBase64) {
+            pdf.addImage(photoBase64, "JPEG", x + 0.15, contentStartY, photoSize, photoSize);
+            photoAdded = true;
+          }
+        } catch (error) {
+          console.error("Failed to add photo:", error);
         }
-      } catch (error) {
-        console.error("Failed to add photo:", error);
-        pdf.setDrawColor(200, 200, 200);
-        pdf.setFillColor(240, 240, 240);
-        pdf.circle(x + 0.57, contentStartY + 0.42, 0.38, "FD");
+      }
+      // Show placeholder if no photo or failed to load
+      if (!photoAdded) {
+        drawPhotoPlaceholder(pdf, x + 0.15, contentStartY, photoSize, personnel.first_name, personnel.last_name);
       }
     }
 
@@ -527,25 +590,30 @@ export const generateBulkBadgePDF = async (
       yPos += 0.22;
     }
 
-    // Add name
+    // Add name with truncation
     if (isFieldEnabled("first_name", template) || isFieldEnabled("last_name", template)) {
       pdf.setFontSize(14);
       pdf.setFont(undefined, "bold");
       pdf.setTextColor(nameColor.r, nameColor.g, nameColor.b);
-      pdf.text(`${personnel.first_name} ${personnel.last_name}`, textX, yPos);
+      const fullName = `${personnel.first_name} ${personnel.last_name}`;
+      const maxNameWidth = 2.0;
+      const displayName = truncateText(pdf, fullName, maxNameWidth);
+      pdf.text(displayName, textX, yPos);
       yPos += 0.22;
     }
 
-    // Add work authorization
+    // Add work authorization with dynamic spacing
     if (isFieldEnabled("work_authorization", template) && personnel.work_authorization_type) {
       pdf.setFontSize(7);
       pdf.setFont(undefined, "bold");
       pdf.setTextColor(labelColor.r, labelColor.g, labelColor.b);
-      pdf.text("Work Auth: ", textX, yPos);
+      const workAuthLabel = "Work Auth: ";
+      pdf.text(workAuthLabel, textX, yPos);
+      const labelWidth = pdf.getTextWidth(workAuthLabel);
       
       pdf.setFont(undefined, "normal");
       pdf.setTextColor(valueColor.r, valueColor.g, valueColor.b);
-      pdf.text(formatWorkAuthType(personnel.work_authorization_type), textX + 0.45, yPos);
+      pdf.text(formatWorkAuthType(personnel.work_authorization_type), textX + labelWidth, yPos);
       yPos += 0.14;
     }
 
