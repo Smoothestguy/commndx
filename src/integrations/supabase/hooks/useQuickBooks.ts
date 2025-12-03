@@ -469,3 +469,22 @@ export const useSyncInvoiceToQB = () => {
     },
   });
 };
+
+// Get next QuickBooks number (invoice or estimate)
+export const useQuickBooksNextNumber = (type: 'invoice' | 'estimate', enabled: boolean = true) => {
+  return useQuery({
+    queryKey: ["quickbooks-next-number", type],
+    queryFn: async () => {
+      const { data, error } = await supabase.functions.invoke('quickbooks-get-next-number', {
+        body: { type },
+      });
+
+      if (error) throw error;
+      if (data.error) throw new Error(data.error);
+      return data.nextNumber as string;
+    },
+    enabled,
+    staleTime: 0, // Always fetch fresh
+    refetchOnWindowFocus: false,
+  });
+};

@@ -6,7 +6,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Card } from "@/components/ui/card";
-import { Trash2, Plus, Copy } from "lucide-react";
+import { Trash2, Plus, Copy, Loader2 } from "lucide-react";
 import { useState, useEffect } from "react";
 import { useJobOrders, useJobOrder } from "@/integrations/supabase/hooks/useJobOrders";
 import { Alert, AlertDescription } from "@/components/ui/alert";
@@ -15,6 +15,8 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import { CalendarIcon } from "lucide-react";
 import { format } from "date-fns";
 import { cn } from "@/lib/utils";
+import { useQuickBooksConfig, useQuickBooksNextNumber } from "@/integrations/supabase/hooks/useQuickBooks";
+import { Badge } from "@/components/ui/badge";
 
 const formSchema = z.object({
   number: z.string().min(1, "Invoice number is required"),
@@ -49,6 +51,11 @@ export function InvoiceForm({ onSubmit, initialData, jobOrderId }: InvoiceFormPr
   const [selectedJobOrder, setSelectedJobOrder] = useState<any>(null);
   const [dueDate, setDueDate] = useState<Date>();
 
+  // QuickBooks integration
+  const { data: qbConfig } = useQuickBooksConfig();
+  const isQBConnected = qbConfig?.is_connected ?? false;
+  const { data: qbNextNumber, isLoading: qbNumberLoading } = useQuickBooksNextNumber('invoice', isQBConnected);
+
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
     defaultValues: {
@@ -59,6 +66,13 @@ export function InvoiceForm({ onSubmit, initialData, jobOrderId }: InvoiceFormPr
       status: initialData?.status || "draft",
     },
   });
+
+  // Set QuickBooks number when available
+  useEffect(() => {
+    if (qbNextNumber && !initialData?.number) {
+      form.setValue("number", qbNextNumber);
+    }
+  }, [qbNextNumber, initialData?.number]);
 
   useEffect(() => {
     if (jobOrderId && jobOrders.length > 0) {
@@ -188,7 +202,17 @@ export function InvoiceForm({ onSubmit, initialData, jobOrderId }: InvoiceFormPr
       <Card className="p-4">
         <div className="grid gap-4 sm:grid-cols-2">
         <div>
-          <Label htmlFor="number">Invoice Number</Label>
+          <div className="flex items-center gap-2 mb-1">
+            <Label htmlFor="number">Invoice Number</Label>
+            {isQBConnected && (
+              <Badge variant="outline" className="text-xs">
+                {qbNumberLoading ? (
+                  <Loader2 className="h-3 w-3 animate-spin mr-1" />
+                ) : null}
+                QuickBooks
+              </Badge>
+            )}
+          </div>
           <Input id="number" {...form.register("number")} />
           {form.formState.errors.number && (
             <p className="text-destructive text-sm mt-1">{form.formState.errors.number.message}</p>

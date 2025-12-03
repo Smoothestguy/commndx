@@ -19,6 +19,8 @@ import { useProjectsByCustomer } from "@/integrations/supabase/hooks/useProjects
 import { useProducts } from "@/integrations/supabase/hooks/useProducts";
 import { useAddEstimate } from "@/integrations/supabase/hooks/useEstimates";
 import { useCompanySettings } from "@/integrations/supabase/hooks/useCompanySettings";
+import { useQuickBooksConfig, useQuickBooksNextNumber } from "@/integrations/supabase/hooks/useQuickBooks";
+import { Badge } from "@/components/ui/badge";
 import { z } from "zod";
 
 const lineItemSchema = z.object({
@@ -53,6 +55,11 @@ export const EstimateForm = () => {
   const { data: companySettings } = useCompanySettings();
   const addEstimate = useAddEstimate();
 
+  // QuickBooks integration
+  const { data: qbConfig } = useQuickBooksConfig();
+  const isQBConnected = qbConfig?.is_connected ?? false;
+  const { data: qbNextNumber, isLoading: qbNumberLoading } = useQuickBooksNextNumber('estimate', isQBConnected);
+
   const [selectedCustomerId, setSelectedCustomerId] = useState<string>("");
   const [selectedProjectId, setSelectedProjectId] = useState<string>("");
   const [taxRate, setTaxRate] = useState<string>("8.25");
@@ -60,6 +67,7 @@ export const EstimateForm = () => {
   const [notes, setNotes] = useState<string>("");
   const [status, setStatus] = useState<"draft" | "pending" | "sent" | "approved">("draft");
   const [defaultPricingType, setDefaultPricingType] = useState<'markup' | 'margin'>('margin');
+  const [estimateNumber, setEstimateNumber] = useState<string>("");
 
   const { data: projects } = useProjectsByCustomer(selectedCustomerId);
 
@@ -76,6 +84,15 @@ export const EstimateForm = () => {
     const random = Math.floor(Math.random() * 1000).toString().padStart(3, "0");
     return `EST-${year}-${random}`;
   };
+
+  // Set QuickBooks number when available
+  useEffect(() => {
+    if (qbNextNumber) {
+      setEstimateNumber(qbNextNumber);
+    } else if (!estimateNumber) {
+      setEstimateNumber(generateEstimateNumber());
+    }
+  }, [qbNextNumber]);
 
   const calculateLineItemTotal = (quantity: string, unitPrice: string, percentage: string, pricingType: 'markup' | 'margin') => {
     const qty = parseFloat(quantity) || 0;
@@ -222,7 +239,7 @@ export const EstimateForm = () => {
 
     const estimateData = {
       estimate: {
-        number: generateEstimateNumber(),
+        number: estimateNumber,
         customer_id: selectedCustomerId,
         customer_name: customer.name,
         project_id: selectedProjectId || undefined,
@@ -316,7 +333,27 @@ export const EstimateForm = () => {
             </div>
           </div>
 
-          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-5">
+            <div className="space-y-2">
+              <div className="flex items-center gap-2">
+                <Label htmlFor="estimateNumber">Estimate Number</Label>
+                {isQBConnected && (
+                  <Badge variant="outline" className="text-xs">
+                    {qbNumberLoading ? (
+                      <Loader2 className="h-3 w-3 animate-spin mr-1" />
+                    ) : null}
+                    QuickBooks
+                  </Badge>
+                )}
+              </div>
+              <Input
+                id="estimateNumber"
+                value={estimateNumber}
+                onChange={(e) => setEstimateNumber(e.target.value)}
+                className="bg-secondary border-border"
+              />
+            </div>
+
             <div className="space-y-2">
               <Label htmlFor="status">Status</Label>
               <Select value={status} onValueChange={(v: any) => setStatus(v)}>
