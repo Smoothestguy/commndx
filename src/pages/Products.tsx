@@ -22,6 +22,7 @@ import {
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { useProducts, useAddProduct, useUpdateProduct, useDeleteProduct, useDeleteProducts, Product, ItemType } from "@/integrations/supabase/hooks/useProducts";
+import { BulkEditProductsDialog } from "@/components/products/BulkEditProductsDialog";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -93,6 +94,7 @@ const Products = () => {
   // Bulk selection state
   const [selectedProductIds, setSelectedProductIds] = useState<Set<string>>(new Set());
   const [showBulkDeleteDialog, setShowBulkDeleteDialog] = useState(false);
+  const [showBulkEditDialog, setShowBulkEditDialog] = useState(false);
 
   // Update unit when item type changes (only for new items)
   useEffect(() => {
@@ -421,6 +423,14 @@ const Products = () => {
                     {selectedProductIds.size} item{selectedProductIds.size > 1 ? 's' : ''} selected
                   </span>
                   <div className="flex items-center gap-2 ml-auto">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => setShowBulkEditDialog(true)}
+                    >
+                      <Edit className="h-4 w-4 mr-2" />
+                      Edit Selected
+                    </Button>
                     <Button
                       variant="destructive"
                       size="sm"
@@ -860,6 +870,15 @@ const Products = () => {
             </AlertDialogFooter>
           </AlertDialogContent>
         </AlertDialog>
+
+        {/* Bulk Edit Dialog */}
+        <BulkEditProductsDialog
+          open={showBulkEditDialog}
+          onOpenChange={setShowBulkEditDialog}
+          selectedIds={Array.from(selectedProductIds)}
+          products={products || []}
+          onSuccess={() => setSelectedProductIds(new Set())}
+        />
       </PageLayout>
     </>
   );
