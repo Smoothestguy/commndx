@@ -173,6 +173,7 @@ const Products = () => {
     {
       key: "item_type",
       header: "Type",
+      sortable: true,
       render: (item: Product) => {
         const config = typeConfig[item.item_type] || typeConfig.product;
         const Icon = config.icon;
