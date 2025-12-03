@@ -47,3 +47,6 @@ verify_jwt = false
 
 [functions.quickbooks-create-invoice]
 verify_jwt = false
+
+[functions.quickbooks-sync-vendors]
+verify_jwt = false

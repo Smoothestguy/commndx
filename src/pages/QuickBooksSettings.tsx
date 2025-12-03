@@ -15,6 +15,8 @@ import {
   useExportProductsToQB,
   useImportCustomersFromQB,
   useExportCustomersToQB,
+  useImportVendorsFromQB,
+  useExportVendorsToQB,
   useQuickBooksSyncLogs,
   useQuickBooksConflicts,
 } from "@/integrations/supabase/hooks/useQuickBooks";
@@ -33,6 +35,7 @@ import {
   XCircle,
   Clock,
   ExternalLink,
+  Truck,
 } from "lucide-react";
 import { format } from "date-fns";
 import { toast } from "sonner";
@@ -53,6 +56,8 @@ const QuickBooksSettings = () => {
   const exportProducts = useExportProductsToQB();
   const importCustomers = useImportCustomersFromQB();
   const exportCustomers = useExportCustomersToQB();
+  const importVendors = useImportVendorsFromQB();
+  const exportVendors = useExportVendorsToQB();
 
   // Handle OAuth callback
   useEffect(() => {
@@ -111,7 +116,8 @@ const QuickBooksSettings = () => {
 
   const isConnected = config?.is_connected;
   const isSyncing = importProducts.isPending || exportProducts.isPending || 
-                    importCustomers.isPending || exportCustomers.isPending;
+                    importCustomers.isPending || exportCustomers.isPending ||
+                    importVendors.isPending || exportVendors.isPending;
 
   return (
     <PageLayout
@@ -166,7 +172,7 @@ const QuickBooksSettings = () => {
         {isConnected && (
           <>
             {/* Sync Actions */}
-            <div className="grid gap-4 md:grid-cols-2">
+            <div className="grid gap-4 md:grid-cols-3">
               {/* Products Sync */}
               <Card>
                 <CardHeader>
@@ -256,6 +262,53 @@ const QuickBooksSettings = () => {
                     <div className="flex items-center gap-2 text-sm text-muted-foreground">
                       <RefreshCw className="h-4 w-4 animate-spin" />
                       Exporting customers...
+                    </div>
+                  )}
+                </CardContent>
+              </Card>
+
+              {/* Vendors Sync */}
+              <Card>
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2 text-lg">
+                    <Truck className="h-5 w-5" />
+                    Vendors Sync
+                  </CardTitle>
+                  <CardDescription>
+                    Sync vendors between CommandX and QuickBooks
+                  </CardDescription>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  <div className="flex gap-2">
+                    <Button 
+                      variant="outline" 
+                      className="flex-1"
+                      onClick={() => importVendors.mutate()}
+                      disabled={isSyncing}
+                    >
+                      <Download className="h-4 w-4 mr-2" />
+                      Import from QB
+                    </Button>
+                    <Button 
+                      variant="outline" 
+                      className="flex-1"
+                      onClick={() => exportVendors.mutate()}
+                      disabled={isSyncing}
+                    >
+                      <Upload className="h-4 w-4 mr-2" />
+                      Export to QB
+                    </Button>
+                  </div>
+                  {importVendors.isPending && (
+                    <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                      <RefreshCw className="h-4 w-4 animate-spin" />
+                      Importing vendors...
+                    </div>
+                  )}
+                  {exportVendors.isPending && (
+                    <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                      <RefreshCw className="h-4 w-4 animate-spin" />
+                      Exporting vendors...
                     </div>
                   )}
                 </CardContent>
@@ -369,6 +422,7 @@ const QuickBooksSettings = () => {
               <ul className="list-disc list-inside text-sm text-muted-foreground space-y-1">
                 <li>Products sync two-way, with conflict detection for price differences</li>
                 <li>Customers sync two-way between both systems</li>
+                <li>Vendors sync two-way between both systems</li>
                 <li>Invoices created in CommandX are automatically synced to QuickBooks</li>
               </ul>
             </div>
