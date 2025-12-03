@@ -74,6 +74,7 @@ const Products = () => {
   const [search, setSearch] = useState("");
   const [selectedCategory, setSelectedCategory] = useState("");
   const [selectedType, setSelectedType] = useState<ItemType | "">("");
+  const [selectedLetter, setSelectedLetter] = useState("");
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [editingProduct, setEditingProduct] = useState<Product | null>(null);
   const [formData, setFormData] = useState({
@@ -128,7 +129,17 @@ const Products = () => {
       p.category.toLowerCase().includes(search.toLowerCase());
     const matchesCategory = !selectedCategory || p.category === selectedCategory;
     const matchesType = !selectedType || p.item_type === selectedType;
-    return matchesSearch && matchesCategory && matchesType;
+    
+    // Letter filter
+    let matchesLetter = true;
+    if (selectedLetter) {
+      const firstChar = p.name.charAt(0).toUpperCase();
+      matchesLetter = selectedLetter === '#' 
+        ? /[0-9]/.test(firstChar) 
+        : firstChar === selectedLetter;
+    }
+    
+    return matchesSearch && matchesCategory && matchesType && matchesLetter;
   }) || [];
 
   const columns = [
@@ -414,6 +425,8 @@ const Products = () => {
                 onCategoryChange={setSelectedCategory}
                 selectedType={selectedType}
                 onTypeChange={setSelectedType}
+                selectedLetter={selectedLetter}
+                onLetterChange={setSelectedLetter}
               />
 
               {/* Bulk Actions Toolbar */}
@@ -460,7 +473,7 @@ const Products = () => {
               {filteredProducts.length === 0 ? (
                 <ProductEmptyState
                   onAddProduct={openNewDialog}
-                  hasFilters={search !== "" || selectedCategory !== "" || selectedType !== ""}
+                  hasFilters={search !== "" || selectedCategory !== "" || selectedType !== "" || selectedLetter !== ""}
                 />
               ) : isMobile ? (
                 <div className="grid gap-4 sm:grid-cols-2">
