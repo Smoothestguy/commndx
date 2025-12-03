@@ -2,6 +2,8 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "../client";
 import { toast } from "sonner";
 
+export type VendorType = "contractor" | "personnel" | "supplier";
+
 export interface Vendor {
   id: string;
   name: string;
@@ -10,6 +12,7 @@ export interface Vendor {
   company: string | null;
   specialty: string | null;
   status: "active" | "inactive";
+  vendor_type: VendorType;
   rating: number | null;
   insurance_expiry: string | null;
   license_number: string | null;
@@ -97,6 +100,50 @@ export const useDeleteVendor = () => {
     },
     onError: (error: Error) => {
       toast.error(`Failed to delete vendor: ${error.message}`);
+    },
+  });
+};
+
+export const useBatchDeleteVendors = () => {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async (ids: string[]) => {
+      const { error } = await supabase
+        .from("vendors")
+        .delete()
+        .in("id", ids);
+
+      if (error) throw error;
+    },
+    onSuccess: (_, ids) => {
+      queryClient.invalidateQueries({ queryKey: ["vendors"] });
+      toast.success(`${ids.length} vendor(s) deleted successfully`);
+    },
+    onError: (error: Error) => {
+      toast.error(`Failed to delete vendors: ${error.message}`);
+    },
+  });
+};
+
+export const useBatchUpdateVendorType = () => {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async ({ ids, vendor_type }: { ids: string[]; vendor_type: VendorType }) => {
+      const { error } = await supabase
+        .from("vendors")
+        .update({ vendor_type })
+        .in("id", ids);
+
+      if (error) throw error;
+    },
+    onSuccess: (_, { ids, vendor_type }) => {
+      queryClient.invalidateQueries({ queryKey: ["vendors"] });
+      toast.success(`${ids.length} vendor(s) updated to ${vendor_type}`);
+    },
+    onError: (error: Error) => {
+      toast.error(`Failed to update vendor types: ${error.message}`);
     },
   });
 };
