@@ -11,9 +11,18 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import {
+  Command,
+  CommandEmpty,
+  CommandGroup,
+  CommandInput,
+  CommandItem,
+  CommandList,
+} from "@/components/ui/command";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Switch } from "@/components/ui/switch";
-import { Plus, Trash2, Loader2, AlertTriangle } from "lucide-react";
+import { Plus, Trash2, Loader2, AlertTriangle, Check, ChevronsUpDown } from "lucide-react";
 import { useCustomers } from "@/integrations/supabase/hooks/useCustomers";
 import { useProjectsByCustomer } from "@/integrations/supabase/hooks/useProjects";
 import { useProducts } from "@/integrations/supabase/hooks/useProducts";
@@ -22,6 +31,7 @@ import { useCompanySettings } from "@/integrations/supabase/hooks/useCompanySett
 import { useQuickBooksConfig, useQuickBooksNextNumber } from "@/integrations/supabase/hooks/useQuickBooks";
 import { Badge } from "@/components/ui/badge";
 import { z } from "zod";
+import { cn } from "@/lib/utils";
 
 const lineItemSchema = z.object({
   description: z.string().min(1, "Description is required").max(500),
@@ -69,6 +79,11 @@ export const EstimateForm = () => {
   const [defaultPricingType, setDefaultPricingType] = useState<'markup' | 'margin'>('margin');
   const [estimateNumber, setEstimateNumber] = useState<string>("");
 
+  // Combobox open states
+  const [customerComboboxOpen, setCustomerComboboxOpen] = useState(false);
+  const [projectComboboxOpen, setProjectComboboxOpen] = useState(false);
+  const [productComboboxOpen, setProductComboboxOpen] = useState<Record<number, boolean>>({});
+
   const { data: projects } = useProjectsByCustomer(selectedCustomerId);
 
   const [lineItems, setLineItems] = useState<LineItem[]>([
@@ -76,6 +91,11 @@ export const EstimateForm = () => {
   ]);
 
   const [errors, setErrors] = useState<Record<string, string>>({});
+
+  // Helper to group products by type
+  const getProductsByType = (type: 'product' | 'service' | 'labor') => {
+    return products?.filter((p) => p.item_type === type) || [];
+  };
 
   // Generate estimate number
   const generateEstimateNumber = () => {
@@ -276,6 +296,11 @@ export const EstimateForm = () => {
     setValidUntil(date.toISOString().split("T")[0]);
   }, []);
 
+  // Reset project when customer changes
+  useEffect(() => {
+    setSelectedProjectId("");
+  }, [selectedCustomerId]);
+
   if (customersLoading || productsLoading) {
     return (
       <div className="flex justify-center py-12">
@@ -293,43 +318,109 @@ export const EstimateForm = () => {
         </CardHeader>
         <CardContent className="space-y-4">
           <div className="grid gap-4 sm:grid-cols-2">
+            {/* Customer Combobox */}
             <div className="space-y-2">
               <Label htmlFor="customer">Customer *</Label>
-              <Select value={selectedCustomerId} onValueChange={setSelectedCustomerId}>
-                <SelectTrigger className="bg-secondary border-border">
-                  <SelectValue placeholder="Select customer" />
-                </SelectTrigger>
-                <SelectContent>
-                  {customers?.map((customer) => (
-                    <SelectItem key={customer.id} value={customer.id}>
-                      {customer.name} - {customer.company}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+              <Popover open={customerComboboxOpen} onOpenChange={setCustomerComboboxOpen}>
+                <PopoverTrigger asChild>
+                  <Button
+                    variant="outline"
+                    role="combobox"
+                    aria-expanded={customerComboboxOpen}
+                    className="w-full justify-between bg-secondary border-border"
+                  >
+                    {selectedCustomerId
+                      ? customers?.find((c) => c.id === selectedCustomerId)?.name
+                      : "Search customer..."}
+                    <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent className="w-[400px] p-0" align="start">
+                  <Command>
+                    <CommandInput placeholder="Search by name or company..." />
+                    <CommandList>
+                      <CommandEmpty>No customer found.</CommandEmpty>
+                      <CommandGroup>
+                        {customers?.map((customer) => (
+                          <CommandItem
+                            key={customer.id}
+                            value={`${customer.name} ${customer.company || ''}`}
+                            onSelect={() => {
+                              setSelectedCustomerId(customer.id);
+                              setCustomerComboboxOpen(false);
+                            }}
+                          >
+                            <Check
+                              className={cn(
+                                "mr-2 h-4 w-4",
+                                selectedCustomerId === customer.id ? "opacity-100" : "opacity-0"
+                              )}
+                            />
+                            <div className="flex flex-col">
+                              <span>{customer.name}</span>
+                              {customer.company && (
+                                <span className="text-xs text-muted-foreground">{customer.company}</span>
+                              )}
+                            </div>
+                          </CommandItem>
+                        ))}
+                      </CommandGroup>
+                    </CommandList>
+                  </Command>
+                </PopoverContent>
+              </Popover>
               {errors.customer_id && (
                 <p className="text-sm text-destructive">{errors.customer_id}</p>
               )}
             </div>
 
+            {/* Project Combobox */}
             <div className="space-y-2">
               <Label htmlFor="project">Project (Optional)</Label>
-              <Select
-                value={selectedProjectId}
-                onValueChange={setSelectedProjectId}
-                disabled={!selectedCustomerId}
-              >
-                <SelectTrigger className="bg-secondary border-border">
-                  <SelectValue placeholder="Select project" />
-                </SelectTrigger>
-                <SelectContent>
-                  {projects?.map((project) => (
-                    <SelectItem key={project.id} value={project.id}>
-                      {project.name}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+              <Popover open={projectComboboxOpen} onOpenChange={setProjectComboboxOpen}>
+                <PopoverTrigger asChild>
+                  <Button
+                    variant="outline"
+                    role="combobox"
+                    aria-expanded={projectComboboxOpen}
+                    className="w-full justify-between bg-secondary border-border"
+                    disabled={!selectedCustomerId}
+                  >
+                    {selectedProjectId
+                      ? projects?.find((p) => p.id === selectedProjectId)?.name
+                      : "Search project..."}
+                    <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent className="w-[400px] p-0" align="start">
+                  <Command>
+                    <CommandInput placeholder="Search by project name..." />
+                    <CommandList>
+                      <CommandEmpty>No project found.</CommandEmpty>
+                      <CommandGroup>
+                        {projects?.map((project) => (
+                          <CommandItem
+                            key={project.id}
+                            value={project.name}
+                            onSelect={() => {
+                              setSelectedProjectId(project.id);
+                              setProjectComboboxOpen(false);
+                            }}
+                          >
+                            <Check
+                              className={cn(
+                                "mr-2 h-4 w-4",
+                                selectedProjectId === project.id ? "opacity-100" : "opacity-0"
+                              )}
+                            />
+                            {project.name}
+                          </CommandItem>
+                        ))}
+                      </CommandGroup>
+                    </CommandList>
+                  </Command>
+                </PopoverContent>
+              </Popover>
             </div>
           </div>
 
@@ -453,33 +544,138 @@ export const EstimateForm = () => {
                 )}
               </div>
 
+              {/* Product Combobox with Grouped Types */}
               <div className="space-y-2">
                 <Label>Select Product (Optional)</Label>
-                <Select
-                  value={item.product_id || ""}
-                  onValueChange={(value) => selectProduct(index, value)}
+                <Popover 
+                  open={productComboboxOpen[index] || false} 
+                  onOpenChange={(open) => setProductComboboxOpen(prev => ({ ...prev, [index]: open }))}
                 >
-                  <SelectTrigger className="bg-secondary border-border">
-                    <SelectValue placeholder="Select a product or enter manually" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {products?.map((product) => (
-                      <SelectItem key={product.id} value={product.id}>
-                        {product.name} - ${product.price.toFixed(2)}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+                  <PopoverTrigger asChild>
+                    <Button
+                      variant="outline"
+                      role="combobox"
+                      aria-expanded={productComboboxOpen[index] || false}
+                      className="w-full justify-between bg-secondary border-border"
+                    >
+                      {item.product_id
+                        ? products?.find((p) => p.id === item.product_id)?.name
+                        : "Search product, service, or labor..."}
+                      <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                    </Button>
+                  </PopoverTrigger>
+                  <PopoverContent className="w-[500px] p-0" align="start">
+                    <Command>
+                      <CommandInput placeholder="Search by name, SKU, or category..." />
+                      <CommandList>
+                        <CommandEmpty>No product found.</CommandEmpty>
+                        {getProductsByType('product').length > 0 && (
+                          <CommandGroup heading="Products">
+                            {getProductsByType('product').map((product) => (
+                              <CommandItem
+                                key={product.id}
+                                value={`${product.name} ${product.sku || ''} ${product.category}`}
+                                onSelect={() => {
+                                  selectProduct(index, product.id);
+                                  setProductComboboxOpen(prev => ({ ...prev, [index]: false }));
+                                }}
+                              >
+                                <Check
+                                  className={cn(
+                                    "mr-2 h-4 w-4",
+                                    item.product_id === product.id ? "opacity-100" : "opacity-0"
+                                  )}
+                                />
+                                <div className="flex flex-col flex-1">
+                                  <div className="flex items-center justify-between">
+                                    <span>{product.name}</span>
+                                    <span className="text-sm font-medium">${product.price.toFixed(2)}/{product.unit}</span>
+                                  </div>
+                                  <span className="text-xs text-muted-foreground">{product.category}</span>
+                                </div>
+                              </CommandItem>
+                            ))}
+                          </CommandGroup>
+                        )}
+                        {getProductsByType('service').length > 0 && (
+                          <CommandGroup heading="Services">
+                            {getProductsByType('service').map((product) => (
+                              <CommandItem
+                                key={product.id}
+                                value={`${product.name} ${product.sku || ''} ${product.category}`}
+                                onSelect={() => {
+                                  selectProduct(index, product.id);
+                                  setProductComboboxOpen(prev => ({ ...prev, [index]: false }));
+                                }}
+                              >
+                                <Check
+                                  className={cn(
+                                    "mr-2 h-4 w-4",
+                                    item.product_id === product.id ? "opacity-100" : "opacity-0"
+                                  )}
+                                />
+                                <div className="flex flex-col flex-1">
+                                  <div className="flex items-center justify-between">
+                                    <span>{product.name}</span>
+                                    <span className="text-sm font-medium">${product.price.toFixed(2)}/{product.unit}</span>
+                                  </div>
+                                  <span className="text-xs text-muted-foreground">{product.category}</span>
+                                </div>
+                              </CommandItem>
+                            ))}
+                          </CommandGroup>
+                        )}
+                        {getProductsByType('labor').length > 0 && (
+                          <CommandGroup heading="Labor">
+                            {getProductsByType('labor').map((product) => (
+                              <CommandItem
+                                key={product.id}
+                                value={`${product.name} ${product.sku || ''} ${product.category}`}
+                                onSelect={() => {
+                                  selectProduct(index, product.id);
+                                  setProductComboboxOpen(prev => ({ ...prev, [index]: false }));
+                                }}
+                              >
+                                <Check
+                                  className={cn(
+                                    "mr-2 h-4 w-4",
+                                    item.product_id === product.id ? "opacity-100" : "opacity-0"
+                                  )}
+                                />
+                                <div className="flex flex-col flex-1">
+                                  <div className="flex items-center justify-between">
+                                    <span>{product.name}</span>
+                                    <span className="text-sm font-medium">${product.price.toFixed(2)}/{product.unit}</span>
+                                  </div>
+                                  <span className="text-xs text-muted-foreground">{product.category}</span>
+                                </div>
+                              </CommandItem>
+                            ))}
+                          </CommandGroup>
+                        )}
+                      </CommandList>
+                    </Command>
+                  </PopoverContent>
+                </Popover>
               </div>
 
               <div className="grid gap-3 sm:grid-cols-2">
+                {/* Description Textarea */}
                 <div className="space-y-2 sm:col-span-2">
-                  <Label>Description *</Label>
-                  <Input
+                  <div className="flex items-center gap-2">
+                    <Label>Description *</Label>
+                    {item.product_id && (
+                      <Badge variant="secondary" className="text-xs">
+                        {products?.find(p => p.id === item.product_id)?.unit}
+                      </Badge>
+                    )}
+                  </div>
+                  <Textarea
                     value={item.description}
                     onChange={(e) => updateLineItem(index, "description", e.target.value)}
                     placeholder="Item description"
-                    className="bg-secondary border-border"
+                    className="bg-secondary border-border min-h-[60px] resize-y"
+                    rows={2}
                   />
                   {errors[`line_${index}_description`] && (
                     <p className="text-sm text-destructive">
