@@ -86,16 +86,19 @@ export function Sidebar() {
   const [staffingOpen, setStaffingOpen] = useState(false);
   const [roofingCrmOpen, setRoofingCrmOpen] = useState(false);
   const [roofingOpsOpen, setRoofingOpsOpen] = useState(false);
+  const [accountOpen, setAccountOpen] = useState(false);
 
   // Auto-expand section if current route is within it
   useEffect(() => {
     const staffingRoutes = staffingNavigation.map((item) => item.href);
     const crmRoutes = roofingCrmNavigation.map((item) => item.href);
     const opsRoutes = roofingOpsNavigation.map((item) => item.href);
+    const accountRoutes = ["/user-management", "/settings"];
 
     if (staffingRoutes.some((r) => location.pathname === r)) setStaffingOpen(true);
     if (crmRoutes.some((r) => location.pathname === r)) setRoofingCrmOpen(true);
     if (opsRoutes.some((r) => location.pathname === r)) setRoofingOpsOpen(true);
+    if (accountRoutes.some((r) => location.pathname === r || location.pathname.startsWith(r))) setAccountOpen(true);
   }, [location.pathname]);
 
   return (
@@ -278,45 +281,66 @@ export function Sidebar() {
           </Collapsible>
         </nav>
 
-        {/* Settings & Profile */}
-        <div className="border-t border-sidebar-border p-3 space-y-1">
+        {/* Account Section */}
+        <div className="border-t border-sidebar-border p-3">
+          <Collapsible open={accountOpen} onOpenChange={setAccountOpen}>
+            <CollapsibleTrigger className="flex items-center justify-between w-full px-3 py-2 text-xs font-semibold text-muted-foreground uppercase tracking-wider hover:text-foreground transition-colors">
+              <span>Account</span>
+              <ChevronDown
+                className={cn(
+                  "h-4 w-4 transition-transform duration-200",
+                  accountOpen && "rotate-180"
+                )}
+              />
+            </CollapsibleTrigger>
+            <CollapsibleContent className="space-y-1">
+              <div className="flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium text-muted-foreground hover:bg-sidebar-accent hover:text-foreground transition-all duration-200 cursor-pointer">
+                <ThemeToggle />
+                <span>Toggle Theme</span>
+              </div>
+              {isAdmin && (
+                <Link
+                  to="/user-management"
+                  className={cn(
+                    "flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-all duration-200",
+                    location.pathname === "/user-management"
+                      ? "bg-primary/10 text-primary"
+                      : "text-muted-foreground hover:bg-sidebar-accent hover:text-foreground"
+                  )}
+                >
+                  <Shield className="h-5 w-5" />
+                  User Management
+                </Link>
+              )}
+              <Link
+                to="/settings"
+                className={cn(
+                  "flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-all duration-200",
+                  location.pathname === "/settings"
+                    ? "bg-primary/10 text-primary"
+                    : "text-muted-foreground hover:bg-sidebar-accent hover:text-foreground"
+                )}
+              >
+                <Settings className="h-5 w-5" />
+                Settings
+              </Link>
+              <Button
+                variant="ghost"
+                className="w-full justify-start gap-3 px-3 py-2.5 text-sm font-medium text-muted-foreground hover:bg-sidebar-accent hover:text-foreground transition-all duration-200"
+                onClick={signOut}
+              >
+                <LogOut className="h-5 w-5" />
+                Sign Out
+              </Button>
+            </CollapsibleContent>
+          </Collapsible>
           {user && (
-            <div className="flex items-center justify-between px-3 py-2">
-              <span className="text-xs text-muted-foreground truncate">
+            <div className="px-3 py-2 mt-2 border-t border-sidebar-border">
+              <span className="text-xs text-muted-foreground truncate block">
                 {user.email}
               </span>
-              <ThemeToggle />
             </div>
           )}
-          {isAdmin && (
-            <Link
-              to="/user-management"
-              className={cn(
-                "flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-all duration-200",
-                location.pathname === "/user-management"
-                  ? "bg-primary/10 text-primary"
-                  : "text-muted-foreground hover:bg-sidebar-accent hover:text-foreground"
-              )}
-            >
-              <Shield className="h-5 w-5" />
-              User Management
-            </Link>
-          )}
-          <Link
-            to="/settings"
-            className="flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium text-muted-foreground hover:bg-sidebar-accent hover:text-foreground transition-all duration-200"
-          >
-            <Settings className="h-5 w-5" />
-            Settings
-          </Link>
-          <Button
-            variant="ghost"
-            className="w-full justify-start gap-3 px-3 py-2.5 text-sm font-medium text-muted-foreground hover:bg-sidebar-accent hover:text-foreground transition-all duration-200"
-            onClick={signOut}
-          >
-            <LogOut className="h-5 w-5" />
-            Sign Out
-          </Button>
         </div>
       </div>
     </aside>
