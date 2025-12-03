@@ -2,7 +2,8 @@ import { useState } from "react";
 import { PageLayout } from "@/components/layout/PageLayout";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Plus, Search } from "lucide-react";
+import { Plus } from "lucide-react";
+import { SearchInput } from "@/components/ui/search-input";
 import { useWeatherLogs, useCreateWeatherLog, useDeleteWeatherLog } from "@/integrations/supabase/hooks/useWeatherLogs";
 import { WeatherCard } from "@/components/roofing/weather/WeatherCard";
 import { WeatherLogForm } from "@/components/roofing/weather/WeatherLogForm";
@@ -54,13 +55,11 @@ export default function WeatherTracking() {
     <PageLayout title="Weather Tracking" description="Track weather conditions for roofing work">
       <div className="space-y-6">
         <div className="flex flex-col sm:flex-row gap-4 justify-between">
-          <div className="relative flex-1 max-w-sm">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-            <Input
+          <div className="flex-1 max-w-sm">
+            <SearchInput
               placeholder="Search by location..."
               value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              className="pl-9"
+              onChange={setSearchQuery}
             />
           </div>
           {canManage && (

@@ -1,6 +1,5 @@
-import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Search } from "lucide-react";
+import { SearchInput } from "@/components/ui/search-input";
 
 interface PersonnelFiltersProps {
   search: string;
@@ -21,13 +20,11 @@ export const PersonnelFilters = ({
 }: PersonnelFiltersProps) => {
   return (
     <div className="flex flex-col sm:flex-row gap-4">
-      <div className="relative flex-1">
-        <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-        <Input
+      <div className="flex-1">
+        <SearchInput
           placeholder="Search by name, email, or personnel number..."
           value={search}
-          onChange={(e) => onSearchChange(e.target.value)}
-          className="pl-10"
+          onChange={onSearchChange}
         />
       </div>
 
