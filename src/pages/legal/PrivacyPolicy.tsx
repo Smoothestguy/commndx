@@ -1,0 +1,122 @@
+import { SEO } from "@/components/SEO";
+
+const PrivacyPolicy = () => {
+  return (
+    <>
+      <SEO 
+        title="Privacy Policy" 
+        description="Privacy Policy for Command X - Learn how we collect, use, and protect your information."
+      />
+      <div className="min-h-screen bg-background py-12 px-4 sm:px-6 lg:px-8">
+        <div className="max-w-3xl mx-auto">
+          <h1 className="text-3xl font-bold text-foreground mb-8">Privacy Policy</h1>
+          <p className="text-muted-foreground mb-6">Last updated: {new Date().toLocaleDateString()}</p>
+
+          <div className="prose prose-slate dark:prose-invert max-w-none space-y-6">
+            <section>
+              <h2 className="text-xl font-semibold text-foreground mb-3">1. Information We Collect</h2>
+              <p className="text-muted-foreground">
+                We collect information you provide directly to us, including:
+              </p>
+              <ul className="list-disc pl-6 text-muted-foreground space-y-2 mt-2">
+                <li>Account information (name, email address, company name)</li>
+                <li>Business data (customers, projects, estimates, invoices)</li>
+                <li>Payment and billing information</li>
+                <li>Communications you send to us</li>
+              </ul>
+            </section>
+
+            <section>
+              <h2 className="text-xl font-semibold text-foreground mb-3">2. How We Use Your Information</h2>
+              <p className="text-muted-foreground">
+                We use the information we collect to:
+              </p>
+              <ul className="list-disc pl-6 text-muted-foreground space-y-2 mt-2">
+                <li>Provide, maintain, and improve our services</li>
+                <li>Process transactions and send related information</li>
+                <li>Send technical notices, updates, and support messages</li>
+                <li>Respond to your comments and questions</li>
+                <li>Protect against fraudulent or illegal activity</li>
+              </ul>
+            </section>
+
+            <section>
+              <h2 className="text-xl font-semibold text-foreground mb-3">3. Third-Party Services</h2>
+              <p className="text-muted-foreground">
+                Our application integrates with third-party services to provide enhanced functionality:
+              </p>
+              <ul className="list-disc pl-6 text-muted-foreground space-y-2 mt-2">
+                <li>
+                  <strong>Intuit QuickBooks:</strong> When you connect your QuickBooks account, we access 
+                  your QuickBooks data (customers, products, invoices) to synchronize with our platform. 
+                  Your QuickBooks credentials are never stored on our servers. We use OAuth 2.0 for secure 
+                  authentication. For more information, see{" "}
+                  <a href="https://www.intuit.com/privacy/" target="_blank" rel="noopener noreferrer" className="text-primary hover:underline">
+                    Intuit's Privacy Policy
+                  </a>.
+                </li>
+              </ul>
+            </section>
+
+            <section>
+              <h2 className="text-xl font-semibold text-foreground mb-3">4. Data Security</h2>
+              <p className="text-muted-foreground">
+                We implement appropriate technical and organizational measures to protect your personal 
+                information against unauthorized access, alteration, disclosure, or destruction. This includes:
+              </p>
+              <ul className="list-disc pl-6 text-muted-foreground space-y-2 mt-2">
+                <li>Encryption of data in transit and at rest</li>
+                <li>Regular security assessments</li>
+                <li>Access controls and authentication requirements</li>
+                <li>Secure data storage practices</li>
+              </ul>
+            </section>
+
+            <section>
+              <h2 className="text-xl font-semibold text-foreground mb-3">5. Data Retention</h2>
+              <p className="text-muted-foreground">
+                We retain your information for as long as your account is active or as needed to provide 
+                you services. We will retain and use your information as necessary to comply with our 
+                legal obligations, resolve disputes, and enforce our agreements.
+              </p>
+            </section>
+
+            <section>
+              <h2 className="text-xl font-semibold text-foreground mb-3">6. Your Rights</h2>
+              <p className="text-muted-foreground">
+                You have the right to:
+              </p>
+              <ul className="list-disc pl-6 text-muted-foreground space-y-2 mt-2">
+                <li>Access your personal information</li>
+                <li>Correct inaccurate data</li>
+                <li>Request deletion of your data</li>
+                <li>Export your data in a portable format</li>
+                <li>Opt-out of marketing communications</li>
+              </ul>
+            </section>
+
+            <section>
+              <h2 className="text-xl font-semibold text-foreground mb-3">7. Changes to This Policy</h2>
+              <p className="text-muted-foreground">
+                We may update this privacy policy from time to time. We will notify you of any changes 
+                by posting the new policy on this page and updating the "Last updated" date.
+              </p>
+            </section>
+
+            <section>
+              <h2 className="text-xl font-semibold text-foreground mb-3">8. Contact Us</h2>
+              <p className="text-muted-foreground">
+                If you have any questions about this Privacy Policy, please contact us at:{" "}
+                <a href="mailto:privacy@commandx.app" className="text-primary hover:underline">
+                  privacy@commandx.app
+                </a>
+              </p>
+            </section>
+          </div>
+        </div>
+      </div>
+    </>
+  );
+};
+
+export default PrivacyPolicy;

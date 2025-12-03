@@ -58,6 +58,8 @@ import InsuranceClaims from "./pages/InsuranceClaims";
 import Tasks from "./pages/Tasks";
 import RoofingDashboard from "./pages/RoofingDashboard";
 import QuickBooksSettings from "./pages/QuickBooksSettings";
+import PrivacyPolicy from "./pages/legal/PrivacyPolicy";
+import EULA from "./pages/legal/EULA";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -87,6 +89,8 @@ const App = () => {
                   path="/personnel/register"
                   element={<PersonnelRegistrationPortal />}
                 />
+                <Route path="/legal/privacy" element={<PrivacyPolicy />} />
+                <Route path="/legal/eula" element={<EULA />} />
                 <Route
                   path="/"
                   element={
