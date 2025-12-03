@@ -42,6 +42,12 @@ interface BadgeTemplate {
   header_color: string;
   is_default: boolean;
   custom_fields: CustomField[];
+  // Text colors
+  name_color: string;
+  personnel_number_color: string;
+  label_color: string;
+  value_color: string;
+  footer_color: string;
 }
 
 export default function BadgeTemplateEditor() {
@@ -72,6 +78,11 @@ export default function BadgeTemplateEditor() {
     header_color: "#1e40af",
     is_default: false,
     custom_fields: [],
+    name_color: "#000000",
+    personnel_number_color: "#ea580c",
+    label_color: "#374151",
+    value_color: "#1f2937",
+    footer_color: "#6b7280",
   });
 
   useEffect(() => {
@@ -126,6 +137,11 @@ export default function BadgeTemplateEditor() {
         custom_fields: Array.isArray(data.custom_fields) 
           ? (data.custom_fields as unknown as CustomField[]) 
           : [],
+        name_color: data.name_color || "#000000",
+        personnel_number_color: data.personnel_number_color || "#ea580c",
+        label_color: data.label_color || "#374151",
+        value_color: data.value_color || "#1f2937",
+        footer_color: data.footer_color || "#6b7280",
       });
     }
   };
@@ -204,6 +220,11 @@ export default function BadgeTemplateEditor() {
       header_color: template.header_color,
       is_default: template.is_default,
       custom_fields: JSON.parse(JSON.stringify(template.custom_fields)),
+      name_color: template.name_color,
+      personnel_number_color: template.personnel_number_color,
+      label_color: template.label_color,
+      value_color: template.value_color,
+      footer_color: template.footer_color,
     };
 
     let error;
@@ -385,6 +406,103 @@ export default function BadgeTemplateEditor() {
                   onCheckedChange={(checked) => setTemplate({ ...template, is_default: checked })}
                 />
               </div>
+
+              {/* Text Colors Section */}
+              <div className="pt-4 border-t space-y-4">
+                <h4 className="font-medium text-sm">Text Colors</h4>
+                
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="name_color">Name Color</Label>
+                    <div className="flex gap-2">
+                      <Input
+                        id="name_color"
+                        type="color"
+                        value={template.name_color}
+                        onChange={(e) => setTemplate({ ...template, name_color: e.target.value })}
+                        className="w-12 h-10 p-1"
+                      />
+                      <Input
+                        value={template.name_color}
+                        onChange={(e) => setTemplate({ ...template, name_color: e.target.value })}
+                        className="flex-1"
+                      />
+                    </div>
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="personnel_number_color">ID Number Color</Label>
+                    <div className="flex gap-2">
+                      <Input
+                        id="personnel_number_color"
+                        type="color"
+                        value={template.personnel_number_color}
+                        onChange={(e) => setTemplate({ ...template, personnel_number_color: e.target.value })}
+                        className="w-12 h-10 p-1"
+                      />
+                      <Input
+                        value={template.personnel_number_color}
+                        onChange={(e) => setTemplate({ ...template, personnel_number_color: e.target.value })}
+                        className="flex-1"
+                      />
+                    </div>
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="label_color">Label Color</Label>
+                    <div className="flex gap-2">
+                      <Input
+                        id="label_color"
+                        type="color"
+                        value={template.label_color}
+                        onChange={(e) => setTemplate({ ...template, label_color: e.target.value })}
+                        className="w-12 h-10 p-1"
+                      />
+                      <Input
+                        value={template.label_color}
+                        onChange={(e) => setTemplate({ ...template, label_color: e.target.value })}
+                        className="flex-1"
+                      />
+                    </div>
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="value_color">Value Color</Label>
+                    <div className="flex gap-2">
+                      <Input
+                        id="value_color"
+                        type="color"
+                        value={template.value_color}
+                        onChange={(e) => setTemplate({ ...template, value_color: e.target.value })}
+                        className="w-12 h-10 p-1"
+                      />
+                      <Input
+                        value={template.value_color}
+                        onChange={(e) => setTemplate({ ...template, value_color: e.target.value })}
+                        className="flex-1"
+                      />
+                    </div>
+                  </div>
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="footer_color">Footer Color</Label>
+                  <div className="flex gap-2">
+                    <Input
+                      id="footer_color"
+                      type="color"
+                      value={template.footer_color}
+                      onChange={(e) => setTemplate({ ...template, footer_color: e.target.value })}
+                      className="w-12 h-10 p-1"
+                    />
+                    <Input
+                      value={template.footer_color}
+                      onChange={(e) => setTemplate({ ...template, footer_color: e.target.value })}
+                      className="w-32"
+                    />
+                  </div>
+                </div>
+              </div>
             </CardContent>
           </Card>
 
@@ -550,41 +668,41 @@ export default function BadgeTemplateEditor() {
                   )}
 
                   <div className="text-center mb-4">
-                    <h3 className="text-2xl font-bold">John Doe</h3>
+                    <h3 className="text-2xl font-bold" style={{ color: template.name_color }}>John Doe</h3>
                     {template.show_personnel_number && (
-                      <p className="font-mono text-primary font-semibold">P-2500001</p>
+                      <p className="font-mono font-semibold" style={{ color: template.personnel_number_color }}>P-2500001</p>
                     )}
                   </div>
 
                   <div className="space-y-2 text-sm">
                     {template.show_phone && (
                       <div className="flex justify-between py-1 border-b">
-                        <span className="font-semibold">Phone:</span>
-                        <span>(555) 123-4567</span>
+                        <span className="font-semibold" style={{ color: template.label_color }}>Phone:</span>
+                        <span style={{ color: template.value_color }}>(555) 123-4567</span>
                       </div>
                     )}
                     {template.show_email && (
                       <div className="flex justify-between py-1 border-b">
-                        <span className="font-semibold">Email:</span>
-                        <span>john@example.com</span>
+                        <span className="font-semibold" style={{ color: template.label_color }}>Email:</span>
+                        <span style={{ color: template.value_color }}>john@example.com</span>
                       </div>
                     )}
                     {template.show_work_authorization && (
                       <div className="flex justify-between py-1 border-b">
-                        <span className="font-semibold">Auth:</span>
-                        <span>US CITIZEN</span>
+                        <span className="font-semibold" style={{ color: template.label_color }}>Auth:</span>
+                        <span style={{ color: template.value_color }}>US CITIZEN</span>
                       </div>
                     )}
                     {template.show_everify_status && (
                       <div className="flex justify-between py-1 border-b">
-                        <span className="font-semibold">E-Verify:</span>
-                        <span className="text-green-600 font-semibold">VERIFIED</span>
+                        <span className="font-semibold" style={{ color: template.label_color }}>E-Verify:</span>
+                        <span className="font-semibold" style={{ color: template.value_color }}>VERIFIED</span>
                       </div>
                     )}
                     {template.show_certifications && (
                       <div className="mt-4">
-                        <p className="font-semibold mb-2">Certifications:</p>
-                        <div className="bg-muted/30 p-2 rounded text-xs">
+                        <p className="font-semibold mb-2" style={{ color: template.label_color }}>Certifications:</p>
+                        <div className="bg-muted/30 p-2 rounded text-xs" style={{ color: template.value_color }}>
                           • Forklift Operator<br />
                           • OSHA 10-Hour Safety
                         </div>
@@ -592,8 +710,8 @@ export default function BadgeTemplateEditor() {
                     )}
                     {template.show_capabilities && (
                       <div className="mt-4">
-                        <p className="font-semibold mb-2">Capabilities:</p>
-                        <div className="bg-muted/30 p-2 rounded text-xs">
+                        <p className="font-semibold mb-2" style={{ color: template.label_color }}>Capabilities:</p>
+                        <div className="bg-muted/30 p-2 rounded text-xs" style={{ color: template.value_color }}>
                           • Heavy Equipment<br />
                           • Welding
                         </div>
@@ -601,8 +719,8 @@ export default function BadgeTemplateEditor() {
                     )}
                     {template.show_languages && (
                       <div className="mt-4">
-                        <p className="font-semibold mb-2">Languages:</p>
-                        <div className="bg-muted/30 p-2 rounded text-xs">
+                        <p className="font-semibold mb-2" style={{ color: template.label_color }}>Languages:</p>
+                        <div className="bg-muted/30 p-2 rounded text-xs" style={{ color: template.value_color }}>
                           English, Spanish
                         </div>
                       </div>
@@ -611,8 +729,8 @@ export default function BadgeTemplateEditor() {
                       <div className="mt-4 space-y-1">
                         {template.custom_fields.map((field, index) => (
                           <div key={index} className="flex justify-between py-1 border-b">
-                            <span className="font-semibold">{field.label}:</span>
-                            <span>{field.value}</span>
+                            <span className="font-semibold" style={{ color: template.label_color }}>{field.label}:</span>
+                            <span style={{ color: template.value_color }}>{field.value}</span>
                           </div>
                         ))}
                       </div>
@@ -621,7 +739,7 @@ export default function BadgeTemplateEditor() {
                 </div>
 
                 {/* Footer */}
-                <div className="px-4 py-2 bg-muted text-center text-xs">
+                <div className="px-4 py-2 bg-muted text-center text-xs" style={{ color: template.footer_color }}>
                   Must be worn visibly at all times
                 </div>
               </div>

@@ -242,11 +242,15 @@ export type Database = {
           created_at: string | null
           custom_fields: Json | null
           description: string | null
+          footer_color: string | null
           header_color: string | null
           id: string
           is_default: boolean | null
+          label_color: string | null
           name: string
+          name_color: string | null
           orientation: string | null
+          personnel_number_color: string | null
           project_id: string | null
           show_capabilities: boolean | null
           show_certifications: boolean | null
@@ -259,6 +263,7 @@ export type Database = {
           show_work_authorization: boolean | null
           template_name: string | null
           updated_at: string | null
+          value_color: string | null
         }
         Insert: {
           background_color?: string | null
@@ -267,11 +272,15 @@ export type Database = {
           created_at?: string | null
           custom_fields?: Json | null
           description?: string | null
+          footer_color?: string | null
           header_color?: string | null
           id?: string
           is_default?: boolean | null
+          label_color?: string | null
           name: string
+          name_color?: string | null
           orientation?: string | null
+          personnel_number_color?: string | null
           project_id?: string | null
           show_capabilities?: boolean | null
           show_certifications?: boolean | null
@@ -284,6 +293,7 @@ export type Database = {
           show_work_authorization?: boolean | null
           template_name?: string | null
           updated_at?: string | null
+          value_color?: string | null
         }
         Update: {
           background_color?: string | null
@@ -292,11 +302,15 @@ export type Database = {
           created_at?: string | null
           custom_fields?: Json | null
           description?: string | null
+          footer_color?: string | null
           header_color?: string | null
           id?: string
           is_default?: boolean | null
+          label_color?: string | null
           name?: string
+          name_color?: string | null
           orientation?: string | null
+          personnel_number_color?: string | null
           project_id?: string | null
           show_capabilities?: boolean | null
           show_certifications?: boolean | null
@@ -309,6 +323,7 @@ export type Database = {
           show_work_authorization?: boolean | null
           template_name?: string | null
           updated_at?: string | null
+          value_color?: string | null
         }
         Relationships: [
           {
