@@ -268,6 +268,94 @@ export const useResolveProductConflict = () => {
   });
 };
 
+// Vendor sync hooks
+export const useQuickBooksVendorMappings = () => {
+  return useQuery({
+    queryKey: ['quickbooks-vendor-mappings'],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('quickbooks_vendor_mappings')
+        .select('*')
+        .order('last_synced_at', { ascending: false });
+      
+      if (error) throw error;
+      return data;
+    },
+  });
+};
+
+export const useImportVendorsFromQB = () => {
+  const queryClient = useQueryClient();
+  
+  return useMutation({
+    mutationFn: async () => {
+      const { data, error } = await supabase.functions.invoke('quickbooks-sync-vendors', {
+        body: { action: 'import' },
+      });
+      
+      if (error) throw error;
+      if (data.error) throw new Error(data.error);
+      return data;
+    },
+    onSuccess: (data) => {
+      queryClient.invalidateQueries({ queryKey: ['vendors'] });
+      queryClient.invalidateQueries({ queryKey: ['quickbooks-vendor-mappings'] });
+      queryClient.invalidateQueries({ queryKey: ['quickbooks-sync-logs'] });
+      toast.success(`Imported ${data.imported} vendors, updated ${data.updated}`);
+    },
+    onError: (error: Error) => {
+      toast.error(`Failed to import vendors: ${error.message}`);
+    },
+  });
+};
+
+export const useExportVendorsToQB = () => {
+  const queryClient = useQueryClient();
+  
+  return useMutation({
+    mutationFn: async () => {
+      const { data, error } = await supabase.functions.invoke('quickbooks-sync-vendors', {
+        body: { action: 'export' },
+      });
+      
+      if (error) throw error;
+      if (data.error) throw new Error(data.error);
+      return data;
+    },
+    onSuccess: (data) => {
+      queryClient.invalidateQueries({ queryKey: ['quickbooks-vendor-mappings'] });
+      queryClient.invalidateQueries({ queryKey: ['quickbooks-sync-logs'] });
+      toast.success(`Exported ${data.created} vendors, updated ${data.updated}`);
+    },
+    onError: (error: Error) => {
+      toast.error(`Failed to export vendors: ${error.message}`);
+    },
+  });
+};
+
+export const useSyncSingleVendor = () => {
+  const queryClient = useQueryClient();
+  
+  return useMutation({
+    mutationFn: async (vendorId: string) => {
+      const { data, error } = await supabase.functions.invoke('quickbooks-sync-vendors', {
+        body: { action: 'sync-single', vendorId },
+      });
+      
+      if (error) throw error;
+      if (data.error) throw new Error(data.error);
+      return data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['quickbooks-vendor-mappings'] });
+      toast.success('Vendor synced to QuickBooks');
+    },
+    onError: (error: Error) => {
+      toast.error(`Failed to sync vendor: ${error.message}`);
+    },
+  });
+};
+
 // Customer sync
 export const useImportCustomersFromQB = () => {
   const queryClient = useQueryClient();

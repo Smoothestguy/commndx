@@ -2116,6 +2116,50 @@ export type Database = {
         }
         Relationships: []
       }
+      quickbooks_vendor_mappings: {
+        Row: {
+          conflict_data: Json | null
+          created_at: string | null
+          id: string
+          last_synced_at: string | null
+          quickbooks_vendor_id: string
+          sync_direction: string | null
+          sync_status: string
+          updated_at: string | null
+          vendor_id: string
+        }
+        Insert: {
+          conflict_data?: Json | null
+          created_at?: string | null
+          id?: string
+          last_synced_at?: string | null
+          quickbooks_vendor_id: string
+          sync_direction?: string | null
+          sync_status?: string
+          updated_at?: string | null
+          vendor_id: string
+        }
+        Update: {
+          conflict_data?: Json | null
+          created_at?: string | null
+          id?: string
+          last_synced_at?: string | null
+          quickbooks_vendor_id?: string
+          sync_direction?: string | null
+          sync_status?: string
+          updated_at?: string | null
+          vendor_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "quickbooks_vendor_mappings_vendor_id_fkey"
+            columns: ["vendor_id"]
+            isOneToOne: true
+            referencedRelation: "vendors"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       roof_inspections: {
         Row: {
           created_at: string | null
