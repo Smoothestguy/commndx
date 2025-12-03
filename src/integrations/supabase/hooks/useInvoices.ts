@@ -162,11 +162,29 @@ export const useAddInvoice = () => {
         if (updateError) throw updateError;
       }
 
+      // Auto-sync to QuickBooks if connected
+      try {
+        const { data: qbConfig } = await supabase
+          .from("quickbooks_config")
+          .select("is_connected")
+          .single();
+
+        if (qbConfig?.is_connected) {
+          await supabase.functions.invoke('quickbooks-create-invoice', {
+            body: { invoiceId: newInvoice.id },
+          });
+        }
+      } catch (qbError) {
+        // Log but don't fail the invoice creation
+        console.error('QuickBooks sync failed:', qbError);
+      }
+
       return newInvoice;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["invoices"] });
       queryClient.invalidateQueries({ queryKey: ["job_orders"] });
+      queryClient.invalidateQueries({ queryKey: ["quickbooks-sync-logs"] });
       toast({
         title: "Success",
         description: "Invoice created successfully",

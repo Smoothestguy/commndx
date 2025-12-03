@@ -4,7 +4,7 @@ import { PageLayout } from "@/components/layout/PageLayout";
 import { DataTable } from "@/components/shared/DataTable";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Plus, Search, Edit, Trash2, FolderOpen, Loader2 } from "lucide-react";
+import { Plus, Search, Edit, Trash2, FolderOpen, Loader2, Cloud, RefreshCw } from "lucide-react";
 import { PullToRefreshWrapper } from "@/components/shared/PullToRefreshWrapper";
 import { CustomerCard } from "@/components/customers/CustomerCard";
 import { CustomerStats } from "@/components/customers/CustomerStats";
@@ -23,6 +23,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Textarea } from "@/components/ui/textarea";
 import { useCustomers, useAddCustomer, useUpdateCustomer, useDeleteCustomer, Customer } from "@/integrations/supabase/hooks/useCustomers";
 import { useProjects } from "@/integrations/supabase/hooks/useProjects";
+import { useQuickBooksConfig, useImportCustomersFromQB, useExportCustomersToQB } from "@/integrations/supabase/hooks/useQuickBooks";
 
 const Customers = () => {
   const { data: customers, isLoading, error, refetch, isFetching } = useCustomers();
@@ -31,6 +32,11 @@ const Customers = () => {
   const updateCustomer = useUpdateCustomer();
   const deleteCustomer = useDeleteCustomer();
   const isMobile = useIsMobile();
+  
+  // QuickBooks hooks
+  const { data: qbConfig } = useQuickBooksConfig();
+  const importCustomers = useImportCustomersFromQB();
+  const exportCustomers = useExportCustomersToQB();
   
   const [search, setSearch] = useState("");
   const [isDialogOpen, setIsDialogOpen] = useState(false);
@@ -200,6 +206,46 @@ const Customers = () => {
           newThisMonth={newThisMonth}
           noProjects={noProjects}
         />
+
+        {/* QuickBooks Sync Section */}
+        {qbConfig?.is_connected && (
+          <div className="mb-6 p-4 rounded-lg border bg-card">
+            <div className="flex flex-wrap items-center justify-between gap-4">
+              <div className="flex items-center gap-3">
+                <Cloud className="h-5 w-5 text-green-500" />
+                <p className="font-medium text-sm">QuickBooks Connected</p>
+              </div>
+              <div className="flex items-center gap-2">
+                <Button 
+                  variant="outline" 
+                  size="sm"
+                  onClick={() => importCustomers.mutate()}
+                  disabled={importCustomers.isPending || exportCustomers.isPending}
+                >
+                  {importCustomers.isPending ? (
+                    <RefreshCw className="h-4 w-4 mr-1 animate-spin" />
+                  ) : (
+                    <Cloud className="h-4 w-4 mr-1" />
+                  )}
+                  Import
+                </Button>
+                <Button 
+                  variant="outline" 
+                  size="sm"
+                  onClick={() => exportCustomers.mutate()}
+                  disabled={importCustomers.isPending || exportCustomers.isPending}
+                >
+                  {exportCustomers.isPending ? (
+                    <RefreshCw className="h-4 w-4 mr-1 animate-spin" />
+                  ) : (
+                    <Cloud className="h-4 w-4 mr-1" />
+                  )}
+                  Export
+                </Button>
+              </div>
+            </div>
+          </div>
+        )}
 
         {/* Search */}
         <div className="mb-6 relative max-w-md">
