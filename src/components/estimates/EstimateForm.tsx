@@ -672,10 +672,20 @@ export const EstimateForm = () => {
                   </div>
                   <Textarea
                     value={item.description}
-                    onChange={(e) => updateLineItem(index, "description", e.target.value)}
+                    onChange={(e) => {
+                      updateLineItem(index, "description", e.target.value);
+                      // Auto-resize textarea
+                      e.target.style.height = 'auto';
+                      e.target.style.height = e.target.scrollHeight + 'px';
+                    }}
+                    onInput={(e) => {
+                      const target = e.target as HTMLTextAreaElement;
+                      target.style.height = 'auto';
+                      target.style.height = target.scrollHeight + 'px';
+                    }}
                     placeholder="Item description"
-                    className="bg-secondary border-border min-h-[60px] resize-y"
-                    rows={2}
+                    className="bg-secondary border-border min-h-[60px] resize-none overflow-hidden"
+                    style={{ height: 'auto' }}
                   />
                   {errors[`line_${index}_description`] && (
                     <p className="text-sm text-destructive">
