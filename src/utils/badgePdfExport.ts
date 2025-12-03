@@ -142,8 +142,8 @@ export const generateBadgePDF = async (
     try {
       const logoBase64 = await fetchImageAsBase64(template.company_logo_url);
       if (logoBase64) {
-        const logoSize = 0.28;
-        pdf.addImage(logoBase64, "PNG", 0.1, 0.06, logoSize, logoSize);
+        const logoSize = 0.38;
+        pdf.addImage(logoBase64, "PNG", 0.1, 0.01, logoSize, logoSize);
         logoEndX = 0.1 + logoSize + 0.08;
       }
     } catch (error) {
@@ -349,8 +349,8 @@ export const generateBulkBadgePDF = async (
     let logoEndX = x + 0.1;
     if (logoBase64) {
       try {
-        const logoSize = 0.28;
-        pdf.addImage(logoBase64, "PNG", x + 0.1, y + 0.06, logoSize, logoSize);
+        const logoSize = 0.38;
+        pdf.addImage(logoBase64, "PNG", x + 0.1, y + 0.01, logoSize, logoSize);
         logoEndX = x + 0.1 + logoSize + 0.08;
       } catch (error) {
         console.error("Failed to add company logo:", error);

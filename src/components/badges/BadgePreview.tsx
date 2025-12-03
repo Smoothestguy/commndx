@@ -102,18 +102,18 @@ export const BadgePreview = ({ personnel, template }: BadgePreviewProps) => {
     >
       {/* Header Section */}
       <div
-        className="p-3 text-white flex items-center gap-2"
+        className="p-4 text-white flex items-center gap-3"
         style={{ backgroundColor: template.header_color || "#1e40af" }}
       >
         {template.company_logo_url && (
           <img
             src={template.company_logo_url}
             alt="Logo"
-            className="h-8 w-8 object-contain brightness-0 invert"
+            className="h-12 w-12 object-contain brightness-0 invert"
           />
         )}
         <div>
-          <h2 className="text-sm font-bold">{template.company_name || "Company"}</h2>
+          <h2 className="text-base font-bold">{template.company_name || "Company"}</h2>
           <p className="text-[10px] opacity-90">Personnel ID Badge</p>
         </div>
       </div>
