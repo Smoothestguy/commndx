@@ -212,7 +212,6 @@ const Personnel = () => {
       <BulkBadgeGenerator
         open={bulkBadgeDialogOpen}
         onOpenChange={setBulkBadgeDialogOpen}
-        personnelList={personnel || []}
         preselectedIds={selectedIds}
       />
     </PageLayout>

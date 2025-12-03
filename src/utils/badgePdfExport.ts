@@ -1,5 +1,6 @@
 import jsPDF from "jspdf";
 import QRCode from "qrcode";
+import type { Json } from "@/integrations/supabase/types";
 
 interface BadgeData {
   id: string;
@@ -10,6 +11,10 @@ interface BadgeData {
   phone?: string | null;
   email?: string | null;
   everify_status?: string | null;
+  work_authorization_type?: string | null;
+  certifications?: Array<{ certification_name: string; expiry_date?: string | null }> | null;
+  capabilities?: Array<{ capability: string }> | null;
+  languages?: Array<{ language: string; proficiency?: string | null }> | null;
 }
 
 interface BadgeTemplate {
@@ -25,18 +30,37 @@ interface BadgeTemplate {
   show_phone?: boolean | null;
   show_email?: boolean | null;
   show_everify_status?: boolean | null;
+  show_work_authorization?: boolean | null;
+  show_certifications?: boolean | null;
+  show_capabilities?: boolean | null;
+  show_languages?: boolean | null;
   // Text colors
   name_color?: string | null;
   personnel_number_color?: string | null;
   label_color?: string | null;
   value_color?: string | null;
   footer_color?: string | null;
+  // Custom fields - accepts Json from Supabase
+  custom_fields?: Json | null;
   // Legacy support for fields array
   fields?: Array<{
     field_name: string;
     is_enabled: boolean;
   }>;
 }
+
+// Helper to safely parse custom fields from Json
+const parseCustomFields = (customFields: Json | null | undefined): Array<{ label: string; value: string }> => {
+  if (!customFields || !Array.isArray(customFields)) return [];
+  return customFields.filter((field): field is { label: string; value: string } => 
+    typeof field === 'object' && 
+    field !== null && 
+    'label' in field && 
+    'value' in field &&
+    typeof (field as any).label === 'string' &&
+    typeof (field as any).value === 'string'
+  );
+};
 
 // Helper function to generate QR code as data URL
 const generateQRCodeDataURL = async (text: string): Promise<string> => {
@@ -72,6 +96,10 @@ const isFieldEnabled = (fieldName: string, template: BadgeTemplate): boolean => 
     phone: "show_phone",
     email: "show_email",
     everify_status: "show_everify_status",
+    work_authorization: "show_work_authorization",
+    certifications: "show_certifications",
+    capabilities: "show_capabilities",
+    languages: "show_languages",
   };
 
   const showKey = showFieldMap[fieldName];
@@ -110,6 +138,19 @@ const fetchImageAsBase64 = async (url: string): Promise<string | null> => {
     console.error("Failed to fetch image:", error);
     return null;
   }
+};
+
+// Helper to format work authorization type for display
+const formatWorkAuthType = (type: string | null | undefined): string => {
+  if (!type) return "";
+  const typeMap: Record<string, string> = {
+    us_citizen: "US Citizen",
+    permanent_resident: "Permanent Resident",
+    work_visa: "Work Visa",
+    ead: "EAD",
+    other: "Other",
+  };
+  return typeMap[type] || type.replace(/_/g, " ").replace(/\b\w/g, (l) => l.toUpperCase());
 };
 
 export const generateBadgePDF = async (
@@ -217,25 +258,38 @@ export const generateBadgePDF = async (
     pdf.setFont(undefined, "bold");
     pdf.setTextColor(nameColor.r, nameColor.g, nameColor.b);
     pdf.text(`${personnel.first_name} ${personnel.last_name}`, textStartX, yPosition);
-    yPosition += 0.28;
+    yPosition += 0.22;
+  }
+
+  // Add work authorization
+  if (isFieldEnabled("work_authorization", template) && personnel.work_authorization_type) {
+    pdf.setFontSize(7);
+    pdf.setFont(undefined, "bold");
+    pdf.setTextColor(labelColor.r, labelColor.g, labelColor.b);
+    pdf.text("Work Auth: ", textStartX, yPosition);
+    
+    pdf.setFont(undefined, "normal");
+    pdf.setTextColor(valueColor.r, valueColor.g, valueColor.b);
+    pdf.text(formatWorkAuthType(personnel.work_authorization_type), textStartX + 0.45, yPosition);
+    yPosition += 0.14;
   }
 
   // Add phone with label
   if (isFieldEnabled("phone", template) && personnel.phone) {
-    pdf.setFontSize(8);
+    pdf.setFontSize(7);
     pdf.setFont(undefined, "bold");
     pdf.setTextColor(labelColor.r, labelColor.g, labelColor.b);
     pdf.text("Phone: ", textStartX, yPosition);
     
     pdf.setFont(undefined, "normal");
     pdf.setTextColor(valueColor.r, valueColor.g, valueColor.b);
-    pdf.text(personnel.phone, textStartX + 0.38, yPosition);
-    yPosition += 0.18;
+    pdf.text(personnel.phone, textStartX + 0.35, yPosition);
+    yPosition += 0.14;
   }
 
   // Add email with label
   if (isFieldEnabled("email", template) && personnel.email) {
-    pdf.setFontSize(7);
+    pdf.setFontSize(6);
     pdf.setFont(undefined, "bold");
     pdf.setTextColor(labelColor.r, labelColor.g, labelColor.b);
     pdf.text("Email: ", textStartX, yPosition);
@@ -243,11 +297,75 @@ export const generateBadgePDF = async (
     pdf.setFont(undefined, "normal");
     pdf.setTextColor(valueColor.r, valueColor.g, valueColor.b);
     const emailText =
-      personnel.email.length > 22
-        ? personnel.email.substring(0, 22) + "..."
+      personnel.email.length > 20
+        ? personnel.email.substring(0, 20) + "..."
         : personnel.email;
-    pdf.text(emailText, textStartX + 0.33, yPosition);
-    yPosition += 0.2;
+    pdf.text(emailText, textStartX + 0.28, yPosition);
+    yPosition += 0.14;
+  }
+
+  // Add certifications (compact list)
+  if (isFieldEnabled("certifications", template) && personnel.certifications && personnel.certifications.length > 0) {
+    pdf.setFontSize(6);
+    pdf.setFont(undefined, "bold");
+    pdf.setTextColor(labelColor.r, labelColor.g, labelColor.b);
+    pdf.text("Certs: ", textStartX, yPosition);
+    
+    pdf.setFont(undefined, "normal");
+    pdf.setTextColor(valueColor.r, valueColor.g, valueColor.b);
+    const certNames = personnel.certifications.slice(0, 2).map(c => c.certification_name).join(", ");
+    const certText = certNames.length > 25 ? certNames.substring(0, 25) + "..." : certNames;
+    pdf.text(certText, textStartX + 0.25, yPosition);
+    yPosition += 0.12;
+  }
+
+  // Add capabilities (compact list)
+  if (isFieldEnabled("capabilities", template) && personnel.capabilities && personnel.capabilities.length > 0) {
+    pdf.setFontSize(6);
+    pdf.setFont(undefined, "bold");
+    pdf.setTextColor(labelColor.r, labelColor.g, labelColor.b);
+    pdf.text("Skills: ", textStartX, yPosition);
+    
+    pdf.setFont(undefined, "normal");
+    pdf.setTextColor(valueColor.r, valueColor.g, valueColor.b);
+    const capNames = personnel.capabilities.slice(0, 3).map(c => c.capability).join(", ");
+    const capText = capNames.length > 25 ? capNames.substring(0, 25) + "..." : capNames;
+    pdf.text(capText, textStartX + 0.25, yPosition);
+    yPosition += 0.12;
+  }
+
+  // Add languages (compact list)
+  if (isFieldEnabled("languages", template) && personnel.languages && personnel.languages.length > 0) {
+    pdf.setFontSize(6);
+    pdf.setFont(undefined, "bold");
+    pdf.setTextColor(labelColor.r, labelColor.g, labelColor.b);
+    pdf.text("Lang: ", textStartX, yPosition);
+    
+    pdf.setFont(undefined, "normal");
+    pdf.setTextColor(valueColor.r, valueColor.g, valueColor.b);
+    const langNames = personnel.languages.slice(0, 3).map(l => l.language).join(", ");
+    const langText = langNames.length > 25 ? langNames.substring(0, 25) + "..." : langNames;
+    pdf.text(langText, textStartX + 0.25, yPosition);
+    yPosition += 0.12;
+  }
+
+  // Add custom fields
+  const parsedCustomFields = parseCustomFields(template.custom_fields);
+  if (parsedCustomFields.length > 0) {
+    parsedCustomFields.forEach((field) => {
+      if (yPosition < badgeHeight - 0.4) {
+        pdf.setFontSize(6);
+        pdf.setFont(undefined, "bold");
+        pdf.setTextColor(labelColor.r, labelColor.g, labelColor.b);
+        pdf.text(`${field.label}: `, textStartX, yPosition);
+        
+        pdf.setFont(undefined, "normal");
+        pdf.setTextColor(valueColor.r, valueColor.g, valueColor.b);
+        const valueText = field.value.length > 20 ? field.value.substring(0, 20) + "..." : field.value;
+        pdf.text(valueText, textStartX + 0.4, yPosition);
+        yPosition += 0.12;
+      }
+    });
   }
 
   // Add E-Verify status badge at bottom
@@ -415,25 +533,38 @@ export const generateBulkBadgePDF = async (
       pdf.setFont(undefined, "bold");
       pdf.setTextColor(nameColor.r, nameColor.g, nameColor.b);
       pdf.text(`${personnel.first_name} ${personnel.last_name}`, textX, yPos);
-      yPos += 0.28;
+      yPos += 0.22;
+    }
+
+    // Add work authorization
+    if (isFieldEnabled("work_authorization", template) && personnel.work_authorization_type) {
+      pdf.setFontSize(7);
+      pdf.setFont(undefined, "bold");
+      pdf.setTextColor(labelColor.r, labelColor.g, labelColor.b);
+      pdf.text("Work Auth: ", textX, yPos);
+      
+      pdf.setFont(undefined, "normal");
+      pdf.setTextColor(valueColor.r, valueColor.g, valueColor.b);
+      pdf.text(formatWorkAuthType(personnel.work_authorization_type), textX + 0.45, yPos);
+      yPos += 0.14;
     }
 
     // Add phone
     if (isFieldEnabled("phone", template) && personnel.phone) {
-      pdf.setFontSize(8);
+      pdf.setFontSize(7);
       pdf.setFont(undefined, "bold");
       pdf.setTextColor(labelColor.r, labelColor.g, labelColor.b);
       pdf.text("Phone: ", textX, yPos);
       
       pdf.setFont(undefined, "normal");
       pdf.setTextColor(valueColor.r, valueColor.g, valueColor.b);
-      pdf.text(personnel.phone, textX + 0.38, yPos);
-      yPos += 0.18;
+      pdf.text(personnel.phone, textX + 0.35, yPos);
+      yPos += 0.14;
     }
 
     // Add email
     if (isFieldEnabled("email", template) && personnel.email) {
-      pdf.setFontSize(7);
+      pdf.setFontSize(6);
       pdf.setFont(undefined, "bold");
       pdf.setTextColor(labelColor.r, labelColor.g, labelColor.b);
       pdf.text("Email: ", textX, yPos);
@@ -441,11 +572,75 @@ export const generateBulkBadgePDF = async (
       pdf.setFont(undefined, "normal");
       pdf.setTextColor(valueColor.r, valueColor.g, valueColor.b);
       const emailText =
-        personnel.email.length > 22
-          ? personnel.email.substring(0, 22) + "..."
+        personnel.email.length > 20
+          ? personnel.email.substring(0, 20) + "..."
           : personnel.email;
-      pdf.text(emailText, textX + 0.33, yPos);
-      yPos += 0.2;
+      pdf.text(emailText, textX + 0.28, yPos);
+      yPos += 0.14;
+    }
+
+    // Add certifications
+    if (isFieldEnabled("certifications", template) && personnel.certifications && personnel.certifications.length > 0) {
+      pdf.setFontSize(6);
+      pdf.setFont(undefined, "bold");
+      pdf.setTextColor(labelColor.r, labelColor.g, labelColor.b);
+      pdf.text("Certs: ", textX, yPos);
+      
+      pdf.setFont(undefined, "normal");
+      pdf.setTextColor(valueColor.r, valueColor.g, valueColor.b);
+      const certNames = personnel.certifications.slice(0, 2).map(c => c.certification_name).join(", ");
+      const certText = certNames.length > 25 ? certNames.substring(0, 25) + "..." : certNames;
+      pdf.text(certText, textX + 0.25, yPos);
+      yPos += 0.12;
+    }
+
+    // Add capabilities
+    if (isFieldEnabled("capabilities", template) && personnel.capabilities && personnel.capabilities.length > 0) {
+      pdf.setFontSize(6);
+      pdf.setFont(undefined, "bold");
+      pdf.setTextColor(labelColor.r, labelColor.g, labelColor.b);
+      pdf.text("Skills: ", textX, yPos);
+      
+      pdf.setFont(undefined, "normal");
+      pdf.setTextColor(valueColor.r, valueColor.g, valueColor.b);
+      const capNames = personnel.capabilities.slice(0, 3).map(c => c.capability).join(", ");
+      const capText = capNames.length > 25 ? capNames.substring(0, 25) + "..." : capNames;
+      pdf.text(capText, textX + 0.25, yPos);
+      yPos += 0.12;
+    }
+
+    // Add languages
+    if (isFieldEnabled("languages", template) && personnel.languages && personnel.languages.length > 0) {
+      pdf.setFontSize(6);
+      pdf.setFont(undefined, "bold");
+      pdf.setTextColor(labelColor.r, labelColor.g, labelColor.b);
+      pdf.text("Lang: ", textX, yPos);
+      
+      pdf.setFont(undefined, "normal");
+      pdf.setTextColor(valueColor.r, valueColor.g, valueColor.b);
+      const langNames = personnel.languages.slice(0, 3).map(l => l.language).join(", ");
+      const langText = langNames.length > 25 ? langNames.substring(0, 25) + "..." : langNames;
+      pdf.text(langText, textX + 0.25, yPos);
+      yPos += 0.12;
+    }
+
+    // Add custom fields
+    const parsedCustomFields = parseCustomFields(template.custom_fields);
+    if (parsedCustomFields.length > 0) {
+      parsedCustomFields.forEach((field) => {
+        if (yPos < y + badgeHeight - 0.4) {
+          pdf.setFontSize(6);
+          pdf.setFont(undefined, "bold");
+          pdf.setTextColor(labelColor.r, labelColor.g, labelColor.b);
+          pdf.text(`${field.label}: `, textX, yPos);
+          
+          pdf.setFont(undefined, "normal");
+          pdf.setTextColor(valueColor.r, valueColor.g, valueColor.b);
+          const valueText = field.value.length > 20 ? field.value.substring(0, 20) + "..." : field.value;
+          pdf.text(valueText, textX + 0.4, yPos);
+          yPos += 0.12;
+        }
+      });
     }
 
     // Add E-Verify status at bottom

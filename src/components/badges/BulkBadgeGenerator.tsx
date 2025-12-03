@@ -1,7 +1,6 @@
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -9,23 +8,19 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Loader2 } from "lucide-react";
 import { SearchInput } from "@/components/ui/search-input";
 import { useBadgeTemplates, useDefaultBadgeTemplate } from "@/integrations/supabase/hooks/useBadgeTemplates";
+import { usePersonnelWithRelations } from "@/integrations/supabase/hooks/usePersonnel";
 import { generateBulkBadgePDF } from "@/utils/badgePdfExport";
 import { toast } from "sonner";
-import type { Database } from "@/integrations/supabase/types";
-
-type Personnel = Database["public"]["Tables"]["personnel"]["Row"];
 
 interface BulkBadgeGeneratorProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  personnelList: Personnel[];
   preselectedIds?: string[];
 }
 
 export const BulkBadgeGenerator = ({
   open,
   onOpenChange,
-  personnelList,
   preselectedIds = [],
 }: BulkBadgeGeneratorProps) => {
   const [selectedIds, setSelectedIds] = useState<string[]>(preselectedIds);
@@ -35,16 +30,18 @@ export const BulkBadgeGenerator = ({
 
   const { data: templates } = useBadgeTemplates();
   const { data: defaultTemplate } = useDefaultBadgeTemplate();
+  const { data: personnelList } = usePersonnelWithRelations({ status: "active" });
 
   // Set default template when dialog opens
-  useState(() => {
+  useEffect(() => {
     if (open && defaultTemplate && !selectedTemplateId) {
       setSelectedTemplateId(defaultTemplate.id);
     }
-  });
+  }, [open, defaultTemplate, selectedTemplateId]);
 
   // Filter personnel by search query
   const filteredPersonnel = useMemo(() => {
+    if (!personnelList) return [];
     if (!searchQuery) return personnelList;
     const query = searchQuery.toLowerCase();
     return personnelList.filter(
@@ -85,9 +82,9 @@ export const BulkBadgeGenerator = ({
 
     setIsGenerating(true);
     try {
-      const selectedPersonnel = personnelList.filter((p) =>
+      const selectedPersonnel = personnelList?.filter((p) =>
         selectedIds.includes(p.id)
-      );
+      ) || [];
       await generateBulkBadgePDF(selectedPersonnel, selectedTemplate);
       toast.success(`Generated ${selectedIds.length} badge(s) successfully`);
       onOpenChange(false);
