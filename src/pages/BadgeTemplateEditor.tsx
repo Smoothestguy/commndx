@@ -8,7 +8,7 @@ import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
-import { ArrowLeft, Save, Eye, Loader2 } from "lucide-react";
+import { ArrowLeft, Save, Eye, Loader2, Building2, Trash2 } from "lucide-react";
 import {
   Select,
   SelectContent,
@@ -304,16 +304,37 @@ export default function BadgeTemplateEditor() {
               <div className="space-y-2">
                 <Label htmlFor="logo">Company Logo</Label>
                 {template.company_logo_url && (
-                  <div className="mb-2">
+                  <div className="mb-2 flex items-center gap-2">
                     <img src={template.company_logo_url} alt="Logo" className="h-16 object-contain" />
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="icon"
+                      onClick={() => setTemplate({ ...template, company_logo_url: null })}
+                      className="text-destructive hover:text-destructive"
+                    >
+                      <Trash2 className="h-4 w-4" />
+                    </Button>
                   </div>
                 )}
+                <div className="flex gap-2">
+                  <Button
+                    type="button"
+                    variant="outline"
+                    onClick={() => setTemplate({ ...template, company_logo_url: "/logo.png" })}
+                    className="gap-2"
+                  >
+                    <Building2 className="h-4 w-4" />
+                    Use Company Logo
+                  </Button>
+                </div>
                 <Input
                   id="logo"
                   type="file"
                   accept="image/*"
                   onChange={handleLogoUpload}
                   disabled={uploading}
+                  className="mt-2"
                 />
                 {uploading && <p className="text-xs text-muted-foreground">Uploading...</p>}
               </div>
