@@ -317,10 +317,13 @@ export function ClaimForm({ open, onOpenChange, claim }: ClaimFormProps) {
                 control={form.control}
                 name="approved_amount"
                 render={({ field }) => (
-                  <FormItem>
+                <FormItem>
                     <FormLabel>Approved Amount</FormLabel>
                     <FormControl>
-                      <Input type="number" step="0.01" {...field} placeholder="0.00" />
+                      <div className="relative">
+                        <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground">$</span>
+                        <Input type="number" step="0.01" {...field} placeholder="0.00" className="pl-7" />
+                      </div>
                     </FormControl>
                     <FormMessage />
                   </FormItem>
@@ -331,10 +334,13 @@ export function ClaimForm({ open, onOpenChange, claim }: ClaimFormProps) {
                 control={form.control}
                 name="deductible"
                 render={({ field }) => (
-                  <FormItem>
+                <FormItem>
                     <FormLabel>Deductible</FormLabel>
                     <FormControl>
-                      <Input type="number" step="0.01" {...field} placeholder="0.00" />
+                      <div className="relative">
+                        <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground">$</span>
+                        <Input type="number" step="0.01" {...field} placeholder="0.00" className="pl-7" />
+                      </div>
                     </FormControl>
                     <FormMessage />
                   </FormItem>

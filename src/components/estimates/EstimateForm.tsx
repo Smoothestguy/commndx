@@ -727,14 +727,17 @@ export const EstimateForm = () => {
                 </div>
 
                 <div className="space-y-2">
-                  <Label>Unit Price ($) *</Label>
-                  <Input
-                    type="number"
-                    step="0.01"
-                    value={item.unit_price}
-                    onChange={(e) => updateLineItem(index, "unit_price", e.target.value)}
-                    className="bg-secondary border-border"
-                  />
+                  <Label>Unit Price *</Label>
+                  <div className="relative">
+                    <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground">$</span>
+                    <Input
+                      type="number"
+                      step="0.01"
+                      value={item.unit_price}
+                      onChange={(e) => updateLineItem(index, "unit_price", e.target.value)}
+                      className="bg-secondary border-border pl-7"
+                    />
+                  </div>
                 </div>
 
                 <div className="space-y-2">
