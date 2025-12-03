@@ -9,6 +9,7 @@ import { Card } from "@/components/ui/card";
 import { Trash2, Plus, Copy, Loader2 } from "lucide-react";
 import { useState, useEffect } from "react";
 import { useJobOrders, useJobOrder } from "@/integrations/supabase/hooks/useJobOrders";
+import { useCustomers } from "@/integrations/supabase/hooks/useCustomers";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Calendar } from "@/components/ui/calendar";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
@@ -17,13 +18,25 @@ import { format } from "date-fns";
 import { cn } from "@/lib/utils";
 import { useQuickBooksConfig, useQuickBooksNextNumber } from "@/integrations/supabase/hooks/useQuickBooks";
 import { Badge } from "@/components/ui/badge";
+import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 
 const formSchema = z.object({
   number: z.string().min(1, "Invoice number is required"),
-  jobOrderId: z.string().min(1, "Job order is required"),
+  invoiceType: z.enum(["job_order", "customer"]),
+  jobOrderId: z.string().optional(),
+  customerId: z.string().optional(),
+  projectName: z.string().optional(),
   dueDate: z.string().min(1, "Due date is required"),
   taxRate: z.number().min(0).max(100),
   status: z.enum(["draft", "sent", "paid", "overdue"]),
+}).refine((data) => {
+  if (data.invoiceType === "job_order") {
+    return !!data.jobOrderId && data.jobOrderId.length > 0;
+  }
+  return !!data.customerId && data.customerId.length > 0;
+}, {
+  message: "Please select a job order or customer",
+  path: ["jobOrderId"],
 });
 
 interface LineItem {
@@ -42,13 +55,17 @@ interface InvoiceFormProps {
 }
 
 export function InvoiceForm({ onSubmit, initialData, jobOrderId }: InvoiceFormProps) {
-  const { data: jobOrders = [], isLoading } = useJobOrders();
+  const { data: jobOrders = [], isLoading: jobOrdersLoading } = useJobOrders();
+  const { data: customers = [], isLoading: customersLoading } = useCustomers();
+  const [invoiceType, setInvoiceType] = useState<"job_order" | "customer">(jobOrderId ? "job_order" : "job_order");
   const [selectedJobOrderId, setSelectedJobOrderId] = useState<string | undefined>(jobOrderId);
+  const [selectedCustomerId, setSelectedCustomerId] = useState<string | undefined>();
   const { data: jobOrderWithLineItems } = useJobOrder(selectedJobOrderId || "");
   const [lineItems, setLineItems] = useState<LineItem[]>([
     { id: "1", description: "", quantity: 1, unitPrice: 0, margin: 0, total: 0 },
   ]);
   const [selectedJobOrder, setSelectedJobOrder] = useState<any>(null);
+  const [selectedCustomer, setSelectedCustomer] = useState<any>(null);
   const [dueDate, setDueDate] = useState<Date>();
 
   // QuickBooks integration
@@ -60,7 +77,10 @@ export function InvoiceForm({ onSubmit, initialData, jobOrderId }: InvoiceFormPr
     resolver: zodResolver(formSchema),
     defaultValues: {
       number: initialData?.number || `INV-${Date.now()}`,
+      invoiceType: jobOrderId ? "job_order" : "job_order",
       jobOrderId: jobOrderId || initialData?.jobOrderId || "",
+      customerId: initialData?.customerId || "",
+      projectName: initialData?.projectName || "",
       dueDate: initialData?.dueDate || "",
       taxRate: initialData?.taxRate || 0,
       status: initialData?.status || "draft",
@@ -86,20 +106,39 @@ export function InvoiceForm({ onSubmit, initialData, jobOrderId }: InvoiceFormPr
   }, [jobOrderId, jobOrders]);
 
   useEffect(() => {
-    if (jobOrderWithLineItems?.line_items?.length > 0) {
+    if (invoiceType === "job_order" && jobOrderWithLineItems?.line_items?.length > 0) {
       setSelectedJobOrder(jobOrderWithLineItems);
       const copiedItems = jobOrderWithLineItems.line_items.map((item: any, index: number) => ({
         id: `${Date.now()}-${index}`,
         description: item.description,
         quantity: item.quantity,
         unitPrice: item.unit_price,
-        margin: item.markup, // DB column is still "markup"
+        margin: item.markup,
         total: item.total,
       }));
       setLineItems(copiedItems);
       form.setValue("taxRate", jobOrderWithLineItems.tax_rate);
     }
-  }, [jobOrderWithLineItems]);
+  }, [jobOrderWithLineItems, invoiceType]);
+
+  const handleInvoiceTypeChange = (value: "job_order" | "customer") => {
+    setInvoiceType(value);
+    form.setValue("invoiceType", value);
+    
+    // Reset selections when switching
+    if (value === "job_order") {
+      setSelectedCustomerId(undefined);
+      setSelectedCustomer(null);
+      form.setValue("customerId", "");
+      form.setValue("projectName", "");
+    } else {
+      setSelectedJobOrderId(undefined);
+      setSelectedJobOrder(null);
+      form.setValue("jobOrderId", "");
+      // Reset line items to empty when switching to customer mode
+      setLineItems([{ id: "1", description: "", quantity: 1, unitPrice: 0, margin: 0, total: 0 }]);
+    }
+  };
 
   const handleJobOrderChange = (value: string) => {
     setSelectedJobOrderId(value);
@@ -111,6 +150,17 @@ export function InvoiceForm({ onSubmit, initialData, jobOrderId }: InvoiceFormPr
     }
   };
 
+  const handleCustomerChange = (value: string) => {
+    setSelectedCustomerId(value);
+    form.setValue("customerId", value);
+    const customer = customers.find((c: any) => c.id === value);
+    setSelectedCustomer(customer);
+    // If customer is tax exempt, set tax rate to 0
+    if (customer?.tax_exempt) {
+      form.setValue("taxRate", 0);
+    }
+  };
+
   const copyFromJobOrder = () => {
     if (jobOrderWithLineItems?.line_items?.length > 0) {
       const copiedItems = jobOrderWithLineItems.line_items.map((item: any, index: number) => ({
@@ -118,7 +168,7 @@ export function InvoiceForm({ onSubmit, initialData, jobOrderId }: InvoiceFormPr
         description: item.description,
         quantity: item.quantity,
         unitPrice: item.unit_price,
-        margin: item.markup, // DB column is still "markup"
+        margin: item.markup,
         total: item.total,
       }));
       setLineItems(copiedItems);
@@ -145,7 +195,6 @@ export function InvoiceForm({ onSubmit, initialData, jobOrderId }: InvoiceFormPr
           const updated = { ...item, [field]: value };
           if (field === "quantity" || field === "unitPrice" || field === "margin") {
             const baseTotal = updated.quantity * updated.unitPrice;
-            // Margin-based pricing: total = base / (1 - margin/100)
             updated.total = updated.margin > 0 && updated.margin < 100 
               ? baseTotal / (1 - updated.margin / 100) 
               : baseTotal;
@@ -163,20 +212,15 @@ export function InvoiceForm({ onSubmit, initialData, jobOrderId }: InvoiceFormPr
   const total = subtotal + taxAmount;
 
   const remainingBalance = selectedJobOrder ? selectedJobOrder.remaining_amount : 0;
-  const exceedsBalance = total > remainingBalance;
+  const exceedsBalance = invoiceType === "job_order" && total > remainingBalance;
 
   const handleSubmit = (values: z.infer<typeof formSchema>) => {
-    if (exceedsBalance) {
+    if (invoiceType === "job_order" && exceedsBalance) {
       return;
     }
 
-    onSubmit({
+    const baseData = {
       number: values.number,
-      job_order_id: values.jobOrderId,
-      job_order_number: selectedJobOrder?.number,
-      customer_id: selectedJobOrder?.customer_id,
-      customer_name: selectedJobOrder?.customer_name,
-      project_name: selectedJobOrder?.project_name,
       status: values.status,
       subtotal,
       tax_rate: taxRate,
@@ -187,11 +231,33 @@ export function InvoiceForm({ onSubmit, initialData, jobOrderId }: InvoiceFormPr
         description: item.description,
         quantity: item.quantity,
         unit_price: item.unitPrice,
-        markup: item.margin, // DB column is still "markup"
+        markup: item.margin,
         total: item.total,
       })),
-    });
+    };
+
+    if (invoiceType === "job_order") {
+      onSubmit({
+        ...baseData,
+        job_order_id: values.jobOrderId,
+        job_order_number: selectedJobOrder?.number,
+        customer_id: selectedJobOrder?.customer_id,
+        customer_name: selectedJobOrder?.customer_name,
+        project_name: selectedJobOrder?.project_name,
+      });
+    } else {
+      onSubmit({
+        ...baseData,
+        job_order_id: null,
+        job_order_number: null,
+        customer_id: selectedCustomer?.id,
+        customer_name: selectedCustomer?.name,
+        project_name: values.projectName || null,
+      });
+    }
   };
+
+  const isLoading = jobOrdersLoading || customersLoading;
 
   if (isLoading) {
     return <div>Loading...</div>;
@@ -199,98 +265,155 @@ export function InvoiceForm({ onSubmit, initialData, jobOrderId }: InvoiceFormPr
 
   return (
     <form onSubmit={form.handleSubmit(handleSubmit)} className="space-y-4 pb-24">
+      {/* Invoice Type Toggle */}
+      <Card className="p-4">
+        <Label className="text-base font-semibold mb-3 block">Invoice Type</Label>
+        <RadioGroup
+          value={invoiceType}
+          onValueChange={(value) => handleInvoiceTypeChange(value as "job_order" | "customer")}
+          className="flex flex-col sm:flex-row gap-4"
+        >
+          <div className="flex items-center space-x-2">
+            <RadioGroupItem value="job_order" id="job_order" />
+            <Label htmlFor="job_order" className="cursor-pointer">From Job Order</Label>
+          </div>
+          <div className="flex items-center space-x-2">
+            <RadioGroupItem value="customer" id="customer" />
+            <Label htmlFor="customer" className="cursor-pointer">Direct to Customer</Label>
+          </div>
+        </RadioGroup>
+      </Card>
+
       <Card className="p-4">
         <div className="grid gap-4 sm:grid-cols-2">
-        <div>
-          <div className="flex items-center gap-2 mb-1">
-            <Label htmlFor="number">Invoice Number</Label>
-            {isQBConnected && (
-              <Badge variant="outline" className="text-xs">
-                {qbNumberLoading ? (
-                  <Loader2 className="h-3 w-3 animate-spin mr-1" />
-                ) : null}
-                QuickBooks
-              </Badge>
+          <div>
+            <div className="flex items-center gap-2 mb-1">
+              <Label htmlFor="number">Invoice Number</Label>
+              {isQBConnected && (
+                <Badge variant="outline" className="text-xs">
+                  {qbNumberLoading ? (
+                    <Loader2 className="h-3 w-3 animate-spin mr-1" />
+                  ) : null}
+                  QuickBooks
+                </Badge>
+              )}
+            </div>
+            <Input id="number" {...form.register("number")} />
+            {form.formState.errors.number && (
+              <p className="text-destructive text-sm mt-1">{form.formState.errors.number.message}</p>
             )}
           </div>
-          <Input id="number" {...form.register("number")} />
-          {form.formState.errors.number && (
-            <p className="text-destructive text-sm mt-1">{form.formState.errors.number.message}</p>
-          )}
-        </div>
 
-        <div>
-          <Label htmlFor="jobOrderId">Job Order</Label>
-          <Select
-            value={form.watch("jobOrderId")}
-            onValueChange={handleJobOrderChange}
-          >
-            <SelectTrigger>
-              <SelectValue placeholder="Select job order" />
-            </SelectTrigger>
-            <SelectContent>
-              {jobOrders.map((jo: any) => (
-                <SelectItem key={jo.id} value={jo.id}>
-                  {jo.number} - {jo.customer_name} ({jo.project_name})
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-          {form.formState.errors.jobOrderId && (
-            <p className="text-destructive text-sm mt-1">{form.formState.errors.jobOrderId.message}</p>
-          )}
-        </div>
-
-        <div>
-          <Label>Due Date</Label>
-          <Popover>
-            <PopoverTrigger asChild>
-              <Button
-                variant="outline"
-                className={cn(
-                  "w-full justify-start text-left font-normal",
-                  !dueDate && "text-muted-foreground"
-                )}
+          {/* Conditional: Job Order or Customer Selection */}
+          {invoiceType === "job_order" ? (
+            <div>
+              <Label htmlFor="jobOrderId">Job Order</Label>
+              <Select
+                value={form.watch("jobOrderId")}
+                onValueChange={handleJobOrderChange}
               >
-                <CalendarIcon className="mr-2 h-4 w-4" />
-                {dueDate ? format(dueDate, "PPP") : <span>Pick a date</span>}
-              </Button>
-            </PopoverTrigger>
-            <PopoverContent className="w-auto p-0" align="start">
-              <Calendar
-                mode="single"
-                selected={dueDate}
-                onSelect={(date) => {
-                  setDueDate(date);
-                  if (date) {
-                    form.setValue("dueDate", format(date, "yyyy-MM-dd"));
-                  }
-                }}
-                initialFocus
-                className="pointer-events-auto"
-              />
-            </PopoverContent>
-          </Popover>
-        </div>
+                <SelectTrigger>
+                  <SelectValue placeholder="Select job order" />
+                </SelectTrigger>
+                <SelectContent>
+                  {jobOrders.map((jo: any) => (
+                    <SelectItem key={jo.id} value={jo.id}>
+                      {jo.number} - {jo.customer_name} ({jo.project_name})
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              {form.formState.errors.jobOrderId && (
+                <p className="text-destructive text-sm mt-1">{form.formState.errors.jobOrderId.message}</p>
+              )}
+            </div>
+          ) : (
+            <div>
+              <Label htmlFor="customerId">Customer</Label>
+              <Select
+                value={form.watch("customerId")}
+                onValueChange={handleCustomerChange}
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="Select customer" />
+                </SelectTrigger>
+                <SelectContent>
+                  {customers.map((c: any) => (
+                    <SelectItem key={c.id} value={c.id}>
+                      {c.name} {c.company ? `(${c.company})` : ""}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              {form.formState.errors.customerId && (
+                <p className="text-destructive text-sm mt-1">{form.formState.errors.customerId.message}</p>
+              )}
+            </div>
+          )}
 
-        <div>
-          <Label htmlFor="status">Status</Label>
-          <Select value={form.watch("status")} onValueChange={(value: any) => form.setValue("status", value)}>
-            <SelectTrigger>
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="draft">Draft</SelectItem>
-              <SelectItem value="sent">Sent</SelectItem>
-              <SelectItem value="paid">Paid</SelectItem>
-              <SelectItem value="overdue">Overdue</SelectItem>
-            </SelectContent>
-          </Select>
-        </div>
+          {/* Project Name - only for direct customer invoices */}
+          {invoiceType === "customer" && (
+            <div>
+              <Label htmlFor="projectName">Project Name (Optional)</Label>
+              <Input
+                id="projectName"
+                {...form.register("projectName")}
+                placeholder="Enter project name"
+              />
+            </div>
+          )}
+
+          <div>
+            <Label>Due Date</Label>
+            <Popover>
+              <PopoverTrigger asChild>
+                <Button
+                  variant="outline"
+                  className={cn(
+                    "w-full justify-start text-left font-normal",
+                    !dueDate && "text-muted-foreground"
+                  )}
+                >
+                  <CalendarIcon className="mr-2 h-4 w-4" />
+                  {dueDate ? format(dueDate, "PPP") : <span>Pick a date</span>}
+                </Button>
+              </PopoverTrigger>
+              <PopoverContent className="w-auto p-0" align="start">
+                <Calendar
+                  mode="single"
+                  selected={dueDate}
+                  onSelect={(date) => {
+                    setDueDate(date);
+                    if (date) {
+                      form.setValue("dueDate", format(date, "yyyy-MM-dd"));
+                    }
+                  }}
+                  initialFocus
+                  className="pointer-events-auto"
+                />
+              </PopoverContent>
+            </Popover>
+          </div>
+
+          <div>
+            <Label htmlFor="status">Status</Label>
+            <Select value={form.watch("status")} onValueChange={(value: any) => form.setValue("status", value)}>
+              <SelectTrigger>
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="draft">Draft</SelectItem>
+                <SelectItem value="sent">Sent</SelectItem>
+                <SelectItem value="paid">Paid</SelectItem>
+                <SelectItem value="overdue">Overdue</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
         </div>
       </Card>
 
-      {selectedJobOrder && (
+      {/* Job Order Summary - only show for job order invoices */}
+      {invoiceType === "job_order" && selectedJobOrder && (
         <Card className="p-4 bg-muted/50">
           <div className="space-y-2">
             <div className="flex justify-between text-sm">
@@ -317,6 +440,36 @@ export function InvoiceForm({ onSubmit, initialData, jobOrderId }: InvoiceFormPr
         </Card>
       )}
 
+      {/* Customer Summary - only show for direct customer invoices */}
+      {invoiceType === "customer" && selectedCustomer && (
+        <Card className="p-4 bg-muted/50">
+          <div className="space-y-2">
+            <div className="flex justify-between text-sm">
+              <span className="text-muted-foreground">Customer:</span>
+              <span className="font-medium">{selectedCustomer.name}</span>
+            </div>
+            {selectedCustomer.company && (
+              <div className="flex justify-between text-sm">
+                <span className="text-muted-foreground">Company:</span>
+                <span className="font-medium">{selectedCustomer.company}</span>
+              </div>
+            )}
+            {selectedCustomer.email && (
+              <div className="flex justify-between text-sm">
+                <span className="text-muted-foreground">Email:</span>
+                <span className="font-medium">{selectedCustomer.email}</span>
+              </div>
+            )}
+            {selectedCustomer.tax_exempt && (
+              <div className="flex justify-between text-sm">
+                <span className="text-muted-foreground">Tax Status:</span>
+                <Badge variant="secondary">Tax Exempt</Badge>
+              </div>
+            )}
+          </div>
+        </Card>
+      )}
+
       {exceedsBalance && (
         <Alert variant="destructive">
           <AlertDescription>
@@ -334,7 +487,7 @@ export function InvoiceForm({ onSubmit, initialData, jobOrderId }: InvoiceFormPr
               Add Item
             </Button>
           </div>
-          {selectedJobOrder && (
+          {invoiceType === "job_order" && selectedJobOrder && (
             <Button type="button" variant="outline" size="sm" className="w-full sm:w-auto" onClick={copyFromJobOrder}>
               <Copy className="w-4 h-4 mr-2" />
               Copy from Job Order
@@ -437,7 +590,7 @@ export function InvoiceForm({ onSubmit, initialData, jobOrderId }: InvoiceFormPr
         </div>
       </Card>
 
-      <Button type="submit" disabled={exceedsBalance} className="w-full sm:w-auto">
+      <Button type="submit" disabled={invoiceType === "job_order" && exceedsBalance} className="w-full sm:w-auto">
         Create Invoice
       </Button>
     </form>
