@@ -84,6 +84,11 @@ export const EstimateForm = () => {
   const [projectComboboxOpen, setProjectComboboxOpen] = useState(false);
   const [productComboboxOpen, setProductComboboxOpen] = useState<Record<number, boolean>>({});
 
+  // Search states for comboboxes
+  const [customerSearch, setCustomerSearch] = useState("");
+  const [projectSearch, setProjectSearch] = useState("");
+  const [productSearch, setProductSearch] = useState<Record<number, string>>({});
+
   const { data: projects } = useProjectsByCustomer(selectedCustomerId);
 
   const [lineItems, setLineItems] = useState<LineItem[]>([
@@ -337,7 +342,11 @@ export const EstimateForm = () => {
                 </PopoverTrigger>
                 <PopoverContent className="w-[400px] p-0" align="start">
                   <Command>
-                    <CommandInput placeholder="Search by name or company..." />
+                    <CommandInput 
+                      placeholder="Search by name or company..." 
+                      value={customerSearch}
+                      onValueChange={setCustomerSearch}
+                    />
                     <CommandList>
                       <CommandEmpty>No customer found.</CommandEmpty>
                       <CommandGroup>
@@ -348,6 +357,7 @@ export const EstimateForm = () => {
                             onSelect={() => {
                               setSelectedCustomerId(customer.id);
                               setCustomerComboboxOpen(false);
+                              setCustomerSearch("");
                             }}
                           >
                             <Check
@@ -394,7 +404,11 @@ export const EstimateForm = () => {
                 </PopoverTrigger>
                 <PopoverContent className="w-[400px] p-0" align="start">
                   <Command>
-                    <CommandInput placeholder="Search by project name..." />
+                    <CommandInput 
+                      placeholder="Search by project name..." 
+                      value={projectSearch}
+                      onValueChange={setProjectSearch}
+                    />
                     <CommandList>
                       <CommandEmpty>No project found.</CommandEmpty>
                       <CommandGroup>
@@ -405,6 +419,7 @@ export const EstimateForm = () => {
                             onSelect={() => {
                               setSelectedProjectId(project.id);
                               setProjectComboboxOpen(false);
+                              setProjectSearch("");
                             }}
                           >
                             <Check
@@ -566,7 +581,11 @@ export const EstimateForm = () => {
                   </PopoverTrigger>
                   <PopoverContent className="w-[500px] p-0" align="start">
                     <Command>
-                      <CommandInput placeholder="Search by name, SKU, or category..." />
+                      <CommandInput 
+                        placeholder="Search by name, SKU, or category..." 
+                        value={productSearch[index] || ""}
+                        onValueChange={(v) => setProductSearch(prev => ({ ...prev, [index]: v }))}
+                      />
                       <CommandList>
                         <CommandEmpty>No product found.</CommandEmpty>
                         {getProductsByType('product').length > 0 && (
@@ -578,6 +597,7 @@ export const EstimateForm = () => {
                                 onSelect={() => {
                                   selectProduct(index, product.id);
                                   setProductComboboxOpen(prev => ({ ...prev, [index]: false }));
+                                  setProductSearch(prev => ({ ...prev, [index]: "" }));
                                 }}
                               >
                                 <Check
@@ -606,6 +626,7 @@ export const EstimateForm = () => {
                                 onSelect={() => {
                                   selectProduct(index, product.id);
                                   setProductComboboxOpen(prev => ({ ...prev, [index]: false }));
+                                  setProductSearch(prev => ({ ...prev, [index]: "" }));
                                 }}
                               >
                                 <Check
@@ -634,6 +655,7 @@ export const EstimateForm = () => {
                                 onSelect={() => {
                                   selectProduct(index, product.id);
                                   setProductComboboxOpen(prev => ({ ...prev, [index]: false }));
+                                  setProductSearch(prev => ({ ...prev, [index]: "" }));
                                 }}
                               >
                                 <Check

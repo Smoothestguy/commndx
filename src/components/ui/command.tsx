@@ -1,7 +1,7 @@
 import * as React from "react";
 import { type DialogProps } from "@radix-ui/react-dialog";
 import { Command as CommandPrimitive } from "cmdk";
-import { Search } from "lucide-react";
+import { Search, X } from "lucide-react";
 
 import { cn } from "@/lib/utils";
 import { Dialog, DialogContent } from "@/components/ui/dialog";
@@ -35,20 +35,37 @@ const CommandDialog = ({ children, ...props }: CommandDialogProps) => {
   );
 };
 
+interface CommandInputProps extends React.ComponentPropsWithoutRef<typeof CommandPrimitive.Input> {
+  value?: string;
+  onValueChange?: (value: string) => void;
+}
+
 const CommandInput = React.forwardRef<
   React.ElementRef<typeof CommandPrimitive.Input>,
-  React.ComponentPropsWithoutRef<typeof CommandPrimitive.Input>
->(({ className, ...props }, ref) => (
+  CommandInputProps
+>(({ className, value, onValueChange, ...props }, ref) => (
   <div className="flex items-center border-b px-3" cmdk-input-wrapper="">
     <Search className="mr-2 h-4 w-4 shrink-0 opacity-50" />
     <CommandPrimitive.Input
       ref={ref}
+      value={value}
+      onValueChange={onValueChange}
       className={cn(
         "flex h-11 w-full rounded-md bg-transparent py-3 text-sm outline-none placeholder:text-muted-foreground disabled:cursor-not-allowed disabled:opacity-50",
         className,
       )}
       {...props}
     />
+    {value && (
+      <button
+        type="button"
+        onClick={() => onValueChange?.("")}
+        className="ml-2 h-5 w-5 shrink-0 rounded-sm opacity-50 hover:opacity-100 focus:outline-none"
+      >
+        <X className="h-4 w-4" />
+        <span className="sr-only">Clear search</span>
+      </button>
+    )}
   </div>
 ));
 
