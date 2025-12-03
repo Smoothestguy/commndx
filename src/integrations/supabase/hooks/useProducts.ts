@@ -102,3 +102,25 @@ export const useDeleteProduct = () => {
     },
   });
 };
+
+export const useDeleteProducts = () => {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async (ids: string[]) => {
+      const { error } = await supabase
+        .from("products")
+        .delete()
+        .in("id", ids);
+
+      if (error) throw error;
+    },
+    onSuccess: (_, ids) => {
+      queryClient.invalidateQueries({ queryKey: ["products"] });
+      toast.success(`${ids.length} item(s) deleted successfully`);
+    },
+    onError: (error: Error) => {
+      toast.error(`Failed to delete items: ${error.message}`);
+    },
+  });
+};

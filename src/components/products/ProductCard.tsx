@@ -1,12 +1,17 @@
 import { Button } from "@/components/ui/button";
+import { Checkbox } from "@/components/ui/checkbox";
 import { Edit, Trash2, Package, Wrench, HardHat } from "lucide-react";
 import { Product, ItemType } from "@/integrations/supabase/hooks/useProducts";
+import { cn } from "@/lib/utils";
 
 interface ProductCardProps {
   product: Product;
   onEdit: (product: Product) => void;
   onDelete: (id: string) => void;
   index: number;
+  selectable?: boolean;
+  isSelected?: boolean;
+  onSelectChange?: (id: string, checked: boolean) => void;
 }
 
 const typeConfig: Record<ItemType, { icon: typeof Package; label: string; className: string }> = {
@@ -27,19 +32,30 @@ const typeConfig: Record<ItemType, { icon: typeof Package; label: string; classN
   },
 };
 
-export function ProductCard({ product, onEdit, onDelete, index }: ProductCardProps) {
+export function ProductCard({ product, onEdit, onDelete, index, selectable, isSelected, onSelectChange }: ProductCardProps) {
   const config = typeConfig[product.item_type] || typeConfig.product;
   const TypeIcon = config.icon;
 
   return (
     <div
-      className="glass rounded-xl p-5 hover:shadow-lg hover:shadow-primary/5 transition-all duration-300 border-l-4 border-primary/60 animate-fade-in min-h-[160px] flex flex-col justify-between"
+      className={cn(
+        "glass rounded-xl p-5 hover:shadow-lg hover:shadow-primary/5 transition-all duration-300 border-l-4 border-primary/60 animate-fade-in min-h-[160px] flex flex-col justify-between",
+        isSelected && "ring-2 ring-primary bg-primary/5"
+      )}
       style={{ animationDelay: `${index * 50}ms` }}
     >
       <div className="space-y-3">
         {/* Header */}
         <div className="flex items-start justify-between gap-3">
           <div className="flex items-center gap-2 flex-1 min-w-0">
+            {selectable && (
+              <Checkbox
+                checked={isSelected}
+                onCheckedChange={(checked) => onSelectChange?.(product.id, !!checked)}
+                onClick={(e) => e.stopPropagation()}
+                className="flex-shrink-0"
+              />
+            )}
             <TypeIcon className="h-5 w-5 text-primary flex-shrink-0" />
             <h3 className="font-heading font-semibold text-lg text-foreground truncate">
               {product.name}

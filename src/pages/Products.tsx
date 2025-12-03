@@ -11,7 +11,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Plus, Search, Edit, Trash2, Loader2, Package, Wrench, HardHat, Cloud, RefreshCw } from "lucide-react";
+import { Plus, Search, Edit, Trash2, Loader2, Package, Wrench, HardHat, Cloud, RefreshCw, X } from "lucide-react";
 import { PullToRefreshWrapper } from "@/components/shared/PullToRefreshWrapper";
 import {
   Dialog,
@@ -21,7 +21,17 @@ import {
 } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
-import { useProducts, useAddProduct, useUpdateProduct, useDeleteProduct, Product, ItemType } from "@/integrations/supabase/hooks/useProducts";
+import { useProducts, useAddProduct, useUpdateProduct, useDeleteProduct, useDeleteProducts, Product, ItemType } from "@/integrations/supabase/hooks/useProducts";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { useProductCategories, useAddProductCategory } from "@/integrations/supabase/hooks/useProductCategories";
 import { useProductUnits, useAddProductUnit } from "@/integrations/supabase/hooks/useProductUnits";
 import { useIsMobile } from "@/hooks/use-mobile";
@@ -48,6 +58,7 @@ const Products = () => {
   const addProduct = useAddProduct();
   const updateProduct = useUpdateProduct();
   const deleteProduct = useDeleteProduct();
+  const deleteProducts = useDeleteProducts();
   const addCategory = useAddProductCategory();
   const addUnit = useAddProductUnit();
   const isMobile = useIsMobile();
@@ -78,6 +89,10 @@ const Products = () => {
   const [showCustomMargin, setShowCustomMargin] = useState(false);
   const [showNewUnitInput, setShowNewUnitInput] = useState(false);
   const [newUnitName, setNewUnitName] = useState("");
+  
+  // Bulk selection state
+  const [selectedProductIds, setSelectedProductIds] = useState<Set<string>>(new Set());
+  const [showBulkDeleteDialog, setShowBulkDeleteDialog] = useState(false);
 
   // Update unit when item type changes (only for new items)
   useEffect(() => {
@@ -199,6 +214,27 @@ const Products = () => {
 
   const handleDelete = (id: string) => {
     deleteProduct.mutate(id);
+  };
+
+  const handleBulkDelete = () => {
+    deleteProducts.mutate(Array.from(selectedProductIds), {
+      onSuccess: () => {
+        setSelectedProductIds(new Set());
+        setShowBulkDeleteDialog(false);
+      },
+    });
+  };
+
+  const handleSelectionChange = (id: string, checked: boolean) => {
+    setSelectedProductIds(prev => {
+      const newSet = new Set(prev);
+      if (checked) {
+        newSet.add(id);
+      } else {
+        newSet.delete(id);
+      }
+      return newSet;
+    });
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -378,6 +414,38 @@ const Products = () => {
                 onTypeChange={setSelectedType}
               />
 
+              {/* Bulk Actions Toolbar */}
+              {selectedProductIds.size > 0 && (
+                <div className="flex items-center gap-4 p-4 bg-primary/10 border border-primary/20 rounded-lg mb-4 animate-fade-in">
+                  <span className="text-sm font-medium text-foreground">
+                    {selectedProductIds.size} item{selectedProductIds.size > 1 ? 's' : ''} selected
+                  </span>
+                  <div className="flex items-center gap-2 ml-auto">
+                    <Button
+                      variant="destructive"
+                      size="sm"
+                      onClick={() => setShowBulkDeleteDialog(true)}
+                      disabled={deleteProducts.isPending}
+                    >
+                      {deleteProducts.isPending ? (
+                        <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                      ) : (
+                        <Trash2 className="h-4 w-4 mr-2" />
+                      )}
+                      Delete Selected
+                    </Button>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => setSelectedProductIds(new Set())}
+                    >
+                      <X className="h-4 w-4 mr-1" />
+                      Clear
+                    </Button>
+                  </div>
+                </div>
+              )}
+
               {/* Products Display */}
               {filteredProducts.length === 0 ? (
                 <ProductEmptyState
@@ -393,11 +461,20 @@ const Products = () => {
                       onEdit={handleEdit}
                       onDelete={handleDelete}
                       index={index}
+                      selectable
+                      isSelected={selectedProductIds.has(product.id)}
+                      onSelectChange={handleSelectionChange}
                     />
                   ))}
                 </div>
               ) : (
-                <DataTable data={filteredProducts} columns={columns} />
+                <DataTable 
+                  data={filteredProducts} 
+                  columns={columns}
+                  selectable
+                  selectedIds={selectedProductIds}
+                  onSelectionChange={setSelectedProductIds}
+                />
               )}
             </>
           )}
@@ -759,6 +836,30 @@ const Products = () => {
           onOpenChange={(open) => !open && setSelectedConflict(null)}
           conflict={selectedConflict}
         />
+
+        {/* Bulk Delete Confirmation Dialog */}
+        <AlertDialog open={showBulkDeleteDialog} onOpenChange={setShowBulkDeleteDialog}>
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle>Delete {selectedProductIds.size} item{selectedProductIds.size > 1 ? 's' : ''}?</AlertDialogTitle>
+              <AlertDialogDescription>
+                This action cannot be undone. The selected items will be permanently deleted.
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel>Cancel</AlertDialogCancel>
+              <AlertDialogAction
+                onClick={handleBulkDelete}
+                className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              >
+                {deleteProducts.isPending ? (
+                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                ) : null}
+                Delete
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
       </PageLayout>
     </>
   );
