@@ -43,6 +43,8 @@ import { toast } from "sonner";
 const QuickBooksSettings = () => {
   const [searchParams] = useSearchParams();
   const [selectedConflict, setSelectedConflict] = useState<any>(null);
+  const [vendorImportProgress, setVendorImportProgress] = useState<{ processed: number; total: number } | null>(null);
+  const [vendorExportProgress, setVendorExportProgress] = useState<{ processed: number; total: number } | null>(null);
   
   const { data: config, isLoading: configLoading } = useQuickBooksConfig();
   const { data: syncLogs } = useQuickBooksSyncLogs(20);
@@ -56,8 +58,27 @@ const QuickBooksSettings = () => {
   const exportProducts = useExportProductsToQB();
   const importCustomers = useImportCustomersFromQB();
   const exportCustomers = useExportCustomersToQB();
-  const importVendors = useImportVendorsFromQB();
-  const exportVendors = useExportVendorsToQB();
+  
+  const importVendors = useImportVendorsFromQB((processed, total) => {
+    setVendorImportProgress({ processed, total });
+  });
+  const exportVendors = useExportVendorsToQB((processed, total) => {
+    setVendorExportProgress({ processed, total });
+  });
+
+  const handleImportVendors = () => {
+    setVendorImportProgress({ processed: 0, total: 0 });
+    importVendors.mutate(undefined, {
+      onSettled: () => setVendorImportProgress(null),
+    });
+  };
+
+  const handleExportVendors = () => {
+    setVendorExportProgress({ processed: 0, total: 0 });
+    exportVendors.mutate(undefined, {
+      onSettled: () => setVendorExportProgress(null),
+    });
+  };
 
   // Handle OAuth callback
   useEffect(() => {
@@ -283,7 +304,7 @@ const QuickBooksSettings = () => {
                     <Button 
                       variant="outline" 
                       className="flex-1"
-                      onClick={() => importVendors.mutate()}
+                      onClick={handleImportVendors}
                       disabled={isSyncing}
                     >
                       <Download className="h-4 w-4 mr-2" />
@@ -292,23 +313,43 @@ const QuickBooksSettings = () => {
                     <Button 
                       variant="outline" 
                       className="flex-1"
-                      onClick={() => exportVendors.mutate()}
+                      onClick={handleExportVendors}
                       disabled={isSyncing}
                     >
                       <Upload className="h-4 w-4 mr-2" />
                       Export to QB
                     </Button>
                   </div>
-                  {importVendors.isPending && (
-                    <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                      <RefreshCw className="h-4 w-4 animate-spin" />
-                      Importing vendors...
+                  {importVendors.isPending && vendorImportProgress && (
+                    <div className="space-y-2">
+                      <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                        <RefreshCw className="h-4 w-4 animate-spin" />
+                        Importing vendors... ({vendorImportProgress.processed}/{vendorImportProgress.total})
+                      </div>
+                      {vendorImportProgress.total > 0 && (
+                        <div className="w-full bg-muted rounded-full h-2">
+                          <div 
+                            className="bg-primary h-2 rounded-full transition-all duration-300" 
+                            style={{ width: `${(vendorImportProgress.processed / vendorImportProgress.total) * 100}%` }}
+                          />
+                        </div>
+                      )}
                     </div>
                   )}
-                  {exportVendors.isPending && (
-                    <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                      <RefreshCw className="h-4 w-4 animate-spin" />
-                      Exporting vendors...
+                  {exportVendors.isPending && vendorExportProgress && (
+                    <div className="space-y-2">
+                      <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                        <RefreshCw className="h-4 w-4 animate-spin" />
+                        Exporting vendors... ({vendorExportProgress.processed}/{vendorExportProgress.total})
+                      </div>
+                      {vendorExportProgress.total > 0 && (
+                        <div className="w-full bg-muted rounded-full h-2">
+                          <div 
+                            className="bg-primary h-2 rounded-full transition-all duration-300" 
+                            style={{ width: `${(vendorExportProgress.processed / vendorExportProgress.total) * 100}%` }}
+                          />
+                        </div>
+                      )}
                     </div>
                   )}
                 </CardContent>

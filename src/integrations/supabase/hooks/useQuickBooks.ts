@@ -284,18 +284,39 @@ export const useQuickBooksVendorMappings = () => {
   });
 };
 
-export const useImportVendorsFromQB = () => {
+export const useImportVendorsFromQB = (onProgress?: (processed: number, total: number) => void) => {
   const queryClient = useQueryClient();
   
   return useMutation({
     mutationFn: async () => {
-      const { data, error } = await supabase.functions.invoke('quickbooks-sync-vendors', {
-        body: { action: 'import' },
-      });
-      
-      if (error) throw error;
-      if (data.error) throw new Error(data.error);
-      return data;
+      let startPosition = 0;
+      let totalImported = 0;
+      let totalUpdated = 0;
+      let totalSkipped = 0;
+      let totalCount = 0;
+      let hasMore = true;
+
+      while (hasMore) {
+        const { data, error } = await supabase.functions.invoke('quickbooks-sync-vendors', {
+          body: { action: 'import', startPosition },
+        });
+        
+        if (error) throw error;
+        if (data.error) throw new Error(data.error);
+        
+        totalImported += data.imported || 0;
+        totalUpdated += data.updated || 0;
+        totalSkipped += data.skipped || 0;
+        totalCount = data.totalCount || 0;
+        hasMore = data.hasMore || false;
+        startPosition = data.nextStartPosition || 0;
+        
+        if (onProgress) {
+          onProgress(data.processed || startPosition, totalCount);
+        }
+      }
+
+      return { imported: totalImported, updated: totalUpdated, skipped: totalSkipped, totalCount };
     },
     onSuccess: (data) => {
       queryClient.invalidateQueries({ queryKey: ['vendors'] });
@@ -309,18 +330,39 @@ export const useImportVendorsFromQB = () => {
   });
 };
 
-export const useExportVendorsToQB = () => {
+export const useExportVendorsToQB = (onProgress?: (processed: number, total: number) => void) => {
   const queryClient = useQueryClient();
   
   return useMutation({
     mutationFn: async () => {
-      const { data, error } = await supabase.functions.invoke('quickbooks-sync-vendors', {
-        body: { action: 'export' },
-      });
-      
-      if (error) throw error;
-      if (data.error) throw new Error(data.error);
-      return data;
+      let startPosition = 0;
+      let totalCreated = 0;
+      let totalUpdated = 0;
+      let totalErrors = 0;
+      let totalCount = 0;
+      let hasMore = true;
+
+      while (hasMore) {
+        const { data, error } = await supabase.functions.invoke('quickbooks-sync-vendors', {
+          body: { action: 'export', startPosition },
+        });
+        
+        if (error) throw error;
+        if (data.error) throw new Error(data.error);
+        
+        totalCreated += data.created || 0;
+        totalUpdated += data.updated || 0;
+        totalErrors += data.errors || 0;
+        totalCount = data.totalCount || 0;
+        hasMore = data.hasMore || false;
+        startPosition = data.nextStartPosition || 0;
+        
+        if (onProgress) {
+          onProgress(data.processed || startPosition, totalCount);
+        }
+      }
+
+      return { created: totalCreated, updated: totalUpdated, errors: totalErrors, totalCount };
     },
     onSuccess: (data) => {
       queryClient.invalidateQueries({ queryKey: ['quickbooks-vendor-mappings'] });

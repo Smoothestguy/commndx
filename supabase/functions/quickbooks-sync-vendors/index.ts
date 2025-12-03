@@ -13,6 +13,7 @@ const SUPABASE_URL = Deno.env.get('SUPABASE_URL')!;
 const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
 
 const QB_API_BASE = 'https://quickbooks.api.intuit.com/v3/company';
+const BATCH_SIZE = 100;
 
 async function getValidToken(supabase: any) {
   const { data: config, error } = await supabase
@@ -24,7 +25,6 @@ async function getValidToken(supabase: any) {
     throw new Error('QuickBooks not connected');
   }
 
-  // Check if token needs refresh (expires within 5 minutes)
   const tokenExpiry = new Date(config.token_expires_at);
   const now = new Date();
   const fiveMinutes = 5 * 60 * 1000;
@@ -92,37 +92,71 @@ serve(async (req) => {
 
   try {
     const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
-    const { action, vendorId, vendorData } = await req.json();
+    const { action, vendorId, startPosition = 0 } = await req.json();
 
     console.log('=== QuickBooks Vendor Sync ===');
-    console.log('Action:', action);
+    console.log('Action:', action, 'StartPosition:', startPosition);
 
     const { accessToken, realmId } = await getValidToken(supabase);
 
     if (action === 'import') {
-      // Import vendors from QuickBooks to Command-X
-      console.log('Importing vendors from QuickBooks...');
+      // First, get total count
+      const countQuery = "SELECT COUNT(*) FROM Vendor WHERE Active = true";
+      const countResult = await qbRequest('GET', `/query?query=${encodeURIComponent(countQuery)}`, accessToken, realmId);
+      const totalCount = countResult.QueryResponse?.totalCount || 0;
       
-      const query = "SELECT * FROM Vendor WHERE Active = true MAXRESULTS 1000";
+      console.log(`Total vendors in QuickBooks: ${totalCount}`);
+
+      // Import vendors with pagination - QB uses 1-based STARTPOSITION
+      const query = `SELECT * FROM Vendor WHERE Active = true STARTPOSITION ${startPosition + 1} MAXRESULTS ${BATCH_SIZE}`;
       const result = await qbRequest('GET', `/query?query=${encodeURIComponent(query)}`, accessToken, realmId);
       
       const qbVendors = result.QueryResponse?.Vendor || [];
-      console.log(`Found ${qbVendors.length} vendors in QuickBooks`);
+      console.log(`Fetched ${qbVendors.length} vendors (batch starting at ${startPosition})`);
+
+      if (qbVendors.length === 0) {
+        return new Response(JSON.stringify({ 
+          success: true, 
+          imported: 0, 
+          updated: 0, 
+          skipped: 0,
+          hasMore: false,
+          totalCount,
+          processed: startPosition
+        }), {
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        });
+      }
+
+      // Batch fetch existing mappings for this batch
+      const qbIds = qbVendors.map((v: any) => v.Id);
+      const { data: existingMappings } = await supabase
+        .from('quickbooks_vendor_mappings')
+        .select('quickbooks_vendor_id, vendor_id')
+        .in('quickbooks_vendor_id', qbIds);
+
+      const mappingMap = new Map((existingMappings || []).map((m: any) => [m.quickbooks_vendor_id, m.vendor_id]));
+
+      // Batch fetch existing vendors by email
+      const emails = qbVendors
+        .filter((v: any) => v.PrimaryEmailAddr?.Address)
+        .map((v: any) => v.PrimaryEmailAddr.Address.toLowerCase());
+      
+      const { data: existingVendors } = await supabase
+        .from('vendors')
+        .select('id, email')
+        .in('email', emails);
+
+      const vendorByEmail = new Map((existingVendors || []).map((v: any) => [v.email?.toLowerCase(), v.id]));
 
       let imported = 0;
       let updated = 0;
       let skipped = 0;
 
+      // Process vendors
       for (const qbVendor of qbVendors) {
         const qbVendorId = qbVendor.Id;
         
-        // Check if mapping exists
-        const { data: existingMapping } = await supabase
-          .from('quickbooks_vendor_mappings')
-          .select('vendor_id')
-          .eq('quickbooks_vendor_id', qbVendorId)
-          .single();
-
         const vendorData = {
           name: qbVendor.DisplayName || qbVendor.CompanyName || 'Unknown Vendor',
           email: qbVendor.PrimaryEmailAddr?.Address || `vendor-${qbVendorId}@placeholder.com`,
@@ -133,12 +167,14 @@ serve(async (req) => {
           status: 'active' as const,
         };
 
-        if (existingMapping) {
-          // Update existing vendor
+        const existingVendorId = mappingMap.get(qbVendorId);
+
+        if (existingVendorId) {
+          // Update existing mapped vendor
           await supabase
             .from('vendors')
             .update(vendorData)
-            .eq('id', existingMapping.vendor_id);
+            .eq('id', existingVendorId);
 
           await supabase
             .from('quickbooks_vendor_mappings')
@@ -151,32 +187,29 @@ serve(async (req) => {
           updated++;
         } else {
           // Check if vendor with same email exists
-          const { data: existingVendor } = await supabase
-            .from('vendors')
-            .select('id')
-            .eq('email', vendorData.email)
-            .single();
+          const emailMatch = vendorByEmail.get(vendorData.email.toLowerCase());
 
-          if (existingVendor) {
+          if (emailMatch) {
             // Create mapping for existing vendor
-            await supabase.from('quickbooks_vendor_mappings').insert({
-              vendor_id: existingVendor.id,
+            await supabase.from('quickbooks_vendor_mappings').upsert({
+              vendor_id: emailMatch,
               quickbooks_vendor_id: qbVendorId,
               sync_status: 'synced',
               sync_direction: 'import',
               last_synced_at: new Date().toISOString(),
-            });
+            }, { onConflict: 'quickbooks_vendor_id' });
             skipped++;
           } else {
             // Create new vendor
             const { data: newVendor, error: insertError } = await supabase
               .from('vendors')
               .insert(vendorData)
-              .select()
+              .select('id')
               .single();
 
             if (insertError) {
               console.error('Error creating vendor:', insertError);
+              skipped++;
               continue;
             }
 
@@ -194,35 +227,59 @@ serve(async (req) => {
         }
       }
 
-      // Log sync
-      await supabase.from('quickbooks_sync_logs').insert({
-        sync_type: 'vendor_import',
-        status: 'success',
-        records_synced: imported + updated,
-        details: { imported, updated, skipped, total: qbVendors.length },
-      });
+      const nextPosition = startPosition + qbVendors.length;
+      const hasMore = nextPosition < totalCount;
+
+      // Log sync only on final batch
+      if (!hasMore) {
+        await supabase.from('quickbooks_sync_logs').insert({
+          sync_type: 'vendor_import',
+          status: 'success',
+          records_synced: imported + updated,
+          details: { imported, updated, skipped, totalCount },
+        });
+      }
+
+      console.log(`Batch complete: imported=${imported}, updated=${updated}, skipped=${skipped}, hasMore=${hasMore}`);
 
       return new Response(JSON.stringify({ 
         success: true, 
         imported, 
         updated, 
         skipped,
-        total: qbVendors.length 
+        hasMore,
+        nextStartPosition: nextPosition,
+        totalCount,
+        processed: nextPosition
       }), {
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       });
     }
 
     if (action === 'export') {
-      // Export Command-X vendors to QuickBooks
-      console.log('Exporting vendors to QuickBooks...');
+      // Get total count first
+      const { count: totalCount } = await supabase
+        .from('vendors')
+        .select('*', { count: 'exact', head: true })
+        .eq('status', 'active');
 
+      // Export Command-X vendors to QuickBooks with pagination
       const { data: vendors, error: vendorsError } = await supabase
         .from('vendors')
         .select('*')
-        .eq('status', 'active');
+        .eq('status', 'active')
+        .range(startPosition, startPosition + BATCH_SIZE - 1);
 
       if (vendorsError) throw vendorsError;
+
+      // Batch fetch existing mappings
+      const vendorIds = (vendors || []).map(v => v.id);
+      const { data: existingMappings } = await supabase
+        .from('quickbooks_vendor_mappings')
+        .select('vendor_id, quickbooks_vendor_id')
+        .in('vendor_id', vendorIds);
+
+      const mappingMap = new Map((existingMappings || []).map((m: any) => [m.vendor_id, m.quickbooks_vendor_id]));
 
       let created = 0;
       let updated = 0;
@@ -230,12 +287,7 @@ serve(async (req) => {
 
       for (const vendor of vendors || []) {
         try {
-          // Check if mapping exists
-          const { data: existingMapping } = await supabase
-            .from('quickbooks_vendor_mappings')
-            .select('quickbooks_vendor_id')
-            .eq('vendor_id', vendor.id)
-            .single();
+          const qbVendorId = mappingMap.get(vendor.id);
 
           const qbVendorData = {
             DisplayName: vendor.name,
@@ -246,17 +298,16 @@ serve(async (req) => {
             AcctNum: vendor.license_number || undefined,
           };
 
-          if (existingMapping) {
+          if (qbVendorId) {
             // Get current vendor from QB to get SyncToken
-            const query = `SELECT * FROM Vendor WHERE Id = '${existingMapping.quickbooks_vendor_id}'`;
+            const query = `SELECT * FROM Vendor WHERE Id = '${qbVendorId}'`;
             const result = await qbRequest('GET', `/query?query=${encodeURIComponent(query)}`, accessToken, realmId);
             const currentVendor = result.QueryResponse?.Vendor?.[0];
 
             if (currentVendor) {
-              // Update existing vendor in QB
               const updateData = {
                 ...qbVendorData,
-                Id: existingMapping.quickbooks_vendor_id,
+                Id: qbVendorId,
                 SyncToken: currentVendor.SyncToken,
                 sparse: true,
               };
@@ -278,7 +329,6 @@ serve(async (req) => {
             const result = await qbRequest('POST', '/vendor', accessToken, realmId, qbVendorData);
             const newQbVendor = result.Vendor;
 
-            // Create mapping
             await supabase.from('quickbooks_vendor_mappings').insert({
               vendor_id: vendor.id,
               quickbooks_vendor_id: newQbVendor.Id,
@@ -295,20 +345,28 @@ serve(async (req) => {
         }
       }
 
-      // Log sync
-      await supabase.from('quickbooks_sync_logs').insert({
-        sync_type: 'vendor_export',
-        status: errors > 0 ? 'partial' : 'success',
-        records_synced: created + updated,
-        details: { created, updated, errors, total: vendors?.length || 0 },
-      });
+      const nextPosition = startPosition + (vendors?.length || 0);
+      const hasMore = nextPosition < (totalCount || 0);
+
+      // Log sync only on final batch
+      if (!hasMore) {
+        await supabase.from('quickbooks_sync_logs').insert({
+          sync_type: 'vendor_export',
+          status: errors > 0 ? 'partial' : 'success',
+          records_synced: created + updated,
+          details: { created, updated, errors, totalCount },
+        });
+      }
 
       return new Response(JSON.stringify({ 
         success: true, 
         created, 
         updated, 
         errors,
-        total: vendors?.length || 0 
+        hasMore,
+        nextStartPosition: nextPosition,
+        totalCount: totalCount || 0,
+        processed: nextPosition
       }), {
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       });
@@ -328,7 +386,6 @@ serve(async (req) => {
         throw new Error('Vendor not found');
       }
 
-      // Check if mapping exists
       const { data: existingMapping } = await supabase
         .from('quickbooks_vendor_mappings')
         .select('quickbooks_vendor_id')
@@ -347,7 +404,6 @@ serve(async (req) => {
       let qbVendorId: string;
 
       if (existingMapping) {
-        // Get current vendor from QB
         const query = `SELECT * FROM Vendor WHERE Id = '${existingMapping.quickbooks_vendor_id}'`;
         const result = await qbRequest('GET', `/query?query=${encodeURIComponent(query)}`, accessToken, realmId);
         const currentVendor = result.QueryResponse?.Vendor?.[0];
@@ -366,11 +422,9 @@ serve(async (req) => {
           throw new Error('QuickBooks vendor not found');
         }
       } else {
-        // Create new vendor in QB
         const result = await qbRequest('POST', '/vendor', accessToken, realmId, qbVendorData);
         qbVendorId = result.Vendor.Id;
 
-        // Create mapping
         await supabase.from('quickbooks_vendor_mappings').insert({
           vendor_id: vendorId,
           quickbooks_vendor_id: qbVendorId,
@@ -380,7 +434,6 @@ serve(async (req) => {
         });
       }
 
-      // Update mapping
       await supabase
         .from('quickbooks_vendor_mappings')
         .update({
