@@ -75,6 +75,10 @@ export function InvoiceForm({ onSubmit, initialData, jobOrderId }: InvoiceFormPr
   const [customerComboboxOpen, setCustomerComboboxOpen] = useState(false);
   const [productComboboxOpen, setProductComboboxOpen] = useState<Record<string, boolean>>({});
 
+  // Search states for comboboxes
+  const [customerSearch, setCustomerSearch] = useState("");
+  const [productSearch, setProductSearch] = useState<Record<string, string>>({});
+
   // QuickBooks integration
   const { data: qbConfig } = useQuickBooksConfig();
   const isQBConnected = qbConfig?.is_connected ?? false;
@@ -380,7 +384,11 @@ export function InvoiceForm({ onSubmit, initialData, jobOrderId }: InvoiceFormPr
                 </PopoverTrigger>
                 <PopoverContent className="w-[--radix-popover-trigger-width] p-0 z-50 bg-popover" align="start">
                   <Command>
-                    <CommandInput placeholder="Search customers..." />
+                    <CommandInput 
+                      placeholder="Search customers..." 
+                      value={customerSearch}
+                      onValueChange={setCustomerSearch}
+                    />
                     <CommandList>
                       <CommandEmpty>No customer found.</CommandEmpty>
                       <CommandGroup>
@@ -391,6 +399,7 @@ export function InvoiceForm({ onSubmit, initialData, jobOrderId }: InvoiceFormPr
                             onSelect={() => {
                               handleCustomerChange(c.id);
                               setCustomerComboboxOpen(false);
+                              setCustomerSearch("");
                             }}
                           >
                             <Check
@@ -602,7 +611,11 @@ export function InvoiceForm({ onSubmit, initialData, jobOrderId }: InvoiceFormPr
                   </PopoverTrigger>
                   <PopoverContent className="w-[--radix-popover-trigger-width] p-0 z-50 bg-popover" align="start">
                     <Command>
-                      <CommandInput placeholder="Search by name, SKU, or category..." />
+                      <CommandInput 
+                        placeholder="Search by name, SKU, or category..." 
+                        value={productSearch[item.id] || ""}
+                        onValueChange={(v) => setProductSearch(prev => ({ ...prev, [item.id]: v }))}
+                      />
                       <CommandList>
                         <CommandEmpty>No products found.</CommandEmpty>
                         {getProductsByType('product').length > 0 && (
@@ -611,7 +624,10 @@ export function InvoiceForm({ onSubmit, initialData, jobOrderId }: InvoiceFormPr
                               <CommandItem
                                 key={product.id}
                                 value={`${product.name} ${product.sku || ""} ${product.category}`}
-                                onSelect={() => handleProductSelect(item.id, product)}
+                                onSelect={() => {
+                                  handleProductSelect(item.id, product);
+                                  setProductSearch(prev => ({ ...prev, [item.id]: "" }));
+                                }}
                               >
                                 <Check
                                   className={cn(
@@ -635,7 +651,10 @@ export function InvoiceForm({ onSubmit, initialData, jobOrderId }: InvoiceFormPr
                               <CommandItem
                                 key={product.id}
                                 value={`${product.name} ${product.sku || ""} ${product.category}`}
-                                onSelect={() => handleProductSelect(item.id, product)}
+                                onSelect={() => {
+                                  handleProductSelect(item.id, product);
+                                  setProductSearch(prev => ({ ...prev, [item.id]: "" }));
+                                }}
                               >
                                 <Check
                                   className={cn(
@@ -659,7 +678,10 @@ export function InvoiceForm({ onSubmit, initialData, jobOrderId }: InvoiceFormPr
                               <CommandItem
                                 key={product.id}
                                 value={`${product.name} ${product.sku || ""} ${product.category}`}
-                                onSelect={() => handleProductSelect(item.id, product)}
+                                onSelect={() => {
+                                  handleProductSelect(item.id, product);
+                                  setProductSearch(prev => ({ ...prev, [item.id]: "" }));
+                                }}
                               >
                                 <Check
                                   className={cn(
