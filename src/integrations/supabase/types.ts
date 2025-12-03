@@ -2694,6 +2694,7 @@ export type Database = {
           specialty: string | null
           status: Database["public"]["Enums"]["vendor_status"]
           updated_at: string
+          vendor_type: Database["public"]["Enums"]["vendor_type"]
           w9_on_file: boolean | null
         }
         Insert: {
@@ -2709,6 +2710,7 @@ export type Database = {
           specialty?: string | null
           status?: Database["public"]["Enums"]["vendor_status"]
           updated_at?: string
+          vendor_type?: Database["public"]["Enums"]["vendor_type"]
           w9_on_file?: boolean | null
         }
         Update: {
@@ -2724,6 +2726,7 @@ export type Database = {
           specialty?: string | null
           status?: Database["public"]["Enums"]["vendor_status"]
           updated_at?: string
+          vendor_type?: Database["public"]["Enums"]["vendor_type"]
           w9_on_file?: boolean | null
         }
         Relationships: []
@@ -2882,6 +2885,7 @@ export type Database = {
       task_priority: "low" | "medium" | "high" | "urgent"
       task_status: "pending" | "in_progress" | "completed" | "cancelled"
       vendor_status: "active" | "inactive"
+      vendor_type: "contractor" | "personnel" | "supplier"
       warranty_status: "active" | "expired" | "claimed" | "voided"
       warranty_type: "manufacturer" | "workmanship" | "extended"
       work_auth_type:
@@ -3103,6 +3107,7 @@ export const Constants = {
       task_priority: ["low", "medium", "high", "urgent"],
       task_status: ["pending", "in_progress", "completed", "cancelled"],
       vendor_status: ["active", "inactive"],
+      vendor_type: ["contractor", "personnel", "supplier"],
       warranty_status: ["active", "expired", "claimed", "voided"],
       warranty_type: ["manufacturer", "workmanship", "extended"],
       work_auth_type: [
