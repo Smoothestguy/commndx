@@ -1,12 +1,18 @@
 import { Badge } from "@/components/ui/badge";
-import { X } from "lucide-react";
+import { X, ArrowUpAZ, ArrowDownAZ } from "lucide-react";
 import { VendorType } from "@/integrations/supabase/hooks/useVendors";
+
+type SortField = "name" | "company" | "vendor_type";
 
 interface VendorFiltersProps {
   statusFilter: "all" | "active" | "inactive";
   onStatusFilterChange: (status: "all" | "active" | "inactive") => void;
   typeFilter?: "all" | VendorType;
   onTypeFilterChange?: (type: "all" | VendorType) => void;
+  sortBy?: SortField;
+  onSortByChange?: (sortBy: SortField) => void;
+  sortOrder?: "asc" | "desc";
+  onSortOrderChange?: (order: "asc" | "desc") => void;
 }
 
 export const VendorFilters = ({
@@ -14,6 +20,10 @@ export const VendorFilters = ({
   onStatusFilterChange,
   typeFilter = "all",
   onTypeFilterChange,
+  sortBy = "name",
+  onSortByChange,
+  sortOrder = "asc",
+  onSortOrderChange,
 }: VendorFiltersProps) => {
   const statusFilters = [
     { value: "all" as const, label: "All" },
@@ -26,6 +36,12 @@ export const VendorFilters = ({
     { value: "contractor" as const, label: "Contractor" },
     { value: "personnel" as const, label: "Personnel" },
     { value: "supplier" as const, label: "Supplier" },
+  ];
+
+  const sortFields = [
+    { value: "name" as const, label: "Name" },
+    { value: "company" as const, label: "Company" },
+    { value: "vendor_type" as const, label: "Type" },
   ];
 
   const hasActiveFilters = statusFilter !== "all" || typeFilter !== "all";
@@ -70,6 +86,39 @@ export const VendorFilters = ({
                 {filter.label}
               </button>
             ))}
+          </div>
+        </div>
+      )}
+
+      {/* Sort Options */}
+      {onSortByChange && onSortOrderChange && (
+        <div>
+          <p className="text-sm text-muted-foreground mb-2">Sort by</p>
+          <div className="flex flex-wrap items-center gap-2">
+            {sortFields.map((field) => (
+              <button
+                key={field.value}
+                onClick={() => onSortByChange(field.value)}
+                className={`px-4 py-2 rounded-full text-sm font-medium transition-all ${
+                  sortBy === field.value
+                    ? "bg-primary text-primary-foreground shadow-lg"
+                    : "bg-secondary text-muted-foreground hover:bg-secondary/80"
+                }`}
+              >
+                {field.label}
+              </button>
+            ))}
+            <button
+              onClick={() => onSortOrderChange(sortOrder === "asc" ? "desc" : "asc")}
+              className="px-3 py-2 rounded-full bg-secondary text-muted-foreground hover:bg-secondary/80 transition-all flex items-center gap-1"
+            >
+              {sortOrder === "asc" ? (
+                <ArrowUpAZ className="h-4 w-4" />
+              ) : (
+                <ArrowDownAZ className="h-4 w-4" />
+              )}
+              <span className="text-sm font-medium">{sortOrder === "asc" ? "A-Z" : "Z-A"}</span>
+            </button>
           </div>
         </div>
       )}

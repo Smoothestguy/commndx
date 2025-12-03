@@ -69,6 +69,8 @@ const Vendors = () => {
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState<"all" | "active" | "inactive">("all");
   const [typeFilter, setTypeFilter] = useState<"all" | VendorType>("all");
+  const [sortBy, setSortBy] = useState<"name" | "company" | "vendor_type">("name");
+  const [sortOrder, setSortOrder] = useState<"asc" | "desc">("asc");
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [editingVendor, setEditingVendor] = useState<Vendor | null>(null);
 
@@ -92,17 +94,24 @@ const Vendors = () => {
   });
 
   const filteredVendors =
-    vendors?.filter((v) => {
-      const matchesSearch =
-        v.name.toLowerCase().includes(search.toLowerCase()) ||
-        (v.specialty && v.specialty.toLowerCase().includes(search.toLowerCase())) ||
-        (v.company && v.company.toLowerCase().includes(search.toLowerCase()));
+    vendors
+      ?.filter((v) => {
+        const matchesSearch =
+          v.name.toLowerCase().includes(search.toLowerCase()) ||
+          (v.specialty && v.specialty.toLowerCase().includes(search.toLowerCase())) ||
+          (v.company && v.company.toLowerCase().includes(search.toLowerCase()));
 
-      const matchesStatus = statusFilter === "all" || v.status === statusFilter;
-      const matchesType = typeFilter === "all" || v.vendor_type === typeFilter;
+        const matchesStatus = statusFilter === "all" || v.status === statusFilter;
+        const matchesType = typeFilter === "all" || v.vendor_type === typeFilter;
 
-      return matchesSearch && matchesStatus && matchesType;
-    }) || [];
+        return matchesSearch && matchesStatus && matchesType;
+      })
+      .sort((a, b) => {
+        const aVal = (a[sortBy] || "").toLowerCase();
+        const bVal = (b[sortBy] || "").toLowerCase();
+        const comparison = aVal.localeCompare(bVal);
+        return sortOrder === "asc" ? comparison : -comparison;
+      }) || [];
 
   // Calculate stats
   const total = vendors?.length || 0;
@@ -312,6 +321,10 @@ const Vendors = () => {
             onStatusFilterChange={setStatusFilter}
             typeFilter={typeFilter}
             onTypeFilterChange={setTypeFilter}
+            sortBy={sortBy}
+            onSortByChange={setSortBy}
+            sortOrder={sortOrder}
+            onSortOrderChange={setSortOrder}
           />
 
           {/* Loading & Error States */}
