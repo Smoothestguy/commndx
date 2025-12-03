@@ -38,6 +38,7 @@ import {
   CheckSquare,
   FileWarning,
   BarChart3,
+  IdCard,
 } from "lucide-react";
 
 const navigation = [
@@ -56,6 +57,7 @@ const navigation = [
 const staffingNavigation = [
   { name: "Time Tracking", href: "/time-tracking", icon: Clock },
   { name: "Project Assignments", href: "/project-assignments", icon: UserCog, requiresManager: true },
+  { name: "Badge Templates", href: "/badge-templates", icon: IdCard, requiresManager: true },
 ];
 
 const roofingCrmNavigation = [
