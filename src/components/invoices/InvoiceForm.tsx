@@ -743,12 +743,16 @@ export function InvoiceForm({ onSubmit, initialData, jobOrderId }: InvoiceFormPr
                 </div>
                 <div className="space-y-2">
                   <Label>Unit Price</Label>
-                  <Input
-                    type="number"
-                    step="0.01"
-                    value={item.unitPrice}
-                    onChange={(e) => updateLineItem(item.id, "unitPrice", parseFloat(e.target.value) || 0)}
-                  />
+                  <div className="relative">
+                    <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground">$</span>
+                    <Input
+                      type="number"
+                      step="0.01"
+                      value={item.unitPrice}
+                      onChange={(e) => updateLineItem(item.id, "unitPrice", parseFloat(e.target.value) || 0)}
+                      className="pl-7"
+                    />
+                  </div>
                 </div>
               </div>
               
