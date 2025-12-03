@@ -15,13 +15,24 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Label } from "@/components/ui/label";
-import { MessageSquare, Send, CheckCircle, AlertCircle, Clock, Users } from "lucide-react";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import {
+  Command,
+  CommandEmpty,
+  CommandGroup,
+  CommandInput,
+  CommandItem,
+  CommandList,
+} from "@/components/ui/command";
+import { MessageSquare, Send, CheckCircle, AlertCircle, Clock, Users, Check, ChevronsUpDown } from "lucide-react";
+import { cn } from "@/lib/utils";
 import { SEO } from "@/components/SEO";
 
 export default function Messages() {
   const [sendDialogOpen, setSendDialogOpen] = useState(false);
   const [selectedRecipientType, setSelectedRecipientType] = useState<'customer' | 'personnel'>('customer');
   const [selectedRecipientId, setSelectedRecipientId] = useState<string>("");
+  const [recipientOpen, setRecipientOpen] = useState(false);
   
   const { data: stats } = useMessageStats();
   const { data: customers } = useCustomers();
@@ -127,18 +138,52 @@ export default function Messages() {
 
               <div className="space-y-2 flex-[2]">
                 <Label>Select Recipient</Label>
-                <Select value={selectedRecipientId} onValueChange={setSelectedRecipientId}>
-                  <SelectTrigger>
-                    <SelectValue placeholder="Choose a recipient..." />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {recipientList?.map((recipient) => (
-                      <SelectItem key={recipient.id} value={recipient.id}>
-                        {recipient.name} - {recipient.phone}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+                <Popover open={recipientOpen} onOpenChange={setRecipientOpen}>
+                  <PopoverTrigger asChild>
+                    <Button
+                      variant="outline"
+                      role="combobox"
+                      aria-expanded={recipientOpen}
+                      className="w-full justify-between"
+                    >
+                      {selectedRecipientId
+                        ? recipientList?.find((r) => r.id === selectedRecipientId)?.name
+                        : "Search for a recipient..."}
+                      <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                    </Button>
+                  </PopoverTrigger>
+                  <PopoverContent className="w-[400px] p-0" align="start">
+                    <Command>
+                      <CommandInput placeholder="Search by name or phone..." />
+                      <CommandList>
+                        <CommandEmpty>No recipient found.</CommandEmpty>
+                        <CommandGroup>
+                          {recipientList?.map((recipient) => (
+                            <CommandItem
+                              key={recipient.id}
+                              value={`${recipient.name} ${recipient.phone}`}
+                              onSelect={() => {
+                                setSelectedRecipientId(recipient.id);
+                                setRecipientOpen(false);
+                              }}
+                            >
+                              <Check
+                                className={cn(
+                                  "mr-2 h-4 w-4",
+                                  selectedRecipientId === recipient.id ? "opacity-100" : "opacity-0"
+                                )}
+                              />
+                              <div className="flex flex-col">
+                                <span>{recipient.name}</span>
+                                <span className="text-xs text-muted-foreground">{recipient.phone}</span>
+                              </div>
+                            </CommandItem>
+                          ))}
+                        </CommandGroup>
+                      </CommandList>
+                    </Command>
+                  </PopoverContent>
+                </Popover>
               </div>
 
               <div className="flex items-end">
