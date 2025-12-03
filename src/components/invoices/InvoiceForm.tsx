@@ -694,10 +694,19 @@ export function InvoiceForm({ onSubmit, initialData, jobOrderId }: InvoiceFormPr
                 </div>
                 <Textarea
                   value={item.description}
-                  onChange={(e) => updateLineItem(item.id, "description", e.target.value)}
+                  onChange={(e) => {
+                    updateLineItem(item.id, "description", e.target.value);
+                    e.target.style.height = 'auto';
+                    e.target.style.height = e.target.scrollHeight + 'px';
+                  }}
                   placeholder="Item description"
-                  rows={3}
-                  className="resize-none"
+                  className="min-h-[80px] resize-none overflow-hidden"
+                  ref={(el) => {
+                    if (el) {
+                      el.style.height = 'auto';
+                      el.style.height = el.scrollHeight + 'px';
+                    }
+                  }}
                 />
               </div>
               
