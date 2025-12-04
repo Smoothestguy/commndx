@@ -43,6 +43,7 @@ import ApproveEstimate from "./pages/ApproveEstimate";
 import Personnel from "./pages/Personnel";
 import PersonnelDetail from "./pages/PersonnelDetail";
 import PersonnelRegistrationPortal from "./pages/PersonnelRegistrationPortal";
+import PersonnelInviteRegister from "./pages/PersonnelInviteRegister";
 import BadgeTemplates from "./pages/BadgeTemplates";
 import BadgeTemplateEditor from "./pages/BadgeTemplateEditor";
 import RoofInspections from "./pages/RoofInspections";
@@ -98,6 +99,10 @@ const App = () => {
                 <Route
                   path="/personnel/register"
                   element={<PersonnelRegistrationPortal />}
+                />
+                <Route
+                  path="/register/:token"
+                  element={<PersonnelInviteRegister />}
                 />
                 <Route path="/legal/privacy" element={<PrivacyPolicy />} />
                 <Route path="/legal/eula" element={<EULA />} />

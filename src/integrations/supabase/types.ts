@@ -1628,6 +1628,48 @@ export type Database = {
           },
         ]
       }
+      personnel_registration_invites: {
+        Row: {
+          completed_at: string | null
+          created_at: string | null
+          email: string
+          expires_at: string
+          first_name: string | null
+          id: string
+          invited_by: string
+          last_name: string | null
+          status: string
+          token: string
+          updated_at: string | null
+        }
+        Insert: {
+          completed_at?: string | null
+          created_at?: string | null
+          email: string
+          expires_at?: string
+          first_name?: string | null
+          id?: string
+          invited_by: string
+          last_name?: string | null
+          status?: string
+          token?: string
+          updated_at?: string | null
+        }
+        Update: {
+          completed_at?: string | null
+          created_at?: string | null
+          email?: string
+          expires_at?: string
+          first_name?: string | null
+          id?: string
+          invited_by?: string
+          last_name?: string | null
+          status?: string
+          token?: string
+          updated_at?: string | null
+        }
+        Relationships: []
+      }
       personnel_registrations: {
         Row: {
           address: string | null

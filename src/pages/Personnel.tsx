@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Plus, Upload, Download, CheckSquare, XSquare, Printer, Link, Copy } from "lucide-react";
+import { Plus, Upload, Download, CheckSquare, XSquare, Printer, Link, Mail } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import {
@@ -16,6 +16,7 @@ import { PersonnelCard } from "@/components/personnel/PersonnelCard";
 import { PersonnelEmptyState } from "@/components/personnel/PersonnelEmptyState";
 import { PersonnelForm } from "@/components/personnel/PersonnelForm";
 import { PersonnelImportDialog } from "@/components/personnel/PersonnelImportDialog";
+import { InvitePersonnelDialog } from "@/components/personnel/InvitePersonnelDialog";
 import { BulkBadgeGenerator } from "@/components/badges/BulkBadgeGenerator";
 import { PendingRegistrations } from "@/components/personnel/PendingRegistrations";
 import { usePersonnel } from "@/integrations/supabase/hooks/usePersonnel";
@@ -32,6 +33,7 @@ const Personnel = () => {
   const [everifyStatus, setEverifyStatus] = useState("all");
   const [addDialogOpen, setAddDialogOpen] = useState(false);
   const [importDialogOpen, setImportDialogOpen] = useState(false);
+  const [inviteDialogOpen, setInviteDialogOpen] = useState(false);
   const [bulkBadgeDialogOpen, setBulkBadgeDialogOpen] = useState(false);
   const [selectionMode, setSelectionMode] = useState(false);
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
@@ -140,6 +142,10 @@ const Personnel = () => {
                     </DropdownMenuItem>
                   </DropdownMenuContent>
                 </DropdownMenu>
+                <Button variant="outline" onClick={() => setInviteDialogOpen(true)} className="w-full sm:w-auto">
+                  <Mail className="mr-2 h-4 w-4" />
+                  Invite
+                </Button>
                 <Button onClick={() => setAddDialogOpen(true)} className="w-full sm:w-auto">
                   <Plus className="mr-2 h-4 w-4" />
                   Add Personnel
@@ -213,6 +219,11 @@ const Personnel = () => {
         open={bulkBadgeDialogOpen}
         onOpenChange={setBulkBadgeDialogOpen}
         preselectedIds={selectedIds}
+      />
+
+      <InvitePersonnelDialog
+        open={inviteDialogOpen}
+        onOpenChange={setInviteDialogOpen}
       />
     </PageLayout>
   );
