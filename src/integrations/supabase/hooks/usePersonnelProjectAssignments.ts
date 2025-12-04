@@ -173,6 +173,8 @@ export function useBulkAssignPersonnelToProject() {
         personnel_id: personnelId,
         project_id: projectId,
         assigned_by: user?.id || null,
+        status: 'active',
+        assigned_at: new Date().toISOString(),
       }));
 
       const { data, error } = await supabase
