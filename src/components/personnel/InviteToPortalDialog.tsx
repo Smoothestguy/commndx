@@ -2,8 +2,7 @@ import { useState } from "react";
 import { useSendPortalInvitation } from "@/integrations/supabase/hooks/usePortal";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
-import { Mail, UserPlus, Copy, Check } from "lucide-react";
-import { toast } from "sonner";
+import { Mail, UserPlus, Check } from "lucide-react";
 
 interface InviteToPortalDialogProps {
   personnelId: string;
@@ -21,28 +20,19 @@ export function InviteToPortalDialog({
   isLinked 
 }: InviteToPortalDialogProps) {
   const [open, setOpen] = useState(false);
-  const [copied, setCopied] = useState(false);
   const sendInvitation = useSendPortalInvitation();
 
   const handleSendInvitation = async () => {
     try {
-      const result = await sendInvitation.mutateAsync({
+      await sendInvitation.mutateAsync({
         personnelId,
         email: personnelEmail,
+        personnelName,
       });
       
-      // Generate the invitation link
-      const inviteLink = `${window.location.origin}/portal/accept-invite/${result.token}`;
-      
-      // Copy to clipboard
-      await navigator.clipboard.writeText(inviteLink);
-      setCopied(true);
-      toast.success("Invitation created and link copied to clipboard!");
-      
       setTimeout(() => {
-        setCopied(false);
         setOpen(false);
-      }, 2000);
+      }, 1500);
     } catch (error) {
       // Error is handled by the hook
     }
@@ -69,7 +59,7 @@ export function InviteToPortalDialog({
         <DialogHeader>
           <DialogTitle>Invite to Personnel Portal</DialogTitle>
           <DialogDescription>
-            Send a portal invitation to {personnelName}
+            Send an email invitation to {personnelName}
           </DialogDescription>
         </DialogHeader>
         
@@ -85,11 +75,11 @@ export function InviteToPortalDialog({
           </div>
           
           <div className="text-sm text-muted-foreground">
-            <p>This will:</p>
+            <p>This will send an email with:</p>
             <ul className="list-disc list-inside mt-2 space-y-1">
-              <li>Create a portal invitation link</li>
-              <li>Copy the link to your clipboard</li>
-              <li>Allow them to create an account and access the portal</li>
+              <li>A secure invitation link</li>
+              <li>Instructions to create their portal account</li>
+              <li>Overview of portal features</li>
             </ul>
           </div>
           
@@ -105,19 +95,19 @@ export function InviteToPortalDialog({
             </Button>
             <Button 
               onClick={handleSendInvitation} 
-              disabled={sendInvitation.isPending || copied}
+              disabled={sendInvitation.isPending || sendInvitation.isSuccess}
             >
-              {copied ? (
+              {sendInvitation.isSuccess ? (
                 <>
                   <Check className="h-4 w-4 mr-2" />
-                  Link Copied!
+                  Invitation Sent!
                 </>
               ) : sendInvitation.isPending ? (
-                "Creating..."
+                "Sending..."
               ) : (
                 <>
-                  <Copy className="h-4 w-4 mr-2" />
-                  Create & Copy Link
+                  <Mail className="h-4 w-4 mr-2" />
+                  Send Invitation
                 </>
               )}
             </Button>
