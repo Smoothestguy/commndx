@@ -62,6 +62,15 @@ import Messages from "./pages/Messages";
 import PrivacyPolicy from "./pages/legal/PrivacyPolicy";
 import EULA from "./pages/legal/EULA";
 import NotFound from "./pages/NotFound";
+import PortalDashboard from "./pages/portal/PortalDashboard";
+import PortalHours from "./pages/portal/PortalHours";
+import PortalProjects from "./pages/portal/PortalProjects";
+import PortalReimbursements from "./pages/portal/PortalReimbursements";
+import PortalNotifications from "./pages/portal/PortalNotifications";
+import PortalSettings from "./pages/portal/PortalSettings";
+import PortalLogin from "./pages/portal/PortalLogin";
+import AcceptPortalInvitation from "./pages/portal/AcceptPortalInvitation";
+import { PortalProtectedRoute } from "./components/portal/PortalProtectedRoute";
 
 const queryClient = new QueryClient();
 
@@ -92,6 +101,15 @@ const App = () => {
                 />
                 <Route path="/legal/privacy" element={<PrivacyPolicy />} />
                 <Route path="/legal/eula" element={<EULA />} />
+                {/* Portal Routes */}
+                <Route path="/portal/login" element={<PortalLogin />} />
+                <Route path="/portal/accept-invite/:token" element={<AcceptPortalInvitation />} />
+                <Route path="/portal" element={<PortalProtectedRoute><PortalDashboard /></PortalProtectedRoute>} />
+                <Route path="/portal/hours" element={<PortalProtectedRoute><PortalHours /></PortalProtectedRoute>} />
+                <Route path="/portal/projects" element={<PortalProtectedRoute><PortalProjects /></PortalProtectedRoute>} />
+                <Route path="/portal/reimbursements" element={<PortalProtectedRoute><PortalReimbursements /></PortalProtectedRoute>} />
+                <Route path="/portal/notifications" element={<PortalProtectedRoute><PortalNotifications /></PortalProtectedRoute>} />
+                <Route path="/portal/settings" element={<PortalProtectedRoute><PortalSettings /></PortalProtectedRoute>} />
                 <Route
                   path="/"
                   element={

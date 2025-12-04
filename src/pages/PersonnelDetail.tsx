@@ -17,6 +17,7 @@ import { PersonnelForm } from "@/components/personnel/PersonnelForm";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { SendSMSDialog } from "@/components/messaging/SendSMSDialog";
 import { MessageHistory } from "@/components/messaging/MessageHistory";
+import { InviteToPortalDialog } from "@/components/personnel/InviteToPortalDialog";
 
 const PersonnelDetail = () => {
   const { id } = useParams<{ id: string }>();
