@@ -217,10 +217,16 @@ export const PersonnelForm = ({ personnel, onSuccess, onCancel }: PersonnelFormP
                 </Select>
               </div>
 
-              <div className="space-y-2">
-                <Label htmlFor="work_auth_expiry">Authorization Expiry Date</Label>
-                <Input id="work_auth_expiry" type="date" {...register("work_auth_expiry")} />
-              </div>
+              {/* Only show expiry for work types that require it */}
+              {["work_visa", "ead", "other"].includes(watch("work_authorization_type") || "") && (
+                <div className="space-y-2">
+                  <Label htmlFor="work_auth_expiry">Authorization Expiry Date *</Label>
+                  <Input id="work_auth_expiry" type="date" {...register("work_auth_expiry")} />
+                  <p className="text-sm text-muted-foreground">
+                    Required for this authorization type
+                  </p>
+                </div>
+              )}
             </CardContent>
           </Card>
 
