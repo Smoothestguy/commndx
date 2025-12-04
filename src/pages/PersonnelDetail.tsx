@@ -193,6 +193,12 @@ const PersonnelDetail = () => {
                     <MessageSquare className="mr-2 h-4 w-4" />
                     Send SMS
                   </Button>
+                  <InviteToPortalDialog
+                    personnelId={personnel.id}
+                    personnelName={`${personnel.first_name} ${personnel.last_name}`}
+                    personnelEmail={personnel.email}
+                    isLinked={!!personnel.user_id}
+                  />
                 </div>
               </div>
             </div>
