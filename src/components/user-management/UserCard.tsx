@@ -1,7 +1,9 @@
 import { useState } from "react";
-import { User, Mail, Calendar, Loader2 } from "lucide-react";
+import { User, Mail, Calendar, Loader2, Shield } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { UserPermissionsDialog } from "./UserPermissionsDialog";
 import type { Database } from "@/integrations/supabase/types";
 import { format } from "date-fns";
 
@@ -25,6 +27,7 @@ interface UserCardProps {
 
 export function UserCard({ user, onRoleChange, isUpdating, index }: UserCardProps) {
   const [isChangingRole, setIsChangingRole] = useState(false);
+  const [permissionsOpen, setPermissionsOpen] = useState(false);
 
   const handleRoleChange = async (newRole: AppRole) => {
     setIsChangingRole(true);
@@ -62,81 +65,102 @@ export function UserCard({ user, onRoleChange, isUpdating, index }: UserCardProp
   };
 
   return (
-    <div
-      className={`glass rounded-xl p-6 border-l-4 ${getRoleBorderColor(user.role)} hover:shadow-lg hover:shadow-primary/20 transition-all duration-300`}
-      style={{ animationDelay: `${index * 50}ms` }}
-    >
-      <div className="flex items-start gap-4">
-        {/* Avatar */}
-        <div className="flex-shrink-0">
-          <div className="w-12 h-12 rounded-full bg-primary/10 flex items-center justify-center">
-            <span className="text-lg font-semibold text-primary">{getInitials()}</span>
-          </div>
-        </div>
-
-        {/* User Info */}
-        <div className="flex-1 min-w-0 space-y-3">
-          {/* Name and Role Badge */}
-          <div className="flex items-center justify-between gap-3">
-            <h3 className="font-semibold text-lg truncate">{getDisplayName()}</h3>
-            <Badge variant={getRoleBadgeVariant(user.role)} className="capitalize flex-shrink-0">
-              {user.role || "No role"}
-            </Badge>
+    <>
+      <div
+        className={`glass rounded-xl p-6 border-l-4 ${getRoleBorderColor(user.role)} hover:shadow-lg hover:shadow-primary/20 transition-all duration-300`}
+        style={{ animationDelay: `${index * 50}ms` }}
+      >
+        <div className="flex items-start gap-4">
+          {/* Avatar */}
+          <div className="flex-shrink-0">
+            <div className="w-12 h-12 rounded-full bg-primary/10 flex items-center justify-center">
+              <span className="text-lg font-semibold text-primary">{getInitials()}</span>
+            </div>
           </div>
 
-          {/* Email */}
-          <div className="flex items-center gap-2 text-sm text-muted-foreground">
-            <Mail className="h-4 w-4 flex-shrink-0" />
-            <span className="truncate">{user.email}</span>
-          </div>
+          {/* User Info */}
+          <div className="flex-1 min-w-0 space-y-3">
+            {/* Name and Role Badge */}
+            <div className="flex items-center justify-between gap-3">
+              <h3 className="font-semibold text-lg truncate">{getDisplayName()}</h3>
+              <Badge variant={getRoleBadgeVariant(user.role)} className="capitalize flex-shrink-0">
+                {user.role || "No role"}
+              </Badge>
+            </div>
 
-          {/* Joined Date */}
-          <div className="flex items-center gap-2 text-sm text-muted-foreground">
-            <Calendar className="h-4 w-4 flex-shrink-0" />
-            <span>Joined {format(new Date(user.created_at), "MMM d, yyyy")}</span>
-          </div>
+            {/* Email */}
+            <div className="flex items-center gap-2 text-sm text-muted-foreground">
+              <Mail className="h-4 w-4 flex-shrink-0" />
+              <span className="truncate">{user.email}</span>
+            </div>
 
-          {/* Role Change Selector */}
-          <div className="pt-2">
-            <Select
-              value={user.role || ""}
-              onValueChange={handleRoleChange}
-              disabled={isUpdating || isChangingRole}
-            >
-              <SelectTrigger className="w-full">
-                {(isUpdating || isChangingRole) ? (
-                  <div className="flex items-center gap-2">
-                    <Loader2 className="h-4 w-4 animate-spin" />
-                    <span>Updating...</span>
-                  </div>
-                ) : (
-                  <SelectValue placeholder="Change role" />
-                )}
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="admin">
-                  <div className="flex items-center gap-2">
-                    <User className="h-4 w-4 text-cyan-500" />
-                    <span>Admin</span>
-                  </div>
-                </SelectItem>
-                <SelectItem value="manager">
-                  <div className="flex items-center gap-2">
-                    <User className="h-4 w-4 text-purple-500" />
-                    <span>Manager</span>
-                  </div>
-                </SelectItem>
-                <SelectItem value="user">
-                  <div className="flex items-center gap-2">
-                    <User className="h-4 w-4" />
-                    <span>User</span>
-                  </div>
-                </SelectItem>
-              </SelectContent>
-            </Select>
+            {/* Joined Date */}
+            <div className="flex items-center gap-2 text-sm text-muted-foreground">
+              <Calendar className="h-4 w-4 flex-shrink-0" />
+              <span>Joined {format(new Date(user.created_at), "MMM d, yyyy")}</span>
+            </div>
+
+            {/* Role Change Selector */}
+            <div className="pt-2 space-y-2">
+              <Select
+                value={user.role || ""}
+                onValueChange={handleRoleChange}
+                disabled={isUpdating || isChangingRole}
+              >
+                <SelectTrigger className="w-full">
+                  {(isUpdating || isChangingRole) ? (
+                    <div className="flex items-center gap-2">
+                      <Loader2 className="h-4 w-4 animate-spin" />
+                      <span>Updating...</span>
+                    </div>
+                  ) : (
+                    <SelectValue placeholder="Change role" />
+                  )}
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="admin">
+                    <div className="flex items-center gap-2">
+                      <User className="h-4 w-4 text-cyan-500" />
+                      <span>Admin</span>
+                    </div>
+                  </SelectItem>
+                  <SelectItem value="manager">
+                    <div className="flex items-center gap-2">
+                      <User className="h-4 w-4 text-purple-500" />
+                      <span>Manager</span>
+                    </div>
+                  </SelectItem>
+                  <SelectItem value="user">
+                    <div className="flex items-center gap-2">
+                      <User className="h-4 w-4" />
+                      <span>User</span>
+                    </div>
+                  </SelectItem>
+                </SelectContent>
+              </Select>
+
+              {/* Edit Permissions Button */}
+              <Button
+                variant="outline"
+                size="sm"
+                className="w-full"
+                onClick={() => setPermissionsOpen(true)}
+              >
+                <Shield className="h-4 w-4 mr-2" />
+                Edit Permissions
+              </Button>
+            </div>
           </div>
         </div>
       </div>
-    </div>
+
+      <UserPermissionsDialog
+        open={permissionsOpen}
+        onOpenChange={setPermissionsOpen}
+        userId={user.id}
+        userName={getDisplayName()}
+        userRole={user.role}
+      />
+    </>
   );
 }

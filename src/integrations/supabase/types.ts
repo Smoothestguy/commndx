@@ -2865,6 +2865,42 @@ export type Database = {
           },
         ]
       }
+      user_permissions: {
+        Row: {
+          can_add: boolean | null
+          can_delete: boolean | null
+          can_edit: boolean | null
+          can_view: boolean | null
+          created_at: string | null
+          id: string
+          module: string
+          updated_at: string | null
+          user_id: string
+        }
+        Insert: {
+          can_add?: boolean | null
+          can_delete?: boolean | null
+          can_edit?: boolean | null
+          can_view?: boolean | null
+          created_at?: string | null
+          id?: string
+          module: string
+          updated_at?: string | null
+          user_id: string
+        }
+        Update: {
+          can_add?: boolean | null
+          can_delete?: boolean | null
+          can_edit?: boolean | null
+          can_view?: boolean | null
+          created_at?: string | null
+          id?: string
+          module?: string
+          updated_at?: string | null
+          user_id?: string
+        }
+        Relationships: []
+      }
       user_roles: {
         Row: {
           created_at: string
@@ -3055,6 +3091,10 @@ export type Database = {
       generate_personnel_number: { Args: never; Returns: string }
       generate_purchase_order_number: { Args: never; Returns: string }
       get_personnel_id_for_user: { Args: { _user_id: string }; Returns: string }
+      has_permission: {
+        Args: { _action: string; _module: string; _user_id: string }
+        Returns: boolean
+      }
       has_role: {
         Args: {
           _role: Database["public"]["Enums"]["app_role"]
