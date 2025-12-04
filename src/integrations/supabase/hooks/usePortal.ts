@@ -234,9 +234,10 @@ export function useSendPortalInvitation() {
   const { user } = useAuth();
   
   return useMutation({
-    mutationFn: async ({ personnelId, email }: { personnelId: string; email: string }) => {
+    mutationFn: async ({ personnelId, email, personnelName }: { personnelId: string; email: string; personnelName: string }) => {
       if (!user?.id) throw new Error("Not authenticated");
       
+      // Create the invitation record
       const { data, error } = await supabase
         .from("personnel_invitations")
         .insert({
@@ -248,11 +249,27 @@ export function useSendPortalInvitation() {
         .single();
       
       if (error) throw error;
+      
+      // Send the invitation email via edge function
+      const { error: emailError } = await supabase.functions.invoke("send-portal-invitation", {
+        body: {
+          personnelId,
+          personnelName,
+          email,
+          token: data.token,
+        },
+      });
+      
+      if (emailError) {
+        console.error("Failed to send invitation email:", emailError);
+        throw new Error("Invitation created but failed to send email");
+      }
+      
       return data;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["personnel-invitations"] });
-      toast.success("Portal invitation sent");
+      toast.success("Portal invitation email sent");
     },
     onError: (error) => {
       toast.error("Failed to send invitation: " + error.message);
