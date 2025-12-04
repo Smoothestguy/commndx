@@ -1248,6 +1248,7 @@ export type Database = {
           state: string | null
           status: Database["public"]["Enums"]["personnel_status"] | null
           updated_at: string | null
+          user_id: string | null
           work_auth_expiry: string | null
           work_authorization_status: string | null
           work_authorization_type:
@@ -1283,6 +1284,7 @@ export type Database = {
           state?: string | null
           status?: Database["public"]["Enums"]["personnel_status"] | null
           updated_at?: string | null
+          user_id?: string | null
           work_auth_expiry?: string | null
           work_authorization_status?: string | null
           work_authorization_type?:
@@ -1318,6 +1320,7 @@ export type Database = {
           state?: string | null
           status?: Database["public"]["Enums"]["personnel_status"] | null
           updated_at?: string | null
+          user_id?: string | null
           work_auth_expiry?: string | null
           work_authorization_status?: string | null
           work_authorization_type?:
@@ -1406,6 +1409,50 @@ export type Database = {
           },
         ]
       }
+      personnel_invitations: {
+        Row: {
+          accepted_at: string | null
+          created_at: string | null
+          email: string
+          expires_at: string
+          id: string
+          invited_by: string
+          personnel_id: string
+          status: string
+          token: string
+        }
+        Insert: {
+          accepted_at?: string | null
+          created_at?: string | null
+          email: string
+          expires_at?: string
+          id?: string
+          invited_by: string
+          personnel_id: string
+          status?: string
+          token?: string
+        }
+        Update: {
+          accepted_at?: string | null
+          created_at?: string | null
+          email?: string
+          expires_at?: string
+          id?: string
+          invited_by?: string
+          personnel_id?: string
+          status?: string
+          token?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "personnel_invitations_personnel_id_fkey"
+            columns: ["personnel_id"]
+            isOneToOne: false
+            referencedRelation: "personnel"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       personnel_languages: {
         Row: {
           created_at: string | null
@@ -1431,6 +1478,91 @@ export type Database = {
         Relationships: [
           {
             foreignKeyName: "personnel_languages_personnel_id_fkey"
+            columns: ["personnel_id"]
+            isOneToOne: false
+            referencedRelation: "personnel"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      personnel_notification_preferences: {
+        Row: {
+          assignment_notifications: boolean | null
+          created_at: string | null
+          email_notifications: boolean | null
+          id: string
+          job_alerts: boolean | null
+          pay_notifications: boolean | null
+          personnel_id: string
+          sms_notifications: boolean | null
+          updated_at: string | null
+        }
+        Insert: {
+          assignment_notifications?: boolean | null
+          created_at?: string | null
+          email_notifications?: boolean | null
+          id?: string
+          job_alerts?: boolean | null
+          pay_notifications?: boolean | null
+          personnel_id: string
+          sms_notifications?: boolean | null
+          updated_at?: string | null
+        }
+        Update: {
+          assignment_notifications?: boolean | null
+          created_at?: string | null
+          email_notifications?: boolean | null
+          id?: string
+          job_alerts?: boolean | null
+          pay_notifications?: boolean | null
+          personnel_id?: string
+          sms_notifications?: boolean | null
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "personnel_notification_preferences_personnel_id_fkey"
+            columns: ["personnel_id"]
+            isOneToOne: true
+            referencedRelation: "personnel"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      personnel_notifications: {
+        Row: {
+          created_at: string | null
+          id: string
+          is_read: boolean
+          message: string
+          metadata: Json | null
+          notification_type: string
+          personnel_id: string
+          title: string
+        }
+        Insert: {
+          created_at?: string | null
+          id?: string
+          is_read?: boolean
+          message: string
+          metadata?: Json | null
+          notification_type?: string
+          personnel_id: string
+          title: string
+        }
+        Update: {
+          created_at?: string | null
+          id?: string
+          is_read?: boolean
+          message?: string
+          metadata?: Json | null
+          notification_type?: string
+          personnel_id?: string
+          title?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "personnel_notifications_personnel_id_fkey"
             columns: ["personnel_id"]
             isOneToOne: false
             referencedRelation: "personnel"
@@ -2244,6 +2376,75 @@ export type Database = {
           },
         ]
       }
+      reimbursements: {
+        Row: {
+          amount: number
+          category: string
+          created_at: string | null
+          description: string
+          id: string
+          notes: string | null
+          paid_at: string | null
+          personnel_id: string
+          project_id: string | null
+          receipt_url: string | null
+          reviewed_at: string | null
+          reviewed_by: string | null
+          status: string
+          submitted_at: string
+          updated_at: string | null
+        }
+        Insert: {
+          amount: number
+          category?: string
+          created_at?: string | null
+          description: string
+          id?: string
+          notes?: string | null
+          paid_at?: string | null
+          personnel_id: string
+          project_id?: string | null
+          receipt_url?: string | null
+          reviewed_at?: string | null
+          reviewed_by?: string | null
+          status?: string
+          submitted_at?: string
+          updated_at?: string | null
+        }
+        Update: {
+          amount?: number
+          category?: string
+          created_at?: string | null
+          description?: string
+          id?: string
+          notes?: string | null
+          paid_at?: string | null
+          personnel_id?: string
+          project_id?: string | null
+          receipt_url?: string | null
+          reviewed_at?: string | null
+          reviewed_by?: string | null
+          status?: string
+          submitted_at?: string
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "reimbursements_personnel_id_fkey"
+            columns: ["personnel_id"]
+            isOneToOne: false
+            referencedRelation: "personnel"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "reimbursements_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "projects"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       roof_inspections: {
         Row: {
           created_at: string | null
@@ -2853,6 +3054,7 @@ export type Database = {
       generate_job_order_number: { Args: never; Returns: string }
       generate_personnel_number: { Args: never; Returns: string }
       generate_purchase_order_number: { Args: never; Returns: string }
+      get_personnel_id_for_user: { Args: { _user_id: string }; Returns: string }
       has_role: {
         Args: {
           _role: Database["public"]["Enums"]["app_role"]
@@ -2860,6 +3062,7 @@ export type Database = {
         }
         Returns: boolean
       }
+      is_personnel: { Args: { _user_id: string }; Returns: boolean }
     }
     Enums: {
       activity_priority: "low" | "medium" | "high" | "urgent"
@@ -2870,7 +3073,7 @@ export type Database = {
         | "note"
         | "site_visit"
         | "follow_up"
-      app_role: "admin" | "manager" | "user"
+      app_role: "admin" | "manager" | "user" | "personnel"
       appointment_status:
         | "scheduled"
         | "confirmed"
@@ -3084,7 +3287,7 @@ export const Constants = {
         "site_visit",
         "follow_up",
       ],
-      app_role: ["admin", "manager", "user"],
+      app_role: ["admin", "manager", "user", "personnel"],
       appointment_status: [
         "scheduled",
         "confirmed",
