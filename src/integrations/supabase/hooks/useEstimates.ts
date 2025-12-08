@@ -36,10 +36,17 @@ export interface Estimate {
   sent_at?: string;
   customer_approved?: boolean;
   default_pricing_type?: 'markup' | 'margin';
+  created_by?: string;
+}
+
+export interface EstimateCreatorProfile {
+  first_name: string | null;
+  last_name: string | null;
 }
 
 export interface EstimateWithLineItems extends Estimate {
   line_items: EstimateLineItem[];
+  created_by_profile?: EstimateCreatorProfile | null;
 }
 
 export const useEstimates = () => {
@@ -77,9 +84,21 @@ export const useEstimate = (id: string) => {
 
       if (lineItemsError) throw lineItemsError;
 
+      // Fetch creator profile if created_by exists
+      let createdByProfile: EstimateCreatorProfile | null = null;
+      if (estimate.created_by) {
+        const { data: profile } = await supabase
+          .from("profiles")
+          .select("first_name, last_name")
+          .eq("id", estimate.created_by)
+          .single();
+        createdByProfile = profile;
+      }
+
       return {
         ...estimate,
         line_items: lineItems,
+        created_by_profile: createdByProfile,
       } as EstimateWithLineItems;
     },
   });
@@ -93,10 +112,13 @@ export const useAddEstimate = () => {
       estimate: Omit<Estimate, "id" | "created_at" | "updated_at">;
       lineItems: Omit<EstimateLineItem, "id" | "created_at">[];
     }) => {
-      // Insert estimate
+      // Get current user ID
+      const { data: { user } } = await supabase.auth.getUser();
+      
+      // Insert estimate with created_by
       const { data: estimateData, error: estimateError } = await supabase
         .from("estimates")
-        .insert([data.estimate])
+        .insert([{ ...data.estimate, created_by: user?.id }])
         .select()
         .single();
 

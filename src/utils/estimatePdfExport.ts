@@ -24,6 +24,7 @@ interface EstimateData {
   taxRate: number;
   taxAmount: number;
   total: number;
+  salesRepName?: string | null;
 }
 
 export const generateEstimatePDF = (estimate: EstimateData): void => {
@@ -70,14 +71,20 @@ export const generateEstimatePDF = (estimate: EstimateData): void => {
   doc.line(margin, yPosition, pageWidth - margin, yPosition);
   yPosition += 10;
 
-  // Customer Info
+  // Customer Info and Sales Rep (side by side)
+  const rightColumnX = pageWidth - margin - 60;
+  
   doc.setFontSize(12);
   doc.setFont("helvetica", "bold");
   doc.text("Bill To:", margin, yPosition);
+  doc.text("Sales Rep:", rightColumnX, yPosition);
   yPosition += 6;
+  
   doc.setFont("helvetica", "normal");
   doc.text(estimate.customerName, margin, yPosition);
+  doc.text(estimate.salesRepName || "N/A", rightColumnX, yPosition);
   yPosition += 6;
+  
   if (estimate.projectName) {
     doc.setFontSize(10);
     doc.text(`Project: ${estimate.projectName}`, margin, yPosition);
@@ -205,7 +212,8 @@ export const generateEstimatePreviewPDF = (
   taxRate: number,
   notes: string | null | undefined,
   validUntil: string,
-  status: string
+  status: string,
+  salesRepName?: string | null
 ): void => {
   const subtotal = lineItems.reduce((sum, item) => sum + item.total, 0);
   const taxableAmount = lineItems
@@ -227,6 +235,7 @@ export const generateEstimatePreviewPDF = (
     taxRate,
     taxAmount,
     total,
+    salesRepName,
   };
 
   generateEstimatePDF(estimateData);

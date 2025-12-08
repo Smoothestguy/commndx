@@ -672,6 +672,7 @@ export type Database = {
           approved_at: string | null
           approved_by: string | null
           created_at: string
+          created_by: string | null
           customer_approved: boolean | null
           customer_id: string
           customer_name: string
@@ -695,6 +696,7 @@ export type Database = {
           approved_at?: string | null
           approved_by?: string | null
           created_at?: string
+          created_by?: string | null
           customer_approved?: boolean | null
           customer_id: string
           customer_name: string
@@ -718,6 +720,7 @@ export type Database = {
           approved_at?: string | null
           approved_by?: string | null
           created_at?: string
+          created_by?: string | null
           customer_approved?: boolean | null
           customer_id?: string
           customer_name?: string
