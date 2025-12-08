@@ -1,6 +1,7 @@
 import React, { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
-import { FileText, Receipt, Settings, Loader2, Inbox, ClipboardList } from "lucide-react";
+import { FileText, Receipt, Settings, Loader2, Inbox, ClipboardList, Copy, Check } from "lucide-react";
+import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -17,6 +18,20 @@ export default function ContractorSubmissions() {
   const [search, setSearch] = useState("");
   const [typeFilter, setTypeFilter] = useState("all");
   const [dateRange, setDateRange] = useState<DateRange | undefined>();
+  const [copied, setCopied] = useState(false);
+
+  const portalUrl = `${window.location.origin}/contractor`;
+
+  const copyToClipboard = async () => {
+    try {
+      await navigator.clipboard.writeText(portalUrl);
+      setCopied(true);
+      toast.success("Link copied to clipboard!");
+      setTimeout(() => setCopied(false), 2000);
+    } catch (err) {
+      toast.error("Failed to copy link");
+    }
+  };
 
   const { data: submissions, isLoading } = useContractorSubmissions({
     type: typeFilter !== "all" ? (typeFilter as "bill" | "expense") : undefined,
@@ -139,18 +154,39 @@ export default function ContractorSubmissions() {
           {/* Portal Link */}
           <Card className="bg-muted/50">
             <CardContent className="py-4">
-              <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
-                <div>
-                  <h4 className="font-medium">Contractor Portal Link</h4>
-                  <p className="text-sm text-muted-foreground">
-                    Share this link with contractors to submit their bills and expenses
-                  </p>
+              <div className="space-y-4">
+                <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+                  <div>
+                    <h4 className="font-medium">Contractor Portal Link</h4>
+                    <p className="text-sm text-muted-foreground">
+                      Share this link with contractors to submit their bills and expenses
+                    </p>
+                  </div>
+                  <div className="flex gap-2">
+                    <Button variant="outline" onClick={copyToClipboard}>
+                      {copied ? (
+                        <Check className="h-4 w-4 mr-2 text-green-500" />
+                      ) : (
+                        <Copy className="h-4 w-4 mr-2" />
+                      )}
+                      {copied ? "Copied!" : "Copy Link"}
+                    </Button>
+                    <Button variant="secondary" asChild>
+                      <Link to="/contractor" target="_blank">
+                        Open Portal
+                      </Link>
+                    </Button>
+                  </div>
                 </div>
-                <Button variant="secondary" asChild>
-                  <Link to="/contractor" target="_blank">
-                    Open Portal
-                  </Link>
-                </Button>
+                <div className="flex items-center gap-2">
+                  <input
+                    type="text"
+                    readOnly
+                    value={portalUrl}
+                    className="flex-1 px-3 py-2 text-sm bg-background border border-input rounded-md text-muted-foreground select-all cursor-text"
+                    onClick={(e) => (e.target as HTMLInputElement).select()}
+                  />
+                </div>
               </div>
             </CardContent>
           </Card>
