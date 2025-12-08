@@ -1,6 +1,7 @@
 import { useNavigate } from "react-router-dom";
 import { PageLayout } from "@/components/layout/PageLayout";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { useProducts } from "@/integrations/supabase/hooks/useProducts";
 import { Button } from "@/components/ui/button";
 import { StatusBadge } from "@/components/shared/StatusBadge";
 import {
@@ -59,6 +60,12 @@ export function EstimateDetailView({ estimateId }: EstimateDetailViewProps) {
   const convertToJobOrder = useConvertEstimateToJobOrder();
   const convertToInvoice = useConvertEstimateToInvoice();
   const [isSending, setIsSending] = useState(false);
+  const { data: products } = useProducts();
+
+  const getProductName = (productId?: string | null) => {
+    if (!productId) return null;
+    return products?.find((p) => p.id === productId)?.name || null;
+  };
 
   const handleStatusChange = async (status: "draft" | "pending" | "approved" | "sent") => {
     updateEstimate.mutate({
@@ -488,30 +495,38 @@ export function EstimateDetailView({ estimateId }: EstimateDetailViewProps) {
               {isMobile ? (
                 // Mobile: Card-based layout
                 <div className="space-y-3">
-                  {estimate.line_items.map((item) => (
-                    <Card key={item.id} className="p-4">
-                      <div className="flex justify-between items-start mb-2">
-                        <span className="font-medium text-sm">{item.description}</span>
-                        <span className="text-primary font-semibold ml-2 shrink-0">
-                          ${Number(item.total).toFixed(2)}
-                        </span>
-                      </div>
-                      <div className="grid grid-cols-3 gap-2 text-sm text-muted-foreground">
-                        <div>
-                          <span className="block text-xs mb-0.5">Qty</span>
-                          <span>{item.quantity}</span>
+                  {estimate.line_items.map((item) => {
+                    const productName = getProductName(item.product_id);
+                    return (
+                      <Card key={item.id} className="p-4">
+                        <div className="flex justify-between items-start mb-2">
+                          <div className="flex flex-col">
+                            <span className="font-medium text-sm">
+                              {productName || item.description}
+                            </span>
+                            {item.description && productName && item.description !== productName && (
+                              <span className="text-xs text-muted-foreground/60">
+                                {item.description}
+                              </span>
+                            )}
+                          </div>
+                          <span className="text-primary font-semibold ml-2 shrink-0">
+                            ${Number(item.total).toFixed(2)}
+                          </span>
                         </div>
-                        <div>
-                          <span className="block text-xs mb-0.5">Unit Price</span>
-                          <span>${Number(item.unit_price).toFixed(2)}</span>
+                        <div className="grid grid-cols-2 gap-2 text-sm text-muted-foreground">
+                          <div>
+                            <span className="block text-xs mb-0.5">Qty</span>
+                            <span>{item.quantity}</span>
+                          </div>
+                          <div>
+                            <span className="block text-xs mb-0.5">Unit Price</span>
+                            <span>${Number(item.unit_price).toFixed(2)}</span>
+                          </div>
                         </div>
-                        <div>
-                          <span className="block text-xs mb-0.5">Markup</span>
-                          <span>{item.markup}%</span>
-                        </div>
-                      </div>
-                    </Card>
-                  ))}
+                      </Card>
+                    );
+                  })}
                 </div>
               ) : (
                 // Desktop: Table layout
@@ -521,24 +536,36 @@ export function EstimateDetailView({ estimateId }: EstimateDetailViewProps) {
                       <TableHead>Description</TableHead>
                       <TableHead className="text-right">Qty</TableHead>
                       <TableHead className="text-right">Unit Price</TableHead>
-                      <TableHead className="text-right">Markup</TableHead>
                       <TableHead className="text-right">Total</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {estimate.line_items.map((item) => (
-                      <TableRow key={item.id}>
-                        <TableCell>{item.description}</TableCell>
-                        <TableCell className="text-right">{item.quantity}</TableCell>
-                        <TableCell className="text-right">
-                          ${Number(item.unit_price).toFixed(2)}
-                        </TableCell>
-                        <TableCell className="text-right">{item.markup}%</TableCell>
-                        <TableCell className="text-right">
-                          ${Number(item.total).toFixed(2)}
-                        </TableCell>
-                      </TableRow>
-                    ))}
+                    {estimate.line_items.map((item) => {
+                      const productName = getProductName(item.product_id);
+                      return (
+                        <TableRow key={item.id}>
+                          <TableCell>
+                            <div>
+                              <span className="font-medium">
+                                {productName || item.description}
+                              </span>
+                              {item.description && productName && item.description !== productName && (
+                                <p className="text-xs text-muted-foreground/60 mt-0.5">
+                                  {item.description}
+                                </p>
+                              )}
+                            </div>
+                          </TableCell>
+                          <TableCell className="text-right">{item.quantity}</TableCell>
+                          <TableCell className="text-right">
+                            ${Number(item.unit_price).toFixed(2)}
+                          </TableCell>
+                          <TableCell className="text-right">
+                            ${Number(item.total).toFixed(2)}
+                          </TableCell>
+                        </TableRow>
+                      );
+                    })}
                   </TableBody>
                 </Table>
               )}
