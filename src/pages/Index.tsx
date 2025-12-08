@@ -2,12 +2,12 @@ import { SEO } from "@/components/SEO";
 import { PageLayout } from "@/components/layout/PageLayout";
 import { StatCard } from "@/components/dashboard/StatCard";
 import { RecentActivity } from "@/components/dashboard/RecentActivity";
-import { DataTable } from "@/components/shared/DataTable";
+import { DataTable, Column } from "@/components/shared/DataTable";
 import { StatusBadge } from "@/components/shared/StatusBadge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { useEstimates } from "@/integrations/supabase/hooks/useEstimates";
-import { useInvoices } from "@/integrations/supabase/hooks/useInvoices";
+import { useEstimates, Estimate } from "@/integrations/supabase/hooks/useEstimates";
+import { useInvoices, Invoice } from "@/integrations/supabase/hooks/useInvoices";
 import { useProducts } from "@/integrations/supabase/hooks/useProducts";
 import { useCustomers } from "@/integrations/supabase/hooks/useCustomers";
 import { useProjects } from "@/integrations/supabase/hooks/useProjects";
@@ -47,31 +47,41 @@ const Dashboard = () => {
 
   const isRefreshing = isFetchingEstimates || isFetchingInvoices || isFetchingProducts || isFetchingCustomers || isFetchingProjects;
 
+  // Memoize paid invoices to avoid recalculating
+  const paidInvoices = useMemo(() => 
+    invoices?.filter((inv) => inv.status === "paid") ?? [], 
+    [invoices]
+  );
+
   const stats = useMemo(() => {
-    const totalRevenue = invoices
-      ?.filter((inv) => inv.status === "paid")
-      .reduce((sum, inv) => sum + inv.total, 0) || 0;
+    const totalRevenue = paidInvoices.reduce((sum, inv) => sum + (inv.total ?? 0), 0);
     
-    const pendingEstimates = estimates
-      ?.filter((est) => est.status === "pending" || est.status === "sent")
-      .length || 0;
+    const pendingEstimates = estimates?.filter(
+      (est) => est.status === "pending" || est.status === "sent"
+    ).length ?? 0;
 
     return {
       totalRevenue,
-      activeProducts: products?.length || 0,
-      totalCustomers: customers?.length || 0,
+      activeProducts: products?.length ?? 0,
+      totalCustomers: customers?.length ?? 0,
       pendingEstimates,
     };
-  }, [estimates, invoices, products, customers]);
+  }, [estimates, paidInvoices, products, customers]);
 
   const recentEstimates = useMemo(() => 
-    estimates?.slice(0, 5) || [], 
+    estimates?.slice(0, 5) ?? [], 
     [estimates]
   );
 
   const recentInvoices = useMemo(() => 
-    invoices?.slice(0, 5) || [], 
+    invoices?.slice(0, 5) ?? [], 
     [invoices]
+  );
+
+  // Memoize active projects count
+  const activeProjectsCount = useMemo(() => 
+    projects?.filter(p => p.status === "active").length ?? 0,
+    [projects]
   );
 
   // Project analytics data
@@ -108,45 +118,53 @@ const Dashboard = () => {
 
   const isLoading = estimatesLoading || invoicesLoading || productsLoading || customersLoading || projectsLoading;
 
-  const estimateColumns = [
+  // Properly typed column definitions with snake_case keys matching Supabase data
+  const estimateColumns: Column<Estimate>[] = useMemo(() => [
     { key: "number", header: "Estimate #" },
-    { key: "customerName", header: "Customer" },
-    { key: "projectName", header: "Project", className: "hidden sm:table-cell" },
+    { key: "customer_name", header: "Customer" },
+    { key: "project_name", header: "Project", className: "hidden sm:table-cell" },
     {
       key: "status",
       header: "Status",
-      render: (item: any) => (
+      render: (item: Estimate) => (
         <StatusBadge status={item.status} />
       ),
     },
     {
       key: "total",
       header: "Total",
-      render: (item: any) => (
-        <span className="font-medium">${item.total.toLocaleString()}</span>
+      render: (item: Estimate) => (
+        <span className="font-medium">${(item.total ?? 0).toLocaleString()}</span>
       ),
     },
-  ];
+  ], []);
 
-  const invoiceColumns = [
+  const invoiceColumns: Column<Invoice>[] = useMemo(() => [
     { key: "number", header: "Invoice #" },
-    { key: "customerName", header: "Customer" },
+    { key: "customer_name", header: "Customer" },
     {
       key: "status",
       header: "Status",
-      render: (item: any) => (
+      render: (item: Invoice) => (
         <StatusBadge status={item.status} />
       ),
     },
     {
       key: "total",
       header: "Amount",
-      render: (item: any) => (
-        <span className="font-medium">${item.total.toLocaleString()}</span>
+      render: (item: Invoice) => (
+        <span className="font-medium">${(item.total ?? 0).toLocaleString()}</span>
       ),
     },
-    { key: "dueDate", header: "Due Date", className: "hidden sm:table-cell" },
-  ];
+    { 
+      key: "due_date", 
+      header: "Due Date", 
+      className: "hidden sm:table-cell",
+      render: (item: Invoice) => (
+        <span>{item.due_date ? new Date(item.due_date).toLocaleDateString() : "—"}</span>
+      ),
+    },
+  ], []);
 
   return (
     <>
@@ -175,14 +193,14 @@ const Dashboard = () => {
         <StatCard
           title="Total Revenue"
           value={isLoading ? "..." : `$${stats.totalRevenue.toLocaleString()}`}
-          change={invoices?.filter(i => i.status === "paid").length ? `${invoices.filter(i => i.status === "paid").length} paid invoices` : "No paid invoices"}
+          change={paidInvoices.length ? `${paidInvoices.length} paid invoices` : "No paid invoices"}
           changeType="positive"
           icon={DollarSign}
         />
         <StatCard
           title="Active Projects"
-          value={isLoading ? "..." : projects?.length || 0}
-          change={`${projects?.filter(p => p.status === "active").length || 0} active`}
+          value={isLoading ? "..." : projects?.length ?? 0}
+          change={`${activeProjectsCount} active`}
           changeType="positive"
           icon={FolderKanban}
         />
@@ -323,7 +341,7 @@ const Dashboard = () => {
                       {estimate.project_name || "No project"}
                     </span>
                     <span className="text-primary font-semibold">
-                      ${estimate.total.toLocaleString()}
+                      ${(estimate.total ?? 0).toLocaleString()}
                     </span>
                   </div>
                 </Card>
@@ -379,10 +397,10 @@ const Dashboard = () => {
                 </div>
                 <div className="flex justify-between items-center text-sm">
                   <span className="text-muted-foreground">
-                    Due: {new Date(invoice.due_date).toLocaleDateString()}
+                    Due: {invoice.due_date ? new Date(invoice.due_date).toLocaleDateString() : "—"}
                   </span>
                   <span className="text-primary font-semibold">
-                    ${invoice.total.toLocaleString()}
+                    ${(invoice.total ?? 0).toLocaleString()}
                   </span>
                 </div>
               </Card>

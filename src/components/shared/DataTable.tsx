@@ -10,7 +10,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { cn } from "@/lib/utils";
 import { ArrowUp, ArrowDown, ArrowUpDown } from "lucide-react";
 
-interface Column<T> {
+export interface Column<T> {
   key: keyof T | string;
   header: string | React.ReactNode;
   render?: (item: T) => React.ReactNode;
