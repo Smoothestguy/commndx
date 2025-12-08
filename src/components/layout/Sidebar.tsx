@@ -51,6 +51,7 @@ const navigation = [
   { name: "Projects", href: "/projects", icon: FolderKanban },
   { name: "Personnel", href: "/personnel", icon: UserCheck },
   { name: "Vendors", href: "/vendors", icon: Truck },
+  { name: "Vendor Bills", href: "/vendor-bills", icon: Receipt },
   { name: "Estimates", href: "/estimates", icon: FileText },
   { name: "Job Orders", href: "/job-orders", icon: Briefcase },
   { name: "Purchase Orders", href: "/purchase-orders", icon: ShoppingCart },
