@@ -17,6 +17,10 @@ import Projects from "./pages/Projects";
 import ProjectDetail from "./pages/ProjectDetail";
 import Vendors from "./pages/Vendors";
 import VendorDetail from "./pages/VendorDetail";
+import VendorBills from "./pages/VendorBills";
+import VendorBillDetail from "./pages/VendorBillDetail";
+import NewVendorBill from "./pages/NewVendorBill";
+import EditVendorBill from "./pages/EditVendorBill";
 import Jobs from "./pages/Jobs";
 import Sales from "./pages/Sales";
 import Estimates from "./pages/Estimates";
@@ -168,6 +172,38 @@ const App = () => {
                   element={
                     <ProtectedRoute>
                       <VendorDetail />
+                    </ProtectedRoute>
+                  }
+                />
+                <Route
+                  path="/vendor-bills"
+                  element={
+                    <ProtectedRoute>
+                      <VendorBills />
+                    </ProtectedRoute>
+                  }
+                />
+                <Route
+                  path="/vendor-bills/new"
+                  element={
+                    <ProtectedRoute>
+                      <NewVendorBill />
+                    </ProtectedRoute>
+                  }
+                />
+                <Route
+                  path="/vendor-bills/:id"
+                  element={
+                    <ProtectedRoute>
+                      <VendorBillDetail />
+                    </ProtectedRoute>
+                  }
+                />
+                <Route
+                  path="/vendor-bills/:id/edit"
+                  element={
+                    <ProtectedRoute>
+                      <EditVendorBill />
                     </ProtectedRoute>
                   }
                 />
