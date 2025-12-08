@@ -132,10 +132,11 @@ export function UserCard({ user, onRoleChange, isUpdating, index }: UserCardProp
                       <span>Manager</span>
                     </div>
                   </SelectItem>
+                  {/* Personnel role option - v2 */}
                   <SelectItem value="personnel">
                     <div className="flex items-center gap-2">
                       <User className="h-4 w-4 text-orange-500" />
-                      <span>Personnel</span>
+                      <span>Personnel (Staff)</span>
                     </div>
                   </SelectItem>
                   <SelectItem value="user">
