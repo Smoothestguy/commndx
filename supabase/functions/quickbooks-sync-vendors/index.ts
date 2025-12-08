@@ -165,6 +165,18 @@ serve(async (req) => {
           specialty: qbVendor.Notes || null,
           license_number: qbVendor.AcctNum || null,
           status: 'active' as const,
+          // Address fields from QuickBooks BillAddr
+          address: qbVendor.BillAddr?.Line1 || null,
+          city: qbVendor.BillAddr?.City || null,
+          state: qbVendor.BillAddr?.CountrySubDivisionCode || null,
+          zip: qbVendor.BillAddr?.PostalCode || null,
+          // Tax and 1099 fields
+          tax_id: qbVendor.TaxIdentifier || null,
+          track_1099: qbVendor.Vendor1099 || false,
+          // Billing rate
+          billing_rate: qbVendor.BillRate || null,
+          // Account number
+          account_number: qbVendor.AcctNum || null,
         };
 
         const existingVendorId = mappingMap.get(qbVendorId);
@@ -289,14 +301,29 @@ serve(async (req) => {
         try {
           const qbVendorId = mappingMap.get(vendor.id);
 
-          const qbVendorData = {
+          const qbVendorData: Record<string, any> = {
             DisplayName: vendor.name,
             CompanyName: vendor.company || vendor.name,
             PrimaryEmailAddr: vendor.email ? { Address: vendor.email } : undefined,
             PrimaryPhone: vendor.phone ? { FreeFormNumber: vendor.phone } : undefined,
             Notes: vendor.specialty || undefined,
-            AcctNum: vendor.license_number || undefined,
+            AcctNum: vendor.account_number || vendor.license_number || undefined,
+            // Tax and 1099 fields
+            TaxIdentifier: vendor.tax_id || undefined,
+            Vendor1099: vendor.track_1099 || false,
+            // Billing rate
+            BillRate: vendor.billing_rate || undefined,
           };
+          
+          // Add address fields if any address data exists
+          if (vendor.address || vendor.city || vendor.state || vendor.zip) {
+            qbVendorData.BillAddr = {
+              Line1: vendor.address || undefined,
+              City: vendor.city || undefined,
+              CountrySubDivisionCode: vendor.state || undefined,
+              PostalCode: vendor.zip || undefined,
+            };
+          }
 
           if (qbVendorId) {
             // Get current vendor from QB to get SyncToken
@@ -392,14 +419,29 @@ serve(async (req) => {
         .eq('vendor_id', vendorId)
         .single();
 
-      const qbVendorData = {
+      const qbVendorData: Record<string, any> = {
         DisplayName: vendor.name,
         CompanyName: vendor.company || vendor.name,
         PrimaryEmailAddr: vendor.email ? { Address: vendor.email } : undefined,
         PrimaryPhone: vendor.phone ? { FreeFormNumber: vendor.phone } : undefined,
         Notes: vendor.specialty || undefined,
-        AcctNum: vendor.license_number || undefined,
+        AcctNum: vendor.account_number || vendor.license_number || undefined,
+        // Tax and 1099 fields
+        TaxIdentifier: vendor.tax_id || undefined,
+        Vendor1099: vendor.track_1099 || false,
+        // Billing rate
+        BillRate: vendor.billing_rate || undefined,
       };
+      
+      // Add address fields if any address data exists
+      if (vendor.address || vendor.city || vendor.state || vendor.zip) {
+        qbVendorData.BillAddr = {
+          Line1: vendor.address || undefined,
+          City: vendor.city || undefined,
+          CountrySubDivisionCode: vendor.state || undefined,
+          PostalCode: vendor.zip || undefined,
+        };
+      }
 
       let qbVendorId: string;
 
