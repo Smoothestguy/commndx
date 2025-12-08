@@ -2279,6 +2279,50 @@ export type Database = {
           },
         ]
       }
+      quickbooks_bill_mappings: {
+        Row: {
+          bill_id: string
+          created_at: string | null
+          error_message: string | null
+          id: string
+          last_synced_at: string | null
+          quickbooks_bill_id: string
+          quickbooks_doc_number: string | null
+          sync_status: string
+          updated_at: string | null
+        }
+        Insert: {
+          bill_id: string
+          created_at?: string | null
+          error_message?: string | null
+          id?: string
+          last_synced_at?: string | null
+          quickbooks_bill_id: string
+          quickbooks_doc_number?: string | null
+          sync_status?: string
+          updated_at?: string | null
+        }
+        Update: {
+          bill_id?: string
+          created_at?: string | null
+          error_message?: string | null
+          id?: string
+          last_synced_at?: string | null
+          quickbooks_bill_id?: string
+          quickbooks_doc_number?: string | null
+          sync_status?: string
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "quickbooks_bill_mappings_bill_id_fkey"
+            columns: ["bill_id"]
+            isOneToOne: true
+            referencedRelation: "vendor_bills"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       quickbooks_config: {
         Row: {
           access_token: string | null
