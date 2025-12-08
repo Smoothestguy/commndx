@@ -31,6 +31,7 @@ const Personnel = () => {
   const [search, setSearch] = useState("");
   const [status, setStatus] = useState("all");
   const [everifyStatus, setEverifyStatus] = useState("all");
+  const [vendorId, setVendorId] = useState("all");
   const [addDialogOpen, setAddDialogOpen] = useState(false);
   const [importDialogOpen, setImportDialogOpen] = useState(false);
   const [inviteDialogOpen, setInviteDialogOpen] = useState(false);
@@ -83,6 +84,7 @@ const Personnel = () => {
     search,
     status: status === "all" ? undefined : status,
     everifyStatus: everifyStatus === "all" ? undefined : everifyStatus,
+    vendorId: vendorId === "all" ? undefined : vendorId,
   };
 
   const { data: personnel, isLoading } = usePersonnel(filters);
@@ -108,6 +110,8 @@ const Personnel = () => {
             onStatusChange={setStatus}
             everifyStatus={everifyStatus}
             onEverifyStatusChange={setEverifyStatus}
+            vendorId={vendorId}
+            onVendorChange={setVendorId}
           />
           <div className="flex flex-col sm:flex-row gap-2 w-full sm:w-auto">
             {!selectionMode ? (

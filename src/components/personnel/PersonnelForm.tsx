@@ -10,6 +10,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { useAddPersonnel, useUpdatePersonnel } from "@/integrations/supabase/hooks/usePersonnel";
+import { useVendors } from "@/integrations/supabase/hooks/useVendors";
 import { PhotoUpload } from "./PhotoUpload";
 import type { Database } from "@/integrations/supabase/types";
 
@@ -33,6 +34,7 @@ const personnelSchema = z.object({
   everify_status: z.enum(["pending", "verified", "rejected", "expired", "not_required"]),
   everify_case_number: z.string().optional(),
   notes: z.string().optional(),
+  vendor_id: z.string().optional(),
 });
 
 type PersonnelFormData = z.infer<typeof personnelSchema>;
@@ -41,14 +43,16 @@ interface PersonnelFormProps {
   personnel?: Personnel;
   onSuccess?: (newPersonnelId?: string) => void;
   onCancel?: () => void;
+  defaultVendorId?: string;
 }
 
-export const PersonnelForm = ({ personnel, onSuccess, onCancel }: PersonnelFormProps) => {
+export const PersonnelForm = ({ personnel, onSuccess, onCancel, defaultVendorId }: PersonnelFormProps) => {
   const [photoUrl, setPhotoUrl] = useState(personnel?.photo_url || "");
   const [activeTab, setActiveTab] = useState("personal");
 
   const addMutation = useAddPersonnel();
   const updateMutation = useUpdatePersonnel();
+  const { data: vendors } = useVendors();
 
   const {
     register,
@@ -74,6 +78,7 @@ export const PersonnelForm = ({ personnel, onSuccess, onCancel }: PersonnelFormP
       everify_status: (personnel?.everify_status as any) || "pending",
       everify_case_number: personnel?.everify_case_number || "",
       notes: personnel?.notes || "",
+      vendor_id: (personnel as any)?.vendor_id || defaultVendorId || "",
     },
   });
 
@@ -82,6 +87,7 @@ export const PersonnelForm = ({ personnel, onSuccess, onCancel }: PersonnelFormP
       ...data,
       photo_url: photoUrl,
       personnel_number: personnel?.personnel_number || "",
+      vendor_id: data.vendor_id || null,
     };
 
     if (personnel) {
@@ -295,6 +301,26 @@ export const PersonnelForm = ({ personnel, onSuccess, onCancel }: PersonnelFormP
                   step="0.01"
                   {...register("hourly_rate", { valueAsNumber: true })}
                 />
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="vendor_id">Assigned Vendor</Label>
+                <Select
+                  value={watch("vendor_id") || ""}
+                  onValueChange={(value) => setValue("vendor_id", value)}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select vendor (optional)" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="">No Vendor</SelectItem>
+                    {vendors?.map((vendor) => (
+                      <SelectItem key={vendor.id} value={vendor.id}>
+                        {vendor.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
               </div>
 
               <div className="space-y-2">

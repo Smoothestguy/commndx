@@ -1,5 +1,6 @@
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { SearchInput } from "@/components/ui/search-input";
+import { useVendors } from "@/integrations/supabase/hooks/useVendors";
 
 interface PersonnelFiltersProps {
   search: string;
@@ -8,6 +9,8 @@ interface PersonnelFiltersProps {
   onStatusChange: (value: string) => void;
   everifyStatus: string;
   onEverifyStatusChange: (value: string) => void;
+  vendorId?: string;
+  onVendorChange?: (value: string) => void;
 }
 
 export const PersonnelFilters = ({
@@ -17,10 +20,14 @@ export const PersonnelFilters = ({
   onStatusChange,
   everifyStatus,
   onEverifyStatusChange,
+  vendorId,
+  onVendorChange,
 }: PersonnelFiltersProps) => {
+  const { data: vendors } = useVendors();
+
   return (
-    <div className="flex flex-col sm:flex-row gap-4">
-      <div className="flex-1">
+    <div className="flex flex-col sm:flex-row gap-4 flex-wrap">
+      <div className="flex-1 min-w-[200px]">
         <SearchInput
           placeholder="Search by name, email, or personnel number..."
           value={search}
@@ -53,6 +60,23 @@ export const PersonnelFilters = ({
           <SelectItem value="not_required">Not Required</SelectItem>
         </SelectContent>
       </Select>
+
+      {onVendorChange && (
+        <Select value={vendorId || "all"} onValueChange={onVendorChange}>
+          <SelectTrigger className="w-full sm:w-[180px]">
+            <SelectValue placeholder="Filter by vendor" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">All Vendors</SelectItem>
+            <SelectItem value="unassigned">Unassigned</SelectItem>
+            {vendors?.map((vendor) => (
+              <SelectItem key={vendor.id} value={vendor.id}>
+                {vendor.name}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+      )}
     </div>
   );
 };
