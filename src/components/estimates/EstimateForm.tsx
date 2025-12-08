@@ -1,5 +1,7 @@
 import { useState, useEffect, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
+import { DndContext, closestCenter, KeyboardSensor, PointerSensor, useSensor, useSensors, DragEndEvent } from "@dnd-kit/core";
+import { arrayMove, SortableContext, sortableKeyboardCoordinates, verticalListSortingStrategy } from "@dnd-kit/sortable";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -24,6 +26,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Switch } from "@/components/ui/switch";
 import { Plus, Trash2, Loader2, AlertTriangle, Check, ChevronsUpDown, Save, Clock, Eye } from "lucide-react";
 import { EstimatePreviewDialog } from "./EstimatePreviewDialog";
+import { SortableLineItem } from "./SortableLineItem";
 import { useCustomers } from "@/integrations/supabase/hooks/useCustomers";
 import { useProjectsByCustomer } from "@/integrations/supabase/hooks/useProjects";
 import { useProducts } from "@/integrations/supabase/hooks/useProducts";
@@ -55,6 +58,7 @@ const estimateSchema = z.object({
 });
 
 interface LineItem {
+  id: string;
   product_id?: string;
   description: string;
   quantity: string;
@@ -116,6 +120,7 @@ export const EstimateForm = ({ initialData, draftId }: EstimateFormProps) => {
   const [lineItems, setLineItems] = useState<LineItem[]>(() => {
     if (initialData?.line_items && initialData.line_items.length > 0) {
       return initialData.line_items.map((item) => ({
+        id: crypto.randomUUID(),
         product_id: item.product_id,
         description: item.description,
         quantity: item.quantity.toString(),
@@ -126,7 +131,7 @@ export const EstimateForm = ({ initialData, draftId }: EstimateFormProps) => {
         total: item.total,
       }));
     }
-    return [{ description: "", quantity: "1", unit_price: "", margin: "30", pricing_type: "margin", is_taxable: true, total: 0 }];
+    return [{ id: crypto.randomUUID(), description: "", quantity: "1", unit_price: "", margin: "30", pricing_type: "margin" as const, is_taxable: true, total: 0 }];
   });
 
   const [errors, setErrors] = useState<Record<string, string>>({});
@@ -169,7 +174,7 @@ export const EstimateForm = ({ initialData, draftId }: EstimateFormProps) => {
     }
   };
 
-  const updateLineItem = (index: number, field: keyof LineItem, value: string | boolean) => {
+  const updateLineItem = (index: number, field: keyof Omit<LineItem, 'id'>, value: string | boolean) => {
     const newLineItems = [...lineItems];
     
     // Handle boolean fields properly
@@ -192,10 +197,34 @@ export const EstimateForm = ({ initialData, draftId }: EstimateFormProps) => {
     setLineItems(newLineItems);
   };
 
+  // Drag and drop sensors
+  const sensors = useSensors(
+    useSensor(PointerSensor, {
+      activationConstraint: {
+        distance: 8,
+      },
+    }),
+    useSensor(KeyboardSensor, {
+      coordinateGetter: sortableKeyboardCoordinates,
+    })
+  );
+
+  const handleDragEnd = (event: DragEndEvent) => {
+    const { active, over } = event;
+    
+    if (over && active.id !== over.id) {
+      setLineItems((items) => {
+        const oldIndex = items.findIndex((item) => item.id === active.id);
+        const newIndex = items.findIndex((item) => item.id === over.id);
+        return arrayMove(items, oldIndex, newIndex);
+      });
+    }
+  };
+
   const addLineItem = () => {
     setLineItems([
       ...lineItems,
-      { description: "", quantity: "1", unit_price: "", margin: defaultMarginPercent, pricing_type: defaultPricingType, is_taxable: true, total: 0 },
+      { id: crypto.randomUUID(), description: "", quantity: "1", unit_price: "", margin: defaultMarginPercent, pricing_type: defaultPricingType, is_taxable: true, total: 0 },
     ]);
   };
 
@@ -718,267 +747,36 @@ export const EstimateForm = ({ initialData, draftId }: EstimateFormProps) => {
           <CardTitle className="font-heading">Line Items</CardTitle>
         </CardHeader>
         <CardContent className="space-y-4">
-          {lineItems.map((item, index) => (
-            <div
-              key={index}
-              className="p-4 rounded-lg bg-secondary/50 border border-border space-y-3"
+          <DndContext
+            sensors={sensors}
+            collisionDetection={closestCenter}
+            onDragEnd={handleDragEnd}
+          >
+            <SortableContext
+              items={lineItems.map((item) => item.id)}
+              strategy={verticalListSortingStrategy}
             >
-              <div className="flex items-center justify-between mb-2">
-                <div className="flex items-center gap-3">
-                  <span className="text-sm font-medium">Item {index + 1}</span>
-                  <div className="flex items-center gap-2">
-                    <Switch
-                      id={`taxable-${index}`}
-                      checked={item.is_taxable}
-                      onCheckedChange={(checked) => updateLineItem(index, "is_taxable", checked.toString())}
-                      disabled={isCustomerTaxExempt}
-                    />
-                    <Label htmlFor={`taxable-${index}`} className="text-xs text-muted-foreground">
-                      Taxable
-                    </Label>
-                  </div>
-                </div>
-                {lineItems.length > 1 && (
-                  <Button
-                    type="button"
-                    variant="ghost"
-                    size="sm"
-                    onClick={() => removeLineItem(index)}
-                  >
-                    <Trash2 className="h-4 w-4 text-destructive" />
-                  </Button>
-                )}
-              </div>
-
-              {/* Product Combobox with Grouped Types */}
-              <div className="space-y-2">
-                <Label>Select Product (Optional)</Label>
-                <Popover 
-                  open={productComboboxOpen[index] || false} 
-                  onOpenChange={(open) => setProductComboboxOpen(prev => ({ ...prev, [index]: open }))}
-                >
-                  <PopoverTrigger asChild>
-                    <Button
-                      variant="outline"
-                      role="combobox"
-                      aria-expanded={productComboboxOpen[index] || false}
-                      className="w-full justify-between bg-secondary border-border"
-                    >
-                      {item.product_id
-                        ? products?.find((p) => p.id === item.product_id)?.name || 'Unknown product'
-                        : "Search product, service, or labor..."}
-                      <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
-                    </Button>
-                  </PopoverTrigger>
-                  <PopoverContent className="w-[500px] p-0" align="start">
-                    <Command>
-                      <CommandInput 
-                        placeholder="Search by name, SKU, or category..." 
-                        value={productSearch[index] || ""}
-                        onValueChange={(v) => setProductSearch(prev => ({ ...prev, [index]: v }))}
-                      />
-                      <CommandList>
-                        <CommandEmpty>No product found.</CommandEmpty>
-                        {getProductsByType('product').length > 0 && (
-                          <CommandGroup heading="Products">
-                            {getProductsByType('product').map((product) => (
-                              <CommandItem
-                                key={product.id}
-                                value={`${product.name} ${product.sku || ''} ${product.category}`}
-                                onSelect={() => {
-                                  selectProduct(index, product.id);
-                                  setProductComboboxOpen(prev => ({ ...prev, [index]: false }));
-                                  setProductSearch(prev => ({ ...prev, [index]: "" }));
-                                }}
-                              >
-                                <Check
-                                  className={cn(
-                                    "mr-2 h-4 w-4",
-                                    item.product_id === product.id ? "opacity-100" : "opacity-0"
-                                  )}
-                                />
-                                <div className="flex flex-col flex-1 min-w-0">
-                                  <div className="flex items-center justify-between gap-2">
-                                    <span className="font-medium truncate">{product.name}</span>
-                                    <span className="text-sm font-medium text-muted-foreground shrink-0">${product.price.toFixed(2)}/{product.unit}</span>
-                                  </div>
-                                  {product.description && (
-                                    <span className="text-xs text-muted-foreground line-clamp-1">{product.description}</span>
-                                  )}
-                                  <span className="text-xs text-muted-foreground/70">{product.category}</span>
-                                </div>
-                              </CommandItem>
-                            ))}
-                          </CommandGroup>
-                        )}
-                        {getProductsByType('service').length > 0 && (
-                          <CommandGroup heading="Services">
-                            {getProductsByType('service').map((product) => (
-                              <CommandItem
-                                key={product.id}
-                                value={`${product.name} ${product.sku || ''} ${product.category}`}
-                                onSelect={() => {
-                                  selectProduct(index, product.id);
-                                  setProductComboboxOpen(prev => ({ ...prev, [index]: false }));
-                                  setProductSearch(prev => ({ ...prev, [index]: "" }));
-                                }}
-                              >
-                                <Check
-                                  className={cn(
-                                    "mr-2 h-4 w-4",
-                                    item.product_id === product.id ? "opacity-100" : "opacity-0"
-                                  )}
-                                />
-                                <div className="flex flex-col flex-1 min-w-0">
-                                  <div className="flex items-center justify-between gap-2">
-                                    <span className="font-medium truncate">{product.name}</span>
-                                    <span className="text-sm font-medium text-muted-foreground shrink-0">${product.price.toFixed(2)}/{product.unit}</span>
-                                  </div>
-                                  {product.description && (
-                                    <span className="text-xs text-muted-foreground line-clamp-1">{product.description}</span>
-                                  )}
-                                  <span className="text-xs text-muted-foreground/70">{product.category}</span>
-                                </div>
-                              </CommandItem>
-                            ))}
-                          </CommandGroup>
-                        )}
-                        {getProductsByType('labor').length > 0 && (
-                          <CommandGroup heading="Labor">
-                            {getProductsByType('labor').map((product) => (
-                              <CommandItem
-                                key={product.id}
-                                value={`${product.name} ${product.sku || ''} ${product.category}`}
-                                onSelect={() => {
-                                  selectProduct(index, product.id);
-                                  setProductComboboxOpen(prev => ({ ...prev, [index]: false }));
-                                  setProductSearch(prev => ({ ...prev, [index]: "" }));
-                                }}
-                              >
-                                <Check
-                                  className={cn(
-                                    "mr-2 h-4 w-4",
-                                    item.product_id === product.id ? "opacity-100" : "opacity-0"
-                                  )}
-                                />
-                                <div className="flex flex-col flex-1 min-w-0">
-                                  <div className="flex items-center justify-between gap-2">
-                                    <span className="font-medium truncate">{product.name}</span>
-                                    <span className="text-sm font-medium text-muted-foreground shrink-0">${product.price.toFixed(2)}/{product.unit}</span>
-                                  </div>
-                                  {product.description && (
-                                    <span className="text-xs text-muted-foreground line-clamp-1">{product.description}</span>
-                                  )}
-                                  <span className="text-xs text-muted-foreground/70">{product.category}</span>
-                                </div>
-                              </CommandItem>
-                            ))}
-                          </CommandGroup>
-                        )}
-                      </CommandList>
-                    </Command>
-                  </PopoverContent>
-                </Popover>
-              </div>
-
-              <div className="grid gap-3 sm:grid-cols-2">
-                {/* Description Textarea */}
-                <div className="space-y-2 sm:col-span-2">
-                  <div className="flex items-center gap-2">
-                    <Label>Description *</Label>
-                    {item.product_id && (
-                      <Badge variant="secondary" className="text-xs">
-                        {products?.find(p => p.id === item.product_id)?.unit}
-                      </Badge>
-                    )}
-                  </div>
-                  <Textarea
-                    value={item.description}
-                    onChange={(e) => {
-                      updateLineItem(index, "description", e.target.value);
-                      e.target.style.height = 'auto';
-                      e.target.style.height = e.target.scrollHeight + 'px';
-                    }}
-                    placeholder="Item description"
-                    className="bg-secondary border-border min-h-[80px] resize-none overflow-hidden"
-                    ref={(el) => {
-                      if (el) {
-                        el.style.height = 'auto';
-                        el.style.height = el.scrollHeight + 'px';
-                      }
-                    }}
-                  />
-                  {errors[`line_${index}_description`] && (
-                    <p className="text-sm text-destructive">
-                      {errors[`line_${index}_description`]}
-                    </p>
-                  )}
-                </div>
-
-                <div className="space-y-2">
-                  <Label>Quantity *</Label>
-                  <Input
-                    type="number"
-                    step="0.01"
-                    value={item.quantity}
-                    onChange={(e) => updateLineItem(index, "quantity", e.target.value)}
-                    className="bg-secondary border-border"
-                  />
-                </div>
-
-                <div className="space-y-2">
-                  <Label>Unit Price *</Label>
-                  <div className="relative">
-                    <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground">$</span>
-                    <Input
-                      type="number"
-                      step="0.01"
-                      value={item.unit_price}
-                      onChange={(e) => updateLineItem(index, "unit_price", e.target.value)}
-                      className="bg-secondary border-border pl-7"
-                    />
-                  </div>
-                </div>
-
-                <div className="space-y-2">
-                  <Label>Pricing Method</Label>
-                  <Select
-                    value={item.pricing_type}
-                    onValueChange={(v: 'markup' | 'margin') => updateLineItem(index, "pricing_type", v)}
-                  >
-                    <SelectTrigger className="bg-secondary border-border">
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="margin">Margin</SelectItem>
-                      <SelectItem value="markup">Markup</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-
-                <div className="space-y-2">
-                  <Label>{item.pricing_type === 'margin' ? 'Margin (%)' : 'Markup (%)'}</Label>
-                  <Input
-                    type="number"
-                    step="0.01"
-                    max={item.pricing_type === 'margin' ? "99.99" : undefined}
-                    value={item.margin}
-                    onChange={(e) => updateLineItem(index, "margin", e.target.value)}
-                    className="bg-secondary border-border"
-                  />
-                </div>
-
-                <div className="space-y-2">
-                  <Label>Total</Label>
-                  <Input
-                    value={`$${item.total.toFixed(2)}`}
-                    readOnly
-                    className="bg-muted border-border font-semibold"
-                  />
-                </div>
-              </div>
-            </div>
-          ))}
+              {lineItems.map((item, index) => (
+                <SortableLineItem
+                  key={item.id}
+                  item={item}
+                  index={index}
+                  products={products}
+                  isCustomerTaxExempt={isCustomerTaxExempt}
+                  canDelete={lineItems.length > 1}
+                  productComboboxOpen={productComboboxOpen[index] || false}
+                  productSearch={productSearch[index] || ""}
+                  errors={errors}
+                  getProductsByType={getProductsByType}
+                  onUpdateItem={updateLineItem}
+                  onRemoveItem={removeLineItem}
+                  onSelectProduct={selectProduct}
+                  onSetProductComboboxOpen={(idx, open) => setProductComboboxOpen(prev => ({ ...prev, [idx]: open }))}
+                  onSetProductSearch={(idx, value) => setProductSearch(prev => ({ ...prev, [idx]: value }))}
+                />
+              ))}
+            </SortableContext>
+          </DndContext>
           
           <Button type="button" variant="outline" className="w-full" onClick={addLineItem}>
             <Plus className="h-4 w-4 mr-2" />
