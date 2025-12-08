@@ -204,7 +204,7 @@ export const EstimateForm = ({ initialData, draftId }: EstimateFormProps) => {
       newLineItems[index] = {
         ...newLineItems[index],
         product_id: productId,
-        description: product.description || product.name,
+        description: product.description ? `${product.name} - ${product.description}` : product.name,
         unit_price: unitPrice,
         margin: margin,
         is_taxable: product.is_taxable ?? true,
