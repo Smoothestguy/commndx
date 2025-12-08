@@ -41,12 +41,14 @@ export function UserCard({ user, onRoleChange, isUpdating, index }: UserCardProp
   const getRoleBorderColor = (role: AppRole | null) => {
     if (role === "admin") return "border-l-cyan-500";
     if (role === "manager") return "border-l-purple-500";
+    if (role === "personnel") return "border-l-orange-500";
     return "border-l-border";
   };
 
   const getRoleBadgeVariant = (role: AppRole | null) => {
     if (role === "admin") return "default";
     if (role === "manager") return "secondary";
+    if (role === "personnel") return "outline";
     return "outline";
   };
 
@@ -128,6 +130,12 @@ export function UserCard({ user, onRoleChange, isUpdating, index }: UserCardProp
                     <div className="flex items-center gap-2">
                       <User className="h-4 w-4 text-purple-500" />
                       <span>Manager</span>
+                    </div>
+                  </SelectItem>
+                  <SelectItem value="personnel">
+                    <div className="flex items-center gap-2">
+                      <User className="h-4 w-4 text-orange-500" />
+                      <span>Personnel</span>
                     </div>
                   </SelectItem>
                   <SelectItem value="user">
