@@ -24,7 +24,7 @@ export default function EditVendorBill() {
   }
 
   return (
-    <PageLayout title="Edit Vendor Bill" subtitle={bill.number}>
+    <PageLayout title="Edit Vendor Bill" description={bill.number}>
       <VendorBillForm bill={bill} isEditing />
     </PageLayout>
   );
