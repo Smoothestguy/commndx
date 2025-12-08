@@ -33,7 +33,7 @@ export interface AssignmentWithDetails extends PersonnelProjectAssignment {
   } | null;
 }
 
-// Get all personnel assigned to a specific project
+// Get all personnel assigned to a specific project (filters out inactive/do_not_hire personnel)
 export function usePersonnelByProject(projectId: string | undefined) {
   return useQuery({
     queryKey: ["personnel-project-assignments", "by-project", projectId],
@@ -51,7 +51,7 @@ export function usePersonnelByProject(projectId: string | undefined) {
           status,
           created_at,
           updated_at,
-          personnel (
+          personnel!inner (
             id,
             first_name,
             last_name,
@@ -62,7 +62,8 @@ export function usePersonnelByProject(projectId: string | undefined) {
           )
         `)
         .eq("project_id", projectId)
-        .eq("status", "active");
+        .eq("status", "active")
+        .eq("personnel.status", "active");
 
       if (error) throw error;
       return data as (PersonnelProjectAssignment & { personnel: PersonnelWithAssignment | null })[];
