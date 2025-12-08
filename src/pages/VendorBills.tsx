@@ -30,13 +30,12 @@ export default function VendorBills() {
   const paymentBill = bills?.find(b => b.id === paymentBillId);
 
   return (
-    <PageLayout title="Vendor Bills" subtitle="Track bills from vendors and suppliers">
+    <PageLayout title="Vendor Bills" description="Track bills from vendors and suppliers">
       <div className="space-y-6">
         <div className="flex flex-col sm:flex-row gap-4 justify-between">
           <SearchInput
             value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            onClear={() => setSearch("")}
+            onChange={setSearch}
             placeholder="Search bills..."
             className="w-full sm:w-80"
           />
