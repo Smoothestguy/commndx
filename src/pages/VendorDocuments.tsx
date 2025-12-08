@@ -1,5 +1,5 @@
 import { useState, useMemo } from "react";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import { format, isAfter, isBefore, addDays } from "date-fns";
 import { PageLayout } from "@/components/layout/PageLayout";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -22,6 +22,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
+import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useAllVendorDocuments } from "@/integrations/supabase/hooks/useVendorDocuments";
 import { useVendors } from "@/integrations/supabase/hooks/useVendors";
 import {
@@ -32,6 +33,7 @@ import {
   Clock,
   Files,
   FileCheck,
+  ClipboardList,
 } from "lucide-react";
 
 const DOCUMENT_TYPES = [
@@ -59,6 +61,7 @@ const documentTypeLabels: Record<string, string> = {
 };
 
 export default function VendorDocuments() {
+  const navigate = useNavigate();
   const { data: documents, isLoading: docsLoading } = useAllVendorDocuments();
   const { data: vendors, isLoading: vendorsLoading } = useVendors();
 
@@ -199,6 +202,24 @@ export default function VendorDocuments() {
 
   return (
     <PageLayout title="Vendor Documents">
+      {/* Quick Navigation Tabs */}
+      <Tabs value="vendor-documents" className="mb-6">
+        <TabsList>
+          <TabsTrigger value="vendor-documents" className="gap-2">
+            <FileText className="h-4 w-4" />
+            Vendor Documents
+          </TabsTrigger>
+          <TabsTrigger 
+            value="contractor-submissions" 
+            className="gap-2"
+            onClick={() => navigate("/admin/contractor-submissions")}
+          >
+            <ClipboardList className="h-4 w-4" />
+            Contractor Submissions
+          </TabsTrigger>
+        </TabsList>
+      </Tabs>
+
       {/* Stats Cards */}
       <div className="grid gap-4 md:grid-cols-4 mb-6">
         <Card>
