@@ -237,6 +237,9 @@ export const useUpdatePersonnel = () => {
     onSuccess: (_, variables) => {
       queryClient.invalidateQueries({ queryKey: ["personnel"] });
       queryClient.invalidateQueries({ queryKey: ["personnel", variables.id] });
+      queryClient.invalidateQueries({ queryKey: ["personnel-project-assignments"] });
+      queryClient.invalidateQueries({ queryKey: ["personnel-by-project"] });
+      queryClient.invalidateQueries({ queryKey: ["personnel-by-vendor"] });
       toast.success("Personnel updated successfully");
     },
     onError: (error: Error) => {
@@ -259,6 +262,10 @@ export const useDeletePersonnel = () => {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["personnel"] });
+      queryClient.invalidateQueries({ queryKey: ["personnel-project-assignments"] });
+      queryClient.invalidateQueries({ queryKey: ["personnel-by-project"] });
+      queryClient.invalidateQueries({ queryKey: ["personnel-by-vendor"] });
+      queryClient.invalidateQueries({ queryKey: ["personnel-stats"] });
       toast.success("Personnel deactivated successfully");
     },
     onError: (error: Error) => {
@@ -292,6 +299,10 @@ export const useToggleDoNotHire = () => {
     onSuccess: (newStatus, variables) => {
       queryClient.invalidateQueries({ queryKey: ["personnel"] });
       queryClient.invalidateQueries({ queryKey: ["personnel", variables.id] });
+      queryClient.invalidateQueries({ queryKey: ["personnel-project-assignments"] });
+      queryClient.invalidateQueries({ queryKey: ["personnel-by-project"] });
+      queryClient.invalidateQueries({ queryKey: ["personnel-by-vendor"] });
+      queryClient.invalidateQueries({ queryKey: ["personnel-stats"] });
       toast.success(
         newStatus === "do_not_hire"
           ? "Marked as Do Not Hire"

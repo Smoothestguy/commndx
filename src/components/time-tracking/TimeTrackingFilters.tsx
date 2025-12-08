@@ -1,7 +1,6 @@
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useProjects } from "@/integrations/supabase/hooks/useProjects";
-import { useQuery } from "@tanstack/react-query";
-import { supabase } from "@/integrations/supabase/client";
+import { usePersonnel } from "@/integrations/supabase/hooks/usePersonnel";
 import { useUserRole } from "@/hooks/useUserRole";
 
 interface TimeTrackingFiltersProps {
@@ -20,19 +19,8 @@ export function TimeTrackingFilters({
   const { data: projects = [] } = useProjects();
   const { isAdmin, isManager } = useUserRole();
 
-  const { data: personnel = [] } = useQuery({
-    queryKey: ["personnel"],
-    queryFn: async () => {
-      const { data, error } = await supabase
-        .from("profiles")
-        .select("id, first_name, last_name, email")
-        .order("first_name");
-
-      if (error) throw error;
-      return data;
-    },
-    enabled: isAdmin || isManager,
-  });
+  // Use personnel table (source of truth) instead of profiles
+  const { data: personnel = [] } = usePersonnel({ status: "active" });
 
   return (
     <div className="flex flex-wrap gap-4">
@@ -62,9 +50,7 @@ export function TimeTrackingFilters({
               <SelectItem value="all">All Personnel</SelectItem>
               {personnel.map((person) => (
                 <SelectItem key={person.id} value={person.id}>
-                  {person.first_name && person.last_name
-                    ? `${person.first_name} ${person.last_name}`
-                    : person.email}
+                  {`${person.first_name} ${person.last_name}`}
                 </SelectItem>
               ))}
             </SelectContent>
