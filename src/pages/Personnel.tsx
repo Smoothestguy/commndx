@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Plus, Upload, Download, CheckSquare, XSquare, Printer, Link, Mail } from "lucide-react";
+import { Plus, Upload, Download, CheckSquare, XSquare, Link, Mail } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import {
@@ -12,7 +12,7 @@ import { PageLayout } from "@/components/layout/PageLayout";
 import { SEO } from "@/components/SEO";
 import { PersonnelStats } from "@/components/personnel/PersonnelStats";
 import { PersonnelFilters } from "@/components/personnel/PersonnelFilters";
-import { PersonnelCard } from "@/components/personnel/PersonnelCard";
+import { PersonnelTable } from "@/components/personnel/PersonnelTable";
 import { PersonnelEmptyState } from "@/components/personnel/PersonnelEmptyState";
 import { PersonnelForm } from "@/components/personnel/PersonnelForm";
 import { PersonnelImportDialog } from "@/components/personnel/PersonnelImportDialog";
@@ -60,6 +60,16 @@ const Personnel = () => {
     setSelectedIds((prev) =>
       prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]
     );
+  };
+
+  const handleSelectAll = () => {
+    if (personnel) {
+      setSelectedIds(personnel.map((p) => p.id));
+    }
+  };
+
+  const handleClearSelection = () => {
+    setSelectedIds([]);
   };
 
   const handleEnterSelectionMode = () => {
@@ -159,24 +169,14 @@ const Personnel = () => {
                 </Button>
               </>
             ) : (
-              <>
-                <Button
-                  onClick={handlePrintBadges}
-                  disabled={selectedIds.length === 0}
-                  className="w-full sm:w-auto"
-                >
-                  <Printer className="mr-2 h-4 w-4" />
-                  Print Badges ({selectedIds.length})
-                </Button>
-                <Button
-                  variant="outline"
-                  onClick={handleExitSelectionMode}
-                  className="w-full sm:w-auto"
-                >
-                  <XSquare className="mr-2 h-4 w-4" />
-                  Cancel
-                </Button>
-              </>
+              <Button
+                variant="outline"
+                onClick={handleExitSelectionMode}
+                className="w-full sm:w-auto"
+              >
+                <XSquare className="mr-2 h-4 w-4" />
+                Exit Selection Mode
+              </Button>
             )}
           </div>
         </div>
@@ -186,17 +186,15 @@ const Personnel = () => {
             <Loader2 className="h-8 w-8 animate-spin text-primary" />
           </div>
         ) : personnel && personnel.length > 0 ? (
-          <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-            {personnel.map((person) => (
-              <PersonnelCard
-                key={person.id}
-                personnel={person}
-                selectionMode={selectionMode}
-                isSelected={selectedIds.includes(person.id)}
-                onSelect={handleToggleSelection}
-              />
-            ))}
-          </div>
+          <PersonnelTable
+            personnel={personnel}
+            selectionMode={selectionMode}
+            selectedIds={selectedIds}
+            onToggleSelection={handleToggleSelection}
+            onSelectAll={handleSelectAll}
+            onClearSelection={handleClearSelection}
+            onPrintBadges={handlePrintBadges}
+          />
         ) : (
           <PersonnelEmptyState onAddClick={() => setAddDialogOpen(true)} />
         )}
