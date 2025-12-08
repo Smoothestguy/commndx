@@ -12,6 +12,9 @@ verify_jwt = false
 [functions.check-expiring-invitations]
 verify_jwt = false
 
+[functions.create-user-manually]
+verify_jwt = false
+
 [functions.get-estimate-for-approval]
 verify_jwt = false
 

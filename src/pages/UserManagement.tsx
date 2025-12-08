@@ -9,7 +9,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
-import { Loader2, Mail, Plus, X, Send, Clock, RefreshCw, XCircle, CheckCircle2, AlertCircle, Download } from "lucide-react";
+import { Loader2, Mail, Plus, X, Send, Clock, RefreshCw, XCircle, CheckCircle2, AlertCircle, Download, User, Eye, EyeOff, Link } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
@@ -26,6 +26,11 @@ import { InvitationEmptyState } from "@/components/user-management/InvitationEmp
 import { ActivityLogCard } from "@/components/user-management/ActivityLogCard";
 import { ActivityEmptyState } from "@/components/user-management/ActivityEmptyState";
 import { ActivityFilters } from "@/components/user-management/ActivityFilters";
+import { Switch } from "@/components/ui/switch";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "@/components/ui/command";
+import { Check, ChevronsUpDown } from "lucide-react";
+import { cn } from "@/lib/utils";
 
 type AppRole = Database["public"]["Enums"]["app_role"];
 
@@ -36,6 +41,7 @@ interface UserWithRole {
   last_name: string | null;
   created_at: string;
   role: AppRole | null;
+  personnel_id?: string | null;
 }
 
 interface PendingInvitation {
@@ -46,6 +52,15 @@ interface PendingInvitation {
   expires_at: string;
   status: string;
   token: string;
+  personnel_id?: string | null;
+  personnel?: { first_name: string; last_name: string } | null;
+}
+
+interface PersonnelOption {
+  id: string;
+  first_name: string;
+  last_name: string;
+  email: string;
 }
 
 export default function UserManagement() {
@@ -76,6 +91,17 @@ export default function UserManagement() {
   const [actionFilter, setActionFilter] = useState<string>("all");
   const [dateFromFilter, setDateFromFilter] = useState("");
   const [dateToFilter, setDateToFilter] = useState("");
+  
+  // Personnel linking and manual credential states
+  const [personnelOptions, setPersonnelOptions] = useState<PersonnelOption[]>([]);
+  const [selectedPersonnelId, setSelectedPersonnelId] = useState<string | null>(null);
+  const [personnelComboOpen, setPersonnelComboOpen] = useState(false);
+  const [createManually, setCreateManually] = useState(false);
+  const [manualPassword, setManualPassword] = useState("");
+  const [manualConfirmPassword, setManualConfirmPassword] = useState("");
+  const [manualFirstName, setManualFirstName] = useState("");
+  const [manualLastName, setManualLastName] = useState("");
+  const [showPassword, setShowPassword] = useState(false);
 
   useEffect(() => {
     if (!roleLoading && !isAdmin) {
@@ -108,6 +134,7 @@ export default function UserManagement() {
     fetchUsers();
     fetchInvitations();
     fetchActivityLogs();
+    fetchPersonnelOptions();
   }, []);
 
   // Reset to page 1 when filters change
@@ -243,6 +270,22 @@ export default function UserManagement() {
     }
   };
 
+  const fetchPersonnelOptions = async () => {
+    try {
+      // Fetch personnel who are not yet linked to a user
+      const { data, error } = await supabase
+        .from("personnel")
+        .select("id, first_name, last_name, email")
+        .is("user_id", null)
+        .order("first_name", { ascending: true });
+
+      if (error) throw error;
+      setPersonnelOptions(data || []);
+    } catch (error) {
+      console.error("Error fetching personnel options:", error);
+    }
+  };
+
   const handleRoleChange = async (userId: string, newRole: AppRole) => {
     setUpdatingUserId(userId);
     try {
@@ -280,55 +323,115 @@ export default function UserManagement() {
     setIsSendingInvite(true);
 
     try {
-      // Generate a secure token
-      const token = crypto.randomUUID();
+      // If manual credential creation is enabled
+      if (createManually) {
+        if (manualPassword !== manualConfirmPassword) {
+          toast({
+            title: "Password mismatch",
+            description: "The passwords you entered do not match.",
+            variant: "destructive",
+          });
+          setIsSendingInvite(false);
+          return;
+        }
 
-      // Create invitation record
-      const { data: invitationData, error: inviteError } = await supabase
-        .from("invitations")
-        .insert({
-          email: inviteEmail,
-          role: inviteRole,
-          token: token,
-          invited_by: (await supabase.auth.getUser()).data.user?.id,
-        })
-        .select()
-        .single();
+        if (manualPassword.length < 6) {
+          toast({
+            title: "Password too short",
+            description: "Password must be at least 6 characters long.",
+            variant: "destructive",
+          });
+          setIsSendingInvite(false);
+          return;
+        }
 
-      if (inviteError) throw inviteError;
+        // Call edge function to create user manually
+        const { data, error } = await supabase.functions.invoke("create-user-manually", {
+          body: {
+            email: inviteEmail,
+            password: manualPassword,
+            firstName: manualFirstName,
+            lastName: manualLastName,
+            role: inviteRole,
+            personnelId: selectedPersonnelId,
+          },
+        });
 
-      // Send invitation email via edge function
-      const { error: emailError } = await supabase.functions.invoke("send-invitation", {
-        body: {
-          email: inviteEmail,
-          role: inviteRole,
-          invitationId: invitationData.id,
-          token: token,
-        },
-      });
+        if (error) throw error;
+        if (data?.error) throw new Error(data.error);
 
-      if (emailError) throw emailError;
+        toast({
+          title: "User created!",
+          description: `Account created for ${inviteEmail}. They can log in immediately.`,
+        });
 
-      // Log sent event
-      await logInvitationActivity(invitationData.id, 'sent', inviteEmail, inviteRole);
+        // Reset form
+        setInviteDialogOpen(false);
+        setInviteEmail("");
+        setInviteRole("user");
+        setCreateManually(false);
+        setManualPassword("");
+        setManualConfirmPassword("");
+        setManualFirstName("");
+        setManualLastName("");
+        setSelectedPersonnelId(null);
+        
+        // Refresh lists
+        await fetchUsers();
+        await fetchPersonnelOptions();
+      } else {
+        // Original invitation flow
+        const token = crypto.randomUUID();
 
-      toast({
-        title: "Invitation sent!",
-        description: `An invitation email has been sent to ${inviteEmail}.`,
-      });
+        // Create invitation record with personnel_id if selected
+        const { data: invitationData, error: inviteError } = await supabase
+          .from("invitations")
+          .insert({
+            email: inviteEmail,
+            role: inviteRole,
+            token: token,
+            invited_by: (await supabase.auth.getUser()).data.user?.id,
+            personnel_id: selectedPersonnelId,
+          })
+          .select()
+          .single();
 
-      setInviteDialogOpen(false);
-      setInviteEmail("");
-      setInviteRole("user");
-      
-      // Refresh invitations list
-      await fetchInvitations();
-      await fetchActivityLogs();
+        if (inviteError) throw inviteError;
+
+        // Send invitation email via edge function
+        const { error: emailError } = await supabase.functions.invoke("send-invitation", {
+          body: {
+            email: inviteEmail,
+            role: inviteRole,
+            invitationId: invitationData.id,
+            token: token,
+          },
+        });
+
+        if (emailError) throw emailError;
+
+        // Log sent event
+        await logInvitationActivity(invitationData.id, 'sent', inviteEmail, inviteRole);
+
+        toast({
+          title: "Invitation sent!",
+          description: `An invitation email has been sent to ${inviteEmail}.`,
+        });
+
+        setInviteDialogOpen(false);
+        setInviteEmail("");
+        setInviteRole("user");
+        setSelectedPersonnelId(null);
+        
+        // Refresh invitations list
+        await fetchInvitations();
+        await fetchActivityLogs();
+      }
     } catch (error: any) {
-      console.error("Error sending invitation:", error);
+      console.error("Error:", error);
       toast({
-        title: "Error sending invitation",
-        description: error.message || "Failed to send invitation. Please try again.",
+        title: createManually ? "Error creating user" : "Error sending invitation",
+        description: error.message || "Failed to complete. Please try again.",
         variant: "destructive",
       });
     } finally {
@@ -445,12 +548,19 @@ export default function UserManagement() {
     try {
       const { data, error } = await supabase
         .from("invitations")
-        .select("id, email, role, created_at, expires_at, status, token")
+        .select("id, email, role, created_at, expires_at, status, token, personnel_id, personnel:personnel_id(first_name, last_name)")
         .eq("status", "pending")
         .order("created_at", { ascending: false });
 
       if (error) throw error;
-      setInvitations(data || []);
+      
+      // Transform data to match interface
+      const transformed = (data || []).map(inv => ({
+        ...inv,
+        personnel: inv.personnel as { first_name: string; last_name: string } | null
+      }));
+      
+      setInvitations(transformed);
     } catch (error) {
       console.error("Error fetching invitations:", error);
       toast({
@@ -603,11 +713,13 @@ export default function UserManagement() {
                   Invite User
                 </Button>
               </DialogTrigger>
-              <DialogContent>
+              <DialogContent className="max-w-md max-h-[90vh] overflow-y-auto">
                 <DialogHeader>
                   <DialogTitle>Invite New User</DialogTitle>
                   <DialogDescription>
-                    Send an invitation email to a new user with a pre-assigned role.
+                    {createManually 
+                      ? "Create a user account directly with credentials."
+                      : "Send an invitation email to a new user with a pre-assigned role."}
                   </DialogDescription>
                 </DialogHeader>
                 <form onSubmit={handleSendInvitation} className="space-y-4">
@@ -626,6 +738,7 @@ export default function UserManagement() {
                       />
                     </div>
                   </div>
+                  
                   <div>
                     <Label htmlFor="invite-role">Role</Label>
                     <Select value={inviteRole} onValueChange={(value) => setInviteRole(value as AppRole)}>
@@ -639,13 +752,190 @@ export default function UserManagement() {
                       </SelectContent>
                     </Select>
                   </div>
+
+                  {/* Personnel Linking */}
+                  <div>
+                    <Label>Link to Personnel (Optional)</Label>
+                    <Popover open={personnelComboOpen} onOpenChange={setPersonnelComboOpen}>
+                      <PopoverTrigger asChild>
+                        <Button
+                          variant="outline"
+                          role="combobox"
+                          aria-expanded={personnelComboOpen}
+                          className="w-full justify-between mt-1.5"
+                        >
+                          {selectedPersonnelId
+                            ? personnelOptions.find((p) => p.id === selectedPersonnelId)
+                              ? `${personnelOptions.find((p) => p.id === selectedPersonnelId)?.first_name} ${personnelOptions.find((p) => p.id === selectedPersonnelId)?.last_name}`
+                              : "Select personnel..."
+                            : "Select personnel..."}
+                          <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                        </Button>
+                      </PopoverTrigger>
+                      <PopoverContent className="w-full p-0" align="start">
+                        <Command>
+                          <CommandInput placeholder="Search personnel..." />
+                          <CommandList>
+                            <CommandEmpty>No personnel found.</CommandEmpty>
+                            <CommandGroup>
+                              <CommandItem
+                                value=""
+                                onSelect={() => {
+                                  setSelectedPersonnelId(null);
+                                  setPersonnelComboOpen(false);
+                                }}
+                              >
+                                <Check
+                                  className={cn(
+                                    "mr-2 h-4 w-4",
+                                    selectedPersonnelId === null ? "opacity-100" : "opacity-0"
+                                  )}
+                                />
+                                None
+                              </CommandItem>
+                              {personnelOptions.map((person) => (
+                                <CommandItem
+                                  key={person.id}
+                                  value={`${person.first_name} ${person.last_name} ${person.email}`}
+                                  onSelect={() => {
+                                    setSelectedPersonnelId(person.id);
+                                    setPersonnelComboOpen(false);
+                                    // Auto-fill email if not already set
+                                    if (!inviteEmail) {
+                                      setInviteEmail(person.email);
+                                    }
+                                  }}
+                                >
+                                  <Check
+                                    className={cn(
+                                      "mr-2 h-4 w-4",
+                                      selectedPersonnelId === person.id ? "opacity-100" : "opacity-0"
+                                    )}
+                                  />
+                                  <div className="flex flex-col">
+                                    <span>{person.first_name} {person.last_name}</span>
+                                    <span className="text-xs text-muted-foreground">{person.email}</span>
+                                  </div>
+                                </CommandItem>
+                              ))}
+                            </CommandGroup>
+                          </CommandList>
+                        </Command>
+                      </PopoverContent>
+                    </Popover>
+                    {selectedPersonnelId && (
+                      <div className="flex items-center gap-2 mt-2 text-sm text-muted-foreground">
+                        <Link className="h-3 w-3" />
+                        Will link user account to personnel record
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Manual Creation Toggle */}
+                  <div className="flex items-center justify-between rounded-lg border p-3">
+                    <div className="space-y-0.5">
+                      <Label htmlFor="create-manually" className="font-medium">
+                        Create credentials manually
+                      </Label>
+                      <p className="text-xs text-muted-foreground">
+                        Skip email invite and set password directly
+                      </p>
+                    </div>
+                    <Switch
+                      id="create-manually"
+                      checked={createManually}
+                      onCheckedChange={setCreateManually}
+                    />
+                  </div>
+
+                  {/* Manual Credential Fields */}
+                  {createManually && (
+                    <div className="space-y-4 rounded-lg border p-4 bg-muted/30">
+                      <div className="grid grid-cols-2 gap-4">
+                        <div>
+                          <Label htmlFor="manual-first-name">First Name</Label>
+                          <Input
+                            id="manual-first-name"
+                            type="text"
+                            value={manualFirstName}
+                            onChange={(e) => setManualFirstName(e.target.value)}
+                            placeholder="John"
+                            className="mt-1.5"
+                          />
+                        </div>
+                        <div>
+                          <Label htmlFor="manual-last-name">Last Name</Label>
+                          <Input
+                            id="manual-last-name"
+                            type="text"
+                            value={manualLastName}
+                            onChange={(e) => setManualLastName(e.target.value)}
+                            placeholder="Doe"
+                            className="mt-1.5"
+                          />
+                        </div>
+                      </div>
+                      <div>
+                        <Label htmlFor="manual-password">Password</Label>
+                        <div className="relative mt-1.5">
+                          <Input
+                            id="manual-password"
+                            type={showPassword ? "text" : "password"}
+                            value={manualPassword}
+                            onChange={(e) => setManualPassword(e.target.value)}
+                            placeholder="••••••••"
+                            required={createManually}
+                            minLength={6}
+                          />
+                          <Button
+                            type="button"
+                            variant="ghost"
+                            size="icon"
+                            className="absolute right-0 top-0 h-full px-3 hover:bg-transparent"
+                            onClick={() => setShowPassword(!showPassword)}
+                          >
+                            {showPassword ? (
+                              <EyeOff className="h-4 w-4 text-muted-foreground" />
+                            ) : (
+                              <Eye className="h-4 w-4 text-muted-foreground" />
+                            )}
+                          </Button>
+                        </div>
+                      </div>
+                      <div>
+                        <Label htmlFor="manual-confirm-password">Confirm Password</Label>
+                        <Input
+                          id="manual-confirm-password"
+                          type={showPassword ? "text" : "password"}
+                          value={manualConfirmPassword}
+                          onChange={(e) => setManualConfirmPassword(e.target.value)}
+                          placeholder="••••••••"
+                          required={createManually}
+                          minLength={6}
+                          className="mt-1.5"
+                        />
+                        {manualPassword && manualConfirmPassword && manualPassword !== manualConfirmPassword && (
+                          <p className="text-xs text-destructive mt-1">Passwords do not match</p>
+                        )}
+                      </div>
+                    </div>
+                  )}
+
                   <div className="flex justify-end gap-3 pt-4">
-                    <Button type="button" variant="outline" onClick={() => setInviteDialogOpen(false)}>
+                    <Button type="button" variant="outline" onClick={() => {
+                      setInviteDialogOpen(false);
+                      setCreateManually(false);
+                      setManualPassword("");
+                      setManualConfirmPassword("");
+                      setManualFirstName("");
+                      setManualLastName("");
+                      setSelectedPersonnelId(null);
+                    }}>
                       Cancel
                     </Button>
-                    <Button type="submit" disabled={isSendingInvite}>
+                    <Button type="submit" disabled={isSendingInvite || (createManually && manualPassword !== manualConfirmPassword)}>
                       {isSendingInvite && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                      Send Invitation
+                      {createManually ? "Create User" : "Send Invitation"}
                     </Button>
                   </div>
                 </form>

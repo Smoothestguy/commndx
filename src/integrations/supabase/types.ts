@@ -775,6 +775,7 @@ export type Database = {
           expires_at: string
           id: string
           invited_by: string
+          personnel_id: string | null
           role: Database["public"]["Enums"]["app_role"]
           status: string
           token: string
@@ -786,6 +787,7 @@ export type Database = {
           expires_at?: string
           id?: string
           invited_by: string
+          personnel_id?: string | null
           role: Database["public"]["Enums"]["app_role"]
           status?: string
           token: string
@@ -797,12 +799,21 @@ export type Database = {
           expires_at?: string
           id?: string
           invited_by?: string
+          personnel_id?: string | null
           role?: Database["public"]["Enums"]["app_role"]
           status?: string
           token?: string
           used_at?: string | null
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "invitations_personnel_id_fkey"
+            columns: ["personnel_id"]
+            isOneToOne: false
+            referencedRelation: "personnel"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       invoice_line_items: {
         Row: {
