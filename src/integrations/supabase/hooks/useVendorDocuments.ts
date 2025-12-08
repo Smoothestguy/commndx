@@ -30,6 +30,22 @@ export const useVendorDocuments = (vendorId: string) => {
   });
 };
 
+// Hook to fetch ALL vendor documents (for dashboard)
+export const useAllVendorDocuments = () => {
+  return useQuery({
+    queryKey: ["vendor-documents-all"],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("vendor_documents")
+        .select("*")
+        .order("uploaded_at", { ascending: false });
+
+      if (error) throw error;
+      return data as VendorDocument[];
+    },
+  });
+};
+
 export const useUploadVendorDocument = () => {
   const queryClient = useQueryClient();
 
