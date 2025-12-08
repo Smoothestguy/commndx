@@ -2,6 +2,7 @@ import { useParams } from "react-router-dom";
 import { DetailPageLayout } from "@/components/layout/DetailPageLayout";
 import { SEO } from "@/components/SEO";
 import { usePersonnelById } from "@/integrations/supabase/hooks/usePersonnel";
+import { usePersonnelInvitationCheck } from "@/integrations/supabase/hooks/usePortal";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
@@ -22,6 +23,7 @@ import { InviteToPortalDialog } from "@/components/personnel/InviteToPortalDialo
 const PersonnelDetail = () => {
   const { id } = useParams<{ id: string }>();
   const { data: personnel, isLoading } = usePersonnelById(id);
+  const { data: existingInvitation } = usePersonnelInvitationCheck(id);
   const [badgeDialogOpen, setBadgeDialogOpen] = useState(false);
   const [editDialogOpen, setEditDialogOpen] = useState(false);
   const [smsDialogOpen, setSmsDialogOpen] = useState(false);
@@ -197,6 +199,8 @@ const PersonnelDetail = () => {
                     personnelId={personnel.id}
                     personnelName={`${personnel.first_name} ${personnel.last_name}`}
                     personnelEmail={personnel.email}
+                    hasExistingInvitation={!!existingInvitation}
+                    existingInvitationDate={existingInvitation?.created_at}
                     isLinked={!!personnel.user_id}
                   />
                 </div>

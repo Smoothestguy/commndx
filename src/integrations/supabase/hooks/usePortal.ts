@@ -228,6 +228,27 @@ export function usePersonnelInvitations() {
   });
 }
 
+// Check for existing invitation for a personnel
+export function usePersonnelInvitationCheck(personnelId: string | undefined) {
+  return useQuery({
+    queryKey: ["personnel-invitation-check", personnelId],
+    queryFn: async () => {
+      if (!personnelId) return null;
+      
+      const { data, error } = await supabase
+        .from("personnel_invitations")
+        .select("id, status, created_at, expires_at")
+        .eq("personnel_id", personnelId)
+        .eq("status", "pending")
+        .maybeSingle();
+      
+      if (error) throw error;
+      return data;
+    },
+    enabled: !!personnelId,
+  });
+}
+
 // Send portal invitation
 export function useSendPortalInvitation() {
   const queryClient = useQueryClient();
@@ -236,6 +257,13 @@ export function useSendPortalInvitation() {
   return useMutation({
     mutationFn: async ({ personnelId, email, personnelName }: { personnelId: string; email: string; personnelName: string }) => {
       if (!user?.id) throw new Error("Not authenticated");
+      
+      // Delete any existing pending invitation first
+      await supabase
+        .from("personnel_invitations")
+        .delete()
+        .eq("personnel_id", personnelId)
+        .eq("status", "pending");
       
       // Create the invitation record
       const { data, error } = await supabase
@@ -267,12 +295,36 @@ export function useSendPortalInvitation() {
       
       return data;
     },
-    onSuccess: () => {
+    onSuccess: (_, variables) => {
       queryClient.invalidateQueries({ queryKey: ["personnel-invitations"] });
+      queryClient.invalidateQueries({ queryKey: ["personnel-invitation-check", variables.personnelId] });
       toast.success("Portal invitation email sent");
     },
     onError: (error) => {
       toast.error("Failed to send invitation: " + error.message);
+    },
+  });
+}
+
+// Revoke portal access (unlink user_id from personnel)
+export function useRevokePortalAccess() {
+  const queryClient = useQueryClient();
+  
+  return useMutation({
+    mutationFn: async (personnelId: string) => {
+      const { error } = await supabase
+        .from("personnel")
+        .update({ user_id: null })
+        .eq("id", personnelId);
+      
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["personnel"] });
+      toast.success("Portal access revoked");
+    },
+    onError: (error) => {
+      toast.error("Failed to revoke access: " + error.message);
     },
   });
 }
