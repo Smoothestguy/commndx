@@ -649,12 +649,8 @@ export const EstimateForm = ({ initialData, draftId }: EstimateFormProps) => {
 
       {/* Line Items */}
       <Card className="glass border-border">
-        <CardHeader className="flex flex-row items-center justify-between">
+        <CardHeader>
           <CardTitle className="font-heading">Line Items</CardTitle>
-          <Button type="button" variant="outline" size="sm" onClick={addLineItem}>
-            <Plus className="h-4 w-4 mr-2" />
-            Add Item
-          </Button>
         </CardHeader>
         <CardContent className="space-y-4">
           {lineItems.map((item, index) => (
@@ -909,6 +905,11 @@ export const EstimateForm = ({ initialData, draftId }: EstimateFormProps) => {
               </div>
             </div>
           ))}
+          
+          <Button type="button" variant="outline" className="w-full" onClick={addLineItem}>
+            <Plus className="h-4 w-4 mr-2" />
+            Add Item
+          </Button>
         </CardContent>
       </Card>
 
