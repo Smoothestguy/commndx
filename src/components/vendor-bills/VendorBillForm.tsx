@@ -7,7 +7,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Plus, Trash2, Save, X } from "lucide-react";
+import { Plus, Trash2, Save, X, Loader2 } from "lucide-react";
 import { toast } from "sonner";
 import { useVendors, Vendor } from "@/integrations/supabase/hooks/useVendors";
 import { useProjects } from "@/integrations/supabase/hooks/useProjects";
@@ -20,6 +20,7 @@ import {
   useAddVendorBill,
   useUpdateVendorBill,
 } from "@/integrations/supabase/hooks/useVendorBills";
+import { useQuickBooksConfig, useSyncVendorBillToQB } from "@/integrations/supabase/hooks/useQuickBooks";
 import { format } from "date-fns";
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "@/components/ui/command";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
@@ -47,9 +48,12 @@ export function VendorBillForm({ bill, isEditing = false }: VendorBillFormProps)
   const { data: projects } = useProjects();
   const { data: categories } = useExpenseCategories("vendor");
   const { data: companySettings } = useCompanySettings();
+  const { data: qbConfig } = useQuickBooksConfig();
   const addBill = useAddVendorBill();
   const updateBill = useUpdateVendorBill();
+  const syncToQB = useSyncVendorBillToQB();
 
+  const [isSyncing, setIsSyncing] = useState(false);
   const [vendorOpen, setVendorOpen] = useState(false);
   const [selectedVendor, setSelectedVendor] = useState<Vendor | null>(null);
   const [billDate, setBillDate] = useState(format(new Date(), "yyyy-MM-dd"));
@@ -159,18 +163,39 @@ export function VendorBillForm({ bill, isEditing = false }: VendorBillFormProps)
       }));
 
     try {
+      let savedBillId: string;
+      
       if (isEditing && bill) {
         await updateBill.mutateAsync({
           id: bill.id,
           bill: { ...billData, paid_amount: bill.paid_amount },
           lineItems: lineItemsData,
         });
+        savedBillId = bill.id;
       } else {
-        await addBill.mutateAsync({
+        const result = await addBill.mutateAsync({
           bill: billData,
           lineItems: lineItemsData,
         });
+        savedBillId = result.id;
       }
+
+      // Sync to QuickBooks if connected and not a draft
+      if (qbConfig?.is_connected && status !== 'draft') {
+        setIsSyncing(true);
+        try {
+          await syncToQB.mutateAsync(savedBillId);
+          toast.success("Bill saved and synced to QuickBooks");
+        } catch (qbError) {
+          console.error('QuickBooks sync error:', qbError);
+          toast.warning("Bill saved locally, but QuickBooks sync failed. You can sync later.");
+        } finally {
+          setIsSyncing(false);
+        }
+      } else {
+        toast.success(isEditing ? "Bill updated" : "Bill created");
+      }
+
       navigate("/vendor-bills");
     } catch (error) {
       // Error handled by mutation
@@ -441,13 +466,22 @@ export function VendorBillForm({ bill, isEditing = false }: VendorBillFormProps)
       </Card>
 
       <div className="flex gap-4 justify-end">
-        <Button variant="outline" onClick={() => navigate("/vendor-bills")}>
+        <Button variant="outline" onClick={() => navigate("/vendor-bills")} disabled={isSyncing}>
           <X className="h-4 w-4 mr-1" />
           Cancel
         </Button>
-        <Button onClick={handleSubmit} disabled={addBill.isPending || updateBill.isPending}>
-          <Save className="h-4 w-4 mr-1" />
-          {isEditing ? "Update Bill" : "Create Bill"}
+        <Button onClick={handleSubmit} disabled={addBill.isPending || updateBill.isPending || isSyncing}>
+          {isSyncing ? (
+            <>
+              <Loader2 className="h-4 w-4 mr-1 animate-spin" />
+              Syncing to QuickBooks...
+            </>
+          ) : (
+            <>
+              <Save className="h-4 w-4 mr-1" />
+              {isEditing ? "Update Bill" : "Create Bill"}
+            </>
+          )}
         </Button>
       </div>
     </div>

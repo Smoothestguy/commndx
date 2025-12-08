@@ -470,6 +470,64 @@ export const useSyncInvoiceToQB = () => {
   });
 };
 
+// Vendor Bill sync
+export const useSyncVendorBillToQB = () => {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async (billId: string) => {
+      const { data, error } = await supabase.functions.invoke('quickbooks-create-bill', {
+        body: { billId },
+      });
+
+      if (error) throw error;
+      if (data.error) throw new Error(data.error);
+      return data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["quickbooks-sync-logs"] });
+      queryClient.invalidateQueries({ queryKey: ["vendor-bills"] });
+      queryClient.invalidateQueries({ queryKey: ["quickbooks-bill-mappings"] });
+    },
+    onError: (error: Error) => {
+      toast.error(`Vendor bill sync failed: ${error.message}`);
+    },
+  });
+};
+
+// Get bill mapping
+export const useQuickBooksBillMapping = (billId: string | undefined) => {
+  return useQuery({
+    queryKey: ["quickbooks-bill-mapping", billId],
+    queryFn: async () => {
+      if (!billId) return null;
+      const { data, error } = await supabase
+        .from("quickbooks_bill_mappings")
+        .select("*")
+        .eq("bill_id", billId)
+        .maybeSingle();
+      if (error) throw error;
+      return data;
+    },
+    enabled: !!billId,
+  });
+};
+
+// Get all bill mappings
+export const useQuickBooksBillMappings = () => {
+  return useQuery({
+    queryKey: ["quickbooks-bill-mappings"],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("quickbooks_bill_mappings")
+        .select("*")
+        .order("last_synced_at", { ascending: false });
+      if (error) throw error;
+      return data;
+    },
+  });
+};
+
 // Get next QuickBooks number (invoice or estimate)
 export const useQuickBooksNextNumber = (type: 'invoice' | 'estimate', enabled: boolean = true) => {
   return useQuery({

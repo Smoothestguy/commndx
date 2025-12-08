@@ -1,10 +1,13 @@
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { MoreHorizontal, Eye, Edit, Trash2, DollarSign } from "lucide-react";
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
+import { MoreHorizontal, Eye, Edit, Trash2, DollarSign, RefreshCw, CheckCircle2, AlertCircle, Loader2 } from "lucide-react";
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { VendorBill } from "@/integrations/supabase/hooks/useVendorBills";
+import { useQuickBooksConfig, useQuickBooksBillMapping, useSyncVendorBillToQB } from "@/integrations/supabase/hooks/useQuickBooks";
 import { format } from "date-fns";
+import { toast } from "sonner";
+import { useState } from "react";
 
 interface VendorBillCardProps {
   bill: VendorBill;
@@ -32,6 +35,28 @@ const statusLabels: Record<string, string> = {
 
 export function VendorBillCard({ bill, onView, onEdit, onDelete, onRecordPayment }: VendorBillCardProps) {
   const isOverdue = new Date(bill.due_date) < new Date() && bill.status !== "paid" && bill.status !== "void";
+  const { data: qbConfig } = useQuickBooksConfig();
+  const { data: billMapping, refetch: refetchMapping } = useQuickBooksBillMapping(bill.id);
+  const syncToQB = useSyncVendorBillToQB();
+  const [isSyncing, setIsSyncing] = useState(false);
+
+  const handleSyncToQB = async (e: React.MouseEvent) => {
+    e.stopPropagation();
+    setIsSyncing(true);
+    try {
+      await syncToQB.mutateAsync(bill.id);
+      toast.success("Bill synced to QuickBooks");
+      refetchMapping();
+    } catch (error) {
+      // Error handled by mutation
+    } finally {
+      setIsSyncing(false);
+    }
+  };
+
+  const isSynced = billMapping?.sync_status === 'synced';
+  const hasSyncError = billMapping?.sync_status === 'error';
+  const canSync = qbConfig?.is_connected && bill.status !== 'draft' && !isSynced;
 
   return (
     <Card className="hover:shadow-md transition-shadow cursor-pointer" onClick={() => onView(bill.id)}>
@@ -42,6 +67,23 @@ export function VendorBillCard({ bill, onView, onEdit, onDelete, onRecordPayment
             <p className="text-sm text-muted-foreground">{bill.vendor_name}</p>
           </div>
           <div className="flex items-center gap-2">
+            {/* QuickBooks sync status */}
+            {qbConfig?.is_connected && (
+              <>
+                {isSynced && (
+                  <Badge variant="outline" className="bg-green-50 text-green-700 border-green-200 dark:bg-green-900/20 dark:text-green-400 dark:border-green-800 gap-1">
+                    <CheckCircle2 className="h-3 w-3" />
+                    QB Synced
+                  </Badge>
+                )}
+                {hasSyncError && (
+                  <Badge variant="outline" className="bg-red-50 text-red-700 border-red-200 dark:bg-red-900/20 dark:text-red-400 dark:border-red-800 gap-1">
+                    <AlertCircle className="h-3 w-3" />
+                    Sync Error
+                  </Badge>
+                )}
+              </>
+            )}
             <Badge className={statusStyles[bill.status]}>{statusLabels[bill.status]}</Badge>
             {isOverdue && <Badge variant="destructive">Overdue</Badge>}
             <DropdownMenu>
@@ -65,6 +107,33 @@ export function VendorBillCard({ bill, onView, onEdit, onDelete, onRecordPayment
                     Record Payment
                   </DropdownMenuItem>
                 )}
+                {canSync && (
+                  <>
+                    <DropdownMenuSeparator />
+                    <DropdownMenuItem onClick={handleSyncToQB} disabled={isSyncing}>
+                      {isSyncing ? (
+                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                      ) : (
+                        <RefreshCw className="mr-2 h-4 w-4" />
+                      )}
+                      Sync to QuickBooks
+                    </DropdownMenuItem>
+                  </>
+                )}
+                {hasSyncError && (
+                  <>
+                    <DropdownMenuSeparator />
+                    <DropdownMenuItem onClick={handleSyncToQB} disabled={isSyncing}>
+                      {isSyncing ? (
+                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                      ) : (
+                        <RefreshCw className="mr-2 h-4 w-4" />
+                      )}
+                      Retry QuickBooks Sync
+                    </DropdownMenuItem>
+                  </>
+                )}
+                <DropdownMenuSeparator />
                 <DropdownMenuItem 
                   onClick={(e) => { e.stopPropagation(); onDelete(bill.id); }}
                   className="text-destructive"
