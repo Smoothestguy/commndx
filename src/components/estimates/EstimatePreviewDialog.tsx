@@ -149,7 +149,7 @@ export function EstimatePreviewDialog({
                           ${Number(item.total).toFixed(2)}
                         </span>
                       </div>
-                      <div className="grid grid-cols-3 gap-2 text-sm text-muted-foreground">
+                      <div className="grid grid-cols-2 gap-2 text-sm text-muted-foreground">
                         <div>
                           <span className="block text-xs mb-0.5">Qty</span>
                           <span>{item.quantity}</span>
@@ -157,10 +157,6 @@ export function EstimatePreviewDialog({
                         <div>
                           <span className="block text-xs mb-0.5">Unit Price</span>
                           <span>${Number(item.unit_price).toFixed(2)}</span>
-                        </div>
-                        <div>
-                          <span className="block text-xs mb-0.5">Markup</span>
-                          <span>{item.margin}%</span>
                         </div>
                       </div>
                     </Card>
@@ -173,7 +169,6 @@ export function EstimatePreviewDialog({
                       <TableHead>Description</TableHead>
                       <TableHead className="text-right">Qty</TableHead>
                       <TableHead className="text-right">Unit Price</TableHead>
-                      <TableHead className="text-right">Markup</TableHead>
                       <TableHead className="text-right">Total</TableHead>
                     </TableRow>
                   </TableHeader>
@@ -196,7 +191,6 @@ export function EstimatePreviewDialog({
                         <TableCell className="text-right">
                           ${Number(item.unit_price).toFixed(2)}
                         </TableCell>
-                        <TableCell className="text-right">{item.margin}%</TableCell>
                         <TableCell className="text-right font-medium">
                           ${Number(item.total).toFixed(2)}
                         </TableCell>
