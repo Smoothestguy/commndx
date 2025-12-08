@@ -21,6 +21,7 @@ import VendorBills from "./pages/VendorBills";
 import VendorBillDetail from "./pages/VendorBillDetail";
 import NewVendorBill from "./pages/NewVendorBill";
 import EditVendorBill from "./pages/EditVendorBill";
+import VendorDocuments from "./pages/VendorDocuments";
 import Jobs from "./pages/Jobs";
 import Sales from "./pages/Sales";
 import Estimates from "./pages/Estimates";
@@ -214,6 +215,14 @@ const App = () => {
                   element={
                     <ProtectedRoute>
                       <EditVendorBill />
+                    </ProtectedRoute>
+                  }
+                />
+                <Route
+                  path="/vendor-documents"
+                  element={
+                    <ProtectedRoute>
+                      <VendorDocuments />
                     </ProtectedRoute>
                   }
                 />
