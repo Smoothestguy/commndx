@@ -72,7 +72,8 @@ export const useEstimate = (id: string) => {
       const { data: lineItems, error: lineItemsError } = await supabase
         .from("estimate_line_items")
         .select("*")
-        .eq("estimate_id", id);
+        .eq("estimate_id", id)
+        .order("sort_order", { ascending: true });
 
       if (lineItemsError) throw lineItemsError;
 
@@ -101,10 +102,11 @@ export const useAddEstimate = () => {
 
       if (estimateError) throw estimateError;
 
-      // Insert line items
-      const lineItemsWithEstimateId = data.lineItems.map(item => ({
+      // Insert line items with sort_order
+      const lineItemsWithEstimateId = data.lineItems.map((item, index) => ({
         ...item,
         estimate_id: estimateData.id,
+        sort_order: index,
       }));
 
       const { error: lineItemsError } = await supabase
@@ -153,9 +155,10 @@ export const useUpdateEstimate = () => {
 
         if (deleteError) throw deleteError;
 
-        const lineItemsWithEstimateId = data.lineItems.map(item => ({
+        const lineItemsWithEstimateId = data.lineItems.map((item, index) => ({
           ...item,
           estimate_id: data.id,
+          sort_order: index,
         }));
 
         const { error: lineItemsError } = await supabase
