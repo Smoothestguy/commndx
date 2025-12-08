@@ -22,6 +22,10 @@ import { useQuickBooksConfig, useQuickBooksNextNumber } from "@/integrations/sup
 import { Badge } from "@/components/ui/badge";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "@/components/ui/command";
+import { useAuth } from "@/contexts/AuthContext";
+import { PendingAttachmentsUpload, PendingFile } from "@/components/shared/PendingAttachmentsUpload";
+import { cleanupPendingAttachments } from "@/utils/attachmentUtils";
+import { toast } from "sonner";
 
 const formSchema = z.object({
   number: z.string().min(1, "Invoice number is required"),
@@ -53,12 +57,13 @@ interface LineItem {
 }
 
 interface InvoiceFormProps {
-  onSubmit: (data: any) => void;
+  onSubmit: (data: any, pendingAttachments?: PendingFile[]) => void;
   initialData?: any;
   jobOrderId?: string;
 }
 
 export function InvoiceForm({ onSubmit, initialData, jobOrderId }: InvoiceFormProps) {
+  const { user } = useAuth();
   const { data: jobOrders = [], isLoading: jobOrdersLoading } = useJobOrders();
   const { data: customers = [], isLoading: customersLoading } = useCustomers();
   const { data: products = [], isLoading: productsLoading } = useProducts();
@@ -74,6 +79,9 @@ export function InvoiceForm({ onSubmit, initialData, jobOrderId }: InvoiceFormPr
   const [dueDate, setDueDate] = useState<Date>();
   const [customerComboboxOpen, setCustomerComboboxOpen] = useState(false);
   const [productComboboxOpen, setProductComboboxOpen] = useState<Record<string, boolean>>({});
+
+  // Pending attachments state
+  const [pendingAttachments, setPendingAttachments] = useState<PendingFile[]>([]);
 
   // Search states for comboboxes
   const [customerSearch, setCustomerSearch] = useState("");
@@ -282,7 +290,7 @@ export function InvoiceForm({ onSubmit, initialData, jobOrderId }: InvoiceFormPr
         customer_id: selectedJobOrder?.customer_id,
         customer_name: selectedJobOrder?.customer_name,
         project_name: selectedJobOrder?.project_name,
-      });
+      }, pendingAttachments);
     } else {
       onSubmit({
         ...baseData,
@@ -291,7 +299,7 @@ export function InvoiceForm({ onSubmit, initialData, jobOrderId }: InvoiceFormPr
         customer_id: selectedCustomer?.id,
         customer_name: selectedCustomer?.name,
         project_name: values.projectName || null,
-      });
+      }, pendingAttachments);
     }
   };
 
@@ -804,6 +812,15 @@ export function InvoiceForm({ onSubmit, initialData, jobOrderId }: InvoiceFormPr
           </div>
         </div>
       </Card>
+
+      {/* Attachments Section */}
+      {!initialData && (
+        <PendingAttachmentsUpload
+          entityType="invoice"
+          pendingFiles={pendingAttachments}
+          onFilesChange={setPendingAttachments}
+        />
+      )}
 
       <Button type="submit" disabled={invoiceType === "job_order" && exceedsBalance} className="w-full sm:w-auto">
         Create Invoice

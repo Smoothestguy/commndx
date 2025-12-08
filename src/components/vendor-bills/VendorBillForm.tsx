@@ -26,6 +26,9 @@ import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, Command
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Check, ChevronsUpDown } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { useAuth } from "@/contexts/AuthContext";
+import { PendingAttachmentsUpload, PendingFile } from "@/components/shared/PendingAttachmentsUpload";
+import { finalizeAttachments, cleanupPendingAttachments } from "@/utils/attachmentUtils";
 
 interface VendorBillFormProps {
   bill?: VendorBill;
@@ -44,6 +47,7 @@ interface LineItem {
 
 export function VendorBillForm({ bill, isEditing = false }: VendorBillFormProps) {
   const navigate = useNavigate();
+  const { user } = useAuth();
   const { data: vendors } = useVendors();
   const { data: projects } = useProjects();
   const { data: categories } = useExpenseCategories("vendor");
@@ -64,6 +68,9 @@ export function VendorBillForm({ bill, isEditing = false }: VendorBillFormProps)
   const [lineItems, setLineItems] = useState<LineItem[]>([
     { id: crypto.randomUUID(), project_id: null, category_id: null, description: "", quantity: 1, unit_cost: 0, total: 0 }
   ]);
+
+  // Pending attachments state (for new bills)
+  const [pendingAttachments, setPendingAttachments] = useState<PendingFile[]>([]);
 
   const notesRef = useRef<HTMLTextAreaElement>(null);
 
@@ -178,6 +185,19 @@ export function VendorBillForm({ bill, isEditing = false }: VendorBillFormProps)
           lineItems: lineItemsData,
         });
         savedBillId = result.id;
+      }
+
+      // Finalize pending attachments for new bills
+      if (!isEditing && pendingAttachments.length > 0 && user) {
+        const attachResult = await finalizeAttachments(
+          pendingAttachments,
+          savedBillId,
+          "vendor_bill",
+          user.id
+        );
+        if (!attachResult.success) {
+          toast.warning("Bill saved but some attachments failed to upload");
+        }
       }
 
       // Sync to QuickBooks if connected and not a draft
@@ -466,8 +486,27 @@ export function VendorBillForm({ bill, isEditing = false }: VendorBillFormProps)
         </CardContent>
       </Card>
 
+      {/* Attachments Section - Only for new bills */}
+      {!isEditing && (
+        <PendingAttachmentsUpload
+          entityType="vendor_bill"
+          pendingFiles={pendingAttachments}
+          onFilesChange={setPendingAttachments}
+        />
+      )}
+
       <div className="flex gap-4 justify-end">
-        <Button variant="outline" onClick={() => navigate("/vendor-bills")} disabled={isSyncing}>
+        <Button 
+          variant="outline" 
+          onClick={async () => {
+            // Cleanup pending attachments when canceling
+            if (pendingAttachments.length > 0) {
+              await cleanupPendingAttachments(pendingAttachments);
+            }
+            navigate("/vendor-bills");
+          }} 
+          disabled={isSyncing}
+        >
           <X className="h-4 w-4 mr-1" />
           Cancel
         </Button>

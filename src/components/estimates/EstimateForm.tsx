@@ -35,6 +35,10 @@ import { Badge } from "@/components/ui/badge";
 import { z } from "zod";
 import { cn } from "@/lib/utils";
 import { formatDistanceToNow } from "date-fns";
+import { useAuth } from "@/contexts/AuthContext";
+import { PendingAttachmentsUpload, PendingFile } from "@/components/shared/PendingAttachmentsUpload";
+import { finalizeAttachments, cleanupPendingAttachments } from "@/utils/attachmentUtils";
+import { toast } from "sonner";
 
 const lineItemSchema = z.object({
   description: z.string().min(1, "Description is required").max(500),
@@ -68,6 +72,7 @@ interface EstimateFormProps {
 
 export const EstimateForm = ({ initialData, draftId }: EstimateFormProps) => {
   const navigate = useNavigate();
+  const { user } = useAuth();
   const { data: customers, isLoading: customersLoading } = useCustomers();
   const { data: products, isLoading: productsLoading } = useProducts();
   const { data: companySettings } = useCompanySettings();
@@ -78,6 +83,9 @@ export const EstimateForm = ({ initialData, draftId }: EstimateFormProps) => {
   const { data: qbConfig } = useQuickBooksConfig();
   const isQBConnected = qbConfig?.is_connected ?? false;
   const { data: qbNextNumber, isLoading: qbNumberLoading } = useQuickBooksNextNumber('estimate', isQBConnected);
+
+  // Pending attachments state (for new estimates)
+  const [pendingAttachments, setPendingAttachments] = useState<PendingFile[]>([]);
 
   const [selectedCustomerId, setSelectedCustomerId] = useState<string>(initialData?.customer_id || "");
   const [selectedProjectId, setSelectedProjectId] = useState<string>(initialData?.project_id || "");
@@ -359,6 +367,8 @@ export const EstimateForm = ({ initialData, draftId }: EstimateFormProps) => {
     // If we have a draft, update it instead of creating new
     const effectiveDraftId = currentDraftId || draftId;
     
+    let savedEstimateId: string | undefined;
+    
     if (effectiveDraftId) {
       await updateEstimate.mutateAsync({
         id: effectiveDraftId,
@@ -379,8 +389,9 @@ export const EstimateForm = ({ initialData, draftId }: EstimateFormProps) => {
         },
         lineItems: lineItemsData,
       });
+      savedEstimateId = effectiveDraftId;
     } else {
-      await addEstimate.mutateAsync({
+      const result = await addEstimate.mutateAsync({
         estimate: {
           number: estimateNumber,
           customer_id: selectedCustomerId,
@@ -398,6 +409,20 @@ export const EstimateForm = ({ initialData, draftId }: EstimateFormProps) => {
         },
         lineItems: lineItemsData,
       });
+      savedEstimateId = result.id;
+    }
+    
+    // Finalize pending attachments
+    if (savedEstimateId && pendingAttachments.length > 0 && user) {
+      const attachResult = await finalizeAttachments(
+        pendingAttachments,
+        savedEstimateId,
+        "estimate",
+        user.id
+      );
+      if (!attachResult.success) {
+        toast.error("Estimate saved but some attachments failed to upload");
+      }
     }
     
     navigate("/estimates");
@@ -1023,12 +1048,27 @@ export const EstimateForm = ({ initialData, draftId }: EstimateFormProps) => {
         </CardContent>
       </Card>
 
+      {/* Attachments Section - Only for new estimates */}
+      {!initialData && (
+        <PendingAttachmentsUpload
+          entityType="estimate"
+          pendingFiles={pendingAttachments}
+          onFilesChange={setPendingAttachments}
+        />
+      )}
+
       {/* Actions */}
       <div className="flex justify-end gap-3">
         <Button
           type="button"
           variant="outline"
-          onClick={() => navigate("/estimates")}
+          onClick={async () => {
+            // Cleanup pending attachments when canceling
+            if (pendingAttachments.length > 0) {
+              await cleanupPendingAttachments(pendingAttachments);
+            }
+            navigate("/estimates");
+          }}
           disabled={isPending}
         >
           Cancel
