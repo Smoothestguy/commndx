@@ -14,7 +14,7 @@ import { Download, Eye, X } from "lucide-react";
 import { generateEstimatePreviewPDF } from "@/utils/estimatePdfExport";
 import { format } from "date-fns";
 import { useIsMobile } from "@/hooks/use-mobile";
-
+import { useProducts } from "@/integrations/supabase/hooks/useProducts";
 interface LineItem {
   id: string;
   product_id?: string;
@@ -52,6 +52,12 @@ export function EstimatePreviewDialog({
   status = "draft",
 }: EstimatePreviewDialogProps) {
   const isMobile = useIsMobile();
+  const { data: products } = useProducts();
+
+  const getProductName = (productId?: string) => {
+    if (!productId || !products) return null;
+    return products.find((p) => p.id === productId)?.name;
+  };
 
   // Calculate totals
   const subtotal = lineItems.reduce((sum, item) => sum + item.total, 0);
@@ -129,9 +135,16 @@ export function EstimatePreviewDialog({
                   {lineItems.map((item) => (
                     <Card key={item.id} className="p-4">
                       <div className="flex justify-between items-start mb-2">
-                        <span className="font-medium text-sm">
-                          {item.description || "No description"}
-                        </span>
+                        <div className="flex flex-col">
+                          <span className="font-medium text-sm">
+                            {getProductName(item.product_id) || item.description || "No description"}
+                          </span>
+                          {item.product_id && getProductName(item.product_id) && item.description && (
+                            <span className="text-xs text-muted-foreground/60 mt-0.5">
+                              {item.description}
+                            </span>
+                          )}
+                        </div>
                         <span className="text-primary font-semibold ml-2 shrink-0">
                           ${Number(item.total).toFixed(2)}
                         </span>
@@ -167,7 +180,18 @@ export function EstimatePreviewDialog({
                   <TableBody>
                     {lineItems.map((item) => (
                       <TableRow key={item.id}>
-                        <TableCell>{item.description || "No description"}</TableCell>
+                        <TableCell>
+                          <div className="flex flex-col">
+                            <span className="font-medium">
+                              {getProductName(item.product_id) || item.description || "No description"}
+                            </span>
+                            {item.product_id && getProductName(item.product_id) && item.description && (
+                              <span className="text-xs text-muted-foreground/60 mt-0.5">
+                                {item.description}
+                              </span>
+                            )}
+                          </div>
+                        </TableCell>
                         <TableCell className="text-right">{item.quantity}</TableCell>
                         <TableCell className="text-right">
                           ${Number(item.unit_price).toFixed(2)}
