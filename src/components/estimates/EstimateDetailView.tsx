@@ -38,7 +38,7 @@ import {
 } from "@/integrations/supabase/hooks/useEstimates";
 import { ConvertToJobOrderDialog } from "./ConvertToJobOrderDialog";
 import { EstimateAttachments } from "./EstimateAttachments";
-import { Edit, Trash2, Briefcase, MoreVertical, Loader2, Send, Copy, CheckCircle, FileText } from "lucide-react";
+import { Edit, Trash2, Briefcase, MoreVertical, Loader2, Send, Copy, CheckCircle, FileText, Eye } from "lucide-react";
 import { format } from "date-fns";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
@@ -150,7 +150,15 @@ export function EstimateDetailView({ estimateId }: EstimateDetailViewProps) {
 
   return (
     <PageLayout
-      title={estimate.number}
+      title={
+        <div className="flex items-center gap-3">
+          <span>{estimate.number}</span>
+          <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium bg-primary/10 text-primary border border-primary/20">
+            <Eye className="h-3 w-3" />
+            Viewing
+          </span>
+        </div>
+      }
       description="Estimate details"
       actions={
         <div className="flex gap-2">

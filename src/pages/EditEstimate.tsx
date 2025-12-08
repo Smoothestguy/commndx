@@ -14,7 +14,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Switch } from "@/components/ui/switch";
-import { Plus, Trash2, Loader2, AlertTriangle } from "lucide-react";
+import { Plus, Trash2, Loader2, AlertTriangle, ArrowLeft, Edit } from "lucide-react";
 import { useCustomers } from "@/integrations/supabase/hooks/useCustomers";
 import { useProjectsByCustomer } from "@/integrations/supabase/hooks/useProjects";
 import { useProducts } from "@/integrations/supabase/hooks/useProducts";
@@ -294,8 +294,22 @@ const EditEstimate = () => {
 
   return (
     <PageLayout
-      title={`Edit ${estimate.number}`}
+      title={
+        <div className="flex items-center gap-3">
+          <span>Edit {estimate.number}</span>
+          <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium bg-amber-500/10 text-amber-600 dark:text-amber-400 border border-amber-500/20">
+            <Edit className="h-3 w-3" />
+            Editing
+          </span>
+        </div>
+      }
       description="Update estimate details"
+      actions={
+        <Button variant="outline" onClick={() => navigate(`/estimates/${id}`)}>
+          <ArrowLeft className="h-4 w-4 mr-2" />
+          Back to Details
+        </Button>
+      }
     >
       <form onSubmit={handleSubmit} className="space-y-6">
         {/* Customer & Project Selection */}
