@@ -556,13 +556,7 @@ export function InvoiceForm({ onSubmit, initialData, jobOrderId }: InvoiceFormPr
 
       <div className="space-y-4">
         <div className="space-y-3">
-          <div className="flex items-center justify-between">
-            <Label className="text-lg font-semibold">Line Items</Label>
-            <Button type="button" variant="outline" size="sm" onClick={addLineItem}>
-              <Plus className="w-4 h-4 mr-2" />
-              Add Item
-            </Button>
-          </div>
+          <Label className="text-lg font-semibold">Line Items</Label>
           {invoiceType === "job_order" && selectedJobOrder && (
             <Button type="button" variant="outline" size="sm" className="w-full sm:w-auto" onClick={copyFromJobOrder}>
               <Copy className="w-4 h-4 mr-2" />
@@ -777,6 +771,11 @@ export function InvoiceForm({ onSubmit, initialData, jobOrderId }: InvoiceFormPr
             </div>
           </Card>
         ))}
+        
+        <Button type="button" variant="outline" className="w-full" onClick={addLineItem}>
+          <Plus className="w-4 h-4 mr-2" />
+          Add Item
+        </Button>
       </div>
 
       <Card className="p-4">

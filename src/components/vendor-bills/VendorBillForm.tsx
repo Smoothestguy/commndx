@@ -312,12 +312,8 @@ export function VendorBillForm({ bill, isEditing = false }: VendorBillFormProps)
       </Card>
 
       <Card>
-        <CardHeader className="flex flex-row items-center justify-between">
+        <CardHeader>
           <CardTitle>Line Items</CardTitle>
-          <Button variant="outline" size="sm" onClick={addLineItem}>
-            <Plus className="h-4 w-4 mr-1" />
-            Add Line
-          </Button>
         </CardHeader>
         <CardContent>
           <div className="overflow-x-auto">
@@ -427,6 +423,11 @@ export function VendorBillForm({ bill, isEditing = false }: VendorBillFormProps)
               </TableBody>
             </Table>
           </div>
+          
+          <Button variant="outline" className="w-full mt-4" onClick={addLineItem}>
+            <Plus className="h-4 w-4 mr-2" />
+            Add Line
+          </Button>
 
           <div className="mt-4 flex justify-end">
             <div className="w-64 space-y-2">
