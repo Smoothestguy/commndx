@@ -12,10 +12,8 @@ import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Label } from "@/components/ui/label";
 import { cn } from "@/lib/utils";
 import { FileUploadZone, UploadedFile } from "./FileUploadZone";
-import { CustomerCombobox } from "./CustomerCombobox";
 import { FormField, useFormConfiguration, useCreateContractorSubmission, uploadContractorFile } from "@/integrations/supabase/hooks/useContractorSubmissions";
 import { useProjects } from "@/integrations/supabase/hooks/useProjects";
-import { useCustomers } from "@/integrations/supabase/hooks/useCustomers";
 import { toast } from "sonner";
 import { Language, getTranslation, getFieldLabel } from "./translations";
 
@@ -28,7 +26,6 @@ interface ContractorSubmissionFormProps {
 export function ContractorSubmissionForm({ formType, onSuccess, language }: ContractorSubmissionFormProps) {
   const { data: formConfig, isLoading: configLoading } = useFormConfiguration(formType);
   const { data: projects } = useProjects();
-  const { data: customers } = useCustomers();
   const createSubmission = useCreateContractorSubmission();
 
   const [formData, setFormData] = useState<Record<string, unknown>>({});
@@ -236,12 +233,22 @@ export function ContractorSubmissionForm({ formType, onSuccess, language }: Cont
 
       case "customer_select":
         return (
-          <CustomerCombobox
-            value={(value as string) || ""}
-            onChange={(v) => updateField(field.name, v)}
-            customers={customers || []}
-            language={language}
-          />
+          <div className="flex gap-2">
+            <Input
+              placeholder={t("typeCustomerName")}
+              value={(value as string) || ""}
+              onChange={(e) => updateField(field.name, e.target.value)}
+              className="flex-1"
+            />
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => updateField(field.name, t("other"))}
+              className="shrink-0"
+            >
+              {t("other")}
+            </Button>
+          </div>
         );
 
       case "file_upload":
