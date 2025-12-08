@@ -50,14 +50,17 @@ const navigation = [
   { name: "Customers", href: "/customers", icon: Users },
   { name: "Projects", href: "/projects", icon: FolderKanban },
   { name: "Personnel", href: "/personnel", icon: UserCheck },
-  { name: "Vendors", href: "/vendors", icon: Truck },
-  { name: "Vendor Bills", href: "/vendor-bills", icon: Receipt },
   { name: "Estimates", href: "/estimates", icon: FileText },
   { name: "Job Orders", href: "/job-orders", icon: Briefcase },
   { name: "Purchase Orders", href: "/purchase-orders", icon: ShoppingCart },
   { name: "Invoices", href: "/invoices", icon: Receipt },
   { name: "Messages", href: "/messages", icon: Send },
   { name: "QuickBooks", href: "/settings/quickbooks", icon: Link2 },
+];
+
+const vendorsNavigation = [
+  { name: "All Vendors", href: "/vendors", icon: Truck },
+  { name: "Vendor Bills", href: "/vendor-bills", icon: Receipt },
 ];
 
 const staffingNavigation = [
@@ -87,6 +90,7 @@ export function Sidebar() {
   const { isAdmin, isManager } = useUserRole();
 
   // Collapsible state
+  const [vendorsOpen, setVendorsOpen] = useState(false);
   const [staffingOpen, setStaffingOpen] = useState(false);
   const [roofingCrmOpen, setRoofingCrmOpen] = useState(false);
   const [roofingOpsOpen, setRoofingOpsOpen] = useState(false);
@@ -94,11 +98,13 @@ export function Sidebar() {
 
   // Auto-expand section if current route is within it
   useEffect(() => {
+    const vendorsRoutes = vendorsNavigation.map((item) => item.href);
     const staffingRoutes = staffingNavigation.map((item) => item.href);
     const crmRoutes = roofingCrmNavigation.map((item) => item.href);
     const opsRoutes = roofingOpsNavigation.map((item) => item.href);
     const accountRoutes = ["/user-management", "/settings"];
 
+    if (vendorsRoutes.some((r) => location.pathname === r || location.pathname.startsWith(r))) setVendorsOpen(true);
     if (staffingRoutes.some((r) => location.pathname === r)) setStaffingOpen(true);
     if (crmRoutes.some((r) => location.pathname === r)) setRoofingCrmOpen(true);
     if (opsRoutes.some((r) => location.pathname === r)) setRoofingOpsOpen(true);
@@ -147,6 +153,51 @@ export function Sidebar() {
               </Link>
             );
           })}
+
+          {/* Vendors Section */}
+          <Collapsible open={vendorsOpen} onOpenChange={setVendorsOpen}>
+            <div className="mt-4 pt-4 border-t border-sidebar-border">
+              <CollapsibleTrigger className="flex items-center justify-between w-full px-3 py-2 text-xs font-semibold text-muted-foreground uppercase tracking-wider hover:text-foreground transition-colors">
+                <span>Vendors</span>
+                <ChevronDown
+                  className={cn(
+                    "h-4 w-4 transition-transform duration-200",
+                    vendorsOpen && "rotate-180"
+                  )}
+                />
+              </CollapsibleTrigger>
+              <CollapsibleContent className="space-y-1">
+                {vendorsNavigation.map((item) => {
+                  const isActive = location.pathname === item.href || location.pathname.startsWith(item.href + "/");
+                  return (
+                    <Link
+                      key={item.name}
+                      to={item.href}
+                      className={cn(
+                        "group flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-all duration-200",
+                        isActive
+                          ? "bg-primary/10 text-primary"
+                          : "text-muted-foreground hover:bg-sidebar-accent hover:text-foreground"
+                      )}
+                    >
+                      <item.icon
+                        className={cn(
+                          "h-5 w-5 transition-colors",
+                          isActive
+                            ? "text-primary"
+                            : "text-muted-foreground group-hover:text-foreground"
+                        )}
+                      />
+                      {item.name}
+                      {isActive && (
+                        <ChevronRight className="ml-auto h-4 w-4 text-primary" />
+                      )}
+                    </Link>
+                  );
+                })}
+              </CollapsibleContent>
+            </div>
+          </Collapsible>
 
           {/* Staffing Section */}
           <Collapsible open={staffingOpen} onOpenChange={setStaffingOpen}>

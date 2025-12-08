@@ -16,7 +16,13 @@ const menuSections = [
     items: [
       { icon: Users, label: "Customers", path: "/customers", color: "text-blue-500" },
       { icon: UserCheck, label: "Personnel", path: "/personnel", color: "text-cyan-500" },
-      { icon: Users, label: "Vendors", path: "/vendors", color: "text-purple-500" },
+    ],
+  },
+  {
+    title: "Vendors",
+    items: [
+      { icon: Users, label: "All Vendors", path: "/vendors", color: "text-purple-500" },
+      { icon: Receipt, label: "Vendor Bills", path: "/vendor-bills", color: "text-amber-500" },
     ],
   },
   {
@@ -29,7 +35,6 @@ const menuSections = [
     title: "Operations",
     items: [
       { icon: ShoppingCart, label: "Purchase Orders", path: "/purchase-orders", color: "text-orange-500" },
-      { icon: Receipt, label: "Vendor Bills", path: "/vendor-bills", color: "text-amber-500" },
       { icon: Clock, label: "Time Tracking", path: "/time-tracking", color: "text-teal-500" },
       { icon: IdCard, label: "Badge Templates", path: "/badge-templates", color: "text-indigo-500" },
       { icon: Link2, label: "QuickBooks", path: "/settings/quickbooks", color: "text-green-500" },
