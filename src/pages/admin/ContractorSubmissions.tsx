@@ -11,6 +11,7 @@ import { PageLayout } from "@/components/layout/PageLayout";
 import { SubmissionCard } from "@/components/contractor/SubmissionCard";
 import { SubmissionFilters } from "@/components/contractor/SubmissionFilters";
 import { useContractorSubmissions } from "@/integrations/supabase/hooks/useContractorSubmissions";
+import { useCompanySettings } from "@/integrations/supabase/hooks/useCompanySettings";
 import { SEO } from "@/components/SEO";
 
 export default function ContractorSubmissions() {
@@ -20,7 +21,9 @@ export default function ContractorSubmissions() {
   const [dateRange, setDateRange] = useState<DateRange | undefined>();
   const [copied, setCopied] = useState(false);
 
-  const portalUrl = `${window.location.origin}/contractor`;
+  const { data: companySettings } = useCompanySettings();
+  const baseUrl = companySettings?.website || window.location.origin;
+  const portalUrl = `${baseUrl.replace(/\/$/, '')}/contractor`;
 
   const copyToClipboard = async () => {
     try {
