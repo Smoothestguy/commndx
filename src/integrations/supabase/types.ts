@@ -407,6 +407,78 @@ export type Database = {
         }
         Relationships: []
       }
+      contractor_form_configurations: {
+        Row: {
+          created_at: string | null
+          fields: Json
+          form_type: string
+          id: string
+          updated_at: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          fields?: Json
+          form_type: string
+          id?: string
+          updated_at?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          fields?: Json
+          form_type?: string
+          id?: string
+          updated_at?: string | null
+        }
+        Relationships: []
+      }
+      contractor_submissions: {
+        Row: {
+          amount: number | null
+          contractor_name: string
+          created_at: string | null
+          custom_fields: Json | null
+          customer_name: string | null
+          expense_description: string | null
+          files: Json | null
+          id: string
+          job_name: string | null
+          project_name: string | null
+          submission_date: string
+          submission_type: string
+          updated_at: string | null
+        }
+        Insert: {
+          amount?: number | null
+          contractor_name: string
+          created_at?: string | null
+          custom_fields?: Json | null
+          customer_name?: string | null
+          expense_description?: string | null
+          files?: Json | null
+          id?: string
+          job_name?: string | null
+          project_name?: string | null
+          submission_date?: string
+          submission_type: string
+          updated_at?: string | null
+        }
+        Update: {
+          amount?: number | null
+          contractor_name?: string
+          created_at?: string | null
+          custom_fields?: Json | null
+          customer_name?: string | null
+          expense_description?: string | null
+          files?: Json | null
+          id?: string
+          job_name?: string | null
+          project_name?: string | null
+          submission_date?: string
+          submission_type?: string
+          updated_at?: string | null
+        }
+        Relationships: []
+      }
       customers: {
         Row: {
           address: string | null

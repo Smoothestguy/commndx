@@ -76,6 +76,10 @@ import PortalSettings from "./pages/portal/PortalSettings";
 import PortalLogin from "./pages/portal/PortalLogin";
 import AcceptPortalInvitation from "./pages/portal/AcceptPortalInvitation";
 import { PortalProtectedRoute } from "./components/portal/PortalProtectedRoute";
+import ContractorPortal from "./pages/contractor/ContractorPortal";
+import ContractorSubmissionSuccess from "./pages/contractor/ContractorSubmissionSuccess";
+import ContractorSubmissions from "./pages/admin/ContractorSubmissions";
+import ContractorFormBuilder from "./pages/admin/ContractorFormBuilder";
 
 const queryClient = new QueryClient();
 
@@ -110,6 +114,12 @@ const App = () => {
                 />
                 <Route path="/legal/privacy" element={<PrivacyPolicy />} />
                 <Route path="/legal/eula" element={<EULA />} />
+                {/* Public Contractor Routes */}
+                <Route path="/contractor" element={<ContractorPortal />} />
+                <Route path="/contractor/success" element={<ContractorSubmissionSuccess />} />
+                {/* Admin Contractor Routes */}
+                <Route path="/admin/contractor-submissions" element={<ProtectedRoute><ContractorSubmissions /></ProtectedRoute>} />
+                <Route path="/admin/contractor-form-builder" element={<ProtectedRoute><ContractorFormBuilder /></ProtectedRoute>} />
                 {/* Portal Routes */}
                 <Route path="/portal/login" element={<PortalLogin />} />
                 <Route path="/portal/accept-invite/:token" element={<AcceptPortalInvitation />} />
