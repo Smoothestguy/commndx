@@ -220,6 +220,7 @@ export function EstimateDetailView({ estimateId }: EstimateDetailViewProps) {
                     lineItems: estimate.line_items.map((item) => ({
                       id: item.id,
                       description: item.description,
+                      productName: getProductName(item.product_id) || undefined,
                       quantity: item.quantity,
                       unitPrice: item.unit_price,
                       markup: item.markup,
@@ -324,6 +325,7 @@ export function EstimateDetailView({ estimateId }: EstimateDetailViewProps) {
                         lineItems: estimate.line_items.map((item) => ({
                           id: item.id,
                           description: item.description,
+                          productName: getProductName(item.product_id) || undefined,
                           quantity: item.quantity,
                           unitPrice: item.unit_price,
                           markup: item.markup,

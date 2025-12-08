@@ -3,6 +3,7 @@ import jsPDF from "jspdf";
 interface LineItem {
   id: string;
   description: string;
+  productName?: string;
   quantity: number;
   unitPrice: number;
   markup: number;
@@ -97,15 +98,20 @@ export const generateEstimatePDF = (estimate: EstimateData): void => {
   yPosition += 8;
 
   // Line Items
-  doc.setFont("helvetica", "normal");
   estimate.lineItems.forEach((item) => {
-    checkPageBreak(12);
+    checkPageBreak(18);
     
-    // Wrap long descriptions
     const maxDescWidth = pageWidth - margin - 100;
-    const descLines = doc.splitTextToSize(item.description, maxDescWidth);
+    const displayName = item.productName || item.description;
+    const showDescription = item.productName && item.description && item.productName !== item.description;
     
-    descLines.forEach((line: string, index: number) => {
+    // Product name in bold
+    doc.setFont("helvetica", "bold");
+    doc.setFontSize(10);
+    doc.setTextColor(0);
+    const nameLines = doc.splitTextToSize(displayName, maxDescWidth);
+    
+    nameLines.forEach((line: string, index: number) => {
       if (index === 0) {
         doc.text(line, margin + 2, yPosition);
         doc.text(item.quantity.toString(), pageWidth - margin - 80, yPosition, { align: "right" });
@@ -116,7 +122,21 @@ export const generateEstimatePDF = (estimate: EstimateData): void => {
       }
       yPosition += 5;
     });
-    yPosition += 2;
+    
+    // Description in smaller gray text (only if different from product name)
+    if (showDescription) {
+      doc.setFont("helvetica", "normal");
+      doc.setFontSize(8);
+      doc.setTextColor(128);
+      const descLines = doc.splitTextToSize(item.description, maxDescWidth);
+      descLines.forEach((line: string) => {
+        doc.text(line, margin + 2, yPosition);
+        yPosition += 4;
+      });
+      doc.setTextColor(0);
+    }
+    
+    yPosition += 3;
   });
 
   yPosition += 5;
