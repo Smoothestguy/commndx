@@ -8,7 +8,7 @@ import { ThemeToggleSimple } from "@/components/ThemeToggle";
 
 interface PageLayoutProps {
   children: ReactNode;
-  title: string;
+  title: ReactNode;
   description?: string;
   actions?: ReactNode;
 }

@@ -83,7 +83,7 @@ export function EstimateCard({ estimate, onClick, index }: EstimateCardProps) {
         <span>Valid until {estimate.valid_until}</span>
       </div>
 
-      {/* Action Button */}
+      {/* Action Buttons */}
       {isDraft ? (
         <Button
           variant="outline"
@@ -95,18 +95,32 @@ export function EstimateCard({ estimate, onClick, index }: EstimateCardProps) {
           Continue Editing
         </Button>
       ) : (
-        <Button
-          variant="outline"
-          size="sm"
-          className="w-full"
-          onClick={(e) => {
-            e.stopPropagation();
-            onClick();
-          }}
-        >
-          <Eye className="h-4 w-4 mr-2" />
-          View Details
-        </Button>
+        <div className="flex gap-2">
+          <Button
+            variant="outline"
+            size="sm"
+            className="flex-1"
+            onClick={(e) => {
+              e.stopPropagation();
+              onClick();
+            }}
+          >
+            <Eye className="h-4 w-4 mr-2" />
+            View
+          </Button>
+          <Button
+            variant="outline"
+            size="sm"
+            className="flex-1"
+            onClick={(e) => {
+              e.stopPropagation();
+              navigate(`/estimates/${estimate.id}/edit`);
+            }}
+          >
+            <Edit className="h-4 w-4 mr-2" />
+            Edit
+          </Button>
+        </div>
       )}
     </div>
   );

@@ -88,20 +88,35 @@ const Estimates = () => {
               e.stopPropagation();
               navigate(`/estimates/new?draft=${item.id}`);
             }}
+            title="Continue editing"
           >
             <Edit className="h-4 w-4" />
           </Button>
         ) : (
-          <Button
-            variant="ghost"
-            size="icon"
-            onClick={(e) => {
-              e.stopPropagation();
-              navigate(`/estimates/${item.id}`);
-            }}
-          >
-            <Eye className="h-4 w-4" />
-          </Button>
+          <div className="flex items-center gap-1">
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={(e) => {
+                e.stopPropagation();
+                navigate(`/estimates/${item.id}`);
+              }}
+              title="View details"
+            >
+              <Eye className="h-4 w-4" />
+            </Button>
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={(e) => {
+                e.stopPropagation();
+                navigate(`/estimates/${item.id}/edit`);
+              }}
+              title="Edit estimate"
+            >
+              <Edit className="h-4 w-4" />
+            </Button>
+          </div>
         )
       ),
     },
