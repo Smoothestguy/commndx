@@ -9,7 +9,7 @@ import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Textarea } from "@/components/ui/textarea";
-import { Plus, Edit, Trash2, Loader2, Tag, X, ChevronDown, ChevronUp, MapPin, DollarSign } from "lucide-react";
+import { Plus, Edit, Trash2, Loader2, Tag, X, ChevronDown, ChevronUp, MapPin, DollarSign, RefreshCw } from "lucide-react";
 import { SearchInput } from "@/components/ui/search-input";
 import { PullToRefreshWrapper } from "@/components/shared/PullToRefreshWrapper";
 import { VendorCard } from "@/components/vendors/VendorCard";
@@ -62,7 +62,7 @@ import {
 } from "@/integrations/supabase/hooks/useVendors";
 import { usePersonnel } from "@/integrations/supabase/hooks/usePersonnel";
 import { useExpenseCategories } from "@/integrations/supabase/hooks/useExpenseCategories";
-import { useQuickBooksConfig, useSyncSingleVendor } from "@/integrations/supabase/hooks/useQuickBooks";
+import { useQuickBooksConfig, useSyncSingleVendor, useImportVendorsFromQB } from "@/integrations/supabase/hooks/useQuickBooks";
 import type { Database } from "@/integrations/supabase/types";
 
 type Personnel = Database["public"]["Tables"]["personnel"]["Row"];
@@ -149,6 +149,7 @@ const Vendors = () => {
   const batchUpdateVendorType = useBatchUpdateVendorType();
   const { data: qbConfig } = useQuickBooksConfig();
   const syncVendorToQB = useSyncSingleVendor();
+  const importVendorsFromQB = useImportVendorsFromQB();
   const isMobile = useIsMobile();
 
   const [search, setSearch] = useState("");
@@ -493,10 +494,26 @@ const Vendors = () => {
         description={isPersonnelView ? "View your workforce and personnel records" : "Manage your vendor profiles and work orders"}
         actions={
           !isPersonnelView && (
-            <Button variant="glow" onClick={openNewDialog}>
-              <Plus className="h-4 w-4" />
-              Add Vendor
-            </Button>
+            <div className="flex items-center gap-2">
+              {qbConfig?.is_connected && (
+                <Button
+                  variant="outline"
+                  onClick={() => importVendorsFromQB.mutate()}
+                  disabled={importVendorsFromQB.isPending}
+                >
+                  {importVendorsFromQB.isPending ? (
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                  ) : (
+                    <RefreshCw className="h-4 w-4" />
+                  )}
+                  {importVendorsFromQB.isPending ? "Syncing..." : "Sync from QuickBooks"}
+                </Button>
+              )}
+              <Button variant="glow" onClick={openNewDialog}>
+                <Plus className="h-4 w-4" />
+                Add Vendor
+              </Button>
+            </div>
           )
         }
       >
