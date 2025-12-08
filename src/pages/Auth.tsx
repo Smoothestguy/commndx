@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardDescription, CardHeader } from "@/components/ui/card";
+import { ParticleBackground } from "@/components/ui/particle-background";
 import { Loader2 } from "lucide-react";
 import { toast } from "sonner";
 import logo from "@/assets/logo.png";
@@ -63,6 +64,9 @@ const Auth = () => {
         <div className="absolute bottom-1/4 right-1/4 w-80 h-80 bg-blue-500/20 rounded-full blur-3xl animate-aurora-float-2" />
         <div className="absolute top-1/2 right-1/3 w-64 h-64 bg-purple-500/15 rounded-full blur-3xl animate-aurora-float-3" />
       </div>
+
+      {/* Particle Animation Layer */}
+      <ParticleBackground className="z-[1]" particleCount={60} />
 
       <Card className="relative z-10 w-full max-w-md glass">
         <CardHeader className="text-center">
