@@ -121,7 +121,7 @@ export function useAutoSaveDraft({
         if (lineItems.length > 0) {
           const lineItemsToInsert = lineItems
             .filter((item) => item.description.trim() || item.unit_price > 0)
-            .map((item) => ({
+            .map((item, index) => ({
               estimate_id: draftId,
               product_id: item.product_id || null,
               description: item.description || "Draft item",
@@ -131,6 +131,7 @@ export function useAutoSaveDraft({
               pricing_type: item.pricing_type || "margin",
               is_taxable: item.is_taxable ?? true,
               total: item.total || 0,
+              sort_order: index,
             }));
 
           if (lineItemsToInsert.length > 0) {
@@ -176,7 +177,7 @@ export function useAutoSaveDraft({
         if (lineItems.length > 0) {
           const lineItemsToInsert = lineItems
             .filter((item) => item.description.trim() || item.unit_price > 0)
-            .map((item) => ({
+            .map((item, index) => ({
               estimate_id: newDraft.id,
               product_id: item.product_id || null,
               description: item.description || "Draft item",
@@ -186,6 +187,7 @@ export function useAutoSaveDraft({
               pricing_type: item.pricing_type || "margin",
               is_taxable: item.is_taxable ?? true,
               total: item.total || 0,
+              sort_order: index,
             }));
 
           if (lineItemsToInsert.length > 0) {
