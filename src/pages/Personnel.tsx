@@ -163,9 +163,9 @@ const Personnel = () => {
                 <Button onClick={() => setAddDialogOpen(true)} className="w-full sm:w-auto">
                   <Plus className="mr-2 h-4 w-4" />
                   Add Personnel
-                  {pendingCount && pendingCount > 0 && (
-                    <Badge variant="secondary" className="ml-2">{pendingCount}</Badge>
-                  )}
+              {pendingCount > 0 && (
+                <Badge variant="secondary" className="ml-2">{pendingCount}</Badge>
+              )}
                 </Button>
               </>
             ) : (
