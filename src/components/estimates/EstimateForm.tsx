@@ -700,7 +700,12 @@ export const EstimateForm = ({ initialData, draftId }: EstimateFormProps) => {
                       className="w-full justify-between bg-secondary border-border"
                     >
                       {item.product_id
-                        ? products?.find((p) => p.id === item.product_id)?.name
+                        ? (() => {
+                            const product = products?.find((p) => p.id === item.product_id);
+                            return product 
+                              ? `${product.name}${product.description ? ` - ${product.description}` : ''}`
+                              : 'Unknown product';
+                          })()
                         : "Search product, service, or labor..."}
                       <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
                     </Button>
@@ -732,12 +737,15 @@ export const EstimateForm = ({ initialData, draftId }: EstimateFormProps) => {
                                     item.product_id === product.id ? "opacity-100" : "opacity-0"
                                   )}
                                 />
-                                <div className="flex flex-col flex-1">
-                                  <div className="flex items-center justify-between">
-                                    <span>{product.name}</span>
-                                    <span className="text-sm font-medium">${product.price.toFixed(2)}/{product.unit}</span>
+                                <div className="flex flex-col flex-1 min-w-0">
+                                  <div className="flex items-center justify-between gap-2">
+                                    <span className="font-medium truncate">{product.name}</span>
+                                    <span className="text-sm font-medium text-muted-foreground shrink-0">${product.price.toFixed(2)}/{product.unit}</span>
                                   </div>
-                                  <span className="text-xs text-muted-foreground">{product.category}</span>
+                                  {product.description && (
+                                    <span className="text-xs text-muted-foreground line-clamp-1">{product.description}</span>
+                                  )}
+                                  <span className="text-xs text-muted-foreground/70">{product.category}</span>
                                 </div>
                               </CommandItem>
                             ))}
@@ -761,12 +769,15 @@ export const EstimateForm = ({ initialData, draftId }: EstimateFormProps) => {
                                     item.product_id === product.id ? "opacity-100" : "opacity-0"
                                   )}
                                 />
-                                <div className="flex flex-col flex-1">
-                                  <div className="flex items-center justify-between">
-                                    <span>{product.name}</span>
-                                    <span className="text-sm font-medium">${product.price.toFixed(2)}/{product.unit}</span>
+                                <div className="flex flex-col flex-1 min-w-0">
+                                  <div className="flex items-center justify-between gap-2">
+                                    <span className="font-medium truncate">{product.name}</span>
+                                    <span className="text-sm font-medium text-muted-foreground shrink-0">${product.price.toFixed(2)}/{product.unit}</span>
                                   </div>
-                                  <span className="text-xs text-muted-foreground">{product.category}</span>
+                                  {product.description && (
+                                    <span className="text-xs text-muted-foreground line-clamp-1">{product.description}</span>
+                                  )}
+                                  <span className="text-xs text-muted-foreground/70">{product.category}</span>
                                 </div>
                               </CommandItem>
                             ))}
@@ -790,12 +801,15 @@ export const EstimateForm = ({ initialData, draftId }: EstimateFormProps) => {
                                     item.product_id === product.id ? "opacity-100" : "opacity-0"
                                   )}
                                 />
-                                <div className="flex flex-col flex-1">
-                                  <div className="flex items-center justify-between">
-                                    <span>{product.name}</span>
-                                    <span className="text-sm font-medium">${product.price.toFixed(2)}/{product.unit}</span>
+                                <div className="flex flex-col flex-1 min-w-0">
+                                  <div className="flex items-center justify-between gap-2">
+                                    <span className="font-medium truncate">{product.name}</span>
+                                    <span className="text-sm font-medium text-muted-foreground shrink-0">${product.price.toFixed(2)}/{product.unit}</span>
                                   </div>
-                                  <span className="text-xs text-muted-foreground">{product.category}</span>
+                                  {product.description && (
+                                    <span className="text-xs text-muted-foreground line-clamp-1">{product.description}</span>
+                                  )}
+                                  <span className="text-xs text-muted-foreground/70">{product.category}</span>
                                 </div>
                               </CommandItem>
                             ))}

@@ -457,7 +457,11 @@ const EditEstimate = () => {
                     <SelectContent>
                       {products?.map((product) => (
                         <SelectItem key={product.id} value={product.id}>
-                          {product.name} - ${product.price.toFixed(2)}
+                          <span className="font-medium">{product.name}</span>
+                          {product.description && (
+                            <span className="text-muted-foreground"> - {product.description}</span>
+                          )}
+                          <span className="text-muted-foreground ml-1">(${product.price.toFixed(2)})</span>
                         </SelectItem>
                       ))}
                     </SelectContent>
