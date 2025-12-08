@@ -55,7 +55,7 @@ export function VendorBillForm({ bill, isEditing = false }: VendorBillFormProps)
   const [billDate, setBillDate] = useState(format(new Date(), "yyyy-MM-dd"));
   const [dueDate, setDueDate] = useState(format(new Date(Date.now() + 30 * 24 * 60 * 60 * 1000), "yyyy-MM-dd"));
   const [status, setStatus] = useState<VendorBillStatus>("draft");
-  const [taxRate, setTaxRate] = useState(companySettings?.default_tax_rate || 0);
+  const [taxRate, setTaxRate] = useState(0);
   const [notes, setNotes] = useState("");
   const [lineItems, setLineItems] = useState<LineItem[]>([
     { id: crypto.randomUUID(), project_id: null, category_id: null, description: "", quantity: 1, unit_cost: 0, total: 0 }
@@ -86,11 +86,7 @@ export function VendorBillForm({ bill, isEditing = false }: VendorBillFormProps)
     }
   }, [bill, isEditing, vendors]);
 
-  useEffect(() => {
-    if (companySettings?.default_tax_rate && !isEditing) {
-      setTaxRate(Number(companySettings.default_tax_rate));
-    }
-  }, [companySettings, isEditing]);
+  // Tax rate defaults to 0 for vendor bills (no auto-load from company settings)
 
   const updateLineItem = (id: string, field: keyof LineItem, value: any) => {
     setLineItems(prev => prev.map(item => {
@@ -250,6 +246,8 @@ export function VendorBillForm({ bill, isEditing = false }: VendorBillFormProps)
                 <SelectContent>
                   <SelectItem value="draft">Draft</SelectItem>
                   <SelectItem value="open">Open</SelectItem>
+                  <SelectItem value="paid">Paid</SelectItem>
+                  <SelectItem value="partially_paid">Partially Paid</SelectItem>
                   <SelectItem value="void">Void</SelectItem>
                 </SelectContent>
               </Select>
@@ -314,10 +312,21 @@ export function VendorBillForm({ bill, isEditing = false }: VendorBillFormProps)
                 {lineItems.map((item) => (
                   <TableRow key={item.id}>
                     <TableCell>
-                      <Input
+                      <Textarea
                         value={item.description}
-                        onChange={(e) => updateLineItem(item.id, "description", e.target.value)}
+                        onChange={(e) => {
+                          updateLineItem(item.id, "description", e.target.value);
+                          e.target.style.height = "auto";
+                          e.target.style.height = `${Math.max(40, e.target.scrollHeight)}px`;
+                        }}
                         placeholder="Description"
+                        className="min-h-[40px] resize-none overflow-hidden"
+                        ref={(el) => {
+                          if (el && item.description) {
+                            el.style.height = "auto";
+                            el.style.height = `${Math.max(40, el.scrollHeight)}px`;
+                          }
+                        }}
                       />
                     </TableCell>
                     <TableCell>
