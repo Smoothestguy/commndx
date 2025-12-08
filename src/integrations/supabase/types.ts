@@ -493,6 +493,47 @@ export type Database = {
           },
         ]
       }
+      estimate_attachments: {
+        Row: {
+          created_at: string | null
+          estimate_id: string
+          file_name: string
+          file_path: string
+          file_size: number
+          file_type: string
+          id: string
+          uploaded_by: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          estimate_id: string
+          file_name: string
+          file_path: string
+          file_size: number
+          file_type: string
+          id?: string
+          uploaded_by?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          estimate_id?: string
+          file_name?: string
+          file_path?: string
+          file_size?: number
+          file_type?: string
+          id?: string
+          uploaded_by?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "estimate_attachments_estimate_id_fkey"
+            columns: ["estimate_id"]
+            isOneToOne: false
+            referencedRelation: "estimates"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       estimate_line_items: {
         Row: {
           created_at: string
@@ -841,6 +882,47 @@ export type Database = {
             columns: ["personnel_id"]
             isOneToOne: false
             referencedRelation: "personnel"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      invoice_attachments: {
+        Row: {
+          created_at: string | null
+          file_name: string
+          file_path: string
+          file_size: number
+          file_type: string
+          id: string
+          invoice_id: string
+          uploaded_by: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          file_name: string
+          file_path: string
+          file_size: number
+          file_type: string
+          id?: string
+          invoice_id: string
+          uploaded_by?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          file_name?: string
+          file_path?: string
+          file_size?: number
+          file_type?: string
+          id?: string
+          invoice_id?: string
+          uploaded_by?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "invoice_attachments_invoice_id_fkey"
+            columns: ["invoice_id"]
+            isOneToOne: false
+            referencedRelation: "invoices"
             referencedColumns: ["id"]
           },
         ]
@@ -3163,6 +3245,47 @@ export type Database = {
             columns: ["user_id"]
             isOneToOne: false
             referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      vendor_bill_attachments: {
+        Row: {
+          bill_id: string
+          created_at: string | null
+          file_name: string
+          file_path: string
+          file_size: number
+          file_type: string
+          id: string
+          uploaded_by: string | null
+        }
+        Insert: {
+          bill_id: string
+          created_at?: string | null
+          file_name: string
+          file_path: string
+          file_size: number
+          file_type: string
+          id?: string
+          uploaded_by?: string | null
+        }
+        Update: {
+          bill_id?: string
+          created_at?: string | null
+          file_name?: string
+          file_path?: string
+          file_size?: number
+          file_type?: string
+          id?: string
+          uploaded_by?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "vendor_bill_attachments_bill_id_fkey"
+            columns: ["bill_id"]
+            isOneToOne: false
+            referencedRelation: "vendor_bills"
             referencedColumns: ["id"]
           },
         ]
