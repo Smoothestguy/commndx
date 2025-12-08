@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { SEO } from "@/components/SEO";
 import { PageLayout } from "@/components/layout/PageLayout";
 import { DataTable } from "@/components/shared/DataTable";
@@ -14,6 +15,8 @@ import { VendorCard } from "@/components/vendors/VendorCard";
 import { VendorStats } from "@/components/vendors/VendorStats";
 import { VendorFilters } from "@/components/vendors/VendorFilters";
 import { VendorEmptyState } from "@/components/vendors/VendorEmptyState";
+import { PersonnelCard } from "@/components/personnel/PersonnelCard";
+import { PersonnelStats } from "@/components/personnel/PersonnelStats";
 import { useIsMobile } from "@/hooks/use-mobile";
 import {
   Dialog,
@@ -50,6 +53,10 @@ import {
   Vendor,
   VendorType,
 } from "@/integrations/supabase/hooks/useVendors";
+import { usePersonnel } from "@/integrations/supabase/hooks/usePersonnel";
+import type { Database } from "@/integrations/supabase/types";
+
+type Personnel = Database["public"]["Tables"]["personnel"]["Row"];
 
 const vendorTypeColors: Record<string, string> = {
   contractor: "bg-blue-500/10 text-blue-500 border-blue-500/20",
@@ -58,7 +65,10 @@ const vendorTypeColors: Record<string, string> = {
 };
 
 const Vendors = () => {
-  const { data: vendors, isLoading, error, refetch, isFetching } = useVendors();
+  const navigate = useNavigate();
+  const { data: vendors, isLoading: vendorsLoading, error: vendorsError, refetch: refetchVendors, isFetching: vendorsFetching } = useVendors();
+  const { data: personnelData, isLoading: personnelLoading, error: personnelError, refetch: refetchPersonnel, isFetching: personnelFetching } = usePersonnel();
+  
   const addVendor = useAddVendor();
   const updateVendor = useUpdateVendor();
   const deleteVendor = useDeleteVendor();
@@ -93,9 +103,42 @@ const Vendors = () => {
     w9_on_file: false,
   });
 
+  // Check if we're showing personnel data
+  const isPersonnelView = typeFilter === "personnel";
+  const isLoading = isPersonnelView ? personnelLoading : vendorsLoading;
+  const error = isPersonnelView ? personnelError : vendorsError;
+  const isFetching = isPersonnelView ? personnelFetching : vendorsFetching;
+  const refetch = isPersonnelView ? refetchPersonnel : refetchVendors;
+
+  // Filter personnel data
+  const filteredPersonnel = personnelData
+    ?.filter((p) => {
+      const fullName = `${p.first_name} ${p.last_name}`.toLowerCase();
+      const matchesSearch =
+        fullName.includes(search.toLowerCase()) ||
+        p.email.toLowerCase().includes(search.toLowerCase()) ||
+        (p.phone && p.phone.includes(search));
+
+      const matchesStatus = statusFilter === "all" || p.status === statusFilter;
+
+      return matchesSearch && matchesStatus;
+    })
+    .sort((a, b) => {
+      const aName = `${a.first_name} ${a.last_name}`.toLowerCase();
+      const bName = `${b.first_name} ${b.last_name}`.toLowerCase();
+      const comparison = aName.localeCompare(bName);
+      return sortOrder === "asc" ? comparison : -comparison;
+    }) || [];
+
+  // Filter vendors (exclude personnel type when in "all" view since we show them separately)
   const filteredVendors =
     vendors
       ?.filter((v) => {
+        // When showing "all", exclude personnel type vendors (they're in personnel table)
+        if (typeFilter === "all" && v.vendor_type === "personnel") {
+          return false;
+        }
+        
         const matchesSearch =
           v.name.toLowerCase().includes(search.toLowerCase()) ||
           (v.specialty && v.specialty.toLowerCase().includes(search.toLowerCase())) ||
@@ -113,10 +156,11 @@ const Vendors = () => {
         return sortOrder === "asc" ? comparison : -comparison;
       }) || [];
 
-  // Calculate stats
-  const total = vendors?.length || 0;
-  const active = vendors?.filter((v) => v.status === "active").length || 0;
-  const inactive = vendors?.filter((v) => v.status === "inactive").length || 0;
+  // Calculate stats - exclude personnel type vendors
+  const vendorsExcludingPersonnelType = vendors?.filter((v) => v.vendor_type !== "personnel") || [];
+  const total = vendorsExcludingPersonnelType.length;
+  const active = vendorsExcludingPersonnelType.filter((v) => v.status === "active").length;
+  const inactive = vendorsExcludingPersonnelType.filter((v) => v.status === "inactive").length;
 
   // Selection handlers
   const handleSelectVendor = (id: string) => {
@@ -145,7 +189,8 @@ const Vendors = () => {
     setIsTypeChangeDialogOpen(false);
   };
 
-  const columns = [
+  // Vendor columns for DataTable
+  const vendorColumns = [
     {
       key: "select",
       header: (
@@ -207,6 +252,64 @@ const Vendors = () => {
             <Trash2 className="h-4 w-4 text-destructive" />
           </Button>
         </div>
+      ),
+    },
+  ];
+
+  // Personnel columns for DataTable
+  const personnelColumns = [
+    {
+      key: "name",
+      header: "Name",
+      render: (item: Personnel) => `${item.first_name} ${item.last_name}`,
+    },
+    { key: "personnel_number", header: "ID" },
+    { key: "email", header: "Email" },
+    { key: "phone", header: "Phone" },
+    {
+      key: "status",
+      header: "Status",
+      render: (item: Personnel) => {
+        const status = item.status;
+        if (status === "do_not_hire") {
+          return <Badge variant="destructive">Do Not Hire</Badge>;
+        }
+        return <StatusBadge status={status === "inactive" ? "inactive" : "active"} />;
+      },
+    },
+    {
+      key: "everify_status",
+      header: "E-Verify",
+      render: (item: Personnel) => {
+        const status = item.everify_status;
+        const colors: Record<string, string> = {
+          verified: "bg-green-600 text-white",
+          pending: "bg-secondary text-secondary-foreground",
+          rejected: "bg-destructive text-destructive-foreground",
+          expired: "border-border text-muted-foreground",
+          not_required: "border-border text-muted-foreground",
+        };
+        return (
+          <Badge variant="outline" className={colors[status || "pending"]}>
+            {status || "pending"}
+          </Badge>
+        );
+      },
+    },
+    {
+      key: "actions",
+      header: "",
+      render: (item: Personnel) => (
+        <Button
+          variant="ghost"
+          size="icon"
+          onClick={(e) => {
+            e.stopPropagation();
+            navigate(`/personnel/${item.id}`);
+          }}
+        >
+          <Edit className="h-4 w-4" />
+        </Button>
       ),
     },
   ];
@@ -292,23 +395,29 @@ const Vendors = () => {
         keywords="vendor management, vendor contacts, supplier management, vendor profiles"
       />
       <PageLayout
-        title="Vendors"
-        description="Manage your vendor profiles and work orders"
+        title={isPersonnelView ? "Personnel" : "Vendors"}
+        description={isPersonnelView ? "View your workforce and personnel records" : "Manage your vendor profiles and work orders"}
         actions={
-          <Button variant="glow" onClick={openNewDialog}>
-            <Plus className="h-4 w-4" />
-            Add Vendor
-          </Button>
+          !isPersonnelView && (
+            <Button variant="glow" onClick={openNewDialog}>
+              <Plus className="h-4 w-4" />
+              Add Vendor
+            </Button>
+          )
         }
       >
         <PullToRefreshWrapper onRefresh={refetch} isRefreshing={isFetching}>
-          {/* Stats */}
-          <VendorStats total={total} active={active} inactive={inactive} />
+          {/* Stats - Show personnel stats or vendor stats based on filter */}
+          {isPersonnelView ? (
+            <PersonnelStats />
+          ) : (
+            <VendorStats total={total} active={active} inactive={inactive} />
+          )}
 
           {/* Search */}
           <div className="mb-6 max-w-md">
             <SearchInput
-              placeholder="Search vendors..."
+              placeholder={isPersonnelView ? "Search personnel..." : "Search vendors..."}
               value={search}
               onChange={setSearch}
               className="bg-secondary border-border"
@@ -335,19 +444,43 @@ const Vendors = () => {
           )}
 
           {error && (
-            <div className="text-center py-12 text-destructive">Error loading vendors: {error.message}</div>
+            <div className="text-center py-12 text-destructive">
+              Error loading {isPersonnelView ? "personnel" : "vendors"}: {error.message}
+            </div>
           )}
 
           {/* Empty State */}
-          {!isLoading && !error && filteredVendors.length === 0 && (
+          {!isLoading && !error && (isPersonnelView ? filteredPersonnel.length === 0 : filteredVendors.length === 0) && (
             <VendorEmptyState
-              onAddVendor={openNewDialog}
+              onAddVendor={isPersonnelView ? () => navigate("/personnel") : openNewDialog}
               isFiltered={!!search || statusFilter !== "all" || typeFilter !== "all"}
             />
           )}
 
-          {/* Vendors - Responsive Layout */}
-          {!isLoading && !error && filteredVendors.length > 0 && (
+          {/* Personnel View */}
+          {!isLoading && !error && isPersonnelView && filteredPersonnel.length > 0 && (
+            <>
+              {isMobile ? (
+                <div className="grid gap-4">
+                  {filteredPersonnel.map((person) => (
+                    <PersonnelCard
+                      key={person.id}
+                      personnel={person}
+                    />
+                  ))}
+                </div>
+              ) : (
+                <DataTable
+                  data={filteredPersonnel}
+                  columns={personnelColumns}
+                  onRowClick={(person) => navigate(`/personnel/${person.id}`)}
+                />
+              )}
+            </>
+          )}
+
+          {/* Vendors View */}
+          {!isLoading && !error && !isPersonnelView && filteredVendors.length > 0 && (
             <>
               {isMobile ? (
                 <div className="grid gap-4">
@@ -364,14 +497,14 @@ const Vendors = () => {
                   ))}
                 </div>
               ) : (
-                <DataTable data={filteredVendors} columns={columns} />
+                <DataTable data={filteredVendors} columns={vendorColumns} />
               )}
             </>
           )}
         </PullToRefreshWrapper>
 
-        {/* Bulk Actions Toolbar */}
-        {selectedVendors.length > 0 && (
+        {/* Bulk Actions Toolbar - Only show for vendors, not personnel */}
+        {!isPersonnelView && selectedVendors.length > 0 && (
           <div className="fixed bottom-20 left-1/2 -translate-x-1/2 bg-card border border-border rounded-lg shadow-lg p-4 flex items-center gap-4 z-50 animate-fade-in">
             <span className="text-sm font-medium">{selectedVendors.length} vendor(s) selected</span>
             <Button variant="outline" size="sm" onClick={() => setIsTypeChangeDialogOpen(true)}>
