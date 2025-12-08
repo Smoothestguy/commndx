@@ -44,10 +44,12 @@ export const translations = {
     // Footer
     needHelp: "Need help? Contact your project manager.",
     
-    // Combobox
+    // Combobox / Customer input
     noCustomerFound: "No customer found.",
     addNew: "Add",
     typeToSearch: "Type to search...",
+    typeCustomerName: "Type customer name...",
+    other: "Other",
     
     // Success messages
     submissionSuccess: "Submission successful!",
@@ -100,10 +102,12 @@ export const translations = {
     // Footer
     needHelp: "¿Necesita ayuda? Contacte a su gerente de proyecto.",
     
-    // Combobox
+    // Combobox / Customer input
     noCustomerFound: "No se encontró cliente.",
     addNew: "Agregar",
     typeToSearch: "Escriba para buscar...",
+    typeCustomerName: "Escriba el nombre del cliente...",
+    other: "Otro",
     
     // Success messages
     submissionSuccess: "¡Envío exitoso!",
