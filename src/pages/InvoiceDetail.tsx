@@ -11,6 +11,7 @@ import { format } from "date-fns";
 import { supabase } from "@/integrations/supabase/client";
 import { generateInvoicePDF } from "@/utils/invoicePdfExport";
 import { useIsMobile } from "@/hooks/use-mobile";
+import { InvoiceAttachments } from "@/components/invoices/InvoiceAttachments";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -287,6 +288,11 @@ const InvoiceDetail = () => {
             </p>
           </div>
         )}
+      </div>
+
+      {/* Attachments Section */}
+      <div className="max-w-4xl mt-6">
+        <InvoiceAttachments invoiceId={id!} />
       </div>
     </>
   );

@@ -37,6 +37,7 @@ import {
   useConvertEstimateToInvoice,
 } from "@/integrations/supabase/hooks/useEstimates";
 import { ConvertToJobOrderDialog } from "./ConvertToJobOrderDialog";
+import { EstimateAttachments } from "./EstimateAttachments";
 import { Edit, Trash2, Briefcase, MoreVertical, Loader2, Send, Copy, CheckCircle, FileText } from "lucide-react";
 import { format } from "date-fns";
 import { toast } from "sonner";
@@ -579,6 +580,9 @@ export function EstimateDetailView({ estimateId }: EstimateDetailViewProps) {
               </CardContent>
             </Card>
           )}
+
+          {/* Attachments */}
+          <EstimateAttachments estimateId={estimateId} />
         </div>
       </div>
     </PageLayout>

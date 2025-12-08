@@ -18,6 +18,7 @@ import { VendorEmptyState } from "@/components/vendors/VendorEmptyState";
 import { PersonnelCard } from "@/components/personnel/PersonnelCard";
 import { PersonnelStats } from "@/components/personnel/PersonnelStats";
 import { useIsMobile } from "@/hooks/use-mobile";
+import { toast } from "sonner";
 import {
   Dialog,
   DialogContent,
@@ -54,6 +55,7 @@ import {
   VendorType,
 } from "@/integrations/supabase/hooks/useVendors";
 import { usePersonnel } from "@/integrations/supabase/hooks/usePersonnel";
+import { useQuickBooksConfig, useSyncSingleVendor } from "@/integrations/supabase/hooks/useQuickBooks";
 import type { Database } from "@/integrations/supabase/types";
 
 type Personnel = Database["public"]["Tables"]["personnel"]["Row"];
@@ -74,6 +76,8 @@ const Vendors = () => {
   const deleteVendor = useDeleteVendor();
   const batchDeleteVendors = useBatchDeleteVendors();
   const batchUpdateVendorType = useBatchUpdateVendorType();
+  const { data: qbConfig } = useQuickBooksConfig();
+  const syncVendorToQB = useSyncSingleVendor();
   const isMobile = useIsMobile();
 
   const [search, setSearch] = useState("");
@@ -346,12 +350,23 @@ const Vendors = () => {
         license_number: formData.license_number || null,
       });
     } else {
-      await addVendor.mutateAsync({
+      const newVendor = await addVendor.mutateAsync({
         ...formData,
         rating: null,
         insurance_expiry: formData.insurance_expiry || null,
         license_number: formData.license_number || null,
       });
+
+      // Auto-sync to QuickBooks if connected
+      if (qbConfig?.is_connected && newVendor?.id) {
+        try {
+          await syncVendorToQB.mutateAsync(newVendor.id);
+          toast.success("Vendor synced to QuickBooks");
+        } catch (error) {
+          console.error("QuickBooks sync failed:", error);
+          toast.warning("Vendor created but QuickBooks sync failed. You can sync manually later.");
+        }
+      }
     }
 
     setIsDialogOpen(false);

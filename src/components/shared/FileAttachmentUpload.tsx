@@ -1,0 +1,256 @@
+import { useState, useRef } from "react";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { supabase } from "@/integrations/supabase/client";
+import { FileText, Loader2, Trash2, Upload, Download, Paperclip, X } from "lucide-react";
+import { format } from "date-fns";
+import { toast } from "sonner";
+import { useAuth } from "@/contexts/AuthContext";
+
+interface Attachment {
+  id: string;
+  file_name: string;
+  file_path: string;
+  file_type: string;
+  file_size: number;
+  created_at: string;
+}
+
+interface FileAttachmentUploadProps {
+  entityId: string;
+  entityType: "invoice" | "estimate" | "vendor_bill";
+  attachments: Attachment[];
+  isLoading: boolean;
+  onUpload: (file: File, filePath: string) => Promise<void>;
+  onDelete: (attachmentId: string, filePath: string) => Promise<void>;
+}
+
+const ALLOWED_TYPES = [
+  "application/pdf",
+  "image/jpeg",
+  "image/png",
+  "image/webp",
+  "application/msword",
+  "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+];
+
+const MAX_FILE_SIZE = 10 * 1024 * 1024; // 10MB
+
+const formatFileSize = (bytes: number): string => {
+  if (bytes < 1024) return `${bytes} B`;
+  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
+  return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
+};
+
+export const FileAttachmentUpload = ({
+  entityId,
+  entityType,
+  attachments,
+  isLoading,
+  onUpload,
+  onDelete,
+}: FileAttachmentUploadProps) => {
+  const { user } = useAuth();
+  const [uploading, setUploading] = useState(false);
+  const [deleting, setDeleting] = useState<string | null>(null);
+  const [dragOver, setDragOver] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
+  const handleFileChange = async (files: FileList | null) => {
+    if (!files || files.length === 0 || !user) return;
+
+    const file = files[0];
+
+    if (!ALLOWED_TYPES.includes(file.type)) {
+      toast.error("Invalid file type. Please upload PDF, images, or Word documents.");
+      return;
+    }
+
+    if (file.size > MAX_FILE_SIZE) {
+      toast.error("File size exceeds 10MB limit.");
+      return;
+    }
+
+    setUploading(true);
+    try {
+      const fileExt = file.name.split(".").pop();
+      const filePath = `${entityType}/${entityId}/${Date.now()}.${fileExt}`;
+
+      const { error: uploadError } = await supabase.storage
+        .from("document-attachments")
+        .upload(filePath, file);
+
+      if (uploadError) throw uploadError;
+
+      await onUpload(file, filePath);
+      toast.success("File uploaded successfully");
+      
+      if (fileInputRef.current) {
+        fileInputRef.current.value = "";
+      }
+    } catch (error: any) {
+      console.error("Upload error:", error);
+      toast.error(error.message || "Failed to upload file");
+    } finally {
+      setUploading(false);
+    }
+  };
+
+  const handleDelete = async (attachment: Attachment) => {
+    if (!confirm("Are you sure you want to delete this attachment?")) return;
+
+    setDeleting(attachment.id);
+    try {
+      const { error: storageError } = await supabase.storage
+        .from("document-attachments")
+        .remove([attachment.file_path]);
+
+      if (storageError) throw storageError;
+
+      await onDelete(attachment.id, attachment.file_path);
+      toast.success("Attachment deleted");
+    } catch (error: any) {
+      console.error("Delete error:", error);
+      toast.error(error.message || "Failed to delete attachment");
+    } finally {
+      setDeleting(null);
+    }
+  };
+
+  const handleDownload = async (attachment: Attachment) => {
+    try {
+      const { data, error } = await supabase.storage
+        .from("document-attachments")
+        .createSignedUrl(attachment.file_path, 60);
+
+      if (error) throw error;
+
+      window.open(data.signedUrl, "_blank");
+    } catch (error: any) {
+      console.error("Download error:", error);
+      toast.error("Failed to download file");
+    }
+  };
+
+  const handleDrop = (e: React.DragEvent) => {
+    e.preventDefault();
+    setDragOver(false);
+    handleFileChange(e.dataTransfer.files);
+  };
+
+  const handleDragOver = (e: React.DragEvent) => {
+    e.preventDefault();
+    setDragOver(true);
+  };
+
+  const handleDragLeave = (e: React.DragEvent) => {
+    e.preventDefault();
+    setDragOver(false);
+  };
+
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle className="flex items-center gap-2">
+          <Paperclip className="h-5 w-5" />
+          Attachments
+        </CardTitle>
+      </CardHeader>
+      <CardContent className="space-y-4">
+        {/* Upload Area */}
+        <div
+          className={`border-2 border-dashed rounded-lg p-6 text-center transition-colors ${
+            dragOver
+              ? "border-primary bg-primary/5"
+              : "border-border hover:border-primary/50"
+          }`}
+          onDrop={handleDrop}
+          onDragOver={handleDragOver}
+          onDragLeave={handleDragLeave}
+        >
+          <Input
+            ref={fileInputRef}
+            type="file"
+            onChange={(e) => handleFileChange(e.target.files)}
+            accept=".pdf,.jpg,.jpeg,.png,.webp,.doc,.docx"
+            className="hidden"
+            id={`file-upload-${entityId}`}
+            disabled={uploading}
+          />
+          <label
+            htmlFor={`file-upload-${entityId}`}
+            className="cursor-pointer flex flex-col items-center gap-2"
+          >
+            {uploading ? (
+              <Loader2 className="h-8 w-8 animate-spin text-primary" />
+            ) : (
+              <Upload className="h-8 w-8 text-muted-foreground" />
+            )}
+            <div>
+              <p className="text-sm font-medium">
+                {uploading ? "Uploading..." : "Click to upload or drag and drop"}
+              </p>
+              <p className="text-xs text-muted-foreground mt-1">
+                PDF, images, or Word documents (max 10MB)
+              </p>
+            </div>
+          </label>
+        </div>
+
+        {/* Attachments List */}
+        {isLoading ? (
+          <div className="flex items-center justify-center py-8">
+            <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+          </div>
+        ) : attachments.length > 0 ? (
+          <div className="space-y-2">
+            {attachments.map((attachment) => (
+              <div
+                key={attachment.id}
+                className="flex items-center justify-between p-3 border border-border rounded-lg bg-secondary/30"
+              >
+                <div className="flex items-center gap-3 min-w-0 flex-1">
+                  <FileText className="h-5 w-5 text-muted-foreground shrink-0" />
+                  <div className="min-w-0 flex-1">
+                    <p className="font-medium text-sm truncate">{attachment.file_name}</p>
+                    <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                      <span>{formatFileSize(attachment.file_size)}</span>
+                      <span>•</span>
+                      <span>{format(new Date(attachment.created_at), "MMM d, yyyy")}</span>
+                    </div>
+                  </div>
+                </div>
+                <div className="flex items-center gap-1 shrink-0">
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    onClick={() => handleDownload(attachment)}
+                  >
+                    <Download className="h-4 w-4" />
+                  </Button>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    onClick={() => handleDelete(attachment)}
+                    disabled={deleting === attachment.id}
+                  >
+                    {deleting === attachment.id ? (
+                      <Loader2 className="h-4 w-4 animate-spin" />
+                    ) : (
+                      <Trash2 className="h-4 w-4 text-destructive" />
+                    )}
+                  </Button>
+                </div>
+              </div>
+            ))}
+          </div>
+        ) : (
+          <p className="text-center text-muted-foreground py-4 text-sm">
+            No attachments yet
+          </p>
+        )}
+      </CardContent>
+    </Card>
+  );
+};

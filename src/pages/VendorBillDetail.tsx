@@ -12,6 +12,7 @@ import { useState } from "react";
 import { useVendorBill, useDeleteVendorBill } from "@/integrations/supabase/hooks/useVendorBills";
 import { VendorBillPaymentDialog } from "@/components/vendor-bills/VendorBillPaymentDialog";
 import { VendorBillPaymentHistory } from "@/components/vendor-bills/VendorBillPaymentHistory";
+import { VendorBillAttachments } from "@/components/vendor-bills/VendorBillAttachments";
 
 export default function VendorBillDetail() {
   const { id } = useParams();
@@ -185,6 +186,9 @@ export default function VendorBillDetail() {
         {bill.payments && bill.payments.length > 0 && (
           <VendorBillPaymentHistory billId={bill.id} payments={bill.payments} />
         )}
+
+        {/* Attachments */}
+        <VendorBillAttachments billId={bill.id} />
       </div>
 
       {/* Delete Dialog */}
