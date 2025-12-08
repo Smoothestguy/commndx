@@ -86,6 +86,7 @@ export const EstimateForm = ({ initialData, draftId }: EstimateFormProps) => {
   const [notes, setNotes] = useState<string>(initialData?.notes || "");
   const [status, setStatus] = useState<"draft" | "pending" | "sent" | "approved">(initialData?.status || "draft");
   const [defaultPricingType, setDefaultPricingType] = useState<'markup' | 'margin'>(initialData?.default_pricing_type || 'margin');
+  const [defaultMarginPercent, setDefaultMarginPercent] = useState<string>("30");
   const [estimateNumber, setEstimateNumber] = useState<string>(initialData?.number || "");
   const [isInitialized, setIsInitialized] = useState(!!initialData);
 
@@ -117,7 +118,7 @@ export const EstimateForm = ({ initialData, draftId }: EstimateFormProps) => {
         total: item.total,
       }));
     }
-    return [{ description: "", quantity: "1", unit_price: "", margin: "0", pricing_type: "margin", is_taxable: true, total: 0 }];
+    return [{ description: "", quantity: "1", unit_price: "", margin: "30", pricing_type: "margin", is_taxable: true, total: 0 }];
   });
 
   const [errors, setErrors] = useState<Record<string, string>>({});
@@ -186,8 +187,18 @@ export const EstimateForm = ({ initialData, draftId }: EstimateFormProps) => {
   const addLineItem = () => {
     setLineItems([
       ...lineItems,
-      { description: "", quantity: "1", unit_price: "", margin: "0", pricing_type: defaultPricingType, is_taxable: true, total: 0 },
+      { description: "", quantity: "1", unit_price: "", margin: defaultMarginPercent, pricing_type: defaultPricingType, is_taxable: true, total: 0 },
     ]);
+  };
+
+  const applyDefaultMarginToAll = () => {
+    const newLineItems = lineItems.map(item => {
+      const newTotal = calculateLineItemTotal(
+        item.quantity, item.unit_price, defaultMarginPercent, item.pricing_type
+      );
+      return { ...item, margin: defaultMarginPercent, total: newTotal };
+    });
+    setLineItems(newLineItems);
   };
 
   const removeLineItem = (index: number) => {
@@ -620,6 +631,31 @@ export const EstimateForm = ({ initialData, draftId }: EstimateFormProps) => {
                   <SelectItem value="markup">Markup-based</SelectItem>
                 </SelectContent>
               </Select>
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="defaultMarginPercent">Default Margin (%)</Label>
+              <div className="flex gap-2">
+                <Input
+                  id="defaultMarginPercent"
+                  type="number"
+                  step="0.01"
+                  min="0"
+                  max="99.99"
+                  value={defaultMarginPercent}
+                  onChange={(e) => setDefaultMarginPercent(e.target.value)}
+                  className="bg-secondary border-border"
+                />
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={applyDefaultMarginToAll}
+                  className="whitespace-nowrap text-xs"
+                >
+                  Apply All
+                </Button>
+              </div>
             </div>
 
             <div className="space-y-2">
