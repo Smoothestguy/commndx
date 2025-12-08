@@ -5,7 +5,8 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useVendors } from "@/integrations/supabase/hooks/useVendors";
 import { VendorDocumentUpload } from "@/components/vendors/VendorDocumentUpload";
-import { ArrowLeft, Building2, Mail, Phone, FileText, AlertCircle } from "lucide-react";
+import { VendorPersonnelSection } from "@/components/vendors/VendorPersonnelSection";
+import { ArrowLeft, Building2, Mail, Phone, FileText, AlertCircle, Users } from "lucide-react";
 import { format } from "date-fns";
 import { Loader2 } from "lucide-react";
 
@@ -110,13 +111,20 @@ export default function VendorDetail() {
           </CardContent>
         </Card>
 
-        <Tabs defaultValue="documents" className="w-full">
-          <TabsList className="grid w-full grid-cols-1">
+        <Tabs defaultValue="personnel" className="w-full">
+          <TabsList className="grid w-full grid-cols-2">
+            <TabsTrigger value="personnel">
+              <Users className="mr-2 h-4 w-4" />
+              Personnel
+            </TabsTrigger>
             <TabsTrigger value="documents">
               <FileText className="mr-2 h-4 w-4" />
               Documents
             </TabsTrigger>
           </TabsList>
+          <TabsContent value="personnel" className="mt-6">
+            <VendorPersonnelSection vendorId={vendor.id} vendorName={vendor.name} />
+          </TabsContent>
           <TabsContent value="documents" className="mt-6">
             <VendorDocumentUpload vendorId={vendor.id} />
           </TabsContent>

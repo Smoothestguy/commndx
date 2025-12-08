@@ -1290,6 +1290,7 @@ export type Database = {
           status: Database["public"]["Enums"]["personnel_status"] | null
           updated_at: string | null
           user_id: string | null
+          vendor_id: string | null
           work_auth_expiry: string | null
           work_authorization_status: string | null
           work_authorization_type:
@@ -1326,6 +1327,7 @@ export type Database = {
           status?: Database["public"]["Enums"]["personnel_status"] | null
           updated_at?: string | null
           user_id?: string | null
+          vendor_id?: string | null
           work_auth_expiry?: string | null
           work_authorization_status?: string | null
           work_authorization_type?:
@@ -1362,6 +1364,7 @@ export type Database = {
           status?: Database["public"]["Enums"]["personnel_status"] | null
           updated_at?: string | null
           user_id?: string | null
+          vendor_id?: string | null
           work_auth_expiry?: string | null
           work_authorization_status?: string | null
           work_authorization_type?:
@@ -1369,7 +1372,15 @@ export type Database = {
             | null
           zip?: string | null
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "personnel_vendor_id_fkey"
+            columns: ["vendor_id"]
+            isOneToOne: false
+            referencedRelation: "vendors"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       personnel_capabilities: {
         Row: {

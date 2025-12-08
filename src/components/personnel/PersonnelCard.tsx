@@ -2,8 +2,9 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { Checkbox } from "@/components/ui/checkbox";
-import { Mail, Phone, MapPin, AlertTriangle } from "lucide-react";
-import { useNavigate } from "react-router-dom";
+import { Mail, Phone, MapPin, AlertTriangle, Building2 } from "lucide-react";
+import { useNavigate, Link } from "react-router-dom";
+import { useVendors } from "@/integrations/supabase/hooks/useVendors";
 import type { Database } from "@/integrations/supabase/types";
 
 type Personnel = Database["public"]["Tables"]["personnel"]["Row"];
@@ -22,6 +23,10 @@ export const PersonnelCard = ({
   onSelect,
 }: PersonnelCardProps) => {
   const navigate = useNavigate();
+  const { data: vendors } = useVendors();
+  
+  // Find the vendor for this personnel
+  const vendor = vendors?.find((v) => v.id === (personnel as any).vendor_id);
 
   const handleClick = () => {
     if (selectionMode && onSelect) {
@@ -118,6 +123,18 @@ export const PersonnelCard = ({
                 <div className="flex items-center gap-2">
                   <MapPin className="h-4 w-4 flex-shrink-0" />
                   <span>{personnel.city}, {personnel.state}</span>
+                </div>
+              )}
+              {vendor && (
+                <div className="flex items-center gap-2">
+                  <Building2 className="h-4 w-4 flex-shrink-0" />
+                  <Link 
+                    to={`/vendors/${vendor.id}`} 
+                    className="text-primary hover:underline"
+                    onClick={(e) => e.stopPropagation()}
+                  >
+                    {vendor.name}
+                  </Link>
                 </div>
               )}
             </div>

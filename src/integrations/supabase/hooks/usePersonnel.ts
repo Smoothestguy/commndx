@@ -11,6 +11,7 @@ export const usePersonnel = (filters?: {
   status?: string;
   search?: string;
   everifyStatus?: string;
+  vendorId?: string;
 }) => {
   return useQuery({
     queryKey: ["personnel", filters],
@@ -34,10 +35,70 @@ export const usePersonnel = (filters?: {
         query = query.eq("everify_status", filters.everifyStatus as any);
       }
 
+      if (filters?.vendorId && filters.vendorId !== "all") {
+        query = query.eq("vendor_id", filters.vendorId);
+      }
+
       const { data, error } = await query;
 
       if (error) throw error;
       return data as Personnel[];
+    },
+  });
+};
+
+export const usePersonnelByVendor = (vendorId: string | undefined) => {
+  return useQuery({
+    queryKey: ["personnel-by-vendor", vendorId],
+    queryFn: async () => {
+      if (!vendorId) return [];
+
+      const { data, error } = await supabase
+        .from("personnel")
+        .select("*")
+        .eq("vendor_id", vendorId)
+        .order("first_name", { ascending: true });
+
+      if (error) throw error;
+      return data as Personnel[];
+    },
+    enabled: !!vendorId,
+  });
+};
+
+export const useAssignPersonnelToVendor = () => {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async ({
+      personnelId,
+      vendorId,
+    }: {
+      personnelId: string;
+      vendorId: string | null;
+    }) => {
+      const { data, error } = await supabase
+        .from("personnel")
+        .update({ vendor_id: vendorId })
+        .eq("id", personnelId)
+        .select()
+        .single();
+
+      if (error) throw error;
+      return data;
+    },
+    onSuccess: (_, variables) => {
+      queryClient.invalidateQueries({ queryKey: ["personnel"] });
+      queryClient.invalidateQueries({ queryKey: ["personnel-by-vendor"] });
+      queryClient.invalidateQueries({ queryKey: ["personnel", variables.personnelId] });
+      toast.success(
+        variables.vendorId
+          ? "Personnel assigned to vendor"
+          : "Personnel removed from vendor"
+      );
+    },
+    onError: (error: Error) => {
+      toast.error(`Failed to update personnel: ${error.message}`);
     },
   });
 };
