@@ -208,7 +208,10 @@ export function EstimateDetailView({ estimateId }: EstimateDetailViewProps) {
             <>
               <Button
                 variant="outline"
-                onClick={() =>
+                onClick={() => {
+                  const salesRepName = estimate.created_by_profile 
+                    ? `${estimate.created_by_profile.first_name || ''} ${estimate.created_by_profile.last_name || ''}`.trim() || null
+                    : null;
                   generateEstimatePDF({
                     number: estimate.number,
                     customerName: estimate.customer_name,
@@ -230,8 +233,9 @@ export function EstimateDetailView({ estimateId }: EstimateDetailViewProps) {
                     taxRate: estimate.tax_rate,
                     taxAmount: estimate.tax_amount,
                     total: estimate.total,
-                  })
-                }
+                    salesRepName,
+                  });
+                }}
               >
                 <Download className="mr-2 h-4 w-4" />
                 Download PDF
@@ -313,7 +317,10 @@ export function EstimateDetailView({ estimateId }: EstimateDetailViewProps) {
               {isMobile && (
                 <>
                   <DropdownMenuItem
-                    onClick={() =>
+                    onClick={() => {
+                      const salesRepName = estimate.created_by_profile 
+                        ? `${estimate.created_by_profile.first_name || ''} ${estimate.created_by_profile.last_name || ''}`.trim() || null
+                        : null;
                       generateEstimatePDF({
                         number: estimate.number,
                         customerName: estimate.customer_name,
@@ -335,8 +342,9 @@ export function EstimateDetailView({ estimateId }: EstimateDetailViewProps) {
                         taxRate: estimate.tax_rate,
                         taxAmount: estimate.tax_amount,
                         total: estimate.total,
-                      })
-                    }
+                        salesRepName,
+                      });
+                    }}
                   >
                     <Download className="mr-2 h-4 w-4" />
                     Download PDF

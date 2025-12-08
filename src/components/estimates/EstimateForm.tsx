@@ -39,6 +39,7 @@ import { z } from "zod";
 import { cn } from "@/lib/utils";
 import { formatDistanceToNow } from "date-fns";
 import { useAuth } from "@/contexts/AuthContext";
+import { supabase } from "@/integrations/supabase/client";
 import { PendingAttachmentsUpload, PendingFile } from "@/components/shared/PendingAttachmentsUpload";
 import { finalizeAttachments, cleanupPendingAttachments } from "@/utils/attachmentUtils";
 import { toast } from "sonner";
@@ -82,6 +83,23 @@ export const EstimateForm = ({ initialData, draftId }: EstimateFormProps) => {
   const { data: companySettings } = useCompanySettings();
   const addEstimate = useAddEstimate();
   const updateEstimate = useUpdateEstimate();
+
+  // Fetch current user's profile for sales rep name
+  const [currentUserName, setCurrentUserName] = useState<string | null>(null);
+  useEffect(() => {
+    const fetchUserProfile = async () => {
+      if (!user?.id) return;
+      const { data: profile } = await supabase
+        .from("profiles")
+        .select("first_name, last_name")
+        .eq("id", user.id)
+        .single();
+      if (profile) {
+        setCurrentUserName(`${profile.first_name || ''} ${profile.last_name || ''}`.trim() || null);
+      }
+    };
+    fetchUserProfile();
+  }, [user?.id]);
 
   // QuickBooks integration
   const { data: qbConfig } = useQuickBooksConfig();
@@ -949,6 +967,7 @@ export const EstimateForm = ({ initialData, draftId }: EstimateFormProps) => {
         }))}
         taxRate={effectiveTaxRate}
         status={status}
+        salesRepName={currentUserName}
       />
     </form>
   );

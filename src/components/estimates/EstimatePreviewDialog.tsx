@@ -37,6 +37,7 @@ interface EstimatePreviewDialogProps {
   lineItems: LineItem[];
   taxRate: number;
   status?: "draft" | "pending" | "approved" | "sent";
+  salesRepName?: string | null;
 }
 
 export function EstimatePreviewDialog({
@@ -50,6 +51,7 @@ export function EstimatePreviewDialog({
   lineItems,
   taxRate,
   status = "draft",
+  salesRepName,
 }: EstimatePreviewDialogProps) {
   const isMobile = useIsMobile();
   const { data: products } = useProducts();
@@ -252,7 +254,8 @@ export function EstimatePreviewDialog({
                   taxRate,
                   notes,
                   validUntil,
-                  status
+                  status,
+                  salesRepName
                 )
               }
             >
