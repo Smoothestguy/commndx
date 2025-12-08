@@ -3497,54 +3497,98 @@ export type Database = {
       }
       vendors: {
         Row: {
+          account_number: string | null
+          address: string | null
+          billing_rate: number | null
+          city: string | null
           company: string | null
           created_at: string
+          default_expense_category_id: string | null
           email: string
           id: string
           insurance_expiry: string | null
           license_number: string | null
           name: string
+          notes: string | null
+          opening_balance: number | null
+          payment_terms: string | null
           phone: string | null
           rating: number | null
           specialty: string | null
+          state: string | null
           status: Database["public"]["Enums"]["vendor_status"]
+          tax_id: string | null
+          track_1099: boolean | null
           updated_at: string
           vendor_type: Database["public"]["Enums"]["vendor_type"]
           w9_on_file: boolean | null
+          zip: string | null
         }
         Insert: {
+          account_number?: string | null
+          address?: string | null
+          billing_rate?: number | null
+          city?: string | null
           company?: string | null
           created_at?: string
+          default_expense_category_id?: string | null
           email: string
           id?: string
           insurance_expiry?: string | null
           license_number?: string | null
           name: string
+          notes?: string | null
+          opening_balance?: number | null
+          payment_terms?: string | null
           phone?: string | null
           rating?: number | null
           specialty?: string | null
+          state?: string | null
           status?: Database["public"]["Enums"]["vendor_status"]
+          tax_id?: string | null
+          track_1099?: boolean | null
           updated_at?: string
           vendor_type?: Database["public"]["Enums"]["vendor_type"]
           w9_on_file?: boolean | null
+          zip?: string | null
         }
         Update: {
+          account_number?: string | null
+          address?: string | null
+          billing_rate?: number | null
+          city?: string | null
           company?: string | null
           created_at?: string
+          default_expense_category_id?: string | null
           email?: string
           id?: string
           insurance_expiry?: string | null
           license_number?: string | null
           name?: string
+          notes?: string | null
+          opening_balance?: number | null
+          payment_terms?: string | null
           phone?: string | null
           rating?: number | null
           specialty?: string | null
+          state?: string | null
           status?: Database["public"]["Enums"]["vendor_status"]
+          tax_id?: string | null
+          track_1099?: boolean | null
           updated_at?: string
           vendor_type?: Database["public"]["Enums"]["vendor_type"]
           w9_on_file?: boolean | null
+          zip?: string | null
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "vendors_default_expense_category_id_fkey"
+            columns: ["default_expense_category_id"]
+            isOneToOne: false
+            referencedRelation: "expense_categories"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       weather_logs: {
         Row: {

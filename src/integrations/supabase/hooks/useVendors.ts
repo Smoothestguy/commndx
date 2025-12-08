@@ -17,6 +17,23 @@ export interface Vendor {
   insurance_expiry: string | null;
   license_number: string | null;
   w9_on_file: boolean;
+  // Address fields
+  address: string | null;
+  city: string | null;
+  state: string | null;
+  zip: string | null;
+  // Tax and 1099 fields
+  tax_id: string | null;
+  track_1099: boolean;
+  // Billing and payment fields
+  billing_rate: number | null;
+  payment_terms: string | null;
+  account_number: string | null;
+  // Accounting fields
+  default_expense_category_id: string | null;
+  opening_balance: number | null;
+  // Notes
+  notes: string | null;
   created_at: string;
   updated_at: string;
 }
