@@ -22,7 +22,8 @@ import {
 } from "@/components/ui/command";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Switch } from "@/components/ui/switch";
-import { Plus, Trash2, Loader2, AlertTriangle, Check, ChevronsUpDown, Save, Clock } from "lucide-react";
+import { Plus, Trash2, Loader2, AlertTriangle, Check, ChevronsUpDown, Save, Clock, Eye } from "lucide-react";
+import { EstimatePreviewDialog } from "./EstimatePreviewDialog";
 import { useCustomers } from "@/integrations/supabase/hooks/useCustomers";
 import { useProjectsByCustomer } from "@/integrations/supabase/hooks/useProjects";
 import { useProducts } from "@/integrations/supabase/hooks/useProducts";
@@ -97,6 +98,9 @@ export const EstimateForm = ({ initialData, draftId }: EstimateFormProps) => {
   const [customerSearch, setCustomerSearch] = useState("");
   const [projectSearch, setProjectSearch] = useState("");
   const [productSearch, setProductSearch] = useState<Record<number, string>>({});
+  
+  // Preview dialog state
+  const [previewOpen, setPreviewOpen] = useState(false);
 
   const { data: projects } = useProjectsByCustomer(selectedCustomerId);
 
@@ -993,11 +997,43 @@ export const EstimateForm = ({ initialData, draftId }: EstimateFormProps) => {
         >
           Cancel
         </Button>
+        <Button
+          type="button"
+          variant="outline"
+          onClick={() => setPreviewOpen(true)}
+          disabled={isPending}
+        >
+          <Eye className="mr-2 h-4 w-4" />
+          Preview
+        </Button>
         <Button type="submit" variant="glow" disabled={isPending}>
           {isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
           {(currentDraftId || draftId) ? "Save Estimate" : "Create Estimate"}
         </Button>
       </div>
+
+      {/* Preview Dialog */}
+      <EstimatePreviewDialog
+        open={previewOpen}
+        onOpenChange={setPreviewOpen}
+        estimateNumber={estimateNumber || undefined}
+        customerName={customers?.find((c) => c.id === selectedCustomerId)?.name || ""}
+        projectName={projects?.find((p) => p.id === selectedProjectId)?.name}
+        validUntil={validUntil}
+        notes={notes}
+        lineItems={lineItems.map((item, index) => ({
+          id: `preview-${index}`,
+          product_id: item.product_id,
+          description: item.description,
+          quantity: parseFloat(item.quantity) || 0,
+          unit_price: parseFloat(item.unit_price) || 0,
+          margin: parseFloat(item.margin) || 0,
+          total: item.total,
+          is_taxable: item.is_taxable,
+        }))}
+        taxRate={effectiveTaxRate}
+        status={status}
+      />
     </form>
   );
 };

@@ -14,7 +14,8 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Switch } from "@/components/ui/switch";
-import { Plus, Trash2, Loader2, AlertTriangle, ArrowLeft, Edit } from "lucide-react";
+import { Plus, Trash2, Loader2, AlertTriangle, ArrowLeft, Edit, Eye } from "lucide-react";
+import { EstimatePreviewDialog } from "@/components/estimates/EstimatePreviewDialog";
 import { useCustomers } from "@/integrations/supabase/hooks/useCustomers";
 import { useProjectsByCustomer } from "@/integrations/supabase/hooks/useProjects";
 import { useProducts } from "@/integrations/supabase/hooks/useProducts";
@@ -68,6 +69,7 @@ const EditEstimate = () => {
   const [lineItems, setLineItems] = useState<LineItem[]>([]);
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [isInitialized, setIsInitialized] = useState(false);
+  const [previewOpen, setPreviewOpen] = useState(false);
 
   const { data: projects } = useProjectsByCustomer(selectedCustomerId);
 
@@ -610,11 +612,42 @@ const EditEstimate = () => {
           >
             Cancel
           </Button>
+          <Button
+            type="button"
+            variant="outline"
+            onClick={() => setPreviewOpen(true)}
+          >
+            <Eye className="mr-2 h-4 w-4" />
+            Preview
+          </Button>
           <Button type="submit" disabled={updateEstimate.isPending}>
             {updateEstimate.isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
             Save Changes
           </Button>
         </div>
+
+        {/* Preview Dialog */}
+        <EstimatePreviewDialog
+          open={previewOpen}
+          onOpenChange={setPreviewOpen}
+          estimateNumber={estimate?.number}
+          customerName={customers?.find((c) => c.id === selectedCustomerId)?.name || ""}
+          projectName={projects?.find((p) => p.id === selectedProjectId)?.name}
+          validUntil={validUntil}
+          notes={notes}
+          lineItems={lineItems.map((item, index) => ({
+            id: item.id || `preview-${index}`,
+            product_id: item.product_id,
+            description: item.description,
+            quantity: parseFloat(item.quantity) || 0,
+            unit_price: parseFloat(item.unit_price) || 0,
+            margin: parseFloat(item.margin) || 0,
+            total: item.total,
+            is_taxable: item.is_taxable,
+          }))}
+          taxRate={effectiveTaxRate}
+          status={status}
+        />
       </form>
     </PageLayout>
   );
