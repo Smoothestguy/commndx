@@ -24,7 +24,7 @@ import {
 } from "@/components/ui/command";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Switch } from "@/components/ui/switch";
-import { Plus, Trash2, Loader2, AlertTriangle, Check, ChevronsUpDown, Save, Clock, Eye } from "lucide-react";
+import { Plus, Trash2, Loader2, AlertTriangle, Check, ChevronsUpDown, Save, Clock, Eye, ChevronsDownUp, ChevronsUpDownIcon } from "lucide-react";
 import { EstimatePreviewDialog } from "./EstimatePreviewDialog";
 import { SortableLineItem } from "./SortableLineItem";
 import { useCustomers } from "@/integrations/supabase/hooks/useCustomers";
@@ -114,6 +114,9 @@ export const EstimateForm = ({ initialData, draftId }: EstimateFormProps) => {
   
   // Preview dialog state
   const [previewOpen, setPreviewOpen] = useState(false);
+
+  // Expanded state for collapsible line items
+  const [expandedItems, setExpandedItems] = useState<Set<string>>(() => new Set());
 
   const { data: projects } = useProjectsByCustomer(selectedCustomerId);
 
@@ -743,8 +746,35 @@ export const EstimateForm = ({ initialData, draftId }: EstimateFormProps) => {
 
       {/* Line Items */}
       <Card className="glass border-border">
-        <CardHeader>
+        <CardHeader className="flex flex-row items-center justify-between">
           <CardTitle className="font-heading">Line Items</CardTitle>
+          <div className="flex items-center gap-2">
+            <Button
+              type="button"
+              variant="ghost"
+              size="sm"
+              onClick={() => {
+                if (expandedItems.size === lineItems.length) {
+                  setExpandedItems(new Set());
+                } else {
+                  setExpandedItems(new Set(lineItems.map(item => item.id)));
+                }
+              }}
+              className="text-xs"
+            >
+              {expandedItems.size === lineItems.length ? (
+                <>
+                  <ChevronsDownUp className="h-4 w-4 mr-1" />
+                  Collapse All
+                </>
+              ) : (
+                <>
+                  <ChevronsUpDownIcon className="h-4 w-4 mr-1" />
+                  Expand All
+                </>
+              )}
+            </Button>
+          </div>
         </CardHeader>
         <CardContent className="space-y-4">
           <DndContext
@@ -767,6 +797,18 @@ export const EstimateForm = ({ initialData, draftId }: EstimateFormProps) => {
                   productComboboxOpen={productComboboxOpen[index] || false}
                   productSearch={productSearch[index] || ""}
                   errors={errors}
+                  isExpanded={expandedItems.has(item.id)}
+                  onToggleExpand={() => {
+                    setExpandedItems(prev => {
+                      const next = new Set(prev);
+                      if (next.has(item.id)) {
+                        next.delete(item.id);
+                      } else {
+                        next.add(item.id);
+                      }
+                      return next;
+                    });
+                  }}
                   getProductsByType={getProductsByType}
                   onUpdateItem={updateLineItem}
                   onRemoveItem={removeLineItem}
