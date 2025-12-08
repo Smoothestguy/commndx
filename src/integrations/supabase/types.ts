@@ -637,6 +637,36 @@ export type Database = {
           },
         ]
       }
+      expense_categories: {
+        Row: {
+          category_type: Database["public"]["Enums"]["expense_category_type"]
+          created_at: string
+          description: string | null
+          id: string
+          is_active: boolean
+          name: string
+          updated_at: string
+        }
+        Insert: {
+          category_type?: Database["public"]["Enums"]["expense_category_type"]
+          created_at?: string
+          description?: string | null
+          id?: string
+          is_active?: boolean
+          name: string
+          updated_at?: string
+        }
+        Update: {
+          category_type?: Database["public"]["Enums"]["expense_category_type"]
+          created_at?: string
+          description?: string | null
+          id?: string
+          is_active?: boolean
+          name?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       insurance_claims: {
         Row: {
           adjuster_email: string | null
@@ -1574,6 +1604,105 @@ export type Database = {
         Relationships: [
           {
             foreignKeyName: "personnel_notifications_personnel_id_fkey"
+            columns: ["personnel_id"]
+            isOneToOne: false
+            referencedRelation: "personnel"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      personnel_payment_allocations: {
+        Row: {
+          amount: number
+          created_at: string
+          id: string
+          notes: string | null
+          payment_id: string
+          project_id: string
+        }
+        Insert: {
+          amount: number
+          created_at?: string
+          id?: string
+          notes?: string | null
+          payment_id: string
+          project_id: string
+        }
+        Update: {
+          amount?: number
+          created_at?: string
+          id?: string
+          notes?: string | null
+          payment_id?: string
+          project_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "personnel_payment_allocations_payment_id_fkey"
+            columns: ["payment_id"]
+            isOneToOne: false
+            referencedRelation: "personnel_payments"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "personnel_payment_allocations_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "projects"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      personnel_payments: {
+        Row: {
+          category_id: string | null
+          created_at: string
+          gross_amount: number
+          id: string
+          notes: string | null
+          number: string
+          payment_date: string
+          payment_type: Database["public"]["Enums"]["personnel_payment_type"]
+          personnel_id: string
+          personnel_name: string
+          updated_at: string
+        }
+        Insert: {
+          category_id?: string | null
+          created_at?: string
+          gross_amount: number
+          id?: string
+          notes?: string | null
+          number: string
+          payment_date: string
+          payment_type?: Database["public"]["Enums"]["personnel_payment_type"]
+          personnel_id: string
+          personnel_name: string
+          updated_at?: string
+        }
+        Update: {
+          category_id?: string | null
+          created_at?: string
+          gross_amount?: number
+          id?: string
+          notes?: string | null
+          number?: string
+          payment_date?: string
+          payment_type?: Database["public"]["Enums"]["personnel_payment_type"]
+          personnel_id?: string
+          personnel_name?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "personnel_payments_category_id_fkey"
+            columns: ["category_id"]
+            isOneToOne: false
+            referencedRelation: "expense_categories"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "personnel_payments_personnel_id_fkey"
             columns: ["personnel_id"]
             isOneToOne: false
             referencedRelation: "personnel"
@@ -2983,6 +3112,170 @@ export type Database = {
           },
         ]
       }
+      vendor_bill_line_items: {
+        Row: {
+          bill_id: string
+          category_id: string | null
+          created_at: string
+          description: string
+          id: string
+          project_id: string | null
+          quantity: number
+          total: number
+          unit_cost: number
+        }
+        Insert: {
+          bill_id: string
+          category_id?: string | null
+          created_at?: string
+          description: string
+          id?: string
+          project_id?: string | null
+          quantity?: number
+          total?: number
+          unit_cost?: number
+        }
+        Update: {
+          bill_id?: string
+          category_id?: string | null
+          created_at?: string
+          description?: string
+          id?: string
+          project_id?: string | null
+          quantity?: number
+          total?: number
+          unit_cost?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "vendor_bill_line_items_bill_id_fkey"
+            columns: ["bill_id"]
+            isOneToOne: false
+            referencedRelation: "vendor_bills"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "vendor_bill_line_items_category_id_fkey"
+            columns: ["category_id"]
+            isOneToOne: false
+            referencedRelation: "expense_categories"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "vendor_bill_line_items_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "projects"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      vendor_bill_payments: {
+        Row: {
+          amount: number
+          bill_id: string
+          created_at: string
+          id: string
+          notes: string | null
+          payment_date: string
+          payment_method: string
+          reference_number: string | null
+        }
+        Insert: {
+          amount: number
+          bill_id: string
+          created_at?: string
+          id?: string
+          notes?: string | null
+          payment_date: string
+          payment_method?: string
+          reference_number?: string | null
+        }
+        Update: {
+          amount?: number
+          bill_id?: string
+          created_at?: string
+          id?: string
+          notes?: string | null
+          payment_date?: string
+          payment_method?: string
+          reference_number?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "vendor_bill_payments_bill_id_fkey"
+            columns: ["bill_id"]
+            isOneToOne: false
+            referencedRelation: "vendor_bills"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      vendor_bills: {
+        Row: {
+          bill_date: string
+          created_at: string
+          due_date: string
+          id: string
+          notes: string | null
+          number: string
+          paid_amount: number
+          remaining_amount: number
+          status: Database["public"]["Enums"]["vendor_bill_status"]
+          subtotal: number
+          tax_amount: number
+          tax_rate: number
+          total: number
+          updated_at: string
+          vendor_id: string
+          vendor_name: string
+        }
+        Insert: {
+          bill_date: string
+          created_at?: string
+          due_date: string
+          id?: string
+          notes?: string | null
+          number: string
+          paid_amount?: number
+          remaining_amount?: number
+          status?: Database["public"]["Enums"]["vendor_bill_status"]
+          subtotal?: number
+          tax_amount?: number
+          tax_rate?: number
+          total?: number
+          updated_at?: string
+          vendor_id: string
+          vendor_name: string
+        }
+        Update: {
+          bill_date?: string
+          created_at?: string
+          due_date?: string
+          id?: string
+          notes?: string | null
+          number?: string
+          paid_amount?: number
+          remaining_amount?: number
+          status?: Database["public"]["Enums"]["vendor_bill_status"]
+          subtotal?: number
+          tax_amount?: number
+          tax_rate?: number
+          total?: number
+          updated_at?: string
+          vendor_id?: string
+          vendor_name?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "vendor_bills_vendor_id_fkey"
+            columns: ["vendor_id"]
+            isOneToOne: false
+            referencedRelation: "vendors"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       vendor_documents: {
         Row: {
           created_at: string | null
@@ -3142,7 +3435,9 @@ export type Database = {
       generate_invoice_number: { Args: never; Returns: string }
       generate_job_order_number: { Args: never; Returns: string }
       generate_personnel_number: { Args: never; Returns: string }
+      generate_personnel_payment_number: { Args: never; Returns: string }
       generate_purchase_order_number: { Args: never; Returns: string }
+      generate_vendor_bill_number: { Args: never; Returns: string }
       get_personnel_id_for_user: { Args: { _user_id: string }; Returns: string }
       has_permission: {
         Args: { _action: string; _module: string; _user_id: string }
@@ -3202,6 +3497,7 @@ export type Database = {
         | "rejected"
         | "expired"
         | "not_required"
+      expense_category_type: "vendor" | "personnel" | "both"
       inspection_status: "scheduled" | "in_progress" | "completed" | "cancelled"
       inspection_type:
         | "initial"
@@ -3212,6 +3508,7 @@ export type Database = {
       invoice_status: "draft" | "sent" | "paid" | "overdue"
       item_type: "product" | "service" | "labor"
       job_order_status: "active" | "in-progress" | "completed" | "on-hold"
+      personnel_payment_type: "regular" | "bonus" | "reimbursement" | "advance"
       personnel_status: "active" | "inactive" | "do_not_hire"
       project_status: "active" | "completed" | "on-hold"
       purchase_order_status:
@@ -3234,6 +3531,7 @@ export type Database = {
         | "combination"
       task_priority: "low" | "medium" | "high" | "urgent"
       task_status: "pending" | "in_progress" | "completed" | "cancelled"
+      vendor_bill_status: "draft" | "open" | "paid" | "partially_paid" | "void"
       vendor_status: "active" | "inactive"
       vendor_type: "contractor" | "personnel" | "supplier"
       warranty_status: "active" | "expired" | "claimed" | "voided"
@@ -3421,6 +3719,7 @@ export const Constants = {
         "expired",
         "not_required",
       ],
+      expense_category_type: ["vendor", "personnel", "both"],
       inspection_status: ["scheduled", "in_progress", "completed", "cancelled"],
       inspection_type: [
         "initial",
@@ -3432,6 +3731,7 @@ export const Constants = {
       invoice_status: ["draft", "sent", "paid", "overdue"],
       item_type: ["product", "service", "labor"],
       job_order_status: ["active", "in-progress", "completed", "on-hold"],
+      personnel_payment_type: ["regular", "bonus", "reimbursement", "advance"],
       personnel_status: ["active", "inactive", "do_not_hire"],
       project_status: ["active", "completed", "on-hold"],
       purchase_order_status: [
@@ -3456,6 +3756,7 @@ export const Constants = {
       ],
       task_priority: ["low", "medium", "high", "urgent"],
       task_status: ["pending", "in_progress", "completed", "cancelled"],
+      vendor_bill_status: ["draft", "open", "paid", "partially_paid", "void"],
       vendor_status: ["active", "inactive"],
       vendor_type: ["contractor", "personnel", "supplier"],
       warranty_status: ["active", "expired", "claimed", "voided"],
