@@ -80,44 +80,32 @@ const Estimates = () => {
       key: "actions",
       header: "",
       render: (item: Estimate) => (
-        item.status === "draft" ? (
+        <div className="flex items-center gap-1">
           <Button
             variant="ghost"
             size="icon"
             onClick={(e) => {
               e.stopPropagation();
-              navigate(`/estimates/new?draft=${item.id}`);
+              navigate(`/estimates/${item.id}`);
             }}
-            title="Continue editing"
+            title="View details"
+          >
+            <Eye className="h-4 w-4" />
+          </Button>
+          <Button
+            variant="ghost"
+            size="icon"
+            onClick={(e) => {
+              e.stopPropagation();
+              item.status === "draft"
+                ? navigate(`/estimates/new?draft=${item.id}`)
+                : navigate(`/estimates/${item.id}/edit`);
+            }}
+            title="Edit estimate"
           >
             <Edit className="h-4 w-4" />
           </Button>
-        ) : (
-          <div className="flex items-center gap-1">
-            <Button
-              variant="ghost"
-              size="icon"
-              onClick={(e) => {
-                e.stopPropagation();
-                navigate(`/estimates/${item.id}`);
-              }}
-              title="View details"
-            >
-              <Eye className="h-4 w-4" />
-            </Button>
-            <Button
-              variant="ghost"
-              size="icon"
-              onClick={(e) => {
-                e.stopPropagation();
-                navigate(`/estimates/${item.id}/edit`);
-              }}
-              title="Edit estimate"
-            >
-              <Edit className="h-4 w-4" />
-            </Button>
-          </div>
-        )
+        </div>
       ),
     },
   ];
