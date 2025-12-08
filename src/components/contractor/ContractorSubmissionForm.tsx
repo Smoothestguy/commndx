@@ -12,17 +12,20 @@ import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Label } from "@/components/ui/label";
 import { cn } from "@/lib/utils";
 import { FileUploadZone, UploadedFile } from "./FileUploadZone";
+import { CustomerCombobox } from "./CustomerCombobox";
 import { FormField, useFormConfiguration, useCreateContractorSubmission, uploadContractorFile } from "@/integrations/supabase/hooks/useContractorSubmissions";
 import { useProjects } from "@/integrations/supabase/hooks/useProjects";
 import { useCustomers } from "@/integrations/supabase/hooks/useCustomers";
 import { toast } from "sonner";
+import { Language, getTranslation, getFieldLabel } from "./translations";
 
 interface ContractorSubmissionFormProps {
   formType: "bill" | "expense";
   onSuccess: () => void;
+  language: Language;
 }
 
-export function ContractorSubmissionForm({ formType, onSuccess }: ContractorSubmissionFormProps) {
+export function ContractorSubmissionForm({ formType, onSuccess, language }: ContractorSubmissionFormProps) {
   const { data: formConfig, isLoading: configLoading } = useFormConfiguration(formType);
   const { data: projects } = useProjects();
   const { data: customers } = useCustomers();
@@ -31,6 +34,8 @@ export function ContractorSubmissionForm({ formType, onSuccess }: ContractorSubm
   const [formData, setFormData] = useState<Record<string, unknown>>({});
   const [files, setFiles] = useState<UploadedFile[]>([]);
   const [submitting, setSubmitting] = useState(false);
+
+  const t = (key: Parameters<typeof getTranslation>[1]) => getTranslation(language, key);
 
   const updateField = (name: string, value: unknown) => {
     setFormData(prev => ({ ...prev, [name]: value }));
@@ -44,13 +49,14 @@ export function ContractorSubmissionForm({ formType, onSuccess }: ContractorSubm
     // Validate required fields
     for (const field of formConfig.fields) {
       if (field.required) {
+        const fieldLabel = getFieldLabel(language, field.name, field.label);
         if (field.type === "file_upload") {
           if (files.length === 0) {
-            toast.error(`${field.label} is required`);
+            toast.error(`${fieldLabel} ${t("isRequired")}`);
             return;
           }
         } else if (!formData[field.name]) {
-          toast.error(`${field.label} is required`);
+          toast.error(`${fieldLabel} ${t("isRequired")}`);
           return;
         }
       }
@@ -83,24 +89,45 @@ export function ContractorSubmissionForm({ formType, onSuccess }: ContractorSubm
         custom_fields: formData,
       });
 
-      toast.success("Submission successful!");
+      toast.success(t("submissionSuccess"));
       onSuccess();
     } catch (error) {
       console.error("Submission error:", error);
-      toast.error("Failed to submit. Please try again.");
+      toast.error(t("submissionError"));
     } finally {
       setSubmitting(false);
     }
   };
 
+  const getPlaceholder = (field: FormField): string => {
+    if (field.placeholder) return field.placeholder;
+    
+    switch (field.name) {
+      case "contractor_name":
+        return t("enterYourName");
+      case "customer_name":
+        return t("selectCustomer");
+      case "project_name":
+      case "job_name":
+        return t("selectProject");
+      case "expense_description":
+        return t("enterDescription");
+      case "submission_date":
+        return t("selectDate");
+      default:
+        return "";
+    }
+  };
+
   const renderField = (field: FormField) => {
     const value = formData[field.name];
+    const placeholder = getPlaceholder(field);
 
     switch (field.type) {
       case "text":
         return (
           <Input
-            placeholder={field.placeholder || `Enter ${field.label.toLowerCase()}`}
+            placeholder={placeholder}
             value={(value as string) || ""}
             onChange={(e) => updateField(field.name, e.target.value)}
           />
@@ -109,7 +136,7 @@ export function ContractorSubmissionForm({ formType, onSuccess }: ContractorSubm
       case "textarea":
         return (
           <Textarea
-            placeholder={field.placeholder || `Enter ${field.label.toLowerCase()}`}
+            placeholder={placeholder}
             value={(value as string) || ""}
             onChange={(e) => updateField(field.name, e.target.value)}
             rows={4}
@@ -120,7 +147,7 @@ export function ContractorSubmissionForm({ formType, onSuccess }: ContractorSubm
         return (
           <Input
             type="number"
-            placeholder={field.placeholder || "0"}
+            placeholder={placeholder || "0"}
             value={(value as string) || ""}
             onChange={(e) => updateField(field.name, e.target.value)}
           />
@@ -154,7 +181,7 @@ export function ContractorSubmissionForm({ formType, onSuccess }: ContractorSubm
                 )}
               >
                 <CalendarIcon className="mr-2 h-4 w-4" />
-                {value ? format(value as Date, "PPP") : "Select date"}
+                {value ? format(value as Date, "PPP") : t("selectDate")}
               </Button>
             </PopoverTrigger>
             <PopoverContent className="w-auto p-0" align="start">
@@ -163,6 +190,7 @@ export function ContractorSubmissionForm({ formType, onSuccess }: ContractorSubm
                 selected={value as Date | undefined}
                 onSelect={(date) => updateField(field.name, date)}
                 initialFocus
+                className="pointer-events-auto"
               />
             </PopoverContent>
           </Popover>
@@ -175,7 +203,7 @@ export function ContractorSubmissionForm({ formType, onSuccess }: ContractorSubm
             onValueChange={(v) => updateField(field.name, v)}
           >
             <SelectTrigger>
-              <SelectValue placeholder={`Select ${field.label.toLowerCase()}`} />
+              <SelectValue placeholder={placeholder} />
             </SelectTrigger>
             <SelectContent>
               {field.options?.map((option) => (
@@ -194,7 +222,7 @@ export function ContractorSubmissionForm({ formType, onSuccess }: ContractorSubm
             onValueChange={(v) => updateField(field.name, v)}
           >
             <SelectTrigger>
-              <SelectValue placeholder="Select project" />
+              <SelectValue placeholder={t("selectProject")} />
             </SelectTrigger>
             <SelectContent>
               {projects?.map((project) => (
@@ -208,21 +236,12 @@ export function ContractorSubmissionForm({ formType, onSuccess }: ContractorSubm
 
       case "customer_select":
         return (
-          <Select
+          <CustomerCombobox
             value={(value as string) || ""}
-            onValueChange={(v) => updateField(field.name, v)}
-          >
-            <SelectTrigger>
-              <SelectValue placeholder="Select customer" />
-            </SelectTrigger>
-            <SelectContent>
-              {customers?.map((customer) => (
-                <SelectItem key={customer.id} value={customer.name}>
-                  {customer.name}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
+            onChange={(v) => updateField(field.name, v)}
+            customers={customers || []}
+            language={language}
+          />
         );
 
       case "file_upload":
@@ -244,7 +263,7 @@ export function ContractorSubmissionForm({ formType, onSuccess }: ContractorSubm
               onCheckedChange={(checked) => updateField(field.name, checked)}
             />
             <label htmlFor={field.name} className="text-sm">
-              {field.placeholder || field.label}
+              {field.placeholder || getFieldLabel(language, field.name, field.label)}
             </label>
           </div>
         );
@@ -285,7 +304,7 @@ export function ContractorSubmissionForm({ formType, onSuccess }: ContractorSubm
   if (!formConfig) {
     return (
       <div className="text-center py-12 text-muted-foreground">
-        Form configuration not found.
+        {t("formNotFound")}
       </div>
     );
   }
@@ -294,15 +313,9 @@ export function ContractorSubmissionForm({ formType, onSuccess }: ContractorSubm
     <form onSubmit={handleSubmit} className="space-y-6">
       {formConfig.fields.map((field) => (
         <div key={field.id} className="space-y-2">
-          {field.type !== "file_upload" && field.type !== "checkbox" && (
+          {field.type !== "checkbox" && (
             <Label>
-              {field.label}
-              {field.required && <span className="text-destructive ml-1">*</span>}
-            </Label>
-          )}
-          {field.type === "file_upload" && (
-            <Label>
-              {field.label}
+              {getFieldLabel(language, field.name, field.label)}
               {field.required && <span className="text-destructive ml-1">*</span>}
             </Label>
           )}
@@ -314,10 +327,10 @@ export function ContractorSubmissionForm({ formType, onSuccess }: ContractorSubm
         {submitting ? (
           <>
             <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-            Submitting...
+            {t("submitting")}
           </>
         ) : (
-          `Submit ${formType === "bill" ? "Bill" : "Expense"}`
+          formType === "bill" ? t("submitBillButton") : t("submitExpenseButton")
         )}
       </Button>
     </form>
