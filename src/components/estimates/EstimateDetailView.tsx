@@ -172,18 +172,35 @@ export function EstimateDetailView({ estimateId }: EstimateDetailViewProps) {
         <div className="flex gap-2">
           {/* Primary action - always visible */}
           {estimate.status !== "approved" && (
-            <Button
-              onClick={handleSendToCustomer}
-              disabled={isSending}
-              size={isMobile ? "sm" : "default"}
-            >
-              {isSending ? (
-                <Loader2 className={`h-4 w-4 animate-spin ${!isMobile && "mr-2"}`} />
-              ) : (
-                <Send className={`h-4 w-4 ${!isMobile && "mr-2"}`} />
-              )}
-              {!isMobile && (estimate.sent_at ? "Resend Estimate" : "Send to Customer")}
-            </Button>
+            <AlertDialog>
+              <AlertDialogTrigger asChild>
+                <Button
+                  disabled={isSending}
+                  size={isMobile ? "sm" : "default"}
+                >
+                  {isSending ? (
+                    <Loader2 className={`h-4 w-4 animate-spin ${!isMobile && "mr-2"}`} />
+                  ) : (
+                    <Send className={`h-4 w-4 ${!isMobile && "mr-2"}`} />
+                  )}
+                  {!isMobile && (estimate.sent_at ? "Resend Estimate" : "Send to Customer")}
+                </Button>
+              </AlertDialogTrigger>
+              <AlertDialogContent>
+                <AlertDialogHeader>
+                  <AlertDialogTitle>Send Estimate to Customer?</AlertDialogTitle>
+                  <AlertDialogDescription>
+                    This will send estimate {estimate.number} to {estimate.customer_name} via email. Are you sure you want to proceed?
+                  </AlertDialogDescription>
+                </AlertDialogHeader>
+                <AlertDialogFooter>
+                  <AlertDialogCancel>Cancel</AlertDialogCancel>
+                  <AlertDialogAction onClick={handleSendToCustomer}>
+                    Send Estimate
+                  </AlertDialogAction>
+                </AlertDialogFooter>
+              </AlertDialogContent>
+            </AlertDialog>
           )}
 
           {/* Desktop: Show all buttons */}

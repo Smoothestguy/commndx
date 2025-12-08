@@ -23,6 +23,7 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
+import { useState } from "react";
 
 const InvoiceDetail = () => {
   const { id } = useParams();
@@ -31,6 +32,7 @@ const InvoiceDetail = () => {
   const { data: invoice, isLoading, error, refetch } = useInvoice(id || "");
   const markPaid = useMarkInvoicePaid();
   const deleteInvoice = useDeleteInvoice();
+  const [showSendConfirm, setShowSendConfirm] = useState(false);
 
   const handleMarkPaid = () => {
     if (id) {
@@ -130,7 +132,7 @@ const InvoiceDetail = () => {
       ...(invoice.status !== "paid" ? [{
         label: "Send Invoice",
         icon: <Send className="h-4 w-4" />,
-        onClick: handleSend,
+        onClick: () => setShowSendConfirm(true),
         variant: "outline" as const,
       }] : []),
       {
@@ -152,10 +154,28 @@ const InvoiceDetail = () => {
       <StatusBadge status={invoice.status} />
       {invoice.status !== "paid" && (
         <>
-          <Button variant="outline" onClick={handleSend}>
-            <Send className="h-4 w-4 mr-2" />
-            Send
-          </Button>
+          <AlertDialog>
+            <AlertDialogTrigger asChild>
+              <Button variant="outline">
+                <Send className="h-4 w-4 mr-2" />
+                Send
+              </Button>
+            </AlertDialogTrigger>
+            <AlertDialogContent>
+              <AlertDialogHeader>
+                <AlertDialogTitle>Send Invoice to Customer?</AlertDialogTitle>
+                <AlertDialogDescription>
+                  This will send invoice {invoice.number} to {invoice.customer_name} via email. Are you sure you want to proceed?
+                </AlertDialogDescription>
+              </AlertDialogHeader>
+              <AlertDialogFooter>
+                <AlertDialogCancel>Cancel</AlertDialogCancel>
+                <AlertDialogAction onClick={handleSend}>
+                  Send Invoice
+                </AlertDialogAction>
+              </AlertDialogFooter>
+            </AlertDialogContent>
+          </AlertDialog>
           <Button variant="success" onClick={handleMarkPaid}>
             <CheckCircle className="h-4 w-4 mr-2" />
             Mark Paid
@@ -294,6 +314,26 @@ const InvoiceDetail = () => {
       <div className="max-w-4xl mt-6">
         <InvoiceAttachments invoiceId={id!} />
       </div>
+      {/* Mobile Send Confirmation Dialog */}
+      <AlertDialog open={showSendConfirm} onOpenChange={setShowSendConfirm}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Send Invoice to Customer?</AlertDialogTitle>
+            <AlertDialogDescription>
+              This will send invoice {invoice.number} to {invoice.customer_name} via email. Are you sure you want to proceed?
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction onClick={() => {
+              setShowSendConfirm(false);
+              handleSend();
+            }}>
+              Send Invoice
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </>
   );
 
