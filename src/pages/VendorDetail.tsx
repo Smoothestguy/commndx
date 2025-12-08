@@ -3,19 +3,34 @@ import { PageLayout } from "@/components/layout/PageLayout";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Badge } from "@/components/ui/badge";
 import { useVendors } from "@/integrations/supabase/hooks/useVendors";
+import { useExpenseCategories } from "@/integrations/supabase/hooks/useExpenseCategories";
 import { VendorDocumentUpload } from "@/components/vendors/VendorDocumentUpload";
 import { VendorPersonnelSection } from "@/components/vendors/VendorPersonnelSection";
-import { ArrowLeft, Building2, Mail, Phone, FileText, AlertCircle, Users } from "lucide-react";
+import { 
+  ArrowLeft, Building2, Mail, Phone, FileText, AlertCircle, Users, 
+  MapPin, DollarSign, Receipt, CreditCard 
+} from "lucide-react";
 import { format } from "date-fns";
 import { Loader2 } from "lucide-react";
+
+const PAYMENT_TERMS_LABELS: Record<string, string> = {
+  due_on_receipt: "Due on Receipt",
+  net_15: "Net 15",
+  net_30: "Net 30",
+  net_45: "Net 45",
+  net_60: "Net 60",
+};
 
 export default function VendorDetail() {
   const { id } = useParams();
   const navigate = useNavigate();
   const { data: vendors, isLoading } = useVendors();
+  const { data: expenseCategories } = useExpenseCategories("vendor");
 
   const vendor = vendors?.find((v) => v.id === id);
+  const expenseCategory = expenseCategories?.find((c) => c.id === vendor?.default_expense_category_id);
 
   if (isLoading) {
     return (
@@ -45,12 +60,19 @@ export default function VendorDetail() {
 
   const isInsuranceExpired = vendor.insurance_expiry && new Date(vendor.insurance_expiry) < new Date();
 
+  // Format address
+  const addressParts = [vendor.address, vendor.city, vendor.state, vendor.zip].filter(Boolean);
+  const formattedAddress = addressParts.length > 0 
+    ? `${vendor.address || ""}${vendor.address && (vendor.city || vendor.state || vendor.zip) ? ", " : ""}${vendor.city || ""}${vendor.city && vendor.state ? ", " : " "}${vendor.state || ""} ${vendor.zip || ""}`.trim()
+    : null;
+
   return (
     <PageLayout
       title={vendor.name}
       description="Vendor details and documents"
     >
       <div className="space-y-6">
+        {/* Basic Information Card */}
         <Card>
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
@@ -110,6 +132,101 @@ export default function VendorDetail() {
             </div>
           </CardContent>
         </Card>
+
+        {/* Address Card */}
+        {formattedAddress && (
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2 text-base">
+                <MapPin className="h-5 w-5" />
+                Address
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <p className="font-medium">{formattedAddress}</p>
+            </CardContent>
+          </Card>
+        )}
+
+        {/* Financial Information Card */}
+        {(vendor.tax_id || vendor.track_1099 || vendor.billing_rate || vendor.payment_terms || 
+          vendor.account_number || vendor.default_expense_category_id || vendor.opening_balance) && (
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2 text-base">
+                <DollarSign className="h-5 w-5" />
+                Financial Information
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
+              {vendor.tax_id && (
+                <div>
+                  <p className="text-sm text-muted-foreground">Tax ID</p>
+                  <p className="font-medium font-mono">
+                    {vendor.tax_id.slice(0, -4).replace(/./g, "•") + vendor.tax_id.slice(-4)}
+                  </p>
+                </div>
+              )}
+              {vendor.track_1099 && (
+                <div>
+                  <p className="text-sm text-muted-foreground">1099 Tracking</p>
+                  <Badge variant="secondary">Enabled</Badge>
+                </div>
+              )}
+              {vendor.billing_rate && (
+                <div>
+                  <p className="text-sm text-muted-foreground flex items-center gap-2">
+                    <Receipt className="h-4 w-4" />
+                    Billing Rate
+                  </p>
+                  <p className="font-medium">${vendor.billing_rate.toFixed(2)}/hr</p>
+                </div>
+              )}
+              {vendor.payment_terms && (
+                <div>
+                  <p className="text-sm text-muted-foreground flex items-center gap-2">
+                    <CreditCard className="h-4 w-4" />
+                    Payment Terms
+                  </p>
+                  <p className="font-medium">{PAYMENT_TERMS_LABELS[vendor.payment_terms] || vendor.payment_terms}</p>
+                </div>
+              )}
+              {vendor.account_number && (
+                <div>
+                  <p className="text-sm text-muted-foreground">Account Number</p>
+                  <p className="font-medium font-mono">{vendor.account_number}</p>
+                </div>
+              )}
+              {expenseCategory && (
+                <div>
+                  <p className="text-sm text-muted-foreground">Default Expense Category</p>
+                  <p className="font-medium">{expenseCategory.name}</p>
+                </div>
+              )}
+              {vendor.opening_balance != null && vendor.opening_balance > 0 && (
+                <div>
+                  <p className="text-sm text-muted-foreground">Opening Balance</p>
+                  <p className="font-medium">${vendor.opening_balance.toFixed(2)}</p>
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        )}
+
+        {/* Notes Card */}
+        {vendor.notes && (
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2 text-base">
+                <FileText className="h-5 w-5" />
+                Notes
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <p className="text-muted-foreground whitespace-pre-wrap">{vendor.notes}</p>
+            </CardContent>
+          </Card>
+        )}
 
         <Tabs defaultValue="personnel" className="w-full">
           <TabsList className="grid w-full grid-cols-2">

@@ -8,7 +8,8 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Checkbox } from "@/components/ui/checkbox";
-import { Plus, Edit, Trash2, Loader2, Tag, X } from "lucide-react";
+import { Textarea } from "@/components/ui/textarea";
+import { Plus, Edit, Trash2, Loader2, Tag, X, ChevronDown, ChevronUp, MapPin, DollarSign } from "lucide-react";
 import { SearchInput } from "@/components/ui/search-input";
 import { PullToRefreshWrapper } from "@/components/shared/PullToRefreshWrapper";
 import { VendorCard } from "@/components/vendors/VendorCard";
@@ -36,6 +37,11 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
+import {
+  Collapsible,
+  CollapsibleContent,
+  CollapsibleTrigger,
+} from "@/components/ui/collapsible";
 import { Label } from "@/components/ui/label";
 import {
   Select,
@@ -55,6 +61,7 @@ import {
   VendorType,
 } from "@/integrations/supabase/hooks/useVendors";
 import { usePersonnel } from "@/integrations/supabase/hooks/usePersonnel";
+import { useExpenseCategories } from "@/integrations/supabase/hooks/useExpenseCategories";
 import { useQuickBooksConfig, useSyncSingleVendor } from "@/integrations/supabase/hooks/useQuickBooks";
 import type { Database } from "@/integrations/supabase/types";
 
@@ -66,10 +73,74 @@ const vendorTypeColors: Record<string, string> = {
   supplier: "bg-amber-500/10 text-amber-500 border-amber-500/20",
 };
 
+const PAYMENT_TERMS_OPTIONS = [
+  { value: "due_on_receipt", label: "Due on Receipt" },
+  { value: "net_15", label: "Net 15" },
+  { value: "net_30", label: "Net 30" },
+  { value: "net_45", label: "Net 45" },
+  { value: "net_60", label: "Net 60" },
+];
+
+interface VendorFormData {
+  name: string;
+  email: string;
+  phone: string;
+  company: string;
+  specialty: string;
+  status: "active" | "inactive";
+  vendor_type: VendorType;
+  insurance_expiry: string;
+  license_number: string;
+  w9_on_file: boolean;
+  // Address fields
+  address: string;
+  city: string;
+  state: string;
+  zip: string;
+  // Tax fields
+  tax_id: string;
+  track_1099: boolean;
+  // Billing fields
+  billing_rate: string;
+  payment_terms: string;
+  account_number: string;
+  // Accounting fields
+  default_expense_category_id: string;
+  opening_balance: string;
+  // Notes
+  notes: string;
+}
+
+const initialFormData: VendorFormData = {
+  name: "",
+  email: "",
+  phone: "",
+  company: "",
+  specialty: "",
+  status: "active",
+  vendor_type: "supplier",
+  insurance_expiry: "",
+  license_number: "",
+  w9_on_file: false,
+  address: "",
+  city: "",
+  state: "",
+  zip: "",
+  tax_id: "",
+  track_1099: false,
+  billing_rate: "",
+  payment_terms: "",
+  account_number: "",
+  default_expense_category_id: "",
+  opening_balance: "",
+  notes: "",
+};
+
 const Vendors = () => {
   const navigate = useNavigate();
   const { data: vendors, isLoading: vendorsLoading, error: vendorsError, refetch: refetchVendors, isFetching: vendorsFetching } = useVendors();
   const { data: personnelData, isLoading: personnelLoading, error: personnelError, refetch: refetchPersonnel, isFetching: personnelFetching } = usePersonnel();
+  const { data: expenseCategories } = useExpenseCategories("vendor");
   
   const addVendor = useAddVendor();
   const updateVendor = useUpdateVendor();
@@ -87,6 +158,7 @@ const Vendors = () => {
   const [sortOrder, setSortOrder] = useState<"asc" | "desc">("asc");
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [editingVendor, setEditingVendor] = useState<Vendor | null>(null);
+  const [additionalInfoOpen, setAdditionalInfoOpen] = useState(false);
 
   // Batch selection state
   const [selectedVendors, setSelectedVendors] = useState<string[]>([]);
@@ -94,18 +166,7 @@ const Vendors = () => {
   const [isTypeChangeDialogOpen, setIsTypeChangeDialogOpen] = useState(false);
   const [targetType, setTargetType] = useState<VendorType>("supplier");
 
-  const [formData, setFormData] = useState({
-    name: "",
-    email: "",
-    phone: "",
-    company: "",
-    specialty: "",
-    status: "active" as "active" | "inactive",
-    vendor_type: "supplier" as VendorType,
-    insurance_expiry: "",
-    license_number: "",
-    w9_on_file: false,
-  });
+  const [formData, setFormData] = useState<VendorFormData>(initialFormData);
 
   // Check if we're showing personnel data
   const isPersonnelView = typeFilter === "personnel";
@@ -331,7 +392,24 @@ const Vendors = () => {
       insurance_expiry: vendor.insurance_expiry || "",
       license_number: vendor.license_number || "",
       w9_on_file: vendor.w9_on_file,
+      address: vendor.address || "",
+      city: vendor.city || "",
+      state: vendor.state || "",
+      zip: vendor.zip || "",
+      tax_id: vendor.tax_id || "",
+      track_1099: vendor.track_1099 || false,
+      billing_rate: vendor.billing_rate?.toString() || "",
+      payment_terms: vendor.payment_terms || "",
+      account_number: vendor.account_number || "",
+      default_expense_category_id: vendor.default_expense_category_id || "",
+      opening_balance: vendor.opening_balance?.toString() || "",
+      notes: vendor.notes || "",
     });
+    // Open additional info if any of those fields have values
+    const hasAdditionalInfo = vendor.tax_id || vendor.track_1099 || vendor.billing_rate ||
+      vendor.payment_terms || vendor.account_number || vendor.default_expense_category_id ||
+      vendor.opening_balance || vendor.notes;
+    setAdditionalInfoOpen(!!hasAdditionalInfo);
     setIsDialogOpen(true);
   };
 
@@ -342,19 +420,40 @@ const Vendors = () => {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
+    const vendorData = {
+      name: formData.name,
+      email: formData.email,
+      phone: formData.phone || null,
+      company: formData.company || null,
+      specialty: formData.specialty || null,
+      status: formData.status,
+      vendor_type: formData.vendor_type,
+      insurance_expiry: formData.insurance_expiry || null,
+      license_number: formData.license_number || null,
+      w9_on_file: formData.w9_on_file,
+      address: formData.address || null,
+      city: formData.city || null,
+      state: formData.state || null,
+      zip: formData.zip || null,
+      tax_id: formData.tax_id || null,
+      track_1099: formData.track_1099,
+      billing_rate: formData.billing_rate ? parseFloat(formData.billing_rate) : null,
+      payment_terms: formData.payment_terms || null,
+      account_number: formData.account_number || null,
+      default_expense_category_id: formData.default_expense_category_id || null,
+      opening_balance: formData.opening_balance ? parseFloat(formData.opening_balance) : null,
+      notes: formData.notes || null,
+    };
+
     if (editingVendor) {
       await updateVendor.mutateAsync({
         id: editingVendor.id,
-        ...formData,
-        insurance_expiry: formData.insurance_expiry || null,
-        license_number: formData.license_number || null,
+        ...vendorData,
       });
     } else {
       const newVendor = await addVendor.mutateAsync({
-        ...formData,
+        ...vendorData,
         rating: null,
-        insurance_expiry: formData.insurance_expiry || null,
-        license_number: formData.license_number || null,
       });
 
       // Auto-sync to QuickBooks if connected
@@ -371,34 +470,14 @@ const Vendors = () => {
 
     setIsDialogOpen(false);
     setEditingVendor(null);
-    setFormData({
-      name: "",
-      email: "",
-      phone: "",
-      company: "",
-      specialty: "",
-      status: "active",
-      vendor_type: "supplier",
-      insurance_expiry: "",
-      license_number: "",
-      w9_on_file: false,
-    });
+    setFormData(initialFormData);
+    setAdditionalInfoOpen(false);
   };
 
   const openNewDialog = () => {
     setEditingVendor(null);
-    setFormData({
-      name: "",
-      email: "",
-      phone: "",
-      company: "",
-      specialty: "",
-      status: "active",
-      vendor_type: "supplier",
-      insurance_expiry: "",
-      license_number: "",
-      w9_on_file: false,
-    });
+    setFormData(initialFormData);
+    setAdditionalInfoOpen(false);
     setIsDialogOpen(true);
   };
 
@@ -592,105 +671,301 @@ const Vendors = () => {
 
         {/* Add/Edit Dialog */}
         <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
-          <DialogContent className="bg-card border-border">
+          <DialogContent className="bg-card border-border max-w-2xl max-h-[90vh] overflow-y-auto">
             <DialogHeader>
               <DialogTitle className="font-heading">
                 {editingVendor ? "Edit Vendor" : "Add New Vendor"}
               </DialogTitle>
             </DialogHeader>
-            <form onSubmit={handleSubmit} className="space-y-4">
-              <div className="grid gap-4 sm:grid-cols-2">
-                <div className="space-y-2">
-                  <Label htmlFor="name">Vendor Name</Label>
-                  <Input
-                    id="name"
-                    value={formData.name}
-                    onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                    required
-                    className="bg-secondary border-border"
-                  />
+            <form onSubmit={handleSubmit} className="space-y-6">
+              {/* Basic Information */}
+              <div className="space-y-4">
+                <div className="grid gap-4 sm:grid-cols-2">
+                  <div className="space-y-2">
+                    <Label htmlFor="name">Vendor Name *</Label>
+                    <Input
+                      id="name"
+                      value={formData.name}
+                      onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+                      required
+                      className="bg-secondary border-border"
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="company">Company</Label>
+                    <Input
+                      id="company"
+                      value={formData.company}
+                      onChange={(e) => setFormData({ ...formData, company: e.target.value })}
+                      className="bg-secondary border-border"
+                    />
+                  </div>
+                </div>
+                <div className="grid gap-4 sm:grid-cols-2">
+                  <div className="space-y-2">
+                    <Label htmlFor="email">Email *</Label>
+                    <Input
+                      id="email"
+                      type="email"
+                      value={formData.email}
+                      onChange={(e) => setFormData({ ...formData, email: e.target.value })}
+                      required
+                      className="bg-secondary border-border"
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="phone">Phone</Label>
+                    <Input
+                      id="phone"
+                      value={formData.phone}
+                      onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
+                      className="bg-secondary border-border"
+                    />
+                  </div>
+                </div>
+                <div className="grid gap-4 sm:grid-cols-2">
+                  <div className="space-y-2">
+                    <Label htmlFor="specialty">Specialty</Label>
+                    <Input
+                      id="specialty"
+                      value={formData.specialty}
+                      onChange={(e) => setFormData({ ...formData, specialty: e.target.value })}
+                      placeholder="e.g., Electrical, Plumbing"
+                      className="bg-secondary border-border"
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="vendor_type">Vendor Type</Label>
+                    <Select
+                      value={formData.vendor_type}
+                      onValueChange={(value: VendorType) =>
+                        setFormData({ ...formData, vendor_type: value })
+                      }
+                    >
+                      <SelectTrigger className="bg-secondary border-border">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="contractor">Contractor</SelectItem>
+                        <SelectItem value="personnel">Personnel</SelectItem>
+                        <SelectItem value="supplier">Supplier</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
                 </div>
                 <div className="space-y-2">
-                  <Label htmlFor="company">Company</Label>
-                  <Input
-                    id="company"
-                    value={formData.company}
-                    onChange={(e) => setFormData({ ...formData, company: e.target.value })}
-                    required
-                    className="bg-secondary border-border"
-                  />
-                </div>
-              </div>
-              <div className="grid gap-4 sm:grid-cols-2">
-                <div className="space-y-2">
-                  <Label htmlFor="email">Email</Label>
-                  <Input
-                    id="email"
-                    type="email"
-                    value={formData.email}
-                    onChange={(e) => setFormData({ ...formData, email: e.target.value })}
-                    required
-                    className="bg-secondary border-border"
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="phone">Phone</Label>
-                  <Input
-                    id="phone"
-                    value={formData.phone}
-                    onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
-                    className="bg-secondary border-border"
-                  />
-                </div>
-              </div>
-              <div className="grid gap-4 sm:grid-cols-2">
-                <div className="space-y-2">
-                  <Label htmlFor="specialty">Specialty</Label>
-                  <Input
-                    id="specialty"
-                    value={formData.specialty}
-                    onChange={(e) => setFormData({ ...formData, specialty: e.target.value })}
-                    placeholder="e.g., Electrical, Plumbing"
-                    className="bg-secondary border-border"
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="vendor_type">Vendor Type</Label>
+                  <Label htmlFor="status">Status</Label>
                   <Select
-                    value={formData.vendor_type}
-                    onValueChange={(value: VendorType) =>
-                      setFormData({ ...formData, vendor_type: value })
+                    value={formData.status}
+                    onValueChange={(value: "active" | "inactive") =>
+                      setFormData({ ...formData, status: value })
                     }
                   >
                     <SelectTrigger className="bg-secondary border-border">
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="contractor">Contractor</SelectItem>
-                      <SelectItem value="personnel">Personnel</SelectItem>
-                      <SelectItem value="supplier">Supplier</SelectItem>
+                      <SelectItem value="active">Active</SelectItem>
+                      <SelectItem value="inactive">Inactive</SelectItem>
                     </SelectContent>
                   </Select>
                 </div>
               </div>
-              <div className="space-y-2">
-                <Label htmlFor="status">Status</Label>
-                <Select
-                  value={formData.status}
-                  onValueChange={(value: "active" | "inactive") =>
-                    setFormData({ ...formData, status: value })
-                  }
-                >
-                  <SelectTrigger className="bg-secondary border-border">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="active">Active</SelectItem>
-                    <SelectItem value="inactive">Inactive</SelectItem>
-                  </SelectContent>
-                </Select>
+
+              {/* Address Section */}
+              <div className="space-y-4 border-t border-border pt-4">
+                <div className="flex items-center gap-2 text-sm font-medium text-muted-foreground">
+                  <MapPin className="h-4 w-4" />
+                  Address
+                </div>
+                <div className="space-y-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="address">Street Address</Label>
+                    <Input
+                      id="address"
+                      value={formData.address}
+                      onChange={(e) => setFormData({ ...formData, address: e.target.value })}
+                      placeholder="123 Main St"
+                      className="bg-secondary border-border"
+                    />
+                  </div>
+                  <div className="grid gap-4 sm:grid-cols-3">
+                    <div className="space-y-2">
+                      <Label htmlFor="city">City</Label>
+                      <Input
+                        id="city"
+                        value={formData.city}
+                        onChange={(e) => setFormData({ ...formData, city: e.target.value })}
+                        className="bg-secondary border-border"
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="state">State</Label>
+                      <Input
+                        id="state"
+                        value={formData.state}
+                        onChange={(e) => setFormData({ ...formData, state: e.target.value })}
+                        placeholder="TX"
+                        className="bg-secondary border-border"
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="zip">ZIP</Label>
+                      <Input
+                        id="zip"
+                        value={formData.zip}
+                        onChange={(e) => setFormData({ ...formData, zip: e.target.value })}
+                        className="bg-secondary border-border"
+                      />
+                    </div>
+                  </div>
+                </div>
               </div>
-              <div className="flex justify-end gap-3">
+
+              {/* Additional Info Section (Collapsible) */}
+              <Collapsible open={additionalInfoOpen} onOpenChange={setAdditionalInfoOpen}>
+                <CollapsibleTrigger asChild>
+                  <Button type="button" variant="ghost" className="w-full justify-between border-t border-border rounded-none pt-4">
+                    <span className="flex items-center gap-2 text-sm font-medium">
+                      <DollarSign className="h-4 w-4" />
+                      Additional Info
+                    </span>
+                    {additionalInfoOpen ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
+                  </Button>
+                </CollapsibleTrigger>
+                <CollapsibleContent className="space-y-6 pt-4">
+                  {/* Taxes */}
+                  <div className="space-y-4">
+                    <Label className="text-xs uppercase text-muted-foreground tracking-wider">Taxes</Label>
+                    <div className="grid gap-4 sm:grid-cols-2">
+                      <div className="space-y-2">
+                        <Label htmlFor="tax_id">Tax ID / SSN</Label>
+                        <Input
+                          id="tax_id"
+                          value={formData.tax_id}
+                          onChange={(e) => setFormData({ ...formData, tax_id: e.target.value })}
+                          placeholder="XX-XXXXXXX"
+                          className="bg-secondary border-border"
+                        />
+                      </div>
+                      <div className="flex items-center space-x-2 pt-6">
+                        <Checkbox
+                          id="track_1099"
+                          checked={formData.track_1099}
+                          onCheckedChange={(checked) => setFormData({ ...formData, track_1099: !!checked })}
+                        />
+                        <Label htmlFor="track_1099" className="cursor-pointer">Track payments for 1099</Label>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Expense Rates */}
+                  <div className="space-y-4">
+                    <Label className="text-xs uppercase text-muted-foreground tracking-wider">Expense Rates</Label>
+                    <div className="space-y-2">
+                      <Label htmlFor="billing_rate">Billing Rate (/hr)</Label>
+                      <div className="relative">
+                        <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground">$</span>
+                        <Input
+                          id="billing_rate"
+                          type="number"
+                          step="0.01"
+                          value={formData.billing_rate}
+                          onChange={(e) => setFormData({ ...formData, billing_rate: e.target.value })}
+                          className="bg-secondary border-border pl-7"
+                        />
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Payments */}
+                  <div className="space-y-4">
+                    <Label className="text-xs uppercase text-muted-foreground tracking-wider">Payments</Label>
+                    <div className="grid gap-4 sm:grid-cols-2">
+                      <div className="space-y-2">
+                        <Label htmlFor="payment_terms">Terms</Label>
+                        <Select
+                          value={formData.payment_terms}
+                          onValueChange={(value) => setFormData({ ...formData, payment_terms: value })}
+                        >
+                          <SelectTrigger className="bg-secondary border-border">
+                            <SelectValue placeholder="Select terms" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {PAYMENT_TERMS_OPTIONS.map((option) => (
+                              <SelectItem key={option.value} value={option.value}>
+                                {option.label}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      </div>
+                      <div className="space-y-2">
+                        <Label htmlFor="account_number">Account No.</Label>
+                        <Input
+                          id="account_number"
+                          value={formData.account_number}
+                          onChange={(e) => setFormData({ ...formData, account_number: e.target.value })}
+                          className="bg-secondary border-border"
+                        />
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Accounting */}
+                  <div className="space-y-4">
+                    <Label className="text-xs uppercase text-muted-foreground tracking-wider">Accounting</Label>
+                    <div className="grid gap-4 sm:grid-cols-2">
+                      <div className="space-y-2">
+                        <Label htmlFor="default_expense_category_id">Default Expense Category</Label>
+                        <Select
+                          value={formData.default_expense_category_id}
+                          onValueChange={(value) => setFormData({ ...formData, default_expense_category_id: value })}
+                        >
+                          <SelectTrigger className="bg-secondary border-border">
+                            <SelectValue placeholder="Select category" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {expenseCategories?.map((category) => (
+                              <SelectItem key={category.id} value={category.id}>
+                                {category.name}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      </div>
+                      <div className="space-y-2">
+                        <Label htmlFor="opening_balance">Opening Balance</Label>
+                        <div className="relative">
+                          <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground">$</span>
+                          <Input
+                            id="opening_balance"
+                            type="number"
+                            step="0.01"
+                            value={formData.opening_balance}
+                            onChange={(e) => setFormData({ ...formData, opening_balance: e.target.value })}
+                            className="bg-secondary border-border pl-7"
+                          />
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Notes */}
+                  <div className="space-y-2">
+                    <Label htmlFor="notes">Notes</Label>
+                    <Textarea
+                      id="notes"
+                      value={formData.notes}
+                      onChange={(e) => setFormData({ ...formData, notes: e.target.value })}
+                      placeholder="Additional notes about this vendor..."
+                      className="bg-secondary border-border min-h-[80px]"
+                    />
+                  </div>
+                </CollapsibleContent>
+              </Collapsible>
+
+              <div className="flex justify-end gap-3 pt-4 border-t border-border">
                 <Button type="button" variant="outline" onClick={() => setIsDialogOpen(false)}>
                   Cancel
                 </Button>
