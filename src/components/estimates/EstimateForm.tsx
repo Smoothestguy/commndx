@@ -204,7 +204,7 @@ export const EstimateForm = ({ initialData, draftId }: EstimateFormProps) => {
       newLineItems[index] = {
         ...newLineItems[index],
         product_id: productId,
-        description: product.description ? `${product.name} - ${product.description}` : product.name,
+        description: product.description || product.name,
         unit_price: unitPrice,
         margin: margin,
         is_taxable: product.is_taxable ?? true,
@@ -700,12 +700,7 @@ export const EstimateForm = ({ initialData, draftId }: EstimateFormProps) => {
                       className="w-full justify-between bg-secondary border-border"
                     >
                       {item.product_id
-                        ? (() => {
-                            const product = products?.find((p) => p.id === item.product_id);
-                            return product 
-                              ? `${product.name}${product.description ? ` - ${product.description}` : ''}`
-                              : 'Unknown product';
-                          })()
+                        ? products?.find((p) => p.id === item.product_id)?.name || 'Unknown product'
                         : "Search product, service, or labor..."}
                       <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
                     </Button>
