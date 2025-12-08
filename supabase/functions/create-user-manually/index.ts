@@ -104,11 +104,14 @@ serve(async (req) => {
     }
 
     // Delete any existing role and assign new role
+    // If linking to personnel, always assign 'personnel' role regardless of selected role
     await adminClient.from('user_roles').delete().eq('user_id', newUser.user.id);
+    
+    const assignedRole = personnelId ? 'personnel' : role;
     
     const { error: roleInsertError } = await adminClient
       .from('user_roles')
-      .insert({ user_id: newUser.user.id, role });
+      .insert({ user_id: newUser.user.id, role: assignedRole });
 
     if (roleInsertError) {
       console.error("Error assigning role:", roleInsertError);
@@ -118,7 +121,7 @@ serve(async (req) => {
       );
     }
 
-    console.log("Role assigned:", role);
+    console.log("Role assigned:", assignedRole);
 
     // Link to personnel if personnelId is provided
     if (personnelId) {
