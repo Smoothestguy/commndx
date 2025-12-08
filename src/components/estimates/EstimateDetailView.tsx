@@ -38,7 +38,8 @@ import {
 } from "@/integrations/supabase/hooks/useEstimates";
 import { ConvertToJobOrderDialog } from "./ConvertToJobOrderDialog";
 import { EstimateAttachments } from "./EstimateAttachments";
-import { Edit, Trash2, Briefcase, MoreVertical, Loader2, Send, Copy, CheckCircle, FileText, Eye } from "lucide-react";
+import { Download, Edit, Trash2, Briefcase, MoreVertical, Loader2, Send, Copy, CheckCircle, FileText, Eye } from "lucide-react";
+import { generateEstimatePDF } from "@/utils/estimatePdfExport";
 import { format } from "date-fns";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
@@ -181,6 +182,36 @@ export function EstimateDetailView({ estimateId }: EstimateDetailViewProps) {
           {/* Desktop: Show all buttons */}
           {!isMobile && (
             <>
+              <Button
+                variant="outline"
+                onClick={() =>
+                  generateEstimatePDF({
+                    number: estimate.number,
+                    customerName: estimate.customer_name,
+                    projectName: estimate.project_name,
+                    status: estimate.status,
+                    createdAt: estimate.created_at,
+                    validUntil: estimate.valid_until,
+                    notes: estimate.notes,
+                    lineItems: estimate.line_items.map((item) => ({
+                      id: item.id,
+                      description: item.description,
+                      quantity: item.quantity,
+                      unitPrice: item.unit_price,
+                      markup: item.markup,
+                      total: item.total,
+                    })),
+                    subtotal: estimate.subtotal,
+                    taxRate: estimate.tax_rate,
+                    taxAmount: estimate.tax_amount,
+                    total: estimate.total,
+                  })
+                }
+              >
+                <Download className="mr-2 h-4 w-4" />
+                Download PDF
+              </Button>
+
               {estimate.approval_token && (
                 <Button variant="outline" onClick={handleCopyApprovalLink}>
                   <Copy className="mr-2 h-4 w-4" />
@@ -256,6 +287,34 @@ export function EstimateDetailView({ estimateId }: EstimateDetailViewProps) {
               {/* Mobile: Show additional actions */}
               {isMobile && (
                 <>
+                  <DropdownMenuItem
+                    onClick={() =>
+                      generateEstimatePDF({
+                        number: estimate.number,
+                        customerName: estimate.customer_name,
+                        projectName: estimate.project_name,
+                        status: estimate.status,
+                        createdAt: estimate.created_at,
+                        validUntil: estimate.valid_until,
+                        notes: estimate.notes,
+                        lineItems: estimate.line_items.map((item) => ({
+                          id: item.id,
+                          description: item.description,
+                          quantity: item.quantity,
+                          unitPrice: item.unit_price,
+                          markup: item.markup,
+                          total: item.total,
+                        })),
+                        subtotal: estimate.subtotal,
+                        taxRate: estimate.tax_rate,
+                        taxAmount: estimate.tax_amount,
+                        total: estimate.total,
+                      })
+                    }
+                  >
+                    <Download className="mr-2 h-4 w-4" />
+                    Download PDF
+                  </DropdownMenuItem>
                   {estimate.approval_token && (
                     <DropdownMenuItem onClick={handleCopyApprovalLink}>
                       <Copy className="mr-2 h-4 w-4" />

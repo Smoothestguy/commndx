@@ -10,7 +10,8 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { Eye, X } from "lucide-react";
+import { Download, Eye, X } from "lucide-react";
+import { generateEstimatePreviewPDF } from "@/utils/estimatePdfExport";
 import { format } from "date-fns";
 import { useIsMobile } from "@/hooks/use-mobile";
 
@@ -213,8 +214,33 @@ export function EstimatePreviewDialog({
             </CardContent>
           </Card>
 
-          {/* Close Button */}
-          <div className="flex justify-end pt-2">
+          {/* Action Buttons */}
+          <div className="flex justify-end gap-2 pt-2">
+            <Button
+              variant="outline"
+              onClick={() =>
+                generateEstimatePreviewPDF(
+                  customerName,
+                  projectName,
+                  lineItems.map((item) => ({
+                    id: item.id,
+                    description: item.description,
+                    quantity: item.quantity,
+                    unitPrice: item.unit_price,
+                    markup: item.margin,
+                    total: item.total,
+                    isTaxable: item.is_taxable,
+                  })),
+                  taxRate,
+                  notes,
+                  validUntil,
+                  status
+                )
+              }
+            >
+              <Download className="mr-2 h-4 w-4" />
+              Download PDF
+            </Button>
             <Button variant="outline" onClick={() => onOpenChange(false)}>
               <X className="mr-2 h-4 w-4" />
               Back to Editing
