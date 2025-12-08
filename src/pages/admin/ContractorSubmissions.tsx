@@ -1,9 +1,9 @@
 import React, { useState } from "react";
-import { Link } from "react-router-dom";
-import { FileText, Receipt, Settings, Loader2, Inbox } from "lucide-react";
+import { Link, useNavigate } from "react-router-dom";
+import { FileText, Receipt, Settings, Loader2, Inbox, ClipboardList } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { DateRange } from "react-day-picker";
 import { format } from "date-fns";
 import { PageLayout } from "@/components/layout/PageLayout";
@@ -13,6 +13,7 @@ import { useContractorSubmissions } from "@/integrations/supabase/hooks/useContr
 import { SEO } from "@/components/SEO";
 
 export default function ContractorSubmissions() {
+  const navigate = useNavigate();
   const [search, setSearch] = useState("");
   const [typeFilter, setTypeFilter] = useState("all");
   const [dateRange, setDateRange] = useState<DateRange | undefined>();
@@ -51,6 +52,24 @@ export default function ContractorSubmissions() {
         }
       >
         <div className="space-y-6">
+          {/* Quick Navigation Tabs */}
+          <Tabs value="contractor-submissions">
+            <TabsList>
+              <TabsTrigger 
+                value="vendor-documents" 
+                className="gap-2"
+                onClick={() => navigate("/vendor-documents")}
+              >
+                <FileText className="h-4 w-4" />
+                Vendor Documents
+              </TabsTrigger>
+              <TabsTrigger value="contractor-submissions" className="gap-2">
+                <ClipboardList className="h-4 w-4" />
+                Contractor Submissions
+              </TabsTrigger>
+            </TabsList>
+          </Tabs>
+
           {/* Stats */}
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
             <Card>
