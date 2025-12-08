@@ -5,8 +5,8 @@ import { PageLayout } from "@/components/layout/PageLayout";
 import { DataTable } from "@/components/shared/DataTable";
 import { StatusBadge } from "@/components/shared/StatusBadge";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Plus, Eye, FileText, Loader2 } from "lucide-react";
+import { Badge } from "@/components/ui/badge";
+import { Plus, Eye, FileText, Loader2, Edit } from "lucide-react";
 import { SearchInput } from "@/components/ui/search-input";
 import { useEstimates, Estimate } from "@/integrations/supabase/hooks/useEstimates";
 import { PullToRefreshWrapper } from "@/components/shared/PullToRefreshWrapper";
@@ -23,6 +23,9 @@ const Estimates = () => {
   const [search, setSearch] = useState("");
   const [selectedStatus, setSelectedStatus] = useState<"draft" | "pending" | "approved" | "sent" | "">("");
 
+  // Count drafts
+  const draftCount = estimates?.filter(e => e.status === "draft").length || 0;
+
   const filteredEstimates = estimates?.filter((e) => {
     const matchesSearch = e.number.toLowerCase().includes(search.toLowerCase()) ||
       e.customer_name.toLowerCase().includes(search.toLowerCase()) ||
@@ -37,12 +40,25 @@ const Estimates = () => {
       header: "Estimate #",
       render: (item: Estimate) => (
         <div className="flex items-center gap-2">
-          <FileText className="h-4 w-4 text-primary" />
+          <FileText className={`h-4 w-4 ${item.status === 'draft' ? 'text-amber-500' : 'text-primary'}`} />
           <span className="font-medium">{item.number}</span>
+          {item.status === "draft" && (
+            <Badge variant="outline" className="text-xs bg-amber-500/10 text-amber-600 dark:text-amber-400 border-amber-500/20">
+              Draft
+            </Badge>
+          )}
         </div>
       ),
     },
-    { key: "customer_name", header: "Customer" },
+    { 
+      key: "customer_name", 
+      header: "Customer",
+      render: (item: Estimate) => (
+        <span className={item.customer_name === "Draft" ? "text-muted-foreground italic" : ""}>
+          {item.customer_name === "Draft" ? "No customer" : item.customer_name}
+        </span>
+      ),
+    },
     { key: "project_name", header: "Project" },
     {
       key: "status",
@@ -54,7 +70,7 @@ const Estimates = () => {
       key: "total",
       header: "Total",
       render: (item: Estimate) => (
-        <span className="font-semibold text-primary">
+        <span className={`font-semibold ${item.status === 'draft' ? 'text-amber-600 dark:text-amber-400' : 'text-primary'}`}>
           ${item.total.toLocaleString(undefined, { minimumFractionDigits: 2 })}
         </span>
       ),
@@ -64,19 +80,40 @@ const Estimates = () => {
       key: "actions",
       header: "",
       render: (item: Estimate) => (
-        <Button
-          variant="ghost"
-          size="icon"
-          onClick={(e) => {
-            e.stopPropagation();
-            navigate(`/estimates/${item.id}`);
-          }}
-        >
-          <Eye className="h-4 w-4" />
-        </Button>
+        item.status === "draft" ? (
+          <Button
+            variant="ghost"
+            size="icon"
+            onClick={(e) => {
+              e.stopPropagation();
+              navigate(`/estimates/new?draft=${item.id}`);
+            }}
+          >
+            <Edit className="h-4 w-4" />
+          </Button>
+        ) : (
+          <Button
+            variant="ghost"
+            size="icon"
+            onClick={(e) => {
+              e.stopPropagation();
+              navigate(`/estimates/${item.id}`);
+            }}
+          >
+            <Eye className="h-4 w-4" />
+          </Button>
+        )
       ),
     },
   ];
+
+  const handleRowClick = (item: Estimate) => {
+    if (item.status === "draft") {
+      navigate(`/estimates/new?draft=${item.id}`);
+    } else {
+      navigate(`/estimates/${item.id}`);
+    }
+  };
 
   return (
     <>
@@ -97,13 +134,24 @@ const Estimates = () => {
     >
       <PullToRefreshWrapper onRefresh={refetch} isRefreshing={isFetching}>
         {/* Search */}
-        <div className="mb-6 max-w-md">
+        <div className="mb-6 flex flex-col sm:flex-row gap-4 items-start sm:items-center">
           <SearchInput
             placeholder="Search estimates..."
             value={search}
             onChange={setSearch}
-            className="bg-secondary border-border"
+            className="bg-secondary border-border max-w-md"
           />
+          {draftCount > 0 && (
+            <Button
+              variant={selectedStatus === "draft" ? "default" : "outline"}
+              size="sm"
+              onClick={() => setSelectedStatus(selectedStatus === "draft" ? "" : "draft")}
+              className="whitespace-nowrap"
+            >
+              <FileText className="h-4 w-4 mr-1" />
+              My Drafts ({draftCount})
+            </Button>
+          )}
         </div>
 
         {/* Loading & Error States */}
@@ -142,7 +190,7 @@ const Estimates = () => {
                   <EstimateCard
                     key={estimate.id}
                     estimate={estimate}
-                    onClick={() => navigate(`/estimates/${estimate.id}`)}
+                    onClick={() => handleRowClick(estimate)}
                     index={index}
                   />
                 ))}
@@ -151,7 +199,7 @@ const Estimates = () => {
               <DataTable
                 data={filteredEstimates}
                 columns={columns}
-                onRowClick={(item) => navigate(`/estimates/${item.id}`)}
+                onRowClick={handleRowClick}
               />
             )}
           </>

@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -22,16 +22,18 @@ import {
 } from "@/components/ui/command";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Switch } from "@/components/ui/switch";
-import { Plus, Trash2, Loader2, AlertTriangle, Check, ChevronsUpDown } from "lucide-react";
+import { Plus, Trash2, Loader2, AlertTriangle, Check, ChevronsUpDown, Save, Clock } from "lucide-react";
 import { useCustomers } from "@/integrations/supabase/hooks/useCustomers";
 import { useProjectsByCustomer } from "@/integrations/supabase/hooks/useProjects";
 import { useProducts } from "@/integrations/supabase/hooks/useProducts";
-import { useAddEstimate } from "@/integrations/supabase/hooks/useEstimates";
+import { useAddEstimate, useUpdateEstimate, EstimateWithLineItems } from "@/integrations/supabase/hooks/useEstimates";
 import { useCompanySettings } from "@/integrations/supabase/hooks/useCompanySettings";
 import { useQuickBooksConfig, useQuickBooksNextNumber } from "@/integrations/supabase/hooks/useQuickBooks";
+import { useAutoSaveDraft } from "@/hooks/useAutoSaveDraft";
 import { Badge } from "@/components/ui/badge";
 import { z } from "zod";
 import { cn } from "@/lib/utils";
+import { formatDistanceToNow } from "date-fns";
 
 const lineItemSchema = z.object({
   description: z.string().min(1, "Description is required").max(500),
@@ -58,26 +60,33 @@ interface LineItem {
   total: number;
 }
 
-export const EstimateForm = () => {
+interface EstimateFormProps {
+  initialData?: EstimateWithLineItems;
+  draftId?: string;
+}
+
+export const EstimateForm = ({ initialData, draftId }: EstimateFormProps) => {
   const navigate = useNavigate();
   const { data: customers, isLoading: customersLoading } = useCustomers();
   const { data: products, isLoading: productsLoading } = useProducts();
   const { data: companySettings } = useCompanySettings();
   const addEstimate = useAddEstimate();
+  const updateEstimate = useUpdateEstimate();
 
   // QuickBooks integration
   const { data: qbConfig } = useQuickBooksConfig();
   const isQBConnected = qbConfig?.is_connected ?? false;
   const { data: qbNextNumber, isLoading: qbNumberLoading } = useQuickBooksNextNumber('estimate', isQBConnected);
 
-  const [selectedCustomerId, setSelectedCustomerId] = useState<string>("");
-  const [selectedProjectId, setSelectedProjectId] = useState<string>("");
-  const [taxRate, setTaxRate] = useState<string>("8.25");
-  const [validUntil, setValidUntil] = useState<string>("");
-  const [notes, setNotes] = useState<string>("");
-  const [status, setStatus] = useState<"draft" | "pending" | "sent" | "approved">("draft");
-  const [defaultPricingType, setDefaultPricingType] = useState<'markup' | 'margin'>('margin');
-  const [estimateNumber, setEstimateNumber] = useState<string>("");
+  const [selectedCustomerId, setSelectedCustomerId] = useState<string>(initialData?.customer_id || "");
+  const [selectedProjectId, setSelectedProjectId] = useState<string>(initialData?.project_id || "");
+  const [taxRate, setTaxRate] = useState<string>(initialData?.tax_rate?.toString() || "8.25");
+  const [validUntil, setValidUntil] = useState<string>(initialData?.valid_until || "");
+  const [notes, setNotes] = useState<string>(initialData?.notes || "");
+  const [status, setStatus] = useState<"draft" | "pending" | "sent" | "approved">(initialData?.status || "draft");
+  const [defaultPricingType, setDefaultPricingType] = useState<'markup' | 'margin'>(initialData?.default_pricing_type || 'margin');
+  const [estimateNumber, setEstimateNumber] = useState<string>(initialData?.number || "");
+  const [isInitialized, setIsInitialized] = useState(!!initialData);
 
   // Combobox open states
   const [customerComboboxOpen, setCustomerComboboxOpen] = useState(false);
@@ -91,9 +100,21 @@ export const EstimateForm = () => {
 
   const { data: projects } = useProjectsByCustomer(selectedCustomerId);
 
-  const [lineItems, setLineItems] = useState<LineItem[]>([
-    { description: "", quantity: "1", unit_price: "", margin: "0", pricing_type: "margin", is_taxable: true, total: 0 },
-  ]);
+  const [lineItems, setLineItems] = useState<LineItem[]>(() => {
+    if (initialData?.line_items && initialData.line_items.length > 0) {
+      return initialData.line_items.map((item) => ({
+        product_id: item.product_id,
+        description: item.description,
+        quantity: item.quantity.toString(),
+        unit_price: item.unit_price.toString(),
+        margin: item.markup.toString(),
+        pricing_type: (item.pricing_type || 'margin') as 'markup' | 'margin',
+        is_taxable: item.is_taxable ?? true,
+        total: item.total,
+      }));
+    }
+    return [{ description: "", quantity: "1", unit_price: "", margin: "0", pricing_type: "margin", is_taxable: true, total: 0 }];
+  });
 
   const [errors, setErrors] = useState<Record<string, string>>({});
 
@@ -110,14 +131,16 @@ export const EstimateForm = () => {
     return `EST-${year}-${random}`;
   };
 
-  // Set QuickBooks number when available
+  // Set QuickBooks number when available (only for new estimates)
   useEffect(() => {
-    if (qbNextNumber) {
-      setEstimateNumber(qbNextNumber);
-    } else if (!estimateNumber) {
-      setEstimateNumber(generateEstimateNumber());
+    if (!initialData) {
+      if (qbNextNumber) {
+        setEstimateNumber(qbNextNumber);
+      } else if (!estimateNumber) {
+        setEstimateNumber(generateEstimateNumber());
+      }
     }
-  }, [qbNextNumber]);
+  }, [qbNextNumber, initialData]);
 
   const calculateLineItemTotal = (quantity: string, unitPrice: string, percentage: string, pricingType: 'markup' | 'margin') => {
     const qty = parseFloat(quantity) || 0;
@@ -204,12 +227,57 @@ export const EstimateForm = () => {
   const taxAmount = taxableSubtotal * effectiveTaxRate / 100;
   const total = subtotal + taxAmount;
 
-  // Load default tax rate from company settings
+  // Auto-save draft logic
+  const autoSaveData = useMemo(() => ({
+    customer_id: selectedCustomerId || undefined,
+    customer_name: selectedCustomer?.name || "Draft",
+    project_id: selectedProjectId || undefined,
+    project_name: projects?.find((p) => p.id === selectedProjectId)?.name,
+    number: estimateNumber,
+    status: "draft" as const,
+    subtotal,
+    tax_rate: effectiveTaxRate,
+    tax_amount: taxAmount,
+    total,
+    notes: notes || undefined,
+    valid_until: validUntil,
+    default_pricing_type: defaultPricingType,
+  }), [selectedCustomerId, selectedCustomer?.name, selectedProjectId, projects, estimateNumber, subtotal, effectiveTaxRate, taxAmount, total, notes, validUntil, defaultPricingType]);
+
+  const autoSaveLineItems = useMemo(() => 
+    lineItems.map((item) => ({
+      product_id: item.product_id,
+      description: item.description,
+      quantity: parseFloat(item.quantity) || 0,
+      unit_price: parseFloat(item.unit_price) || 0,
+      markup: parseFloat(item.margin) || 0,
+      pricing_type: item.pricing_type,
+      is_taxable: item.is_taxable,
+      total: item.total,
+    })),
+  [lineItems]);
+
+  const { isSaving, lastSaved, hasUnsavedChanges, draftId: currentDraftId } = useAutoSaveDraft({
+    estimateData: autoSaveData,
+    lineItems: autoSaveLineItems,
+    enabled: status === "draft" && isInitialized,
+    debounceMs: 3000,
+  });
+
+  // Load default tax rate from company settings (only for new estimates)
   useEffect(() => {
-    if (companySettings?.default_tax_rate) {
+    if (!initialData && companySettings?.default_tax_rate) {
       setTaxRate(companySettings.default_tax_rate.toString());
     }
-  }, [companySettings]);
+  }, [companySettings, initialData]);
+
+  // Mark as initialized after first render
+  useEffect(() => {
+    if (!isInitialized) {
+      const timer = setTimeout(() => setIsInitialized(true), 500);
+      return () => clearTimeout(timer);
+    }
+  }, [isInitialized]);
 
   const validateForm = () => {
     const newErrors: Record<string, string> = {};
@@ -262,49 +330,81 @@ export const EstimateForm = () => {
 
     if (!customer) return;
 
-    const estimateData = {
-      estimate: {
-        number: estimateNumber,
-        customer_id: selectedCustomerId,
-        customer_name: customer.name,
-        project_id: selectedProjectId || undefined,
-        project_name: project?.name || undefined,
-        status,
-        subtotal,
-        tax_rate: effectiveTaxRate,
-        tax_amount: taxAmount,
-        total,
-        notes: notes || undefined,
-        valid_until: validUntil,
-        default_pricing_type: defaultPricingType,
-      },
-      lineItems: lineItems.map((item) => ({
-        product_id: item.product_id,
-        description: item.description,
-        quantity: parseFloat(item.quantity),
-        unit_price: parseFloat(item.unit_price),
-        markup: parseFloat(item.margin), // DB column is still "markup"
-        pricing_type: item.pricing_type,
-        is_taxable: item.is_taxable,
-        total: item.total,
-      })),
-    };
+    const lineItemsData = lineItems.map((item) => ({
+      product_id: item.product_id,
+      description: item.description,
+      quantity: parseFloat(item.quantity),
+      unit_price: parseFloat(item.unit_price),
+      markup: parseFloat(item.margin),
+      pricing_type: item.pricing_type,
+      is_taxable: item.is_taxable,
+      total: item.total,
+    }));
 
-    await addEstimate.mutateAsync(estimateData);
+    // If we have a draft, update it instead of creating new
+    const effectiveDraftId = currentDraftId || draftId;
+    
+    if (effectiveDraftId) {
+      await updateEstimate.mutateAsync({
+        id: effectiveDraftId,
+        estimate: {
+          number: estimateNumber,
+          customer_id: selectedCustomerId,
+          customer_name: customer.name,
+          project_id: selectedProjectId || null,
+          project_name: project?.name || null,
+          status,
+          subtotal,
+          tax_rate: effectiveTaxRate,
+          tax_amount: taxAmount,
+          total,
+          notes: notes || null,
+          valid_until: validUntil,
+          default_pricing_type: defaultPricingType,
+        },
+        lineItems: lineItemsData,
+      });
+    } else {
+      await addEstimate.mutateAsync({
+        estimate: {
+          number: estimateNumber,
+          customer_id: selectedCustomerId,
+          customer_name: customer.name,
+          project_id: selectedProjectId || undefined,
+          project_name: project?.name || undefined,
+          status,
+          subtotal,
+          tax_rate: effectiveTaxRate,
+          tax_amount: taxAmount,
+          total,
+          notes: notes || undefined,
+          valid_until: validUntil,
+          default_pricing_type: defaultPricingType,
+        },
+        lineItems: lineItemsData,
+      });
+    }
+    
     navigate("/estimates");
   };
 
-  // Set default valid until date (30 days from now)
+  // Set default valid until date (30 days from now) - only for new estimates
   useEffect(() => {
-    const date = new Date();
-    date.setDate(date.getDate() + 30);
-    setValidUntil(date.toISOString().split("T")[0]);
-  }, []);
+    if (!initialData && !validUntil) {
+      const date = new Date();
+      date.setDate(date.getDate() + 30);
+      setValidUntil(date.toISOString().split("T")[0]);
+    }
+  }, [initialData, validUntil]);
 
-  // Reset project when customer changes
+  // Reset project when customer changes (only if not loading initial data)
   useEffect(() => {
-    setSelectedProjectId("");
-  }, [selectedCustomerId]);
+    if (isInitialized && !initialData) {
+      setSelectedProjectId("");
+    }
+  }, [selectedCustomerId, isInitialized, initialData]);
+
+  const isPending = addEstimate.isPending || updateEstimate.isPending;
 
   if (customersLoading || productsLoading) {
     return (
@@ -316,6 +416,36 @@ export const EstimateForm = () => {
 
   return (
     <form onSubmit={handleSubmit} className="space-y-6">
+      {/* Auto-save indicator */}
+      {status === "draft" && (
+        <div className="flex items-center justify-between p-3 rounded-lg bg-amber-500/10 border border-amber-500/20">
+          <div className="flex items-center gap-2 text-amber-600 dark:text-amber-400">
+            <Badge variant="outline" className="bg-amber-500/10 text-amber-600 dark:text-amber-400 border-amber-500/20">
+              Draft
+            </Badge>
+            {isSaving ? (
+              <span className="text-sm flex items-center gap-1">
+                <Loader2 className="h-3 w-3 animate-spin" />
+                Saving...
+              </span>
+            ) : lastSaved ? (
+              <span className="text-sm flex items-center gap-1">
+                <Save className="h-3 w-3" />
+                Saved {formatDistanceToNow(lastSaved, { addSuffix: true })}
+              </span>
+            ) : hasUnsavedChanges ? (
+              <span className="text-sm flex items-center gap-1">
+                <Clock className="h-3 w-3" />
+                Unsaved changes
+              </span>
+            ) : null}
+          </div>
+          <p className="text-xs text-muted-foreground">
+            Draft is saved automatically
+          </p>
+        </div>
+      )}
+
       {/* Customer & Project Selection */}
       <Card className="glass border-border">
         <CardHeader>
@@ -849,13 +979,13 @@ export const EstimateForm = () => {
           type="button"
           variant="outline"
           onClick={() => navigate("/estimates")}
-          disabled={addEstimate.isPending}
+          disabled={isPending}
         >
           Cancel
         </Button>
-        <Button type="submit" variant="glow" disabled={addEstimate.isPending}>
-          {addEstimate.isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-          Create Estimate
+        <Button type="submit" variant="glow" disabled={isPending}>
+          {isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+          {(currentDraftId || draftId) ? "Save Estimate" : "Create Estimate"}
         </Button>
       </div>
     </form>
