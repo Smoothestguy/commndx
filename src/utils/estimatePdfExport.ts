@@ -157,12 +157,32 @@ export const generateEstimatePDF = (estimate: EstimateData): void => {
   doc.setFontSize(10);
   doc.text("Estimate details", margin, yPos);
 
-  // Right side - Project info
+  // Right side - Project info (stacked vertically to prevent overlap)
   const rightX = pageWidth - margin;
+  let rightYPos = yPos;
+  
   if (estimate.projectName) {
-    doc.text("Project Name:", rightX - 60, yPos);
+    doc.setFontSize(9);
+    doc.text("Project Name:", rightX, rightYPos, { align: "right" });
+    rightYPos += 5;
     doc.setFont("helvetica", "normal");
-    doc.text(estimate.projectName, rightX, yPos, { align: "right" });
+    doc.setTextColor(75, 85, 99);
+    // Wrap long project names to prevent overflow
+    const maxProjectWidth = 70;
+    const projectNameLines = doc.splitTextToSize(estimate.projectName, maxProjectWidth);
+    doc.text(projectNameLines, rightX, rightYPos, { align: "right" });
+    rightYPos += projectNameLines.length * 4 + 3;
+  }
+  
+  // Sales Rep on right (below project name)
+  if (estimate.salesRepName) {
+    doc.setFont("helvetica", "bold");
+    doc.setTextColor(0, 0, 0);
+    doc.text("Sales Rep:", rightX, rightYPos, { align: "right" });
+    rightYPos += 5;
+    doc.setFont("helvetica", "normal");
+    doc.setTextColor(75, 85, 99);
+    doc.text(estimate.salesRepName, rightX, rightYPos, { align: "right" });
   }
 
   yPos += 7;
@@ -172,11 +192,6 @@ export const generateEstimatePDF = (estimate: EstimateData): void => {
 
   // Estimate number
   doc.text(`Estimate no.: ${estimate.number}`, margin, yPos);
-  
-  // Sales Rep on right
-  if (estimate.salesRepName) {
-    doc.text(`Sales Rep: ${estimate.salesRepName}`, rightX, yPos, { align: "right" });
-  }
 
   yPos += 5;
   const statusText = estimate.status.charAt(0).toUpperCase() + estimate.status.slice(1);
