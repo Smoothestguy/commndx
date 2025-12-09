@@ -13,6 +13,8 @@ import { useVendorBill, useDeleteVendorBill } from "@/integrations/supabase/hook
 import { VendorBillPaymentDialog } from "@/components/vendor-bills/VendorBillPaymentDialog";
 import { VendorBillPaymentHistory } from "@/components/vendor-bills/VendorBillPaymentHistory";
 import { VendorBillAttachments } from "@/components/vendor-bills/VendorBillAttachments";
+import { Alert, AlertDescription } from "@/components/ui/alert";
+import { AlertTriangle } from "lucide-react";
 
 export default function VendorBillDetail() {
   const { id } = useParams();
@@ -196,8 +198,24 @@ export default function VendorBillDetail() {
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle>Delete Bill</AlertDialogTitle>
-            <AlertDialogDescription>
-              Are you sure you want to delete bill {bill.number}? This action cannot be undone.
+            <AlertDialogDescription asChild>
+              <div className="space-y-3">
+                <p>Are you sure you want to delete bill {bill.number}? This action cannot be undone.</p>
+                
+                {bill.line_items?.some(item => item.po_line_item_id) && (
+                  <Alert variant="destructive">
+                    <AlertTriangle className="h-4 w-4" />
+                    <AlertDescription>
+                      This bill is linked to a purchase order. Deleting it will:
+                      <ul className="list-disc list-inside mt-2 space-y-1">
+                        <li>Revert billed quantities on the linked PO line items</li>
+                        <li>Update the purchase order status accordingly</li>
+                        <li>Allow those items to be billed again</li>
+                      </ul>
+                    </AlertDescription>
+                  </Alert>
+                )}
+              </div>
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
