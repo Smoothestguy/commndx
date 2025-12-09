@@ -79,7 +79,7 @@ export function useChangeOrders(filters?: { projectId?: string; status?: ChangeO
 
       const { data, error } = await query;
       if (error) throw error;
-      return data as (ChangeOrder & { project: { id: string; name: string } })[];
+      return data as unknown as (ChangeOrder & { project: { id: string; name: string } })[];
     },
   });
 }
@@ -115,7 +115,7 @@ export function useChangeOrder(id: string | undefined) {
       return {
         ...changeOrder,
         line_items: lineItems || [],
-      } as ChangeOrderWithLineItems;
+      } as unknown as ChangeOrderWithLineItems;
     },
     enabled: !!id,
   });
@@ -135,7 +135,7 @@ export function useChangeOrdersByProject(projectId: string | undefined) {
         .order("number", { ascending: true });
 
       if (error) throw error;
-      return data as ChangeOrder[];
+      return data as unknown as ChangeOrder[];
     },
     enabled: !!projectId,
   });
@@ -155,7 +155,7 @@ export function useChangeOrdersByPurchaseOrder(purchaseOrderId: string | undefin
         .order("number", { ascending: true });
 
       if (error) throw error;
-      return data as ChangeOrder[];
+      return data as unknown as ChangeOrder[];
     },
     enabled: !!purchaseOrderId,
   });
@@ -189,15 +189,17 @@ export function useAddChangeOrder() {
       const taxAmount = taxableAmount * (changeOrderData.tax_rate / 100);
       const total = subtotal + taxAmount;
 
-      // Insert change order
+      // Insert change order with calculated totals
+      const insertData = {
+        ...changeOrderData,
+        subtotal,
+        tax_amount: taxAmount,
+        total,
+      };
+
       const { data: changeOrder, error } = await supabase
         .from("change_orders")
-        .insert({
-          ...changeOrderData,
-          subtotal,
-          tax_amount: taxAmount,
-          total,
-        })
+        .insert(insertData as never)
         .select()
         .single();
 
@@ -210,15 +212,15 @@ export function useAddChangeOrder() {
           .insert(
             line_items.map((item, index) => ({
               ...item,
-              change_order_id: changeOrder.id,
+              change_order_id: (changeOrder as { id: string }).id,
               sort_order: index,
-            }))
+            })) as never
           );
 
         if (lineItemsError) throw lineItemsError;
       }
 
-      return changeOrder;
+      return changeOrder as unknown as ChangeOrder;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["change_orders"] });
@@ -252,7 +254,7 @@ export function useUpdateChangeOrder() {
     }) => {
       const { id, line_items, ...updateData } = data;
 
-      let finalUpdateData = { ...updateData };
+      let finalUpdateData: Record<string, unknown> = { ...updateData };
 
       // If line items provided, recalculate totals
       if (line_items) {
@@ -287,7 +289,7 @@ export function useUpdateChangeOrder() {
                 id: item.id?.startsWith("temp-") ? undefined : item.id,
                 change_order_id: id,
                 sort_order: index,
-              }))
+              })) as never
             );
 
           if (insertError) throw insertError;
@@ -297,13 +299,13 @@ export function useUpdateChangeOrder() {
       // Update change order
       const { data: changeOrder, error } = await supabase
         .from("change_orders")
-        .update(finalUpdateData)
+        .update(finalUpdateData as never)
         .eq("id", id)
         .select()
         .single();
 
       if (error) throw error;
-      return changeOrder;
+      return changeOrder as unknown as ChangeOrder;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["change_orders"] });
@@ -349,7 +351,7 @@ export function useUpdateChangeOrderStatus() {
 
       const { error } = await supabase
         .from("change_orders")
-        .update(updateData)
+        .update(updateData as never)
         .eq("id", data.id);
 
       if (error) throw error;
@@ -379,7 +381,7 @@ export function useLinkVendorBillToChangeOrder() {
     mutationFn: async (data: { change_order_id: string; vendor_bill_id: string }) => {
       const { error } = await supabase
         .from("change_order_vendor_bills")
-        .insert(data);
+        .insert(data as never);
       if (error) throw error;
     },
     onSuccess: () => {
