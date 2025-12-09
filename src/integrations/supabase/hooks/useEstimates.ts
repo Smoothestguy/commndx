@@ -44,6 +44,7 @@ export interface CustomerContactInfo {
   phone?: string | null;
   email?: string | null;
   address?: string | null;
+  jobsite_address?: string | null;
 }
 
 export interface EstimateCreatorProfile {
@@ -109,7 +110,7 @@ export const useEstimate = (id: string) => {
       if (estimate.customer_id) {
         const { data: customer } = await supabase
           .from("customers")
-          .select("phone, email, address")
+          .select("phone, email, address, jobsite_address")
           .eq("id", estimate.customer_id)
           .single();
         customerContact = customer;
