@@ -607,6 +607,10 @@ export const EstimateForm = ({ initialData }: EstimateFormProps) => {
                                 setSelectedCustomerId(customer.id);
                                 setCustomerComboboxOpen(false);
                                 setCustomerSearch("");
+                                // Pre-populate jobsite address from customer's default if empty
+                                if (!jobsiteAddress && customer.jobsite_address) {
+                                  setJobsiteAddress(customer.jobsite_address);
+                                }
                               }}
                             >
                               <Check
