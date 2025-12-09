@@ -74,76 +74,121 @@ export const generateEstimatePDF = (estimate: EstimateData): void => {
   }
 
   // ==================== HEADER SECTION ====================
-  // Primary color header band
-  doc.setFillColor(102, 126, 234); // primary color
-  doc.rect(0, 0, pageWidth, 40, "F");
+  let yPos = 20;
 
-  // Company name (white, bold, left)
-  doc.setTextColor(255, 255, 255);
-  doc.setFontSize(24);
+  // "ESTIMATE" title - blue, top-left
+  doc.setTextColor(37, 99, 235); // #2563EB blue
+  doc.setFontSize(18);
   doc.setFont("helvetica", "bold");
-  doc.text(company.company_name || "Command X", margin, 25);
+  doc.text("ESTIMATE", margin, yPos);
 
-  // "ESTIMATE" title (white, right)
-  doc.setFontSize(16);
-  doc.text("ESTIMATE", pageWidth - margin, 25, { align: "right" });
+  yPos += 12;
 
-  // Reset text color
+  // Company Name (bold, black) - left column
   doc.setTextColor(0, 0, 0);
-
-  // ==================== BILL TO & DETAILS SECTION ====================
-  let yPos = 55;
-
-  // Bill To Section (left side)
+  doc.setFontSize(11);
   doc.setFont("helvetica", "bold");
-  doc.setFontSize(12);
-  doc.text("BILL TO:", margin, yPos);
+  doc.text(company.company_name || "Command X", margin, yPos);
+
+  // Contact info - middle column (starting around x=100)
+  const contactX = 105;
+  doc.setFont("helvetica", "normal");
+  doc.setFontSize(10);
+  doc.setTextColor(75, 85, 99); // gray-600
+  if (company.email) doc.text(company.email, contactX, yPos);
+
+  yPos += 5;
+
+  // Address line (left column)
+  doc.setTextColor(75, 85, 99);
+  if (company.address) doc.text(company.address, margin, yPos);
+  // Phone (middle column)
+  if (company.phone) doc.text(company.phone, contactX, yPos);
+
+  yPos += 5;
+
+  // City, State ZIP (left column)
+  if (company.city || company.state || company.zip) {
+    const cityStateZip = [company.city, company.state, company.zip].filter(Boolean).join(", ");
+    doc.text(cityStateZip, margin, yPos);
+  }
+  // Website (middle column)
+  if (company.website) doc.text(company.website, contactX, yPos);
+
+  yPos += 12;
+
+  // ==================== BILL TO SECTION (Light blue background) ====================
+  const billToHeight = 25;
+  doc.setFillColor(239, 246, 255); // light blue bg (#EFF6FF)
+  doc.rect(margin, yPos, pageWidth - 2 * margin, billToHeight, "F");
+
+  // Bill to label
+  doc.setTextColor(0, 0, 0);
+  doc.setFont("helvetica", "bold");
+  doc.setFontSize(10);
+  doc.text("Bill to", margin + 5, yPos + 8);
+
+  // Customer name
+  doc.setFont("helvetica", "normal");
+  doc.text(estimate.customerName, margin + 5, yPos + 16);
+
+  // Customer address (if available, on same line or next)
+  if (estimate.customerAddress) {
+    const addressLines = doc.splitTextToSize(estimate.customerAddress, 100);
+    doc.setFontSize(9);
+    doc.setTextColor(75, 85, 99);
+    doc.text(addressLines[0] || "", margin + 5, yPos + 22);
+  }
+
+  yPos += billToHeight + 5;
+
+  // Dashed divider line
+  doc.setDrawColor(200, 200, 200);
+  doc.setLineDashPattern([2, 2], 0);
+  doc.line(margin, yPos, pageWidth - margin, yPos);
+  doc.setLineDashPattern([], 0);
+
+  yPos += 8;
+
+  // ==================== DETAILS SECTION ====================
+  // Left side - Estimate details
+  doc.setTextColor(0, 0, 0);
+  doc.setFont("helvetica", "bold");
+  doc.setFontSize(10);
+  doc.text("Estimate details", margin, yPos);
+
+  // Right side - Project info
+  const rightX = pageWidth - margin;
+  if (estimate.projectName) {
+    doc.text("Project Name:", rightX - 60, yPos);
+    doc.setFont("helvetica", "normal");
+    doc.text(estimate.projectName, rightX, yPos, { align: "right" });
+  }
 
   yPos += 7;
   doc.setFont("helvetica", "normal");
-  doc.setFontSize(10);
-  doc.text(estimate.customerName, margin, yPos);
+  doc.setFontSize(9);
+  doc.setTextColor(75, 85, 99);
 
-  if (estimate.customerAddress) {
-    yPos += 6;
-    const addressLines = doc.splitTextToSize(estimate.customerAddress, 80);
-    addressLines.forEach((line: string) => {
-      doc.text(line, margin, yPos);
-      yPos += 5;
-    });
-  }
-
-  if (estimate.projectName) {
-    yPos += 2;
-    doc.text(`Project: ${estimate.projectName}`, margin, yPos);
-  }
-
-  // Estimate Details (right side)
-  let rightYPos = 55;
-  const rightX = pageWidth - margin;
-
-  doc.setFont("helvetica", "bold");
-  doc.setFontSize(10);
-  doc.text(`Estimate #: ${estimate.number}`, rightX, rightYPos, { align: "right" });
-
-  rightYPos += 6;
-  doc.setFont("helvetica", "normal");
-  const statusText = estimate.status.charAt(0).toUpperCase() + estimate.status.slice(1);
-  doc.text(`Status: ${statusText}`, rightX, rightYPos, { align: "right" });
-
-  rightYPos += 6;
-  doc.text(`Date: ${new Date(estimate.createdAt).toLocaleDateString()}`, rightX, rightYPos, { align: "right" });
-
-  rightYPos += 6;
-  doc.text(`Valid Until: ${new Date(estimate.validUntil).toLocaleDateString()}`, rightX, rightYPos, { align: "right" });
-
+  // Estimate number
+  doc.text(`Estimate no.: ${estimate.number}`, margin, yPos);
+  
+  // Sales Rep on right
   if (estimate.salesRepName) {
-    rightYPos += 6;
-    doc.text(`Sales Rep: ${estimate.salesRepName}`, rightX, rightYPos, { align: "right" });
+    doc.text(`Sales Rep: ${estimate.salesRepName}`, rightX, yPos, { align: "right" });
   }
 
-  // Use the max of left and right positions
-  yPos = Math.max(yPos, rightYPos) + 15;
+  yPos += 5;
+  const statusText = estimate.status.charAt(0).toUpperCase() + estimate.status.slice(1);
+  doc.text(`Status: ${statusText}`, margin, yPos);
+
+  yPos += 5;
+  doc.text(`Estimate date: ${new Date(estimate.createdAt).toLocaleDateString()}`, margin, yPos);
+
+  yPos += 5;
+  doc.text(`Valid until: ${new Date(estimate.validUntil).toLocaleDateString()}`, margin, yPos);
+
+  yPos += 12;
 
   // ==================== LINE ITEMS TABLE ====================
   // Table Header
