@@ -31,6 +31,7 @@ import { CreateBillFromPODialog } from "@/components/purchase-orders/CreateBillF
 import { ClosePODialog } from "@/components/purchase-orders/ClosePODialog";
 import { POBillingSummary } from "@/components/purchase-orders/POBillingSummary";
 import { RelatedVendorBills } from "@/components/purchase-orders/RelatedVendorBills";
+import { POAddendums } from "@/components/purchase-orders/POAddendums";
 
 const PurchaseOrderDetail = () => {
   const { id } = useParams();
@@ -56,7 +57,9 @@ const PurchaseOrderDetail = () => {
 
   const billedAmount = Number(purchaseOrder?.billed_amount || 0);
   const total = Number(purchaseOrder?.total || 0);
-  const remainingAmount = total - billedAmount;
+  const totalAddendumAmount = Number(purchaseOrder?.total_addendum_amount || 0);
+  const grandTotal = total + totalAddendumAmount;
+  const remainingAmount = grandTotal - billedAmount;
 
   const handleApprove = async (approved: boolean) => {
     if (!purchaseOrder) return;
@@ -333,7 +336,7 @@ const PurchaseOrderDetail = () => {
 
         {/* Billing Summary */}
         <POBillingSummary
-          total={total}
+          total={grandTotal}
           billedAmount={billedAmount}
           remainingAmount={remainingAmount}
         />
@@ -448,13 +451,32 @@ const PurchaseOrderDetail = () => {
               <span className="text-muted-foreground">Tax ({purchaseOrder.tax_rate}%)</span>
               <span>${Number(purchaseOrder.tax_amount).toLocaleString(undefined, { minimumFractionDigits: 2 })}</span>
             </div>
+            <div className="flex justify-between items-center text-sm font-medium pt-2 border-t border-border/30">
+              <span>PO Total</span>
+              <span>${Number(purchaseOrder.total).toLocaleString(undefined, { minimumFractionDigits: 2 })}</span>
+            </div>
+            {totalAddendumAmount > 0 && (
+              <div className="flex justify-between items-center text-sm">
+                <span className="text-muted-foreground">+ Addendums</span>
+                <span className="text-success">+${totalAddendumAmount.toLocaleString(undefined, { minimumFractionDigits: 2 })}</span>
+              </div>
+            )}
             <div className="flex justify-between items-center text-lg font-bold pt-2 border-t border-border/30">
-              <span>Total</span>
-              <span className="text-primary">${Number(purchaseOrder.total).toLocaleString(undefined, { minimumFractionDigits: 2 })}</span>
+              <span>Grand Total</span>
+              <span className="text-primary">${grandTotal.toLocaleString(undefined, { minimumFractionDigits: 2 })}</span>
             </div>
           </div>
         </CardContent>
       </Card>
+
+      {/* Addendums / Change Orders */}
+      <div className="mt-6">
+        <POAddendums
+          purchaseOrderId={purchaseOrder.id}
+          purchaseOrderNumber={purchaseOrder.number}
+          isClosed={purchaseOrder.is_closed}
+        />
+      </div>
 
       {/* Related Vendor Bills */}
       <div className="mt-6">

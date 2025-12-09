@@ -2075,6 +2075,53 @@ export type Database = {
         }
         Relationships: []
       }
+      po_addendums: {
+        Row: {
+          amount: number
+          created_at: string | null
+          description: string
+          file_name: string
+          file_path: string
+          file_size: number
+          file_type: string
+          id: string
+          purchase_order_id: string
+          uploaded_by: string | null
+        }
+        Insert: {
+          amount?: number
+          created_at?: string | null
+          description: string
+          file_name: string
+          file_path: string
+          file_size: number
+          file_type: string
+          id?: string
+          purchase_order_id: string
+          uploaded_by?: string | null
+        }
+        Update: {
+          amount?: number
+          created_at?: string | null
+          description?: string
+          file_name?: string
+          file_path?: string
+          file_size?: number
+          file_type?: string
+          id?: string
+          purchase_order_id?: string
+          uploaded_by?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "po_addendums_purchase_order_id_fkey"
+            columns: ["purchase_order_id"]
+            isOneToOne: false
+            referencedRelation: "purchase_orders"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       po_line_items: {
         Row: {
           billed_quantity: number | null
@@ -2302,6 +2349,7 @@ export type Database = {
           name: string
           start_date: string
           status: Database["public"]["Enums"]["project_status"]
+          total_cost: number
           updated_at: string
         }
         Insert: {
@@ -2312,6 +2360,7 @@ export type Database = {
           name: string
           start_date: string
           status?: Database["public"]["Enums"]["project_status"]
+          total_cost?: number
           updated_at?: string
         }
         Update: {
@@ -2322,6 +2371,7 @@ export type Database = {
           name?: string
           start_date?: string
           status?: Database["public"]["Enums"]["project_status"]
+          total_cost?: number
           updated_at?: string
         }
         Relationships: [
@@ -2360,6 +2410,7 @@ export type Database = {
           tax_amount: number
           tax_rate: number
           total: number
+          total_addendum_amount: number
           updated_at: string
           vendor_id: string
           vendor_name: string
@@ -2389,6 +2440,7 @@ export type Database = {
           tax_amount: number
           tax_rate: number
           total: number
+          total_addendum_amount?: number
           updated_at?: string
           vendor_id: string
           vendor_name: string
@@ -2418,6 +2470,7 @@ export type Database = {
           tax_amount?: number
           tax_rate?: number
           total?: number
+          total_addendum_amount?: number
           updated_at?: string
           vendor_id?: string
           vendor_name?: string
