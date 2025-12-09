@@ -22,27 +22,22 @@ const handler = async (req: Request): Promise<Response> => {
       throw new Error('No authorization header');
     }
 
+    // Extract the JWT token from the Authorization header
+    const token = authHeader.replace('Bearer ', '');
+
     const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
-    const supabaseAnonKey = Deno.env.get('SUPABASE_ANON_KEY')!;
     const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
     
-    // Use anon key with user's auth header to validate the user
-    const supabaseAuth = createClient(supabaseUrl, supabaseAnonKey, {
-      global: {
-        headers: { Authorization: authHeader },
-      },
-    });
+    // Use service role client for all operations
+    const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
-    // Get the current user from the auth header
-    const { data: { user }, error: userError } = await supabaseAuth.auth.getUser();
+    // Get the user from the JWT token
+    const { data: { user }, error: userError } = await supabase.auth.getUser(token);
     
     if (userError || !user) {
       console.error('User auth error:', userError);
       throw new Error('Unauthorized');
     }
-
-    // Use service role client for operations that need elevated privileges
-    const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
     // Check if user is admin or manager
     const { data: userRole, error: roleError } = await supabase
