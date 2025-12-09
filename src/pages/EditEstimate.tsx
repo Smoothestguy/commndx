@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef, useMemo } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { PageLayout } from "@/components/layout/PageLayout";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -11,6 +11,16 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Plus, Loader2, AlertTriangle, ArrowLeft, Edit, Eye } from "lucide-react";
@@ -21,6 +31,7 @@ import { useProjectsByCustomer } from "@/integrations/supabase/hooks/useProjects
 import { useProducts } from "@/integrations/supabase/hooks/useProducts";
 import { useEstimate, useUpdateEstimate } from "@/integrations/supabase/hooks/useEstimates";
 import { useCompanySettings } from "@/integrations/supabase/hooks/useCompanySettings";
+import { useUnsavedChangesWarning } from "@/hooks/useUnsavedChangesWarning";
 import { z } from "zod";
 import {
   DndContext,
@@ -91,6 +102,17 @@ const EditEstimate = () => {
 
   const { data: projects } = useProjectsByCustomer(selectedCustomerId);
 
+  // Track initial state for unsaved changes detection
+  const initialStateRef = useRef<{
+    customerId: string;
+    projectId: string;
+    taxRate: string;
+    validUntil: string;
+    notes: string;
+    status: string;
+    lineItems: string;
+  } | null>(null);
+
   // Initialize form with estimate data
   useEffect(() => {
     if (estimate && !isInitialized) {
@@ -122,6 +144,57 @@ const EditEstimate = () => {
       setIsInitialized(true);
     }
   }, [estimate, isInitialized]);
+
+  // Set initial state after form is initialized
+  useEffect(() => {
+    if (isInitialized && !initialStateRef.current && lineItems.length > 0) {
+      initialStateRef.current = {
+        customerId: selectedCustomerId,
+        projectId: selectedProjectId,
+        taxRate,
+        validUntil,
+        notes,
+        status,
+        lineItems: JSON.stringify(lineItems),
+      };
+    }
+  }, [isInitialized, selectedCustomerId, selectedProjectId, taxRate, validUntil, notes, status, lineItems]);
+
+  // Calculate if there are unsaved changes
+  const hasUnsavedChanges = useMemo(() => {
+    if (!initialStateRef.current) return false;
+    
+    const currentState = {
+      customerId: selectedCustomerId,
+      projectId: selectedProjectId,
+      taxRate,
+      validUntil,
+      notes,
+      status,
+      lineItems: JSON.stringify(lineItems),
+    };
+    
+    return (
+      currentState.customerId !== initialStateRef.current.customerId ||
+      currentState.projectId !== initialStateRef.current.projectId ||
+      currentState.taxRate !== initialStateRef.current.taxRate ||
+      currentState.validUntil !== initialStateRef.current.validUntil ||
+      currentState.notes !== initialStateRef.current.notes ||
+      currentState.status !== initialStateRef.current.status ||
+      currentState.lineItems !== initialStateRef.current.lineItems
+    );
+  }, [selectedCustomerId, selectedProjectId, taxRate, validUntil, notes, status, lineItems]);
+
+  // Unsaved changes warning hook
+  const {
+    showLeaveDialog,
+    confirmLeave,
+    cancelLeave,
+    handleCancelClick,
+  } = useUnsavedChangesWarning({
+    hasUnsavedChanges,
+    enabled: isInitialized,
+  });
 
   const calculateLineItemTotal = (quantity: string, unitPrice: string, percentage: string, pricingType: 'markup' | 'margin') => {
     const qty = parseFloat(quantity) || 0;
@@ -326,6 +399,20 @@ const EditEstimate = () => {
     });
   };
 
+  // Handle cancel with unsaved changes check
+  const handleCancel = () => {
+    const shouldProceed = handleCancelClick();
+    if (shouldProceed) {
+      navigate(`/estimates/${id}`);
+    }
+  };
+
+  // Handle confirm leave from dialog
+  const handleConfirmLeave = () => {
+    confirmLeave();
+    navigate(`/estimates/${id}`);
+  };
+
   if (estimateLoading || customersLoading || productsLoading) {
     return (
       <PageLayout title="Edit Estimate" description="Loading...">
@@ -364,7 +451,7 @@ const EditEstimate = () => {
       }
       description="Update estimate details"
       actions={
-        <Button variant="outline" onClick={() => navigate(`/estimates/${id}`)}>
+        <Button variant="outline" onClick={handleCancel}>
           <ArrowLeft className="h-4 w-4 mr-2" />
           Back to Details
         </Button>
@@ -580,7 +667,7 @@ const EditEstimate = () => {
           <Button
             type="button"
             variant="outline"
-            onClick={() => navigate(`/estimates/${id}`)}
+            onClick={handleCancel}
           >
             Cancel
           </Button>
@@ -621,6 +708,26 @@ const EditEstimate = () => {
           status={status}
         />
       </form>
+
+      {/* Unsaved Changes Confirmation Dialog */}
+      <AlertDialog open={showLeaveDialog} onOpenChange={(open) => !open && cancelLeave()}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Unsaved Changes</AlertDialogTitle>
+            <AlertDialogDescription>
+              You have unsaved changes. Are you sure you want to leave? Your changes will be lost.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel onClick={cancelLeave}>
+              Continue Editing
+            </AlertDialogCancel>
+            <AlertDialogAction onClick={handleConfirmLeave}>
+              Discard Changes
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </PageLayout>
   );
 };
