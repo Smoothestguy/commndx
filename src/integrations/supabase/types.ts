@@ -2064,6 +2064,7 @@ export type Database = {
       }
       po_line_items: {
         Row: {
+          billed_quantity: number | null
           created_at: string
           description: string
           id: string
@@ -2074,6 +2075,7 @@ export type Database = {
           unit_price: number
         }
         Insert: {
+          billed_quantity?: number | null
           created_at?: string
           description: string
           id?: string
@@ -2084,6 +2086,7 @@ export type Database = {
           unit_price: number
         }
         Update: {
+          billed_quantity?: number | null
           created_at?: string
           description?: string
           id?: string
@@ -2322,11 +2325,15 @@ export type Database = {
         Row: {
           approved_at: string | null
           approved_by: string | null
+          billed_amount: number | null
+          closed_at: string | null
+          closed_by: string | null
           created_at: string
           customer_id: string
           customer_name: string
           due_date: string
           id: string
+          is_closed: boolean | null
           job_order_id: string
           job_order_number: string
           notes: string | null
@@ -2347,11 +2354,15 @@ export type Database = {
         Insert: {
           approved_at?: string | null
           approved_by?: string | null
+          billed_amount?: number | null
+          closed_at?: string | null
+          closed_by?: string | null
           created_at?: string
           customer_id: string
           customer_name: string
           due_date: string
           id?: string
+          is_closed?: boolean | null
           job_order_id: string
           job_order_number: string
           notes?: string | null
@@ -2372,11 +2383,15 @@ export type Database = {
         Update: {
           approved_at?: string | null
           approved_by?: string | null
+          billed_amount?: number | null
+          closed_at?: string | null
+          closed_by?: string | null
           created_at?: string
           customer_id?: string
           customer_name?: string
           due_date?: string
           id?: string
+          is_closed?: boolean | null
           job_order_id?: string
           job_order_number?: string
           notes?: string | null
@@ -3375,6 +3390,7 @@ export type Database = {
           created_at: string
           description: string
           id: string
+          po_line_item_id: string | null
           project_id: string | null
           quantity: number
           total: number
@@ -3386,6 +3402,7 @@ export type Database = {
           created_at?: string
           description: string
           id?: string
+          po_line_item_id?: string | null
           project_id?: string | null
           quantity?: number
           total?: number
@@ -3397,6 +3414,7 @@ export type Database = {
           created_at?: string
           description?: string
           id?: string
+          po_line_item_id?: string | null
           project_id?: string | null
           quantity?: number
           total?: number
@@ -3415,6 +3433,13 @@ export type Database = {
             columns: ["category_id"]
             isOneToOne: false
             referencedRelation: "expense_categories"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "vendor_bill_line_items_po_line_item_id_fkey"
+            columns: ["po_line_item_id"]
+            isOneToOne: false
+            referencedRelation: "po_line_items"
             referencedColumns: ["id"]
           },
           {
@@ -3476,6 +3501,8 @@ export type Database = {
           notes: string | null
           number: string
           paid_amount: number
+          purchase_order_id: string | null
+          purchase_order_number: string | null
           remaining_amount: number
           status: Database["public"]["Enums"]["vendor_bill_status"]
           subtotal: number
@@ -3494,6 +3521,8 @@ export type Database = {
           notes?: string | null
           number: string
           paid_amount?: number
+          purchase_order_id?: string | null
+          purchase_order_number?: string | null
           remaining_amount?: number
           status?: Database["public"]["Enums"]["vendor_bill_status"]
           subtotal?: number
@@ -3512,6 +3541,8 @@ export type Database = {
           notes?: string | null
           number?: string
           paid_amount?: number
+          purchase_order_id?: string | null
+          purchase_order_number?: string | null
           remaining_amount?: number
           status?: Database["public"]["Enums"]["vendor_bill_status"]
           subtotal?: number
@@ -3523,6 +3554,13 @@ export type Database = {
           vendor_name?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "vendor_bills_purchase_order_id_fkey"
+            columns: ["purchase_order_id"]
+            isOneToOne: false
+            referencedRelation: "purchase_orders"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "vendor_bills_vendor_id_fkey"
             columns: ["vendor_id"]
@@ -3819,6 +3857,9 @@ export type Database = {
         | "in-progress"
         | "completed"
         | "cancelled"
+        | "partially_billed"
+        | "fully_billed"
+        | "closed"
       quickbooks_sync_status: "synced" | "pending" | "conflict" | "error"
       roof_condition: "excellent" | "good" | "fair" | "poor" | "critical"
       roof_type:
@@ -4042,6 +4083,9 @@ export const Constants = {
         "in-progress",
         "completed",
         "cancelled",
+        "partially_billed",
+        "fully_billed",
+        "closed",
       ],
       quickbooks_sync_status: ["synced", "pending", "conflict", "error"],
       roof_condition: ["excellent", "good", "fair", "poor", "critical"],
