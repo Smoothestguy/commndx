@@ -76,6 +76,8 @@ export const generateEstimatePDF = async (estimate: EstimateData): Promise<void>
 
   // ==================== HEADER SECTION ====================
   let yPos = 20;
+  const headerRightX = pageWidth - margin;
+  let logoHeight = 12;
 
   // Load and add company logo (top-right)
   try {
@@ -90,7 +92,7 @@ export const generateEstimatePDF = async (estimate: EstimateData): Promise<void>
     
     // Add logo to top-right corner
     const logoWidth = 45;
-    const logoHeight = 12;
+    logoHeight = 12;
     const logoX = pageWidth - margin - logoWidth;
     doc.addImage(base64, "PNG", logoX, yPos - 5, logoWidth, logoHeight);
   } catch (error) {
@@ -103,7 +105,25 @@ export const generateEstimatePDF = async (estimate: EstimateData): Promise<void>
   doc.setFont("helvetica", "bold");
   doc.text("ESTIMATE", margin, yPos);
 
-  yPos += 12;
+  // Right column - contact info stacked and right-aligned under logo
+  let contactYPos = yPos + logoHeight + 3;
+  doc.setTextColor(75, 85, 99); // gray-600
+  doc.setFontSize(9);
+  doc.setFont("helvetica", "normal");
+  
+  if (company.email) {
+    doc.text(company.email, headerRightX, contactYPos, { align: "right" });
+    contactYPos += 4;
+  }
+  if (company.phone) {
+    doc.text(company.phone, headerRightX, contactYPos, { align: "right" });
+    contactYPos += 4;
+  }
+  if (company.website) {
+    doc.text(company.website, headerRightX, contactYPos, { align: "right" });
+  }
+
+  yPos += 10;
 
   // Company Name (bold, black) - left column
   doc.setTextColor(0, 0, 0);
@@ -111,32 +131,24 @@ export const generateEstimatePDF = async (estimate: EstimateData): Promise<void>
   doc.setFont("helvetica", "bold");
   doc.text(company.company_name || "Command X", margin, yPos);
 
-  // Contact info - middle column (starting around x=100)
-  const contactX = 105;
-  doc.setFont("helvetica", "normal");
-  doc.setFontSize(10);
-  doc.setTextColor(75, 85, 99); // gray-600
-  if (company.email) doc.text(company.email, contactX, yPos);
-
   yPos += 5;
 
   // Address line (left column)
   doc.setTextColor(75, 85, 99);
-  if (company.address) doc.text(company.address, margin, yPos);
-  // Phone (middle column)
-  if (company.phone) doc.text(company.phone, contactX, yPos);
-
-  yPos += 5;
+  doc.setFontSize(10);
+  doc.setFont("helvetica", "normal");
+  if (company.address) {
+    doc.text(company.address, margin, yPos);
+    yPos += 5;
+  }
 
   // City, State ZIP (left column)
   if (company.city || company.state || company.zip) {
     const cityStateZip = [company.city, company.state, company.zip].filter(Boolean).join(", ");
     doc.text(cityStateZip, margin, yPos);
   }
-  // Website (middle column)
-  if (company.website) doc.text(company.website, contactX, yPos);
 
-  yPos += 12;
+  yPos += 10;
 
   // ==================== BILL TO SECTION (Light blue background) ====================
   const billToHeight = 25;
