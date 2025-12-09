@@ -19,18 +19,136 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import { usePOAddendums, useDeletePOAddendum, POAddendum } from "@/integrations/supabase/hooks/usePOAddendums";
+import {
+  Collapsible,
+  CollapsibleContent,
+  CollapsibleTrigger,
+} from "@/components/ui/collapsible";
+import { usePOAddendums, usePOAddendumLineItems, useDeletePOAddendum, POAddendum } from "@/integrations/supabase/hooks/usePOAddendums";
 import { useUserRole } from "@/hooks/useUserRole";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { format } from "date-fns";
 import { supabase } from "@/integrations/supabase/client";
-import { Plus, FileText, Download, Trash2, FileStack } from "lucide-react";
+import { Plus, FileText, Download, Trash2, FileStack, ChevronDown, ChevronRight } from "lucide-react";
 import { AddAddendumDialog } from "./AddAddendumDialog";
+import { Badge } from "@/components/ui/badge";
 
 interface POAddendumsProps {
   purchaseOrderId: string;
   purchaseOrderNumber: string;
   isClosed: boolean;
+}
+
+function AddendumLineItems({ addendumId }: { addendumId: string }) {
+  const { data: lineItems, isLoading } = usePOAddendumLineItems(addendumId);
+
+  if (isLoading) {
+    return <div className="py-2 text-sm text-muted-foreground">Loading line items...</div>;
+  }
+
+  if (!lineItems || lineItems.length === 0) {
+    return <div className="py-2 text-sm text-muted-foreground">No line items</div>;
+  }
+
+  return (
+    <div className="mt-2 pl-4 border-l-2 border-border/50">
+      <Table>
+        <TableHeader>
+          <TableRow className="border-border/30">
+            <TableHead className="text-xs">Description</TableHead>
+            <TableHead className="text-xs text-right">Qty</TableHead>
+            <TableHead className="text-xs text-right">Unit Price</TableHead>
+            <TableHead className="text-xs text-right">Markup</TableHead>
+            <TableHead className="text-xs text-right">Total</TableHead>
+          </TableRow>
+        </TableHeader>
+        <TableBody>
+          {lineItems.map((item) => (
+            <TableRow key={item.id} className="border-border/20">
+              <TableCell className="text-sm">{item.description}</TableCell>
+              <TableCell className="text-sm text-right">{item.quantity}</TableCell>
+              <TableCell className="text-sm text-right">${Number(item.unit_price).toFixed(2)}</TableCell>
+              <TableCell className="text-sm text-right">{item.markup}%</TableCell>
+              <TableCell className="text-sm text-right font-medium">${Number(item.total).toFixed(2)}</TableCell>
+            </TableRow>
+          ))}
+        </TableBody>
+      </Table>
+    </div>
+  );
+}
+
+function AddendumRow({ 
+  addendum, 
+  canManage, 
+  onDownload, 
+  onDelete 
+}: { 
+  addendum: POAddendum; 
+  canManage: boolean; 
+  onDownload: (a: POAddendum) => void; 
+  onDelete: (a: POAddendum) => void;
+}) {
+  const [isOpen, setIsOpen] = useState(false);
+
+  return (
+    <Collapsible open={isOpen} onOpenChange={setIsOpen}>
+      <TableRow className="border-border/30">
+        <TableCell>
+          <CollapsibleTrigger asChild>
+            <Button variant="ghost" size="sm" className="p-0 h-auto">
+              {isOpen ? <ChevronDown className="h-4 w-4 mr-2" /> : <ChevronRight className="h-4 w-4 mr-2" />}
+              <span className="font-medium">{addendum.description}</span>
+            </Button>
+          </CollapsibleTrigger>
+        </TableCell>
+        <TableCell>
+          {addendum.number ? (
+            <Badge variant="outline" className="font-mono">{addendum.number}</Badge>
+          ) : (
+            <span className="text-muted-foreground">-</span>
+          )}
+        </TableCell>
+        <TableCell>{format(new Date(addendum.created_at), "MMM d, yyyy")}</TableCell>
+        <TableCell className="text-right">
+          ${Number(addendum.amount).toLocaleString(undefined, { minimumFractionDigits: 2 })}
+        </TableCell>
+        <TableCell className="text-right">
+          <div className="flex justify-end gap-1">
+            {addendum.file_path && (
+              <Button
+                variant="ghost"
+                size="icon"
+                onClick={() => onDownload(addendum)}
+                title="Download"
+              >
+                <Download className="h-4 w-4" />
+              </Button>
+            )}
+            {canManage && (
+              <Button
+                variant="ghost"
+                size="icon"
+                onClick={() => onDelete(addendum)}
+                title="Delete"
+              >
+                <Trash2 className="h-4 w-4 text-destructive" />
+              </Button>
+            )}
+          </div>
+        </TableCell>
+      </TableRow>
+      <CollapsibleContent asChild>
+        <tr>
+          <td colSpan={5} className="p-0">
+            <div className="px-4 pb-4">
+              <AddendumLineItems addendumId={addendum.id} />
+            </div>
+          </td>
+        </tr>
+      </CollapsibleContent>
+    </Collapsible>
+  );
 }
 
 export function POAddendums({ purchaseOrderId, purchaseOrderNumber, isClosed }: POAddendumsProps) {
@@ -44,6 +162,8 @@ export function POAddendums({ purchaseOrderId, purchaseOrderNumber, isClosed }: 
   const canManage = (isAdmin || isManager) && !isClosed;
 
   const handleDownload = async (addendum: POAddendum) => {
+    if (!addendum.file_path) return;
+    
     const { data, error } = await supabase.storage
       .from("document-attachments")
       .createSignedUrl(addendum.file_path, 60);
@@ -122,7 +242,14 @@ export function POAddendums({ purchaseOrderId, purchaseOrderNumber, isClosed }: 
               {addendums.map((addendum) => (
                 <Card key={addendum.id} className="p-4 bg-secondary/30">
                   <div className="flex justify-between items-start mb-2">
-                    <span className="font-medium">{addendum.description}</span>
+                    <div>
+                      <span className="font-medium">{addendum.description}</span>
+                      {addendum.number && (
+                        <Badge variant="outline" className="ml-2 font-mono text-xs">
+                          {addendum.number}
+                        </Badge>
+                      )}
+                    </div>
                     <span className="text-primary font-semibold">
                       ${Number(addendum.amount).toLocaleString(undefined, { minimumFractionDigits: 2 })}
                     </span>
@@ -130,13 +257,15 @@ export function POAddendums({ purchaseOrderId, purchaseOrderNumber, isClosed }: 
                   <div className="flex justify-between items-center text-sm text-muted-foreground">
                     <span>{format(new Date(addendum.created_at), "MMM d, yyyy")}</span>
                     <div className="flex gap-2">
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => handleDownload(addendum)}
-                      >
-                        <Download className="h-4 w-4" />
-                      </Button>
+                      {addendum.file_path && (
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => handleDownload(addendum)}
+                        >
+                          <Download className="h-4 w-4" />
+                        </Button>
+                      )}
                       {canManage && (
                         <Button
                           variant="ghost"
@@ -156,6 +285,7 @@ export function POAddendums({ purchaseOrderId, purchaseOrderNumber, isClosed }: 
               <TableHeader>
                 <TableRow className="border-border/50">
                   <TableHead>Description</TableHead>
+                  <TableHead>CO #</TableHead>
                   <TableHead>Date</TableHead>
                   <TableHead className="text-right">Amount</TableHead>
                   <TableHead className="text-right">Actions</TableHead>
@@ -163,35 +293,13 @@ export function POAddendums({ purchaseOrderId, purchaseOrderNumber, isClosed }: 
               </TableHeader>
               <TableBody>
                 {addendums.map((addendum) => (
-                  <TableRow key={addendum.id} className="border-border/30">
-                    <TableCell className="font-medium">{addendum.description}</TableCell>
-                    <TableCell>{format(new Date(addendum.created_at), "MMM d, yyyy")}</TableCell>
-                    <TableCell className="text-right">
-                      ${Number(addendum.amount).toLocaleString(undefined, { minimumFractionDigits: 2 })}
-                    </TableCell>
-                    <TableCell className="text-right">
-                      <div className="flex justify-end gap-1">
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          onClick={() => handleDownload(addendum)}
-                          title="Download"
-                        >
-                          <Download className="h-4 w-4" />
-                        </Button>
-                        {canManage && (
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            onClick={() => setDeleteTarget(addendum)}
-                            title="Delete"
-                          >
-                            <Trash2 className="h-4 w-4 text-destructive" />
-                          </Button>
-                        )}
-                      </div>
-                    </TableCell>
-                  </TableRow>
+                  <AddendumRow
+                    key={addendum.id}
+                    addendum={addendum}
+                    canManage={canManage}
+                    onDownload={handleDownload}
+                    onDelete={setDeleteTarget}
+                  />
                 ))}
               </TableBody>
             </Table>
