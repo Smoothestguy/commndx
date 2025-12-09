@@ -396,37 +396,6 @@ export function SortableLineItem({
                 )}
               </div>
 
-              {/* Second row: Pricing Type, Margin/Markup, and Total */}
-              <div className="space-y-2">
-                <Label>Pricing Type</Label>
-                <Select 
-                  value={item.pricing_type} 
-                  onValueChange={(v: 'markup' | 'margin') => onUpdateItem(index, "pricing_type", v)}
-                >
-                  <SelectTrigger className="bg-secondary border-border">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="margin">Margin (%)</SelectItem>
-                    <SelectItem value="markup">Markup (%)</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-              <div className="space-y-2">
-                <Label>{item.pricing_type === 'margin' ? 'Margin' : 'Markup'} (%)</Label>
-                <Input
-                  type="number"
-                  step="0.01"
-                  min="0"
-                  max={item.pricing_type === 'margin' ? "99.99" : undefined}
-                  value={item.margin}
-                  onChange={(e) => onUpdateItem(index, "margin", e.target.value)}
-                  className="bg-secondary border-border"
-                />
-                {errors[`line_${index}_margin`] && (
-                  <p className="text-sm text-destructive">{errors[`line_${index}_margin`]}</p>
-                )}
-              </div>
             </div>
 
             {/* Line Total */}
