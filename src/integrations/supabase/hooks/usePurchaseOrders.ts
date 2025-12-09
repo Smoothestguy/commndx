@@ -29,6 +29,7 @@ export interface PurchaseOrder {
   tax_amount: number;
   total: number;
   billed_amount: number;
+  total_addendum_amount: number;
   is_closed: boolean;
   closed_at?: string;
   closed_by?: string;
@@ -112,7 +113,7 @@ export const useAddPurchaseOrder = () => {
 
   return useMutation({
     mutationFn: async (data: {
-      purchaseOrder: Omit<PurchaseOrder, "id" | "created_at" | "updated_at" | "billed_amount" | "is_closed">;
+      purchaseOrder: Omit<PurchaseOrder, "id" | "created_at" | "updated_at" | "billed_amount" | "is_closed" | "total_addendum_amount">;
       lineItems: Omit<POLineItem, "id" | "created_at" | "billed_quantity">[];
     }) => {
       // Insert purchase order
