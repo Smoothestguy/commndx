@@ -15,7 +15,13 @@ type Status =
   | "completed"
   | "acknowledged"
   | "cancelled"
-  | "delayed";
+  | "delayed"
+  | "partially_billed"
+  | "fully_billed"
+  | "closed"
+  | "open"
+  | "partially_paid"
+  | "void";
 
 const statusStyles: Record<Status, string> = {
   draft: "bg-muted text-muted-foreground",
@@ -33,6 +39,12 @@ const statusStyles: Record<Status, string> = {
   acknowledged: "bg-primary/10 text-primary border-primary/20",
   cancelled: "bg-destructive/10 text-destructive border-destructive/20",
   delayed: "bg-destructive/10 text-destructive border-destructive/20",
+  partially_billed: "bg-warning/10 text-warning border-warning/20",
+  fully_billed: "bg-success/10 text-success border-success/20",
+  closed: "bg-muted text-muted-foreground",
+  open: "bg-primary/10 text-primary border-primary/20",
+  partially_paid: "bg-warning/10 text-warning border-warning/20",
+  void: "bg-destructive/10 text-destructive border-destructive/20",
 };
 
 const statusLabels: Record<Status, string> = {
@@ -51,6 +63,12 @@ const statusLabels: Record<Status, string> = {
   acknowledged: "Acknowledged",
   cancelled: "Cancelled",
   delayed: "Delayed",
+  partially_billed: "Partially Billed",
+  fully_billed: "Fully Billed",
+  closed: "Closed",
+  open: "Open",
+  partially_paid: "Partially Paid",
+  void: "Void",
 };
 
 interface StatusBadgeProps {
