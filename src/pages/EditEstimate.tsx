@@ -93,6 +93,7 @@ const EditEstimate = () => {
   const [notes, setNotes] = useState<string>("");
   const [status, setStatus] = useState<"draft" | "pending" | "sent" | "approved">("draft");
   const [defaultPricingType, setDefaultPricingType] = useState<'markup' | 'margin'>('margin');
+  const [defaultMarginPercent, setDefaultMarginPercent] = useState<string>("30");
   const [lineItems, setLineItems] = useState<LineItem[]>([]);
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [isInitialized, setIsInitialized] = useState(false);
@@ -136,6 +137,11 @@ const EditEstimate = () => {
         is_taxable: item.is_taxable ?? true,
         total: item.total,
       }));
+      
+      // Set the default margin from the first line item (if it has one)
+      if (formLineItems.length > 0 && formLineItems[0].margin) {
+        setDefaultMarginPercent(formLineItems[0].margin);
+      }
       
       setLineItems(formLineItems.length > 0 ? formLineItems : [
         { id: crypto.randomUUID(), description: "", quantity: "1", unit_price: "", margin: "0", pricing_type: "margin", is_taxable: true, total: 0, isExpanded: true },
@@ -207,6 +213,19 @@ const EditEstimate = () => {
       return pct > 0 && pct < 100 ? qty * price / (1 - pct / 100) : qty * price;
     }
   };
+
+  // Auto-apply margin/markup changes to all line items
+  useEffect(() => {
+    if (isInitialized && lineItems.length > 0) {
+      const newLineItems = lineItems.map(item => {
+        const newTotal = calculateLineItemTotal(
+          item.quantity, item.unit_price, defaultMarginPercent, defaultPricingType
+        );
+        return { ...item, margin: defaultMarginPercent, pricing_type: defaultPricingType, total: newTotal };
+      });
+      setLineItems(newLineItems);
+    }
+  }, [defaultMarginPercent, defaultPricingType]);
 
   const updateLineItem = (index: number, field: keyof LineItem, value: string | boolean) => {
     const newLineItems = [...lineItems];
@@ -522,7 +541,7 @@ const EditEstimate = () => {
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="defaultPricingType">Default Pricing Method</Label>
+                <Label htmlFor="defaultPricingType">Pricing Method</Label>
                 <Select value={defaultPricingType} onValueChange={(v: 'markup' | 'margin') => setDefaultPricingType(v)}>
                   <SelectTrigger className="bg-secondary border-border">
                     <SelectValue />
@@ -532,6 +551,20 @@ const EditEstimate = () => {
                     <SelectItem value="markup">Markup-based</SelectItem>
                   </SelectContent>
                 </Select>
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="defaultMarginPercent">{defaultPricingType === 'margin' ? 'Margin' : 'Markup'} (%)</Label>
+                <Input
+                  id="defaultMarginPercent"
+                  type="number"
+                  step="0.01"
+                  min="0"
+                  max={defaultPricingType === 'margin' ? "99.99" : undefined}
+                  value={defaultMarginPercent}
+                  onChange={(e) => setDefaultMarginPercent(e.target.value)}
+                  className="bg-secondary border-border"
+                />
               </div>
 
               <div className="space-y-2">

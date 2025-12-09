@@ -264,6 +264,19 @@ export const EstimateForm = ({ initialData }: EstimateFormProps) => {
     }
   };
 
+  // Auto-apply margin/markup changes to all line items
+  useEffect(() => {
+    if (isInitialized && lineItems.length > 0) {
+      const newLineItems = lineItems.map(item => {
+        const newTotal = calculateLineItemTotal(
+          item.quantity, item.unit_price, defaultMarginPercent, defaultPricingType
+        );
+        return { ...item, margin: defaultMarginPercent, pricing_type: defaultPricingType, total: newTotal };
+      });
+      setLineItems(newLineItems);
+    }
+  }, [defaultMarginPercent, defaultPricingType]);
+
   const updateLineItem = (index: number, field: keyof Omit<LineItem, 'id'>, value: string | boolean) => {
     const newLineItems = [...lineItems];
     
@@ -318,15 +331,6 @@ export const EstimateForm = ({ initialData }: EstimateFormProps) => {
     ]);
   };
 
-  const applyDefaultMarginToAll = () => {
-    const newLineItems = lineItems.map(item => {
-      const newTotal = calculateLineItemTotal(
-        item.quantity, item.unit_price, defaultMarginPercent, item.pricing_type
-      );
-      return { ...item, margin: defaultMarginPercent, total: newTotal };
-    });
-    setLineItems(newLineItems);
-  };
 
   const removeLineItem = (index: number) => {
     if (lineItems.length > 1) {
@@ -718,7 +722,7 @@ export const EstimateForm = ({ initialData }: EstimateFormProps) => {
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="defaultPricingType">Default Pricing Method</Label>
+                <Label htmlFor="defaultPricingType">Pricing Method</Label>
                 <Select value={defaultPricingType} onValueChange={(v: 'markup' | 'margin') => setDefaultPricingType(v)}>
                   <SelectTrigger className="bg-secondary border-border">
                     <SelectValue />
@@ -731,28 +735,17 @@ export const EstimateForm = ({ initialData }: EstimateFormProps) => {
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="defaultMarginPercent">Default Margin (%)</Label>
-                <div className="flex gap-2">
-                  <Input
-                    id="defaultMarginPercent"
-                    type="number"
-                    step="0.01"
-                    min="0"
-                    max="99.99"
-                    value={defaultMarginPercent}
-                    onChange={(e) => setDefaultMarginPercent(e.target.value)}
-                    className="bg-secondary border-border"
-                  />
-                  <Button
-                    type="button"
-                    variant="outline"
-                    size="sm"
-                    onClick={applyDefaultMarginToAll}
-                    className="whitespace-nowrap text-xs"
-                  >
-                    Apply All
-                  </Button>
-                </div>
+                <Label htmlFor="defaultMarginPercent">{defaultPricingType === 'margin' ? 'Margin' : 'Markup'} (%)</Label>
+                <Input
+                  id="defaultMarginPercent"
+                  type="number"
+                  step="0.01"
+                  min="0"
+                  max={defaultPricingType === 'margin' ? "99.99" : undefined}
+                  value={defaultMarginPercent}
+                  onChange={(e) => setDefaultMarginPercent(e.target.value)}
+                  className="bg-secondary border-border"
+                />
               </div>
 
               <div className="space-y-2">
