@@ -82,6 +82,10 @@ import ContractorPortal from "./pages/contractor/ContractorPortal";
 import ContractorSubmissionSuccess from "./pages/contractor/ContractorSubmissionSuccess";
 import ContractorSubmissions from "./pages/admin/ContractorSubmissions";
 import ContractorFormBuilder from "./pages/admin/ContractorFormBuilder";
+import ChangeOrders from "./pages/ChangeOrders";
+import NewChangeOrder from "./pages/NewChangeOrder";
+import EditChangeOrder from "./pages/EditChangeOrder";
+import ChangeOrderDetail from "./pages/ChangeOrderDetail";
 
 const queryClient = new QueryClient();
 
@@ -320,6 +324,38 @@ const App = () => {
                   element={
                     <ProtectedRoute>
                       <PurchaseOrderDetail />
+                    </ProtectedRoute>
+                  }
+                />
+                <Route
+                  path="/change-orders"
+                  element={
+                    <ProtectedRoute>
+                      <ChangeOrders />
+                    </ProtectedRoute>
+                  }
+                />
+                <Route
+                  path="/change-orders/new"
+                  element={
+                    <ProtectedRoute>
+                      <NewChangeOrder />
+                    </ProtectedRoute>
+                  }
+                />
+                <Route
+                  path="/change-orders/:id"
+                  element={
+                    <ProtectedRoute>
+                      <ChangeOrderDetail />
+                    </ProtectedRoute>
+                  }
+                />
+                <Route
+                  path="/change-orders/:id/edit"
+                  element={
+                    <ProtectedRoute>
+                      <EditChangeOrder />
                     </ProtectedRoute>
                   }
                 />

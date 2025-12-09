@@ -1,4 +1,4 @@
-import { useSearchParams } from "react-router-dom";
+import { useSearchParams, useNavigate } from "react-router-dom";
 import { DetailPageLayout } from "@/components/layout/DetailPageLayout";
 import { ChangeOrderForm } from "@/components/change-orders/ChangeOrderForm";
 
@@ -10,7 +10,8 @@ export default function NewChangeOrder() {
   return (
     <DetailPageLayout
       title="New Change Order"
-      description="Create a new change order for scope modifications"
+      subtitle="Create a new change order for scope modifications"
+      backPath="/change-orders"
     >
       <ChangeOrderForm
         defaultProjectId={projectId}

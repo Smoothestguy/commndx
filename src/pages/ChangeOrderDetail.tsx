@@ -97,7 +97,7 @@ export default function ChangeOrderDetail() {
 
   if (isLoading) {
     return (
-      <DetailPageLayout title="Change Order">
+      <DetailPageLayout title="Change Order" backPath="/change-orders">
         <div className="flex items-center justify-center py-12">
           <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
         </div>
@@ -107,7 +107,7 @@ export default function ChangeOrderDetail() {
 
   if (!changeOrder) {
     return (
-      <DetailPageLayout title="Change Order Not Found">
+      <DetailPageLayout title="Change Order Not Found" backPath="/change-orders">
         <div className="text-center py-12">
           <p className="text-muted-foreground">The change order doesn't exist.</p>
         </div>
@@ -117,60 +117,63 @@ export default function ChangeOrderDetail() {
 
   const status = statusConfig[changeOrder.status];
 
+  const desktopActions = (
+    <div className="flex items-center gap-2">
+      {canSubmitForApproval && (
+        <Button variant="outline" onClick={() => handleStatusChange("pending_approval")} disabled={updateStatus.isPending}>
+          <Send className="mr-2 h-4 w-4" />
+          Submit for Approval
+        </Button>
+      )}
+      {canApprove && (
+        <>
+          <Button variant="default" onClick={() => handleStatusChange("approved")} disabled={updateStatus.isPending}>
+            <CheckCircle className="mr-2 h-4 w-4" />
+            Approve
+          </Button>
+          <Button variant="destructive" onClick={() => handleStatusChange("rejected")} disabled={updateStatus.isPending}>
+            <XCircle className="mr-2 h-4 w-4" />
+            Reject
+          </Button>
+        </>
+      )}
+      {canCreateInvoice && (
+        <Button onClick={() => navigate(`/invoices/new?changeOrderId=${id}`)}>
+          <Receipt className="mr-2 h-4 w-4" />
+          Create Invoice
+        </Button>
+      )}
+      <DropdownMenu>
+        <DropdownMenuTrigger asChild>
+          <Button variant="outline" size="icon"><MoreVertical className="h-4 w-4" /></Button>
+        </DropdownMenuTrigger>
+        <DropdownMenuContent align="end">
+          {canEdit && (
+            <DropdownMenuItem onClick={() => navigate(`/change-orders/${id}/edit`)}>
+              <Edit className="mr-2 h-4 w-4" />Edit
+            </DropdownMenuItem>
+          )}
+          {changeOrder.status === "rejected" && (
+            <DropdownMenuItem onClick={() => handleStatusChange("draft")}>
+              <FileText className="mr-2 h-4 w-4" />Revise
+            </DropdownMenuItem>
+          )}
+          {canDelete && (
+            <DropdownMenuItem onClick={() => setShowDeleteDialog(true)} className="text-destructive">
+              <Trash2 className="mr-2 h-4 w-4" />Delete
+            </DropdownMenuItem>
+          )}
+        </DropdownMenuContent>
+      </DropdownMenu>
+    </div>
+  );
+
   return (
     <DetailPageLayout
       title={changeOrder.number}
-      description={changeOrder.reason}
-      actions={
-        <div className="flex items-center gap-2">
-          {canSubmitForApproval && (
-            <Button variant="outline" onClick={() => handleStatusChange("pending_approval")} disabled={updateStatus.isPending}>
-              <Send className="mr-2 h-4 w-4" />
-              Submit for Approval
-            </Button>
-          )}
-          {canApprove && (
-            <>
-              <Button variant="default" onClick={() => handleStatusChange("approved")} disabled={updateStatus.isPending}>
-                <CheckCircle className="mr-2 h-4 w-4" />
-                Approve
-              </Button>
-              <Button variant="destructive" onClick={() => handleStatusChange("rejected")} disabled={updateStatus.isPending}>
-                <XCircle className="mr-2 h-4 w-4" />
-                Reject
-              </Button>
-            </>
-          )}
-          {canCreateInvoice && (
-            <Button onClick={() => navigate(`/invoices/new?changeOrderId=${id}`)}>
-              <Receipt className="mr-2 h-4 w-4" />
-              Create Invoice
-            </Button>
-          )}
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <Button variant="outline" size="icon"><MoreVertical className="h-4 w-4" /></Button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="end">
-              {canEdit && (
-                <DropdownMenuItem onClick={() => navigate(`/change-orders/${id}/edit`)}>
-                  <Edit className="mr-2 h-4 w-4" />Edit
-                </DropdownMenuItem>
-              )}
-              {changeOrder.status === "rejected" && (
-                <DropdownMenuItem onClick={() => handleStatusChange("draft")}>
-                  <FileText className="mr-2 h-4 w-4" />Revise
-                </DropdownMenuItem>
-              )}
-              {canDelete && (
-                <DropdownMenuItem onClick={() => setShowDeleteDialog(true)} className="text-destructive">
-                  <Trash2 className="mr-2 h-4 w-4" />Delete
-                </DropdownMenuItem>
-              )}
-            </DropdownMenuContent>
-          </DropdownMenu>
-        </div>
-      }
+      subtitle={changeOrder.reason}
+      backPath="/change-orders"
+      desktopActions={desktopActions}
     >
       <div className="space-y-6">
         <div className="flex items-center gap-4">

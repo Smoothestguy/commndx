@@ -10,7 +10,7 @@ export default function EditChangeOrder() {
 
   if (isLoading) {
     return (
-      <DetailPageLayout title="Edit Change Order">
+      <DetailPageLayout title="Edit Change Order" backPath="/change-orders">
         <div className="flex items-center justify-center py-12">
           <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
         </div>
@@ -20,7 +20,7 @@ export default function EditChangeOrder() {
 
   if (!changeOrder) {
     return (
-      <DetailPageLayout title="Change Order Not Found">
+      <DetailPageLayout title="Change Order Not Found" backPath="/change-orders">
         <div className="text-center py-12">
           <p className="text-muted-foreground">
             The change order you're looking for doesn't exist.
@@ -33,7 +33,8 @@ export default function EditChangeOrder() {
   return (
     <DetailPageLayout
       title={`Edit ${changeOrder.number}`}
-      description="Modify change order details"
+      subtitle="Modify change order details"
+      backPath={`/change-orders/${id}`}
     >
       <ChangeOrderForm initialData={changeOrder} />
     </DetailPageLayout>
