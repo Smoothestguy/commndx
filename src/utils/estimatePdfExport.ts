@@ -42,7 +42,7 @@ interface EstimateData {
   companySettings?: CompanySettings | null;
 }
 
-export const generateEstimatePDF = (estimate: EstimateData): void => {
+export const generateEstimatePDF = async (estimate: EstimateData): Promise<void> => {
   const doc = new jsPDF();
   const pageWidth = doc.internal.pageSize.getWidth();
   const pageHeight = doc.internal.pageSize.getHeight();
@@ -50,7 +50,7 @@ export const generateEstimatePDF = (estimate: EstimateData): void => {
 
   // Company settings with fallback
   const company = estimate.companySettings || {
-    company_name: "Command X",
+    company_name: "Fairfield Group",
     address: null,
     city: null,
     state: null,
@@ -75,6 +75,26 @@ export const generateEstimatePDF = (estimate: EstimateData): void => {
 
   // ==================== HEADER SECTION ====================
   let yPos = 20;
+
+  // Load and add company logo (top-right)
+  try {
+    const logoUrl = "/images/company-logo.png";
+    const response = await fetch(logoUrl);
+    const blob = await response.blob();
+    const base64 = await new Promise<string>((resolve) => {
+      const reader = new FileReader();
+      reader.onloadend = () => resolve(reader.result as string);
+      reader.readAsDataURL(blob);
+    });
+    
+    // Add logo to top-right corner
+    const logoWidth = 45;
+    const logoHeight = 12;
+    const logoX = pageWidth - margin - logoWidth;
+    doc.addImage(base64, "PNG", logoX, yPos - 5, logoWidth, logoHeight);
+  } catch (error) {
+    console.error("Failed to load logo:", error);
+  }
 
   // "ESTIMATE" title - blue, top-left
   doc.setTextColor(37, 99, 235); // #2563EB blue
@@ -339,7 +359,7 @@ export const generateEstimatePDF = (estimate: EstimateData): void => {
 };
 
 // For preview mode with form data
-export const generateEstimatePreviewPDF = (
+export const generateEstimatePreviewPDF = async (
   customerName: string,
   projectName: string | null | undefined,
   lineItems: LineItem[],
@@ -350,7 +370,7 @@ export const generateEstimatePreviewPDF = (
   salesRepName?: string | null,
   companySettings?: CompanySettings | null,
   customerAddress?: string | null
-): void => {
+): Promise<void> => {
   const subtotal = lineItems.reduce((sum, item) => sum + item.total, 0);
   const taxableAmount = lineItems
     .filter(item => item.isTaxable !== false)
@@ -376,5 +396,5 @@ export const generateEstimatePreviewPDF = (
     companySettings,
   };
 
-  generateEstimatePDF(estimateData);
+  await generateEstimatePDF(estimateData);
 };
