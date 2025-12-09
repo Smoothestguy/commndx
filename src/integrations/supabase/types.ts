@@ -1011,6 +1011,7 @@ export type Database = {
           description: string
           id: string
           invoice_id: string
+          jo_line_item_id: string | null
           markup: number
           quantity: number
           total: number
@@ -1021,6 +1022,7 @@ export type Database = {
           description: string
           id?: string
           invoice_id: string
+          jo_line_item_id?: string | null
           markup?: number
           quantity: number
           total: number
@@ -1031,6 +1033,7 @@ export type Database = {
           description?: string
           id?: string
           invoice_id?: string
+          jo_line_item_id?: string | null
           markup?: number
           quantity?: number
           total?: number
@@ -1042,6 +1045,13 @@ export type Database = {
             columns: ["invoice_id"]
             isOneToOne: false
             referencedRelation: "invoices"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "invoice_line_items_jo_line_item_id_fkey"
+            columns: ["jo_line_item_id"]
+            isOneToOne: false
+            referencedRelation: "job_order_line_items"
             referencedColumns: ["id"]
           },
         ]
@@ -1133,6 +1143,7 @@ export type Database = {
           created_at: string
           description: string
           id: string
+          invoiced_quantity: number | null
           job_order_id: string
           markup: number
           quantity: number
@@ -1143,6 +1154,7 @@ export type Database = {
           created_at?: string
           description: string
           id?: string
+          invoiced_quantity?: number | null
           job_order_id: string
           markup: number
           quantity: number
@@ -1153,6 +1165,7 @@ export type Database = {
           created_at?: string
           description?: string
           id?: string
+          invoiced_quantity?: number | null
           job_order_id?: string
           markup?: number
           quantity?: number

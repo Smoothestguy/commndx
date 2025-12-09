@@ -9,6 +9,7 @@ export interface JobOrderLineItem {
   unit_price: number;
   markup: number;
   total: number;
+  invoiced_quantity?: number;
 }
 
 export interface JobOrder {

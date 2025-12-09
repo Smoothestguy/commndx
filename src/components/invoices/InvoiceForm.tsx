@@ -7,7 +7,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Card } from "@/components/ui/card";
-import { Trash2, Plus, Copy, Loader2, Check, ChevronsUpDown } from "lucide-react";
+import { Trash2, Plus, Copy, Loader2, Check, ChevronsUpDown, Receipt } from "lucide-react";
 import { useState, useEffect } from "react";
 import { useJobOrders, useJobOrder } from "@/integrations/supabase/hooks/useJobOrders";
 import { useCustomers } from "@/integrations/supabase/hooks/useCustomers";
@@ -311,23 +311,12 @@ export function InvoiceForm({ onSubmit, initialData, jobOrderId }: InvoiceFormPr
 
   return (
     <form onSubmit={form.handleSubmit(handleSubmit)} className="space-y-4 pb-24">
-      {/* Invoice Type Toggle */}
+      {/* Invoice Type Info */}
       <Card className="p-4">
-        <Label className="text-base font-semibold mb-3 block">Invoice Type</Label>
-        <RadioGroup
-          value={invoiceType}
-          onValueChange={(value) => handleInvoiceTypeChange(value as "job_order" | "customer")}
-          className="flex flex-col sm:flex-row gap-4"
-        >
-          <div className="flex items-center space-x-2">
-            <RadioGroupItem value="job_order" id="job_order" />
-            <Label htmlFor="job_order" className="cursor-pointer">From Job Order</Label>
-          </div>
-          <div className="flex items-center space-x-2">
-            <RadioGroupItem value="customer" id="customer" />
-            <Label htmlFor="customer" className="cursor-pointer">Direct to Customer</Label>
-          </div>
-        </RadioGroup>
+        <div className="flex items-center gap-2 text-sm text-muted-foreground">
+          <Receipt className="h-4 w-4" />
+          <span>Invoices must be created from a Job Order to track billing progress.</span>
+        </div>
       </Card>
 
       <Card className="p-4">
@@ -350,102 +339,28 @@ export function InvoiceForm({ onSubmit, initialData, jobOrderId }: InvoiceFormPr
             )}
           </div>
 
-          {/* Conditional: Job Order or Customer Selection */}
-          {invoiceType === "job_order" ? (
-            <div>
-              <Label htmlFor="jobOrderId">Job Order</Label>
-              <Select
-                value={form.watch("jobOrderId")}
-                onValueChange={handleJobOrderChange}
-              >
-                <SelectTrigger>
-                  <SelectValue placeholder="Select job order" />
-                </SelectTrigger>
-                <SelectContent>
-                  {jobOrders.map((jo: any) => (
-                    <SelectItem key={jo.id} value={jo.id}>
-                      {jo.number} - {jo.customer_name} ({jo.project_name})
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-              {form.formState.errors.jobOrderId && (
-                <p className="text-destructive text-sm mt-1">{form.formState.errors.jobOrderId.message}</p>
-              )}
-            </div>
-          ) : (
-            <div>
-              <Label htmlFor="customerId">Customer</Label>
-              <Popover open={customerComboboxOpen} onOpenChange={setCustomerComboboxOpen}>
-                <PopoverTrigger asChild>
-                  <Button
-                    variant="outline"
-                    role="combobox"
-                    aria-expanded={customerComboboxOpen}
-                    className="w-full justify-between font-normal"
-                  >
-                    {selectedCustomer
-                      ? `${selectedCustomer.name}${selectedCustomer.company ? ` (${selectedCustomer.company})` : ""}`
-                      : "Search customer..."}
-                    <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
-                  </Button>
-                </PopoverTrigger>
-                <PopoverContent className="w-[--radix-popover-trigger-width] p-0 z-50 bg-popover" align="start">
-                  <Command>
-                    <CommandInput 
-                      placeholder="Search customers..." 
-                      value={customerSearch}
-                      onValueChange={setCustomerSearch}
-                    />
-                    <CommandList>
-                      <CommandEmpty>No customer found.</CommandEmpty>
-                      <CommandGroup>
-                        {customers.map((c: any) => (
-                          <CommandItem
-                            key={c.id}
-                            value={`${c.name} ${c.company || ""} ${c.email || ""}`}
-                            onSelect={() => {
-                              handleCustomerChange(c.id);
-                              setCustomerComboboxOpen(false);
-                              setCustomerSearch("");
-                            }}
-                          >
-                            <Check
-                              className={cn(
-                                "mr-2 h-4 w-4",
-                                selectedCustomerId === c.id ? "opacity-100" : "opacity-0"
-                              )}
-                            />
-                            <div className="flex flex-col">
-                              <span>{c.name}</span>
-                              {c.company && (
-                                <span className="text-xs text-muted-foreground">{c.company}</span>
-                              )}
-                            </div>
-                          </CommandItem>
-                        ))}
-                      </CommandGroup>
-                    </CommandList>
-                  </Command>
-                </PopoverContent>
-              </Popover>
-              {form.formState.errors.customerId && (
-                <p className="text-destructive text-sm mt-1">{form.formState.errors.customerId.message}</p>
-              )}
-            </div>
-          )}
-
-          {/* Project Name - only for direct customer invoices */}
-          {invoiceType === "customer" && (
-            <div>
-              <Label htmlFor="projectName">Project Name (Optional)</Label>
-              <Input
-                id="projectName"
-                {...form.register("projectName")}
-                placeholder="Enter project name"
-              />
-            </div>
-          )}
+          {/* Job Order Selection */}
+          <div>
+            <Label htmlFor="jobOrderId">Job Order</Label>
+            <Select
+              value={form.watch("jobOrderId")}
+              onValueChange={handleJobOrderChange}
+            >
+              <SelectTrigger>
+                <SelectValue placeholder="Select job order" />
+              </SelectTrigger>
+              <SelectContent>
+                {jobOrders.map((jo: any) => (
+                  <SelectItem key={jo.id} value={jo.id}>
+                    {jo.number} - {jo.customer_name} ({jo.project_name})
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            {form.formState.errors.jobOrderId && (
+              <p className="text-destructive text-sm mt-1">{form.formState.errors.jobOrderId.message}</p>
+            )}
+          </div>
 
           <div>
             <Label>Due Date</Label>
@@ -524,35 +439,6 @@ export function InvoiceForm({ onSubmit, initialData, jobOrderId }: InvoiceFormPr
         </Card>
       )}
 
-      {/* Customer Summary - only show for direct customer invoices */}
-      {invoiceType === "customer" && selectedCustomer && (
-        <Card className="p-4 bg-muted/50">
-          <div className="space-y-2">
-            <div className="flex justify-between text-sm">
-              <span className="text-muted-foreground">Customer:</span>
-              <span className="font-medium">{selectedCustomer.name}</span>
-            </div>
-            {selectedCustomer.company && (
-              <div className="flex justify-between text-sm">
-                <span className="text-muted-foreground">Company:</span>
-                <span className="font-medium">{selectedCustomer.company}</span>
-              </div>
-            )}
-            {selectedCustomer.email && (
-              <div className="flex justify-between text-sm">
-                <span className="text-muted-foreground">Email:</span>
-                <span className="font-medium">{selectedCustomer.email}</span>
-              </div>
-            )}
-            {selectedCustomer.tax_exempt && (
-              <div className="flex justify-between text-sm">
-                <span className="text-muted-foreground">Tax Status:</span>
-                <Badge variant="secondary">Tax Exempt</Badge>
-              </div>
-            )}
-          </div>
-        </Card>
-      )}
 
       {exceedsBalance && (
         <Alert variant="destructive">
