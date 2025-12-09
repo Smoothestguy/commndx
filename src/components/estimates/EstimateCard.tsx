@@ -4,6 +4,7 @@ import { Badge } from "@/components/ui/badge";
 import { FileText, Calendar, Eye, Edit, AlertCircle } from "lucide-react";
 import { Estimate } from "@/integrations/supabase/hooks/useEstimates";
 import { useNavigate } from "react-router-dom";
+import { formatCurrency } from "@/lib/utils";
 
 interface EstimateCardProps {
   estimate: Estimate;
@@ -70,10 +71,9 @@ export function EstimateCard({ estimate, onClick, index }: EstimateCardProps) {
         )}
       </div>
 
-      {/* Amount */}
       <div className="mb-4">
         <p className={`text-3xl font-heading font-bold ${isDraft ? 'text-amber-600 dark:text-amber-400' : 'text-primary'}`}>
-          ${estimate.total.toLocaleString(undefined, { minimumFractionDigits: 2 })}
+          {formatCurrency(estimate.total)}
         </p>
       </div>
 

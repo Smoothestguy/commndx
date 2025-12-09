@@ -32,6 +32,7 @@ import { ClosePODialog } from "@/components/purchase-orders/ClosePODialog";
 import { POBillingSummary } from "@/components/purchase-orders/POBillingSummary";
 import { RelatedVendorBills } from "@/components/purchase-orders/RelatedVendorBills";
 import { POAddendums } from "@/components/purchase-orders/POAddendums";
+import { formatCurrency } from "@/lib/utils";
 
 const PurchaseOrderDetail = () => {
   const { id } = useParams();
@@ -379,7 +380,7 @@ const PurchaseOrderDetail = () => {
                     <div className="flex justify-between items-start mb-2">
                       <span className="font-medium text-sm flex-1 pr-2">{item.description}</span>
                       <span className="text-primary font-semibold shrink-0">
-                        ${Number(item.total).toLocaleString(undefined, { minimumFractionDigits: 2 })}
+                        {formatCurrency(Number(item.total))}
                       </span>
                     </div>
                     <div className="grid grid-cols-4 gap-2 text-sm text-muted-foreground">
@@ -397,7 +398,7 @@ const PurchaseOrderDetail = () => {
                       </div>
                       <div>
                         <span className="block text-xs mb-0.5">Unit Price</span>
-                        <span>${Number(item.unit_price).toLocaleString(undefined, { minimumFractionDigits: 2 })}</span>
+                        <span>{formatCurrency(Number(item.unit_price))}</span>
                       </div>
                     </div>
                   </Card>
@@ -430,10 +431,10 @@ const PurchaseOrderDetail = () => {
                         {remaining}
                       </TableCell>
                       <TableCell className="text-right">
-                        ${Number(item.unit_price).toLocaleString(undefined, { minimumFractionDigits: 2 })}
+                        {formatCurrency(Number(item.unit_price))}
                       </TableCell>
                       <TableCell className="text-right font-medium">
-                        ${Number(item.total).toLocaleString(undefined, { minimumFractionDigits: 2 })}
+                        {formatCurrency(Number(item.total))}
                       </TableCell>
                     </TableRow>
                   );
@@ -445,25 +446,25 @@ const PurchaseOrderDetail = () => {
           <div className="mt-4 pt-4 border-t border-border/30 space-y-2">
             <div className="flex justify-between items-center text-sm">
               <span className="text-muted-foreground">Subtotal</span>
-              <span>${Number(purchaseOrder.subtotal).toLocaleString(undefined, { minimumFractionDigits: 2 })}</span>
+              <span>{formatCurrency(Number(purchaseOrder.subtotal))}</span>
             </div>
             <div className="flex justify-between items-center text-sm">
               <span className="text-muted-foreground">Tax ({purchaseOrder.tax_rate}%)</span>
-              <span>${Number(purchaseOrder.tax_amount).toLocaleString(undefined, { minimumFractionDigits: 2 })}</span>
+              <span>{formatCurrency(Number(purchaseOrder.tax_amount))}</span>
             </div>
             <div className="flex justify-between items-center text-sm font-medium pt-2 border-t border-border/30">
               <span>PO Total</span>
-              <span>${Number(purchaseOrder.total).toLocaleString(undefined, { minimumFractionDigits: 2 })}</span>
+              <span>{formatCurrency(Number(purchaseOrder.total))}</span>
             </div>
             {totalAddendumAmount > 0 && (
               <div className="flex justify-between items-center text-sm">
                 <span className="text-muted-foreground">+ Addendums</span>
-                <span className="text-success">+${totalAddendumAmount.toLocaleString(undefined, { minimumFractionDigits: 2 })}</span>
+                <span className="text-success">+{formatCurrency(totalAddendumAmount)}</span>
               </div>
             )}
             <div className="flex justify-between items-center text-lg font-bold pt-2 border-t border-border/30">
               <span>Grand Total</span>
-              <span className="text-primary">${grandTotal.toLocaleString(undefined, { minimumFractionDigits: 2 })}</span>
+              <span className="text-primary">{formatCurrency(grandTotal)}</span>
             </div>
           </div>
         </CardContent>

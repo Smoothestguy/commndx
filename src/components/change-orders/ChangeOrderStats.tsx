@@ -1,6 +1,7 @@
 import { StatCard } from "@/components/dashboard/StatCard";
 import { FileEdit, Clock, CheckCircle, Receipt } from "lucide-react";
 import { ChangeOrder } from "@/integrations/supabase/hooks/useChangeOrders";
+import { formatCurrency } from "@/lib/utils";
 
 interface ChangeOrderStatsProps {
   changeOrders: ChangeOrder[];
@@ -26,7 +27,7 @@ export function ChangeOrderStats({ changeOrders }: ChangeOrderStatsProps) {
         title="Total Change Orders"
         value={stats.total}
         icon={FileEdit}
-        change={`$${stats.totalValue.toLocaleString("en-US", { minimumFractionDigits: 2 })} total value`}
+        change={`${formatCurrency(stats.totalValue)} total value`}
       />
       <StatCard
         title="Pending Approval"
@@ -38,7 +39,7 @@ export function ChangeOrderStats({ changeOrders }: ChangeOrderStatsProps) {
         title="Approved"
         value={stats.approved}
         icon={CheckCircle}
-        change={`$${stats.approvedValue.toLocaleString("en-US", { minimumFractionDigits: 2 })} approved`}
+        change={`${formatCurrency(stats.approvedValue)} approved`}
       />
       <StatCard
         title="Invoiced"

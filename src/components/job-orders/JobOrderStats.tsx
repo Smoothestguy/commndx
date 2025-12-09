@@ -1,5 +1,6 @@
 import { DollarSign, CheckCircle, Clock, Briefcase } from "lucide-react";
 import { JobOrder } from "@/integrations/supabase/hooks/useJobOrders";
+import { formatCurrency } from "@/lib/utils";
 
 interface JobOrderStatsProps {
   jobOrders: JobOrder[];
@@ -14,19 +15,19 @@ export function JobOrderStats({ jobOrders }: JobOrderStatsProps) {
   const stats = [
     {
       label: "Total Value",
-      value: `$${totalValue.toLocaleString()}`,
+      value: formatCurrency(totalValue),
       icon: DollarSign,
       color: "text-primary",
     },
     {
       label: "Invoiced",
-      value: `$${totalInvoiced.toLocaleString()}`,
+      value: formatCurrency(totalInvoiced),
       icon: CheckCircle,
       color: "text-success",
     },
     {
       label: "Remaining",
-      value: `$${totalRemaining.toLocaleString()}`,
+      value: formatCurrency(totalRemaining),
       icon: Clock,
       color: "text-warning",
     },
