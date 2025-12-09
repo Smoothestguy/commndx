@@ -39,6 +39,7 @@ interface EstimateData {
   taxAmount: number;
   total: number;
   salesRepName?: string | null;
+  creatorEmail?: string | null;
   companySettings?: CompanySettings | null;
 }
 
@@ -194,15 +195,19 @@ export const generateEstimatePDF = async (estimate: EstimateData): Promise<void>
     rightYPos += projectNameLines.length * 4 + 3;
   }
   
-  // Sales Rep on right (below project name)
+  // Created by on right (below project name)
   if (estimate.salesRepName) {
     doc.setFont("helvetica", "bold");
     doc.setTextColor(0, 0, 0);
-    doc.text("Sales Rep:", rightX, rightYPos, { align: "right" });
+    doc.text("Created by:", rightX, rightYPos, { align: "right" });
     rightYPos += 5;
     doc.setFont("helvetica", "normal");
     doc.setTextColor(75, 85, 99);
     doc.text(estimate.salesRepName, rightX, rightYPos, { align: "right" });
+    if (estimate.creatorEmail) {
+      rightYPos += 5;
+      doc.text(estimate.creatorEmail, rightX, rightYPos, { align: "right" });
+    }
   }
 
   yPos += 7;

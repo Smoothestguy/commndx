@@ -220,6 +220,7 @@ export function EstimateDetailView({ estimateId }: EstimateDetailViewProps) {
                   const salesRepName = estimate.created_by_profile 
                     ? `${estimate.created_by_profile.first_name || ''} ${estimate.created_by_profile.last_name || ''}`.trim() || null
                     : null;
+                  const creatorEmail = estimate.created_by_profile?.email || null;
                   generateEstimatePDF({
                     number: estimate.number,
                     customerName: estimate.customer_name,
@@ -243,6 +244,7 @@ export function EstimateDetailView({ estimateId }: EstimateDetailViewProps) {
                     taxAmount: estimate.tax_amount,
                     total: estimate.total,
                     salesRepName,
+                    creatorEmail,
                     companySettings,
                   });
                 }}
@@ -331,6 +333,7 @@ export function EstimateDetailView({ estimateId }: EstimateDetailViewProps) {
                       const salesRepName = estimate.created_by_profile 
                         ? `${estimate.created_by_profile.first_name || ''} ${estimate.created_by_profile.last_name || ''}`.trim() || null
                         : null;
+                      const creatorEmail = estimate.created_by_profile?.email || null;
                       generateEstimatePDF({
                         number: estimate.number,
                         customerName: estimate.customer_name,
@@ -354,6 +357,7 @@ export function EstimateDetailView({ estimateId }: EstimateDetailViewProps) {
                         taxAmount: estimate.tax_amount,
                         total: estimate.total,
                         salesRepName,
+                        creatorEmail,
                         companySettings,
                       });
                     }}

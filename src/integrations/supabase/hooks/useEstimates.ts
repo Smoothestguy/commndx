@@ -42,6 +42,7 @@ export interface Estimate {
 export interface EstimateCreatorProfile {
   first_name: string | null;
   last_name: string | null;
+  email: string | null;
 }
 
 export interface EstimateWithLineItems extends Estimate {
@@ -89,7 +90,7 @@ export const useEstimate = (id: string) => {
       if (estimate.created_by) {
         const { data: profile } = await supabase
           .from("profiles")
-          .select("first_name, last_name")
+          .select("first_name, last_name, email")
           .eq("id", estimate.created_by)
           .single();
         createdByProfile = profile;
