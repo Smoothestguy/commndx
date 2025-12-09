@@ -274,7 +274,21 @@ const Vendors = () => {
       ),
       className: "w-10",
     },
-    { key: "name", header: "Vendor Name" },
+    { 
+      key: "name", 
+      header: "Vendor Name",
+      render: (item: Vendor) => (
+        <span 
+          className="text-primary hover:underline cursor-pointer font-medium"
+          onClick={(e) => {
+            e.stopPropagation();
+            navigate(`/vendors/${item.id}`);
+          }}
+        >
+          {item.name}
+        </span>
+      ),
+    },
     { key: "company", header: "Company" },
     { key: "specialty", header: "Specialty" },
     {
@@ -608,7 +622,11 @@ const Vendors = () => {
                   ))}
                 </div>
               ) : (
-                <DataTable data={filteredVendors} columns={vendorColumns} />
+                <DataTable 
+                  data={filteredVendors} 
+                  columns={vendorColumns} 
+                  onRowClick={(vendor) => navigate(`/vendors/${vendor.id}`)}
+                />
               )}
             </>
           )}
