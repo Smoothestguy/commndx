@@ -335,6 +335,219 @@ export type Database = {
           },
         ]
       }
+      change_order_line_items: {
+        Row: {
+          change_order_id: string
+          created_at: string
+          description: string
+          id: string
+          is_taxable: boolean | null
+          markup: number
+          product_id: string | null
+          quantity: number
+          sort_order: number | null
+          total: number
+          unit_price: number
+        }
+        Insert: {
+          change_order_id: string
+          created_at?: string
+          description: string
+          id?: string
+          is_taxable?: boolean | null
+          markup?: number
+          product_id?: string | null
+          quantity?: number
+          sort_order?: number | null
+          total?: number
+          unit_price?: number
+        }
+        Update: {
+          change_order_id?: string
+          created_at?: string
+          description?: string
+          id?: string
+          is_taxable?: boolean | null
+          markup?: number
+          product_id?: string | null
+          quantity?: number
+          sort_order?: number | null
+          total?: number
+          unit_price?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "change_order_line_items_change_order_id_fkey"
+            columns: ["change_order_id"]
+            isOneToOne: false
+            referencedRelation: "change_orders"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "change_order_line_items_product_id_fkey"
+            columns: ["product_id"]
+            isOneToOne: false
+            referencedRelation: "products"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      change_order_vendor_bills: {
+        Row: {
+          change_order_id: string
+          created_at: string
+          id: string
+          vendor_bill_id: string
+        }
+        Insert: {
+          change_order_id: string
+          created_at?: string
+          id?: string
+          vendor_bill_id: string
+        }
+        Update: {
+          change_order_id?: string
+          created_at?: string
+          id?: string
+          vendor_bill_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "change_order_vendor_bills_change_order_id_fkey"
+            columns: ["change_order_id"]
+            isOneToOne: false
+            referencedRelation: "change_orders"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "change_order_vendor_bills_vendor_bill_id_fkey"
+            columns: ["vendor_bill_id"]
+            isOneToOne: false
+            referencedRelation: "vendor_bills"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      change_orders: {
+        Row: {
+          approved_at: string | null
+          approved_by: string | null
+          created_at: string
+          created_by: string | null
+          customer_id: string
+          customer_name: string
+          description: string | null
+          file_name: string | null
+          file_path: string | null
+          file_size: number | null
+          file_type: string | null
+          id: string
+          job_order_id: string | null
+          number: string
+          project_id: string
+          purchase_order_id: string | null
+          reason: string
+          status: Database["public"]["Enums"]["change_order_status"]
+          subtotal: number
+          tax_amount: number
+          tax_rate: number
+          total: number
+          updated_at: string
+          vendor_id: string | null
+          vendor_name: string | null
+        }
+        Insert: {
+          approved_at?: string | null
+          approved_by?: string | null
+          created_at?: string
+          created_by?: string | null
+          customer_id: string
+          customer_name: string
+          description?: string | null
+          file_name?: string | null
+          file_path?: string | null
+          file_size?: number | null
+          file_type?: string | null
+          id?: string
+          job_order_id?: string | null
+          number: string
+          project_id: string
+          purchase_order_id?: string | null
+          reason: string
+          status?: Database["public"]["Enums"]["change_order_status"]
+          subtotal?: number
+          tax_amount?: number
+          tax_rate?: number
+          total?: number
+          updated_at?: string
+          vendor_id?: string | null
+          vendor_name?: string | null
+        }
+        Update: {
+          approved_at?: string | null
+          approved_by?: string | null
+          created_at?: string
+          created_by?: string | null
+          customer_id?: string
+          customer_name?: string
+          description?: string | null
+          file_name?: string | null
+          file_path?: string | null
+          file_size?: number | null
+          file_type?: string | null
+          id?: string
+          job_order_id?: string | null
+          number?: string
+          project_id?: string
+          purchase_order_id?: string | null
+          reason?: string
+          status?: Database["public"]["Enums"]["change_order_status"]
+          subtotal?: number
+          tax_amount?: number
+          tax_rate?: number
+          total?: number
+          updated_at?: string
+          vendor_id?: string | null
+          vendor_name?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "change_orders_customer_id_fkey"
+            columns: ["customer_id"]
+            isOneToOne: false
+            referencedRelation: "customers"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "change_orders_job_order_id_fkey"
+            columns: ["job_order_id"]
+            isOneToOne: false
+            referencedRelation: "job_orders"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "change_orders_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "projects"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "change_orders_purchase_order_id_fkey"
+            columns: ["purchase_order_id"]
+            isOneToOne: false
+            referencedRelation: "purchase_orders"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "change_orders_vendor_id_fkey"
+            columns: ["vendor_id"]
+            isOneToOne: false
+            referencedRelation: "vendors"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       company_settings: {
         Row: {
           address: string | null
@@ -1058,6 +1271,7 @@ export type Database = {
       }
       invoices: {
         Row: {
+          change_order_id: string | null
           created_at: string
           customer_id: string
           customer_name: string
@@ -1077,6 +1291,7 @@ export type Database = {
           updated_at: string
         }
         Insert: {
+          change_order_id?: string | null
           created_at?: string
           customer_id: string
           customer_name: string
@@ -1096,6 +1311,7 @@ export type Database = {
           updated_at?: string
         }
         Update: {
+          change_order_id?: string | null
           created_at?: string
           customer_id?: string
           customer_name?: string
@@ -1115,6 +1331,13 @@ export type Database = {
           updated_at?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "invoices_change_order_id_fkey"
+            columns: ["change_order_id"]
+            isOneToOne: false
+            referencedRelation: "change_orders"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "invoices_customer_id_fkey"
             columns: ["customer_id"]
@@ -3835,6 +4058,10 @@ export type Database = {
         Returns: Json
       }
       expire_old_invitations: { Args: never; Returns: undefined }
+      generate_change_order_number: {
+        Args: { p_project_id: string }
+        Returns: string
+      }
       generate_estimate_number: { Args: never; Returns: string }
       generate_invoice_number: { Args: never; Returns: string }
       generate_job_order_number: { Args: never; Returns: string }
@@ -3880,6 +4107,12 @@ export type Database = {
         | "follow_up"
         | "consultation"
         | "warranty_service"
+      change_order_status:
+        | "draft"
+        | "pending_approval"
+        | "approved"
+        | "rejected"
+        | "invoiced"
       claim_status:
         | "filed"
         | "pending_adjuster"
@@ -4101,6 +4334,13 @@ export const Constants = {
         "follow_up",
         "consultation",
         "warranty_service",
+      ],
+      change_order_status: [
+        "draft",
+        "pending_approval",
+        "approved",
+        "rejected",
+        "invoiced",
       ],
       claim_status: [
         "filed",

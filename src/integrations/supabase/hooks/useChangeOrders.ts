@@ -1,0 +1,440 @@
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { supabase } from "@/integrations/supabase/client";
+import { toast } from "sonner";
+
+export type ChangeOrderStatus = 'draft' | 'pending_approval' | 'approved' | 'rejected' | 'invoiced';
+
+export interface ChangeOrderLineItem {
+  id: string;
+  change_order_id: string;
+  product_id: string | null;
+  description: string;
+  quantity: number;
+  unit_price: number;
+  markup: number;
+  total: number;
+  is_taxable: boolean;
+  sort_order: number;
+  created_at: string;
+}
+
+export interface ChangeOrder {
+  id: string;
+  number: string;
+  project_id: string;
+  purchase_order_id: string | null;
+  job_order_id: string | null;
+  customer_id: string;
+  customer_name: string;
+  vendor_id: string | null;
+  vendor_name: string | null;
+  status: ChangeOrderStatus;
+  reason: string;
+  description: string | null;
+  subtotal: number;
+  tax_rate: number;
+  tax_amount: number;
+  total: number;
+  file_name: string | null;
+  file_path: string | null;
+  file_type: string | null;
+  file_size: number | null;
+  created_by: string | null;
+  approved_by: string | null;
+  approved_at: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface ChangeOrderWithLineItems extends ChangeOrder {
+  line_items: ChangeOrderLineItem[];
+  project?: { id: string; name: string };
+  purchase_order?: { id: string; number: string } | null;
+  job_order?: { id: string; number: string } | null;
+}
+
+export interface ChangeOrderVendorBill {
+  id: string;
+  change_order_id: string;
+  vendor_bill_id: string;
+  created_at: string;
+}
+
+// Fetch all change orders
+export function useChangeOrders(filters?: { projectId?: string; status?: ChangeOrderStatus }) {
+  return useQuery({
+    queryKey: ["change_orders", filters],
+    queryFn: async () => {
+      let query = supabase
+        .from("change_orders")
+        .select("*, project:projects(id, name)")
+        .order("created_at", { ascending: false });
+
+      if (filters?.projectId) {
+        query = query.eq("project_id", filters.projectId);
+      }
+      if (filters?.status) {
+        query = query.eq("status", filters.status);
+      }
+
+      const { data, error } = await query;
+      if (error) throw error;
+      return data as (ChangeOrder & { project: { id: string; name: string } })[];
+    },
+  });
+}
+
+// Fetch single change order with line items
+export function useChangeOrder(id: string | undefined) {
+  return useQuery({
+    queryKey: ["change_orders", id],
+    queryFn: async () => {
+      if (!id) return null;
+
+      const { data: changeOrder, error } = await supabase
+        .from("change_orders")
+        .select(`
+          *,
+          project:projects(id, name),
+          purchase_order:purchase_orders(id, number),
+          job_order:job_orders(id, number)
+        `)
+        .eq("id", id)
+        .single();
+
+      if (error) throw error;
+
+      const { data: lineItems, error: lineItemsError } = await supabase
+        .from("change_order_line_items")
+        .select("*")
+        .eq("change_order_id", id)
+        .order("sort_order", { ascending: true });
+
+      if (lineItemsError) throw lineItemsError;
+
+      return {
+        ...changeOrder,
+        line_items: lineItems || [],
+      } as ChangeOrderWithLineItems;
+    },
+    enabled: !!id,
+  });
+}
+
+// Fetch change orders by project
+export function useChangeOrdersByProject(projectId: string | undefined) {
+  return useQuery({
+    queryKey: ["change_orders", "project", projectId],
+    queryFn: async () => {
+      if (!projectId) return [];
+
+      const { data, error } = await supabase
+        .from("change_orders")
+        .select("*")
+        .eq("project_id", projectId)
+        .order("number", { ascending: true });
+
+      if (error) throw error;
+      return data as ChangeOrder[];
+    },
+    enabled: !!projectId,
+  });
+}
+
+// Fetch change orders by purchase order
+export function useChangeOrdersByPurchaseOrder(purchaseOrderId: string | undefined) {
+  return useQuery({
+    queryKey: ["change_orders", "purchase_order", purchaseOrderId],
+    queryFn: async () => {
+      if (!purchaseOrderId) return [];
+
+      const { data, error } = await supabase
+        .from("change_orders")
+        .select("*")
+        .eq("purchase_order_id", purchaseOrderId)
+        .order("number", { ascending: true });
+
+      if (error) throw error;
+      return data as ChangeOrder[];
+    },
+    enabled: !!purchaseOrderId,
+  });
+}
+
+// Add change order
+export function useAddChangeOrder() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async (data: {
+      project_id: string;
+      customer_id: string;
+      customer_name: string;
+      reason: string;
+      description?: string;
+      purchase_order_id?: string;
+      job_order_id?: string;
+      vendor_id?: string;
+      vendor_name?: string;
+      tax_rate: number;
+      line_items: Omit<ChangeOrderLineItem, "id" | "change_order_id" | "created_at">[];
+    }) => {
+      const { line_items, ...changeOrderData } = data;
+
+      // Calculate totals
+      const subtotal = line_items.reduce((sum, item) => sum + item.total, 0);
+      const taxableAmount = line_items
+        .filter((item) => item.is_taxable)
+        .reduce((sum, item) => sum + item.total, 0);
+      const taxAmount = taxableAmount * (changeOrderData.tax_rate / 100);
+      const total = subtotal + taxAmount;
+
+      // Insert change order
+      const { data: changeOrder, error } = await supabase
+        .from("change_orders")
+        .insert({
+          ...changeOrderData,
+          subtotal,
+          tax_amount: taxAmount,
+          total,
+        })
+        .select()
+        .single();
+
+      if (error) throw error;
+
+      // Insert line items
+      if (line_items.length > 0) {
+        const { error: lineItemsError } = await supabase
+          .from("change_order_line_items")
+          .insert(
+            line_items.map((item, index) => ({
+              ...item,
+              change_order_id: changeOrder.id,
+              sort_order: index,
+            }))
+          );
+
+        if (lineItemsError) throw lineItemsError;
+      }
+
+      return changeOrder;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["change_orders"] });
+      toast.success("Change order created successfully");
+    },
+    onError: (error) => {
+      toast.error("Failed to create change order: " + error.message);
+    },
+  });
+}
+
+// Update change order
+export function useUpdateChangeOrder() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async (data: {
+      id: string;
+      project_id?: string;
+      customer_id?: string;
+      customer_name?: string;
+      reason?: string;
+      description?: string;
+      purchase_order_id?: string | null;
+      job_order_id?: string | null;
+      vendor_id?: string | null;
+      vendor_name?: string | null;
+      status?: ChangeOrderStatus;
+      tax_rate?: number;
+      line_items?: Omit<ChangeOrderLineItem, "change_order_id" | "created_at">[];
+    }) => {
+      const { id, line_items, ...updateData } = data;
+
+      let finalUpdateData = { ...updateData };
+
+      // If line items provided, recalculate totals
+      if (line_items) {
+        const subtotal = line_items.reduce((sum, item) => sum + item.total, 0);
+        const taxableAmount = line_items
+          .filter((item) => item.is_taxable)
+          .reduce((sum, item) => sum + item.total, 0);
+        const taxAmount = taxableAmount * ((updateData.tax_rate || 0) / 100);
+        const total = subtotal + taxAmount;
+
+        finalUpdateData = {
+          ...finalUpdateData,
+          subtotal,
+          tax_amount: taxAmount,
+          total,
+        };
+
+        // Delete existing line items and insert new ones
+        const { error: deleteError } = await supabase
+          .from("change_order_line_items")
+          .delete()
+          .eq("change_order_id", id);
+
+        if (deleteError) throw deleteError;
+
+        if (line_items.length > 0) {
+          const { error: insertError } = await supabase
+            .from("change_order_line_items")
+            .insert(
+              line_items.map((item, index) => ({
+                ...item,
+                id: item.id?.startsWith("temp-") ? undefined : item.id,
+                change_order_id: id,
+                sort_order: index,
+              }))
+            );
+
+          if (insertError) throw insertError;
+        }
+      }
+
+      // Update change order
+      const { data: changeOrder, error } = await supabase
+        .from("change_orders")
+        .update(finalUpdateData)
+        .eq("id", id)
+        .select()
+        .single();
+
+      if (error) throw error;
+      return changeOrder;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["change_orders"] });
+      toast.success("Change order updated successfully");
+    },
+    onError: (error) => {
+      toast.error("Failed to update change order: " + error.message);
+    },
+  });
+}
+
+// Delete change order
+export function useDeleteChangeOrder() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async (id: string) => {
+      const { error } = await supabase.from("change_orders").delete().eq("id", id);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["change_orders"] });
+      toast.success("Change order deleted successfully");
+    },
+    onError: (error) => {
+      toast.error("Failed to delete change order: " + error.message);
+    },
+  });
+}
+
+// Approve/Reject change order
+export function useUpdateChangeOrderStatus() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async (data: { id: string; status: ChangeOrderStatus; approved_by?: string }) => {
+      const updateData: Record<string, unknown> = { status: data.status };
+
+      if (data.status === "approved" && data.approved_by) {
+        updateData.approved_by = data.approved_by;
+        updateData.approved_at = new Date().toISOString();
+      }
+
+      const { error } = await supabase
+        .from("change_orders")
+        .update(updateData)
+        .eq("id", data.id);
+
+      if (error) throw error;
+    },
+    onSuccess: (_, variables) => {
+      queryClient.invalidateQueries({ queryKey: ["change_orders"] });
+      const statusMessages: Record<ChangeOrderStatus, string> = {
+        draft: "Change order moved to draft",
+        pending_approval: "Change order submitted for approval",
+        approved: "Change order approved",
+        rejected: "Change order rejected",
+        invoiced: "Change order marked as invoiced",
+      };
+      toast.success(statusMessages[variables.status]);
+    },
+    onError: (error) => {
+      toast.error("Failed to update change order status: " + error.message);
+    },
+  });
+}
+
+// Link vendor bill to change order
+export function useLinkVendorBillToChangeOrder() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async (data: { change_order_id: string; vendor_bill_id: string }) => {
+      const { error } = await supabase
+        .from("change_order_vendor_bills")
+        .insert(data);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["change_orders"] });
+      queryClient.invalidateQueries({ queryKey: ["change_order_vendor_bills"] });
+      toast.success("Vendor bill linked successfully");
+    },
+    onError: (error) => {
+      toast.error("Failed to link vendor bill: " + error.message);
+    },
+  });
+}
+
+// Unlink vendor bill from change order
+export function useUnlinkVendorBillFromChangeOrder() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async (data: { change_order_id: string; vendor_bill_id: string }) => {
+      const { error } = await supabase
+        .from("change_order_vendor_bills")
+        .delete()
+        .eq("change_order_id", data.change_order_id)
+        .eq("vendor_bill_id", data.vendor_bill_id);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["change_orders"] });
+      queryClient.invalidateQueries({ queryKey: ["change_order_vendor_bills"] });
+      toast.success("Vendor bill unlinked successfully");
+    },
+    onError: (error) => {
+      toast.error("Failed to unlink vendor bill: " + error.message);
+    },
+  });
+}
+
+// Get linked vendor bills for a change order
+export function useChangeOrderVendorBills(changeOrderId: string | undefined) {
+  return useQuery({
+    queryKey: ["change_order_vendor_bills", changeOrderId],
+    queryFn: async () => {
+      if (!changeOrderId) return [];
+
+      const { data, error } = await supabase
+        .from("change_order_vendor_bills")
+        .select(`
+          *,
+          vendor_bill:vendor_bills(*)
+        `)
+        .eq("change_order_id", changeOrderId);
+
+      if (error) throw error;
+      return data;
+    },
+    enabled: !!changeOrderId,
+  });
+}
