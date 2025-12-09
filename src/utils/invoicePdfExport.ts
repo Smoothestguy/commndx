@@ -1,6 +1,15 @@
 import jsPDF from "jspdf";
 import { InvoiceWithLineItems } from "@/integrations/supabase/hooks/useInvoices";
 
+const formatCurrencyForPDF = (amount: number): string => {
+  return new Intl.NumberFormat("en-US", {
+    style: "currency",
+    currency: "USD",
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
+  }).format(amount);
+};
+
 export const generateInvoicePDF = (invoice: InvoiceWithLineItems) => {
   const doc = new jsPDF();
   const pageWidth = doc.internal.pageSize.width;
@@ -88,8 +97,8 @@ export const generateInvoicePDF = (invoice: InvoiceWithLineItems) => {
     doc.text(lines, 25, yPos);
     
     doc.text(item.quantity.toString(), pageWidth - 90, yPos);
-    doc.text(`$${item.unit_price.toFixed(2)}`, pageWidth - 65, yPos);
-    doc.text(`$${item.total.toFixed(2)}`, pageWidth - 25, yPos, { align: "right" });
+    doc.text(formatCurrencyForPDF(item.unit_price), pageWidth - 65, yPos);
+    doc.text(formatCurrencyForPDF(item.total), pageWidth - 25, yPos, { align: "right" });
     
     yPos += (lines.length - 1) * 5;
   });
@@ -105,18 +114,18 @@ export const generateInvoicePDF = (invoice: InvoiceWithLineItems) => {
   
   doc.setFont("helvetica", "normal");
   doc.text("Subtotal:", totalsX, yPos);
-  doc.text(`$${invoice.subtotal.toFixed(2)}`, pageWidth - 25, yPos, { align: "right" });
+  doc.text(formatCurrencyForPDF(invoice.subtotal), pageWidth - 25, yPos, { align: "right" });
   
   yPos += 7;
   doc.text(`Tax (${invoice.tax_rate}%):`, totalsX, yPos);
-  doc.text(`$${invoice.tax_amount.toFixed(2)}`, pageWidth - 25, yPos, { align: "right" });
+  doc.text(formatCurrencyForPDF(invoice.tax_amount), pageWidth - 25, yPos, { align: "right" });
   
   yPos += 10;
   doc.setFont("helvetica", "bold");
   doc.setFontSize(12);
   doc.text("TOTAL:", totalsX, yPos);
   doc.setTextColor(102, 126, 234); // primary color
-  doc.text(`$${invoice.total.toFixed(2)}`, pageWidth - 25, yPos, { align: "right" });
+  doc.text(formatCurrencyForPDF(invoice.total), pageWidth - 25, yPos, { align: "right" });
   
   // Payment Status
   if (invoice.status === "paid" && invoice.paid_date) {

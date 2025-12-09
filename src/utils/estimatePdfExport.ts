@@ -1,5 +1,14 @@
 import jsPDF from "jspdf";
 
+const formatCurrencyForPDF = (amount: number): string => {
+  return new Intl.NumberFormat("en-US", {
+    style: "currency",
+    currency: "USD",
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
+  }).format(amount);
+};
+
 interface LineItem {
   id: string;
   description: string;
@@ -283,8 +292,8 @@ export const generateEstimatePDF = async (estimate: EstimateData): Promise<void>
         doc.text(line, margin + 5, yPos);
         doc.setFont("helvetica", "normal");
         doc.text(item.quantity.toString(), pageWidth - 90, yPos);
-        doc.text(`$${item.unitPrice.toFixed(2)}`, pageWidth - 65, yPos);
-        doc.text(`$${item.total.toFixed(2)}`, pageWidth - margin - 5, yPos, { align: "right" });
+        doc.text(formatCurrencyForPDF(item.unitPrice), pageWidth - 65, yPos);
+        doc.text(formatCurrencyForPDF(item.total), pageWidth - margin - 5, yPos, { align: "right" });
       } else {
         doc.setFont("helvetica", "bold");
         doc.text(line, margin + 5, yPos);
@@ -321,12 +330,12 @@ export const generateEstimatePDF = async (estimate: EstimateData): Promise<void>
   doc.setFont("helvetica", "normal");
   doc.setFontSize(10);
   doc.text("Subtotal:", totalsX, yPos);
-  doc.text(`$${estimate.subtotal.toFixed(2)}`, pageWidth - margin - 5, yPos, { align: "right" });
+  doc.text(formatCurrencyForPDF(estimate.subtotal), pageWidth - margin - 5, yPos, { align: "right" });
 
   if (estimate.taxRate > 0) {
     yPos += 7;
     doc.text(`Tax (${estimate.taxRate}%):`, totalsX, yPos);
-    doc.text(`$${estimate.taxAmount.toFixed(2)}`, pageWidth - margin - 5, yPos, { align: "right" });
+    doc.text(formatCurrencyForPDF(estimate.taxAmount), pageWidth - margin - 5, yPos, { align: "right" });
   }
 
   yPos += 10;
@@ -334,7 +343,7 @@ export const generateEstimatePDF = async (estimate: EstimateData): Promise<void>
   doc.setFontSize(12);
   doc.text("TOTAL:", totalsX, yPos);
   doc.setTextColor(102, 126, 234); // primary color
-  doc.text(`$${estimate.total.toFixed(2)}`, pageWidth - margin - 5, yPos, { align: "right" });
+  doc.text(formatCurrencyForPDF(estimate.total), pageWidth - margin - 5, yPos, { align: "right" });
 
   // Reset text color
   doc.setTextColor(0, 0, 0);
