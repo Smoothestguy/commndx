@@ -37,6 +37,13 @@ export interface Estimate {
   customer_approved?: boolean;
   default_pricing_type?: 'markup' | 'margin';
   created_by?: string;
+  jobsite_address?: string | null;
+}
+
+export interface CustomerContactInfo {
+  phone?: string | null;
+  email?: string | null;
+  address?: string | null;
 }
 
 export interface EstimateCreatorProfile {
@@ -48,6 +55,7 @@ export interface EstimateCreatorProfile {
 export interface EstimateWithLineItems extends Estimate {
   line_items: EstimateLineItem[];
   created_by_profile?: EstimateCreatorProfile | null;
+  customer_contact?: CustomerContactInfo | null;
 }
 
 export const useEstimates = () => {
@@ -96,10 +104,22 @@ export const useEstimate = (id: string) => {
         createdByProfile = profile;
       }
 
+      // Fetch customer contact info
+      let customerContact: CustomerContactInfo | null = null;
+      if (estimate.customer_id) {
+        const { data: customer } = await supabase
+          .from("customers")
+          .select("phone, email, address")
+          .eq("id", estimate.customer_id)
+          .single();
+        customerContact = customer;
+      }
+
       return {
         ...estimate,
         line_items: lineItems,
         created_by_profile: createdByProfile,
+        customer_contact: customerContact,
       } as EstimateWithLineItems;
     },
   });

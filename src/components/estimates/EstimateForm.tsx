@@ -121,6 +121,7 @@ export const EstimateForm = ({ initialData }: EstimateFormProps) => {
   const [taxRate, setTaxRate] = useState<string>(initialData?.tax_rate?.toString() || "8.25");
   const [validUntil, setValidUntil] = useState<string>(initialData?.valid_until || "");
   const [notes, setNotes] = useState<string>(initialData?.notes || "");
+  const [jobsiteAddress, setJobsiteAddress] = useState<string>(initialData?.jobsite_address || "");
   const [status, setStatus] = useState<"draft" | "pending" | "sent" | "approved">(initialData?.status || "draft");
   const [defaultPricingType, setDefaultPricingType] = useState<'markup' | 'margin'>(initialData?.default_pricing_type || 'margin');
   const [defaultMarginPercent, setDefaultMarginPercent] = useState<string>("30");
@@ -469,6 +470,7 @@ export const EstimateForm = ({ initialData }: EstimateFormProps) => {
           notes: notes || null,
           valid_until: validUntil,
           default_pricing_type: defaultPricingType,
+          jobsite_address: jobsiteAddress || null,
         },
         lineItems: lineItemsData,
       });
@@ -489,6 +491,7 @@ export const EstimateForm = ({ initialData }: EstimateFormProps) => {
           notes: notes || undefined,
           valid_until: validUntil,
           default_pricing_type: defaultPricingType,
+          jobsite_address: jobsiteAddress || undefined,
         },
         lineItems: lineItemsData,
       });
@@ -860,12 +863,24 @@ export const EstimateForm = ({ initialData }: EstimateFormProps) => {
           </CardContent>
         </Card>
 
-        {/* Notes */}
+        {/* Notes & Jobsite Address */}
         <Card className="glass border-border">
           <CardHeader>
             <CardTitle className="font-heading">Additional Information</CardTitle>
           </CardHeader>
-          <CardContent>
+          <CardContent className="space-y-4">
+            <div className="space-y-2">
+              <Label htmlFor="jobsiteAddress">Jobsite / Delivery Address (Optional)</Label>
+              <Textarea
+                id="jobsiteAddress"
+                value={jobsiteAddress}
+                onChange={(e) => setJobsiteAddress(e.target.value)}
+                placeholder="Enter jobsite or delivery address if different from billing address..."
+                className="bg-secondary border-border min-h-[80px]"
+                maxLength={500}
+              />
+              <p className="text-xs text-muted-foreground">This address will appear on the estimate PDF as "Ship to / Jobsite"</p>
+            </div>
             <div className="space-y-2">
               <Label htmlFor="notes">Notes</Label>
               <Textarea

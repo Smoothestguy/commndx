@@ -891,6 +891,7 @@ export type Database = {
           customer_name: string
           default_pricing_type: string | null
           id: string
+          jobsite_address: string | null
           notes: string | null
           number: string
           project_id: string | null
@@ -915,6 +916,7 @@ export type Database = {
           customer_name: string
           default_pricing_type?: string | null
           id?: string
+          jobsite_address?: string | null
           notes?: string | null
           number: string
           project_id?: string | null
@@ -939,6 +941,7 @@ export type Database = {
           customer_name?: string
           default_pricing_type?: string | null
           id?: string
+          jobsite_address?: string | null
           notes?: string | null
           number?: string
           project_id?: string | null

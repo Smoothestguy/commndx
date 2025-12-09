@@ -37,6 +37,9 @@ interface EstimateData {
   number: string;
   customerName: string;
   customerAddress?: string | null;
+  customerPhone?: string | null;
+  customerEmail?: string | null;
+  jobsiteAddress?: string | null;
   projectName?: string | null;
   status: string;
   createdAt: string;
@@ -159,27 +162,73 @@ export const generateEstimatePDF = async (estimate: EstimateData): Promise<void>
 
   yPos += 10;
 
-  // ==================== BILL TO SECTION (Light blue background) ====================
-  const billToHeight = 25;
+  // ==================== BILL TO / SHIP TO SECTION (Light blue background) ====================
+  // Calculate required height based on content
+  const hasJobsiteAddress = !!estimate.jobsiteAddress;
+  const billToHeight = hasJobsiteAddress ? 45 : 40;
   doc.setFillColor(239, 246, 255); // light blue bg (#EFF6FF)
   doc.rect(margin, yPos, pageWidth - 2 * margin, billToHeight, "F");
+
+  const halfWidth = (pageWidth - 2 * margin) / 2;
+  let billToY = yPos + 8;
 
   // Bill to label
   doc.setTextColor(0, 0, 0);
   doc.setFont("helvetica", "bold");
   doc.setFontSize(10);
-  doc.text("Bill to", margin + 5, yPos + 8);
+  doc.text("Bill to", margin + 5, billToY);
+
+  billToY += 6;
 
   // Customer name
   doc.setFont("helvetica", "normal");
-  doc.text(estimate.customerName, margin + 5, yPos + 16);
+  doc.setFontSize(9);
+  doc.text(estimate.customerName, margin + 5, billToY);
 
-  // Customer address (if available, on same line or next)
+  // Customer address (if available)
   if (estimate.customerAddress) {
-    const addressLines = doc.splitTextToSize(estimate.customerAddress, 100);
+    billToY += 5;
+    doc.setTextColor(75, 85, 99);
+    const addressLines = doc.splitTextToSize(estimate.customerAddress, halfWidth - 15);
+    addressLines.slice(0, 2).forEach((line: string) => {
+      doc.text(line, margin + 5, billToY);
+      billToY += 4;
+    });
+  }
+
+  // Customer phone
+  if (estimate.customerPhone) {
+    doc.setTextColor(75, 85, 99);
+    doc.text(estimate.customerPhone, margin + 5, billToY);
+    billToY += 4;
+  }
+
+  // Customer email
+  if (estimate.customerEmail) {
+    doc.setTextColor(75, 85, 99);
+    doc.text(estimate.customerEmail, margin + 5, billToY);
+  }
+
+  // Ship to / Jobsite section (right column)
+  if (hasJobsiteAddress) {
+    let shipToY = yPos + 8;
+    const shipToX = margin + halfWidth + 5;
+
+    doc.setTextColor(0, 0, 0);
+    doc.setFont("helvetica", "bold");
+    doc.setFontSize(10);
+    doc.text("Ship to / Jobsite", shipToX, shipToY);
+
+    shipToY += 6;
+
+    doc.setFont("helvetica", "normal");
     doc.setFontSize(9);
     doc.setTextColor(75, 85, 99);
-    doc.text(addressLines[0] || "", margin + 5, yPos + 22);
+    const jobsiteLines = doc.splitTextToSize(estimate.jobsiteAddress!, halfWidth - 15);
+    jobsiteLines.slice(0, 4).forEach((line: string) => {
+      doc.text(line, shipToX, shipToY);
+      shipToY += 4;
+    });
   }
 
   yPos += billToHeight + 5;
@@ -391,7 +440,10 @@ export const generateEstimatePreviewPDF = async (
   status: string,
   salesRepName?: string | null,
   companySettings?: CompanySettings | null,
-  customerAddress?: string | null
+  customerAddress?: string | null,
+  customerPhone?: string | null,
+  customerEmail?: string | null,
+  jobsiteAddress?: string | null
 ): Promise<void> => {
   const subtotal = lineItems.reduce((sum, item) => sum + item.total, 0);
   const taxableAmount = lineItems
@@ -404,6 +456,9 @@ export const generateEstimatePreviewPDF = async (
     number: "PREVIEW",
     customerName: customerName || "Customer",
     customerAddress,
+    customerPhone,
+    customerEmail,
+    jobsiteAddress,
     projectName,
     status,
     createdAt: new Date().toISOString(),
