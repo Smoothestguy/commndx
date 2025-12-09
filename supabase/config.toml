@@ -68,3 +68,6 @@ verify_jwt = false
 
 [functions.send-personnel-registration-invite]
 verify_jwt = false
+
+[functions.extract-work-order-items]
+verify_jwt = false
