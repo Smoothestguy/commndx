@@ -65,53 +65,58 @@ export const ExtractedItemsTable = ({
   };
 
   return (
-    <div className="border rounded-lg overflow-hidden">
+    <div className="border rounded-lg overflow-hidden bg-card">
       <Table>
         <TableHeader>
-          <TableRow className="bg-muted/50">
-            <TableHead className="w-[300px]">Description</TableHead>
-            <TableHead className="w-[200px]">Match Product</TableHead>
-            <TableHead className="w-[80px] text-right">Qty</TableHead>
-            <TableHead className="w-[100px] text-right">Price</TableHead>
-            <TableHead className="w-[70px]">Unit</TableHead>
-            <TableHead className="w-[100px] text-right">Total</TableHead>
-            <TableHead className="w-[50px]"></TableHead>
+          <TableRow className="bg-muted">
+            <TableHead className="w-[350px] py-4 text-base font-semibold">Description</TableHead>
+            <TableHead className="w-[220px] py-4 text-base font-semibold">Match Product</TableHead>
+            <TableHead className="w-[100px] py-4 text-base font-semibold text-right">Qty</TableHead>
+            <TableHead className="w-[120px] py-4 text-base font-semibold text-right">Price</TableHead>
+            <TableHead className="w-[90px] py-4 text-base font-semibold">Unit</TableHead>
+            <TableHead className="w-[120px] py-4 text-base font-semibold text-right">Total</TableHead>
+            <TableHead className="w-[60px] py-4"></TableHead>
           </TableRow>
         </TableHeader>
         <TableBody>
-          {items.map((item) => (
-            <TableRow key={item.id}>
-              <TableCell>
+          {items.map((item, index) => (
+            <TableRow 
+              key={item.id} 
+              className={index % 2 === 0 ? "bg-background" : "bg-muted/30"}
+            >
+              <TableCell className="py-4">
                 <Input
                   value={item.description}
                   onChange={(e) =>
                     onItemUpdate(item.id, { description: e.target.value })
                   }
-                  className="text-sm"
+                  className="h-11 text-base font-medium"
                 />
                 {item.productCode && (
-                  <span className="text-xs text-muted-foreground mt-1 block">
+                  <span className="text-sm text-muted-foreground mt-2 block font-mono">
                     Code: {item.productCode}
                   </span>
                 )}
               </TableCell>
-              <TableCell>
+              <TableCell className="py-4">
                 <Select
                   value={item.matchedProductId || "none"}
                   onValueChange={(val) =>
                     onProductMatch(item.id, val === "none" ? null : val)
                   }
                 >
-                  <SelectTrigger className="h-9">
+                  <SelectTrigger className="h-11">
                     <SelectValue>
                       {item.matchedProductId ? (
-                        <span className="flex items-center gap-1 text-xs">
-                          <Link2 className="h-3 w-3 text-success" />
-                          {getMatchedProductName(item.matchedProductId)?.slice(0, 20)}
-                          {(getMatchedProductName(item.matchedProductId)?.length || 0) > 20 && "..."}
+                        <span className="flex items-center gap-2 text-sm font-medium">
+                          <Link2 className="h-4 w-4 text-green-600" />
+                          <span className="truncate">
+                            {getMatchedProductName(item.matchedProductId)?.slice(0, 18)}
+                            {(getMatchedProductName(item.matchedProductId)?.length || 0) > 18 && "..."}
+                          </span>
                         </span>
                       ) : (
-                        <span className="text-muted-foreground text-xs">
+                        <span className="text-muted-foreground text-sm">
                           No match
                         </span>
                       )}
@@ -148,7 +153,7 @@ export const ExtractedItemsTable = ({
                   </SelectContent>
                 </Select>
               </TableCell>
-              <TableCell>
+              <TableCell className="py-4">
                 <Input
                   type="number"
                   value={item.quantity}
@@ -157,14 +162,14 @@ export const ExtractedItemsTable = ({
                       quantity: parseFloat(e.target.value) || 0,
                     })
                   }
-                  className="text-right text-sm w-20"
+                  className="h-11 text-right text-base font-medium w-24"
                   min={0}
                   step="any"
                 />
               </TableCell>
-              <TableCell>
+              <TableCell className="py-4">
                 <div className="relative">
-                  <span className="absolute left-2 top-1/2 -translate-y-1/2 text-muted-foreground text-sm">
+                  <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground text-base">
                     $
                   </span>
                   <Input
@@ -175,32 +180,34 @@ export const ExtractedItemsTable = ({
                         unitPrice: parseFloat(e.target.value) || 0,
                       })
                     }
-                    className="text-right text-sm pl-6"
+                    className="h-11 text-right text-base font-medium pl-7"
                     min={0}
                     step="0.01"
                   />
                 </div>
               </TableCell>
-              <TableCell>
+              <TableCell className="py-4">
                 <Input
                   value={item.unit}
                   onChange={(e) =>
                     onItemUpdate(item.id, { unit: e.target.value })
                   }
-                  className="text-sm w-16"
+                  className="h-11 text-base font-medium w-20"
                 />
               </TableCell>
-              <TableCell className="text-right font-medium">
-                ${item.total.toLocaleString(undefined, { minimumFractionDigits: 2 })}
+              <TableCell className="py-4 text-right">
+                <span className="text-base font-semibold">
+                  ${item.total.toLocaleString(undefined, { minimumFractionDigits: 2 })}
+                </span>
               </TableCell>
-              <TableCell>
+              <TableCell className="py-4">
                 <Button
-                  variant="ghost"
+                  variant="destructive"
                   size="icon"
                   onClick={() => onItemDelete(item.id)}
-                  className="h-8 w-8 text-destructive hover:text-destructive"
+                  className="h-10 w-10"
                 >
-                  <Trash2 className="h-4 w-4" />
+                  <Trash2 className="h-5 w-5" />
                 </Button>
               </TableCell>
             </TableRow>

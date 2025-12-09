@@ -14,7 +14,7 @@ export interface JobOrderLineItem {
 export interface JobOrder {
   id: string;
   number: string;
-  estimate_id: string;
+  estimate_id: string | null;
   customer_id: string;
   customer_name: string;
   project_id: string;
