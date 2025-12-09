@@ -11,12 +11,14 @@ import { usePurchaseOrders } from "@/integrations/supabase/hooks/usePurchaseOrde
 import { useVendorBills } from "@/integrations/supabase/hooks/useVendorBills";
 import { VendorDocumentUpload } from "@/components/vendors/VendorDocumentUpload";
 import { VendorPersonnelSection } from "@/components/vendors/VendorPersonnelSection";
+import { usePersonnelByVendor } from "@/integrations/supabase/hooks/usePersonnel";
+import { useVendorDocuments } from "@/integrations/supabase/hooks/useVendorDocuments";
 import { 
   ArrowLeft, Building2, Mail, Phone, FileText, AlertCircle, Users, 
-  MapPin, DollarSign, Receipt, CreditCard, ShoppingCart, ClipboardList
+  MapPin, DollarSign, Receipt, CreditCard, ShoppingCart, ClipboardList,
+  LayoutDashboard, Loader2
 } from "lucide-react";
 import { format } from "date-fns";
-import { Loader2 } from "lucide-react";
 
 const PAYMENT_TERMS_LABELS: Record<string, string> = {
   due_on_receipt: "Due on Receipt",
@@ -33,12 +35,23 @@ export default function VendorDetail() {
   const { data: expenseCategories } = useExpenseCategories("vendor");
   const { data: purchaseOrders } = usePurchaseOrders();
   const { data: vendorBills } = useVendorBills({ vendor_id: id });
+  const { data: vendorPersonnel } = usePersonnelByVendor(id);
+  const { data: vendorDocuments } = useVendorDocuments(id || "");
 
   const vendor = vendors?.find((v) => v.id === id);
   const expenseCategory = expenseCategories?.find((c) => c.id === vendor?.default_expense_category_id);
   
   // Filter purchase orders for this vendor
   const vendorPurchaseOrders = purchaseOrders?.filter(po => po.vendor_id === id) || [];
+  
+  // Calculate summary stats
+  const personnelCount = vendorPersonnel?.length || 0;
+  const poCount = vendorPurchaseOrders.length;
+  const poTotal = vendorPurchaseOrders.reduce((sum, po) => sum + (po.total || 0), 0);
+  const billsCount = vendorBills?.length || 0;
+  const billsTotal = vendorBills?.reduce((sum, bill) => sum + (bill.total || 0), 0) || 0;
+  const billsPaid = vendorBills?.reduce((sum, bill) => sum + (bill.paid_amount || 0), 0) || 0;
+  const documentsCount = vendorDocuments?.length || 0;
 
   if (isLoading) {
     return (
@@ -241,8 +254,12 @@ export default function VendorDetail() {
           </Card>
         )}
 
-        <Tabs defaultValue="personnel" className="w-full">
-          <TabsList className="grid w-full grid-cols-4">
+        <Tabs defaultValue="all" className="w-full">
+          <TabsList className="grid w-full grid-cols-5">
+            <TabsTrigger value="all">
+              <LayoutDashboard className="mr-2 h-4 w-4" />
+              All
+            </TabsTrigger>
             <TabsTrigger value="personnel">
               <Users className="mr-2 h-4 w-4" />
               Personnel
@@ -260,6 +277,165 @@ export default function VendorDetail() {
               Documents
             </TabsTrigger>
           </TabsList>
+          
+          {/* All Overview Tab */}
+          <TabsContent value="all" className="mt-6 space-y-6">
+            {/* Summary Stats */}
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+              <Card className="bg-[hsl(var(--stat-mint))]">
+                <CardContent className="pt-4 pb-4">
+                  <div className="flex items-center gap-3">
+                    <Users className="h-8 w-8 text-emerald-600" />
+                    <div>
+                      <p className="text-2xl font-bold">{personnelCount}</p>
+                      <p className="text-sm text-muted-foreground">Personnel</p>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+              <Card className="bg-[hsl(var(--stat-sky))]">
+                <CardContent className="pt-4 pb-4">
+                  <div className="flex items-center gap-3">
+                    <ShoppingCart className="h-8 w-8 text-sky-600" />
+                    <div>
+                      <p className="text-2xl font-bold">{poCount}</p>
+                      <p className="text-sm text-muted-foreground">POs (${poTotal.toLocaleString()})</p>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+              <Card className="bg-[hsl(var(--stat-rose))]">
+                <CardContent className="pt-4 pb-4">
+                  <div className="flex items-center gap-3">
+                    <ClipboardList className="h-8 w-8 text-rose-600" />
+                    <div>
+                      <p className="text-2xl font-bold">{billsCount}</p>
+                      <p className="text-sm text-muted-foreground">Bills (${billsTotal.toLocaleString()})</p>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+              <Card className="bg-[hsl(var(--stat-lavender))]">
+                <CardContent className="pt-4 pb-4">
+                  <div className="flex items-center gap-3">
+                    <FileText className="h-8 w-8 text-violet-600" />
+                    <div>
+                      <p className="text-2xl font-bold">{documentsCount}</p>
+                      <p className="text-sm text-muted-foreground">Documents</p>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+            </div>
+
+            {/* Personnel Section */}
+            <Card>
+              <CardHeader className="pb-3">
+                <CardTitle className="flex items-center gap-2 text-lg">
+                  <Users className="h-5 w-5" />
+                  Personnel ({personnelCount})
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <VendorPersonnelSection vendorId={vendor.id} vendorName={vendor.name} />
+              </CardContent>
+            </Card>
+
+            {/* Purchase Orders Section */}
+            <Card>
+              <CardHeader className="pb-3">
+                <CardTitle className="flex items-center gap-2 text-lg">
+                  <ShoppingCart className="h-5 w-5" />
+                  Purchase Orders ({poCount})
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                {vendorPurchaseOrders.length === 0 ? (
+                  <p className="text-muted-foreground text-center py-4">No purchase orders</p>
+                ) : (
+                  <div className="space-y-3">
+                    {vendorPurchaseOrders.slice(0, 5).map((po) => (
+                      <div 
+                        key={po.id} 
+                        className="flex items-center justify-between p-3 rounded-lg border cursor-pointer hover:bg-muted/50 transition-colors"
+                        onClick={() => navigate(`/purchase-orders/${po.id}`)}
+                      >
+                        <div>
+                          <p className="font-medium">{po.number}</p>
+                          <p className="text-sm text-muted-foreground">{po.project_name}</p>
+                        </div>
+                        <div className="text-right">
+                          <StatusBadge status={po.status} />
+                          <p className="text-sm font-medium mt-1">${po.total.toFixed(2)}</p>
+                        </div>
+                      </div>
+                    ))}
+                    {vendorPurchaseOrders.length > 5 && (
+                      <p className="text-sm text-muted-foreground text-center">
+                        +{vendorPurchaseOrders.length - 5} more purchase orders
+                      </p>
+                    )}
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+
+            {/* Bills Section */}
+            <Card>
+              <CardHeader className="pb-3">
+                <CardTitle className="flex items-center gap-2 text-lg">
+                  <ClipboardList className="h-5 w-5" />
+                  Bills ({billsCount}) - Paid: ${billsPaid.toLocaleString()}
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                {!vendorBills || vendorBills.length === 0 ? (
+                  <p className="text-muted-foreground text-center py-4">No bills</p>
+                ) : (
+                  <div className="space-y-3">
+                    {vendorBills.slice(0, 5).map((bill) => (
+                      <div 
+                        key={bill.id} 
+                        className="flex items-center justify-between p-3 rounded-lg border cursor-pointer hover:bg-muted/50 transition-colors"
+                        onClick={() => navigate(`/vendor-bills/${bill.id}`)}
+                      >
+                        <div>
+                          <p className="font-medium">{bill.number}</p>
+                          <p className="text-sm text-muted-foreground">
+                            {format(new Date(bill.bill_date), "MMM d, yyyy")}
+                          </p>
+                        </div>
+                        <div className="text-right">
+                          <Badge variant={bill.status === 'paid' ? 'default' : bill.status === 'open' ? 'secondary' : 'outline'}>
+                            {bill.status.replace('_', ' ')}
+                          </Badge>
+                          <p className="text-sm font-medium mt-1">${bill.total.toFixed(2)}</p>
+                        </div>
+                      </div>
+                    ))}
+                    {vendorBills.length > 5 && (
+                      <p className="text-sm text-muted-foreground text-center">
+                        +{vendorBills.length - 5} more bills
+                      </p>
+                    )}
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+
+            {/* Documents Section */}
+            <Card>
+              <CardHeader className="pb-3">
+                <CardTitle className="flex items-center gap-2 text-lg">
+                  <FileText className="h-5 w-5" />
+                  Documents ({documentsCount})
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <VendorDocumentUpload vendorId={vendor.id} />
+              </CardContent>
+            </Card>
+          </TabsContent>
           <TabsContent value="personnel" className="mt-6">
             <VendorPersonnelSection vendorId={vendor.id} vendorName={vendor.name} />
           </TabsContent>
