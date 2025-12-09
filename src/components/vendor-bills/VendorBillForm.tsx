@@ -156,6 +156,8 @@ export function VendorBillForm({ bill, isEditing = false }: VendorBillFormProps)
       tax_amount: taxAmount,
       total,
       notes: notes || null,
+      purchase_order_id: null,
+      purchase_order_number: null,
     };
 
     const lineItemsData = lineItems
