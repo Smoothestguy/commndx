@@ -26,7 +26,7 @@ import { z } from "zod";
 const lineItemSchema = z.object({
   description: z.string().min(1, "Description is required").max(500),
   quantity: z.number().positive("Quantity must be positive"),
-  unit_price: z.number().positive("Unit price must be positive"),
+  unit_price: z.number().min(0, "Unit price cannot be negative"),
   margin: z.number().min(0, "Margin cannot be negative").max(99.99, "Margin must be less than 100%"),
 });
 
