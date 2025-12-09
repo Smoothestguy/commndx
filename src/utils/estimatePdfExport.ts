@@ -219,10 +219,6 @@ export const generateEstimatePDF = async (estimate: EstimateData): Promise<void>
   doc.text(`Estimate no.: ${estimate.number}`, margin, yPos);
 
   yPos += 5;
-  const statusText = estimate.status.charAt(0).toUpperCase() + estimate.status.slice(1);
-  doc.text(`Status: ${statusText}`, margin, yPos);
-
-  yPos += 5;
   doc.text(`Estimate date: ${new Date(estimate.createdAt).toLocaleDateString()}`, margin, yPos);
 
   yPos += 5;
