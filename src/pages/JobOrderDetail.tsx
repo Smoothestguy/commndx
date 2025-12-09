@@ -1,3 +1,4 @@
+import { useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { PageLayout } from "@/components/layout/PageLayout";
 import { StatusBadge } from "@/components/shared/StatusBadge";
@@ -22,11 +23,13 @@ import { useJobOrder } from "@/integrations/supabase/hooks/useJobOrders";
 import { useInvoicesByJobOrder } from "@/integrations/supabase/hooks/useInvoices";
 import { usePurchaseOrders } from "@/integrations/supabase/hooks/usePurchaseOrders";
 import { useIsMobile } from "@/hooks/use-mobile";
+import { CreateInvoiceFromJODialog } from "@/components/invoices/CreateInvoiceFromJODialog";
 
 const JobOrderDetail = () => {
   const { id } = useParams();
   const navigate = useNavigate();
   const isMobile = useIsMobile();
+  const [invoiceDialogOpen, setInvoiceDialogOpen] = useState(false);
 
   const { data: jobOrder, isLoading: loadingJobOrder, error: errorJobOrder } = useJobOrder(id || "");
   const { data: allInvoices = [], isLoading: loadingInvoices } = useInvoicesByJobOrder(id || "");
@@ -65,7 +68,7 @@ const JobOrderDetail = () => {
           <Button 
             variant="glow" 
             size={isMobile ? "sm" : "default"}
-            onClick={() => navigate(`/invoices/new?jobOrderId=${id}`)}
+            onClick={() => setInvoiceDialogOpen(true)}
           >
             <Receipt className={`h-4 w-4 ${!isMobile && "mr-2"}`} />
             {!isMobile && "Create Invoice"}
@@ -424,6 +427,13 @@ const JobOrderDetail = () => {
           )}
         </CardContent>
       </Card>
+
+      {/* Create Invoice Dialog */}
+      <CreateInvoiceFromJODialog
+        open={invoiceDialogOpen}
+        onOpenChange={setInvoiceDialogOpen}
+        jobOrder={jobOrder}
+      />
     </PageLayout>
   );
 };

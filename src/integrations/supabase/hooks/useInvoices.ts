@@ -5,6 +5,7 @@ import { toast } from "@/hooks/use-toast";
 export interface InvoiceLineItem {
   id: string;
   invoice_id: string;
+  jo_line_item_id?: string;
   description: string;
   quantity: number;
   unit_price: number;
@@ -127,6 +128,7 @@ export const useAddInvoice = () => {
       if (invoice.line_items.length > 0) {
         const lineItemsToInsert = invoice.line_items.map((item) => ({
           invoice_id: newInvoice.id,
+          jo_line_item_id: item.jo_line_item_id || null,
           description: item.description,
           quantity: item.quantity,
           unit_price: item.unit_price,
@@ -242,6 +244,7 @@ export const useUpdateInvoice = () => {
         if (invoice.line_items.length > 0) {
           const lineItemsToInsert = invoice.line_items.map((item) => ({
             invoice_id: id,
+            jo_line_item_id: item.jo_line_item_id || null,
             description: item.description,
             quantity: item.quantity,
             unit_price: item.unit_price,
