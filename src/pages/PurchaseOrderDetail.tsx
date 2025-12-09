@@ -22,7 +22,7 @@ import { usePurchaseOrder, useUpdatePurchaseOrder } from "@/integrations/supabas
 import { useVendors } from "@/integrations/supabase/hooks/useVendors";
 import { useUserRole } from "@/hooks/useUserRole";
 import { useIsMobile } from "@/hooks/use-mobile";
-import { ArrowLeft, ShoppingCart, Truck, Building, Send, CheckCircle, CheckCheck, XCircle, Loader2, MoreVertical, Receipt, Lock } from "lucide-react";
+import { ArrowLeft, ShoppingCart, Truck, Building, Send, CheckCircle, CheckCheck, XCircle, Loader2, MoreVertical, Receipt, Lock, Pencil } from "lucide-react";
 import { format } from "date-fns";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
@@ -52,6 +52,7 @@ const PurchaseOrderDetail = () => {
   const canComplete = purchaseOrder?.status === 'in-progress';
   const canCreateBill = purchaseOrder && !purchaseOrder.is_closed;
   const canClose = purchaseOrder && !purchaseOrder.is_closed && (isAdmin || isManager);
+  const canEdit = purchaseOrder && !purchaseOrder.is_closed && (isAdmin || isManager);
 
   const billedAmount = Number(purchaseOrder?.billed_amount || 0);
   const total = Number(purchaseOrder?.total || 0);
@@ -192,6 +193,12 @@ const PurchaseOrderDetail = () => {
               </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end">
+              {canEdit && (
+                <DropdownMenuItem onClick={() => navigate(`/purchase-orders/${purchaseOrder.id}/edit`)}>
+                  <Pencil className="mr-2 h-4 w-4" /> 
+                  Edit
+                </DropdownMenuItem>
+              )}
               {canApprove && (
                 <DropdownMenuItem onClick={() => handleApprove(false)} disabled={isApproving}>
                   <XCircle className="mr-2 h-4 w-4" /> 
@@ -200,7 +207,7 @@ const PurchaseOrderDetail = () => {
               )}
               {canClose && (
                 <>
-                  {canApprove && <DropdownMenuSeparator />}
+                  {(canApprove || canEdit) && <DropdownMenuSeparator />}
                   <DropdownMenuItem onClick={() => setShowCloseDialog(true)}>
                     <Lock className="mr-2 h-4 w-4" /> 
                     Close PO

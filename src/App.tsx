@@ -34,6 +34,7 @@ import EditJobOrder from "./pages/EditJobOrder";
 import PurchaseOrders from "./pages/PurchaseOrders";
 import NewPurchaseOrder from "./pages/NewPurchaseOrder";
 import PurchaseOrderDetail from "./pages/PurchaseOrderDetail";
+import EditPurchaseOrder from "./pages/EditPurchaseOrder";
 import Invoices from "./pages/Invoices";
 import NewInvoice from "./pages/NewInvoice";
 import NewTimeEntryInvoice from "./pages/NewTimeEntryInvoice";
@@ -319,6 +320,14 @@ const App = () => {
                   element={
                     <ProtectedRoute>
                       <PurchaseOrderDetail />
+                    </ProtectedRoute>
+                  }
+                />
+                <Route
+                  path="/purchase-orders/:id/edit"
+                  element={
+                    <ProtectedRoute>
+                      <EditPurchaseOrder />
                     </ProtectedRoute>
                   }
                 />
