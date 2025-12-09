@@ -1,6 +1,15 @@
 import jsPDF from "jspdf";
 import { format } from "date-fns";
 
+const formatCurrencyForPDF = (amount: number): string => {
+  return new Intl.NumberFormat("en-US", {
+    style: "currency",
+    currency: "USD",
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
+  }).format(amount);
+};
+
 interface Project {
   name: string;
   status: string;
@@ -148,14 +157,14 @@ export const generateProjectReportPDF = (data: ProjectReportData) => {
   
   doc.setFontSize(10);
   doc.setFont("helvetica", "normal");
-  doc.text(`Total Estimated: $${data.totals.estimatesTotal.toFixed(2)}`, margin, yPos);
+  doc.text(`Total Estimated: ${formatCurrencyForPDF(data.totals.estimatesTotal)}`, margin, yPos);
   yPos += 6;
-  doc.text(`Job Orders Total: $${data.totals.jobOrdersTotal.toFixed(2)}`, margin, yPos);
+  doc.text(`Job Orders Total: ${formatCurrencyForPDF(data.totals.jobOrdersTotal)}`, margin, yPos);
   yPos += 6;
-  doc.text(`Total Invoiced: $${data.totals.invoicesTotal.toFixed(2)}`, margin, yPos);
+  doc.text(`Total Invoiced: ${formatCurrencyForPDF(data.totals.invoicesTotal)}`, margin, yPos);
   yPos += 6;
   doc.setFont("helvetica", "bold");
-  doc.text(`Total Paid: $${data.totals.paidTotal.toFixed(2)}`, margin, yPos);
+  doc.text(`Total Paid: ${formatCurrencyForPDF(data.totals.paidTotal)}`, margin, yPos);
   yPos += 10;
 
   drawLine();
@@ -199,7 +208,7 @@ export const generateProjectReportPDF = (data: ProjectReportData) => {
       doc.setFontSize(10);
       doc.setFont("helvetica", "normal");
       doc.text(
-        `${estimate.number} - ${estimate.status.toUpperCase()} - $${estimate.total.toFixed(2)} - ${format(new Date(estimate.created_at), "MMM dd, yyyy")}`,
+        `${estimate.number} - ${estimate.status.toUpperCase()} - ${formatCurrencyForPDF(estimate.total)} - ${format(new Date(estimate.created_at), "MMM dd, yyyy")}`,
         margin,
         yPos
       );
@@ -222,7 +231,7 @@ export const generateProjectReportPDF = (data: ProjectReportData) => {
       doc.setFontSize(10);
       doc.setFont("helvetica", "normal");
       doc.text(
-        `${jobOrder.number} - ${jobOrder.status.toUpperCase()} - $${jobOrder.total.toFixed(2)} - Start: ${format(new Date(jobOrder.start_date), "MMM dd, yyyy")}`,
+        `${jobOrder.number} - ${jobOrder.status.toUpperCase()} - ${formatCurrencyForPDF(jobOrder.total)} - Start: ${format(new Date(jobOrder.start_date), "MMM dd, yyyy")}`,
         margin,
         yPos
       );
@@ -245,7 +254,7 @@ export const generateProjectReportPDF = (data: ProjectReportData) => {
       doc.setFontSize(10);
       doc.setFont("helvetica", "normal");
       doc.text(
-        `${invoice.number} - ${invoice.status.toUpperCase()} - $${invoice.total.toFixed(2)} - Due: ${format(new Date(invoice.due_date), "MMM dd, yyyy")}`,
+        `${invoice.number} - ${invoice.status.toUpperCase()} - ${formatCurrencyForPDF(invoice.total)} - Due: ${format(new Date(invoice.due_date), "MMM dd, yyyy")}`,
         margin,
         yPos
       );
