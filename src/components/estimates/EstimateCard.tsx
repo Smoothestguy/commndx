@@ -32,7 +32,7 @@ export function EstimateCard({ estimate, onClick, index }: EstimateCardProps) {
     <div
       className={`glass rounded-xl p-5 hover:shadow-lg hover:shadow-primary/5 transition-all duration-300 border-l-4 ${statusColors[estimate.status]} cursor-pointer animate-fade-in ${isDraft ? 'bg-amber-500/5' : ''}`}
       style={{ animationDelay: `${index * 50}ms` }}
-      onClick={isDraft ? handleContinueEditing : onClick}
+      onClick={onClick}
     >
       {/* Header */}
       <div className="flex items-start justify-between gap-3 mb-3">
