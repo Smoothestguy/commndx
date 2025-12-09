@@ -2298,41 +2298,101 @@ export type Database = {
         }
         Relationships: []
       }
+      po_addendum_line_items: {
+        Row: {
+          created_at: string | null
+          description: string
+          id: string
+          markup: number
+          po_addendum_id: string
+          product_id: string | null
+          quantity: number
+          sort_order: number | null
+          total: number
+          unit_price: number
+        }
+        Insert: {
+          created_at?: string | null
+          description: string
+          id?: string
+          markup?: number
+          po_addendum_id: string
+          product_id?: string | null
+          quantity?: number
+          sort_order?: number | null
+          total?: number
+          unit_price?: number
+        }
+        Update: {
+          created_at?: string | null
+          description?: string
+          id?: string
+          markup?: number
+          po_addendum_id?: string
+          product_id?: string | null
+          quantity?: number
+          sort_order?: number | null
+          total?: number
+          unit_price?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "po_addendum_line_items_po_addendum_id_fkey"
+            columns: ["po_addendum_id"]
+            isOneToOne: false
+            referencedRelation: "po_addendums"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "po_addendum_line_items_product_id_fkey"
+            columns: ["product_id"]
+            isOneToOne: false
+            referencedRelation: "products"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       po_addendums: {
         Row: {
           amount: number
           created_at: string | null
           description: string
-          file_name: string
-          file_path: string
-          file_size: number
-          file_type: string
+          file_name: string | null
+          file_path: string | null
+          file_size: number | null
+          file_type: string | null
           id: string
+          number: string | null
           purchase_order_id: string
+          subtotal: number | null
           uploaded_by: string | null
         }
         Insert: {
           amount?: number
           created_at?: string | null
           description: string
-          file_name: string
-          file_path: string
-          file_size: number
-          file_type: string
+          file_name?: string | null
+          file_path?: string | null
+          file_size?: number | null
+          file_type?: string | null
           id?: string
+          number?: string | null
           purchase_order_id: string
+          subtotal?: number | null
           uploaded_by?: string | null
         }
         Update: {
           amount?: number
           created_at?: string | null
           description?: string
-          file_name?: string
-          file_path?: string
-          file_size?: number
-          file_type?: string
+          file_name?: string | null
+          file_path?: string | null
+          file_size?: number | null
+          file_type?: string | null
           id?: string
+          number?: string | null
           purchase_order_id?: string
+          subtotal?: number | null
           uploaded_by?: string | null
         }
         Relationships: [
@@ -4067,6 +4127,10 @@ export type Database = {
       generate_job_order_number: { Args: never; Returns: string }
       generate_personnel_number: { Args: never; Returns: string }
       generate_personnel_payment_number: { Args: never; Returns: string }
+      generate_po_addendum_number: {
+        Args: { p_purchase_order_id: string }
+        Returns: string
+      }
       generate_purchase_order_number: { Args: never; Returns: string }
       generate_vendor_bill_number: { Args: never; Returns: string }
       get_personnel_id_for_user: { Args: { _user_id: string }; Returns: string }
