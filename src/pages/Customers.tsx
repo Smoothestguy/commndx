@@ -48,6 +48,7 @@ const Customers = () => {
     phone: "",
     company: "",
     address: "",
+    jobsite_address: "",
     customer_type: "commercial" as "residential" | "commercial" | "government" | "non_profit" | "other",
     notes: "",
     tax_exempt: false,
@@ -130,6 +131,7 @@ const Customers = () => {
       phone: customer.phone || "",
       company: customer.company || "",
       address: customer.address || "",
+      jobsite_address: customer.jobsite_address || "",
       customer_type: "commercial",
       notes: "",
       tax_exempt: customer.tax_exempt || false,
@@ -161,6 +163,7 @@ const Customers = () => {
       phone: "", 
       company: "", 
       address: "", 
+      jobsite_address: "",
       customer_type: "commercial",
       notes: "",
       tax_exempt: false,
@@ -175,6 +178,7 @@ const Customers = () => {
       phone: "", 
       company: "", 
       address: "", 
+      jobsite_address: "",
       customer_type: "commercial",
       notes: "",
       tax_exempt: false,
@@ -387,12 +391,23 @@ const Customers = () => {
             </div>
             </div>
             <div className="space-y-2">
-              <Label htmlFor="address">Address</Label>
+              <Label htmlFor="address">Billing Address</Label>
               <Input
                 id="address"
                 value={formData.address}
                 onChange={(e) => setFormData({ ...formData, address: e.target.value })}
                 className="bg-secondary border-border"
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="jobsite_address">Jobsite / Delivery Address</Label>
+              <Textarea
+                id="jobsite_address"
+                value={formData.jobsite_address}
+                onChange={(e) => setFormData({ ...formData, jobsite_address: e.target.value })}
+                className="bg-secondary border-border"
+                rows={2}
+                placeholder="Default delivery location for materials and equipment"
               />
             </div>
             <div className="flex items-center justify-between rounded-lg border border-border p-4">
