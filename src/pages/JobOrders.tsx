@@ -5,8 +5,7 @@ import { PageLayout } from "@/components/layout/PageLayout";
 import { DataTable } from "@/components/shared/DataTable";
 import { StatusBadge } from "@/components/shared/StatusBadge";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Eye, Briefcase, Loader2 } from "lucide-react";
+import { Eye, Briefcase, Loader2, Upload } from "lucide-react";
 import { SearchInput } from "@/components/ui/search-input";
 import { useJobOrders, JobOrder } from "@/integrations/supabase/hooks/useJobOrders";
 import { PullToRefreshWrapper } from "@/components/shared/PullToRefreshWrapper";
@@ -15,6 +14,7 @@ import { JobOrderCard } from "@/components/job-orders/JobOrderCard";
 import { JobOrderStats } from "@/components/job-orders/JobOrderStats";
 import { JobOrderFilters } from "@/components/job-orders/JobOrderFilters";
 import { JobOrderEmptyState } from "@/components/job-orders/JobOrderEmptyState";
+import { ImportWorkOrderDialog } from "@/components/job-orders/ImportWorkOrderDialog";
 
 const JobOrders = () => {
   const navigate = useNavigate();
@@ -22,7 +22,7 @@ const JobOrders = () => {
   const isMobile = useIsMobile();
   const [search, setSearch] = useState("");
   const [selectedStatus, setSelectedStatus] = useState<"active" | "in-progress" | "completed" | "on-hold" | "">("");
-
+  const [showImportDialog, setShowImportDialog] = useState(false);
   const filteredJobOrders = jobOrders?.filter((j) => {
     const matchesSearch = j.number.toLowerCase().includes(search.toLowerCase()) ||
       j.customer_name.toLowerCase().includes(search.toLowerCase()) ||
@@ -104,6 +104,12 @@ const JobOrders = () => {
       <PageLayout
       title="Job Orders"
       description="Active jobs from approved estimates"
+      actions={
+        <Button onClick={() => setShowImportDialog(true)}>
+          <Upload className="h-4 w-4 mr-2" />
+          Import Work Order
+        </Button>
+      }
     >
       <PullToRefreshWrapper onRefresh={refetch} isRefreshing={isFetching}>
         {/* Search */}
@@ -164,6 +170,11 @@ const JobOrders = () => {
           </>
         )}
       </PullToRefreshWrapper>
+      
+      <ImportWorkOrderDialog
+        open={showImportDialog}
+        onOpenChange={setShowImportDialog}
+      />
     </PageLayout>
     </>
   );
