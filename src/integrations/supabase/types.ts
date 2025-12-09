@@ -700,6 +700,7 @@ export type Database = {
           customer_type: Database["public"]["Enums"]["customer_type"] | null
           email: string
           id: string
+          jobsite_address: string | null
           name: string
           notes: string | null
           phone: string | null
@@ -713,6 +714,7 @@ export type Database = {
           customer_type?: Database["public"]["Enums"]["customer_type"] | null
           email: string
           id?: string
+          jobsite_address?: string | null
           name: string
           notes?: string | null
           phone?: string | null
@@ -726,6 +728,7 @@ export type Database = {
           customer_type?: Database["public"]["Enums"]["customer_type"] | null
           email?: string
           id?: string
+          jobsite_address?: string | null
           name?: string
           notes?: string | null
           phone?: string | null

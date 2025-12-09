@@ -9,6 +9,7 @@ export interface Customer {
   phone: string | null;
   company: string | null;
   address: string | null;
+  jobsite_address: string | null;
   tax_exempt: boolean;
   created_at: string;
   updated_at: string;
