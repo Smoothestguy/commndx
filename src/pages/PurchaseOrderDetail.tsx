@@ -51,7 +51,7 @@ const PurchaseOrderDetail = () => {
   const canSend = purchaseOrder?.status === 'draft' && purchaseOrder?.approved_by;
   const canComplete = purchaseOrder?.status === 'in-progress';
   const canCreateBill = purchaseOrder && !purchaseOrder.is_closed && 
-    ['sent', 'acknowledged', 'in-progress', 'completed', 'partially_billed'].includes(purchaseOrder.status);
+    ['draft', 'sent', 'acknowledged', 'in-progress', 'completed', 'partially_billed'].includes(purchaseOrder.status);
   const canClose = purchaseOrder && !purchaseOrder.is_closed && (isAdmin || isManager);
 
   const billedAmount = Number(purchaseOrder?.billed_amount || 0);
