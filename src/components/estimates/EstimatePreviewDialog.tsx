@@ -15,6 +15,7 @@ import { generateEstimatePreviewPDF } from "@/utils/estimatePdfExport";
 import { format } from "date-fns";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { useProducts } from "@/integrations/supabase/hooks/useProducts";
+import { formatCurrency } from "@/lib/utils";
 interface LineItem {
   id: string;
   product_id?: string;
@@ -148,7 +149,7 @@ export function EstimatePreviewDialog({
                           )}
                         </div>
                         <span className="text-primary font-semibold ml-2 shrink-0">
-                          ${Number(item.total).toFixed(2)}
+                          {formatCurrency(item.total)}
                         </span>
                       </div>
                       <div className="grid grid-cols-2 gap-2 text-sm text-muted-foreground">
@@ -158,7 +159,7 @@ export function EstimatePreviewDialog({
                         </div>
                         <div>
                           <span className="block text-xs mb-0.5">Unit Price</span>
-                          <span>${Number(item.unit_price).toFixed(2)}</span>
+                          <span>{formatCurrency(item.unit_price)}</span>
                         </div>
                       </div>
                     </Card>
@@ -191,10 +192,10 @@ export function EstimatePreviewDialog({
                         </TableCell>
                         <TableCell className="text-right">{item.quantity}</TableCell>
                         <TableCell className="text-right">
-                          ${Number(item.unit_price).toFixed(2)}
+                          {formatCurrency(item.unit_price)}
                         </TableCell>
                         <TableCell className="text-right font-medium">
-                          ${Number(item.total).toFixed(2)}
+                          {formatCurrency(item.total)}
                         </TableCell>
                       </TableRow>
                     ))}
@@ -213,22 +214,22 @@ export function EstimatePreviewDialog({
               <div className="space-y-2">
                 <div className="flex justify-between text-sm">
                   <span className="text-muted-foreground">Subtotal</span>
-                  <span className="font-medium">${subtotal.toFixed(2)}</span>
+                  <span className="font-medium">{formatCurrency(subtotal)}</span>
                 </div>
                 <div className="flex justify-between text-sm">
                   <span className="text-muted-foreground">
                     Tax ({taxRate}%)
                     {taxableAmount !== subtotal && (
                       <span className="ml-1 text-xs">
-                        (on ${taxableAmount.toFixed(2)})
+                        (on {formatCurrency(taxableAmount)})
                       </span>
                     )}
                   </span>
-                  <span className="font-medium">${taxAmount.toFixed(2)}</span>
+                  <span className="font-medium">{formatCurrency(taxAmount)}</span>
                 </div>
                 <div className="flex justify-between text-lg font-semibold pt-2 border-t border-border">
                   <span>Total</span>
-                  <span className="text-primary">${total.toFixed(2)}</span>
+                  <span className="text-primary">{formatCurrency(total)}</span>
                 </div>
               </div>
             </CardContent>

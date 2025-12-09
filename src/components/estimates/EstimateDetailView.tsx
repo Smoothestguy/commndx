@@ -1,4 +1,5 @@
 import { useNavigate } from "react-router-dom";
+import { formatCurrency } from "@/lib/utils";
 import { PageLayout } from "@/components/layout/PageLayout";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { useProducts } from "@/integrations/supabase/hooks/useProducts";
@@ -554,7 +555,7 @@ export function EstimateDetailView({ estimateId }: EstimateDetailViewProps) {
                             )}
                           </div>
                           <span className="text-primary font-semibold ml-2 shrink-0">
-                            ${Number(item.total).toFixed(2)}
+                            {formatCurrency(item.total)}
                           </span>
                         </div>
                         <div className="grid grid-cols-2 gap-2 text-sm text-muted-foreground">
@@ -564,7 +565,7 @@ export function EstimateDetailView({ estimateId }: EstimateDetailViewProps) {
                           </div>
                           <div>
                             <span className="block text-xs mb-0.5">Unit Price</span>
-                            <span>${Number(item.unit_price).toFixed(2)}</span>
+                            <span>{formatCurrency(item.unit_price)}</span>
                           </div>
                         </div>
                       </Card>
@@ -601,10 +602,10 @@ export function EstimateDetailView({ estimateId }: EstimateDetailViewProps) {
                           </TableCell>
                           <TableCell className="text-right">{item.quantity}</TableCell>
                           <TableCell className="text-right">
-                            ${Number(item.unit_price).toFixed(2)}
+                            {formatCurrency(item.unit_price)}
                           </TableCell>
                           <TableCell className="text-right">
-                            ${Number(item.total).toFixed(2)}
+                            {formatCurrency(item.total)}
                           </TableCell>
                         </TableRow>
                       );
@@ -624,16 +625,16 @@ export function EstimateDetailView({ estimateId }: EstimateDetailViewProps) {
             <CardContent className="space-y-3">
               <div className="flex justify-between items-center gap-2">
                 <span className="text-muted-foreground text-sm">Subtotal</span>
-                <span className="font-medium">${Number(estimate.subtotal).toFixed(2)}</span>
+                <span className="font-medium">{formatCurrency(estimate.subtotal)}</span>
               </div>
               <div className="flex justify-between items-center gap-2">
                 <span className="text-muted-foreground text-sm">Tax ({estimate.tax_rate}%)</span>
-                <span className="font-medium">${Number(estimate.tax_amount).toFixed(2)}</span>
+                <span className="font-medium">{formatCurrency(estimate.tax_amount)}</span>
               </div>
               <Separator />
               <div className="flex justify-between items-center gap-2">
                 <span className="font-semibold">Total</span>
-                <span className="text-lg font-bold text-primary">${Number(estimate.total).toFixed(2)}</span>
+                <span className="text-lg font-bold text-primary">{formatCurrency(estimate.total)}</span>
               </div>
             </CardContent>
           </Card>
