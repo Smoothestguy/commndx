@@ -3,8 +3,6 @@ import { useParams, useNavigate } from "react-router-dom";
 import { PageLayout } from "@/components/layout/PageLayout";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import {
   Select,
@@ -13,15 +11,32 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Switch } from "@/components/ui/switch";
-import { Plus, Trash2, Loader2, AlertTriangle, ArrowLeft, Edit, Eye } from "lucide-react";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Plus, Loader2, AlertTriangle, ArrowLeft, Edit, Eye } from "lucide-react";
 import { EstimatePreviewDialog } from "@/components/estimates/EstimatePreviewDialog";
+import { SortableLineItem } from "@/components/estimates/SortableLineItem";
 import { useCustomers } from "@/integrations/supabase/hooks/useCustomers";
 import { useProjectsByCustomer } from "@/integrations/supabase/hooks/useProjects";
 import { useProducts } from "@/integrations/supabase/hooks/useProducts";
 import { useEstimate, useUpdateEstimate } from "@/integrations/supabase/hooks/useEstimates";
 import { useCompanySettings } from "@/integrations/supabase/hooks/useCompanySettings";
 import { z } from "zod";
+import {
+  DndContext,
+  closestCenter,
+  KeyboardSensor,
+  PointerSensor,
+  useSensor,
+  useSensors,
+  DragEndEvent,
+} from "@dnd-kit/core";
+import {
+  arrayMove,
+  SortableContext,
+  sortableKeyboardCoordinates,
+  verticalListSortingStrategy,
+} from "@dnd-kit/sortable";
 
 const lineItemSchema = z.object({
   description: z.string().min(1, "Description is required").max(500),
@@ -38,7 +53,7 @@ const estimateSchema = z.object({
 });
 
 interface LineItem {
-  id?: string;
+  id: string;
   product_id?: string;
   description: string;
   quantity: string;
@@ -47,6 +62,7 @@ interface LineItem {
   pricing_type: 'markup' | 'margin';
   is_taxable: boolean;
   total: number;
+  isExpanded?: boolean;
 }
 
 const EditEstimate = () => {
@@ -70,6 +86,8 @@ const EditEstimate = () => {
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [isInitialized, setIsInitialized] = useState(false);
   const [previewOpen, setPreviewOpen] = useState(false);
+  const [productComboboxStates, setProductComboboxStates] = useState<Record<number, boolean>>({});
+  const [productSearchStates, setProductSearchStates] = useState<Record<number, string>>({});
 
   const { data: projects } = useProjectsByCustomer(selectedCustomerId);
 
@@ -98,7 +116,7 @@ const EditEstimate = () => {
       }));
       
       setLineItems(formLineItems.length > 0 ? formLineItems : [
-        { description: "", quantity: "1", unit_price: "", margin: "0", pricing_type: "margin", is_taxable: true, total: 0 },
+        { id: crypto.randomUUID(), description: "", quantity: "1", unit_price: "", margin: "0", pricing_type: "margin", is_taxable: true, total: 0, isExpanded: true },
       ]);
       
       setIsInitialized(true);
@@ -141,8 +159,47 @@ const EditEstimate = () => {
   const addLineItem = () => {
     setLineItems([
       ...lineItems,
-      { description: "", quantity: "1", unit_price: "", margin: "0", pricing_type: defaultPricingType, is_taxable: true, total: 0 },
+      { id: crypto.randomUUID(), description: "", quantity: "1", unit_price: "", margin: "0", pricing_type: defaultPricingType, is_taxable: true, total: 0, isExpanded: true },
     ]);
+  };
+
+  const toggleItemExpanded = (index: number) => {
+    const newLineItems = [...lineItems];
+    newLineItems[index] = { ...newLineItems[index], isExpanded: !newLineItems[index].isExpanded };
+    setLineItems(newLineItems);
+  };
+
+  // Drag and drop sensors
+  const sensors = useSensors(
+    useSensor(PointerSensor),
+    useSensor(KeyboardSensor, {
+      coordinateGetter: sortableKeyboardCoordinates,
+    })
+  );
+
+  const handleDragEnd = (event: DragEndEvent) => {
+    const { active, over } = event;
+    if (over && active.id !== over.id) {
+      setLineItems((items) => {
+        const oldIndex = items.findIndex((item) => item.id === active.id);
+        const newIndex = items.findIndex((item) => item.id === over.id);
+        return arrayMove(items, oldIndex, newIndex);
+      });
+    }
+  };
+
+  // Product combobox handlers
+  const handleSetProductComboboxOpen = (index: number, open: boolean) => {
+    setProductComboboxStates((prev) => ({ ...prev, [index]: open }));
+  };
+
+  const handleSetProductSearch = (index: number, value: string) => {
+    setProductSearchStates((prev) => ({ ...prev, [index]: value }));
+  };
+
+  // Get products by type for combobox
+  const getProductsByType = (type: 'product' | 'service' | 'labor') => {
+    return (products || []).filter((p) => p.item_type === type);
   };
 
   const removeLineItem = (index: number) => {
@@ -429,133 +486,48 @@ const EditEstimate = () => {
             </Button>
           </CardHeader>
           <CardContent className="space-y-4">
-            {lineItems.map((item, index) => (
-              <div
-                key={index}
-                className="p-4 rounded-lg bg-secondary/50 border border-border space-y-3"
+            <DndContext
+              sensors={sensors}
+              collisionDetection={closestCenter}
+              onDragEnd={handleDragEnd}
+            >
+              <SortableContext
+                items={lineItems.map((item) => item.id)}
+                strategy={verticalListSortingStrategy}
               >
-                <div className="flex items-center justify-between mb-2">
-                  <div className="flex items-center gap-3">
-                    <span className="text-sm font-medium">Item {index + 1}</span>
-                    <div className="flex items-center gap-2">
-                      <Switch
-                        id={`taxable-${index}`}
-                        checked={item.is_taxable}
-                        onCheckedChange={(checked) => updateLineItem(index, "is_taxable", checked.toString())}
-                        disabled={isCustomerTaxExempt}
-                      />
-                      <Label htmlFor={`taxable-${index}`} className="text-xs text-muted-foreground">
-                        Taxable
-                      </Label>
-                    </div>
-                  </div>
-                  {lineItems.length > 1 && (
-                    <Button
-                      type="button"
-                      variant="ghost"
-                      size="sm"
-                      onClick={() => removeLineItem(index)}
-                    >
-                      <Trash2 className="h-4 w-4 text-destructive" />
-                    </Button>
-                  )}
-                </div>
-
-                <div className="space-y-2">
-                  <Label>Select Product (Optional)</Label>
-                  <Select
-                    value={item.product_id || ""}
-                    onValueChange={(value) => selectProduct(index, value)}
-                  >
-                    <SelectTrigger className="bg-secondary border-border">
-                      <SelectValue placeholder="Select a product or enter manually" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {products?.map((product) => (
-                        <SelectItem key={product.id} value={product.id}>
-                          <span className="font-medium">{product.name}</span>
-                          {product.description && (
-                            <span className="text-muted-foreground"> - {product.description}</span>
-                          )}
-                          <span className="text-muted-foreground ml-1">(${product.price.toFixed(2)})</span>
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-
-                <div className="grid gap-3 sm:grid-cols-2">
-                  <div className="space-y-2 sm:col-span-2">
-                    <Label>Description *</Label>
-                    <Input
-                      value={item.description}
-                      onChange={(e) => updateLineItem(index, "description", e.target.value)}
-                      placeholder="Item description"
-                      className="bg-secondary border-border"
-                    />
-                    {errors[`line_${index}_description`] && (
-                      <p className="text-sm text-destructive">
-                        {errors[`line_${index}_description`]}
-                      </p>
-                    )}
-                  </div>
-
-                  <div className="space-y-2">
-                    <Label>Quantity *</Label>
-                    <Input
-                      type="number"
-                      step="0.01"
-                      value={item.quantity}
-                      onChange={(e) => updateLineItem(index, "quantity", e.target.value)}
-                      className="bg-secondary border-border"
-                    />
-                  </div>
-
-                  <div className="space-y-2">
-                    <Label>Unit Price ($) *</Label>
-                    <Input
-                      type="number"
-                      step="0.01"
-                      value={item.unit_price}
-                      onChange={(e) => updateLineItem(index, "unit_price", e.target.value)}
-                      className="bg-secondary border-border"
-                    />
-                  </div>
-
-                  <div className="space-y-2">
-                    <Label>Pricing Method</Label>
-                    <Select
-                      value={item.pricing_type}
-                      onValueChange={(v: 'markup' | 'margin') => updateLineItem(index, "pricing_type", v)}
-                    >
-                      <SelectTrigger className="bg-secondary border-border">
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="margin">Margin %</SelectItem>
-                        <SelectItem value="markup">Markup %</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
-
-                  <div className="space-y-2">
-                    <Label>{item.pricing_type === 'margin' ? 'Margin' : 'Markup'} (%)</Label>
-                    <Input
-                      type="number"
-                      step="0.01"
-                      value={item.margin}
-                      onChange={(e) => updateLineItem(index, "margin", e.target.value)}
-                      className="bg-secondary border-border"
-                    />
-                  </div>
-                </div>
-
-                <div className="flex justify-end pt-2 border-t border-border">
-                  <span className="text-sm text-muted-foreground mr-2">Line Total:</span>
-                  <span className="font-semibold">${item.total.toFixed(2)}</span>
-                </div>
-              </div>
-            ))}
+                {lineItems.map((item, index) => (
+                  <SortableLineItem
+                    key={item.id}
+                    item={{
+                      id: item.id,
+                      product_id: item.product_id,
+                      description: item.description,
+                      quantity: item.quantity,
+                      unit_price: item.unit_price,
+                      margin: item.margin,
+                      pricing_type: item.pricing_type,
+                      is_taxable: item.is_taxable,
+                      total: item.total,
+                    }}
+                    index={index}
+                    products={products}
+                    isCustomerTaxExempt={isCustomerTaxExempt}
+                    canDelete={lineItems.length > 1}
+                    productComboboxOpen={productComboboxStates[index] ?? false}
+                    productSearch={productSearchStates[index] ?? ""}
+                    errors={errors}
+                    isExpanded={item.isExpanded ?? true}
+                    onToggleExpand={() => toggleItemExpanded(index)}
+                    getProductsByType={getProductsByType}
+                    onUpdateItem={updateLineItem}
+                    onRemoveItem={removeLineItem}
+                    onSelectProduct={selectProduct}
+                    onSetProductComboboxOpen={handleSetProductComboboxOpen}
+                    onSetProductSearch={handleSetProductSearch}
+                  />
+                ))}
+              </SortableContext>
+            </DndContext>
           </CardContent>
         </Card>
 
