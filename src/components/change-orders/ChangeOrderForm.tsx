@@ -252,12 +252,12 @@ export function ChangeOrderForm({
 
             <div className="space-y-2">
               <Label htmlFor="vendor">Vendor (Optional)</Label>
-              <Select value={vendorId} onValueChange={setVendorId}>
+              <Select value={vendorId || "none"} onValueChange={(v) => setVendorId(v === "none" ? "" : v)}>
                 <SelectTrigger>
                   <SelectValue placeholder="Select vendor" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="">None</SelectItem>
+                  <SelectItem value="none">None</SelectItem>
                   {vendors?.map((vendor) => (
                     <SelectItem key={vendor.id} value={vendor.id}>
                       {vendor.name}
@@ -269,12 +269,12 @@ export function ChangeOrderForm({
 
             <div className="space-y-2">
               <Label htmlFor="purchaseOrder">Link to Purchase Order (Optional)</Label>
-              <Select value={purchaseOrderId} onValueChange={setPurchaseOrderId}>
+              <Select value={purchaseOrderId || "none"} onValueChange={(v) => setPurchaseOrderId(v === "none" ? "" : v)}>
                 <SelectTrigger>
                   <SelectValue placeholder="Select PO" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="">None</SelectItem>
+                  <SelectItem value="none">None</SelectItem>
                   {filteredPurchaseOrders?.map((po) => (
                     <SelectItem key={po.id} value={po.id}>
                       {po.number}
@@ -286,12 +286,12 @@ export function ChangeOrderForm({
 
             <div className="space-y-2">
               <Label htmlFor="jobOrder">Link to Job Order (Optional)</Label>
-              <Select value={jobOrderId} onValueChange={setJobOrderId}>
+              <Select value={jobOrderId || "none"} onValueChange={(v) => setJobOrderId(v === "none" ? "" : v)}>
                 <SelectTrigger>
                   <SelectValue placeholder="Select Job Order" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="">None</SelectItem>
+                  <SelectItem value="none">None</SelectItem>
                   {filteredJobOrders?.map((jo) => (
                     <SelectItem key={jo.id} value={jo.id}>
                       {jo.number}
