@@ -111,11 +111,7 @@ const Estimates = () => {
   ];
 
   const handleRowClick = (item: Estimate) => {
-    if (item.status === "draft") {
-      navigate(`/estimates/new?draft=${item.id}`);
-    } else {
-      navigate(`/estimates/${item.id}`);
-    }
+    navigate(`/estimates/${item.id}`);
   };
 
   return (
