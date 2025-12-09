@@ -97,9 +97,7 @@ const Estimates = () => {
             size="icon"
             onClick={(e) => {
               e.stopPropagation();
-              item.status === "draft"
-                ? navigate(`/estimates/new?draft=${item.id}`)
-                : navigate(`/estimates/${item.id}/edit`);
+              navigate(`/estimates/${item.id}/edit`);
             }}
             title="Edit estimate"
           >
