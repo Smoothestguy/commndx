@@ -37,6 +37,8 @@ import {
   useConvertEstimateToJobOrder,
   useConvertEstimateToInvoice,
 } from "@/integrations/supabase/hooks/useEstimates";
+import { useCompanySettings } from "@/integrations/supabase/hooks/useCompanySettings";
+import { useCustomers } from "@/integrations/supabase/hooks/useCustomers";
 import { ConvertToJobOrderDialog } from "./ConvertToJobOrderDialog";
 import { EstimateAttachments } from "./EstimateAttachments";
 import { Download, Edit, Trash2, Briefcase, MoreVertical, Loader2, Send, Copy, CheckCircle, FileText, Eye } from "lucide-react";
@@ -61,6 +63,12 @@ export function EstimateDetailView({ estimateId }: EstimateDetailViewProps) {
   const convertToInvoice = useConvertEstimateToInvoice();
   const [isSending, setIsSending] = useState(false);
   const { data: products } = useProducts();
+  const { data: companySettings } = useCompanySettings();
+  const { data: customers } = useCustomers();
+
+  // Get customer address
+  const customer = customers?.find((c) => c.id === estimate?.customer_id);
+  const customerAddress = customer?.address || null;
 
   const getProductName = (productId?: string | null) => {
     if (!productId) return null;
@@ -215,6 +223,7 @@ export function EstimateDetailView({ estimateId }: EstimateDetailViewProps) {
                   generateEstimatePDF({
                     number: estimate.number,
                     customerName: estimate.customer_name,
+                    customerAddress,
                     projectName: estimate.project_name,
                     status: estimate.status,
                     createdAt: estimate.created_at,
@@ -234,6 +243,7 @@ export function EstimateDetailView({ estimateId }: EstimateDetailViewProps) {
                     taxAmount: estimate.tax_amount,
                     total: estimate.total,
                     salesRepName,
+                    companySettings,
                   });
                 }}
               >
@@ -324,6 +334,7 @@ export function EstimateDetailView({ estimateId }: EstimateDetailViewProps) {
                       generateEstimatePDF({
                         number: estimate.number,
                         customerName: estimate.customer_name,
+                        customerAddress,
                         projectName: estimate.project_name,
                         status: estimate.status,
                         createdAt: estimate.created_at,
@@ -343,6 +354,7 @@ export function EstimateDetailView({ estimateId }: EstimateDetailViewProps) {
                         taxAmount: estimate.tax_amount,
                         total: estimate.total,
                         salesRepName,
+                        companySettings,
                       });
                     }}
                   >
