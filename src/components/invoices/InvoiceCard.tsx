@@ -1,6 +1,7 @@
 import { Receipt, User, Calendar, Eye, FolderOpen } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { StatusBadge } from "@/components/shared/StatusBadge";
+import { formatCurrency } from "@/lib/utils";
 
 type Status = 
   | "draft" 
@@ -70,7 +71,7 @@ export const InvoiceCard = ({ invoice, onView, index }: InvoiceCardProps) => {
         <div>
           <p className="text-sm text-muted-foreground mb-1">Amount</p>
           <p className="text-2xl font-heading font-bold text-primary">
-            ${invoice.total.toLocaleString(undefined, { minimumFractionDigits: 2 })}
+            {formatCurrency(invoice.total)}
           </p>
         </div>
         <div className="text-right">

@@ -1,5 +1,6 @@
 import { FileText, DollarSign, Edit, CheckCircle } from "lucide-react";
 import { Estimate } from "@/integrations/supabase/hooks/useEstimates";
+import { formatCurrency } from "@/lib/utils";
 
 interface EstimateStatsProps {
   estimates: Estimate[];
@@ -19,7 +20,7 @@ export function EstimateStats({ estimates }: EstimateStatsProps) {
     },
     {
       label: "Total Value",
-      value: `$${totalValue.toLocaleString()}`,
+      value: formatCurrency(totalValue),
       icon: DollarSign,
       color: "text-success",
     },

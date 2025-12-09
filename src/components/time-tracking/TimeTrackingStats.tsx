@@ -2,6 +2,7 @@ import { Card } from "@/components/ui/card";
 import { Clock, DollarSign, FileText, AlertCircle, Gift } from "lucide-react";
 import { TimeEntryWithDetails } from "@/integrations/supabase/hooks/useTimeEntries";
 import { useCompanySettings } from "@/integrations/supabase/hooks/useCompanySettings";
+import { formatCurrency } from "@/lib/utils";
 
 interface TimeTrackingStatsProps {
   entries: TimeEntryWithDetails[];
@@ -70,7 +71,7 @@ export function TimeTrackingStats({ entries }: TimeTrackingStatsProps) {
     },
     {
       label: "Total Cost",
-      value: `$${totalCost.toFixed(2)}`,
+      value: formatCurrency(totalCost),
       icon: DollarSign,
       color: "text-success",
     },

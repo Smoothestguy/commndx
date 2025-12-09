@@ -1,5 +1,6 @@
 import { DollarSign, Clock, ShoppingCart, CheckCircle } from "lucide-react";
 import { PurchaseOrder } from "@/integrations/supabase/hooks/usePurchaseOrders";
+import { formatCurrency } from "@/lib/utils";
 
 interface PurchaseOrderStatsProps {
   purchaseOrders: PurchaseOrder[];
@@ -18,13 +19,13 @@ export function PurchaseOrderStats({ purchaseOrders }: PurchaseOrderStatsProps) 
   const stats = [
     {
       label: "Total PO Value",
-      value: `$${totalValue.toLocaleString()}`,
+      value: formatCurrency(totalValue),
       icon: DollarSign,
       color: "text-primary",
     },
     {
       label: "In Progress",
-      value: `$${inProgressValue.toLocaleString()}`,
+      value: formatCurrency(inProgressValue),
       icon: Clock,
       color: "text-warning",
     },

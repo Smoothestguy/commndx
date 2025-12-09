@@ -24,6 +24,7 @@ import { useNavigate } from "react-router-dom";
 import { useMemo } from "react";
 import { PieChart, Pie, Cell, ResponsiveContainer, BarChart, Bar, XAxis, YAxis, Tooltip, Legend } from "recharts";
 import { useIsMobile } from "@/hooks/use-mobile";
+import { formatCurrency } from "@/lib/utils";
 
 const Dashboard = () => {
   const navigate = useNavigate();
@@ -134,7 +135,7 @@ const Dashboard = () => {
       key: "total",
       header: "Total",
       render: (item: Estimate) => (
-        <span className="font-medium">${(item.total ?? 0).toLocaleString()}</span>
+        <span className="font-medium">{formatCurrency(item.total)}</span>
       ),
     },
   ], []);
@@ -153,7 +154,7 @@ const Dashboard = () => {
       key: "total",
       header: "Amount",
       render: (item: Invoice) => (
-        <span className="font-medium">${(item.total ?? 0).toLocaleString()}</span>
+        <span className="font-medium">{formatCurrency(item.total)}</span>
       ),
     },
     { 
@@ -192,7 +193,7 @@ const Dashboard = () => {
       <div className="grid gap-3 sm:gap-6 grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 mb-4 sm:mb-8">
         <StatCard
           title="Total Revenue"
-          value={isLoading ? "..." : `$${stats.totalRevenue.toLocaleString()}`}
+          value={isLoading ? "..." : formatCurrency(stats.totalRevenue)}
           change={paidInvoices.length ? `${paidInvoices.length} paid invoices` : "No paid invoices"}
           changeType="positive"
           icon={DollarSign}
@@ -341,7 +342,7 @@ const Dashboard = () => {
                       {estimate.project_name || "No project"}
                     </span>
                     <span className="text-primary font-semibold">
-                      ${(estimate.total ?? 0).toLocaleString()}
+                      {formatCurrency(estimate.total)}
                     </span>
                   </div>
                 </Card>
@@ -400,7 +401,7 @@ const Dashboard = () => {
                     Due: {invoice.due_date ? new Date(invoice.due_date).toLocaleDateString() : "—"}
                   </span>
                   <span className="text-primary font-semibold">
-                    ${(invoice.total ?? 0).toLocaleString()}
+                    {formatCurrency(invoice.total)}
                   </span>
                 </div>
               </Card>

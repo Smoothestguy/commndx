@@ -12,6 +12,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { generateInvoicePDF } from "@/utils/invoicePdfExport";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { InvoiceAttachments } from "@/components/invoices/InvoiceAttachments";
+import { formatCurrency } from "@/lib/utils";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -273,8 +274,8 @@ const InvoiceDetail = () => {
                 <tr key={item.id} className="border-b border-border/50">
                   <td className="py-4">{item.description}</td>
                   <td className="py-4 text-right">{item.quantity}</td>
-                  <td className="py-4 text-right">${Number(item.unit_price).toFixed(2)}</td>
-                  <td className="py-4 text-right font-medium">${Number(item.total).toFixed(2)}</td>
+                  <td className="py-4 text-right">{formatCurrency(Number(item.unit_price))}</td>
+                  <td className="py-4 text-right font-medium">{formatCurrency(Number(item.total))}</td>
                 </tr>
               ))}
             </tbody>
@@ -286,15 +287,15 @@ const InvoiceDetail = () => {
           <div className="w-64 space-y-2">
             <div className="flex justify-between py-2">
               <span className="text-muted-foreground">Subtotal</span>
-              <span>${Number(invoice.subtotal).toFixed(2)}</span>
+              <span>{formatCurrency(Number(invoice.subtotal))}</span>
             </div>
             <div className="flex justify-between py-2">
               <span className="text-muted-foreground">Tax ({Number(invoice.tax_rate).toFixed(1)}%)</span>
-              <span>${Number(invoice.tax_amount).toFixed(2)}</span>
+              <span>{formatCurrency(Number(invoice.tax_amount))}</span>
             </div>
             <div className="flex justify-between py-3 border-t border-border font-semibold">
               <span>Total</span>
-              <span className="text-2xl text-primary">${Number(invoice.total).toFixed(2)}</span>
+              <span className="text-2xl text-primary">{formatCurrency(Number(invoice.total))}</span>
             </div>
           </div>
         </div>

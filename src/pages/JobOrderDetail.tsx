@@ -24,6 +24,7 @@ import { useInvoicesByJobOrder } from "@/integrations/supabase/hooks/useInvoices
 import { usePurchaseOrders } from "@/integrations/supabase/hooks/usePurchaseOrders";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { CreateInvoiceFromJODialog } from "@/components/invoices/CreateInvoiceFromJODialog";
+import { formatCurrency } from "@/lib/utils";
 
 const JobOrderDetail = () => {
   const { id } = useParams();
@@ -165,19 +166,19 @@ const JobOrderDetail = () => {
               <div className="text-center p-4 rounded-lg bg-secondary/50">
                 <p className="text-sm text-muted-foreground">Total Value</p>
                 <p className="text-2xl font-heading font-bold text-primary">
-                  ${jobOrder.total.toLocaleString(undefined, { minimumFractionDigits: 2 })}
+                  {formatCurrency(jobOrder.total)}
                 </p>
               </div>
               <div className="text-center p-4 rounded-lg bg-secondary/50">
                 <p className="text-sm text-muted-foreground">Invoiced</p>
                 <p className="text-2xl font-heading font-bold text-success">
-                  ${jobOrder.invoiced_amount.toLocaleString(undefined, { minimumFractionDigits: 2 })}
+                  {formatCurrency(jobOrder.invoiced_amount)}
                 </p>
               </div>
               <div className="text-center p-4 rounded-lg bg-secondary/50">
                 <p className="text-sm text-muted-foreground">Remaining</p>
                 <p className="text-2xl font-heading font-bold text-warning">
-                  ${jobOrder.remaining_amount.toLocaleString(undefined, { minimumFractionDigits: 2 })}
+                  {formatCurrency(jobOrder.remaining_amount)}
                 </p>
               </div>
             </div>
@@ -212,7 +213,7 @@ const JobOrderDetail = () => {
                   <div className="flex justify-between items-start mb-2">
                     <span className="font-medium text-sm">{item.description}</span>
                     <span className="text-primary font-semibold ml-2 shrink-0">
-                      ${item.total.toLocaleString(undefined, { minimumFractionDigits: 2 })}
+                      {formatCurrency(item.total)}
                     </span>
                   </div>
                   <div className="grid grid-cols-2 gap-2 text-sm text-muted-foreground">
@@ -220,9 +221,9 @@ const JobOrderDetail = () => {
                       <span className="block text-xs mb-0.5">Quantity</span>
                       <span>{item.quantity}</span>
                     </div>
-                    <div>
-                      <span className="block text-xs mb-0.5">Unit Price</span>
-                      <span>${item.unit_price.toLocaleString(undefined, { minimumFractionDigits: 2 })}</span>
+                      <div>
+                        <span className="block text-xs mb-0.5">Unit Price</span>
+                        <span>{formatCurrency(item.unit_price)}</span>
                     </div>
                   </div>
                 </Card>
@@ -244,10 +245,10 @@ const JobOrderDetail = () => {
                     <TableCell>{item.description}</TableCell>
                     <TableCell className="text-right">{item.quantity}</TableCell>
                     <TableCell className="text-right">
-                      ${item.unit_price.toLocaleString(undefined, { minimumFractionDigits: 2 })}
+                      {formatCurrency(item.unit_price)}
                     </TableCell>
                     <TableCell className="text-right font-medium">
-                      ${item.total.toLocaleString(undefined, { minimumFractionDigits: 2 })}
+                      {formatCurrency(item.total)}
                     </TableCell>
                   </TableRow>
                 ))}
@@ -258,15 +259,15 @@ const JobOrderDetail = () => {
           <div className="mt-4 pt-4 border-t border-border/30 space-y-2">
             <div className="flex justify-between text-sm">
               <span className="text-muted-foreground">Subtotal</span>
-              <span>${jobOrder.subtotal.toLocaleString(undefined, { minimumFractionDigits: 2 })}</span>
+              <span>{formatCurrency(jobOrder.subtotal)}</span>
             </div>
             <div className="flex justify-between text-sm">
               <span className="text-muted-foreground">Tax ({jobOrder.tax_rate}%)</span>
-              <span>${jobOrder.tax_amount.toLocaleString(undefined, { minimumFractionDigits: 2 })}</span>
+              <span>{formatCurrency(jobOrder.tax_amount)}</span>
             </div>
             <div className="flex justify-between text-lg font-bold pt-2 border-t border-border/30">
               <span>Total</span>
-              <span className="text-primary">${jobOrder.total.toLocaleString(undefined, { minimumFractionDigits: 2 })}</span>
+              <span className="text-primary">{formatCurrency(jobOrder.total)}</span>
             </div>
           </div>
         </CardContent>
@@ -306,7 +307,7 @@ const JobOrderDetail = () => {
                         Due: {new Date(po.due_date).toLocaleDateString()}
                       </span>
                       <span className="text-primary font-semibold">
-                        ${po.total.toLocaleString(undefined, { minimumFractionDigits: 2 })}
+                        {formatCurrency(po.total)}
                       </span>
                     </div>
                   </Card>
@@ -334,7 +335,7 @@ const JobOrderDetail = () => {
                       <TableCell>{po.vendor_name}</TableCell>
                       <TableCell><StatusBadge status={po.status} /></TableCell>
                       <TableCell className="text-right text-primary font-medium">
-                        ${po.total.toLocaleString(undefined, { minimumFractionDigits: 2 })}
+                        {formatCurrency(po.total)}
                       </TableCell>
                       <TableCell>{new Date(po.due_date).toLocaleDateString()}</TableCell>
                     </TableRow>
@@ -386,7 +387,7 @@ const JobOrderDetail = () => {
                         Due: {new Date(inv.due_date).toLocaleDateString()}
                       </span>
                       <span className="text-primary font-semibold">
-                        ${inv.total.toLocaleString(undefined, { minimumFractionDigits: 2 })}
+                        {formatCurrency(inv.total)}
                       </span>
                     </div>
                   </Card>
@@ -413,7 +414,7 @@ const JobOrderDetail = () => {
                       <TableCell className="font-medium">{inv.number}</TableCell>
                       <TableCell><StatusBadge status={inv.status} /></TableCell>
                       <TableCell className="text-right text-primary font-medium">
-                        ${inv.total.toLocaleString(undefined, { minimumFractionDigits: 2 })}
+                        {formatCurrency(inv.total)}
                       </TableCell>
                       <TableCell>{new Date(inv.due_date).toLocaleDateString()}</TableCell>
                       <TableCell>{inv.paid_date ? new Date(inv.paid_date).toLocaleDateString() : "-"}</TableCell>

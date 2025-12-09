@@ -1,6 +1,7 @@
 import { Card, CardContent } from "@/components/ui/card";
 import { FileText, Clock, CheckCircle, AlertTriangle } from "lucide-react";
 import { VendorBill } from "@/integrations/supabase/hooks/useVendorBills";
+import { formatCurrency } from "@/lib/utils";
 
 interface VendorBillStatsProps {
   bills: VendorBill[];
@@ -22,7 +23,7 @@ export function VendorBillStats({ bills }: VendorBillStatsProps) {
     {
       label: "Total Bills",
       value: totalBills,
-      subValue: `$${totalAmount.toLocaleString("en-US", { minimumFractionDigits: 2 })}`,
+      subValue: formatCurrency(totalAmount),
       icon: FileText,
       color: "text-blue-600 dark:text-blue-400",
       bgColor: "bg-blue-100 dark:bg-blue-900/30",
@@ -30,7 +31,7 @@ export function VendorBillStats({ bills }: VendorBillStatsProps) {
     {
       label: "Open Balance",
       value: openBills.length,
-      subValue: `$${openAmount.toLocaleString("en-US", { minimumFractionDigits: 2 })}`,
+      subValue: formatCurrency(openAmount),
       icon: Clock,
       color: "text-orange-600 dark:text-orange-400",
       bgColor: "bg-orange-100 dark:bg-orange-900/30",
@@ -38,7 +39,7 @@ export function VendorBillStats({ bills }: VendorBillStatsProps) {
     {
       label: "Paid",
       value: bills.filter(b => b.status === "paid").length,
-      subValue: `$${paidAmount.toLocaleString("en-US", { minimumFractionDigits: 2 })}`,
+      subValue: formatCurrency(paidAmount),
       icon: CheckCircle,
       color: "text-green-600 dark:text-green-400",
       bgColor: "bg-green-100 dark:bg-green-900/30",
