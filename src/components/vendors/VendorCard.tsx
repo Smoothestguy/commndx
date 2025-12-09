@@ -1,4 +1,5 @@
 import { Building2, Mail, Phone, Edit, Trash2, Tag } from "lucide-react";
+import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -21,13 +22,14 @@ const vendorTypeColors: Record<string, string> = {
 };
 
 export const VendorCard = ({ vendor, onEdit, onDelete, index, isSelected, onSelect }: VendorCardProps) => {
+  const navigate = useNavigate();
   const borderColor = vendor.status === "active" ? "border-l-success" : "border-l-muted";
 
   return (
     <div
       className={`glass rounded-xl p-4 hover:shadow-lg transition-all duration-300 animate-fade-in border-l-4 ${borderColor} cursor-pointer ${isSelected ? "ring-2 ring-primary" : ""}`}
       style={{ animationDelay: `${index * 50}ms` }}
-      onClick={() => window.location.href = `/vendors/${vendor.id}`}
+      onClick={() => navigate(`/vendors/${vendor.id}`)}
     >
       <div className="flex items-start gap-3">
         {onSelect && (
