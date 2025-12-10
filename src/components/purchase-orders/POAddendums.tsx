@@ -127,11 +127,25 @@ function AddendumRow({
           )}
         </TableCell>
         <TableCell>{format(new Date(addendum.created_at), "MMM d, yyyy")}</TableCell>
+        <TableCell>
+          <ApprovalStatusBadge status={addendum.approval_status} />
+        </TableCell>
         <TableCell className="text-right">
           ${Number(addendum.amount).toLocaleString(undefined, { minimumFractionDigits: 2 })}
         </TableCell>
         <TableCell className="text-right">
           <div className="flex justify-end gap-1">
+            {addendum.customer_rep_email && addendum.approval_status !== 'approved' && canManage && (
+              <Button
+                variant="ghost"
+                size="icon"
+                onClick={() => onSendForApproval(addendum)}
+                disabled={isSending}
+                title={addendum.approval_status === 'pending' ? "Resend Approval" : "Send for Approval"}
+              >
+                <Send className="h-4 w-4" />
+              </Button>
+            )}
             {addendum.file_path && (
               <Button
                 variant="ghost"
@@ -157,7 +171,7 @@ function AddendumRow({
       </TableRow>
       <CollapsibleContent asChild>
         <tr>
-          <td colSpan={5} className="p-0">
+          <td colSpan={6} className="p-0">
             <div className="px-4 pb-4">
               <AddendumLineItems addendumId={addendum.id} />
             </div>
@@ -171,10 +185,19 @@ function AddendumRow({
 export function POAddendums({ purchaseOrderId, purchaseOrderNumber, isClosed }: POAddendumsProps) {
   const { data: addendums, isLoading } = usePOAddendums(purchaseOrderId);
   const deleteAddendum = useDeletePOAddendum();
+  const sendForApproval = useSendChangeOrderForApproval();
   const { isAdmin, isManager } = useUserRole();
   const isMobile = useIsMobile();
   const [showAddDialog, setShowAddDialog] = useState(false);
   const [deleteTarget, setDeleteTarget] = useState<POAddendum | null>(null);
+  const [sendingId, setSendingId] = useState<string | null>(null);
+
+  const handleSendForApproval = async (addendum: POAddendum) => {
+    if (!addendum.customer_rep_email) return;
+    setSendingId(addendum.id);
+    await sendForApproval.mutateAsync(addendum.id);
+    setSendingId(null);
+  };
 
   const canManage = (isAdmin || isManager) && !isClosed;
 
@@ -304,6 +327,7 @@ export function POAddendums({ purchaseOrderId, purchaseOrderNumber, isClosed }: 
                   <TableHead>Description</TableHead>
                   <TableHead>CO #</TableHead>
                   <TableHead>Date</TableHead>
+                  <TableHead>Status</TableHead>
                   <TableHead className="text-right">Amount</TableHead>
                   <TableHead className="text-right">Actions</TableHead>
                 </TableRow>
@@ -316,6 +340,8 @@ export function POAddendums({ purchaseOrderId, purchaseOrderNumber, isClosed }: 
                     canManage={canManage}
                     onDownload={handleDownload}
                     onDelete={setDeleteTarget}
+                    onSendForApproval={handleSendForApproval}
+                    isSending={sendingId === addendum.id}
                   />
                 ))}
               </TableBody>
