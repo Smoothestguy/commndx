@@ -38,6 +38,15 @@ export interface Vendor {
   updated_at: string;
 }
 
+// Helper to check if QuickBooks is connected
+async function isQuickBooksConnected(): Promise<boolean> {
+  const { data } = await supabase
+    .from("quickbooks_config")
+    .select("is_connected")
+    .single();
+  return data?.is_connected === true;
+}
+
 export const useVendors = () => {
   return useQuery({
     queryKey: ["vendors"],
@@ -65,6 +74,21 @@ export const useAddVendor = () => {
         .single();
 
       if (error) throw error;
+
+      // Auto-sync to QuickBooks if connected
+      try {
+        const qbConnected = await isQuickBooksConnected();
+        if (qbConnected) {
+          console.log("QuickBooks connected - syncing vendor:", data.id);
+          await supabase.functions.invoke("quickbooks-sync-vendors", {
+            body: { action: "sync-single", vendorId: data.id },
+          });
+        }
+      } catch (qbError) {
+        console.error("QuickBooks sync error (non-blocking):", qbError);
+        // Don't throw - QB sync failure shouldn't prevent vendor creation
+      }
+
       return data;
     },
     onSuccess: () => {
@@ -90,6 +114,20 @@ export const useUpdateVendor = () => {
         .single();
 
       if (error) throw error;
+
+      // Auto-sync to QuickBooks if connected
+      try {
+        const qbConnected = await isQuickBooksConnected();
+        if (qbConnected) {
+          console.log("QuickBooks connected - syncing updated vendor:", id);
+          await supabase.functions.invoke("quickbooks-sync-vendors", {
+            body: { action: "sync-single", vendorId: id },
+          });
+        }
+      } catch (qbError) {
+        console.error("QuickBooks sync error (non-blocking):", qbError);
+      }
+
       return data;
     },
     onSuccess: () => {

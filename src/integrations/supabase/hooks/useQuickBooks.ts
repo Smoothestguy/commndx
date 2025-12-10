@@ -528,8 +528,8 @@ export const useQuickBooksBillMappings = () => {
   });
 };
 
-// Get next QuickBooks number (invoice or estimate)
-export const useQuickBooksNextNumber = (type: 'invoice' | 'estimate', enabled: boolean = true) => {
+// Get next QuickBooks number (invoice, estimate, purchase_order, or vendor_bill)
+export const useQuickBooksNextNumber = (type: 'invoice' | 'estimate' | 'purchase_order' | 'vendor_bill', enabled: boolean = true) => {
   return useQuery({
     queryKey: ["quickbooks-next-number", type],
     queryFn: async () => {
@@ -544,5 +544,115 @@ export const useQuickBooksNextNumber = (type: 'invoice' | 'estimate', enabled: b
     enabled,
     staleTime: 0, // Always fetch fresh
     refetchOnWindowFocus: false,
+  });
+};
+
+// Sync single customer to QuickBooks
+export const useSyncCustomerToQB = () => {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async (customerId: string) => {
+      const { data, error } = await supabase.functions.invoke('quickbooks-sync-customers', {
+        body: { action: 'sync-single', customerId },
+      });
+
+      if (error) throw error;
+      if (data.error) throw new Error(data.error);
+      return data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["quickbooks-sync-logs"] });
+      toast.success("Customer synced to QuickBooks");
+    },
+    onError: (error: Error) => {
+      toast.error(`Customer sync failed: ${error.message}`);
+    },
+  });
+};
+
+// Sync estimate to QuickBooks
+export const useSyncEstimateToQB = () => {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async (estimateId: string) => {
+      const { data, error } = await supabase.functions.invoke('quickbooks-create-estimate', {
+        body: { estimateId },
+      });
+
+      if (error) throw error;
+      if (data.error) throw new Error(data.error);
+      return data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["quickbooks-sync-logs"] });
+      queryClient.invalidateQueries({ queryKey: ["quickbooks-estimate-mappings"] });
+      toast.success("Estimate synced to QuickBooks");
+    },
+    onError: (error: Error) => {
+      toast.error(`Estimate sync failed: ${error.message}`);
+    },
+  });
+};
+
+// Sync purchase order to QuickBooks
+export const useSyncPurchaseOrderToQB = () => {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async (purchaseOrderId: string) => {
+      const { data, error } = await supabase.functions.invoke('quickbooks-create-purchase-order', {
+        body: { purchaseOrderId },
+      });
+
+      if (error) throw error;
+      if (data.error) throw new Error(data.error);
+      return data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["quickbooks-sync-logs"] });
+      queryClient.invalidateQueries({ queryKey: ["quickbooks-po-mappings"] });
+      toast.success("Purchase order synced to QuickBooks");
+    },
+    onError: (error: Error) => {
+      toast.error(`Purchase order sync failed: ${error.message}`);
+    },
+  });
+};
+
+// Get estimate mapping
+export const useQuickBooksEstimateMapping = (estimateId: string | undefined) => {
+  return useQuery({
+    queryKey: ["quickbooks-estimate-mapping", estimateId],
+    queryFn: async () => {
+      if (!estimateId) return null;
+      const { data, error } = await supabase
+        .from("quickbooks_estimate_mappings")
+        .select("*")
+        .eq("estimate_id", estimateId)
+        .maybeSingle();
+      if (error) throw error;
+      return data;
+    },
+    enabled: !!estimateId,
+  });
+};
+
+// Get PO mapping
+export const useQuickBooksPOMapping = (purchaseOrderId: string | undefined) => {
+  return useQuery({
+    queryKey: ["quickbooks-po-mapping", purchaseOrderId],
+    queryFn: async () => {
+      if (!purchaseOrderId) return null;
+      const { data, error } = await supabase
+        .from("quickbooks_po_mappings")
+        .select("*")
+        .eq("purchase_order_id", purchaseOrderId)
+        .maybeSingle();
+      if (error) throw error;
+      return data;
+    },
+    enabled: !!purchaseOrderId,
   });
 };

@@ -58,6 +58,15 @@ export interface VendorBillFilters {
   end_date?: string;
 }
 
+// Helper to check if QuickBooks is connected
+async function isQuickBooksConnected(): Promise<boolean> {
+  const { data } = await supabase
+    .from("quickbooks_config")
+    .select("is_connected")
+    .single();
+  return data?.is_connected === true;
+}
+
 export const useVendorBills = (filters?: VendorBillFilters) => {
   return useQuery({
     queryKey: ["vendor-bills", filters],
@@ -235,6 +244,20 @@ export const useAddVendorBill = () => {
           })));
 
         if (lineError) throw lineError;
+      }
+
+      // Auto-sync to QuickBooks if connected
+      try {
+        const qbConnected = await isQuickBooksConnected();
+        if (qbConnected) {
+          console.log("QuickBooks connected - syncing vendor bill:", newBill.id);
+          await supabase.functions.invoke("quickbooks-create-bill", {
+            body: { billId: newBill.id },
+          });
+        }
+      } catch (qbError) {
+        console.error("QuickBooks sync error (non-blocking):", qbError);
+        // Don't throw - QB sync failure shouldn't prevent bill creation
       }
 
       return newBill;

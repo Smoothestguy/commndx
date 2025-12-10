@@ -47,6 +47,15 @@ export interface PurchaseOrderWithLineItems extends PurchaseOrder {
   line_items: POLineItem[];
 }
 
+// Helper to check if QuickBooks is connected
+async function isQuickBooksConnected(): Promise<boolean> {
+  const { data } = await supabase
+    .from("quickbooks_config")
+    .select("is_connected")
+    .single();
+  return data?.is_connected === true;
+}
+
 export const usePurchaseOrders = () => {
   return useQuery({
     queryKey: ["purchase_orders"],
@@ -136,6 +145,20 @@ export const useAddPurchaseOrder = () => {
         .insert(lineItemsWithPOId);
 
       if (lineItemsError) throw lineItemsError;
+
+      // Auto-sync to QuickBooks if connected
+      try {
+        const qbConnected = await isQuickBooksConnected();
+        if (qbConnected) {
+          console.log("QuickBooks connected - syncing purchase order:", poData.id);
+          await supabase.functions.invoke("quickbooks-create-purchase-order", {
+            body: { purchaseOrderId: poData.id },
+          });
+        }
+      } catch (qbError) {
+        console.error("QuickBooks sync error (non-blocking):", qbError);
+        // Don't throw - QB sync failure shouldn't prevent PO creation
+      }
 
       return poData;
     },
