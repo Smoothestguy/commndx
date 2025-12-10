@@ -24,12 +24,12 @@ import {
   CollapsibleContent,
   CollapsibleTrigger,
 } from "@/components/ui/collapsible";
-import { usePOAddendums, usePOAddendumLineItems, useDeletePOAddendum, useSendChangeOrderForApproval, POAddendum } from "@/integrations/supabase/hooks/usePOAddendums";
+import { usePOAddendums, usePOAddendumLineItems, useDeletePOAddendum, useSendChangeOrderForApproval, POAddendum, POAddendumLineItem } from "@/integrations/supabase/hooks/usePOAddendums";
 import { useUserRole } from "@/hooks/useUserRole";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { format } from "date-fns";
 import { supabase } from "@/integrations/supabase/client";
-import { Plus, FileText, Download, Trash2, FileStack, ChevronDown, ChevronRight, Send, CheckCircle, Clock, XCircle } from "lucide-react";
+import { Plus, FileText, Download, Trash2, FileStack, ChevronDown, ChevronRight, Send, CheckCircle, Clock, XCircle, Pencil } from "lucide-react";
 import { AddAddendumDialog } from "./AddAddendumDialog";
 import { Badge } from "@/components/ui/badge";
 
@@ -96,6 +96,7 @@ function AddendumRow({
   canManage, 
   onDownload, 
   onDelete,
+  onEdit,
   onSendForApproval,
   isSending,
 }: { 
@@ -103,10 +104,12 @@ function AddendumRow({
   canManage: boolean; 
   onDownload: (a: POAddendum) => void; 
   onDelete: (a: POAddendum) => void;
+  onEdit: (a: POAddendum) => void;
   onSendForApproval: (a: POAddendum) => void;
   isSending: boolean;
 }) {
   const [isOpen, setIsOpen] = useState(false);
+  const isApproved = addendum.approval_status === 'approved';
 
   return (
     <Collapsible open={isOpen} onOpenChange={setIsOpen}>
@@ -135,6 +138,16 @@ function AddendumRow({
         </TableCell>
         <TableCell className="text-right">
           <div className="flex justify-end gap-1">
+            {canManage && !isApproved && (
+              <Button
+                variant="ghost"
+                size="icon"
+                onClick={() => onEdit(addendum)}
+                title="Edit"
+              >
+                <Pencil className="h-4 w-4" />
+              </Button>
+            )}
             {addendum.customer_rep_email && addendum.approval_status !== 'approved' && canManage && (
               <Button
                 variant="ghost"
@@ -156,7 +169,7 @@ function AddendumRow({
                 <Download className="h-4 w-4" />
               </Button>
             )}
-            {canManage && (
+            {canManage && !isApproved && (
               <Button
                 variant="ghost"
                 size="icon"
@@ -191,6 +204,29 @@ export function POAddendums({ purchaseOrderId, purchaseOrderNumber, isClosed }: 
   const [showAddDialog, setShowAddDialog] = useState(false);
   const [deleteTarget, setDeleteTarget] = useState<POAddendum | null>(null);
   const [sendingId, setSendingId] = useState<string | null>(null);
+  const [editTarget, setEditTarget] = useState<POAddendum | null>(null);
+  const [editLineItems, setEditLineItems] = useState<POAddendumLineItem[]>([]);
+
+  const handleEdit = async (addendum: POAddendum) => {
+    // Fetch line items for the addendum
+    const { data: lineItems } = await supabase
+      .from("po_addendum_line_items")
+      .select("*")
+      .eq("po_addendum_id", addendum.id)
+      .order("sort_order", { ascending: true });
+    
+    setEditLineItems((lineItems as POAddendumLineItem[]) || []);
+    setEditTarget(addendum);
+    setShowAddDialog(true);
+  };
+
+  const handleDialogClose = (open: boolean) => {
+    setShowAddDialog(open);
+    if (!open) {
+      setEditTarget(null);
+      setEditLineItems([]);
+    }
+  };
 
   const handleSendForApproval = async (addendum: POAddendum) => {
     if (!addendum.customer_rep_email) return;
@@ -340,6 +376,7 @@ export function POAddendums({ purchaseOrderId, purchaseOrderNumber, isClosed }: 
                     canManage={canManage}
                     onDownload={handleDownload}
                     onDelete={setDeleteTarget}
+                    onEdit={handleEdit}
                     onSendForApproval={handleSendForApproval}
                     isSending={sendingId === addendum.id}
                   />
@@ -361,9 +398,11 @@ export function POAddendums({ purchaseOrderId, purchaseOrderNumber, isClosed }: 
 
       <AddAddendumDialog
         open={showAddDialog}
-        onOpenChange={setShowAddDialog}
+        onOpenChange={handleDialogClose}
         purchaseOrderId={purchaseOrderId}
         purchaseOrderNumber={purchaseOrderNumber}
+        editAddendum={editTarget}
+        editLineItems={editLineItems}
       />
 
       <AlertDialog open={!!deleteTarget} onOpenChange={() => setDeleteTarget(null)}>
