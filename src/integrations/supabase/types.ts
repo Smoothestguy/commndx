@@ -2361,7 +2361,16 @@ export type Database = {
       po_addendums: {
         Row: {
           amount: number
+          approval_notes: string | null
+          approval_signature: string | null
+          approval_status: string | null
+          approval_token: string | null
+          approved_at: string | null
+          approved_by_name: string | null
           created_at: string | null
+          customer_rep_email: string | null
+          customer_rep_name: string | null
+          customer_rep_title: string | null
           description: string
           file_name: string | null
           file_path: string | null
@@ -2370,12 +2379,22 @@ export type Database = {
           id: string
           number: string | null
           purchase_order_id: string
+          sent_for_approval_at: string | null
           subtotal: number | null
           uploaded_by: string | null
         }
         Insert: {
           amount?: number
+          approval_notes?: string | null
+          approval_signature?: string | null
+          approval_status?: string | null
+          approval_token?: string | null
+          approved_at?: string | null
+          approved_by_name?: string | null
           created_at?: string | null
+          customer_rep_email?: string | null
+          customer_rep_name?: string | null
+          customer_rep_title?: string | null
           description: string
           file_name?: string | null
           file_path?: string | null
@@ -2384,12 +2403,22 @@ export type Database = {
           id?: string
           number?: string | null
           purchase_order_id: string
+          sent_for_approval_at?: string | null
           subtotal?: number | null
           uploaded_by?: string | null
         }
         Update: {
           amount?: number
+          approval_notes?: string | null
+          approval_signature?: string | null
+          approval_status?: string | null
+          approval_token?: string | null
+          approved_at?: string | null
+          approved_by_name?: string | null
           created_at?: string | null
+          customer_rep_email?: string | null
+          customer_rep_name?: string | null
+          customer_rep_title?: string | null
           description?: string
           file_name?: string | null
           file_path?: string | null
@@ -2398,6 +2427,7 @@ export type Database = {
           id?: string
           number?: string | null
           purchase_order_id?: string
+          sent_for_approval_at?: string | null
           subtotal?: number | null
           uploaded_by?: string | null
         }

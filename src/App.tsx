@@ -86,6 +86,7 @@ import ChangeOrders from "./pages/ChangeOrders";
 import NewChangeOrder from "./pages/NewChangeOrder";
 import EditChangeOrder from "./pages/EditChangeOrder";
 import ChangeOrderDetail from "./pages/ChangeOrderDetail";
+import ApproveChangeOrder from "./pages/ApproveChangeOrder";
 
 const queryClient = new QueryClient();
 
@@ -109,6 +110,10 @@ const App = () => {
                 <Route
                   path="/approve-estimate/:token"
                   element={<ApproveEstimate />}
+                />
+                <Route
+                  path="/approve-change-order/:token"
+                  element={<ApproveChangeOrder />}
                 />
                 <Route
                   path="/personnel/register"
