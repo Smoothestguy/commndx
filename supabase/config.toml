@@ -60,6 +60,12 @@ verify_jwt = false
 [functions.quickbooks-create-bill]
 verify_jwt = false
 
+[functions.quickbooks-create-estimate]
+verify_jwt = false
+
+[functions.quickbooks-create-purchase-order]
+verify_jwt = false
+
 [functions.send-sms]
 verify_jwt = false
 

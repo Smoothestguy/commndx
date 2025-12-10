@@ -159,9 +159,9 @@ serve(async (req) => {
 
     const { type } = await req.json();
 
-    if (!type || !["invoice", "estimate"].includes(type)) {
+    if (!type || !["invoice", "estimate", "purchase_order", "vendor_bill"].includes(type)) {
       return new Response(
-        JSON.stringify({ error: "Invalid type. Must be 'invoice' or 'estimate'" }),
+        JSON.stringify({ error: "Invalid type. Must be 'invoice', 'estimate', 'purchase_order', or 'vendor_bill'" }),
         { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
@@ -181,7 +181,7 @@ serve(async (req) => {
       console.log(`Found ${docNumbers.length} invoices in QuickBooks`);
       
       nextNumber = extractNextNumber(docNumbers, "INV-");
-    } else {
+    } else if (type === "estimate") {
       // Query the last 100 estimates to find the highest number
       const query = "SELECT DocNumber FROM Estimate ORDERBY MetaData.CreateTime DESC MAXRESULTS 100";
       const result = await qbQuery(query, accessToken, realmId);
@@ -190,6 +190,24 @@ serve(async (req) => {
       console.log(`Found ${docNumbers.length} estimates in QuickBooks`);
       
       nextNumber = extractNextNumber(docNumbers, "EST-");
+    } else if (type === "purchase_order") {
+      // Query the last 100 purchase orders to find the highest number
+      const query = "SELECT DocNumber FROM PurchaseOrder ORDERBY MetaData.CreateTime DESC MAXRESULTS 100";
+      const result = await qbQuery(query, accessToken, realmId);
+      
+      const docNumbers = result.QueryResponse?.PurchaseOrder?.map((po: any) => po.DocNumber) || [];
+      console.log(`Found ${docNumbers.length} purchase orders in QuickBooks`);
+      
+      nextNumber = extractNextNumber(docNumbers, "PO-");
+    } else {
+      // vendor_bill - Query the last 100 bills to find the highest number
+      const query = "SELECT DocNumber FROM Bill ORDERBY MetaData.CreateTime DESC MAXRESULTS 100";
+      const result = await qbQuery(query, accessToken, realmId);
+      
+      const docNumbers = result.QueryResponse?.Bill?.map((bill: any) => bill.DocNumber) || [];
+      console.log(`Found ${docNumbers.length} bills in QuickBooks`);
+      
+      nextNumber = extractNextNumber(docNumbers, "BILL-");
     }
 
     console.log(`Next ${type} number: ${nextNumber}`);
