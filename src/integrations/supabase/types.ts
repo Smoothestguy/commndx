@@ -1275,6 +1275,53 @@ export type Database = {
           },
         ]
       }
+      invoice_payments: {
+        Row: {
+          amount: number
+          created_at: string | null
+          created_by: string | null
+          id: string
+          invoice_id: string
+          notes: string | null
+          payment_date: string
+          payment_method: string
+          quickbooks_payment_id: string | null
+          reference_number: string | null
+        }
+        Insert: {
+          amount: number
+          created_at?: string | null
+          created_by?: string | null
+          id?: string
+          invoice_id: string
+          notes?: string | null
+          payment_date?: string
+          payment_method?: string
+          quickbooks_payment_id?: string | null
+          reference_number?: string | null
+        }
+        Update: {
+          amount?: number
+          created_at?: string | null
+          created_by?: string | null
+          id?: string
+          invoice_id?: string
+          notes?: string | null
+          payment_date?: string
+          payment_method?: string
+          quickbooks_payment_id?: string | null
+          reference_number?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "invoice_payments_invoice_id_fkey"
+            columns: ["invoice_id"]
+            isOneToOne: false
+            referencedRelation: "invoices"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       invoices: {
         Row: {
           change_order_id: string | null
@@ -1287,8 +1334,10 @@ export type Database = {
           job_order_id: string | null
           job_order_number: string | null
           number: string
+          paid_amount: number
           paid_date: string | null
           project_name: string | null
+          remaining_amount: number
           status: Database["public"]["Enums"]["invoice_status"]
           subtotal: number
           tax_amount: number
@@ -1307,8 +1356,10 @@ export type Database = {
           job_order_id?: string | null
           job_order_number?: string | null
           number: string
+          paid_amount?: number
           paid_date?: string | null
           project_name?: string | null
+          remaining_amount?: number
           status?: Database["public"]["Enums"]["invoice_status"]
           subtotal: number
           tax_amount: number
@@ -1327,8 +1378,10 @@ export type Database = {
           job_order_id?: string | null
           job_order_number?: string | null
           number?: string
+          paid_amount?: number
           paid_date?: string | null
           project_name?: string | null
+          remaining_amount?: number
           status?: Database["public"]["Enums"]["invoice_status"]
           subtotal?: number
           tax_amount?: number
@@ -4318,7 +4371,7 @@ export type Database = {
         | "final"
         | "warranty"
         | "storm_damage"
-      invoice_status: "draft" | "sent" | "paid" | "overdue"
+      invoice_status: "draft" | "sent" | "partially_paid" | "paid" | "overdue"
       item_type: "product" | "service" | "labor"
       job_order_status: "active" | "in-progress" | "completed" | "on-hold"
       personnel_payment_type: "regular" | "bonus" | "reimbursement" | "advance"
@@ -4551,7 +4604,7 @@ export const Constants = {
         "warranty",
         "storm_damage",
       ],
-      invoice_status: ["draft", "sent", "paid", "overdue"],
+      invoice_status: ["draft", "sent", "partially_paid", "paid", "overdue"],
       item_type: ["product", "service", "labor"],
       job_order_status: ["active", "in-progress", "completed", "on-hold"],
       personnel_payment_type: ["regular", "bonus", "reimbursement", "advance"],

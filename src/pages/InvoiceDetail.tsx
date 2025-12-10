@@ -3,7 +3,7 @@ import { PageLayout } from "@/components/layout/PageLayout";
 import { DetailPageLayout } from "@/components/layout/DetailPageLayout";
 import { Button } from "@/components/ui/button";
 import { StatusBadge } from "@/components/shared/StatusBadge";
-import { ArrowLeft, Send, Download, CheckCircle, Trash2 } from "lucide-react";
+import { ArrowLeft, Send, Download, CheckCircle, Trash2, DollarSign } from "lucide-react";
 import { toast } from "@/hooks/use-toast";
 import { useInvoice, useMarkInvoicePaid, useDeleteInvoice } from "@/integrations/supabase/hooks/useInvoices";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -12,6 +12,8 @@ import { supabase } from "@/integrations/supabase/client";
 import { generateInvoicePDF } from "@/utils/invoicePdfExport";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { InvoiceAttachments } from "@/components/invoices/InvoiceAttachments";
+import { InvoicePaymentDialog } from "@/components/invoices/InvoicePaymentDialog";
+import { InvoicePaymentHistory } from "@/components/invoices/InvoicePaymentHistory";
 import { formatCurrency } from "@/lib/utils";
 import {
   AlertDialog,
@@ -34,6 +36,7 @@ const InvoiceDetail = () => {
   const markPaid = useMarkInvoicePaid();
   const deleteInvoice = useDeleteInvoice();
   const [showSendConfirm, setShowSendConfirm] = useState(false);
+  const [showPaymentDialog, setShowPaymentDialog] = useState(false);
 
   const handleMarkPaid = () => {
     if (id) {
@@ -113,13 +116,15 @@ const InvoiceDetail = () => {
     );
   }
 
+  const remainingAmount = Number(invoice.remaining_amount) || Number(invoice.total) - Number(invoice.paid_amount || 0);
+
   // Mobile actions configuration
   const mobileActions = {
     primary: [
       ...(invoice.status !== "paid" ? [{
-        label: "Mark Paid",
-        icon: <CheckCircle className="h-4 w-4" />,
-        onClick: handleMarkPaid,
+        label: "Record Payment",
+        icon: <DollarSign className="h-4 w-4" />,
+        onClick: () => setShowPaymentDialog(true),
         variant: "default" as const,
       }] : []),
       {
@@ -177,9 +182,9 @@ const InvoiceDetail = () => {
               </AlertDialogFooter>
             </AlertDialogContent>
           </AlertDialog>
-          <Button variant="success" onClick={handleMarkPaid}>
-            <CheckCircle className="h-4 w-4 mr-2" />
-            Mark Paid
+          <Button variant="success" onClick={() => setShowPaymentDialog(true)}>
+            <DollarSign className="h-4 w-4 mr-2" />
+            Record Payment
           </Button>
         </>
       )}
@@ -295,26 +300,61 @@ const InvoiceDetail = () => {
             </div>
             <div className="flex justify-between py-3 border-t border-border font-semibold">
               <span>Total</span>
-              <span className="text-2xl text-primary">{formatCurrency(Number(invoice.total))}</span>
+              <span className="text-xl">{formatCurrency(Number(invoice.total))}</span>
             </div>
+            {Number(invoice.paid_amount) > 0 && (
+              <>
+                <div className="flex justify-between py-2 text-success">
+                  <span>Paid</span>
+                  <span>-{formatCurrency(Number(invoice.paid_amount))}</span>
+                </div>
+                <div className="flex justify-between py-3 border-t border-border font-semibold">
+                  <span>Balance Due</span>
+                  <span className="text-2xl text-primary">{formatCurrency(remainingAmount)}</span>
+                </div>
+              </>
+            )}
+            {Number(invoice.paid_amount) === 0 && (
+              <div className="flex justify-between py-3 border-t border-border font-semibold">
+                <span>Balance Due</span>
+                <span className="text-2xl text-primary">{formatCurrency(Number(invoice.total))}</span>
+              </div>
+            )}
           </div>
         </div>
 
         {/* Payment Status */}
-        {invoice.paid_date && (
+        {invoice.paid_date && invoice.status === "paid" && (
           <div className="mt-8 p-4 rounded-lg bg-success/10 border border-success/20">
             <p className="text-success font-medium flex items-center gap-2">
               <CheckCircle className="h-5 w-5" />
-              Paid on {format(new Date(invoice.paid_date), "MMM d, yyyy")}
+              Paid in full on {format(new Date(invoice.paid_date), "MMM d, yyyy")}
             </p>
           </div>
         )}
       </div>
 
+      {/* Payment History Section */}
+      {invoice.payments && invoice.payments.length > 0 && (
+        <div className="glass rounded-xl p-4 sm:p-8 max-w-4xl mt-6">
+          <h3 className="text-lg font-semibold mb-4">Payment History</h3>
+          <InvoicePaymentHistory payments={invoice.payments} invoiceId={id!} />
+        </div>
+      )}
+
       {/* Attachments Section */}
       <div className="max-w-4xl mt-6">
         <InvoiceAttachments invoiceId={id!} />
       </div>
+
+      {/* Payment Dialog */}
+      <InvoicePaymentDialog
+        open={showPaymentDialog}
+        onOpenChange={setShowPaymentDialog}
+        invoiceId={id!}
+        remainingAmount={remainingAmount}
+      />
+
       {/* Mobile Send Confirmation Dialog */}
       <AlertDialog open={showSendConfirm} onOpenChange={setShowSendConfirm}>
         <AlertDialogContent>

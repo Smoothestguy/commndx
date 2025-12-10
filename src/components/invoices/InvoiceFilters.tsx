@@ -2,8 +2,8 @@ import { Badge } from "@/components/ui/badge";
 import { X } from "lucide-react";
 
 interface InvoiceFiltersProps {
-  statusFilter: "all" | "draft" | "sent" | "paid" | "overdue";
-  onStatusFilterChange: (status: "all" | "draft" | "sent" | "paid" | "overdue") => void;
+  statusFilter: "all" | "draft" | "sent" | "partially_paid" | "paid" | "overdue";
+  onStatusFilterChange: (status: "all" | "draft" | "sent" | "partially_paid" | "paid" | "overdue") => void;
 }
 
 export const InvoiceFilters = ({
@@ -14,6 +14,7 @@ export const InvoiceFilters = ({
     { value: "all" as const, label: "All" },
     { value: "draft" as const, label: "Draft" },
     { value: "sent" as const, label: "Sent" },
+    { value: "partially_paid" as const, label: "Partial" },
     { value: "paid" as const, label: "Paid" },
     { value: "overdue" as const, label: "Overdue" },
   ];

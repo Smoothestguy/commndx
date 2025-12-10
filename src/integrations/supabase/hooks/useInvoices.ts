@@ -13,6 +13,18 @@ export interface InvoiceLineItem {
   total: number;
 }
 
+export interface InvoicePayment {
+  id: string;
+  invoice_id: string;
+  payment_date: string;
+  amount: number;
+  payment_method: string;
+  reference_number?: string;
+  notes?: string;
+  quickbooks_payment_id?: string;
+  created_at: string;
+}
+
 export interface Invoice {
   id: string;
   number: string;
@@ -22,11 +34,13 @@ export interface Invoice {
   customer_id: string;
   customer_name: string;
   project_name?: string;
-  status: "draft" | "sent" | "paid" | "overdue";
+  status: "draft" | "sent" | "partially_paid" | "paid" | "overdue";
   subtotal: number;
   tax_rate: number;
   tax_amount: number;
   total: number;
+  paid_amount: number;
+  remaining_amount: number;
   due_date: string;
   paid_date?: string;
   created_at: string;
@@ -34,6 +48,7 @@ export interface Invoice {
 
 export interface InvoiceWithLineItems extends Invoice {
   line_items: InvoiceLineItem[];
+  payments?: InvoicePayment[];
 }
 
 export const useInvoices = () => {
@@ -70,9 +85,19 @@ export const useInvoice = (id: string) => {
 
       if (lineItemsError) throw lineItemsError;
 
+      // Fetch payments
+      const { data: payments, error: paymentsError } = await supabase
+        .from("invoice_payments")
+        .select("*")
+        .eq("invoice_id", id)
+        .order("payment_date", { ascending: false });
+
+      if (paymentsError) throw paymentsError;
+
       return {
         ...invoice,
         line_items: lineItems,
+        payments: payments || [],
       } as InvoiceWithLineItems;
     },
     enabled: !!id,
@@ -100,7 +125,7 @@ export const useAddInvoice = () => {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: async (invoice: Omit<InvoiceWithLineItems, "id" | "created_at">) => {
+    mutationFn: async (invoice: Omit<InvoiceWithLineItems, "id" | "created_at" | "paid_amount" | "remaining_amount" | "payments">) => {
       // Insert invoice
       const { data: newInvoice, error: invoiceError } = await supabase
         .from("invoices")
@@ -118,6 +143,7 @@ export const useAddInvoice = () => {
           tax_amount: invoice.tax_amount,
           total: invoice.total,
           due_date: invoice.due_date,
+          remaining_amount: invoice.total, // Initialize remaining to total
         })
         .select()
         .single();
@@ -335,7 +361,7 @@ export const useDeleteInvoice = () => {
         if (updateError) throw updateError;
       }
 
-      // Delete line items
+      // Delete line items (payments will cascade delete)
       await supabase.from("invoice_line_items").delete().eq("invoice_id", id);
 
       // Delete invoice
@@ -386,6 +412,92 @@ export const useMarkInvoicePaid = () => {
       toast({
         title: "Error",
         description: `Failed to mark invoice as paid: ${error.message}`,
+        variant: "destructive",
+      });
+    },
+  });
+};
+
+// New payment hooks
+export const useAddInvoicePayment = () => {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async (payment: {
+      invoice_id: string;
+      payment_date: string;
+      amount: number;
+      payment_method: string;
+      reference_number?: string | null;
+      notes?: string | null;
+    }) => {
+      const { data: newPayment, error } = await supabase
+        .from("invoice_payments")
+        .insert(payment)
+        .select()
+        .single();
+
+      if (error) throw error;
+
+      // Auto-sync to QuickBooks if connected
+      try {
+        const { data: qbConfig } = await supabase
+          .from("quickbooks_config")
+          .select("is_connected")
+          .single();
+
+        if (qbConfig?.is_connected) {
+          await supabase.functions.invoke('quickbooks-receive-payment', {
+            body: { paymentId: newPayment.id },
+          });
+        }
+      } catch (qbError) {
+        console.error('QuickBooks payment sync failed:', qbError);
+      }
+
+      return newPayment;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["invoices"] });
+      queryClient.invalidateQueries({ queryKey: ["quickbooks-sync-logs"] });
+      toast({
+        title: "Success",
+        description: "Payment recorded successfully",
+      });
+    },
+    onError: (error) => {
+      toast({
+        title: "Error",
+        description: `Failed to record payment: ${error.message}`,
+        variant: "destructive",
+      });
+    },
+  });
+};
+
+export const useDeleteInvoicePayment = () => {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async ({ paymentId, invoiceId }: { paymentId: string; invoiceId: string }) => {
+      const { error } = await supabase
+        .from("invoice_payments")
+        .delete()
+        .eq("id", paymentId);
+
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["invoices"] });
+      toast({
+        title: "Success",
+        description: "Payment deleted successfully",
+      });
+    },
+    onError: (error) => {
+      toast({
+        title: "Error",
+        description: `Failed to delete payment: ${error.message}`,
         variant: "destructive",
       });
     },
