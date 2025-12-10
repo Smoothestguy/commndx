@@ -15,6 +15,17 @@ export interface POAddendum {
   file_size: number | null;
   uploaded_by: string | null;
   created_at: string;
+  // Customer approval fields
+  customer_rep_name: string | null;
+  customer_rep_title: string | null;
+  customer_rep_email: string | null;
+  approval_status: string | null;
+  approval_token: string | null;
+  sent_for_approval_at: string | null;
+  approved_at: string | null;
+  approved_by_name: string | null;
+  approval_signature: string | null;
+  approval_notes: string | null;
 }
 
 export interface POAddendumLineItem {
@@ -44,6 +55,25 @@ export const usePOAddendums = (purchaseOrderId: string) => {
       return data as POAddendum[];
     },
     enabled: !!purchaseOrderId,
+  });
+};
+
+export const usePOAddendumByToken = (token: string | undefined) => {
+  return useQuery({
+    queryKey: ["po_addendum_by_token", token],
+    queryFn: async () => {
+      if (!token) throw new Error("No token provided");
+      
+      const { data, error } = await supabase
+        .from("po_addendums")
+        .select("*, purchase_orders:purchase_order_id(number, vendor_id, vendors:vendor_id(name))")
+        .eq("approval_token", token)
+        .single();
+
+      if (error) throw error;
+      return data;
+    },
+    enabled: !!token,
   });
 };
 
@@ -80,6 +110,10 @@ interface AddAddendumData {
     sortOrder: number;
   }[];
   file?: File;
+  customerRepName?: string;
+  customerRepTitle?: string;
+  customerRepEmail?: string;
+  sendForApproval?: boolean;
 }
 
 export const useAddPOAddendum = () => {
@@ -111,6 +145,9 @@ export const useAddPOAddendum = () => {
         fileSize = data.file.size;
       }
 
+      // Generate approval token if sending for approval
+      const approvalToken = data.sendForApproval ? crypto.randomUUID() : null;
+
       // Insert addendum record
       const { data: addendum, error } = await supabase
         .from("po_addendums")
@@ -125,6 +162,11 @@ export const useAddPOAddendum = () => {
           file_type: fileType,
           file_size: fileSize,
           uploaded_by: user?.id,
+          customer_rep_name: data.customerRepName || null,
+          customer_rep_title: data.customerRepTitle || null,
+          customer_rep_email: data.customerRepEmail || null,
+          approval_status: data.sendForApproval ? 'pending' : 'draft',
+          approval_token: approvalToken,
         } as never)
         .select()
         .single();
@@ -151,16 +193,108 @@ export const useAddPOAddendum = () => {
         if (lineItemsError) throw lineItemsError;
       }
 
+      // Send for approval if requested
+      if (data.sendForApproval && data.customerRepEmail) {
+        try {
+          const { error: sendError } = await supabase.functions.invoke('send-change-order-approval', {
+            body: { addendumId: addendum.id }
+          });
+          
+          if (sendError) {
+            console.error("Failed to send approval email:", sendError);
+            toast.error("Addendum created but failed to send approval email");
+          }
+        } catch (err) {
+          console.error("Error sending approval email:", err);
+        }
+      }
+
       return addendum;
     },
     onSuccess: (_, variables) => {
       queryClient.invalidateQueries({ queryKey: ["po_addendums", variables.purchaseOrderId] });
       queryClient.invalidateQueries({ queryKey: ["purchase_orders"] });
       queryClient.invalidateQueries({ queryKey: ["projects"] });
-      toast.success("Addendum added successfully");
+      toast.success(variables.sendForApproval 
+        ? "Addendum created and sent for approval" 
+        : "Addendum added successfully"
+      );
     },
     onError: (error: Error) => {
       toast.error(`Failed to add addendum: ${error.message}`);
+    },
+  });
+};
+
+export const useSendChangeOrderForApproval = () => {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async (addendumId: string) => {
+      const { error } = await supabase.functions.invoke('send-change-order-approval', {
+        body: { addendumId }
+      });
+      
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["po_addendums"] });
+      toast.success("Approval request sent successfully");
+    },
+    onError: (error: Error) => {
+      toast.error(`Failed to send approval request: ${error.message}`);
+    },
+  });
+};
+
+export const useApproveChangeOrder = () => {
+  return useMutation({
+    mutationFn: async (data: { 
+      token: string; 
+      signature: string; 
+      approvedByName: string;
+      notes?: string;
+    }) => {
+      const { error } = await supabase
+        .from("po_addendums")
+        .update({
+          approval_status: 'approved',
+          approved_at: new Date().toISOString(),
+          approved_by_name: data.approvedByName,
+          approval_signature: data.signature,
+          approval_notes: data.notes || null,
+        } as never)
+        .eq("approval_token", data.token);
+
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      toast.success("Change order approved successfully");
+    },
+    onError: (error: Error) => {
+      toast.error(`Failed to approve change order: ${error.message}`);
+    },
+  });
+};
+
+export const useRejectChangeOrder = () => {
+  return useMutation({
+    mutationFn: async (data: { token: string; notes?: string }) => {
+      const { error } = await supabase
+        .from("po_addendums")
+        .update({
+          approval_status: 'rejected',
+          approval_notes: data.notes || null,
+        } as never)
+        .eq("approval_token", data.token);
+
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      toast.success("Change order rejected");
+    },
+    onError: (error: Error) => {
+      toast.error(`Failed to reject change order: ${error.message}`);
     },
   });
 };

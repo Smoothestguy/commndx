@@ -24,14 +24,27 @@ import {
   CollapsibleContent,
   CollapsibleTrigger,
 } from "@/components/ui/collapsible";
-import { usePOAddendums, usePOAddendumLineItems, useDeletePOAddendum, POAddendum } from "@/integrations/supabase/hooks/usePOAddendums";
+import { usePOAddendums, usePOAddendumLineItems, useDeletePOAddendum, useSendChangeOrderForApproval, POAddendum } from "@/integrations/supabase/hooks/usePOAddendums";
 import { useUserRole } from "@/hooks/useUserRole";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { format } from "date-fns";
 import { supabase } from "@/integrations/supabase/client";
-import { Plus, FileText, Download, Trash2, FileStack, ChevronDown, ChevronRight } from "lucide-react";
+import { Plus, FileText, Download, Trash2, FileStack, ChevronDown, ChevronRight, Send, CheckCircle, Clock, XCircle } from "lucide-react";
 import { AddAddendumDialog } from "./AddAddendumDialog";
 import { Badge } from "@/components/ui/badge";
+
+function ApprovalStatusBadge({ status }: { status: string | null }) {
+  switch (status) {
+    case 'approved':
+      return <Badge className="bg-success text-success-foreground"><CheckCircle className="h-3 w-3 mr-1" />Approved</Badge>;
+    case 'pending':
+      return <Badge variant="secondary"><Clock className="h-3 w-3 mr-1" />Pending</Badge>;
+    case 'rejected':
+      return <Badge variant="destructive"><XCircle className="h-3 w-3 mr-1" />Rejected</Badge>;
+    default:
+      return <Badge variant="outline">Draft</Badge>;
+  }
+}
 
 interface POAddendumsProps {
   purchaseOrderId: string;
@@ -82,12 +95,16 @@ function AddendumRow({
   addendum, 
   canManage, 
   onDownload, 
-  onDelete 
+  onDelete,
+  onSendForApproval,
+  isSending,
 }: { 
   addendum: POAddendum; 
   canManage: boolean; 
   onDownload: (a: POAddendum) => void; 
   onDelete: (a: POAddendum) => void;
+  onSendForApproval: (a: POAddendum) => void;
+  isSending: boolean;
 }) {
   const [isOpen, setIsOpen] = useState(false);
 
