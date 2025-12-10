@@ -299,6 +299,179 @@ export const useRejectChangeOrder = () => {
   });
 };
 
+interface UpdateAddendumData {
+  id: string;
+  purchaseOrderId: string;
+  description: string;
+  subtotal: number;
+  amount: number;
+  lineItems: {
+    productId: string | null;
+    description: string;
+    quantity: number;
+    unitPrice: number;
+    markup: number;
+    total: number;
+    sortOrder: number;
+  }[];
+  file?: File;
+  removeExistingFile?: boolean;
+  existingFilePath?: string | null;
+  customerRepName?: string;
+  customerRepTitle?: string;
+  customerRepEmail?: string;
+  sendForApproval?: boolean;
+}
+
+export const useUpdatePOAddendum = () => {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async (data: UpdateAddendumData) => {
+      const { data: { user } } = await supabase.auth.getUser();
+
+      let filePath: string | null = data.existingFilePath || null;
+      let fileName: string | null = null;
+      let fileType: string | null = null;
+      let fileSize: number | null = null;
+
+      // Handle file removal
+      if (data.removeExistingFile && data.existingFilePath) {
+        await supabase.storage
+          .from("document-attachments")
+          .remove([data.existingFilePath]);
+        filePath = null;
+      }
+
+      // Upload new file if provided
+      if (data.file) {
+        // Remove old file first if exists
+        if (data.existingFilePath) {
+          await supabase.storage
+            .from("document-attachments")
+            .remove([data.existingFilePath]);
+        }
+
+        const fileExt = data.file.name.split('.').pop();
+        const uploadFileName = `${crypto.randomUUID()}.${fileExt}`;
+        filePath = `po-addendums/${data.purchaseOrderId}/${uploadFileName}`;
+
+        const { error: uploadError } = await supabase.storage
+          .from("document-attachments")
+          .upload(filePath, data.file);
+
+        if (uploadError) throw uploadError;
+
+        fileName = data.file.name;
+        fileType = data.file.type;
+        fileSize = data.file.size;
+      }
+
+      // Generate new approval token if sending for approval
+      const approvalToken = data.sendForApproval ? crypto.randomUUID() : null;
+
+      // Build update object
+      const updateData: Record<string, unknown> = {
+        description: data.description,
+        subtotal: data.subtotal,
+        amount: data.amount,
+        customer_rep_name: data.customerRepName || null,
+        customer_rep_title: data.customerRepTitle || null,
+        customer_rep_email: data.customerRepEmail || null,
+      };
+
+      // Only update file fields if file changed
+      if (data.file) {
+        updateData.file_name = fileName;
+        updateData.file_path = filePath;
+        updateData.file_type = fileType;
+        updateData.file_size = fileSize;
+        updateData.uploaded_by = user?.id;
+      } else if (data.removeExistingFile) {
+        updateData.file_name = null;
+        updateData.file_path = null;
+        updateData.file_type = null;
+        updateData.file_size = null;
+      }
+
+      // Update approval status if sending
+      if (data.sendForApproval) {
+        updateData.approval_status = 'pending';
+        updateData.approval_token = approvalToken;
+        updateData.sent_for_approval_at = new Date().toISOString();
+      }
+
+      // Update addendum record
+      const { data: addendum, error } = await supabase
+        .from("po_addendums")
+        .update(updateData as never)
+        .eq("id", data.id)
+        .select()
+        .single();
+
+      if (error) throw error;
+
+      // Delete existing line items and re-insert
+      const { error: deleteError } = await supabase
+        .from("po_addendum_line_items")
+        .delete()
+        .eq("po_addendum_id", data.id);
+
+      if (deleteError) throw deleteError;
+
+      // Insert new line items
+      if (data.lineItems.length > 0) {
+        const lineItemsToInsert = data.lineItems.map(item => ({
+          po_addendum_id: data.id,
+          product_id: item.productId,
+          description: item.description,
+          quantity: item.quantity,
+          unit_price: item.unitPrice,
+          markup: item.markup,
+          total: item.total,
+          sort_order: item.sortOrder,
+        }));
+
+        const { error: lineItemsError } = await supabase
+          .from("po_addendum_line_items")
+          .insert(lineItemsToInsert as never);
+
+        if (lineItemsError) throw lineItemsError;
+      }
+
+      // Send for approval if requested
+      if (data.sendForApproval && data.customerRepEmail) {
+        try {
+          const { error: sendError } = await supabase.functions.invoke('send-change-order-approval', {
+            body: { addendumId: addendum.id }
+          });
+          
+          if (sendError) {
+            console.error("Failed to send approval email:", sendError);
+            toast.error("Addendum updated but failed to send approval email");
+          }
+        } catch (err) {
+          console.error("Error sending approval email:", err);
+        }
+      }
+
+      return addendum;
+    },
+    onSuccess: (_, variables) => {
+      queryClient.invalidateQueries({ queryKey: ["po_addendums", variables.purchaseOrderId] });
+      queryClient.invalidateQueries({ queryKey: ["po_addendum_line_items", variables.id] });
+      queryClient.invalidateQueries({ queryKey: ["purchase_orders"] });
+      toast.success(variables.sendForApproval 
+        ? "Addendum updated and sent for approval" 
+        : "Addendum updated successfully"
+      );
+    },
+    onError: (error: Error) => {
+      toast.error(`Failed to update addendum: ${error.message}`);
+    },
+  });
+};
+
 export const useDeletePOAddendum = () => {
   const queryClient = useQueryClient();
 

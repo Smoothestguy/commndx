@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import {
   Dialog,
   DialogContent,
@@ -18,7 +18,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Loader2, Upload, FileText, X, Plus, Trash2, Send, Save, ChevronDown } from "lucide-react";
-import { useAddPOAddendum, usePOAddendums } from "@/integrations/supabase/hooks/usePOAddendums";
+import { useAddPOAddendum, useUpdatePOAddendum, usePOAddendums, POAddendum, POAddendumLineItem } from "@/integrations/supabase/hooks/usePOAddendums";
 import { useProducts } from "@/integrations/supabase/hooks/useProducts";
 
 import { Switch } from "@/components/ui/switch";
@@ -41,6 +41,8 @@ interface AddAddendumDialogProps {
   onOpenChange: (open: boolean) => void;
   purchaseOrderId: string;
   purchaseOrderNumber: string;
+  editAddendum?: POAddendum | null;
+  editLineItems?: POAddendumLineItem[];
 }
 
 export function AddAddendumDialog({
@@ -48,11 +50,14 @@ export function AddAddendumDialog({
   onOpenChange,
   purchaseOrderId,
   purchaseOrderNumber,
+  editAddendum,
+  editLineItems,
 }: AddAddendumDialogProps) {
   const [description, setDescription] = useState("");
   const [lineItems, setLineItems] = useState<LineItem[]>([]);
   const [expandedItems, setExpandedItems] = useState<Set<string>>(new Set());
   const [file, setFile] = useState<File | null>(null);
+  const [removeExistingFile, setRemoveExistingFile] = useState(false);
   
   // Customer representative fields
   const [customerRepName, setCustomerRepName] = useState("");
@@ -61,8 +66,40 @@ export function AddAddendumDialog({
   const [requireApproval, setRequireApproval] = useState(false);
   
   const addAddendum = useAddPOAddendum();
+  const updateAddendum = useUpdatePOAddendum();
   const { data: products } = useProducts();
   const { data: existingAddendums } = usePOAddendums(purchaseOrderId);
+
+  const isEditMode = !!editAddendum;
+  const isApproved = editAddendum?.approval_status === 'approved';
+
+  // Populate form when editing
+  useEffect(() => {
+    if (editAddendum && open) {
+      setDescription(editAddendum.description || "");
+      setCustomerRepName(editAddendum.customer_rep_name || "");
+      setCustomerRepTitle(editAddendum.customer_rep_title || "");
+      setCustomerRepEmail(editAddendum.customer_rep_email || "");
+      setRequireApproval(!!editAddendum.customer_rep_email);
+      setRemoveExistingFile(false);
+      setFile(null);
+      
+      // Populate line items
+      if (editLineItems && editLineItems.length > 0) {
+        const items: LineItem[] = editLineItems.map(item => ({
+          id: crypto.randomUUID(),
+          productId: item.product_id || "",
+          description: item.description,
+          quantity: item.quantity,
+          unitPrice: item.unit_price,
+          markup: item.markup,
+          total: item.total,
+        }));
+        setLineItems(items);
+        setExpandedItems(new Set()); // Collapse all in edit mode
+      }
+    }
+  }, [editAddendum, editLineItems, open]);
 
   // Calculate next CO number
   const nextNumber = (() => {
@@ -80,6 +117,7 @@ export function AddAddendumDialog({
     setLineItems([]);
     setExpandedItems(new Set());
     setFile(null);
+    setRemoveExistingFile(false);
     setCustomerRepName("");
     setCustomerRepTitle("");
     setCustomerRepEmail("");
@@ -174,27 +212,47 @@ export function AddAddendumDialog({
       return;
     }
 
-    await addAddendum.mutateAsync({
-      purchaseOrderId,
-      number: nextNumber,
-      description: description.trim(),
-      subtotal,
-      amount: total,
-      lineItems: lineItems.map((item, index) => ({
-        productId: item.productId || null,
-        description: item.description,
-        quantity: item.quantity,
-        unitPrice: item.unitPrice,
-        markup: item.markup,
-        total: item.total,
-        sortOrder: index,
-      })),
-      file: file || undefined,
-      customerRepName: customerRepName.trim() || undefined,
-      customerRepTitle: customerRepTitle.trim() || undefined,
-      customerRepEmail: customerRepEmail.trim() || undefined,
-      sendForApproval,
-    });
+    const lineItemsData = lineItems.map((item, index) => ({
+      productId: item.productId || null,
+      description: item.description,
+      quantity: item.quantity,
+      unitPrice: item.unitPrice,
+      markup: item.markup,
+      total: item.total,
+      sortOrder: index,
+    }));
+
+    if (isEditMode && editAddendum) {
+      await updateAddendum.mutateAsync({
+        id: editAddendum.id,
+        purchaseOrderId,
+        description: description.trim(),
+        subtotal,
+        amount: total,
+        lineItems: lineItemsData,
+        file: file || undefined,
+        removeExistingFile,
+        existingFilePath: editAddendum.file_path,
+        customerRepName: customerRepName.trim() || undefined,
+        customerRepTitle: customerRepTitle.trim() || undefined,
+        customerRepEmail: customerRepEmail.trim() || undefined,
+        sendForApproval,
+      });
+    } else {
+      await addAddendum.mutateAsync({
+        purchaseOrderId,
+        number: nextNumber,
+        description: description.trim(),
+        subtotal,
+        amount: total,
+        lineItems: lineItemsData,
+        file: file || undefined,
+        customerRepName: customerRepName.trim() || undefined,
+        customerRepTitle: customerRepTitle.trim() || undefined,
+        customerRepEmail: customerRepEmail.trim() || undefined,
+        sendForApproval,
+      });
+    }
 
     handleClose();
   };
@@ -218,11 +276,11 @@ export function AddAddendumDialog({
       <DialogContent className="sm:max-w-2xl max-h-[90vh] flex flex-col p-0 gap-0 overflow-hidden">
         <DialogHeader className="shrink-0 px-6 pt-6 pb-4">
           <DialogTitle className="flex items-center gap-2">
-            Add Addendum / Change Order
-            <span className="text-primary font-mono">{nextNumber}</span>
+            {isEditMode ? "Edit" : "Add"} Addendum / Change Order
+            <span className="text-primary font-mono">{isEditMode ? editAddendum?.number : nextNumber}</span>
           </DialogTitle>
           <DialogDescription>
-            Add a change order to {purchaseOrderNumber}
+            {isEditMode ? "Edit" : "Add"} a change order to {purchaseOrderNumber}
           </DialogDescription>
         </DialogHeader>
 
@@ -508,31 +566,31 @@ export function AddAddendumDialog({
                 <Button 
                   type="button" 
                   variant="secondary"
-                  disabled={!isValid || addAddendum.isPending}
+                  disabled={!isValid || addAddendum.isPending || updateAddendum.isPending || isApproved}
                   onClick={() => handleSubmit(false)}
                 >
-                  {addAddendum.isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                  {(addAddendum.isPending || updateAddendum.isPending) && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
                   <Save className="mr-2 h-4 w-4" />
                   Save Draft
                 </Button>
                 <Button 
                   type="button" 
-                  disabled={!canSendForApproval || addAddendum.isPending}
+                  disabled={!canSendForApproval || addAddendum.isPending || updateAddendum.isPending || isApproved}
                   onClick={() => handleSubmit(true)}
                 >
-                  {addAddendum.isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                  {(addAddendum.isPending || updateAddendum.isPending) && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
                   <Send className="mr-2 h-4 w-4" />
-                  Save & Send for Approval
+                  {isEditMode ? "Update & Send for Approval" : "Save & Send for Approval"}
                 </Button>
               </>
             ) : (
               <Button 
                 type="button" 
-                disabled={!isValid || addAddendum.isPending}
+                disabled={!isValid || addAddendum.isPending || updateAddendum.isPending || isApproved}
                 onClick={() => handleSubmit(false)}
               >
-                {addAddendum.isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                Add {nextNumber}
+                {(addAddendum.isPending || updateAddendum.isPending) && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                {isEditMode ? "Update Addendum" : `Add ${nextNumber}`}
               </Button>
             )}
           </div>
