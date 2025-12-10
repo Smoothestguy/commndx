@@ -40,3 +40,40 @@
 .read-the-docs {
   color: #888;
 }
+
+/* Print styles */
+@media print {
+  .no-print,
+  .no-print * {
+    display: none !important;
+  }
+  
+  /* Hide navigation and sidebar */
+  nav,
+  aside,
+  header button,
+  [role="navigation"],
+  [data-sidebar] {
+    display: none !important;
+  }
+  
+  /* Ensure content takes full width */
+  main {
+    width: 100% !important;
+    margin: 0 !important;
+    padding: 1rem !important;
+  }
+  
+  /* Better page breaks */
+  .page-break-before {
+    page-break-before: always;
+  }
+  
+  .page-break-after {
+    page-break-after: always;
+  }
+  
+  .avoid-break {
+    page-break-inside: avoid;
+  }
+}

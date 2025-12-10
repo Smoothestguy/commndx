@@ -18,11 +18,22 @@ import {
   DropdownMenuTrigger,
   DropdownMenuSeparator,
 } from "@/components/ui/dropdown-menu";
-import { usePurchaseOrder, useUpdatePurchaseOrder } from "@/integrations/supabase/hooks/usePurchaseOrders";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
+import { usePurchaseOrder, useUpdatePurchaseOrder, useDeletePurchaseOrder } from "@/integrations/supabase/hooks/usePurchaseOrders";
+import { usePOAddendums } from "@/integrations/supabase/hooks/usePOAddendums";
 import { useVendors } from "@/integrations/supabase/hooks/useVendors";
 import { useUserRole } from "@/hooks/useUserRole";
 import { useIsMobile } from "@/hooks/use-mobile";
-import { ArrowLeft, ShoppingCart, Truck, Building, Send, CheckCircle, CheckCheck, XCircle, Loader2, MoreVertical, Receipt, Lock, Pencil } from "lucide-react";
+import { ArrowLeft, ShoppingCart, Truck, Building, Send, CheckCircle, CheckCheck, XCircle, Loader2, MoreVertical, Receipt, Lock, Pencil, Printer, Download, Copy, Trash2 } from "lucide-react";
 import { format } from "date-fns";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
@@ -33,6 +44,7 @@ import { POBillingSummary } from "@/components/purchase-orders/POBillingSummary"
 import { RelatedVendorBills } from "@/components/purchase-orders/RelatedVendorBills";
 import { POAddendums } from "@/components/purchase-orders/POAddendums";
 import { formatCurrency } from "@/lib/utils";
+import { generatePurchaseOrderPDF } from "@/utils/purchaseOrderPdfExport";
 
 const PurchaseOrderDetail = () => {
   const { id } = useParams();
@@ -41,10 +53,14 @@ const PurchaseOrderDetail = () => {
   const [isApproving, setIsApproving] = useState(false);
   const [showCreateBillDialog, setShowCreateBillDialog] = useState(false);
   const [showCloseDialog, setShowCloseDialog] = useState(false);
+  const [showDeleteDialog, setShowDeleteDialog] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
 
   const { data: purchaseOrder, isLoading } = usePurchaseOrder(id || "");
+  const { data: addendums } = usePOAddendums(id || "");
   const { data: vendors } = useVendors();
   const updatePurchaseOrder = useUpdatePurchaseOrder();
+  const deletePurchaseOrder = useDeletePurchaseOrder();
   const { isAdmin, isManager } = useUserRole();
   const isMobile = useIsMobile();
   const vendor = purchaseOrder && vendors?.find((v) => v.id === purchaseOrder.vendor_id);
@@ -55,12 +71,15 @@ const PurchaseOrderDetail = () => {
   const canCreateBill = purchaseOrder && !purchaseOrder.is_closed;
   const canClose = purchaseOrder && !purchaseOrder.is_closed && (isAdmin || isManager);
   const canEdit = purchaseOrder && !purchaseOrder.is_closed && (isAdmin || isManager);
+  const canDelete = purchaseOrder && (purchaseOrder.status === 'draft' || purchaseOrder.status === 'pending_approval') && (isAdmin || isManager);
+  const canDuplicate = !!purchaseOrder;
 
   const billedAmount = Number(purchaseOrder?.billed_amount || 0);
   const total = Number(purchaseOrder?.total || 0);
   const totalAddendumAmount = Number(purchaseOrder?.total_addendum_amount || 0);
   const grandTotal = total + totalAddendumAmount;
   const remainingAmount = grandTotal - billedAmount;
+
 
   const handleApprove = async (approved: boolean) => {
     if (!purchaseOrder) return;
@@ -117,6 +136,37 @@ const PurchaseOrderDetail = () => {
     } catch (error: any) {
       console.error("Error marking complete:", error);
       toast.error("Failed to mark purchase order as complete");
+    }
+  };
+
+  const handlePrint = () => {
+    window.print();
+  };
+
+  const handleDownloadPDF = () => {
+    if (!purchaseOrder) return;
+    generatePurchaseOrderPDF(purchaseOrder, addendums);
+  };
+
+  const handleDuplicate = () => {
+    if (!purchaseOrder) return;
+    navigate(`/purchase-orders/new?duplicate=${purchaseOrder.id}`);
+  };
+
+  const handleDelete = async () => {
+    if (!purchaseOrder) return;
+    
+    setIsDeleting(true);
+    try {
+      await deletePurchaseOrder.mutateAsync(purchaseOrder.id);
+      toast.success("Purchase order deleted successfully");
+      navigate("/purchase-orders");
+    } catch (error: any) {
+      console.error("Error deleting purchase order:", error);
+      toast.error("Failed to delete purchase order");
+    } finally {
+      setIsDeleting(false);
+      setShowDeleteDialog(false);
     }
   };
 
@@ -189,10 +239,29 @@ const PurchaseOrderDetail = () => {
             </Button>
           )}
 
+          {/* Print and Download buttons */}
+          <Button 
+            variant="outline" 
+            size={isMobile ? "sm" : "default"}
+            onClick={handlePrint}
+            className="no-print"
+          >
+            <Printer className={`h-4 w-4 ${!isMobile && "mr-2"}`} />
+            {!isMobile && "Print"}
+          </Button>
+          <Button 
+            variant="outline" 
+            size={isMobile ? "sm" : "default"}
+            onClick={handleDownloadPDF}
+          >
+            <Download className={`h-4 w-4 ${!isMobile && "mr-2"}`} />
+            {!isMobile && "PDF"}
+          </Button>
+
           {/* More dropdown - contains secondary actions */}
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
-              <Button variant="outline" size={isMobile ? "sm" : "icon"}>
+              <Button variant="outline" size={isMobile ? "sm" : "icon"} className="no-print">
                 <MoreVertical className="h-4 w-4" />
               </Button>
             </DropdownMenuTrigger>
@@ -203,6 +272,12 @@ const PurchaseOrderDetail = () => {
                   Edit
                 </DropdownMenuItem>
               )}
+              {canDuplicate && (
+                <DropdownMenuItem onClick={handleDuplicate}>
+                  <Copy className="mr-2 h-4 w-4" /> 
+                  Duplicate
+                </DropdownMenuItem>
+              )}
               {canApprove && (
                 <DropdownMenuItem onClick={() => handleApprove(false)} disabled={isApproving}>
                   <XCircle className="mr-2 h-4 w-4" /> 
@@ -211,10 +286,22 @@ const PurchaseOrderDetail = () => {
               )}
               {canClose && (
                 <>
-                  {(canApprove || canEdit) && <DropdownMenuSeparator />}
+                  <DropdownMenuSeparator />
                   <DropdownMenuItem onClick={() => setShowCloseDialog(true)}>
                     <Lock className="mr-2 h-4 w-4" /> 
                     Close PO
+                  </DropdownMenuItem>
+                </>
+              )}
+              {canDelete && (
+                <>
+                  <DropdownMenuSeparator />
+                  <DropdownMenuItem 
+                    onClick={() => setShowDeleteDialog(true)}
+                    className="text-destructive focus:text-destructive"
+                  >
+                    <Trash2 className="mr-2 h-4 w-4" /> 
+                    Delete
                   </DropdownMenuItem>
                 </>
               )}
@@ -509,6 +596,27 @@ const PurchaseOrderDetail = () => {
         purchaseOrderNumber={purchaseOrder.number}
         remainingAmount={remainingAmount}
       />
+      <AlertDialog open={showDeleteDialog} onOpenChange={setShowDeleteDialog}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete Purchase Order</AlertDialogTitle>
+            <AlertDialogDescription>
+              Are you sure you want to delete {purchaseOrder.number}? This action cannot be undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={handleDelete}
+              disabled={isDeleting}
+              className="bg-destructive hover:bg-destructive/90"
+            >
+              {isDeleting ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : null}
+              Delete
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </PageLayout>
   );
 };
