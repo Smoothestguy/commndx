@@ -15,7 +15,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Plus, Trash2, Loader2, AlertCircle, Info } from "lucide-react";
 import { useJobOrders, useJobOrder } from "@/integrations/supabase/hooks/useJobOrders";
 import { useVendors } from "@/integrations/supabase/hooks/useVendors";
-import { useAddPurchaseOrder } from "@/integrations/supabase/hooks/usePurchaseOrders";
+import { useAddPurchaseOrder, usePurchaseOrder } from "@/integrations/supabase/hooks/usePurchaseOrders";
 import { useAuth } from "@/contexts/AuthContext";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { z } from "zod";
@@ -47,11 +47,13 @@ export const PurchaseOrderForm = () => {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const jobOrderIdFromUrl = searchParams.get("jobOrderId");
+  const duplicateId = searchParams.get("duplicate");
   
   const { user } = useAuth();
   const { data: jobOrders, isLoading: jobOrdersLoading } = useJobOrders();
   const { data: vendors, isLoading: vendorsLoading } = useVendors();
   const { data: prefillJobOrder, isLoading: prefillLoading } = useJobOrder(jobOrderIdFromUrl || "");
+  const { data: duplicatePO, isLoading: duplicateLoading } = usePurchaseOrder(duplicateId || "");
   const addPurchaseOrder = useAddPurchaseOrder();
 
   const [selectedJobOrderId, setSelectedJobOrderId] = useState<string>("");
@@ -243,7 +245,37 @@ export const PurchaseOrderForm = () => {
     }
   }, [prefillJobOrder, jobOrderIdFromUrl, isPrefilled]);
 
-  if (jobOrdersLoading || vendorsLoading || (jobOrderIdFromUrl && prefillLoading)) {
+  // Handle duplication
+  useEffect(() => {
+    if (duplicatePO && duplicateId && !isPrefilled) {
+      setSelectedJobOrderId(duplicatePO.job_order_id);
+      setSelectedVendorId(duplicatePO.vendor_id);
+      setTaxRate(duplicatePO.tax_rate.toString());
+      setNotes(duplicatePO.notes || "");
+      
+      if (duplicatePO.line_items && duplicatePO.line_items.length > 0) {
+        const mappedLineItems: LineItem[] = duplicatePO.line_items.map((item) => {
+          const total = calculateLineItemTotal(
+            item.quantity.toString(),
+            item.unit_price.toString(),
+            (item.markup || 0).toString()
+          );
+          return {
+            description: item.description,
+            quantity: item.quantity.toString(),
+            unit_price: item.unit_price.toString(),
+            margin: (item.markup || 0).toString(),
+            total,
+          };
+        });
+        setLineItems(mappedLineItems);
+      }
+      
+      setIsPrefilled(true);
+    }
+  }, [duplicatePO, duplicateId, isPrefilled]);
+
+  if (jobOrdersLoading || vendorsLoading || (jobOrderIdFromUrl && prefillLoading) || (duplicateId && duplicateLoading)) {
     return (
       <div className="flex justify-center py-12">
         <Loader2 className="h-8 w-8 animate-spin text-primary" />
