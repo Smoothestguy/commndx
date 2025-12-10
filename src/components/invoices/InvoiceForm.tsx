@@ -78,6 +78,7 @@ export function InvoiceForm({ onSubmit, initialData, jobOrderId }: InvoiceFormPr
   const [selectedCustomer, setSelectedCustomer] = useState<any>(null);
   const [dueDate, setDueDate] = useState<Date>();
   const [customerComboboxOpen, setCustomerComboboxOpen] = useState(false);
+  const [jobOrderComboboxOpen, setJobOrderComboboxOpen] = useState(false);
   const [productComboboxOpen, setProductComboboxOpen] = useState<Record<string, boolean>>({});
 
   // Pending attachments state
@@ -85,6 +86,7 @@ export function InvoiceForm({ onSubmit, initialData, jobOrderId }: InvoiceFormPr
 
   // Search states for comboboxes
   const [customerSearch, setCustomerSearch] = useState("");
+  const [jobOrderSearch, setJobOrderSearch] = useState("");
   const [productSearch, setProductSearch] = useState<Record<string, string>>({});
 
   // QuickBooks integration
@@ -339,24 +341,65 @@ export function InvoiceForm({ onSubmit, initialData, jobOrderId }: InvoiceFormPr
             )}
           </div>
 
-          {/* Job Order Selection */}
+          {/* Job Order Selection with Search */}
           <div>
             <Label htmlFor="jobOrderId">Job Order</Label>
-            <Select
-              value={form.watch("jobOrderId")}
-              onValueChange={handleJobOrderChange}
-            >
-              <SelectTrigger>
-                <SelectValue placeholder="Select job order" />
-              </SelectTrigger>
-              <SelectContent>
-                {jobOrders.map((jo: any) => (
-                  <SelectItem key={jo.id} value={jo.id}>
-                    {jo.number} - {jo.customer_name} ({jo.project_name})
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+            <Popover open={jobOrderComboboxOpen} onOpenChange={setJobOrderComboboxOpen}>
+              <PopoverTrigger asChild>
+                <Button
+                  variant="outline"
+                  role="combobox"
+                  aria-expanded={jobOrderComboboxOpen}
+                  className="w-full justify-between font-normal"
+                >
+                  {selectedJobOrderId
+                    ? (() => {
+                        const jo = jobOrders.find((j: any) => j.id === selectedJobOrderId);
+                        return jo ? `${jo.number} - ${jo.customer_name}` : "Select job order...";
+                      })()
+                    : "Search job order..."}
+                  <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                </Button>
+              </PopoverTrigger>
+              <PopoverContent className="w-[--radix-popover-trigger-width] p-0 z-50 bg-popover" align="start">
+                <Command>
+                  <CommandInput 
+                    placeholder="Search by number, customer, project..." 
+                    value={jobOrderSearch}
+                    onValueChange={setJobOrderSearch}
+                  />
+                  <CommandList>
+                    <CommandEmpty>No job orders found.</CommandEmpty>
+                    <CommandGroup>
+                      {jobOrders.map((jo: any) => (
+                        <CommandItem
+                          key={jo.id}
+                          value={`${jo.number} ${jo.customer_name} ${jo.project_name}`}
+                          onSelect={() => {
+                            handleJobOrderChange(jo.id);
+                            setJobOrderComboboxOpen(false);
+                            setJobOrderSearch("");
+                          }}
+                        >
+                          <Check
+                            className={cn(
+                              "mr-2 h-4 w-4",
+                              selectedJobOrderId === jo.id ? "opacity-100" : "opacity-0"
+                            )}
+                          />
+                          <div className="flex flex-col">
+                            <span className="font-medium">{jo.number}</span>
+                            <span className="text-xs text-muted-foreground">
+                              {jo.customer_name} • {jo.project_name}
+                            </span>
+                          </div>
+                        </CommandItem>
+                      ))}
+                    </CommandGroup>
+                  </CommandList>
+                </Command>
+              </PopoverContent>
+            </Popover>
             {form.formState.errors.jobOrderId && (
               <p className="text-destructive text-sm mt-1">{form.formState.errors.jobOrderId.message}</p>
             )}
