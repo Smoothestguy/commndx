@@ -235,7 +235,7 @@ export function AddAddendumDialog({
                             <SelectTrigger className="mt-1">
                               <SelectValue placeholder="Select product..." />
                             </SelectTrigger>
-                            <SelectContent>
+                          <SelectContent className="z-[100]">
                               <SelectItem value="none">-- Custom Item --</SelectItem>
                               {products?.map((product) => (
                                 <SelectItem key={product.id} value={product.id}>
