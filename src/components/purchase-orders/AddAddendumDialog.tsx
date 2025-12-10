@@ -20,7 +20,7 @@ import {
 import { Loader2, Upload, FileText, X, Plus, Trash2, Send, Save, ChevronDown } from "lucide-react";
 import { useAddPOAddendum, usePOAddendums } from "@/integrations/supabase/hooks/usePOAddendums";
 import { useProducts } from "@/integrations/supabase/hooks/useProducts";
-import { ScrollArea } from "@/components/ui/scroll-area";
+
 import { Switch } from "@/components/ui/switch";
 import { Separator } from "@/components/ui/separator";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
@@ -215,7 +215,7 @@ export function AddAddendumDialog({
 
   return (
     <Dialog open={open} onOpenChange={handleClose}>
-      <DialogContent className="sm:max-w-2xl max-h-[90vh] flex flex-col p-0 gap-0">
+      <DialogContent className="sm:max-w-2xl max-h-[90vh] flex flex-col p-0 gap-0 overflow-hidden">
         <DialogHeader className="shrink-0 px-6 pt-6 pb-4">
           <DialogTitle className="flex items-center gap-2">
             Add Addendum / Change Order
@@ -226,7 +226,7 @@ export function AddAddendumDialog({
           </DialogDescription>
         </DialogHeader>
 
-        <ScrollArea className="flex-1 min-h-0 px-6">
+        <div className="flex-1 overflow-y-auto px-6">
           <div className="space-y-4 pb-4">
             <div className="space-y-2">
               <Label htmlFor="description">Description / Reason *</Label>
@@ -496,7 +496,7 @@ export function AddAddendumDialog({
               )}
             </div>
           </div>
-        </ScrollArea>
+        </div>
 
         <DialogFooter className="shrink-0 px-6 py-4 border-t border-border bg-background">
           <div className="flex flex-col sm:flex-row justify-end gap-2 w-full">
