@@ -80,3 +80,6 @@ verify_jwt = false
 
 [functions.send-change-order-approval]
 verify_jwt = false
+
+[functions.quickbooks-receive-payment]
+verify_jwt = false

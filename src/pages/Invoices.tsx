@@ -22,7 +22,7 @@ const Invoices = () => {
   const isMobile = useIsMobile();
   const { data: qbConfig } = useQuickBooksConfig();
   const [search, setSearch] = useState("");
-  const [statusFilter, setStatusFilter] = useState<"all" | "draft" | "sent" | "paid" | "overdue">("all");
+  const [statusFilter, setStatusFilter] = useState<"all" | "draft" | "sent" | "partially_paid" | "paid" | "overdue">("all");
 
   const filteredInvoices = allInvoices.filter((i) => {
     const matchesSearch = 

@@ -6,6 +6,7 @@ import { formatCurrency } from "@/lib/utils";
 type Status = 
   | "draft" 
   | "sent" 
+  | "partially_paid"
   | "paid" 
   | "overdue";
 
@@ -17,6 +18,8 @@ interface InvoiceCardProps {
     project_name?: string | null;
     status: Status;
     total: number;
+    paid_amount?: number;
+    remaining_amount?: number;
     due_date: string;
     paid_date?: string | null;
   };
@@ -29,6 +32,8 @@ export const InvoiceCard = ({ invoice, onView, index }: InvoiceCardProps) => {
     switch (invoice.status) {
       case "paid":
         return "border-l-success";
+      case "partially_paid":
+        return "border-l-info";
       case "sent":
         return "border-l-warning";
       case "overdue":
@@ -69,10 +74,19 @@ export const InvoiceCard = ({ invoice, onView, index }: InvoiceCardProps) => {
 
       <div className="flex items-center justify-between pt-3 border-t border-border/50">
         <div>
-          <p className="text-sm text-muted-foreground mb-1">Amount</p>
-          <p className="text-2xl font-heading font-bold text-primary">
-            {formatCurrency(invoice.total)}
+          <p className="text-sm text-muted-foreground mb-1">
+            {invoice.status === "partially_paid" ? "Balance Due" : "Amount"}
           </p>
+          <p className="text-2xl font-heading font-bold text-primary">
+            {invoice.status === "partially_paid" && invoice.remaining_amount !== undefined
+              ? formatCurrency(invoice.remaining_amount)
+              : formatCurrency(invoice.total)}
+          </p>
+          {invoice.status === "partially_paid" && (
+            <p className="text-xs text-muted-foreground">
+              of {formatCurrency(invoice.total)} total
+            </p>
+          )}
         </div>
         <div className="text-right">
           <div className="flex items-center gap-1 text-sm text-muted-foreground mb-1">
