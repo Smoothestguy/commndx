@@ -379,6 +379,9 @@ export function InvoiceForm({ onSubmit, initialData, jobOrderId }: InvoiceFormPr
                             handleJobOrderChange(jo.id);
                             setJobOrderComboboxOpen(false);
                             setJobOrderSearch("");
+                            // Clear customer selection when job order is selected
+                            setSelectedCustomer(null);
+                            setSelectedCustomerId(null);
                           }}
                         >
                           <Check
@@ -403,6 +406,85 @@ export function InvoiceForm({ onSubmit, initialData, jobOrderId }: InvoiceFormPr
             {form.formState.errors.jobOrderId && (
               <p className="text-destructive text-sm mt-1">{form.formState.errors.jobOrderId.message}</p>
             )}
+          </div>
+
+          <div className="flex items-center gap-2 text-xs text-muted-foreground">
+            <div className="h-px flex-1 bg-border" />
+            <span>OR</span>
+            <div className="h-px flex-1 bg-border" />
+          </div>
+
+          {/* Customer Selection with Search (for direct invoices without job order) */}
+          <div>
+            <Label htmlFor="customerId">Customer (Direct Invoice)</Label>
+            <Popover open={customerComboboxOpen} onOpenChange={setCustomerComboboxOpen}>
+              <PopoverTrigger asChild>
+                <Button
+                  variant="outline"
+                  role="combobox"
+                  aria-expanded={customerComboboxOpen}
+                  className="w-full justify-between font-normal"
+                  disabled={!!selectedJobOrderId}
+                >
+                  {selectedCustomerId && !selectedJobOrderId
+                    ? (() => {
+                        const customer = customers?.find((c: any) => c.id === selectedCustomerId);
+                        return customer ? customer.name : "Search customer...";
+                      })()
+                    : selectedJobOrderId 
+                      ? "Customer from Job Order"
+                      : "Search customer..."}
+                  <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                </Button>
+              </PopoverTrigger>
+              <PopoverContent className="w-[--radix-popover-trigger-width] p-0 z-50 bg-popover" align="start">
+                <Command>
+                  <CommandInput 
+                    placeholder="Search by name or company..." 
+                    value={customerSearch}
+                    onValueChange={setCustomerSearch}
+                  />
+                  <CommandList>
+                    <CommandEmpty>No customers found.</CommandEmpty>
+                    <CommandGroup>
+                      {customers?.map((customer: any) => (
+                        <CommandItem
+                          key={customer.id}
+                          value={`${customer.name} ${customer.company || ''}`}
+                          onSelect={() => {
+                            handleCustomerChange(customer.id);
+                            setCustomerComboboxOpen(false);
+                            setCustomerSearch("");
+                            // Clear job order selection when customer is selected directly
+                            setSelectedJobOrderId(null);
+                            setSelectedJobOrder(null);
+                            form.setValue("jobOrderId", "");
+                          }}
+                        >
+                          <Check
+                            className={cn(
+                              "mr-2 h-4 w-4",
+                              selectedCustomerId === customer.id ? "opacity-100" : "opacity-0"
+                            )}
+                          />
+                          <div className="flex flex-col">
+                            <span className="font-medium">{customer.name}</span>
+                            {customer.company && (
+                              <span className="text-xs text-muted-foreground">
+                                {customer.company}
+                              </span>
+                            )}
+                          </div>
+                        </CommandItem>
+                      ))}
+                    </CommandGroup>
+                  </CommandList>
+                </Command>
+              </PopoverContent>
+            </Popover>
+            <p className="text-xs text-muted-foreground mt-1">
+              Select a customer directly for invoices without a job order
+            </p>
           </div>
 
           <div>
