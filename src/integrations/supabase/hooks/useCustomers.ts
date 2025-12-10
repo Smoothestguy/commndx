@@ -15,6 +15,15 @@ export interface Customer {
   updated_at: string;
 }
 
+// Helper to check if QuickBooks is connected
+async function isQuickBooksConnected(): Promise<boolean> {
+  const { data } = await supabase
+    .from("quickbooks_config")
+    .select("is_connected")
+    .single();
+  return data?.is_connected === true;
+}
+
 export const useCustomers = () => {
   return useQuery({
     queryKey: ["customers"],
@@ -42,6 +51,21 @@ export const useAddCustomer = () => {
         .single();
 
       if (error) throw error;
+
+      // Auto-sync to QuickBooks if connected
+      try {
+        const qbConnected = await isQuickBooksConnected();
+        if (qbConnected) {
+          console.log("QuickBooks connected - syncing customer:", data.id);
+          await supabase.functions.invoke("quickbooks-sync-customers", {
+            body: { action: "sync-single", customerId: data.id },
+          });
+        }
+      } catch (qbError) {
+        console.error("QuickBooks sync error (non-blocking):", qbError);
+        // Don't throw - QB sync failure shouldn't prevent customer creation
+      }
+
       return data;
     },
     onSuccess: () => {
@@ -67,6 +91,20 @@ export const useUpdateCustomer = () => {
         .single();
 
       if (error) throw error;
+
+      // Auto-sync to QuickBooks if connected
+      try {
+        const qbConnected = await isQuickBooksConnected();
+        if (qbConnected) {
+          console.log("QuickBooks connected - syncing updated customer:", id);
+          await supabase.functions.invoke("quickbooks-sync-customers", {
+            body: { action: "sync-single", customerId: id },
+          });
+        }
+      } catch (qbError) {
+        console.error("QuickBooks sync error (non-blocking):", qbError);
+      }
+
       return data;
     },
     onSuccess: () => {

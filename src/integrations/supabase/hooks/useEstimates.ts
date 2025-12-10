@@ -59,6 +59,15 @@ export interface EstimateWithLineItems extends Estimate {
   customer_contact?: CustomerContactInfo | null;
 }
 
+// Helper to check if QuickBooks is connected
+async function isQuickBooksConnected(): Promise<boolean> {
+  const { data } = await supabase
+    .from("quickbooks_config")
+    .select("is_connected")
+    .single();
+  return data?.is_connected === true;
+}
+
 export const useEstimates = () => {
   return useQuery({
     queryKey: ["estimates"],
@@ -158,6 +167,20 @@ export const useAddEstimate = () => {
         .insert(lineItemsWithEstimateId);
 
       if (lineItemsError) throw lineItemsError;
+
+      // Auto-sync to QuickBooks if connected
+      try {
+        const qbConnected = await isQuickBooksConnected();
+        if (qbConnected) {
+          console.log("QuickBooks connected - syncing estimate:", estimateData.id);
+          await supabase.functions.invoke("quickbooks-create-estimate", {
+            body: { estimateId: estimateData.id },
+          });
+        }
+      } catch (qbError) {
+        console.error("QuickBooks sync error (non-blocking):", qbError);
+        // Don't throw - QB sync failure shouldn't prevent estimate creation
+      }
 
       return estimateData;
     },

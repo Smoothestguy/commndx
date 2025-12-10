@@ -2936,6 +2936,44 @@ export type Database = {
           },
         ]
       }
+      quickbooks_estimate_mappings: {
+        Row: {
+          created_at: string
+          estimate_id: string
+          id: string
+          last_synced_at: string | null
+          quickbooks_estimate_id: string
+          sync_status: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          estimate_id: string
+          id?: string
+          last_synced_at?: string | null
+          quickbooks_estimate_id: string
+          sync_status?: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          estimate_id?: string
+          id?: string
+          last_synced_at?: string | null
+          quickbooks_estimate_id?: string
+          sync_status?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "quickbooks_estimate_mappings_estimate_id_fkey"
+            columns: ["estimate_id"]
+            isOneToOne: true
+            referencedRelation: "estimates"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       quickbooks_invoice_mappings: {
         Row: {
           created_at: string | null
@@ -2979,6 +3017,44 @@ export type Database = {
             columns: ["invoice_id"]
             isOneToOne: true
             referencedRelation: "invoices"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      quickbooks_po_mappings: {
+        Row: {
+          created_at: string
+          id: string
+          last_synced_at: string | null
+          purchase_order_id: string
+          quickbooks_po_id: string
+          sync_status: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          last_synced_at?: string | null
+          purchase_order_id: string
+          quickbooks_po_id: string
+          sync_status?: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          last_synced_at?: string | null
+          purchase_order_id?: string
+          quickbooks_po_id?: string
+          sync_status?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "quickbooks_po_mappings_purchase_order_id_fkey"
+            columns: ["purchase_order_id"]
+            isOneToOne: true
+            referencedRelation: "purchase_orders"
             referencedColumns: ["id"]
           },
         ]
