@@ -5,6 +5,7 @@ import {
   DialogHeader,
   DialogTitle,
   DialogDescription,
+  DialogFooter,
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -16,12 +17,14 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Loader2, Upload, FileText, X, Plus, Trash2, Send, Save } from "lucide-react";
+import { Loader2, Upload, FileText, X, Plus, Trash2, Send, Save, ChevronDown } from "lucide-react";
 import { useAddPOAddendum, usePOAddendums } from "@/integrations/supabase/hooks/usePOAddendums";
 import { useProducts } from "@/integrations/supabase/hooks/useProducts";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Switch } from "@/components/ui/switch";
 import { Separator } from "@/components/ui/separator";
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
+import { cn } from "@/lib/utils";
 
 interface LineItem {
   id: string;
@@ -48,6 +51,7 @@ export function AddAddendumDialog({
 }: AddAddendumDialogProps) {
   const [description, setDescription] = useState("");
   const [lineItems, setLineItems] = useState<LineItem[]>([]);
+  const [expandedItems, setExpandedItems] = useState<Set<string>>(new Set());
   const [file, setFile] = useState<File | null>(null);
   
   // Customer representative fields
@@ -74,6 +78,7 @@ export function AddAddendumDialog({
   const resetForm = () => {
     setDescription("");
     setLineItems([]);
+    setExpandedItems(new Set());
     setFile(null);
     setCustomerRepName("");
     setCustomerRepTitle("");
@@ -87,10 +92,11 @@ export function AddAddendumDialog({
   };
 
   const addLineItem = () => {
+    const newId = crypto.randomUUID();
     setLineItems([
       ...lineItems,
       {
-        id: crypto.randomUUID(),
+        id: newId,
         productId: "",
         description: "",
         quantity: 1,
@@ -99,6 +105,8 @@ export function AddAddendumDialog({
         total: 0,
       },
     ]);
+    // Auto-expand newly added items
+    setExpandedItems(prev => new Set(prev).add(newId));
   };
 
   const updateLineItem = (id: string, updates: Partial<LineItem>) => {
@@ -116,6 +124,23 @@ export function AddAddendumDialog({
 
   const removeLineItem = (id: string) => {
     setLineItems(items => items.filter(item => item.id !== id));
+    setExpandedItems(prev => {
+      const next = new Set(prev);
+      next.delete(id);
+      return next;
+    });
+  };
+
+  const toggleExpanded = (id: string) => {
+    setExpandedItems(prev => {
+      const next = new Set(prev);
+      if (next.has(id)) {
+        next.delete(id);
+      } else {
+        next.add(id);
+      }
+      return next;
+    });
   };
 
   const handleProductSelect = (lineItemId: string, productId: string) => {
@@ -141,8 +166,7 @@ export function AddAddendumDialog({
   }, 0);
   const total = subtotal + totalMarkup;
 
-  const handleSubmit = async (e: React.FormEvent, sendForApproval = false) => {
-    e.preventDefault();
+  const handleSubmit = async (sendForApproval = false) => {
     if (!description.trim() || lineItems.length === 0) return;
     
     // Validate approval fields if sending for approval
@@ -191,8 +215,8 @@ export function AddAddendumDialog({
 
   return (
     <Dialog open={open} onOpenChange={handleClose}>
-      <DialogContent className="sm:max-w-2xl max-h-[90vh] flex flex-col overflow-hidden">
-        <DialogHeader className="shrink-0">
+      <DialogContent className="sm:max-w-2xl max-h-[90vh] flex flex-col p-0 gap-0">
+        <DialogHeader className="shrink-0 px-6 pt-6 pb-4">
           <DialogTitle className="flex items-center gap-2">
             Add Addendum / Change Order
             <span className="text-primary font-mono">{nextNumber}</span>
@@ -202,8 +226,8 @@ export function AddAddendumDialog({
           </DialogDescription>
         </DialogHeader>
 
-        <ScrollArea className="flex-1 min-h-0 pr-4 -mr-4">
-          <form onSubmit={(e) => handleSubmit(e, false)} className="space-y-4 pb-4">
+        <ScrollArea className="flex-1 min-h-0 px-6">
+          <div className="space-y-4 pb-4">
             <div className="space-y-2">
               <Label htmlFor="description">Description / Reason *</Label>
               <Input
@@ -211,7 +235,6 @@ export function AddAddendumDialog({
                 placeholder="e.g., Additional materials requested"
                 value={description}
                 onChange={(e) => setDescription(e.target.value)}
-                required
               />
             </div>
 
@@ -231,98 +254,132 @@ export function AddAddendumDialog({
                   <p className="text-sm">Click "Add Item" to add products or services</p>
                 </div>
               ) : (
-                <div className="space-y-3">
-                  {lineItems.map((item, index) => (
-                    <div key={item.id} className="p-3 border border-border/50 rounded-lg bg-secondary/20 space-y-3">
-                      <div className="flex items-center justify-between">
-                        <span className="text-sm font-medium text-muted-foreground">Item {index + 1}</span>
-                        <Button
-                          type="button"
-                          variant="ghost"
-                          size="icon"
-                          className="h-8 w-8"
-                          onClick={() => removeLineItem(item.id)}
-                        >
-                          <Trash2 className="h-4 w-4 text-destructive" />
-                        </Button>
-                      </div>
+                <div className="space-y-2">
+                  {/* Header row */}
+                  <div className="grid grid-cols-[24px_1fr_60px_80px_80px_32px] gap-2 px-3 py-2 text-xs font-medium text-muted-foreground border-b border-border">
+                    <div></div>
+                    <div>Description</div>
+                    <div className="text-right">Qty</div>
+                    <div className="text-right">Price</div>
+                    <div className="text-right">Total</div>
+                    <div></div>
+                  </div>
 
-                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                        <div className="sm:col-span-2">
-                          <Label className="text-xs">Product (Optional)</Label>
-                          <Select
-                            value={item.productId || "none"}
-                            onValueChange={(v) => handleProductSelect(item.id, v)}
-                          >
-                            <SelectTrigger className="mt-1">
-                              <SelectValue placeholder="Select product..." />
-                            </SelectTrigger>
-                            <SelectContent className="z-[100]">
-                              <SelectItem value="none">-- Custom Item --</SelectItem>
-                              {products?.map((product) => (
-                                <SelectItem key={product.id} value={product.id}>
-                                  {product.name} {product.cost ? `($${product.cost.toFixed(2)})` : ""}
-                                </SelectItem>
-                              ))}
-                            </SelectContent>
-                          </Select>
-                        </div>
-
-                        <div className="sm:col-span-2">
-                          <Label className="text-xs">Description *</Label>
-                          <Input
-                            className="mt-1"
-                            placeholder="Item description"
-                            value={item.description}
-                            onChange={(e) => updateLineItem(item.id, { description: e.target.value })}
-                          />
-                        </div>
-
-                        <div>
-                          <Label className="text-xs">Quantity</Label>
-                          <Input
-                            className="mt-1"
-                            type="number"
-                            min="0"
-                            step="0.01"
-                            value={item.quantity}
-                            onChange={(e) => updateLineItem(item.id, { quantity: parseFloat(e.target.value) || 0 })}
-                          />
-                        </div>
-
-                        <div>
-                          <Label className="text-xs">Unit Price ($)</Label>
-                          <Input
-                            className="mt-1"
-                            type="number"
-                            min="0"
-                            step="0.01"
-                            value={item.unitPrice}
-                            onChange={(e) => updateLineItem(item.id, { unitPrice: parseFloat(e.target.value) || 0 })}
-                          />
-                        </div>
-
-                        <div>
-                          <Label className="text-xs">Markup (%)</Label>
-                          <Input
-                            className="mt-1"
-                            type="number"
-                            min="0"
-                            step="0.1"
-                            value={item.markup}
-                            onChange={(e) => updateLineItem(item.id, { markup: parseFloat(e.target.value) || 0 })}
-                          />
-                        </div>
-
-                        <div>
-                          <Label className="text-xs">Line Total</Label>
-                          <div className="mt-1 h-10 flex items-center px-3 bg-secondary/50 rounded-md border border-border font-medium">
-                            ${item.total.toFixed(2)}
+                  {lineItems.map((item) => {
+                    const isExpanded = expandedItems.has(item.id);
+                    return (
+                      <Collapsible
+                        key={item.id}
+                        open={isExpanded}
+                        onOpenChange={() => toggleExpanded(item.id)}
+                      >
+                        <div className="border border-border/50 rounded-lg bg-secondary/20 overflow-hidden">
+                          {/* Collapsed row - always visible */}
+                          <div className="grid grid-cols-[24px_1fr_60px_80px_80px_32px] gap-2 items-center px-3 py-2.5">
+                            <CollapsibleTrigger asChild>
+                              <Button variant="ghost" size="icon" className="h-6 w-6 p-0">
+                                <ChevronDown className={cn(
+                                  "h-4 w-4 transition-transform duration-200",
+                                  isExpanded && "rotate-180"
+                                )} />
+                              </Button>
+                            </CollapsibleTrigger>
+                            <span className="truncate text-sm">
+                              {item.description || <span className="text-muted-foreground italic">New Item</span>}
+                            </span>
+                            <span className="text-right text-sm tabular-nums">{item.quantity}</span>
+                            <span className="text-right text-sm tabular-nums">${item.unitPrice.toFixed(2)}</span>
+                            <span className="text-right text-sm font-medium tabular-nums">${item.total.toFixed(2)}</span>
+                            <Button
+                              type="button"
+                              variant="ghost"
+                              size="icon"
+                              className="h-6 w-6 p-0"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                removeLineItem(item.id);
+                              }}
+                            >
+                              <Trash2 className="h-3.5 w-3.5 text-destructive" />
+                            </Button>
                           </div>
+
+                          {/* Expanded content */}
+                          <CollapsibleContent>
+                            <div className="px-3 pb-3 pt-1 space-y-3 border-t border-border/30">
+                              <div>
+                                <Label className="text-xs">Product (Optional)</Label>
+                                <Select
+                                  value={item.productId || "none"}
+                                  onValueChange={(v) => handleProductSelect(item.id, v)}
+                                >
+                                  <SelectTrigger className="mt-1">
+                                    <SelectValue placeholder="Select product..." />
+                                  </SelectTrigger>
+                                  <SelectContent className="z-[100]">
+                                    <SelectItem value="none">-- Custom Item --</SelectItem>
+                                    {products?.map((product) => (
+                                      <SelectItem key={product.id} value={product.id}>
+                                        {product.name} {product.cost ? `($${product.cost.toFixed(2)})` : ""}
+                                      </SelectItem>
+                                    ))}
+                                  </SelectContent>
+                                </Select>
+                              </div>
+
+                              <div>
+                                <Label className="text-xs">Description *</Label>
+                                <Input
+                                  className="mt-1"
+                                  placeholder="Item description"
+                                  value={item.description}
+                                  onChange={(e) => updateLineItem(item.id, { description: e.target.value })}
+                                />
+                              </div>
+
+                              <div className="grid grid-cols-3 gap-3">
+                                <div>
+                                  <Label className="text-xs">Quantity</Label>
+                                  <Input
+                                    className="mt-1"
+                                    type="number"
+                                    min="0"
+                                    step="0.01"
+                                    value={item.quantity}
+                                    onChange={(e) => updateLineItem(item.id, { quantity: parseFloat(e.target.value) || 0 })}
+                                  />
+                                </div>
+
+                                <div>
+                                  <Label className="text-xs">Unit Price ($)</Label>
+                                  <Input
+                                    className="mt-1"
+                                    type="number"
+                                    min="0"
+                                    step="0.01"
+                                    value={item.unitPrice}
+                                    onChange={(e) => updateLineItem(item.id, { unitPrice: parseFloat(e.target.value) || 0 })}
+                                  />
+                                </div>
+
+                                <div>
+                                  <Label className="text-xs">Markup (%)</Label>
+                                  <Input
+                                    className="mt-1"
+                                    type="number"
+                                    min="0"
+                                    step="0.1"
+                                    value={item.markup}
+                                    onChange={(e) => updateLineItem(item.id, { markup: parseFloat(e.target.value) || 0 })}
+                                  />
+                                </div>
+                              </div>
+                            </div>
+                          </CollapsibleContent>
                         </div>
-                      </div>
-                    </div>
-                  ))}
+                      </Collapsible>
+                    );
+                  })}
                 </div>
               )}
             </div>
@@ -438,42 +495,48 @@ export function AddAddendumDialog({
                 </div>
               )}
             </div>
-
-            <div className="flex flex-col sm:flex-row justify-end gap-2 pt-2">
-              <Button type="button" variant="outline" onClick={handleClose}>
-                Cancel
-              </Button>
-              {requireApproval ? (
-                <>
-                  <Button 
-                    type="button" 
-                    variant="secondary"
-                    disabled={!isValid || addAddendum.isPending}
-                    onClick={(e) => handleSubmit(e as any, false)}
-                  >
-                    {addAddendum.isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                    <Save className="mr-2 h-4 w-4" />
-                    Save Draft
-                  </Button>
-                  <Button 
-                    type="button" 
-                    disabled={!canSendForApproval || addAddendum.isPending}
-                    onClick={(e) => handleSubmit(e as any, true)}
-                  >
-                    {addAddendum.isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                    <Send className="mr-2 h-4 w-4" />
-                    Save & Send for Approval
-                  </Button>
-                </>
-              ) : (
-                <Button type="submit" disabled={!isValid || addAddendum.isPending}>
-                  {addAddendum.isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                  Add {nextNumber}
-                </Button>
-              )}
-            </div>
-          </form>
+          </div>
         </ScrollArea>
+
+        <DialogFooter className="shrink-0 px-6 py-4 border-t border-border bg-background">
+          <div className="flex flex-col sm:flex-row justify-end gap-2 w-full">
+            <Button type="button" variant="outline" onClick={handleClose}>
+              Cancel
+            </Button>
+            {requireApproval ? (
+              <>
+                <Button 
+                  type="button" 
+                  variant="secondary"
+                  disabled={!isValid || addAddendum.isPending}
+                  onClick={() => handleSubmit(false)}
+                >
+                  {addAddendum.isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                  <Save className="mr-2 h-4 w-4" />
+                  Save Draft
+                </Button>
+                <Button 
+                  type="button" 
+                  disabled={!canSendForApproval || addAddendum.isPending}
+                  onClick={() => handleSubmit(true)}
+                >
+                  {addAddendum.isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                  <Send className="mr-2 h-4 w-4" />
+                  Save & Send for Approval
+                </Button>
+              </>
+            ) : (
+              <Button 
+                type="button" 
+                disabled={!isValid || addAddendum.isPending}
+                onClick={() => handleSubmit(false)}
+              >
+                {addAddendum.isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                Add {nextNumber}
+              </Button>
+            )}
+          </div>
+        </DialogFooter>
       </DialogContent>
     </Dialog>
   );
