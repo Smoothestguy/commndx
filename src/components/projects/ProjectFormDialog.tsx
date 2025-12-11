@@ -7,7 +7,6 @@ import { Textarea } from "@/components/ui/textarea";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Separator } from "@/components/ui/separator";
-import { ScrollArea } from "@/components/ui/scroll-area";
 import { Project } from "@/integrations/supabase/hooks/useProjects";
 
 interface Customer {
@@ -77,14 +76,14 @@ export const ProjectFormDialog = ({
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="bg-card border-border max-w-2xl max-h-[90vh] flex flex-col p-0">
-        <DialogHeader className="px-6 pt-6 pb-4">
+      <DialogContent className="bg-card border-border max-w-2xl max-h-[90vh] flex flex-col p-0 overflow-hidden">
+        <DialogHeader className="px-6 pt-6 pb-4 flex-shrink-0">
           <DialogTitle className="font-heading">
             {editingProject ? "Edit Project" : "Add New Project"}
           </DialogTitle>
         </DialogHeader>
         
-        <ScrollArea className="flex-1 px-6">
+        <div className="flex-1 overflow-y-auto px-6">
           <form id="project-form" onSubmit={onSubmit} className="space-y-6 pb-6">
             {/* Basic Info */}
             <div className="space-y-4">
@@ -317,7 +316,7 @@ export const ProjectFormDialog = ({
               </div>
             </div>
           </form>
-        </ScrollArea>
+        </div>
 
         <div className="flex justify-end gap-3 px-6 py-4 border-t border-border">
           <Button type="button" variant="outline" onClick={onClose}>
