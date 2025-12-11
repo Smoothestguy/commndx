@@ -18,9 +18,20 @@ interface POAddendum {
   status?: string;
 }
 
+export interface ProjectInfoForPDF {
+  address?: string | null;
+  city?: string | null;
+  state?: string | null;
+  zip?: string | null;
+  contact_name?: string | null;
+  contact_phone?: string | null;
+  contact_email?: string | null;
+}
+
 export const generatePurchaseOrderPDF = (
   purchaseOrder: PurchaseOrderWithLineItems,
-  addendums?: POAddendum[]
+  addendums?: POAddendum[],
+  projectInfo?: ProjectInfoForPDF
 ) => {
   const doc = new jsPDF();
   const pageWidth = doc.internal.pageSize.width;
@@ -41,52 +52,116 @@ export const generatePurchaseOrderPDF = (
   // Reset text color
   doc.setTextColor(0, 0, 0);
   
-  // PO Details (right side)
-  let yPos = 55;
-  doc.setFontSize(10);
+  // PO Details (top right, below header)
+  let yPos = 50;
+  doc.setFontSize(9);
   doc.setFont("helvetica", "bold");
   doc.text(`PO #: ${purchaseOrder.number}`, pageWidth - 20, yPos, { align: "right" });
   
-  yPos += 6;
+  yPos += 5;
   doc.setFont("helvetica", "normal");
   doc.text(`Date: ${new Date(purchaseOrder.created_at).toLocaleDateString()}`, pageWidth - 20, yPos, { align: "right" });
   
-  yPos += 6;
+  yPos += 5;
   doc.text(`Due Date: ${new Date(purchaseOrder.due_date).toLocaleDateString()}`, pageWidth - 20, yPos, { align: "right" });
   
-  yPos += 6;
-  doc.text(`Status: ${purchaseOrder.status.replace(/_/g, ' ').toUpperCase()}`, pageWidth - 20, yPos, { align: "right" });
+  // Left Column - Vendor & Project Info
+  let leftYPos = 50;
+  const leftColX = 20;
+  const midColX = pageWidth / 3 + 5;
   
-  // Vendor Section (left side)
-  yPos = 55;
+  // Vendor Section
   doc.setFont("helvetica", "bold");
-  doc.setFontSize(12);
-  doc.text("VENDOR:", 20, yPos);
-  
-  yPos += 7;
+  doc.setFontSize(9);
+  doc.text("VENDOR:", leftColX, leftYPos);
   doc.setFont("helvetica", "normal");
-  doc.setFontSize(10);
-  doc.text(purchaseOrder.vendor_name, 20, yPos);
+  doc.text(purchaseOrder.vendor_name, leftColX, leftYPos + 5);
   
-  // Project Info
-  yPos += 12;
+  // Sold To / Customer
+  leftYPos += 14;
   doc.setFont("helvetica", "bold");
-  doc.setFontSize(12);
-  doc.text("PROJECT:", 20, yPos);
-  
-  yPos += 7;
+  doc.text("SOLD TO:", leftColX, leftYPos);
   doc.setFont("helvetica", "normal");
-  doc.setFontSize(10);
-  doc.text(purchaseOrder.customer_name, 20, yPos);
+  doc.text(purchaseOrder.customer_name, leftColX, leftYPos + 5);
   
-  yPos += 6;
-  doc.text(purchaseOrder.project_name, 20, yPos);
+  // Project Name
+  leftYPos += 14;
+  doc.setFont("helvetica", "bold");
+  doc.text("PROJECT:", leftColX, leftYPos);
+  doc.setFont("helvetica", "normal");
+  const projectNameLines = doc.splitTextToSize(purchaseOrder.project_name, 55);
+  doc.text(projectNameLines, leftColX, leftYPos + 5);
   
-  yPos += 6;
-  doc.text(`Job Order: ${purchaseOrder.job_order_number}`, 20, yPos);
+  // Job Order Reference
+  leftYPos += 10 + (projectNameLines.length - 1) * 4;
+  doc.setFont("helvetica", "bold");
+  doc.text("JOB ORDER:", leftColX, leftYPos);
+  doc.setFont("helvetica", "normal");
+  doc.text(purchaseOrder.job_order_number, leftColX, leftYPos + 5);
+  
+  // Middle Column - Ship To / Project Address
+  let midYPos = 50;
+  doc.setFont("helvetica", "bold");
+  doc.text("SHIP TO:", midColX, midYPos);
+  doc.setFont("helvetica", "normal");
+  midYPos += 5;
+  
+  if (projectInfo?.address) {
+    const addressLines = doc.splitTextToSize(projectInfo.address, 55);
+    doc.text(addressLines, midColX, midYPos);
+    midYPos += addressLines.length * 4;
+    
+    const cityStateZip = [
+      projectInfo.city,
+      projectInfo.state,
+      projectInfo.zip
+    ].filter(Boolean).join(", ");
+    if (cityStateZip) {
+      doc.text(cityStateZip, midColX, midYPos);
+      midYPos += 5;
+    }
+  } else {
+    doc.setTextColor(128, 128, 128);
+    doc.text("(No address provided)", midColX, midYPos);
+    doc.setTextColor(0, 0, 0);
+    midYPos += 5;
+  }
+  
+  // Point of Contact (below Ship To in middle column)
+  midYPos += 6;
+  doc.setFont("helvetica", "bold");
+  doc.text("CONTACT:", midColX, midYPos);
+  doc.setFont("helvetica", "normal");
+  midYPos += 5;
+  
+  let hasContact = false;
+  if (projectInfo?.contact_name) {
+    doc.text(projectInfo.contact_name, midColX, midYPos);
+    midYPos += 4;
+    hasContact = true;
+  }
+  if (projectInfo?.contact_phone) {
+    doc.text(`Ph: ${projectInfo.contact_phone}`, midColX, midYPos);
+    midYPos += 4;
+    hasContact = true;
+  }
+  if (projectInfo?.contact_email) {
+    const emailLines = doc.splitTextToSize(projectInfo.contact_email, 55);
+    doc.text(emailLines, midColX, midYPos);
+    hasContact = true;
+  }
+  
+  if (!hasContact) {
+    doc.setTextColor(128, 128, 128);
+    doc.text("(No contact provided)", midColX, midYPos);
+    doc.setTextColor(0, 0, 0);
+  }
+  
+  // Adjust yPos to continue after both columns
+  yPos = Math.max(leftYPos + 10, midYPos + 10, 105);
   
   // Line Items Table
-  yPos += 15;
+  yPos += 5;
   
   // Table Header
   doc.setFillColor(249, 250, 251);

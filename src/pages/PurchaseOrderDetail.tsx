@@ -31,6 +31,7 @@ import {
 import { usePurchaseOrder, useUpdatePurchaseOrder, useDeletePurchaseOrder } from "@/integrations/supabase/hooks/usePurchaseOrders";
 import { usePOAddendums } from "@/integrations/supabase/hooks/usePOAddendums";
 import { useVendors } from "@/integrations/supabase/hooks/useVendors";
+import { useProjects } from "@/integrations/supabase/hooks/useProjects";
 import { useUserRole } from "@/hooks/useUserRole";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { ArrowLeft, ShoppingCart, Truck, Building, Send, CheckCircle, CheckCheck, XCircle, Loader2, MoreVertical, Receipt, Lock, Pencil, Printer, Download, Copy, Trash2 } from "lucide-react";
@@ -44,7 +45,7 @@ import { POBillingSummary } from "@/components/purchase-orders/POBillingSummary"
 import { RelatedVendorBills } from "@/components/purchase-orders/RelatedVendorBills";
 import { POAddendums } from "@/components/purchase-orders/POAddendums";
 import { formatCurrency } from "@/lib/utils";
-import { generatePurchaseOrderPDF } from "@/utils/purchaseOrderPdfExport";
+import { generatePurchaseOrderPDF, ProjectInfoForPDF } from "@/utils/purchaseOrderPdfExport";
 
 const PurchaseOrderDetail = () => {
   const { id } = useParams();
@@ -59,11 +60,13 @@ const PurchaseOrderDetail = () => {
   const { data: purchaseOrder, isLoading } = usePurchaseOrder(id || "");
   const { data: addendums } = usePOAddendums(id || "");
   const { data: vendors } = useVendors();
+  const { data: projects } = useProjects();
   const updatePurchaseOrder = useUpdatePurchaseOrder();
   const deletePurchaseOrder = useDeletePurchaseOrder();
   const { isAdmin, isManager } = useUserRole();
   const isMobile = useIsMobile();
   const vendor = purchaseOrder && vendors?.find((v) => v.id === purchaseOrder.vendor_id);
+  const project = purchaseOrder && projects?.find((p) => p.id === purchaseOrder.project_id);
 
   const canApprove = (isAdmin || isManager) && purchaseOrder?.status === 'pending_approval';
   const canSend = purchaseOrder?.status === 'draft' && purchaseOrder?.approved_by;
@@ -145,7 +148,19 @@ const PurchaseOrderDetail = () => {
 
   const handleDownloadPDF = () => {
     if (!purchaseOrder) return;
-    generatePurchaseOrderPDF(purchaseOrder, addendums);
+    
+    // Build project info for PDF from the linked project
+    const projectInfo: ProjectInfoForPDF | undefined = project ? {
+      address: project.address,
+      city: project.city,
+      state: project.state,
+      zip: project.zip,
+      contact_name: project.poc_name,
+      contact_phone: project.poc_phone,
+      contact_email: project.poc_email,
+    } : undefined;
+    
+    generatePurchaseOrderPDF(purchaseOrder, addendums, projectInfo);
   };
 
   const handleDuplicate = () => {
