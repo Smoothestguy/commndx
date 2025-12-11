@@ -20,7 +20,8 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { ArrowLeft, Calendar, User, Loader2, FileText, Briefcase, Receipt, Target, Plus, Edit, Trash2, Download } from "lucide-react";
+import { ArrowLeft, Calendar, User, Loader2, FileText, Briefcase, Receipt, Target, Plus, Edit, Trash2, Download, MapPin, Phone, Mail, Hash } from "lucide-react";
+import { ProjectDocuments } from "@/components/projects/ProjectDocuments";
 import { format } from "date-fns";
 import { generateProjectReportPDF } from "@/utils/pdfExport";
 import { ProjectFinancialSummary } from "@/components/project-hub/ProjectFinancialSummary";
@@ -370,6 +371,13 @@ const ProjectDetail = () => {
           </CardHeader>
           <CardContent>
             <StatusBadge status={project.status} />
+            {project.customer_po && (
+              <div className="mt-3 flex items-center gap-2 text-sm">
+                <Hash className="h-4 w-4 text-muted-foreground" />
+                <span className="text-muted-foreground">Customer PO:</span>
+                <span className="font-medium">{project.customer_po}</span>
+              </div>
+            )}
           </CardContent>
         </Card>
 
@@ -409,6 +417,72 @@ const ProjectDetail = () => {
           </CardContent>
         </Card>
       </div>
+
+      {/* Project Address & POC */}
+      {(project.address || project.poc_name || project.description) && (
+        <div className="grid gap-6 lg:grid-cols-2 mb-8">
+          {/* Project Address */}
+          {project.address && (
+            <Card className="glass border-border">
+              <CardHeader className="flex flex-row items-center gap-2">
+                <MapPin className="h-4 w-4 text-muted-foreground" />
+                <CardTitle className="font-heading text-sm text-muted-foreground">
+                  Project Address
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <p className="text-sm">{project.address}</p>
+                {(project.city || project.state || project.zip) && (
+                  <p className="text-sm">
+                    {[project.city, project.state, project.zip].filter(Boolean).join(", ")}
+                  </p>
+                )}
+              </CardContent>
+            </Card>
+          )}
+
+          {/* Point of Contact */}
+          {project.poc_name && (
+            <Card className="glass border-border">
+              <CardHeader className="flex flex-row items-center gap-2">
+                <User className="h-4 w-4 text-muted-foreground" />
+                <CardTitle className="font-heading text-sm text-muted-foreground">
+                  Point of Contact
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-2">
+                <p className="font-medium">{project.poc_name}</p>
+                {project.poc_phone && (
+                  <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                    <Phone className="h-3 w-3" />
+                    <span>{project.poc_phone}</span>
+                  </div>
+                )}
+                {project.poc_email && (
+                  <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                    <Mail className="h-3 w-3" />
+                    <span>{project.poc_email}</span>
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+          )}
+        </div>
+      )}
+
+      {/* Project Description */}
+      {project.description && (
+        <Card className="glass border-border mb-8">
+          <CardHeader>
+            <CardTitle className="font-heading text-sm text-muted-foreground">
+              Project Description
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <p className="text-sm whitespace-pre-wrap">{project.description}</p>
+          </CardContent>
+        </Card>
+      )}
 
       {/* Financial Summary */}
       <ProjectFinancialSummary data={financialData} />
@@ -579,6 +653,11 @@ const ProjectDetail = () => {
           projectId={id!}
           onAddNew={() => navigate(`/purchase-orders/new?projectId=${id}`)}
         />
+      </div>
+
+      {/* Project Documents */}
+      <div className="mb-8">
+        <ProjectDocuments projectId={id!} />
       </div>
 
       {/* Milestone Dialog */}

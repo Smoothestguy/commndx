@@ -2722,39 +2722,107 @@ export type Database = {
           },
         ]
       }
-      projects: {
+      project_documents: {
         Row: {
           created_at: string
-          customer_id: string
-          end_date: string | null
+          file_name: string
+          file_path: string
+          file_size: number
+          file_type: string
           id: string
-          name: string
-          start_date: string
-          status: Database["public"]["Enums"]["project_status"]
-          total_cost: number
-          updated_at: string
+          project_id: string
+          uploaded_by: string | null
         }
         Insert: {
           created_at?: string
-          customer_id: string
-          end_date?: string | null
+          file_name: string
+          file_path: string
+          file_size: number
+          file_type: string
           id?: string
-          name: string
-          start_date: string
-          status?: Database["public"]["Enums"]["project_status"]
-          total_cost?: number
-          updated_at?: string
+          project_id: string
+          uploaded_by?: string | null
         }
         Update: {
           created_at?: string
-          customer_id?: string
+          file_name?: string
+          file_path?: string
+          file_size?: number
+          file_type?: string
+          id?: string
+          project_id?: string
+          uploaded_by?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "project_documents_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "projects"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      projects: {
+        Row: {
+          address: string | null
+          city: string | null
+          created_at: string
+          customer_id: string
+          customer_po: string | null
+          description: string | null
+          end_date: string | null
+          id: string
+          name: string
+          poc_email: string | null
+          poc_name: string | null
+          poc_phone: string | null
+          start_date: string
+          state: string | null
+          status: Database["public"]["Enums"]["project_status"]
+          total_cost: number
+          updated_at: string
+          zip: string | null
+        }
+        Insert: {
+          address?: string | null
+          city?: string | null
+          created_at?: string
+          customer_id: string
+          customer_po?: string | null
+          description?: string | null
           end_date?: string | null
           id?: string
-          name?: string
-          start_date?: string
+          name: string
+          poc_email?: string | null
+          poc_name?: string | null
+          poc_phone?: string | null
+          start_date: string
+          state?: string | null
           status?: Database["public"]["Enums"]["project_status"]
           total_cost?: number
           updated_at?: string
+          zip?: string | null
+        }
+        Update: {
+          address?: string | null
+          city?: string | null
+          created_at?: string
+          customer_id?: string
+          customer_po?: string | null
+          description?: string | null
+          end_date?: string | null
+          id?: string
+          name?: string
+          poc_email?: string | null
+          poc_name?: string | null
+          poc_phone?: string | null
+          start_date?: string
+          state?: string | null
+          status?: Database["public"]["Enums"]["project_status"]
+          total_cost?: number
+          updated_at?: string
+          zip?: string | null
         }
         Relationships: [
           {

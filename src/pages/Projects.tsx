@@ -14,13 +14,8 @@ import { ProjectCard } from "@/components/projects/ProjectCard";
 import { ProjectStats } from "@/components/projects/ProjectStats";
 import { ProjectFilters } from "@/components/projects/ProjectFilters";
 import { ProjectEmptyState } from "@/components/projects/ProjectEmptyState";
+import { ProjectFormDialog, initialProjectFormData, type ProjectFormData } from "@/components/projects/ProjectFormDialog";
 import { useIsMobile } from "@/hooks/use-mobile";
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
 import {
   Select,
@@ -53,13 +48,7 @@ const Projects = () => {
   
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [editingProject, setEditingProject] = useState<Project | null>(null);
-  const [formData, setFormData] = useState({
-    name: "",
-    customer_id: "",
-    status: "active" as "active" | "completed" | "on-hold",
-    start_date: "",
-    end_date: "",
-  });
+  const [formData, setFormData] = useState<ProjectFormData>(initialProjectFormData);
 
   // Apply filters and sorting
   const filteredProjects = projects
@@ -176,6 +165,16 @@ const Projects = () => {
       status: project.status,
       start_date: project.start_date,
       end_date: project.end_date || "",
+      description: project.description || "",
+      address: project.address || "",
+      city: project.city || "",
+      state: project.state || "",
+      zip: project.zip || "",
+      customer_po: project.customer_po || "",
+      poc_name: project.poc_name || "",
+      poc_phone: project.poc_phone || "",
+      poc_email: project.poc_email || "",
+      use_customer_address: false,
     });
     setIsDialogOpen(true);
   };
@@ -187,9 +186,19 @@ const Projects = () => {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
+    const { use_customer_address, ...submitFields } = formData;
     const submitData = {
-      ...formData,
+      ...submitFields,
       end_date: formData.end_date || null,
+      description: formData.description || null,
+      address: formData.address || null,
+      city: formData.city || null,
+      state: formData.state || null,
+      zip: formData.zip || null,
+      customer_po: formData.customer_po || null,
+      poc_name: formData.poc_name || null,
+      poc_phone: formData.poc_phone || null,
+      poc_email: formData.poc_email || null,
     };
 
     if (editingProject) {
@@ -203,12 +212,12 @@ const Projects = () => {
 
     setIsDialogOpen(false);
     setEditingProject(null);
-    setFormData({ name: "", customer_id: "", status: "active", start_date: "", end_date: "" });
+    setFormData(initialProjectFormData);
   };
 
   const openNewDialog = () => {
     setEditingProject(null);
-    setFormData({ name: "", customer_id: "", status: "active", start_date: "", end_date: "" });
+    setFormData(initialProjectFormData);
     setIsDialogOpen(true);
   };
 
@@ -415,97 +424,16 @@ const Projects = () => {
       </PullToRefreshWrapper>
 
       {/* Add/Edit Dialog */}
-      <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
-        <DialogContent className="bg-card border-border">
-          <DialogHeader>
-            <DialogTitle className="font-heading">
-              {editingProject ? "Edit Project" : "Add New Project"}
-            </DialogTitle>
-          </DialogHeader>
-          <form onSubmit={handleSubmit} className="space-y-4">
-            <div className="space-y-2">
-              <Label htmlFor="name">Project Name</Label>
-              <Input
-                id="name"
-                value={formData.name}
-                onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                required
-                className="bg-secondary border-border"
-              />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="customer">Customer</Label>
-              <Select
-                value={formData.customer_id}
-                onValueChange={(value) =>
-                  setFormData({ ...formData, customer_id: value })
-                }
-                required
-              >
-                <SelectTrigger className="bg-secondary border-border">
-                  <SelectValue placeholder="Select a customer" />
-                </SelectTrigger>
-                <SelectContent>
-                  {customers?.map((customer) => (
-                    <SelectItem key={customer.id} value={customer.id}>
-                      {customer.name}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-            <div className="grid gap-4 sm:grid-cols-2">
-              <div className="space-y-2">
-                <Label htmlFor="start_date">Start Date</Label>
-                <Input
-                  id="start_date"
-                  type="date"
-                  value={formData.start_date}
-                  onChange={(e) => setFormData({ ...formData, start_date: e.target.value })}
-                  required
-                  className="bg-secondary border-border"
-                />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="end_date">End Date</Label>
-                <Input
-                  id="end_date"
-                  type="date"
-                  value={formData.end_date}
-                  onChange={(e) => setFormData({ ...formData, end_date: e.target.value })}
-                  className="bg-secondary border-border"
-                />
-              </div>
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="status">Status</Label>
-              <Select
-                value={formData.status}
-                onValueChange={(value: "active" | "completed" | "on-hold") =>
-                  setFormData({ ...formData, status: value })
-                }
-              >
-                <SelectTrigger className="bg-secondary border-border">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="active">Active</SelectItem>
-                  <SelectItem value="completed">Completed</SelectItem>
-                  <SelectItem value="on-hold">On Hold</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-            <div className="flex justify-end gap-3">
-              <Button type="button" variant="outline" onClick={() => setIsDialogOpen(false)}>
-                Cancel
-              </Button>
-              <Button type="submit" variant="glow">
-                {editingProject ? "Save Changes" : "Add Project"}
-              </Button>
-            </div>
-          </form>
-        </DialogContent>
-      </Dialog>
+      <ProjectFormDialog
+        isOpen={isDialogOpen}
+        onClose={() => setIsDialogOpen(false)}
+        onSubmit={handleSubmit}
+        formData={formData}
+        setFormData={setFormData}
+        customers={customers}
+        editingProject={editingProject}
+        isSubmitting={addProject.isPending || updateProject.isPending}
+      />
     </PageLayout>
     </>
   );

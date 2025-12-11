@@ -9,6 +9,15 @@ export interface Project {
   status: "active" | "completed" | "on-hold";
   start_date: string;
   end_date: string | null;
+  description: string | null;
+  address: string | null;
+  city: string | null;
+  state: string | null;
+  zip: string | null;
+  customer_po: string | null;
+  poc_name: string | null;
+  poc_phone: string | null;
+  poc_email: string | null;
   created_at: string;
   updated_at: string;
 }
