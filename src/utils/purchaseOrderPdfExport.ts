@@ -96,7 +96,7 @@ export const generatePurchaseOrderPDF = (
   doc.setFontSize(10);
   doc.text("Description", 25, yPos + 7);
   doc.text("Qty", pageWidth - 90, yPos + 7);
-  doc.text("Unit Price", pageWidth - 65, yPos + 7);
+  doc.text("Vendor Cost", pageWidth - 65, yPos + 7);
   doc.text("Amount", pageWidth - 25, yPos + 7, { align: "right" });
   
   yPos += 10;
@@ -133,15 +133,6 @@ export const generatePurchaseOrderPDF = (
   yPos += 10;
   const totalsX = pageWidth - 70;
   
-  doc.setFont("helvetica", "normal");
-  doc.text("Subtotal:", totalsX, yPos);
-  doc.text(formatCurrencyForPDF(Number(purchaseOrder.subtotal)), pageWidth - 25, yPos, { align: "right" });
-  
-  yPos += 7;
-  doc.text(`Tax (${purchaseOrder.tax_rate}%):`, totalsX, yPos);
-  doc.text(formatCurrencyForPDF(Number(purchaseOrder.tax_amount)), pageWidth - 25, yPos, { align: "right" });
-  
-  yPos += 7;
   doc.setFont("helvetica", "bold");
   doc.text("PO Total:", totalsX, yPos);
   doc.text(formatCurrencyForPDF(Number(purchaseOrder.total)), pageWidth - 25, yPos, { align: "right" });
