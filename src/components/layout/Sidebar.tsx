@@ -40,7 +40,6 @@ import {
   BarChart3,
   IdCard,
   Link2,
-  FileEdit,
 } from "lucide-react";
 
 import { Send } from "lucide-react";
@@ -54,7 +53,6 @@ const navigation = [
   { name: "Estimates", href: "/estimates", icon: FileText },
   { name: "Job Orders", href: "/job-orders", icon: Briefcase },
   { name: "Purchase Orders", href: "/purchase-orders", icon: ShoppingCart },
-  { name: "Change Orders", href: "/change-orders", icon: FileEdit },
   { name: "Invoices", href: "/invoices", icon: Receipt },
   { name: "Messages", href: "/messages", icon: Send },
   { name: "QuickBooks", href: "/settings/quickbooks", icon: Link2 },

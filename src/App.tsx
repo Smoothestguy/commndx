@@ -82,7 +82,7 @@ import ContractorPortal from "./pages/contractor/ContractorPortal";
 import ContractorSubmissionSuccess from "./pages/contractor/ContractorSubmissionSuccess";
 import ContractorSubmissions from "./pages/admin/ContractorSubmissions";
 import ContractorFormBuilder from "./pages/admin/ContractorFormBuilder";
-import ChangeOrders from "./pages/ChangeOrders";
+
 import NewChangeOrder from "./pages/NewChangeOrder";
 import EditChangeOrder from "./pages/EditChangeOrder";
 import ChangeOrderDetail from "./pages/ChangeOrderDetail";
@@ -329,14 +329,6 @@ const App = () => {
                   element={
                     <ProtectedRoute>
                       <PurchaseOrderDetail />
-                    </ProtectedRoute>
-                  }
-                />
-                <Route
-                  path="/change-orders"
-                  element={
-                    <ProtectedRoute>
-                      <ChangeOrders />
                     </ProtectedRoute>
                   }
                 />
