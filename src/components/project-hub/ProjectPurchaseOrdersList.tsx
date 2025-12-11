@@ -5,10 +5,10 @@ import { StatusBadge } from "@/components/shared/StatusBadge";
 import { Truck, Plus, ExternalLink } from "lucide-react";
 import { format } from "date-fns";
 import { formatCurrency } from "@/lib/utils";
-import { PurchaseOrderWithLineItems } from "@/integrations/supabase/hooks/usePurchaseOrders";
+import { PurchaseOrder } from "@/integrations/supabase/hooks/usePurchaseOrders";
 
 interface ProjectPurchaseOrdersListProps {
-  purchaseOrders: PurchaseOrderWithLineItems[];
+  purchaseOrders: PurchaseOrder[];
   projectId: string;
   onAddNew?: () => void;
 }

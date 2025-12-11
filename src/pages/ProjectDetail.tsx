@@ -6,6 +6,9 @@ import { useEstimates } from "@/integrations/supabase/hooks/useEstimates";
 import { useJobOrders } from "@/integrations/supabase/hooks/useJobOrders";
 import { useInvoices } from "@/integrations/supabase/hooks/useInvoices";
 import { useMilestonesByProject, useAddMilestone, useUpdateMilestone, useDeleteMilestone, Milestone } from "@/integrations/supabase/hooks/useMilestones";
+import { useChangeOrdersByProject } from "@/integrations/supabase/hooks/useChangeOrders";
+import { useTMTicketsByProject } from "@/integrations/supabase/hooks/useTMTickets";
+import { usePurchaseOrders } from "@/integrations/supabase/hooks/usePurchaseOrders";
 import { PageLayout } from "@/components/layout/PageLayout";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -20,6 +23,11 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { ArrowLeft, Calendar, User, Loader2, FileText, Briefcase, Receipt, Target, Plus, Edit, Trash2, Download } from "lucide-react";
 import { format } from "date-fns";
 import { generateProjectReportPDF } from "@/utils/pdfExport";
+import { ProjectFinancialSummary } from "@/components/project-hub/ProjectFinancialSummary";
+import { ProjectChangeOrdersList } from "@/components/project-hub/ProjectChangeOrdersList";
+import { ProjectTMTicketsList } from "@/components/project-hub/ProjectTMTicketsList";
+import { ProjectPurchaseOrdersList } from "@/components/project-hub/ProjectPurchaseOrdersList";
+import { AddTMTicketDialog } from "@/components/tm-tickets/AddTMTicketDialog";
 
 const ProjectDetail = () => {
   const { id } = useParams<{ id: string }>();
@@ -31,6 +39,9 @@ const ProjectDetail = () => {
   const { data: jobOrders } = useJobOrders();
   const { data: invoices } = useInvoices();
   const { data: milestones } = useMilestonesByProject(id);
+  const { data: changeOrders } = useChangeOrdersByProject(id);
+  const { data: tmTickets } = useTMTicketsByProject(id);
+  const { data: allPurchaseOrders } = usePurchaseOrders();
 
   const addMilestone = useAddMilestone();
   const updateMilestone = useUpdateMilestone();
@@ -45,9 +56,16 @@ const ProjectDetail = () => {
     status: "pending" as "pending" | "in-progress" | "completed" | "delayed",
     completion_percentage: 0,
   });
+  const [isTMTicketDialogOpen, setIsTMTicketDialogOpen] = useState(false);
 
   const project = projects?.find((p) => p.id === id);
   const customer = customers?.find((c) => c.id === project?.customer_id);
+
+  // Filter purchase orders for this project
+  const projectPurchaseOrders = useMemo(
+    () => allPurchaseOrders?.filter((po) => po.project_id === id) || [],
+    [allPurchaseOrders, id]
+  );
 
   // Filter related documents
   const projectEstimates = useMemo(
@@ -76,6 +94,41 @@ const ProjectDetail = () => {
 
     return { estimatesTotal, jobOrdersTotal, invoicesTotal, paidTotal };
   }, [projectEstimates, projectJobOrders, projectInvoices]);
+
+  // Calculate financial summary for project hub
+  const financialData = useMemo(() => {
+    const originalContractValue = projectJobOrders.reduce((sum, j) => sum + j.total, 0);
+    const changeOrdersTotal = (changeOrders || [])
+      .filter((co) => co.status === "approved")
+      .reduce((sum, co) => sum + co.total, 0);
+    const tmTicketsTotal = (tmTickets || [])
+      .filter((t) => ["approved", "signed", "invoiced"].includes(t.status))
+      .reduce((sum, t) => sum + t.total, 0);
+    const totalContractValue = originalContractValue + changeOrdersTotal + tmTicketsTotal;
+    
+    const totalPOValue = projectPurchaseOrders.reduce((sum, po) => {
+      return sum + po.total + (po.total_addendum_amount || 0);
+    }, 0);
+    
+    const totalVendorBilled = projectPurchaseOrders.reduce((sum, po) => sum + (po.billed_amount || 0), 0);
+    const totalInvoiced = projectInvoices.reduce((sum, i) => sum + i.total, 0);
+    const totalPaid = projectInvoices.reduce((sum, i) => sum + (i.paid_amount || 0), 0);
+    const grossProfit = totalContractValue - totalPOValue;
+    const grossMargin = totalContractValue > 0 ? (grossProfit / totalContractValue) * 100 : 0;
+
+    return {
+      originalContractValue,
+      changeOrdersTotal,
+      tmTicketsTotal,
+      totalContractValue,
+      totalPOValue,
+      totalVendorBilled,
+      totalInvoiced,
+      totalPaid,
+      grossProfit,
+      grossMargin,
+    };
+  }, [projectJobOrders, changeOrders, tmTickets, projectPurchaseOrders, projectInvoices]);
 
   // Calculate overall project completion
   const overallCompletion = useMemo(() => {
@@ -357,34 +410,8 @@ const ProjectDetail = () => {
         </Card>
       </div>
 
-      {/* Financial Overview */}
-      <Card className="glass border-border mb-8">
-        <CardHeader>
-          <CardTitle className="font-heading">Financial Overview</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-            <div>
-              <p className="text-sm text-muted-foreground">Total Estimated</p>
-              <p className="text-2xl font-bold text-primary">
-                ${totals.estimatesTotal.toFixed(2)}
-              </p>
-            </div>
-            <div>
-              <p className="text-sm text-muted-foreground">Job Orders Total</p>
-              <p className="text-2xl font-bold">${totals.jobOrdersTotal.toFixed(2)}</p>
-            </div>
-            <div>
-              <p className="text-sm text-muted-foreground">Invoiced</p>
-              <p className="text-2xl font-bold">${totals.invoicesTotal.toFixed(2)}</p>
-            </div>
-            <div>
-              <p className="text-sm text-muted-foreground">Paid</p>
-              <p className="text-2xl font-bold text-green-500">${totals.paidTotal.toFixed(2)}</p>
-            </div>
-          </div>
-        </CardContent>
-      </Card>
+      {/* Financial Summary */}
+      <ProjectFinancialSummary data={financialData} />
 
       {/* Milestones */}
       <div className="space-y-4 mb-8">
@@ -527,6 +554,33 @@ const ProjectDetail = () => {
         )}
       </div>
 
+      {/* Change Orders */}
+      <div className="mb-8">
+        <ProjectChangeOrdersList
+          changeOrders={changeOrders || []}
+          projectId={id!}
+          onAddNew={() => navigate(`/change-orders/new?projectId=${id}`)}
+        />
+      </div>
+
+      {/* T&M Tickets */}
+      <div className="mb-8">
+        <ProjectTMTicketsList
+          tickets={tmTickets || []}
+          projectId={id!}
+          onAddNew={() => setIsTMTicketDialogOpen(true)}
+        />
+      </div>
+
+      {/* Purchase Orders */}
+      <div className="mb-8">
+        <ProjectPurchaseOrdersList
+          purchaseOrders={projectPurchaseOrders}
+          projectId={id!}
+          onAddNew={() => navigate(`/purchase-orders/new?projectId=${id}`)}
+        />
+      </div>
+
       {/* Milestone Dialog */}
       <Dialog open={isMilestoneDialogOpen} onOpenChange={setIsMilestoneDialogOpen}>
         <DialogContent className="bg-card border-border">
@@ -626,6 +680,13 @@ const ProjectDetail = () => {
           </form>
         </DialogContent>
       </Dialog>
+
+      {/* T&M Ticket Dialog */}
+      <AddTMTicketDialog
+        open={isTMTicketDialogOpen}
+        onOpenChange={setIsTMTicketDialogOpen}
+        projectId={id}
+      />
     </PageLayout>
   );
 };

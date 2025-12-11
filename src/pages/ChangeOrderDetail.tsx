@@ -40,6 +40,7 @@ import {
   Building2,
   User,
   Link as LinkIcon,
+  Package,
 } from "lucide-react";
 import { format } from "date-fns";
 import { useState } from "react";
@@ -51,6 +52,7 @@ import {
 } from "@/integrations/supabase/hooks/useChangeOrders";
 import { useUserRole } from "@/hooks/useUserRole";
 import { supabase } from "@/integrations/supabase/client";
+import { ImportToAddendumDialog } from "@/components/change-orders/ImportToAddendumDialog";
 
 const statusConfig: Record<
   ChangeOrderStatus,
@@ -72,12 +74,14 @@ export default function ChangeOrderDetail() {
   const { isAdmin, isManager } = useUserRole();
 
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
+  const [showAddToPODialog, setShowAddToPODialog] = useState(false);
 
   const canEdit = changeOrder?.status === "draft" && (isAdmin || isManager);
   const canDelete = changeOrder?.status === "draft" && (isAdmin || isManager);
   const canSubmitForApproval = changeOrder?.status === "draft" && (isAdmin || isManager);
   const canApprove = changeOrder?.status === "pending_approval" && (isAdmin || isManager);
   const canCreateInvoice = changeOrder?.status === "approved" && (isAdmin || isManager);
+  const canAddToPO = changeOrder?.status === "approved" && (isAdmin || isManager);
 
   const handleStatusChange = async (status: ChangeOrderStatus) => {
     if (!id) return;
@@ -136,6 +140,12 @@ export default function ChangeOrderDetail() {
             Reject
           </Button>
         </>
+      )}
+      {canAddToPO && (
+        <Button variant="outline" onClick={() => setShowAddToPODialog(true)}>
+          <Package className="mr-2 h-4 w-4" />
+          Add to PO
+        </Button>
       )}
       {canCreateInvoice && (
         <Button onClick={() => navigate(`/invoices/new?changeOrderId=${id}`)}>
@@ -253,6 +263,13 @@ export default function ChangeOrderDetail() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      <ImportToAddendumDialog
+        open={showAddToPODialog}
+        onOpenChange={setShowAddToPODialog}
+        projectId={changeOrder.project_id}
+        changeOrderId={id}
+      />
     </DetailPageLayout>
   );
 }

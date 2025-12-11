@@ -5,10 +5,10 @@ import { StatusBadge } from "@/components/shared/StatusBadge";
 import { FileText, Plus, ExternalLink } from "lucide-react";
 import { format } from "date-fns";
 import { formatCurrency } from "@/lib/utils";
-import { ChangeOrderWithLineItems } from "@/integrations/supabase/hooks/useChangeOrders";
+import { ChangeOrder } from "@/integrations/supabase/hooks/useChangeOrders";
 
 interface ProjectChangeOrdersListProps {
-  changeOrders: ChangeOrderWithLineItems[];
+  changeOrders: ChangeOrder[];
   projectId: string;
   onAddNew?: () => void;
 }
