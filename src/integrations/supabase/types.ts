@@ -4264,6 +4264,8 @@ export type Database = {
           purchase_order_number: string | null
           remaining_amount: number
           status: Database["public"]["Enums"]["vendor_bill_status"]
+          submitted_at: string | null
+          submitted_by_vendor: boolean | null
           subtotal: number
           tax_amount: number
           tax_rate: number
@@ -4284,6 +4286,8 @@ export type Database = {
           purchase_order_number?: string | null
           remaining_amount?: number
           status?: Database["public"]["Enums"]["vendor_bill_status"]
+          submitted_at?: string | null
+          submitted_by_vendor?: boolean | null
           subtotal?: number
           tax_amount?: number
           tax_rate?: number
@@ -4304,6 +4308,8 @@ export type Database = {
           purchase_order_number?: string | null
           remaining_amount?: number
           status?: Database["public"]["Enums"]["vendor_bill_status"]
+          submitted_at?: string | null
+          submitted_by_vendor?: boolean | null
           subtotal?: number
           tax_amount?: number
           tax_rate?: number
@@ -4370,6 +4376,50 @@ export type Database = {
           },
         ]
       }
+      vendor_invitations: {
+        Row: {
+          accepted_at: string | null
+          created_at: string | null
+          email: string
+          expires_at: string
+          id: string
+          invited_by: string
+          status: string
+          token: string
+          vendor_id: string
+        }
+        Insert: {
+          accepted_at?: string | null
+          created_at?: string | null
+          email: string
+          expires_at?: string
+          id?: string
+          invited_by: string
+          status?: string
+          token?: string
+          vendor_id: string
+        }
+        Update: {
+          accepted_at?: string | null
+          created_at?: string | null
+          email?: string
+          expires_at?: string
+          id?: string
+          invited_by?: string
+          status?: string
+          token?: string
+          vendor_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "vendor_invitations_vendor_id_fkey"
+            columns: ["vendor_id"]
+            isOneToOne: false
+            referencedRelation: "vendors"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       vendors: {
         Row: {
           account_number: string | null
@@ -4395,6 +4445,7 @@ export type Database = {
           tax_id: string | null
           track_1099: boolean | null
           updated_at: string
+          user_id: string | null
           vendor_type: Database["public"]["Enums"]["vendor_type"]
           w9_on_file: boolean | null
           zip: string | null
@@ -4423,6 +4474,7 @@ export type Database = {
           tax_id?: string | null
           track_1099?: boolean | null
           updated_at?: string
+          user_id?: string | null
           vendor_type?: Database["public"]["Enums"]["vendor_type"]
           w9_on_file?: boolean | null
           zip?: string | null
@@ -4451,6 +4503,7 @@ export type Database = {
           tax_id?: string | null
           track_1099?: boolean | null
           updated_at?: string
+          user_id?: string | null
           vendor_type?: Database["public"]["Enums"]["vendor_type"]
           w9_on_file?: boolean | null
           zip?: string | null
@@ -4548,6 +4601,7 @@ export type Database = {
       }
       generate_vendor_bill_number: { Args: never; Returns: string }
       get_personnel_id_for_user: { Args: { _user_id: string }; Returns: string }
+      get_vendor_id_for_user: { Args: { _user_id: string }; Returns: string }
       has_permission: {
         Args: { _action: string; _module: string; _user_id: string }
         Returns: boolean
@@ -4560,6 +4614,7 @@ export type Database = {
         Returns: boolean
       }
       is_personnel: { Args: { _user_id: string }; Returns: boolean }
+      is_vendor: { Args: { _user_id: string }; Returns: boolean }
     }
     Enums: {
       activity_priority: "low" | "medium" | "high" | "urgent"
@@ -4570,7 +4625,7 @@ export type Database = {
         | "note"
         | "site_visit"
         | "follow_up"
-      app_role: "admin" | "manager" | "user" | "personnel"
+      app_role: "admin" | "manager" | "user" | "personnel" | "vendor"
       appointment_status:
         | "scheduled"
         | "confirmed"
@@ -4803,7 +4858,7 @@ export const Constants = {
         "site_visit",
         "follow_up",
       ],
-      app_role: ["admin", "manager", "user", "personnel"],
+      app_role: ["admin", "manager", "user", "personnel", "vendor"],
       appointment_status: [
         "scheduled",
         "confirmed",
