@@ -8,9 +8,11 @@ export default function EditChangeOrder() {
   const { id } = useParams<{ id: string }>();
   const { data: changeOrder, isLoading } = useChangeOrder(id);
 
+  const backPath = changeOrder ? `/projects/${changeOrder.project_id}` : "/projects";
+
   if (isLoading) {
     return (
-      <DetailPageLayout title="Edit Change Order" backPath="/change-orders">
+      <DetailPageLayout title="Edit Change Order" backPath="/projects">
         <div className="flex items-center justify-center py-12">
           <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
         </div>
@@ -20,7 +22,7 @@ export default function EditChangeOrder() {
 
   if (!changeOrder) {
     return (
-      <DetailPageLayout title="Change Order Not Found" backPath="/change-orders">
+      <DetailPageLayout title="Change Order Not Found" backPath="/projects">
         <div className="text-center py-12">
           <p className="text-muted-foreground">
             The change order you're looking for doesn't exist.
@@ -34,7 +36,7 @@ export default function EditChangeOrder() {
     <DetailPageLayout
       title={`Edit ${changeOrder.number}`}
       subtitle="Modify change order details"
-      backPath={`/change-orders/${id}`}
+      backPath={backPath}
     >
       <ChangeOrderForm initialData={changeOrder} />
     </DetailPageLayout>

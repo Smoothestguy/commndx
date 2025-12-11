@@ -94,14 +94,16 @@ export default function ChangeOrderDetail() {
   };
 
   const handleDelete = async () => {
-    if (!id) return;
+    if (!id || !changeOrder) return;
     await deleteChangeOrder.mutateAsync(id);
-    navigate("/change-orders");
+    navigate(`/projects/${changeOrder.project_id}`);
   };
+
+  const backPath = changeOrder ? `/projects/${changeOrder.project_id}` : "/projects";
 
   if (isLoading) {
     return (
-      <DetailPageLayout title="Change Order" backPath="/change-orders">
+      <DetailPageLayout title="Change Order" backPath="/projects">
         <div className="flex items-center justify-center py-12">
           <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
         </div>
@@ -111,7 +113,7 @@ export default function ChangeOrderDetail() {
 
   if (!changeOrder) {
     return (
-      <DetailPageLayout title="Change Order Not Found" backPath="/change-orders">
+      <DetailPageLayout title="Change Order Not Found" backPath="/projects">
         <div className="text-center py-12">
           <p className="text-muted-foreground">The change order doesn't exist.</p>
         </div>
@@ -182,7 +184,7 @@ export default function ChangeOrderDetail() {
     <DetailPageLayout
       title={changeOrder.number}
       subtitle={changeOrder.reason}
-      backPath="/change-orders"
+      backPath={backPath}
       desktopActions={desktopActions}
     >
       <div className="space-y-6">
