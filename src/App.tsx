@@ -91,7 +91,7 @@ import VendorDashboard from "./pages/vendor-portal/VendorDashboard";
 import VendorPOsList from "./pages/vendor-portal/VendorPOsList";
 import VendorPODetail from "./pages/vendor-portal/VendorPODetail";
 import VendorBillsList from "./pages/vendor-portal/VendorBillsList";
-import VendorBillDetail from "./pages/vendor-portal/VendorBillDetail";
+import VendorPortalBillDetail from "./pages/vendor-portal/VendorBillDetail";
 import VendorNewBill from "./pages/vendor-portal/VendorNewBill";
 
 import NewChangeOrder from "./pages/NewChangeOrder";
@@ -591,6 +591,15 @@ const App = () => {
                     </ProtectedRoute>
                   }
                 />
+                {/* Vendor Portal Routes */}
+                <Route path="/vendor/login" element={<VendorLogin />} />
+                <Route path="/vendor/accept-invite/:token" element={<AcceptVendorInvitation />} />
+                <Route path="/vendor" element={<VendorProtectedRoute><VendorDashboard /></VendorProtectedRoute>} />
+                <Route path="/vendor/pos" element={<VendorProtectedRoute><VendorPOsList /></VendorProtectedRoute>} />
+                <Route path="/vendor/pos/:id" element={<VendorProtectedRoute><VendorPODetail /></VendorProtectedRoute>} />
+                <Route path="/vendor/bills" element={<VendorProtectedRoute><VendorBillsList /></VendorProtectedRoute>} />
+                <Route path="/vendor/bills/new" element={<VendorProtectedRoute><VendorNewBill /></VendorProtectedRoute>} />
+                <Route path="/vendor/bills/:id" element={<VendorProtectedRoute><VendorPortalBillDetail /></VendorProtectedRoute>} />
                 <Route path="*" element={<NotFound />} />
               </Routes>
               <BottomNav onMoreClick={() => setMoreMenuOpen(true)} />
