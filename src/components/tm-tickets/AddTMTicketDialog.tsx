@@ -43,8 +43,8 @@ interface LineItem {
 interface AddTMTicketDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  projectId: string;
-  customerId: string;
+  projectId?: string;
+  customerId?: string;
   projectName?: string;
   editTicket?: TMTicketWithLineItems | null;
 }
