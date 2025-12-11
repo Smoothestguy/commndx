@@ -10,14 +10,9 @@ import {
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
-import { Loader2, Upload, FileText, X, Plus, Trash2, Send, Save, ChevronDown } from "lucide-react";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "@/components/ui/command";
+import { Loader2, Upload, FileText, X, Plus, Trash2, Send, Save, ChevronDown, Check, ChevronsUpDown, Package, Wrench, HardHat } from "lucide-react";
 import { useAddPOAddendum, useUpdatePOAddendum, usePOAddendums, POAddendum, POAddendumLineItem } from "@/integrations/supabase/hooks/usePOAddendums";
 import { useProducts } from "@/integrations/supabase/hooks/useProducts";
 
@@ -65,6 +60,10 @@ export function AddAddendumDialog({
   const [customerRepEmail, setCustomerRepEmail] = useState("");
   const [requireApproval, setRequireApproval] = useState(false);
   
+  // Product combobox state
+  const [productComboboxOpen, setProductComboboxOpen] = useState<Record<string, boolean>>({});
+  const [productSearch, setProductSearch] = useState<Record<string, string>>({});
+  
   const addAddendum = useAddPOAddendum();
   const updateAddendum = useUpdatePOAddendum();
   const { data: products } = useProducts();
@@ -72,6 +71,11 @@ export function AddAddendumDialog({
 
   const isEditMode = !!editAddendum;
   const isApproved = editAddendum?.approval_status === 'approved';
+
+  // Group products by type
+  const getProductsByType = (type: 'product' | 'service' | 'labor') => {
+    return products?.filter((p) => p.item_type === type) || [];
+  };
 
   // Populate form when editing
   useEffect(() => {
@@ -122,6 +126,8 @@ export function AddAddendumDialog({
     setCustomerRepTitle("");
     setCustomerRepEmail("");
     setRequireApproval(false);
+    setProductComboboxOpen({});
+    setProductSearch({});
   };
 
   const handleClose = () => {
@@ -181,11 +187,7 @@ export function AddAddendumDialog({
     });
   };
 
-  const handleProductSelect = (lineItemId: string, productId: string) => {
-    if (productId === "none") {
-      updateLineItem(lineItemId, { productId: "" });
-      return;
-    }
+  const selectProduct = (lineItemId: string, productId: string) => {
     const product = products?.find(p => p.id === productId);
     if (product) {
       updateLineItem(lineItemId, {
@@ -195,6 +197,7 @@ export function AddAddendumDialog({
         markup: product.markup || 0,
       });
     }
+    setProductComboboxOpen(prev => ({ ...prev, [lineItemId]: false }));
   };
 
   const subtotal = lineItems.reduce((sum, item) => sum + item.unitPrice * item.quantity, 0);
@@ -365,24 +368,115 @@ export function AddAddendumDialog({
                           {/* Expanded content */}
                           <CollapsibleContent>
                             <div className="px-3 pb-3 pt-1 space-y-3 border-t border-border/30">
+                              {/* Searchable Product Combobox */}
                               <div>
                                 <Label className="text-xs">Product (Optional)</Label>
-                                <Select
-                                  value={item.productId || "none"}
-                                  onValueChange={(v) => handleProductSelect(item.id, v)}
+                                <Popover
+                                  open={productComboboxOpen[item.id] || false}
+                                  onOpenChange={(open) => setProductComboboxOpen(prev => ({ ...prev, [item.id]: open }))}
                                 >
-                                  <SelectTrigger className="mt-1">
-                                    <SelectValue placeholder="Select product..." />
-                                  </SelectTrigger>
-                                  <SelectContent className="z-[100]">
-                                    <SelectItem value="none">-- Custom Item --</SelectItem>
-                                    {products?.map((product) => (
-                                      <SelectItem key={product.id} value={product.id}>
-                                        {product.name} {product.cost ? `($${product.cost.toFixed(2)})` : ""}
-                                      </SelectItem>
-                                    ))}
-                                  </SelectContent>
-                                </Select>
+                                  <PopoverTrigger asChild>
+                                    <Button
+                                      variant="outline"
+                                      role="combobox"
+                                      className={cn(
+                                        "w-full justify-between mt-1",
+                                        !item.productId && "text-muted-foreground"
+                                      )}
+                                    >
+                                      {item.productId
+                                        ? products?.find(p => p.id === item.productId)?.name || "Select product..."
+                                        : "Select product..."}
+                                      <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                                    </Button>
+                                  </PopoverTrigger>
+                                  <PopoverContent className="w-[350px] p-0 z-[100]" align="start">
+                                    <Command>
+                                      <CommandInput
+                                        placeholder="Search products..."
+                                        value={productSearch[item.id] || ""}
+                                        onValueChange={(value) => setProductSearch(prev => ({ ...prev, [item.id]: value }))}
+                                      />
+                                      <CommandList>
+                                        <CommandEmpty>No products found.</CommandEmpty>
+                                        
+                                        {/* Custom Item Option */}
+                                        <CommandGroup>
+                                          <CommandItem
+                                            value="__custom__"
+                                            onSelect={() => {
+                                              updateLineItem(item.id, { productId: "" });
+                                              setProductComboboxOpen(prev => ({ ...prev, [item.id]: false }));
+                                            }}
+                                          >
+                                            <Check className={cn("mr-2 h-4 w-4", !item.productId ? "opacity-100" : "opacity-0")} />
+                                            -- Custom Item --
+                                          </CommandItem>
+                                        </CommandGroup>
+                                        
+                                        {getProductsByType('product').length > 0 && (
+                                          <CommandGroup heading={<span className="flex items-center gap-1"><Package className="h-3 w-3" /> Products</span>}>
+                                            {getProductsByType('product').map((product) => (
+                                              <CommandItem
+                                                key={product.id}
+                                                value={`${product.name} ${product.sku || ''} ${product.category || ''}`}
+                                                onSelect={() => selectProduct(item.id, product.id)}
+                                              >
+                                                <Check className={cn("mr-2 h-4 w-4", item.productId === product.id ? "opacity-100" : "opacity-0")} />
+                                                <div className="flex flex-col">
+                                                  <span>{product.name}</span>
+                                                  <span className="text-xs text-muted-foreground">
+                                                    ${product.cost?.toFixed(2)} • {product.category || 'Uncategorized'}
+                                                  </span>
+                                                </div>
+                                              </CommandItem>
+                                            ))}
+                                          </CommandGroup>
+                                        )}
+
+                                        {getProductsByType('service').length > 0 && (
+                                          <CommandGroup heading={<span className="flex items-center gap-1"><Wrench className="h-3 w-3" /> Services</span>}>
+                                            {getProductsByType('service').map((product) => (
+                                              <CommandItem
+                                                key={product.id}
+                                                value={`${product.name} ${product.sku || ''} ${product.category || ''}`}
+                                                onSelect={() => selectProduct(item.id, product.id)}
+                                              >
+                                                <Check className={cn("mr-2 h-4 w-4", item.productId === product.id ? "opacity-100" : "opacity-0")} />
+                                                <div className="flex flex-col">
+                                                  <span>{product.name}</span>
+                                                  <span className="text-xs text-muted-foreground">
+                                                    ${product.cost?.toFixed(2)} • {product.category || 'Uncategorized'}
+                                                  </span>
+                                                </div>
+                                              </CommandItem>
+                                            ))}
+                                          </CommandGroup>
+                                        )}
+
+                                        {getProductsByType('labor').length > 0 && (
+                                          <CommandGroup heading={<span className="flex items-center gap-1"><HardHat className="h-3 w-3" /> Labor</span>}>
+                                            {getProductsByType('labor').map((product) => (
+                                              <CommandItem
+                                                key={product.id}
+                                                value={`${product.name} ${product.sku || ''} ${product.category || ''}`}
+                                                onSelect={() => selectProduct(item.id, product.id)}
+                                              >
+                                                <Check className={cn("mr-2 h-4 w-4", item.productId === product.id ? "opacity-100" : "opacity-0")} />
+                                                <div className="flex flex-col">
+                                                  <span>{product.name}</span>
+                                                  <span className="text-xs text-muted-foreground">
+                                                    ${product.cost?.toFixed(2)}/hr
+                                                  </span>
+                                                </div>
+                                              </CommandItem>
+                                            ))}
+                                          </CommandGroup>
+                                        )}
+                                      </CommandList>
+                                    </Command>
+                                  </PopoverContent>
+                                </Popover>
                               </div>
 
                               <div>
@@ -453,147 +547,150 @@ export function AddAddendumDialog({
                   <span className="text-muted-foreground">Markup</span>
                   <span>${totalMarkup.toFixed(2)}</span>
                 </div>
-                <div className="flex justify-between font-bold border-t border-border pt-2">
+                <Separator />
+                <div className="flex justify-between font-semibold">
                   <span>Total</span>
                   <span className="text-primary">${total.toFixed(2)}</span>
                 </div>
               </div>
             )}
 
-            {/* Optional Document Upload */}
-            <div className="space-y-2">
-              <Label>Document (Optional)</Label>
-              {file ? (
-                <div className="flex items-center gap-3 p-3 border border-border rounded-lg bg-secondary/30">
-                  <FileText className="h-5 w-5 text-primary shrink-0" />
-                  <div className="flex-1 min-w-0">
-                    <p className="text-sm font-medium truncate">{file.name}</p>
-                    <p className="text-xs text-muted-foreground">
-                      {(file.size / 1024).toFixed(1)} KB
-                    </p>
-                  </div>
-                  <Button
-                    type="button"
-                    variant="ghost"
-                    size="icon"
-                    className="shrink-0"
-                    onClick={() => setFile(null)}
-                  >
-                    <X className="h-4 w-4" />
-                  </Button>
-                </div>
-              ) : (
-                <label className="flex flex-col items-center justify-center gap-2 p-4 border-2 border-dashed border-border rounded-lg cursor-pointer hover:border-primary/50 hover:bg-secondary/30 transition-colors">
-                  <Upload className="h-6 w-6 text-muted-foreground" />
-                  <span className="text-sm text-muted-foreground">
-                    Click to upload PDF or image (optional)
-                  </span>
-                  <input
-                    type="file"
-                    accept=".pdf,image/jpeg,image/png,image/webp"
-                    onChange={handleFileChange}
-                    className="hidden"
-                  />
-                </label>
-              )}
-            </div>
-
-            <Separator className="my-4" />
-
-            {/* Customer Approval Section */}
-            <div className="space-y-4">
+            {/* E-Signature Approval Section */}
+            <div className="space-y-3 p-4 border border-border rounded-lg bg-muted/30">
               <div className="flex items-center justify-between">
                 <div>
-                  <Label className="text-base font-medium">Customer Approval</Label>
-                  <p className="text-sm text-muted-foreground">
-                    Require e-signature approval for this change order
+                  <Label className="text-sm font-medium">Require E-Signature Approval</Label>
+                  <p className="text-xs text-muted-foreground mt-0.5">
+                    Send this change order to the customer for approval
                   </p>
                 </div>
                 <Switch
                   checked={requireApproval}
                   onCheckedChange={setRequireApproval}
+                  disabled={isApproved}
                 />
               </div>
 
               {requireApproval && (
-                <div className="space-y-3 p-4 border border-border rounded-lg bg-secondary/20">
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                    <div className="sm:col-span-2">
-                      <Label className="text-xs">Customer Representative Name *</Label>
+                <div className="space-y-3 pt-2">
+                  <div className="grid grid-cols-2 gap-3">
+                    <div className="space-y-1">
+                      <Label className="text-xs">Representative Name *</Label>
                       <Input
-                        className="mt-1"
-                        placeholder="e.g., John Smith"
+                        placeholder="John Smith"
                         value={customerRepName}
                         onChange={(e) => setCustomerRepName(e.target.value)}
+                        disabled={isApproved}
                       />
                     </div>
-                    <div>
+                    <div className="space-y-1">
                       <Label className="text-xs">Title</Label>
                       <Input
-                        className="mt-1"
-                        placeholder="e.g., Project Manager"
+                        placeholder="Project Manager"
                         value={customerRepTitle}
                         onChange={(e) => setCustomerRepTitle(e.target.value)}
-                      />
-                    </div>
-                    <div>
-                      <Label className="text-xs">Email *</Label>
-                      <Input
-                        className="mt-1"
-                        type="email"
-                        placeholder="email@company.com"
-                        value={customerRepEmail}
-                        onChange={(e) => setCustomerRepEmail(e.target.value)}
+                        disabled={isApproved}
                       />
                     </div>
                   </div>
-                  <p className="text-xs text-muted-foreground">
-                    An email will be sent to the customer representative with a link to review and e-sign this change order.
-                  </p>
+                  <div className="space-y-1">
+                    <Label className="text-xs">Email Address *</Label>
+                    <Input
+                      type="email"
+                      placeholder="john@company.com"
+                      value={customerRepEmail}
+                      onChange={(e) => setCustomerRepEmail(e.target.value)}
+                      disabled={isApproved}
+                    />
+                  </div>
+                </div>
+              )}
+            </div>
+
+            {/* File Upload */}
+            <div className="space-y-2">
+              <Label>Supporting Document (Optional)</Label>
+              {editAddendum?.file_path && !removeExistingFile && !file && (
+                <div className="flex items-center gap-2 p-2 border border-border rounded-md bg-secondary/30">
+                  <FileText className="h-4 w-4 text-primary" />
+                  <span className="text-sm flex-1 truncate">{editAddendum.file_name}</span>
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="icon"
+                    className="h-6 w-6"
+                    onClick={() => setRemoveExistingFile(true)}
+                  >
+                    <X className="h-4 w-4" />
+                  </Button>
+                </div>
+              )}
+              {(removeExistingFile || !editAddendum?.file_path) && !file && (
+                <label className="flex flex-col items-center justify-center w-full h-24 border-2 border-dashed border-border rounded-lg cursor-pointer hover:bg-secondary/50 transition-colors">
+                  <div className="flex flex-col items-center justify-center pt-2 pb-3">
+                    <Upload className="h-6 w-6 mb-1 text-muted-foreground" />
+                    <p className="text-xs text-muted-foreground">
+                      PDF, JPG, PNG, or WebP
+                    </p>
+                  </div>
+                  <input
+                    type="file"
+                    className="hidden"
+                    accept=".pdf,.jpg,.jpeg,.png,.webp"
+                    onChange={handleFileChange}
+                  />
+                </label>
+              )}
+              {file && (
+                <div className="flex items-center gap-2 p-2 border border-border rounded-md bg-secondary/30">
+                  <FileText className="h-4 w-4 text-primary" />
+                  <span className="text-sm flex-1 truncate">{file.name}</span>
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="icon"
+                    className="h-6 w-6"
+                    onClick={() => setFile(null)}
+                  >
+                    <X className="h-4 w-4" />
+                  </Button>
                 </div>
               )}
             </div>
           </div>
         </div>
 
-        <DialogFooter className="shrink-0 px-6 py-4 border-t border-border bg-background">
-          <div className="flex flex-col sm:flex-row justify-end gap-2 w-full">
-            <Button type="button" variant="outline" onClick={handleClose}>
-              Cancel
-            </Button>
-            {requireApproval ? (
-              <>
-                <Button 
-                  type="button" 
-                  variant="secondary"
-                  disabled={!isValid || addAddendum.isPending || updateAddendum.isPending || isApproved}
-                  onClick={() => handleSubmit(false)}
-                >
-                  {(addAddendum.isPending || updateAddendum.isPending) && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                  <Save className="mr-2 h-4 w-4" />
-                  Save Draft
-                </Button>
-                <Button 
-                  type="button" 
-                  disabled={!canSendForApproval || addAddendum.isPending || updateAddendum.isPending || isApproved}
-                  onClick={() => handleSubmit(true)}
-                >
-                  {(addAddendum.isPending || updateAddendum.isPending) && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                  <Send className="mr-2 h-4 w-4" />
-                  {isEditMode ? "Update & Send for Approval" : "Save & Send for Approval"}
-                </Button>
-              </>
+        <DialogFooter className="shrink-0 px-6 py-4 border-t border-border gap-2 sm:gap-2">
+          <Button type="button" variant="outline" onClick={handleClose}>
+            Cancel
+          </Button>
+          <Button
+            type="button"
+            variant="secondary"
+            onClick={() => handleSubmit(false)}
+            disabled={!isValid || addAddendum.isPending || updateAddendum.isPending}
+          >
+            {(addAddendum.isPending || updateAddendum.isPending) ? (
+              <Loader2 className="h-4 w-4 mr-2 animate-spin" />
             ) : (
-              <Button 
-                type="button" 
-                disabled={!isValid || addAddendum.isPending || updateAddendum.isPending || isApproved}
-                onClick={() => handleSubmit(false)}
-              >
-                {(addAddendum.isPending || updateAddendum.isPending) && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                {isEditMode ? "Update Addendum" : `Add ${nextNumber}`}
-              </Button>
+              <Save className="h-4 w-4 mr-2" />
             )}
-          </div>
+            Save Draft
+          </Button>
+          {requireApproval && (
+            <Button
+              type="button"
+              onClick={() => handleSubmit(true)}
+              disabled={!canSendForApproval || addAddendum.isPending || updateAddendum.isPending}
+            >
+              {(addAddendum.isPending || updateAddendum.isPending) ? (
+                <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+              ) : (
+                <Send className="h-4 w-4 mr-2" />
+              )}
+              Send for Approval
+            </Button>
+          )}
         </DialogFooter>
       </DialogContent>
     </Dialog>

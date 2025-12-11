@@ -4,10 +4,16 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Trash2, Plus } from "lucide-react";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "@/components/ui/command";
+import { Trash2, Plus, Check, ChevronsUpDown, Package, Wrench, HardHat } from "lucide-react";
 import { useAddJobOrder } from "@/integrations/supabase/hooks/useJobOrders";
+import { useProducts } from "@/integrations/supabase/hooks/useProducts";
+import { cn } from "@/lib/utils";
 
 interface LineItem {
+  id: string;
+  product_id?: string;
   description: string;
   quantity: number;
   unit_price: number;
@@ -33,41 +39,72 @@ export function CreateJobOrderDialog({
   customerName,
 }: CreateJobOrderDialogProps) {
   const addJobOrder = useAddJobOrder();
+  const { data: products } = useProducts();
   
   const [status, setStatus] = useState<"active" | "in-progress" | "completed" | "on-hold">("active");
   const [taxRate, setTaxRate] = useState(8.25);
   const [startDate, setStartDate] = useState(new Date().toISOString().split("T")[0]);
   const [completionDate, setCompletionDate] = useState("");
   const [lineItems, setLineItems] = useState<LineItem[]>([
-    { description: "", quantity: 1, unit_price: 0, markup: 30, total: 0 },
+    { id: crypto.randomUUID(), description: "", quantity: 1, unit_price: 0, markup: 30, total: 0 },
   ]);
+  const [productComboboxOpen, setProductComboboxOpen] = useState<Record<string, boolean>>({});
+  const [productSearch, setProductSearch] = useState<Record<string, string>>({});
+
+  // Group products by type
+  const getProductsByType = (type: 'product' | 'service' | 'labor') => {
+    return products?.filter((p) => p.item_type === type) || [];
+  };
 
   const calculateLineItemTotal = (quantity: number, unitPrice: number, markup: number): number => {
-    const markedUpPrice = unitPrice / (1 - markup / 100);
+    const markedUpPrice = markup > 0 && markup < 100 ? unitPrice / (1 - markup / 100) : unitPrice;
     return quantity * markedUpPrice;
   };
 
-  const updateLineItem = (index: number, field: keyof LineItem, value: string | number) => {
-    const updated = [...lineItems];
-    updated[index] = { ...updated[index], [field]: value };
-    
-    if (field === "quantity" || field === "unit_price" || field === "markup") {
-      const qty = field === "quantity" ? Number(value) : updated[index].quantity;
-      const price = field === "unit_price" ? Number(value) : updated[index].unit_price;
-      const mrk = field === "markup" ? Number(value) : updated[index].markup;
-      updated[index].total = calculateLineItemTotal(qty, price, mrk);
-    }
-    
+  const updateLineItem = (id: string, field: keyof Omit<LineItem, 'id'>, value: string | number) => {
+    const updated = lineItems.map(item => {
+      if (item.id !== id) return item;
+      const newItem = { ...item, [field]: value };
+      
+      if (field === "quantity" || field === "unit_price" || field === "markup") {
+        const qty = field === "quantity" ? Number(value) : newItem.quantity;
+        const price = field === "unit_price" ? Number(value) : newItem.unit_price;
+        const mrk = field === "markup" ? Number(value) : newItem.markup;
+        newItem.total = calculateLineItemTotal(qty, price, mrk);
+      }
+      
+      return newItem;
+    });
     setLineItems(updated);
   };
 
-  const addLineItem = () => {
-    setLineItems([...lineItems, { description: "", quantity: 1, unit_price: 0, markup: 30, total: 0 }]);
+  const selectProduct = (lineItemId: string, productId: string) => {
+    const product = products?.find((p) => p.id === productId);
+    if (product) {
+      setLineItems(items => items.map(item => {
+        if (item.id !== lineItemId) return item;
+        const unitPrice = product.cost;
+        const markup = product.markup;
+        return {
+          ...item,
+          product_id: productId,
+          description: product.description || product.name,
+          unit_price: unitPrice,
+          markup: markup,
+          total: calculateLineItemTotal(item.quantity, unitPrice, markup),
+        };
+      }));
+    }
+    setProductComboboxOpen(prev => ({ ...prev, [lineItemId]: false }));
   };
 
-  const removeLineItem = (index: number) => {
+  const addLineItem = () => {
+    setLineItems([...lineItems, { id: crypto.randomUUID(), description: "", quantity: 1, unit_price: 0, markup: 30, total: 0 }]);
+  };
+
+  const removeLineItem = (id: string) => {
     if (lineItems.length > 1) {
-      setLineItems(lineItems.filter((_, i) => i !== index));
+      setLineItems(lineItems.filter(item => item.id !== id));
     }
   };
 
@@ -83,7 +120,7 @@ export function CreateJobOrderDialog({
 
     await addJobOrder.mutateAsync({
       jobOrder: {
-        number: "", // Auto-generated by database trigger
+        number: "",
         estimate_id: null,
         customer_id: customerId,
         customer_name: customerName,
@@ -117,7 +154,9 @@ export function CreateJobOrderDialog({
     setTaxRate(8.25);
     setStartDate(new Date().toISOString().split("T")[0]);
     setCompletionDate("");
-    setLineItems([{ description: "", quantity: 1, unit_price: 0, markup: 30, total: 0 }]);
+    setLineItems([{ id: crypto.randomUUID(), description: "", quantity: 1, unit_price: 0, markup: 30, total: 0 }]);
+    setProductComboboxOpen({});
+    setProductSearch({});
   };
 
   const handleClose = () => {
@@ -203,62 +242,165 @@ export function CreateJobOrderDialog({
               </div>
 
               <div className="space-y-3">
-                {lineItems.map((item, index) => (
-                  <div key={index} className="grid grid-cols-12 gap-2 items-end p-3 bg-muted/30 rounded-lg">
-                    <div className="col-span-4 space-y-1">
-                      <Label className="text-xs text-muted-foreground">Description</Label>
-                      <Input
-                        value={item.description}
-                        onChange={(e) => updateLineItem(index, "description", e.target.value)}
-                        placeholder="Description"
-                      />
+                {lineItems.map((item) => (
+                  <div key={item.id} className="p-4 bg-muted/30 rounded-lg space-y-3">
+                    {/* Product Selector */}
+                    <div className="space-y-1">
+                      <Label className="text-xs text-muted-foreground">Product (Optional)</Label>
+                      <Popover
+                        open={productComboboxOpen[item.id] || false}
+                        onOpenChange={(open) => setProductComboboxOpen(prev => ({ ...prev, [item.id]: open }))}
+                      >
+                        <PopoverTrigger asChild>
+                          <Button
+                            variant="outline"
+                            role="combobox"
+                            className={cn(
+                              "w-full justify-between",
+                              !item.product_id && "text-muted-foreground"
+                            )}
+                          >
+                            {item.product_id
+                              ? products?.find(p => p.id === item.product_id)?.name
+                              : "Select product..."}
+                            <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                          </Button>
+                        </PopoverTrigger>
+                        <PopoverContent className="w-[400px] p-0" align="start">
+                          <Command>
+                            <CommandInput
+                              placeholder="Search products..."
+                              value={productSearch[item.id] || ""}
+                              onValueChange={(value) => setProductSearch(prev => ({ ...prev, [item.id]: value }))}
+                            />
+                            <CommandList>
+                              <CommandEmpty>No products found.</CommandEmpty>
+                              
+                              {/* Products Group */}
+                              {getProductsByType('product').length > 0 && (
+                                <CommandGroup heading={<span className="flex items-center gap-1"><Package className="h-3 w-3" /> Products</span>}>
+                                  {getProductsByType('product').map((product) => (
+                                    <CommandItem
+                                      key={product.id}
+                                      value={`${product.name} ${product.sku || ''} ${product.category || ''}`}
+                                      onSelect={() => selectProduct(item.id, product.id)}
+                                    >
+                                      <Check className={cn("mr-2 h-4 w-4", item.product_id === product.id ? "opacity-100" : "opacity-0")} />
+                                      <div className="flex flex-col">
+                                        <span>{product.name}</span>
+                                        <span className="text-xs text-muted-foreground">
+                                          ${product.cost?.toFixed(2)} • {product.category || 'Uncategorized'}
+                                        </span>
+                                      </div>
+                                    </CommandItem>
+                                  ))}
+                                </CommandGroup>
+                              )}
+
+                              {/* Services Group */}
+                              {getProductsByType('service').length > 0 && (
+                                <CommandGroup heading={<span className="flex items-center gap-1"><Wrench className="h-3 w-3" /> Services</span>}>
+                                  {getProductsByType('service').map((product) => (
+                                    <CommandItem
+                                      key={product.id}
+                                      value={`${product.name} ${product.sku || ''} ${product.category || ''}`}
+                                      onSelect={() => selectProduct(item.id, product.id)}
+                                    >
+                                      <Check className={cn("mr-2 h-4 w-4", item.product_id === product.id ? "opacity-100" : "opacity-0")} />
+                                      <div className="flex flex-col">
+                                        <span>{product.name}</span>
+                                        <span className="text-xs text-muted-foreground">
+                                          ${product.cost?.toFixed(2)} • {product.category || 'Uncategorized'}
+                                        </span>
+                                      </div>
+                                    </CommandItem>
+                                  ))}
+                                </CommandGroup>
+                              )}
+
+                              {/* Labor Group */}
+                              {getProductsByType('labor').length > 0 && (
+                                <CommandGroup heading={<span className="flex items-center gap-1"><HardHat className="h-3 w-3" /> Labor</span>}>
+                                  {getProductsByType('labor').map((product) => (
+                                    <CommandItem
+                                      key={product.id}
+                                      value={`${product.name} ${product.sku || ''} ${product.category || ''}`}
+                                      onSelect={() => selectProduct(item.id, product.id)}
+                                    >
+                                      <Check className={cn("mr-2 h-4 w-4", item.product_id === product.id ? "opacity-100" : "opacity-0")} />
+                                      <div className="flex flex-col">
+                                        <span>{product.name}</span>
+                                        <span className="text-xs text-muted-foreground">
+                                          ${product.cost?.toFixed(2)}/hr
+                                        </span>
+                                      </div>
+                                    </CommandItem>
+                                  ))}
+                                </CommandGroup>
+                              )}
+                            </CommandList>
+                          </Command>
+                        </PopoverContent>
+                      </Popover>
                     </div>
-                    <div className="col-span-2 space-y-1">
-                      <Label className="text-xs text-muted-foreground">Qty</Label>
-                      <Input
-                        type="number"
-                        value={item.quantity}
-                        onChange={(e) => updateLineItem(index, "quantity", e.target.value)}
-                        min="1"
-                      />
-                    </div>
-                    <div className="col-span-2 space-y-1">
-                      <Label className="text-xs text-muted-foreground">Unit Price</Label>
-                      <div className="relative">
-                        <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground">$</span>
+
+                    {/* Description and other fields */}
+                    <div className="grid grid-cols-12 gap-2 items-end">
+                      <div className="col-span-4 space-y-1">
+                        <Label className="text-xs text-muted-foreground">Description</Label>
+                        <Input
+                          value={item.description}
+                          onChange={(e) => updateLineItem(item.id, "description", e.target.value)}
+                          placeholder="Description"
+                        />
+                      </div>
+                      <div className="col-span-2 space-y-1">
+                        <Label className="text-xs text-muted-foreground">Qty</Label>
+                        <Input
+                          type="number"
+                          value={item.quantity}
+                          onChange={(e) => updateLineItem(item.id, "quantity", e.target.value)}
+                          min="1"
+                        />
+                      </div>
+                      <div className="col-span-2 space-y-1">
+                        <Label className="text-xs text-muted-foreground">Unit Price</Label>
+                        <div className="relative">
+                          <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground">$</span>
+                          <Input
+                            type="number"
+                            step="0.01"
+                            value={item.unit_price}
+                            onChange={(e) => updateLineItem(item.id, "unit_price", e.target.value)}
+                            className="pl-7"
+                          />
+                        </div>
+                      </div>
+                      <div className="col-span-2 space-y-1">
+                        <Label className="text-xs text-muted-foreground">Margin %</Label>
                         <Input
                           type="number"
                           step="0.01"
-                          value={item.unit_price}
-                          onChange={(e) => updateLineItem(index, "unit_price", e.target.value)}
-                          className="pl-7"
+                          value={item.markup}
+                          onChange={(e) => updateLineItem(item.id, "markup", e.target.value)}
+                          max="99"
                         />
                       </div>
-                    </div>
-                    <div className="col-span-2 space-y-1">
-                      <Label className="text-xs text-muted-foreground">Margin %</Label>
-                      <Input
-                        type="number"
-                        step="0.01"
-                        value={item.markup}
-                        onChange={(e) => updateLineItem(index, "markup", e.target.value)}
-                        max="99"
-                      />
-                    </div>
-                    <div className="col-span-1 space-y-1">
-                      <Label className="text-xs text-muted-foreground">Total</Label>
-                      <div className="p-2 text-sm font-medium">${item.total.toFixed(2)}</div>
-                    </div>
-                    <div className="col-span-1 flex justify-end">
-                      <Button
-                        type="button"
-                        variant="ghost"
-                        size="icon"
-                        onClick={() => removeLineItem(index)}
-                        disabled={lineItems.length === 1}
-                      >
-                        <Trash2 className="h-4 w-4 text-destructive" />
-                      </Button>
+                      <div className="col-span-1 space-y-1">
+                        <Label className="text-xs text-muted-foreground">Total</Label>
+                        <div className="p-2 text-sm font-medium">${item.total.toFixed(2)}</div>
+                      </div>
+                      <div className="col-span-1 flex justify-end">
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="icon"
+                          onClick={() => removeLineItem(item.id)}
+                          disabled={lineItems.length === 1}
+                        >
+                          <Trash2 className="h-4 w-4 text-destructive" />
+                        </Button>
+                      </div>
                     </div>
                   </div>
                 ))}
