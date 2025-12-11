@@ -71,6 +71,7 @@ export function ImportToAddendumDialog({
 
     await addAddendum.mutateAsync({
       purchaseOrderId: selectedPO,
+      number: `ADD-${selectedCOData.number}`,
       description: `Imported from ${selectedCOData.number}: ${selectedCOData.reason}`,
       subtotal: selectedCOData.subtotal,
       amount: selectedCOData.total,
