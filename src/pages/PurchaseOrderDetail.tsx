@@ -531,16 +531,8 @@ const PurchaseOrderDetail = () => {
           )}
 
           <div className="mt-4 pt-4 border-t border-border/30 space-y-2">
-            <div className="flex justify-between items-center text-sm">
-              <span className="text-muted-foreground">Subtotal</span>
-              <span>{formatCurrency(Number(purchaseOrder.subtotal))}</span>
-            </div>
-            <div className="flex justify-between items-center text-sm">
-              <span className="text-muted-foreground">Tax ({purchaseOrder.tax_rate}%)</span>
-              <span>{formatCurrency(Number(purchaseOrder.tax_amount))}</span>
-            </div>
-            <div className="flex justify-between items-center text-sm font-medium pt-2 border-t border-border/30">
-              <span>PO Total</span>
+            <div className="flex justify-between items-center text-sm font-medium">
+              <span>PO Total (Vendor Cost)</span>
               <span>{formatCurrency(Number(purchaseOrder.total))}</span>
             </div>
             {totalAddendumAmount > 0 && (

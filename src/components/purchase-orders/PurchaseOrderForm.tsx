@@ -4,13 +4,6 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "@/components/ui/command";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -27,14 +20,12 @@ import { z } from "zod";
 const lineItemSchema = z.object({
   description: z.string().min(1, "Description is required").max(500),
   quantity: z.number().positive("Quantity must be positive"),
-  unit_price: z.number().positive("Unit price must be positive"),
-  margin: z.number().min(0, "Margin cannot be negative").max(99.99, "Margin must be less than 100%"),
+  unit_price: z.number().positive("Vendor cost must be positive"),
 });
 
 const purchaseOrderSchema = z.object({
   job_order_id: z.string().uuid("Please select a job order"),
   vendor_id: z.string().uuid("Please select a vendor"),
-  tax_rate: z.number().min(0).max(100),
   due_date: z.string().min(1, "Due date is required"),
   notes: z.string().max(1000).optional(),
 });
@@ -45,7 +36,6 @@ interface LineItem {
   description: string;
   quantity: string;
   unit_price: string;
-  margin: string;
   total: number;
 }
 
@@ -65,18 +55,21 @@ export const PurchaseOrderForm = () => {
 
   const [selectedJobOrderId, setSelectedJobOrderId] = useState<string>("");
   const [selectedVendorId, setSelectedVendorId] = useState<string>("");
-  const [taxRate, setTaxRate] = useState<string>("8.5");
   const [dueDate, setDueDate] = useState<string>("");
   const [notes, setNotes] = useState<string>("");
   const [isPrefilled, setIsPrefilled] = useState(false);
 
   const [lineItems, setLineItems] = useState<LineItem[]>([
-    { id: crypto.randomUUID(), description: "", quantity: "1", unit_price: "", margin: "0", total: 0 },
+    { id: crypto.randomUUID(), description: "", quantity: "1", unit_price: "", total: 0 },
   ]);
 
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [productComboboxOpen, setProductComboboxOpen] = useState<Record<string, boolean>>({});
   const [productSearch, setProductSearch] = useState<Record<string, string>>({});
+  const [jobOrderComboboxOpen, setJobOrderComboboxOpen] = useState(false);
+  const [vendorComboboxOpen, setVendorComboboxOpen] = useState(false);
+  const [jobOrderSearch, setJobOrderSearch] = useState("");
+  const [vendorSearch, setVendorSearch] = useState("");
 
   // Get selected job order details
   const selectedJobOrder = jobOrders?.find(jo => jo.id === selectedJobOrderId);
@@ -95,11 +88,10 @@ export const PurchaseOrderForm = () => {
     return `PO-${year}-${random}`;
   };
 
-  const calculateLineItemTotal = (quantity: string, unitPrice: string, margin: string) => {
+  const calculateLineItemTotal = (quantity: string, unitPrice: string) => {
     const qty = parseFloat(quantity) || 0;
     const price = parseFloat(unitPrice) || 0;
-    const mgn = parseFloat(margin) || 0;
-    return mgn > 0 && mgn < 100 ? qty * price / (1 - mgn / 100) : qty * price;
+    return qty * price;
   };
 
   const updateLineItem = (id: string, field: keyof Omit<LineItem, 'id'>, value: string) => {
@@ -107,11 +99,10 @@ export const PurchaseOrderForm = () => {
       if (item.id !== id) return item;
       const newItem = { ...item, [field]: value };
 
-      if (field === "quantity" || field === "unit_price" || field === "margin") {
+      if (field === "quantity" || field === "unit_price") {
         newItem.total = calculateLineItemTotal(
           newItem.quantity,
-          newItem.unit_price,
-          newItem.margin
+          newItem.unit_price
         );
       }
 
@@ -126,14 +117,12 @@ export const PurchaseOrderForm = () => {
       setLineItems(items => items.map(item => {
         if (item.id !== lineItemId) return item;
         const unitPrice = product.cost.toString();
-        const margin = product.markup.toString();
         return {
           ...item,
           product_id: productId,
           description: product.description || product.name,
           unit_price: unitPrice,
-          margin: margin,
-          total: calculateLineItemTotal(item.quantity, unitPrice, margin),
+          total: calculateLineItemTotal(item.quantity, unitPrice),
         };
       }));
     }
@@ -143,7 +132,7 @@ export const PurchaseOrderForm = () => {
   const addLineItem = () => {
     setLineItems([
       ...lineItems,
-      { id: crypto.randomUUID(), description: "", quantity: "1", unit_price: "", margin: "0", total: 0 },
+      { id: crypto.randomUUID(), description: "", quantity: "1", unit_price: "", total: 0 },
     ]);
   };
 
@@ -153,10 +142,8 @@ export const PurchaseOrderForm = () => {
     }
   };
 
-  // Calculate totals
-  const subtotal = lineItems.reduce((sum, item) => sum + item.total, 0);
-  const taxAmount = subtotal * (parseFloat(taxRate) || 0) / 100;
-  const total = subtotal + taxAmount;
+  // Calculate totals (no tax for vendor POs)
+  const total = lineItems.reduce((sum, item) => sum + item.total, 0);
 
   const validateForm = () => {
     const newErrors: Record<string, string> = {};
@@ -165,7 +152,6 @@ export const PurchaseOrderForm = () => {
       purchaseOrderSchema.parse({
         job_order_id: selectedJobOrderId,
         vendor_id: selectedVendorId,
-        tax_rate: parseFloat(taxRate),
         due_date: dueDate,
         notes,
       });
@@ -183,7 +169,6 @@ export const PurchaseOrderForm = () => {
           description: item.description,
           quantity: parseFloat(item.quantity),
           unit_price: parseFloat(item.unit_price),
-          margin: parseFloat(item.margin),
         });
       } catch (error) {
         if (error instanceof z.ZodError) {
@@ -221,9 +206,9 @@ export const PurchaseOrderForm = () => {
         status: 'pending_approval' as const,
         submitted_by: user?.id,
         submitted_for_approval_at: new Date().toISOString(),
-        subtotal,
-        tax_rate: parseFloat(taxRate),
-        tax_amount: taxAmount,
+        subtotal: total,
+        tax_rate: 0,
+        tax_amount: 0,
         total,
         notes: notes || undefined,
         due_date: dueDate,
@@ -232,7 +217,7 @@ export const PurchaseOrderForm = () => {
         description: item.description,
         quantity: parseFloat(item.quantity),
         unit_price: parseFloat(item.unit_price),
-        markup: parseFloat(item.margin),
+        markup: 0,
         total: item.total,
       })),
     };
@@ -252,21 +237,18 @@ export const PurchaseOrderForm = () => {
   useEffect(() => {
     if (prefillJobOrder && jobOrderIdFromUrl && !isPrefilled) {
       setSelectedJobOrderId(prefillJobOrder.id);
-      setTaxRate(prefillJobOrder.tax_rate.toString());
       
       if (prefillJobOrder.line_items && prefillJobOrder.line_items.length > 0) {
         const mappedLineItems: LineItem[] = prefillJobOrder.line_items.map((item) => {
           const total = calculateLineItemTotal(
             item.quantity.toString(),
-            item.unit_price.toString(),
-            (item.markup || 0).toString()
+            item.unit_price.toString()
           );
           return {
             id: crypto.randomUUID(),
             description: item.description,
             quantity: item.quantity.toString(),
             unit_price: item.unit_price.toString(),
-            margin: (item.markup || 0).toString(),
             total,
           };
         });
@@ -282,22 +264,19 @@ export const PurchaseOrderForm = () => {
     if (duplicatePO && duplicateId && !isPrefilled) {
       setSelectedJobOrderId(duplicatePO.job_order_id);
       setSelectedVendorId(duplicatePO.vendor_id);
-      setTaxRate(duplicatePO.tax_rate.toString());
       setNotes(duplicatePO.notes || "");
       
       if (duplicatePO.line_items && duplicatePO.line_items.length > 0) {
         const mappedLineItems: LineItem[] = duplicatePO.line_items.map((item) => {
           const total = calculateLineItemTotal(
             item.quantity.toString(),
-            item.unit_price.toString(),
-            (item.markup || 0).toString()
+            item.unit_price.toString()
           );
           return {
             id: crypto.randomUUID(),
             description: item.description,
             quantity: item.quantity.toString(),
             unit_price: item.unit_price.toString(),
-            margin: (item.markup || 0).toString(),
             total,
           };
         });
@@ -316,6 +295,8 @@ export const PurchaseOrderForm = () => {
     );
   }
 
+  const activeVendors = vendors?.filter(v => v.status === "active") || [];
+
   return (
     <form onSubmit={handleSubmit} className="space-y-6">
       {/* Info Alert about Prefill */}
@@ -333,7 +314,7 @@ export const PurchaseOrderForm = () => {
       <Alert>
         <AlertCircle className="h-4 w-4" />
         <AlertDescription>
-          Purchase orders require manager approval before they can be sent to vendors.
+          Purchase orders require manager approval before they can be sent to vendors. Enter the vendor cost for each item.
         </AlertDescription>
       </Alert>
 
@@ -344,47 +325,127 @@ export const PurchaseOrderForm = () => {
         </CardHeader>
         <CardContent className="space-y-4">
           <div className="grid gap-4 sm:grid-cols-2">
+            {/* Searchable Job Order Combobox */}
             <div className="space-y-2">
               <Label htmlFor="jobOrder">Job Order *</Label>
-              <Select value={selectedJobOrderId} onValueChange={setSelectedJobOrderId}>
-                <SelectTrigger className="bg-secondary border-border">
-                  <SelectValue placeholder="Select job order" />
-                </SelectTrigger>
-                <SelectContent className="max-w-[calc(100vw-2rem)]">
-                  {jobOrders?.map((jobOrder) => (
-                    <SelectItem key={jobOrder.id} value={jobOrder.id} className="py-2">
-                      <div className="flex flex-col gap-0.5">
-                        <div className="font-medium">{jobOrder.number}</div>
-                        <div className="text-xs text-muted-foreground">
-                          {jobOrder.customer_name} • {jobOrder.project_name}
-                        </div>
+              <Popover open={jobOrderComboboxOpen} onOpenChange={setJobOrderComboboxOpen}>
+                <PopoverTrigger asChild>
+                  <Button
+                    variant="outline"
+                    role="combobox"
+                    className={cn(
+                      "w-full justify-between bg-secondary border-border",
+                      !selectedJobOrderId && "text-muted-foreground"
+                    )}
+                  >
+                    {selectedJobOrder ? (
+                      <div className="flex flex-col items-start text-left">
+                        <span className="font-medium">{selectedJobOrder.number}</span>
+                        <span className="text-xs text-muted-foreground truncate max-w-[200px]">
+                          {selectedJobOrder.customer_name}
+                        </span>
                       </div>
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+                    ) : (
+                      "Select job order..."
+                    )}
+                    <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent className="w-[400px] p-0" align="start">
+                  <Command>
+                    <CommandInput
+                      placeholder="Search job orders..."
+                      value={jobOrderSearch}
+                      onValueChange={setJobOrderSearch}
+                    />
+                    <CommandList>
+                      <CommandEmpty>No job orders found.</CommandEmpty>
+                      <CommandGroup>
+                        {jobOrders?.map((jo) => (
+                          <CommandItem
+                            key={jo.id}
+                            value={`${jo.number} ${jo.customer_name} ${jo.project_name}`}
+                            onSelect={() => {
+                              setSelectedJobOrderId(jo.id);
+                              setJobOrderComboboxOpen(false);
+                            }}
+                          >
+                            <Check className={cn("mr-2 h-4 w-4", selectedJobOrderId === jo.id ? "opacity-100" : "opacity-0")} />
+                            <div className="flex flex-col">
+                              <span className="font-medium">{jo.number}</span>
+                              <span className="text-xs text-muted-foreground">
+                                {jo.customer_name} • {jo.project_name}
+                              </span>
+                            </div>
+                          </CommandItem>
+                        ))}
+                      </CommandGroup>
+                    </CommandList>
+                  </Command>
+                </PopoverContent>
+              </Popover>
               {errors.job_order_id && (
                 <p className="text-sm text-destructive">{errors.job_order_id}</p>
               )}
             </div>
 
+            {/* Searchable Vendor Combobox */}
             <div className="space-y-2">
               <Label htmlFor="vendor">Vendor *</Label>
-              <Select value={selectedVendorId} onValueChange={setSelectedVendorId}>
-                <SelectTrigger className="bg-secondary border-border">
-                  <SelectValue placeholder="Select vendor" />
-                </SelectTrigger>
-                <SelectContent className="max-w-[calc(100vw-2rem)]">
-                  {vendors?.filter(v => v.status === "active").map((vendor) => (
-                    <SelectItem key={vendor.id} value={vendor.id} className="py-2">
-                      <div className="flex flex-col gap-0.5">
-                        <div className="font-medium">{vendor.name}</div>
-                        <div className="text-xs text-muted-foreground">{vendor.specialty}</div>
+              <Popover open={vendorComboboxOpen} onOpenChange={setVendorComboboxOpen}>
+                <PopoverTrigger asChild>
+                  <Button
+                    variant="outline"
+                    role="combobox"
+                    className={cn(
+                      "w-full justify-between bg-secondary border-border",
+                      !selectedVendorId && "text-muted-foreground"
+                    )}
+                  >
+                    {selectedVendor ? (
+                      <div className="flex flex-col items-start text-left">
+                        <span className="font-medium">{selectedVendor.name}</span>
+                        <span className="text-xs text-muted-foreground truncate max-w-[200px]">
+                          {selectedVendor.specialty}
+                        </span>
                       </div>
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+                    ) : (
+                      "Select vendor..."
+                    )}
+                    <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent className="w-[400px] p-0" align="start">
+                  <Command>
+                    <CommandInput
+                      placeholder="Search vendors..."
+                      value={vendorSearch}
+                      onValueChange={setVendorSearch}
+                    />
+                    <CommandList>
+                      <CommandEmpty>No vendors found.</CommandEmpty>
+                      <CommandGroup>
+                        {activeVendors.map((vendor) => (
+                          <CommandItem
+                            key={vendor.id}
+                            value={`${vendor.name} ${vendor.specialty || ''}`}
+                            onSelect={() => {
+                              setSelectedVendorId(vendor.id);
+                              setVendorComboboxOpen(false);
+                            }}
+                          >
+                            <Check className={cn("mr-2 h-4 w-4", selectedVendorId === vendor.id ? "opacity-100" : "opacity-0")} />
+                            <div className="flex flex-col">
+                              <span className="font-medium">{vendor.name}</span>
+                              <span className="text-xs text-muted-foreground">{vendor.specialty}</span>
+                            </div>
+                          </CommandItem>
+                        ))}
+                      </CommandGroup>
+                    </CommandList>
+                  </Command>
+                </PopoverContent>
+              </Popover>
               {errors.vendor_id && (
                 <p className="text-sm text-destructive">{errors.vendor_id}</p>
               )}
@@ -405,7 +466,7 @@ export const PurchaseOrderForm = () => {
                   <span className="font-medium">{selectedJobOrder.project_name}</span>
                 </div>
                 <div className="flex justify-between">
-                  <span className="text-muted-foreground">Total Value:</span>
+                  <span className="text-muted-foreground">Contract Value:</span>
                   <span className="font-medium text-primary">
                     ${selectedJobOrder.total.toLocaleString(undefined, { minimumFractionDigits: 2 })}
                   </span>
@@ -414,32 +475,18 @@ export const PurchaseOrderForm = () => {
             </div>
           )}
 
-          <div className="grid gap-4 sm:grid-cols-2">
-            <div className="space-y-2">
-              <Label htmlFor="taxRate">Tax Rate (%)</Label>
-              <Input
-                id="taxRate"
-                type="number"
-                step="0.01"
-                value={taxRate}
-                onChange={(e) => setTaxRate(e.target.value)}
-                className="bg-secondary border-border"
-              />
-            </div>
-
-            <div className="space-y-2">
-              <Label htmlFor="dueDate">Due Date *</Label>
-              <Input
-                id="dueDate"
-                type="date"
-                value={dueDate}
-                onChange={(e) => setDueDate(e.target.value)}
-                className="bg-secondary border-border"
-              />
-              {errors.due_date && (
-                <p className="text-sm text-destructive">{errors.due_date}</p>
-              )}
-            </div>
+          <div className="space-y-2">
+            <Label htmlFor="dueDate">Due Date *</Label>
+            <Input
+              id="dueDate"
+              type="date"
+              value={dueDate}
+              onChange={(e) => setDueDate(e.target.value)}
+              className="bg-secondary border-border max-w-xs"
+            />
+            {errors.due_date && (
+              <p className="text-sm text-destructive">{errors.due_date}</p>
+            )}
           </div>
         </CardContent>
       </Card>
@@ -447,7 +494,7 @@ export const PurchaseOrderForm = () => {
       {/* Line Items */}
       <Card className="glass border-border">
         <CardHeader>
-          <CardTitle className="font-heading">Line Items</CardTitle>
+          <CardTitle className="font-heading">Line Items (Vendor Costs)</CardTitle>
         </CardHeader>
         <CardContent className="space-y-4">
           {lineItems.map((item, index) => (
@@ -566,8 +613,8 @@ export const PurchaseOrderForm = () => {
                 </Popover>
               </div>
 
-              <div className="grid gap-3 sm:grid-cols-2">
-                <div className="space-y-2 sm:col-span-2">
+              <div className="grid gap-3 sm:grid-cols-3">
+                <div className="space-y-2 sm:col-span-3">
                   <Label>Description *</Label>
                   <Input
                     value={item.description}
@@ -594,7 +641,7 @@ export const PurchaseOrderForm = () => {
                 </div>
 
                 <div className="space-y-2">
-                  <Label>Unit Price *</Label>
+                  <Label>Vendor Cost *</Label>
                   <div className="relative">
                     <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground">$</span>
                     <Input
@@ -605,22 +652,15 @@ export const PurchaseOrderForm = () => {
                       className="bg-secondary border-border pl-7"
                     />
                   </div>
+                  {errors[`line_${index}_unit_price`] && (
+                    <p className="text-sm text-destructive">
+                      {errors[`line_${index}_unit_price`]}
+                    </p>
+                  )}
                 </div>
 
                 <div className="space-y-2">
-                  <Label>Margin (%)</Label>
-                  <Input
-                    type="number"
-                    step="0.01"
-                    max="99.99"
-                    value={item.margin}
-                    onChange={(e) => updateLineItem(item.id, "margin", e.target.value)}
-                    className="bg-secondary border-border"
-                  />
-                </div>
-
-                <div className="space-y-2">
-                  <Label>Total</Label>
+                  <Label>Line Total</Label>
                   <Input
                     value={`$${item.total.toFixed(2)}`}
                     readOnly
@@ -662,21 +702,9 @@ export const PurchaseOrderForm = () => {
       {/* Totals */}
       <Card className="glass border-border">
         <CardContent className="pt-6">
-          <div className="space-y-2">
-            <div className="flex justify-between text-sm">
-              <span className="text-muted-foreground">Subtotal:</span>
-              <span className="font-medium">${subtotal.toFixed(2)}</span>
-            </div>
-            <div className="flex justify-between text-sm">
-              <span className="text-muted-foreground">
-                Tax ({taxRate}%):
-              </span>
-              <span className="font-medium">${taxAmount.toFixed(2)}</span>
-            </div>
-            <div className="flex justify-between text-lg font-heading border-t border-border pt-2">
-              <span className="font-bold">Total:</span>
-              <span className="font-bold text-primary">${total.toFixed(2)}</span>
-            </div>
+          <div className="flex justify-between text-lg font-heading">
+            <span className="font-bold">Total (Vendor Cost):</span>
+            <span className="font-bold text-primary">${total.toFixed(2)}</span>
           </div>
         </CardContent>
       </Card>
