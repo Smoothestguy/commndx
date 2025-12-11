@@ -83,6 +83,17 @@ import ContractorSubmissionSuccess from "./pages/contractor/ContractorSubmission
 import ContractorSubmissions from "./pages/admin/ContractorSubmissions";
 import ContractorFormBuilder from "./pages/admin/ContractorFormBuilder";
 
+// Vendor Portal
+import { VendorProtectedRoute } from "./components/vendor-portal/VendorProtectedRoute";
+import VendorLogin from "./pages/vendor-portal/VendorLogin";
+import AcceptVendorInvitation from "./pages/vendor-portal/AcceptVendorInvitation";
+import VendorDashboard from "./pages/vendor-portal/VendorDashboard";
+import VendorPOsList from "./pages/vendor-portal/VendorPOsList";
+import VendorPODetail from "./pages/vendor-portal/VendorPODetail";
+import VendorBillsList from "./pages/vendor-portal/VendorBillsList";
+import VendorBillDetail from "./pages/vendor-portal/VendorBillDetail";
+import VendorNewBill from "./pages/vendor-portal/VendorNewBill";
+
 import NewChangeOrder from "./pages/NewChangeOrder";
 import EditChangeOrder from "./pages/EditChangeOrder";
 import ChangeOrderDetail from "./pages/ChangeOrderDetail";
