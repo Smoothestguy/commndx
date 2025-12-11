@@ -2420,6 +2420,7 @@ export type Database = {
           approval_token: string | null
           approved_at: string | null
           approved_by_name: string | null
+          change_order_id: string | null
           created_at: string | null
           customer_rep_email: string | null
           customer_rep_name: string | null
@@ -2444,6 +2445,7 @@ export type Database = {
           approval_token?: string | null
           approved_at?: string | null
           approved_by_name?: string | null
+          change_order_id?: string | null
           created_at?: string | null
           customer_rep_email?: string | null
           customer_rep_name?: string | null
@@ -2468,6 +2470,7 @@ export type Database = {
           approval_token?: string | null
           approved_at?: string | null
           approved_by_name?: string | null
+          change_order_id?: string | null
           created_at?: string | null
           customer_rep_email?: string | null
           customer_rep_name?: string | null
@@ -2485,6 +2488,13 @@ export type Database = {
           uploaded_by?: string | null
         }
         Relationships: [
+          {
+            foreignKeyName: "po_addendums_change_order_id_fkey"
+            columns: ["change_order_id"]
+            isOneToOne: false
+            referencedRelation: "change_orders"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "po_addendums_purchase_order_id_fkey"
             columns: ["purchase_order_id"]
@@ -3791,6 +3801,173 @@ export type Database = {
           },
         ]
       }
+      tm_ticket_line_items: {
+        Row: {
+          created_at: string
+          description: string
+          id: string
+          is_taxable: boolean | null
+          markup: number
+          product_id: string | null
+          quantity: number
+          sort_order: number | null
+          tm_ticket_id: string
+          total: number
+          unit_price: number
+        }
+        Insert: {
+          created_at?: string
+          description: string
+          id?: string
+          is_taxable?: boolean | null
+          markup?: number
+          product_id?: string | null
+          quantity?: number
+          sort_order?: number | null
+          tm_ticket_id: string
+          total?: number
+          unit_price?: number
+        }
+        Update: {
+          created_at?: string
+          description?: string
+          id?: string
+          is_taxable?: boolean | null
+          markup?: number
+          product_id?: string | null
+          quantity?: number
+          sort_order?: number | null
+          tm_ticket_id?: string
+          total?: number
+          unit_price?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "tm_ticket_line_items_product_id_fkey"
+            columns: ["product_id"]
+            isOneToOne: false
+            referencedRelation: "products"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "tm_ticket_line_items_tm_ticket_id_fkey"
+            columns: ["tm_ticket_id"]
+            isOneToOne: false
+            referencedRelation: "tm_tickets"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      tm_tickets: {
+        Row: {
+          approval_token: string | null
+          created_at: string
+          created_by: string | null
+          created_in_field: boolean | null
+          customer_id: string
+          customer_rep_email: string | null
+          customer_rep_name: string | null
+          customer_rep_title: string | null
+          description: string | null
+          id: string
+          notes: string | null
+          project_id: string
+          purchase_order_id: string | null
+          signature_data: string | null
+          signed_at: string | null
+          status: Database["public"]["Enums"]["tm_ticket_status"]
+          subtotal: number
+          tax_amount: number
+          tax_rate: number
+          ticket_number: string
+          total: number
+          updated_at: string
+          vendor_id: string | null
+          work_date: string
+        }
+        Insert: {
+          approval_token?: string | null
+          created_at?: string
+          created_by?: string | null
+          created_in_field?: boolean | null
+          customer_id: string
+          customer_rep_email?: string | null
+          customer_rep_name?: string | null
+          customer_rep_title?: string | null
+          description?: string | null
+          id?: string
+          notes?: string | null
+          project_id: string
+          purchase_order_id?: string | null
+          signature_data?: string | null
+          signed_at?: string | null
+          status?: Database["public"]["Enums"]["tm_ticket_status"]
+          subtotal?: number
+          tax_amount?: number
+          tax_rate?: number
+          ticket_number: string
+          total?: number
+          updated_at?: string
+          vendor_id?: string | null
+          work_date?: string
+        }
+        Update: {
+          approval_token?: string | null
+          created_at?: string
+          created_by?: string | null
+          created_in_field?: boolean | null
+          customer_id?: string
+          customer_rep_email?: string | null
+          customer_rep_name?: string | null
+          customer_rep_title?: string | null
+          description?: string | null
+          id?: string
+          notes?: string | null
+          project_id?: string
+          purchase_order_id?: string | null
+          signature_data?: string | null
+          signed_at?: string | null
+          status?: Database["public"]["Enums"]["tm_ticket_status"]
+          subtotal?: number
+          tax_amount?: number
+          tax_rate?: number
+          ticket_number?: string
+          total?: number
+          updated_at?: string
+          vendor_id?: string | null
+          work_date?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "tm_tickets_customer_id_fkey"
+            columns: ["customer_id"]
+            isOneToOne: false
+            referencedRelation: "customers"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "tm_tickets_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "projects"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "tm_tickets_purchase_order_id_fkey"
+            columns: ["purchase_order_id"]
+            isOneToOne: false
+            referencedRelation: "purchase_orders"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "tm_tickets_vendor_id_fkey"
+            columns: ["vendor_id"]
+            isOneToOne: false
+            referencedRelation: "vendors"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       user_permissions: {
         Row: {
           can_add: boolean | null
@@ -4297,6 +4474,10 @@ export type Database = {
         Returns: string
       }
       generate_purchase_order_number: { Args: never; Returns: string }
+      generate_tm_ticket_number: {
+        Args: { p_project_id: string }
+        Returns: string
+      }
       generate_vendor_bill_number: { Args: never; Returns: string }
       get_personnel_id_for_user: { Args: { _user_id: string }; Returns: string }
       has_permission: {
@@ -4400,6 +4581,13 @@ export type Database = {
         | "combination"
       task_priority: "low" | "medium" | "high" | "urgent"
       task_status: "pending" | "in_progress" | "completed" | "cancelled"
+      tm_ticket_status:
+        | "draft"
+        | "pending_signature"
+        | "signed"
+        | "approved"
+        | "invoiced"
+        | "void"
       vendor_bill_status: "draft" | "open" | "paid" | "partially_paid" | "void"
       vendor_status: "active" | "inactive"
       vendor_type: "contractor" | "personnel" | "supplier"
@@ -4635,6 +4823,14 @@ export const Constants = {
       ],
       task_priority: ["low", "medium", "high", "urgent"],
       task_status: ["pending", "in_progress", "completed", "cancelled"],
+      tm_ticket_status: [
+        "draft",
+        "pending_signature",
+        "signed",
+        "approved",
+        "invoiced",
+        "void",
+      ],
       vendor_bill_status: ["draft", "open", "paid", "partially_paid", "void"],
       vendor_status: ["active", "inactive"],
       vendor_type: ["contractor", "personnel", "supplier"],
