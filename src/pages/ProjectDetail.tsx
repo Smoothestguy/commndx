@@ -29,6 +29,7 @@ import { ProjectChangeOrdersList } from "@/components/project-hub/ProjectChangeO
 import { ProjectTMTicketsList } from "@/components/project-hub/ProjectTMTicketsList";
 import { ProjectPurchaseOrdersList } from "@/components/project-hub/ProjectPurchaseOrdersList";
 import { AddTMTicketDialog } from "@/components/tm-tickets/AddTMTicketDialog";
+import { CreateJobOrderDialog } from "@/components/job-orders/CreateJobOrderDialog";
 
 const ProjectDetail = () => {
   const { id } = useParams<{ id: string }>();
@@ -58,6 +59,7 @@ const ProjectDetail = () => {
     completion_percentage: 0,
   });
   const [isTMTicketDialogOpen, setIsTMTicketDialogOpen] = useState(false);
+  const [isJobOrderDialogOpen, setIsJobOrderDialogOpen] = useState(false);
 
   const project = projects?.find((p) => p.id === id);
   const customer = customers?.find((c) => c.id === project?.customer_id);
@@ -584,11 +586,17 @@ const ProjectDetail = () => {
 
       {/* Job Orders */}
       <div className="space-y-4 mb-8">
-        <div className="flex items-center gap-2">
-          <Briefcase className="h-5 w-5 text-primary" />
-          <h3 className="font-heading text-lg font-semibold">
-            Job Orders ({projectJobOrders.length})
-          </h3>
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <Briefcase className="h-5 w-5 text-primary" />
+            <h3 className="font-heading text-lg font-semibold">
+              Job Orders ({projectJobOrders.length})
+            </h3>
+          </div>
+          <Button size="sm" onClick={() => setIsJobOrderDialogOpen(true)}>
+            <Plus className="h-4 w-4 mr-1" />
+            Create JO
+          </Button>
         </div>
         {projectJobOrders.length === 0 ? (
           <Card className="glass border-border">
@@ -766,6 +774,18 @@ const ProjectDetail = () => {
         onOpenChange={setIsTMTicketDialogOpen}
         projectId={id}
       />
+
+      {/* Create Job Order Dialog */}
+      {project && customer && (
+        <CreateJobOrderDialog
+          isOpen={isJobOrderDialogOpen}
+          onClose={() => setIsJobOrderDialogOpen(false)}
+          projectId={project.id}
+          projectName={project.name}
+          customerId={customer.id}
+          customerName={customer.name}
+        />
+      )}
     </PageLayout>
   );
 };
