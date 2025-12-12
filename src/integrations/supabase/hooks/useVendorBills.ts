@@ -14,6 +14,7 @@ export interface VendorBillLineItem {
   unit_cost: number;
   total: number;
   po_line_item_id?: string | null;
+  po_addendum_line_item_id?: string | null;
 }
 
 export interface VendorBillPayment {

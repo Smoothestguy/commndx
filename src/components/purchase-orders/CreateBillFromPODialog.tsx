@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import {
   Dialog,
@@ -19,10 +19,13 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+import { Badge } from "@/components/ui/badge";
 import { useAddVendorBill } from "@/integrations/supabase/hooks/useVendorBills";
 import { PurchaseOrderWithLineItems } from "@/integrations/supabase/hooks/usePurchaseOrders";
+import { usePOAddendums, POAddendumLineItem } from "@/integrations/supabase/hooks/usePOAddendums";
+import { supabase } from "@/integrations/supabase/client";
 import { format } from "date-fns";
-import { AlertTriangle, Receipt } from "lucide-react";
+import { AlertTriangle, Receipt, FileText } from "lucide-react";
 
 interface CreateBillFromPODialogProps {
   open: boolean;
@@ -38,6 +41,9 @@ interface LineItemQuantity {
   remainingQuantity: number;
   unitPrice: number;
   quantityToBill: number;
+  source: 'po' | 'addendum';
+  sourceId?: string; // Addendum ID for addendum items
+  addendumNumber?: string; // Display number for addendum items
 }
 
 export function CreateBillFromPODialog({
@@ -47,20 +53,80 @@ export function CreateBillFromPODialog({
 }: CreateBillFromPODialogProps) {
   const navigate = useNavigate();
   const addVendorBill = useAddVendorBill();
-
-  const initialLineItems: LineItemQuantity[] = purchaseOrder.line_items.map((item) => ({
-    id: item.id || "",
-    description: item.description,
-    originalQuantity: Number(item.quantity),
-    billedQuantity: Number(item.billed_quantity || 0),
-    remainingQuantity: Number(item.quantity) - Number(item.billed_quantity || 0),
-    unitPrice: Number(item.unit_price),
-    quantityToBill: Math.max(0, Number(item.quantity) - Number(item.billed_quantity || 0)),
-  }));
-
-  const [lineItems, setLineItems] = useState<LineItemQuantity[]>(initialLineItems);
+  
+  // Fetch addendums for this PO
+  const { data: addendums } = usePOAddendums(purchaseOrder.id);
+  
+  const [addendumLineItems, setAddendumLineItems] = useState<(POAddendumLineItem & { addendumNumber: string })[]>([]);
+  const [lineItems, setLineItems] = useState<LineItemQuantity[]>([]);
   const [billDate, setBillDate] = useState(format(new Date(), "yyyy-MM-dd"));
   const [dueDate, setDueDate] = useState(format(new Date(Date.now() + 30 * 24 * 60 * 60 * 1000), "yyyy-MM-dd"));
+
+  // Fetch addendum line items when addendums change
+  useEffect(() => {
+    const fetchAddendumLineItems = async () => {
+      if (!addendums || addendums.length === 0) {
+        setAddendumLineItems([]);
+        return;
+      }
+
+      const addendumIds = addendums.map(a => a.id);
+      const { data, error } = await supabase
+        .from("po_addendum_line_items")
+        .select("*")
+        .in("po_addendum_id", addendumIds)
+        .order("sort_order", { ascending: true });
+
+      if (error) {
+        console.error("Error fetching addendum line items:", error);
+        return;
+      }
+
+      // Map addendum numbers to line items
+      const itemsWithNumbers = (data || []).map(item => {
+        const addendum = addendums.find(a => a.id === item.po_addendum_id);
+        return {
+          ...item,
+          addendumNumber: addendum?.number || 'Addendum',
+        };
+      });
+
+      setAddendumLineItems(itemsWithNumbers);
+    };
+
+    fetchAddendumLineItems();
+  }, [addendums]);
+
+  // Combine PO line items and addendum line items
+  useEffect(() => {
+    // PO line items
+    const poItems: LineItemQuantity[] = purchaseOrder.line_items.map((item) => ({
+      id: item.id || "",
+      description: item.description,
+      originalQuantity: Number(item.quantity),
+      billedQuantity: Number(item.billed_quantity || 0),
+      remainingQuantity: Number(item.quantity) - Number(item.billed_quantity || 0),
+      unitPrice: Number(item.unit_price),
+      quantityToBill: Math.max(0, Number(item.quantity) - Number(item.billed_quantity || 0)),
+      source: 'po' as const,
+    }));
+
+    // Addendum line items
+    const addendumItems: LineItemQuantity[] = addendumLineItems.map((item) => ({
+      id: item.id,
+      description: item.description,
+      originalQuantity: Number(item.quantity),
+      billedQuantity: Number((item as any).billed_quantity || 0),
+      remainingQuantity: Number(item.quantity) - Number((item as any).billed_quantity || 0),
+      unitPrice: Number(item.unit_price),
+      quantityToBill: Math.max(0, Number(item.quantity) - Number((item as any).billed_quantity || 0)),
+      source: 'addendum' as const,
+      sourceId: item.po_addendum_id,
+      addendumNumber: item.addendumNumber,
+    }));
+
+    setLineItems([...poItems, ...addendumItems]);
+  }, [purchaseOrder.line_items, addendumLineItems]);
 
   const updateQuantity = (id: string, value: number) => {
     setLineItems((prev) =>
@@ -87,16 +153,23 @@ export function CreateBillFromPODialog({
     (item) => item.quantityToBill > item.remainingQuantity
   );
 
+  // Separate PO items and addendum items for display
+  const poLineItems = lineItems.filter(item => item.source === 'po');
+  const addendumLineItemsForDisplay = lineItems.filter(item => item.source === 'addendum');
+
   const handleSubmit = async () => {
     if (!hasValidItems || hasExceededQuantity) return;
 
     const billLineItems = lineItems
       .filter((item) => item.quantityToBill > 0)
       .map((item) => ({
-        po_line_item_id: item.id,
+        po_line_item_id: item.source === 'po' ? item.id : null,
+        po_addendum_line_item_id: item.source === 'addendum' ? item.id : null,
         project_id: purchaseOrder.project_id,
         category_id: null,
-        description: item.description,
+        description: item.source === 'addendum' 
+          ? `[${item.addendumNumber}] ${item.description}`
+          : item.description,
         quantity: item.quantityToBill,
         unit_cost: item.unitPrice,
         total: item.quantityToBill * item.unitPrice,
@@ -114,7 +187,7 @@ export function CreateBillFromPODialog({
           tax_rate: taxRate,
           tax_amount: taxAmount,
           total,
-          notes: `Created from Purchase Order ${purchaseOrder.number}`,
+          notes: `Created from Purchase Order ${purchaseOrder.number}${addendumLineItemsForDisplay.length > 0 ? ' (includes addendum items)' : ''}`,
           purchase_order_id: purchaseOrder.id,
           purchase_order_number: purchaseOrder.number,
         },
@@ -138,6 +211,11 @@ export function CreateBillFromPODialog({
           </DialogTitle>
           <DialogDescription>
             Enter the quantities to bill. You can create partial bills by billing less than the remaining quantity.
+            {addendumLineItemsForDisplay.length > 0 && (
+              <span className="block mt-1 text-primary">
+                This PO has {addendumLineItemsForDisplay.length} addendum item(s) that can be included in this bill.
+              </span>
+            )}
           </DialogDescription>
         </DialogHeader>
 
@@ -176,37 +254,99 @@ export function CreateBillFromPODialog({
               </TableRow>
             </TableHeader>
             <TableBody>
-              {lineItems.map((item) => (
-                <TableRow key={item.id}>
-                  <TableCell className="font-medium">{item.description}</TableCell>
-                  <TableCell className="text-right">{item.originalQuantity}</TableCell>
-                  <TableCell className="text-right text-muted-foreground">
-                    {item.billedQuantity}
-                  </TableCell>
-                  <TableCell className="text-right">
-                    <span className={item.remainingQuantity === 0 ? "text-muted-foreground" : "text-primary font-medium"}>
-                      {item.remainingQuantity}
-                    </span>
-                  </TableCell>
-                  <TableCell className="text-right">
-                    <Input
-                      type="number"
-                      min={0}
-                      max={item.remainingQuantity}
-                      value={item.quantityToBill}
-                      onChange={(e) => updateQuantity(item.id, Number(e.target.value))}
-                      className="w-24 text-right"
-                      disabled={item.remainingQuantity === 0}
-                    />
-                  </TableCell>
-                  <TableCell className="text-right">
-                    ${item.unitPrice.toFixed(2)}
-                  </TableCell>
-                  <TableCell className="text-right font-medium">
-                    ${(item.quantityToBill * item.unitPrice).toFixed(2)}
-                  </TableCell>
-                </TableRow>
-              ))}
+              {/* PO Line Items */}
+              {poLineItems.length > 0 && (
+                <>
+                  <TableRow className="bg-muted/20">
+                    <TableCell colSpan={7} className="py-2 font-medium text-muted-foreground text-sm">
+                      Original PO Items
+                    </TableCell>
+                  </TableRow>
+                  {poLineItems.map((item) => (
+                    <TableRow key={item.id}>
+                      <TableCell className="font-medium">{item.description}</TableCell>
+                      <TableCell className="text-right">{item.originalQuantity}</TableCell>
+                      <TableCell className="text-right text-muted-foreground">
+                        {item.billedQuantity}
+                      </TableCell>
+                      <TableCell className="text-right">
+                        <span className={item.remainingQuantity === 0 ? "text-muted-foreground" : "text-primary font-medium"}>
+                          {item.remainingQuantity}
+                        </span>
+                      </TableCell>
+                      <TableCell className="text-right">
+                        <Input
+                          type="number"
+                          min={0}
+                          max={item.remainingQuantity}
+                          value={item.quantityToBill}
+                          onChange={(e) => updateQuantity(item.id, Number(e.target.value))}
+                          className="w-24 text-right"
+                          disabled={item.remainingQuantity === 0}
+                        />
+                      </TableCell>
+                      <TableCell className="text-right">
+                        ${item.unitPrice.toFixed(2)}
+                      </TableCell>
+                      <TableCell className="text-right font-medium">
+                        ${(item.quantityToBill * item.unitPrice).toFixed(2)}
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </>
+              )}
+              
+              {/* Addendum Line Items */}
+              {addendumLineItemsForDisplay.length > 0 && (
+                <>
+                  <TableRow className="bg-amber-500/10 border-t-2 border-amber-500/30">
+                    <TableCell colSpan={7} className="py-2 font-medium text-amber-600 dark:text-amber-400 text-sm">
+                      <div className="flex items-center gap-2">
+                        <FileText className="h-4 w-4" />
+                        Addendum Items
+                      </div>
+                    </TableCell>
+                  </TableRow>
+                  {addendumLineItemsForDisplay.map((item) => (
+                    <TableRow key={item.id} className="bg-amber-500/5">
+                      <TableCell className="font-medium">
+                        <div className="flex items-center gap-2">
+                          <Badge variant="outline" className="text-xs border-amber-500/50 text-amber-600 dark:text-amber-400">
+                            {item.addendumNumber}
+                          </Badge>
+                          {item.description}
+                        </div>
+                      </TableCell>
+                      <TableCell className="text-right">{item.originalQuantity}</TableCell>
+                      <TableCell className="text-right text-muted-foreground">
+                        {item.billedQuantity}
+                      </TableCell>
+                      <TableCell className="text-right">
+                        <span className={item.remainingQuantity === 0 ? "text-muted-foreground" : "text-amber-600 dark:text-amber-400 font-medium"}>
+                          {item.remainingQuantity}
+                        </span>
+                      </TableCell>
+                      <TableCell className="text-right">
+                        <Input
+                          type="number"
+                          min={0}
+                          max={item.remainingQuantity}
+                          value={item.quantityToBill}
+                          onChange={(e) => updateQuantity(item.id, Number(e.target.value))}
+                          className="w-24 text-right"
+                          disabled={item.remainingQuantity === 0}
+                        />
+                      </TableCell>
+                      <TableCell className="text-right">
+                        ${item.unitPrice.toFixed(2)}
+                      </TableCell>
+                      <TableCell className="text-right font-medium">
+                        ${(item.quantityToBill * item.unitPrice).toFixed(2)}
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </>
+              )}
             </TableBody>
           </Table>
         </div>
