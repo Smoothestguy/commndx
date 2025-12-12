@@ -114,7 +114,7 @@ function AddendumRow({
   return (
     <Collapsible open={isOpen} onOpenChange={setIsOpen}>
       <TableRow className="border-border/30">
-        <TableCell>
+        <TableCell className="w-[35%]">
           <CollapsibleTrigger asChild>
             <Button variant="ghost" size="sm" className="p-0 h-auto">
               {isOpen ? <ChevronDown className="h-4 w-4 mr-2" /> : <ChevronRight className="h-4 w-4 mr-2" />}
@@ -122,21 +122,21 @@ function AddendumRow({
             </Button>
           </CollapsibleTrigger>
         </TableCell>
-        <TableCell>
+        <TableCell className="w-[10%]">
           {addendum.number ? (
             <Badge variant="outline" className="font-mono">{addendum.number}</Badge>
           ) : (
             <span className="text-muted-foreground">-</span>
           )}
         </TableCell>
-        <TableCell>{format(new Date(addendum.created_at), "MMM d, yyyy")}</TableCell>
-        <TableCell>
+        <TableCell className="w-[15%]">{format(new Date(addendum.created_at), "MMM d, yyyy")}</TableCell>
+        <TableCell className="w-[12%]">
           <ApprovalStatusBadge status={addendum.approval_status} />
         </TableCell>
-        <TableCell className="text-right">
+        <TableCell className="w-[13%] text-right">
           ${Number(addendum.amount).toLocaleString(undefined, { minimumFractionDigits: 2 })}
         </TableCell>
-        <TableCell className="text-right">
+        <TableCell className="w-[15%] text-right">
           <div className="flex justify-end gap-1">
             {canManage && !isApproved && (
               <Button
@@ -360,12 +360,12 @@ export function POAddendums({ purchaseOrderId, purchaseOrderNumber, isClosed }: 
             <Table>
               <TableHeader>
                 <TableRow className="border-border/50">
-                  <TableHead>Description</TableHead>
-                  <TableHead>CO #</TableHead>
-                  <TableHead>Date</TableHead>
-                  <TableHead>Status</TableHead>
-                  <TableHead className="text-right">Amount</TableHead>
-                  <TableHead className="text-right">Actions</TableHead>
+                  <TableHead className="w-[35%]">Description</TableHead>
+                  <TableHead className="w-[10%]">CO #</TableHead>
+                  <TableHead className="w-[15%]">Date</TableHead>
+                  <TableHead className="w-[12%]">Status</TableHead>
+                  <TableHead className="w-[13%] text-right">Amount</TableHead>
+                  <TableHead className="w-[15%] text-right">Actions</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
