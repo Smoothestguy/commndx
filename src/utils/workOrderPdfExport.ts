@@ -67,11 +67,11 @@ export interface WorkOrderPdfData {
   jobSiteDirections?: string;
 }
 
-// ==================== MAIN EXPORT FUNCTION ====================
+// ==================== MAIN PDF GENERATION FUNCTION ====================
 export const generateWorkOrderPDF = async (
   data: WorkOrderPdfData,
   companyInfo?: CompanyInfo | null
-): Promise<void> => {
+): Promise<jsPDF> => {
   const doc = new jsPDF();
   const pageWidth = doc.internal.pageSize.getWidth();
   const pageHeight = doc.internal.pageSize.getHeight();
@@ -377,7 +377,34 @@ export const generateWorkOrderPDF = async (
   // ==================== FOOTER ====================
   drawFooter(doc, company.company_name);
 
-  // Save the PDF
+  return doc;
+};
+
+// ==================== PRINT WORK ORDER ====================
+export const printWorkOrderPDF = async (
+  data: WorkOrderPdfData,
+  companyInfo?: CompanyInfo | null
+): Promise<void> => {
+  const doc = await generateWorkOrderPDF(data, companyInfo);
+  
+  // Open in new window for printing
+  const pdfBlob = doc.output('blob');
+  const pdfUrl = URL.createObjectURL(pdfBlob);
+  const printWindow = window.open(pdfUrl, '_blank');
+  
+  if (printWindow) {
+    printWindow.onload = () => {
+      printWindow.print();
+    };
+  }
+};
+
+// ==================== DOWNLOAD WORK ORDER ====================
+export const downloadWorkOrderPDF = async (
+  data: WorkOrderPdfData,
+  companyInfo?: CompanyInfo | null
+): Promise<void> => {
+  const doc = await generateWorkOrderPDF(data, companyInfo);
   doc.save(`Work-Order-${data.header.workOrderNumber}.pdf`);
 };
 
