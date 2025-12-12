@@ -136,13 +136,13 @@ const Personnel = () => {
             vendorId={vendorId}
             onVendorChange={setVendorId}
           />
-          <div className="flex flex-wrap gap-2 w-full">
+          <div className="grid grid-cols-2 gap-2 sm:flex sm:flex-wrap sm:gap-2 w-full">
             {!selectionMode ? (
               <>
                 <Button
                   variant="outline"
                   onClick={handleEnterSelectionMode}
-                  className="flex-1 sm:flex-none min-h-[44px] sm:min-h-[40px] text-xs sm:text-sm"
+                  className="min-h-[44px] sm:min-h-[40px] text-xs sm:text-sm"
                 >
                   <CheckSquare className="mr-1.5 sm:mr-2 h-3.5 w-3.5 sm:h-4 sm:w-4 shrink-0" />
                   Select
@@ -151,7 +151,7 @@ const Personnel = () => {
                   <DropdownMenuTrigger asChild>
                     <Button
                       variant="outline"
-                      className="flex-1 sm:flex-none min-h-[44px] sm:min-h-[40px] text-xs sm:text-sm"
+                      className="min-h-[44px] sm:min-h-[40px] text-xs sm:text-sm"
                     >
                       <Upload className="mr-1.5 sm:mr-2 h-3.5 w-3.5 sm:h-4 sm:w-4 shrink-0" />
                       Import
@@ -175,14 +175,14 @@ const Personnel = () => {
                 <Button
                   variant="outline"
                   onClick={() => setInviteDialogOpen(true)}
-                  className="flex-1 sm:flex-none min-h-[44px] sm:min-h-[40px] text-xs sm:text-sm"
+                  className="min-h-[44px] sm:min-h-[40px] text-xs sm:text-sm"
                 >
                   <Mail className="mr-1.5 sm:mr-2 h-3.5 w-3.5 sm:h-4 sm:w-4 shrink-0" />
                   Invite
                 </Button>
                 <Button
                   onClick={() => setAddDialogOpen(true)}
-                  className="w-full sm:w-auto min-h-[44px] sm:min-h-[40px] text-xs sm:text-sm"
+                  className="col-span-2 sm:col-span-1 min-h-[44px] sm:min-h-[40px] text-xs sm:text-sm"
                 >
                   <Plus className="mr-1.5 sm:mr-2 h-3.5 w-3.5 sm:h-4 sm:w-4 shrink-0" />
                   Add Personnel
@@ -197,7 +197,7 @@ const Personnel = () => {
               <Button
                 variant="outline"
                 onClick={handleExitSelectionMode}
-                className="w-full sm:w-auto min-h-[44px] sm:min-h-[40px] text-xs sm:text-sm"
+                className="col-span-2 sm:col-span-1 min-h-[44px] sm:min-h-[40px] text-xs sm:text-sm"
               >
                 <XSquare className="mr-1.5 sm:mr-2 h-3.5 w-3.5 sm:h-4 sm:w-4 shrink-0" />
                 Exit Selection
