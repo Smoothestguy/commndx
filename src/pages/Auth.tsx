@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
+import { supabase } from "@/integrations/supabase/client";
 import { SEO } from "@/components/SEO";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -20,10 +21,75 @@ const Auth = () => {
   const [loginEmail, setLoginEmail] = useState("");
   const [loginPassword, setLoginPassword] = useState("");
 
-  // Redirect if already logged in
+  // Check for unlinked personnel/vendor and redirect appropriately
   useEffect(() => {
     if (user && !authLoading) {
-      navigate("/");
+      const checkAndRedirect = async () => {
+        // Check if user email matches an unlinked personnel record
+        const { data: personnel } = await supabase
+          .from("personnel")
+          .select("id, user_id")
+          .eq("email", user.email || "")
+          .maybeSingle();
+
+        if (personnel && !personnel.user_id) {
+          // Link the personnel record to this user
+          await supabase
+            .from("personnel")
+            .update({ user_id: user.id })
+            .eq("id", personnel.id);
+
+          // Remove any auto-assigned role
+          await supabase
+            .from("user_roles")
+            .delete()
+            .eq("user_id", user.id);
+
+          navigate("/portal");
+          return;
+        }
+
+        // Check if already linked personnel
+        if (personnel && personnel.user_id === user.id) {
+          navigate("/portal");
+          return;
+        }
+
+        // Check if user email matches an unlinked vendor record
+        const { data: vendor } = await supabase
+          .from("vendors")
+          .select("id, user_id")
+          .eq("email", user.email || "")
+          .maybeSingle();
+
+        if (vendor && !vendor.user_id) {
+          // Link the vendor record to this user
+          await supabase
+            .from("vendors")
+            .update({ user_id: user.id })
+            .eq("id", vendor.id);
+
+          // Remove any auto-assigned role
+          await supabase
+            .from("user_roles")
+            .delete()
+            .eq("user_id", user.id);
+
+          navigate("/vendor");
+          return;
+        }
+
+        // Check if already linked vendor
+        if (vendor && vendor.user_id === user.id) {
+          navigate("/vendor");
+          return;
+        }
+
+        // Regular user goes to dashboard
+        navigate("/");
+      };
+
+      checkAndRedirect();
     }
   }, [user, authLoading, navigate]);
 
