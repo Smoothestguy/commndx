@@ -9,9 +9,10 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
-import { Loader2, Mail, Plus, X, Send, Clock, RefreshCw, XCircle, CheckCircle2, AlertCircle, Download, User, Eye, EyeOff, Link } from "lucide-react";
+import { Loader2, Mail, Plus, X, Send, Clock, RefreshCw, XCircle, CheckCircle2, AlertCircle, Download, User, Eye, EyeOff, Link, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -71,6 +72,7 @@ export default function UserManagement() {
   const [users, setUsers] = useState<UserWithRole[]>([]);
   const [loading, setLoading] = useState(true);
   const [updatingUserId, setUpdatingUserId] = useState<string | null>(null);
+  const [deletingUserId, setDeletingUserId] = useState<string | null>(null);
   const [inviteDialogOpen, setInviteDialogOpen] = useState(false);
   const [inviteEmail, setInviteEmail] = useState("");
   const [inviteRole, setInviteRole] = useState<AppRole>("user");
@@ -315,6 +317,36 @@ export default function UserManagement() {
       });
     } finally {
       setUpdatingUserId(null);
+    }
+  };
+
+  const handleDeleteUser = async (userId: string) => {
+    setDeletingUserId(userId);
+    try {
+      const { data, error } = await supabase.functions.invoke("delete-user", {
+        body: { userId },
+      });
+
+      if (error) throw error;
+      if (data?.error) throw new Error(data.error);
+
+      toast({
+        title: "User removed",
+        description: "The user has been successfully removed from the system.",
+      });
+
+      // Refresh lists
+      await fetchUsers();
+      await fetchPersonnelOptions();
+    } catch (error: any) {
+      console.error("Error deleting user:", error);
+      toast({
+        title: "Error removing user",
+        description: error.message || "Failed to remove user. Please try again.",
+        variant: "destructive",
+      });
+    } finally {
+      setDeletingUserId(null);
     }
   };
 
@@ -953,7 +985,9 @@ export default function UserManagement() {
                     key={user.id}
                     user={user}
                     onRoleChange={handleRoleChange}
+                    onDelete={handleDeleteUser}
                     isUpdating={updatingUserId === user.id}
+                    isDeleting={deletingUserId === user.id}
                     index={index}
                   />
                 ))}
@@ -981,7 +1015,7 @@ export default function UserManagement() {
                       <Select
                         value={user.role || ""}
                         onValueChange={(value) => handleRoleChange(user.id, value as AppRole)}
-                        disabled={updatingUserId === user.id}
+                        disabled={updatingUserId === user.id || deletingUserId === user.id}
                       >
                         <SelectTrigger className="w-[140px]">
                           <SelectValue placeholder="Change role" />
@@ -995,6 +1029,40 @@ export default function UserManagement() {
                       {updatingUserId === user.id && (
                         <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
                       )}
+                      <AlertDialog>
+                        <AlertDialogTrigger asChild>
+                          <Button
+                            variant="outline"
+                            size="icon"
+                            className="text-destructive hover:text-destructive hover:bg-destructive/10 border-destructive/30"
+                            disabled={deletingUserId === user.id}
+                          >
+                            {deletingUserId === user.id ? (
+                              <Loader2 className="h-4 w-4 animate-spin" />
+                            ) : (
+                              <Trash2 className="h-4 w-4" />
+                            )}
+                          </Button>
+                        </AlertDialogTrigger>
+                        <AlertDialogContent>
+                          <AlertDialogHeader>
+                            <AlertDialogTitle>Remove User</AlertDialogTitle>
+                            <AlertDialogDescription>
+                              Are you sure you want to remove <strong>{user.first_name && user.last_name ? `${user.first_name} ${user.last_name}` : user.email}</strong> ({user.email})? 
+                              This action cannot be undone.
+                            </AlertDialogDescription>
+                          </AlertDialogHeader>
+                          <AlertDialogFooter>
+                            <AlertDialogCancel>Cancel</AlertDialogCancel>
+                            <AlertDialogAction
+                              onClick={() => handleDeleteUser(user.id)}
+                              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                            >
+                              Remove User
+                            </AlertDialogAction>
+                          </AlertDialogFooter>
+                        </AlertDialogContent>
+                      </AlertDialog>
                     </div>
                   </div>
                 ))}

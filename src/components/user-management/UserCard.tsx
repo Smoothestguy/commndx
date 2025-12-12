@@ -1,9 +1,20 @@
 import { useState } from "react";
-import { User, Mail, Calendar, Loader2, Shield } from "lucide-react";
+import { User, Mail, Calendar, Loader2, Shield, Trash2 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { UserPermissionsDialog } from "./UserPermissionsDialog";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
 import type { Database } from "@/integrations/supabase/types";
 import { format } from "date-fns";
 
@@ -21,11 +32,13 @@ interface UserWithRole {
 interface UserCardProps {
   user: UserWithRole;
   onRoleChange: (userId: string, newRole: AppRole) => Promise<void>;
+  onDelete: (userId: string) => Promise<void>;
   isUpdating: boolean;
+  isDeleting: boolean;
   index: number;
 }
 
-export function UserCard({ user, onRoleChange, isUpdating, index }: UserCardProps) {
+export function UserCard({ user, onRoleChange, onDelete, isUpdating, isDeleting, index }: UserCardProps) {
   const [isChangingRole, setIsChangingRole] = useState(false);
   const [permissionsOpen, setPermissionsOpen] = useState(false);
 
@@ -107,7 +120,7 @@ export function UserCard({ user, onRoleChange, isUpdating, index }: UserCardProp
               <Select
                 value={user.role || ""}
                 onValueChange={handleRoleChange}
-                disabled={isUpdating || isChangingRole}
+                disabled={isUpdating || isChangingRole || isDeleting}
               >
                 <SelectTrigger className="w-full">
                   {(isUpdating || isChangingRole) ? (
@@ -154,10 +167,54 @@ export function UserCard({ user, onRoleChange, isUpdating, index }: UserCardProp
                 size="sm"
                 className="w-full"
                 onClick={() => setPermissionsOpen(true)}
+                disabled={isDeleting}
               >
                 <Shield className="h-4 w-4 mr-2" />
                 Edit Permissions
               </Button>
+
+              {/* Remove User Button */}
+              <AlertDialog>
+                <AlertDialogTrigger asChild>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="w-full text-destructive hover:text-destructive hover:bg-destructive/10 border-destructive/30"
+                    disabled={isDeleting}
+                  >
+                    {isDeleting ? (
+                      <>
+                        <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                        Removing...
+                      </>
+                    ) : (
+                      <>
+                        <Trash2 className="h-4 w-4 mr-2" />
+                        Remove User
+                      </>
+                    )}
+                  </Button>
+                </AlertDialogTrigger>
+                <AlertDialogContent>
+                  <AlertDialogHeader>
+                    <AlertDialogTitle>Remove User</AlertDialogTitle>
+                    <AlertDialogDescription>
+                      Are you sure you want to remove <strong>{getDisplayName()}</strong> ({user.email})? 
+                      This action cannot be undone. The user will lose access to the system and all their 
+                      role assignments will be deleted.
+                    </AlertDialogDescription>
+                  </AlertDialogHeader>
+                  <AlertDialogFooter>
+                    <AlertDialogCancel>Cancel</AlertDialogCancel>
+                    <AlertDialogAction
+                      onClick={() => onDelete(user.id)}
+                      className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                    >
+                      Remove User
+                    </AlertDialogAction>
+                  </AlertDialogFooter>
+                </AlertDialogContent>
+              </AlertDialog>
             </div>
           </div>
         </div>
