@@ -122,6 +122,37 @@ async function getOrCreateQBVendor(
     throw new Error("Vendor not found");
   }
 
+  // First, try to find existing vendor in QuickBooks by name
+  const vendorName = vendor.name.replace(/'/g, "\\'"); // Escape single quotes
+  const searchQuery = `SELECT * FROM Vendor WHERE DisplayName = '${vendorName}'`;
+  
+  try {
+    const searchResult = await qbRequest(
+      "GET",
+      `/query?query=${encodeURIComponent(searchQuery)}`,
+      accessToken,
+      realmId
+    );
+    
+    if (searchResult.QueryResponse?.Vendor?.[0]) {
+      const existingQBVendor = searchResult.QueryResponse.Vendor[0];
+      console.log("Found existing QuickBooks vendor:", existingQBVendor.Id, existingQBVendor.DisplayName);
+      
+      // Create mapping for existing vendor
+      await supabase.from("quickbooks_vendor_mappings").insert({
+        vendor_id: vendorId,
+        quickbooks_vendor_id: existingQBVendor.Id,
+        sync_status: "synced",
+        sync_direction: "export",
+        last_synced_at: new Date().toISOString(),
+      });
+      
+      return existingQBVendor.Id;
+    }
+  } catch (searchError) {
+    console.log("Vendor search failed, will try to create:", searchError);
+  }
+
   // Create in QuickBooks
   const qbVendorData: any = {
     DisplayName: vendor.name,
@@ -139,19 +170,49 @@ async function getOrCreateQBVendor(
     };
   }
 
-  const result = await qbRequest("POST", "/vendor?minorversion=65", accessToken, realmId, qbVendorData);
-  const qbVendorId = result.Vendor.Id;
+  try {
+    const result = await qbRequest("POST", "/vendor?minorversion=65", accessToken, realmId, qbVendorData);
+    const qbVendorId = result.Vendor.Id;
 
-  // Create mapping
-  await supabase.from("quickbooks_vendor_mappings").insert({
-    vendor_id: vendorId,
-    quickbooks_vendor_id: qbVendorId,
-    sync_status: "synced",
-    sync_direction: "export",
-    last_synced_at: new Date().toISOString(),
-  });
+    // Create mapping
+    await supabase.from("quickbooks_vendor_mappings").insert({
+      vendor_id: vendorId,
+      quickbooks_vendor_id: qbVendorId,
+      sync_status: "synced",
+      sync_direction: "export",
+      last_synced_at: new Date().toISOString(),
+    });
 
-  return qbVendorId;
+    return qbVendorId;
+  } catch (createError: any) {
+    // If duplicate name error, try to find by name again with fuzzy match
+    if (createError.message.includes("400")) {
+      console.log("Vendor creation failed, attempting fuzzy search...");
+      const fuzzyQuery = `SELECT * FROM Vendor WHERE DisplayName LIKE '%${vendor.name.split(" ")[0]}%'`;
+      const fuzzyResult = await qbRequest(
+        "GET",
+        `/query?query=${encodeURIComponent(fuzzyQuery)}`,
+        accessToken,
+        realmId
+      );
+      
+      if (fuzzyResult.QueryResponse?.Vendor?.[0]) {
+        const existingQBVendor = fuzzyResult.QueryResponse.Vendor[0];
+        console.log("Found vendor via fuzzy search:", existingQBVendor.Id, existingQBVendor.DisplayName);
+        
+        await supabase.from("quickbooks_vendor_mappings").insert({
+          vendor_id: vendorId,
+          quickbooks_vendor_id: existingQBVendor.Id,
+          sync_status: "synced",
+          sync_direction: "export",
+          last_synced_at: new Date().toISOString(),
+        });
+        
+        return existingQBVendor.Id;
+      }
+    }
+    throw createError;
+  }
 }
 
 async function getExpenseAccountRef(accessToken: string, realmId: string) {
