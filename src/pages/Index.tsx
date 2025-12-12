@@ -2,6 +2,7 @@ import { SEO } from "@/components/SEO";
 import { PageLayout } from "@/components/layout/PageLayout";
 import { StatCard } from "@/components/dashboard/StatCard";
 import { RecentActivity } from "@/components/dashboard/RecentActivity";
+import { WelcomeBanner } from "@/components/dashboard/WelcomeBanner";
 import { DataTable, Column } from "@/components/shared/DataTable";
 import { StatusBadge } from "@/components/shared/StatusBadge";
 import { Button } from "@/components/ui/button";
@@ -258,6 +259,9 @@ const Dashboard = () => {
           onRefresh={handleRefresh}
           isRefreshing={isRefreshing}
         >
+          {/* Welcome Banner */}
+          <WelcomeBanner />
+          
           {/* Stats Grid - Mobile optimized with compact cards */}
           <div className="grid gap-2 sm:gap-4 grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 mb-4 sm:mb-8">
             <StatCard
