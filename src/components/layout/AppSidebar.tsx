@@ -121,9 +121,9 @@ export function AppSidebar() {
   }, [location.pathname]);
 
   return (
-    <Sidebar collapsible="icon" className="border-r border-sidebar-border">
+    <Sidebar collapsible="icon" className="border-r border-border/30 bg-sidebar/95 backdrop-blur-xl">
       {/* Header with Logo */}
-      <SidebarHeader className="border-b border-sidebar-border">
+      <SidebarHeader className="border-b border-border/30">
         <div
           className={cn(
             "flex items-center gap-2 px-2 py-1",
@@ -154,7 +154,10 @@ export function AppSidebar() {
                       asChild
                       isActive={isActive}
                       tooltip={item.name}
-                      className={cn(isActive && "bg-primary/15 text-primary")}
+                      className={cn(
+                        "transition-all duration-200 rounded-xl",
+                        isActive && "bg-primary/15 text-primary shadow-glow"
+                      )}
                     >
                       <Link to={item.href}>
                         <item.icon className="h-4 w-4" />
@@ -172,7 +175,7 @@ export function AppSidebar() {
         <SidebarGroup>
           <Collapsible open={vendorsOpen} onOpenChange={setVendorsOpen}>
             <SidebarGroupLabel asChild>
-              <CollapsibleTrigger className="flex w-full items-center justify-between">
+              <CollapsibleTrigger className="flex w-full items-center justify-between hover:text-foreground transition-colors">
                 <span>Vendors</span>
                 <ChevronDown
                   className={cn(
@@ -195,6 +198,10 @@ export function AppSidebar() {
                           asChild
                           isActive={isActive}
                           tooltip={item.name}
+                          className={cn(
+                            "transition-all duration-200 rounded-xl",
+                            isActive && "bg-primary/15 text-primary shadow-glow"
+                          )}
                         >
                           <Link to={item.href}>
                             <item.icon className="h-4 w-4" />
@@ -214,7 +221,7 @@ export function AppSidebar() {
         <SidebarGroup>
           <Collapsible open={staffingOpen} onOpenChange={setStaffingOpen}>
             <SidebarGroupLabel asChild>
-              <CollapsibleTrigger className="flex w-full items-center justify-between">
+              <CollapsibleTrigger className="flex w-full items-center justify-between hover:text-foreground transition-colors">
                 <span>Staffing</span>
                 <ChevronDown
                   className={cn(
@@ -237,6 +244,10 @@ export function AppSidebar() {
                           asChild
                           isActive={isActive}
                           tooltip={item.name}
+                          className={cn(
+                            "transition-all duration-200 rounded-xl",
+                            isActive && "bg-primary/15 text-primary shadow-glow"
+                          )}
                         >
                           <Link to={item.href}>
                             <item.icon className="h-4 w-4" />
@@ -254,11 +265,11 @@ export function AppSidebar() {
       </SidebarContent>
 
       {/* Footer with Account Section */}
-      <SidebarFooter className="border-t border-sidebar-border">
+      <SidebarFooter className="border-t border-border/30">
         <SidebarGroup>
           <Collapsible open={accountOpen} onOpenChange={setAccountOpen}>
             <SidebarGroupLabel asChild>
-              <CollapsibleTrigger className="flex w-full items-center justify-between">
+              <CollapsibleTrigger className="flex w-full items-center justify-between hover:text-foreground transition-colors">
                 <span>Account</span>
                 <ChevronDown
                   className={cn(
@@ -277,6 +288,10 @@ export function AppSidebar() {
                         asChild
                         isActive={location.pathname === "/user-management"}
                         tooltip="User Management"
+                        className={cn(
+                          "transition-all duration-200 rounded-xl",
+                          location.pathname === "/user-management" && "bg-primary/15 text-primary shadow-glow"
+                        )}
                       >
                         <Link to="/user-management">
                           <Shield className="h-4 w-4" />
@@ -290,6 +305,10 @@ export function AppSidebar() {
                       asChild
                       isActive={location.pathname === "/settings"}
                       tooltip="Settings"
+                      className={cn(
+                        "transition-all duration-200 rounded-xl",
+                        location.pathname === "/settings" && "bg-primary/15 text-primary shadow-glow"
+                      )}
                     >
                       <Link to="/settings">
                         <Settings className="h-4 w-4" />
@@ -298,7 +317,11 @@ export function AppSidebar() {
                     </SidebarMenuButton>
                   </SidebarMenuItem>
                   <SidebarMenuItem>
-                    <SidebarMenuButton onClick={signOut} tooltip="Sign Out">
+                    <SidebarMenuButton 
+                      onClick={signOut} 
+                      tooltip="Sign Out"
+                      className="transition-all duration-200 rounded-xl hover:bg-destructive/10 hover:text-destructive"
+                    >
                       <LogOut className="h-4 w-4" />
                       <span>Sign Out</span>
                     </SidebarMenuButton>

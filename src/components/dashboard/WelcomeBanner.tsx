@@ -41,43 +41,47 @@ export const WelcomeBanner = () => {
 
   if (isLoading) {
     return (
-      <div className="relative overflow-hidden rounded-xl bg-gradient-to-r from-primary/90 via-primary to-primary/80 p-4 sm:p-6 mb-4 sm:mb-6">
+      <div className="relative overflow-hidden rounded-2xl bg-gradient-to-r from-primary/90 via-primary to-primary/80 p-4 sm:p-6 mb-4 sm:mb-6 backdrop-blur-xl border border-primary/20 shadow-glow-lg">
         <div className="relative z-10">
-          <Skeleton className="h-6 sm:h-8 w-48 sm:w-64 bg-white/20 mb-2" />
-          <Skeleton className="h-4 w-32 sm:w-48 bg-white/20" />
+          <Skeleton className="h-6 sm:h-8 w-48 sm:w-64 bg-primary-foreground/20 mb-2" />
+          <Skeleton className="h-4 w-32 sm:w-48 bg-primary-foreground/20" />
         </div>
       </div>
     );
   }
 
   return (
-    <div className="relative overflow-hidden rounded-xl bg-gradient-to-r from-primary/90 via-primary to-primary/80 p-4 sm:p-6 mb-4 sm:mb-6">
+    <div className="relative overflow-hidden rounded-2xl bg-gradient-to-r from-primary/90 via-primary to-primary/80 p-4 sm:p-6 mb-4 sm:mb-6 backdrop-blur-xl border border-primary/20 shadow-glow-lg">
       {/* Background decorations */}
       <div className="absolute inset-0 overflow-hidden">
-        <div className="absolute -right-8 -top-8 h-32 w-32 rounded-full bg-white/10 blur-2xl" />
-        <div className="absolute -left-4 -bottom-4 h-24 w-24 rounded-full bg-white/5 blur-xl" />
-        <div className="absolute right-1/4 top-1/2 h-16 w-16 rounded-full bg-white/5 blur-lg" />
+        <div className="absolute -right-8 -top-8 h-40 w-40 rounded-full bg-primary-foreground/10 blur-3xl animate-float" />
+        <div className="absolute -left-4 -bottom-4 h-32 w-32 rounded-full bg-primary-foreground/5 blur-2xl" />
+        <div className="absolute right-1/4 top-1/2 h-20 w-20 rounded-full bg-primary-foreground/10 blur-xl" />
+        {/* Gradient overlay for glass effect */}
+        <div className="absolute inset-0 bg-gradient-to-br from-primary-foreground/5 to-transparent" />
       </div>
       
       {/* Content */}
       <div className="relative z-10 flex items-center justify-between">
         <div>
           <div className="flex items-center gap-2 mb-1">
-            <Sparkles className="h-4 w-4 sm:h-5 sm:w-5 text-primary-foreground/80" />
-            <span className="text-xs sm:text-sm font-medium text-primary-foreground/80 uppercase tracking-wide">
+            <div className="p-1.5 rounded-lg bg-primary-foreground/10 backdrop-blur-sm">
+              <Sparkles className="h-4 w-4 sm:h-5 sm:w-5 text-primary-foreground" />
+            </div>
+            <span className="text-xs sm:text-sm font-medium text-primary-foreground/90 uppercase tracking-wide">
               {greeting}
             </span>
           </div>
           <h2 className="text-lg sm:text-2xl font-heading font-bold text-primary-foreground mb-0.5 sm:mb-1">
             {getDisplayName()}
           </h2>
-          <p className="text-xs sm:text-sm text-primary-foreground/70">
+          <p className="text-xs sm:text-sm text-primary-foreground/80">
             {contextMessage}
           </p>
         </div>
         
         {/* Optional: Time display */}
-        <div className="hidden sm:flex flex-col items-end text-primary-foreground/60">
+        <div className="hidden sm:flex flex-col items-end text-primary-foreground/70">
           <span className="text-xs uppercase tracking-wider">Today</span>
           <span className="text-sm font-medium">
             {new Date().toLocaleDateString('en-US', { 
