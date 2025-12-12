@@ -58,7 +58,7 @@ const handler = async (req: Request): Promise<Response> => {
     console.log("Invite link:", inviteLink);
 
     const emailResponse = await resend.emails.send({
-      from: "Vendor Portal <onboarding@resend.dev>",
+      from: "COMMNDX <no-reply@commndx.com>",
       to: [email],
       subject: "You've Been Invited to the Vendor Portal",
       html: `
@@ -102,6 +102,11 @@ const handler = async (req: Request): Promise<Response> => {
         </html>
       `,
     });
+
+    if (emailResponse.error) {
+      console.error("Email failed to send:", emailResponse.error);
+      throw new Error(`Failed to send email: ${emailResponse.error.message}`);
+    }
 
     console.log("Email sent successfully:", emailResponse);
 

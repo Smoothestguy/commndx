@@ -92,7 +92,7 @@ const handler = async (req: Request): Promise<Response> => {
 
     // Send email
     const emailResponse = await resend.emails.send({
-      from: `${companyName} <onboarding@resend.dev>`,
+      from: "COMMNDX <no-reply@commndx.com>",
       to: [email],
       subject: `Complete Your Personnel Registration - ${companyName}`,
       html: `
@@ -145,6 +145,11 @@ const handler = async (req: Request): Promise<Response> => {
         </html>
       `,
     });
+
+    if (emailResponse.error) {
+      console.error("Email failed to send:", emailResponse.error);
+      throw new Error(`Failed to send email: ${emailResponse.error.message}`);
+    }
 
     console.log("Email sent successfully:", emailResponse);
 
