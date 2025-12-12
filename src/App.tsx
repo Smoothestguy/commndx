@@ -9,6 +9,7 @@ import { ProtectedRoute } from "@/components/ProtectedRoute";
 import { ThemeProvider } from "@/components/ThemeProvider";
 import { BottomNav } from "@/components/layout/BottomNav";
 import { MoreMenu } from "@/components/layout/MoreMenu";
+import { SidebarLayout } from "@/components/layout/SidebarLayout";
 import Index from "./pages/Index";
 import Auth from "./pages/Auth";
 import Products from "./pages/Products";
@@ -126,372 +127,233 @@ const App = () => {
                 <Route path="/legal/eula" element={<EULA />} />
                 {/* Public Contractor Routes */}
                 <Route path="/contractor" element={<ContractorPortal />} />
-                <Route path="/contractor/success" element={<ContractorSubmissionSuccess />} />
+                <Route
+                  path="/contractor/success"
+                  element={<ContractorSubmissionSuccess />}
+                />
                 {/* Admin Contractor Routes */}
-                <Route path="/admin/contractor-submissions" element={<ProtectedRoute><ContractorSubmissions /></ProtectedRoute>} />
-                <Route path="/admin/contractor-form-builder" element={<ProtectedRoute><ContractorFormBuilder /></ProtectedRoute>} />
+                <Route
+                  path="/admin/contractor-submissions"
+                  element={
+                    <ProtectedRoute>
+                      <ContractorSubmissions />
+                    </ProtectedRoute>
+                  }
+                />
+                <Route
+                  path="/admin/contractor-form-builder"
+                  element={
+                    <ProtectedRoute>
+                      <ContractorFormBuilder />
+                    </ProtectedRoute>
+                  }
+                />
                 {/* Portal Routes */}
                 <Route path="/portal/login" element={<PortalLogin />} />
-                <Route path="/portal/accept-invite/:token" element={<AcceptPortalInvitation />} />
-                <Route path="/portal" element={<PortalProtectedRoute><PortalDashboard /></PortalProtectedRoute>} />
-                <Route path="/portal/hours" element={<PortalProtectedRoute><PortalHours /></PortalProtectedRoute>} />
-                <Route path="/portal/projects" element={<PortalProtectedRoute><PortalProjects /></PortalProtectedRoute>} />
-                <Route path="/portal/reimbursements" element={<PortalProtectedRoute><PortalReimbursements /></PortalProtectedRoute>} />
-                <Route path="/portal/notifications" element={<PortalProtectedRoute><PortalNotifications /></PortalProtectedRoute>} />
-                <Route path="/portal/settings" element={<PortalProtectedRoute><PortalSettings /></PortalProtectedRoute>} />
                 <Route
-                  path="/"
+                  path="/portal/accept-invite/:token"
+                  element={<AcceptPortalInvitation />}
+                />
+                <Route
+                  path="/portal"
                   element={
-                    <ProtectedRoute>
-                      <Index />
-                    </ProtectedRoute>
+                    <PortalProtectedRoute>
+                      <PortalDashboard />
+                    </PortalProtectedRoute>
                   }
                 />
                 <Route
-                  path="/products"
+                  path="/portal/hours"
                   element={
-                    <ProtectedRoute>
-                      <Products />
-                    </ProtectedRoute>
+                    <PortalProtectedRoute>
+                      <PortalHours />
+                    </PortalProtectedRoute>
                   }
                 />
                 <Route
-                  path="/customers"
+                  path="/portal/projects"
                   element={
-                    <ProtectedRoute>
-                      <Customers />
-                    </ProtectedRoute>
+                    <PortalProtectedRoute>
+                      <PortalProjects />
+                    </PortalProtectedRoute>
                   }
                 />
                 <Route
-                  path="/projects"
+                  path="/portal/reimbursements"
                   element={
-                    <ProtectedRoute>
-                      <Projects />
-                    </ProtectedRoute>
+                    <PortalProtectedRoute>
+                      <PortalReimbursements />
+                    </PortalProtectedRoute>
                   }
                 />
                 <Route
-                  path="/projects/:id"
+                  path="/portal/notifications"
                   element={
-                    <ProtectedRoute>
-                      <ProjectDetail />
-                    </ProtectedRoute>
+                    <PortalProtectedRoute>
+                      <PortalNotifications />
+                    </PortalProtectedRoute>
                   }
                 />
                 <Route
-                  path="/vendors"
+                  path="/portal/settings"
                   element={
-                    <ProtectedRoute>
-                      <Vendors />
-                    </ProtectedRoute>
+                    <PortalProtectedRoute>
+                      <PortalSettings />
+                    </PortalProtectedRoute>
                   }
                 />
+                {/* Protected Routes with Sidebar */}
                 <Route
-                  path="/vendors/:id"
                   element={
                     <ProtectedRoute>
-                      <VendorDetail />
+                      <SidebarLayout />
                     </ProtectedRoute>
                   }
-                />
-                <Route
-                  path="/vendor-bills"
-                  element={
-                    <ProtectedRoute>
-                      <VendorBills />
-                    </ProtectedRoute>
-                  }
-                />
-                <Route
-                  path="/vendor-bills/new"
-                  element={
-                    <ProtectedRoute>
-                      <NewVendorBill />
-                    </ProtectedRoute>
-                  }
-                />
-                <Route
-                  path="/vendor-bills/:id"
-                  element={
-                    <ProtectedRoute>
-                      <VendorBillDetail />
-                    </ProtectedRoute>
-                  }
-                />
-                <Route
-                  path="/vendor-bills/:id/edit"
-                  element={
-                    <ProtectedRoute>
-                      <EditVendorBill />
-                    </ProtectedRoute>
-                  }
-                />
-                <Route
-                  path="/vendor-documents"
-                  element={
-                    <ProtectedRoute>
-                      <VendorDocuments />
-                    </ProtectedRoute>
-                  }
-                />
-                <Route
-                  path="/jobs"
-                  element={
-                    <ProtectedRoute>
-                      <Jobs />
-                    </ProtectedRoute>
-                  }
-                />
-                <Route
-                  path="/sales"
-                  element={
-                    <ProtectedRoute>
-                      <Sales />
-                    </ProtectedRoute>
-                  }
-                />
-                <Route
-                  path="/estimates"
-                  element={
-                    <ProtectedRoute>
-                      <Estimates />
-                    </ProtectedRoute>
-                  }
-                />
-                <Route
-                  path="/estimates/new"
-                  element={
-                    <ProtectedRoute>
-                      <NewEstimate />
-                    </ProtectedRoute>
-                  }
-                />
-                <Route
-                  path="/estimates/:id"
-                  element={
-                    <ProtectedRoute>
-                      <EstimateDetail />
-                    </ProtectedRoute>
-                  }
-                />
-                <Route
-                  path="/estimates/:id/edit"
-                  element={
-                    <ProtectedRoute>
-                      <EditEstimate />
-                    </ProtectedRoute>
-                  }
-                />
-                <Route
-                  path="/job-orders"
-                  element={
-                    <ProtectedRoute>
-                      <JobOrders />
-                    </ProtectedRoute>
-                  }
-                />
-                <Route
-                  path="/job-orders/:id"
-                  element={
-                    <ProtectedRoute>
-                      <JobOrderDetail />
-                    </ProtectedRoute>
-                  }
-                />
-                <Route
-                  path="/job-orders/:id/edit"
-                  element={
-                    <ProtectedRoute>
-                      <EditJobOrder />
-                    </ProtectedRoute>
-                  }
-                />
-                <Route
-                  path="/purchase-orders"
-                  element={
-                    <ProtectedRoute>
-                      <PurchaseOrders />
-                    </ProtectedRoute>
-                  }
-                />
-                <Route
-                  path="/purchase-orders/new"
-                  element={
-                    <ProtectedRoute>
-                      <NewPurchaseOrder />
-                    </ProtectedRoute>
-                  }
-                />
-                <Route
-                  path="/purchase-orders/:id"
-                  element={
-                    <ProtectedRoute>
-                      <PurchaseOrderDetail />
-                    </ProtectedRoute>
-                  }
-                />
-                <Route
-                  path="/change-orders/new"
-                  element={
-                    <ProtectedRoute>
-                      <NewChangeOrder />
-                    </ProtectedRoute>
-                  }
-                />
-                <Route
-                  path="/change-orders/:id"
-                  element={
-                    <ProtectedRoute>
-                      <ChangeOrderDetail />
-                    </ProtectedRoute>
-                  }
-                />
-                <Route
-                  path="/change-orders/:id/edit"
-                  element={
-                    <ProtectedRoute>
-                      <EditChangeOrder />
-                    </ProtectedRoute>
-                  }
-                />
-                <Route
-                  path="/purchase-orders/:id/edit"
-                  element={
-                    <ProtectedRoute>
-                      <EditPurchaseOrder />
-                    </ProtectedRoute>
-                  }
-                />
-                <Route
-                  path="/invoices"
-                  element={
-                    <ProtectedRoute>
-                      <Invoices />
-                    </ProtectedRoute>
-                  }
-                />
-                <Route
-                  path="/invoices/new"
-                  element={
-                    <ProtectedRoute>
-                      <NewInvoice />
-                    </ProtectedRoute>
-                  }
-                />
-                <Route
-                  path="/invoices/new-from-time"
-                  element={
-                    <ProtectedRoute>
-                      <NewTimeEntryInvoice />
-                    </ProtectedRoute>
-                  }
-                />
-                <Route
-                  path="/invoices/:id"
-                  element={
-                    <ProtectedRoute>
-                      <InvoiceDetail />
-                    </ProtectedRoute>
-                  }
-                />
-                <Route
-                  path="/time-tracking"
-                  element={
-                    <ProtectedRoute>
-                      <TimeTracking />
-                    </ProtectedRoute>
-                  }
-                />
-                <Route
-                  path="/team-timesheet"
-                  element={
-                    <ProtectedRoute>
-                      <TeamTimesheet />
-                    </ProtectedRoute>
-                  }
-                />
-                <Route
-                  path="/project-assignments"
-                  element={
-                    <ProtectedRoute>
-                      <ProjectAssignments />
-                    </ProtectedRoute>
-                  }
-                />
-                <Route
-                  path="/personnel"
-                  element={
-                    <ProtectedRoute>
-                      <Personnel />
-                    </ProtectedRoute>
-                  }
-                />
-                <Route
-                  path="/personnel/:id"
-                  element={
-                    <ProtectedRoute>
-                      <PersonnelDetail />
-                    </ProtectedRoute>
-                  }
-                />
-                <Route
-                  path="/badge-templates"
-                  element={
-                    <ProtectedRoute>
-                      <BadgeTemplates />
-                    </ProtectedRoute>
-                  }
-                />
-                <Route
-                  path="/badge-templates/:id"
-                  element={
-                    <ProtectedRoute>
-                      <BadgeTemplateEditor />
-                    </ProtectedRoute>
-                  }
-                />
-                <Route
-                  path="/settings"
-                  element={
-                    <ProtectedRoute>
-                      <Settings />
-                    </ProtectedRoute>
-                  }
-                />
-                <Route
-                  path="/user-management"
-                  element={
-                    <ProtectedRoute>
-                      <UserManagement />
-                    </ProtectedRoute>
-                  }
-                />
-                <Route
-                  path="/settings/quickbooks"
-                  element={
-                    <ProtectedRoute>
-                      <QuickBooksSettings />
-                    </ProtectedRoute>
-                  }
-                />
-                <Route
-                  path="/messages"
-                  element={
-                    <ProtectedRoute>
-                      <Messages />
-                    </ProtectedRoute>
-                  }
-                />
+                >
+                  <Route path="/" element={<Index />} />
+                  <Route path="/products" element={<Products />} />
+                  <Route path="/customers" element={<Customers />} />
+                  <Route path="/projects" element={<Projects />} />
+                  <Route path="/projects/:id" element={<ProjectDetail />} />
+                  <Route path="/vendors" element={<Vendors />} />
+                  <Route path="/vendors/:id" element={<VendorDetail />} />
+                  <Route path="/vendor-bills" element={<VendorBills />} />
+                  <Route path="/vendor-bills/new" element={<NewVendorBill />} />
+                  <Route
+                    path="/vendor-bills/:id"
+                    element={<VendorBillDetail />}
+                  />
+                  <Route
+                    path="/vendor-bills/:id/edit"
+                    element={<EditVendorBill />}
+                  />
+                  <Route
+                    path="/vendor-documents"
+                    element={<VendorDocuments />}
+                  />
+                  <Route path="/jobs" element={<Jobs />} />
+                  <Route path="/sales" element={<Sales />} />
+                  <Route path="/estimates" element={<Estimates />} />
+                  <Route path="/estimates/new" element={<NewEstimate />} />
+                  <Route path="/estimates/:id" element={<EstimateDetail />} />
+                  <Route
+                    path="/estimates/:id/edit"
+                    element={<EditEstimate />}
+                  />
+                  <Route path="/job-orders" element={<JobOrders />} />
+                  <Route path="/job-orders/:id" element={<JobOrderDetail />} />
+                  <Route
+                    path="/job-orders/:id/edit"
+                    element={<EditJobOrder />}
+                  />
+                  <Route path="/purchase-orders" element={<PurchaseOrders />} />
+                  <Route
+                    path="/purchase-orders/new"
+                    element={<NewPurchaseOrder />}
+                  />
+                  <Route
+                    path="/purchase-orders/:id"
+                    element={<PurchaseOrderDetail />}
+                  />
+                  <Route
+                    path="/change-orders/new"
+                    element={<NewChangeOrder />}
+                  />
+                  <Route
+                    path="/change-orders/:id"
+                    element={<ChangeOrderDetail />}
+                  />
+                  <Route
+                    path="/change-orders/:id/edit"
+                    element={<EditChangeOrder />}
+                  />
+                  <Route
+                    path="/purchase-orders/:id/edit"
+                    element={<EditPurchaseOrder />}
+                  />
+                  <Route path="/invoices" element={<Invoices />} />
+                  <Route path="/invoices/new" element={<NewInvoice />} />
+                  <Route
+                    path="/invoices/new-from-time"
+                    element={<NewTimeEntryInvoice />}
+                  />
+                  <Route path="/invoices/:id" element={<InvoiceDetail />} />
+                  <Route path="/time-tracking" element={<TimeTracking />} />
+                  <Route path="/team-timesheet" element={<TeamTimesheet />} />
+                  <Route
+                    path="/project-assignments"
+                    element={<ProjectAssignments />}
+                  />
+                  <Route path="/personnel" element={<Personnel />} />
+                  <Route path="/personnel/:id" element={<PersonnelDetail />} />
+                  <Route path="/badge-templates" element={<BadgeTemplates />} />
+                  <Route
+                    path="/badge-templates/:id"
+                    element={<BadgeTemplateEditor />}
+                  />
+                  <Route path="/settings" element={<Settings />} />
+                  <Route path="/user-management" element={<UserManagement />} />
+                  <Route
+                    path="/settings/quickbooks"
+                    element={<QuickBooksSettings />}
+                  />
+                  <Route path="/messages" element={<Messages />} />
+                </Route>
+
                 {/* Vendor Portal Routes */}
                 <Route path="/vendor/login" element={<VendorLogin />} />
-                <Route path="/vendor/accept-invite/:token" element={<AcceptVendorInvitation />} />
-                <Route path="/vendor" element={<VendorProtectedRoute><VendorDashboard /></VendorProtectedRoute>} />
-                <Route path="/vendor/pos" element={<VendorProtectedRoute><VendorPOsList /></VendorProtectedRoute>} />
-                <Route path="/vendor/pos/:id" element={<VendorProtectedRoute><VendorPODetail /></VendorProtectedRoute>} />
-                <Route path="/vendor/bills" element={<VendorProtectedRoute><VendorBillsList /></VendorProtectedRoute>} />
-                <Route path="/vendor/bills/new" element={<VendorProtectedRoute><VendorNewBill /></VendorProtectedRoute>} />
-                <Route path="/vendor/bills/:id" element={<VendorProtectedRoute><VendorPortalBillDetail /></VendorProtectedRoute>} />
+                <Route
+                  path="/vendor/accept-invite/:token"
+                  element={<AcceptVendorInvitation />}
+                />
+                <Route
+                  path="/vendor"
+                  element={
+                    <VendorProtectedRoute>
+                      <VendorDashboard />
+                    </VendorProtectedRoute>
+                  }
+                />
+                <Route
+                  path="/vendor/pos"
+                  element={
+                    <VendorProtectedRoute>
+                      <VendorPOsList />
+                    </VendorProtectedRoute>
+                  }
+                />
+                <Route
+                  path="/vendor/pos/:id"
+                  element={
+                    <VendorProtectedRoute>
+                      <VendorPODetail />
+                    </VendorProtectedRoute>
+                  }
+                />
+                <Route
+                  path="/vendor/bills"
+                  element={
+                    <VendorProtectedRoute>
+                      <VendorBillsList />
+                    </VendorProtectedRoute>
+                  }
+                />
+                <Route
+                  path="/vendor/bills/new"
+                  element={
+                    <VendorProtectedRoute>
+                      <VendorNewBill />
+                    </VendorProtectedRoute>
+                  }
+                />
+                <Route
+                  path="/vendor/bills/:id"
+                  element={
+                    <VendorProtectedRoute>
+                      <VendorPortalBillDetail />
+                    </VendorProtectedRoute>
+                  }
+                />
                 <Route path="*" element={<NotFound />} />
               </Routes>
               <BottomNav onMoreClick={() => setMoreMenuOpen(true)} />

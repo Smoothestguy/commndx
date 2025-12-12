@@ -2,7 +2,7 @@ import { useNavigate } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
 import { MobileNav } from "./MobileNav";
 import { ThemeToggleSimple } from "@/components/ThemeToggle";
-import logo from "@/assets/logo.png";
+import { SidebarTrigger } from "@/components/ui/sidebar";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -11,7 +11,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
-import { ChevronDown, Settings, LogOut, User } from "lucide-react";
+import { ChevronDown, Settings, LogOut } from "lucide-react";
 
 export function AppHeader() {
   const navigate = useNavigate();
@@ -22,28 +22,22 @@ export function AppHeader() {
     : "U";
 
   return (
-    <header className="h-14 bg-header fixed top-0 left-0 right-0 z-50 flex items-center justify-between px-4 border-b border-sidebar-border">
-      {/* Left side: Mobile menu + Logo */}
-      <div className="flex items-center gap-3">
+    <header className="h-14 bg-header sticky top-0 z-50 flex items-center justify-between px-4 border-b border-sidebar-border">
+      {/* Left side: Sidebar Toggle + Mobile menu */}
+      <div className="flex items-center gap-2">
+        {/* Desktop sidebar toggle */}
+        <SidebarTrigger className="hidden md:flex h-8 w-8" />
+
         {/* Mobile menu trigger */}
-        <div className="lg:hidden">
+        <div className="md:hidden">
           <MobileNav />
-        </div>
-        
-        {/* Logo */}
-        <div className="flex items-center gap-3">
-          <img
-            src={logo}
-            alt="Command X"
-            className="h-8 w-auto max-w-[160px] object-contain"
-          />
         </div>
       </div>
 
       {/* Right side: Theme toggle + User menu */}
       <div className="flex items-center gap-3">
         <ThemeToggleSimple />
-        
+
         <DropdownMenu>
           <DropdownMenuTrigger className="flex items-center gap-2 hover:opacity-80 transition-opacity outline-none">
             <Avatar className="h-8 w-8 bg-sidebar-accent">
@@ -66,7 +60,10 @@ export function AppHeader() {
               Settings
             </DropdownMenuItem>
             <DropdownMenuSeparator />
-            <DropdownMenuItem onClick={signOut} className="text-destructive focus:text-destructive">
+            <DropdownMenuItem
+              onClick={signOut}
+              className="text-destructive focus:text-destructive"
+            >
               <LogOut className="mr-2 h-4 w-4" />
               Sign Out
             </DropdownMenuItem>
