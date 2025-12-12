@@ -134,23 +134,7 @@ const App = () => {
                     path="/contractor/success"
                     element={<ContractorSubmissionSuccess />}
                   />
-                  {/* Admin Contractor Routes */}
-                  <Route
-                    path="/admin/contractor-submissions"
-                    element={
-                      <ProtectedRoute>
-                        <ContractorSubmissions />
-                      </ProtectedRoute>
-                    }
-                  />
-                  <Route
-                    path="/admin/contractor-form-builder"
-                    element={
-                      <ProtectedRoute>
-                        <ContractorFormBuilder />
-                      </ProtectedRoute>
-                    }
-                  />
+                  {/* Admin Contractor Routes - moved to SidebarLayout group below */}
                   {/* Portal Routes */}
                   <Route path="/portal/login" element={<PortalLogin />} />
                   <Route
@@ -301,6 +285,14 @@ const App = () => {
                       element={<QuickBooksSettings />}
                     />
                     <Route path="/messages" element={<Messages />} />
+                    <Route
+                      path="/admin/contractor-submissions"
+                      element={<ContractorSubmissions />}
+                    />
+                    <Route
+                      path="/admin/contractor-form-builder"
+                      element={<ContractorFormBuilder />}
+                    />
                   </Route>
 
                   {/* Vendor Portal Routes */}
