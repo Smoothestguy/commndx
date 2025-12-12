@@ -337,13 +337,13 @@ export const generateWorkOrderPDF = async (
 
   // ==================== LABOR COST TOTAL ====================
   yPos += 10;
-  const totalsX = pageWidth - 95;
   
   doc.setFont("helvetica", "bold");
   doc.setFontSize(PDF_FONTS.heading);
-  doc.text("LABOR TOTAL:", totalsX, yPos);
+  // Right-align label at one position, value at another with clear spacing
+  doc.text("LABOR TOTAL:", pageWidth - 70, yPos, { align: "right" });
   setColor(doc, PDF_COLORS.primary);
-  doc.text(formatCurrencyForPDF(data.laborCostTotal), pageWidth - PDF_MARGIN - 5, yPos, { align: "right" });
+  doc.text(formatCurrencyForPDF(data.laborCostTotal), pageWidth - 20, yPos, { align: "right" });
 
   yPos += 15;
 
