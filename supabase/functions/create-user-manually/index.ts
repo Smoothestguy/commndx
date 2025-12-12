@@ -56,9 +56,9 @@ serve(async (req) => {
       );
     }
 
-    const { email, password, firstName, lastName, role, personnelId } = await req.json();
+    const { email, password, firstName, lastName, role, personnelId, vendorId } = await req.json();
 
-    console.log("Creating user manually:", { email, role, personnelId, hasPassword: !!password });
+    console.log("Creating user manually:", { email, role, personnelId, vendorId, hasPassword: !!password });
 
     if (!email || !password || !role) {
       return new Response(
@@ -104,10 +104,16 @@ serve(async (req) => {
     }
 
     // Delete any existing role and assign new role
-    // If linking to personnel, always assign 'personnel' role regardless of selected role
+    // If linking to personnel, always assign 'personnel' role
+    // If linking to vendor, always assign 'vendor' role
     await adminClient.from('user_roles').delete().eq('user_id', newUser.user.id);
     
-    const assignedRole = personnelId ? 'personnel' : role;
+    let assignedRole = role;
+    if (personnelId) {
+      assignedRole = 'personnel';
+    } else if (vendorId) {
+      assignedRole = 'vendor';
+    }
     
     const { error: roleInsertError } = await adminClient
       .from('user_roles')
@@ -135,6 +141,21 @@ serve(async (req) => {
         // Don't fail the whole operation, just log
       } else {
         console.log("Linked to personnel:", personnelId);
+      }
+    }
+
+    // Link to vendor if vendorId is provided
+    if (vendorId) {
+      const { error: vendorError } = await adminClient
+        .from('vendors')
+        .update({ user_id: newUser.user.id })
+        .eq('id', vendorId);
+
+      if (vendorError) {
+        console.error("Error linking vendor:", vendorError);
+        // Don't fail the whole operation, just log
+      } else {
+        console.log("Linked to vendor:", vendorId);
       }
     }
 
