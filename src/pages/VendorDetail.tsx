@@ -13,6 +13,7 @@ import { useVendorBills } from "@/integrations/supabase/hooks/useVendorBills";
 import { VendorDocumentUpload } from "@/components/vendors/VendorDocumentUpload";
 import { VendorPersonnelSection } from "@/components/vendors/VendorPersonnelSection";
 import { VendorEditDialog } from "@/components/vendors/VendorEditDialog";
+import { InviteVendorDialog } from "@/components/vendors/InviteVendorDialog";
 import { usePersonnelByVendor } from "@/integrations/supabase/hooks/usePersonnel";
 import { useVendorDocuments } from "@/integrations/supabase/hooks/useVendorDocuments";
 import { 
@@ -50,6 +51,7 @@ export default function VendorDetail() {
   const { id } = useParams();
   const navigate = useNavigate();
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
+  const [isInviteDialogOpen, setIsInviteDialogOpen] = useState(false);
   const { data: vendors, isLoading } = useVendors();
   const { data: expenseCategories } = useExpenseCategories("vendor");
   const { data: purchaseOrders } = usePurchaseOrders();
@@ -364,20 +366,9 @@ export default function VendorDetail() {
                   <UserPlus className="h-5 w-5" />
                   <span>No portal access</span>
                 </div>
-                <Button 
-                  onClick={() => sendInvitation.mutate({ 
-                    vendorId: vendor.id, 
-                    email: vendor.email, 
-                    vendorName: vendor.name 
-                  })}
-                  disabled={sendInvitation.isPending}
-                >
-                  {sendInvitation.isPending ? (
-                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                  ) : (
-                    <Mail className="mr-2 h-4 w-4" />
-                  )}
-                  Invite to Portal
+                <Button onClick={() => setIsInviteDialogOpen(true)}>
+                  <UserPlus className="mr-2 h-4 w-4" />
+                  Grant Portal Access
                 </Button>
               </div>
             )}
@@ -657,6 +648,15 @@ export default function VendorDetail() {
           vendor={vendor}
           open={isEditDialogOpen}
           onOpenChange={setIsEditDialogOpen}
+        />
+
+        {/* Invite to Portal Dialog */}
+        <InviteVendorDialog
+          open={isInviteDialogOpen}
+          onOpenChange={setIsInviteDialogOpen}
+          vendorId={vendor.id}
+          vendorEmail={vendor.email}
+          vendorName={vendor.name}
         />
       </div>
     </PageLayout>

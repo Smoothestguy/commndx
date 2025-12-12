@@ -8,10 +8,12 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { toast } from "sonner";
-import { Shield, Save, Users, Loader2, CheckSquare, XSquare } from "lucide-react";
+import { Shield, Save, Users, Loader2, CheckSquare, XSquare, Info, Eye, DollarSign } from "lucide-react";
 import { useUserRole } from "@/hooks/useUserRole";
 import { useUserPermissions, useUpdateUserPermissions, MODULES, type ModuleKey } from "@/integrations/supabase/hooks/useUserPermissions";
+import { useSensitivePermissions, useUpdateSensitivePermissions, SENSITIVE_PERMISSIONS, type SensitivePermissionKey } from "@/integrations/supabase/hooks/useSensitivePermissions";
 import { Navigate } from "react-router-dom";
 
 interface Profile {
@@ -26,6 +28,8 @@ interface UserWithRole extends Profile {
 type PermissionType = "can_view" | "can_add" | "can_edit" | "can_delete";
 
 type PermissionState = Record<string, Record<PermissionType, boolean>>;
+
+type SensitivePermissionState = Record<SensitivePermissionKey, boolean>;
 
 // Role presets configuration
 const ROLE_PRESETS = {
@@ -92,10 +96,18 @@ const getEmptyPermissions = (): PermissionState => {
   }, {} as PermissionState);
 };
 
+const getEmptySensitivePermissions = (): SensitivePermissionState => ({
+  can_view_billing_rates: false,
+  can_view_cost_rates: false,
+  can_view_margins: false,
+  can_view_personnel_pay_rates: false,
+});
+
 export default function PermissionsManagement() {
   const { isAdmin, loading: roleLoading } = useUserRole();
   const [selectedUserId, setSelectedUserId] = useState<string | null>(null);
   const [permissions, setPermissions] = useState<PermissionState>(getEmptyPermissions());
+  const [sensitivePermissions, setSensitivePermissions] = useState<SensitivePermissionState>(getEmptySensitivePermissions());
   const [hasChanges, setHasChanges] = useState(false);
 
   // Fetch all users with their roles
@@ -125,7 +137,9 @@ export default function PermissionsManagement() {
   });
 
   const { data: userPermissions, isLoading: permissionsLoading } = useUserPermissions(selectedUserId || undefined);
+  const { data: userSensitivePermissions, isLoading: sensitiveLoading } = useSensitivePermissions(selectedUserId || undefined);
   const updatePermissions = useUpdateUserPermissions();
+  const updateSensitivePermissions = useUpdateSensitivePermissions();
 
   // Update local state when user permissions are loaded
   useEffect(() => {
@@ -146,9 +160,25 @@ export default function PermissionsManagement() {
     }
   }, [userPermissions, selectedUserId]);
 
+  // Update sensitive permissions when loaded
+  useEffect(() => {
+    if (selectedUserId) {
+      if (userSensitivePermissions) {
+        setSensitivePermissions({
+          can_view_billing_rates: userSensitivePermissions.can_view_billing_rates,
+          can_view_cost_rates: userSensitivePermissions.can_view_cost_rates,
+          can_view_margins: userSensitivePermissions.can_view_margins,
+          can_view_personnel_pay_rates: userSensitivePermissions.can_view_personnel_pay_rates,
+        });
+      } else {
+        setSensitivePermissions(getEmptySensitivePermissions());
+      }
+    }
+  }, [userSensitivePermissions, selectedUserId]);
+
   // Group modules by category
   const groupedModules = useMemo(() => {
-    const groups: Record<string, Array<{ key: string; label: string; category: string }>> = {};
+    const groups: Record<string, typeof MODULES[number][]> = {};
     MODULES.forEach(mod => {
       if (!groups[mod.category]) groups[mod.category] = [];
       groups[mod.category].push(mod);
@@ -163,6 +193,14 @@ export default function PermissionsManagement() {
         ...prev[moduleKey],
         [permType]: !prev[moduleKey][permType],
       },
+    }));
+    setHasChanges(true);
+  };
+
+  const handleSensitiveToggle = (key: SensitivePermissionKey) => {
+    setSensitivePermissions(prev => ({
+      ...prev,
+      [key]: !prev[key],
     }));
     setHasChanges(true);
   };
@@ -189,7 +227,7 @@ export default function PermissionsManagement() {
     setHasChanges(true);
   };
 
-  const handleSave = () => {
+  const handleSave = async () => {
     if (!selectedUserId) return;
 
     const permissionsArray = Object.entries(permissions).map(([module, perms]) => ({
@@ -197,10 +235,22 @@ export default function PermissionsManagement() {
       ...perms,
     }));
 
+    // Save module permissions
     updatePermissions.mutate(
       { userId: selectedUserId, permissions: permissionsArray },
       {
-        onSuccess: () => setHasChanges(false),
+        onSuccess: () => {
+          // Also save sensitive permissions
+          updateSensitivePermissions.mutate(
+            { userId: selectedUserId, permissions: sensitivePermissions },
+            {
+              onSuccess: () => {
+                setHasChanges(false);
+                toast.success("All permissions saved successfully");
+              },
+            }
+          );
+        },
       }
     );
   };
@@ -221,191 +271,321 @@ export default function PermissionsManagement() {
     return <Navigate to="/" replace />;
   }
 
+  const getPermissionTooltip = (mod: typeof MODULES[number], permType: PermissionType): string => {
+    if (mod.permissions && mod.permissions[permType]) {
+      return mod.permissions[permType];
+    }
+    const labels: Record<PermissionType, string> = {
+      can_view: "View records",
+      can_add: "Create new records",
+      can_edit: "Edit existing records",
+      can_delete: "Delete records",
+    };
+    return labels[permType];
+  };
+
   return (
-    <PageLayout
-      title="Permissions Management"
-      description="Configure user access controls for each module"
-    >
-      <div className="space-y-6">
-        {/* User Selector */}
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <Users className="h-5 w-5" />
-              Select User
-            </CardTitle>
-            <CardDescription>Choose a user to configure their permissions</CardDescription>
-          </CardHeader>
-          <CardContent>
-            <div className="flex items-center gap-4">
-              <Select value={selectedUserId || ""} onValueChange={setSelectedUserId}>
-                <SelectTrigger className="w-[300px]">
-                  <SelectValue placeholder="Select a user..." />
-                </SelectTrigger>
-                <SelectContent>
-                  {usersLoading ? (
-                    <div className="p-2 text-center text-muted-foreground">Loading...</div>
-                  ) : (
-                    users?.map(user => (
-                      <SelectItem key={user.id} value={user.id}>
-                        <div className="flex items-center gap-2">
-                          <span>{user.email || "Unknown"}</span>
-                          {user.role && (
-                            <Badge variant="outline" className="text-xs">
-                              {user.role}
-                            </Badge>
-                          )}
-                        </div>
-                      </SelectItem>
-                    ))
-                  )}
-                </SelectContent>
-              </Select>
+    <TooltipProvider>
+      <PageLayout
+        title="Permissions Management"
+        description="Configure user access controls for each module"
+      >
+        <div className="space-y-6">
+          {/* User Selector */}
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <Users className="h-5 w-5" />
+                Select User
+              </CardTitle>
+              <CardDescription>Choose a user to configure their permissions</CardDescription>
+            </CardHeader>
+            <CardContent>
+              <div className="flex items-center gap-4">
+                <Select value={selectedUserId || ""} onValueChange={setSelectedUserId}>
+                  <SelectTrigger className="w-[300px]">
+                    <SelectValue placeholder="Select a user..." />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {usersLoading ? (
+                      <div className="p-2 text-center text-muted-foreground">Loading...</div>
+                    ) : (
+                      users?.map(user => (
+                        <SelectItem key={user.id} value={user.id}>
+                          <div className="flex items-center gap-2">
+                            <span>{user.email || "Unknown"}</span>
+                            {user.role && (
+                              <Badge variant="outline" className="text-xs">
+                                {user.role}
+                              </Badge>
+                            )}
+                          </div>
+                        </SelectItem>
+                      ))
+                    )}
+                  </SelectContent>
+                </Select>
 
-              {selectedUser && (
-                <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                  <span>Current role:</span>
-                  <Badge variant={selectedUser.role === "admin" ? "default" : "secondary"}>
-                    {selectedUser.role || "No role"}
-                  </Badge>
-                </div>
-              )}
-            </div>
-          </CardContent>
-        </Card>
-
-        {selectedUserId && (
-          <>
-            {/* Role Presets */}
-            <Card>
-              <CardHeader>
-                <CardTitle>Quick Presets</CardTitle>
-                <CardDescription>Apply a predefined permission template</CardDescription>
-              </CardHeader>
-              <CardContent>
-                <div className="flex flex-wrap gap-2">
-                  {Object.entries(ROLE_PRESETS).map(([key, preset]) => (
-                    <Button
-                      key={key}
-                      variant="outline"
-                      size="sm"
-                      onClick={() => applyPreset(key as keyof typeof ROLE_PRESETS)}
-                      className="flex flex-col items-start h-auto py-2 px-3"
-                    >
-                      <span className="font-medium">{preset.label}</span>
-                      <span className="text-xs text-muted-foreground">{preset.description}</span>
-                    </Button>
-                  ))}
-                </div>
-              </CardContent>
-            </Card>
-
-            {/* Permissions Matrix */}
-            <Card>
-              <CardHeader className="flex flex-row items-center justify-between">
-                <div>
-                  <CardTitle>Permission Matrix</CardTitle>
-                  <CardDescription>
-                    Configure individual permissions for {selectedUser?.email}
-                  </CardDescription>
-                </div>
-                <Button onClick={handleSave} disabled={!hasChanges || updatePermissions.isPending}>
-                  {updatePermissions.isPending ? (
-                    <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                  ) : (
-                    <Save className="h-4 w-4 mr-2" />
-                  )}
-                  Save Permissions
-                </Button>
-              </CardHeader>
-              <CardContent>
-                {permissionsLoading ? (
-                  <div className="flex items-center justify-center h-32">
-                    <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
-                  </div>
-                ) : (
-                  <div className="border rounded-lg overflow-hidden">
-                    <Table>
-                      <TableHeader>
-                        <TableRow className="bg-muted/50">
-                          <TableHead className="w-[200px]">Module</TableHead>
-                          <TableHead className="text-center w-[80px]">View</TableHead>
-                          <TableHead className="text-center w-[80px]">Create</TableHead>
-                          <TableHead className="text-center w-[80px]">Edit</TableHead>
-                          <TableHead className="text-center w-[80px]">Delete</TableHead>
-                          <TableHead className="text-center w-[100px]">Actions</TableHead>
-                        </TableRow>
-                      </TableHeader>
-                      <TableBody>
-                        {Object.entries(groupedModules).map(([category, modules]) => (
-                          <>
-                            <TableRow key={`cat-${category}`} className="bg-muted/30">
-                              <TableCell colSpan={6} className="font-semibold text-sm py-2">
-                                {category}
-                              </TableCell>
-                            </TableRow>
-                            {modules.map(mod => (
-                              <TableRow key={mod.key}>
-                                <TableCell className="font-medium pl-6">{mod.label}</TableCell>
-                                <TableCell className="text-center">
-                                  <Checkbox
-                                    checked={permissions[mod.key as ModuleKey]?.can_view || false}
-                                    onCheckedChange={() => handleToggle(mod.key as ModuleKey, "can_view")}
-                                  />
-                                </TableCell>
-                                <TableCell className="text-center">
-                                  <Checkbox
-                                    checked={permissions[mod.key as ModuleKey]?.can_add || false}
-                                    onCheckedChange={() => handleToggle(mod.key as ModuleKey, "can_add")}
-                                  />
-                                </TableCell>
-                                <TableCell className="text-center">
-                                  <Checkbox
-                                    checked={permissions[mod.key as ModuleKey]?.can_edit || false}
-                                    onCheckedChange={() => handleToggle(mod.key as ModuleKey, "can_edit")}
-                                  />
-                                </TableCell>
-                                <TableCell className="text-center">
-                                  <Checkbox
-                                    checked={permissions[mod.key as ModuleKey]?.can_delete || false}
-                                    onCheckedChange={() => handleToggle(mod.key as ModuleKey, "can_delete")}
-                                  />
-                                </TableCell>
-                                <TableCell className="text-center">
-                                  <div className="flex items-center justify-center gap-1">
-                                    <Button
-                                      variant="ghost"
-                                      size="icon"
-                                      className="h-7 w-7"
-                                      onClick={() => handleSelectAllModule(mod.key as ModuleKey)}
-                                      title="Select all"
-                                    >
-                                      <CheckSquare className="h-4 w-4 text-green-600" />
-                                    </Button>
-                                    <Button
-                                      variant="ghost"
-                                      size="icon"
-                                      className="h-7 w-7"
-                                      onClick={() => handleClearModule(mod.key as ModuleKey)}
-                                      title="Clear all"
-                                    >
-                                      <XSquare className="h-4 w-4 text-destructive" />
-                                    </Button>
-                                  </div>
-                                </TableCell>
-                              </TableRow>
-                            ))}
-                          </>
-                        ))}
-                      </TableBody>
-                    </Table>
+                {selectedUser && (
+                  <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                    <span>Current role:</span>
+                    <Badge variant={selectedUser.role === "admin" ? "default" : "secondary"}>
+                      {selectedUser.role || "No role"}
+                    </Badge>
                   </div>
                 )}
-              </CardContent>
-            </Card>
-          </>
-        )}
-      </div>
-    </PageLayout>
+              </div>
+            </CardContent>
+          </Card>
+
+          {selectedUserId && (
+            <>
+              {/* Role Presets */}
+              <Card>
+                <CardHeader>
+                  <CardTitle>Quick Presets</CardTitle>
+                  <CardDescription>Apply a predefined permission template</CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <div className="flex flex-wrap gap-2">
+                    {Object.entries(ROLE_PRESETS).map(([key, preset]) => (
+                      <Button
+                        key={key}
+                        variant="outline"
+                        size="sm"
+                        onClick={() => applyPreset(key as keyof typeof ROLE_PRESETS)}
+                        className="flex flex-col items-start h-auto py-2 px-3"
+                      >
+                        <span className="font-medium">{preset.label}</span>
+                        <span className="text-xs text-muted-foreground">{preset.description}</span>
+                      </Button>
+                    ))}
+                  </div>
+                </CardContent>
+              </Card>
+
+              {/* Sensitive Data Access */}
+              <Card>
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2">
+                    <DollarSign className="h-5 w-5" />
+                    Sensitive Data Access
+                  </CardTitle>
+                  <CardDescription>
+                    Control access to financial and rate information. These settings apply across all modules.
+                  </CardDescription>
+                </CardHeader>
+                <CardContent>
+                  {sensitiveLoading ? (
+                    <div className="flex items-center justify-center h-20">
+                      <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
+                    </div>
+                  ) : (
+                    <div className="grid gap-4 sm:grid-cols-2">
+                      {SENSITIVE_PERMISSIONS.map((perm) => (
+                        <div
+                          key={perm.key}
+                          className="flex items-start gap-3 p-3 rounded-lg border bg-card hover:bg-accent/50 transition-colors"
+                        >
+                          <Checkbox
+                            id={perm.key}
+                            checked={sensitivePermissions[perm.key]}
+                            onCheckedChange={() => handleSensitiveToggle(perm.key)}
+                          />
+                          <div className="flex-1">
+                            <label
+                              htmlFor={perm.key}
+                              className="text-sm font-medium cursor-pointer flex items-center gap-2"
+                            >
+                              <Eye className="h-4 w-4 text-muted-foreground" />
+                              {perm.label}
+                            </label>
+                            <p className="text-xs text-muted-foreground mt-0.5">
+                              {perm.description}
+                            </p>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </CardContent>
+              </Card>
+
+              {/* Permissions Matrix */}
+              <Card>
+                <CardHeader className="flex flex-row items-center justify-between">
+                  <div>
+                    <CardTitle>Module Permissions</CardTitle>
+                    <CardDescription>
+                      Configure which modules {selectedUser?.email} can access
+                    </CardDescription>
+                  </div>
+                  <Button onClick={handleSave} disabled={!hasChanges || updatePermissions.isPending}>
+                    {updatePermissions.isPending ? (
+                      <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                    ) : (
+                      <Save className="h-4 w-4 mr-2" />
+                    )}
+                    Save All Permissions
+                  </Button>
+                </CardHeader>
+                <CardContent>
+                  {permissionsLoading ? (
+                    <div className="flex items-center justify-center h-32">
+                      <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+                    </div>
+                  ) : (
+                    <div className="border rounded-lg overflow-hidden">
+                      <Table>
+                        <TableHeader>
+                          <TableRow className="bg-muted/50">
+                            <TableHead className="w-[200px]">Module</TableHead>
+                            <TableHead className="text-center w-[80px]">
+                              <Tooltip>
+                                <TooltipTrigger className="flex items-center justify-center gap-1 w-full">
+                                  View <Info className="h-3 w-3" />
+                                </TooltipTrigger>
+                                <TooltipContent>Can see this module and its data</TooltipContent>
+                              </Tooltip>
+                            </TableHead>
+                            <TableHead className="text-center w-[80px]">
+                              <Tooltip>
+                                <TooltipTrigger className="flex items-center justify-center gap-1 w-full">
+                                  Create <Info className="h-3 w-3" />
+                                </TooltipTrigger>
+                                <TooltipContent>Can create new records</TooltipContent>
+                              </Tooltip>
+                            </TableHead>
+                            <TableHead className="text-center w-[80px]">
+                              <Tooltip>
+                                <TooltipTrigger className="flex items-center justify-center gap-1 w-full">
+                                  Edit <Info className="h-3 w-3" />
+                                </TooltipTrigger>
+                                <TooltipContent>Can modify existing records</TooltipContent>
+                              </Tooltip>
+                            </TableHead>
+                            <TableHead className="text-center w-[80px]">
+                              <Tooltip>
+                                <TooltipTrigger className="flex items-center justify-center gap-1 w-full">
+                                  Delete <Info className="h-3 w-3" />
+                                </TooltipTrigger>
+                                <TooltipContent>Can remove records permanently</TooltipContent>
+                              </Tooltip>
+                            </TableHead>
+                            <TableHead className="text-center w-[100px]">Actions</TableHead>
+                          </TableRow>
+                        </TableHeader>
+                        <TableBody>
+                          {Object.entries(groupedModules).map(([category, modules]) => (
+                            <>
+                              <TableRow key={`cat-${category}`} className="bg-muted/30">
+                                <TableCell colSpan={6} className="font-semibold text-sm py-2">
+                                  {category}
+                                </TableCell>
+                              </TableRow>
+                              {modules.map(mod => (
+                                <TableRow key={mod.key}>
+                                  <TableCell className="font-medium pl-6">
+                                    <Tooltip>
+                                      <TooltipTrigger className="flex items-center gap-1.5 text-left">
+                                        {mod.label}
+                                        {mod.description && <Info className="h-3 w-3 text-muted-foreground" />}
+                                      </TooltipTrigger>
+                                      {mod.description && (
+                                        <TooltipContent side="right" className="max-w-[200px]">
+                                          {mod.description}
+                                        </TooltipContent>
+                                      )}
+                                    </Tooltip>
+                                  </TableCell>
+                                  <TableCell className="text-center">
+                                    <Tooltip>
+                                      <TooltipTrigger asChild>
+                                        <div className="flex justify-center">
+                                          <Checkbox
+                                            checked={permissions[mod.key as ModuleKey]?.can_view || false}
+                                            onCheckedChange={() => handleToggle(mod.key as ModuleKey, "can_view")}
+                                          />
+                                        </div>
+                                      </TooltipTrigger>
+                                      <TooltipContent>{getPermissionTooltip(mod, "can_view")}</TooltipContent>
+                                    </Tooltip>
+                                  </TableCell>
+                                  <TableCell className="text-center">
+                                    <Tooltip>
+                                      <TooltipTrigger asChild>
+                                        <div className="flex justify-center">
+                                          <Checkbox
+                                            checked={permissions[mod.key as ModuleKey]?.can_add || false}
+                                            onCheckedChange={() => handleToggle(mod.key as ModuleKey, "can_add")}
+                                          />
+                                        </div>
+                                      </TooltipTrigger>
+                                      <TooltipContent>{getPermissionTooltip(mod, "can_add")}</TooltipContent>
+                                    </Tooltip>
+                                  </TableCell>
+                                  <TableCell className="text-center">
+                                    <Tooltip>
+                                      <TooltipTrigger asChild>
+                                        <div className="flex justify-center">
+                                          <Checkbox
+                                            checked={permissions[mod.key as ModuleKey]?.can_edit || false}
+                                            onCheckedChange={() => handleToggle(mod.key as ModuleKey, "can_edit")}
+                                          />
+                                        </div>
+                                      </TooltipTrigger>
+                                      <TooltipContent>{getPermissionTooltip(mod, "can_edit")}</TooltipContent>
+                                    </Tooltip>
+                                  </TableCell>
+                                  <TableCell className="text-center">
+                                    <Tooltip>
+                                      <TooltipTrigger asChild>
+                                        <div className="flex justify-center">
+                                          <Checkbox
+                                            checked={permissions[mod.key as ModuleKey]?.can_delete || false}
+                                            onCheckedChange={() => handleToggle(mod.key as ModuleKey, "can_delete")}
+                                          />
+                                        </div>
+                                      </TooltipTrigger>
+                                      <TooltipContent>{getPermissionTooltip(mod, "can_delete")}</TooltipContent>
+                                    </Tooltip>
+                                  </TableCell>
+                                  <TableCell className="text-center">
+                                    <div className="flex items-center justify-center gap-1">
+                                      <Button
+                                        variant="ghost"
+                                        size="icon"
+                                        className="h-7 w-7"
+                                        onClick={() => handleSelectAllModule(mod.key as ModuleKey)}
+                                        title="Select all"
+                                      >
+                                        <CheckSquare className="h-4 w-4 text-green-600" />
+                                      </Button>
+                                      <Button
+                                        variant="ghost"
+                                        size="icon"
+                                        className="h-7 w-7"
+                                        onClick={() => handleClearModule(mod.key as ModuleKey)}
+                                        title="Clear all"
+                                      >
+                                        <XSquare className="h-4 w-4 text-destructive" />
+                                      </Button>
+                                    </div>
+                                  </TableCell>
+                                </TableRow>
+                              ))}
+                            </>
+                          ))}
+                        </TableBody>
+                      </Table>
+                    </div>
+                  )}
+                </CardContent>
+              </Card>
+            </>
+          )}
+        </div>
+      </PageLayout>
+    </TooltipProvider>
   );
 }

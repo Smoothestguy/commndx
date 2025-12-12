@@ -4154,6 +4154,39 @@ export type Database = {
           },
         ]
       }
+      user_sensitive_permissions: {
+        Row: {
+          can_view_billing_rates: boolean | null
+          can_view_cost_rates: boolean | null
+          can_view_margins: boolean | null
+          can_view_personnel_pay_rates: boolean | null
+          created_at: string | null
+          id: string
+          updated_at: string | null
+          user_id: string
+        }
+        Insert: {
+          can_view_billing_rates?: boolean | null
+          can_view_cost_rates?: boolean | null
+          can_view_margins?: boolean | null
+          can_view_personnel_pay_rates?: boolean | null
+          created_at?: string | null
+          id?: string
+          updated_at?: string | null
+          user_id: string
+        }
+        Update: {
+          can_view_billing_rates?: boolean | null
+          can_view_cost_rates?: boolean | null
+          can_view_margins?: boolean | null
+          can_view_personnel_pay_rates?: boolean | null
+          created_at?: string | null
+          id?: string
+          updated_at?: string | null
+          user_id?: string
+        }
+        Relationships: []
+      }
       vendor_bill_attachments: {
         Row: {
           bill_id: string

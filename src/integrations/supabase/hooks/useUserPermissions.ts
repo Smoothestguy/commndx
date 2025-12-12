@@ -14,30 +14,250 @@ export interface UserPermission {
 
 export const MODULES = [
   // Core
-  { key: "products", label: "Products", category: "Core" },
-  { key: "customers", label: "Customers", category: "Core" },
-  { key: "projects", label: "Projects", category: "Core" },
-  { key: "personnel", label: "Personnel", category: "Core" },
-  { key: "vendors", label: "Vendors", category: "Core" },
+  { 
+    key: "products", 
+    label: "Products", 
+    category: "Core",
+    description: "Manage products and services catalog",
+    permissions: {
+      can_view: "View products list and pricing",
+      can_add: "Add new products to catalog",
+      can_edit: "Update product details and pricing",
+      can_delete: "Remove products from catalog"
+    }
+  },
+  { 
+    key: "customers", 
+    label: "Customers", 
+    category: "Core",
+    description: "Manage customer information",
+    permissions: {
+      can_view: "View customer list and details",
+      can_add: "Add new customers",
+      can_edit: "Update customer information",
+      can_delete: "Remove customers"
+    }
+  },
+  { 
+    key: "projects", 
+    label: "Projects", 
+    category: "Core",
+    description: "Manage projects and job sites",
+    permissions: {
+      can_view: "View projects and job details",
+      can_add: "Create new projects",
+      can_edit: "Update project information",
+      can_delete: "Remove projects"
+    }
+  },
+  { 
+    key: "personnel", 
+    label: "Personnel", 
+    category: "Core",
+    description: "Manage team members and contractors",
+    permissions: {
+      can_view: "View personnel list and basic info (excludes pay rates)",
+      can_add: "Add new team members",
+      can_edit: "Update personnel information",
+      can_delete: "Remove personnel records"
+    }
+  },
+  { 
+    key: "vendors", 
+    label: "Vendors", 
+    category: "Core",
+    description: "Manage vendor/supplier relationships",
+    permissions: {
+      can_view: "View vendor list and details",
+      can_add: "Add new vendors",
+      can_edit: "Update vendor information",
+      can_delete: "Remove vendors"
+    }
+  },
   // Sales
-  { key: "estimates", label: "Estimates", category: "Sales" },
-  { key: "job_orders", label: "Job Orders", category: "Sales" },
-  { key: "purchase_orders", label: "Purchase Orders", category: "Sales" },
-  { key: "invoices", label: "Invoices", category: "Sales" },
+  { 
+    key: "estimates", 
+    label: "Estimates", 
+    category: "Sales",
+    description: "Create and manage customer estimates",
+    permissions: {
+      can_view: "View estimates and pricing",
+      can_add: "Create new estimates",
+      can_edit: "Modify existing estimates",
+      can_delete: "Remove estimates"
+    }
+  },
+  { 
+    key: "job_orders", 
+    label: "Job Orders", 
+    category: "Sales",
+    description: "Manage approved work orders",
+    permissions: {
+      can_view: "View job orders and work scopes",
+      can_add: "Create job orders from estimates",
+      can_edit: "Update job order details",
+      can_delete: "Remove job orders"
+    }
+  },
+  { 
+    key: "purchase_orders", 
+    label: "Purchase Orders", 
+    category: "Sales",
+    description: "Manage vendor purchase orders",
+    permissions: {
+      can_view: "View POs and vendor costs",
+      can_add: "Create new purchase orders",
+      can_edit: "Modify purchase orders",
+      can_delete: "Remove purchase orders"
+    }
+  },
+  { 
+    key: "invoices", 
+    label: "Invoices", 
+    category: "Sales",
+    description: "Manage customer invoices",
+    permissions: {
+      can_view: "View invoices and payment status",
+      can_add: "Create new invoices",
+      can_edit: "Update invoice details",
+      can_delete: "Remove invoices"
+    }
+  },
   // Operations
-  { key: "time_tracking", label: "Time Tracking", category: "Operations" },
-  { key: "project_assignments", label: "Project Assignments", category: "Operations" },
-  { key: "messages", label: "Messages", category: "Operations" },
+  { 
+    key: "time_tracking", 
+    label: "Time Tracking", 
+    category: "Operations",
+    description: "Track employee hours and labor",
+    permissions: {
+      can_view: "View time entries for assigned projects",
+      can_add: "Submit time entries",
+      can_edit: "Modify own time entries",
+      can_delete: "Remove time entries"
+    }
+  },
+  { 
+    key: "project_assignments", 
+    label: "Project Assignments", 
+    category: "Operations",
+    description: "Assign personnel to projects",
+    permissions: {
+      can_view: "View project assignments",
+      can_add: "Assign personnel to projects",
+      can_edit: "Update assignments",
+      can_delete: "Remove assignments"
+    }
+  },
+  { 
+    key: "messages", 
+    label: "Messages", 
+    category: "Operations",
+    description: "Send SMS and notifications",
+    permissions: {
+      can_view: "View message history",
+      can_add: "Send new messages",
+      can_edit: "N/A",
+      can_delete: "N/A"
+    }
+  },
   // CRM
-  { key: "activities", label: "Activities", category: "CRM" },
-  { key: "appointments", label: "Appointments", category: "CRM" },
-  { key: "tasks", label: "Tasks", category: "CRM" },
-  { key: "insurance_claims", label: "Insurance Claims", category: "CRM" },
+  { 
+    key: "activities", 
+    label: "Activities", 
+    category: "CRM",
+    description: "Track customer interactions",
+    permissions: {
+      can_view: "View activity history",
+      can_add: "Log new activities",
+      can_edit: "Update activity records",
+      can_delete: "Remove activities"
+    }
+  },
+  { 
+    key: "appointments", 
+    label: "Appointments", 
+    category: "CRM",
+    description: "Schedule customer appointments",
+    permissions: {
+      can_view: "View appointment calendar",
+      can_add: "Schedule appointments",
+      can_edit: "Reschedule appointments",
+      can_delete: "Cancel appointments"
+    }
+  },
+  { 
+    key: "tasks", 
+    label: "Tasks", 
+    category: "CRM",
+    description: "Manage to-do items and tasks",
+    permissions: {
+      can_view: "View task list",
+      can_add: "Create new tasks",
+      can_edit: "Update task status",
+      can_delete: "Remove tasks"
+    }
+  },
+  { 
+    key: "insurance_claims", 
+    label: "Insurance Claims", 
+    category: "CRM",
+    description: "Track insurance claim progress",
+    permissions: {
+      can_view: "View claims and status",
+      can_add: "File new claims",
+      can_edit: "Update claim information",
+      can_delete: "Remove claims"
+    }
+  },
   // Roofing Ops
-  { key: "inspections", label: "Inspections", category: "Roofing" },
-  { key: "measurements", label: "Measurements", category: "Roofing" },
-  { key: "weather", label: "Weather", category: "Roofing" },
-  { key: "warranties", label: "Warranties", category: "Roofing" },
+  { 
+    key: "inspections", 
+    label: "Inspections", 
+    category: "Roofing",
+    description: "Manage roof inspections",
+    permissions: {
+      can_view: "View inspection reports",
+      can_add: "Create inspection records",
+      can_edit: "Update inspection data",
+      can_delete: "Remove inspections"
+    }
+  },
+  { 
+    key: "measurements", 
+    label: "Measurements", 
+    category: "Roofing",
+    description: "Track roof measurements",
+    permissions: {
+      can_view: "View measurement data",
+      can_add: "Add new measurements",
+      can_edit: "Update measurements",
+      can_delete: "Remove measurements"
+    }
+  },
+  { 
+    key: "weather", 
+    label: "Weather", 
+    category: "Roofing",
+    description: "Weather tracking for scheduling",
+    permissions: {
+      can_view: "View weather data",
+      can_add: "N/A",
+      can_edit: "N/A",
+      can_delete: "N/A"
+    }
+  },
+  { 
+    key: "warranties", 
+    label: "Warranties", 
+    category: "Roofing",
+    description: "Manage warranty information",
+    permissions: {
+      can_view: "View warranty records",
+      can_add: "Create warranties",
+      can_edit: "Update warranty details",
+      can_delete: "Remove warranties"
+    }
+  },
 ] as const;
 
 export type ModuleKey = typeof MODULES[number]["key"];
