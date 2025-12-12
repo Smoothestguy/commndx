@@ -46,7 +46,7 @@ import { RelatedVendorBills } from "@/components/purchase-orders/RelatedVendorBi
 import { POAddendums } from "@/components/purchase-orders/POAddendums";
 import { formatCurrency } from "@/lib/utils";
 import { generatePurchaseOrderPDF, ProjectInfoForPDF } from "@/utils/purchaseOrderPdfExport";
-import { generateWorkOrderPDF, mapPurchaseOrderToWorkOrder } from "@/utils/workOrderPdfExport";
+import { downloadWorkOrderPDF, printWorkOrderPDF, mapPurchaseOrderToWorkOrder } from "@/utils/workOrderPdfExport";
 import { FileText } from "lucide-react";
 
 const PurchaseOrderDetail = () => {
@@ -144,8 +144,31 @@ const PurchaseOrderDetail = () => {
     }
   };
 
-  const handlePrint = () => {
-    window.print();
+  const handlePrint = async () => {
+    if (!purchaseOrder) return;
+    
+    const workOrderData = mapPurchaseOrderToWorkOrder({
+      purchaseOrder: {
+        ...purchaseOrder,
+        line_items: purchaseOrder.line_items.map(item => ({
+          description: item.description,
+          quantity: Number(item.quantity),
+          unit_price: Number(item.unit_price),
+          total: Number(item.total),
+        })),
+      },
+      project: project ? {
+        address: project.address,
+        city: project.city,
+        state: project.state,
+        zip: project.zip,
+        poc_name: project.poc_name,
+        poc_phone: project.poc_phone,
+      } : null,
+      installationInstructions: purchaseOrder.notes || undefined,
+    });
+    
+    await printWorkOrderPDF(workOrderData);
   };
 
   const handleDownloadPDF = () => {
@@ -189,7 +212,7 @@ const PurchaseOrderDetail = () => {
       installationInstructions: purchaseOrder.notes || undefined,
     });
     
-    await generateWorkOrderPDF(workOrderData);
+    await downloadWorkOrderPDF(workOrderData);
   };
 
   const handleDuplicate = () => {
