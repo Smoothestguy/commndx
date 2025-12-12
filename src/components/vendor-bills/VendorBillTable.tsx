@@ -11,6 +11,8 @@ import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, 
 import { VendorBill, useDeleteVendorBill } from "@/integrations/supabase/hooks/useVendorBills";
 import { useQuickBooksConfig, useQuickBooksBillMapping, useSyncVendorBillToQB } from "@/integrations/supabase/hooks/useQuickBooks";
 import { VendorBillPaymentDialog } from "./VendorBillPaymentDialog";
+import { VendorBillCard } from "./VendorBillCard";
+import { useIsMobile } from "@/hooks/use-mobile";
 import { toast } from "sonner";
 
 interface VendorBillTableProps {
@@ -184,6 +186,8 @@ export function VendorBillTable({ bills }: VendorBillTableProps) {
   const [bulkDeleteOpen, setBulkDeleteOpen] = useState(false);
   const [paymentBillId, setPaymentBillId] = useState<string | null>(null);
   
+  const isMobile = useIsMobile();
+  const navigate = useNavigate();
   const { data: qbConfig } = useQuickBooksConfig();
   const deleteBill = useDeleteVendorBill();
 
@@ -221,7 +225,7 @@ export function VendorBillTable({ bills }: VendorBillTableProps) {
   return (
     <>
       {selectedIds.size > 0 && (
-        <div className="flex items-center gap-4 p-3 bg-muted rounded-lg mb-4">
+        <div className="flex flex-wrap items-center gap-2 sm:gap-4 p-3 bg-muted rounded-lg mb-4">
           <span className="text-sm font-medium">{selectedIds.size} selected</span>
           <Button 
             variant="destructive" 
@@ -241,45 +245,62 @@ export function VendorBillTable({ bills }: VendorBillTableProps) {
         </div>
       )}
 
-      <div className="rounded-md border overflow-x-auto">
-        <Table>
-          <TableHeader>
-            <TableRow className="bg-muted/50">
-              <TableHead className="w-10">
-                <Checkbox
-                  checked={allSelected}
-                  ref={(el) => {
-                    if (el) (el as any).indeterminate = someSelected;
-                  }}
-                  onCheckedChange={handleSelectAll}
+      {/* Mobile Card View */}
+      {isMobile ? (
+        <div className="space-y-3">
+          {bills.map((bill) => (
+            <VendorBillCard
+              key={bill.id}
+              bill={bill}
+              onView={(id) => navigate(`/vendor-bills/${id}`)}
+              onEdit={(id) => navigate(`/vendor-bills/${id}/edit`)}
+              onDelete={setDeleteId}
+              onRecordPayment={setPaymentBillId}
+            />
+          ))}
+        </div>
+      ) : (
+        /* Desktop Table View */
+        <div className="rounded-md border overflow-x-auto">
+          <Table>
+            <TableHeader>
+              <TableRow className="bg-muted/50">
+                <TableHead className="w-10">
+                  <Checkbox
+                    checked={allSelected}
+                    ref={(el) => {
+                      if (el) (el as any).indeterminate = someSelected;
+                    }}
+                    onCheckedChange={handleSelectAll}
+                  />
+                </TableHead>
+                <TableHead className="w-16">Action</TableHead>
+                <TableHead>Bill #</TableHead>
+                <TableHead>Vendor</TableHead>
+                <TableHead>Status</TableHead>
+                <TableHead>Bill Date</TableHead>
+                <TableHead>Due Date</TableHead>
+                <TableHead className="text-right">Total</TableHead>
+                <TableHead className="text-right">Remaining</TableHead>
+                {qbConfig?.is_connected && <TableHead>QB Status</TableHead>}
+                <TableHead className="w-12"></TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {bills.map((bill) => (
+                <BillRow
+                  key={bill.id}
+                  bill={bill}
+                  isSelected={selectedIds.has(bill.id)}
+                  onSelect={(checked) => handleSelectOne(bill.id, checked)}
+                  onDelete={setDeleteId}
+                  onRecordPayment={setPaymentBillId}
                 />
-              </TableHead>
-              <TableHead className="w-16">Action</TableHead>
-              <TableHead>Bill #</TableHead>
-              <TableHead>Vendor</TableHead>
-              <TableHead>Status</TableHead>
-              <TableHead>Bill Date</TableHead>
-              <TableHead>Due Date</TableHead>
-              <TableHead className="text-right">Total</TableHead>
-              <TableHead className="text-right">Remaining</TableHead>
-              {qbConfig?.is_connected && <TableHead>QB Status</TableHead>}
-              <TableHead className="w-12"></TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {bills.map((bill) => (
-              <BillRow
-                key={bill.id}
-                bill={bill}
-                isSelected={selectedIds.has(bill.id)}
-                onSelect={(checked) => handleSelectOne(bill.id, checked)}
-                onDelete={setDeleteId}
-                onRecordPayment={setPaymentBillId}
-              />
-            ))}
-          </TableBody>
-        </Table>
-      </div>
+              ))}
+            </TableBody>
+          </Table>
+        </div>
+      )}
 
       {/* Single Delete Dialog */}
       <AlertDialog open={!!deleteId} onOpenChange={() => setDeleteId(null)}>
