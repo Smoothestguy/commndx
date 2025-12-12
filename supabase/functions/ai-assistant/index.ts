@@ -12,13 +12,13 @@ const tools = [
     type: "function",
     function: {
       name: "search_records",
-      description: "Search for records in the system (customers, invoices, estimates, projects, job_orders, purchase_orders, vendors, personnel)",
+      description: "Search for records in the system (customers, invoices, estimates, projects, job_orders, purchase_orders, vendors, personnel, products)",
       parameters: {
         type: "object",
         properties: {
           record_type: {
             type: "string",
-            enum: ["customer", "invoice", "estimate", "job_order", "project", "purchase_order", "vendor", "personnel", "vendor_bill"],
+            enum: ["customer", "invoice", "estimate", "job_order", "project", "purchase_order", "vendor", "personnel", "vendor_bill", "product"],
             description: "The type of record to search for"
           },
           search_query: {
@@ -51,7 +51,7 @@ const tools = [
         properties: {
           record_type: {
             type: "string",
-            enum: ["customer", "invoice", "estimate", "job_order", "project", "purchase_order", "vendor", "personnel", "vendor_bill"],
+            enum: ["customer", "invoice", "estimate", "job_order", "project", "purchase_order", "vendor", "personnel", "vendor_bill", "product"],
             description: "The type of record"
           },
           identifier: {
@@ -186,7 +186,8 @@ async function searchRecords(supabase: any, args: any): Promise<any> {
     purchase_order: "purchase_orders",
     vendor: "vendors",
     personnel: "personnel",
-    vendor_bill: "vendor_bills"
+    vendor_bill: "vendor_bills",
+    product: "products"
   };
 
   const table = tableMap[record_type];
@@ -220,6 +221,9 @@ async function searchRecords(supabase: any, args: any): Promise<any> {
         break;
       case "vendor_bill":
         query = query.or(`number.ilike.%${searchLower}%,vendor_name.ilike.%${searchLower}%`);
+        break;
+      case "product":
+        query = query.or(`name.ilike.%${searchLower}%,description.ilike.%${searchLower}%,sku.ilike.%${searchLower}%,category.ilike.%${searchLower}%`);
         break;
     }
   }
@@ -263,7 +267,8 @@ async function getRecordDetails(supabase: any, args: any): Promise<any> {
     purchase_order: "purchase_orders",
     vendor: "vendors",
     personnel: "personnel",
-    vendor_bill: "vendor_bills"
+    vendor_bill: "vendor_bills",
+    product: "products"
   };
 
   const table = tableMap[record_type];
@@ -478,7 +483,7 @@ serve(async (req) => {
     // System prompt for the AI assistant
     const systemPrompt = `You are an AI assistant for Command X Construction, a construction management application. You help users manage their construction business by:
 
-1. Searching and finding records (customers, invoices, estimates, job orders, projects, purchase orders, vendors, personnel)
+1. Searching and finding records (customers, invoices, estimates, job orders, projects, purchase orders, vendors, personnel, products)
 2. Creating new estimates and other records
 3. Providing statistics and summaries about the business
 4. Answering questions about projects, customers, and financials
