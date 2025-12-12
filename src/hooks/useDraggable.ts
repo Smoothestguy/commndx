@@ -103,6 +103,7 @@ export function useDraggable(options: DraggableOptions = {}) {
 
     const handleTouchMove = (e: TouchEvent) => {
       if (isDragging && e.touches.length === 1) {
+        e.preventDefault(); // Prevent page scrolling on mobile
         handleMove(e.touches[0].clientX, e.touches[0].clientY);
       }
     };
@@ -122,7 +123,7 @@ export function useDraggable(options: DraggableOptions = {}) {
     if (isDragging) {
       window.addEventListener("mousemove", handleMouseMove);
       window.addEventListener("mouseup", handleMouseUp);
-      window.addEventListener("touchmove", handleTouchMove, { passive: true });
+      window.addEventListener("touchmove", handleTouchMove, { passive: false });
       window.addEventListener("touchend", handleTouchEnd);
     }
 
