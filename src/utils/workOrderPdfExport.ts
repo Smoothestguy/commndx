@@ -387,16 +387,13 @@ export const printWorkOrderPDF = async (
 ): Promise<void> => {
   const doc = await generateWorkOrderPDF(data, companyInfo);
   
-  // Open in new window for printing
+  // Use jsPDF's autoPrint to embed print command in PDF
+  doc.autoPrint();
+  
+  // Open in new window - PDF will auto-trigger print dialog
   const pdfBlob = doc.output('blob');
   const pdfUrl = URL.createObjectURL(pdfBlob);
-  const printWindow = window.open(pdfUrl, '_blank');
-  
-  if (printWindow) {
-    printWindow.onload = () => {
-      printWindow.print();
-    };
-  }
+  window.open(pdfUrl, '_blank');
 };
 
 // ==================== DOWNLOAD WORK ORDER ====================
