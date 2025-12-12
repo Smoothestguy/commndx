@@ -24,7 +24,7 @@ export function StatCard({
   const cardContent = compact ? (
     <>
       <div className="flex items-center gap-1.5 mb-1">
-        <div className="flex h-6 w-6 items-center justify-center rounded-lg bg-primary/15 flex-shrink-0">
+        <div className="flex h-6 w-6 items-center justify-center rounded bg-primary/10 flex-shrink-0">
           <Icon className="h-3.5 w-3.5 text-primary" />
         </div>
         <p className="text-[10px] font-medium text-muted-foreground truncate">{title}</p>
@@ -34,7 +34,7 @@ export function StatCard({
   ) : (
     <>
       <div className="flex items-center gap-3 mb-3">
-        <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-primary/15 transition-all duration-300 group-hover:bg-primary/20 group-hover:shadow-glow flex-shrink-0">
+        <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-primary/10 transition-all duration-200 group-hover:bg-primary/15 flex-shrink-0">
           <Icon className="h-5 w-5 text-primary" />
         </div>
         <p className="text-sm font-medium text-muted-foreground">{title}</p>
@@ -58,10 +58,9 @@ export function StatCard({
   );
 
   const cardClasses = cn(
-    "rounded-2xl border border-border/50 bg-card/80 backdrop-blur-xl shadow-floating transition-all duration-300 group block",
-    "hover:shadow-elevated hover:border-primary/30 hover:-translate-y-1",
-    compact ? "p-3" : "p-5",
-    href && "cursor-pointer"
+    "bg-card rounded-lg border border-border shadow-sm transition-all duration-200 hover:shadow-md group block",
+    compact ? "p-2" : "p-4 sm:p-5",
+    href && "cursor-pointer hover:border-primary/50"
   );
 
   if (href) {

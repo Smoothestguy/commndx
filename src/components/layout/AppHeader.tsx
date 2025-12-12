@@ -22,7 +22,7 @@ export function AppHeader() {
     : "U";
 
   return (
-    <header className="h-14 bg-header/95 backdrop-blur-xl sticky top-0 z-50 flex items-center justify-between px-4 border-b border-border/30">
+    <header className="h-14 bg-header sticky top-0 z-50 flex items-center justify-between px-4 border-b border-sidebar-border">
       {/* Left side: Sidebar Toggle + Mobile menu */}
       <div className="flex items-center gap-2">
         {/* Desktop sidebar toggle */}
@@ -40,7 +40,7 @@ export function AppHeader() {
 
         <DropdownMenu>
           <DropdownMenuTrigger className="flex items-center gap-2 hover:opacity-80 transition-opacity outline-none">
-            <Avatar className="h-8 w-8 ring-2 ring-primary/20 transition-all duration-300 hover:ring-primary/40">
+            <Avatar className="h-8 w-8 bg-sidebar-accent">
               <AvatarFallback className="bg-primary text-primary-foreground text-xs font-medium">
                 {userInitials}
               </AvatarFallback>
@@ -50,7 +50,7 @@ export function AppHeader() {
             </span>
             <ChevronDown className="h-4 w-4 text-sidebar-muted" />
           </DropdownMenuTrigger>
-          <DropdownMenuContent align="end" className="w-56 backdrop-blur-xl bg-popover/95 border-border/50">
+          <DropdownMenuContent align="end" className="w-56">
             <div className="px-2 py-1.5 text-sm text-muted-foreground truncate">
               {user?.email}
             </div>
