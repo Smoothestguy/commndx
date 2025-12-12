@@ -304,8 +304,10 @@ export const generateWorkOrderPDF = async (
     // Line number
     doc.text(item.lineNumber.toString(), PDF_MARGIN + 5, yPos);
 
-    // Description (wrapped) - reduced width for better column spacing
-    const maxDescWidth = pageWidth - 130;
+    // Description (wrapped) - reduced width to prevent overlap with Qty column
+    // Description starts at PDF_MARGIN + 55, Qty right-aligns at pageWidth - 95
+    // Leave ~15px gap before Qty column
+    const maxDescWidth = pageWidth - 170;
     const descLines = doc.splitTextToSize(item.productDescription, maxDescWidth);
     doc.text(descLines[0] || "", PDF_MARGIN + 55, yPos);
 
