@@ -14,9 +14,25 @@ import { VendorPersonnelSection } from "@/components/vendors/VendorPersonnelSect
 import { usePersonnelByVendor } from "@/integrations/supabase/hooks/usePersonnel";
 import { useVendorDocuments } from "@/integrations/supabase/hooks/useVendorDocuments";
 import { 
+  useVendorInvitationCheck, 
+  useSendVendorPortalInvitation, 
+  useRevokeVendorPortalAccess 
+} from "@/integrations/supabase/hooks/useVendorPortal";
+import { 
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
+import { 
   ArrowLeft, Building2, Mail, Phone, FileText, AlertCircle, Users, 
   MapPin, DollarSign, Receipt, CreditCard, ShoppingCart, ClipboardList,
-  LayoutDashboard, Loader2
+  LayoutDashboard, Loader2, ExternalLink, UserCheck, UserPlus, UserMinus, Clock
 } from "lucide-react";
 import { format } from "date-fns";
 
@@ -38,6 +54,10 @@ export default function VendorDetail() {
   const { data: vendorPersonnel } = usePersonnelByVendor(id);
   const { data: vendorDocuments } = useVendorDocuments(id || "");
 
+  const { data: pendingInvitation, isLoading: invitationLoading } = useVendorInvitationCheck(id);
+  const sendInvitation = useSendVendorPortalInvitation();
+  const revokeAccess = useRevokeVendorPortalAccess();
+  
   const vendor = vendors?.find((v) => v.id === id);
   const expenseCategory = expenseCategories?.find((c) => c.id === vendor?.default_expense_category_id);
   
@@ -253,6 +273,107 @@ export default function VendorDetail() {
             </CardContent>
           </Card>
         )}
+
+        {/* Vendor Portal Access Card */}
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2 text-base">
+              <ExternalLink className="h-5 w-5" />
+              Vendor Portal Access
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            {invitationLoading ? (
+              <div className="flex items-center gap-2 text-muted-foreground">
+                <Loader2 className="h-4 w-4 animate-spin" />
+                <span>Checking portal status...</span>
+              </div>
+            ) : vendor.user_id ? (
+              <div className="flex items-center justify-between flex-wrap gap-4">
+                <div className="flex items-center gap-2">
+                  <UserCheck className="h-5 w-5 text-green-600" />
+                  <span>Portal access is <strong className="text-green-600">active</strong></span>
+                </div>
+                <AlertDialog>
+                  <AlertDialogTrigger asChild>
+                    <Button variant="destructive" size="sm">
+                      <UserMinus className="mr-2 h-4 w-4" />
+                      Revoke Access
+                    </Button>
+                  </AlertDialogTrigger>
+                  <AlertDialogContent>
+                    <AlertDialogHeader>
+                      <AlertDialogTitle>Revoke Portal Access?</AlertDialogTitle>
+                      <AlertDialogDescription>
+                        This will remove {vendor.name}'s access to the vendor portal. They will no longer be able to view purchase orders or submit bills. This action can be undone by sending a new invitation.
+                      </AlertDialogDescription>
+                    </AlertDialogHeader>
+                    <AlertDialogFooter>
+                      <AlertDialogCancel>Cancel</AlertDialogCancel>
+                      <AlertDialogAction
+                        onClick={() => revokeAccess.mutate(vendor.id)}
+                        className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                      >
+                        Revoke Access
+                      </AlertDialogAction>
+                    </AlertDialogFooter>
+                  </AlertDialogContent>
+                </AlertDialog>
+              </div>
+            ) : pendingInvitation ? (
+              <div className="flex items-center justify-between flex-wrap gap-4">
+                <div>
+                  <div className="flex items-center gap-2 text-amber-600">
+                    <Clock className="h-5 w-5" />
+                    <span className="font-medium">Invitation pending</span>
+                  </div>
+                  <p className="text-sm text-muted-foreground mt-1">
+                    Expires: {format(new Date(pendingInvitation.expires_at), "MMM d, yyyy 'at' h:mm a")}
+                  </p>
+                </div>
+                <Button 
+                  variant="outline" 
+                  size="sm"
+                  onClick={() => sendInvitation.mutate({ 
+                    vendorId: vendor.id, 
+                    email: vendor.email, 
+                    vendorName: vendor.name 
+                  })}
+                  disabled={sendInvitation.isPending}
+                >
+                  {sendInvitation.isPending ? (
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  ) : (
+                    <Mail className="mr-2 h-4 w-4" />
+                  )}
+                  Resend Invitation
+                </Button>
+              </div>
+            ) : (
+              <div className="flex items-center justify-between flex-wrap gap-4">
+                <div className="flex items-center gap-2 text-muted-foreground">
+                  <UserPlus className="h-5 w-5" />
+                  <span>No portal access</span>
+                </div>
+                <Button 
+                  onClick={() => sendInvitation.mutate({ 
+                    vendorId: vendor.id, 
+                    email: vendor.email, 
+                    vendorName: vendor.name 
+                  })}
+                  disabled={sendInvitation.isPending}
+                >
+                  {sendInvitation.isPending ? (
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  ) : (
+                    <Mail className="mr-2 h-4 w-4" />
+                  )}
+                  Invite to Portal
+                </Button>
+              </div>
+            )}
+          </CardContent>
+        </Card>
 
         <Tabs defaultValue="all" className="w-full">
           <TabsList className="grid w-full grid-cols-5">

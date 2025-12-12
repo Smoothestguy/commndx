@@ -34,6 +34,8 @@ export interface Vendor {
   opening_balance: number | null;
   // Notes
   notes: string | null;
+  // Portal access
+  user_id: string | null;
   created_at: string;
   updated_at: string;
 }
