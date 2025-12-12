@@ -23,10 +23,10 @@ export function TimeTrackingFilters({
   const { data: personnel = [] } = usePersonnel({ status: "active" });
 
   return (
-    <div className="flex flex-wrap gap-4">
-      <div className="min-w-[200px]">
+    <div className="w-full max-w-full overflow-hidden grid grid-cols-1 gap-2 sm:flex sm:flex-wrap sm:gap-4">
+      <div className="w-full sm:w-auto sm:min-w-[200px]">
         <Select value={projectFilter || "all"} onValueChange={onProjectChange}>
-          <SelectTrigger>
+          <SelectTrigger className="w-full truncate">
             <SelectValue placeholder="All Projects" />
           </SelectTrigger>
           <SelectContent>
@@ -41,9 +41,9 @@ export function TimeTrackingFilters({
       </div>
 
       {(isAdmin || isManager) && (
-        <div className="min-w-[200px]">
+        <div className="w-full sm:w-auto sm:min-w-[200px]">
           <Select value={personnelFilter || "all"} onValueChange={onPersonnelChange}>
-            <SelectTrigger>
+            <SelectTrigger className="w-full truncate">
               <SelectValue placeholder="All Personnel" />
             </SelectTrigger>
             <SelectContent>

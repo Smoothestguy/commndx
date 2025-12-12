@@ -2,7 +2,7 @@ import { useState, useMemo } from "react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Plus, Lock, Edit } from "lucide-react";
+import { Plus, Lock, Edit, Clock } from "lucide-react";
 import { TimeEntryForm } from "./TimeEntryForm";
 import {
   TimeEntry,
@@ -11,6 +11,7 @@ import {
   useAssignedProjects,
 } from "@/integrations/supabase/hooks/useTimeEntries";
 import { format, addDays, startOfWeek } from "date-fns";
+import { useIsMobile } from "@/hooks/use-mobile";
 
 interface WeeklyTimesheetProps {
   currentWeek: Date;
@@ -21,6 +22,7 @@ export function WeeklyTimesheet({ currentWeek }: WeeklyTimesheetProps) {
   const [selectedDate, setSelectedDate] = useState<string>("");
   const [selectedProjectId, setSelectedProjectId] = useState<string>("");
   const [editingEntry, setEditingEntry] = useState<TimeEntry | null>(null);
+  const isMobile = useIsMobile();
 
   const weekStart = startOfWeek(currentWeek, { weekStartsOn: 1 });
   const { data: entries = [], isLoading } = useTimeEntriesByWeek(currentWeek);
@@ -91,12 +93,104 @@ export function WeeklyTimesheet({ currentWeek }: WeeklyTimesheetProps) {
       <div className="text-center py-12">
         <p className="text-muted-foreground mb-4">No time entries for this week yet.</p>
         <p className="text-sm text-muted-foreground">
-          Switch to Daily view to add your first entry.
+          Switch to Time Entries tab to add your first entry.
         </p>
       </div>
     );
   }
 
+  // Mobile: Stacked day-by-day view
+  if (isMobile) {
+    return (
+      <div className="w-full max-w-full overflow-hidden space-y-3">
+        {/* Weekly Total Card */}
+        <Card className="p-3 bg-primary/5 border-primary/20">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <Clock className="h-4 w-4 text-primary" />
+              <span className="font-medium">Week Total</span>
+            </div>
+            <span className="text-lg font-bold text-primary">{weekTotal.toFixed(1)}h</span>
+          </div>
+        </Card>
+
+        {/* Day Cards */}
+        {weekDays.map((day) => {
+          const dateString = format(day, "yyyy-MM-dd");
+          const dayTotal = getDayTotal(day);
+          const dayEntries = entries.filter(e => e.entry_date === dateString);
+          const isToday = format(new Date(), "yyyy-MM-dd") === dateString;
+
+          return (
+            <Card 
+              key={dateString} 
+              className={`p-3 ${isToday ? 'ring-2 ring-primary/50' : ''}`}
+            >
+              {/* Day Header */}
+              <div className="flex items-center justify-between mb-2">
+                <div>
+                  <p className="font-medium">{format(day, "EEEE")}</p>
+                  <p className="text-sm text-muted-foreground">{format(day, "MMM d")}</p>
+                </div>
+                <div className="text-right">
+                  <p className="text-lg font-bold">{dayTotal.toFixed(1)}h</p>
+                </div>
+              </div>
+
+              {/* Day Entries */}
+              {dayEntries.length > 0 ? (
+                <div className="space-y-2 mt-3 pt-3 border-t border-border/30">
+                  {projectsWithEntries.map((project) => {
+                    const key = `${project.id}-${dateString}`;
+                    const entry = entryMap.get(key);
+                    if (!entry) return null;
+
+                    return (
+                      <div
+                        key={key}
+                        className="flex items-center justify-between p-2 bg-muted/30 rounded-lg"
+                        onClick={() => handleCellClick(project.id, day)}
+                      >
+                        <div className="flex-1 min-w-0">
+                          <p className="text-sm font-medium truncate">{project.name}</p>
+                          <Badge 
+                            variant={entry.billable ? "default" : "secondary"} 
+                            className="text-xs mt-1"
+                          >
+                            {entry.billable ? "Billable" : "Non-billable"}
+                          </Badge>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <span className="font-semibold">{Number(entry.hours).toFixed(1)}h</span>
+                          <Edit className="h-4 w-4 text-muted-foreground" />
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              ) : (
+                <div className="mt-3 pt-3 border-t border-border/30">
+                  <p className="text-sm text-muted-foreground text-center py-2">
+                    No entries
+                  </p>
+                </div>
+              )}
+            </Card>
+          );
+        })}
+
+        <TimeEntryForm
+          open={formOpen}
+          onOpenChange={handleFormClose}
+          entry={editingEntry}
+          defaultDate={selectedDate}
+          defaultProjectId={selectedProjectId}
+        />
+      </div>
+    );
+  }
+
+  // Desktop: Table view
   return (
     <div className="space-y-4">
       <Card className="overflow-x-auto">
