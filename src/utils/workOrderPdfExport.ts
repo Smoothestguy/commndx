@@ -433,6 +433,7 @@ export interface MapWorkOrderParams {
     zip?: string | null;
     poc_name?: string | null;
     poc_phone?: string | null;
+    start_date?: string | null;
   } | null;
   installationInstructions?: string;
   jobSiteDirections?: string;
@@ -472,7 +473,9 @@ export const mapPurchaseOrderToWorkOrder = (params: MapWorkOrderParams): WorkOrd
       projectNumber: purchaseOrder.job_order_number,
       workOrderNumber: purchaseOrder.number,
       jobNumber: purchaseOrder.job_order_number,
-      installDate: new Date(purchaseOrder.due_date).toLocaleDateString(),
+      installDate: project?.start_date 
+        ? new Date(project.start_date).toLocaleDateString() 
+        : new Date(purchaseOrder.due_date).toLocaleDateString(),
       laborVendor: purchaseOrder.vendor_name,
       installer: purchaseOrder.vendor_name,
     },

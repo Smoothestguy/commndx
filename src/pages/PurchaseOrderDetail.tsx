@@ -164,6 +164,7 @@ const PurchaseOrderDetail = () => {
         zip: project.zip,
         poc_name: project.poc_name,
         poc_phone: project.poc_phone,
+        start_date: project.start_date,
       } : null,
       installationInstructions: purchaseOrder.notes || undefined,
     });
@@ -208,6 +209,7 @@ const PurchaseOrderDetail = () => {
         zip: project.zip,
         poc_name: project.poc_name,
         poc_phone: project.poc_phone,
+        start_date: project.start_date,
       } : null,
       installationInstructions: purchaseOrder.notes || undefined,
     });
