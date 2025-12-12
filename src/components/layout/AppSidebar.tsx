@@ -44,6 +44,7 @@ import {
   Send,
   KeyRound,
   Eye,
+  ScrollText,
 } from "lucide-react";
 import logo from "@/assets/logo.png";
 
@@ -307,6 +308,18 @@ export function AppSidebar() {
                           <Link to="/admin/preview/vendor-portal">
                             <Eye className="h-4 w-4" />
                             <span>Vendor Portal Preview</span>
+                          </Link>
+                        </SidebarMenuButton>
+                      </SidebarMenuItem>
+                      <SidebarMenuItem>
+                        <SidebarMenuButton
+                          asChild
+                          isActive={location.pathname === "/admin/audit-logs"}
+                          tooltip="Audit Logs"
+                        >
+                          <Link to="/admin/audit-logs">
+                            <ScrollText className="h-4 w-4" />
+                            <span>Audit Logs</span>
                           </Link>
                         </SidebarMenuButton>
                       </SidebarMenuItem>

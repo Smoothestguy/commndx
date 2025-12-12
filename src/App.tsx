@@ -92,6 +92,7 @@ import NewChangeOrder from "./pages/NewChangeOrder";
 import EditChangeOrder from "./pages/EditChangeOrder";
 import ChangeOrderDetail from "./pages/ChangeOrderDetail";
 import ApproveChangeOrder from "./pages/ApproveChangeOrder";
+import AuditLogs from "./pages/AuditLogs";
 
 const queryClient = new QueryClient();
 
@@ -304,6 +305,10 @@ const App = () => {
                     <Route
                       path="/admin/preview/personnel-portal"
                       element={<PersonnelPortalPreview />}
+                    />
+                    <Route
+                      path="/admin/audit-logs"
+                      element={<AuditLogs />}
                     />
                   </Route>
 

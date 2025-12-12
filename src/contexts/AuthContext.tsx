@@ -1,4 +1,4 @@
-import { createContext, useContext, useEffect, useState, ReactNode } from "react";
+import { createContext, useContext, useEffect, useState, ReactNode, useCallback } from "react";
 import { User, Session } from "@supabase/supabase-js";
 import { supabase } from "@/integrations/supabase/client";
 import { useNavigate } from "react-router-dom";
@@ -20,6 +20,35 @@ export const useAuth = () => {
     throw new Error("useAuth must be used within AuthProvider");
   }
   return context;
+};
+
+// Audit log helper for auth events (doesn't use hook since we may not have user context)
+const logAuthEvent = async (
+  actionType: "sign_in" | "sign_out" | "sign_up",
+  userEmail: string,
+  userId?: string,
+  success: boolean = true,
+  errorMessage?: string
+) => {
+  try {
+    await supabase.from("audit_logs").insert([{
+      user_id: userId || null,
+      user_email: userEmail,
+      action_type: actionType,
+      resource_type: "auth",
+      resource_id: null,
+      resource_number: null,
+      changes_before: null,
+      changes_after: null,
+      ip_address: null,
+      user_agent: navigator.userAgent,
+      success,
+      error_message: errorMessage || null,
+      metadata: {}
+    }]);
+  } catch (err) {
+    console.error("Failed to log auth event:", err);
+  }
 };
 
 export const AuthProvider = ({ children }: { children: ReactNode }) => {
@@ -48,11 +77,11 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     return () => subscription.unsubscribe();
   }, []);
 
-  const signUp = async (email: string, password: string, firstName: string, lastName: string) => {
+  const signUp = useCallback(async (email: string, password: string, firstName: string, lastName: string) => {
     try {
       const redirectUrl = `${window.location.origin}/`;
       
-      const { error } = await supabase.auth.signUp({
+      const { data, error } = await supabase.auth.signUp({
         email,
         password,
         options: {
@@ -64,34 +93,48 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         },
       });
 
-      if (error) return { error };
+      if (error) {
+        await logAuthEvent("sign_up", email, undefined, false, error.message);
+        return { error };
+      }
       
+      await logAuthEvent("sign_up", email, data.user?.id, true);
       return { error: null };
     } catch (error) {
+      await logAuthEvent("sign_up", email, undefined, false, (error as Error).message);
       return { error: error as Error };
     }
-  };
+  }, []);
 
-  const signIn = async (email: string, password: string) => {
+  const signIn = useCallback(async (email: string, password: string) => {
     try {
-      const { error } = await supabase.auth.signInWithPassword({
+      const { data, error } = await supabase.auth.signInWithPassword({
         email,
         password,
       });
 
-      if (error) return { error };
+      if (error) {
+        await logAuthEvent("sign_in", email, undefined, false, error.message);
+        return { error };
+      }
 
+      await logAuthEvent("sign_in", email, data.user?.id, true);
       navigate("/");
       return { error: null };
     } catch (error) {
+      await logAuthEvent("sign_in", email, undefined, false, (error as Error).message);
       return { error: error as Error };
     }
-  };
+  }, [navigate]);
 
-  const signOut = async () => {
+  const signOut = useCallback(async () => {
+    const currentEmail = user?.email || "unknown";
+    const currentUserId = user?.id;
+    
     await supabase.auth.signOut();
+    await logAuthEvent("sign_out", currentEmail, currentUserId, true);
     navigate("/auth");
-  };
+  }, [user, navigate]);
 
   return (
     <AuthContext.Provider value={{ user, session, loading, signUp, signIn, signOut }}>
