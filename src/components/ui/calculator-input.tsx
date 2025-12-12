@@ -53,7 +53,7 @@ const CalculatorInput = React.forwardRef<HTMLInputElement, CalculatorInputProps>
       }
     };
 
-    const handleBlur = () => {
+    const evaluateAndFormat = () => {
       const trimmed = displayValue.trim();
       
       if (!trimmed) {
@@ -90,6 +90,17 @@ const CalculatorInput = React.forwardRef<HTMLInputElement, CalculatorInputProps>
       }
     };
 
+    const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+      if (e.key === 'Enter') {
+        e.preventDefault(); // Prevent form submission
+        evaluateAndFormat();
+      }
+    };
+
+    const handleBlur = () => {
+      evaluateAndFormat();
+    };
+
     const inputElement = (
       <div className="relative">
         <input
@@ -104,6 +115,7 @@ const CalculatorInput = React.forwardRef<HTMLInputElement, CalculatorInputProps>
           value={displayValue}
           onChange={handleChange}
           onBlur={handleBlur}
+          onKeyDown={handleKeyDown}
           {...props}
         />
         {showCalculatorIcon && (
