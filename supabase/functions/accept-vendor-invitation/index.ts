@@ -60,44 +60,44 @@ serve(async (req) => {
     console.log("Found invitation for email:", invitation.email);
 
     let userId: string;
-    let isExistingUser = false;
 
-    // Try to create new user
-    const { data: signUpData, error: signUpError } = await anonClient.auth.signUp({
+    // Try to create new user using admin client
+    const { data: signUpData, error: signUpError } = await adminClient.auth.admin.createUser({
       email: invitation.email,
       password,
-      options: {
-        data: {
-          vendor_name: invitation.vendor?.name,
-        },
+      email_confirm: true,
+      user_metadata: {
+        vendor_name: invitation.vendor?.name,
       },
     });
 
     if (signUpError) {
       console.log("Signup error:", signUpError.message);
-      // If user already exists, try to sign them in
-      if (signUpError.message.includes("already registered") || 
-          signUpError.message.includes("User already registered")) {
-        const { data: signInData, error: signInError } = await anonClient.auth.signInWithPassword({
-          email: invitation.email,
-          password,
-        });
-
-        if (signInError) {
-          console.error("Sign in error:", signInError);
+      // If user already exists, look them up
+      if (signUpError.message?.includes("already been registered") || signUpError.code === "email_exists") {
+        console.log("User already exists, looking up existing user...");
+        
+        const { data: existingUsers, error: listError } = await adminClient.auth.admin.listUsers();
+        
+        if (listError) {
+          console.error("Failed to look up existing user:", listError);
           return new Response(
-            JSON.stringify({ error: "Invalid password for existing account" }),
-            { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-          );
-        }
-        if (!signInData.user) {
-          return new Response(
-            JSON.stringify({ error: "Failed to sign in" }),
+            JSON.stringify({ error: "Failed to look up existing user" }),
             { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
           );
         }
-        userId = signInData.user.id;
-        isExistingUser = true;
+        
+        const existingUser = existingUsers.users.find(u => u.email === invitation.email);
+        
+        if (!existingUser) {
+          return new Response(
+            JSON.stringify({ error: "User exists but could not be found" }),
+            { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+          );
+        }
+        
+        userId = existingUser.id;
+        console.log("Using existing user:", userId);
       } else {
         throw signUpError;
       }
@@ -109,9 +109,10 @@ serve(async (req) => {
         );
       }
       userId = signUpData.user.id;
+      console.log("Created new user:", userId);
     }
 
-    console.log("User ID:", userId, "Existing user:", isExistingUser);
+    console.log("User ID:", userId);
 
     // Link vendor to auth user
     const { error: linkError } = await adminClient
@@ -157,7 +158,6 @@ serve(async (req) => {
     return new Response(
       JSON.stringify({
         success: true,
-        isExistingUser,
         vendorId: invitation.vendor_id,
       }),
       { headers: { ...corsHeaders, "Content-Type": "application/json" } }

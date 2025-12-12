@@ -66,7 +66,7 @@ Deno.serve(async (req) => {
       );
     }
 
-    // Create the auth user
+    // Try to create the auth user
     const { data: signUpData, error: signUpError } = await adminClient.auth.admin.createUser({
       email: invitation.email,
       password: password,
@@ -77,23 +77,50 @@ Deno.serve(async (req) => {
       },
     });
 
-    if (signUpError) {
-      console.error("User creation error:", signUpError);
-      return new Response(
-        JSON.stringify({ error: signUpError.message }),
-        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-      );
-    }
+    let userId: string;
 
-    if (!signUpData.user) {
+    if (signUpError) {
+      // Check if user already exists
+      if (signUpError.message?.includes("already been registered") || signUpError.code === "email_exists") {
+        console.log("User already exists, looking up existing user...");
+        
+        const { data: existingUsers, error: listError } = await adminClient.auth.admin.listUsers();
+        
+        if (listError) {
+          console.error("Failed to look up existing user:", listError);
+          return new Response(
+            JSON.stringify({ error: "Failed to look up existing user" }),
+            { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+          );
+        }
+        
+        const existingUser = existingUsers.users.find(u => u.email === invitation.email);
+        
+        if (!existingUser) {
+          return new Response(
+            JSON.stringify({ error: "User exists but could not be found" }),
+            { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+          );
+        }
+        
+        userId = existingUser.id;
+        console.log("Using existing user:", userId);
+      } else {
+        console.error("User creation error:", signUpError);
+        return new Response(
+          JSON.stringify({ error: signUpError.message }),
+          { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        );
+      }
+    } else if (!signUpData.user) {
       return new Response(
         JSON.stringify({ error: "Failed to create user" }),
         { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
+    } else {
+      userId = signUpData.user.id;
+      console.log("Created new user:", userId);
     }
-
-    const userId = signUpData.user.id;
-    console.log("Created user:", userId);
 
     // Link personnel to auth user
     const { error: linkError } = await adminClient
