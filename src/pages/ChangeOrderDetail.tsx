@@ -41,6 +41,7 @@ import {
   User,
   Link as LinkIcon,
   Package,
+  Truck,
 } from "lucide-react";
 import { format } from "date-fns";
 import { useState } from "react";
@@ -53,6 +54,7 @@ import {
 import { useUserRole } from "@/hooks/useUserRole";
 import { supabase } from "@/integrations/supabase/client";
 import { ImportToAddendumDialog } from "@/components/change-orders/ImportToAddendumDialog";
+import { ConvertCOToPODialog } from "@/components/change-orders/ConvertCOToPODialog";
 
 const statusConfig: Record<
   ChangeOrderStatus,
@@ -75,6 +77,7 @@ export default function ChangeOrderDetail() {
 
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
   const [showAddToPODialog, setShowAddToPODialog] = useState(false);
+  const [showConvertToPODialog, setShowConvertToPODialog] = useState(false);
 
   const canEdit = changeOrder?.status === "draft" && (isAdmin || isManager);
   const canDelete = changeOrder?.status === "draft" && (isAdmin || isManager);
@@ -144,10 +147,16 @@ export default function ChangeOrderDetail() {
         </>
       )}
       {canAddToPO && (
-        <Button variant="outline" onClick={() => setShowAddToPODialog(true)}>
-          <Package className="mr-2 h-4 w-4" />
-          Add to PO
-        </Button>
+        <>
+          <Button variant="outline" onClick={() => setShowConvertToPODialog(true)}>
+            <Truck className="mr-2 h-4 w-4" />
+            Convert to PO
+          </Button>
+          <Button variant="outline" onClick={() => setShowAddToPODialog(true)}>
+            <Package className="mr-2 h-4 w-4" />
+            Add to Existing PO
+          </Button>
+        </>
       )}
       {canCreateInvoice && (
         <Button onClick={() => navigate(`/invoices/new?changeOrderId=${id}`)}>
@@ -230,27 +239,44 @@ export default function ChangeOrderDetail() {
                 <TableRow>
                   <TableHead>Description</TableHead>
                   <TableHead className="text-right">Qty</TableHead>
-                  <TableHead className="text-right">Unit Price</TableHead>
+                  <TableHead className="text-right">Client Price</TableHead>
+                  <TableHead className="text-right">Vendor Cost</TableHead>
+                  <TableHead className="text-right">Margin</TableHead>
                   <TableHead className="text-right">Total</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {changeOrder.line_items.map((item) => (
-                  <TableRow key={item.id}>
-                    <TableCell>{item.description}</TableCell>
-                    <TableCell className="text-right">{item.quantity}</TableCell>
-                    <TableCell className="text-right">${item.unit_price.toFixed(2)}</TableCell>
-                    <TableCell className="text-right font-medium">${item.total.toFixed(2)}</TableCell>
-                  </TableRow>
-                ))}
+                {changeOrder.line_items.map((item) => {
+                  const vendorTotal = item.quantity * (item.vendor_cost || 0);
+                  const margin = item.total - vendorTotal;
+                  return (
+                    <TableRow key={item.id}>
+                      <TableCell>{item.description}</TableCell>
+                      <TableCell className="text-right">{item.quantity}</TableCell>
+                      <TableCell className="text-right">${item.unit_price.toFixed(2)}</TableCell>
+                      <TableCell className="text-right text-muted-foreground">${(item.vendor_cost || 0).toFixed(2)}</TableCell>
+                      <TableCell className="text-right text-green-600">${margin.toFixed(2)}</TableCell>
+                      <TableCell className="text-right font-medium">${item.total.toFixed(2)}</TableCell>
+                    </TableRow>
+                  );
+                })}
               </TableBody>
             </Table>
             <div className="mt-4 flex justify-end">
-              <div className="w-64 space-y-2">
-                <div className="flex justify-between text-sm"><span>Subtotal:</span><span>${changeOrder.subtotal.toFixed(2)}</span></div>
-                <div className="flex justify-between text-sm"><span>Tax ({changeOrder.tax_rate}%):</span><span>${changeOrder.tax_amount.toFixed(2)}</span></div>
-                <div className="flex justify-between font-semibold text-lg border-t pt-2"><span>Total:</span><span>${changeOrder.total.toFixed(2)}</span></div>
-              </div>
+              {(() => {
+                const vendorCostTotal = changeOrder.line_items.reduce((sum, item) => sum + (item.quantity * (item.vendor_cost || 0)), 0);
+                const grossProfit = changeOrder.total - vendorCostTotal;
+                const marginPercent = vendorCostTotal > 0 ? ((grossProfit / vendorCostTotal) * 100) : 0;
+                return (
+                  <div className="w-80 space-y-2">
+                    <div className="flex justify-between text-sm"><span>Client Subtotal:</span><span>${changeOrder.subtotal.toFixed(2)}</span></div>
+                    <div className="flex justify-between text-sm"><span>Tax ({changeOrder.tax_rate}%):</span><span>${changeOrder.tax_amount.toFixed(2)}</span></div>
+                    <div className="flex justify-between font-semibold text-lg border-t pt-2"><span>Client Total:</span><span>${changeOrder.total.toFixed(2)}</span></div>
+                    <div className="flex justify-between text-sm text-muted-foreground pt-2 border-t"><span>Vendor Cost Total:</span><span>${vendorCostTotal.toFixed(2)}</span></div>
+                    <div className="flex justify-between text-sm font-medium text-green-600"><span>Gross Profit:</span><span>${grossProfit.toFixed(2)} ({marginPercent.toFixed(1)}%)</span></div>
+                  </div>
+                );
+              })()}
             </div>
           </CardContent>
         </Card>
@@ -275,6 +301,14 @@ export default function ChangeOrderDetail() {
         projectId={changeOrder.project_id}
         changeOrderId={id}
       />
+
+      {changeOrder && (
+        <ConvertCOToPODialog
+          open={showConvertToPODialog}
+          onOpenChange={setShowConvertToPODialog}
+          changeOrder={changeOrder}
+        />
+      )}
     </DetailPageLayout>
   );
 }

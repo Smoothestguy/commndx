@@ -58,23 +58,28 @@ export function ImportToAddendumDialog({
   const handleImport = async () => {
     if (!selectedCO || !selectedPO || !selectedCOData) return;
 
-    // Create addendum from change order line items
-    const lineItemsData = selectedCOData.line_items?.map((item, index) => ({
-      productId: item.product_id || null,
-      description: item.description,
-      quantity: item.quantity,
-      unitPrice: item.unit_price,
-      markup: item.markup,
-      total: item.total,
-      sortOrder: index,
-    })) || [];
+    // Create addendum from change order line items using vendor costs
+    const lineItemsData = selectedCOData.line_items?.map((item, index) => {
+      const vendorCost = item.vendor_cost || 0;
+      return {
+        productId: item.product_id || null,
+        description: item.description,
+        quantity: item.quantity,
+        unitPrice: vendorCost, // Use vendor cost for PO addendum
+        markup: 0,
+        total: item.quantity * vendorCost,
+        sortOrder: index,
+      };
+    }) || [];
+
+    const subtotal = lineItemsData.reduce((sum, item) => sum + item.total, 0);
 
     await addAddendum.mutateAsync({
       purchaseOrderId: selectedPO,
       number: `ADD-${selectedCOData.number}`,
       description: `Imported from ${selectedCOData.number}: ${selectedCOData.reason}`,
-      subtotal: selectedCOData.subtotal,
-      amount: selectedCOData.total,
+      subtotal: subtotal,
+      amount: subtotal,
       lineItems: lineItemsData,
     });
 
@@ -175,16 +180,19 @@ export function ImportToAddendumDialog({
           </div>
 
           {/* Preview */}
-          {selectedChangeOrder && selectedPurchaseOrder && (
+          {selectedChangeOrder && selectedPurchaseOrder && selectedCOData && (
             <div className="p-4 rounded-lg border border-border bg-secondary/20 space-y-2">
               <p className="text-sm font-medium">Import Preview:</p>
               <p className="text-sm text-muted-foreground">
-                <strong>{selectedChangeOrder.number}</strong> ({formatCurrency(selectedChangeOrder.total)}) 
-                will be added as an addendum to <strong>{selectedPurchaseOrder.number}</strong> ({selectedPurchaseOrder.vendor_name})
+                <strong>{selectedChangeOrder.number}</strong> will be added as an addendum to <strong>{selectedPurchaseOrder.number}</strong> ({selectedPurchaseOrder.vendor_name})
               </p>
-              <p className="text-xs text-muted-foreground">
-                {selectedCOData?.line_items?.length || 0} line items will be imported
-              </p>
+              <div className="text-xs text-muted-foreground space-y-1 pt-2 border-t border-border mt-2">
+                <p>{selectedCOData.line_items?.length || 0} line items will be imported</p>
+                <p>Client Total: {formatCurrency(selectedChangeOrder.total)}</p>
+                <p>Vendor Cost (PO Amount): {formatCurrency(
+                  selectedCOData.line_items?.reduce((sum, item) => sum + (item.quantity * (item.vendor_cost || 0)), 0) || 0
+                )}</p>
+              </div>
             </div>
           )}
         </div>
