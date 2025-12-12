@@ -9,6 +9,7 @@ import {
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { CalculatorInput } from "@/components/ui/calculator-input";
 import { Label } from "@/components/ui/label";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "@/components/ui/command";
@@ -504,25 +505,20 @@ export function AddAddendumDialog({
 
                                 <div>
                                   <Label className="text-xs">Unit Price ($)</Label>
-                                  <Input
+                                  <CalculatorInput
                                     className="mt-1"
-                                    type="number"
-                                    min="0"
-                                    step="0.01"
                                     value={item.unitPrice}
-                                    onChange={(e) => updateLineItem(item.id, { unitPrice: parseFloat(e.target.value) || 0 })}
+                                    onValueChange={(value) => updateLineItem(item.id, { unitPrice: value })}
                                   />
                                 </div>
 
                                 <div>
                                   <Label className="text-xs">Markup (%)</Label>
-                                  <Input
+                                  <CalculatorInput
                                     className="mt-1"
-                                    type="number"
-                                    min="0"
-                                    step="0.1"
                                     value={item.markup}
-                                    onChange={(e) => updateLineItem(item.id, { markup: parseFloat(e.target.value) || 0 })}
+                                    onValueChange={(value) => updateLineItem(item.id, { markup: value })}
+                                    decimalPlaces={1}
                                   />
                                 </div>
                               </div>

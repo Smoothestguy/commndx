@@ -4,6 +4,7 @@ import { DndContext, closestCenter, KeyboardSensor, PointerSensor, useSensor, us
 import { arrayMove, SortableContext, sortableKeyboardCoordinates, verticalListSortingStrategy } from "@dnd-kit/sortable";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { CalculatorInput } from "@/components/ui/calculator-input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import {
@@ -743,27 +744,21 @@ export const EstimateForm = ({ initialData }: EstimateFormProps) => {
 
               <div className="space-y-2">
                 <Label htmlFor="defaultMarginPercent">{defaultPricingType === 'margin' ? 'Margin' : 'Markup'} (%)</Label>
-                <Input
-                  id="defaultMarginPercent"
-                  type="number"
-                  step="0.01"
-                  min="0"
-                  max={defaultPricingType === 'margin' ? "99.99" : undefined}
-                  value={defaultMarginPercent}
-                  onChange={(e) => setDefaultMarginPercent(e.target.value)}
+                <CalculatorInput
+                  value={parseFloat(defaultMarginPercent) || 0}
+                  onValueChange={(value) => setDefaultMarginPercent(value.toString())}
                   className="bg-secondary border-border"
+                  decimalPlaces={2}
                 />
               </div>
 
               <div className="space-y-2">
                 <Label htmlFor="taxRate">Tax Rate (%)</Label>
-                <Input
-                  id="taxRate"
-                  type="number"
-                  step="0.01"
-                  value={taxRate}
-                  onChange={(e) => setTaxRate(e.target.value)}
+                <CalculatorInput
+                  value={parseFloat(taxRate) || 0}
+                  onValueChange={(value) => setTaxRate(value.toString())}
                   className="bg-secondary border-border"
+                  decimalPlaces={2}
                 />
               </div>
 
