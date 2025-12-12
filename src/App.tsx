@@ -73,6 +73,7 @@ import ContractorPortal from "./pages/contractor/ContractorPortal";
 import ContractorSubmissionSuccess from "./pages/contractor/ContractorSubmissionSuccess";
 import ContractorSubmissions from "./pages/admin/ContractorSubmissions";
 import ContractorFormBuilder from "./pages/admin/ContractorFormBuilder";
+import PermissionsManagement from "./pages/PermissionsManagement";
 
 // Vendor Portal
 import { VendorProtectedRoute } from "./components/vendor-portal/VendorProtectedRoute";
@@ -280,6 +281,7 @@ const App = () => {
                     />
                     <Route path="/settings" element={<Settings />} />
                     <Route path="/user-management" element={<UserManagement />} />
+                    <Route path="/permissions" element={<PermissionsManagement />} />
                     <Route
                       path="/settings/quickbooks"
                       element={<QuickBooksSettings />}
