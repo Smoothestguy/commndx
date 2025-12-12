@@ -28,6 +28,7 @@ export function FloatingChatButton() {
       style={{
         left: position.x,
         top: position.y,
+        touchAction: 'none',
       }}
       className={cn(
         "fixed z-50 h-14 w-14 rounded-full shadow-lg",
