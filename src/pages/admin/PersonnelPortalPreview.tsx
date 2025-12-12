@@ -8,7 +8,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { usePersonnel } from "@/integrations/supabase/hooks/usePersonnel";
 import { supabase } from "@/integrations/supabase/client";
 import { useQuery } from "@tanstack/react-query";
-import { Eye, Clock, Briefcase, Bell, DollarSign, TrendingUp, ArrowLeft } from "lucide-react";
+import { Eye, Clock, Briefcase, Bell, DollarSign, TrendingUp, ArrowLeft, CheckCircle2, XCircle } from "lucide-react";
 import { Link } from "react-router-dom";
 import { startOfWeek, endOfWeek, startOfMonth, endOfMonth, parseISO, isWithinInterval, format } from "date-fns";
 
@@ -169,29 +169,59 @@ export default function PersonnelPortalPreview() {
             {personnelLoading ? (
               <Skeleton className="h-10 w-full max-w-md" />
             ) : (
-              <Select value={selectedPersonnelId} onValueChange={setSelectedPersonnelId}>
-                <SelectTrigger className="w-full max-w-md">
-                  <SelectValue placeholder="Select personnel..." />
-                </SelectTrigger>
-                <SelectContent>
-                  {personnel?.map((person) => (
-                    <SelectItem key={person.id} value={person.id}>
-                      {person.first_name} {person.last_name} ({person.personnel_number})
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+              <>
+                <Select value={selectedPersonnelId} onValueChange={setSelectedPersonnelId}>
+                  <SelectTrigger className="w-full max-w-md">
+                    <SelectValue placeholder="Select personnel..." />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {personnel?.map((person) => (
+                      <SelectItem key={person.id} value={person.id}>
+                        <div className="flex items-center gap-2">
+                          {person.user_id ? (
+                            <CheckCircle2 className="h-4 w-4 text-green-500 shrink-0" />
+                          ) : (
+                            <XCircle className="h-4 w-4 text-muted-foreground shrink-0" />
+                          )}
+                          <span>{person.first_name} {person.last_name}</span>
+                          <span className="text-muted-foreground">({person.personnel_number})</span>
+                        </div>
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                <p className="text-xs text-muted-foreground mt-2 flex items-center gap-4">
+                  <span className="flex items-center gap-1">
+                    <CheckCircle2 className="h-3 w-3 text-green-500" /> Has account
+                  </span>
+                  <span className="flex items-center gap-1">
+                    <XCircle className="h-3 w-3 text-muted-foreground" /> No account
+                  </span>
+                </p>
+              </>
             )}
           </CardContent>
         </Card>
 
         {selectedPersonnelId && selectedPerson && (
           <div className="border-2 border-dashed border-primary/30 rounded-lg p-6 space-y-6">
-            <Alert>
+            <Alert className={selectedPerson.user_id ? "border-green-500/50" : "border-amber-500/50"}>
               <Eye className="h-4 w-4" />
-              <AlertDescription>
-                You are previewing the portal as <strong>{selectedPerson.first_name} {selectedPerson.last_name}</strong>. 
-                This is what this employee sees when they log in.
+              <AlertDescription className="flex flex-col gap-1">
+                <span>
+                  You are previewing the portal as <strong>{selectedPerson.first_name} {selectedPerson.last_name}</strong>.
+                </span>
+                {selectedPerson.user_id ? (
+                  <span className="flex items-center gap-1 text-green-600 dark:text-green-400">
+                    <CheckCircle2 className="h-3 w-3" />
+                    This employee has portal access ({selectedPerson.email})
+                  </span>
+                ) : (
+                  <span className="flex items-center gap-1 text-amber-600 dark:text-amber-400">
+                    <XCircle className="h-3 w-3" />
+                    This employee has not created an account yet
+                  </span>
+                )}
               </AlertDescription>
             </Alert>
 
