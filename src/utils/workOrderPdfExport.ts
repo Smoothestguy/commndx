@@ -267,8 +267,8 @@ export const generateWorkOrderPDF = async (
   doc.text("#", PDF_MARGIN + 5, yPos + 7);
   doc.text("Category", PDF_MARGIN + 15, yPos + 7);
   doc.text("Description", PDF_MARGIN + 55, yPos + 7);
-  doc.text("Qty", pageWidth - 85, yPos + 7);
-  doc.text("Price", pageWidth - 60, yPos + 7);
+  doc.text("Qty", pageWidth - 95, yPos + 7, { align: "right" });
+  doc.text("Price", pageWidth - 55, yPos + 7, { align: "right" });
   doc.text("Total", pageWidth - PDF_MARGIN - 5, yPos + 7, { align: "right" });
 
   yPos += 10;
@@ -304,18 +304,18 @@ export const generateWorkOrderPDF = async (
     // Line number
     doc.text(item.lineNumber.toString(), PDF_MARGIN + 5, yPos);
 
-    // Description (wrapped)
-    const maxDescWidth = pageWidth - 150;
+    // Description (wrapped) - reduced width for better column spacing
+    const maxDescWidth = pageWidth - 130;
     const descLines = doc.splitTextToSize(item.productDescription, maxDescWidth);
     doc.text(descLines[0] || "", PDF_MARGIN + 55, yPos);
 
-    // Quantity
-    doc.text(item.quantityLabel, pageWidth - 85, yPos);
+    // Quantity - right-aligned
+    doc.text(item.quantityLabel, pageWidth - 95, yPos, { align: "right" });
 
-    // Price
-    doc.text(formatCurrencyForPDF(item.price), pageWidth - 60, yPos);
+    // Price - right-aligned
+    doc.text(formatCurrencyForPDF(item.price), pageWidth - 55, yPos, { align: "right" });
 
-    // Total
+    // Total - right-aligned
     doc.text(formatCurrencyForPDF(item.total), pageWidth - PDF_MARGIN - 5, yPos, { align: "right" });
 
     // Additional description lines
@@ -337,7 +337,7 @@ export const generateWorkOrderPDF = async (
 
   // ==================== LABOR COST TOTAL ====================
   yPos += 10;
-  const totalsX = pageWidth - 70;
+  const totalsX = pageWidth - 95;
   
   doc.setFont("helvetica", "bold");
   doc.setFontSize(PDF_FONTS.heading);

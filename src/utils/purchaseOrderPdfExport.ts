@@ -170,8 +170,8 @@ export const generatePurchaseOrderPDF = (
   doc.setFont("helvetica", "bold");
   doc.setFontSize(10);
   doc.text("Description", 25, yPos + 7);
-  doc.text("Qty", pageWidth - 90, yPos + 7);
-  doc.text("Vendor Cost", pageWidth - 65, yPos + 7);
+  doc.text("Qty", pageWidth - 105, yPos + 7, { align: "right" });
+  doc.text("Vendor Cost", pageWidth - 60, yPos + 7, { align: "right" });
   doc.text("Amount", pageWidth - 25, yPos + 7, { align: "right" });
   
   yPos += 10;
@@ -187,13 +187,14 @@ export const generatePurchaseOrderPDF = (
     
     yPos += 8;
     
-    // Wrap description if too long
-    const maxWidth = pageWidth - 120;
+    // Wrap description if too long - reduced width for better column spacing
+    const maxWidth = pageWidth - 140;
     const lines = doc.splitTextToSize(item.description, maxWidth);
     doc.text(lines, 25, yPos);
     
-    doc.text(item.quantity.toString(), pageWidth - 90, yPos);
-    doc.text(formatCurrencyForPDF(Number(item.unit_price)), pageWidth - 65, yPos);
+    // Right-align numeric columns
+    doc.text(item.quantity.toString(), pageWidth - 105, yPos, { align: "right" });
+    doc.text(formatCurrencyForPDF(Number(item.unit_price)), pageWidth - 60, yPos, { align: "right" });
     doc.text(formatCurrencyForPDF(Number(item.total)), pageWidth - 25, yPos, { align: "right" });
     
     yPos += (lines.length - 1) * 5;
