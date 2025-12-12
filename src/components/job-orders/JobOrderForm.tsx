@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { CalculatorInput } from "@/components/ui/calculator-input";
 import { Label } from "@/components/ui/label";
 import {
   Select,
@@ -478,16 +479,12 @@ export const JobOrderForm = ({
 
                 <div className="space-y-2">
                   <Label>Unit Price *</Label>
-                  <div className="relative">
-                    <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground">$</span>
-                    <Input
-                      type="number"
-                      step="0.01"
-                      value={item.unit_price}
-                      onChange={(e) => updateLineItem(item.id, "unit_price", e.target.value)}
-                      className="bg-secondary border-border pl-7"
-                    />
-                  </div>
+                  <CalculatorInput
+                    value={item.unit_price}
+                    onValueChange={(value) => updateLineItem(item.id, "unit_price", value.toString())}
+                    placeholder="0.00"
+                    className="bg-secondary border-border"
+                  />
                 </div>
 
                 <div className="space-y-2">

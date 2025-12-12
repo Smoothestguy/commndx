@@ -3,6 +3,7 @@ import { CSS } from "@dnd-kit/utilities";
 import { GripVertical, Trash2, Check, ChevronsUpDown, ChevronDown } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { CalculatorInput } from "@/components/ui/calculator-input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Switch } from "@/components/ui/switch";
@@ -383,12 +384,10 @@ export function SortableLineItem({
               </div>
               <div className="space-y-2">
                 <Label>Unit Price ($) *</Label>
-                <Input
-                  type="number"
-                  step="0.01"
-                  min="0"
+                <CalculatorInput
                   value={item.unit_price}
-                  onChange={(e) => onUpdateItem(index, "unit_price", e.target.value)}
+                  onValueChange={(value) => onUpdateItem(index, "unit_price", value.toString())}
+                  placeholder="0.00"
                   className="bg-secondary border-border"
                 />
                 {errors[`line_${index}_unit_price`] && (
