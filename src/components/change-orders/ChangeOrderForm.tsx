@@ -12,6 +12,19 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import {
+  Command,
+  CommandEmpty,
+  CommandGroup,
+  CommandInput,
+  CommandItem,
+  CommandList,
+} from "@/components/ui/command";
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import {
   Table,
@@ -21,7 +34,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { Plus, Trash2, Save, X, ArrowRightLeft } from "lucide-react";
+import { Plus, Trash2, Save, X, ArrowRightLeft, Check, ChevronsUpDown } from "lucide-react";
 import {
   Tooltip,
   TooltipContent,
@@ -42,6 +55,7 @@ import {
   ChangeOrderWithLineItems,
   ChangeType,
 } from "@/integrations/supabase/hooks/useChangeOrders";
+import { cn } from "@/lib/utils";
 
 interface LineItem {
   id: string;
@@ -101,6 +115,20 @@ export function ChangeOrderForm({
       calculation_mode: 'forward' as const,
     })) || []
   );
+
+  // Combobox states
+  const [projectOpen, setProjectOpen] = useState(false);
+  const [projectSearch, setProjectSearch] = useState("");
+  const [customerOpen, setCustomerOpen] = useState(false);
+  const [customerSearch, setCustomerSearch] = useState("");
+  const [vendorOpen, setVendorOpen] = useState(false);
+  const [vendorSearch, setVendorSearch] = useState("");
+  const [poOpen, setPOOpen] = useState(false);
+  const [poSearch, setPOSearch] = useState("");
+  const [joOpen, setJOOpen] = useState(false);
+  const [joSearch, setJOSearch] = useState("");
+  const [productOpenIndex, setProductOpenIndex] = useState<number | null>(null);
+  const [productSearch, setProductSearch] = useState("");
 
   // Auto-populate customer when project changes
   useEffect(() => {
@@ -261,6 +289,33 @@ export function ChangeOrderForm({
   const filteredJobOrders = jobOrders?.filter((jo) => !projectId || jo.project_id === projectId);
   const filteredPurchaseOrders = purchaseOrders?.filter((po) => !projectId || po.project_id === projectId);
 
+  // Filtered lists for comboboxes
+  const filteredProjects = projects?.filter(p =>
+    p.name.toLowerCase().includes(projectSearch.toLowerCase())
+  ) || [];
+  const filteredCustomers = customers?.filter(c =>
+    c.name.toLowerCase().includes(customerSearch.toLowerCase())
+  ) || [];
+  const filteredVendors = vendors?.filter(v =>
+    v.name.toLowerCase().includes(vendorSearch.toLowerCase()) ||
+    v.specialty?.toLowerCase().includes(vendorSearch.toLowerCase())
+  ) || [];
+  const searchFilteredPOs = filteredPurchaseOrders?.filter(po =>
+    po.number.toLowerCase().includes(poSearch.toLowerCase()) ||
+    po.vendor_name?.toLowerCase().includes(poSearch.toLowerCase())
+  ) || [];
+  const searchFilteredJOs = filteredJobOrders?.filter(jo =>
+    jo.number.toLowerCase().includes(joSearch.toLowerCase())
+  ) || [];
+  const filteredProducts = products?.filter(p =>
+    p.name.toLowerCase().includes(productSearch.toLowerCase())
+  ) || [];
+
+  const selectedProject = projects?.find(p => p.id === projectId);
+  const selectedCustomer = customers?.find(c => c.id === customerId);
+  const selectedVendor = vendors?.find(v => v.id === vendorId);
+  const selectedPO = purchaseOrders?.find(po => po.id === purchaseOrderId);
+  const selectedJO = jobOrders?.find(jo => jo.id === jobOrderId);
   return (
     <form onSubmit={handleSubmit} className="space-y-6">
       <Card>
@@ -271,89 +326,266 @@ export function ChangeOrderForm({
           <div className="grid gap-4 md:grid-cols-2">
             <div className="space-y-2">
               <Label htmlFor="project">Project *</Label>
-              <Select value={projectId} onValueChange={setProjectId} required>
-                <SelectTrigger>
-                  <SelectValue placeholder="Select project" />
-                </SelectTrigger>
-                <SelectContent>
-                  {projects?.map((project) => (
-                    <SelectItem key={project.id} value={project.id}>
-                      {project.name}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+              <Popover open={projectOpen} onOpenChange={setProjectOpen}>
+                <PopoverTrigger asChild>
+                  <Button
+                    variant="outline"
+                    role="combobox"
+                    className={cn("w-full justify-between", !projectId && "text-muted-foreground")}
+                  >
+                    {selectedProject?.name || "Search projects..."}
+                    <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent className="w-[300px] p-0" align="start">
+                  <Command>
+                    <CommandInput placeholder="Search projects..." value={projectSearch} onValueChange={setProjectSearch} />
+                    <CommandList>
+                      <CommandEmpty>No projects found.</CommandEmpty>
+                      <CommandGroup>
+                        {filteredProjects.map((project) => (
+                          <CommandItem
+                            key={project.id}
+                            value={project.name}
+                            onSelect={() => {
+                              setProjectId(project.id);
+                              setProjectOpen(false);
+                              setProjectSearch("");
+                            }}
+                          >
+                            <Check className={cn("mr-2 h-4 w-4", projectId === project.id ? "opacity-100" : "opacity-0")} />
+                            {project.name}
+                          </CommandItem>
+                        ))}
+                      </CommandGroup>
+                    </CommandList>
+                  </Command>
+                </PopoverContent>
+              </Popover>
             </div>
 
             <div className="space-y-2">
               <Label htmlFor="customer">Customer *</Label>
-              <Select value={customerId} onValueChange={(v) => {
-                setCustomerId(v);
-                const customer = customers?.find((c) => c.id === v);
-                if (customer) setCustomerName(customer.name);
-              }} required>
-                <SelectTrigger>
-                  <SelectValue placeholder="Select customer" />
-                </SelectTrigger>
-                <SelectContent>
-                  {customers?.map((customer) => (
-                    <SelectItem key={customer.id} value={customer.id}>
-                      {customer.name}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+              <Popover open={customerOpen} onOpenChange={setCustomerOpen}>
+                <PopoverTrigger asChild>
+                  <Button
+                    variant="outline"
+                    role="combobox"
+                    className={cn("w-full justify-between", !customerId && "text-muted-foreground")}
+                  >
+                    {selectedCustomer?.name || "Search customers..."}
+                    <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent className="w-[300px] p-0" align="start">
+                  <Command>
+                    <CommandInput placeholder="Search customers..." value={customerSearch} onValueChange={setCustomerSearch} />
+                    <CommandList>
+                      <CommandEmpty>No customers found.</CommandEmpty>
+                      <CommandGroup>
+                        {filteredCustomers.map((customer) => (
+                          <CommandItem
+                            key={customer.id}
+                            value={customer.name}
+                            onSelect={() => {
+                              setCustomerId(customer.id);
+                              setCustomerName(customer.name);
+                              setCustomerOpen(false);
+                              setCustomerSearch("");
+                            }}
+                          >
+                            <Check className={cn("mr-2 h-4 w-4", customerId === customer.id ? "opacity-100" : "opacity-0")} />
+                            {customer.name}
+                          </CommandItem>
+                        ))}
+                      </CommandGroup>
+                    </CommandList>
+                  </Command>
+                </PopoverContent>
+              </Popover>
             </div>
 
             <div className="space-y-2">
               <Label htmlFor="vendor">Vendor (Optional)</Label>
-              <Select value={vendorId || "none"} onValueChange={(v) => setVendorId(v === "none" ? "" : v)}>
-                <SelectTrigger>
-                  <SelectValue placeholder="Select vendor" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="none">None</SelectItem>
-                  {vendors?.map((vendor) => (
-                    <SelectItem key={vendor.id} value={vendor.id}>
-                      {vendor.name}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+              <Popover open={vendorOpen} onOpenChange={setVendorOpen}>
+                <PopoverTrigger asChild>
+                  <Button
+                    variant="outline"
+                    role="combobox"
+                    className={cn("w-full justify-between", !vendorId && "text-muted-foreground")}
+                  >
+                    {selectedVendor ? (
+                      <div className="flex flex-col items-start text-left">
+                        <span>{selectedVendor.name}</span>
+                        {selectedVendor.specialty && (
+                          <span className="text-xs text-muted-foreground">{selectedVendor.specialty}</span>
+                        )}
+                      </div>
+                    ) : (
+                      "Search vendors..."
+                    )}
+                    <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent className="w-[300px] p-0" align="start">
+                  <Command>
+                    <CommandInput placeholder="Search vendors..." value={vendorSearch} onValueChange={setVendorSearch} />
+                    <CommandList>
+                      <CommandEmpty>No vendors found.</CommandEmpty>
+                      <CommandGroup>
+                        <CommandItem
+                          value="none"
+                          onSelect={() => {
+                            setVendorId("");
+                            setVendorName("");
+                            setVendorOpen(false);
+                            setVendorSearch("");
+                          }}
+                        >
+                          <Check className={cn("mr-2 h-4 w-4", !vendorId ? "opacity-100" : "opacity-0")} />
+                          None
+                        </CommandItem>
+                        {filteredVendors.map((vendor) => (
+                          <CommandItem
+                            key={vendor.id}
+                            value={`${vendor.name} ${vendor.specialty || ''}`}
+                            onSelect={() => {
+                              setVendorId(vendor.id);
+                              setVendorName(vendor.name);
+                              setVendorOpen(false);
+                              setVendorSearch("");
+                            }}
+                          >
+                            <Check className={cn("mr-2 h-4 w-4", vendorId === vendor.id ? "opacity-100" : "opacity-0")} />
+                            <div className="flex flex-col">
+                              <span>{vendor.name}</span>
+                              {vendor.specialty && (
+                                <span className="text-xs text-muted-foreground">{vendor.specialty}</span>
+                              )}
+                            </div>
+                          </CommandItem>
+                        ))}
+                      </CommandGroup>
+                    </CommandList>
+                  </Command>
+                </PopoverContent>
+              </Popover>
             </div>
 
             <div className="space-y-2">
               <Label htmlFor="purchaseOrder">Link to Purchase Order (Optional)</Label>
-              <Select value={purchaseOrderId || "none"} onValueChange={(v) => setPurchaseOrderId(v === "none" ? "" : v)}>
-                <SelectTrigger>
-                  <SelectValue placeholder="Select PO" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="none">None</SelectItem>
-                  {filteredPurchaseOrders?.map((po) => (
-                    <SelectItem key={po.id} value={po.id}>
-                      {po.number}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+              <Popover open={poOpen} onOpenChange={setPOOpen}>
+                <PopoverTrigger asChild>
+                  <Button
+                    variant="outline"
+                    role="combobox"
+                    className={cn("w-full justify-between", !purchaseOrderId && "text-muted-foreground")}
+                  >
+                    {selectedPO ? (
+                      <div className="flex flex-col items-start text-left">
+                        <span>{selectedPO.number}</span>
+                        {selectedPO.vendor_name && (
+                          <span className="text-xs text-muted-foreground">{selectedPO.vendor_name}</span>
+                        )}
+                      </div>
+                    ) : (
+                      "Search POs..."
+                    )}
+                    <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent className="w-[300px] p-0" align="start">
+                  <Command>
+                    <CommandInput placeholder="Search POs..." value={poSearch} onValueChange={setPOSearch} />
+                    <CommandList>
+                      <CommandEmpty>No POs found.</CommandEmpty>
+                      <CommandGroup>
+                        <CommandItem
+                          value="none"
+                          onSelect={() => {
+                            setPurchaseOrderId("");
+                            setPOOpen(false);
+                            setPOSearch("");
+                          }}
+                        >
+                          <Check className={cn("mr-2 h-4 w-4", !purchaseOrderId ? "opacity-100" : "opacity-0")} />
+                          None
+                        </CommandItem>
+                        {searchFilteredPOs.map((po) => (
+                          <CommandItem
+                            key={po.id}
+                            value={`${po.number} ${po.vendor_name || ''}`}
+                            onSelect={() => {
+                              setPurchaseOrderId(po.id);
+                              setPOOpen(false);
+                              setPOSearch("");
+                            }}
+                          >
+                            <Check className={cn("mr-2 h-4 w-4", purchaseOrderId === po.id ? "opacity-100" : "opacity-0")} />
+                            <div className="flex flex-col">
+                              <span>{po.number}</span>
+                              {po.vendor_name && (
+                                <span className="text-xs text-muted-foreground">{po.vendor_name}</span>
+                              )}
+                            </div>
+                          </CommandItem>
+                        ))}
+                      </CommandGroup>
+                    </CommandList>
+                  </Command>
+                </PopoverContent>
+              </Popover>
             </div>
 
             <div className="space-y-2">
               <Label htmlFor="jobOrder">Link to Job Order (Optional)</Label>
-              <Select value={jobOrderId || "none"} onValueChange={(v) => setJobOrderId(v === "none" ? "" : v)}>
-                <SelectTrigger>
-                  <SelectValue placeholder="Select Job Order" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="none">None</SelectItem>
-                  {filteredJobOrders?.map((jo) => (
-                    <SelectItem key={jo.id} value={jo.id}>
-                      {jo.number}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+              <Popover open={joOpen} onOpenChange={setJOOpen}>
+                <PopoverTrigger asChild>
+                  <Button
+                    variant="outline"
+                    role="combobox"
+                    className={cn("w-full justify-between", !jobOrderId && "text-muted-foreground")}
+                  >
+                    {selectedJO?.number || "Search Job Orders..."}
+                    <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent className="w-[300px] p-0" align="start">
+                  <Command>
+                    <CommandInput placeholder="Search Job Orders..." value={joSearch} onValueChange={setJOSearch} />
+                    <CommandList>
+                      <CommandEmpty>No Job Orders found.</CommandEmpty>
+                      <CommandGroup>
+                        <CommandItem
+                          value="none"
+                          onSelect={() => {
+                            setJobOrderId("");
+                            setJOOpen(false);
+                            setJOSearch("");
+                          }}
+                        >
+                          <Check className={cn("mr-2 h-4 w-4", !jobOrderId ? "opacity-100" : "opacity-0")} />
+                          None
+                        </CommandItem>
+                        {searchFilteredJOs.map((jo) => (
+                          <CommandItem
+                            key={jo.id}
+                            value={jo.number}
+                            onSelect={() => {
+                              setJobOrderId(jo.id);
+                              setJOOpen(false);
+                              setJOSearch("");
+                            }}
+                          >
+                            <Check className={cn("mr-2 h-4 w-4", jobOrderId === jo.id ? "opacity-100" : "opacity-0")} />
+                            {jo.number}
+                          </CommandItem>
+                        ))}
+                      </CommandGroup>
+                    </CommandList>
+                  </Command>
+                </PopoverContent>
+              </Popover>
             </div>
 
             <div className="space-y-2">
@@ -434,21 +666,53 @@ export function ChangeOrderForm({
                     <>
                       <TableRow key={item.id}>
                         <TableCell>
-                          <Select
-                            value={item.product_id || ""}
-                            onValueChange={(v) => selectProduct(index, v)}
+                          <Popover 
+                            open={productOpenIndex === index} 
+                            onOpenChange={(open) => {
+                              setProductOpenIndex(open ? index : null);
+                              if (!open) setProductSearch("");
+                            }}
                           >
-                            <SelectTrigger className="w-full">
-                              <SelectValue placeholder="Select..." />
-                            </SelectTrigger>
-                            <SelectContent>
-                              {products?.map((product) => (
-                                <SelectItem key={product.id} value={product.id}>
-                                  {product.name}
-                                </SelectItem>
-                              ))}
-                            </SelectContent>
-                          </Select>
+                            <PopoverTrigger asChild>
+                              <Button
+                                variant="outline"
+                                role="combobox"
+                                className={cn("w-full justify-between", !item.product_id && "text-muted-foreground")}
+                              >
+                                <span className="truncate">
+                                  {products?.find(p => p.id === item.product_id)?.name || "Select..."}
+                                </span>
+                                <ChevronsUpDown className="ml-1 h-4 w-4 shrink-0 opacity-50" />
+                              </Button>
+                            </PopoverTrigger>
+                            <PopoverContent className="w-[250px] p-0" align="start">
+                              <Command>
+                                <CommandInput placeholder="Search products..." value={productSearch} onValueChange={setProductSearch} />
+                                <CommandList>
+                                  <CommandEmpty>No products found.</CommandEmpty>
+                                  <CommandGroup>
+                                    {filteredProducts.map((product) => (
+                                      <CommandItem
+                                        key={product.id}
+                                        value={product.name}
+                                        onSelect={() => {
+                                          selectProduct(index, product.id);
+                                          setProductOpenIndex(null);
+                                          setProductSearch("");
+                                        }}
+                                      >
+                                        <Check className={cn("mr-2 h-4 w-4", item.product_id === product.id ? "opacity-100" : "opacity-0")} />
+                                        <div className="flex flex-col">
+                                          <span>{product.name}</span>
+                                          <span className="text-xs text-muted-foreground">${product.cost.toFixed(2)}</span>
+                                        </div>
+                                      </CommandItem>
+                                    ))}
+                                  </CommandGroup>
+                                </CommandList>
+                              </Command>
+                            </PopoverContent>
+                          </Popover>
                         </TableCell>
                         <TableCell>
                           <Input
