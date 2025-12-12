@@ -24,15 +24,15 @@ export default function VendorBills() {
 
   return (
     <PageLayout title="Vendor Bills" description="Track bills from vendors and suppliers">
-      <div className="space-y-6">
-        <div className="flex flex-col sm:flex-row gap-4 justify-between">
+      <div className="w-full max-w-full overflow-hidden space-y-6">
+        <div className="w-full max-w-full overflow-hidden flex flex-col sm:flex-row gap-4 justify-between">
           <SearchInput
             value={search}
             onChange={setSearch}
             placeholder="Search bills..."
             className="w-full sm:w-80"
           />
-          <Button onClick={() => navigate("/vendor-bills/new")}>
+          <Button onClick={() => navigate("/vendor-bills/new")} className="shrink-0">
             <Plus className="h-4 w-4 mr-1" />
             New Bill
           </Button>
