@@ -9,6 +9,8 @@ import {
   CollapsibleContent,
   CollapsibleTrigger,
 } from "@/components/ui/collapsible";
+import logo from "@/assets/logo.png";
+import { ThemeToggle } from "@/components/ThemeToggle";
 import {
   LayoutDashboard,
   Package,
@@ -18,6 +20,7 @@ import {
   FileText,
   Receipt,
   Settings,
+  ChevronRight,
   ChevronDown,
   Briefcase,
   ShoppingCart,
@@ -25,18 +28,28 @@ import {
   Shield,
   Clock,
   UserCog,
+  UserCheck,
   ClipboardCheck,
+  Ruler,
+  Cloud,
+  ShieldCheck,
+  MessageSquare,
+  Calendar,
+  CheckSquare,
+  FileWarning,
+  BarChart3,
   IdCard,
   Link2,
-  Send,
 } from "lucide-react";
+
+import { Send } from "lucide-react";
 
 const navigation = [
   { name: "Dashboard", href: "/", icon: LayoutDashboard },
   { name: "Products", href: "/products", icon: Package },
   { name: "Customers", href: "/customers", icon: Users },
   { name: "Projects", href: "/projects", icon: FolderKanban },
-  { name: "Personnel", href: "/personnel", icon: Users },
+  { name: "Personnel", href: "/personnel", icon: UserCheck },
   { name: "Estimates", href: "/estimates", icon: FileText },
   { name: "Job Orders", href: "/job-orders", icon: Briefcase },
   { name: "Purchase Orders", href: "/purchase-orders", icon: ShoppingCart },
@@ -48,14 +61,37 @@ const navigation = [
 const vendorsNavigation = [
   { name: "All Vendors", href: "/vendors", icon: Truck },
   { name: "Vendor Bills", href: "/vendor-bills", icon: Receipt },
-  { name: "Vendor Documents", href: "/vendor-documents", icon: FileText },
-  { name: "Contractor Submissions", href: "/admin/contractor-submissions", icon: ClipboardCheck },
 ];
 
 const staffingNavigation = [
   { name: "Time Tracking", href: "/time-tracking", icon: Clock },
-  { name: "Project Assignments", href: "/project-assignments", icon: UserCog, requiresManager: true },
-  { name: "Badge Templates", href: "/badge-templates", icon: IdCard, requiresManager: true },
+  {
+    name: "Project Assignments",
+    href: "/project-assignments",
+    icon: UserCog,
+    requiresManager: true,
+  },
+  {
+    name: "Badge Templates",
+    href: "/badge-templates",
+    icon: IdCard,
+    requiresManager: true,
+  },
+];
+
+const roofingCrmNavigation = [
+  { name: "CRM Dashboard", href: "/roofing-dashboard", icon: BarChart3 },
+  { name: "Activities", href: "/activities", icon: MessageSquare },
+  { name: "Appointments", href: "/appointments", icon: Calendar },
+  { name: "Tasks", href: "/tasks", icon: CheckSquare },
+  { name: "Insurance Claims", href: "/insurance-claims", icon: FileWarning },
+];
+
+const roofingOpsNavigation = [
+  { name: "Roof Inspections", href: "/roof-inspections", icon: ClipboardCheck },
+  { name: "Measurements", href: "/roof-measurements", icon: Ruler },
+  { name: "Weather", href: "/weather-tracking", icon: Cloud },
+  { name: "Warranties", href: "/warranties", icon: ShieldCheck },
 ];
 
 export function Sidebar() {
@@ -66,24 +102,50 @@ export function Sidebar() {
   // Collapsible state
   const [vendorsOpen, setVendorsOpen] = useState(false);
   const [staffingOpen, setStaffingOpen] = useState(false);
+  const [roofingCrmOpen, setRoofingCrmOpen] = useState(false);
+  const [roofingOpsOpen, setRoofingOpsOpen] = useState(false);
   const [accountOpen, setAccountOpen] = useState(false);
 
   // Auto-expand section if current route is within it
   useEffect(() => {
     const vendorsRoutes = vendorsNavigation.map((item) => item.href);
     const staffingRoutes = staffingNavigation.map((item) => item.href);
+    const crmRoutes = roofingCrmNavigation.map((item) => item.href);
+    const opsRoutes = roofingOpsNavigation.map((item) => item.href);
     const accountRoutes = ["/user-management", "/settings"];
 
-    if (vendorsRoutes.some((r) => location.pathname === r || location.pathname.startsWith(r))) setVendorsOpen(true);
-    if (staffingRoutes.some((r) => location.pathname === r)) setStaffingOpen(true);
-    if (accountRoutes.some((r) => location.pathname === r || location.pathname.startsWith(r))) setAccountOpen(true);
+    if (
+      vendorsRoutes.some(
+        (r) => location.pathname === r || location.pathname.startsWith(r)
+      )
+    )
+      setVendorsOpen(true);
+    if (staffingRoutes.some((r) => location.pathname === r))
+      setStaffingOpen(true);
+    if (crmRoutes.some((r) => location.pathname === r)) setRoofingCrmOpen(true);
+    if (opsRoutes.some((r) => location.pathname === r)) setRoofingOpsOpen(true);
+    if (
+      accountRoutes.some(
+        (r) => location.pathname === r || location.pathname.startsWith(r)
+      )
+    )
+      setAccountOpen(true);
   }, [location.pathname]);
 
   return (
-    <aside className="hidden lg:block fixed left-0 top-14 z-40 h-[calc(100vh-3.5rem)] w-64 bg-sidebar border-r border-sidebar-border">
+    <aside className="hidden lg:block fixed left-0 top-0 z-40 h-screen w-64 bg-sidebar border-r border-sidebar-border">
       <div className="flex h-full flex-col">
+        {/* Logo */}
+        <div className="flex h-20 items-center justify-center px-6 border-b border-sidebar-border">
+          <img
+            src={logo}
+            alt="Command X"
+            className="h-10 w-full object-fill border-0 border-primary shadow-none"
+          />
+        </div>
+
         {/* Navigation */}
-        <nav className="flex-1 space-y-0.5 px-3 py-4 overflow-y-auto">
+        <nav className="flex-1 space-y-1 px-3 py-4 overflow-y-auto">
           {navigation.map((item) => {
             const isActive = location.pathname === item.href;
             return (
@@ -91,21 +153,24 @@ export function Sidebar() {
                 key={item.name}
                 to={item.href}
                 className={cn(
-                  "group flex items-center gap-3 rounded-md px-3 py-2 text-sm font-medium transition-all duration-150",
+                  "group flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-all duration-200",
                   isActive
-                    ? "bg-primary/15 text-primary border-l-4 border-primary -ml-0.5 pl-2.5"
-                    : "text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"
+                    ? "bg-primary/10 text-primary"
+                    : "text-muted-foreground hover:bg-sidebar-accent hover:text-foreground"
                 )}
               >
                 <item.icon
                   className={cn(
-                    "h-4 w-4 transition-colors flex-shrink-0",
+                    "h-5 w-5 transition-colors",
                     isActive
                       ? "text-primary"
-                      : "text-sidebar-muted group-hover:text-sidebar-accent-foreground"
+                      : "text-muted-foreground group-hover:text-foreground"
                   )}
                 />
-                <span className="truncate">{item.name}</span>
+                {item.name}
+                {isActive && (
+                  <ChevronRight className="ml-auto h-4 w-4 text-primary" />
+                )}
               </Link>
             );
           })}
@@ -113,7 +178,7 @@ export function Sidebar() {
           {/* Vendors Section */}
           <Collapsible open={vendorsOpen} onOpenChange={setVendorsOpen}>
             <div className="mt-4 pt-4 border-t border-sidebar-border">
-              <CollapsibleTrigger className="flex items-center justify-between w-full px-3 py-2 text-xs font-semibold text-sidebar-muted uppercase tracking-wider hover:text-sidebar-foreground transition-colors">
+              <CollapsibleTrigger className="flex items-center justify-between w-full px-3 py-2 text-xs font-semibold text-muted-foreground uppercase tracking-wider hover:text-foreground transition-colors">
                 <span>Vendors</span>
                 <ChevronDown
                   className={cn(
@@ -122,29 +187,34 @@ export function Sidebar() {
                   )}
                 />
               </CollapsibleTrigger>
-              <CollapsibleContent className="space-y-0.5 mt-1">
+              <CollapsibleContent className="space-y-1">
                 {vendorsNavigation.map((item) => {
-                  const isActive = location.pathname === item.href || location.pathname.startsWith(item.href + "/");
+                  const isActive =
+                    location.pathname === item.href ||
+                    location.pathname.startsWith(item.href + "/");
                   return (
                     <Link
                       key={item.name}
                       to={item.href}
                       className={cn(
-                        "group flex items-center gap-3 rounded-md px-3 py-2 text-sm font-medium transition-all duration-150",
+                        "group flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-all duration-200",
                         isActive
-                          ? "bg-primary/15 text-primary border-l-4 border-primary -ml-0.5 pl-2.5"
-                          : "text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"
+                          ? "bg-primary/10 text-primary"
+                          : "text-muted-foreground hover:bg-sidebar-accent hover:text-foreground"
                       )}
                     >
                       <item.icon
                         className={cn(
-                          "h-4 w-4 transition-colors flex-shrink-0",
+                          "h-5 w-5 transition-colors",
                           isActive
                             ? "text-primary"
-                            : "text-sidebar-muted group-hover:text-sidebar-accent-foreground"
+                            : "text-muted-foreground group-hover:text-foreground"
                         )}
                       />
-                      <span className="truncate">{item.name}</span>
+                      {item.name}
+                      {isActive && (
+                        <ChevronRight className="ml-auto h-4 w-4 text-primary" />
+                      )}
                     </Link>
                   );
                 })}
@@ -155,7 +225,7 @@ export function Sidebar() {
           {/* Staffing Section */}
           <Collapsible open={staffingOpen} onOpenChange={setStaffingOpen}>
             <div className="mt-4 pt-4 border-t border-sidebar-border">
-              <CollapsibleTrigger className="flex items-center justify-between w-full px-3 py-2 text-xs font-semibold text-sidebar-muted uppercase tracking-wider hover:text-sidebar-foreground transition-colors">
+              <CollapsibleTrigger className="flex items-center justify-between w-full px-3 py-2 text-xs font-semibold text-muted-foreground uppercase tracking-wider hover:text-foreground transition-colors">
                 <span>Staffing</span>
                 <ChevronDown
                   className={cn(
@@ -164,30 +234,124 @@ export function Sidebar() {
                   )}
                 />
               </CollapsibleTrigger>
-              <CollapsibleContent className="space-y-0.5 mt-1">
+              <CollapsibleContent className="space-y-1">
                 {staffingNavigation.map((item) => {
-                  if (item.requiresManager && !isAdmin && !isManager) return null;
+                  if (item.requiresManager && !isAdmin && !isManager)
+                    return null;
                   const isActive = location.pathname === item.href;
                   return (
                     <Link
                       key={item.name}
                       to={item.href}
                       className={cn(
-                        "group flex items-center gap-3 rounded-md px-3 py-2 text-sm font-medium transition-all duration-150",
+                        "group flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-all duration-200",
                         isActive
-                          ? "bg-primary/15 text-primary border-l-4 border-primary -ml-0.5 pl-2.5"
-                          : "text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"
+                          ? "bg-primary/10 text-primary"
+                          : "text-muted-foreground hover:bg-sidebar-accent hover:text-foreground"
                       )}
                     >
                       <item.icon
                         className={cn(
-                          "h-4 w-4 transition-colors flex-shrink-0",
+                          "h-5 w-5 transition-colors",
                           isActive
                             ? "text-primary"
-                            : "text-sidebar-muted group-hover:text-sidebar-accent-foreground"
+                            : "text-muted-foreground group-hover:text-foreground"
                         )}
                       />
-                      <span className="truncate">{item.name}</span>
+                      {item.name}
+                      {isActive && (
+                        <ChevronRight className="ml-auto h-4 w-4 text-primary" />
+                      )}
+                    </Link>
+                  );
+                })}
+              </CollapsibleContent>
+            </div>
+          </Collapsible>
+
+          {/* Roofing CRM Section */}
+          <Collapsible open={roofingCrmOpen} onOpenChange={setRoofingCrmOpen}>
+            <div className="mt-4 pt-4 border-t border-sidebar-border">
+              <CollapsibleTrigger className="flex items-center justify-between w-full px-3 py-2 text-xs font-semibold text-muted-foreground uppercase tracking-wider hover:text-foreground transition-colors">
+                <span>Roofing CRM</span>
+                <ChevronDown
+                  className={cn(
+                    "h-4 w-4 transition-transform duration-200",
+                    roofingCrmOpen && "rotate-180"
+                  )}
+                />
+              </CollapsibleTrigger>
+              <CollapsibleContent className="space-y-1">
+                {roofingCrmNavigation.map((item) => {
+                  const isActive = location.pathname === item.href;
+                  return (
+                    <Link
+                      key={item.name}
+                      to={item.href}
+                      className={cn(
+                        "group flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-all duration-200",
+                        isActive
+                          ? "bg-primary/10 text-primary"
+                          : "text-muted-foreground hover:bg-sidebar-accent hover:text-foreground"
+                      )}
+                    >
+                      <item.icon
+                        className={cn(
+                          "h-5 w-5 transition-colors",
+                          isActive
+                            ? "text-primary"
+                            : "text-muted-foreground group-hover:text-foreground"
+                        )}
+                      />
+                      {item.name}
+                      {isActive && (
+                        <ChevronRight className="ml-auto h-4 w-4 text-primary" />
+                      )}
+                    </Link>
+                  );
+                })}
+              </CollapsibleContent>
+            </div>
+          </Collapsible>
+
+          {/* Roofing Operations Section */}
+          <Collapsible open={roofingOpsOpen} onOpenChange={setRoofingOpsOpen}>
+            <div className="mt-4 pt-4 border-t border-sidebar-border">
+              <CollapsibleTrigger className="flex items-center justify-between w-full px-3 py-2 text-xs font-semibold text-muted-foreground uppercase tracking-wider hover:text-foreground transition-colors">
+                <span>Roofing Ops</span>
+                <ChevronDown
+                  className={cn(
+                    "h-4 w-4 transition-transform duration-200",
+                    roofingOpsOpen && "rotate-180"
+                  )}
+                />
+              </CollapsibleTrigger>
+              <CollapsibleContent className="space-y-1">
+                {roofingOpsNavigation.map((item) => {
+                  const isActive = location.pathname === item.href;
+                  return (
+                    <Link
+                      key={item.name}
+                      to={item.href}
+                      className={cn(
+                        "group flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-all duration-200",
+                        isActive
+                          ? "bg-primary/10 text-primary"
+                          : "text-muted-foreground hover:bg-sidebar-accent hover:text-foreground"
+                      )}
+                    >
+                      <item.icon
+                        className={cn(
+                          "h-5 w-5 transition-colors",
+                          isActive
+                            ? "text-primary"
+                            : "text-muted-foreground group-hover:text-foreground"
+                        )}
+                      />
+                      {item.name}
+                      {isActive && (
+                        <ChevronRight className="ml-auto h-4 w-4 text-primary" />
+                      )}
                     </Link>
                   );
                 })}
@@ -199,7 +363,7 @@ export function Sidebar() {
         {/* Account Section */}
         <div className="border-t border-sidebar-border p-3">
           <Collapsible open={accountOpen} onOpenChange={setAccountOpen}>
-            <CollapsibleTrigger className="flex items-center justify-between w-full px-3 py-2 text-xs font-semibold text-sidebar-muted uppercase tracking-wider hover:text-sidebar-foreground transition-colors">
+            <CollapsibleTrigger className="flex items-center justify-between w-full px-3 py-2 text-xs font-semibold text-muted-foreground uppercase tracking-wider hover:text-foreground transition-colors">
               <span>Account</span>
               <ChevronDown
                 className={cn(
@@ -208,40 +372,49 @@ export function Sidebar() {
                 )}
               />
             </CollapsibleTrigger>
-            <CollapsibleContent className="space-y-0.5 mt-1">
+            <CollapsibleContent className="space-y-1">
+              {user && (
+                <div className="flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium text-muted-foreground">
+                  <span className="truncate">{user.email}</span>
+                </div>
+              )}
+              <div className="flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium text-muted-foreground hover:bg-sidebar-accent hover:text-foreground transition-all duration-200 cursor-pointer">
+                <ThemeToggle />
+                <span>Toggle Theme</span>
+              </div>
               {isAdmin && (
                 <Link
                   to="/user-management"
                   className={cn(
-                    "group flex items-center gap-3 rounded-md px-3 py-2 text-sm font-medium transition-all duration-150",
+                    "flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-all duration-200",
                     location.pathname === "/user-management"
-                      ? "bg-primary/15 text-primary border-l-4 border-primary -ml-0.5 pl-2.5"
-                      : "text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"
+                      ? "bg-primary/10 text-primary"
+                      : "text-muted-foreground hover:bg-sidebar-accent hover:text-foreground"
                   )}
                 >
-                  <Shield className="h-4 w-4 flex-shrink-0" />
-                  <span className="truncate">User Management</span>
+                  <Shield className="h-5 w-5" />
+                  User Management
                 </Link>
               )}
               <Link
                 to="/settings"
                 className={cn(
-                  "group flex items-center gap-3 rounded-md px-3 py-2 text-sm font-medium transition-all duration-150",
+                  "flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-all duration-200",
                   location.pathname === "/settings"
-                    ? "bg-primary/15 text-primary border-l-4 border-primary -ml-0.5 pl-2.5"
-                    : "text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"
+                    ? "bg-primary/10 text-primary"
+                    : "text-muted-foreground hover:bg-sidebar-accent hover:text-foreground"
                 )}
               >
-                <Settings className="h-4 w-4 flex-shrink-0" />
-                <span className="truncate">Settings</span>
+                <Settings className="h-5 w-5" />
+                Settings
               </Link>
               <Button
                 variant="ghost"
-                className="w-full justify-start gap-3 px-3 py-2 h-auto text-sm font-medium text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground transition-all duration-150"
+                className="w-full justify-start gap-3 px-3 py-2.5 text-sm font-medium text-muted-foreground hover:bg-sidebar-accent hover:text-foreground transition-all duration-200"
                 onClick={signOut}
               >
-                <LogOut className="h-4 w-4 flex-shrink-0" />
-                <span className="truncate">Sign Out</span>
+                <LogOut className="h-5 w-5" />
+                Sign Out
               </Button>
             </CollapsibleContent>
           </Collapsible>
