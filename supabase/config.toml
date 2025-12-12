@@ -1,5 +1,8 @@
 project_id = "xfjjvznxkcckuwxmcsdc"
 
+[functions.ai-assistant]
+verify_jwt = false
+
 [functions.approve-estimate]
 verify_jwt = false
 
