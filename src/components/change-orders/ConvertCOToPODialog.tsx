@@ -12,12 +12,18 @@ import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
+  Command,
+  CommandEmpty,
+  CommandGroup,
+  CommandInput,
+  CommandItem,
+  CommandList,
+} from "@/components/ui/command";
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
 import {
   Table,
   TableBody,
@@ -26,7 +32,8 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { Loader2, Truck, DollarSign, TrendingUp } from "lucide-react";
+import { Loader2, Truck, DollarSign, TrendingUp, Check, ChevronsUpDown } from "lucide-react";
+import { cn } from "@/lib/utils";
 import { useVendors } from "@/integrations/supabase/hooks/useVendors";
 import { useJobOrders } from "@/integrations/supabase/hooks/useJobOrders";
 import { useAddPurchaseOrder } from "@/integrations/supabase/hooks/usePurchaseOrders";
@@ -46,6 +53,8 @@ export function ConvertCOToPODialog({
 }: ConvertCOToPODialogProps) {
   const navigate = useNavigate();
   const [selectedVendor, setSelectedVendor] = useState(changeOrder.vendor_id || "");
+  const [vendorComboboxOpen, setVendorComboboxOpen] = useState(false);
+  const [vendorSearch, setVendorSearch] = useState("");
   const [dueDate, setDueDate] = useState(() => {
     const date = new Date();
     date.setDate(date.getDate() + 30);
@@ -57,6 +66,11 @@ export function ConvertCOToPODialog({
   const addPurchaseOrder = useAddPurchaseOrder();
 
   const selectedVendorData = vendors?.find((v) => v.id === selectedVendor);
+
+  const filteredVendors = vendors?.filter(vendor =>
+    vendor.name.toLowerCase().includes(vendorSearch.toLowerCase()) ||
+    vendor.specialty?.toLowerCase().includes(vendorSearch.toLowerCase())
+  ) || [];
 
   // Find job order for this project
   const projectJobOrder = jobOrders?.find(
@@ -135,18 +149,73 @@ export function ConvertCOToPODialog({
                   Loading...
                 </div>
               ) : (
-                <Select value={selectedVendor} onValueChange={setSelectedVendor}>
-                  <SelectTrigger>
-                    <SelectValue placeholder="Select a vendor..." />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {vendors?.map((vendor) => (
-                      <SelectItem key={vendor.id} value={vendor.id}>
-                        {vendor.name}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+                <Popover open={vendorComboboxOpen} onOpenChange={setVendorComboboxOpen}>
+                  <PopoverTrigger asChild>
+                    <Button
+                      variant="outline"
+                      role="combobox"
+                      aria-expanded={vendorComboboxOpen}
+                      className={cn(
+                        "w-full justify-between",
+                        !selectedVendor && "text-muted-foreground"
+                      )}
+                    >
+                      {selectedVendorData ? (
+                        <div className="flex flex-col items-start text-left">
+                          <span className="font-medium">{selectedVendorData.name}</span>
+                          {selectedVendorData.specialty && (
+                            <span className="text-xs text-muted-foreground">
+                              {selectedVendorData.specialty}
+                            </span>
+                          )}
+                        </div>
+                      ) : (
+                        "Search vendors..."
+                      )}
+                      <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                    </Button>
+                  </PopoverTrigger>
+                  <PopoverContent className="w-[400px] p-0" align="start">
+                    <Command>
+                      <CommandInput
+                        placeholder="Search vendors..."
+                        value={vendorSearch}
+                        onValueChange={setVendorSearch}
+                      />
+                      <CommandList>
+                        <CommandEmpty>No vendors found.</CommandEmpty>
+                        <CommandGroup>
+                          {filteredVendors.map((vendor) => (
+                            <CommandItem
+                              key={vendor.id}
+                              value={`${vendor.name} ${vendor.specialty || ''}`}
+                              onSelect={() => {
+                                setSelectedVendor(vendor.id);
+                                setVendorComboboxOpen(false);
+                                setVendorSearch("");
+                              }}
+                            >
+                              <Check
+                                className={cn(
+                                  "mr-2 h-4 w-4",
+                                  selectedVendor === vendor.id ? "opacity-100" : "opacity-0"
+                                )}
+                              />
+                              <div className="flex flex-col">
+                                <span className="font-medium">{vendor.name}</span>
+                                {vendor.specialty && (
+                                  <span className="text-xs text-muted-foreground">
+                                    {vendor.specialty}
+                                  </span>
+                                )}
+                              </div>
+                            </CommandItem>
+                          ))}
+                        </CommandGroup>
+                      </CommandList>
+                    </Command>
+                  </PopoverContent>
+                </Popover>
               )}
             </div>
 
