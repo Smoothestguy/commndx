@@ -33,81 +33,20 @@ export default function AcceptVendorInvitation() {
       return;
     }
     
-    if (!invitation) return;
+    if (!invitation || !token) return;
     
     setLoading(true);
 
     try {
-      let userId: string;
-      let isExistingUser = false;
-
-      // Try to create new user
-      const { data: signUpData, error: signUpError } = await supabase.auth.signUp({
-        email: invitation.email,
-        password,
-        options: {
-          emailRedirectTo: `${window.location.origin}/vendor`,
-          data: {
-            vendor_name: invitation.vendor?.name,
-          },
-        },
+      // Call edge function to handle invitation acceptance securely
+      const { data, error: fnError } = await supabase.functions.invoke("accept-vendor-invitation", {
+        body: { token, password },
       });
 
-      if (signUpError) {
-        // If user already exists, try to sign them in
-        if (signUpError.message.includes('already registered') || 
-            signUpError.message.includes('User already registered') ||
-            (signUpError as any).code === 'user_already_exists') {
-          const { data: signInData, error: signInError } = await supabase.auth.signInWithPassword({
-            email: invitation.email,
-            password,
-          });
-          
-          if (signInError) {
-            throw new Error("Invalid password for existing account. Please use the correct password.");
-          }
-          if (!signInData.user) throw new Error("Failed to sign in");
-          
-          userId = signInData.user.id;
-          isExistingUser = true;
-        } else {
-          throw signUpError;
-        }
-      } else {
-        if (!signUpData.user) throw new Error("Failed to create user");
-        userId = signUpData.user.id;
-      }
+      if (fnError) throw fnError;
+      if (data?.error) throw new Error(data.error);
 
-      // Link vendor to auth user
-      const { error: linkError } = await supabase
-        .from("vendors")
-        .update({ user_id: userId })
-        .eq("id", invitation.vendor_id);
-
-      if (linkError) throw linkError;
-
-      // Assign vendor role (upsert to handle existing users)
-      const { error: roleError } = await supabase
-        .from("user_roles")
-        .upsert(
-          { user_id: userId, role: "vendor" as any },
-          { onConflict: 'user_id,role' }
-        );
-
-      if (roleError) throw roleError;
-
-      // Mark invitation as accepted
-      const { error: inviteError } = await supabase
-        .from("vendor_invitations")
-        .update({
-          status: "accepted",
-          accepted_at: new Date().toISOString(),
-        })
-        .eq("id", invitation.id);
-
-      if (inviteError) throw inviteError;
-
-      if (isExistingUser) {
+      if (data?.isExistingUser) {
         toast.success("Account linked successfully!");
         navigate("/vendor");
       } else {

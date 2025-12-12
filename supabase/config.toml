@@ -1,5 +1,8 @@
 project_id = "xfjjvznxkcckuwxmcsdc"
 
+[functions.accept-vendor-invitation]
+verify_jwt = false
+
 [functions.ai-assistant]
 verify_jwt = false
 
@@ -16,6 +19,9 @@ verify_jwt = false
 verify_jwt = false
 
 [functions.create-user-manually]
+verify_jwt = false
+
+[functions.delete-user]
 verify_jwt = false
 
 [functions.get-estimate-for-approval]
@@ -85,4 +91,7 @@ verify_jwt = false
 verify_jwt = false
 
 [functions.quickbooks-receive-payment]
+verify_jwt = false
+
+[functions.send-vendor-portal-invitation]
 verify_jwt = false
