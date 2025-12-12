@@ -73,6 +73,8 @@ import ContractorPortal from "./pages/contractor/ContractorPortal";
 import ContractorSubmissionSuccess from "./pages/contractor/ContractorSubmissionSuccess";
 import ContractorSubmissions from "./pages/admin/ContractorSubmissions";
 import ContractorFormBuilder from "./pages/admin/ContractorFormBuilder";
+import VendorPortalPreview from "./pages/admin/VendorPortalPreview";
+import PersonnelPortalPreview from "./pages/admin/PersonnelPortalPreview";
 import PermissionsManagement from "./pages/PermissionsManagement";
 
 // Vendor Portal
@@ -294,6 +296,14 @@ const App = () => {
                     <Route
                       path="/admin/contractor-form-builder"
                       element={<ContractorFormBuilder />}
+                    />
+                    <Route
+                      path="/admin/preview/vendor-portal"
+                      element={<VendorPortalPreview />}
+                    />
+                    <Route
+                      path="/admin/preview/personnel-portal"
+                      element={<PersonnelPortalPreview />}
                     />
                   </Route>
 
