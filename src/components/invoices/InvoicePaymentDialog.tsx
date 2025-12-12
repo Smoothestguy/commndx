@@ -6,8 +6,17 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useAddInvoicePayment } from "@/integrations/supabase/hooks/useInvoices";
+import { useUploadInvoicePaymentAttachment } from "@/integrations/supabase/hooks/usePaymentAttachments";
+import { PaymentFileUpload } from "@/components/payments/PaymentFileUpload";
 import { formatCurrency } from "@/lib/utils";
 import { format } from "date-fns";
+
+interface PendingFile {
+  id: string;
+  file: File;
+  name: string;
+  size: number;
+}
 
 interface InvoicePaymentDialogProps {
   open: boolean;
@@ -27,8 +36,11 @@ export function InvoicePaymentDialog({
   const [paymentMethod, setPaymentMethod] = useState("Check");
   const [referenceNumber, setReferenceNumber] = useState("");
   const [notes, setNotes] = useState("");
+  const [pendingFiles, setPendingFiles] = useState<PendingFile[]>([]);
+  const [isUploading, setIsUploading] = useState(false);
 
   const addPayment = useAddInvoicePayment();
+  const uploadAttachment = useUploadInvoicePaymentAttachment();
 
   const handleSubmit = async () => {
     const paymentAmount = parseFloat(amount);
@@ -41,7 +53,8 @@ export function InvoicePaymentDialog({
       return;
     }
 
-    await addPayment.mutateAsync({
+    // Create the payment first
+    const payment = await addPayment.mutateAsync({
       invoice_id: invoiceId,
       payment_date: paymentDate,
       amount: paymentAmount,
@@ -50,16 +63,32 @@ export function InvoicePaymentDialog({
       notes: notes || null,
     });
 
+    // Upload any pending files
+    if (pendingFiles.length > 0 && payment?.id) {
+      setIsUploading(true);
+      try {
+        for (const pendingFile of pendingFiles) {
+          await uploadAttachment.mutateAsync({
+            paymentId: payment.id,
+            file: pendingFile.file,
+          });
+        }
+      } finally {
+        setIsUploading(false);
+      }
+    }
+
     // Reset form and close
     setAmount(remainingAmount.toString());
     setReferenceNumber("");
     setNotes("");
+    setPendingFiles([]);
     onOpenChange(false);
   };
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-[425px]">
+      <DialogContent className="sm:max-w-[425px] max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle>Record Payment</DialogTitle>
           <DialogDescription>
@@ -135,6 +164,11 @@ export function InvoicePaymentDialog({
               rows={2}
             />
           </div>
+
+          <PaymentFileUpload
+            pendingFiles={pendingFiles}
+            onFilesChange={setPendingFiles}
+          />
         </div>
         
         <DialogFooter>
@@ -145,11 +179,12 @@ export function InvoicePaymentDialog({
             onClick={handleSubmit} 
             disabled={
               addPayment.isPending || 
+              isUploading ||
               parseFloat(amount) <= 0 || 
               parseFloat(amount) > remainingAmount
             }
           >
-            {addPayment.isPending ? "Recording..." : "Record Payment"}
+            {addPayment.isPending || isUploading ? "Recording..." : "Record Payment"}
           </Button>
         </DialogFooter>
       </DialogContent>
