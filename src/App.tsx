@@ -31,7 +31,7 @@ import Estimates from "./pages/Estimates";
 import NewEstimate from "./pages/NewEstimate";
 import EstimateDetail from "./pages/EstimateDetail";
 import EditEstimate from "./pages/EditEstimate";
-import JobOrders from "./pages/JobOrders";
+// JobOrders page removed - job orders are now accessed through ProjectDetail
 import JobOrderDetail from "./pages/JobOrderDetail";
 import EditJobOrder from "./pages/EditJobOrder";
 import PurchaseOrders from "./pages/PurchaseOrders";
@@ -227,7 +227,7 @@ const App = () => {
                       path="/estimates/:id/edit"
                       element={<EditEstimate />}
                     />
-                    <Route path="/job-orders" element={<JobOrders />} />
+                    {/* Job orders are accessed through project detail - standalone list removed */}
                     <Route path="/job-orders/:id" element={<JobOrderDetail />} />
                     <Route
                       path="/job-orders/:id/edit"

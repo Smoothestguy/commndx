@@ -40,7 +40,6 @@ const navigation = [
   { name: "Projects", href: "/projects", icon: FolderKanban },
   { name: "Personnel", href: "/personnel", icon: Users },
   { name: "Estimates", href: "/estimates", icon: FileText },
-  { name: "Job Orders", href: "/job-orders", icon: Briefcase },
   { name: "Purchase Orders", href: "/purchase-orders", icon: ShoppingCart },
   { name: "Invoices", href: "/invoices", icon: Receipt },
   { name: "Messages", href: "/messages", icon: Send },
