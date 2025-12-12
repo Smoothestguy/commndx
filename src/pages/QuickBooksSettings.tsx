@@ -164,33 +164,33 @@ const QuickBooksSettings = () => {
       title="QuickBooks Integration"
       description="Connect and sync data with QuickBooks Online"
     >
-      <div className="space-y-6">
+      <div className="space-y-4 sm:space-y-6">
         {/* Connection Status Card */}
         <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
+          <CardHeader className="p-4 sm:p-6">
+            <CardTitle className="flex items-center gap-2 text-base sm:text-lg">
               {isConnected ? (
-                <Cloud className="h-5 w-5 text-green-500" />
+                <Cloud className="h-4 w-4 sm:h-5 sm:w-5 text-green-500 shrink-0" />
               ) : (
-                <CloudOff className="h-5 w-5 text-muted-foreground" />
+                <CloudOff className="h-4 w-4 sm:h-5 sm:w-5 text-muted-foreground shrink-0" />
               )}
               Connection Status
             </CardTitle>
-            <CardDescription>
+            <CardDescription className="text-xs sm:text-sm">
               {isConnected
                 ? `Connected to ${config?.company_name || "QuickBooks"}`
                 : "Not connected to QuickBooks"}
             </CardDescription>
           </CardHeader>
-          <CardContent>
-            <div className="flex items-center justify-between">
+          <CardContent className="p-4 sm:p-6 pt-0 sm:pt-0">
+            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
               <div className="space-y-1">
-                <div className="flex items-center gap-2">
+                <div className="flex flex-wrap items-center gap-2">
                   <Badge variant={isConnected ? "default" : "secondary"}>
                     {isConnected ? "Connected" : "Disconnected"}
                   </Badge>
                   {config?.last_sync_at && (
-                    <span className="text-sm text-muted-foreground">
+                    <span className="text-xs sm:text-sm text-muted-foreground">
                       Last sync:{" "}
                       {format(
                         new Date(config.last_sync_at),
@@ -203,6 +203,8 @@ const QuickBooksSettings = () => {
               {isConnected ? (
                 <Button
                   variant="outline"
+                  size="default"
+                  className="w-full sm:w-auto min-h-[44px]"
                   onClick={handleDisconnect}
                   disabled={disconnectMutation.isPending}
                 >
@@ -212,6 +214,8 @@ const QuickBooksSettings = () => {
                 </Button>
               ) : (
                 <Button
+                  size="default"
+                  className="w-full sm:w-auto min-h-[44px]"
                   onClick={handleConnect}
                   disabled={getAuthUrl.isPending || connectMutation.isPending}
                 >
@@ -227,23 +231,23 @@ const QuickBooksSettings = () => {
         {isConnected && (
           <>
             {/* Sync Actions */}
-            <div className="grid gap-4 md:grid-cols-3">
+            <div className="grid gap-3 sm:gap-4 grid-cols-1 md:grid-cols-3">
               {/* Products Sync */}
               <Card>
-                <CardHeader>
-                  <CardTitle className="flex items-center gap-2 text-lg">
-                    <Package className="h-5 w-5" />
+                <CardHeader className="p-4 sm:p-6">
+                  <CardTitle className="flex items-center gap-2 text-base sm:text-lg">
+                    <Package className="h-4 w-4 sm:h-5 sm:w-5 shrink-0" />
                     Products Sync
                   </CardTitle>
-                  <CardDescription>
+                  <CardDescription className="text-xs sm:text-sm">
                     Sync products between CommandX and QuickBooks
                   </CardDescription>
                 </CardHeader>
-                <CardContent className="space-y-4">
+                <CardContent className="p-4 sm:p-6 pt-0 sm:pt-0 space-y-3 sm:space-y-4">
                   <div className="flex flex-col sm:flex-row gap-2">
                     <Button
                       variant="outline"
-                      className="flex-1 min-w-0"
+                      className="flex-1 min-w-0 min-h-[44px]"
                       onClick={() => importProducts.mutate()}
                       disabled={isSyncing}
                     >
@@ -252,7 +256,7 @@ const QuickBooksSettings = () => {
                     </Button>
                     <Button
                       variant="outline"
-                      className="flex-1 min-w-0"
+                      className="flex-1 min-w-0 min-h-[44px]"
                       onClick={() => exportProducts.mutate()}
                       disabled={isSyncing}
                     >
@@ -261,14 +265,14 @@ const QuickBooksSettings = () => {
                     </Button>
                   </div>
                   {importProducts.isPending && (
-                    <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                      <RefreshCw className="h-4 w-4 animate-spin" />
+                    <div className="flex items-center gap-2 text-xs sm:text-sm text-muted-foreground">
+                      <RefreshCw className="h-4 w-4 animate-spin shrink-0" />
                       Importing products...
                     </div>
                   )}
                   {exportProducts.isPending && (
-                    <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                      <RefreshCw className="h-4 w-4 animate-spin" />
+                    <div className="flex items-center gap-2 text-xs sm:text-sm text-muted-foreground">
+                      <RefreshCw className="h-4 w-4 animate-spin shrink-0" />
                       Exporting products...
                     </div>
                   )}
@@ -277,20 +281,20 @@ const QuickBooksSettings = () => {
 
               {/* Customers Sync */}
               <Card>
-                <CardHeader>
-                  <CardTitle className="flex items-center gap-2 text-lg">
-                    <Users className="h-5 w-5" />
+                <CardHeader className="p-4 sm:p-6">
+                  <CardTitle className="flex items-center gap-2 text-base sm:text-lg">
+                    <Users className="h-4 w-4 sm:h-5 sm:w-5 shrink-0" />
                     Customers Sync
                   </CardTitle>
-                  <CardDescription>
+                  <CardDescription className="text-xs sm:text-sm">
                     Sync customers between CommandX and QuickBooks
                   </CardDescription>
                 </CardHeader>
-                <CardContent className="space-y-4">
+                <CardContent className="p-4 sm:p-6 pt-0 sm:pt-0 space-y-3 sm:space-y-4">
                   <div className="flex flex-col sm:flex-row gap-2">
                     <Button
                       variant="outline"
-                      className="flex-1 min-w-0"
+                      className="flex-1 min-w-0 min-h-[44px]"
                       onClick={() => importCustomers.mutate()}
                       disabled={isSyncing}
                     >
@@ -299,7 +303,7 @@ const QuickBooksSettings = () => {
                     </Button>
                     <Button
                       variant="outline"
-                      className="flex-1 min-w-0"
+                      className="flex-1 min-w-0 min-h-[44px]"
                       onClick={() => exportCustomers.mutate()}
                       disabled={isSyncing}
                     >
@@ -308,14 +312,14 @@ const QuickBooksSettings = () => {
                     </Button>
                   </div>
                   {importCustomers.isPending && (
-                    <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                      <RefreshCw className="h-4 w-4 animate-spin" />
+                    <div className="flex items-center gap-2 text-xs sm:text-sm text-muted-foreground">
+                      <RefreshCw className="h-4 w-4 animate-spin shrink-0" />
                       Importing customers...
                     </div>
                   )}
                   {exportCustomers.isPending && (
-                    <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                      <RefreshCw className="h-4 w-4 animate-spin" />
+                    <div className="flex items-center gap-2 text-xs sm:text-sm text-muted-foreground">
+                      <RefreshCw className="h-4 w-4 animate-spin shrink-0" />
                       Exporting customers...
                     </div>
                   )}
@@ -324,20 +328,20 @@ const QuickBooksSettings = () => {
 
               {/* Vendors Sync */}
               <Card>
-                <CardHeader>
-                  <CardTitle className="flex items-center gap-2 text-lg">
-                    <Truck className="h-5 w-5" />
+                <CardHeader className="p-4 sm:p-6">
+                  <CardTitle className="flex items-center gap-2 text-base sm:text-lg">
+                    <Truck className="h-4 w-4 sm:h-5 sm:w-5 shrink-0" />
                     Vendors Sync
                   </CardTitle>
-                  <CardDescription>
+                  <CardDescription className="text-xs sm:text-sm">
                     Sync vendors between CommandX and QuickBooks
                   </CardDescription>
                 </CardHeader>
-                <CardContent className="space-y-4">
+                <CardContent className="p-4 sm:p-6 pt-0 sm:pt-0 space-y-3 sm:space-y-4">
                   <div className="flex flex-col sm:flex-row gap-2">
                     <Button
                       variant="outline"
-                      className="flex-1 min-w-0"
+                      className="flex-1 min-w-0 min-h-[44px]"
                       onClick={handleImportVendors}
                       disabled={isSyncing}
                     >
@@ -346,7 +350,7 @@ const QuickBooksSettings = () => {
                     </Button>
                     <Button
                       variant="outline"
-                      className="flex-1 min-w-0"
+                      className="flex-1 min-w-0 min-h-[44px]"
                       onClick={handleExportVendors}
                       disabled={isSyncing}
                     >
@@ -356,8 +360,8 @@ const QuickBooksSettings = () => {
                   </div>
                   {importVendors.isPending && vendorImportProgress && (
                     <div className="space-y-2">
-                      <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                        <RefreshCw className="h-4 w-4 animate-spin" />
+                      <div className="flex items-center gap-2 text-xs sm:text-sm text-muted-foreground">
+                        <RefreshCw className="h-4 w-4 animate-spin shrink-0" />
                         Importing vendors... ({vendorImportProgress.processed}/
                         {vendorImportProgress.total})
                       </div>
@@ -379,8 +383,8 @@ const QuickBooksSettings = () => {
                   )}
                   {exportVendors.isPending && vendorExportProgress && (
                     <div className="space-y-2">
-                      <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                        <RefreshCw className="h-4 w-4 animate-spin" />
+                      <div className="flex items-center gap-2 text-xs sm:text-sm text-muted-foreground">
+                        <RefreshCw className="h-4 w-4 animate-spin shrink-0" />
                         Exporting vendors... ({vendorExportProgress.processed}/
                         {vendorExportProgress.total})
                       </div>
@@ -407,35 +411,42 @@ const QuickBooksSettings = () => {
             {/* Conflicts */}
             {conflicts && conflicts.length > 0 && (
               <Card className="border-orange-500/50">
-                <CardHeader>
-                  <CardTitle className="flex items-center gap-2 text-lg text-orange-600">
-                    <AlertTriangle className="h-5 w-5" />
+                <CardHeader className="p-4 sm:p-6">
+                  <CardTitle className="flex items-center gap-2 text-base sm:text-lg text-orange-600">
+                    <AlertTriangle className="h-4 w-4 sm:h-5 sm:w-5 shrink-0" />
                     Price Conflicts ({conflicts.length})
                   </CardTitle>
-                  <CardDescription>
+                  <CardDescription className="text-xs sm:text-sm">
                     These products have different prices in CommandX and
                     QuickBooks. Click to resolve.
                   </CardDescription>
                 </CardHeader>
-                <CardContent>
+                <CardContent className="p-4 sm:p-6 pt-0 sm:pt-0">
                   <div className="space-y-2">
                     {conflicts.map((conflict: any) => (
                       <div
                         key={conflict.id}
-                        className="flex items-center justify-between p-3 rounded-lg border hover:bg-muted/50 cursor-pointer"
+                        className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 sm:gap-3 p-3 rounded-lg border hover:bg-muted/50 cursor-pointer min-h-[44px] active:bg-muted/70"
                         onClick={() => setSelectedConflict(conflict)}
                       >
-                        <div>
-                          <p className="font-medium">
+                        <div className="min-w-0 flex-1">
+                          <p className="font-medium text-sm sm:text-base truncate">
                             {conflict.products?.name}
                           </p>
-                          <p className="text-sm text-muted-foreground">
-                            CommandX: $
-                            {conflict.conflict_data?.commandx_price?.toFixed(2)}{" "}
-                            | QuickBooks: $
-                            {conflict.conflict_data?.quickbooks_price?.toFixed(
-                              2
-                            )}
+                          <p className="text-xs sm:text-sm text-muted-foreground">
+                            <span className="inline-block">
+                              CommandX: $
+                              {conflict.conflict_data?.commandx_price?.toFixed(
+                                2
+                              )}
+                            </span>
+                            <span className="mx-1">|</span>
+                            <span className="inline-block">
+                              QB: $
+                              {conflict.conflict_data?.quickbooks_price?.toFixed(
+                                2
+                              )}
+                            </span>
                           </p>
                         </div>
                         <QuickBooksSyncBadge status="conflict" />
@@ -448,43 +459,45 @@ const QuickBooksSettings = () => {
 
             {/* Sync Log */}
             <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2 text-lg">
-                  <Clock className="h-5 w-5" />
+              <CardHeader className="p-4 sm:p-6">
+                <CardTitle className="flex items-center gap-2 text-base sm:text-lg">
+                  <Clock className="h-4 w-4 sm:h-5 sm:w-5 shrink-0" />
                   Recent Sync Activity
                 </CardTitle>
               </CardHeader>
-              <CardContent>
-                <ScrollArea className="h-[300px]">
+              <CardContent className="p-4 sm:p-6 pt-0 sm:pt-0">
+                <ScrollArea className="h-[250px] sm:h-[300px]">
                   {syncLogs && syncLogs.length > 0 ? (
                     <div className="space-y-2">
                       {syncLogs.map((log) => (
                         <div
                           key={log.id}
-                          className="flex items-center gap-3 p-2 rounded-lg border"
+                          className="flex items-start sm:items-center gap-2 sm:gap-3 p-2 sm:p-3 rounded-lg border"
                         >
                           {log.status === "success" ? (
-                            <CheckCircle className="h-4 w-4 text-green-500 shrink-0" />
+                            <CheckCircle className="h-4 w-4 text-green-500 shrink-0 mt-0.5 sm:mt-0" />
                           ) : log.status === "partial" ? (
-                            <AlertTriangle className="h-4 w-4 text-yellow-500 shrink-0" />
+                            <AlertTriangle className="h-4 w-4 text-yellow-500 shrink-0 mt-0.5 sm:mt-0" />
                           ) : (
-                            <XCircle className="h-4 w-4 text-red-500 shrink-0" />
+                            <XCircle className="h-4 w-4 text-red-500 shrink-0 mt-0.5 sm:mt-0" />
                           )}
                           <div className="flex-1 min-w-0">
-                            <p className="text-sm font-medium truncate">
+                            <p className="text-xs sm:text-sm font-medium truncate">
                               {log.action.charAt(0).toUpperCase() +
                                 log.action.slice(1)}{" "}
                               {log.entity_type}
                             </p>
-                            <p className="text-xs text-muted-foreground">
-                              {format(
-                                new Date(log.created_at),
-                                "MMM d, h:mm a"
-                              )}
+                            <p className="text-xs text-muted-foreground flex flex-wrap gap-x-1">
+                              <span>
+                                {format(
+                                  new Date(log.created_at),
+                                  "MMM d, h:mm a"
+                                )}
+                              </span>
                               {log.details &&
                                 typeof log.details === "object" &&
                                 "imported" in log.details && (
-                                  <span className="ml-2">
+                                  <span>
                                     • {(log.details as any).imported} imported,{" "}
                                     {(log.details as any).updated} updated
                                   </span>
@@ -495,7 +508,7 @@ const QuickBooksSettings = () => {
                       ))}
                     </div>
                   ) : (
-                    <div className="text-center py-8 text-muted-foreground">
+                    <div className="text-center py-6 sm:py-8 text-sm text-muted-foreground">
                       No sync activity yet
                     </div>
                   )}
@@ -507,20 +520,24 @@ const QuickBooksSettings = () => {
 
         {/* Help Section */}
         <Card>
-          <CardHeader>
-            <CardTitle className="text-lg">Setup Instructions</CardTitle>
+          <CardHeader className="p-4 sm:p-6">
+            <CardTitle className="text-base sm:text-lg">
+              Setup Instructions
+            </CardTitle>
           </CardHeader>
-          <CardContent className="space-y-4">
+          <CardContent className="p-4 sm:p-6 pt-0 sm:pt-0 space-y-3 sm:space-y-4">
             <div className="space-y-2">
-              <h4 className="font-medium">Before connecting:</h4>
-              <ol className="list-decimal list-inside text-sm text-muted-foreground space-y-1">
+              <h4 className="font-medium text-sm sm:text-base">
+                Before connecting:
+              </h4>
+              <ol className="list-decimal list-inside text-xs sm:text-sm text-muted-foreground space-y-1.5 sm:space-y-1">
                 <li>
                   Create a QuickBooks Developer account at developer.intuit.com
                 </li>
                 <li>Create an app and get your Client ID and Client Secret</li>
-                <li>
+                <li className="leading-relaxed">
                   Add your redirect URI:{" "}
-                  <code className="bg-muted px-1 rounded">
+                  <code className="bg-muted px-1.5 py-0.5 rounded text-xs break-all">
                     {window.location.origin}/settings/quickbooks
                   </code>
                 </li>
@@ -532,8 +549,10 @@ const QuickBooksSettings = () => {
             </div>
             <Separator />
             <div className="space-y-2">
-              <h4 className="font-medium">Sync behavior:</h4>
-              <ul className="list-disc list-inside text-sm text-muted-foreground space-y-1">
+              <h4 className="font-medium text-sm sm:text-base">
+                Sync behavior:
+              </h4>
+              <ul className="list-disc list-inside text-xs sm:text-sm text-muted-foreground space-y-1.5 sm:space-y-1">
                 <li>
                   Products sync two-way, with conflict detection for price
                   differences
