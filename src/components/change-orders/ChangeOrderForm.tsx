@@ -21,7 +21,13 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { Plus, Trash2, Save, X } from "lucide-react";
+import { Plus, Trash2, Save, X, ArrowRightLeft } from "lucide-react";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
 import { useProjects } from "@/integrations/supabase/hooks/useProjects";
 import { useCustomers } from "@/integrations/supabase/hooks/useCustomers";
 import { useProducts } from "@/integrations/supabase/hooks/useProducts";
@@ -46,6 +52,7 @@ interface LineItem {
   total: number;
   is_taxable: boolean;
   sort_order: number;
+  calculation_mode: 'forward' | 'reverse';
 }
 
 interface ChangeOrderFormProps {
@@ -87,6 +94,7 @@ export function ChangeOrderForm({
     initialData?.line_items?.map((item) => ({
       ...item,
       id: item.id,
+      calculation_mode: 'forward' as const,
     })) || []
   );
 
@@ -127,6 +135,7 @@ export function ChangeOrderForm({
         total: 0,
         is_taxable: true,
         sort_order: lineItems.length,
+        calculation_mode: 'forward',
       },
     ]);
   };
@@ -135,15 +144,50 @@ export function ChangeOrderForm({
     const updated = [...lineItems];
     updated[index] = { ...updated[index], [field]: value };
 
-    // Recalculate total
-    if (field === "quantity" || field === "unit_price" || field === "markup") {
-      const qty = field === "quantity" ? (value as number) : updated[index].quantity;
-      const price = field === "unit_price" ? (value as number) : updated[index].unit_price;
-      const markup = field === "markup" ? (value as number) : updated[index].markup;
-      updated[index].total = qty * price * (1 + markup / 100);
+    const qty = field === "quantity" ? (value as number) : updated[index].quantity;
+    const price = field === "unit_price" ? (value as number) : updated[index].unit_price;
+    const markup = field === "markup" ? (value as number) : updated[index].markup;
+    const total = field === "total" ? (value as number) : updated[index].total;
+    const mode = updated[index].calculation_mode;
+
+    if (mode === 'reverse') {
+      // Reverse mode: Keep total fixed, calculate unit_price
+      if (field === "total") {
+        const multiplier = qty * (1 + markup / 100);
+        updated[index].unit_price = multiplier > 0 ? (value as number) / multiplier : 0;
+        updated[index].total = value as number;
+      } else if (field === "quantity" || field === "markup") {
+        const newQty = field === "quantity" ? (value as number) : qty;
+        const newMarkup = field === "markup" ? (value as number) : markup;
+        const multiplier = newQty * (1 + newMarkup / 100);
+        updated[index].unit_price = multiplier > 0 ? total / multiplier : 0;
+      } else if (field === "unit_price") {
+        updated[index].total = qty * (value as number) * (1 + markup / 100);
+      }
+    } else {
+      // Forward mode: Calculate total from components
+      if (field === "quantity" || field === "unit_price" || field === "markup") {
+        updated[index].total = qty * price * (1 + markup / 100);
+      } else if (field === "total") {
+        const multiplier = qty * (1 + markup / 100);
+        updated[index].unit_price = multiplier > 0 ? (value as number) / multiplier : 0;
+        updated[index].total = value as number;
+      }
     }
 
     setLineItems(updated);
+  };
+
+  const toggleCalculationMode = (index: number) => {
+    const updated = [...lineItems];
+    updated[index].calculation_mode = updated[index].calculation_mode === 'forward' ? 'reverse' : 'forward';
+    setLineItems(updated);
+  };
+
+  const formatCalculationBreakdown = (item: LineItem) => {
+    const basePrice = item.quantity * item.unit_price;
+    const markupAmount = basePrice * (item.markup / 100);
+    return `$${item.unit_price.toFixed(2)} × ${item.quantity} = $${basePrice.toFixed(2)} + ${item.markup}% ($${markupAmount.toFixed(2)}) = $${item.total.toFixed(2)}`;
   };
 
   const removeLineItem = (index: number) => {
@@ -354,85 +398,137 @@ export function ChangeOrderForm({
                   <TableHead className="w-[100px]">Qty</TableHead>
                   <TableHead className="w-[120px]">Unit Price</TableHead>
                   <TableHead className="w-[100px]">Markup %</TableHead>
-                  <TableHead className="w-[120px]">Total</TableHead>
+                  <TableHead className="w-[140px]">Total</TableHead>
                   <TableHead className="w-[80px]">Taxable</TableHead>
+                  <TableHead className="w-[50px]">Mode</TableHead>
                   <TableHead className="w-[50px]"></TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {lineItems.map((item, index) => (
-                  <TableRow key={item.id}>
-                    <TableCell>
-                      <Select
-                        value={item.product_id || ""}
-                        onValueChange={(v) => selectProduct(index, v)}
-                      >
-                        <SelectTrigger className="w-full">
-                          <SelectValue placeholder="Select..." />
-                        </SelectTrigger>
-                        <SelectContent>
-                          {products?.map((product) => (
-                            <SelectItem key={product.id} value={product.id}>
-                              {product.name}
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                    </TableCell>
-                    <TableCell>
-                      <Input
-                        value={item.description}
-                        onChange={(e) => updateLineItem(index, "description", e.target.value)}
-                        placeholder="Description"
-                      />
-                    </TableCell>
-                    <TableCell>
-                      <CalculatorInput
-                        value={item.quantity}
-                        onValueChange={(value) => updateLineItem(index, "quantity", value)}
-                        decimalPlaces={2}
-                      />
-                    </TableCell>
-                    <TableCell>
-                      <CalculatorInput
-                        value={item.unit_price}
-                        onValueChange={(value) => updateLineItem(index, "unit_price", value)}
-                        placeholder="0.00"
-                      />
-                    </TableCell>
-                    <TableCell>
-                      <CalculatorInput
-                        value={item.markup}
-                        onValueChange={(value) => updateLineItem(index, "markup", value)}
-                        decimalPlaces={2}
-                      />
-                    </TableCell>
-                    <TableCell className="font-medium">
-                      ${item.total.toFixed(2)}
-                    </TableCell>
-                    <TableCell>
-                      <input
-                        type="checkbox"
-                        checked={item.is_taxable}
-                        onChange={(e) => updateLineItem(index, "is_taxable", e.target.checked)}
-                        className="h-4 w-4"
-                      />
-                    </TableCell>
-                    <TableCell>
-                      <Button
-                        type="button"
-                        variant="ghost"
-                        size="icon"
-                        onClick={() => removeLineItem(index)}
-                      >
-                        <Trash2 className="h-4 w-4 text-destructive" />
-                      </Button>
-                    </TableCell>
-                  </TableRow>
-                ))}
+                <TooltipProvider>
+                  {lineItems.map((item, index) => (
+                    <>
+                      <TableRow key={item.id}>
+                        <TableCell>
+                          <Select
+                            value={item.product_id || ""}
+                            onValueChange={(v) => selectProduct(index, v)}
+                          >
+                            <SelectTrigger className="w-full">
+                              <SelectValue placeholder="Select..." />
+                            </SelectTrigger>
+                            <SelectContent>
+                              {products?.map((product) => (
+                                <SelectItem key={product.id} value={product.id}>
+                                  {product.name}
+                                </SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                        </TableCell>
+                        <TableCell>
+                          <Input
+                            value={item.description}
+                            onChange={(e) => updateLineItem(index, "description", e.target.value)}
+                            placeholder="Description"
+                          />
+                        </TableCell>
+                        <TableCell>
+                          <CalculatorInput
+                            value={item.quantity}
+                            onValueChange={(value) => updateLineItem(index, "quantity", value)}
+                            decimalPlaces={2}
+                          />
+                        </TableCell>
+                        <TableCell>
+                          <div className="relative">
+                            <CalculatorInput
+                              value={item.unit_price}
+                              onValueChange={(value) => updateLineItem(index, "unit_price", value)}
+                              placeholder="0.00"
+                              className={item.calculation_mode === 'reverse' ? 'bg-muted/50' : ''}
+                            />
+                            {item.calculation_mode === 'reverse' && (
+                              <span className="absolute -top-1 -right-1 w-2 h-2 bg-primary rounded-full" />
+                            )}
+                          </div>
+                        </TableCell>
+                        <TableCell>
+                          <CalculatorInput
+                            value={item.markup}
+                            onValueChange={(value) => updateLineItem(index, "markup", value)}
+                            decimalPlaces={2}
+                          />
+                        </TableCell>
+                        <TableCell>
+                          <div className="relative">
+                            <CalculatorInput
+                              value={item.total}
+                              onValueChange={(value) => updateLineItem(index, "total", value)}
+                              decimalPlaces={2}
+                              className={item.calculation_mode === 'forward' ? 'bg-muted/50' : ''}
+                            />
+                            {item.calculation_mode === 'forward' && (
+                              <span className="absolute -top-1 -right-1 w-2 h-2 bg-primary rounded-full" />
+                            )}
+                          </div>
+                        </TableCell>
+                        <TableCell>
+                          <input
+                            type="checkbox"
+                            checked={item.is_taxable}
+                            onChange={(e) => updateLineItem(index, "is_taxable", e.target.checked)}
+                            className="h-4 w-4"
+                          />
+                        </TableCell>
+                        <TableCell>
+                          <Tooltip>
+                            <TooltipTrigger asChild>
+                              <Button
+                                type="button"
+                                variant={item.calculation_mode === 'reverse' ? 'secondary' : 'ghost'}
+                                size="icon"
+                                onClick={() => toggleCalculationMode(index)}
+                                className="h-8 w-8"
+                              >
+                                <ArrowRightLeft className="h-4 w-4" />
+                              </Button>
+                            </TooltipTrigger>
+                            <TooltipContent>
+                              <p className="text-xs">
+                                {item.calculation_mode === 'forward' 
+                                  ? 'Forward: Unit Price → Total' 
+                                  : 'Reverse: Total → Unit Price'}
+                              </p>
+                              <p className="text-xs text-muted-foreground">Click to toggle</p>
+                            </TooltipContent>
+                          </Tooltip>
+                        </TableCell>
+                        <TableCell>
+                          <Button
+                            type="button"
+                            variant="ghost"
+                            size="icon"
+                            onClick={() => removeLineItem(index)}
+                          >
+                            <Trash2 className="h-4 w-4 text-destructive" />
+                          </Button>
+                        </TableCell>
+                      </TableRow>
+                      {/* Calculation breakdown row */}
+                      <TableRow key={`${item.id}-breakdown`} className="bg-muted/30 hover:bg-muted/30">
+                        <TableCell colSpan={10} className="py-1 text-xs text-muted-foreground">
+                          <span className="ml-2">
+                            {formatCalculationBreakdown(item)}
+                          </span>
+                        </TableCell>
+                      </TableRow>
+                    </>
+                  ))}
+                </TooltipProvider>
                 {lineItems.length === 0 && (
                   <TableRow>
-                    <TableCell colSpan={8} className="text-center text-muted-foreground py-8">
+                    <TableCell colSpan={10} className="text-center text-muted-foreground py-8">
                       No line items added. Click "Add Item" to add products or services.
                     </TableCell>
                   </TableRow>
