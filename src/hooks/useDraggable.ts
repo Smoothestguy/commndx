@@ -15,22 +15,46 @@ export function useDraggable(options: DraggableOptions = {}) {
   const { storageKey, bounds = {} } = options;
   const { top = 0, right = 0, bottom = 0, left = 0 } = bounds;
 
+  const getDefaultPosition = useCallback((): Position => {
+    return {
+      x: typeof window !== "undefined" ? window.innerWidth - 80 : 300,
+      y: 80, // Default to top area for better visibility
+    };
+  }, []);
+
+  const isValidPosition = useCallback((x: number, y: number): boolean => {
+    if (typeof window === "undefined") return false;
+    return (
+      typeof x === 'number' &&
+      typeof y === 'number' &&
+      !isNaN(x) &&
+      !isNaN(y) &&
+      x >= 0 &&
+      x <= window.innerWidth - 56 &&
+      y >= 0 &&
+      y <= window.innerHeight - 56
+    );
+  }, []);
+
   const [position, setPosition] = useState<Position>(() => {
+    const defaultPosition = getDefaultPosition();
+
     if (storageKey && typeof window !== "undefined") {
       const saved = localStorage.getItem(storageKey);
       if (saved) {
         try {
-          return JSON.parse(saved);
+          const parsed = JSON.parse(saved);
+          if (isValidPosition(parsed.x, parsed.y)) {
+            return parsed;
+          }
+          // Invalid position, remove from storage
+          localStorage.removeItem(storageKey);
         } catch {
-          // Invalid JSON, use default
+          localStorage.removeItem(storageKey);
         }
       }
     }
-    // Default to bottom-right corner
-    return {
-      x: typeof window !== "undefined" ? window.innerWidth - 80 : 0,
-      y: typeof window !== "undefined" ? window.innerHeight - 100 : 0,
-    };
+    return defaultPosition;
   });
 
   const [isDragging, setIsDragging] = useState(false);
@@ -45,8 +69,8 @@ export function useDraggable(options: DraggableOptions = {}) {
 
   const constrainPosition = useCallback(
     (x: number, y: number): Position => {
-      const maxX = window.innerWidth - 56 - right; // 56px button width
-      const maxY = window.innerHeight - 56 - bottom; // 56px button height
+      const maxX = window.innerWidth - 56 - right;
+      const maxY = window.innerHeight - 56 - bottom;
       return {
         x: Math.max(left, Math.min(x, maxX)),
         y: Math.max(top, Math.min(y, maxY)),
@@ -54,6 +78,22 @@ export function useDraggable(options: DraggableOptions = {}) {
     },
     [top, right, bottom, left]
   );
+
+  // Handle window resize to keep button visible
+  useEffect(() => {
+    const handleResize = () => {
+      setPosition(prev => {
+        const constrained = constrainPosition(prev.x, prev.y);
+        if (storageKey) {
+          localStorage.setItem(storageKey, JSON.stringify(constrained));
+        }
+        return constrained;
+      });
+    };
+
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, [constrainPosition, storageKey]);
 
   const handleMove = useCallback(
     (clientX: number, clientY: number) => {
