@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { useInvitationByToken } from "@/integrations/supabase/hooks/usePortal";
@@ -7,7 +7,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { toast } from "sonner";
-import { Loader2, CheckCircle, XCircle, User } from "lucide-react";
+import { Loader2, XCircle, User } from "lucide-react";
 
 export default function AcceptPortalInvitation() {
   const { token } = useParams<{ token: string }>();
@@ -34,59 +34,23 @@ export default function AcceptPortalInvitation() {
       return;
     }
     
-    if (!invitation) return;
+    if (!invitation || !token) return;
     
     setLoading(true);
 
     try {
-      // Create the auth user
-      const { data: signUpData, error: signUpError } = await supabase.auth.signUp({
-        email: invitation.email,
-        password,
-        options: {
-          emailRedirectTo: `${window.location.origin}/portal`,
-          data: {
-            first_name: invitation.personnel?.first_name,
-            last_name: invitation.personnel?.last_name,
-          },
-        },
+      // Call the edge function to handle account creation
+      const { data, error } = await supabase.functions.invoke("accept-portal-invitation", {
+        body: { token, password },
       });
 
-      if (signUpError) throw signUpError;
-      if (!signUpData.user) throw new Error("Failed to create user");
+      if (error) throw error;
+      if (data?.error) throw new Error(data.error);
 
-      // Link personnel to auth user
-      const { error: linkError } = await supabase
-        .from("personnel")
-        .update({ user_id: signUpData.user.id })
-        .eq("id", invitation.personnel_id);
-
-      if (linkError) throw linkError;
-
-      // Assign personnel role
-      const { error: roleError } = await supabase
-        .from("user_roles")
-        .insert({
-          user_id: signUpData.user.id,
-          role: "personnel" as any,
-        });
-
-      if (roleError) throw roleError;
-
-      // Mark invitation as accepted
-      const { error: inviteError } = await supabase
-        .from("personnel_invitations")
-        .update({
-          status: "accepted",
-          accepted_at: new Date().toISOString(),
-        })
-        .eq("id", invitation.id);
-
-      if (inviteError) throw inviteError;
-
-      toast.success("Account created successfully! Please check your email to verify.");
+      toast.success("Account created successfully! You can now sign in.");
       navigate("/portal/login");
     } catch (error: any) {
+      console.error("Account creation error:", error);
       toast.error(error.message || "Failed to create account");
     } finally {
       setLoading(false);
