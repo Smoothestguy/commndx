@@ -46,6 +46,8 @@ import { RelatedVendorBills } from "@/components/purchase-orders/RelatedVendorBi
 import { POAddendums } from "@/components/purchase-orders/POAddendums";
 import { formatCurrency } from "@/lib/utils";
 import { generatePurchaseOrderPDF, ProjectInfoForPDF } from "@/utils/purchaseOrderPdfExport";
+import { generateWorkOrderPDF, mapPurchaseOrderToWorkOrder } from "@/utils/workOrderPdfExport";
+import { FileText } from "lucide-react";
 
 const PurchaseOrderDetail = () => {
   const { id } = useParams();
@@ -161,6 +163,33 @@ const PurchaseOrderDetail = () => {
     } : undefined;
     
     generatePurchaseOrderPDF(purchaseOrder, addendums, projectInfo);
+  };
+
+  const handleDownloadWorkOrder = async () => {
+    if (!purchaseOrder) return;
+    
+    const workOrderData = mapPurchaseOrderToWorkOrder({
+      purchaseOrder: {
+        ...purchaseOrder,
+        line_items: purchaseOrder.line_items.map(item => ({
+          description: item.description,
+          quantity: Number(item.quantity),
+          unit_price: Number(item.unit_price),
+          total: Number(item.total),
+        })),
+      },
+      project: project ? {
+        address: project.address,
+        city: project.city,
+        state: project.state,
+        zip: project.zip,
+        poc_name: project.poc_name,
+        poc_phone: project.poc_phone,
+      } : null,
+      installationInstructions: purchaseOrder.notes || undefined,
+    });
+    
+    await generateWorkOrderPDF(workOrderData);
   };
 
   const handleDuplicate = () => {
@@ -293,6 +322,10 @@ const PurchaseOrderDetail = () => {
                   Duplicate
                 </DropdownMenuItem>
               )}
+              <DropdownMenuItem onClick={handleDownloadWorkOrder}>
+                <FileText className="mr-2 h-4 w-4" /> 
+                Download Work Order
+              </DropdownMenuItem>
               {canApprove && (
                 <DropdownMenuItem onClick={() => handleApprove(false)} disabled={isApproving}>
                   <XCircle className="mr-2 h-4 w-4" /> 
