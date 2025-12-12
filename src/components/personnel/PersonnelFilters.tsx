@@ -33,20 +33,18 @@ export const PersonnelFilters = ({
 
   return (
     <div className="flex flex-col gap-2 sm:gap-3">
-      {/* Search - full width on mobile */}
-      <div className="w-full">
-        <SearchInput
-          placeholder="Search name, email, ID..."
-          value={search}
-          onChange={onSearchChange}
-          className="min-h-[44px] sm:min-h-[40px]"
-        />
-      </div>
+      {/* Search - full width */}
+      <SearchInput
+        placeholder="Search name, email, ID..."
+        value={search}
+        onChange={onSearchChange}
+        className="min-h-[44px] sm:min-h-[40px] w-full"
+      />
 
-      {/* Filters row - scrollable on mobile */}
-      <div className="flex gap-2 overflow-x-auto pb-1 sm:pb-0 sm:flex-wrap">
+      {/* Filters - grid on mobile (2 columns), flex row on desktop */}
+      <div className="grid grid-cols-2 gap-2 sm:flex sm:flex-wrap sm:gap-3">
         <Select value={status} onValueChange={onStatusChange}>
-          <SelectTrigger className="min-w-[110px] sm:w-[140px] md:w-[160px] min-h-[44px] sm:min-h-[40px] text-xs sm:text-sm shrink-0">
+          <SelectTrigger className="w-full sm:w-[140px] md:w-[160px] min-h-[44px] sm:min-h-[40px] text-xs sm:text-sm">
             <SelectValue placeholder="Status" />
           </SelectTrigger>
           <SelectContent>
@@ -58,7 +56,7 @@ export const PersonnelFilters = ({
         </Select>
 
         <Select value={everifyStatus} onValueChange={onEverifyStatusChange}>
-          <SelectTrigger className="min-w-[110px] sm:w-[140px] md:w-[160px] min-h-[44px] sm:min-h-[40px] text-xs sm:text-sm shrink-0">
+          <SelectTrigger className="w-full sm:w-[140px] md:w-[160px] min-h-[44px] sm:min-h-[40px] text-xs sm:text-sm">
             <SelectValue placeholder="E-Verify" />
           </SelectTrigger>
           <SelectContent>
@@ -73,7 +71,7 @@ export const PersonnelFilters = ({
 
         {onVendorChange && (
           <Select value={vendorId || "all"} onValueChange={onVendorChange}>
-            <SelectTrigger className="min-w-[110px] sm:w-[140px] md:w-[160px] min-h-[44px] sm:min-h-[40px] text-xs sm:text-sm shrink-0">
+            <SelectTrigger className="w-full col-span-2 sm:col-span-1 sm:w-[140px] md:w-[160px] min-h-[44px] sm:min-h-[40px] text-xs sm:text-sm">
               <SelectValue placeholder="Vendor" />
             </SelectTrigger>
             <SelectContent>
