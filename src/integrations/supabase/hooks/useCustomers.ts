@@ -1,6 +1,8 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "../client";
 import { toast } from "sonner";
+import { useAuditLog, computeChanges } from "@/hooks/useAuditLog";
+import type { Json } from "../types";
 
 export interface Customer {
   id: string;
@@ -41,6 +43,7 @@ export const useCustomers = () => {
 
 export const useAddCustomer = () => {
   const queryClient = useQueryClient();
+  const { logAction } = useAuditLog();
 
   return useMutation({
     mutationFn: async (customer: Omit<Customer, "id" | "created_at" | "updated_at">) => {
@@ -51,6 +54,15 @@ export const useAddCustomer = () => {
         .single();
 
       if (error) throw error;
+
+      // Log the action
+      await logAction({
+        actionType: "create",
+        resourceType: "customer",
+        resourceId: data.id,
+        resourceNumber: data.name,
+        changesAfter: data as unknown as Json,
+      });
 
       // Auto-sync to QuickBooks if connected
       try {
@@ -63,7 +75,6 @@ export const useAddCustomer = () => {
         }
       } catch (qbError) {
         console.error("QuickBooks sync error (non-blocking):", qbError);
-        // Don't throw - QB sync failure shouldn't prevent customer creation
       }
 
       return data;
@@ -80,9 +91,17 @@ export const useAddCustomer = () => {
 
 export const useUpdateCustomer = () => {
   const queryClient = useQueryClient();
+  const { logAction } = useAuditLog();
 
   return useMutation({
     mutationFn: async ({ id, ...updates }: Partial<Customer> & { id: string }) => {
+      // Fetch current data for comparison
+      const { data: before } = await supabase
+        .from("customers")
+        .select("*")
+        .eq("id", id)
+        .single();
+
       const { data, error } = await supabase
         .from("customers")
         .update(updates)
@@ -91,6 +110,20 @@ export const useUpdateCustomer = () => {
         .single();
 
       if (error) throw error;
+
+      // Log the action with changes
+      const { changesBefore, changesAfter } = computeChanges(
+        before as Record<string, unknown>,
+        data as Record<string, unknown>
+      );
+      await logAction({
+        actionType: "update",
+        resourceType: "customer",
+        resourceId: id,
+        resourceNumber: data.name,
+        changesBefore,
+        changesAfter,
+      });
 
       // Auto-sync to QuickBooks if connected
       try {
@@ -119,12 +152,29 @@ export const useUpdateCustomer = () => {
 
 export const useDeleteCustomer = () => {
   const queryClient = useQueryClient();
+  const { logAction } = useAuditLog();
 
   return useMutation({
     mutationFn: async (id: string) => {
+      // Fetch current data for logging
+      const { data: before } = await supabase
+        .from("customers")
+        .select("*")
+        .eq("id", id)
+        .single();
+
       const { error } = await supabase.from("customers").delete().eq("id", id);
 
       if (error) throw error;
+
+      // Log the action
+      await logAction({
+        actionType: "delete",
+        resourceType: "customer",
+        resourceId: id,
+        resourceNumber: before?.name,
+        changesBefore: before as unknown as Json,
+      });
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["customers"] });

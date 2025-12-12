@@ -193,6 +193,68 @@ export type Database = {
         }
         Relationships: []
       }
+      audit_logs: {
+        Row: {
+          action_type: string
+          changes_after: Json | null
+          changes_before: Json | null
+          created_at: string
+          error_message: string | null
+          id: string
+          ip_address: string | null
+          metadata: Json | null
+          resource_id: string | null
+          resource_number: string | null
+          resource_type: string
+          success: boolean
+          user_agent: string | null
+          user_email: string
+          user_id: string | null
+        }
+        Insert: {
+          action_type: string
+          changes_after?: Json | null
+          changes_before?: Json | null
+          created_at?: string
+          error_message?: string | null
+          id?: string
+          ip_address?: string | null
+          metadata?: Json | null
+          resource_id?: string | null
+          resource_number?: string | null
+          resource_type: string
+          success?: boolean
+          user_agent?: string | null
+          user_email: string
+          user_id?: string | null
+        }
+        Update: {
+          action_type?: string
+          changes_after?: Json | null
+          changes_before?: Json | null
+          created_at?: string
+          error_message?: string | null
+          id?: string
+          ip_address?: string | null
+          metadata?: Json | null
+          resource_id?: string | null
+          resource_number?: string | null
+          resource_type?: string
+          success?: boolean
+          user_agent?: string | null
+          user_email?: string
+          user_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "audit_logs_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       badge_template_fields: {
         Row: {
           created_at: string | null
