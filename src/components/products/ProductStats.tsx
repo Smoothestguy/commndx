@@ -9,9 +9,8 @@ export function ProductStats({ products }: ProductStatsProps) {
   const productCount = products.filter((p) => p.item_type === "product").length;
   const serviceCount = products.filter((p) => p.item_type === "service").length;
   const laborCount = products.filter((p) => p.item_type === "labor").length;
-  const highestPrice = products.length > 0
-    ? Math.max(...products.map((p) => p.price))
-    : 0;
+  const highestPrice =
+    products.length > 0 ? Math.max(...products.map((p) => p.price)) : 0;
 
   const stats = [
     {
@@ -41,20 +40,24 @@ export function ProductStats({ products }: ProductStatsProps) {
   ];
 
   return (
-    <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4 mb-6">
+    <div className="grid gap-3 sm:gap-4 grid-cols-2 lg:grid-cols-4 mb-4 sm:mb-6">
       {stats.map((stat, index) => {
         const Icon = stat.icon;
         return (
           <div
             key={stat.label}
-            className="glass rounded-lg p-4 animate-fade-in"
+            className="glass rounded-lg p-3 sm:p-4 animate-fade-in"
             style={{ animationDelay: `${index * 50}ms` }}
           >
-            <div className="flex items-center justify-between mb-2">
-              <p className="text-sm text-muted-foreground">{stat.label}</p>
-              <Icon className={`h-4 w-4 ${stat.color}`} />
+            <div className="flex items-center justify-between mb-1 sm:mb-2">
+              <p className="text-xs sm:text-sm text-muted-foreground truncate">
+                {stat.label}
+              </p>
+              <Icon
+                className={`h-3 w-3 sm:h-4 sm:w-4 shrink-0 ${stat.color}`}
+              />
             </div>
-            <p className="text-2xl font-heading font-bold text-foreground">
+            <p className="text-lg sm:text-2xl font-heading font-bold text-foreground truncate">
               {stat.value}
             </p>
           </div>

@@ -11,7 +11,18 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Plus, Edit, Trash2, Loader2, Package, Wrench, HardHat, Cloud, RefreshCw, X } from "lucide-react";
+import {
+  Plus,
+  Edit,
+  Trash2,
+  Loader2,
+  Package,
+  Wrench,
+  HardHat,
+  Cloud,
+  RefreshCw,
+  X,
+} from "lucide-react";
 import { SearchInput } from "@/components/ui/search-input";
 import { PullToRefreshWrapper } from "@/components/shared/PullToRefreshWrapper";
 import {
@@ -22,7 +33,15 @@ import {
 } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
-import { useProducts, useAddProduct, useUpdateProduct, useDeleteProduct, useDeleteProducts, Product, ItemType } from "@/integrations/supabase/hooks/useProducts";
+import {
+  useProducts,
+  useAddProduct,
+  useUpdateProduct,
+  useDeleteProduct,
+  useDeleteProducts,
+  Product,
+  ItemType,
+} from "@/integrations/supabase/hooks/useProducts";
 import { BulkEditProductsDialog } from "@/components/products/BulkEditProductsDialog";
 import {
   AlertDialog,
@@ -34,27 +53,57 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import { useProductCategories, useAddProductCategory } from "@/integrations/supabase/hooks/useProductCategories";
-import { useProductUnits, useAddProductUnit } from "@/integrations/supabase/hooks/useProductUnits";
+import {
+  useProductCategories,
+  useAddProductCategory,
+} from "@/integrations/supabase/hooks/useProductCategories";
+import {
+  useProductUnits,
+  useAddProductUnit,
+} from "@/integrations/supabase/hooks/useProductUnits";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { ProductCard } from "@/components/products/ProductCard";
 import { ProductStats } from "@/components/products/ProductStats";
 import { ProductFilters } from "@/components/products/ProductFilters";
 import { ProductEmptyState } from "@/components/products/ProductEmptyState";
-import { useQuickBooksConfig, useImportProductsFromQB, useExportProductsToQB, useQuickBooksConflicts } from "@/integrations/supabase/hooks/useQuickBooks";
+import {
+  useQuickBooksConfig,
+  useImportProductsFromQB,
+  useExportProductsToQB,
+  useQuickBooksConflicts,
+} from "@/integrations/supabase/hooks/useQuickBooks";
 import { ProductConflictDialog } from "@/components/quickbooks/ProductConflictDialog";
 import { Badge } from "@/components/ui/badge";
 
-const typeConfig: Record<ItemType, { icon: typeof Package; label: string; defaultUnit: string; showSku: boolean }> = {
-  product: { icon: Package, label: "Product", defaultUnit: "each", showSku: true },
-  service: { icon: Wrench, label: "Service", defaultUnit: "each", showSku: false },
+const typeConfig: Record<
+  ItemType,
+  { icon: typeof Package; label: string; defaultUnit: string; showSku: boolean }
+> = {
+  product: {
+    icon: Package,
+    label: "Product",
+    defaultUnit: "each",
+    showSku: true,
+  },
+  service: {
+    icon: Wrench,
+    label: "Service",
+    defaultUnit: "each",
+    showSku: false,
+  },
   labor: { icon: HardHat, label: "Labor", defaultUnit: "hour", showSku: false },
 };
 
 const marginPresets = ["15", "20", "25", "30", "35", "40", "45", "50"];
 
 const Products = () => {
-  const { data: products, isLoading, error, refetch, isFetching } = useProducts();
+  const {
+    data: products,
+    isLoading,
+    error,
+    refetch,
+    isFetching,
+  } = useProducts();
   const { data: categories } = useProductCategories();
   const { data: units } = useProductUnits();
   const addProduct = useAddProduct();
@@ -64,20 +113,20 @@ const Products = () => {
   const addCategory = useAddProductCategory();
   const addUnit = useAddProductUnit();
   const isMobile = useIsMobile();
-  
+
   // QuickBooks hooks
   const { data: qbConfig } = useQuickBooksConfig();
   const { data: qbConflicts } = useQuickBooksConflicts();
   const importProducts = useImportProductsFromQB();
   const exportProducts = useExportProductsToQB();
   const [selectedConflict, setSelectedConflict] = useState<any>(null);
-  
+
   const [search, setSearch] = useState("");
   const [selectedCategory, setSelectedCategory] = useState("");
   const [selectedType, setSelectedType] = useState<ItemType | "">("");
   const [selectedLetter, setSelectedLetter] = useState("");
   const [sortKey, setSortKey] = useState<string>("");
-  const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('asc');
+  const [sortDirection, setSortDirection] = useState<"asc" | "desc">("asc");
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [editingProduct, setEditingProduct] = useState<Product | null>(null);
   const [formData, setFormData] = useState({
@@ -94,9 +143,11 @@ const Products = () => {
   const [showCustomMargin, setShowCustomMargin] = useState(false);
   const [showNewUnitInput, setShowNewUnitInput] = useState(false);
   const [newUnitName, setNewUnitName] = useState("");
-  
+
   // Bulk selection state
-  const [selectedProductIds, setSelectedProductIds] = useState<Set<string>>(new Set());
+  const [selectedProductIds, setSelectedProductIds] = useState<Set<string>>(
+    new Set()
+  );
   const [showBulkDeleteDialog, setShowBulkDeleteDialog] = useState(false);
   const [showBulkEditDialog, setShowBulkEditDialog] = useState(false);
 
@@ -104,7 +155,7 @@ const Products = () => {
   useEffect(() => {
     if (!editingProduct) {
       const config = typeConfig[formData.item_type];
-      setFormData(prev => ({
+      setFormData((prev) => ({
         ...prev,
         unit: config.defaultUnit,
         is_taxable: formData.item_type !== "labor", // Labor often non-taxable
@@ -112,14 +163,16 @@ const Products = () => {
     }
   }, [formData.item_type, editingProduct]);
 
-  const uniqueCategories = Array.from(new Set(products?.map((p) => p.category) || []));
+  const uniqueCategories = Array.from(
+    new Set(products?.map((p) => p.category) || [])
+  );
 
   // Get categories filtered by item type for the form dropdown (from dedicated table)
   const categoriesForType = useMemo(() => {
     if (!categories) return [];
     return categories
-      .filter(c => c.item_type === formData.item_type)
-      .map(c => c.name)
+      .filter((c) => c.item_type === formData.item_type)
+      .map((c) => c.name)
       .sort();
   }, [categories, formData.item_type]);
 
@@ -127,32 +180,36 @@ const Products = () => {
   const [showNewCategoryInput, setShowNewCategoryInput] = useState(false);
   const [newCategoryName, setNewCategoryName] = useState("");
 
-  const filteredProducts = products?.filter((p) => {
-    const matchesSearch = p.name.toLowerCase().includes(search.toLowerCase()) ||
-      p.category.toLowerCase().includes(search.toLowerCase());
-    const matchesCategory = !selectedCategory || p.category === selectedCategory;
-    const matchesType = !selectedType || p.item_type === selectedType;
-    
-    // Letter filter
-    let matchesLetter = true;
-    if (selectedLetter) {
-      const firstChar = p.name.charAt(0).toUpperCase();
-      matchesLetter = selectedLetter === '#' 
-        ? /[0-9]/.test(firstChar) 
-        : firstChar === selectedLetter;
-    }
-    
-    return matchesSearch && matchesCategory && matchesType && matchesLetter;
-  }) || [];
+  const filteredProducts =
+    products?.filter((p) => {
+      const matchesSearch =
+        p.name.toLowerCase().includes(search.toLowerCase()) ||
+        p.category.toLowerCase().includes(search.toLowerCase());
+      const matchesCategory =
+        !selectedCategory || p.category === selectedCategory;
+      const matchesType = !selectedType || p.item_type === selectedType;
+
+      // Letter filter
+      let matchesLetter = true;
+      if (selectedLetter) {
+        const firstChar = p.name.charAt(0).toUpperCase();
+        matchesLetter =
+          selectedLetter === "#"
+            ? /[0-9]/.test(firstChar)
+            : firstChar === selectedLetter;
+      }
+
+      return matchesSearch && matchesCategory && matchesType && matchesLetter;
+    }) || [];
 
   const sortedProducts = useMemo(() => {
     if (!sortKey) return filteredProducts;
-    
+
     return [...filteredProducts].sort((a, b) => {
-      const aVal = String((a as any)[sortKey] || '').toLowerCase();
-      const bVal = String((b as any)[sortKey] || '').toLowerCase();
-      
-      if (sortDirection === 'asc') {
+      const aVal = String((a as any)[sortKey] || "").toLowerCase();
+      const bVal = String((b as any)[sortKey] || "").toLowerCase();
+
+      if (sortDirection === "asc") {
         return aVal.localeCompare(bVal);
       } else {
         return bVal.localeCompare(aVal);
@@ -162,10 +219,10 @@ const Products = () => {
 
   const handleSort = (key: string) => {
     if (sortKey === key) {
-      setSortDirection(prev => prev === 'asc' ? 'desc' : 'asc');
+      setSortDirection((prev) => (prev === "asc" ? "desc" : "asc"));
     } else {
       setSortKey(key);
-      setSortDirection('asc');
+      setSortDirection("asc");
     }
   };
 
@@ -201,7 +258,9 @@ const Products = () => {
       key: "price",
       header: "Price",
       render: (item: Product) => (
-        <span className="font-semibold text-primary">${item.price.toFixed(2)}</span>
+        <span className="font-semibold text-primary">
+          ${item.price.toFixed(2)}
+        </span>
       ),
     },
     { key: "unit", header: "Unit" },
@@ -267,7 +326,7 @@ const Products = () => {
   };
 
   const handleSelectionChange = (id: string, checked: boolean) => {
-    setSelectedProductIds(prev => {
+    setSelectedProductIds((prev) => {
       const newSet = new Set(prev);
       if (checked) {
         newSet.add(id);
@@ -282,7 +341,7 @@ const Products = () => {
     e.preventDefault();
     const cost = parseFloat(formData.cost);
     const margin = parseFloat(formData.margin);
-    
+
     if (margin >= 100) {
       return;
     }
@@ -344,7 +403,7 @@ const Products = () => {
 
   return (
     <>
-      <SEO 
+      <SEO
         title="Products & Services"
         description="Manage your products, services, and labor items"
         keywords="product management, services, labor, pricing, inventory"
@@ -361,7 +420,7 @@ const Products = () => {
       >
         <PullToRefreshWrapper onRefresh={refetch} isRefreshing={isFetching}>
           {/* Search */}
-          <div className="mb-6 max-w-md">
+          <div className="mb-4 sm:mb-6 max-w-md">
             <SearchInput
               placeholder="Search products, services..."
               value={search}
@@ -372,13 +431,13 @@ const Products = () => {
 
           {/* Loading & Error States */}
           {isLoading && (
-            <div className="flex justify-center py-12">
-              <Loader2 className="h-8 w-8 animate-spin text-primary" />
+            <div className="flex justify-center py-8 sm:py-12">
+              <Loader2 className="h-6 w-6 sm:h-8 sm:w-8 animate-spin text-primary" />
             </div>
           )}
-          
+
           {error && (
-            <div className="text-center py-12 text-destructive">
+            <div className="text-center py-8 sm:py-12 text-sm sm:text-base text-destructive">
               Error loading products: {error.message}
             </div>
           )}
@@ -390,52 +449,62 @@ const Products = () => {
 
               {/* QuickBooks Sync Section */}
               {qbConfig?.is_connected && (
-                <div className="mb-6 p-4 rounded-lg border bg-card">
-                  <div className="flex flex-wrap items-center justify-between gap-4">
-                    <div className="flex items-center gap-3">
-                      <Cloud className="h-5 w-5 text-green-500" />
-                      <div>
-                        <p className="font-medium text-sm">QuickBooks Connected</p>
+                <div className="mb-4 sm:mb-6 p-3 sm:p-4 rounded-lg border bg-card">
+                  <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 sm:gap-4">
+                    <div className="flex items-center gap-2 sm:gap-3">
+                      <Cloud className="h-4 w-4 sm:h-5 sm:w-5 text-green-500 shrink-0" />
+                      <div className="min-w-0">
+                        <p className="font-medium text-xs sm:text-sm">
+                          QuickBooks Connected
+                        </p>
                         {qbConflicts && qbConflicts.length > 0 && (
                           <p className="text-xs text-orange-500">
-                            {qbConflicts.length} price conflict{qbConflicts.length > 1 ? 's' : ''} to resolve
+                            {qbConflicts.length} conflict
+                            {qbConflicts.length > 1 ? "s" : ""} to resolve
                           </p>
                         )}
                       </div>
                     </div>
-                    <div className="flex items-center gap-2">
+                    <div className="flex flex-wrap items-center gap-2">
                       {qbConflicts && qbConflicts.length > 0 && (
-                        <Button 
-                          variant="outline" 
+                        <Button
+                          variant="outline"
                           size="sm"
+                          className="min-h-[36px] sm:min-h-[32px] text-xs sm:text-sm"
                           onClick={() => setSelectedConflict(qbConflicts[0])}
                         >
-                          Resolve Conflicts
+                          Resolve
                         </Button>
                       )}
-                      <Button 
-                        variant="outline" 
+                      <Button
+                        variant="outline"
                         size="sm"
+                        className="min-h-[36px] sm:min-h-[32px] text-xs sm:text-sm"
                         onClick={() => importProducts.mutate()}
-                        disabled={importProducts.isPending || exportProducts.isPending}
+                        disabled={
+                          importProducts.isPending || exportProducts.isPending
+                        }
                       >
                         {importProducts.isPending ? (
-                          <RefreshCw className="h-4 w-4 mr-1 animate-spin" />
+                          <RefreshCw className="h-3 w-3 sm:h-4 sm:w-4 mr-1 animate-spin" />
                         ) : (
-                          <Cloud className="h-4 w-4 mr-1" />
+                          <Cloud className="h-3 w-3 sm:h-4 sm:w-4 mr-1" />
                         )}
                         Import
                       </Button>
-                      <Button 
-                        variant="outline" 
+                      <Button
+                        variant="outline"
                         size="sm"
+                        className="min-h-[36px] sm:min-h-[32px] text-xs sm:text-sm"
                         onClick={() => exportProducts.mutate()}
-                        disabled={importProducts.isPending || exportProducts.isPending}
+                        disabled={
+                          importProducts.isPending || exportProducts.isPending
+                        }
                       >
                         {exportProducts.isPending ? (
-                          <RefreshCw className="h-4 w-4 mr-1 animate-spin" />
+                          <RefreshCw className="h-3 w-3 sm:h-4 sm:w-4 mr-1 animate-spin" />
                         ) : (
-                          <Cloud className="h-4 w-4 mr-1" />
+                          <Cloud className="h-3 w-3 sm:h-4 sm:w-4 mr-1" />
                         )}
                         Export
                       </Button>
@@ -458,38 +527,42 @@ const Products = () => {
 
               {/* Bulk Actions Toolbar */}
               {selectedProductIds.size > 0 && (
-                <div className="flex items-center gap-4 p-4 bg-primary/10 border border-primary/20 rounded-lg mb-4 animate-fade-in">
-                  <span className="text-sm font-medium text-foreground">
-                    {selectedProductIds.size} item{selectedProductIds.size > 1 ? 's' : ''} selected
+                <div className="flex flex-col sm:flex-row sm:items-center gap-3 sm:gap-4 p-3 sm:p-4 bg-primary/10 border border-primary/20 rounded-lg mb-4 animate-fade-in">
+                  <span className="text-xs sm:text-sm font-medium text-foreground">
+                    {selectedProductIds.size} item
+                    {selectedProductIds.size > 1 ? "s" : ""} selected
                   </span>
-                  <div className="flex items-center gap-2 ml-auto">
+                  <div className="flex flex-wrap items-center gap-2 sm:ml-auto">
                     <Button
                       variant="outline"
                       size="sm"
+                      className="min-h-[36px] sm:min-h-[32px] text-xs sm:text-sm flex-1 sm:flex-none"
                       onClick={() => setShowBulkEditDialog(true)}
                     >
-                      <Edit className="h-4 w-4 mr-2" />
-                      Edit Selected
+                      <Edit className="h-3 w-3 sm:h-4 sm:w-4 mr-1 sm:mr-2 shrink-0" />
+                      Edit
                     </Button>
                     <Button
                       variant="destructive"
                       size="sm"
+                      className="min-h-[36px] sm:min-h-[32px] text-xs sm:text-sm flex-1 sm:flex-none"
                       onClick={() => setShowBulkDeleteDialog(true)}
                       disabled={deleteProducts.isPending}
                     >
                       {deleteProducts.isPending ? (
-                        <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                        <Loader2 className="h-3 w-3 sm:h-4 sm:w-4 mr-1 sm:mr-2 animate-spin shrink-0" />
                       ) : (
-                        <Trash2 className="h-4 w-4 mr-2" />
+                        <Trash2 className="h-3 w-3 sm:h-4 sm:w-4 mr-1 sm:mr-2 shrink-0" />
                       )}
-                      Delete Selected
+                      Delete
                     </Button>
                     <Button
                       variant="ghost"
                       size="sm"
+                      className="min-h-[36px] sm:min-h-[32px] text-xs sm:text-sm"
                       onClick={() => setSelectedProductIds(new Set())}
                     >
-                      <X className="h-4 w-4 mr-1" />
+                      <X className="h-3 w-3 sm:h-4 sm:w-4 mr-1 shrink-0" />
                       Clear
                     </Button>
                   </div>
@@ -500,10 +573,15 @@ const Products = () => {
               {filteredProducts.length === 0 ? (
                 <ProductEmptyState
                   onAddProduct={openNewDialog}
-                  hasFilters={search !== "" || selectedCategory !== "" || selectedType !== "" || selectedLetter !== ""}
+                  hasFilters={
+                    search !== "" ||
+                    selectedCategory !== "" ||
+                    selectedType !== "" ||
+                    selectedLetter !== ""
+                  }
                 />
               ) : isMobile ? (
-                <div className="grid gap-4 sm:grid-cols-2">
+                <div className="grid gap-3 sm:gap-4 grid-cols-1 sm:grid-cols-2">
                   {sortedProducts.map((product, index) => (
                     <ProductCard
                       key={product.id}
@@ -518,8 +596,8 @@ const Products = () => {
                   ))}
                 </div>
               ) : (
-                <DataTable 
-                  data={sortedProducts} 
+                <DataTable
+                  data={sortedProducts}
                   columns={columns}
                   selectable
                   selectedIds={selectedProductIds}
@@ -554,7 +632,9 @@ const Products = () => {
                       <button
                         key={type}
                         type="button"
-                        onClick={() => setFormData({ ...formData, item_type: type })}
+                        onClick={() =>
+                          setFormData({ ...formData, item_type: type })
+                        }
                         className={`flex flex-col items-center gap-2 p-4 rounded-lg border-2 transition-all ${
                           isSelected
                             ? "border-primary bg-primary/10 text-primary"
@@ -562,7 +642,9 @@ const Products = () => {
                         }`}
                       >
                         <Icon className="h-6 w-6" />
-                        <span className="text-sm font-medium">{config.label}</span>
+                        <span className="text-sm font-medium">
+                          {config.label}
+                        </span>
                       </button>
                     );
                   })}
@@ -577,18 +659,26 @@ const Products = () => {
                     <Input
                       id="sku"
                       value={formData.sku}
-                      onChange={(e) => setFormData({ ...formData, sku: e.target.value })}
+                      onChange={(e) =>
+                        setFormData({ ...formData, sku: e.target.value })
+                      }
                       placeholder="e.g., SHNG-001"
                       className="bg-secondary border-border"
                     />
                   </div>
                 )}
-                <div className={`space-y-2 ${!currentTypeConfig.showSku ? 'sm:col-span-2' : ''}`}>
+                <div
+                  className={`space-y-2 ${
+                    !currentTypeConfig.showSku ? "sm:col-span-2" : ""
+                  }`}
+                >
                   <Label htmlFor="name">Name *</Label>
                   <Input
                     id="name"
                     value={formData.name}
-                    onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+                    onChange={(e) =>
+                      setFormData({ ...formData, name: e.target.value })
+                    }
                     required
                     className="bg-secondary border-border"
                   />
@@ -619,7 +709,10 @@ const Products = () => {
                             {cat}
                           </SelectItem>
                         ))}
-                        <SelectItem value="__new__" className="text-primary font-medium">
+                        <SelectItem
+                          value="__new__"
+                          className="text-primary font-medium"
+                        >
                           + Add new category...
                         </SelectItem>
                       </SelectContent>
@@ -635,11 +728,14 @@ const Products = () => {
                         onKeyDown={async (e) => {
                           if (e.key === "Enter" && newCategoryName.trim()) {
                             e.preventDefault();
-                            await addCategory.mutateAsync({ 
-                              name: newCategoryName.trim(), 
-                              item_type: formData.item_type 
+                            await addCategory.mutateAsync({
+                              name: newCategoryName.trim(),
+                              item_type: formData.item_type,
                             });
-                            setFormData({ ...formData, category: newCategoryName.trim() });
+                            setFormData({
+                              ...formData,
+                              category: newCategoryName.trim(),
+                            });
                             setShowNewCategoryInput(false);
                             setNewCategoryName("");
                           } else if (e.key === "Escape") {
@@ -666,11 +762,14 @@ const Products = () => {
                           disabled={!newCategoryName.trim()}
                           onClick={async () => {
                             if (newCategoryName.trim()) {
-                              await addCategory.mutateAsync({ 
-                                name: newCategoryName.trim(), 
-                                item_type: formData.item_type 
+                              await addCategory.mutateAsync({
+                                name: newCategoryName.trim(),
+                                item_type: formData.item_type,
                               });
-                              setFormData({ ...formData, category: newCategoryName.trim() });
+                              setFormData({
+                                ...formData,
+                                category: newCategoryName.trim(),
+                              });
                               setShowNewCategoryInput(false);
                               setNewCategoryName("");
                             }
@@ -705,7 +804,10 @@ const Products = () => {
                             {unit.name}
                           </SelectItem>
                         ))}
-                        <SelectItem value="__new__" className="text-primary font-medium">
+                        <SelectItem
+                          value="__new__"
+                          className="text-primary font-medium"
+                        >
                           + Add new unit...
                         </SelectItem>
                       </SelectContent>
@@ -721,8 +823,13 @@ const Products = () => {
                         onKeyDown={async (e) => {
                           if (e.key === "Enter" && newUnitName.trim()) {
                             e.preventDefault();
-                            await addUnit.mutateAsync({ name: newUnitName.trim() });
-                            setFormData({ ...formData, unit: newUnitName.trim() });
+                            await addUnit.mutateAsync({
+                              name: newUnitName.trim(),
+                            });
+                            setFormData({
+                              ...formData,
+                              unit: newUnitName.trim(),
+                            });
                             setShowNewUnitInput(false);
                             setNewUnitName("");
                           } else if (e.key === "Escape") {
@@ -749,8 +856,13 @@ const Products = () => {
                           disabled={!newUnitName.trim()}
                           onClick={async () => {
                             if (newUnitName.trim()) {
-                              await addUnit.mutateAsync({ name: newUnitName.trim() });
-                              setFormData({ ...formData, unit: newUnitName.trim() });
+                              await addUnit.mutateAsync({
+                                name: newUnitName.trim(),
+                              });
+                              setFormData({
+                                ...formData,
+                                unit: newUnitName.trim(),
+                              });
                               setShowNewUnitInput(false);
                               setNewUnitName("");
                             }
@@ -769,7 +881,9 @@ const Products = () => {
                 <Input
                   id="description"
                   value={formData.description}
-                  onChange={(e) => setFormData({ ...formData, description: e.target.value })}
+                  onChange={(e) =>
+                    setFormData({ ...formData, description: e.target.value })
+                  }
                   className="bg-secondary border-border"
                 />
               </div>
@@ -782,7 +896,9 @@ const Products = () => {
                     type="number"
                     step="0.01"
                     value={formData.cost}
-                    onChange={(e) => setFormData({ ...formData, cost: e.target.value })}
+                    onChange={(e) =>
+                      setFormData({ ...formData, cost: e.target.value })
+                    }
                     required
                     className="bg-secondary border-border"
                   />
@@ -791,7 +907,11 @@ const Products = () => {
                   <Label htmlFor="margin">Margin (%) *</Label>
                   {!showCustomMargin ? (
                     <Select
-                      value={marginPresets.includes(formData.margin) ? formData.margin : "__custom__"}
+                      value={
+                        marginPresets.includes(formData.margin)
+                          ? formData.margin
+                          : "__custom__"
+                      }
                       onValueChange={(value) => {
                         if (value === "__custom__") {
                           setShowCustomMargin(true);
@@ -809,7 +929,10 @@ const Products = () => {
                             {preset}%
                           </SelectItem>
                         ))}
-                        <SelectItem value="__custom__" className="text-primary font-medium">
+                        <SelectItem
+                          value="__custom__"
+                          className="text-primary font-medium"
+                        >
                           Custom...
                         </SelectItem>
                       </SelectContent>
@@ -821,7 +944,9 @@ const Products = () => {
                         type="number"
                         max="99.99"
                         value={formData.margin}
-                        onChange={(e) => setFormData({ ...formData, margin: e.target.value })}
+                        onChange={(e) =>
+                          setFormData({ ...formData, margin: e.target.value })
+                        }
                         required
                         autoFocus
                         className="bg-secondary border-border"
@@ -846,37 +971,57 @@ const Products = () => {
 
               {/* Taxable Toggle */}
               <div className="flex items-center justify-between">
-                <Label htmlFor="is_taxable" className="cursor-pointer">Taxable</Label>
+                <Label htmlFor="is_taxable" className="cursor-pointer">
+                  Taxable
+                </Label>
                 <Switch
                   id="is_taxable"
                   checked={formData.is_taxable}
-                  onCheckedChange={(checked) => setFormData({ ...formData, is_taxable: checked })}
+                  onCheckedChange={(checked) =>
+                    setFormData({ ...formData, is_taxable: checked })
+                  }
                 />
               </div>
 
               {/* Calculated Price */}
-              {formData.cost && formData.margin && parseFloat(formData.margin) < 100 && (
-                <div className="p-3 rounded-lg bg-primary/10 border border-primary/20">
-                  <p className="text-sm text-muted-foreground">Calculated Price:</p>
-                  <p className="text-2xl font-heading font-bold text-primary">
-                    ${(parseFloat(formData.margin) > 0 
-                      ? parseFloat(formData.cost) / (1 - parseFloat(formData.margin) / 100) 
-                      : parseFloat(formData.cost)
-                    ).toFixed(2)}
-                    <span className="text-sm font-normal text-muted-foreground ml-1">/ {formData.unit || currentTypeConfig.defaultUnit}</span>
-                  </p>
-                </div>
-              )}
+              {formData.cost &&
+                formData.margin &&
+                parseFloat(formData.margin) < 100 && (
+                  <div className="p-3 rounded-lg bg-primary/10 border border-primary/20">
+                    <p className="text-sm text-muted-foreground">
+                      Calculated Price:
+                    </p>
+                    <p className="text-2xl font-heading font-bold text-primary">
+                      $
+                      {(parseFloat(formData.margin) > 0
+                        ? parseFloat(formData.cost) /
+                          (1 - parseFloat(formData.margin) / 100)
+                        : parseFloat(formData.cost)
+                      ).toFixed(2)}
+                      <span className="text-sm font-normal text-muted-foreground ml-1">
+                        / {formData.unit || currentTypeConfig.defaultUnit}
+                      </span>
+                    </p>
+                  </div>
+                )}
               {formData.margin && parseFloat(formData.margin) >= 100 && (
-                <p className="text-sm text-destructive">Margin must be less than 100%</p>
+                <p className="text-sm text-destructive">
+                  Margin must be less than 100%
+                </p>
               )}
 
               <div className="flex justify-end gap-3 pt-2">
-                <Button type="button" variant="outline" onClick={() => setIsDialogOpen(false)}>
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={() => setIsDialogOpen(false)}
+                >
                   Cancel
                 </Button>
                 <Button type="submit" variant="glow">
-                  {editingProduct ? "Save Changes" : `Add ${currentTypeConfig.label}`}
+                  {editingProduct
+                    ? "Save Changes"
+                    : `Add ${currentTypeConfig.label}`}
                 </Button>
               </div>
             </form>
@@ -891,12 +1036,19 @@ const Products = () => {
         />
 
         {/* Bulk Delete Confirmation Dialog */}
-        <AlertDialog open={showBulkDeleteDialog} onOpenChange={setShowBulkDeleteDialog}>
+        <AlertDialog
+          open={showBulkDeleteDialog}
+          onOpenChange={setShowBulkDeleteDialog}
+        >
           <AlertDialogContent>
             <AlertDialogHeader>
-              <AlertDialogTitle>Delete {selectedProductIds.size} item{selectedProductIds.size > 1 ? 's' : ''}?</AlertDialogTitle>
+              <AlertDialogTitle>
+                Delete {selectedProductIds.size} item
+                {selectedProductIds.size > 1 ? "s" : ""}?
+              </AlertDialogTitle>
               <AlertDialogDescription>
-                This action cannot be undone. The selected items will be permanently deleted.
+                This action cannot be undone. The selected items will be
+                permanently deleted.
               </AlertDialogDescription>
             </AlertDialogHeader>
             <AlertDialogFooter>
