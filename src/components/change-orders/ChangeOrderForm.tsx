@@ -40,6 +40,7 @@ import {
   useUpdateChangeOrder,
   ChangeOrderLineItem,
   ChangeOrderWithLineItems,
+  ChangeType,
 } from "@/integrations/supabase/hooks/useChangeOrders";
 
 interface LineItem {
@@ -90,6 +91,7 @@ export function ChangeOrderForm({
   const [reason, setReason] = useState(initialData?.reason || "");
   const [description, setDescription] = useState(initialData?.description || "");
   const [taxRate, setTaxRate] = useState(initialData?.tax_rate || companySettings?.default_tax_rate || 0);
+  const [changeType, setChangeType] = useState<ChangeType>(initialData?.change_type || "additive");
   const [lineItems, setLineItems] = useState<LineItem[]>(
     initialData?.line_items?.map((item) => ({
       ...item,
@@ -229,6 +231,7 @@ export function ChangeOrderForm({
       reason,
       description: description || undefined,
       tax_rate: taxRate,
+      change_type: changeType,
       line_items: lineItems.map(({ id, ...item }, index) => ({
         ...item,
         sort_order: index,
@@ -353,6 +356,19 @@ export function ChangeOrderForm({
                 onValueChange={(value) => setTaxRate(value)}
                 decimalPlaces={2}
               />
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="changeType">Change Type *</Label>
+              <Select value={changeType} onValueChange={(v) => setChangeType(v as ChangeType)} required>
+                <SelectTrigger>
+                  <SelectValue placeholder="Select type" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="additive">Additive (Add to Contract)</SelectItem>
+                  <SelectItem value="deductive">Deductive (Credit)</SelectItem>
+                </SelectContent>
+              </Select>
             </div>
           </div>
 

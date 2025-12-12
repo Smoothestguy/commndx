@@ -21,7 +21,10 @@ export function ProjectTMTicketsList({
 }: ProjectTMTicketsListProps) {
   const approvedTotal = tickets
     .filter(t => t.status === 'approved' || t.status === 'signed' || t.status === 'invoiced')
-    .reduce((sum, t) => sum + t.total, 0);
+    .reduce((sum, t) => {
+      const changeType = (t as any).change_type || 'additive';
+      return changeType === 'deductive' ? sum - t.total : sum + t.total;
+    }, 0);
 
   return (
     <Card className="glass border-border">
@@ -64,6 +67,11 @@ export function ProjectTMTicketsList({
                         Field
                       </span>
                     )}
+                    {(ticket as any).change_type === 'deductive' && (
+                      <span className="text-xs bg-destructive/20 text-destructive px-2 py-0.5 rounded">
+                        Credit
+                      </span>
+                    )}
                   </div>
                   <p className="text-sm text-muted-foreground truncate mt-1">
                     {ticket.description || "No description"}
@@ -73,8 +81,8 @@ export function ProjectTMTicketsList({
                   </p>
                 </div>
                 <div className="flex items-center gap-4">
-                  <span className="font-bold text-primary">
-                    {formatCurrency(ticket.total)}
+                  <span className={`font-bold ${(ticket as any).change_type === 'deductive' ? 'text-destructive' : 'text-primary'}`}>
+                    {(ticket as any).change_type === 'deductive' ? '-' : ''}{formatCurrency(ticket.total)}
                   </span>
                   <ExternalLink className="h-4 w-4 text-muted-foreground" />
                 </div>

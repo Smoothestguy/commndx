@@ -3,6 +3,7 @@ import { supabase } from "../client";
 import { toast } from "sonner";
 
 export type TMTicketStatus = 'draft' | 'pending_signature' | 'signed' | 'approved' | 'invoiced' | 'void';
+export type ChangeType = 'additive' | 'deductive';
 
 export interface TMTicketLineItem {
   id: string;
@@ -39,6 +40,7 @@ export interface TMTicket {
   tax_rate: number;
   tax_amount: number;
   total: number;
+  change_type: ChangeType;
   notes: string | null;
   created_by: string | null;
   created_at: string;
@@ -62,12 +64,13 @@ export const useTMTickets = () => {
           *,
           project:projects(name),
           customer:customers(name, company),
-          vendor:vendors(name)
+          vendor:vendors(name),
+          line_items:tm_ticket_line_items(*)
         `)
         .order("created_at", { ascending: false });
 
       if (error) throw error;
-      return data as TMTicketWithLineItems[];
+      return data as unknown as TMTicketWithLineItems[];
     },
   });
 };
@@ -84,13 +87,14 @@ export const useTMTicketsByProject = (projectId: string | undefined) => {
           *,
           project:projects(name),
           customer:customers(name, company),
-          vendor:vendors(name)
+          vendor:vendors(name),
+          line_items:tm_ticket_line_items(*)
         `)
         .eq("project_id", projectId)
         .order("created_at", { ascending: false });
 
       if (error) throw error;
-      return data as TMTicketWithLineItems[];
+      return data as unknown as TMTicketWithLineItems[];
     },
     enabled: !!projectId,
   });
@@ -165,6 +169,7 @@ interface AddTMTicketParams {
   customer_rep_email?: string;
   tax_rate: number;
   notes?: string;
+  change_type?: ChangeType;
   lineItems: {
     product_id?: string;
     description: string;
@@ -214,6 +219,7 @@ export const useAddTMTicket = () => {
           tax_amount,
           total,
           notes: params.notes || null,
+          change_type: params.change_type || 'additive',
         }])
         .select()
         .single();
