@@ -9,8 +9,6 @@ import {
   CollapsibleContent,
   CollapsibleTrigger,
 } from "@/components/ui/collapsible";
-import logo from "@/assets/logo.png";
-import { ThemeToggle } from "@/components/ThemeToggle";
 import {
   LayoutDashboard,
   Package,
@@ -20,7 +18,6 @@ import {
   FileText,
   Receipt,
   Settings,
-  ChevronRight,
   ChevronDown,
   Briefcase,
   ShoppingCart,
@@ -83,19 +80,10 @@ export function Sidebar() {
   }, [location.pathname]);
 
   return (
-    <aside className="hidden lg:block fixed left-0 top-0 z-40 h-screen w-64 bg-sidebar border-r border-sidebar-border">
+    <aside className="hidden lg:block fixed left-0 top-14 z-40 h-[calc(100vh-3.5rem)] w-64 bg-sidebar border-r border-sidebar-border">
       <div className="flex h-full flex-col">
-        {/* Logo */}
-        <div className="flex h-20 items-center justify-center px-6 border-b border-sidebar-border">
-          <img
-            src={logo}
-            alt="Command X"
-            className="h-10 w-full object-fill border-0 border-primary shadow-none"
-          />
-        </div>
-
         {/* Navigation */}
-        <nav className="flex-1 space-y-1 px-3 py-4 overflow-y-auto">
+        <nav className="flex-1 space-y-0.5 px-3 py-4 overflow-y-auto">
           {navigation.map((item) => {
             const isActive = location.pathname === item.href;
             return (
@@ -103,24 +91,21 @@ export function Sidebar() {
                 key={item.name}
                 to={item.href}
                 className={cn(
-                  "group flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-all duration-200",
+                  "group flex items-center gap-3 rounded-md px-3 py-2 text-sm font-medium transition-all duration-150",
                   isActive
-                    ? "bg-primary/10 text-primary"
-                    : "text-muted-foreground hover:bg-sidebar-accent hover:text-foreground"
+                    ? "bg-primary/15 text-primary border-l-4 border-primary -ml-0.5 pl-2.5"
+                    : "text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"
                 )}
               >
                 <item.icon
                   className={cn(
-                    "h-5 w-5 transition-colors",
+                    "h-4 w-4 transition-colors flex-shrink-0",
                     isActive
                       ? "text-primary"
-                      : "text-muted-foreground group-hover:text-foreground"
+                      : "text-sidebar-muted group-hover:text-sidebar-accent-foreground"
                   )}
                 />
-                {item.name}
-                {isActive && (
-                  <ChevronRight className="ml-auto h-4 w-4 text-primary" />
-                )}
+                <span className="truncate">{item.name}</span>
               </Link>
             );
           })}
@@ -128,7 +113,7 @@ export function Sidebar() {
           {/* Vendors Section */}
           <Collapsible open={vendorsOpen} onOpenChange={setVendorsOpen}>
             <div className="mt-4 pt-4 border-t border-sidebar-border">
-              <CollapsibleTrigger className="flex items-center justify-between w-full px-3 py-2 text-xs font-semibold text-muted-foreground uppercase tracking-wider hover:text-foreground transition-colors">
+              <CollapsibleTrigger className="flex items-center justify-between w-full px-3 py-2 text-xs font-semibold text-sidebar-muted uppercase tracking-wider hover:text-sidebar-foreground transition-colors">
                 <span>Vendors</span>
                 <ChevronDown
                   className={cn(
@@ -137,7 +122,7 @@ export function Sidebar() {
                   )}
                 />
               </CollapsibleTrigger>
-              <CollapsibleContent className="space-y-1">
+              <CollapsibleContent className="space-y-0.5 mt-1">
                 {vendorsNavigation.map((item) => {
                   const isActive = location.pathname === item.href || location.pathname.startsWith(item.href + "/");
                   return (
@@ -145,24 +130,21 @@ export function Sidebar() {
                       key={item.name}
                       to={item.href}
                       className={cn(
-                        "group flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-all duration-200",
+                        "group flex items-center gap-3 rounded-md px-3 py-2 text-sm font-medium transition-all duration-150",
                         isActive
-                          ? "bg-primary/10 text-primary"
-                          : "text-muted-foreground hover:bg-sidebar-accent hover:text-foreground"
+                          ? "bg-primary/15 text-primary border-l-4 border-primary -ml-0.5 pl-2.5"
+                          : "text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"
                       )}
                     >
                       <item.icon
                         className={cn(
-                          "h-5 w-5 transition-colors",
+                          "h-4 w-4 transition-colors flex-shrink-0",
                           isActive
                             ? "text-primary"
-                            : "text-muted-foreground group-hover:text-foreground"
+                            : "text-sidebar-muted group-hover:text-sidebar-accent-foreground"
                         )}
                       />
-                      {item.name}
-                      {isActive && (
-                        <ChevronRight className="ml-auto h-4 w-4 text-primary" />
-                      )}
+                      <span className="truncate">{item.name}</span>
                     </Link>
                   );
                 })}
@@ -173,7 +155,7 @@ export function Sidebar() {
           {/* Staffing Section */}
           <Collapsible open={staffingOpen} onOpenChange={setStaffingOpen}>
             <div className="mt-4 pt-4 border-t border-sidebar-border">
-              <CollapsibleTrigger className="flex items-center justify-between w-full px-3 py-2 text-xs font-semibold text-muted-foreground uppercase tracking-wider hover:text-foreground transition-colors">
+              <CollapsibleTrigger className="flex items-center justify-between w-full px-3 py-2 text-xs font-semibold text-sidebar-muted uppercase tracking-wider hover:text-sidebar-foreground transition-colors">
                 <span>Staffing</span>
                 <ChevronDown
                   className={cn(
@@ -182,7 +164,7 @@ export function Sidebar() {
                   )}
                 />
               </CollapsibleTrigger>
-              <CollapsibleContent className="space-y-1">
+              <CollapsibleContent className="space-y-0.5 mt-1">
                 {staffingNavigation.map((item) => {
                   if (item.requiresManager && !isAdmin && !isManager) return null;
                   const isActive = location.pathname === item.href;
@@ -191,24 +173,21 @@ export function Sidebar() {
                       key={item.name}
                       to={item.href}
                       className={cn(
-                        "group flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-all duration-200",
+                        "group flex items-center gap-3 rounded-md px-3 py-2 text-sm font-medium transition-all duration-150",
                         isActive
-                          ? "bg-primary/10 text-primary"
-                          : "text-muted-foreground hover:bg-sidebar-accent hover:text-foreground"
+                          ? "bg-primary/15 text-primary border-l-4 border-primary -ml-0.5 pl-2.5"
+                          : "text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"
                       )}
                     >
                       <item.icon
                         className={cn(
-                          "h-5 w-5 transition-colors",
+                          "h-4 w-4 transition-colors flex-shrink-0",
                           isActive
                             ? "text-primary"
-                            : "text-muted-foreground group-hover:text-foreground"
+                            : "text-sidebar-muted group-hover:text-sidebar-accent-foreground"
                         )}
                       />
-                      {item.name}
-                      {isActive && (
-                        <ChevronRight className="ml-auto h-4 w-4 text-primary" />
-                      )}
+                      <span className="truncate">{item.name}</span>
                     </Link>
                   );
                 })}
@@ -220,7 +199,7 @@ export function Sidebar() {
         {/* Account Section */}
         <div className="border-t border-sidebar-border p-3">
           <Collapsible open={accountOpen} onOpenChange={setAccountOpen}>
-            <CollapsibleTrigger className="flex items-center justify-between w-full px-3 py-2 text-xs font-semibold text-muted-foreground uppercase tracking-wider hover:text-foreground transition-colors">
+            <CollapsibleTrigger className="flex items-center justify-between w-full px-3 py-2 text-xs font-semibold text-sidebar-muted uppercase tracking-wider hover:text-sidebar-foreground transition-colors">
               <span>Account</span>
               <ChevronDown
                 className={cn(
@@ -229,49 +208,40 @@ export function Sidebar() {
                 )}
               />
             </CollapsibleTrigger>
-            <CollapsibleContent className="space-y-1">
-              {user && (
-                <div className="flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium text-muted-foreground">
-                  <span className="truncate">{user.email}</span>
-                </div>
-              )}
-              <div className="flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium text-muted-foreground hover:bg-sidebar-accent hover:text-foreground transition-all duration-200 cursor-pointer">
-                <ThemeToggle />
-                <span>Toggle Theme</span>
-              </div>
+            <CollapsibleContent className="space-y-0.5 mt-1">
               {isAdmin && (
                 <Link
                   to="/user-management"
                   className={cn(
-                    "flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-all duration-200",
+                    "group flex items-center gap-3 rounded-md px-3 py-2 text-sm font-medium transition-all duration-150",
                     location.pathname === "/user-management"
-                      ? "bg-primary/10 text-primary"
-                      : "text-muted-foreground hover:bg-sidebar-accent hover:text-foreground"
+                      ? "bg-primary/15 text-primary border-l-4 border-primary -ml-0.5 pl-2.5"
+                      : "text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"
                   )}
                 >
-                  <Shield className="h-5 w-5" />
-                  User Management
+                  <Shield className="h-4 w-4 flex-shrink-0" />
+                  <span className="truncate">User Management</span>
                 </Link>
               )}
               <Link
                 to="/settings"
                 className={cn(
-                  "flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-all duration-200",
+                  "group flex items-center gap-3 rounded-md px-3 py-2 text-sm font-medium transition-all duration-150",
                   location.pathname === "/settings"
-                    ? "bg-primary/10 text-primary"
-                    : "text-muted-foreground hover:bg-sidebar-accent hover:text-foreground"
+                    ? "bg-primary/15 text-primary border-l-4 border-primary -ml-0.5 pl-2.5"
+                    : "text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"
                 )}
               >
-                <Settings className="h-5 w-5" />
-                Settings
+                <Settings className="h-4 w-4 flex-shrink-0" />
+                <span className="truncate">Settings</span>
               </Link>
               <Button
                 variant="ghost"
-                className="w-full justify-start gap-3 px-3 py-2.5 text-sm font-medium text-muted-foreground hover:bg-sidebar-accent hover:text-foreground transition-all duration-200"
+                className="w-full justify-start gap-3 px-3 py-2 h-auto text-sm font-medium text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground transition-all duration-150"
                 onClick={signOut}
               >
-                <LogOut className="h-5 w-5" />
-                Sign Out
+                <LogOut className="h-4 w-4 flex-shrink-0" />
+                <span className="truncate">Sign Out</span>
               </Button>
             </CollapsibleContent>
           </Collapsible>

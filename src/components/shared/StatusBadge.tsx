@@ -23,8 +23,9 @@ type Status =
   | "partially_paid"
   | "void";
 
-const statusStyles: Record<Status, string> = {
-  draft: "bg-muted text-muted-foreground",
+// Badge styles (outlined/subtle)
+const badgeStyles: Record<Status, string> = {
+  draft: "bg-muted text-muted-foreground border-muted-foreground/20",
   pending: "bg-warning/10 text-warning border-warning/20",
   pending_approval: "bg-warning/10 text-warning border-warning/20",
   approved: "bg-success/10 text-success border-success/20",
@@ -32,7 +33,7 @@ const statusStyles: Record<Status, string> = {
   paid: "bg-success/10 text-success border-success/20",
   overdue: "bg-destructive/10 text-destructive border-destructive/20",
   active: "bg-success/10 text-success border-success/20",
-  inactive: "bg-muted text-muted-foreground",
+  inactive: "bg-muted text-muted-foreground border-muted-foreground/20",
   "in-progress": "bg-primary/10 text-primary border-primary/20",
   "on-hold": "bg-warning/10 text-warning border-warning/20",
   completed: "bg-success/10 text-success border-success/20",
@@ -41,10 +42,35 @@ const statusStyles: Record<Status, string> = {
   delayed: "bg-destructive/10 text-destructive border-destructive/20",
   partially_billed: "bg-warning/10 text-warning border-warning/20",
   fully_billed: "bg-success/10 text-success border-success/20",
-  closed: "bg-muted text-muted-foreground",
+  closed: "bg-muted text-muted-foreground border-muted-foreground/20",
   open: "bg-primary/10 text-primary border-primary/20",
   partially_paid: "bg-warning/10 text-warning border-warning/20",
   void: "bg-destructive/10 text-destructive border-destructive/20",
+};
+
+// Cell styles (solid background for table cells)
+const cellStyles: Record<Status, string> = {
+  draft: "bg-muted-foreground text-white",
+  pending: "bg-warning text-white",
+  pending_approval: "bg-warning text-white",
+  approved: "bg-success text-white",
+  sent: "bg-primary text-white",
+  paid: "bg-success text-white",
+  overdue: "bg-destructive text-white",
+  active: "bg-success text-white",
+  inactive: "bg-muted-foreground text-white",
+  "in-progress": "bg-primary text-white",
+  "on-hold": "bg-warning text-white",
+  completed: "bg-success text-white",
+  acknowledged: "bg-primary text-white",
+  cancelled: "bg-destructive text-white",
+  delayed: "bg-destructive text-white",
+  partially_billed: "bg-warning text-white",
+  fully_billed: "bg-success text-white",
+  closed: "bg-muted-foreground text-white",
+  open: "bg-primary text-white",
+  partially_paid: "bg-warning text-white",
+  void: "bg-destructive text-white",
 };
 
 const statusLabels: Record<Status, string> = {
@@ -73,15 +99,30 @@ const statusLabels: Record<Status, string> = {
 
 interface StatusBadgeProps {
   status: Status;
+  variant?: 'badge' | 'cell';
   className?: string;
 }
 
-export function StatusBadge({ status, className }: StatusBadgeProps) {
+export function StatusBadge({ status, variant = 'badge', className }: StatusBadgeProps) {
+  if (variant === 'cell') {
+    return (
+      <div
+        className={cn(
+          "inline-flex items-center justify-center px-2 py-0.5 text-xs font-medium rounded",
+          cellStyles[status],
+          className
+        )}
+      >
+        {statusLabels[status]}
+      </div>
+    );
+  }
+
   return (
     <span
       className={cn(
         "inline-flex items-center rounded-full border px-2.5 py-0.5 text-xs font-medium",
-        statusStyles[status],
+        badgeStyles[status],
         className
       )}
     >
