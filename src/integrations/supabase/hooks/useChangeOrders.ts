@@ -211,7 +211,13 @@ export function useAddChangeOrder() {
           .from("change_order_line_items")
           .insert(
             line_items.map((item, index) => ({
-              ...item,
+              description: item.description,
+              quantity: item.quantity,
+              unit_price: item.unit_price,
+              markup: item.markup,
+              total: item.total,
+              is_taxable: item.is_taxable,
+              product_id: item.product_id,
               change_order_id: (changeOrder as { id: string }).id,
               sort_order: index,
             })) as never
@@ -250,7 +256,7 @@ export function useUpdateChangeOrder() {
       vendor_name?: string | null;
       status?: ChangeOrderStatus;
       tax_rate?: number;
-      line_items?: Omit<ChangeOrderLineItem, "change_order_id" | "created_at">[];
+      line_items?: Omit<ChangeOrderLineItem, "id" | "change_order_id" | "created_at">[];
     }) => {
       const { id, line_items, ...updateData } = data;
 
@@ -285,8 +291,13 @@ export function useUpdateChangeOrder() {
             .from("change_order_line_items")
             .insert(
               line_items.map((item, index) => ({
-                ...item,
-                id: item.id?.startsWith("temp-") ? undefined : item.id,
+                description: item.description,
+                quantity: item.quantity,
+                unit_price: item.unit_price,
+                markup: item.markup,
+                total: item.total,
+                is_taxable: item.is_taxable,
+                product_id: item.product_id,
                 change_order_id: id,
                 sort_order: index,
               })) as never

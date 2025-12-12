@@ -185,7 +185,7 @@ export function ChangeOrderForm({
       reason,
       description: description || undefined,
       tax_rate: taxRate,
-      line_items: lineItems.map((item, index) => ({
+      line_items: lineItems.map(({ id, ...item }, index) => ({
         ...item,
         sort_order: index,
       })),
