@@ -38,7 +38,10 @@ export default function AcceptVendorInvitation() {
     setLoading(true);
 
     try {
-      // Create the auth user
+      let userId: string;
+      let isExistingUser = false;
+
+      // Try to create new user
       const { data: signUpData, error: signUpError } = await supabase.auth.signUp({
         email: invitation.email,
         password,
@@ -50,24 +53,46 @@ export default function AcceptVendorInvitation() {
         },
       });
 
-      if (signUpError) throw signUpError;
-      if (!signUpData.user) throw new Error("Failed to create user");
+      if (signUpError) {
+        // If user already exists, try to sign them in
+        if (signUpError.message.includes('already registered') || 
+            signUpError.message.includes('User already registered') ||
+            (signUpError as any).code === 'user_already_exists') {
+          const { data: signInData, error: signInError } = await supabase.auth.signInWithPassword({
+            email: invitation.email,
+            password,
+          });
+          
+          if (signInError) {
+            throw new Error("Invalid password for existing account. Please use the correct password.");
+          }
+          if (!signInData.user) throw new Error("Failed to sign in");
+          
+          userId = signInData.user.id;
+          isExistingUser = true;
+        } else {
+          throw signUpError;
+        }
+      } else {
+        if (!signUpData.user) throw new Error("Failed to create user");
+        userId = signUpData.user.id;
+      }
 
       // Link vendor to auth user
       const { error: linkError } = await supabase
         .from("vendors")
-        .update({ user_id: signUpData.user.id })
+        .update({ user_id: userId })
         .eq("id", invitation.vendor_id);
 
       if (linkError) throw linkError;
 
-      // Assign vendor role
+      // Assign vendor role (upsert to handle existing users)
       const { error: roleError } = await supabase
         .from("user_roles")
-        .insert({
-          user_id: signUpData.user.id,
-          role: "vendor" as any,
-        });
+        .upsert(
+          { user_id: userId, role: "vendor" as any },
+          { onConflict: 'user_id,role' }
+        );
 
       if (roleError) throw roleError;
 
@@ -82,8 +107,13 @@ export default function AcceptVendorInvitation() {
 
       if (inviteError) throw inviteError;
 
-      toast.success("Account created successfully! Please check your email to verify.");
-      navigate("/vendor/login");
+      if (isExistingUser) {
+        toast.success("Account linked successfully!");
+        navigate("/vendor");
+      } else {
+        toast.success("Account created successfully! Please check your email to verify.");
+        navigate("/vendor/login");
+      }
     } catch (error: any) {
       toast.error(error.message || "Failed to create account");
     } finally {
