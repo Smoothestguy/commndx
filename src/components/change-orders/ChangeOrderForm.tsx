@@ -49,6 +49,7 @@ interface LineItem {
   description: string;
   quantity: number;
   unit_price: number;
+  vendor_cost: number;
   markup: number;
   total: number;
   is_taxable: boolean;
@@ -96,6 +97,7 @@ export function ChangeOrderForm({
     initialData?.line_items?.map((item) => ({
       ...item,
       id: item.id,
+      vendor_cost: item.vendor_cost || 0,
       calculation_mode: 'forward' as const,
     })) || []
   );
@@ -133,6 +135,7 @@ export function ChangeOrderForm({
         description: "",
         quantity: 1,
         unit_price: 0,
+        vendor_cost: 0,
         markup: 0,
         total: 0,
         is_taxable: true,
@@ -213,9 +216,12 @@ export function ChangeOrderForm({
   };
 
   const subtotal = lineItems.reduce((sum, item) => sum + item.total, 0);
+  const vendorCostTotal = lineItems.reduce((sum, item) => sum + (item.quantity * (item.vendor_cost || 0)), 0);
   const taxableAmount = lineItems.filter((item) => item.is_taxable).reduce((sum, item) => sum + item.total, 0);
   const taxAmount = taxableAmount * (taxRate / 100);
   const total = subtotal + taxAmount;
+  const grossProfit = total - vendorCostTotal;
+  const marginPercent = vendorCostTotal > 0 ? ((grossProfit / vendorCostTotal) * 100) : 0;
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -232,8 +238,9 @@ export function ChangeOrderForm({
       description: description || undefined,
       tax_rate: taxRate,
       change_type: changeType,
-      line_items: lineItems.map(({ id, ...item }, index) => ({
+      line_items: lineItems.map(({ id, calculation_mode, ...item }, index) => ({
         ...item,
+        vendor_cost: item.vendor_cost || 0,
         sort_order: index,
       })),
     };
@@ -409,13 +416,14 @@ export function ChangeOrderForm({
             <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead className="w-[200px]">Product</TableHead>
+                  <TableHead className="w-[180px]">Product</TableHead>
                   <TableHead>Description</TableHead>
-                  <TableHead className="w-[100px]">Qty</TableHead>
-                  <TableHead className="w-[120px]">Unit Price</TableHead>
-                  <TableHead className="w-[100px]">Markup %</TableHead>
-                  <TableHead className="w-[140px]">Total</TableHead>
-                  <TableHead className="w-[80px]">Taxable</TableHead>
+                  <TableHead className="w-[80px]">Qty</TableHead>
+                  <TableHead className="w-[110px]">Client Price</TableHead>
+                  <TableHead className="w-[110px]">Vendor Cost</TableHead>
+                  <TableHead className="w-[80px]">Markup %</TableHead>
+                  <TableHead className="w-[120px]">Total</TableHead>
+                  <TableHead className="w-[70px]">Taxable</TableHead>
                   <TableHead className="w-[50px]">Mode</TableHead>
                   <TableHead className="w-[50px]"></TableHead>
                 </TableRow>
@@ -468,6 +476,13 @@ export function ChangeOrderForm({
                               <span className="absolute -top-1 -right-1 w-2 h-2 bg-primary rounded-full" />
                             )}
                           </div>
+                        </TableCell>
+                        <TableCell>
+                          <CalculatorInput
+                            value={item.vendor_cost}
+                            onValueChange={(value) => updateLineItem(index, "vendor_cost", value)}
+                            placeholder="0.00"
+                          />
                         </TableCell>
                         <TableCell>
                           <CalculatorInput
@@ -554,9 +569,9 @@ export function ChangeOrderForm({
           </div>
 
           <div className="mt-4 flex justify-end">
-            <div className="w-64 space-y-2">
+            <div className="w-80 space-y-2">
               <div className="flex justify-between text-sm">
-                <span>Subtotal:</span>
+                <span>Client Subtotal:</span>
                 <span>${subtotal.toFixed(2)}</span>
               </div>
               <div className="flex justify-between text-sm">
@@ -564,8 +579,16 @@ export function ChangeOrderForm({
                 <span>${taxAmount.toFixed(2)}</span>
               </div>
               <div className="flex justify-between font-semibold text-lg border-t pt-2">
-                <span>Total:</span>
+                <span>Client Total:</span>
                 <span>${total.toFixed(2)}</span>
+              </div>
+              <div className="flex justify-between text-sm text-muted-foreground pt-2 border-t">
+                <span>Vendor Cost Total:</span>
+                <span>${vendorCostTotal.toFixed(2)}</span>
+              </div>
+              <div className="flex justify-between text-sm font-medium text-green-600">
+                <span>Gross Profit:</span>
+                <span>${grossProfit.toFixed(2)} ({marginPercent.toFixed(1)}%)</span>
               </div>
             </div>
           </div>

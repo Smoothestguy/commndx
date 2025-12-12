@@ -12,6 +12,7 @@ export interface ChangeOrderLineItem {
   description: string;
   quantity: number;
   unit_price: number;
+  vendor_cost: number;
   markup: number;
   total: number;
   is_taxable: boolean;
@@ -214,10 +215,11 @@ export function useAddChangeOrder() {
         const { error: lineItemsError } = await supabase
           .from("change_order_line_items")
           .insert(
-            line_items.map((item, index) => ({
+          line_items.map((item, index) => ({
               description: item.description,
               quantity: item.quantity,
               unit_price: item.unit_price,
+              vendor_cost: item.vendor_cost || 0,
               markup: item.markup,
               total: item.total,
               is_taxable: item.is_taxable,
@@ -294,10 +296,11 @@ export function useUpdateChangeOrder() {
           const { error: insertError } = await supabase
             .from("change_order_line_items")
             .insert(
-              line_items.map((item, index) => ({
+            line_items.map((item, index) => ({
                 description: item.description,
                 quantity: item.quantity,
                 unit_price: item.unit_price,
+                vendor_cost: item.vendor_cost || 0,
                 markup: item.markup,
                 total: item.total,
                 is_taxable: item.is_taxable,

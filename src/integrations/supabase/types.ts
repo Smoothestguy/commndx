@@ -348,6 +348,7 @@ export type Database = {
           sort_order: number | null
           total: number
           unit_price: number
+          vendor_cost: number
         }
         Insert: {
           change_order_id: string
@@ -361,6 +362,7 @@ export type Database = {
           sort_order?: number | null
           total?: number
           unit_price?: number
+          vendor_cost?: number
         }
         Update: {
           change_order_id?: string
@@ -374,6 +376,7 @@ export type Database = {
           sort_order?: number | null
           total?: number
           unit_price?: number
+          vendor_cost?: number
         }
         Relationships: [
           {
