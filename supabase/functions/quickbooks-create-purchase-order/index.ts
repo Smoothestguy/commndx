@@ -237,18 +237,19 @@ serve(async (req) => {
     // Get expense account for line items
     const expenseAccountRef = await getExpenseAccountRef(accessToken, realmId);
 
-    // Build QuickBooks purchase order
+    // Build QuickBooks purchase order using AccountBasedExpenseLineDetail
+    // This is simpler and doesn't require item catalog entries
     const qbLineItems = lineItems.map((item: any, index: number) => ({
       LineNum: index + 1,
       Amount: item.total,
-      DetailType: "ItemBasedExpenseLineDetail",
-      ItemBasedExpenseLineDetail: {
-        Qty: item.quantity,
-        UnitPrice: item.unit_price * (1 + (item.markup || 0) / 100),
-        ItemRef: {
+      DetailType: "AccountBasedExpenseLineDetail",
+      AccountBasedExpenseLineDetail: {
+        AccountRef: {
           value: expenseAccountRef.value,
           name: expenseAccountRef.name,
         },
+        Qty: item.quantity,
+        UnitPrice: item.unit_price * (1 + (item.markup || 0) / 100),
       },
       Description: item.description,
     }));
