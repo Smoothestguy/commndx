@@ -16,8 +16,8 @@
     --popover: 0 0% 100%;
     --popover-foreground: 0 0% 10%;
 
-    /* Primary accent: Strong orange */
-    --primary: 25 95% 53%;
+    /* Primary accent: Strong green */
+    --primary: 142 76% 36%;
     --primary-foreground: 0 0% 100%;
 
     --secondary: 0 0% 96%;
@@ -26,7 +26,7 @@
     --muted: 0 0% 96%;
     --muted-foreground: 0 0% 45%;
 
-    --accent: 25 95% 53%;
+    --accent: 142 76% 36%;
     --accent-foreground: 0 0% 100%;
 
     --destructive: 0 72% 51%;
@@ -40,7 +40,7 @@
 
     --border: 0 0% 85%;
     --input: 0 0% 85%;
-    --ring: 25 95% 53%;
+    --ring: 142 76% 36%;
 
     --radius: 0.5rem;
 
@@ -51,12 +51,12 @@
     /* Sidebar - dark gray */
     --sidebar-background: 0 0% 12%;
     --sidebar-foreground: 0 0% 85%;
-    --sidebar-primary: 25 95% 53%;
+    --sidebar-primary: 142 76% 36%;
     --sidebar-primary-foreground: 0 0% 100%;
     --sidebar-accent: 0 0% 18%;
     --sidebar-accent-foreground: 0 0% 100%;
     --sidebar-border: 0 0% 20%;
-    --sidebar-ring: 25 95% 53%;
+    --sidebar-ring: 142 76% 36%;
     --sidebar-muted: 0 0% 55%;
 
     /* Table styling */
@@ -80,11 +80,11 @@
     --stat-sky: 200 80% 94%;
 
     /* Custom design tokens */
-    --gradient-primary: linear-gradient(135deg, hsl(25 95% 53%), hsl(38 92% 50%));
+    --gradient-primary: linear-gradient(135deg, hsl(142 76% 36%), hsl(160 84% 39%));
     --gradient-card: linear-gradient(145deg, hsl(0 0% 100%), hsl(0 0% 98%));
-    --gradient-glow: radial-gradient(ellipse at center, hsl(25 95% 53% / 0.1), transparent 70%);
+    --gradient-glow: radial-gradient(ellipse at center, hsl(142 76% 36% / 0.1), transparent 70%);
 
-    --shadow-glow: 0 0 40px hsl(25 95% 53% / 0.15);
+    --shadow-glow: 0 0 40px hsl(142 76% 36% / 0.15);
     --shadow-card: 0 1px 3px hsl(0 0% 0% / 0.1);
     --shadow-elevated: 0 4px 12px hsl(0 0% 0% / 0.15);
 
@@ -103,7 +103,7 @@
     --popover: 0 0% 12%;
     --popover-foreground: 0 0% 95%;
 
-    --primary: 25 95% 53%;
+    --primary: 142 76% 36%;
     --primary-foreground: 0 0% 100%;
 
     --secondary: 0 0% 18%;
@@ -112,7 +112,7 @@
     --muted: 0 0% 18%;
     --muted-foreground: 0 0% 60%;
 
-    --accent: 25 95% 53%;
+    --accent: 142 76% 36%;
     --accent-foreground: 0 0% 100%;
 
     --destructive: 0 72% 51%;
@@ -126,7 +126,7 @@
 
     --border: 0 0% 20%;
     --input: 0 0% 20%;
-    --ring: 25 95% 53%;
+    --ring: 142 76% 36%;
 
     /* Header */
     --header-background: 0 0% 5%;
@@ -135,12 +135,12 @@
     /* Sidebar */
     --sidebar-background: 0 0% 8%;
     --sidebar-foreground: 0 0% 85%;
-    --sidebar-primary: 25 95% 53%;
+    --sidebar-primary: 142 76% 36%;
     --sidebar-primary-foreground: 0 0% 100%;
     --sidebar-accent: 0 0% 15%;
     --sidebar-accent-foreground: 0 0% 100%;
     --sidebar-border: 0 0% 18%;
-    --sidebar-ring: 25 95% 53%;
+    --sidebar-ring: 142 76% 36%;
     --sidebar-muted: 0 0% 55%;
 
     /* Table styling */
@@ -157,11 +157,11 @@
     --stat-sky: 200 50% 15%;
 
     /* Custom design tokens */
-    --gradient-primary: linear-gradient(135deg, hsl(25 95% 53%), hsl(38 92% 50%));
+    --gradient-primary: linear-gradient(135deg, hsl(142 76% 36%), hsl(160 84% 39%));
     --gradient-card: linear-gradient(145deg, hsl(0 0% 14%), hsl(0 0% 10%));
-    --gradient-glow: radial-gradient(ellipse at center, hsl(25 95% 53% / 0.15), transparent 70%);
+    --gradient-glow: radial-gradient(ellipse at center, hsl(142 76% 36% / 0.15), transparent 70%);
 
-    --shadow-glow: 0 0 40px hsl(25 95% 53% / 0.2);
+    --shadow-glow: 0 0 40px hsl(142 76% 36% / 0.2);
     --shadow-card: 0 4px 24px hsl(0 0% 0% / 0.5);
     --shadow-elevated: 0 8px 32px hsl(0 0% 0% / 0.7);
   }
