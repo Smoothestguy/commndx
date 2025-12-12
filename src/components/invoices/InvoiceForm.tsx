@@ -3,6 +3,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { CalculatorInput } from "@/components/ui/calculator-input";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -758,12 +759,11 @@ export function InvoiceForm({ onSubmit, initialData, jobOrderId }: InvoiceFormPr
                   <Label>Unit Price</Label>
                   <div className="relative">
                     <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground">$</span>
-                    <Input
-                      type="number"
-                      step="0.01"
+                    <CalculatorInput
                       value={item.unitPrice}
-                      onChange={(e) => updateLineItem(item.id, "unitPrice", parseFloat(e.target.value) || 0)}
+                      onValueChange={(value) => updateLineItem(item.id, "unitPrice", value)}
                       className="pl-7"
+                      showCalculatorIcon={false}
                     />
                   </div>
                 </div>

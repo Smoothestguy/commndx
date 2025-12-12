@@ -304,12 +304,10 @@ export function ChangeOrderForm({
 
             <div className="space-y-2">
               <Label htmlFor="taxRate">Tax Rate (%)</Label>
-              <Input
-                id="taxRate"
-                type="number"
-                step="0.01"
+              <CalculatorInput
                 value={taxRate}
-                onChange={(e) => setTaxRate(parseFloat(e.target.value) || 0)}
+                onValueChange={(value) => setTaxRate(value)}
+                decimalPlaces={2}
               />
             </div>
           </div>
@@ -389,12 +387,10 @@ export function ChangeOrderForm({
                       />
                     </TableCell>
                     <TableCell>
-                      <Input
-                        type="number"
-                        min="0"
-                        step="0.01"
+                      <CalculatorInput
                         value={item.quantity}
-                        onChange={(e) => updateLineItem(index, "quantity", parseFloat(e.target.value) || 0)}
+                        onValueChange={(value) => updateLineItem(index, "quantity", value)}
+                        decimalPlaces={2}
                       />
                     </TableCell>
                     <TableCell>
@@ -405,12 +401,10 @@ export function ChangeOrderForm({
                       />
                     </TableCell>
                     <TableCell>
-                      <Input
-                        type="number"
-                        min="0"
-                        step="0.01"
+                      <CalculatorInput
                         value={item.markup}
-                        onChange={(e) => updateLineItem(index, "markup", parseFloat(e.target.value) || 0)}
+                        onValueChange={(value) => updateLineItem(index, "markup", value)}
+                        decimalPlaces={2}
                       />
                     </TableCell>
                     <TableCell className="font-medium">

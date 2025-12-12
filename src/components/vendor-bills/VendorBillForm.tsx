@@ -3,6 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { CalculatorInput } from "@/components/ui/calculator-input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -417,13 +418,11 @@ export function VendorBillForm({ bill, isEditing = false }: VendorBillFormProps)
                     <TableCell>
                       <div className="relative">
                         <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground">$</span>
-                        <Input
-                          type="number"
-                          min="0"
-                          step="0.01"
+                        <CalculatorInput
                           value={item.unit_cost}
-                          onChange={(e) => updateLineItem(item.id, "unit_cost", Number(e.target.value))}
+                          onValueChange={(value) => updateLineItem(item.id, "unit_cost", value)}
                           className="pl-7 w-[120px]"
+                          showCalculatorIcon={false}
                         />
                       </div>
                     </TableCell>

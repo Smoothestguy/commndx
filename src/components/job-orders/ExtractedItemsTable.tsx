@@ -8,6 +8,7 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { Input } from "@/components/ui/input";
+import { CalculatorInput } from "@/components/ui/calculator-input";
 import { Button } from "@/components/ui/button";
 import {
   Select,
@@ -172,17 +173,13 @@ export const ExtractedItemsTable = ({
                   <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground text-base">
                     $
                   </span>
-                  <Input
-                    type="number"
+                  <CalculatorInput
                     value={item.unitPrice}
-                    onChange={(e) =>
-                      onItemUpdate(item.id, {
-                        unitPrice: parseFloat(e.target.value) || 0,
-                      })
+                    onValueChange={(value) =>
+                      onItemUpdate(item.id, { unitPrice: value })
                     }
                     className="h-11 text-right text-base font-medium pl-7"
-                    min={0}
-                    step="0.01"
+                    showCalculatorIcon={false}
                   />
                 </div>
               </TableCell>

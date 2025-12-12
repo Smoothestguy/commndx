@@ -2,6 +2,7 @@ import { useState, useEffect } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { CalculatorInput } from "@/components/ui/calculator-input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
@@ -644,12 +645,12 @@ export const PurchaseOrderForm = () => {
                   <Label>Vendor Cost *</Label>
                   <div className="relative">
                     <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground">$</span>
-                    <Input
-                      type="number"
-                      step="0.01"
+                    <CalculatorInput
                       value={item.unit_price}
-                      onChange={(e) => updateLineItem(item.id, "unit_price", e.target.value)}
+                      onValueChange={(value) => updateLineItem(item.id, "unit_price", value.toString())}
                       className="bg-secondary border-border pl-7"
+                      placeholder="0.00 or 100*1.5"
+                      showCalculatorIcon={false}
                     />
                   </div>
                   {errors[`line_${index}_unit_price`] && (
