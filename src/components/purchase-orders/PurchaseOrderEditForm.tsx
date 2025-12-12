@@ -2,6 +2,7 @@ import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { CalculatorInput } from "@/components/ui/calculator-input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import {
@@ -444,17 +445,13 @@ export const PurchaseOrderEditForm = ({ purchaseOrder }: PurchaseOrderEditFormPr
 
                   <div className="space-y-2">
                     <Label>Vendor Cost *</Label>
-                    <div className="relative">
-                      <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground">$</span>
-                      <Input
-                        type="number"
-                        step="0.01"
-                        value={item.unit_price}
-                        onChange={(e) => updateLineItem(index, "unit_price", e.target.value)}
-                        className="bg-secondary border-border pl-7"
-                        disabled={purchaseOrder.is_closed}
-                      />
-                    </div>
+                    <CalculatorInput
+                      value={item.unit_price}
+                      onValueChange={(value) => updateLineItem(index, "unit_price", value.toString())}
+                      placeholder="0.00"
+                      className="bg-secondary border-border"
+                      disabled={purchaseOrder.is_closed}
+                    />
                     {errors[`line_${index}_unit_price`] && (
                       <p className="text-sm text-destructive">
                         {errors[`line_${index}_unit_price`]}

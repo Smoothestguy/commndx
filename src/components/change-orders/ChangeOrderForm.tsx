@@ -2,6 +2,7 @@ import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { CalculatorInput } from "@/components/ui/calculator-input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import {
@@ -397,12 +398,10 @@ export function ChangeOrderForm({
                       />
                     </TableCell>
                     <TableCell>
-                      <Input
-                        type="number"
-                        min="0"
-                        step="0.01"
+                      <CalculatorInput
                         value={item.unit_price}
-                        onChange={(e) => updateLineItem(index, "unit_price", parseFloat(e.target.value) || 0)}
+                        onValueChange={(value) => updateLineItem(index, "unit_price", value)}
+                        placeholder="0.00"
                       />
                     </TableCell>
                     <TableCell>
