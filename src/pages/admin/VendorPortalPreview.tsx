@@ -12,7 +12,7 @@ import { formatCurrency } from "@/lib/utils";
 import { useVendors } from "@/integrations/supabase/hooks/useVendors";
 import { supabase } from "@/integrations/supabase/client";
 import { useQuery } from "@tanstack/react-query";
-import { Eye, FileText, DollarSign, ClipboardList, ListChecks, ArrowLeft } from "lucide-react";
+import { Eye, FileText, DollarSign, ClipboardList, ListChecks, ArrowLeft, CheckCircle2, XCircle } from "lucide-react";
 import { Link } from "react-router-dom";
 
 interface POData {
@@ -234,29 +234,59 @@ export default function VendorPortalPreview() {
             {vendorsLoading ? (
               <Skeleton className="h-10 w-full max-w-md" />
             ) : (
-              <Select value={selectedVendorId} onValueChange={setSelectedVendorId}>
-                <SelectTrigger className="w-full max-w-md">
-                  <SelectValue placeholder="Select a vendor..." />
-                </SelectTrigger>
-                <SelectContent>
-                  {vendors?.map((vendor) => (
-                    <SelectItem key={vendor.id} value={vendor.id}>
-                      {vendor.name} {vendor.email ? `(${vendor.email})` : ""}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+              <>
+                <Select value={selectedVendorId} onValueChange={setSelectedVendorId}>
+                  <SelectTrigger className="w-full max-w-md">
+                    <SelectValue placeholder="Select a vendor..." />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {vendors?.map((vendor) => (
+                      <SelectItem key={vendor.id} value={vendor.id}>
+                        <div className="flex items-center gap-2">
+                          {vendor.user_id ? (
+                            <CheckCircle2 className="h-4 w-4 text-green-500 shrink-0" />
+                          ) : (
+                            <XCircle className="h-4 w-4 text-muted-foreground shrink-0" />
+                          )}
+                          <span>{vendor.name}</span>
+                          {vendor.email && <span className="text-muted-foreground">({vendor.email})</span>}
+                        </div>
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                <p className="text-xs text-muted-foreground mt-2 flex items-center gap-4">
+                  <span className="flex items-center gap-1">
+                    <CheckCircle2 className="h-3 w-3 text-green-500" /> Has account
+                  </span>
+                  <span className="flex items-center gap-1">
+                    <XCircle className="h-3 w-3 text-muted-foreground" /> No account
+                  </span>
+                </p>
+              </>
             )}
           </CardContent>
         </Card>
 
         {selectedVendorId && selectedVendor && (
           <div className="border-2 border-dashed border-primary/30 rounded-lg p-6 space-y-6">
-            <Alert>
+            <Alert className={selectedVendor.user_id ? "border-green-500/50" : "border-amber-500/50"}>
               <Eye className="h-4 w-4" />
-              <AlertDescription>
-                You are previewing the portal as <strong>{selectedVendor.name}</strong>. 
-                This is what the vendor sees when they log in.
+              <AlertDescription className="flex flex-col gap-1">
+                <span>
+                  You are previewing the portal as <strong>{selectedVendor.name}</strong>.
+                </span>
+                {selectedVendor.user_id ? (
+                  <span className="flex items-center gap-1 text-green-600 dark:text-green-400">
+                    <CheckCircle2 className="h-3 w-3" />
+                    This vendor has portal access ({selectedVendor.email})
+                  </span>
+                ) : (
+                  <span className="flex items-center gap-1 text-amber-600 dark:text-amber-400">
+                    <XCircle className="h-3 w-3" />
+                    This vendor has not created an account yet
+                  </span>
+                )}
               </AlertDescription>
             </Alert>
 
