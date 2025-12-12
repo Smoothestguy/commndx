@@ -360,8 +360,13 @@ const ProjectDetail = () => {
                 : `Based on ${projectJobOrders.length} job order${projectJobOrders.length !== 1 ? "s" : ""}`}
             </p>
           </div>
-        </CardContent>
+      </CardContent>
       </Card>
+
+      {/* Financial Summary */}
+      <div className="mb-6">
+        <ProjectFinancialSummary data={financialData} />
+      </div>
 
       {/* Project Info */}
       <div className="grid gap-6 lg:grid-cols-3 mb-8">
@@ -485,9 +490,6 @@ const ProjectDetail = () => {
           </CardContent>
         </Card>
       )}
-
-      {/* Financial Summary */}
-      <ProjectFinancialSummary data={financialData} />
 
       {/* Milestones */}
       <div className="space-y-4 mb-8">
