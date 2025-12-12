@@ -52,18 +52,6 @@ import PersonnelRegistrationPortal from "./pages/PersonnelRegistrationPortal";
 import PersonnelInviteRegister from "./pages/PersonnelInviteRegister";
 import BadgeTemplates from "./pages/BadgeTemplates";
 import BadgeTemplateEditor from "./pages/BadgeTemplateEditor";
-import RoofInspections from "./pages/RoofInspections";
-import RoofInspectionDetail from "./pages/RoofInspectionDetail";
-import RoofMeasurements from "./pages/RoofMeasurements";
-import RoofMeasurementDetail from "./pages/RoofMeasurementDetail";
-import Warranties from "./pages/Warranties";
-import WarrantyDetail from "./pages/WarrantyDetail";
-import WeatherTracking from "./pages/WeatherTracking";
-import Activities from "./pages/Activities";
-import Appointments from "./pages/Appointments";
-import InsuranceClaims from "./pages/InsuranceClaims";
-import Tasks from "./pages/Tasks";
-import RoofingDashboard from "./pages/RoofingDashboard";
 import QuickBooksSettings from "./pages/QuickBooksSettings";
 import Messages from "./pages/Messages";
 import PrivacyPolicy from "./pages/legal/PrivacyPolicy";
@@ -460,102 +448,6 @@ const App = () => {
                   element={
                     <ProtectedRoute>
                       <BadgeTemplateEditor />
-                    </ProtectedRoute>
-                  }
-                />
-                <Route
-                  path="/roof-inspections"
-                  element={
-                    <ProtectedRoute>
-                      <RoofInspections />
-                    </ProtectedRoute>
-                  }
-                />
-                <Route
-                  path="/roof-inspections/:id"
-                  element={
-                    <ProtectedRoute>
-                      <RoofInspectionDetail />
-                    </ProtectedRoute>
-                  }
-                />
-                <Route
-                  path="/roof-measurements"
-                  element={
-                    <ProtectedRoute>
-                      <RoofMeasurements />
-                    </ProtectedRoute>
-                  }
-                />
-                <Route
-                  path="/roof-measurements/:id"
-                  element={
-                    <ProtectedRoute>
-                      <RoofMeasurementDetail />
-                    </ProtectedRoute>
-                  }
-                />
-                <Route
-                  path="/warranties"
-                  element={
-                    <ProtectedRoute>
-                      <Warranties />
-                    </ProtectedRoute>
-                  }
-                />
-                <Route
-                  path="/warranties/:id"
-                  element={
-                    <ProtectedRoute>
-                      <WarrantyDetail />
-                    </ProtectedRoute>
-                  }
-                />
-                <Route
-                  path="/weather-tracking"
-                  element={
-                    <ProtectedRoute>
-                      <WeatherTracking />
-                    </ProtectedRoute>
-                  }
-                />
-                <Route
-                  path="/activities"
-                  element={
-                    <ProtectedRoute>
-                      <Activities />
-                    </ProtectedRoute>
-                  }
-                />
-                <Route
-                  path="/appointments"
-                  element={
-                    <ProtectedRoute>
-                      <Appointments />
-                    </ProtectedRoute>
-                  }
-                />
-                <Route
-                  path="/insurance-claims"
-                  element={
-                    <ProtectedRoute>
-                      <InsuranceClaims />
-                    </ProtectedRoute>
-                  }
-                />
-                <Route
-                  path="/tasks"
-                  element={
-                    <ProtectedRoute>
-                      <Tasks />
-                    </ProtectedRoute>
-                  }
-                />
-                <Route
-                  path="/roofing-dashboard"
-                  element={
-                    <ProtectedRoute>
-                      <RoofingDashboard />
                     </ProtectedRoute>
                   }
                 />
