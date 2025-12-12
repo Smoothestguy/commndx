@@ -9,7 +9,6 @@ const NAVIGATION_ORDER = [
   { path: "/vendors", name: "Vendors" },
   { path: "/products", name: "Products" },
   { path: "/estimates", name: "Estimates" },
-  { path: "/job-orders", name: "Job Orders" },
   { path: "/purchase-orders", name: "Purchase Orders" },
   { path: "/invoices", name: "Invoices" },
 ];

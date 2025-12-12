@@ -50,9 +50,9 @@ const JobOrderDetail = () => {
   if (errorJobOrder || !jobOrder) {
     return (
       <PageLayout title="Job Order Not Found">
-        <Button variant="ghost" onClick={() => navigate("/job-orders")}>
+        <Button variant="ghost" onClick={() => navigate("/projects")}>
           <ArrowLeft className="h-4 w-4 mr-2" />
-          Back to Job Orders
+          Back to Projects
         </Button>
       </PageLayout>
     );
@@ -111,10 +111,10 @@ const JobOrderDetail = () => {
       <Button
         variant="ghost"
         className="mb-6"
-        onClick={() => navigate("/job-orders")}
+        onClick={() => navigate(`/projects/${jobOrder.project_id}`)}
       >
         <ArrowLeft className="h-4 w-4 mr-2" />
-        Back to Job Orders
+        Back to Project
       </Button>
 
       <div className="grid gap-4 lg:gap-6 lg:grid-cols-3">
