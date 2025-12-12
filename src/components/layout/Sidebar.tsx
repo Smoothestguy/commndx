@@ -28,28 +28,18 @@ import {
   Shield,
   Clock,
   UserCog,
-  UserCheck,
   ClipboardCheck,
-  Ruler,
-  Cloud,
-  ShieldCheck,
-  MessageSquare,
-  Calendar,
-  CheckSquare,
-  FileWarning,
-  BarChart3,
   IdCard,
   Link2,
+  Send,
 } from "lucide-react";
-
-import { Send } from "lucide-react";
 
 const navigation = [
   { name: "Dashboard", href: "/", icon: LayoutDashboard },
   { name: "Products", href: "/products", icon: Package },
   { name: "Customers", href: "/customers", icon: Users },
   { name: "Projects", href: "/projects", icon: FolderKanban },
-  { name: "Personnel", href: "/personnel", icon: UserCheck },
+  { name: "Personnel", href: "/personnel", icon: Users },
   { name: "Estimates", href: "/estimates", icon: FileText },
   { name: "Job Orders", href: "/job-orders", icon: Briefcase },
   { name: "Purchase Orders", href: "/purchase-orders", icon: ShoppingCart },
@@ -71,21 +61,6 @@ const staffingNavigation = [
   { name: "Badge Templates", href: "/badge-templates", icon: IdCard, requiresManager: true },
 ];
 
-const roofingCrmNavigation = [
-  { name: "CRM Dashboard", href: "/roofing-dashboard", icon: BarChart3 },
-  { name: "Activities", href: "/activities", icon: MessageSquare },
-  { name: "Appointments", href: "/appointments", icon: Calendar },
-  { name: "Tasks", href: "/tasks", icon: CheckSquare },
-  { name: "Insurance Claims", href: "/insurance-claims", icon: FileWarning },
-];
-
-const roofingOpsNavigation = [
-  { name: "Roof Inspections", href: "/roof-inspections", icon: ClipboardCheck },
-  { name: "Measurements", href: "/roof-measurements", icon: Ruler },
-  { name: "Weather", href: "/weather-tracking", icon: Cloud },
-  { name: "Warranties", href: "/warranties", icon: ShieldCheck },
-];
-
 export function Sidebar() {
   const location = useLocation();
   const { signOut, user } = useAuth();
@@ -94,22 +69,16 @@ export function Sidebar() {
   // Collapsible state
   const [vendorsOpen, setVendorsOpen] = useState(false);
   const [staffingOpen, setStaffingOpen] = useState(false);
-  const [roofingCrmOpen, setRoofingCrmOpen] = useState(false);
-  const [roofingOpsOpen, setRoofingOpsOpen] = useState(false);
   const [accountOpen, setAccountOpen] = useState(false);
 
   // Auto-expand section if current route is within it
   useEffect(() => {
     const vendorsRoutes = vendorsNavigation.map((item) => item.href);
     const staffingRoutes = staffingNavigation.map((item) => item.href);
-    const crmRoutes = roofingCrmNavigation.map((item) => item.href);
-    const opsRoutes = roofingOpsNavigation.map((item) => item.href);
     const accountRoutes = ["/user-management", "/settings"];
 
     if (vendorsRoutes.some((r) => location.pathname === r || location.pathname.startsWith(r))) setVendorsOpen(true);
     if (staffingRoutes.some((r) => location.pathname === r)) setStaffingOpen(true);
-    if (crmRoutes.some((r) => location.pathname === r)) setRoofingCrmOpen(true);
-    if (opsRoutes.some((r) => location.pathname === r)) setRoofingOpsOpen(true);
     if (accountRoutes.some((r) => location.pathname === r || location.pathname.startsWith(r))) setAccountOpen(true);
   }, [location.pathname]);
 
@@ -216,96 +185,6 @@ export function Sidebar() {
               <CollapsibleContent className="space-y-1">
                 {staffingNavigation.map((item) => {
                   if (item.requiresManager && !isAdmin && !isManager) return null;
-                  const isActive = location.pathname === item.href;
-                  return (
-                    <Link
-                      key={item.name}
-                      to={item.href}
-                      className={cn(
-                        "group flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-all duration-200",
-                        isActive
-                          ? "bg-primary/10 text-primary"
-                          : "text-muted-foreground hover:bg-sidebar-accent hover:text-foreground"
-                      )}
-                    >
-                      <item.icon
-                        className={cn(
-                          "h-5 w-5 transition-colors",
-                          isActive
-                            ? "text-primary"
-                            : "text-muted-foreground group-hover:text-foreground"
-                        )}
-                      />
-                      {item.name}
-                      {isActive && (
-                        <ChevronRight className="ml-auto h-4 w-4 text-primary" />
-                      )}
-                    </Link>
-                  );
-                })}
-              </CollapsibleContent>
-            </div>
-          </Collapsible>
-
-          {/* Roofing CRM Section */}
-          <Collapsible open={roofingCrmOpen} onOpenChange={setRoofingCrmOpen}>
-            <div className="mt-4 pt-4 border-t border-sidebar-border">
-              <CollapsibleTrigger className="flex items-center justify-between w-full px-3 py-2 text-xs font-semibold text-muted-foreground uppercase tracking-wider hover:text-foreground transition-colors">
-                <span>Roofing CRM</span>
-                <ChevronDown
-                  className={cn(
-                    "h-4 w-4 transition-transform duration-200",
-                    roofingCrmOpen && "rotate-180"
-                  )}
-                />
-              </CollapsibleTrigger>
-              <CollapsibleContent className="space-y-1">
-                {roofingCrmNavigation.map((item) => {
-                  const isActive = location.pathname === item.href;
-                  return (
-                    <Link
-                      key={item.name}
-                      to={item.href}
-                      className={cn(
-                        "group flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-all duration-200",
-                        isActive
-                          ? "bg-primary/10 text-primary"
-                          : "text-muted-foreground hover:bg-sidebar-accent hover:text-foreground"
-                      )}
-                    >
-                      <item.icon
-                        className={cn(
-                          "h-5 w-5 transition-colors",
-                          isActive
-                            ? "text-primary"
-                            : "text-muted-foreground group-hover:text-foreground"
-                        )}
-                      />
-                      {item.name}
-                      {isActive && (
-                        <ChevronRight className="ml-auto h-4 w-4 text-primary" />
-                      )}
-                    </Link>
-                  );
-                })}
-              </CollapsibleContent>
-            </div>
-          </Collapsible>
-
-          {/* Roofing Operations Section */}
-          <Collapsible open={roofingOpsOpen} onOpenChange={setRoofingOpsOpen}>
-            <div className="mt-4 pt-4 border-t border-sidebar-border">
-              <CollapsibleTrigger className="flex items-center justify-between w-full px-3 py-2 text-xs font-semibold text-muted-foreground uppercase tracking-wider hover:text-foreground transition-colors">
-                <span>Roofing Ops</span>
-                <ChevronDown
-                  className={cn(
-                    "h-4 w-4 transition-transform duration-200",
-                    roofingOpsOpen && "rotate-180"
-                  )}
-                />
-              </CollapsibleTrigger>
-              <CollapsibleContent className="space-y-1">
-                {roofingOpsNavigation.map((item) => {
                   const isActive = location.pathname === item.href;
                   return (
                     <Link
