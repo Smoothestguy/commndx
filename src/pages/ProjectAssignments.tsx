@@ -22,17 +22,17 @@ export default function ProjectAssignments() {
         description="Manage personnel assignments to projects. Assign and reassign team members to active projects."
       />
       
-      <div className="space-y-6">
-        <div className="flex justify-between items-center">
-          <div>
-            <h2 className="text-2xl font-bold">Project Assignments</h2>
-            <p className="text-muted-foreground">
+      <div className="w-full max-w-full overflow-hidden space-y-6">
+        <div className="flex flex-col gap-4 sm:flex-row sm:justify-between sm:items-center">
+          <div className="min-w-0">
+            <h2 className="text-xl sm:text-2xl font-bold truncate">Project Assignments</h2>
+            <p className="text-muted-foreground text-sm sm:text-base">
               Manage which personnel are assigned to which projects
             </p>
           </div>
-          <Button onClick={() => setAssignDialogOpen(true)}>
+          <Button onClick={() => setAssignDialogOpen(true)} className="w-full sm:w-auto">
             <Plus className="mr-2 h-4 w-4" />
-            Assign User
+            <span className="truncate">Assign User</span>
           </Button>
         </div>
 

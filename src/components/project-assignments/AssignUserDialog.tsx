@@ -63,12 +63,12 @@ export function AssignUserDialog({ open, onOpenChange }: AssignUserDialogProps) 
           <div className="space-y-2">
             <Label htmlFor="user">User</Label>
             <Select value={selectedUser} onValueChange={setSelectedUser}>
-              <SelectTrigger id="user">
+              <SelectTrigger id="user" className="w-full truncate">
                 <SelectValue placeholder="Select a user" />
               </SelectTrigger>
               <SelectContent>
                 {users.map((user) => (
-                  <SelectItem key={user.id} value={user.id}>
+                  <SelectItem key={user.id} value={user.id} className="truncate">
                     {user.first_name} {user.last_name} ({user.email})
                   </SelectItem>
                 ))}
@@ -79,12 +79,12 @@ export function AssignUserDialog({ open, onOpenChange }: AssignUserDialogProps) 
           <div className="space-y-2">
             <Label htmlFor="project">Project</Label>
             <Select value={selectedProject} onValueChange={setSelectedProject}>
-              <SelectTrigger id="project">
+              <SelectTrigger id="project" className="w-full truncate">
                 <SelectValue placeholder="Select a project" />
               </SelectTrigger>
               <SelectContent>
                 {projects.map((project) => (
-                  <SelectItem key={project.id} value={project.id}>
+                  <SelectItem key={project.id} value={project.id} className="truncate">
                     {project.name}
                   </SelectItem>
                 ))}
