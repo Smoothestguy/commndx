@@ -4,6 +4,7 @@ import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { useAIAssistant } from "@/contexts/AIAssistantContext";
+import { useAuth } from "@/contexts/AuthContext";
 import { ChatMessage } from "./ChatMessage";
 import { ChatInput } from "./ChatInput";
 import { QuickActions } from "./QuickActions";
@@ -11,9 +12,15 @@ import { FloatingChatButton } from "./FloatingChatButton";
 import { useIsMobile } from "@/hooks/use-mobile";
 
 export function ChatInterface() {
+  const { user } = useAuth();
   const { messages, isLoading, isOpen, setOpen, sendMessage, clearHistory } = useAIAssistant();
   const scrollRef = useRef<HTMLDivElement>(null);
   const isMobile = useIsMobile();
+
+  // Don't show chatbot when user is not authenticated
+  if (!user) {
+    return null;
+  }
 
   // Auto-scroll to bottom when new messages arrive
   useEffect(() => {
