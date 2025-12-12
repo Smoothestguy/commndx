@@ -238,6 +238,14 @@ export default function UserManagement() {
   const fetchUsers = async () => {
     setLoading(true);
     try {
+      // Get vendor user IDs to exclude them from user management
+      const { data: vendorUsers } = await supabase
+        .from("vendors")
+        .select("user_id")
+        .not("user_id", "is", null);
+
+      const vendorUserIds = vendorUsers?.map((v) => v.user_id).filter(Boolean) || [];
+
       const { data: profiles, error: profilesError } = await supabase
         .from("profiles")
         .select("id, email, first_name, last_name, created_at")
@@ -251,7 +259,12 @@ export default function UserManagement() {
 
       if (rolesError) throw rolesError;
 
-      const usersWithRoles: UserWithRole[] = (profiles || []).map((profile) => {
+      // Filter out vendor-linked users from the list
+      const filteredProfiles = (profiles || []).filter(
+        (profile) => !vendorUserIds.includes(profile.id)
+      );
+
+      const usersWithRoles: UserWithRole[] = filteredProfiles.map((profile) => {
         const userRole = roles?.find((r) => r.user_id === profile.id);
         return {
           ...profile,
