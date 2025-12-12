@@ -17,7 +17,7 @@ interface LineItem {
   id: string;
   description: string;
   quantity: number;
-  unit_price: number;
+  unit_cost: number;
   total: number;
   po_line_item_id?: string;
 }
@@ -36,7 +36,7 @@ export default function VendorNewBill() {
   const [dueDate, setDueDate] = useState(format(new Date(Date.now() + 30 * 24 * 60 * 60 * 1000), "yyyy-MM-dd"));
   const [notes, setNotes] = useState("");
   const [lineItems, setLineItems] = useState<LineItem[]>([
-    { id: crypto.randomUUID(), description: "", quantity: 1, unit_price: 0, total: 0 },
+    { id: crypto.randomUUID(), description: "", quantity: 1, unit_cost: 0, total: 0 },
   ]);
 
   // Populate line items from PO when selected
@@ -47,7 +47,7 @@ export default function VendorNewBill() {
           id: crypto.randomUUID(),
           description: item.description,
           quantity: item.quantity,
-          unit_price: item.unit_price,
+          unit_cost: item.unit_cost || item.unit_price || 0,
           total: item.total,
           po_line_item_id: item.id,
         }))
@@ -60,8 +60,8 @@ export default function VendorNewBill() {
       prev.map((item) => {
         if (item.id !== id) return item;
         const updated = { ...item, [field]: value };
-        if (field === "quantity" || field === "unit_price") {
-          updated.total = updated.quantity * updated.unit_price;
+        if (field === "quantity" || field === "unit_cost") {
+          updated.total = updated.quantity * updated.unit_cost;
         }
         return updated;
       })
@@ -71,7 +71,7 @@ export default function VendorNewBill() {
   const addLineItem = () => {
     setLineItems((prev) => [
       ...prev,
-      { id: crypto.randomUUID(), description: "", quantity: 1, unit_price: 0, total: 0 },
+      { id: crypto.randomUUID(), description: "", quantity: 1, unit_cost: 0, total: 0 },
     ]);
   };
 
@@ -102,7 +102,7 @@ export default function VendorNewBill() {
       line_items: validLineItems.map((item) => ({
         description: item.description,
         quantity: item.quantity,
-        unit_price: item.unit_price,
+        unit_cost: item.unit_cost,
         total: item.total,
         po_line_item_id: item.po_line_item_id,
       })),
@@ -256,11 +256,11 @@ export default function VendorNewBill() {
                       />
                     </div>
                     <div className="sm:col-span-2 space-y-1">
-                      <Label className="text-xs">Unit Price</Label>
+                      <Label className="text-xs">Unit Cost</Label>
                       <Input
                         type="number"
-                        value={item.unit_price}
-                        onChange={(e) => updateLineItem(item.id, "unit_price", parseFloat(e.target.value) || 0)}
+                        value={item.unit_cost}
+                        onChange={(e) => updateLineItem(item.id, "unit_cost", parseFloat(e.target.value) || 0)}
                         min="0"
                         step="0.01"
                         required

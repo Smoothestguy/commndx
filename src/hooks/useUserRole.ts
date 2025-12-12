@@ -49,5 +49,6 @@ export function useUserRole() {
     isManager: role === "manager",
     isUser: role === "user",
     isPersonnel: role === "personnel",
+    isVendor: role === "vendor",
   };
 }

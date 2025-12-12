@@ -222,7 +222,7 @@ export function useCreateVendorBill() {
       line_items: Array<{
         description: string;
         quantity: number;
-        unit_price: number;
+        unit_cost: number;
         total: number;
         po_line_item_id?: string;
       }>;
@@ -261,7 +261,7 @@ export function useCreateVendorBill() {
         bill_id: bill.id,
         description: item.description,
         quantity: item.quantity,
-        unit_price: item.unit_price,
+        unit_cost: item.unit_cost,
         total: item.total,
         po_line_item_id: item.po_line_item_id,
       }));
