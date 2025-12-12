@@ -3,18 +3,36 @@ import { MessageCircle, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { useAIAssistant } from "@/contexts/AIAssistantContext";
+import { useDraggable } from "@/hooks/useDraggable";
 
 export function FloatingChatButton() {
   const { isOpen, toggleOpen, messages } = useAIAssistant();
+  const { position, isDragging, hasDragged, handleMouseDown, handleTouchStart } = useDraggable({
+    storageKey: "ai-chat-button-position",
+    bounds: { top: 60, right: 20, bottom: 80, left: 20 },
+  });
+
+  const handleClick = () => {
+    // Only toggle if we didn't just drag
+    if (!hasDragged()) {
+      toggleOpen();
+    }
+  };
 
   return (
     <Button
-      onClick={toggleOpen}
+      onMouseDown={handleMouseDown}
+      onTouchStart={handleTouchStart}
+      onClick={handleClick}
       size="icon"
+      style={{
+        left: position.x,
+        top: position.y,
+      }}
       className={cn(
-        "fixed bottom-20 right-4 z-50 h-14 w-14 rounded-full shadow-lg",
-        "transition-all duration-300 hover:scale-105",
-        "md:bottom-6 md:right-6",
+        "fixed z-50 h-14 w-14 rounded-full shadow-lg",
+        "transition-transform duration-150",
+        isDragging ? "cursor-grabbing scale-110" : "cursor-grab hover:scale-105",
         isOpen
           ? "bg-muted text-muted-foreground hover:bg-muted/90"
           : "bg-primary text-primary-foreground hover:bg-primary/90"
