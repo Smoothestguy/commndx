@@ -464,16 +464,63 @@ serve(async (req) => {
           throw new Error('QuickBooks vendor not found');
         }
       } else {
-        const result = await qbRequest('POST', '/vendor', accessToken, realmId, qbVendorData);
-        qbVendorId = result.Vendor.Id;
+        // First, check if a vendor with this name already exists in QuickBooks
+        const displayName = vendor.name.replace(/'/g, "\\'");
+        const searchQuery = `SELECT * FROM Vendor WHERE DisplayName = '${displayName}'`;
+        console.log('Searching for existing QB vendor:', displayName);
+        
+        try {
+          const searchResult = await qbRequest('GET', `/query?query=${encodeURIComponent(searchQuery)}`, accessToken, realmId);
+          const existingQbVendor = searchResult.QueryResponse?.Vendor?.[0];
+          
+          if (existingQbVendor) {
+            // Vendor exists in QB - update it instead of creating
+            console.log('Found existing QB vendor with ID:', existingQbVendor.Id);
+            const updateData = {
+              ...qbVendorData,
+              Id: existingQbVendor.Id,
+              SyncToken: existingQbVendor.SyncToken,
+              sparse: true,
+            };
+            
+            const updateResult = await qbRequest('POST', '/vendor', accessToken, realmId, updateData);
+            qbVendorId = updateResult.Vendor.Id;
+            
+            // Create mapping for the existing QB vendor
+            await supabase.from('quickbooks_vendor_mappings').insert({
+              vendor_id: vendorId,
+              quickbooks_vendor_id: qbVendorId,
+              sync_status: 'synced',
+              sync_direction: 'export',
+              last_synced_at: new Date().toISOString(),
+            });
+          } else {
+            // No existing vendor found - create new
+            const result = await qbRequest('POST', '/vendor', accessToken, realmId, qbVendorData);
+            qbVendorId = result.Vendor.Id;
 
-        await supabase.from('quickbooks_vendor_mappings').insert({
-          vendor_id: vendorId,
-          quickbooks_vendor_id: qbVendorId,
-          sync_status: 'synced',
-          sync_direction: 'export',
-          last_synced_at: new Date().toISOString(),
-        });
+            await supabase.from('quickbooks_vendor_mappings').insert({
+              vendor_id: vendorId,
+              quickbooks_vendor_id: qbVendorId,
+              sync_status: 'synced',
+              sync_direction: 'export',
+              last_synced_at: new Date().toISOString(),
+            });
+          }
+        } catch (searchError) {
+          console.error('Error searching for vendor:', searchError);
+          // Try to create anyway - if it fails with duplicate, we'll get an error
+          const result = await qbRequest('POST', '/vendor', accessToken, realmId, qbVendorData);
+          qbVendorId = result.Vendor.Id;
+
+          await supabase.from('quickbooks_vendor_mappings').insert({
+            vendor_id: vendorId,
+            quickbooks_vendor_id: qbVendorId,
+            sync_status: 'synced',
+            sync_direction: 'export',
+            last_synced_at: new Date().toISOString(),
+          });
+        }
       }
 
       await supabase
