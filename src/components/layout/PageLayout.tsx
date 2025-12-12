@@ -1,10 +1,9 @@
 import { ReactNode } from "react";
+import { AppHeader } from "./AppHeader";
 import { Sidebar } from "./Sidebar";
 import { useSwipeNavigation } from "@/hooks/useSwipeNavigation";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { cn } from "@/lib/utils";
-import logo from "@/assets/logo.png";
-import { ThemeToggleSimple } from "@/components/ThemeToggle";
 
 interface PageLayoutProps {
   children: ReactNode;
@@ -23,46 +22,46 @@ export function PageLayout({
   const isMobile = useIsMobile();
 
   return (
-    <div className="min-h-screen bg-background">
-      <Sidebar />
+    <div className="min-h-screen flex flex-col bg-background">
+      {/* Fixed Header */}
+      <AppHeader />
 
-      {/* Simplified Mobile Header */}
-      <header className="lg:hidden sticky top-0 z-50 h-14 border-b border-border glass safe-area-top">
-        <div className="flex h-full items-center justify-between px-4">
-          <img
-            src={logo}
-            alt="Command X"
-            className="h-8 sm:h-9 md:h-10 w-auto max-w-[180px] sm:max-w-[200px] md:max-w-[220px] object-contain"
-          />
-          <ThemeToggleSimple />
-        </div>
-      </header>
+      {/* Body: Sidebar + Main */}
+      <div className="flex pt-14 flex-1">
+        {/* Sidebar - hidden on mobile */}
+        <Sidebar />
 
-      <main className={cn("lg:pl-64", isMobile && "pb-24")}>
-        <div ref={swipeRef} className="px-4 sm:px-6 lg:px-8 py-4 sm:py-6">
-          {/* Header */}
-          <header className="mb-6 sm:mb-8 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
-            <div>
-              <h1 className="font-heading text-2xl sm:text-3xl font-bold text-foreground animate-fade-in">
-                {title}
-              </h1>
-              {description && (
-                <p className="mt-1 text-sm sm:text-base text-muted-foreground animate-fade-in">
-                  {description}
-                </p>
-              )}
-            </div>
-            {actions && (
-              <div className="flex items-center gap-3 animate-fade-in">
-                {actions}
+        {/* Main Content */}
+        <main className={cn(
+          "flex-1 min-h-[calc(100vh-3.5rem)] p-4 lg:p-6",
+          "lg:ml-64",
+          isMobile && "pb-24"
+        )}>
+          <div ref={swipeRef} className="max-w-[1600px] mx-auto">
+            {/* Page Header */}
+            <header className="mb-6 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+              <div>
+                <h1 className="font-heading text-xl sm:text-2xl font-bold text-foreground">
+                  {title}
+                </h1>
+                {description && (
+                  <p className="mt-1 text-sm text-muted-foreground">
+                    {description}
+                  </p>
+                )}
               </div>
-            )}
-          </header>
+              {actions && (
+                <div className="flex items-center gap-3 flex-wrap">
+                  {actions}
+                </div>
+              )}
+            </header>
 
-          {/* Content */}
-          <div className="animate-slide-up">{children}</div>
-        </div>
-      </main>
+            {/* Page Content */}
+            <div className="animate-fade-in">{children}</div>
+          </div>
+        </main>
+      </div>
     </div>
   );
 }

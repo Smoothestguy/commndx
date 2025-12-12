@@ -28,6 +28,7 @@ interface DataTableProps<T> {
   sortKey?: string;
   sortDirection?: 'asc' | 'desc';
   onSort?: (key: string) => void;
+  compact?: boolean;
 }
 
 export function DataTable<T extends { id: string | number }>({
@@ -40,6 +41,7 @@ export function DataTable<T extends { id: string | number }>({
   sortKey,
   sortDirection,
   onSort,
+  compact = true,
 }: DataTableProps<T>) {
   const allSelected = data.length > 0 && data.every(item => selectedIds.has(String(item.id)));
   const someSelected = data.some(item => selectedIds.has(String(item.id))) && !allSelected;
@@ -69,12 +71,15 @@ export function DataTable<T extends { id: string | number }>({
   };
 
   return (
-    <div className="glass rounded-xl overflow-hidden">
-      <Table>
+    <div className="bg-card rounded-lg border border-border shadow-sm overflow-x-auto">
+      <Table className={cn(compact && "text-xs")}>
         <TableHeader>
-          <TableRow className="border-border/50 hover:bg-transparent">
+          <TableRow className="bg-table-header hover:bg-table-header border-b border-table-border">
             {selectable && (
-              <TableHead className="w-12">
+              <TableHead className={cn(
+                "w-10 text-table-header-foreground font-semibold",
+                compact ? "py-2 px-3 h-9" : "py-3 px-4"
+              )}>
                 <Checkbox
                   checked={allSelected}
                   ref={(el) => {
@@ -84,6 +89,7 @@ export function DataTable<T extends { id: string | number }>({
                   }}
                   onCheckedChange={handleSelectAll}
                   aria-label="Select all"
+                  className="border-table-header-foreground/50"
                 />
               </TableHead>
             )}
@@ -97,8 +103,9 @@ export function DataTable<T extends { id: string | number }>({
                 <TableHead
                   key={String(column.key)}
                   className={cn(
-                    "text-muted-foreground font-medium",
-                    column.sortable && onSort && "cursor-pointer select-none hover:text-foreground transition-colors",
+                    "text-table-header-foreground font-semibold whitespace-nowrap",
+                    compact ? "py-2 px-3 h-9" : "py-3 px-4",
+                    column.sortable && onSort && "cursor-pointer select-none hover:bg-white/5 transition-colors",
                     column.className
                   )}
                   onClick={() => column.sortable && onSort?.(String(column.key))}
@@ -107,8 +114,8 @@ export function DataTable<T extends { id: string | number }>({
                     {column.header}
                     {column.sortable && onSort && (
                       <SortIcon className={cn(
-                        "h-4 w-4",
-                        isSorted ? "text-primary" : "text-muted-foreground/50"
+                        "h-3.5 w-3.5",
+                        isSorted ? "text-primary" : "text-table-header-foreground/50"
                       )} />
                     )}
                   </div>
@@ -118,20 +125,24 @@ export function DataTable<T extends { id: string | number }>({
           </TableRow>
         </TableHeader>
         <TableBody>
-          {data.map((item) => {
+          {data.map((item, index) => {
             const isSelected = selectedIds.has(String(item.id));
             return (
               <TableRow
                 key={item.id}
                 onClick={() => onRowClick?.(item)}
                 className={cn(
-                  "border-border/30 transition-colors duration-200",
-                  onRowClick && "cursor-pointer hover:bg-secondary/50",
+                  "border-b border-table-border transition-colors duration-100",
+                  index % 2 === 1 && "bg-table-stripe",
+                  onRowClick && "cursor-pointer hover:bg-muted/50",
                   isSelected && "bg-primary/5"
                 )}
               >
                 {selectable && (
-                  <TableCell className="w-12">
+                  <TableCell className={cn(
+                    "w-10",
+                    compact ? "py-1.5 px-3" : "py-2 px-4"
+                  )}>
                     <Checkbox
                       checked={isSelected}
                       onCheckedChange={(checked) => handleSelectOne(String(item.id), !!checked)}
@@ -143,7 +154,11 @@ export function DataTable<T extends { id: string | number }>({
                 {columns.map((column) => (
                   <TableCell
                     key={String(column.key)}
-                    className={cn("text-foreground", column.className)}
+                    className={cn(
+                      "text-foreground",
+                      compact ? "py-1.5 px-3" : "py-2 px-4",
+                      column.className
+                    )}
                   >
                     {column.render
                       ? column.render(item)

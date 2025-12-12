@@ -10,7 +10,6 @@ import {
   CollapsibleContent,
   CollapsibleTrigger,
 } from "@/components/ui/collapsible";
-import logo from "@/assets/logo.png";
 import {
   LayoutDashboard,
   Package,
@@ -31,18 +30,20 @@ import {
   ChevronDown,
   IdCard,
   Link2,
+  Send,
 } from "lucide-react";
 
 const navigation = [
   { name: "Dashboard", href: "/", icon: LayoutDashboard },
-  { name: "Projects", href: "/projects", icon: FolderKanban },
-  { name: "Customers", href: "/customers", icon: Users },
-  { name: "Vendors", href: "/vendors", icon: Truck },
   { name: "Products", href: "/products", icon: Package },
+  { name: "Customers", href: "/customers", icon: Users },
+  { name: "Projects", href: "/projects", icon: FolderKanban },
+  { name: "Personnel", href: "/personnel", icon: Users },
   { name: "Estimates", href: "/estimates", icon: FileText },
   { name: "Job Orders", href: "/job-orders", icon: Briefcase },
   { name: "Purchase Orders", href: "/purchase-orders", icon: ShoppingCart },
   { name: "Invoices", href: "/invoices", icon: Receipt },
+  { name: "Messages", href: "/messages", icon: Send },
   { name: "QuickBooks", href: "/settings/quickbooks", icon: Link2 },
 ];
 
@@ -90,21 +91,21 @@ export function MobileNav() {
         <Button
           variant="ghost"
           size="icon"
-          className="lg:hidden h-11 w-11 hover:bg-sidebar-accent"
+          className="h-9 w-9 text-header-foreground hover:bg-sidebar-accent"
           aria-label="Open navigation menu"
         >
-          <Menu className="h-6 w-6" />
+          <Menu className="h-5 w-5" />
         </Button>
       </SheetTrigger>
       <SheetContent side="left" className="w-[280px] p-0 bg-sidebar border-sidebar-border">
         <div className="flex h-full flex-col">
-          {/* Logo Header */}
-          <div className="flex h-20 items-center justify-center px-6 border-b border-sidebar-border">
-            <img src={logo} alt="Command X" className="h-10 w-full max-w-[200px] object-contain" />
+          {/* Header */}
+          <div className="flex h-14 items-center px-4 border-b border-sidebar-border">
+            <span className="text-sidebar-foreground font-semibold">Menu</span>
           </div>
 
           {/* Navigation */}
-          <nav className="flex-1 space-y-1 px-3 py-4 overflow-y-auto">
+          <nav className="flex-1 space-y-0.5 px-3 py-4 overflow-y-auto">
             {navigation.map((item) => {
               const isActive = location.pathname === item.href;
               return (
@@ -112,16 +113,16 @@ export function MobileNav() {
                   key={item.name}
                   onClick={() => handleNavigation(item.href)}
                   className={cn(
-                    "w-full group flex items-center gap-3 rounded-lg px-4 py-3 text-base font-medium transition-all duration-200 min-h-[48px]",
+                    "w-full group flex items-center gap-3 rounded-md px-3 py-2.5 text-sm font-medium transition-all duration-150",
                     isActive
-                      ? "bg-primary/10 text-primary"
-                      : "text-muted-foreground hover:bg-sidebar-accent hover:text-foreground"
+                      ? "bg-primary/15 text-primary border-l-4 border-primary -ml-0.5 pl-2.5"
+                      : "text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"
                   )}
                 >
                   <item.icon
                     className={cn(
-                      "h-6 w-6 transition-colors flex-shrink-0",
-                      isActive ? "text-primary" : "text-muted-foreground group-hover:text-foreground"
+                      "h-5 w-5 transition-colors flex-shrink-0",
+                      isActive ? "text-primary" : "text-sidebar-muted group-hover:text-sidebar-accent-foreground"
                     )}
                   />
                   {item.name}
@@ -132,7 +133,7 @@ export function MobileNav() {
             {/* Vendors Section */}
             <Collapsible open={vendorsOpen} onOpenChange={setVendorsOpen}>
               <div className="mt-4 pt-4 border-t border-sidebar-border">
-                <CollapsibleTrigger className="flex items-center justify-between w-full px-4 py-2 text-xs font-semibold text-muted-foreground uppercase tracking-wider hover:text-foreground transition-colors">
+                <CollapsibleTrigger className="flex items-center justify-between w-full px-3 py-2 text-xs font-semibold text-sidebar-muted uppercase tracking-wider hover:text-sidebar-foreground transition-colors">
                   <span>Vendors</span>
                   <ChevronDown
                     className={cn(
@@ -141,7 +142,7 @@ export function MobileNav() {
                     )}
                   />
                 </CollapsibleTrigger>
-                <CollapsibleContent className="space-y-1">
+                <CollapsibleContent className="space-y-0.5 mt-1">
                   {vendorsNavigation.map((item) => {
                     const isActive = location.pathname === item.href || location.pathname.startsWith(item.href + "/");
                     return (
@@ -149,16 +150,16 @@ export function MobileNav() {
                         key={item.name}
                         onClick={() => handleNavigation(item.href)}
                         className={cn(
-                          "w-full group flex items-center gap-3 rounded-lg px-4 py-3 text-base font-medium transition-all duration-200 min-h-[48px]",
+                          "w-full group flex items-center gap-3 rounded-md px-3 py-2.5 text-sm font-medium transition-all duration-150",
                           isActive
-                            ? "bg-primary/10 text-primary"
-                            : "text-muted-foreground hover:bg-sidebar-accent hover:text-foreground"
+                            ? "bg-primary/15 text-primary border-l-4 border-primary -ml-0.5 pl-2.5"
+                            : "text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"
                         )}
                       >
                         <item.icon
                           className={cn(
-                            "h-6 w-6 transition-colors flex-shrink-0",
-                            isActive ? "text-primary" : "text-muted-foreground group-hover:text-foreground"
+                            "h-5 w-5 transition-colors flex-shrink-0",
+                            isActive ? "text-primary" : "text-sidebar-muted group-hover:text-sidebar-accent-foreground"
                           )}
                         />
                         {item.name}
@@ -172,7 +173,7 @@ export function MobileNav() {
             {/* Staffing Section */}
             <Collapsible open={staffingOpen} onOpenChange={setStaffingOpen}>
               <div className="mt-4 pt-4 border-t border-sidebar-border">
-                <CollapsibleTrigger className="flex items-center justify-between w-full px-4 py-2 text-xs font-semibold text-muted-foreground uppercase tracking-wider hover:text-foreground transition-colors">
+                <CollapsibleTrigger className="flex items-center justify-between w-full px-3 py-2 text-xs font-semibold text-sidebar-muted uppercase tracking-wider hover:text-sidebar-foreground transition-colors">
                   <span>Staffing</span>
                   <ChevronDown
                     className={cn(
@@ -181,7 +182,7 @@ export function MobileNav() {
                     )}
                   />
                 </CollapsibleTrigger>
-                <CollapsibleContent className="space-y-1">
+                <CollapsibleContent className="space-y-0.5 mt-1">
                   {staffingNavigation.map((item) => {
                     if (item.requiresManager && !isAdmin && !isManager) return null;
                     const isActive = location.pathname === item.href;
@@ -190,16 +191,16 @@ export function MobileNav() {
                         key={item.name}
                         onClick={() => handleNavigation(item.href)}
                         className={cn(
-                          "w-full group flex items-center gap-3 rounded-lg px-4 py-3 text-base font-medium transition-all duration-200 min-h-[48px]",
+                          "w-full group flex items-center gap-3 rounded-md px-3 py-2.5 text-sm font-medium transition-all duration-150",
                           isActive
-                            ? "bg-primary/10 text-primary"
-                            : "text-muted-foreground hover:bg-sidebar-accent hover:text-foreground"
+                            ? "bg-primary/15 text-primary border-l-4 border-primary -ml-0.5 pl-2.5"
+                            : "text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"
                         )}
                       >
                         <item.icon
                           className={cn(
-                            "h-6 w-6 transition-colors flex-shrink-0",
-                            isActive ? "text-primary" : "text-muted-foreground group-hover:text-foreground"
+                            "h-5 w-5 transition-colors flex-shrink-0",
+                            isActive ? "text-primary" : "text-sidebar-muted group-hover:text-sidebar-accent-foreground"
                           )}
                         />
                         {item.name}
@@ -212,9 +213,9 @@ export function MobileNav() {
           </nav>
 
           {/* Settings & Profile */}
-          <div className="border-t border-sidebar-border p-3 space-y-1">
+          <div className="border-t border-sidebar-border p-3 space-y-0.5">
             {user && (
-              <div className="px-4 py-2 text-xs text-muted-foreground truncate">
+              <div className="px-3 py-2 text-xs text-sidebar-muted truncate">
                 {user.email}
               </div>
             )}
@@ -222,29 +223,29 @@ export function MobileNav() {
               <button
                 onClick={() => handleNavigation("/user-management")}
                 className={cn(
-                  "w-full flex items-center gap-3 rounded-lg px-4 py-3 text-base font-medium transition-all duration-200 min-h-[48px]",
+                  "w-full flex items-center gap-3 rounded-md px-3 py-2.5 text-sm font-medium transition-all duration-150",
                   location.pathname === "/user-management"
-                    ? "bg-primary/10 text-primary"
-                    : "text-muted-foreground hover:bg-sidebar-accent hover:text-foreground"
+                    ? "bg-primary/15 text-primary"
+                    : "text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"
                 )}
               >
-                <Shield className="h-6 w-6 flex-shrink-0" />
+                <Shield className="h-5 w-5 flex-shrink-0" />
                 User Management
               </button>
             )}
             <button
               onClick={() => handleNavigation("/settings")}
-              className="w-full flex items-center gap-3 rounded-lg px-4 py-3 text-base font-medium text-muted-foreground hover:bg-sidebar-accent hover:text-foreground transition-all duration-200 min-h-[48px]"
+              className="w-full flex items-center gap-3 rounded-md px-3 py-2.5 text-sm font-medium text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground transition-all duration-150"
             >
-              <Settings className="h-6 w-6 flex-shrink-0" />
+              <Settings className="h-5 w-5 flex-shrink-0" />
               Settings
             </button>
             <Button
               variant="ghost"
-              className="w-full justify-start gap-3 px-4 py-3 text-base font-medium text-muted-foreground hover:bg-sidebar-accent hover:text-foreground transition-all duration-200 min-h-[48px]"
+              className="w-full justify-start gap-3 px-3 py-2.5 h-auto text-sm font-medium text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground transition-all duration-150"
               onClick={signOut}
             >
-              <LogOut className="h-6 w-6 flex-shrink-0" />
+              <LogOut className="h-5 w-5 flex-shrink-0" />
               Sign Out
             </Button>
           </div>
