@@ -1,14 +1,6 @@
 import jsPDF from "jspdf";
 import { format } from "date-fns";
-
-const formatCurrencyForPDF = (amount: number): string => {
-  return new Intl.NumberFormat("en-US", {
-    style: "currency",
-    currency: "USD",
-    minimumFractionDigits: 2,
-    maximumFractionDigits: 2,
-  }).format(amount);
-};
+import { formatCurrencyForPDF, PDF_MARGIN, PDF_COLORS, setColor } from "./pdfHelpers";
 
 interface Project {
   name: string;
@@ -95,8 +87,10 @@ export const generateProjectReportPDF = (data: ProjectReportData) => {
   // Title
   doc.setFontSize(20);
   doc.setFont("helvetica", "bold");
-  doc.text("Command X", pageWidth / 2, yPos, { align: "center" });
+  setColor(doc, PDF_COLORS.primary);
+  doc.text("Fairfield Group", pageWidth / 2, yPos, { align: "center" });
   yPos += 8;
+  setColor(doc, PDF_COLORS.black);
   doc.setFontSize(16);
   doc.text("PROJECT REPORT", pageWidth / 2, yPos, { align: "center" });
   yPos += 15;
