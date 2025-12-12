@@ -469,6 +469,7 @@ const Vendors = () => {
       const newVendor = await addVendor.mutateAsync({
         ...vendorData,
         rating: null,
+        user_id: null,
       });
 
       // Auto-sync to QuickBooks if connected
