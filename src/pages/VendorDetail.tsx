@@ -1,3 +1,4 @@
+import { useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { PageLayout } from "@/components/layout/PageLayout";
 import { Button } from "@/components/ui/button";
@@ -11,6 +12,7 @@ import { usePurchaseOrders } from "@/integrations/supabase/hooks/usePurchaseOrde
 import { useVendorBills } from "@/integrations/supabase/hooks/useVendorBills";
 import { VendorDocumentUpload } from "@/components/vendors/VendorDocumentUpload";
 import { VendorPersonnelSection } from "@/components/vendors/VendorPersonnelSection";
+import { VendorEditDialog } from "@/components/vendors/VendorEditDialog";
 import { usePersonnelByVendor } from "@/integrations/supabase/hooks/usePersonnel";
 import { useVendorDocuments } from "@/integrations/supabase/hooks/useVendorDocuments";
 import { 
@@ -32,7 +34,7 @@ import {
 import { 
   ArrowLeft, Building2, Mail, Phone, FileText, AlertCircle, Users, 
   MapPin, DollarSign, Receipt, CreditCard, ShoppingCart, ClipboardList,
-  LayoutDashboard, Loader2, ExternalLink, UserCheck, UserPlus, UserMinus, Clock
+  LayoutDashboard, Loader2, ExternalLink, UserCheck, UserPlus, UserMinus, Clock, Edit
 } from "lucide-react";
 import { format } from "date-fns";
 
@@ -47,6 +49,7 @@ const PAYMENT_TERMS_LABELS: Record<string, string> = {
 export default function VendorDetail() {
   const { id } = useParams();
   const navigate = useNavigate();
+  const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
   const { data: vendors, isLoading } = useVendors();
   const { data: expenseCategories } = useExpenseCategories("vendor");
   const { data: purchaseOrders } = usePurchaseOrders();
@@ -113,11 +116,17 @@ export default function VendorDetail() {
       description="Vendor details and documents"
     >
       <div className="space-y-6">
-        {/* Back Button */}
-        <Button variant="outline" onClick={() => navigate("/vendors")}>
-          <ArrowLeft className="mr-2 h-4 w-4" />
-          Back to Vendors
-        </Button>
+        {/* Header Actions */}
+        <div className="flex items-center gap-2">
+          <Button variant="outline" onClick={() => navigate("/vendors")}>
+            <ArrowLeft className="mr-2 h-4 w-4" />
+            Back to Vendors
+          </Button>
+          <Button onClick={() => setIsEditDialogOpen(true)}>
+            <Edit className="mr-2 h-4 w-4" />
+            Edit Vendor
+          </Button>
+        </div>
         {/* Basic Information Card */}
         <Card>
           <CardHeader>
@@ -642,6 +651,13 @@ export default function VendorDetail() {
             <VendorDocumentUpload vendorId={vendor.id} />
           </TabsContent>
         </Tabs>
+
+        {/* Edit Dialog */}
+        <VendorEditDialog
+          vendor={vendor}
+          open={isEditDialogOpen}
+          onOpenChange={setIsEditDialogOpen}
+        />
       </div>
     </PageLayout>
   );
