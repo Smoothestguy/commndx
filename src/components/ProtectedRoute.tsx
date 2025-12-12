@@ -6,7 +6,7 @@ import { Loader2 } from "lucide-react";
 
 export const ProtectedRoute = ({ children }: { children: ReactNode }) => {
   const { user, loading: authLoading } = useAuth();
-  const { isPersonnel, loading: roleLoading } = useUserRole();
+  const { isPersonnel, isVendor, loading: roleLoading } = useUserRole();
 
   if (authLoading || roleLoading) {
     return (
@@ -23,6 +23,11 @@ export const ProtectedRoute = ({ children }: { children: ReactNode }) => {
   // Redirect personnel users to the portal
   if (isPersonnel) {
     return <Navigate to="/portal" replace />;
+  }
+
+  // Redirect vendor users to vendor portal
+  if (isVendor) {
+    return <Navigate to="/vendor" replace />;
   }
 
   return <>{children}</>;
