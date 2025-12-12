@@ -1,4 +1,10 @@
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { SearchInput } from "@/components/ui/search-input";
 import { useVendors } from "@/integrations/supabase/hooks/useVendors";
 
@@ -26,57 +32,62 @@ export const PersonnelFilters = ({
   const { data: vendors } = useVendors();
 
   return (
-    <div className="flex flex-col sm:flex-row gap-4 flex-wrap">
-      <div className="flex-1 min-w-[200px]">
+    <div className="flex flex-col gap-2 sm:gap-3">
+      {/* Search - full width on mobile */}
+      <div className="w-full">
         <SearchInput
-          placeholder="Search by name, email, or personnel number..."
+          placeholder="Search name, email, ID..."
           value={search}
           onChange={onSearchChange}
+          className="min-h-[44px] sm:min-h-[40px]"
         />
       </div>
 
-      <Select value={status} onValueChange={onStatusChange}>
-        <SelectTrigger className="w-full sm:w-[180px]">
-          <SelectValue placeholder="Filter by status" />
-        </SelectTrigger>
-        <SelectContent>
-          <SelectItem value="all">All Status</SelectItem>
-          <SelectItem value="active">Active</SelectItem>
-          <SelectItem value="inactive">Inactive</SelectItem>
-          <SelectItem value="do_not_hire">Do Not Hire</SelectItem>
-        </SelectContent>
-      </Select>
-
-      <Select value={everifyStatus} onValueChange={onEverifyStatusChange}>
-        <SelectTrigger className="w-full sm:w-[180px]">
-          <SelectValue placeholder="Filter by E-Verify" />
-        </SelectTrigger>
-        <SelectContent>
-          <SelectItem value="all">All E-Verify</SelectItem>
-          <SelectItem value="verified">Verified</SelectItem>
-          <SelectItem value="pending">Pending</SelectItem>
-          <SelectItem value="rejected">Rejected</SelectItem>
-          <SelectItem value="expired">Expired</SelectItem>
-          <SelectItem value="not_required">Not Required</SelectItem>
-        </SelectContent>
-      </Select>
-
-      {onVendorChange && (
-        <Select value={vendorId || "all"} onValueChange={onVendorChange}>
-          <SelectTrigger className="w-full sm:w-[180px]">
-            <SelectValue placeholder="Filter by vendor" />
+      {/* Filters row - scrollable on mobile */}
+      <div className="flex gap-2 overflow-x-auto pb-1 sm:pb-0 sm:flex-wrap">
+        <Select value={status} onValueChange={onStatusChange}>
+          <SelectTrigger className="min-w-[110px] sm:w-[140px] md:w-[160px] min-h-[44px] sm:min-h-[40px] text-xs sm:text-sm shrink-0">
+            <SelectValue placeholder="Status" />
           </SelectTrigger>
           <SelectContent>
-            <SelectItem value="all">All Vendors</SelectItem>
-            <SelectItem value="unassigned">Unassigned</SelectItem>
-            {vendors?.map((vendor) => (
-              <SelectItem key={vendor.id} value={vendor.id}>
-                {vendor.name}
-              </SelectItem>
-            ))}
+            <SelectItem value="all">All Status</SelectItem>
+            <SelectItem value="active">Active</SelectItem>
+            <SelectItem value="inactive">Inactive</SelectItem>
+            <SelectItem value="do_not_hire">DNH</SelectItem>
           </SelectContent>
         </Select>
-      )}
+
+        <Select value={everifyStatus} onValueChange={onEverifyStatusChange}>
+          <SelectTrigger className="min-w-[110px] sm:w-[140px] md:w-[160px] min-h-[44px] sm:min-h-[40px] text-xs sm:text-sm shrink-0">
+            <SelectValue placeholder="E-Verify" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">All E-Verify</SelectItem>
+            <SelectItem value="verified">Verified</SelectItem>
+            <SelectItem value="pending">Pending</SelectItem>
+            <SelectItem value="rejected">Rejected</SelectItem>
+            <SelectItem value="expired">Expired</SelectItem>
+            <SelectItem value="not_required">N/A</SelectItem>
+          </SelectContent>
+        </Select>
+
+        {onVendorChange && (
+          <Select value={vendorId || "all"} onValueChange={onVendorChange}>
+            <SelectTrigger className="min-w-[110px] sm:w-[140px] md:w-[160px] min-h-[44px] sm:min-h-[40px] text-xs sm:text-sm shrink-0">
+              <SelectValue placeholder="Vendor" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">All Vendors</SelectItem>
+              <SelectItem value="unassigned">Unassigned</SelectItem>
+              {vendors?.map((vendor) => (
+                <SelectItem key={vendor.id} value={vendor.id}>
+                  {vendor.name}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        )}
+      </div>
     </div>
   );
 };

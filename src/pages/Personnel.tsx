@@ -1,7 +1,20 @@
 import { useState } from "react";
-import { Plus, Upload, Download, CheckSquare, XSquare, Link, Mail } from "lucide-react";
+import {
+  Plus,
+  Upload,
+  Download,
+  CheckSquare,
+  XSquare,
+  Link,
+  Mail,
+} from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -106,13 +119,13 @@ const Personnel = () => {
         description="Manage your workforce with complete personnel profiles, I-9 compliance, E-Verify tracking, and certifications"
       />
 
-      <div className="space-y-6">
+      <div className="space-y-4 sm:space-y-6">
         <PersonnelStats />
 
         {/* Pending Registrations */}
         {canManage && <PendingRegistrations />}
 
-        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+        <div className="flex flex-col gap-3 sm:gap-4">
           <PersonnelFilters
             search={search}
             onSearchChange={setSearch}
@@ -123,21 +136,24 @@ const Personnel = () => {
             vendorId={vendorId}
             onVendorChange={setVendorId}
           />
-          <div className="flex flex-col sm:flex-row gap-2 w-full sm:w-auto">
+          <div className="flex flex-wrap gap-2 w-full">
             {!selectionMode ? (
               <>
                 <Button
                   variant="outline"
                   onClick={handleEnterSelectionMode}
-                  className="w-full sm:w-auto"
+                  className="flex-1 sm:flex-none min-h-[44px] sm:min-h-[40px] text-xs sm:text-sm"
                 >
-                  <CheckSquare className="mr-2 h-4 w-4" />
+                  <CheckSquare className="mr-1.5 sm:mr-2 h-3.5 w-3.5 sm:h-4 sm:w-4 shrink-0" />
                   Select
                 </Button>
                 <DropdownMenu>
                   <DropdownMenuTrigger asChild>
-                    <Button variant="outline" className="w-full sm:w-auto">
-                      <Upload className="mr-2 h-4 w-4" />
+                    <Button
+                      variant="outline"
+                      className="flex-1 sm:flex-none min-h-[44px] sm:min-h-[40px] text-xs sm:text-sm"
+                    >
+                      <Upload className="mr-1.5 sm:mr-2 h-3.5 w-3.5 sm:h-4 sm:w-4 shrink-0" />
                       Import
                     </Button>
                   </DropdownMenuTrigger>
@@ -156,34 +172,43 @@ const Personnel = () => {
                     </DropdownMenuItem>
                   </DropdownMenuContent>
                 </DropdownMenu>
-                <Button variant="outline" onClick={() => setInviteDialogOpen(true)} className="w-full sm:w-auto">
-                  <Mail className="mr-2 h-4 w-4" />
+                <Button
+                  variant="outline"
+                  onClick={() => setInviteDialogOpen(true)}
+                  className="flex-1 sm:flex-none min-h-[44px] sm:min-h-[40px] text-xs sm:text-sm"
+                >
+                  <Mail className="mr-1.5 sm:mr-2 h-3.5 w-3.5 sm:h-4 sm:w-4 shrink-0" />
                   Invite
                 </Button>
-                <Button onClick={() => setAddDialogOpen(true)} className="w-full sm:w-auto">
-                  <Plus className="mr-2 h-4 w-4" />
+                <Button
+                  onClick={() => setAddDialogOpen(true)}
+                  className="w-full sm:w-auto min-h-[44px] sm:min-h-[40px] text-xs sm:text-sm"
+                >
+                  <Plus className="mr-1.5 sm:mr-2 h-3.5 w-3.5 sm:h-4 sm:w-4 shrink-0" />
                   Add Personnel
-              {pendingCount > 0 && (
-                <Badge variant="secondary" className="ml-2">{pendingCount}</Badge>
-              )}
+                  {pendingCount > 0 && (
+                    <Badge variant="secondary" className="ml-1.5 sm:ml-2">
+                      {pendingCount}
+                    </Badge>
+                  )}
                 </Button>
               </>
             ) : (
               <Button
                 variant="outline"
                 onClick={handleExitSelectionMode}
-                className="w-full sm:w-auto"
+                className="w-full sm:w-auto min-h-[44px] sm:min-h-[40px] text-xs sm:text-sm"
               >
-                <XSquare className="mr-2 h-4 w-4" />
-                Exit Selection Mode
+                <XSquare className="mr-1.5 sm:mr-2 h-3.5 w-3.5 sm:h-4 sm:w-4 shrink-0" />
+                Exit Selection
               </Button>
             )}
           </div>
         </div>
 
         {isLoading ? (
-          <div className="flex justify-center py-12">
-            <Loader2 className="h-8 w-8 animate-spin text-primary" />
+          <div className="flex justify-center py-8 sm:py-12">
+            <Loader2 className="h-6 w-6 sm:h-8 sm:w-8 animate-spin text-primary" />
           </div>
         ) : personnel && personnel.length > 0 ? (
           <PersonnelTable
@@ -201,9 +226,11 @@ const Personnel = () => {
       </div>
 
       <Dialog open={addDialogOpen} onOpenChange={setAddDialogOpen}>
-        <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
+        <DialogContent className="max-w-4xl max-h-[85vh] sm:max-h-[90vh] overflow-y-auto mx-2 sm:mx-auto">
           <DialogHeader>
-            <DialogTitle>Add New Personnel</DialogTitle>
+            <DialogTitle className="text-base sm:text-lg">
+              Add New Personnel
+            </DialogTitle>
           </DialogHeader>
           <PersonnelForm
             onSuccess={() => setAddDialogOpen(false)}
@@ -212,8 +239,8 @@ const Personnel = () => {
         </DialogContent>
       </Dialog>
 
-      <PersonnelImportDialog 
-        open={importDialogOpen} 
+      <PersonnelImportDialog
+        open={importDialogOpen}
         onOpenChange={setImportDialogOpen}
       />
 

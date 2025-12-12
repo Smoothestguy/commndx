@@ -40,7 +40,10 @@ import {
   XSquare,
 } from "lucide-react";
 import { useVendors } from "@/integrations/supabase/hooks/useVendors";
-import { useDeletePersonnel, useToggleDoNotHire } from "@/integrations/supabase/hooks/usePersonnel";
+import {
+  useDeletePersonnel,
+  useToggleDoNotHire,
+} from "@/integrations/supabase/hooks/usePersonnel";
 import { toast } from "sonner";
 import type { Database } from "@/integrations/supabase/types";
 
@@ -69,7 +72,7 @@ export function PersonnelTable({
   const { data: vendors } = useVendors();
   const deletePersonnel = useDeletePersonnel();
   const toggleDoNotHire = useToggleDoNotHire();
-  
+
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [personToDelete, setPersonToDelete] = useState<Personnel | null>(null);
 
@@ -99,7 +102,9 @@ export function PersonnelTable({
   const getEVerifyBadge = (everifyStatus: string | null) => {
     switch (everifyStatus) {
       case "verified":
-        return <Badge className="bg-green-600 hover:bg-green-600/90">Verified</Badge>;
+        return (
+          <Badge className="bg-green-600 hover:bg-green-600/90">Verified</Badge>
+        );
       case "pending":
         return <Badge variant="secondary">Pending</Badge>;
       case "rejected":
@@ -141,200 +146,246 @@ export function PersonnelTable({
     }
   };
 
-  const allSelected = personnel.length > 0 && selectedIds.length === personnel.length;
-  const someSelected = selectedIds.length > 0 && selectedIds.length < personnel.length;
+  const allSelected =
+    personnel.length > 0 && selectedIds.length === personnel.length;
+  const someSelected =
+    selectedIds.length > 0 && selectedIds.length < personnel.length;
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-3 sm:space-y-4">
       {/* Bulk Action Bar */}
       {selectionMode && selectedIds.length > 0 && (
-        <div className="flex items-center gap-4 p-3 bg-muted rounded-lg">
-          <span className="text-sm font-medium">
+        <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-4 p-3 bg-muted rounded-lg">
+          <span className="text-xs sm:text-sm font-medium">
             {selectedIds.length} selected
           </span>
-          <Button size="sm" onClick={onPrintBadges}>
-            <Printer className="mr-2 h-4 w-4" />
-            Print Badges
-          </Button>
-          <Button size="sm" variant="outline" onClick={onClearSelection}>
-            <XSquare className="mr-2 h-4 w-4" />
-            Clear Selection
-          </Button>
+          <div className="flex flex-wrap gap-2">
+            <Button
+              size="sm"
+              onClick={onPrintBadges}
+              className="min-h-[36px] sm:min-h-[32px] text-xs sm:text-sm flex-1 sm:flex-none"
+            >
+              <Printer className="mr-1.5 sm:mr-2 h-3.5 w-3.5 sm:h-4 sm:w-4 shrink-0" />
+              Print Badges
+            </Button>
+            <Button
+              size="sm"
+              variant="outline"
+              onClick={onClearSelection}
+              className="min-h-[36px] sm:min-h-[32px] text-xs sm:text-sm flex-1 sm:flex-none"
+            >
+              <XSquare className="mr-1.5 sm:mr-2 h-3.5 w-3.5 sm:h-4 sm:w-4 shrink-0" />
+              Clear
+            </Button>
+          </div>
         </div>
       )}
 
-      <div className="rounded-md border">
-        <Table>
-          <TableHeader>
-            <TableRow>
-              {selectionMode && (
-                <TableHead className="w-[40px]">
-                  <Checkbox
-                    checked={allSelected}
-                    ref={(ref) => {
-                      if (ref) {
-                        (ref as any).indeterminate = someSelected;
-                      }
-                    }}
-                    onCheckedChange={() => {
-                      if (allSelected) {
-                        onClearSelection();
-                      } else {
-                        onSelectAll();
-                      }
-                    }}
-                  />
-                </TableHead>
-              )}
-              <TableHead className="w-[60px]">Action</TableHead>
-              <TableHead className="w-[50px]"></TableHead>
-              <TableHead>Name</TableHead>
-              <TableHead>Personnel #</TableHead>
-              <TableHead>Status</TableHead>
-              <TableHead>E-Verify</TableHead>
-              <TableHead className="hidden md:table-cell">Phone</TableHead>
-              <TableHead className="hidden lg:table-cell">Email</TableHead>
-              <TableHead className="hidden lg:table-cell">Location</TableHead>
-              <TableHead className="hidden md:table-cell">Vendor</TableHead>
-              <TableHead className="hidden md:table-cell">Rate</TableHead>
-              <TableHead className="w-[50px]"></TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {personnel.map((person) => {
-              const vendor = getVendor(person.vendor_id);
-              return (
-                <TableRow
-                  key={person.id}
-                  className="cursor-pointer hover:bg-muted/50"
-                  onClick={() => {
-                    if (!selectionMode) {
-                      navigate(`/personnel/${person.id}`);
-                    }
-                  }}
-                >
+      {/* Table with horizontal scroll on mobile */}
+      <div className="overflow-x-auto -mx-4 sm:mx-0">
+        <div className="min-w-[600px] sm:min-w-0 px-4 sm:px-0">
+          <div className="rounded-md border">
+            <Table>
+              <TableHeader>
+                <TableRow>
                   {selectionMode && (
-                    <TableCell onClick={(e) => e.stopPropagation()}>
+                    <TableHead className="w-[40px]">
                       <Checkbox
-                        checked={selectedIds.includes(person.id)}
-                        onCheckedChange={() => onToggleSelection(person.id)}
+                        checked={allSelected}
+                        ref={(ref) => {
+                          if (ref) {
+                            (ref as any).indeterminate = someSelected;
+                          }
+                        }}
+                        onCheckedChange={() => {
+                          if (allSelected) {
+                            onClearSelection();
+                          } else {
+                            onSelectAll();
+                          }
+                        }}
                       />
-                    </TableCell>
+                    </TableHead>
                   )}
-                  <TableCell onClick={(e) => e.stopPropagation()}>
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      onClick={() => navigate(`/personnel/${person.id}`)}
+                  <TableHead className="w-[50px] sm:w-[60px]">Action</TableHead>
+                  <TableHead className="w-[40px] sm:w-[50px]"></TableHead>
+                  <TableHead className="min-w-[100px]">Name</TableHead>
+                  <TableHead className="hidden sm:table-cell">
+                    Personnel #
+                  </TableHead>
+                  <TableHead>Status</TableHead>
+                  <TableHead className="hidden sm:table-cell">
+                    E-Verify
+                  </TableHead>
+                  <TableHead className="hidden md:table-cell">Phone</TableHead>
+                  <TableHead className="hidden lg:table-cell">Email</TableHead>
+                  <TableHead className="hidden lg:table-cell">
+                    Location
+                  </TableHead>
+                  <TableHead className="hidden md:table-cell">Vendor</TableHead>
+                  <TableHead className="hidden md:table-cell">Rate</TableHead>
+                  <TableHead className="w-[40px] sm:w-[50px]"></TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {personnel.map((person) => {
+                  const vendor = getVendor(person.vendor_id);
+                  return (
+                    <TableRow
+                      key={person.id}
+                      className="cursor-pointer hover:bg-muted/50 active:bg-muted/70"
+                      onClick={() => {
+                        if (!selectionMode) {
+                          navigate(`/personnel/${person.id}`);
+                        }
+                      }}
                     >
-                      <Eye className="h-4 w-4" />
-                    </Button>
-                  </TableCell>
-                  <TableCell>
-                    <Avatar className="h-8 w-8">
-                      <AvatarImage src={person.photo_url || ""} />
-                      <AvatarFallback className="text-xs">
-                        {person.first_name[0]}
-                        {person.last_name[0]}
-                      </AvatarFallback>
-                    </Avatar>
-                  </TableCell>
-                  <TableCell className="font-medium">
-                    {person.first_name} {person.last_name}
-                  </TableCell>
-                  <TableCell className="text-muted-foreground">
-                    {person.personnel_number}
-                  </TableCell>
-                  <TableCell>{getStatusBadge(person.status)}</TableCell>
-                  <TableCell>{getEVerifyBadge(person.everify_status)}</TableCell>
-                  <TableCell className="hidden md:table-cell text-muted-foreground">
-                    {person.phone || "—"}
-                  </TableCell>
-                  <TableCell className="hidden lg:table-cell text-muted-foreground max-w-[200px] truncate">
-                    {person.email || "—"}
-                  </TableCell>
-                  <TableCell className="hidden lg:table-cell text-muted-foreground">
-                    {person.city && person.state
-                      ? `${person.city}, ${person.state}`
-                      : "—"}
-                  </TableCell>
-                  <TableCell className="hidden md:table-cell" onClick={(e) => e.stopPropagation()}>
-                    {vendor ? (
-                      <Link
-                        to={`/vendors/${vendor.id}`}
-                        className="text-primary hover:underline flex items-center gap-1"
-                      >
-                        <Building2 className="h-3 w-3" />
-                        <span className="max-w-[100px] truncate">{vendor.name}</span>
-                      </Link>
-                    ) : (
-                      <span className="text-muted-foreground">—</span>
-                    )}
-                  </TableCell>
-                  <TableCell className="hidden md:table-cell">
-                    {(person.hourly_rate ?? 0) > 0 ? (
-                      <span className="font-medium">${person.hourly_rate}/hr</span>
-                    ) : (
-                      <span className="text-muted-foreground">—</span>
-                    )}
-                  </TableCell>
-                  <TableCell onClick={(e) => e.stopPropagation()}>
-                    <DropdownMenu>
-                      <DropdownMenuTrigger asChild>
-                        <Button variant="ghost" size="icon">
-                          <MoreHorizontal className="h-4 w-4" />
-                        </Button>
-                      </DropdownMenuTrigger>
-                      <DropdownMenuContent align="end">
-                        <DropdownMenuItem
+                      {selectionMode && (
+                        <TableCell onClick={(e) => e.stopPropagation()}>
+                          <Checkbox
+                            checked={selectedIds.includes(person.id)}
+                            onCheckedChange={() => onToggleSelection(person.id)}
+                          />
+                        </TableCell>
+                      )}
+                      <TableCell onClick={(e) => e.stopPropagation()}>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="h-8 w-8 sm:h-9 sm:w-9"
                           onClick={() => navigate(`/personnel/${person.id}`)}
                         >
-                          <Eye className="mr-2 h-4 w-4" />
-                          View
-                        </DropdownMenuItem>
-                        <DropdownMenuItem
-                          onClick={() => navigate(`/personnel/${person.id}?edit=true`)}
-                        >
-                          <Edit className="mr-2 h-4 w-4" />
-                          Edit
-                        </DropdownMenuItem>
-                        <DropdownMenuItem
-                          onClick={() => {
-                            onToggleSelection(person.id);
-                            onPrintBadges();
-                          }}
-                        >
-                          <Printer className="mr-2 h-4 w-4" />
-                          Print Badge
-                        </DropdownMenuItem>
-                        <DropdownMenuSeparator />
-                        <DropdownMenuItem
-                          onClick={() => handleToggleDNH(person)}
-                          className={person.status === "do_not_hire" ? "" : "text-destructive"}
-                        >
-                          <AlertTriangle className="mr-2 h-4 w-4" />
-                          {person.status === "do_not_hire"
-                            ? "Remove from DNH"
-                            : "Mark Do Not Hire"}
-                        </DropdownMenuItem>
-                        <DropdownMenuItem
-                          onClick={() => {
-                            setPersonToDelete(person);
-                            setDeleteDialogOpen(true);
-                          }}
-                          className="text-destructive"
-                        >
-                          <Trash2 className="mr-2 h-4 w-4" />
-                          Deactivate
-                        </DropdownMenuItem>
-                      </DropdownMenuContent>
-                    </DropdownMenu>
-                  </TableCell>
-                </TableRow>
-              );
-            })}
-          </TableBody>
-        </Table>
+                          <Eye className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
+                        </Button>
+                      </TableCell>
+                      <TableCell>
+                        <Avatar className="h-7 w-7 sm:h-8 sm:w-8">
+                          <AvatarImage src={person.photo_url || ""} />
+                          <AvatarFallback className="text-[10px] sm:text-xs">
+                            {person.first_name[0]}
+                            {person.last_name[0]}
+                          </AvatarFallback>
+                        </Avatar>
+                      </TableCell>
+                      <TableCell className="font-medium text-xs sm:text-sm">
+                        {person.first_name} {person.last_name}
+                      </TableCell>
+                      <TableCell className="hidden sm:table-cell text-muted-foreground text-xs sm:text-sm">
+                        {person.personnel_number}
+                      </TableCell>
+                      <TableCell>{getStatusBadge(person.status)}</TableCell>
+                      <TableCell className="hidden sm:table-cell">
+                        {getEVerifyBadge(person.everify_status)}
+                      </TableCell>
+                      <TableCell className="hidden md:table-cell text-muted-foreground text-xs sm:text-sm">
+                        {person.phone || "—"}
+                      </TableCell>
+                      <TableCell className="hidden lg:table-cell text-muted-foreground max-w-[200px] truncate text-xs sm:text-sm">
+                        {person.email || "—"}
+                      </TableCell>
+                      <TableCell className="hidden lg:table-cell text-muted-foreground text-xs sm:text-sm">
+                        {person.city && person.state
+                          ? `${person.city}, ${person.state}`
+                          : "—"}
+                      </TableCell>
+                      <TableCell
+                        className="hidden md:table-cell"
+                        onClick={(e) => e.stopPropagation()}
+                      >
+                        {vendor ? (
+                          <Link
+                            to={`/vendors/${vendor.id}`}
+                            className="text-primary hover:underline flex items-center gap-1 text-xs sm:text-sm"
+                          >
+                            <Building2 className="h-3 w-3 shrink-0" />
+                            <span className="max-w-[80px] sm:max-w-[100px] truncate">
+                              {vendor.name}
+                            </span>
+                          </Link>
+                        ) : (
+                          <span className="text-muted-foreground">—</span>
+                        )}
+                      </TableCell>
+                      <TableCell className="hidden md:table-cell text-xs sm:text-sm">
+                        {(person.hourly_rate ?? 0) > 0 ? (
+                          <span className="font-medium">
+                            ${person.hourly_rate}/hr
+                          </span>
+                        ) : (
+                          <span className="text-muted-foreground">—</span>
+                        )}
+                      </TableCell>
+                      <TableCell onClick={(e) => e.stopPropagation()}>
+                        <DropdownMenu>
+                          <DropdownMenuTrigger asChild>
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              className="h-8 w-8 sm:h-9 sm:w-9"
+                            >
+                              <MoreHorizontal className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
+                            </Button>
+                          </DropdownMenuTrigger>
+                          <DropdownMenuContent align="end">
+                            <DropdownMenuItem
+                              onClick={() =>
+                                navigate(`/personnel/${person.id}`)
+                              }
+                            >
+                              <Eye className="mr-2 h-4 w-4" />
+                              View
+                            </DropdownMenuItem>
+                            <DropdownMenuItem
+                              onClick={() =>
+                                navigate(`/personnel/${person.id}?edit=true`)
+                              }
+                            >
+                              <Edit className="mr-2 h-4 w-4" />
+                              Edit
+                            </DropdownMenuItem>
+                            <DropdownMenuItem
+                              onClick={() => {
+                                onToggleSelection(person.id);
+                                onPrintBadges();
+                              }}
+                            >
+                              <Printer className="mr-2 h-4 w-4" />
+                              Print Badge
+                            </DropdownMenuItem>
+                            <DropdownMenuSeparator />
+                            <DropdownMenuItem
+                              onClick={() => handleToggleDNH(person)}
+                              className={
+                                person.status === "do_not_hire"
+                                  ? ""
+                                  : "text-destructive"
+                              }
+                            >
+                              <AlertTriangle className="mr-2 h-4 w-4" />
+                              {person.status === "do_not_hire"
+                                ? "Remove from DNH"
+                                : "Mark DNH"}
+                            </DropdownMenuItem>
+                            <DropdownMenuItem
+                              onClick={() => {
+                                setPersonToDelete(person);
+                                setDeleteDialogOpen(true);
+                              }}
+                              className="text-destructive"
+                            >
+                              <Trash2 className="mr-2 h-4 w-4" />
+                              Deactivate
+                            </DropdownMenuItem>
+                          </DropdownMenuContent>
+                        </DropdownMenu>
+                      </TableCell>
+                    </TableRow>
+                  );
+                })}
+              </TableBody>
+            </Table>
+          </div>
+        </div>
       </div>
 
       {/* Delete Confirmation Dialog */}
