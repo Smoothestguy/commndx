@@ -43,6 +43,7 @@ import {
   Link2,
   Send,
   KeyRound,
+  Eye,
 } from "lucide-react";
 import logo from "@/assets/logo.png";
 
@@ -102,7 +103,7 @@ export function AppSidebar() {
   useEffect(() => {
     const vendorsRoutes = vendorsNavigation.map((item) => item.href);
     const staffingRoutes = staffingNavigation.map((item) => item.href);
-    const accountRoutes = ["/user-management", "/settings", "/permissions"];
+    const accountRoutes = ["/user-management", "/settings", "/permissions", "/admin/preview"];
 
     if (
       vendorsRoutes.some(
@@ -294,6 +295,30 @@ export function AppSidebar() {
                           <Link to="/permissions">
                             <KeyRound className="h-4 w-4" />
                             <span>Permissions</span>
+                          </Link>
+                        </SidebarMenuButton>
+                      </SidebarMenuItem>
+                      <SidebarMenuItem>
+                        <SidebarMenuButton
+                          asChild
+                          isActive={location.pathname === "/admin/preview/vendor-portal"}
+                          tooltip="Vendor Portal Preview"
+                        >
+                          <Link to="/admin/preview/vendor-portal">
+                            <Eye className="h-4 w-4" />
+                            <span>Vendor Portal Preview</span>
+                          </Link>
+                        </SidebarMenuButton>
+                      </SidebarMenuItem>
+                      <SidebarMenuItem>
+                        <SidebarMenuButton
+                          asChild
+                          isActive={location.pathname === "/admin/preview/personnel-portal"}
+                          tooltip="Personnel Portal Preview"
+                        >
+                          <Link to="/admin/preview/personnel-portal">
+                            <Eye className="h-4 w-4" />
+                            <span>Personnel Portal Preview</span>
                           </Link>
                         </SidebarMenuButton>
                       </SidebarMenuItem>
