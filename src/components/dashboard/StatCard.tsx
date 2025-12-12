@@ -9,6 +9,7 @@ interface StatCardProps {
   changeType?: "positive" | "negative" | "neutral";
   icon: LucideIcon;
   href?: string;
+  compact?: boolean;
 }
 
 export function StatCard({
@@ -18,8 +19,19 @@ export function StatCard({
   changeType = "neutral",
   icon: Icon,
   href,
+  compact = false,
 }: StatCardProps) {
-  const cardContent = (
+  const cardContent = compact ? (
+    <>
+      <div className="flex items-center gap-1.5 mb-1">
+        <div className="flex h-6 w-6 items-center justify-center rounded bg-primary/10 flex-shrink-0">
+          <Icon className="h-3.5 w-3.5 text-primary" />
+        </div>
+        <p className="text-[10px] font-medium text-muted-foreground truncate">{title}</p>
+      </div>
+      <p className="font-heading text-lg font-bold text-foreground">{value}</p>
+    </>
+  ) : (
     <>
       <div className="flex items-center gap-3 mb-3">
         <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-primary/10 transition-all duration-200 group-hover:bg-primary/15 flex-shrink-0">
@@ -46,7 +58,8 @@ export function StatCard({
   );
 
   const cardClasses = cn(
-    "bg-card rounded-lg border border-border p-4 sm:p-5 shadow-sm transition-all duration-200 hover:shadow-md group block",
+    "bg-card rounded-lg border border-border shadow-sm transition-all duration-200 hover:shadow-md group block",
+    compact ? "p-2" : "p-4 sm:p-5",
     href && "cursor-pointer hover:border-primary/50"
   );
 

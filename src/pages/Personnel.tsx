@@ -119,13 +119,13 @@ const Personnel = () => {
         description="Manage your workforce with complete personnel profiles, I-9 compliance, E-Verify tracking, and certifications"
       />
 
-      <div className="space-y-4 sm:space-y-6">
+      <div className="space-y-4 sm:space-y-6 w-full max-w-full overflow-hidden">
         <PersonnelStats />
 
         {/* Pending Registrations */}
         {canManage && <PendingRegistrations />}
 
-        <div className="flex flex-col gap-3 sm:gap-4">
+        <div className="flex flex-col gap-3 sm:gap-4 w-full max-w-full">
           <PersonnelFilters
             search={search}
             onSearchChange={setSearch}
@@ -136,7 +136,7 @@ const Personnel = () => {
             vendorId={vendorId}
             onVendorChange={setVendorId}
           />
-          <div className="grid grid-cols-2 gap-2 sm:flex sm:flex-wrap sm:gap-2 w-full">
+          <div className="grid grid-cols-2 gap-2 sm:flex sm:flex-wrap sm:gap-2 w-full max-w-full">
             {!selectionMode ? (
               <>
                 <Button
