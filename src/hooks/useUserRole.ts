@@ -9,6 +9,7 @@ export function useUserRole() {
   const { user } = useAuth();
   const [role, setRole] = useState<AppRole | null>(null);
   const [isVendor, setIsVendor] = useState(false);
+  const [isPersonnel, setIsPersonnel] = useState(false);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -16,6 +17,7 @@ export function useUserRole() {
       if (!user) {
         setRole(null);
         setIsVendor(false);
+        setIsPersonnel(false);
         setLoading(false);
         return;
       }
@@ -46,10 +48,24 @@ export function useUserRole() {
         }
         
         setIsVendor(!!vendorData);
+
+        // Check if user is linked to personnel (personnel don't use user_roles)
+        const { data: personnelData, error: personnelError } = await supabase
+          .from("personnel")
+          .select("id")
+          .eq("user_id", user.id)
+          .maybeSingle();
+
+        if (personnelError) {
+          console.error("Error checking personnel link:", personnelError);
+        }
+        
+        setIsPersonnel(!!personnelData);
       } catch (error) {
         console.error("Error fetching user role:", error);
         setRole(null);
         setIsVendor(false);
+        setIsPersonnel(false);
       } finally {
         setLoading(false);
       }
@@ -64,7 +80,7 @@ export function useUserRole() {
     isAdmin: role === "admin",
     isManager: role === "manager",
     isUser: role === "user",
-    isPersonnel: role === "personnel",
+    isPersonnel, // Now checks personnel table directly, not user_roles
     isVendor, // Now checks vendors table directly, not user_roles
   };
 }

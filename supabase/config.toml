@@ -95,3 +95,6 @@ verify_jwt = false
 
 [functions.send-vendor-portal-invitation]
 verify_jwt = false
+
+[functions.accept-portal-invitation]
+verify_jwt = false

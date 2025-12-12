@@ -246,6 +246,14 @@ export default function UserManagement() {
 
       const vendorUserIds = vendorUsers?.map((v) => v.user_id).filter(Boolean) || [];
 
+      // Get personnel user IDs to exclude them from user management
+      const { data: personnelUsers } = await supabase
+        .from("personnel")
+        .select("user_id")
+        .not("user_id", "is", null);
+
+      const personnelUserIds = personnelUsers?.map((p) => p.user_id).filter(Boolean) || [];
+
       const { data: profiles, error: profilesError } = await supabase
         .from("profiles")
         .select("id, email, first_name, last_name, created_at")
@@ -259,9 +267,9 @@ export default function UserManagement() {
 
       if (rolesError) throw rolesError;
 
-      // Filter out vendor-linked users from the list
+      // Filter out vendor-linked and personnel-linked users from the list
       const filteredProfiles = (profiles || []).filter(
-        (profile) => !vendorUserIds.includes(profile.id)
+        (profile) => !vendorUserIds.includes(profile.id) && !personnelUserIds.includes(profile.id)
       );
 
       const usersWithRoles: UserWithRole[] = filteredProfiles.map((profile) => {
