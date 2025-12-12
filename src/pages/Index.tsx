@@ -245,11 +245,12 @@ const Dashboard = () => {
         actions={
           <Button
             variant="glow"
-            size={isMobile ? "sm" : "default"}
+            size="sm"
             onClick={() => navigate("/estimates/new")}
+            className="min-h-[36px]"
           >
             <Plus className="h-4 w-4" />
-            {!isMobile && <span className="ml-2">New Estimate</span>}
+            <span className="ml-1.5">New Estimate</span>
           </Button>
         }
       >
@@ -257,8 +258,8 @@ const Dashboard = () => {
           onRefresh={handleRefresh}
           isRefreshing={isRefreshing}
         >
-          {/* Stats Grid - Mobile optimized */}
-          <div className="grid gap-3 sm:gap-6 grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 mb-4 sm:mb-8">
+          {/* Stats Grid - Mobile optimized with compact cards */}
+          <div className="grid gap-2 sm:gap-4 grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 mb-4 sm:mb-8">
             <StatCard
               title="Total Revenue"
               value={isLoading ? "..." : formatCurrency(stats.totalRevenue)}
@@ -270,6 +271,7 @@ const Dashboard = () => {
               changeType="positive"
               icon={DollarSign}
               href="/invoices"
+              compact={isMobile}
             />
             <StatCard
               title="Active Projects"
@@ -278,6 +280,7 @@ const Dashboard = () => {
               changeType="positive"
               icon={FolderKanban}
               href="/projects"
+              compact={isMobile}
             />
             <StatCard
               title="Active Products"
@@ -286,6 +289,7 @@ const Dashboard = () => {
               changeType="neutral"
               icon={Package}
               href="/products"
+              compact={isMobile}
             />
             <StatCard
               title="Customers"
@@ -294,6 +298,7 @@ const Dashboard = () => {
               changeType="positive"
               icon={Users}
               href="/customers"
+              compact={isMobile}
             />
             <StatCard
               title="Pending Estimates"
@@ -306,6 +311,7 @@ const Dashboard = () => {
               changeType={stats.pendingEstimates > 0 ? "neutral" : "positive"}
               icon={FileText}
               href="/estimates"
+              compact={isMobile}
             />
           </div>
 

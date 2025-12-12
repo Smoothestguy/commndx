@@ -57,11 +57,11 @@ export function RecentActivity() {
       .slice(0, 4);
   }, [estimates, invoices, jobOrders, purchaseOrders]);
   return (
-    <div className="glass rounded-xl p-6">
-      <h3 className="font-heading text-lg font-semibold text-foreground mb-4">
+    <div className="glass rounded-xl p-4 sm:p-6">
+      <h3 className="font-heading text-base sm:text-lg font-semibold text-foreground mb-3 sm:mb-4">
         Recent Activity
       </h3>
-      <div className="space-y-4">
+      <div className="space-y-2 sm:space-y-3">
         {activities.length === 0 ? (
           <p className="text-sm text-muted-foreground text-center py-4">
             No recent activity yet
@@ -70,18 +70,18 @@ export function RecentActivity() {
           activities.map((activity) => (
           <div
             key={activity.id}
-            className="flex items-start gap-4 p-4 rounded-lg hover:bg-secondary/50 transition-colors duration-200 cursor-pointer min-h-[60px]"
+            className="flex items-start gap-2.5 sm:gap-4 p-2.5 sm:p-4 rounded-lg hover:bg-secondary/50 transition-colors duration-200 cursor-pointer"
           >
-            <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-lg bg-primary/10">
-              <activity.icon className="h-6 w-6 text-primary" />
+            <div className="flex h-8 w-8 sm:h-11 sm:w-11 shrink-0 items-center justify-center rounded-lg bg-primary/10">
+              <activity.icon className="h-4 w-4 sm:h-6 sm:w-6 text-primary" />
             </div>
             <div className="flex-1 min-w-0">
-              <p className="text-sm font-medium text-foreground">{activity.title}</p>
-              <p className="text-sm text-muted-foreground truncate">
+              <p className="text-xs sm:text-sm font-medium text-foreground">{activity.title}</p>
+              <p className="text-xs sm:text-sm text-muted-foreground truncate">
                 {activity.description}
               </p>
             </div>
-            <span className="text-xs text-muted-foreground whitespace-nowrap">
+            <span className="text-[10px] sm:text-xs text-muted-foreground whitespace-nowrap">
               {activity.time}
             </span>
           </div>
