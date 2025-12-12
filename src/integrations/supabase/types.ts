@@ -432,6 +432,7 @@ export type Database = {
         Row: {
           approved_at: string | null
           approved_by: string | null
+          change_type: Database["public"]["Enums"]["change_type"]
           created_at: string
           created_by: string | null
           customer_id: string
@@ -459,6 +460,7 @@ export type Database = {
         Insert: {
           approved_at?: string | null
           approved_by?: string | null
+          change_type?: Database["public"]["Enums"]["change_type"]
           created_at?: string
           created_by?: string | null
           customer_id: string
@@ -486,6 +488,7 @@ export type Database = {
         Update: {
           approved_at?: string | null
           approved_by?: string | null
+          change_type?: Database["public"]["Enums"]["change_type"]
           created_at?: string
           created_by?: string | null
           customer_id?: string
@@ -3973,6 +3976,7 @@ export type Database = {
       tm_tickets: {
         Row: {
           approval_token: string | null
+          change_type: Database["public"]["Enums"]["change_type"]
           created_at: string
           created_by: string | null
           created_in_field: boolean | null
@@ -3999,6 +4003,7 @@ export type Database = {
         }
         Insert: {
           approval_token?: string | null
+          change_type?: Database["public"]["Enums"]["change_type"]
           created_at?: string
           created_by?: string | null
           created_in_field?: boolean | null
@@ -4025,6 +4030,7 @@ export type Database = {
         }
         Update: {
           approval_token?: string | null
+          change_type?: Database["public"]["Enums"]["change_type"]
           created_at?: string
           created_by?: string | null
           created_in_field?: boolean | null
@@ -4741,6 +4747,7 @@ export type Database = {
         | "approved"
         | "rejected"
         | "invoiced"
+      change_type: "additive" | "deductive"
       claim_status:
         | "filed"
         | "pending_adjuster"
@@ -4977,6 +4984,7 @@ export const Constants = {
         "rejected",
         "invoiced",
       ],
+      change_type: ["additive", "deductive"],
       claim_status: [
         "filed",
         "pending_adjuster",

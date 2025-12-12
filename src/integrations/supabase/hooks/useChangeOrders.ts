@@ -3,6 +3,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 
 export type ChangeOrderStatus = 'draft' | 'pending_approval' | 'approved' | 'rejected' | 'invoiced';
+export type ChangeType = 'additive' | 'deductive';
 
 export interface ChangeOrderLineItem {
   id: string;
@@ -35,6 +36,7 @@ export interface ChangeOrder {
   tax_rate: number;
   tax_amount: number;
   total: number;
+  change_type: ChangeType;
   file_name: string | null;
   file_path: string | null;
   file_type: string | null;
@@ -177,6 +179,7 @@ export function useAddChangeOrder() {
       vendor_id?: string;
       vendor_name?: string;
       tax_rate: number;
+      change_type?: ChangeType;
       line_items: Omit<ChangeOrderLineItem, "id" | "change_order_id" | "created_at">[];
     }) => {
       const { line_items, ...changeOrderData } = data;
@@ -195,6 +198,7 @@ export function useAddChangeOrder() {
         subtotal,
         tax_amount: taxAmount,
         total,
+        change_type: changeOrderData.change_type || 'additive',
       };
 
       const { data: changeOrder, error } = await supabase

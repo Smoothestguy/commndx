@@ -101,12 +101,23 @@ const ProjectDetail = () => {
   // Calculate financial summary for project hub
   const financialData = useMemo(() => {
     const originalContractValue = projectJobOrders.reduce((sum, j) => sum + j.total, 0);
+    
+    // Calculate change orders total with additive/deductive logic
     const changeOrdersTotal = (changeOrders || [])
       .filter((co) => co.status === "approved")
-      .reduce((sum, co) => sum + co.total, 0);
+      .reduce((sum, co) => {
+        const changeType = (co as any).change_type || 'additive';
+        return changeType === 'deductive' ? sum - co.total : sum + co.total;
+      }, 0);
+    
+    // Calculate T&M tickets total with additive/deductive logic
     const tmTicketsTotal = (tmTickets || [])
       .filter((t) => ["approved", "signed", "invoiced"].includes(t.status))
-      .reduce((sum, t) => sum + t.total, 0);
+      .reduce((sum, t) => {
+        const changeType = (t as any).change_type || 'additive';
+        return changeType === 'deductive' ? sum - t.total : sum + t.total;
+      }, 0);
+    
     const totalContractValue = originalContractValue + changeOrdersTotal + tmTicketsTotal;
     
     const totalPOValue = projectPurchaseOrders.reduce((sum, po) => {

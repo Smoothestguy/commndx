@@ -79,7 +79,7 @@ export default function ChangeOrderDetail() {
   const canEdit = changeOrder?.status === "draft" && (isAdmin || isManager);
   const canDelete = changeOrder?.status === "draft" && (isAdmin || isManager);
   const canSubmitForApproval = changeOrder?.status === "draft" && (isAdmin || isManager);
-  const canApprove = changeOrder?.status === "pending_approval" && (isAdmin || isManager);
+  const canApprove = changeOrder?.status === "pending_approval" && isAdmin; // Admin only
   const canCreateInvoice = changeOrder?.status === "approved" && (isAdmin || isManager);
   const canAddToPO = changeOrder?.status === "approved" && (isAdmin || isManager);
 
@@ -190,6 +190,9 @@ export default function ChangeOrderDetail() {
       <div className="space-y-6">
         <div className="flex items-center gap-4">
           <Badge variant={status.variant} className="text-sm px-3 py-1">{status.label}</Badge>
+          <Badge variant={changeOrder.change_type === 'deductive' ? 'destructive' : 'default'} className="text-sm px-3 py-1">
+            {changeOrder.change_type === 'deductive' ? 'Deductive (Credit)' : 'Additive'}
+          </Badge>
           <span className="text-sm text-muted-foreground">Created {format(new Date(changeOrder.created_at), "MMMM d, yyyy")}</span>
         </div>
 

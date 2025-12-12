@@ -22,7 +22,10 @@ export function ProjectChangeOrdersList({
   
   const approvedTotal = changeOrders
     .filter(co => co.status === 'approved')
-    .reduce((sum, co) => sum + co.total, 0);
+    .reduce((sum, co) => {
+      const changeType = (co as any).change_type || 'additive';
+      return changeType === 'deductive' ? sum - co.total : sum + co.total;
+    }, 0);
 
   return (
     <Card className="glass border-border">
@@ -60,6 +63,11 @@ export function ProjectChangeOrdersList({
                   <div className="flex items-center gap-2">
                     <span className="font-medium">{co.number}</span>
                     <StatusBadge status={co.status as any} />
+                    {(co as any).change_type === 'deductive' && (
+                      <span className="text-xs bg-destructive/20 text-destructive px-2 py-0.5 rounded">
+                        Credit
+                      </span>
+                    )}
                   </div>
                   <p className="text-sm text-muted-foreground truncate mt-1">
                     {co.reason}
@@ -69,8 +77,8 @@ export function ProjectChangeOrdersList({
                   </p>
                 </div>
                 <div className="flex items-center gap-4">
-                  <span className="font-bold text-primary">
-                    {formatCurrency(co.total)}
+                  <span className={`font-bold ${(co as any).change_type === 'deductive' ? 'text-destructive' : 'text-primary'}`}>
+                    {(co as any).change_type === 'deductive' ? '-' : ''}{formatCurrency(co.total)}
                   </span>
                   <ExternalLink className="h-4 w-4 text-muted-foreground" />
                 </div>

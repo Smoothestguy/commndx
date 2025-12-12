@@ -23,7 +23,7 @@ import { Separator } from "@/components/ui/separator";
 import { Loader2, Plus, Trash2, Send, Save, ChevronDown } from "lucide-react";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { cn } from "@/lib/utils";
-import { useAddTMTicket, useUpdateTMTicket, TMTicketWithLineItems, TMTicketLineItem } from "@/integrations/supabase/hooks/useTMTickets";
+import { useAddTMTicket, useUpdateTMTicket, TMTicketWithLineItems, TMTicketLineItem, ChangeType } from "@/integrations/supabase/hooks/useTMTickets";
 import { useProducts } from "@/integrations/supabase/hooks/useProducts";
 import { useVendors } from "@/integrations/supabase/hooks/useVendors";
 import { usePurchaseOrders } from "@/integrations/supabase/hooks/usePurchaseOrders";
@@ -63,6 +63,7 @@ export function AddTMTicketDialog({
   const [purchaseOrderId, setPurchaseOrderId] = useState("");
   const [createdInField, setCreatedInField] = useState(false);
   const [notes, setNotes] = useState("");
+  const [changeType, setChangeType] = useState<ChangeType>("additive");
   const [lineItems, setLineItems] = useState<LineItem[]>([]);
   const [expandedItems, setExpandedItems] = useState<Set<string>>(new Set());
   
@@ -92,6 +93,7 @@ export function AddTMTicketDialog({
       setPurchaseOrderId(editTicket.purchase_order_id || "");
       setCreatedInField(editTicket.created_in_field || false);
       setNotes(editTicket.notes || "");
+      setChangeType(editTicket.change_type || "additive");
       setCustomerRepName(editTicket.customer_rep_name || "");
       setCustomerRepTitle(editTicket.customer_rep_title || "");
       setCustomerRepEmail(editTicket.customer_rep_email || "");
@@ -121,6 +123,7 @@ export function AddTMTicketDialog({
     setPurchaseOrderId("");
     setCreatedInField(false);
     setNotes("");
+    setChangeType("additive");
     setLineItems([]);
     setExpandedItems(new Set());
     setCustomerRepName("");
@@ -260,6 +263,7 @@ export function AddTMTicketDialog({
         customer_rep_email: customerRepEmail.trim() || undefined,
         tax_rate: defaultTaxRate,
         notes: notes.trim() || undefined,
+        change_type: changeType,
         lineItems: lineItemsData,
         sendForSignature,
       });
@@ -355,6 +359,19 @@ export function AddTMTicketDialog({
                         {po.number} - {po.vendor_name}
                       </SelectItem>
                     ))}
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <div className="space-y-2">
+                <Label>Change Type</Label>
+                <Select value={changeType} onValueChange={(v) => setChangeType(v as ChangeType)}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select type..." />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="additive">Additive (Add to Contract)</SelectItem>
+                    <SelectItem value="deductive">Deductive (Credit)</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
