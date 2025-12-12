@@ -17,17 +17,17 @@ export function ChatInterface() {
   const scrollRef = useRef<HTMLDivElement>(null);
   const isMobile = useIsMobile();
 
-  // Don't show chatbot when user is not authenticated
-  if (!user) {
-    return null;
-  }
-
   // Auto-scroll to bottom when new messages arrive
   useEffect(() => {
     if (scrollRef.current) {
       scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
     }
   }, [messages]);
+
+  // Don't show chatbot when user is not authenticated
+  if (!user) {
+    return null;
+  }
 
   return (
     <>
