@@ -191,8 +191,13 @@ export const useUpdatePurchaseOrder = () => {
 
       if (poError) throw poError;
 
-      // If line items are provided, delete old ones and insert new ones
-      if (data.lineItems) {
+      // Only update line items if explicitly provided AND has items
+      // This prevents accidental deletion when lineItems is undefined or empty
+      if (data.lineItems !== undefined) {
+        if (data.lineItems.length === 0) {
+          throw new Error("Cannot update with empty line items. Use restore function to add items or keep existing ones.");
+        }
+
         const { error: deleteError } = await supabase
           .from("po_line_items")
           .delete()
@@ -220,6 +225,36 @@ export const useUpdatePurchaseOrder = () => {
     },
     onError: (error: Error) => {
       toast.error(`Failed to update purchase order: ${error.message}`);
+    },
+  });
+};
+
+// Hook to restore/add line items to a PO without replacing existing ones
+export const useRestorePOLineItems = () => {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async (data: {
+      purchaseOrderId: string;
+      lineItems: Omit<POLineItem, "id" | "billed_quantity">[];
+    }) => {
+      const lineItemsWithPOId = data.lineItems.map(item => ({
+        ...item,
+        purchase_order_id: data.purchaseOrderId,
+      }));
+
+      const { error } = await supabase
+        .from("po_line_items")
+        .insert(lineItemsWithPOId);
+
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["purchase_orders"] });
+      toast.success("Line items restored successfully");
+    },
+    onError: (error: Error) => {
+      toast.error(`Failed to restore line items: ${error.message}`);
     },
   });
 };
