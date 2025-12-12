@@ -1,12 +1,14 @@
 import { useState, useMemo } from "react";
 import { format } from "date-fns";
-import { ChevronDown, ChevronRight, Pencil, Trash2, AlertTriangle, Gift } from "lucide-react";
+import { ChevronDown, ChevronRight, Pencil, Trash2, AlertTriangle, Gift, Clock, DollarSign } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Badge } from "@/components/ui/badge";
+import { Card } from "@/components/ui/card";
 import { StatusBadge } from "@/components/shared/StatusBadge";
 import { TimeEntryWithDetails } from "@/integrations/supabase/hooks/useTimeEntries";
 import { useCompanySettings } from "@/integrations/supabase/hooks/useCompanySettings";
+import { useIsMobile } from "@/hooks/use-mobile";
 import {
   Collapsible,
   CollapsibleContent,
@@ -69,6 +71,7 @@ export function GroupedTimeTrackingTable({
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [expandedGroups, setExpandedGroups] = useState<Set<string>>(new Set());
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
+  const isMobile = useIsMobile();
 
   const { data: companySettings } = useCompanySettings();
   const overtimeMultiplier = companySettings?.overtime_multiplier ?? 1.5;
@@ -235,6 +238,220 @@ export function GroupedTimeTrackingTable({
     setShowDeleteDialog(false);
   };
 
+  // Mobile Card View
+  if (isMobile) {
+    return (
+      <>
+        {/* Bulk Actions Bar */}
+        {selectedIds.size > 0 && onBulkDelete && (
+          <div className="flex items-center justify-between p-3 mb-4 glass rounded-lg border border-border/50">
+            <span className="text-sm text-muted-foreground">
+              {selectedIds.size} selected
+            </span>
+            <Button
+              variant="destructive"
+              size="sm"
+              onClick={() => setShowDeleteDialog(true)}
+              disabled={isDeleting}
+            >
+              <Trash2 className="h-4 w-4 mr-2" />
+              Delete
+            </Button>
+          </div>
+        )}
+
+        <div className="w-full max-w-full overflow-hidden space-y-3">
+          {/* Select All Header */}
+          {onBulkDelete && groupedEntries.length > 0 && (
+            <div className="glass rounded-xl border border-border/50 p-3">
+              <div className="flex items-center gap-3">
+                <Checkbox
+                  checked={allSelected}
+                  ref={(el) => {
+                    if (el) {
+                      (el as HTMLButtonElement & { indeterminate: boolean }).indeterminate = someSelected;
+                    }
+                  }}
+                  onCheckedChange={(checked) => handleSelectAll(!!checked)}
+                  aria-label="Select all entries"
+                />
+                <span className="text-sm font-medium">
+                  Select All ({entries.length})
+                </span>
+              </div>
+            </div>
+          )}
+
+          {groupedEntries.map((group) => (
+            <Card key={group.personnelKey} className="p-3 space-y-3">
+              {/* Group Header */}
+              <div className="flex items-start gap-3">
+                {onBulkDelete && (
+                  <Checkbox
+                    checked={isGroupSelected(group)}
+                    ref={(el) => {
+                      if (el) {
+                        (el as HTMLButtonElement & { indeterminate: boolean }).indeterminate = isGroupIndeterminate(group);
+                      }
+                    }}
+                    onCheckedChange={(checked) => handleSelectGroup(group, !!checked)}
+                    className="mt-1"
+                    aria-label={`Select all entries for ${group.personnelName}`}
+                  />
+                )}
+                <div className="flex-1 min-w-0">
+                  <p className="font-medium text-foreground truncate">{group.personnelName}</p>
+                  <p className="text-sm text-muted-foreground truncate">{group.project}</p>
+                </div>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => toggleGroup(group.personnelKey)}
+                  className="shrink-0"
+                >
+                  {expandedGroups.has(group.personnelKey) ? (
+                    <ChevronDown className="h-4 w-4" />
+                  ) : (
+                    <ChevronRight className="h-4 w-4" />
+                  )}
+                </Button>
+              </div>
+
+              {/* Summary Stats */}
+              <div className="grid grid-cols-3 gap-2 text-center">
+                <div className="bg-muted/30 rounded-lg p-2">
+                  <div className="flex items-center justify-center gap-1 text-muted-foreground">
+                    <Clock className="h-3 w-3" />
+                    <span className="text-xs">Hours</span>
+                  </div>
+                  <p className="font-semibold text-sm">{group.totalHours.toFixed(1)}h</p>
+                </div>
+                <div className="bg-muted/30 rounded-lg p-2">
+                  <div className="flex items-center justify-center gap-1 text-muted-foreground">
+                    <DollarSign className="h-3 w-3" />
+                    <span className="text-xs">Cost</span>
+                  </div>
+                  <p className="font-semibold text-sm">${group.totalCost.toFixed(0)}</p>
+                </div>
+                <div className="bg-muted/30 rounded-lg p-2">
+                  <div className="flex items-center justify-center gap-1 text-muted-foreground">
+                    <span className="text-xs">Entries</span>
+                  </div>
+                  <p className="font-semibold text-sm">{group.entries.length}</p>
+                </div>
+              </div>
+
+              {/* Badges */}
+              {(group.overtimeHours > 0 || group.holidayHours > 0) && (
+                <div className="flex gap-1 flex-wrap">
+                  {group.overtimeHours > 0 && (
+                    <Badge variant="outline" className="text-xs bg-orange-500/10 text-orange-500 border-orange-500/20">
+                      OT: {group.overtimeHours.toFixed(1)}h
+                    </Badge>
+                  )}
+                  {group.holidayHours > 0 && (
+                    <Badge variant="outline" className="text-xs bg-purple-500/10 text-purple-500 border-purple-500/20">
+                      Holiday: {group.holidayHours.toFixed(1)}h
+                    </Badge>
+                  )}
+                </div>
+              )}
+
+              {/* Expanded Entries */}
+              {expandedGroups.has(group.personnelKey) && (
+                <div className="border-t border-border/30 pt-3 space-y-2">
+                  {group.entries.map((entry) => {
+                    const hasOvertime = Number(entry.overtime_hours || 0) > 0;
+                    const isHoliday = entry.is_holiday;
+                    const entryCost = getEntryCost(entry);
+                    
+                    return (
+                      <div
+                        key={entry.id}
+                        className="flex items-center gap-2 p-2 bg-muted/20 rounded-lg"
+                      >
+                        {onBulkDelete && (
+                          <Checkbox
+                            checked={selectedIds.has(entry.id)}
+                            onCheckedChange={(checked) => handleSelectOne(entry.id, !!checked)}
+                            aria-label={`Select entry for ${format(new Date(entry.entry_date), "MMM dd")}`}
+                          />
+                        )}
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center justify-between gap-2">
+                            <span className="text-sm font-medium">
+                              {format(new Date(entry.entry_date), "MMM dd")}
+                            </span>
+                            <div className="flex items-center gap-2">
+                              <span className="text-sm">{Number(entry.hours).toFixed(1)}h</span>
+                              <span className="text-sm text-muted-foreground">${entryCost.toFixed(0)}</span>
+                            </div>
+                          </div>
+                          <div className="flex items-center gap-1 mt-1 flex-wrap">
+                            <StatusBadge status={getStatus(entry)} />
+                            {hasOvertime && (
+                              <Badge variant="outline" className="text-xs bg-orange-500/10 text-orange-500 border-orange-500/20">
+                                <AlertTriangle className="h-2 w-2 mr-0.5" />
+                                OT
+                              </Badge>
+                            )}
+                            {isHoliday && (
+                              <Badge variant="outline" className="text-xs bg-purple-500/10 text-purple-500 border-purple-500/20">
+                                <Gift className="h-2 w-2 mr-0.5" />
+                                Hol
+                              </Badge>
+                            )}
+                          </div>
+                        </div>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          onClick={() => onEdit(entry)}
+                          className="h-8 w-8 shrink-0"
+                        >
+                          <Pencil className="h-4 w-4" />
+                        </Button>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+            </Card>
+          ))}
+
+          {groupedEntries.length === 0 && (
+            <div className="glass rounded-xl p-8 text-center text-muted-foreground">
+              No time entries found
+            </div>
+          )}
+        </div>
+
+        {/* Delete Confirmation Dialog */}
+        <AlertDialog open={showDeleteDialog} onOpenChange={setShowDeleteDialog}>
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle>Delete Time Entries</AlertDialogTitle>
+              <AlertDialogDescription>
+                Are you sure you want to delete {selectedIds.size} time{" "}
+                {selectedIds.size === 1 ? "entry" : "entries"}? This action cannot be undone.
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel>Cancel</AlertDialogCancel>
+              <AlertDialogAction
+                onClick={handleConfirmDelete}
+                className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              >
+                Delete
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
+      </>
+    );
+  }
+
+  // Desktop Table View
   return (
     <>
       {/* Bulk Actions Bar */}

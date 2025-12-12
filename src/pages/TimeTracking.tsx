@@ -72,22 +72,22 @@ export default function TimeTracking() {
         description="Track your time with daily and weekly timesheet views. Log hours against projects and job orders with automatic synchronization."
       />
       
-      <div className="space-y-6">
+      <div className="w-full max-w-full overflow-hidden space-y-6">
         {/* Header Actions */}
-        <div className="flex justify-end gap-2">
+        <div className="grid grid-cols-2 gap-2 sm:flex sm:justify-end sm:gap-2">
           {canManageTeam && (
             <>
-              <Button variant="outline" onClick={() => setAssignmentDialogOpen(true)}>
+              <Button variant="outline" className="w-full sm:w-auto" onClick={() => setAssignmentDialogOpen(true)}>
                 <Users className="h-4 w-4 mr-2" />
-                Manage Personnel
+                <span className="truncate">Manage Personnel</span>
               </Button>
-              <Button variant="secondary" onClick={() => navigate("/team-timesheet")}>
+              <Button variant="secondary" className="w-full sm:w-auto" onClick={() => navigate("/team-timesheet")}>
                 <Users className="h-4 w-4 mr-2" />
-                Log Team Time
+                <span className="truncate">Log Team Time</span>
               </Button>
             </>
           )}
-          <Button onClick={() => setFormOpen(true)}>
+          <Button className={canManageTeam ? "col-span-2 sm:col-span-1 w-full sm:w-auto" : "col-span-2 w-full sm:w-auto"} onClick={() => setFormOpen(true)}>
             <Plus className="h-4 w-4 mr-2" />
             Log Time
           </Button>
