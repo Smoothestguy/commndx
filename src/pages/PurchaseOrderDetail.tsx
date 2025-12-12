@@ -44,10 +44,11 @@ import { ClosePODialog } from "@/components/purchase-orders/ClosePODialog";
 import { POBillingSummary } from "@/components/purchase-orders/POBillingSummary";
 import { RelatedVendorBills } from "@/components/purchase-orders/RelatedVendorBills";
 import { POAddendums } from "@/components/purchase-orders/POAddendums";
+import { RestoreLineItemsDialog } from "@/components/purchase-orders/RestoreLineItemsDialog";
 import { formatCurrency } from "@/lib/utils";
 import { generatePurchaseOrderPDF, ProjectInfoForPDF } from "@/utils/purchaseOrderPdfExport";
 import { downloadWorkOrderPDF, printWorkOrderPDF, mapPurchaseOrderToWorkOrder } from "@/utils/workOrderPdfExport";
-import { FileText } from "lucide-react";
+import { FileText, AlertTriangle } from "lucide-react";
 
 const PurchaseOrderDetail = () => {
   const { id } = useParams();
@@ -57,6 +58,7 @@ const PurchaseOrderDetail = () => {
   const [showCreateBillDialog, setShowCreateBillDialog] = useState(false);
   const [showCloseDialog, setShowCloseDialog] = useState(false);
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
+  const [showRestoreDialog, setShowRestoreDialog] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
 
   const { data: purchaseOrder, isLoading } = usePurchaseOrder(id || "");
@@ -84,6 +86,11 @@ const PurchaseOrderDetail = () => {
   const totalAddendumAmount = Number(purchaseOrder?.total_addendum_amount || 0);
   const grandTotal = total + totalAddendumAmount;
   const remainingAmount = grandTotal - billedAmount;
+  
+  // Detect orphaned PO (has subtotal but no line items)
+  const hasOrphanedLineItems = purchaseOrder && 
+    purchaseOrder.subtotal > 0 && 
+    (!purchaseOrder.line_items || purchaseOrder.line_items.length === 0);
 
 
   const handleApprove = async (approved: boolean) => {
@@ -392,6 +399,30 @@ const PurchaseOrderDetail = () => {
         Back to Purchase Orders
       </Button>
 
+      {/* Missing Line Items Warning */}
+      {hasOrphanedLineItems && (
+        <div className="mb-6 bg-destructive/10 border border-destructive/20 rounded-lg p-4 flex items-center justify-between gap-3">
+          <div className="flex items-center gap-3">
+            <AlertTriangle className="h-5 w-5 text-destructive" />
+            <div>
+              <p className="font-medium text-destructive">Line Items Missing</p>
+              <p className="text-sm text-muted-foreground">
+                This PO has a subtotal of {formatCurrency(purchaseOrder.subtotal)} but no line items are showing. 
+                Would you like to restore them?
+              </p>
+            </div>
+          </div>
+          <Button 
+            variant="outline" 
+            size="sm"
+            onClick={() => setShowRestoreDialog(true)}
+            className="shrink-0"
+          >
+            Restore Items
+          </Button>
+        </div>
+      )}
+
       {/* Closed PO Warning */}
       {purchaseOrder.is_closed && (
         <div className="mb-6 bg-warning/10 border border-warning/20 rounded-lg p-4 flex items-center gap-3">
@@ -660,6 +691,13 @@ const PurchaseOrderDetail = () => {
         purchaseOrderId={purchaseOrder.id}
         purchaseOrderNumber={purchaseOrder.number}
         remainingAmount={remainingAmount}
+      />
+      <RestoreLineItemsDialog
+        open={showRestoreDialog}
+        onOpenChange={setShowRestoreDialog}
+        purchaseOrderId={purchaseOrder.id}
+        jobOrderId={purchaseOrder.job_order_id}
+        expectedSubtotal={purchaseOrder.subtotal}
       />
       <AlertDialog open={showDeleteDialog} onOpenChange={setShowDeleteDialog}>
         <AlertDialogContent>
