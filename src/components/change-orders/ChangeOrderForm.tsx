@@ -208,17 +208,20 @@ export function ChangeOrderForm({
   const filteredPurchaseOrders = purchaseOrders?.filter((po) => !projectId || po.project_id === projectId);
 
   return (
-    <form onSubmit={handleSubmit} className="space-y-6">
-      <Card>
-        <CardHeader>
-          <CardTitle>Change Order Details</CardTitle>
+    <form onSubmit={handleSubmit} className="space-y-8">
+      <Card className="glass-card border-primary/10">
+        <CardHeader className="pb-4 border-b border-border/30">
+          <div className="flex items-center gap-3">
+            <div className="h-8 w-1 rounded-full bg-gradient-to-b from-primary to-primary/50" />
+            <CardTitle className="font-heading">Change Order Details</CardTitle>
+          </div>
         </CardHeader>
-        <CardContent className="space-y-4">
-          <div className="grid gap-4 md:grid-cols-2">
+        <CardContent className="pt-6 space-y-6">
+          <div className="grid gap-6 md:grid-cols-2">
             <div className="space-y-2">
-              <Label htmlFor="project">Project *</Label>
+              <Label htmlFor="project" className="text-foreground/80">Project *</Label>
               <Select value={projectId} onValueChange={setProjectId} required>
-                <SelectTrigger>
+                <SelectTrigger className="glass-input">
                   <SelectValue placeholder="Select project" />
                 </SelectTrigger>
                 <SelectContent>
@@ -232,13 +235,13 @@ export function ChangeOrderForm({
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="customer">Customer *</Label>
+              <Label htmlFor="customer" className="text-foreground/80">Customer *</Label>
               <Select value={customerId} onValueChange={(v) => {
                 setCustomerId(v);
                 const customer = customers?.find((c) => c.id === v);
                 if (customer) setCustomerName(customer.name);
               }} required>
-                <SelectTrigger>
+                <SelectTrigger className="glass-input">
                   <SelectValue placeholder="Select customer" />
                 </SelectTrigger>
                 <SelectContent>
@@ -252,9 +255,9 @@ export function ChangeOrderForm({
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="vendor">Vendor (Optional)</Label>
+              <Label htmlFor="vendor" className="text-foreground/80">Vendor (Optional)</Label>
               <Select value={vendorId || "none"} onValueChange={(v) => setVendorId(v === "none" ? "" : v)}>
-                <SelectTrigger>
+                <SelectTrigger className="glass-input">
                   <SelectValue placeholder="Select vendor" />
                 </SelectTrigger>
                 <SelectContent>
@@ -269,9 +272,9 @@ export function ChangeOrderForm({
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="purchaseOrder">Link to Purchase Order (Optional)</Label>
+              <Label htmlFor="purchaseOrder" className="text-foreground/80">Link to Purchase Order (Optional)</Label>
               <Select value={purchaseOrderId || "none"} onValueChange={(v) => setPurchaseOrderId(v === "none" ? "" : v)}>
-                <SelectTrigger>
+                <SelectTrigger className="glass-input">
                   <SelectValue placeholder="Select PO" />
                 </SelectTrigger>
                 <SelectContent>
@@ -286,9 +289,9 @@ export function ChangeOrderForm({
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="jobOrder">Link to Job Order (Optional)</Label>
+              <Label htmlFor="jobOrder" className="text-foreground/80">Link to Job Order (Optional)</Label>
               <Select value={jobOrderId || "none"} onValueChange={(v) => setJobOrderId(v === "none" ? "" : v)}>
-                <SelectTrigger>
+                <SelectTrigger className="glass-input">
                   <SelectValue placeholder="Select Job Order" />
                 </SelectTrigger>
                 <SelectContent>
@@ -303,71 +306,73 @@ export function ChangeOrderForm({
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="taxRate">Tax Rate (%)</Label>
+              <Label htmlFor="taxRate" className="text-foreground/80">Tax Rate (%)</Label>
               <CalculatorInput
                 value={taxRate}
                 onValueChange={(value) => setTaxRate(value)}
                 decimalPlaces={2}
+                className="glass-input"
               />
             </div>
           </div>
 
           <div className="space-y-2">
-            <Label htmlFor="reason">Reason for Change Order *</Label>
+            <Label htmlFor="reason" className="text-foreground/80">Reason for Change Order *</Label>
             <Input
               id="reason"
               value={reason}
               onChange={(e) => setReason(e.target.value)}
               placeholder="e.g., Additional electrical work requested by client"
               required
+              className="glass-input"
             />
           </div>
 
           <div className="space-y-2">
-            <Label htmlFor="description">Additional Notes</Label>
+            <Label htmlFor="description" className="text-foreground/80">Additional Notes</Label>
             <Textarea
               id="description"
               value={description}
               onChange={(e) => setDescription(e.target.value)}
               placeholder="Additional details about this change order..."
               rows={3}
+              className="glass-input"
             />
           </div>
         </CardContent>
       </Card>
 
-      <Card>
-        <CardHeader className="flex flex-row items-center justify-between">
-          <CardTitle>Line Items</CardTitle>
-          <Button type="button" variant="outline" size="sm" onClick={addLineItem}>
-            <Plus className="mr-2 h-4 w-4" />
-            Add Item
-          </Button>
+      <Card className="glass-card border-primary/10">
+        <CardHeader className="pb-4 border-b border-border/30">
+          <div className="flex items-center gap-3">
+            <div className="h-8 w-1 rounded-full bg-gradient-to-b from-primary to-primary/50" />
+            <CardTitle className="font-heading">Line Items</CardTitle>
+          </div>
         </CardHeader>
-        <CardContent>
-          <div className="overflow-x-auto">
+        <CardContent className="pt-6 space-y-6">
+          <div className="glass-table-container overflow-x-auto">
             <Table>
               <TableHeader>
-                <TableRow>
-                  <TableHead className="w-[200px]">Product</TableHead>
-                  <TableHead>Description</TableHead>
-                  <TableHead className="w-[100px]">Qty</TableHead>
-                  <TableHead className="w-[120px]">Unit Price</TableHead>
-                  <TableHead className="w-[100px]">Markup %</TableHead>
-                  <TableHead className="w-[120px]">Total</TableHead>
-                  <TableHead className="w-[80px]">Taxable</TableHead>
+                <TableRow className="bg-primary/5 hover:bg-primary/5">
+                  <TableHead className="w-[200px] font-medium">Product</TableHead>
+                  <TableHead className="font-medium">Description</TableHead>
+                  <TableHead className="w-[100px] font-medium">Qty</TableHead>
+                  <TableHead className="w-[120px] font-medium">Unit Price</TableHead>
+                  <TableHead className="w-[100px] font-medium">Markup %</TableHead>
+                  <TableHead className="w-[120px] font-medium">Total</TableHead>
+                  <TableHead className="w-[80px] font-medium">Taxable</TableHead>
                   <TableHead className="w-[50px]"></TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
                 {lineItems.map((item, index) => (
-                  <TableRow key={item.id}>
+                  <TableRow key={item.id} className="hover:bg-muted/30 transition-colors">
                     <TableCell>
                       <Select
                         value={item.product_id || ""}
                         onValueChange={(v) => selectProduct(index, v)}
                       >
-                        <SelectTrigger className="w-full">
+                        <SelectTrigger className="w-full glass-input">
                           <SelectValue placeholder="Select..." />
                         </SelectTrigger>
                         <SelectContent>
@@ -384,6 +389,7 @@ export function ChangeOrderForm({
                         value={item.description}
                         onChange={(e) => updateLineItem(index, "description", e.target.value)}
                         placeholder="Description"
+                        className="glass-input"
                       />
                     </TableCell>
                     <TableCell>
@@ -391,6 +397,7 @@ export function ChangeOrderForm({
                         value={item.quantity}
                         onValueChange={(value) => updateLineItem(index, "quantity", value)}
                         decimalPlaces={2}
+                        className="glass-input"
                       />
                     </TableCell>
                     <TableCell>
@@ -398,6 +405,7 @@ export function ChangeOrderForm({
                         value={item.unit_price}
                         onValueChange={(value) => updateLineItem(index, "unit_price", value)}
                         placeholder="0.00"
+                        className="glass-input"
                       />
                     </TableCell>
                     <TableCell>
@@ -405,9 +413,10 @@ export function ChangeOrderForm({
                         value={item.markup}
                         onValueChange={(value) => updateLineItem(index, "markup", value)}
                         decimalPlaces={2}
+                        className="glass-input"
                       />
                     </TableCell>
-                    <TableCell className="font-medium">
+                    <TableCell className="font-semibold text-primary">
                       ${item.total.toFixed(2)}
                     </TableCell>
                     <TableCell>
@@ -415,7 +424,7 @@ export function ChangeOrderForm({
                         type="checkbox"
                         checked={item.is_taxable}
                         onChange={(e) => updateLineItem(index, "is_taxable", e.target.checked)}
-                        className="h-4 w-4"
+                        className="h-4 w-4 rounded border-border/50 text-primary focus:ring-primary/30"
                       />
                     </TableCell>
                     <TableCell>
@@ -424,6 +433,7 @@ export function ChangeOrderForm({
                         variant="ghost"
                         size="icon"
                         onClick={() => removeLineItem(index)}
+                        className="hover:bg-destructive/10"
                       >
                         <Trash2 className="h-4 w-4 text-destructive" />
                       </Button>
@@ -432,7 +442,7 @@ export function ChangeOrderForm({
                 ))}
                 {lineItems.length === 0 && (
                   <TableRow>
-                    <TableCell colSpan={8} className="text-center text-muted-foreground py-8">
+                    <TableCell colSpan={8} className="text-center text-muted-foreground py-12">
                       No line items added. Click "Add Item" to add products or services.
                     </TableCell>
                   </TableRow>
@@ -441,33 +451,44 @@ export function ChangeOrderForm({
             </Table>
           </div>
 
-          <div className="mt-4 flex justify-end">
-            <div className="w-64 space-y-2">
-              <div className="flex justify-between text-sm">
+          <Button type="button" variant="outline" className="w-full glass-input hover:bg-primary/5 hover:border-primary/30" onClick={addLineItem}>
+            <Plus className="mr-2 h-4 w-4" />
+            Add Item
+          </Button>
+
+          <div className="flex justify-end pt-4">
+            <div className="glass-elevated w-72 space-y-3">
+              <div className="flex justify-between text-sm text-muted-foreground">
                 <span>Subtotal:</span>
-                <span>${subtotal.toFixed(2)}</span>
+                <span className="text-foreground">${subtotal.toFixed(2)}</span>
               </div>
-              <div className="flex justify-between text-sm">
+              <div className="flex justify-between text-sm text-muted-foreground">
                 <span>Tax ({taxRate}%):</span>
-                <span>${taxAmount.toFixed(2)}</span>
+                <span className="text-foreground">${taxAmount.toFixed(2)}</span>
               </div>
-              <div className="flex justify-between font-semibold text-lg border-t pt-2">
+              <div className="flex justify-between font-semibold text-lg border-t border-primary/20 pt-3">
                 <span>Total:</span>
-                <span>${total.toFixed(2)}</span>
+                <span className="text-primary">${total.toFixed(2)}</span>
               </div>
             </div>
           </div>
         </CardContent>
       </Card>
 
-      <div className="flex justify-end gap-4">
-        <Button type="button" variant="outline" onClick={() => navigate(-1)}>
+      <div className="flex justify-end gap-4 pt-2">
+        <Button 
+          type="button" 
+          variant="outline" 
+          onClick={() => navigate(-1)}
+          className="glass-input hover:bg-muted/50"
+        >
           <X className="mr-2 h-4 w-4" />
           Cancel
         </Button>
         <Button
           type="submit"
           disabled={addChangeOrder.isPending || updateChangeOrder.isPending}
+          className="bg-gradient-to-r from-primary to-primary/80 shadow-lg shadow-primary/25 hover:shadow-primary/40 hover:from-primary/90 hover:to-primary/70 transition-all duration-300"
         >
           <Save className="mr-2 h-4 w-4" />
           {initialData?.id ? "Update" : "Create"} Change Order
