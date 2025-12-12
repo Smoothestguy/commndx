@@ -42,6 +42,7 @@ import {
   IdCard,
   Link2,
   Send,
+  KeyRound,
 } from "lucide-react";
 import logo from "@/assets/logo.png";
 
@@ -101,7 +102,7 @@ export function AppSidebar() {
   useEffect(() => {
     const vendorsRoutes = vendorsNavigation.map((item) => item.href);
     const staffingRoutes = staffingNavigation.map((item) => item.href);
-    const accountRoutes = ["/user-management", "/settings"];
+    const accountRoutes = ["/user-management", "/settings", "/permissions"];
 
     if (
       vendorsRoutes.some(
@@ -271,18 +272,32 @@ export function AppSidebar() {
               <SidebarGroupContent>
                 <SidebarMenu>
                   {isAdmin && (
-                    <SidebarMenuItem>
-                      <SidebarMenuButton
-                        asChild
-                        isActive={location.pathname === "/user-management"}
-                        tooltip="User Management"
-                      >
-                        <Link to="/user-management">
-                          <Shield className="h-4 w-4" />
-                          <span>User Management</span>
-                        </Link>
-                      </SidebarMenuButton>
-                    </SidebarMenuItem>
+                    <>
+                      <SidebarMenuItem>
+                        <SidebarMenuButton
+                          asChild
+                          isActive={location.pathname === "/user-management"}
+                          tooltip="User Management"
+                        >
+                          <Link to="/user-management">
+                            <Shield className="h-4 w-4" />
+                            <span>User Management</span>
+                          </Link>
+                        </SidebarMenuButton>
+                      </SidebarMenuItem>
+                      <SidebarMenuItem>
+                        <SidebarMenuButton
+                          asChild
+                          isActive={location.pathname === "/permissions"}
+                          tooltip="Permissions"
+                        >
+                          <Link to="/permissions">
+                            <KeyRound className="h-4 w-4" />
+                            <span>Permissions</span>
+                          </Link>
+                        </SidebarMenuButton>
+                      </SidebarMenuItem>
+                    </>
                   )}
                   <SidebarMenuItem>
                     <SidebarMenuButton
