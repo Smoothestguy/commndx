@@ -445,7 +445,11 @@ const Products = () => {
           {!isLoading && !error && (
             <>
               {/* Stats */}
-              <ProductStats products={products || []} />
+              <ProductStats 
+                products={products || []} 
+                selectedType={selectedType}
+                onTypeClick={setSelectedType}
+              />
 
               {/* QuickBooks Sync Section */}
               {qbConfig?.is_connected && (
