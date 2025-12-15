@@ -18,6 +18,7 @@ import {
 import { useProducts } from "@/integrations/supabase/hooks/useProducts";
 import { useCustomers } from "@/integrations/supabase/hooks/useCustomers";
 import { useProjects } from "@/integrations/supabase/hooks/useProjects";
+import { useAllProjectAssignments } from "@/integrations/supabase/hooks/useProjectAssignments";
 import { PullToRefreshWrapper } from "@/components/shared/PullToRefreshWrapper";
 import {
   Package,
@@ -26,6 +27,7 @@ import {
   DollarSign,
   Plus,
   FolderKanban,
+  UserPlus,
 } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { useMemo } from "react";
@@ -78,6 +80,12 @@ const Dashboard = () => {
     refetch: refetchProjects,
     isFetching: isFetchingProjects,
   } = useProjects();
+  const {
+    data: assignments,
+    isLoading: assignmentsLoading,
+    refetch: refetchAssignments,
+    isFetching: isFetchingAssignments,
+  } = useAllProjectAssignments();
 
   const handleRefresh = async () => {
     await Promise.all([
@@ -86,6 +94,7 @@ const Dashboard = () => {
       refetchProducts(),
       refetchCustomers(),
       refetchProjects(),
+      refetchAssignments(),
     ]);
   };
 
@@ -94,7 +103,8 @@ const Dashboard = () => {
     isFetchingInvoices ||
     isFetchingProducts ||
     isFetchingCustomers ||
-    isFetchingProjects;
+    isFetchingProjects ||
+    isFetchingAssignments;
 
   // Memoize paid invoices to avoid recalculating
   const paidInvoices = useMemo(
@@ -127,6 +137,12 @@ const Dashboard = () => {
   );
 
   const recentInvoices = useMemo(() => invoices?.slice(0, 5) ?? [], [invoices]);
+
+  // Memoize recent assignments (active only)
+  const recentAssignments = useMemo(
+    () => assignments?.filter(a => a.status === 'active').slice(0, 5) ?? [],
+    [assignments]
+  );
 
   // Memoize active projects count
   const activeProjectsCount = useMemo(
@@ -175,7 +191,8 @@ const Dashboard = () => {
     invoicesLoading ||
     productsLoading ||
     customersLoading ||
-    projectsLoading;
+    projectsLoading ||
+    assignmentsLoading;
 
   // Properly typed column definitions with snake_case keys matching Supabase data
   const estimateColumns: Column<Estimate>[] = useMemo(
@@ -556,6 +573,67 @@ const Dashboard = () => {
                 columns={invoiceColumns}
                 onRowClick={(item) => navigate(`/invoices/${item.id}`)}
               />
+            )}
+          </div>
+
+          {/* Recent Assignments */}
+          <div className="mt-6 sm:mt-8 space-y-3 sm:space-y-4">
+            <div className="flex items-center justify-between">
+              <h3 className="font-heading text-base sm:text-lg font-semibold text-foreground">
+                Recent Assignments
+              </h3>
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => navigate("/project-assignments")}
+                className="text-xs sm:text-sm min-h-[44px]"
+              >
+                View all
+              </Button>
+            </div>
+            {isLoading ? (
+              <div className="glass rounded-xl p-8 text-center text-muted-foreground">
+                Loading assignments...
+              </div>
+            ) : recentAssignments.length === 0 ? (
+              <div className="glass rounded-xl p-8 text-center text-muted-foreground">
+                No assignments yet.
+              </div>
+            ) : (
+              <div className="space-y-3">
+                {recentAssignments.map((assignment: any) => (
+                  <Card
+                    key={assignment.id}
+                    className="glass p-4 hover:bg-secondary/50 transition-colors"
+                  >
+                    <div className="flex justify-between items-start">
+                      <div className="flex items-center gap-3">
+                        <div className="h-9 w-9 rounded-full bg-primary/10 flex items-center justify-center">
+                          <UserPlus className="h-4 w-4 text-primary" />
+                        </div>
+                        <div>
+                          <p className="font-medium text-foreground">
+                            {assignment.profiles?.first_name} {assignment.profiles?.last_name}
+                          </p>
+                          <p className="text-sm text-muted-foreground">
+                            {assignment.profiles?.email}
+                          </p>
+                        </div>
+                      </div>
+                      <div className="text-right">
+                        <p className="text-sm font-medium text-foreground">
+                          {assignment.projects?.name}
+                        </p>
+                        <p className="text-xs text-muted-foreground">
+                          {assignment.assigned_at
+                            ? new Date(assignment.assigned_at).toLocaleDateString()
+                            : "—"}
+                        </p>
+                      </div>
+                    </div>
+                  </Card>
+                ))}
+              </div>
             )}
           </div>
         </PullToRefreshWrapper>
