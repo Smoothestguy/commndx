@@ -12,8 +12,10 @@ import { formatCurrency } from "@/lib/utils";
 import { useVendors } from "@/integrations/supabase/hooks/useVendors";
 import { supabase } from "@/integrations/supabase/client";
 import { useQuery } from "@tanstack/react-query";
-import { Eye, FileText, DollarSign, ClipboardList, ListChecks, ArrowLeft, CheckCircle2, XCircle, Plus, ExternalLink, Building2 } from "lucide-react";
+import { Eye, FileText, DollarSign, ClipboardList, ListChecks, ArrowLeft, CheckCircle2, XCircle, Building2, ChevronDown, ChevronUp } from "lucide-react";
 import { Link, useNavigate } from "react-router-dom";
+import { POPreviewDialog } from "@/components/admin/POPreviewDialog";
+import { BillPreviewDialog } from "@/components/admin/BillPreviewDialog";
 
 interface POData {
   id: string;
@@ -38,6 +40,10 @@ interface BillData {
 
 export default function VendorPortalPreview() {
   const [selectedVendorId, setSelectedVendorId] = useState<string>("");
+  const [showAllPOs, setShowAllPOs] = useState(false);
+  const [showAllBills, setShowAllBills] = useState(false);
+  const [selectedPO, setSelectedPO] = useState<POData | null>(null);
+  const [selectedBill, setSelectedBill] = useState<BillData | null>(null);
   const navigate = useNavigate();
   
   const { data: vendors, isLoading: vendorsLoading } = useVendors();
@@ -200,6 +206,9 @@ export default function VendorPortalPreview() {
     []
   );
 
+  const displayedPOs = showAllPOs ? purchaseOrders : purchaseOrders?.slice(0, 5);
+  const displayedBills = showAllBills ? bills : bills?.slice(0, 5);
+
   return (
     <>
       <SEO
@@ -300,82 +309,53 @@ export default function VendorPortalPreview() {
                     See your POs, billing progress, and submit bills.
                   </p>
                 </div>
-                <div className="flex flex-wrap gap-2">
-                  <Button 
-                    variant="outline" 
-                    size="sm"
-                    onClick={() => navigate(`/vendors/${selectedVendorId}`)}
-                  >
-                    <Building2 className="h-4 w-4 mr-2" />
-                    View Vendor Record
-                  </Button>
-                  <Button 
-                    variant="outline" 
-                    size="sm"
-                    onClick={() => navigate('/purchase-orders')}
-                  >
-                    <ClipboardList className="h-4 w-4 mr-2" />
-                    View All POs
-                  </Button>
-                  <Button 
-                    variant="outline" 
-                    size="sm"
-                    onClick={() => navigate('/vendor-bills')}
-                  >
-                    <FileText className="h-4 w-4 mr-2" />
-                    View All Bills
-                  </Button>
-                  <Button 
-                    size="sm"
-                    onClick={() => navigate('/vendor-bills/new')}
-                  >
-                    <Plus className="h-4 w-4 mr-2" />
-                    New Bill
-                  </Button>
-                </div>
+                {/* Admin Quick Action - Only this navigates away */}
+                <Button 
+                  variant="outline" 
+                  size="sm"
+                  onClick={() => navigate(`/vendors/${selectedVendorId}`)}
+                >
+                  <Building2 className="h-4 w-4 mr-2" />
+                  View Vendor Record (Admin)
+                </Button>
               </div>
 
-              {/* Stats */}
+              {/* Stats - Now with inline toggle actions */}
               <div className="grid gap-3 sm:gap-6 grid-cols-2 md:grid-cols-4">
                 <div 
                   className="cursor-pointer" 
-                  onClick={() => navigate('/purchase-orders')}
+                  onClick={() => setShowAllPOs(!showAllPOs)}
                 >
                   <StatCard
                     title="Open POs"
                     value={isLoading ? "..." : stats.openPOs}
-                    change={`${purchaseOrders?.length ?? 0} total POs`}
+                    change={`Click to ${showAllPOs ? "collapse" : "expand"}`}
                     changeType="neutral"
                     icon={ClipboardList}
                   />
                 </div>
+                <StatCard
+                  title="Contract Value"
+                  value={isLoading ? "..." : formatCurrency(stats.totalContractValue)}
+                  change={`Billed ${formatCurrency(stats.billedToDate)}`}
+                  changeType="positive"
+                  icon={DollarSign}
+                />
                 <div 
                   className="cursor-pointer" 
-                  onClick={() => navigate(`/vendors/${selectedVendorId}`)}
-                >
-                  <StatCard
-                    title="Contract Value"
-                    value={isLoading ? "..." : formatCurrency(stats.totalContractValue)}
-                    change={`Billed ${formatCurrency(stats.billedToDate)}`}
-                    changeType="positive"
-                    icon={DollarSign}
-                  />
-                </div>
-                <div 
-                  className="cursor-pointer" 
-                  onClick={() => navigate('/vendor-bills')}
+                  onClick={() => setShowAllBills(!showAllBills)}
                 >
                   <StatCard
                     title="Remaining to Bill"
                     value={isLoading ? "..." : formatCurrency(stats.remainingToBill)}
-                    change="Based on approved POs/COs"
+                    change={`Click to ${showAllBills ? "collapse" : "expand"} bills`}
                     changeType="neutral"
                     icon={ListChecks}
                   />
                 </div>
                 <div 
                   className="cursor-pointer" 
-                  onClick={() => navigate('/vendor-bills')}
+                  onClick={() => setShowAllBills(!showAllBills)}
                 >
                   <StatCard
                     title="Pending Bills"
@@ -387,15 +367,21 @@ export default function VendorPortalPreview() {
                 </div>
               </div>
 
-              {/* Recent POs + Bills */}
+              {/* Recent POs + Bills - Self-contained with dialogs */}
               <div className="grid gap-4 sm:gap-6 grid-cols-1 lg:grid-cols-2">
                 <div className="space-y-4">
                   <div className="flex items-center justify-between">
                     <h3 className="font-semibold">Purchase Orders</h3>
-                    <Button variant="ghost" size="sm" onClick={() => navigate('/purchase-orders')}>
-                      View All
-                      <ExternalLink className="h-3 w-3 ml-1" />
-                    </Button>
+                    {(purchaseOrders?.length || 0) > 5 && (
+                      <Button 
+                        variant="ghost" 
+                        size="sm" 
+                        onClick={() => setShowAllPOs(!showAllPOs)}
+                      >
+                        {showAllPOs ? "Show Less" : `View All (${purchaseOrders?.length})`}
+                        {showAllPOs ? <ChevronUp className="h-3 w-3 ml-1" /> : <ChevronDown className="h-3 w-3 ml-1" />}
+                      </Button>
+                    )}
                   </div>
                   {isLoading ? (
                     <Skeleton className="h-32" />
@@ -406,9 +392,9 @@ export default function VendorPortalPreview() {
                   ) : (
                     <div className="rounded-lg border overflow-hidden">
                       <DataTable 
-                        data={purchaseOrders?.slice(0, 5) || []} 
+                        data={displayedPOs || []} 
                         columns={poColumns} 
-                        onRowClick={(po) => navigate(`/purchase-orders/${po.id}`)}
+                        onRowClick={(po) => setSelectedPO(po)}
                       />
                     </div>
                   )}
@@ -417,10 +403,16 @@ export default function VendorPortalPreview() {
                 <div className="space-y-4">
                   <div className="flex items-center justify-between">
                     <h3 className="font-semibold">Bills</h3>
-                    <Button variant="ghost" size="sm" onClick={() => navigate('/vendor-bills')}>
-                      View All
-                      <ExternalLink className="h-3 w-3 ml-1" />
-                    </Button>
+                    {(bills?.length || 0) > 5 && (
+                      <Button 
+                        variant="ghost" 
+                        size="sm" 
+                        onClick={() => setShowAllBills(!showAllBills)}
+                      >
+                        {showAllBills ? "Show Less" : `View All (${bills?.length})`}
+                        {showAllBills ? <ChevronUp className="h-3 w-3 ml-1" /> : <ChevronDown className="h-3 w-3 ml-1" />}
+                      </Button>
+                    )}
                   </div>
                   {isLoading ? (
                     <Skeleton className="h-32" />
@@ -431,9 +423,9 @@ export default function VendorPortalPreview() {
                   ) : (
                     <div className="rounded-lg border overflow-hidden">
                       <DataTable 
-                        data={bills?.slice(0, 5) || []} 
+                        data={displayedBills || []} 
                         columns={billColumns} 
-                        onRowClick={(bill) => navigate(`/vendor-bills/${bill.id}`)}
+                        onRowClick={(bill) => setSelectedBill(bill)}
                       />
                     </div>
                   )}
@@ -449,6 +441,18 @@ export default function VendorPortalPreview() {
           </div>
         )}
       </div>
+
+      {/* Detail Dialogs */}
+      <POPreviewDialog
+        po={selectedPO}
+        open={!!selectedPO}
+        onClose={() => setSelectedPO(null)}
+      />
+      <BillPreviewDialog
+        bill={selectedBill}
+        open={!!selectedBill}
+        onClose={() => setSelectedBill(null)}
+      />
     </>
   );
 }

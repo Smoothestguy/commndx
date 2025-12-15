@@ -8,9 +8,11 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { usePersonnel } from "@/integrations/supabase/hooks/usePersonnel";
 import { supabase } from "@/integrations/supabase/client";
 import { useQuery } from "@tanstack/react-query";
-import { Eye, Clock, Briefcase, Bell, DollarSign, TrendingUp, ArrowLeft, CheckCircle2, XCircle, ExternalLink, User } from "lucide-react";
+import { Eye, Clock, Briefcase, Bell, DollarSign, TrendingUp, ArrowLeft, CheckCircle2, XCircle, User, ChevronDown, ChevronUp } from "lucide-react";
 import { Link, useNavigate } from "react-router-dom";
 import { startOfWeek, endOfWeek, startOfMonth, endOfMonth, parseISO, isWithinInterval, format } from "date-fns";
+import { ProjectPreviewDialog } from "@/components/admin/ProjectPreviewDialog";
+
 interface TimeEntry {
   id: string;
   entry_date: string;
@@ -38,6 +40,9 @@ interface Notification {
 
 export default function PersonnelPortalPreview() {
   const [selectedPersonnelId, setSelectedPersonnelId] = useState<string>("");
+  const [showAllProjects, setShowAllProjects] = useState(false);
+  const [showAllNotifications, setShowAllNotifications] = useState(false);
+  const [selectedProject, setSelectedProject] = useState<Assignment | null>(null);
   const navigate = useNavigate();
   
   const { data: personnel, isLoading: personnelLoading } = usePersonnel();
@@ -89,8 +94,7 @@ export default function PersonnelPortalPreview() {
         .from("personnel_notifications")
         .select("id, title, message, is_read, created_at")
         .eq("personnel_id", selectedPersonnelId)
-        .order("created_at", { ascending: false })
-        .limit(5);
+        .order("created_at", { ascending: false });
       
       if (error) throw error;
       return (data || []) as Notification[];
@@ -133,6 +137,9 @@ export default function PersonnelPortalPreview() {
   const monthlyPay = monthlyHours * hourlyRate;
   const unreadNotifications = notifications?.filter(n => !n.is_read).length || 0;
   const activeProjects = assignments?.length || 0;
+
+  const displayedProjects = showAllProjects ? assignments : assignments?.slice(0, 5);
+  const displayedNotifications = showAllNotifications ? notifications : notifications?.slice(0, 5);
 
   return (
     <>
@@ -236,7 +243,7 @@ export default function PersonnelPortalPreview() {
                 </p>
               </div>
 
-              {/* Quick Actions */}
+              {/* Admin Quick Action - Only this navigates away */}
               <div className="flex flex-wrap gap-2">
                 <Button 
                   variant="outline" 
@@ -244,32 +251,13 @@ export default function PersonnelPortalPreview() {
                   onClick={() => navigate(`/personnel/${selectedPersonnelId}`)}
                 >
                   <User className="h-4 w-4 mr-2" />
-                  View Personnel Record
-                </Button>
-                <Button 
-                  variant="outline" 
-                  size="sm"
-                  onClick={() => navigate('/time-tracking')}
-                >
-                  <Clock className="h-4 w-4 mr-2" />
-                  View Time Tracking
-                </Button>
-                <Button 
-                  variant="outline" 
-                  size="sm"
-                  onClick={() => navigate('/projects')}
-                >
-                  <Briefcase className="h-4 w-4 mr-2" />
-                  View All Projects
+                  View Personnel Record (Admin)
                 </Button>
               </div>
 
-              {/* Stats Grid */}
+              {/* Stats Grid - Now with inline toggle actions */}
               <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-                <Card 
-                  className="cursor-pointer hover:bg-secondary/50 transition-colors"
-                  onClick={() => navigate('/time-tracking')}
-                >
+                <Card>
                   <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                     <CardTitle className="text-sm font-medium">Hours This Week</CardTitle>
                     <Clock className="h-4 w-4 text-muted-foreground" />
@@ -284,10 +272,7 @@ export default function PersonnelPortalPreview() {
                   </CardContent>
                 </Card>
 
-                <Card 
-                  className="cursor-pointer hover:bg-secondary/50 transition-colors"
-                  onClick={() => navigate(`/personnel/${selectedPersonnelId}`)}
-                >
+                <Card>
                   <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                     <CardTitle className="text-sm font-medium">Est. Weekly Pay</CardTitle>
                     <DollarSign className="h-4 w-4 text-muted-foreground" />
@@ -304,7 +289,7 @@ export default function PersonnelPortalPreview() {
 
                 <Card 
                   className="cursor-pointer hover:bg-secondary/50 transition-colors"
-                  onClick={() => navigate('/projects')}
+                  onClick={() => setShowAllProjects(!showAllProjects)}
                 >
                   <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                     <CardTitle className="text-sm font-medium">Active Projects</CardTitle>
@@ -314,21 +299,26 @@ export default function PersonnelPortalPreview() {
                     <div className="text-2xl font-bold">
                       {isLoading ? "..." : activeProjects}
                     </div>
-                    <p className="text-xs text-muted-foreground">
-                      Currently assigned
+                    <p className="text-xs text-muted-foreground flex items-center gap-1">
+                      Click to {showAllProjects ? "collapse" : "expand"}
+                      {showAllProjects ? <ChevronUp className="h-3 w-3" /> : <ChevronDown className="h-3 w-3" />}
                     </p>
                   </CardContent>
                 </Card>
 
-                <Card>
+                <Card 
+                  className="cursor-pointer hover:bg-secondary/50 transition-colors"
+                  onClick={() => setShowAllNotifications(!showAllNotifications)}
+                >
                   <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                     <CardTitle className="text-sm font-medium">Notifications</CardTitle>
                     <Bell className="h-4 w-4 text-muted-foreground" />
                   </CardHeader>
                   <CardContent>
                     <div className="text-2xl font-bold">{unreadNotifications}</div>
-                    <p className="text-xs text-muted-foreground">
-                      Unread messages
+                    <p className="text-xs text-muted-foreground flex items-center gap-1">
+                      Click to {showAllNotifications ? "collapse" : "expand"}
+                      {showAllNotifications ? <ChevronUp className="h-3 w-3" /> : <ChevronDown className="h-3 w-3" />}
                     </p>
                   </CardContent>
                 </Card>
@@ -385,36 +375,41 @@ export default function PersonnelPortalPreview() {
                 </Card>
               </div>
 
-              {/* Assigned Projects */}
+              {/* Assigned Projects - Self-contained with dialog */}
               {assignments && assignments.length > 0 && (
                 <Card>
                   <CardHeader className="flex flex-row items-center justify-between">
                     <CardTitle className="text-lg">Assigned Projects</CardTitle>
-                    <Button variant="ghost" size="sm" onClick={() => navigate('/projects')}>
-                      View All
-                      <ExternalLink className="h-3 w-3 ml-1" />
-                    </Button>
+                    {assignments.length > 5 && (
+                      <Button 
+                        variant="ghost" 
+                        size="sm" 
+                        onClick={() => setShowAllProjects(!showAllProjects)}
+                      >
+                        {showAllProjects ? "Show Less" : `View All (${assignments.length})`}
+                        {showAllProjects ? <ChevronUp className="h-3 w-3 ml-1" /> : <ChevronDown className="h-3 w-3 ml-1" />}
+                      </Button>
+                    )}
                   </CardHeader>
                   <CardContent>
                     <div className="space-y-3">
-                      {assignments.slice(0, 5).map((assignment) => (
+                      {displayedProjects?.map((assignment) => (
                         <div 
                           key={assignment.id} 
                           className="p-3 rounded-lg border cursor-pointer hover:bg-secondary/50 transition-colors group"
-                          onClick={() => assignment.projects?.id && navigate(`/projects/${assignment.projects.id}`)}
+                          onClick={() => setSelectedProject(assignment)}
                         >
                           <div className="flex justify-between items-start">
                             <div>
-                              <p className="font-medium text-primary group-hover:underline flex items-center gap-1">
+                              <p className="font-medium text-primary group-hover:underline">
                                 {assignment.projects?.name || "Unknown Project"}
-                                <ExternalLink className="h-3 w-3 opacity-0 group-hover:opacity-100 transition-opacity" />
                               </p>
                               <p className="text-sm text-muted-foreground">
                                 Assigned: {format(parseISO(assignment.assigned_at), "MMM d, yyyy")}
                               </p>
                             </div>
                             <span className="text-xs px-2 py-1 bg-secondary rounded">
-                              {assignment.projects?.status || "active"}
+                              {assignment.projects?.status || "unknown"}
                             </span>
                           </div>
                         </div>
@@ -424,25 +419,40 @@ export default function PersonnelPortalPreview() {
                 </Card>
               )}
 
-              {/* Recent Notifications */}
+              {/* Recent Notifications - Self-contained */}
               {notifications && notifications.length > 0 && (
                 <Card>
-                  <CardHeader>
-                    <CardTitle className="text-lg">Recent Notifications</CardTitle>
+                  <CardHeader className="flex flex-row items-center justify-between">
+                    <CardTitle className="text-lg flex items-center gap-2">
+                      <Bell className="h-5 w-5" />
+                      Notifications
+                    </CardTitle>
+                    {notifications.length > 5 && (
+                      <Button 
+                        variant="ghost" 
+                        size="sm" 
+                        onClick={() => setShowAllNotifications(!showAllNotifications)}
+                      >
+                        {showAllNotifications ? "Show Less" : `View All (${notifications.length})`}
+                        {showAllNotifications ? <ChevronUp className="h-3 w-3 ml-1" /> : <ChevronDown className="h-3 w-3 ml-1" />}
+                      </Button>
+                    )}
                   </CardHeader>
                   <CardContent>
                     <div className="space-y-3">
-                      {notifications.map((notification) => (
+                      {displayedNotifications?.map((notification) => (
                         <div 
                           key={notification.id} 
-                          className={`p-3 rounded-lg border ${!notification.is_read ? "bg-muted/50" : ""}`}
+                          className={`p-3 rounded-lg border ${
+                            notification.is_read ? "opacity-60" : "bg-primary/5 border-primary/20"
+                          }`}
                         >
-                          <div className="flex justify-between items-start">
-                            <div>
-                              <p className="font-medium">{notification.title}</p>
+                          <div className="flex justify-between items-start gap-2">
+                            <div className="flex-1">
+                              <p className="font-medium text-sm">{notification.title}</p>
                               <p className="text-sm text-muted-foreground">{notification.message}</p>
                             </div>
-                            <span className="text-xs text-muted-foreground">
+                            <span className="text-xs text-muted-foreground whitespace-nowrap">
                               {format(parseISO(notification.created_at), "MMM d")}
                             </span>
                           </div>
@@ -462,6 +472,14 @@ export default function PersonnelPortalPreview() {
           </div>
         )}
       </div>
+
+      {/* Project Detail Dialog */}
+      <ProjectPreviewDialog
+        project={selectedProject?.projects || null}
+        open={!!selectedProject}
+        onClose={() => setSelectedProject(null)}
+        assignedAt={selectedProject?.assigned_at}
+      />
     </>
   );
 }
