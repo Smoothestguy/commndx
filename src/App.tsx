@@ -63,6 +63,7 @@ import NotFound from "./pages/NotFound";
 import PortalDashboard from "./pages/portal/PortalDashboard";
 import PortalHours from "./pages/portal/PortalHours";
 import PortalProjects from "./pages/portal/PortalProjects";
+import PortalProjectDetail from "./pages/portal/PortalProjectDetail";
 import PortalReimbursements from "./pages/portal/PortalReimbursements";
 import PortalNotifications from "./pages/portal/PortalNotifications";
 import PortalSettings from "./pages/portal/PortalSettings";
@@ -166,6 +167,14 @@ const App = () => {
                     element={
                       <PortalProtectedRoute>
                         <PortalProjects />
+                      </PortalProtectedRoute>
+                    }
+                  />
+                  <Route
+                    path="/portal/projects/:id"
+                    element={
+                      <PortalProtectedRoute>
+                        <PortalProjectDetail />
                       </PortalProtectedRoute>
                     }
                   />

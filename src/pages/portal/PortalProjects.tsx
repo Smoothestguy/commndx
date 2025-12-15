@@ -1,12 +1,14 @@
+import { useNavigate } from "react-router-dom";
 import { PortalLayout } from "@/components/portal/PortalLayout";
 import { useCurrentPersonnel, usePersonnelAssignments, usePersonnelTimeEntries } from "@/integrations/supabase/hooks/usePortal";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Briefcase, Calendar, Clock } from "lucide-react";
+import { Briefcase, Calendar, Clock, ChevronRight } from "lucide-react";
 import { format, parseISO } from "date-fns";
 
 export default function PortalProjects() {
+  const navigate = useNavigate();
   const { data: personnel } = useCurrentPersonnel();
   const { data: assignments, isLoading } = usePersonnelAssignments(personnel?.id);
   const { data: timeEntries } = usePersonnelTimeEntries(personnel?.id);
@@ -53,7 +55,11 @@ export default function PortalProjects() {
               const totalHours = projectHours.regular + projectHours.overtime;
               
               return (
-                <Card key={assignment.id}>
+                <Card 
+                  key={assignment.id}
+                  className="cursor-pointer hover:shadow-md transition-shadow group"
+                  onClick={() => navigate(`/portal/projects/${project?.id}`)}
+                >
                   <CardHeader>
                     <div className="flex items-start justify-between">
                       <div className="flex items-center gap-3">
@@ -61,15 +67,20 @@ export default function PortalProjects() {
                           <Briefcase className="h-5 w-5 text-primary" />
                         </div>
                         <div>
-                          <CardTitle className="text-lg">{project?.name}</CardTitle>
+                          <CardTitle className="text-lg group-hover:text-primary transition-colors">
+                            {project?.name}
+                          </CardTitle>
                           <CardDescription>
                             Assigned {format(parseISO(assignment.assigned_at), "MMM d, yyyy")}
                           </CardDescription>
                         </div>
                       </div>
-                      <Badge variant={project?.status === "active" ? "default" : "secondary"}>
-                        {project?.status}
-                      </Badge>
+                      <div className="flex items-center gap-2">
+                        <Badge variant={project?.status === "active" ? "default" : "secondary"}>
+                          {project?.status}
+                        </Badge>
+                        <ChevronRight className="h-4 w-4 text-muted-foreground group-hover:text-primary transition-colors" />
+                      </div>
                     </div>
                   </CardHeader>
                   <CardContent className="space-y-4">

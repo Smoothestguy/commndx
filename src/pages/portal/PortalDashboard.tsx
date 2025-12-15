@@ -3,11 +3,12 @@ import { useCurrentPersonnel, usePersonnelTimeEntries, usePersonnelAssignments, 
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Clock, Briefcase, Receipt, Bell, DollarSign, TrendingUp } from "lucide-react";
 import { startOfWeek, endOfWeek, startOfMonth, endOfMonth, parseISO, isWithinInterval, format } from "date-fns";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 
 export default function PortalDashboard() {
+  const navigate = useNavigate();
   const { data: personnel, isLoading: personnelLoading } = useCurrentPersonnel();
   const { data: timeEntries, isLoading: timeLoading } = usePersonnelTimeEntries(personnel?.id);
   const { data: assignments, isLoading: assignmentsLoading } = usePersonnelAssignments(personnel?.id);
@@ -108,7 +109,10 @@ export default function PortalDashboard() {
             </CardContent>
           </Card>
 
-          <Card>
+          <Card 
+            className="cursor-pointer hover:shadow-md transition-shadow"
+            onClick={() => navigate('/portal/projects')}
+          >
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
               <CardTitle className="text-sm font-medium">Active Projects</CardTitle>
               <Briefcase className="h-4 w-4 text-muted-foreground" />
