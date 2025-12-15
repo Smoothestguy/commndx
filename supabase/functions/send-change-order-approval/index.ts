@@ -62,7 +62,7 @@ const handler = async (req: Request): Promise<Response> => {
       method: "POST",
       headers: { "Content-Type": "application/json", Authorization: `Bearer ${RESEND_API_KEY}` },
       body: JSON.stringify({
-        from: "Change Orders <onboarding@resend.dev>",
+        from: "Fairfield <admin@fairfieldrg.com>",
         to: [addendum.customer_rep_email],
         subject: `Change Order ${addendum.number} Requires Your Approval`,
         html: `<div style="font-family:sans-serif;max-width:600px;margin:0 auto;">

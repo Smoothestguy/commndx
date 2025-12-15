@@ -58,7 +58,7 @@ const handler = async (req: Request): Promise<Response> => {
     console.log("Invite link:", inviteLink);
 
     const emailResponse = await resend.emails.send({
-      from: "COMMNDX <no-reply@commndx.com>",
+      from: "Fairfield <admin@fairfieldrg.com>",
       to: [email],
       subject: "You've Been Invited to the Vendor Portal",
       html: `

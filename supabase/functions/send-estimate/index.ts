@@ -88,7 +88,7 @@ const handler = async (req: Request): Promise<Response> => {
         "Content-Type": "application/json",
       },
       body: JSON.stringify({
-        from: "COMMNDX <no-reply@commndx.com>",
+        from: "Fairfield <admin@fairfieldrg.com>",
         to: [estimate.customers.email],
         subject: `Estimate ${estimate.number} - ${estimate.project_name || "Your Project"}`,
         html: `

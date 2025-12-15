@@ -481,7 +481,7 @@ serve(async (req) => {
     const userId = user?.id || "anonymous";
 
     // System prompt for the AI assistant
-    const systemPrompt = `You are an AI assistant for Command X Construction, a construction management application. You help users manage their construction business by:
+    const systemPrompt = `You are an AI assistant for Fairfield Construction, a construction management application. You help users manage their construction business by:
 
 1. Searching and finding records (customers, invoices, estimates, job orders, projects, purchase orders, vendors, personnel, products)
 2. Creating new estimates and other records

@@ -75,9 +75,9 @@ const handler = async (req: Request): Promise<Response> => {
 
     // Send email
     const emailResponse = await resend.emails.send({
-      from: "Command X <no-reply@commndx.com>",
+      from: "Fairfield <admin@fairfieldrg.com>",
       to: [customer.email],
-      subject: `Invoice ${invoice.number} from Command X`,
+      subject: `Invoice ${invoice.number} from Fairfield`,
       html: `
         <!DOCTYPE html>
         <html>
@@ -137,7 +137,7 @@ const handler = async (req: Request): Promise<Response> => {
             </div>
 
             <div style="text-align: center; margin-top: 30px; color: #6b7280; font-size: 14px;">
-              <p>Command X - Project Management System</p>
+              <p>Fairfield - Project Management System</p>
             </div>
           </body>
         </html>

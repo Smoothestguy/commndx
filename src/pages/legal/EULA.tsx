@@ -5,7 +5,7 @@ const EULA = () => {
     <>
       <SEO 
         title="End User License Agreement" 
-        description="End User License Agreement for Command X - Terms and conditions for using our software."
+        description="End User License Agreement for Fairfield - Terms and conditions for using our software."
       />
       <div className="min-h-screen bg-background py-12 px-4 sm:px-6 lg:px-8">
         <div className="max-w-3xl mx-auto">
@@ -16,7 +16,7 @@ const EULA = () => {
             <section>
               <h2 className="text-xl font-semibold text-foreground mb-3">1. License Grant</h2>
               <p className="text-muted-foreground">
-                Subject to the terms of this Agreement, Command X grants you a limited, non-exclusive, 
+                Subject to the terms of this Agreement, Fairfield grants you a limited, non-exclusive, 
                 non-transferable, revocable license to access and use our software application and 
                 services for your internal business purposes.
               </p>
@@ -40,9 +40,9 @@ const EULA = () => {
             <section>
               <h2 className="text-xl font-semibold text-foreground mb-3">3. Intellectual Property</h2>
               <p className="text-muted-foreground">
-                The software and all copies thereof are proprietary to Command X and title thereto 
-                remains exclusively with Command X. All rights in the software not specifically 
-                granted in this Agreement are reserved to Command X. The software is protected by 
+                The software and all copies thereof are proprietary to Fairfield and title thereto 
+                remains exclusively with Fairfield. All rights in the software not specifically 
+                granted in this Agreement are reserved to Fairfield. The software is protected by 
                 copyright and other intellectual property laws.
               </p>
             </section>
@@ -52,7 +52,7 @@ const EULA = () => {
               <p className="text-muted-foreground">
                 The software may integrate with third-party services, including but not limited to 
                 Intuit QuickBooks. Your use of such integrations is subject to the respective 
-                third-party terms of service and privacy policies. Command X is not responsible 
+                third-party terms of service and privacy policies. Fairfield is not responsible 
                 for the availability, accuracy, or content of third-party services.
               </p>
             </section>
@@ -62,7 +62,7 @@ const EULA = () => {
               <p className="text-muted-foreground">
                 THE SOFTWARE IS PROVIDED "AS IS" WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED, 
                 INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A 
-                PARTICULAR PURPOSE, AND NONINFRINGEMENT. COMMAND X DOES NOT WARRANT THAT THE 
+                PARTICULAR PURPOSE, AND NONINFRINGEMENT. FAIRFIELD DOES NOT WARRANT THAT THE 
                 SOFTWARE WILL BE UNINTERRUPTED OR ERROR-FREE.
               </p>
             </section>
@@ -70,7 +70,7 @@ const EULA = () => {
             <section>
               <h2 className="text-xl font-semibold text-foreground mb-3">6. Limitation of Liability</h2>
               <p className="text-muted-foreground">
-                IN NO EVENT SHALL COMMAND X BE LIABLE FOR ANY INDIRECT, INCIDENTAL, SPECIAL, 
+                IN NO EVENT SHALL FAIRFIELD BE LIABLE FOR ANY INDIRECT, INCIDENTAL, SPECIAL, 
                 CONSEQUENTIAL, OR PUNITIVE DAMAGES, OR ANY LOSS OF PROFITS OR REVENUES, WHETHER 
                 INCURRED DIRECTLY OR INDIRECTLY, OR ANY LOSS OF DATA, USE, GOODWILL, OR OTHER 
                 INTANGIBLE LOSSES, RESULTING FROM YOUR USE OF THE SOFTWARE.
@@ -80,7 +80,7 @@ const EULA = () => {
             <section>
               <h2 className="text-xl font-semibold text-foreground mb-3">7. Term and Termination</h2>
               <p className="text-muted-foreground">
-                This Agreement is effective until terminated. Command X may terminate this Agreement 
+                This Agreement is effective until terminated. Fairfield may terminate this Agreement 
                 at any time if you fail to comply with any term of this Agreement. Upon termination, 
                 you must cease all use of the software and destroy all copies in your possession.
               </p>
@@ -109,8 +109,8 @@ const EULA = () => {
               <h2 className="text-xl font-semibold text-foreground mb-3">10. Contact Information</h2>
               <p className="text-muted-foreground">
                 If you have any questions about this Agreement, please contact us at:{" "}
-                <a href="mailto:legal@commandx.app" className="text-primary hover:underline">
-                  legal@commandx.app
+                <a href="mailto:admin@fairfieldrg.com" className="text-primary hover:underline">
+                  admin@fairfieldrg.com
                 </a>
               </p>
             </section>
