@@ -34,7 +34,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { Plus, Trash2, Save, X, ArrowRightLeft, Check, ChevronsUpDown } from "lucide-react";
+import { Plus, Trash2, Save, X, ArrowRightLeft, Check, ChevronsUpDown, Lock } from "lucide-react";
 import {
   Tooltip,
   TooltipContent,
@@ -55,6 +55,7 @@ import {
   ChangeOrderWithLineItems,
   ChangeType,
 } from "@/integrations/supabase/hooks/useChangeOrders";
+import { ChangeOrderPermissions } from "@/hooks/useChangeOrderPermissions";
 import { cn } from "@/lib/utils";
 
 interface LineItem {
@@ -75,12 +76,14 @@ interface ChangeOrderFormProps {
   initialData?: ChangeOrderWithLineItems;
   defaultProjectId?: string;
   defaultPurchaseOrderId?: string;
+  permissions?: ChangeOrderPermissions;
 }
 
 export function ChangeOrderForm({
   initialData,
   defaultProjectId,
   defaultPurchaseOrderId,
+  permissions,
 }: ChangeOrderFormProps) {
   const navigate = useNavigate();
   const { data: projects } = useProjects();
@@ -93,6 +96,13 @@ export function ChangeOrderForm({
 
   const addChangeOrder = useAddChangeOrder();
   const updateChangeOrder = useUpdateChangeOrder();
+
+  // Permission-based controls
+  const isReadOnly = permissions && !permissions.canEdit;
+  const canViewCosts = permissions?.canViewCosts ?? true;
+  const canViewMargins = permissions?.canViewMargins ?? true;
+  const canEditLineItems = permissions?.canEditLineItems ?? true;
+  const canEditPricing = permissions?.canEditPricing ?? true;
 
   const [projectId, setProjectId] = useState(initialData?.project_id || defaultProjectId || "");
   const [customerId, setCustomerId] = useState(initialData?.customer_id || "");
@@ -637,11 +647,23 @@ export function ChangeOrderForm({
 
       <Card>
         <CardHeader className="flex flex-row items-center justify-between">
-          <CardTitle>Line Items</CardTitle>
-          <Button type="button" variant="outline" size="sm" onClick={addLineItem}>
-            <Plus className="mr-2 h-4 w-4" />
-            Add Item
-          </Button>
+          <CardTitle className="flex items-center gap-2">
+            Line Items
+            {isReadOnly && (
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Lock className="h-4 w-4 text-muted-foreground" />
+                </TooltipTrigger>
+                <TooltipContent>Read-only access</TooltipContent>
+              </Tooltip>
+            )}
+          </CardTitle>
+          {canEditLineItems && (
+            <Button type="button" variant="outline" size="sm" onClick={addLineItem} disabled={isReadOnly}>
+              <Plus className="mr-2 h-4 w-4" />
+              Add Item
+            </Button>
+          )}
         </CardHeader>
         <CardContent>
           <div className="overflow-x-auto">
@@ -652,12 +674,12 @@ export function ChangeOrderForm({
                   <TableHead>Description</TableHead>
                   <TableHead className="w-[80px]">Qty</TableHead>
                   <TableHead className="w-[110px]">Client Price</TableHead>
-                  <TableHead className="w-[110px]">Vendor Cost</TableHead>
-                  <TableHead className="w-[80px]">Markup %</TableHead>
+                  {canViewCosts && <TableHead className="w-[110px]">Vendor Cost</TableHead>}
+                  {canViewMargins && <TableHead className="w-[80px]">Markup %</TableHead>}
                   <TableHead className="w-[120px]">Total</TableHead>
                   <TableHead className="w-[70px]">Taxable</TableHead>
                   <TableHead className="w-[50px]">Mode</TableHead>
-                  <TableHead className="w-[50px]"></TableHead>
+                  {canEditLineItems && <TableHead className="w-[50px]"></TableHead>}
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -741,20 +763,26 @@ export function ChangeOrderForm({
                             )}
                           </div>
                         </TableCell>
-                        <TableCell>
-                          <CalculatorInput
-                            value={item.vendor_cost}
-                            onValueChange={(value) => updateLineItem(index, "vendor_cost", value)}
-                            placeholder="0.00"
-                          />
-                        </TableCell>
-                        <TableCell>
-                          <CalculatorInput
-                            value={item.markup}
-                            onValueChange={(value) => updateLineItem(index, "markup", value)}
-                            decimalPlaces={2}
-                          />
-                        </TableCell>
+                        {canViewCosts && (
+                          <TableCell>
+                            <CalculatorInput
+                              value={item.vendor_cost}
+                              onValueChange={(value) => updateLineItem(index, "vendor_cost", value)}
+                              placeholder="0.00"
+                              disabled={isReadOnly}
+                            />
+                          </TableCell>
+                        )}
+                        {canViewMargins && (
+                          <TableCell>
+                            <CalculatorInput
+                              value={item.markup}
+                              onValueChange={(value) => updateLineItem(index, "markup", value)}
+                              decimalPlaces={2}
+                              disabled={isReadOnly}
+                            />
+                          </TableCell>
+                        )}
                         <TableCell>
                           <div className="relative">
                             <CalculatorInput
@@ -799,20 +827,23 @@ export function ChangeOrderForm({
                             </TooltipContent>
                           </Tooltip>
                         </TableCell>
-                        <TableCell>
-                          <Button
-                            type="button"
-                            variant="ghost"
-                            size="icon"
-                            onClick={() => removeLineItem(index)}
-                          >
-                            <Trash2 className="h-4 w-4 text-destructive" />
-                          </Button>
-                        </TableCell>
+                        {canEditLineItems && (
+                          <TableCell>
+                            <Button
+                              type="button"
+                              variant="ghost"
+                              size="icon"
+                              onClick={() => removeLineItem(index)}
+                              disabled={isReadOnly}
+                            >
+                              <Trash2 className="h-4 w-4 text-destructive" />
+                            </Button>
+                          </TableCell>
+                        )}
                       </TableRow>
                       {/* Calculation breakdown row */}
                       <TableRow key={`${item.id}-breakdown`} className="bg-muted/30 hover:bg-muted/30">
-                        <TableCell colSpan={10} className="py-1 text-xs text-muted-foreground">
+                        <TableCell colSpan={canViewCosts && canViewMargins ? 10 : (canViewCosts || canViewMargins ? 9 : 8)} className="py-1 text-xs text-muted-foreground">
                           <span className="ml-2">
                             {formatCalculationBreakdown(item)}
                           </span>
@@ -823,8 +854,8 @@ export function ChangeOrderForm({
                 </TooltipProvider>
                 {lineItems.length === 0 && (
                   <TableRow>
-                    <TableCell colSpan={10} className="text-center text-muted-foreground py-8">
-                      No line items added. Click "Add Item" to add products or services.
+                    <TableCell colSpan={canViewCosts && canViewMargins ? 10 : (canViewCosts || canViewMargins ? 9 : 8)} className="text-center text-muted-foreground py-8">
+                      No line items added. {canEditLineItems ? 'Click "Add Item" to add products or services.' : 'You do not have permission to add items.'}
                     </TableCell>
                   </TableRow>
                 )}
@@ -846,14 +877,18 @@ export function ChangeOrderForm({
                 <span>Client Total:</span>
                 <span>${total.toFixed(2)}</span>
               </div>
-              <div className="flex justify-between text-sm text-muted-foreground pt-2 border-t">
-                <span>Vendor Cost Total:</span>
-                <span>${vendorCostTotal.toFixed(2)}</span>
-              </div>
-              <div className="flex justify-between text-sm font-medium text-green-600">
-                <span>Gross Profit:</span>
-                <span>${grossProfit.toFixed(2)} ({marginPercent.toFixed(1)}%)</span>
-              </div>
+              {canViewCosts && (
+                <div className="flex justify-between text-sm text-muted-foreground pt-2 border-t">
+                  <span>Vendor Cost Total:</span>
+                  <span>${vendorCostTotal.toFixed(2)}</span>
+                </div>
+              )}
+              {canViewMargins && (
+                <div className="flex justify-between text-sm font-medium text-green-600">
+                  <span>Gross Profit:</span>
+                  <span>${grossProfit.toFixed(2)} ({marginPercent.toFixed(1)}%)</span>
+                </div>
+              )}
             </div>
           </div>
         </CardContent>
@@ -864,13 +899,15 @@ export function ChangeOrderForm({
           <X className="mr-2 h-4 w-4" />
           Cancel
         </Button>
-        <Button
-          type="submit"
-          disabled={addChangeOrder.isPending || updateChangeOrder.isPending}
-        >
-          <Save className="mr-2 h-4 w-4" />
-          {initialData?.id ? "Update" : "Create"} Change Order
-        </Button>
+        {!isReadOnly && (
+          <Button
+            type="submit"
+            disabled={addChangeOrder.isPending || updateChangeOrder.isPending || isReadOnly}
+          >
+            <Save className="mr-2 h-4 w-4" />
+            {initialData?.id ? "Update" : "Create"} Change Order
+          </Button>
+        )}
       </div>
     </form>
   );

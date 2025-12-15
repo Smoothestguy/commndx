@@ -1,16 +1,20 @@
-import { useParams } from "react-router-dom";
+import { useParams, Navigate } from "react-router-dom";
 import { DetailPageLayout } from "@/components/layout/DetailPageLayout";
 import { ChangeOrderForm } from "@/components/change-orders/ChangeOrderForm";
 import { useChangeOrder } from "@/integrations/supabase/hooks/useChangeOrders";
-import { Loader2 } from "lucide-react";
+import { useChangeOrderPermissions } from "@/hooks/useChangeOrderPermissions";
+import { PermissionSummaryCard } from "@/components/shared/PermissionSummaryCard";
+import { Loader2, ShieldAlert } from "lucide-react";
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 
 export default function EditChangeOrder() {
   const { id } = useParams<{ id: string }>();
   const { data: changeOrder, isLoading } = useChangeOrder(id);
+  const permissions = useChangeOrderPermissions(changeOrder);
 
   const backPath = changeOrder ? `/projects/${changeOrder.project_id}` : "/projects";
 
-  if (isLoading) {
+  if (isLoading || permissions.loading) {
     return (
       <DetailPageLayout title="Edit Change Order" backPath="/projects">
         <div className="flex items-center justify-center py-12">
@@ -32,13 +36,46 @@ export default function EditChangeOrder() {
     );
   }
 
+  // Check if user has permission to view
+  if (!permissions.canView) {
+    return <Navigate to="/" replace />;
+  }
+
+  // Check if user can edit this change order
+  const canEditDocument = permissions.canEdit;
+
   return (
     <DetailPageLayout
       title={`Edit ${changeOrder.number}`}
       subtitle="Modify change order details"
       backPath={backPath}
     >
-      <ChangeOrderForm initialData={changeOrder} />
+      <div className="space-y-6">
+        {/* Permission Summary Card */}
+        <PermissionSummaryCard 
+          permissions={permissions} 
+          documentType="Change Order"
+          status={changeOrder.status}
+        />
+
+        {/* Warning if read-only */}
+        {!canEditDocument && (
+          <Alert variant="destructive">
+            <ShieldAlert className="h-4 w-4" />
+            <AlertTitle>Read-Only Access</AlertTitle>
+            <AlertDescription>
+              {changeOrder.status !== 'draft' 
+                ? `This change order is in "${changeOrder.status}" status and cannot be edited.`
+                : "You do not have permission to edit this change order."}
+            </AlertDescription>
+          </Alert>
+        )}
+
+        <ChangeOrderForm 
+          initialData={changeOrder} 
+          permissions={permissions}
+        />
+      </div>
     </DetailPageLayout>
   );
 }

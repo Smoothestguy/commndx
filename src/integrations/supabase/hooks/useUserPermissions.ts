@@ -100,6 +100,18 @@ export const MODULES = [
     }
   },
   { 
+    key: "change_orders", 
+    label: "Change Orders", 
+    category: "Sales",
+    description: "Manage project change orders",
+    permissions: {
+      can_view: "View change orders and pricing",
+      can_add: "Create new change orders",
+      can_edit: "Modify draft change orders",
+      can_delete: "Delete draft change orders"
+    }
+  },
+  { 
     key: "purchase_orders", 
     label: "Purchase Orders", 
     category: "Sales",
