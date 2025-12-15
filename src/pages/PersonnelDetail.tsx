@@ -19,6 +19,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import { SendSMSDialog } from "@/components/messaging/SendSMSDialog";
 import { MessageHistory } from "@/components/messaging/MessageHistory";
 import { InviteToPortalDialog } from "@/components/personnel/InviteToPortalDialog";
+import { PersonnelProjectsList } from "@/components/personnel/PersonnelProjectsList";
 
 const PersonnelDetail = () => {
   const { id } = useParams<{ id: string }>();
@@ -230,11 +231,12 @@ const PersonnelDetail = () => {
 
         <Tabs defaultValue="personal" className="w-full">
           <ScrollArea className="w-full">
-            <TabsList className="inline-flex w-full sm:grid sm:grid-cols-6">
+            <TabsList className="inline-flex w-full sm:grid sm:grid-cols-7">
               <TabsTrigger value="personal" className="whitespace-nowrap">
                 <span className="sm:hidden">Info</span>
                 <span className="hidden sm:inline">Personal</span>
               </TabsTrigger>
+              <TabsTrigger value="projects" className="whitespace-nowrap">Projects</TabsTrigger>
               <TabsTrigger value="i9" className="whitespace-nowrap">
                 <span className="sm:hidden">I-9</span>
                 <span className="hidden sm:inline">I-9 Compliance</span>
@@ -333,6 +335,10 @@ const PersonnelDetail = () => {
                 </CardContent>
               </Card>
             )}
+          </TabsContent>
+
+          <TabsContent value="projects">
+            <PersonnelProjectsList personnelId={personnel.id} />
           </TabsContent>
 
           <TabsContent value="i9">

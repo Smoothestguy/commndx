@@ -219,6 +219,56 @@ export function useRemovePersonnelFromProject() {
   });
 }
 
+// Get all projects assigned to a specific personnel member
+export function useProjectsForPersonnel(personnelId: string | undefined) {
+  return useQuery({
+    queryKey: ["personnel-project-assignments", "by-personnel", personnelId],
+    queryFn: async () => {
+      if (!personnelId) return [];
+      
+      const { data, error } = await supabase
+        .from("personnel_project_assignments")
+        .select(`
+          id,
+          personnel_id,
+          project_id,
+          assigned_by,
+          assigned_at,
+          status,
+          created_at,
+          updated_at,
+          projects (
+            id,
+            name,
+            status,
+            start_date,
+            end_date,
+            customers (
+              name,
+              company
+            )
+          )
+        `)
+        .eq("personnel_id", personnelId)
+        .eq("status", "active")
+        .order("assigned_at", { ascending: false });
+
+      if (error) throw error;
+      return data as (PersonnelProjectAssignment & { 
+        projects: {
+          id: string;
+          name: string;
+          status: string;
+          start_date: string | null;
+          end_date: string | null;
+          customers: { name: string; company: string | null } | null;
+        } | null 
+      })[];
+    },
+    enabled: !!personnelId,
+  });
+}
+
 // Hard delete assignment
 export function useDeletePersonnelAssignment() {
   const queryClient = useQueryClient();
