@@ -6,7 +6,7 @@ import { Loader2 } from "lucide-react";
 
 export const ProtectedRoute = ({ children }: { children: ReactNode }) => {
   const { user, loading: authLoading } = useAuth();
-  const { isPersonnel, isVendor, loading: roleLoading } = useUserRole();
+  const { isPersonnel, isVendor, isAdmin, isManager, loading: roleLoading } = useUserRole();
 
   if (authLoading || roleLoading) {
     return (
@@ -20,13 +20,16 @@ export const ProtectedRoute = ({ children }: { children: ReactNode }) => {
     return <Navigate to="/auth" replace />;
   }
 
-  // Redirect personnel users to the portal
-  if (isPersonnel) {
+  // Allow admins and managers to access main dashboard even if linked to personnel/vendor
+  const hasAdminAccess = isAdmin || isManager;
+
+  // Redirect personnel users to the portal (unless they have admin/manager role)
+  if (isPersonnel && !hasAdminAccess) {
     return <Navigate to="/portal" replace />;
   }
 
-  // Redirect vendor users to vendor portal
-  if (isVendor) {
+  // Redirect vendor users to vendor portal (unless they have admin/manager role)
+  if (isVendor && !hasAdminAccess) {
     return <Navigate to="/vendor" replace />;
   }
 
