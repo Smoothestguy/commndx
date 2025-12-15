@@ -258,6 +258,55 @@ export const MODULES = [
       can_delete: "Remove warranties"
     }
   },
+  // Admin
+  { 
+    key: "user_management", 
+    label: "User Management", 
+    category: "Admin",
+    description: "Manage users, roles, and invitations",
+    permissions: {
+      can_view: "View user list and roles",
+      can_add: "Invite new users",
+      can_edit: "Change user roles",
+      can_delete: "Remove users"
+    }
+  },
+  { 
+    key: "permissions_management", 
+    label: "Permissions Management", 
+    category: "Admin",
+    description: "Configure user permissions",
+    permissions: {
+      can_view: "View permission settings",
+      can_add: "N/A",
+      can_edit: "Modify user permissions",
+      can_delete: "N/A"
+    }
+  },
+  { 
+    key: "audit_logs", 
+    label: "Audit Logs", 
+    category: "Admin",
+    description: "View system audit trail",
+    permissions: {
+      can_view: "View audit logs",
+      can_add: "N/A",
+      can_edit: "N/A",
+      can_delete: "N/A"
+    }
+  },
+  { 
+    key: "settings", 
+    label: "Settings", 
+    category: "Admin",
+    description: "Manage company and system settings",
+    permissions: {
+      can_view: "View settings",
+      can_add: "N/A",
+      can_edit: "Modify settings",
+      can_delete: "N/A"
+    }
+  },
 ] as const;
 
 export type ModuleKey = typeof MODULES[number]["key"];

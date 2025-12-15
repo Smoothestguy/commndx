@@ -7,11 +7,13 @@ import { useAuditLogs } from "@/integrations/supabase/hooks/useAuditLogs";
 import { Button } from "@/components/ui/button";
 import { Download, RefreshCw } from "lucide-react";
 import { useUserRole } from "@/hooks/useUserRole";
+import { usePermissionCheck } from "@/hooks/usePermissionCheck";
 import { supabase } from "@/integrations/supabase/client";
 
 const AuditLogs = () => {
   const navigate = useNavigate();
-  const { role, loading: roleLoading } = useUserRole();
+  const { isAdmin, isManager, loading: roleLoading } = useUserRole();
+  const { canView, loading: permLoading } = usePermissionCheck('audit_logs');
   const [filters, setFilters] = useState({
     userEmail: "",
     actionType: "",
@@ -32,12 +34,15 @@ const AuditLogs = () => {
 
   const { data: logs = [], isLoading, refetch } = useAuditLogs(queryFilters, 500);
 
-  // Redirect if not admin/manager
+  // Redirect if not admin/manager and no permission
   useEffect(() => {
-    if (!roleLoading && role !== "admin" && role !== "manager") {
+    if (roleLoading || permLoading) return;
+    
+    const hasAccess = isAdmin || isManager || canView;
+    if (!hasAccess) {
       navigate("/");
     }
-  }, [role, roleLoading, navigate]);
+  }, [isAdmin, isManager, canView, roleLoading, permLoading, navigate]);
 
   // Subscribe to realtime updates
   useEffect(() => {
@@ -86,7 +91,7 @@ const AuditLogs = () => {
     window.URL.revokeObjectURL(url);
   };
 
-  if (roleLoading) {
+  if (roleLoading || permLoading) {
     return null;
   }
 

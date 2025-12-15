@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { SEO } from "@/components/SEO";
 import { PageLayout } from "@/components/layout/PageLayout";
 import { useUserRole } from "@/hooks/useUserRole";
+import { usePermissionCheck } from "@/hooks/usePermissionCheck";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { supabase } from "@/integrations/supabase/client";
 import { useNavigate } from "react-router-dom";
@@ -66,6 +67,7 @@ interface PersonnelOption {
 
 export default function UserManagement() {
   const { isAdmin, loading: roleLoading } = useUserRole();
+  const { canView, canAdd, canEdit, canDelete, loading: permLoading } = usePermissionCheck('user_management');
   const isMobile = useIsMobile();
   const navigate = useNavigate();
   const { toast } = useToast();
@@ -106,7 +108,13 @@ export default function UserManagement() {
   const [showPassword, setShowPassword] = useState(false);
 
   useEffect(() => {
-    if (!roleLoading && !isAdmin) {
+    // Wait for both role and permission loading to complete
+    if (roleLoading || permLoading) return;
+    
+    // Allow if admin OR has view permission
+    const hasAccess = isAdmin || canView;
+    
+    if (!hasAccess) {
       navigate("/");
       toast({
         title: "Access denied",
@@ -114,7 +122,7 @@ export default function UserManagement() {
         variant: "destructive",
       });
     }
-  }, [isAdmin, roleLoading, navigate, toast]);
+  }, [isAdmin, roleLoading, permLoading, canView, navigate, toast]);
 
   useEffect(() => {
     const getCurrentUser = async () => {

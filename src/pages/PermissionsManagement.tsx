@@ -12,6 +12,7 @@ import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/comp
 import { toast } from "sonner";
 import { Shield, Save, Users, Loader2, CheckSquare, XSquare, Info, Eye, DollarSign } from "lucide-react";
 import { useUserRole } from "@/hooks/useUserRole";
+import { usePermissionCheck } from "@/hooks/usePermissionCheck";
 import { useUserPermissions, useUpdateUserPermissions, MODULES, type ModuleKey } from "@/integrations/supabase/hooks/useUserPermissions";
 import { useSensitivePermissions, useUpdateSensitivePermissions, SENSITIVE_PERMISSIONS, type SensitivePermissionKey } from "@/integrations/supabase/hooks/useSensitivePermissions";
 import { Navigate } from "react-router-dom";
@@ -105,6 +106,7 @@ const getEmptySensitivePermissions = (): SensitivePermissionState => ({
 
 export default function PermissionsManagement() {
   const { isAdmin, loading: roleLoading } = useUserRole();
+  const { canView, canEdit, loading: permLoading } = usePermissionCheck('permissions_management');
   const [selectedUserId, setSelectedUserId] = useState<string | null>(null);
   const [permissions, setPermissions] = useState<PermissionState>(getEmptyPermissions());
   const [sensitivePermissions, setSensitivePermissions] = useState<SensitivePermissionState>(getEmptySensitivePermissions());
@@ -257,7 +259,7 @@ export default function PermissionsManagement() {
 
   const selectedUser = users?.find(u => u.id === selectedUserId);
 
-  if (roleLoading) {
+  if (roleLoading || permLoading) {
     return (
       <PageLayout title="Permissions Management">
         <div className="flex items-center justify-center h-64">
@@ -267,9 +269,14 @@ export default function PermissionsManagement() {
     );
   }
 
-  if (!isAdmin) {
+  // Allow access if admin OR has view permission
+  const hasAccess = isAdmin || canView;
+  if (!hasAccess) {
     return <Navigate to="/" replace />;
   }
+  
+  // Determine if user can edit permissions (admin or has edit permission)
+  const canEditPermissions = isAdmin || canEdit;
 
   const getPermissionTooltip = (mod: typeof MODULES[number], permType: PermissionType): string => {
     if (mod.permissions && mod.permissions[permType]) {
