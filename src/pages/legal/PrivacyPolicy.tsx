@@ -5,7 +5,7 @@ const PrivacyPolicy = () => {
     <>
       <SEO 
         title="Privacy Policy" 
-        description="Privacy Policy for Command X - Learn how we collect, use, and protect your information."
+        description="Privacy Policy for Fairfield - Learn how we collect, use, and protect your information."
       />
       <div className="min-h-screen bg-background py-12 px-4 sm:px-6 lg:px-8">
         <div className="max-w-3xl mx-auto">
@@ -107,8 +107,8 @@ const PrivacyPolicy = () => {
               <h2 className="text-xl font-semibold text-foreground mb-3">8. Contact Us</h2>
               <p className="text-muted-foreground">
                 If you have any questions about this Privacy Policy, please contact us at:{" "}
-                <a href="mailto:privacy@commandx.app" className="text-primary hover:underline">
-                  privacy@commandx.app
+                <a href="mailto:admin@fairfieldrg.com" className="text-primary hover:underline">
+                  admin@fairfieldrg.com
                 </a>
               </p>
             </section>

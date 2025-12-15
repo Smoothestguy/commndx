@@ -216,7 +216,7 @@ const handler = async (req: Request): Promise<Response> => {
 
     // Send email to all recipients
     const emailResponse = await resend.emails.send({
-      from: 'COMMNDX <no-reply@commndx.com>',
+      from: 'Fairfield <admin@fairfieldrg.com>',
       to: recipientsToNotify,
       subject: subject,
       html: htmlBody,

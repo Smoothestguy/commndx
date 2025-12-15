@@ -116,7 +116,7 @@ const handler = async (req: Request): Promise<Response> => {
 
         // Send email via Resend
         const emailResponse = await resend.emails.send({
-          from: "COMMNDX <no-reply@commndx.com>",
+          from: "Fairfield <admin@fairfieldrg.com>",
           to: [adminProfile.email],
           subject: `⏰ ${invitations.length} Invitation${invitations.length > 1 ? "s" : ""} Expiring Soon`,
           html: `

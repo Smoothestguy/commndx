@@ -345,7 +345,7 @@ export default function AcceptInvitation() {
 
       toast({
         title: "Account created!",
-        description: `Welcome to Command X! Your account has been created with ${invitation.role} role.`,
+        description: `Welcome to Fairfield! Your account has been created with ${invitation.role} role.`,
       });
 
       // Sign in will happen automatically via the auth state listener
@@ -464,7 +464,7 @@ export default function AcceptInvitation() {
             </div>
             <div>
               <CardTitle className="text-2xl">Accept Invitation</CardTitle>
-              <CardDescription>Create your Command X account</CardDescription>
+              <CardDescription>Create your Fairfield account</CardDescription>
             </div>
           </div>
         </CardHeader>

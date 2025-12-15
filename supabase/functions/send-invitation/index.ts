@@ -96,9 +96,9 @@ Deno.serve(async (req: Request) => {
     const invitationUrl = `${siteUrl}/accept-invitation?token=${token}`;
 
     const emailResponse = await resend.emails.send({
-      from: "COMMNDX <no-reply@commndx.com>",
+      from: "Fairfield <admin@fairfieldrg.com>",
       to: [email],
-      subject: `You've been invited to join Command X as ${role}`,
+      subject: `You've been invited to join Fairfield as ${role}`,
       html: `
         <!DOCTYPE html>
         <html>
@@ -119,8 +119,8 @@ Deno.serve(async (req: Request) => {
               </div>
               <div class="content">
                 <p>Hello!</p>
-                <p>You've been invited to join <strong>Command X</strong> as a <strong>${role}</strong>.</p>
-                <p>Command X is a business management platform for managing products, customers, estimates, job orders, and invoices.</p>
+                <p>You've been invited to join <strong>Fairfield</strong> as a <strong>${role}</strong>.</p>
+                <p>Fairfield is a business management platform for managing products, customers, estimates, job orders, and invoices.</p>
                 <p>Click the button below to accept your invitation and create your account:</p>
                 <a href="${invitationUrl}" class="button">Accept Invitation</a>
                 <p style="font-size: 14px; color: #6b7280;">Or copy and paste this link into your browser:</p>

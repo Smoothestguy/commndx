@@ -66,7 +66,7 @@ const handler = async (req: Request): Promise<Response> => {
 
     // Send notification email to admin
     const emailResponse = await resend.emails.send({
-      from: "COMMNDX <no-reply@commndx.com>",
+      from: "Fairfield <admin@fairfieldrg.com>",
       to: [adminProfile.email],
       subject: "User Invitation Accepted",
       html: `
@@ -96,7 +96,7 @@ const handler = async (req: Request): Promise<Response> => {
           </p>
           <p style="color: #6b7280; font-size: 14px; margin-top: 32px;">
             Best regards,<br>
-            Command X Team
+            Fairfield Team
           </p>
         </div>
       `,

@@ -57,7 +57,7 @@ const handler = async (req: Request): Promise<Response> => {
     console.log(`Sending portal invitation to: ${email} for ${personnelName}`);
 
     const emailResponse = await resend.emails.send({
-      from: "COMMNDX <no-reply@commndx.com>",
+      from: "Fairfield <admin@fairfieldrg.com>",
       to: [email],
       subject: "You're invited to access your Personnel Portal",
       html: `
