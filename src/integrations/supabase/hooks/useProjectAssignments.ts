@@ -205,3 +205,40 @@ export function useBulkAssignToProject() {
     },
   });
 }
+
+// Bulk assign one user to multiple projects
+export function useBulkAssignUserToProjects() {
+  const queryClient = useQueryClient();
+  const { user } = useAuth();
+
+  return useMutation({
+    mutationFn: async ({ userId, projectIds }: { userId: string; projectIds: string[] }) => {
+      const assignments = projectIds.map(projectId => ({
+        project_id: projectId,
+        user_id: userId,
+        assigned_by: user?.id,
+        status: 'active' as const,
+        assigned_at: new Date().toISOString(),
+      }));
+
+      const { data, error } = await supabase
+        .from("project_assignments")
+        .upsert(assignments, { 
+          onConflict: 'project_id,user_id',
+          ignoreDuplicates: false 
+        })
+        .select();
+
+      if (error) throw error;
+      return data;
+    },
+    onSuccess: (_, variables) => {
+      queryClient.invalidateQueries({ queryKey: ["project-assignments"] });
+      queryClient.invalidateQueries({ queryKey: ["all-project-assignments"] });
+      toast.success(`User assigned to ${variables.projectIds.length} project(s)`);
+    },
+    onError: () => {
+      toast.error("Failed to assign user to projects");
+    },
+  });
+}
