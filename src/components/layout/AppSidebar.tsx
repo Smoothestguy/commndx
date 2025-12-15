@@ -3,6 +3,7 @@ import { Link, useLocation } from "react-router-dom";
 import { cn } from "@/lib/utils";
 import { useAuth } from "@/contexts/AuthContext";
 import { useUserRole } from "@/hooks/useUserRole";
+import { usePermissionCheck } from "@/hooks/usePermissionCheck";
 import {
   Sidebar,
   SidebarContent,
@@ -94,6 +95,11 @@ export function AppSidebar() {
   const { isAdmin, isManager } = useUserRole();
   const { state } = useSidebar();
   const isCollapsed = state === "collapsed";
+
+  // Permission checks for admin modules
+  const userMgmtPerms = usePermissionCheck('user_management');
+  const permsMgmtPerms = usePermissionCheck('permissions_management');
+  const auditLogsPerms = usePermissionCheck('audit_logs');
 
   // Collapsible state for sections
   const [vendorsOpen, setVendorsOpen] = useState(false);
@@ -273,32 +279,41 @@ export function AppSidebar() {
             <CollapsibleContent>
               <SidebarGroupContent>
                 <SidebarMenu>
+                  {/* User Management - show if admin OR has permission */}
+                  {(isAdmin || userMgmtPerms.canView) && (
+                    <SidebarMenuItem>
+                      <SidebarMenuButton
+                        asChild
+                        isActive={location.pathname === "/user-management"}
+                        tooltip="User Management"
+                      >
+                        <Link to="/user-management">
+                          <Shield className="h-4 w-4" />
+                          <span>User Management</span>
+                        </Link>
+                      </SidebarMenuButton>
+                    </SidebarMenuItem>
+                  )}
+                  
+                  {/* Permissions Management - show if admin OR has permission */}
+                  {(isAdmin || permsMgmtPerms.canView) && (
+                    <SidebarMenuItem>
+                      <SidebarMenuButton
+                        asChild
+                        isActive={location.pathname === "/permissions"}
+                        tooltip="Permissions"
+                      >
+                        <Link to="/permissions">
+                          <KeyRound className="h-4 w-4" />
+                          <span>Permissions</span>
+                        </Link>
+                      </SidebarMenuButton>
+                    </SidebarMenuItem>
+                  )}
+                  
+                  {/* Admin-only features (portal previews) */}
                   {isAdmin && (
                     <>
-                      <SidebarMenuItem>
-                        <SidebarMenuButton
-                          asChild
-                          isActive={location.pathname === "/user-management"}
-                          tooltip="User Management"
-                        >
-                          <Link to="/user-management">
-                            <Shield className="h-4 w-4" />
-                            <span>User Management</span>
-                          </Link>
-                        </SidebarMenuButton>
-                      </SidebarMenuItem>
-                      <SidebarMenuItem>
-                        <SidebarMenuButton
-                          asChild
-                          isActive={location.pathname === "/permissions"}
-                          tooltip="Permissions"
-                        >
-                          <Link to="/permissions">
-                            <KeyRound className="h-4 w-4" />
-                            <span>Permissions</span>
-                          </Link>
-                        </SidebarMenuButton>
-                      </SidebarMenuItem>
                       <SidebarMenuItem>
                         <SidebarMenuButton
                           asChild
@@ -308,18 +323,6 @@ export function AppSidebar() {
                           <Link to="/admin/preview/vendor-portal">
                             <Eye className="h-4 w-4" />
                             <span>Vendor Portal Preview</span>
-                          </Link>
-                        </SidebarMenuButton>
-                      </SidebarMenuItem>
-                      <SidebarMenuItem>
-                        <SidebarMenuButton
-                          asChild
-                          isActive={location.pathname === "/admin/audit-logs"}
-                          tooltip="Audit Logs"
-                        >
-                          <Link to="/admin/audit-logs">
-                            <ScrollText className="h-4 w-4" />
-                            <span>Audit Logs</span>
                           </Link>
                         </SidebarMenuButton>
                       </SidebarMenuItem>
@@ -336,6 +339,22 @@ export function AppSidebar() {
                         </SidebarMenuButton>
                       </SidebarMenuItem>
                     </>
+                  )}
+                  
+                  {/* Audit Logs - show if admin OR has permission */}
+                  {(isAdmin || auditLogsPerms.canView) && (
+                    <SidebarMenuItem>
+                      <SidebarMenuButton
+                        asChild
+                        isActive={location.pathname === "/admin/audit-logs"}
+                        tooltip="Audit Logs"
+                      >
+                        <Link to="/admin/audit-logs">
+                          <ScrollText className="h-4 w-4" />
+                          <span>Audit Logs</span>
+                        </Link>
+                      </SidebarMenuButton>
+                    </SidebarMenuItem>
                   )}
                   <SidebarMenuItem>
                     <SidebarMenuButton
