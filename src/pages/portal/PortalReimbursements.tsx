@@ -140,16 +140,16 @@ export default function PortalReimbursements() {
                 <div className="space-y-2">
                   <Label htmlFor="project">Project (Optional)</Label>
                   <Select
-                    value={formData.project_id}
-                    onValueChange={(value) => setFormData({ ...formData, project_id: value })}
+                    value={formData.project_id || "none"}
+                    onValueChange={(value) => setFormData({ ...formData, project_id: value === "none" ? "" : value })}
                   >
                     <SelectTrigger>
                       <SelectValue placeholder="Select a project" />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="">No specific project</SelectItem>
-                      {assignments?.map((assignment) => (
-                        <SelectItem key={assignment.project?.id} value={assignment.project?.id || ""}>
+                      <SelectItem value="none">No specific project</SelectItem>
+                      {assignments?.filter(a => a.project?.id).map((assignment) => (
+                        <SelectItem key={assignment.project!.id} value={assignment.project!.id}>
                           {assignment.project?.name}
                         </SelectItem>
                       ))}
