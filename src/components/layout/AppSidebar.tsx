@@ -134,7 +134,7 @@ export function AppSidebar() {
         >
           <img
             src={logo}
-            alt="Command X"
+            alt="Fairfield"
             className={cn(
               "h-8 w-auto object-contain transition-all",
               isCollapsed ? "max-w-[32px]" : "max-w-[140px]"
