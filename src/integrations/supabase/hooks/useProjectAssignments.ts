@@ -207,34 +207,67 @@ export function useBulkAssignToProject() {
 }
 
 // Bulk assign one user to multiple projects
+// Uses personnel_project_assignments if user has a linked personnel record
 export function useBulkAssignUserToProjects() {
   const queryClient = useQueryClient();
   const { user } = useAuth();
 
   return useMutation({
     mutationFn: async ({ userId, projectIds }: { userId: string; projectIds: string[] }) => {
-      const assignments = projectIds.map(projectId => ({
-        project_id: projectId,
-        user_id: userId,
-        assigned_by: user?.id,
-        status: 'active' as const,
-        assigned_at: new Date().toISOString(),
-      }));
+      // Check if user has a linked personnel record
+      const { data: personnel } = await supabase
+        .from("personnel")
+        .select("id")
+        .eq("user_id", userId)
+        .maybeSingle();
 
-      const { data, error } = await supabase
-        .from("project_assignments")
-        .upsert(assignments, { 
-          onConflict: 'project_id,user_id',
-          ignoreDuplicates: false 
-        })
-        .select();
+      if (personnel?.id) {
+        // User has a personnel record - use personnel_project_assignments
+        const assignments = projectIds.map(projectId => ({
+          project_id: projectId,
+          personnel_id: personnel.id,
+          assigned_by: user?.id,
+          status: 'active' as const,
+          assigned_at: new Date().toISOString(),
+        }));
 
-      if (error) throw error;
-      return data;
+        const { data, error } = await supabase
+          .from("personnel_project_assignments")
+          .upsert(assignments, { 
+            onConflict: 'project_id,personnel_id',
+            ignoreDuplicates: false 
+          })
+          .select();
+
+        if (error) throw error;
+        return { data, type: 'personnel' };
+      } else {
+        // No personnel record - fall back to project_assignments
+        const assignments = projectIds.map(projectId => ({
+          project_id: projectId,
+          user_id: userId,
+          assigned_by: user?.id,
+          status: 'active' as const,
+          assigned_at: new Date().toISOString(),
+        }));
+
+        const { data, error } = await supabase
+          .from("project_assignments")
+          .upsert(assignments, { 
+            onConflict: 'project_id,user_id',
+            ignoreDuplicates: false 
+          })
+          .select();
+
+        if (error) throw error;
+        return { data, type: 'user' };
+      }
     },
     onSuccess: (_, variables) => {
       queryClient.invalidateQueries({ queryKey: ["project-assignments"] });
       queryClient.invalidateQueries({ queryKey: ["all-project-assignments"] });
+      queryClient.invalidateQueries({ queryKey: ["personnel-project-assignments"] });
+      queryClient.invalidateQueries({ queryKey: ["personnel-assignments"] });
       toast.success(`User assigned to ${variables.projectIds.length} project(s)`);
     },
     onError: () => {
