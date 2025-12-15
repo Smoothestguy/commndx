@@ -60,7 +60,12 @@ export function usePersonnelAssignments(personnelId: string | undefined) {
         .from("personnel_project_assignments")
         .select(`
           *,
-          project:projects(id, name, status, start_date, end_date)
+          project:projects(
+            id, name, status, start_date, end_date,
+            description, address, city, state, zip,
+            customer_po, poc_name, poc_phone, poc_email,
+            customer:customers(id, name, company, phone, email)
+          )
         `)
         .eq("personnel_id", personnelId)
         .eq("status", "active");

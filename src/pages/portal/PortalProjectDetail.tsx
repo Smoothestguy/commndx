@@ -5,7 +5,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
-import { ArrowLeft, Briefcase, Calendar, Clock } from "lucide-react";
+import { ArrowLeft, Briefcase, Calendar, Clock, MapPin, User, Building, Phone, Mail, FileText } from "lucide-react";
 import { format, parseISO } from "date-fns";
 
 export default function PortalProjectDetail() {
@@ -28,6 +28,18 @@ export default function PortalProjectDetail() {
   const totalHours = totalRegularHours + totalOvertimeHours;
 
   const isLoading = assignmentsLoading || timeLoading;
+
+  // Format address
+  const formatAddress = () => {
+    if (!project) return null;
+    const parts = [project.address, project.city, project.state, project.zip].filter(Boolean);
+    if (parts.length === 0) return null;
+    
+    if (project.city && project.state) {
+      return `${project.address || ''}\n${project.city}, ${project.state} ${project.zip || ''}`.trim();
+    }
+    return parts.join(', ');
+  };
 
   if (isLoading) {
     return (
@@ -63,17 +75,24 @@ export default function PortalProjectDetail() {
     );
   }
 
+  const address = formatAddress();
+  const customer = project.customer;
+
   return (
     <PortalLayout>
       <div className="space-y-6">
+        {/* Header */}
         <div className="flex items-center gap-4">
           <Button variant="ghost" size="icon" onClick={() => navigate("/portal/projects")}>
             <ArrowLeft className="h-4 w-4" />
           </Button>
-          <div>
+          <div className="flex-1">
             <h1 className="text-2xl font-bold">{project.name}</h1>
             <p className="text-muted-foreground">Project Details</p>
           </div>
+          <Badge variant={project.status === "active" ? "default" : "secondary"}>
+            {project.status}
+          </Badge>
         </div>
 
         {/* Project Info Card */}
@@ -91,9 +110,6 @@ export default function PortalProjectDetail() {
                   </CardDescription>
                 </div>
               </div>
-              <Badge variant={project.status === "active" ? "default" : "secondary"}>
-                {project.status}
-              </Badge>
             </div>
           </CardHeader>
           <CardContent className="space-y-4">
@@ -113,6 +129,96 @@ export default function PortalProjectDetail() {
             </div>
           </CardContent>
         </Card>
+
+        {/* Location & Contact Info Grid */}
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          {/* Jobsite Location */}
+          {address && (
+            <Card>
+              <CardHeader className="pb-3">
+                <CardTitle className="text-base flex items-center gap-2">
+                  <MapPin className="h-4 w-4 text-primary" />
+                  Jobsite Location
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <p className="text-sm whitespace-pre-line">{address}</p>
+              </CardContent>
+            </Card>
+          )}
+
+          {/* Point of Contact */}
+          {(project.poc_name || project.poc_phone || project.poc_email) && (
+            <Card>
+              <CardHeader className="pb-3">
+                <CardTitle className="text-base flex items-center gap-2">
+                  <User className="h-4 w-4 text-primary" />
+                  Point of Contact
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-2">
+                {project.poc_name && (
+                  <p className="text-sm font-medium">{project.poc_name}</p>
+                )}
+                {project.poc_phone && (
+                  <a href={`tel:${project.poc_phone}`} className="flex items-center gap-2 text-sm text-primary hover:underline">
+                    <Phone className="h-3 w-3" />
+                    {project.poc_phone}
+                  </a>
+                )}
+                {project.poc_email && (
+                  <a href={`mailto:${project.poc_email}`} className="flex items-center gap-2 text-sm text-primary hover:underline">
+                    <Mail className="h-3 w-3" />
+                    {project.poc_email}
+                  </a>
+                )}
+              </CardContent>
+            </Card>
+          )}
+        </div>
+
+        {/* Customer Info */}
+        {(customer || project.customer_po) && (
+          <Card>
+            <CardHeader className="pb-3">
+              <CardTitle className="text-base flex items-center gap-2">
+                <Building className="h-4 w-4 text-primary" />
+                Customer Information
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                {customer && (
+                  <div>
+                    <p className="text-xs text-muted-foreground uppercase tracking-wide">Customer</p>
+                    <p className="text-sm font-medium">{customer.company || customer.name}</p>
+                  </div>
+                )}
+                {project.customer_po && (
+                  <div>
+                    <p className="text-xs text-muted-foreground uppercase tracking-wide">Customer PO</p>
+                    <p className="text-sm font-medium">{project.customer_po}</p>
+                  </div>
+                )}
+              </div>
+            </CardContent>
+          </Card>
+        )}
+
+        {/* Project Description */}
+        {project.description && (
+          <Card>
+            <CardHeader className="pb-3">
+              <CardTitle className="text-base flex items-center gap-2">
+                <FileText className="h-4 w-4 text-primary" />
+                Project Description
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <p className="text-sm whitespace-pre-wrap">{project.description}</p>
+            </CardContent>
+          </Card>
+        )}
 
         {/* Hours Summary */}
         <Card>
