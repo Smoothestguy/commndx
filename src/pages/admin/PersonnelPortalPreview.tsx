@@ -8,10 +8,9 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { usePersonnel } from "@/integrations/supabase/hooks/usePersonnel";
 import { supabase } from "@/integrations/supabase/client";
 import { useQuery } from "@tanstack/react-query";
-import { Eye, Clock, Briefcase, Bell, DollarSign, TrendingUp, ArrowLeft, CheckCircle2, XCircle } from "lucide-react";
-import { Link } from "react-router-dom";
+import { Eye, Clock, Briefcase, Bell, DollarSign, TrendingUp, ArrowLeft, CheckCircle2, XCircle, ExternalLink, User } from "lucide-react";
+import { Link, useNavigate } from "react-router-dom";
 import { startOfWeek, endOfWeek, startOfMonth, endOfMonth, parseISO, isWithinInterval, format } from "date-fns";
-
 interface TimeEntry {
   id: string;
   entry_date: string;
@@ -39,6 +38,7 @@ interface Notification {
 
 export default function PersonnelPortalPreview() {
   const [selectedPersonnelId, setSelectedPersonnelId] = useState<string>("");
+  const navigate = useNavigate();
   
   const { data: personnel, isLoading: personnelLoading } = usePersonnel();
 
@@ -236,9 +236,40 @@ export default function PersonnelPortalPreview() {
                 </p>
               </div>
 
+              {/* Quick Actions */}
+              <div className="flex flex-wrap gap-2">
+                <Button 
+                  variant="outline" 
+                  size="sm"
+                  onClick={() => navigate(`/personnel/${selectedPersonnelId}`)}
+                >
+                  <User className="h-4 w-4 mr-2" />
+                  View Personnel Record
+                </Button>
+                <Button 
+                  variant="outline" 
+                  size="sm"
+                  onClick={() => navigate('/time-tracking')}
+                >
+                  <Clock className="h-4 w-4 mr-2" />
+                  View Time Tracking
+                </Button>
+                <Button 
+                  variant="outline" 
+                  size="sm"
+                  onClick={() => navigate('/projects')}
+                >
+                  <Briefcase className="h-4 w-4 mr-2" />
+                  View All Projects
+                </Button>
+              </div>
+
               {/* Stats Grid */}
               <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-                <Card>
+                <Card 
+                  className="cursor-pointer hover:bg-secondary/50 transition-colors"
+                  onClick={() => navigate('/time-tracking')}
+                >
                   <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                     <CardTitle className="text-sm font-medium">Hours This Week</CardTitle>
                     <Clock className="h-4 w-4 text-muted-foreground" />
@@ -253,7 +284,10 @@ export default function PersonnelPortalPreview() {
                   </CardContent>
                 </Card>
 
-                <Card>
+                <Card 
+                  className="cursor-pointer hover:bg-secondary/50 transition-colors"
+                  onClick={() => navigate(`/personnel/${selectedPersonnelId}`)}
+                >
                   <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                     <CardTitle className="text-sm font-medium">Est. Weekly Pay</CardTitle>
                     <DollarSign className="h-4 w-4 text-muted-foreground" />
@@ -268,7 +302,10 @@ export default function PersonnelPortalPreview() {
                   </CardContent>
                 </Card>
 
-                <Card>
+                <Card 
+                  className="cursor-pointer hover:bg-secondary/50 transition-colors"
+                  onClick={() => navigate('/projects')}
+                >
                   <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                     <CardTitle className="text-sm font-medium">Active Projects</CardTitle>
                     <Briefcase className="h-4 w-4 text-muted-foreground" />
@@ -351,19 +388,27 @@ export default function PersonnelPortalPreview() {
               {/* Assigned Projects */}
               {assignments && assignments.length > 0 && (
                 <Card>
-                  <CardHeader>
+                  <CardHeader className="flex flex-row items-center justify-between">
                     <CardTitle className="text-lg">Assigned Projects</CardTitle>
+                    <Button variant="ghost" size="sm" onClick={() => navigate('/projects')}>
+                      View All
+                      <ExternalLink className="h-3 w-3 ml-1" />
+                    </Button>
                   </CardHeader>
                   <CardContent>
                     <div className="space-y-3">
                       {assignments.slice(0, 5).map((assignment) => (
                         <div 
                           key={assignment.id} 
-                          className="p-3 rounded-lg border"
+                          className="p-3 rounded-lg border cursor-pointer hover:bg-secondary/50 transition-colors group"
+                          onClick={() => assignment.projects?.id && navigate(`/projects/${assignment.projects.id}`)}
                         >
                           <div className="flex justify-between items-start">
                             <div>
-                              <p className="font-medium">{assignment.projects?.name || "Unknown Project"}</p>
+                              <p className="font-medium text-primary group-hover:underline flex items-center gap-1">
+                                {assignment.projects?.name || "Unknown Project"}
+                                <ExternalLink className="h-3 w-3 opacity-0 group-hover:opacity-100 transition-opacity" />
+                              </p>
                               <p className="text-sm text-muted-foreground">
                                 Assigned: {format(parseISO(assignment.assigned_at), "MMM d, yyyy")}
                               </p>
