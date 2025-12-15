@@ -17,21 +17,29 @@ Deno.serve(async (req) => {
 
     console.log('Starting inactive assignment removal process...');
 
-    // Calculate date 8 days ago (changed from 7)
+    // Calculate date 8 days ago for inactivity threshold
     const eightDaysAgo = new Date();
     eightDaysAgo.setDate(eightDaysAgo.getDate() - 8);
     const eightDaysAgoISO = eightDaysAgo.toISOString();
 
+    // Calculate date 14 days ago for grace period (new assignments)
+    const fourteenDaysAgo = new Date();
+    fourteenDaysAgo.setDate(fourteenDaysAgo.getDate() - 14);
+    const fourteenDaysAgoISO = fourteenDaysAgo.toISOString();
+
     console.log('Checking for assignments with last activity before:', eightDaysAgoISO);
+    console.log('Grace period: only removing assignments created before:', fourteenDaysAgoISO);
 
     // ==========================================
     // Process PERSONNEL project assignments ONLY
+    // New assignments (within 14 days) are protected by grace period
     // ==========================================
     const { data: personnelAssignments, error: personnelFetchError } = await supabase
       .from('personnel_project_assignments')
       .select('id, personnel_id, project_id, last_time_entry_at, assigned_at')
       .eq('status', 'active')
-      .or(`last_time_entry_at.lt.${eightDaysAgoISO},and(last_time_entry_at.is.null,assigned_at.lt.${eightDaysAgoISO})`);
+      .lt('assigned_at', fourteenDaysAgoISO)
+      .or(`last_time_entry_at.lt.${eightDaysAgoISO},last_time_entry_at.is.null`);
 
     if (personnelFetchError) {
       console.error('Error fetching inactive personnel assignments:', personnelFetchError);
