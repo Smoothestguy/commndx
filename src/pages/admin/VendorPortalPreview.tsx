@@ -16,6 +16,8 @@ import { Eye, FileText, DollarSign, ClipboardList, ListChecks, ArrowLeft, CheckC
 import { Link, useNavigate } from "react-router-dom";
 import { POPreviewDialog } from "@/components/admin/POPreviewDialog";
 import { BillPreviewDialog } from "@/components/admin/BillPreviewDialog";
+import { UserActivityHistory } from "@/components/admin/UserActivityHistory";
+import { useUserActivityLogs } from "@/integrations/supabase/hooks/useUserActivityLogs";
 
 interface POData {
   id: string;
@@ -108,6 +110,13 @@ export default function VendorPortalPreview() {
   });
 
   const selectedVendor = vendors?.find(v => v.id === selectedVendorId);
+
+  // Fetch activity logs for selected vendor
+  const { data: activityLogs, isLoading: activityLoading } = useUserActivityLogs({
+    userId: selectedVendor?.user_id || undefined,
+    vendorId: selectedVendorId || undefined,
+  });
+
   const isLoading = posLoading || billsLoading;
 
   const stats = useMemo(() => {
@@ -431,6 +440,15 @@ export default function VendorPortalPreview() {
                   )}
                 </div>
               </div>
+
+              {/* Activity History */}
+              <UserActivityHistory
+                logs={activityLogs}
+                isLoading={activityLoading}
+                title="Activity History"
+                description={`All actions by or related to ${selectedVendor.name}`}
+                maxHeight="350px"
+              />
             </div>
           </div>
         )}
