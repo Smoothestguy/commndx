@@ -63,7 +63,7 @@ export default function BadgeTemplateEditor() {
   const [template, setTemplate] = useState<BadgeTemplate>({
     project_id: null,
     template_name: "",
-    company_name: "Command X",
+    company_name: "Fairfield",
     company_logo_url: null,
     show_photo: true,
     show_personnel_number: true,
@@ -120,7 +120,7 @@ export default function BadgeTemplateEditor() {
         id: data.id,
         project_id: data.project_id || null,
         template_name: data.template_name || data.name || "",
-        company_name: data.company_name || "Command X",
+        company_name: data.company_name || "Fairfield",
         company_logo_url: data.company_logo_url || null,
         show_photo: data.show_photo ?? true,
         show_personnel_number: data.show_personnel_number ?? true,
