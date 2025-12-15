@@ -12,6 +12,8 @@ import { Eye, Clock, Briefcase, Bell, DollarSign, TrendingUp, ArrowLeft, CheckCi
 import { Link, useNavigate } from "react-router-dom";
 import { startOfWeek, endOfWeek, startOfMonth, endOfMonth, parseISO, isWithinInterval, format } from "date-fns";
 import { ProjectPreviewDialog } from "@/components/admin/ProjectPreviewDialog";
+import { UserActivityHistory } from "@/components/admin/UserActivityHistory";
+import { useUserActivityLogs } from "@/integrations/supabase/hooks/useUserActivityLogs";
 
 interface TimeEntry {
   id: string;
@@ -103,6 +105,13 @@ export default function PersonnelPortalPreview() {
   });
 
   const selectedPerson = personnel?.find(p => p.id === selectedPersonnelId);
+
+  // Fetch activity logs for selected personnel
+  const { data: activityLogs, isLoading: activityLoading } = useUserActivityLogs({
+    userId: selectedPerson?.user_id || undefined,
+    personnelId: selectedPersonnelId || undefined,
+  });
+
   const isLoading = timeLoading || assignmentsLoading;
 
   // Calculate hours
@@ -462,6 +471,15 @@ export default function PersonnelPortalPreview() {
                   </CardContent>
                 </Card>
               )}
+
+              {/* Activity History */}
+              <UserActivityHistory
+                logs={activityLogs}
+                isLoading={activityLoading}
+                title="Activity History"
+                description={`All actions by or related to ${selectedPerson.first_name} ${selectedPerson.last_name}`}
+                maxHeight="350px"
+              />
             </div>
           </div>
         )}
