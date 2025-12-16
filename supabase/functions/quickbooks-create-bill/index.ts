@@ -134,35 +134,104 @@ async function getOrCreateQBVendor(supabase: any, vendorId: string, accessToken:
   return qbVendorId;
 }
 
-// Get expense account reference (uses default expense account)
-async function getExpenseAccountRef(accessToken: string, realmId: string): Promise<{ value: string; name: string }> {
-  // Query for an expense account - prefer "Cost of Goods Sold" or similar
-  const query = encodeURIComponent("SELECT * FROM Account WHERE AccountType = 'Cost of Goods Sold' MAXRESULTS 1");
+// Cache for QuickBooks accounts to avoid repeated API calls
+const accountCache: Map<string, { value: string; name: string }> = new Map();
+
+// Get expense account reference - tries to match by category name first
+async function getExpenseAccountRef(
+  categoryName: string | null,
+  accessToken: string,
+  realmId: string
+): Promise<{ value: string; name: string }> {
+  
+  // If we have a category name, try to find a matching account
+  if (categoryName) {
+    // Check cache first
+    const cacheKey = categoryName.toLowerCase();
+    if (accountCache.has(cacheKey)) {
+      console.log(`Using cached account for category: ${categoryName}`);
+      return accountCache.get(cacheKey)!;
+    }
+
+    console.log(`Searching QuickBooks for account matching category: ${categoryName}`);
+    
+    // Search for an account with a name containing the category name
+    // QuickBooks LIKE operator uses % as wildcard
+    const searchQuery = encodeURIComponent(
+      `SELECT * FROM Account WHERE Name LIKE '%${categoryName}%' AND (AccountType = 'Expense' OR AccountType = 'Cost of Goods Sold' OR AccountType = 'Other Current Liability') MAXRESULTS 10`
+    );
+    
+    try {
+      const result = await qbRequest('GET', `/query?query=${searchQuery}&minorversion=65`, accessToken, realmId);
+      
+      if (result.QueryResponse?.Account?.length > 0) {
+        // Try to find exact match first
+        const exactMatch = result.QueryResponse.Account.find(
+          (acc: any) => acc.Name.toLowerCase() === categoryName.toLowerCase()
+        );
+        
+        if (exactMatch) {
+          const accountRef = { value: exactMatch.Id, name: exactMatch.Name };
+          accountCache.set(cacheKey, accountRef);
+          console.log(`Found exact match account: ${exactMatch.Name} (${exactMatch.Id})`);
+          return accountRef;
+        }
+        
+        // Otherwise use the first partial match
+        const account = result.QueryResponse.Account[0];
+        const accountRef = { value: account.Id, name: account.Name };
+        accountCache.set(cacheKey, accountRef);
+        console.log(`Found partial match account: ${account.Name} (${account.Id}) for category: ${categoryName}`);
+        return accountRef;
+      }
+      
+      console.log(`No matching account found for category: ${categoryName}, will use default`);
+    } catch (e) {
+      console.log(`Error searching for category account: ${e}, will use default`);
+    }
+  }
+
+  // Check cache for default account
+  if (accountCache.has('__default__')) {
+    return accountCache.get('__default__')!;
+  }
+
+  // Fallback: Query for a Cost of Goods Sold account
+  const cogsQuery = encodeURIComponent("SELECT * FROM Account WHERE AccountType = 'Cost of Goods Sold' MAXRESULTS 1");
   
   try {
-    const result = await qbRequest('GET', `/query?query=${query}&minorversion=65`, accessToken, realmId);
+    const result = await qbRequest('GET', `/query?query=${cogsQuery}&minorversion=65`, accessToken, realmId);
     
     if (result.QueryResponse?.Account?.length > 0) {
       const account = result.QueryResponse.Account[0];
-      return { value: account.Id, name: account.Name };
+      const accountRef = { value: account.Id, name: account.Name };
+      accountCache.set('__default__', accountRef);
+      console.log(`Using default COGS account: ${account.Name} (${account.Id})`);
+      return accountRef;
     }
   } catch (e) {
     console.log('Could not find COGS account, trying Expense account');
   }
 
-  // Fallback to expense account
+  // Final fallback to expense account
   const expenseQuery = encodeURIComponent("SELECT * FROM Account WHERE AccountType = 'Expense' MAXRESULTS 1");
   const expenseResult = await qbRequest('GET', `/query?query=${expenseQuery}&minorversion=65`, accessToken, realmId);
   
   if (expenseResult.QueryResponse?.Account?.length > 0) {
     const account = expenseResult.QueryResponse.Account[0];
-    return { value: account.Id, name: account.Name };
+    const accountRef = { value: account.Id, name: account.Name };
+    accountCache.set('__default__', accountRef);
+    console.log(`Using default Expense account: ${account.Name} (${account.Id})`);
+    return accountRef;
   }
 
   throw new Error('No expense account found in QuickBooks');
 }
 
 serve(async (req) => {
+  // Clear account cache for each request to ensure fresh data
+  accountCache.clear();
+  
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders });
   }
@@ -203,6 +272,28 @@ serve(async (req) => {
 
     console.log(`Found ${lineItems?.length || 0} line items for bill ${bill.number}`);
 
+    // Build a map of category IDs to category names
+    const categoryMap: Map<string, string> = new Map();
+    if (lineItems && lineItems.length > 0) {
+      const categoryIds = lineItems
+        .map((item: any) => item.category_id)
+        .filter((id: string | null) => id !== null);
+      
+      if (categoryIds.length > 0) {
+        const { data: categories } = await supabase
+          .from('expense_categories')
+          .select('id, name')
+          .in('id', categoryIds);
+        
+        if (categories) {
+          for (const cat of categories) {
+            categoryMap.set(cat.id, cat.name);
+          }
+          console.log(`Loaded ${categories.length} expense categories for mapping`);
+        }
+      }
+    }
+
     // Check if already synced
     const { data: existingMapping } = await supabase
       .from('quickbooks_bill_mappings')
@@ -225,15 +316,19 @@ serve(async (req) => {
     // Get or create QB vendor
     const qbVendorId = await getOrCreateQBVendor(supabase, bill.vendor_id, accessToken, realmId);
 
-    // Get expense account reference
-    const expenseAccountRef = await getExpenseAccountRef(accessToken, realmId);
-    console.log(`Using expense account: ${expenseAccountRef.name} (${expenseAccountRef.value})`);
-
-    // Build QB bill line items
+    // Build QB bill line items with category-based account mapping
     const qbLineItems = [];
 
     if (lineItems && lineItems.length > 0) {
       for (const item of lineItems) {
+        // Get category name for this line item
+        const categoryName = item.category_id ? categoryMap.get(item.category_id) || null : null;
+        
+        // Get the appropriate expense account based on category
+        const expenseAccountRef = await getExpenseAccountRef(categoryName, accessToken, realmId);
+        
+        console.log(`Line item "${item.description}" -> Category: ${categoryName || 'none'} -> QB Account: ${expenseAccountRef.name}`);
+        
         qbLineItems.push({
           DetailType: 'AccountBasedExpenseLineDetail',
           Amount: Number(item.total),
@@ -244,13 +339,14 @@ serve(async (req) => {
         });
       }
     } else {
-      // If no line items, create one with the total
+      // If no line items, create one with the total using default account
+      const defaultAccountRef = await getExpenseAccountRef(null, accessToken, realmId);
       qbLineItems.push({
         DetailType: 'AccountBasedExpenseLineDetail',
         Amount: Number(bill.subtotal),
         Description: `Bill ${bill.number}`,
         AccountBasedExpenseLineDetail: {
-          AccountRef: expenseAccountRef,
+          AccountRef: defaultAccountRef,
         },
       });
     }
