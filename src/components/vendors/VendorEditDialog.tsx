@@ -4,7 +4,7 @@ import { Input } from "@/components/ui/input";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
-import { Loader2, ChevronDown, ChevronUp } from "lucide-react";
+import { Loader2, ChevronDown, ChevronUp, Link2, X } from "lucide-react";
 import {
   Dialog,
   DialogContent,
@@ -26,6 +26,7 @@ import {
 } from "@/components/ui/select";
 import { useUpdateVendor, Vendor, VendorType } from "@/integrations/supabase/hooks/useVendors";
 import { useExpenseCategories } from "@/integrations/supabase/hooks/useExpenseCategories";
+import { useProfiles } from "@/integrations/supabase/hooks/useProfile";
 
 const PAYMENT_TERMS_OPTIONS = [
   { value: "due_on_receipt", label: "Due on Receipt" },
@@ -58,6 +59,7 @@ interface VendorFormData {
   default_expense_category_id: string;
   opening_balance: string;
   notes: string;
+  user_id: string;
 }
 
 interface VendorEditDialogProps {
@@ -69,6 +71,7 @@ interface VendorEditDialogProps {
 export function VendorEditDialog({ vendor, open, onOpenChange }: VendorEditDialogProps) {
   const updateVendor = useUpdateVendor();
   const { data: expenseCategories } = useExpenseCategories("vendor");
+  const { data: profiles } = useProfiles();
   const [additionalInfoOpen, setAdditionalInfoOpen] = useState(false);
 
   const [formData, setFormData] = useState<VendorFormData>({
@@ -94,6 +97,7 @@ export function VendorEditDialog({ vendor, open, onOpenChange }: VendorEditDialo
     default_expense_category_id: "",
     opening_balance: "",
     notes: "",
+    user_id: "",
   });
 
   // Populate form when dialog opens
@@ -122,10 +126,11 @@ export function VendorEditDialog({ vendor, open, onOpenChange }: VendorEditDialo
         default_expense_category_id: vendor.default_expense_category_id || "",
         opening_balance: vendor.opening_balance?.toString() || "",
         notes: vendor.notes || "",
+        user_id: vendor.user_id || "",
       });
       const hasAdditionalInfo = vendor.tax_id || vendor.track_1099 || vendor.billing_rate ||
         vendor.payment_terms || vendor.account_number || vendor.default_expense_category_id ||
-        vendor.opening_balance || vendor.notes;
+        vendor.opening_balance || vendor.notes || vendor.user_id;
       setAdditionalInfoOpen(!!hasAdditionalInfo);
     }
   }, [open, vendor]);
@@ -156,6 +161,7 @@ export function VendorEditDialog({ vendor, open, onOpenChange }: VendorEditDialo
       default_expense_category_id: formData.default_expense_category_id || null,
       opening_balance: formData.opening_balance ? parseFloat(formData.opening_balance) : null,
       notes: formData.notes || null,
+      user_id: formData.user_id || null,
     };
 
     await updateVendor.mutateAsync({
@@ -428,6 +434,47 @@ export function VendorEditDialog({ vendor, open, onOpenChange }: VendorEditDialo
                   onChange={(e) => setFormData({ ...formData, notes: e.target.value })}
                   rows={3}
                 />
+              </div>
+
+              {/* Portal Access Section */}
+              <div className="space-y-4 pt-4 border-t">
+                <h4 className="text-sm font-medium flex items-center gap-2">
+                  <Link2 className="h-4 w-4" />
+                  Portal Access
+                </h4>
+                <div className="space-y-2">
+                  <Label htmlFor="user_id">Linked User Account</Label>
+                  <div className="flex gap-2">
+                    <Select
+                      value={formData.user_id}
+                      onValueChange={(value) => setFormData({ ...formData, user_id: value })}
+                    >
+                      <SelectTrigger className="flex-1">
+                        <SelectValue placeholder="Select a user account to link" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {profiles?.map((profile) => (
+                          <SelectItem key={profile.id} value={profile.id}>
+                            {profile.full_name || profile.email || profile.id}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                    {formData.user_id && (
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="icon"
+                        onClick={() => setFormData({ ...formData, user_id: "" })}
+                      >
+                        <X className="h-4 w-4" />
+                      </Button>
+                    )}
+                  </div>
+                  <p className="text-xs text-muted-foreground">
+                    Link a user account to allow portal access for this {formData.vendor_type === "contractor" ? "subcontractor" : "vendor"}.
+                  </p>
+                </div>
               </div>
             </CollapsibleContent>
           </Collapsible>
