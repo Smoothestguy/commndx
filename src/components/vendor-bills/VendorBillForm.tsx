@@ -46,6 +46,18 @@ interface LineItem {
   total: number;
 }
 
+// Helper function to get the next Friday (or today if it's Friday)
+const getNextFriday = () => {
+  const today = new Date();
+  const dayOfWeek = today.getDay(); // 0 = Sunday, 5 = Friday
+  const daysUntilFriday = (5 - dayOfWeek + 7) % 7;
+  // If today is Friday, use today; otherwise get next Friday
+  const daysToAdd = daysUntilFriday === 0 ? 0 : daysUntilFriday;
+  const nextFriday = new Date(today);
+  nextFriday.setDate(today.getDate() + daysToAdd);
+  return nextFriday;
+};
+
 export function VendorBillForm({ bill, isEditing = false }: VendorBillFormProps) {
   const navigate = useNavigate();
   const { user } = useAuth();
@@ -62,7 +74,7 @@ export function VendorBillForm({ bill, isEditing = false }: VendorBillFormProps)
   const [vendorOpen, setVendorOpen] = useState(false);
   const [selectedVendor, setSelectedVendor] = useState<Vendor | null>(null);
   const [billDate, setBillDate] = useState(format(new Date(), "yyyy-MM-dd"));
-  const [dueDate, setDueDate] = useState(format(new Date(Date.now() + 30 * 24 * 60 * 60 * 1000), "yyyy-MM-dd"));
+  const [dueDate, setDueDate] = useState(format(getNextFriday(), "yyyy-MM-dd"));
   const [status, setStatus] = useState<VendorBillStatus>("draft");
   const [taxRate, setTaxRate] = useState(0);
   const [notes, setNotes] = useState("");
