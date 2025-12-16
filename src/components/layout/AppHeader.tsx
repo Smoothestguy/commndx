@@ -1,8 +1,10 @@
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
+import { useAIAssistant } from "@/contexts/AIAssistantContext";
 import { MobileNav } from "./MobileNav";
 import { ThemeToggleSimple } from "@/components/ThemeToggle";
 import { SidebarTrigger } from "@/components/ui/sidebar";
+import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -11,11 +13,12 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
-import { ChevronDown, Settings, LogOut } from "lucide-react";
+import { ChevronDown, Settings, LogOut, MessageCircle } from "lucide-react";
 
 export function AppHeader() {
   const navigate = useNavigate();
   const { signOut, user } = useAuth();
+  const { isOpen, toggleOpen, messages } = useAIAssistant();
 
   const userInitials = user?.email
     ? user.email.substring(0, 2).toUpperCase()
@@ -34,8 +37,24 @@ export function AppHeader() {
         </div>
       </div>
 
-      {/* Right side: Theme toggle + User menu */}
+      {/* Right side: AI Assistant + Theme toggle + User menu */}
       <div className="flex items-center gap-3">
+        <Button
+          variant="ghost"
+          size="icon"
+          onClick={toggleOpen}
+          className="relative h-8 w-8 text-header-foreground hover:bg-sidebar-accent"
+          title="AI Assistant"
+        >
+          <MessageCircle className="h-5 w-5" />
+          {messages.length === 0 && !isOpen && (
+            <span className="absolute -top-0.5 -right-0.5 flex h-2.5 w-2.5">
+              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-primary opacity-75"></span>
+              <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-primary"></span>
+            </span>
+          )}
+        </Button>
+
         <ThemeToggleSimple />
 
         <DropdownMenu>
