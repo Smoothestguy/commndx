@@ -9,6 +9,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Badge } from "@/components/ui/badge";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { toast } from "sonner";
 import { Shield, Save, Users, Loader2, CheckSquare, XSquare, Info, Eye, DollarSign } from "lucide-react";
 import { useUserRole } from "@/hooks/useUserRole";
@@ -143,28 +144,68 @@ export default function PermissionsManagement() {
   const updatePermissions = useUpdateUserPermissions();
   const updateSensitivePermissions = useUpdateSensitivePermissions();
 
+  // Helper to get full permissions (all checked)
+  const getFullPermissions = (): PermissionState => {
+    return MODULES.reduce((acc, mod) => {
+      acc[mod.key] = { can_view: true, can_add: true, can_edit: true, can_delete: true };
+      return acc;
+    }, {} as PermissionState);
+  };
+
+  // Helper to get full sensitive permissions (all checked)
+  const getFullSensitivePermissions = (): SensitivePermissionState => ({
+    can_view_billing_rates: true,
+    can_view_cost_rates: true,
+    can_view_margins: true,
+    can_view_personnel_pay_rates: true,
+  });
+
+  // Check if selected user has role-based access (admin/manager)
+  const selectedUserRole = users?.find(u => u.id === selectedUserId)?.role;
+  const isRoleBasedAccess = selectedUserRole === 'admin' || selectedUserRole === 'manager';
+
   // Update local state when user permissions are loaded
   useEffect(() => {
-    if (userPermissions && selectedUserId) {
-      const newPermissions = getEmptyPermissions();
-      userPermissions.forEach(p => {
-        if (newPermissions[p.module]) {
-          newPermissions[p.module] = {
-            can_view: p.can_view,
-            can_add: p.can_add,
-            can_edit: p.can_edit,
-            can_delete: p.can_delete,
-          };
-        }
-      });
-      setPermissions(newPermissions);
-      setHasChanges(false);
+    if (selectedUserId) {
+      const userRole = users?.find(u => u.id === selectedUserId)?.role;
+      
+      // Admins and managers have full access - show all permissions checked
+      if (userRole === 'admin' || userRole === 'manager') {
+        setPermissions(getFullPermissions());
+        setSensitivePermissions(getFullSensitivePermissions());
+        setHasChanges(false);
+        return;
+      }
+      
+      // Regular users - load from user_permissions table
+      if (userPermissions) {
+        const newPermissions = getEmptyPermissions();
+        userPermissions.forEach(p => {
+          if (newPermissions[p.module]) {
+            newPermissions[p.module] = {
+              can_view: p.can_view,
+              can_add: p.can_add,
+              can_edit: p.can_edit,
+              can_delete: p.can_delete,
+            };
+          }
+        });
+        setPermissions(newPermissions);
+        setHasChanges(false);
+      }
     }
-  }, [userPermissions, selectedUserId]);
+  }, [userPermissions, selectedUserId, users]);
 
-  // Update sensitive permissions when loaded
+  // Update sensitive permissions when loaded (only for non-admin/manager users)
   useEffect(() => {
     if (selectedUserId) {
+      const userRole = users?.find(u => u.id === selectedUserId)?.role;
+      
+      // Skip for admin/manager - already handled above
+      if (userRole === 'admin' || userRole === 'manager') {
+        return;
+      }
+      
       if (userSensitivePermissions) {
         setSensitivePermissions({
           can_view_billing_rates: userSensitivePermissions.can_view_billing_rates,
@@ -176,7 +217,7 @@ export default function PermissionsManagement() {
         setSensitivePermissions(getEmptySensitivePermissions());
       }
     }
-  }, [userSensitivePermissions, selectedUserId]);
+  }, [userSensitivePermissions, selectedUserId, users]);
 
   // Group modules by category
   const groupedModules = useMemo(() => {
@@ -347,29 +388,43 @@ export default function PermissionsManagement() {
 
           {selectedUserId && (
             <>
-              {/* Role Presets */}
-              <Card>
-                <CardHeader>
-                  <CardTitle>Quick Presets</CardTitle>
-                  <CardDescription>Apply a predefined permission template</CardDescription>
-                </CardHeader>
-                <CardContent>
-                  <div className="flex flex-wrap gap-2">
-                    {Object.entries(ROLE_PRESETS).map(([key, preset]) => (
-                      <Button
-                        key={key}
-                        variant="outline"
-                        size="sm"
-                        onClick={() => applyPreset(key as keyof typeof ROLE_PRESETS)}
-                        className="flex flex-col items-start h-auto py-2 px-3"
-                      >
-                        <span className="font-medium">{preset.label}</span>
-                        <span className="text-xs text-muted-foreground">{preset.description}</span>
-                      </Button>
-                    ))}
-                  </div>
-                </CardContent>
-              </Card>
+              {/* Role-Based Access Alert */}
+              {isRoleBasedAccess && (
+                <Alert className="border-primary/50 bg-primary/5">
+                  <Shield className="h-4 w-4" />
+                  <AlertTitle>Role-Based Access</AlertTitle>
+                  <AlertDescription>
+                    This user has full access to all modules because they are a <span className="font-semibold">{selectedUserRole}</span>. 
+                    These permissions are granted by their role and cannot be modified here.
+                  </AlertDescription>
+                </Alert>
+              )}
+
+              {/* Role Presets - Only show for non-admin/manager users */}
+              {!isRoleBasedAccess && (
+                <Card>
+                  <CardHeader>
+                    <CardTitle>Quick Presets</CardTitle>
+                    <CardDescription>Apply a predefined permission template</CardDescription>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="flex flex-wrap gap-2">
+                      {Object.entries(ROLE_PRESETS).map(([key, preset]) => (
+                        <Button
+                          key={key}
+                          variant="outline"
+                          size="sm"
+                          onClick={() => applyPreset(key as keyof typeof ROLE_PRESETS)}
+                          className="flex flex-col items-start h-auto py-2 px-3"
+                        >
+                          <span className="font-medium">{preset.label}</span>
+                          <span className="text-xs text-muted-foreground">{preset.description}</span>
+                        </Button>
+                      ))}
+                    </div>
+                  </CardContent>
+                </Card>
+              )}
 
               {/* Sensitive Data Access */}
               <Card>
@@ -398,6 +453,7 @@ export default function PermissionsManagement() {
                             id={perm.key}
                             checked={sensitivePermissions[perm.key]}
                             onCheckedChange={() => handleSensitiveToggle(perm.key)}
+                            disabled={isRoleBasedAccess}
                           />
                           <div className="flex-1">
                             <label
@@ -427,14 +483,16 @@ export default function PermissionsManagement() {
                       Configure which modules {selectedUser?.email} can access
                     </CardDescription>
                   </div>
-                  <Button onClick={handleSave} disabled={!hasChanges || updatePermissions.isPending}>
-                    {updatePermissions.isPending ? (
-                      <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                    ) : (
-                      <Save className="h-4 w-4 mr-2" />
-                    )}
-                    Save All Permissions
-                  </Button>
+                  {!isRoleBasedAccess && (
+                    <Button onClick={handleSave} disabled={!hasChanges || updatePermissions.isPending}>
+                      {updatePermissions.isPending ? (
+                        <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                      ) : (
+                        <Save className="h-4 w-4 mr-2" />
+                      )}
+                      Save All Permissions
+                    </Button>
+                  )}
                 </CardHeader>
                 <CardContent>
                   {permissionsLoading ? (
@@ -512,6 +570,7 @@ export default function PermissionsManagement() {
                                           <Checkbox
                                             checked={permissions[mod.key as ModuleKey]?.can_view || false}
                                             onCheckedChange={() => handleToggle(mod.key as ModuleKey, "can_view")}
+                                            disabled={isRoleBasedAccess}
                                           />
                                         </div>
                                       </TooltipTrigger>
@@ -525,6 +584,7 @@ export default function PermissionsManagement() {
                                           <Checkbox
                                             checked={permissions[mod.key as ModuleKey]?.can_add || false}
                                             onCheckedChange={() => handleToggle(mod.key as ModuleKey, "can_add")}
+                                            disabled={isRoleBasedAccess}
                                           />
                                         </div>
                                       </TooltipTrigger>
@@ -538,6 +598,7 @@ export default function PermissionsManagement() {
                                           <Checkbox
                                             checked={permissions[mod.key as ModuleKey]?.can_edit || false}
                                             onCheckedChange={() => handleToggle(mod.key as ModuleKey, "can_edit")}
+                                            disabled={isRoleBasedAccess}
                                           />
                                         </div>
                                       </TooltipTrigger>
@@ -551,6 +612,7 @@ export default function PermissionsManagement() {
                                           <Checkbox
                                             checked={permissions[mod.key as ModuleKey]?.can_delete || false}
                                             onCheckedChange={() => handleToggle(mod.key as ModuleKey, "can_delete")}
+                                            disabled={isRoleBasedAccess}
                                           />
                                         </div>
                                       </TooltipTrigger>
@@ -558,26 +620,28 @@ export default function PermissionsManagement() {
                                     </Tooltip>
                                   </TableCell>
                                   <TableCell className="text-center">
-                                    <div className="flex items-center justify-center gap-1">
-                                      <Button
-                                        variant="ghost"
-                                        size="icon"
-                                        className="h-7 w-7"
-                                        onClick={() => handleSelectAllModule(mod.key as ModuleKey)}
-                                        title="Select all"
-                                      >
-                                        <CheckSquare className="h-4 w-4 text-green-600" />
-                                      </Button>
-                                      <Button
-                                        variant="ghost"
-                                        size="icon"
-                                        className="h-7 w-7"
-                                        onClick={() => handleClearModule(mod.key as ModuleKey)}
-                                        title="Clear all"
-                                      >
-                                        <XSquare className="h-4 w-4 text-destructive" />
-                                      </Button>
-                                    </div>
+                                    {!isRoleBasedAccess && (
+                                      <div className="flex items-center justify-center gap-1">
+                                        <Button
+                                          variant="ghost"
+                                          size="icon"
+                                          className="h-7 w-7"
+                                          onClick={() => handleSelectAllModule(mod.key as ModuleKey)}
+                                          title="Select all"
+                                        >
+                                          <CheckSquare className="h-4 w-4 text-green-600" />
+                                        </Button>
+                                        <Button
+                                          variant="ghost"
+                                          size="icon"
+                                          className="h-7 w-7"
+                                          onClick={() => handleClearModule(mod.key as ModuleKey)}
+                                          title="Clear all"
+                                        >
+                                          <XSquare className="h-4 w-4 text-destructive" />
+                                        </Button>
+                                      </div>
+                                    )}
                                   </TableCell>
                                 </TableRow>
                               ))}
