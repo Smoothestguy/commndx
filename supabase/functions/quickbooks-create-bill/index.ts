@@ -137,6 +137,9 @@ async function getOrCreateQBVendor(supabase: any, vendorId: string, accessToken:
 // Cache for QuickBooks accounts to avoid repeated API calls
 const accountCache: Map<string, { value: string; name: string }> = new Map();
 
+// Valid account types for expense accounts
+const VALID_EXPENSE_ACCOUNT_TYPES = ['Expense', 'Cost of Goods Sold', 'Other Current Liability'];
+
 // Get expense account reference - tries to match by category name first
 async function getExpenseAccountRef(
   categoryName: string | null,
@@ -155,34 +158,43 @@ async function getExpenseAccountRef(
 
     console.log(`Searching QuickBooks for account matching category: ${categoryName}`);
     
-    // Search for an account with a name containing the category name
-    // QuickBooks LIKE operator uses % as wildcard
+    // Search for accounts by name only (QuickBooks doesn't support OR in WHERE clause)
+    // We'll filter by account type in code
     const searchQuery = encodeURIComponent(
-      `SELECT * FROM Account WHERE Name LIKE '%${categoryName}%' AND (AccountType = 'Expense' OR AccountType = 'Cost of Goods Sold' OR AccountType = 'Other Current Liability') MAXRESULTS 10`
+      `SELECT * FROM Account WHERE Name LIKE '%${categoryName}%' MAXRESULTS 50`
     );
     
     try {
       const result = await qbRequest('GET', `/query?query=${searchQuery}&minorversion=65`, accessToken, realmId);
       
       if (result.QueryResponse?.Account?.length > 0) {
-        // Try to find exact match first
-        const exactMatch = result.QueryResponse.Account.find(
-          (acc: any) => acc.Name.toLowerCase() === categoryName.toLowerCase()
+        // Filter to only include valid expense account types
+        const validAccounts = result.QueryResponse.Account.filter(
+          (acc: any) => VALID_EXPENSE_ACCOUNT_TYPES.includes(acc.AccountType)
         );
         
-        if (exactMatch) {
-          const accountRef = { value: exactMatch.Id, name: exactMatch.Name };
+        if (validAccounts.length > 0) {
+          // Try to find exact match first
+          const exactMatch = validAccounts.find(
+            (acc: any) => acc.Name.toLowerCase() === categoryName.toLowerCase()
+          );
+          
+          if (exactMatch) {
+            const accountRef = { value: exactMatch.Id, name: exactMatch.Name };
+            accountCache.set(cacheKey, accountRef);
+            console.log(`Found exact match account: ${exactMatch.Name} (${exactMatch.Id}) [Type: ${exactMatch.AccountType}]`);
+            return accountRef;
+          }
+          
+          // Otherwise use the first partial match
+          const account = validAccounts[0];
+          const accountRef = { value: account.Id, name: account.Name };
           accountCache.set(cacheKey, accountRef);
-          console.log(`Found exact match account: ${exactMatch.Name} (${exactMatch.Id})`);
+          console.log(`Found partial match account: ${account.Name} (${account.Id}) [Type: ${account.AccountType}] for category: ${categoryName}`);
           return accountRef;
         }
         
-        // Otherwise use the first partial match
-        const account = result.QueryResponse.Account[0];
-        const accountRef = { value: account.Id, name: account.Name };
-        accountCache.set(cacheKey, accountRef);
-        console.log(`Found partial match account: ${account.Name} (${account.Id}) for category: ${categoryName}`);
-        return accountRef;
+        console.log(`Found ${result.QueryResponse.Account.length} accounts matching "${categoryName}" but none are valid expense types`);
       }
       
       console.log(`No matching account found for category: ${categoryName}, will use default`);
