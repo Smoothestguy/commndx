@@ -89,6 +89,16 @@ import VendorBillsList from "./pages/vendor-portal/VendorBillsList";
 import VendorPortalBillDetail from "./pages/vendor-portal/VendorBillDetail";
 import VendorNewBill from "./pages/vendor-portal/VendorNewBill";
 
+// Subcontractor Portal
+import { SubcontractorProtectedRoute } from "./components/subcontractor-portal/SubcontractorProtectedRoute";
+import SubcontractorLogin from "./pages/subcontractor-portal/SubcontractorLogin";
+import SubcontractorDashboard from "./pages/subcontractor-portal/SubcontractorDashboard";
+import SubcontractorPOList from "./pages/subcontractor-portal/SubcontractorPOList";
+import SubcontractorPODetail from "./pages/subcontractor-portal/SubcontractorPODetail";
+import SubcontractorBillsList from "./pages/subcontractor-portal/SubcontractorBillsList";
+import SubcontractorBillDetail from "./pages/subcontractor-portal/SubcontractorBillDetail";
+import SubcontractorNewBill from "./pages/subcontractor-portal/SubcontractorNewBill";
+
 import NewChangeOrder from "./pages/NewChangeOrder";
 import EditChangeOrder from "./pages/EditChangeOrder";
 import ChangeOrderDetail from "./pages/ChangeOrderDetail";
@@ -375,6 +385,58 @@ const App = () => {
                       </VendorProtectedRoute>
                     }
                   />
+
+                  {/* Subcontractor Portal Routes */}
+                  <Route path="/subcontractor/login" element={<SubcontractorLogin />} />
+                  <Route
+                    path="/subcontractor"
+                    element={
+                      <SubcontractorProtectedRoute>
+                        <SubcontractorDashboard />
+                      </SubcontractorProtectedRoute>
+                    }
+                  />
+                  <Route
+                    path="/subcontractor/purchase-orders"
+                    element={
+                      <SubcontractorProtectedRoute>
+                        <SubcontractorPOList />
+                      </SubcontractorProtectedRoute>
+                    }
+                  />
+                  <Route
+                    path="/subcontractor/purchase-orders/:id"
+                    element={
+                      <SubcontractorProtectedRoute>
+                        <SubcontractorPODetail />
+                      </SubcontractorProtectedRoute>
+                    }
+                  />
+                  <Route
+                    path="/subcontractor/bills"
+                    element={
+                      <SubcontractorProtectedRoute>
+                        <SubcontractorBillsList />
+                      </SubcontractorProtectedRoute>
+                    }
+                  />
+                  <Route
+                    path="/subcontractor/bills/new"
+                    element={
+                      <SubcontractorProtectedRoute>
+                        <SubcontractorNewBill />
+                      </SubcontractorProtectedRoute>
+                    }
+                  />
+                  <Route
+                    path="/subcontractor/bills/:id"
+                    element={
+                      <SubcontractorProtectedRoute>
+                        <SubcontractorBillDetail />
+                      </SubcontractorProtectedRoute>
+                    }
+                  />
+
                   <Route path="*" element={<NotFound />} />
                 </Routes>
                 <BottomNav onMoreClick={() => setMoreMenuOpen(true)} />
