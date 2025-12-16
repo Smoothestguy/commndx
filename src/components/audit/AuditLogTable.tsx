@@ -10,11 +10,6 @@ import {
 } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import {
-  Collapsible,
-  CollapsibleContent,
-  CollapsibleTrigger,
-} from "@/components/ui/collapsible";
 import { ChevronDown, ChevronRight, CheckCircle2, XCircle } from "lucide-react";
 import { AuditLog } from "@/integrations/supabase/hooks/useAuditLogs";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -57,24 +52,27 @@ const AuditLogRow = ({ log }: { log: AuditLog }) => {
   const hasChanges = log.changes_before || log.changes_after;
 
   return (
-    <Collapsible open={isOpen} onOpenChange={setIsOpen}>
+    <>
       <TableRow className="group">
-        <TableCell>
+        <TableCell className="w-[4%]">
           {hasChanges ? (
-            <CollapsibleTrigger asChild>
-              <Button variant="ghost" size="sm" className="h-6 w-6 p-0">
-                {isOpen ? (
-                  <ChevronDown className="h-4 w-4" />
-                ) : (
-                  <ChevronRight className="h-4 w-4" />
-                )}
-              </Button>
-            </CollapsibleTrigger>
+            <Button
+              variant="ghost"
+              size="sm"
+              className="h-6 w-6 p-0"
+              onClick={() => setIsOpen(!isOpen)}
+            >
+              {isOpen ? (
+                <ChevronDown className="h-4 w-4" />
+              ) : (
+                <ChevronRight className="h-4 w-4" />
+              )}
+            </Button>
           ) : (
             <div className="w-6" />
           )}
         </TableCell>
-        <TableCell className="whitespace-nowrap">
+        <TableCell className="w-[14%] whitespace-nowrap">
           <div className="flex flex-col">
             <span className="text-sm">
               {format(new Date(log.created_at), "MMM d, yyyy")}
@@ -84,10 +82,10 @@ const AuditLogRow = ({ log }: { log: AuditLog }) => {
             </span>
           </div>
         </TableCell>
-        <TableCell>
-          <span className="text-sm">{log.user_email}</span>
+        <TableCell className="w-[22%]">
+          <span className="text-sm truncate block">{log.user_email}</span>
         </TableCell>
-        <TableCell>
+        <TableCell className="w-[12%]">
           <Badge
             variant="outline"
             className={ACTION_COLORS[log.action_type] || ""}
@@ -95,10 +93,12 @@ const AuditLogRow = ({ log }: { log: AuditLog }) => {
             {formatActionType(log.action_type)}
           </Badge>
         </TableCell>
-        <TableCell>
-          <span className="text-sm">{formatResourceType(log.resource_type)}</span>
+        <TableCell className="w-[14%]">
+          <span className="text-sm">
+            {formatResourceType(log.resource_type)}
+          </span>
         </TableCell>
-        <TableCell>
+        <TableCell className="w-[20%]">
           {log.resource_number ? (
             <code className="text-xs bg-muted px-1.5 py-0.5 rounded">
               {log.resource_number}
@@ -107,7 +107,7 @@ const AuditLogRow = ({ log }: { log: AuditLog }) => {
             <span className="text-muted-foreground">-</span>
           )}
         </TableCell>
-        <TableCell>
+        <TableCell className="w-[14%]">
           {log.success ? (
             <CheckCircle2 className="h-4 w-4 text-green-500" />
           ) : (
@@ -115,12 +115,12 @@ const AuditLogRow = ({ log }: { log: AuditLog }) => {
           )}
         </TableCell>
       </TableRow>
-      {hasChanges && (
-        <CollapsibleContent asChild>
-          <TableRow className="bg-muted/30">
-            <TableCell colSpan={7} className="py-4">
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 px-4">
-                {log.changes_before && Object.keys(log.changes_before).length > 0 && (
+      {hasChanges && isOpen && (
+        <TableRow className="bg-muted/30">
+          <TableCell colSpan={7} className="py-4">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 px-4">
+              {log.changes_before &&
+                Object.keys(log.changes_before).length > 0 && (
                   <div>
                     <h4 className="text-sm font-medium mb-2 text-muted-foreground">
                       Before
@@ -130,7 +130,8 @@ const AuditLogRow = ({ log }: { log: AuditLog }) => {
                     </pre>
                   </div>
                 )}
-                {log.changes_after && Object.keys(log.changes_after).length > 0 && (
+              {log.changes_after &&
+                Object.keys(log.changes_after).length > 0 && (
                   <div>
                     <h4 className="text-sm font-medium mb-2 text-muted-foreground">
                       After
@@ -140,22 +141,21 @@ const AuditLogRow = ({ log }: { log: AuditLog }) => {
                     </pre>
                   </div>
                 )}
-                {log.error_message && (
-                  <div className="md:col-span-2">
-                    <h4 className="text-sm font-medium mb-2 text-red-500">
-                      Error
-                    </h4>
-                    <p className="text-sm text-red-600 bg-red-50 dark:bg-red-900/20 p-3 rounded-md">
-                      {log.error_message}
-                    </p>
-                  </div>
-                )}
-              </div>
-            </TableCell>
-          </TableRow>
-        </CollapsibleContent>
+              {log.error_message && (
+                <div className="md:col-span-2">
+                  <h4 className="text-sm font-medium mb-2 text-red-500">
+                    Error
+                  </h4>
+                  <p className="text-sm text-red-600 bg-red-50 dark:bg-red-900/20 p-3 rounded-md">
+                    {log.error_message}
+                  </p>
+                </div>
+              )}
+            </div>
+          </TableCell>
+        </TableRow>
       )}
-    </Collapsible>
+    </>
   );
 };
 
@@ -179,17 +179,17 @@ export const AuditLogTable = ({ logs, isLoading }: AuditLogTableProps) => {
   }
 
   return (
-    <div className="rounded-md border">
-      <Table>
+    <div className="rounded-md border overflow-x-auto">
+      <Table className="table-fixed w-full">
         <TableHeader>
           <TableRow>
-            <TableHead className="w-10"></TableHead>
-            <TableHead className="w-36">Timestamp</TableHead>
-            <TableHead>User</TableHead>
-            <TableHead className="w-32">Action</TableHead>
-            <TableHead className="w-36">Resource</TableHead>
-            <TableHead className="w-36">Reference</TableHead>
-            <TableHead className="w-20">Status</TableHead>
+            <TableHead className="w-[4%]"></TableHead>
+            <TableHead className="w-[14%]">Timestamp</TableHead>
+            <TableHead className="w-[22%]">User</TableHead>
+            <TableHead className="w-[12%]">Action</TableHead>
+            <TableHead className="w-[14%]">Resource</TableHead>
+            <TableHead className="w-[20%]">Reference</TableHead>
+            <TableHead className="w-[14%]">Status</TableHead>
           </TableRow>
         </TableHeader>
         <TableBody>
