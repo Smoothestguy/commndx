@@ -39,6 +39,7 @@ import {
   useDeletePersonnel,
   useToggleDoNotHire,
 } from "@/integrations/supabase/hooks/usePersonnel";
+import { ComplianceBadge } from "./ComplianceBadge";
 import { toast } from "sonner";
 import type { Database } from "@/integrations/supabase/types";
 
@@ -167,9 +168,12 @@ export const MobilePersonnelCard = ({
             <div className="flex-1 min-w-0 space-y-2">
               <div className="flex items-start justify-between gap-2">
                 <div className="min-w-0 flex-1">
-                  <h3 className="font-semibold text-sm truncate">
-                    {personnel.first_name} {personnel.last_name}
-                  </h3>
+                  <div className="flex items-center gap-1.5">
+                    <h3 className="font-semibold text-sm truncate">
+                      {personnel.first_name} {personnel.last_name}
+                    </h3>
+                    <ComplianceBadge personnel={personnel} compact />
+                  </div>
                   <p className="text-xs text-muted-foreground">
                     {personnel.personnel_number}
                   </p>
