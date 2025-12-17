@@ -8,13 +8,14 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { usePersonnel } from "@/integrations/supabase/hooks/usePersonnel";
 import { supabase } from "@/integrations/supabase/client";
 import { useQuery } from "@tanstack/react-query";
-import { Eye, Clock, Briefcase, Bell, DollarSign, TrendingUp, ArrowLeft, CheckCircle2, XCircle, User, ChevronDown, ChevronUp } from "lucide-react";
+import { Eye, Clock, Briefcase, Bell, DollarSign, TrendingUp, ArrowLeft, CheckCircle2, XCircle, User, ChevronDown, ChevronUp, Calendar } from "lucide-react";
 import { Link, useNavigate } from "react-router-dom";
 import { startOfWeek, endOfWeek, startOfMonth, endOfMonth, parseISO, isWithinInterval, format } from "date-fns";
 import { ProjectPreviewDialog } from "@/components/admin/ProjectPreviewDialog";
 import { UserActivityHistory } from "@/components/admin/UserActivityHistory";
 import { useUserActivityLogs } from "@/integrations/supabase/hooks/useUserActivityLogs";
-
+import { formatCurrency } from "@/lib/utils";
+import { getLastCompletedPayPeriod, calculatePayPeriodTotals } from "@/lib/payPeriodUtils";
 interface TimeEntry {
   id: string;
   entry_date: string;
@@ -164,7 +165,14 @@ export default function PersonnelPortalPreview() {
   }, [timeEntries, monthStart, monthEnd]);
 
   const hourlyRate = selectedPerson?.hourly_rate || 0;
-  const weeklyPay = weeklyHours * hourlyRate;
+  
+  // Calculate last completed pay period for Upcoming Payment card
+  const lastPayPeriod = getLastCompletedPayPeriod();
+  const lastPayPeriodTotals = useMemo(() => {
+    if (!timeEntries) return { regularHours: 0, overtimeHours: 0, totalHours: 0, regularPay: 0, overtimePay: 0, totalPay: 0, daysWorked: 0, dailyBreakdown: [] };
+    return calculatePayPeriodTotals(timeEntries, lastPayPeriod, hourlyRate, 1.5);
+  }, [timeEntries, lastPayPeriod, hourlyRate]);
+  
   const monthlyPay = monthlyHours * hourlyRate;
   const unreadNotifications = notifications?.filter(n => !n.is_read).length || 0;
   const activeProjects = assignments?.length || 0;
@@ -303,17 +311,20 @@ export default function PersonnelPortalPreview() {
                   </CardContent>
                 </Card>
 
-                <Card>
+                <Card className="border-primary/30 bg-primary/5">
                   <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                    <CardTitle className="text-sm font-medium">Est. Weekly Pay</CardTitle>
-                    <DollarSign className="h-4 w-4 text-muted-foreground" />
+                    <CardTitle className="text-sm font-medium">Upcoming Payment</CardTitle>
+                    <Calendar className="h-4 w-4 text-primary" />
                   </CardHeader>
                   <CardContent>
-                    <div className="text-2xl font-bold">
-                      {isLoading ? "..." : `$${weeklyPay.toFixed(2)}`}
+                    <div className="text-2xl font-bold text-primary">
+                      {isLoading ? "..." : formatCurrency(lastPayPeriodTotals.totalPay)}
                     </div>
                     <p className="text-xs text-muted-foreground">
-                      @ ${hourlyRate.toFixed(2)}/hr
+                      Pay Period: {lastPayPeriod.label}
+                    </p>
+                    <p className="text-xs text-primary font-medium">
+                      Paid: {format(lastPayPeriod.paymentDate, "EEE, MMM d")}
                     </p>
                   </CardContent>
                 </Card>

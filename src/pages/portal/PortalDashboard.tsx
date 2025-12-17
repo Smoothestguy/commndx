@@ -1,11 +1,13 @@
 import { PortalLayout } from "@/components/portal/PortalLayout";
 import { useCurrentPersonnel, usePersonnelTimeEntries, usePersonnelAssignments, usePersonnelReimbursements, usePersonnelNotifications } from "@/integrations/supabase/hooks/usePortal";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Clock, Briefcase, Receipt, Bell, DollarSign, TrendingUp } from "lucide-react";
+import { Clock, Briefcase, Receipt, Bell, DollarSign, TrendingUp, Calendar } from "lucide-react";
 import { startOfWeek, endOfWeek, startOfMonth, endOfMonth, parseISO, isWithinInterval, format } from "date-fns";
 import { Link, useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
+import { formatCurrency } from "@/lib/utils";
+import { getLastCompletedPayPeriod, calculatePayPeriodTotals } from "@/lib/payPeriodUtils";
 
 export default function PortalDashboard() {
   const navigate = useNavigate();
@@ -40,9 +42,13 @@ export default function PortalDashboard() {
     return total;
   }, 0) || 0;
 
-  // Calculate estimated pay
+  // Calculate last completed pay period (for Upcoming Payment card)
   const hourlyRate = personnel?.hourly_rate || 0;
-  const weeklyPay = weeklyHours * hourlyRate;
+  const lastPayPeriod = getLastCompletedPayPeriod();
+  const lastPayPeriodTotals = timeEntries 
+    ? calculatePayPeriodTotals(timeEntries, lastPayPeriod, hourlyRate, 1.5)
+    : { regularHours: 0, overtimeHours: 0, totalHours: 0, regularPay: 0, overtimePay: 0, totalPay: 0, daysWorked: 0 };
+
   const monthlyPay = monthlyHours * hourlyRate;
 
   // Count pending reimbursements
@@ -96,15 +102,20 @@ export default function PortalDashboard() {
             </CardContent>
           </Card>
 
-          <Card>
+          <Card className="border-primary/30 bg-primary/5">
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Est. Weekly Pay</CardTitle>
-              <DollarSign className="h-4 w-4 text-muted-foreground" />
+              <CardTitle className="text-sm font-medium">Upcoming Payment</CardTitle>
+              <Calendar className="h-4 w-4 text-primary" />
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold">${weeklyPay.toFixed(2)}</div>
+              <div className="text-2xl font-bold text-primary">
+                {formatCurrency(lastPayPeriodTotals.totalPay)}
+              </div>
               <p className="text-xs text-muted-foreground">
-                @ ${hourlyRate.toFixed(2)}/hr
+                Pay Period: {lastPayPeriod.label}
+              </p>
+              <p className="text-xs text-primary font-medium">
+                Paid: {format(lastPayPeriod.paymentDate, "EEE, MMM d")}
               </p>
             </CardContent>
           </Card>

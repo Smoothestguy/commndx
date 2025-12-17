@@ -1,10 +1,18 @@
-import { useMemo } from "react";
+import { useState, useMemo } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { Badge } from "@/components/ui/badge";
-import { format, parseISO, startOfWeek, endOfWeek } from "date-fns";
-import { Calendar, MapPin, User, Clock, Building, DollarSign } from "lucide-react";
+import { format, parseISO } from "date-fns";
+import { Calendar, MapPin, Clock, Building, DollarSign, ChevronDown, ChevronUp } from "lucide-react";
 import { formatCurrency } from "@/lib/utils";
 import { ScrollArea } from "@/components/ui/scroll-area";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { 
+  getAllPayPeriodsFromEntries, 
+  calculatePayPeriodTotals, 
+  PayPeriod 
+} from "@/lib/payPeriodUtils";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 
 interface Project {
   id: string;
@@ -40,18 +48,6 @@ interface ProjectPreviewDialogProps {
   hourlyRate?: number | null;
 }
 
-interface WeekData {
-  weekStart: Date;
-  weekEnd: Date;
-  daysWorked: number;
-  regularHours: number;
-  overtimeHours: number;
-  totalHours: number;
-  regularPay: number;
-  overtimePay: number;
-  totalPay: number;
-}
-
 export function ProjectPreviewDialog({ 
   project, 
   open, 
@@ -61,59 +57,30 @@ export function ProjectPreviewDialog({
   hourlyRate = null
 }: ProjectPreviewDialogProps) {
   const overtimeMultiplier = 1.5;
+  
+  // Get all pay periods from time entries
+  const payPeriods = useMemo(() => {
+    return getAllPayPeriodsFromEntries(timeEntries);
+  }, [timeEntries]);
+  
+  // Default to the most recent pay period
+  const [selectedPeriodKey, setSelectedPeriodKey] = useState<string>("");
+  const [showDailyBreakdown, setShowDailyBreakdown] = useState(true);
+  
+  // Get the selected pay period (default to first/most recent)
+  const selectedPeriod = useMemo(() => {
+    if (!payPeriods.length) return null;
+    if (!selectedPeriodKey) return payPeriods[0];
+    return payPeriods.find(p => format(p.weekStart, "yyyy-MM-dd") === selectedPeriodKey) || payPeriods[0];
+  }, [payPeriods, selectedPeriodKey]);
+  
+  // Calculate totals for selected period
+  const periodTotals = useMemo(() => {
+    if (!selectedPeriod) return null;
+    return calculatePayPeriodTotals(timeEntries, selectedPeriod, hourlyRate || 0, overtimeMultiplier);
+  }, [timeEntries, selectedPeriod, hourlyRate]);
 
-  // Group time entries by week
-  const weeklyData = useMemo(() => {
-    if (!timeEntries || timeEntries.length === 0) return [];
-
-    const weekMap = new Map<string, { entries: TimeEntry[]; dates: Set<string> }>();
-
-    timeEntries.forEach((entry) => {
-      const entryDate = parseISO(entry.entry_date);
-      const weekStart = startOfWeek(entryDate, { weekStartsOn: 1 });
-      const weekKey = format(weekStart, "yyyy-MM-dd");
-
-      if (!weekMap.has(weekKey)) {
-        weekMap.set(weekKey, { entries: [], dates: new Set() });
-      }
-
-      const data = weekMap.get(weekKey)!;
-      data.entries.push(entry);
-      data.dates.add(entry.entry_date);
-    });
-
-    const weeks: WeekData[] = [];
-    const rate = hourlyRate || 0;
-
-    weekMap.forEach((data, weekKey) => {
-      const weekStart = parseISO(weekKey);
-      const weekEnd = endOfWeek(weekStart, { weekStartsOn: 1 });
-
-      const regularHours = data.entries.reduce((sum, e) => sum + (e.regular_hours || 0), 0);
-      const overtimeHours = data.entries.reduce((sum, e) => sum + (e.overtime_hours || 0), 0);
-      const totalHours = regularHours + overtimeHours;
-
-      const regularPay = regularHours * rate;
-      const overtimePay = overtimeHours * rate * overtimeMultiplier;
-      const totalPay = regularPay + overtimePay;
-
-      weeks.push({
-        weekStart,
-        weekEnd,
-        daysWorked: data.dates.size,
-        regularHours,
-        overtimeHours,
-        totalHours,
-        regularPay,
-        overtimePay,
-        totalPay,
-      });
-    });
-
-    return weeks.sort((a, b) => b.weekStart.getTime() - a.weekStart.getTime());
-  }, [timeEntries, hourlyRate]);
-
-  // Calculate totals
+  // Calculate overall totals
   const totals = useMemo(() => {
     const regularHours = timeEntries.reduce((sum, e) => sum + (e.regular_hours || 0), 0);
     const overtimeHours = timeEntries.reduce((sum, e) => sum + (e.overtime_hours || 0), 0);
@@ -222,12 +189,153 @@ export function ProjectPreviewDialog({
               )}
             </div>
 
+            {/* Pay Period Selector */}
+            {payPeriods.length > 0 && (
+              <div className="p-4 rounded-lg bg-primary/5 border border-primary/20">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-4">
+                  <h4 className="font-medium text-sm flex items-center gap-2">
+                    <Calendar className="h-4 w-4 text-primary" />
+                    Pay Period History
+                  </h4>
+                  <Select 
+                    value={selectedPeriodKey || (payPeriods[0] ? format(payPeriods[0].weekStart, "yyyy-MM-dd") : "")}
+                    onValueChange={setSelectedPeriodKey}
+                  >
+                    <SelectTrigger className="w-full sm:w-[220px] h-9">
+                      <SelectValue placeholder="Select pay period" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {payPeriods.map((period) => (
+                        <SelectItem 
+                          key={format(period.weekStart, "yyyy-MM-dd")} 
+                          value={format(period.weekStart, "yyyy-MM-dd")}
+                        >
+                          {period.label}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                {selectedPeriod && periodTotals && (
+                  <>
+                    {/* Payment Date */}
+                    <div className="flex items-center justify-between mb-3 text-sm">
+                      <span className="text-muted-foreground">Payment Date:</span>
+                      <span className="font-medium text-primary">
+                        {format(selectedPeriod.paymentDate, "EEEE, MMM d, yyyy")}
+                      </span>
+                    </div>
+
+                    {/* Weekly Summary */}
+                    <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 text-center mb-4">
+                      <div className="p-2 bg-background rounded-lg">
+                        <div className="text-lg font-bold">{periodTotals.daysWorked}</div>
+                        <div className="text-xs text-muted-foreground">Days Worked</div>
+                      </div>
+                      <div className="p-2 bg-background rounded-lg">
+                        <div className="text-lg font-bold">{periodTotals.regularHours.toFixed(1)}</div>
+                        <div className="text-xs text-muted-foreground">Regular Hours</div>
+                      </div>
+                      <div className="p-2 bg-background rounded-lg">
+                        <div className="text-lg font-bold text-amber-600">{periodTotals.overtimeHours.toFixed(1)}</div>
+                        <div className="text-xs text-muted-foreground">OT Hours</div>
+                      </div>
+                      <div className="p-2 bg-background rounded-lg">
+                        <div className="text-lg font-bold">{periodTotals.totalHours.toFixed(1)}</div>
+                        <div className="text-xs text-muted-foreground">Total Hours</div>
+                      </div>
+                    </div>
+
+                    {/* Pay Breakdown */}
+                    {hourlyRate && hourlyRate > 0 && (
+                      <div className="flex items-center gap-2 justify-center text-sm bg-background p-3 rounded-lg mb-4">
+                        <DollarSign className="h-4 w-4 text-muted-foreground" />
+                        <span>{formatCurrency(periodTotals.regularPay)}</span>
+                        <span className="text-muted-foreground">+</span>
+                        <span className="text-amber-600">{formatCurrency(periodTotals.overtimePay)}</span>
+                        <span className="text-xs text-muted-foreground">(1.5x)</span>
+                        <span className="text-muted-foreground">=</span>
+                        <span className="font-bold text-primary text-lg">{formatCurrency(periodTotals.totalPay)}</span>
+                      </div>
+                    )}
+
+                    {/* Daily Breakdown Collapsible */}
+                    <Collapsible open={showDailyBreakdown} onOpenChange={setShowDailyBreakdown}>
+                      <CollapsibleTrigger className="flex items-center justify-between w-full p-2 text-sm font-medium hover:bg-background/50 rounded-lg transition-colors">
+                        <span className="flex items-center gap-2">
+                          <Clock className="h-4 w-4" />
+                          Daily Breakdown
+                        </span>
+                        {showDailyBreakdown ? (
+                          <ChevronUp className="h-4 w-4" />
+                        ) : (
+                          <ChevronDown className="h-4 w-4" />
+                        )}
+                      </CollapsibleTrigger>
+                      <CollapsibleContent>
+                        <div className="mt-2 rounded-lg border overflow-hidden">
+                          <Table>
+                            <TableHeader>
+                              <TableRow className="bg-muted/50">
+                                <TableHead className="w-[80px]">Day</TableHead>
+                                <TableHead className="w-[100px]">Date</TableHead>
+                                <TableHead className="text-right">Regular</TableHead>
+                                <TableHead className="text-right">OT</TableHead>
+                                <TableHead className="text-right">Total</TableHead>
+                                {hourlyRate && hourlyRate > 0 && (
+                                  <TableHead className="text-right">Pay</TableHead>
+                                )}
+                              </TableRow>
+                            </TableHeader>
+                            <TableBody>
+                              {periodTotals.dailyBreakdown.map((day) => {
+                                const dayPay = hourlyRate 
+                                  ? (day.regularHours * hourlyRate) + (day.overtimeHours * hourlyRate * overtimeMultiplier)
+                                  : 0;
+                                const hasHours = day.totalHours > 0;
+                                return (
+                                  <TableRow 
+                                    key={format(day.date, "yyyy-MM-dd")}
+                                    className={hasHours ? "" : "opacity-50"}
+                                  >
+                                    <TableCell className="font-medium">{day.dayName}</TableCell>
+                                    <TableCell className="text-muted-foreground">
+                                      {format(day.date, "MMM d")}
+                                    </TableCell>
+                                    <TableCell className="text-right">
+                                      {hasHours ? `${day.regularHours.toFixed(1)}h` : "-"}
+                                    </TableCell>
+                                    <TableCell className="text-right text-amber-600">
+                                      {day.overtimeHours > 0 ? `${day.overtimeHours.toFixed(1)}h` : "-"}
+                                    </TableCell>
+                                    <TableCell className="text-right font-medium">
+                                      {hasHours ? `${day.totalHours.toFixed(1)}h` : "-"}
+                                    </TableCell>
+                                    {hourlyRate && hourlyRate > 0 && (
+                                      <TableCell className="text-right font-medium text-primary">
+                                        {hasHours ? formatCurrency(dayPay) : "-"}
+                                      </TableCell>
+                                    )}
+                                  </TableRow>
+                                );
+                              })}
+                            </TableBody>
+                          </Table>
+                        </div>
+                      </CollapsibleContent>
+                    </Collapsible>
+                  </>
+                )}
+              </div>
+            )}
+
             {/* Project Totals Summary */}
             {timeEntries.length > 0 && (
               <div className="p-4 rounded-lg bg-muted/50 border">
                 <h4 className="font-medium text-sm mb-3 flex items-center gap-2">
                   <Clock className="h-4 w-4" />
-                  Project Totals
+                  All-Time Project Totals
                 </h4>
                 <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 text-center">
                   <div>
@@ -248,62 +356,6 @@ export function ProjectPreviewDialog({
                       <div className="text-xs text-muted-foreground">Total Pay</div>
                     </div>
                   )}
-                </div>
-                {hourlyRate && hourlyRate > 0 && (
-                  <div className="mt-3 pt-3 border-t flex items-center gap-2 justify-center text-sm">
-                    <DollarSign className="h-4 w-4 text-muted-foreground" />
-                    <span>{formatCurrency(totals.regularPay)}</span>
-                    <span className="text-muted-foreground">+</span>
-                    <span className="text-amber-600">{formatCurrency(totals.overtimePay)}</span>
-                    <span className="text-xs text-muted-foreground">(1.5x)</span>
-                    <span className="text-muted-foreground">=</span>
-                    <span className="font-semibold text-primary">{formatCurrency(totals.totalPay)}</span>
-                  </div>
-                )}
-              </div>
-            )}
-
-            {/* Weekly Pay History */}
-            {weeklyData.length > 0 && (
-              <div>
-                <h4 className="font-medium text-sm mb-3 flex items-center gap-2">
-                  <Calendar className="h-4 w-4" />
-                  Weekly Pay Periods
-                </h4>
-                <div className="space-y-2">
-                  {weeklyData.map((week) => (
-                    <div 
-                      key={format(week.weekStart, "yyyy-MM-dd")} 
-                      className="p-3 rounded-lg border bg-card"
-                    >
-                      <div className="flex items-center justify-between mb-2">
-                        <span className="font-medium text-sm">
-                          {format(week.weekStart, "MMM d")} - {format(week.weekEnd, "MMM d, yyyy")}
-                        </span>
-                        <span className="text-xs text-muted-foreground bg-muted px-2 py-0.5 rounded">
-                          {week.daysWorked} day{week.daysWorked !== 1 ? "s" : ""}
-                        </span>
-                      </div>
-                      <div className="flex items-center gap-1 text-sm mb-1">
-                        <Clock className="h-3 w-3 text-muted-foreground" />
-                        <span>{week.regularHours.toFixed(1)}h</span>
-                        <span className="text-muted-foreground">+</span>
-                        <span className="text-amber-600">{week.overtimeHours.toFixed(1)}h OT</span>
-                        <span className="text-muted-foreground">=</span>
-                        <span className="font-semibold">{week.totalHours.toFixed(1)}h</span>
-                      </div>
-                      {hourlyRate && hourlyRate > 0 && (
-                        <div className="flex items-center gap-1 text-sm">
-                          <DollarSign className="h-3 w-3 text-muted-foreground" />
-                          <span>{formatCurrency(week.regularPay)}</span>
-                          <span className="text-muted-foreground">+</span>
-                          <span className="text-amber-600">{formatCurrency(week.overtimePay)}</span>
-                          <span className="text-muted-foreground">=</span>
-                          <span className="font-semibold text-primary">{formatCurrency(week.totalPay)}</span>
-                        </div>
-                      )}
-                    </div>
-                  ))}
                 </div>
               </div>
             )}

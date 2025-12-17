@@ -1,0 +1,191 @@
+import {
+  startOfWeek,
+  endOfWeek,
+  addDays,
+  subDays,
+  nextFriday,
+  isFriday,
+  format,
+  parseISO,
+  isBefore,
+  isAfter,
+  eachDayOfInterval
+} from "date-fns";
+
+export interface PayPeriod {
+  weekStart: Date;
+  weekEnd: Date;
+  paymentDate: Date;
+  label: string;
+}
+
+export interface DailyBreakdown {
+  date: Date;
+  dayName: string;
+  regularHours: number;
+  overtimeHours: number;
+  totalHours: number;
+}
+
+/**
+ * Get the last completed pay period (Mon-Sun that has already ended)
+ * Pay periods are Mon-Sun, paid on the following Friday
+ */
+export function getLastCompletedPayPeriod(referenceDate: Date = new Date()): PayPeriod {
+  // Get start of the current week (Monday)
+  const currentWeekStart = startOfWeek(referenceDate, { weekStartsOn: 1 });
+  
+  // If we're past Sunday of current week, last completed is current week
+  // Otherwise, it's the previous week
+  const lastWeekStart = subDays(currentWeekStart, 7);
+  const lastWeekEnd = endOfWeek(lastWeekStart, { weekStartsOn: 1 });
+  
+  // Payment date is the Friday after the pay period ends
+  const paymentDate = getPaymentDateForWeek(lastWeekStart);
+  
+  return {
+    weekStart: lastWeekStart,
+    weekEnd: lastWeekEnd,
+    paymentDate,
+    label: `${format(lastWeekStart, "MMM d")} - ${format(lastWeekEnd, "MMM d, yyyy")}`
+  };
+}
+
+/**
+ * Get the upcoming Friday payment date
+ */
+export function getUpcomingPayDate(referenceDate: Date = new Date()): Date {
+  if (isFriday(referenceDate)) {
+    return referenceDate;
+  }
+  return nextFriday(referenceDate);
+}
+
+/**
+ * Get the payment date (Friday) for a given week
+ */
+export function getPaymentDateForWeek(weekStart: Date): Date {
+  // Payment is on Friday after the week ends (Sunday)
+  const weekEnd = endOfWeek(weekStart, { weekStartsOn: 1 });
+  // Next Friday after the week ends
+  return nextFriday(addDays(weekEnd, 1));
+}
+
+/**
+ * Get the pay period for a specific date
+ */
+export function getPayPeriodForDate(date: Date): PayPeriod {
+  const weekStart = startOfWeek(date, { weekStartsOn: 1 });
+  const weekEnd = endOfWeek(date, { weekStartsOn: 1 });
+  const paymentDate = getPaymentDateForWeek(weekStart);
+  
+  return {
+    weekStart,
+    weekEnd,
+    paymentDate,
+    label: `${format(weekStart, "MMM d")} - ${format(weekEnd, "MMM d, yyyy")}`
+  };
+}
+
+/**
+ * Get all unique pay periods from time entries, sorted by most recent first
+ */
+export function getAllPayPeriodsFromEntries(
+  entries: { entry_date: string }[]
+): PayPeriod[] {
+  if (!entries || entries.length === 0) return [];
+  
+  const periodMap = new Map<string, PayPeriod>();
+  
+  entries.forEach((entry) => {
+    const entryDate = parseISO(entry.entry_date);
+    const weekStart = startOfWeek(entryDate, { weekStartsOn: 1 });
+    const weekKey = format(weekStart, "yyyy-MM-dd");
+    
+    if (!periodMap.has(weekKey)) {
+      periodMap.set(weekKey, getPayPeriodForDate(entryDate));
+    }
+  });
+  
+  // Sort by week start descending (most recent first)
+  return Array.from(periodMap.values()).sort(
+    (a, b) => b.weekStart.getTime() - a.weekStart.getTime()
+  );
+}
+
+/**
+ * Get daily breakdown for a specific pay period from time entries
+ */
+export function getDailyBreakdownForPeriod(
+  entries: { entry_date: string; regular_hours: number | null; overtime_hours: number | null }[],
+  payPeriod: PayPeriod
+): DailyBreakdown[] {
+  // Get all days in the pay period (Mon-Sun)
+  const daysInPeriod = eachDayOfInterval({
+    start: payPeriod.weekStart,
+    end: payPeriod.weekEnd
+  });
+  
+  // Create a map of entry dates to hours
+  const entryMap = new Map<string, { regular: number; overtime: number }>();
+  entries.forEach((entry) => {
+    const entryDate = parseISO(entry.entry_date);
+    const weekStart = startOfWeek(entryDate, { weekStartsOn: 1 });
+    
+    // Only include entries from this pay period
+    if (format(weekStart, "yyyy-MM-dd") === format(payPeriod.weekStart, "yyyy-MM-dd")) {
+      const dateKey = entry.entry_date;
+      const existing = entryMap.get(dateKey) || { regular: 0, overtime: 0 };
+      entryMap.set(dateKey, {
+        regular: existing.regular + (entry.regular_hours || 0),
+        overtime: existing.overtime + (entry.overtime_hours || 0)
+      });
+    }
+  });
+  
+  // Build daily breakdown for each day of the week
+  return daysInPeriod.map((date) => {
+    const dateKey = format(date, "yyyy-MM-dd");
+    const hours = entryMap.get(dateKey) || { regular: 0, overtime: 0 };
+    
+    return {
+      date,
+      dayName: format(date, "EEE"),
+      regularHours: hours.regular,
+      overtimeHours: hours.overtime,
+      totalHours: hours.regular + hours.overtime
+    };
+  });
+}
+
+/**
+ * Calculate totals for a pay period from time entries
+ */
+export function calculatePayPeriodTotals(
+  entries: { entry_date: string; regular_hours: number | null; overtime_hours: number | null }[],
+  payPeriod: PayPeriod,
+  hourlyRate: number = 0,
+  overtimeMultiplier: number = 1.5
+) {
+  const dailyBreakdown = getDailyBreakdownForPeriod(entries, payPeriod);
+  
+  const regularHours = dailyBreakdown.reduce((sum, d) => sum + d.regularHours, 0);
+  const overtimeHours = dailyBreakdown.reduce((sum, d) => sum + d.overtimeHours, 0);
+  const totalHours = regularHours + overtimeHours;
+  const daysWorked = dailyBreakdown.filter(d => d.totalHours > 0).length;
+  
+  const regularPay = regularHours * hourlyRate;
+  const overtimePay = overtimeHours * hourlyRate * overtimeMultiplier;
+  const totalPay = regularPay + overtimePay;
+  
+  return {
+    regularHours,
+    overtimeHours,
+    totalHours,
+    daysWorked,
+    regularPay,
+    overtimePay,
+    totalPay,
+    dailyBreakdown
+  };
+}
