@@ -196,7 +196,7 @@ export const useAdminTimeEntriesByWeek = (weekStartDate: Date) => {
         .from("time_entries")
         .select(`
           *,
-          personnel:personnel_id(id, first_name, last_name),
+          personnel:personnel_id(id, first_name, last_name, hourly_rate),
           projects:project_id(id, name)
         `)
         .eq("user_id", user.id)
