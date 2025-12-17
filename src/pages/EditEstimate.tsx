@@ -32,6 +32,7 @@ import { useProducts } from "@/integrations/supabase/hooks/useProducts";
 import { useEstimate, useUpdateEstimate } from "@/integrations/supabase/hooks/useEstimates";
 import { useCompanySettings } from "@/integrations/supabase/hooks/useCompanySettings";
 import { useUnsavedChangesWarning } from "@/hooks/useUnsavedChangesWarning";
+import { useCreateEstimateVersion } from "@/integrations/supabase/hooks/useEstimateVersions";
 import { z } from "zod";
 import {
   DndContext,
@@ -85,6 +86,7 @@ const EditEstimate = () => {
   const { data: products, isLoading: productsLoading } = useProducts();
   const { data: companySettings } = useCompanySettings();
   const updateEstimate = useUpdateEstimate();
+  const createVersion = useCreateEstimateVersion();
 
   const [selectedCustomerId, setSelectedCustomerId] = useState<string>("");
   const [selectedProjectId, setSelectedProjectId] = useState<string>("");
@@ -125,7 +127,7 @@ const EditEstimate = () => {
       setStatus(estimate.status);
       setDefaultPricingType(estimate.default_pricing_type || 'margin');
       
-      // Convert line items to form format
+      // Convert line items to form format - collapsed by default
       const formLineItems = estimate.line_items.map((item) => ({
         id: item.id,
         product_id: item.product_id,
@@ -136,6 +138,7 @@ const EditEstimate = () => {
         pricing_type: (item.pricing_type || 'margin') as 'markup' | 'margin',
         is_taxable: item.is_taxable ?? true,
         total: item.total,
+        isExpanded: false, // Collapsed by default when editing
       }));
       
       // Set the default margin from the first line item (if it has one)
@@ -382,6 +385,38 @@ const EditEstimate = () => {
     const project = projects?.find((p) => p.id === selectedProjectId);
 
     if (!customer) return;
+
+    // Save current version before updating
+    if (estimate) {
+      await createVersion.mutateAsync({
+        estimateId: id,
+        snapshot: {
+          customer_id: estimate.customer_id,
+          customer_name: estimate.customer_name,
+          project_id: estimate.project_id,
+          project_name: estimate.project_name,
+          status: estimate.status,
+          subtotal: estimate.subtotal,
+          tax_rate: estimate.tax_rate,
+          tax_amount: estimate.tax_amount,
+          total: estimate.total,
+          notes: estimate.notes,
+          valid_until: estimate.valid_until,
+          default_pricing_type: estimate.default_pricing_type,
+          line_items: estimate.line_items.map((item) => ({
+            product_id: item.product_id,
+            description: item.description,
+            quantity: item.quantity,
+            unit_price: item.unit_price,
+            markup: item.markup,
+            pricing_type: item.pricing_type,
+            is_taxable: item.is_taxable ?? true,
+            total: item.total,
+          })),
+        },
+        changeSummary: "Saved before editing",
+      });
+    }
 
     const estimateData = {
       id,

@@ -42,6 +42,7 @@ import { useCompanySettings } from "@/integrations/supabase/hooks/useCompanySett
 import { useCustomers } from "@/integrations/supabase/hooks/useCustomers";
 import { ConvertToJobOrderDialog } from "./ConvertToJobOrderDialog";
 import { EstimateAttachments } from "./EstimateAttachments";
+import { EstimateVersionHistory } from "./EstimateVersionHistory";
 import { Download, Edit, Trash2, Briefcase, MoreVertical, Loader2, Send, Copy, CheckCircle, FileText, Eye } from "lucide-react";
 import { generateEstimatePDF } from "@/utils/estimatePdfExport";
 import { format } from "date-fns";
@@ -724,6 +725,9 @@ export function EstimateDetailView({ estimateId }: EstimateDetailViewProps) {
               </CardContent>
             </Card>
           )}
+
+          {/* Version History */}
+          <EstimateVersionHistory estimateId={estimateId} />
 
           {/* Attachments */}
           <EstimateAttachments estimateId={estimateId} />
