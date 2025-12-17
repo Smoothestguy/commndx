@@ -306,14 +306,14 @@ export const PersonnelForm = ({ personnel, onSuccess, onCancel, defaultVendorId 
               <div className="space-y-2">
                 <Label htmlFor="vendor_id">Assigned Vendor</Label>
                 <Select
-                  value={watch("vendor_id") || ""}
-                  onValueChange={(value) => setValue("vendor_id", value)}
+                  value={watch("vendor_id") || "__none__"}
+                  onValueChange={(value) => setValue("vendor_id", value === "__none__" ? "" : value)}
                 >
                   <SelectTrigger>
                     <SelectValue placeholder="Select vendor (optional)" />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="">No Vendor</SelectItem>
+                    <SelectItem value="__none__">No Vendor</SelectItem>
                     {vendors?.map((vendor) => (
                       <SelectItem key={vendor.id} value={vendor.id}>
                         {vendor.name}
