@@ -29,6 +29,16 @@ interface Assignment {
     id: string;
     name: string;
     status: string;
+    address?: string;
+    city?: string;
+    state?: string;
+    zip?: string;
+    start_date?: string;
+    end_date?: string;
+    customer?: {
+      name: string;
+      company?: string;
+    };
   } | null;
 }
 
@@ -56,12 +66,12 @@ export default function PersonnelPortalPreview() {
       if (!selectedPersonnelId) return [];
       const { data, error } = await supabase
         .from("time_entries")
-        .select("id, entry_date, regular_hours, overtime_hours")
+        .select("id, entry_date, regular_hours, overtime_hours, project_id")
         .eq("personnel_id", selectedPersonnelId)
         .order("entry_date", { ascending: false });
       
       if (error) throw error;
-      return (data || []) as TimeEntry[];
+      return (data || []) as (TimeEntry & { project_id: string })[];
     },
     enabled: !!selectedPersonnelId,
   });
@@ -76,9 +86,21 @@ export default function PersonnelPortalPreview() {
         .select(`
           id,
           assigned_at,
-          projects(id, name, status)
+          projects(
+            id, 
+            name, 
+            status, 
+            address, 
+            city, 
+            state, 
+            zip, 
+            start_date, 
+            end_date,
+            customer:customers(name, company)
+          )
         `)
         .eq("personnel_id", selectedPersonnelId)
+        .eq("status", "active")
         .order("assigned_at", { ascending: false });
       
       if (error) throw error;
@@ -497,6 +519,8 @@ export default function PersonnelPortalPreview() {
         open={!!selectedProject}
         onClose={() => setSelectedProject(null)}
         assignedAt={selectedProject?.assigned_at}
+        timeEntries={timeEntries?.filter(e => e.project_id === selectedProject?.projects?.id) || []}
+        hourlyRate={selectedPerson?.hourly_rate || null}
       />
     </>
   );

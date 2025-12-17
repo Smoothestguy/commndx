@@ -5,8 +5,10 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
-import { ArrowLeft, Briefcase, Calendar, Clock, MapPin, User, Building, Phone, Mail, FileText } from "lucide-react";
+import { ArrowLeft, Briefcase, Calendar, Clock, MapPin, User, Building, Phone, Mail, FileText, DollarSign } from "lucide-react";
 import { format, parseISO } from "date-fns";
+import { ProjectWeeklyPayHistory } from "@/components/portal/ProjectWeeklyPayHistory";
+import { formatCurrency } from "@/lib/utils";
 
 export default function PortalProjectDetail() {
   const { id } = useParams<{ id: string }>();
@@ -26,6 +28,13 @@ export default function PortalProjectDetail() {
   const totalRegularHours = projectTimeEntries.reduce((sum, entry) => sum + (entry.regular_hours || 0), 0);
   const totalOvertimeHours = projectTimeEntries.reduce((sum, entry) => sum + (entry.overtime_hours || 0), 0);
   const totalHours = totalRegularHours + totalOvertimeHours;
+
+  // Calculate pay
+  const hourlyRate = personnel?.hourly_rate || 0;
+  const overtimeMultiplier = 1.5;
+  const totalRegularPay = totalRegularHours * hourlyRate;
+  const totalOvertimePay = totalOvertimeHours * hourlyRate * overtimeMultiplier;
+  const totalPay = totalRegularPay + totalOvertimePay;
 
   const isLoading = assignmentsLoading || timeLoading;
 
@@ -220,16 +229,16 @@ export default function PortalProjectDetail() {
           </Card>
         )}
 
-        {/* Hours Summary */}
+        {/* Hours & Pay Summary */}
         <Card>
           <CardHeader>
             <CardTitle className="text-lg flex items-center gap-2">
               <Clock className="h-5 w-5" />
-              Your Hours on This Project
+              Project Totals
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="grid grid-cols-3 gap-4 mb-6">
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
               <div className="text-center p-4 rounded-lg bg-muted/50">
                 <div className="text-2xl font-bold">{totalHours.toFixed(1)}</div>
                 <div className="text-sm text-muted-foreground">Total Hours</div>
@@ -239,50 +248,40 @@ export default function PortalProjectDetail() {
                 <div className="text-sm text-muted-foreground">Regular</div>
               </div>
               <div className="text-center p-4 rounded-lg bg-muted/50">
-                <div className="text-2xl font-bold text-orange-500">{totalOvertimeHours.toFixed(1)}</div>
+                <div className="text-2xl font-bold text-amber-600">{totalOvertimeHours.toFixed(1)}</div>
                 <div className="text-sm text-muted-foreground">Overtime</div>
               </div>
+              {hourlyRate > 0 && (
+                <div className="text-center p-4 rounded-lg bg-primary/10">
+                  <div className="text-2xl font-bold text-primary">{formatCurrency(totalPay)}</div>
+                  <div className="text-sm text-muted-foreground">Total Pay</div>
+                </div>
+              )}
             </div>
 
-            {/* Recent Time Entries */}
-            {projectTimeEntries.length > 0 ? (
-              <div className="space-y-3">
-                <h4 className="font-medium text-sm text-muted-foreground">Recent Time Entries</h4>
-                {projectTimeEntries.slice(0, 10).map((entry) => (
-                  <div key={entry.id} className="flex justify-between items-center p-3 rounded-lg border">
-                    <div>
-                      <div className="font-medium">
-                        {format(parseISO(entry.entry_date), "EEEE, MMM d, yyyy")}
-                      </div>
-                      {entry.description && (
-                        <div className="text-sm text-muted-foreground">{entry.description}</div>
-                      )}
-                    </div>
-                    <div className="text-right">
-                      <div className="font-medium">
-                        {((entry.regular_hours || 0) + (entry.overtime_hours || 0)).toFixed(1)} hrs
-                      </div>
-                      {(entry.overtime_hours || 0) > 0 && (
-                        <div className="text-xs text-orange-500">
-                          +{entry.overtime_hours?.toFixed(1)} OT
-                        </div>
-                      )}
-                    </div>
-                  </div>
-                ))}
-                {projectTimeEntries.length > 10 && (
-                  <p className="text-sm text-muted-foreground text-center pt-2">
-                    Showing 10 of {projectTimeEntries.length} entries
-                  </p>
-                )}
-              </div>
-            ) : (
-              <div className="text-center py-6 text-muted-foreground">
-                No time entries logged for this project yet.
+            {/* Pay breakdown formula */}
+            {hourlyRate > 0 && (
+              <div className="mt-4 p-3 rounded-lg bg-muted/30 border">
+                <div className="flex items-center gap-2 justify-center text-sm">
+                  <DollarSign className="h-4 w-4 text-muted-foreground" />
+                  <span>{formatCurrency(totalRegularPay)}</span>
+                  <span className="text-muted-foreground">+</span>
+                  <span className="text-amber-600">{formatCurrency(totalOvertimePay)}</span>
+                  <span className="text-xs text-muted-foreground">(1.5x)</span>
+                  <span className="text-muted-foreground">=</span>
+                  <span className="font-semibold text-primary">{formatCurrency(totalPay)}</span>
+                </div>
               </div>
             )}
           </CardContent>
         </Card>
+
+        {/* Weekly Pay History */}
+        <ProjectWeeklyPayHistory 
+          timeEntries={projectTimeEntries}
+          hourlyRate={personnel?.hourly_rate || null}
+          overtimeMultiplier={overtimeMultiplier}
+        />
       </div>
     </PortalLayout>
   );
