@@ -93,6 +93,10 @@ export const PersonnelForm = ({ personnel, onSuccess, onCancel, defaultVendorId,
       photo_url: photoUrl,
       personnel_number: personnel?.personnel_number || "",
       vendor_id: data.vendor_id || null,
+      // Convert empty date strings to null for PostgreSQL
+      date_of_birth: data.date_of_birth || null,
+      work_auth_expiry: data.work_auth_expiry || null,
+      i9_completed_at: data.i9_completed_at || null,
     };
 
     if (personnel) {
