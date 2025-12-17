@@ -5,6 +5,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Mail, Phone, MapPin, AlertTriangle, Building2 } from "lucide-react";
 import { useNavigate, Link } from "react-router-dom";
 import { useVendors } from "@/integrations/supabase/hooks/useVendors";
+import { ComplianceBadge } from "./ComplianceBadge";
 import type { Database } from "@/integrations/supabase/types";
 
 type Personnel = Database["public"]["Tables"]["personnel"]["Row"];
@@ -95,9 +96,12 @@ export const PersonnelCard = ({
           <div className="flex-1 min-w-0 space-y-2">
             <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-2">
               <div className="min-w-0">
-                <h3 className="font-semibold text-base sm:text-lg truncate">
-                  {personnel.first_name} {personnel.last_name}
-                </h3>
+                <div className="flex items-center gap-2">
+                  <h3 className="font-semibold text-base sm:text-lg truncate">
+                    {personnel.first_name} {personnel.last_name}
+                  </h3>
+                  <ComplianceBadge personnel={personnel} compact />
+                </div>
                 <p className="text-sm text-muted-foreground">{personnel.personnel_number}</p>
               </div>
               <div className="flex flex-wrap gap-1 sm:gap-2 flex-shrink-0">

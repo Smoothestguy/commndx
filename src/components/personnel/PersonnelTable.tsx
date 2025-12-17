@@ -44,6 +44,7 @@ import {
   useDeletePersonnel,
   useToggleDoNotHire,
 } from "@/integrations/supabase/hooks/usePersonnel";
+import { ComplianceBadge } from "./ComplianceBadge";
 import { toast } from "sonner";
 import type { Database } from "@/integrations/supabase/types";
 import { useIsMobile } from "@/hooks/use-mobile";
@@ -283,7 +284,10 @@ export function PersonnelTable({
                       </Avatar>
                     </TableCell>
                     <TableCell className="font-medium text-sm">
-                      {person.first_name} {person.last_name}
+                      <div className="flex items-center gap-1.5">
+                        <span>{person.first_name} {person.last_name}</span>
+                        <ComplianceBadge personnel={person} compact />
+                      </div>
                     </TableCell>
                     <TableCell className="text-muted-foreground text-sm">
                       {person.personnel_number}

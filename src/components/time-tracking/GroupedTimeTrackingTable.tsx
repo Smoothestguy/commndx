@@ -6,6 +6,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Badge } from "@/components/ui/badge";
 import { Card } from "@/components/ui/card";
 import { StatusBadge } from "@/components/shared/StatusBadge";
+import { ComplianceBadge } from "@/components/personnel/ComplianceBadge";
 import { TimeEntryWithDetails } from "@/integrations/supabase/hooks/useTimeEntries";
 import { useCompanySettings } from "@/integrations/supabase/hooks/useCompanySettings";
 import { useIsMobile } from "@/hooks/use-mobile";
@@ -45,6 +46,7 @@ type Status =
 interface PersonnelGroup {
   personnelKey: string;
   personnelName: string;
+  personnelData: TimeEntryWithDetails["personnel"] | null;
   project: string;
   customer: string;
   totalHours: number;
@@ -54,6 +56,20 @@ interface PersonnelGroup {
   totalCost: number;
   entries: TimeEntryWithDetails[];
 }
+
+// Helper to extract compliance-relevant fields from personnel data
+const getComplianceData = (personnel: TimeEntryWithDetails["personnel"]) => {
+  if (!personnel) return null;
+  // Cast to access any additional fields that might be present
+  const p = personnel as Record<string, unknown>;
+  return {
+    everify_status: p.everify_status as string | null | undefined,
+    everify_expiry: p.everify_expiry as string | null | undefined,
+    work_auth_expiry: p.work_auth_expiry as string | null | undefined,
+    i9_completed_at: p.i9_completed_at as string | null | undefined,
+    certifications: p.certifications as Array<{ id: string; certification_name: string; expiry_date?: string | null }> | null | undefined,
+  };
+};
 
 interface GroupedTimeTrackingTableProps {
   entries: TimeEntryWithDetails[];
@@ -133,6 +149,7 @@ export function GroupedTimeTrackingTable({
         groups.set(personnelKey, {
           personnelKey,
           personnelName,
+          personnelData: entry.personnel || null,
           project: entry.projects?.name || "Unknown",
           customer: entry.projects?.customers?.name || "-",
           totalHours: 0,
@@ -300,7 +317,10 @@ export function GroupedTimeTrackingTable({
                   />
                 )}
                 <div className="flex-1 min-w-0">
-                  <p className="font-medium text-foreground truncate">{group.personnelName}</p>
+                  <div className="flex items-center gap-1.5">
+                    <p className="font-medium text-foreground truncate">{group.personnelName}</p>
+                    <ComplianceBadge personnel={getComplianceData(group.personnelData)} compact />
+                  </div>
                   <p className="text-sm text-muted-foreground truncate">{group.project}</p>
                 </div>
                 <Button
@@ -528,7 +548,10 @@ export function GroupedTimeTrackingTable({
 
                   <div className="flex-1 grid grid-cols-1 md:grid-cols-6 gap-2 md:gap-4 items-center">
                     <div className="md:col-span-2">
-                      <p className="font-medium text-foreground">{group.personnelName}</p>
+                      <div className="flex items-center gap-1.5">
+                        <p className="font-medium text-foreground">{group.personnelName}</p>
+                        <ComplianceBadge personnel={getComplianceData(group.personnelData)} compact />
+                      </div>
                       <p className="text-sm text-muted-foreground">{group.project}</p>
                     </div>
                     <div className="hidden md:block text-sm text-muted-foreground">
