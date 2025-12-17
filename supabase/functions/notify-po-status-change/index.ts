@@ -224,6 +224,34 @@ const handler = async (req: Request): Promise<Response> => {
 
     console.log('Notification email sent successfully:', emailResponse);
 
+    // Create in-app notifications for admins/managers
+    if (eventType === 'po_submitted_for_approval') {
+      const inAppNotifications = userIds.map((userId: string) => ({
+        user_id: userId,
+        title: `${po.number} Requires Approval`,
+        message: `Vendor: ${po.vendor_name} • $${po.total.toFixed(2)}`,
+        notification_type: 'po_approval',
+        link_url: `/purchase-orders/${po.id}`,
+        related_id: po.id,
+        is_read: false,
+        metadata: {
+          po_number: po.number,
+          vendor_name: po.vendor_name,
+          total: po.total,
+        },
+      }));
+
+      const { error: notifError } = await supabase
+        .from('admin_notifications')
+        .insert(inAppNotifications);
+
+      if (notifError) {
+        console.error('Error creating in-app notifications:', notifError);
+      } else {
+        console.log(`Created ${inAppNotifications.length} in-app notifications`);
+      }
+    }
+
     return new Response(JSON.stringify({ 
       success: true, 
       emailResponse,

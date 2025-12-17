@@ -25,6 +25,8 @@ interface Preferences {
   po_rejected: boolean;
   po_sent: boolean;
   po_status_changed: boolean;
+  co_submitted_for_approval: boolean;
+  personnel_registration_pending: boolean;
   notification_toast: boolean;
   notification_sound: boolean;
   notification_browser: boolean;
@@ -46,6 +48,8 @@ export function NotificationPreferences({ userId, onSave }: NotificationPreferen
     po_rejected: true,
     po_sent: true,
     po_status_changed: true,
+    co_submitted_for_approval: true,
+    personnel_registration_pending: true,
     notification_toast: true,
     notification_sound: false,
     notification_browser: false,
@@ -79,6 +83,8 @@ export function NotificationPreferences({ userId, onSave }: NotificationPreferen
           po_rejected: data.po_rejected ?? true,
           po_sent: data.po_sent ?? true,
           po_status_changed: data.po_status_changed ?? true,
+          co_submitted_for_approval: (data as any).co_submitted_for_approval ?? true,
+          personnel_registration_pending: (data as any).personnel_registration_pending ?? true,
           notification_toast: data.notification_toast ?? true,
           notification_sound: data.notification_sound ?? false,
           notification_browser: data.notification_browser ?? false,
@@ -98,6 +104,8 @@ export function NotificationPreferences({ userId, onSave }: NotificationPreferen
           po_rejected: true,
           po_sent: true,
           po_status_changed: true,
+          co_submitted_for_approval: true,
+          personnel_registration_pending: true,
           notification_toast: true,
           notification_sound: false,
           notification_browser: false,
@@ -121,6 +129,8 @@ export function NotificationPreferences({ userId, onSave }: NotificationPreferen
           po_rejected: true,
           po_sent: true,
           po_status_changed: true,
+          co_submitted_for_approval: true,
+          personnel_registration_pending: true,
           notification_toast: true,
           notification_sound: false,
           notification_browser: false,
@@ -402,6 +412,48 @@ export function NotificationPreferences({ userId, onSave }: NotificationPreferen
                 checked={preferences.po_status_changed}
                 onCheckedChange={(checked) =>
                   setPreferences({ ...preferences, po_status_changed: checked })
+                }
+              />
+            </div>
+          </div>
+        </div>
+
+        <Separator />
+
+        {/* Change Order & Personnel Events */}
+        <div className="space-y-4">
+          <div>
+            <h3 className="text-sm font-medium mb-3">Change Orders & Personnel</h3>
+            <p className="text-sm text-muted-foreground mb-4">
+              Choose which approval events you want to be notified about
+            </p>
+          </div>
+          
+          <div className="space-y-3">
+            <div className="flex items-center justify-between">
+              <Label htmlFor="co-submitted" className="flex-1 cursor-pointer">
+                <span className="font-medium">Change Order Submitted</span>
+                <p className="text-sm text-muted-foreground">When a change order requires approval</p>
+              </Label>
+              <Switch
+                id="co-submitted"
+                checked={preferences.co_submitted_for_approval}
+                onCheckedChange={(checked) =>
+                  setPreferences({ ...preferences, co_submitted_for_approval: checked })
+                }
+              />
+            </div>
+
+            <div className="flex items-center justify-between">
+              <Label htmlFor="personnel-registration" className="flex-1 cursor-pointer">
+                <span className="font-medium">Personnel Registration Pending</span>
+                <p className="text-sm text-muted-foreground">When a new personnel registration needs review</p>
+              </Label>
+              <Switch
+                id="personnel-registration"
+                checked={preferences.personnel_registration_pending}
+                onCheckedChange={(checked) =>
+                  setPreferences({ ...preferences, personnel_registration_pending: checked })
                 }
               />
             </div>
