@@ -44,11 +44,12 @@ interface PersonnelFormProps {
   onSuccess?: (newPersonnelId?: string) => void;
   onCancel?: () => void;
   defaultVendorId?: string;
+  defaultTab?: string;
 }
 
-export const PersonnelForm = ({ personnel, onSuccess, onCancel, defaultVendorId }: PersonnelFormProps) => {
+export const PersonnelForm = ({ personnel, onSuccess, onCancel, defaultVendorId, defaultTab }: PersonnelFormProps) => {
   const [photoUrl, setPhotoUrl] = useState(personnel?.photo_url || "");
-  const [activeTab, setActiveTab] = useState("personal");
+  const [activeTab, setActiveTab] = useState(defaultTab || "personal");
 
   const addMutation = useAddPersonnel();
   const updateMutation = useUpdatePersonnel();

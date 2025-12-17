@@ -9,8 +9,8 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
-import { Mail, Phone, MapPin, Calendar, DollarSign, AlertTriangle, IdCard, MessageSquare, Edit, Flag } from "lucide-react";
+import { Mail, Phone, MapPin, Calendar, DollarSign, AlertTriangle, IdCard, MessageSquare, Edit, Flag, FileCheck, Shield, Award, AlertCircle, LucideIcon } from "lucide-react";
+import { cn } from "@/lib/utils";
 import { format } from "date-fns";
 import { useState } from "react";
 import { BadgeGenerator } from "@/components/badges/BadgeGenerator";
@@ -21,6 +21,16 @@ import { MessageHistory } from "@/components/messaging/MessageHistory";
 import { InviteToPortalDialog } from "@/components/personnel/InviteToPortalDialog";
 import { PersonnelProjectsList } from "@/components/personnel/PersonnelProjectsList";
 
+interface ComplianceIssue {
+  type: string;
+  message: string;
+  severity: 'warning' | 'critical';
+  icon: LucideIcon;
+  action: string;
+  actionLabel: string;
+  details?: string;
+}
+
 const PersonnelDetail = () => {
   const { id } = useParams<{ id: string }>();
   const { data: personnel, isLoading } = usePersonnelById(id);
@@ -28,6 +38,7 @@ const PersonnelDetail = () => {
   const [badgeDialogOpen, setBadgeDialogOpen] = useState(false);
   const [editDialogOpen, setEditDialogOpen] = useState(false);
   const [smsDialogOpen, setSmsDialogOpen] = useState(false);
+  const [defaultEditTab, setDefaultEditTab] = useState("personal");
 
   if (isLoading) {
     return (
@@ -78,25 +89,58 @@ const PersonnelDetail = () => {
     }
   };
 
-  const getComplianceIssues = () => {
-    const issues: { type: string; message: string; severity: 'warning' | 'critical' }[] = [];
+  const getComplianceIssues = (): ComplianceIssue[] => {
+    const issues: ComplianceIssue[] = [];
     const today = new Date();
     const thirtyDaysFromNow = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000);
 
     // E-Verify status issues
     if (personnel.everify_status === 'rejected') {
-      issues.push({ type: 'everify', message: 'E-Verify rejected', severity: 'critical' });
+      issues.push({ 
+        type: 'everify', 
+        message: 'E-Verify rejected', 
+        severity: 'critical',
+        icon: Shield,
+        action: 'i9',
+        actionLabel: 'Update E-Verify',
+        details: 'Employment authorization could not be verified'
+      });
     } else if (personnel.everify_status === 'expired') {
-      issues.push({ type: 'everify', message: 'E-Verify expired', severity: 'critical' });
+      issues.push({ 
+        type: 'everify', 
+        message: 'E-Verify expired', 
+        severity: 'critical',
+        icon: Shield,
+        action: 'i9',
+        actionLabel: 'Update E-Verify',
+        details: 'E-Verify status needs to be renewed'
+      });
     }
 
     // E-Verify expiry
     if (personnel.everify_expiry) {
       const expiryDate = new Date(personnel.everify_expiry);
       if (expiryDate < today) {
-        issues.push({ type: 'everify_expiry', message: 'E-Verify has expired', severity: 'critical' });
+        issues.push({ 
+          type: 'everify_expiry', 
+          message: 'E-Verify has expired', 
+          severity: 'critical',
+          icon: Shield,
+          action: 'i9',
+          actionLabel: 'Update E-Verify',
+          details: `Expired on ${format(expiryDate, "MMM dd, yyyy")}`
+        });
       } else if (expiryDate < thirtyDaysFromNow) {
-        issues.push({ type: 'everify_expiry', message: 'E-Verify expiring soon', severity: 'warning' });
+        const daysLeft = Math.ceil((expiryDate.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
+        issues.push({ 
+          type: 'everify_expiry', 
+          message: 'E-Verify expiring soon', 
+          severity: 'warning',
+          icon: Shield,
+          action: 'i9',
+          actionLabel: 'Update E-Verify',
+          details: `Expires in ${daysLeft} days (${format(expiryDate, "MMM dd, yyyy")})`
+        });
       }
     }
 
@@ -104,15 +148,40 @@ const PersonnelDetail = () => {
     if (personnel.work_auth_expiry) {
       const expiryDate = new Date(personnel.work_auth_expiry);
       if (expiryDate < today) {
-        issues.push({ type: 'work_auth', message: 'Work authorization expired', severity: 'critical' });
+        issues.push({ 
+          type: 'work_auth', 
+          message: 'Work authorization expired', 
+          severity: 'critical',
+          icon: FileCheck,
+          action: 'i9',
+          actionLabel: 'Update Authorization',
+          details: `Expired on ${format(expiryDate, "MMM dd, yyyy")}`
+        });
       } else if (expiryDate < thirtyDaysFromNow) {
-        issues.push({ type: 'work_auth', message: 'Work authorization expiring soon', severity: 'warning' });
+        const daysLeft = Math.ceil((expiryDate.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
+        issues.push({ 
+          type: 'work_auth', 
+          message: 'Work authorization expiring soon', 
+          severity: 'warning',
+          icon: FileCheck,
+          action: 'i9',
+          actionLabel: 'Update Authorization',
+          details: `Expires in ${daysLeft} days, renewal required`
+        });
       }
     }
 
     // I-9 not completed
     if (!personnel.i9_completed_at) {
-      issues.push({ type: 'i9', message: 'I-9 not completed', severity: 'warning' });
+      issues.push({ 
+        type: 'i9', 
+        message: 'I-9 not completed', 
+        severity: 'warning',
+        icon: FileCheck,
+        action: 'i9',
+        actionLabel: 'Complete I-9',
+        details: 'Form I-9 employment verification is required'
+      });
     }
 
     // Expired certifications
@@ -125,14 +194,37 @@ const PersonnelDetail = () => {
       );
       
       if (expiredCerts.length > 0) {
-        issues.push({ type: 'cert', message: `${expiredCerts.length} expired certification(s)`, severity: 'critical' });
+        const certNames = expiredCerts.map(c => c.certification_name).join(', ');
+        issues.push({ 
+          type: 'cert', 
+          message: `${expiredCerts.length} expired certification(s)`, 
+          severity: 'critical',
+          icon: Award,
+          action: 'personal',
+          actionLabel: 'Update Certifications',
+          details: certNames
+        });
       }
       if (expiringCerts.length > 0) {
-        issues.push({ type: 'cert_warning', message: `${expiringCerts.length} certification(s) expiring soon`, severity: 'warning' });
+        const certNames = expiringCerts.map(c => c.certification_name).join(', ');
+        issues.push({ 
+          type: 'cert_warning', 
+          message: `${expiringCerts.length} certification(s) expiring soon`, 
+          severity: 'warning',
+          icon: Award,
+          action: 'personal',
+          actionLabel: 'Update Certifications',
+          details: certNames
+        });
       }
     }
 
     return issues;
+  };
+
+  const openEditWithTab = (tab: string) => {
+    setDefaultEditTab(tab);
+    setEditDialogOpen(true);
   };
 
   const complianceIssues = getComplianceIssues();
@@ -211,22 +303,54 @@ const PersonnelDetail = () => {
         </Card>
 
         {complianceIssues.length > 0 && (
-          <Alert variant="destructive" className="border-destructive/50 bg-destructive/10">
-            <Flag className="h-5 w-5" />
-            <AlertTitle className="flex items-center gap-2">
-              Out of Compliance
-              <Badge variant="destructive">{complianceIssues.length} issue(s)</Badge>
-            </AlertTitle>
-            <AlertDescription>
-              <ul className="mt-2 space-y-1 list-disc list-inside">
-                {complianceIssues.map((issue, idx) => (
-                  <li key={idx} className={issue.severity === 'critical' ? 'text-destructive font-medium' : 'text-amber-600 dark:text-amber-500'}>
-                    {issue.message}
-                  </li>
-                ))}
-              </ul>
-            </AlertDescription>
-          </Alert>
+          <Card className="border-destructive/50 bg-destructive/5">
+            <CardHeader className="pb-3">
+              <CardTitle className="flex items-center gap-2 text-destructive">
+                <Flag className="h-5 w-5" />
+                Out of Compliance
+                <Badge variant="destructive">{complianceIssues.length} issue(s)</Badge>
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-3">
+              {complianceIssues.map((issue, idx) => (
+                <div 
+                  key={idx} 
+                  className={cn(
+                    "flex items-center justify-between gap-4 p-3 rounded-lg border",
+                    issue.severity === 'critical' 
+                      ? "border-destructive/30 bg-destructive/10" 
+                      : "border-amber-500/30 bg-amber-500/10"
+                  )}
+                >
+                  <div className="flex items-center gap-3 min-w-0">
+                    <issue.icon className={cn(
+                      "h-5 w-5 shrink-0",
+                      issue.severity === 'critical' ? "text-destructive" : "text-amber-600 dark:text-amber-500"
+                    )} />
+                    <div className="min-w-0">
+                      <p className={cn(
+                        "font-medium",
+                        issue.severity === 'critical' ? "text-destructive" : "text-amber-700 dark:text-amber-400"
+                      )}>
+                        {issue.message}
+                      </p>
+                      {issue.details && (
+                        <p className="text-sm text-muted-foreground truncate">{issue.details}</p>
+                      )}
+                    </div>
+                  </div>
+                  <Button 
+                    size="sm" 
+                    variant="outline" 
+                    onClick={() => openEditWithTab(issue.action)}
+                    className="shrink-0"
+                  >
+                    {issue.actionLabel}
+                  </Button>
+                </div>
+              ))}
+            </CardContent>
+          </Card>
         )}
 
         <Tabs defaultValue="personal" className="w-full">
@@ -510,7 +634,10 @@ const PersonnelDetail = () => {
         personnelId={id}
       />
 
-      <Dialog open={editDialogOpen} onOpenChange={setEditDialogOpen}>
+      <Dialog open={editDialogOpen} onOpenChange={(open) => {
+        setEditDialogOpen(open);
+        if (!open) setDefaultEditTab("personal");
+      }}>
         <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>Edit Personnel</DialogTitle>
@@ -519,6 +646,7 @@ const PersonnelDetail = () => {
             personnel={personnel}
             onSuccess={() => setEditDialogOpen(false)}
             onCancel={() => setEditDialogOpen(false)}
+            defaultTab={defaultEditTab}
           />
         </DialogContent>
       </Dialog>
