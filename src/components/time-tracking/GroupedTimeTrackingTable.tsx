@@ -60,14 +60,11 @@ interface PersonnelGroup {
 // Helper to extract compliance-relevant fields from personnel data
 const getComplianceData = (personnel: TimeEntryWithDetails["personnel"]) => {
   if (!personnel) return null;
-  // Cast to access any additional fields that might be present
-  const p = personnel as Record<string, unknown>;
   return {
-    everify_status: p.everify_status as string | null | undefined,
-    everify_expiry: p.everify_expiry as string | null | undefined,
-    work_auth_expiry: p.work_auth_expiry as string | null | undefined,
-    i9_completed_at: p.i9_completed_at as string | null | undefined,
-    certifications: p.certifications as Array<{ id: string; certification_name: string; expiry_date?: string | null }> | null | undefined,
+    everify_status: personnel.everify_status,
+    everify_expiry: personnel.everify_expiry,
+    work_auth_expiry: personnel.work_auth_expiry,
+    i9_completed_at: personnel.i9_completed_at,
   };
 };
 

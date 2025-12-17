@@ -33,6 +33,10 @@ export interface TimeEntryWithDetails extends TimeEntry {
     first_name: string;
     last_name: string;
     hourly_rate: number | null;
+    everify_status: string | null;
+    everify_expiry: string | null;
+    work_auth_expiry: string | null;
+    i9_completed_at: string | null;
   } | null;
   projects?: {
     name: string;
@@ -333,7 +337,7 @@ export const useAllTimeEntries = (projectFilter?: string, personnelFilter?: stri
         .select(`
           *,
           profiles:user_id(first_name, last_name, email, hourly_rate),
-          personnel:personnel_id(first_name, last_name, hourly_rate),
+          personnel:personnel_id(first_name, last_name, hourly_rate, everify_status, everify_expiry, work_auth_expiry, i9_completed_at),
           projects:project_id(
             name,
             customers:customer_id(name)
