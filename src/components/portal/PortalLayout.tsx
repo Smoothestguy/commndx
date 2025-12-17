@@ -1,4 +1,4 @@
-import { ReactNode } from "react";
+import { ReactNode, useState } from "react";
 import { Link, useLocation } from "react-router-dom";
 import { 
   Home, 
@@ -15,7 +15,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import { useCurrentPersonnel, usePersonnelNotifications } from "@/integrations/supabase/hooks/usePortal";
 import { cn } from "@/lib/utils";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
-import { useState } from "react";
+import { PersonnelAvatar } from "@/components/personnel/PersonnelAvatar";
 
 const navItems = [
   { href: "/portal", label: "Dashboard", icon: Home },
@@ -42,12 +42,24 @@ export function PortalLayout({ children }: PortalLayoutProps) {
   const NavContent = () => (
     <div className="flex flex-col h-full">
       <div className="p-4 border-b">
-        <h2 className="font-semibold text-lg">Personnel Portal</h2>
-        {personnel && (
-          <p className="text-sm text-muted-foreground">
-            {personnel.first_name} {personnel.last_name}
-          </p>
-        )}
+        <div className="flex items-center gap-3">
+          {personnel && (
+            <PersonnelAvatar
+              photoUrl={personnel.photo_url}
+              firstName={personnel.first_name}
+              lastName={personnel.last_name}
+              size="md"
+            />
+          )}
+          <div>
+            <h2 className="font-semibold text-lg">Personnel Portal</h2>
+            {personnel && (
+              <p className="text-sm text-muted-foreground">
+                {personnel.first_name} {personnel.last_name}
+              </p>
+            )}
+          </div>
+        </div>
       </div>
       
       <nav className="flex-1 p-4 space-y-1">

@@ -7,6 +7,7 @@ import { Badge } from "@/components/ui/badge";
 import { Card } from "@/components/ui/card";
 import { StatusBadge } from "@/components/shared/StatusBadge";
 import { ComplianceBadge } from "@/components/personnel/ComplianceBadge";
+import { PersonnelAvatar } from "@/components/personnel/PersonnelAvatar";
 import { TimeEntryWithDetails } from "@/integrations/supabase/hooks/useTimeEntries";
 import { useCompanySettings } from "@/integrations/supabase/hooks/useCompanySettings";
 import { useIsMobile } from "@/hooks/use-mobile";
@@ -357,12 +358,20 @@ export function GroupedTimeTrackingTable({
                     aria-label={`Select all entries for ${group.personnelName}`}
                   />
                 )}
-                <div className="flex-1 min-w-0">
-                  <div className="flex items-center gap-1.5">
-                    <p className="font-medium text-foreground truncate">{group.personnelName}</p>
-                    <ComplianceBadge personnel={getComplianceData(group.personnelData)} compact />
+                <div className="flex items-center gap-2 flex-1 min-w-0">
+                  <PersonnelAvatar
+                    photoUrl={group.personnelData?.photo_url}
+                    firstName={group.personnelData?.first_name || ""}
+                    lastName={group.personnelData?.last_name || ""}
+                    size="sm"
+                  />
+                  <div className="min-w-0">
+                    <div className="flex items-center gap-1.5">
+                      <p className="font-medium text-foreground truncate">{group.personnelName}</p>
+                      <ComplianceBadge personnel={getComplianceData(group.personnelData)} compact />
+                    </div>
+                    <p className="text-sm text-muted-foreground truncate">{group.project}</p>
                   </div>
-                  <p className="text-sm text-muted-foreground truncate">{group.project}</p>
                 </div>
                 <Button
                   variant="ghost"

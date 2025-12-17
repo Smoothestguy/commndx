@@ -8,6 +8,7 @@ import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { formatCurrency } from "@/lib/utils";
 import { getLastCompletedPayPeriod, calculatePayPeriodTotals } from "@/lib/payPeriodUtils";
+import { PersonnelAvatar } from "@/components/personnel/PersonnelAvatar";
 
 export default function PortalDashboard() {
   const navigate = useNavigate();
@@ -78,13 +79,23 @@ export default function PortalDashboard() {
   return (
     <PortalLayout>
       <div className="space-y-6">
-        <div>
-          <h1 className="text-2xl font-bold">
-            Welcome, {personnel?.first_name}!
-          </h1>
-          <p className="text-muted-foreground">
-            Here's an overview of your work activity
-          </p>
+        <div className="flex items-center gap-4">
+          {personnel && (
+            <PersonnelAvatar
+              photoUrl={personnel.photo_url}
+              firstName={personnel.first_name}
+              lastName={personnel.last_name}
+              size="lg"
+            />
+          )}
+          <div>
+            <h1 className="text-2xl font-bold">
+              Welcome, {personnel?.first_name}!
+            </h1>
+            <p className="text-muted-foreground">
+              Here's an overview of your work activity
+            </p>
+          </div>
         </div>
 
         {/* Stats Grid */}

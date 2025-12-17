@@ -3,6 +3,7 @@ import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
 import { Clock, AlertCircle, Calendar, CalendarDays, Users, UserPlus, UserCheck, Gift, AlertTriangle } from "lucide-react";
+import { PersonnelAvatar } from "@/components/personnel/PersonnelAvatar";
 import {
   Dialog,
   DialogContent,
@@ -483,6 +484,12 @@ export function EnhancedTimeEntryForm({
                 >
                   <div className="flex items-center gap-2">
                     <Checkbox checked={isSelected} className="pointer-events-none" />
+                    <PersonnelAvatar
+                      photoUrl={(person as any).photo_url}
+                      firstName={person.first_name}
+                      lastName={person.last_name}
+                      size="xs"
+                    />
                     <span className="text-sm">{person.first_name} {person.last_name}</span>
                   </div>
                   {person.hourly_rate && (

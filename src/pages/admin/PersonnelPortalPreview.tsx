@@ -9,6 +9,7 @@ import { usePersonnel } from "@/integrations/supabase/hooks/usePersonnel";
 import { supabase } from "@/integrations/supabase/client";
 import { useQuery } from "@tanstack/react-query";
 import { Eye, Clock, Briefcase, Bell, DollarSign, TrendingUp, ArrowLeft, CheckCircle2, XCircle, User, ChevronDown, ChevronUp, Calendar } from "lucide-react";
+import { PersonnelAvatar } from "@/components/personnel/PersonnelAvatar";
 import { Link, useNavigate } from "react-router-dom";
 import { startOfWeek, endOfWeek, startOfMonth, endOfMonth, parseISO, isWithinInterval, format } from "date-fns";
 import { ProjectPreviewDialog } from "@/components/admin/ProjectPreviewDialog";
@@ -273,13 +274,21 @@ export default function PersonnelPortalPreview() {
 
             {/* Personnel Dashboard Preview */}
             <div className="space-y-6">
-              <div>
-                <h2 className="text-xl font-bold">
-                  Welcome, {selectedPerson.first_name}!
-                </h2>
-                <p className="text-muted-foreground">
-                  Here's an overview of your work activity
-                </p>
+              <div className="flex items-center gap-4">
+                <PersonnelAvatar
+                  photoUrl={selectedPerson.photo_url}
+                  firstName={selectedPerson.first_name}
+                  lastName={selectedPerson.last_name}
+                  size="lg"
+                />
+                <div>
+                  <h2 className="text-xl font-bold">
+                    Welcome, {selectedPerson.first_name}!
+                  </h2>
+                  <p className="text-muted-foreground">
+                    Here's an overview of your work activity
+                  </p>
+                </div>
               </div>
 
               {/* Admin Quick Action - Only this navigates away */}

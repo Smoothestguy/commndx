@@ -4,6 +4,7 @@ import { Pencil, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { StatusBadge } from "@/components/shared/StatusBadge";
+import { PersonnelAvatar } from "@/components/personnel/PersonnelAvatar";
 import { TimeEntryWithDetails } from "@/integrations/supabase/hooks/useTimeEntries";
 import {
   Table,
@@ -176,7 +177,15 @@ export function TimeTrackingTable({ entries, onEdit, onBulkDelete, isDeleting }:
                   {format(new Date(entry.entry_date), "MMM dd, yyyy")}
                 </TableCell>
                 <TableCell className="text-foreground">
-                  {getPersonnelName(entry)}
+                  <div className="flex items-center gap-2">
+                    <PersonnelAvatar
+                      photoUrl={entry.personnel?.photo_url}
+                      firstName={entry.personnel?.first_name || entry.profiles?.first_name || ""}
+                      lastName={entry.personnel?.last_name || entry.profiles?.last_name || ""}
+                      size="xs"
+                    />
+                    {getPersonnelName(entry)}
+                  </div>
                 </TableCell>
                 <TableCell className="text-foreground">
                   {entry.projects?.name || "Unknown"}
