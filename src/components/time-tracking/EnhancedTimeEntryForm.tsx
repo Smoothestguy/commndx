@@ -2,7 +2,8 @@ import { useState, useEffect, useMemo } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
-import { Clock, AlertCircle, Calendar, CalendarDays, Users, UserPlus, UserCheck, Gift, AlertTriangle } from "lucide-react";
+import { Clock, AlertCircle, Calendar, CalendarDays, Users, UserPlus, UserCheck, Gift, AlertTriangle, Info } from "lucide-react";
+import { Alert, AlertDescription } from "@/components/ui/alert";
 import {
   Dialog,
   DialogContent,
@@ -54,7 +55,7 @@ import {
   TimeEntryInsert,
   PersonnelTimeEntryInsert,
 } from "@/integrations/supabase/hooks/useTimeEntries";
-import { usePersonnelByProject } from "@/integrations/supabase/hooks/usePersonnelProjectAssignments";
+import { usePersonnelByProject, usePersonnelCountByProjects } from "@/integrations/supabase/hooks/usePersonnelProjectAssignments";
 import { useCompanySettings } from "@/integrations/supabase/hooks/useCompanySettings";
 import { format, addDays, startOfWeek } from "date-fns";
 import { cn } from "@/lib/utils";
@@ -120,6 +121,11 @@ export function EnhancedTimeEntryForm({
 
   const { data: projects = [] } = useAssignedProjects();
   const { data: companySettings } = useCompanySettings();
+  
+  // Get personnel counts for all projects
+  const projectIds = projects?.map(p => p.id) || [];
+  const { data: personnelCounts = {} } = usePersonnelCountByProjects(projectIds);
+  
   const addTimeEntry = useAddTimeEntry();
   const updateTimeEntry = useUpdateTimeEntry();
   const bulkAddTimeEntries = useBulkAddTimeEntries();
@@ -465,68 +471,100 @@ export function EnhancedTimeEntryForm({
         </div>
 
         {assignedPersonnel.length > 0 ? (
-          <div className="grid grid-cols-2 gap-2 max-h-40 overflow-y-auto p-1">
-            {assignedPersonnel.map((assignment) => {
-              const person = assignment.personnel;
-              if (!person) return null;
-              const isSelected = selectedPersonnel.has(person.id);
-              return (
-                <div
-                  key={person.id}
-                  onClick={() => togglePersonnel(person.id)}
-                  className={cn(
-                    "flex items-center justify-between p-2 rounded-lg cursor-pointer transition-colors border",
-                    isSelected
-                      ? "bg-primary/10 border-primary"
-                      : "bg-muted/30 border-transparent hover:bg-muted/50"
-                  )}
-                >
-                  <div className="flex items-center gap-2">
-                    <Checkbox checked={isSelected} className="pointer-events-none" />
-                    <span className="text-sm">{person.first_name} {person.last_name}</span>
+          <>
+            <div className="grid grid-cols-2 gap-2 max-h-40 overflow-y-auto p-1">
+              {assignedPersonnel.map((assignment) => {
+                const person = assignment.personnel;
+                if (!person) return null;
+                const isSelected = selectedPersonnel.has(person.id);
+                return (
+                  <div
+                    key={person.id}
+                    onClick={() => togglePersonnel(person.id)}
+                    className={cn(
+                      "flex items-center justify-between p-2 rounded-lg cursor-pointer transition-colors border",
+                      isSelected
+                        ? "bg-primary/10 border-primary"
+                        : "bg-muted/30 border-transparent hover:bg-muted/50"
+                    )}
+                  >
+                    <div className="flex items-center gap-2">
+                      <Checkbox checked={isSelected} className="pointer-events-none" />
+                      <span className="text-sm">{person.first_name} {person.last_name}</span>
+                    </div>
+                    {person.hourly_rate && (
+                      <span className="text-xs text-muted-foreground">
+                        ${person.hourly_rate}/hr
+                      </span>
+                    )}
                   </div>
-                  {person.hourly_rate && (
-                    <span className="text-xs text-muted-foreground">
-                      ${person.hourly_rate}/hr
-                    </span>
-                  )}
-                </div>
-              );
-            })}
-          </div>
+                );
+              })}
+            </div>
+            <div className="flex gap-2">
+              <Button
+                type="button"
+                variant="ghost"
+                size="sm"
+                onClick={() => setQuickAddOpen(true)}
+                className="text-xs"
+              >
+                <UserPlus className="h-3.5 w-3.5 mr-1" />
+                Add New
+              </Button>
+              <Button
+                type="button"
+                variant="ghost"
+                size="sm"
+                onClick={() => setAssignExistingOpen(true)}
+                className="text-xs"
+              >
+                <UserCheck className="h-3.5 w-3.5 mr-1" />
+                Assign Existing
+              </Button>
+            </div>
+            {selectedPersonnel.size === 0 && (
+              <div className="flex items-center gap-2 text-xs text-muted-foreground bg-muted/30 rounded-md px-3 py-2">
+                <Info className="h-3.5 w-3.5 flex-shrink-0" />
+                <span>Leave empty to log time for yourself</span>
+              </div>
+            )}
+          </>
         ) : (
-          <div className="text-center py-3 text-sm text-muted-foreground border rounded-lg">
-            No personnel assigned to this project
-          </div>
-        )}
-
-        <div className="flex gap-2">
-          <Button
-            type="button"
-            variant="ghost"
-            size="sm"
-            onClick={() => setQuickAddOpen(true)}
-            className="text-xs"
-          >
-            <UserPlus className="h-3.5 w-3.5 mr-1" />
-            Add New
-          </Button>
-          <Button
-            type="button"
-            variant="ghost"
-            size="sm"
-            onClick={() => setAssignExistingOpen(true)}
-            className="text-xs"
-          >
-            <UserCheck className="h-3.5 w-3.5 mr-1" />
-            Assign Existing
-          </Button>
-        </div>
-
-        {selectedPersonnel.size === 0 && (
-          <p className="text-xs text-muted-foreground">
-            Leave empty to log time for yourself
-          </p>
+          <Alert className="border-amber-500/50 bg-amber-500/10">
+            <AlertTriangle className="h-4 w-4 text-amber-500" />
+            <AlertDescription className="space-y-3">
+              <p className="text-sm font-medium text-foreground">No personnel assigned to this project</p>
+              <p className="text-xs text-muted-foreground">
+                Assign personnel to log time on their behalf, or continue without selection to log your own time.
+              </p>
+              <div className="flex flex-wrap gap-2 pt-1">
+                <Button
+                  type="button"
+                  size="sm"
+                  onClick={() => setAssignExistingOpen(true)}
+                  className="h-8"
+                >
+                  <UserCheck className="h-3.5 w-3.5 mr-1.5" />
+                  Assign Personnel
+                </Button>
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setQuickAddOpen(true)}
+                  className="h-8"
+                >
+                  <UserPlus className="h-3.5 w-3.5 mr-1.5" />
+                  Add New Personnel
+                </Button>
+              </div>
+              <div className="flex items-center gap-2 text-xs text-muted-foreground pt-2 border-t border-border/50">
+                <Info className="h-3.5 w-3.5 flex-shrink-0" />
+                <span>Or continue without selection to log your own time</span>
+              </div>
+            </AlertDescription>
+          </Alert>
         )}
       </div>
     );
@@ -568,63 +606,91 @@ export function EnhancedTimeEntryForm({
         </div>
 
         {assignedPersonnel.length > 0 ? (
-          <div className="grid grid-cols-3 gap-2 max-h-32 overflow-y-auto p-1 border rounded-lg">
-            {assignedPersonnel.map((assignment) => {
-              const person = assignment.personnel;
-              if (!person) return null;
-              const isSelected = selectedPersonnel.has(person.id);
-              return (
-                <div
-                  key={person.id}
-                  onClick={() => togglePersonnel(person.id)}
-                  className={cn(
-                    "flex items-center justify-between p-2 rounded-lg cursor-pointer transition-colors border",
-                    isSelected
-                      ? "bg-primary/10 border-primary"
-                      : "bg-muted/30 border-transparent hover:bg-muted/50"
-                  )}
-                >
-                  <div className="flex items-center gap-2">
-                    <Checkbox checked={isSelected} className="pointer-events-none" />
-                    <span className="text-sm truncate">{person.first_name} {person.last_name}</span>
+          <>
+            <div className="grid grid-cols-3 gap-2 max-h-32 overflow-y-auto p-1 border rounded-lg">
+              {assignedPersonnel.map((assignment) => {
+                const person = assignment.personnel;
+                if (!person) return null;
+                const isSelected = selectedPersonnel.has(person.id);
+                return (
+                  <div
+                    key={person.id}
+                    onClick={() => togglePersonnel(person.id)}
+                    className={cn(
+                      "flex items-center justify-between p-2 rounded-lg cursor-pointer transition-colors border",
+                      isSelected
+                        ? "bg-primary/10 border-primary"
+                        : "bg-muted/30 border-transparent hover:bg-muted/50"
+                    )}
+                  >
+                    <div className="flex items-center gap-2">
+                      <Checkbox checked={isSelected} className="pointer-events-none" />
+                      <span className="text-sm truncate">{person.first_name} {person.last_name}</span>
+                    </div>
+                    {person.hourly_rate && (
+                      <span className="text-xs text-muted-foreground whitespace-nowrap">
+                        ${person.hourly_rate}/hr
+                      </span>
+                    )}
                   </div>
-                  {person.hourly_rate && (
-                    <span className="text-xs text-muted-foreground whitespace-nowrap">
-                      ${person.hourly_rate}/hr
-                    </span>
-                  )}
-                </div>
-              );
-            })}
-          </div>
+                );
+              })}
+            </div>
+            <div className="flex gap-2">
+              <Button
+                type="button"
+                variant="ghost"
+                size="sm"
+                onClick={() => setQuickAddOpen(true)}
+                className="text-xs"
+              >
+                <UserPlus className="h-3.5 w-3.5 mr-1" />
+                Add New
+              </Button>
+              <Button
+                type="button"
+                variant="ghost"
+                size="sm"
+                onClick={() => setAssignExistingOpen(true)}
+                className="text-xs"
+              >
+                <UserCheck className="h-3.5 w-3.5 mr-1" />
+                Assign Existing
+              </Button>
+            </div>
+          </>
         ) : (
-          <div className="text-center py-3 text-sm text-muted-foreground border rounded-lg">
-            No personnel assigned to this project
-          </div>
+          <Alert className="border-amber-500/50 bg-amber-500/10">
+            <AlertTriangle className="h-4 w-4 text-amber-500" />
+            <AlertDescription className="space-y-3">
+              <p className="text-sm font-medium text-foreground">No personnel assigned to this project</p>
+              <p className="text-xs text-muted-foreground">
+                You must assign personnel before logging time for them in weekly mode.
+              </p>
+              <div className="flex flex-wrap gap-2 pt-1">
+                <Button
+                  type="button"
+                  size="sm"
+                  onClick={() => setAssignExistingOpen(true)}
+                  className="h-8"
+                >
+                  <UserCheck className="h-3.5 w-3.5 mr-1.5" />
+                  Assign Personnel
+                </Button>
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setQuickAddOpen(true)}
+                  className="h-8"
+                >
+                  <UserPlus className="h-3.5 w-3.5 mr-1.5" />
+                  Add New Personnel
+                </Button>
+              </div>
+            </AlertDescription>
+          </Alert>
         )}
-
-        <div className="flex gap-2">
-          <Button
-            type="button"
-            variant="ghost"
-            size="sm"
-            onClick={() => setQuickAddOpen(true)}
-            className="text-xs"
-          >
-            <UserPlus className="h-3.5 w-3.5 mr-1" />
-            Add New
-          </Button>
-          <Button
-            type="button"
-            variant="ghost"
-            size="sm"
-            onClick={() => setAssignExistingOpen(true)}
-            className="text-xs"
-          >
-            <UserCheck className="h-3.5 w-3.5 mr-1" />
-            Assign Existing
-          </Button>
-        </div>
       </div>
     );
   };
@@ -827,11 +893,24 @@ export function EnhancedTimeEntryForm({
                             </SelectTrigger>
                           </FormControl>
                           <SelectContent>
-                            {projects?.map((project) => (
-                              <SelectItem key={project.id} value={project.id}>
-                                {project.name}
-                              </SelectItem>
-                            ))}
+                            {projects?.map((project) => {
+                              const count = personnelCounts[project.id] || 0;
+                              return (
+                                <SelectItem key={project.id} value={project.id}>
+                                  <div className="flex items-center justify-between w-full gap-2">
+                                    <span>{project.name}</span>
+                                    <span className={cn(
+                                      "text-xs px-1.5 py-0.5 rounded",
+                                      count === 0 
+                                        ? "bg-amber-500/10 text-amber-600" 
+                                        : "bg-muted text-muted-foreground"
+                                    )}>
+                                      {count} assigned
+                                    </span>
+                                  </div>
+                                </SelectItem>
+                              );
+                            })}
                           </SelectContent>
                         </Select>
                         <FormMessage />
@@ -988,11 +1067,24 @@ export function EnhancedTimeEntryForm({
                     <SelectValue placeholder="Select a project" />
                   </SelectTrigger>
                   <SelectContent>
-                    {projects?.map((project) => (
-                      <SelectItem key={project.id} value={project.id}>
-                        {project.name}
-                      </SelectItem>
-                    ))}
+                    {projects?.map((project) => {
+                      const count = personnelCounts[project.id] || 0;
+                      return (
+                        <SelectItem key={project.id} value={project.id}>
+                          <div className="flex items-center justify-between w-full gap-2">
+                            <span>{project.name}</span>
+                            <span className={cn(
+                              "text-xs px-1.5 py-0.5 rounded",
+                              count === 0 
+                                ? "bg-amber-500/10 text-amber-600" 
+                                : "bg-muted text-muted-foreground"
+                            )}>
+                              {count} assigned
+                            </span>
+                          </div>
+                        </SelectItem>
+                      );
+                    })}
                   </SelectContent>
                 </Select>
               </div>
