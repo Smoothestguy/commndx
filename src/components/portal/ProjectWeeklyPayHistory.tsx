@@ -1,26 +1,22 @@
-import { useMemo } from "react";
+import { useState, useMemo } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Calendar, Clock, DollarSign } from "lucide-react";
-import { format, parseISO, startOfWeek, endOfWeek } from "date-fns";
+import { Calendar, Clock, DollarSign, ChevronDown, ChevronUp } from "lucide-react";
+import { format } from "date-fns";
 import { formatCurrency } from "@/lib/utils";
+import { 
+  getAllPayPeriodsFromEntries, 
+  calculatePayPeriodTotals,
+  PayPeriod 
+} from "@/lib/payPeriodUtils";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 
 interface TimeEntry {
   id: string;
   entry_date: string;
   regular_hours: number | null;
   overtime_hours: number | null;
-}
-
-interface WeekData {
-  weekStart: Date;
-  weekEnd: Date;
-  daysWorked: number;
-  regularHours: number;
-  overtimeHours: number;
-  totalHours: number;
-  regularPay: number;
-  overtimePay: number;
-  totalPay: number;
 }
 
 interface ProjectWeeklyPayHistoryProps {
@@ -34,66 +30,44 @@ export function ProjectWeeklyPayHistory({
   hourlyRate, 
   overtimeMultiplier = 1.5 
 }: ProjectWeeklyPayHistoryProps) {
-  const weeklyData = useMemo(() => {
-    if (!timeEntries || timeEntries.length === 0) return [];
+  const [selectedPeriodKey, setSelectedPeriodKey] = useState<string>("");
+  const [expandedPeriods, setExpandedPeriods] = useState<Set<string>>(new Set());
 
-    // Group entries by week
-    const weekMap = new Map<string, { entries: TimeEntry[]; dates: Set<string> }>();
+  // Get all pay periods from time entries
+  const payPeriods = useMemo(() => {
+    return getAllPayPeriodsFromEntries(timeEntries);
+  }, [timeEntries]);
 
-    timeEntries.forEach((entry) => {
-      const entryDate = parseISO(entry.entry_date);
-      const weekStart = startOfWeek(entryDate, { weekStartsOn: 1 }); // Monday start
-      const weekKey = format(weekStart, "yyyy-MM-dd");
+  // Default to most recent period expanded
+  const selectedPeriod = useMemo(() => {
+    if (!payPeriods.length) return null;
+    if (!selectedPeriodKey) return payPeriods[0];
+    return payPeriods.find(p => format(p.weekStart, "yyyy-MM-dd") === selectedPeriodKey) || payPeriods[0];
+  }, [payPeriods, selectedPeriodKey]);
 
-      if (!weekMap.has(weekKey)) {
-        weekMap.set(weekKey, { entries: [], dates: new Set() });
-      }
+  // Calculate totals for selected period
+  const periodTotals = useMemo(() => {
+    if (!selectedPeriod) return null;
+    return calculatePayPeriodTotals(timeEntries, selectedPeriod, hourlyRate || 0, overtimeMultiplier);
+  }, [timeEntries, selectedPeriod, hourlyRate, overtimeMultiplier]);
 
-      const weekData = weekMap.get(weekKey)!;
-      weekData.entries.push(entry);
-      weekData.dates.add(entry.entry_date);
-    });
+  const togglePeriodExpanded = (periodKey: string) => {
+    const newExpanded = new Set(expandedPeriods);
+    if (newExpanded.has(periodKey)) {
+      newExpanded.delete(periodKey);
+    } else {
+      newExpanded.add(periodKey);
+    }
+    setExpandedPeriods(newExpanded);
+  };
 
-    // Calculate weekly totals
-    const weeks: WeekData[] = [];
-    const rate = hourlyRate || 0;
-
-    weekMap.forEach((data, weekKey) => {
-      const weekStart = parseISO(weekKey);
-      const weekEnd = endOfWeek(weekStart, { weekStartsOn: 1 });
-
-      const regularHours = data.entries.reduce((sum, e) => sum + (e.regular_hours || 0), 0);
-      const overtimeHours = data.entries.reduce((sum, e) => sum + (e.overtime_hours || 0), 0);
-      const totalHours = regularHours + overtimeHours;
-
-      const regularPay = regularHours * rate;
-      const overtimePay = overtimeHours * rate * overtimeMultiplier;
-      const totalPay = regularPay + overtimePay;
-
-      weeks.push({
-        weekStart,
-        weekEnd,
-        daysWorked: data.dates.size,
-        regularHours,
-        overtimeHours,
-        totalHours,
-        regularPay,
-        overtimePay,
-        totalPay,
-      });
-    });
-
-    // Sort by week start descending (most recent first)
-    return weeks.sort((a, b) => b.weekStart.getTime() - a.weekStart.getTime());
-  }, [timeEntries, hourlyRate, overtimeMultiplier]);
-
-  if (weeklyData.length === 0) {
+  if (payPeriods.length === 0) {
     return (
       <Card>
         <CardHeader>
           <CardTitle className="text-base flex items-center gap-2">
             <Calendar className="h-4 w-4 text-primary" />
-            Weekly Pay Periods
+            Pay Period History
           </CardTitle>
         </CardHeader>
         <CardContent>
@@ -108,58 +82,175 @@ export function ProjectWeeklyPayHistory({
   return (
     <Card>
       <CardHeader>
-        <CardTitle className="text-base flex items-center gap-2">
-          <Calendar className="h-4 w-4 text-primary" />
-          Weekly Pay Periods
-        </CardTitle>
-      </CardHeader>
-      <CardContent className="space-y-3">
-        {weeklyData.map((week) => (
-          <div 
-            key={format(week.weekStart, "yyyy-MM-dd")} 
-            className="p-4 rounded-lg border bg-card"
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+          <CardTitle className="text-base flex items-center gap-2">
+            <Calendar className="h-4 w-4 text-primary" />
+            Pay Period History
+          </CardTitle>
+          <Select 
+            value={selectedPeriodKey || (payPeriods[0] ? format(payPeriods[0].weekStart, "yyyy-MM-dd") : "")}
+            onValueChange={setSelectedPeriodKey}
           >
-            {/* Week Header */}
-            <div className="flex items-center justify-between mb-3">
-              <div className="flex items-center gap-2">
-                <Calendar className="h-4 w-4 text-muted-foreground" />
-                <span className="font-medium text-sm">
-                  {format(week.weekStart, "MMM d")} - {format(week.weekEnd, "MMM d, yyyy")}
-                </span>
-              </div>
-              <span className="text-xs text-muted-foreground bg-muted px-2 py-1 rounded">
-                {week.daysWorked} day{week.daysWorked !== 1 ? "s" : ""} worked
+            <SelectTrigger className="w-full sm:w-[220px] h-9">
+              <SelectValue placeholder="Select pay period" />
+            </SelectTrigger>
+            <SelectContent>
+              {payPeriods.map((period) => (
+                <SelectItem 
+                  key={format(period.weekStart, "yyyy-MM-dd")} 
+                  value={format(period.weekStart, "yyyy-MM-dd")}
+                >
+                  {period.label}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
+      </CardHeader>
+      <CardContent className="space-y-4">
+        {selectedPeriod && periodTotals && (
+          <div className="p-4 rounded-lg border bg-primary/5 border-primary/20">
+            {/* Payment Date */}
+            <div className="flex items-center justify-between mb-3 text-sm">
+              <span className="text-muted-foreground">Payment Date:</span>
+              <span className="font-medium text-primary">
+                {format(selectedPeriod.paymentDate, "EEEE, MMM d, yyyy")}
               </span>
             </div>
 
-            {/* Hours Breakdown */}
-            <div className="flex items-center gap-2 mb-2">
-              <Clock className="h-4 w-4 text-muted-foreground flex-shrink-0" />
-              <div className="flex items-center gap-1 text-sm flex-wrap">
-                <span>{week.regularHours.toFixed(1)}h</span>
-                <span className="text-muted-foreground">+</span>
-                <span className="text-amber-600">{week.overtimeHours.toFixed(1)}h OT</span>
-                <span className="text-muted-foreground">=</span>
-                <span className="font-semibold">{week.totalHours.toFixed(1)}h</span>
+            {/* Weekly Summary */}
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 text-center mb-4">
+              <div className="p-2 bg-background rounded-lg">
+                <div className="text-lg font-bold">{periodTotals.daysWorked}</div>
+                <div className="text-xs text-muted-foreground">Days Worked</div>
+              </div>
+              <div className="p-2 bg-background rounded-lg">
+                <div className="text-lg font-bold">{periodTotals.regularHours.toFixed(1)}</div>
+                <div className="text-xs text-muted-foreground">Regular Hours</div>
+              </div>
+              <div className="p-2 bg-background rounded-lg">
+                <div className="text-lg font-bold text-amber-600">{periodTotals.overtimeHours.toFixed(1)}</div>
+                <div className="text-xs text-muted-foreground">OT Hours</div>
+              </div>
+              <div className="p-2 bg-background rounded-lg">
+                <div className="text-lg font-bold">{periodTotals.totalHours.toFixed(1)}</div>
+                <div className="text-xs text-muted-foreground">Total Hours</div>
               </div>
             </div>
 
             {/* Pay Breakdown */}
             {hourlyRate !== null && hourlyRate > 0 && (
-              <div className="flex items-center gap-2">
-                <DollarSign className="h-4 w-4 text-muted-foreground flex-shrink-0" />
-                <div className="flex items-center gap-1 text-sm flex-wrap">
-                  <span>{formatCurrency(week.regularPay)}</span>
-                  <span className="text-muted-foreground">+</span>
-                  <span className="text-amber-600">{formatCurrency(week.overtimePay)}</span>
-                  <span className="text-xs text-muted-foreground">(1.5x)</span>
-                  <span className="text-muted-foreground">=</span>
-                  <span className="font-semibold text-primary">{formatCurrency(week.totalPay)}</span>
-                </div>
+              <div className="flex items-center gap-2 justify-center text-sm bg-background p-3 rounded-lg mb-4">
+                <DollarSign className="h-4 w-4 text-muted-foreground" />
+                <span>{formatCurrency(periodTotals.regularPay)}</span>
+                <span className="text-muted-foreground">+</span>
+                <span className="text-amber-600">{formatCurrency(periodTotals.overtimePay)}</span>
+                <span className="text-xs text-muted-foreground">(1.5x)</span>
+                <span className="text-muted-foreground">=</span>
+                <span className="font-bold text-primary text-lg">{formatCurrency(periodTotals.totalPay)}</span>
               </div>
             )}
+
+            {/* Daily Breakdown */}
+            <Collapsible 
+              open={expandedPeriods.has(format(selectedPeriod.weekStart, "yyyy-MM-dd"))}
+              onOpenChange={() => togglePeriodExpanded(format(selectedPeriod.weekStart, "yyyy-MM-dd"))}
+            >
+              <CollapsibleTrigger className="flex items-center justify-between w-full p-2 text-sm font-medium hover:bg-background/50 rounded-lg transition-colors">
+                <span className="flex items-center gap-2">
+                  <Clock className="h-4 w-4" />
+                  Daily Breakdown
+                </span>
+                {expandedPeriods.has(format(selectedPeriod.weekStart, "yyyy-MM-dd")) ? (
+                  <ChevronUp className="h-4 w-4" />
+                ) : (
+                  <ChevronDown className="h-4 w-4" />
+                )}
+              </CollapsibleTrigger>
+              <CollapsibleContent>
+                <div className="mt-2 rounded-lg border overflow-hidden">
+                  <Table>
+                    <TableHeader>
+                      <TableRow className="bg-muted/50">
+                        <TableHead className="w-[80px]">Day</TableHead>
+                        <TableHead className="w-[100px]">Date</TableHead>
+                        <TableHead className="text-right">Regular</TableHead>
+                        <TableHead className="text-right">OT</TableHead>
+                        <TableHead className="text-right">Total</TableHead>
+                        {hourlyRate !== null && hourlyRate > 0 && (
+                          <TableHead className="text-right">Pay</TableHead>
+                        )}
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {periodTotals.dailyBreakdown.map((day) => {
+                        const dayPay = hourlyRate 
+                          ? (day.regularHours * hourlyRate) + (day.overtimeHours * hourlyRate * overtimeMultiplier)
+                          : 0;
+                        const hasHours = day.totalHours > 0;
+                        return (
+                          <TableRow 
+                            key={format(day.date, "yyyy-MM-dd")}
+                            className={hasHours ? "" : "opacity-50"}
+                          >
+                            <TableCell className="font-medium">{day.dayName}</TableCell>
+                            <TableCell className="text-muted-foreground">
+                              {format(day.date, "MMM d")}
+                            </TableCell>
+                            <TableCell className="text-right">
+                              {hasHours ? `${day.regularHours.toFixed(1)}h` : "-"}
+                            </TableCell>
+                            <TableCell className="text-right text-amber-600">
+                              {day.overtimeHours > 0 ? `${day.overtimeHours.toFixed(1)}h` : "-"}
+                            </TableCell>
+                            <TableCell className="text-right font-medium">
+                              {hasHours ? `${day.totalHours.toFixed(1)}h` : "-"}
+                            </TableCell>
+                            {hourlyRate !== null && hourlyRate > 0 && (
+                              <TableCell className="text-right font-medium text-primary">
+                                {hasHours ? formatCurrency(dayPay) : "-"}
+                              </TableCell>
+                            )}
+                          </TableRow>
+                        );
+                      })}
+                    </TableBody>
+                  </Table>
+                </div>
+              </CollapsibleContent>
+            </Collapsible>
           </div>
-        ))}
+        )}
+
+        {/* Past Pay Periods Summary List */}
+        {payPeriods.length > 1 && (
+          <div className="space-y-2">
+            <h4 className="text-sm font-medium text-muted-foreground">Past Pay Periods</h4>
+            {payPeriods.slice(1, 5).map((period) => {
+              const totals = calculatePayPeriodTotals(timeEntries, period, hourlyRate || 0, overtimeMultiplier);
+              return (
+                <div 
+                  key={format(period.weekStart, "yyyy-MM-dd")} 
+                  className="p-3 rounded-lg border bg-card cursor-pointer hover:bg-secondary/50 transition-colors"
+                  onClick={() => setSelectedPeriodKey(format(period.weekStart, "yyyy-MM-dd"))}
+                >
+                  <div className="flex items-center justify-between mb-1">
+                    <span className="font-medium text-sm">{period.label}</span>
+                    <span className="text-xs text-muted-foreground">
+                      {totals.daysWorked} day{totals.daysWorked !== 1 ? "s" : ""}
+                    </span>
+                  </div>
+                  <div className="flex items-center justify-between text-sm">
+                    <span className="text-muted-foreground">{totals.totalHours.toFixed(1)}h total</span>
+                    {hourlyRate !== null && hourlyRate > 0 && (
+                      <span className="font-medium text-primary">{formatCurrency(totals.totalPay)}</span>
+                    )}
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        )}
       </CardContent>
     </Card>
   );
