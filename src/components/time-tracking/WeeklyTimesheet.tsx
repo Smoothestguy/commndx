@@ -237,15 +237,24 @@ export function WeeklyTimesheet({ currentWeek, onWeekChange }: WeeklyTimesheetPr
 
   const weekTotalOvertime = weekTotal - weekTotalRegular;
   
-  const weekTotalPay = useMemo(() => {
-    let total = 0;
+  const { weekTotalPay, weekRegularPay, weekOvertimePay } = useMemo(() => {
+    let totalPay = 0;
+    let regularPay = 0;
+    let overtimePay = 0;
+    
     rows.forEach((row) => {
-      const pay = getRowPay(row.rowKey, row.personnelId ?? null, row.personnelRate ?? null);
-      if (pay !== null) {
-        total += pay;
+      if (row.personnelRate) {
+        const regular = getRowRegularHours(row.rowKey, row.personnelId ?? null);
+        const overtime = getRowOvertimeHours(row.rowKey, row.personnelId ?? null);
+        const regPay = regular * row.personnelRate;
+        const otPay = overtime * row.personnelRate * overtimeMultiplier;
+        regularPay += regPay;
+        overtimePay += otPay;
+        totalPay += regPay + otPay;
       }
     });
-    return total;
+    
+    return { weekTotalPay: totalPay, weekRegularPay: regularPay, weekOvertimePay: overtimePay };
   }, [rows, entries, overtimeMultiplier, weeklyOvertimeThreshold]);
 
   const handleJumpToRecentEntries = () => {
@@ -307,7 +316,7 @@ export function WeeklyTimesheet({ currentWeek, onWeekChange }: WeeklyTimesheetPr
       <div className="w-full max-w-full overflow-hidden space-y-3">
         {/* Weekly Total Card */}
         <Card className="p-3 bg-primary/5 border-primary/20">
-          <div className="space-y-2">
+          <div className="space-y-3">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2">
                 <Clock className="h-4 w-4 text-primary" />
@@ -315,18 +324,42 @@ export function WeeklyTimesheet({ currentWeek, onWeekChange }: WeeklyTimesheetPr
               </div>
               <span className="text-lg font-bold text-primary">{weekTotal.toFixed(1)}h</span>
             </div>
-            <div className="grid grid-cols-3 gap-2 text-sm">
-              <div className="text-center p-2 bg-background rounded">
-                <p className="text-muted-foreground text-xs">Regular</p>
-                <p className="font-medium">{weekTotalRegular.toFixed(1)}h</p>
+            
+            {/* Hours Breakdown */}
+            <div className="p-2 bg-background rounded space-y-1">
+              <p className="text-xs text-muted-foreground font-medium">Hours Breakdown</p>
+              <div className="flex items-center justify-center gap-2 text-sm">
+                <span className="font-medium">{weekTotalRegular.toFixed(1)}h</span>
+                <span className="text-muted-foreground">+</span>
+                <span className="font-medium text-amber-600">{weekTotalOvertime.toFixed(1)}h</span>
+                <span className="text-muted-foreground">=</span>
+                <span className="font-bold">{weekTotal.toFixed(1)}h</span>
               </div>
-              <div className="text-center p-2 bg-background rounded">
-                <p className="text-muted-foreground text-xs">Overtime</p>
-                <p className="font-medium">{weekTotalOvertime.toFixed(1)}h</p>
+              <div className="flex items-center justify-center gap-2 text-xs text-muted-foreground">
+                <span>Regular</span>
+                <span></span>
+                <span>Overtime</span>
+                <span></span>
+                <span>Total</span>
               </div>
-              <div className="text-center p-2 bg-background rounded">
-                <p className="text-muted-foreground text-xs">Pay</p>
-                <p className="font-medium">{formatCurrency(weekTotalPay)}</p>
+            </div>
+            
+            {/* Pay Breakdown */}
+            <div className="p-2 bg-background rounded space-y-1">
+              <p className="text-xs text-muted-foreground font-medium">Pay Breakdown ({overtimeMultiplier}x OT)</p>
+              <div className="flex items-center justify-center gap-2 text-sm">
+                <span className="font-medium">{formatCurrency(weekRegularPay)}</span>
+                <span className="text-muted-foreground">+</span>
+                <span className="font-medium text-amber-600">{formatCurrency(weekOvertimePay)}</span>
+                <span className="text-muted-foreground">=</span>
+                <span className="font-bold">{formatCurrency(weekTotalPay)}</span>
+              </div>
+              <div className="flex items-center justify-center gap-2 text-xs text-muted-foreground">
+                <span>Regular</span>
+                <span></span>
+                <span>Overtime</span>
+                <span></span>
+                <span>Total</span>
               </div>
             </div>
           </div>
@@ -456,6 +489,53 @@ export function WeeklyTimesheet({ currentWeek, onWeekChange }: WeeklyTimesheetPr
   // Desktop: Table view
   return (
     <div className="space-y-4">
+      {/* Weekly Summary Card */}
+      <Card className="p-4 bg-primary/5 border-primary/20">
+        <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+          {/* Hours Breakdown */}
+          <div className="flex-1">
+            <p className="text-sm text-muted-foreground font-medium mb-2">Hours Breakdown</p>
+            <div className="flex items-center gap-3">
+              <div className="text-center">
+                <p className="text-2xl font-bold">{weekTotalRegular.toFixed(1)}h</p>
+                <p className="text-xs text-muted-foreground">Regular</p>
+              </div>
+              <span className="text-2xl text-muted-foreground">+</span>
+              <div className="text-center">
+                <p className="text-2xl font-bold text-amber-600">{weekTotalOvertime.toFixed(1)}h</p>
+                <p className="text-xs text-muted-foreground">Overtime</p>
+              </div>
+              <span className="text-2xl text-muted-foreground">=</span>
+              <div className="text-center">
+                <p className="text-2xl font-bold text-primary">{weekTotal.toFixed(1)}h</p>
+                <p className="text-xs text-muted-foreground">Total</p>
+              </div>
+            </div>
+          </div>
+          
+          {/* Pay Breakdown */}
+          <div className="flex-1">
+            <p className="text-sm text-muted-foreground font-medium mb-2">Pay Breakdown ({overtimeMultiplier}x OT)</p>
+            <div className="flex items-center gap-3">
+              <div className="text-center">
+                <p className="text-2xl font-bold">{formatCurrency(weekRegularPay)}</p>
+                <p className="text-xs text-muted-foreground">Regular</p>
+              </div>
+              <span className="text-2xl text-muted-foreground">+</span>
+              <div className="text-center">
+                <p className="text-2xl font-bold text-amber-600">{formatCurrency(weekOvertimePay)}</p>
+                <p className="text-xs text-muted-foreground">Overtime</p>
+              </div>
+              <span className="text-2xl text-muted-foreground">=</span>
+              <div className="text-center">
+                <p className="text-2xl font-bold text-primary">{formatCurrency(weekTotalPay)}</p>
+                <p className="text-xs text-muted-foreground">Total</p>
+              </div>
+            </div>
+          </div>
+        </div>
+      </Card>
+
       <Card className="overflow-x-auto">
         <table className="w-full">
           <thead>
