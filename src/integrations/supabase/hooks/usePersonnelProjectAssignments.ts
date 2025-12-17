@@ -291,3 +291,31 @@ export function useDeletePersonnelAssignment() {
     },
   });
 }
+
+// Get personnel count for multiple projects (for displaying in project dropdowns)
+export function usePersonnelCountByProjects(projectIds: string[]) {
+  return useQuery({
+    queryKey: ["personnel-project-assignments", "counts", projectIds],
+    queryFn: async () => {
+      if (projectIds.length === 0) return {};
+
+      const { data, error } = await supabase
+        .from("personnel_project_assignments")
+        .select("project_id")
+        .in("project_id", projectIds)
+        .eq("status", "active");
+
+      if (error) throw error;
+
+      // Count personnel per project
+      const counts: Record<string, number> = {};
+      projectIds.forEach(id => { counts[id] = 0; });
+      data?.forEach(assignment => {
+        counts[assignment.project_id] = (counts[assignment.project_id] || 0) + 1;
+      });
+      
+      return counts;
+    },
+    enabled: projectIds.length > 0,
+  });
+}
