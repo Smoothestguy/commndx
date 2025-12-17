@@ -31,6 +31,7 @@ const personnelSchema = z.object({
   ssn_last_four: z.string().max(4).optional(),
   work_authorization_type: z.enum(["citizen", "permanent_resident", "work_visa", "ead", "other"]).optional(),
   work_auth_expiry: z.string().optional(),
+  i9_completed_at: z.string().optional(),
   everify_status: z.enum(["pending", "verified", "rejected", "expired", "not_required"]),
   everify_case_number: z.string().optional(),
   notes: z.string().optional(),
@@ -76,6 +77,9 @@ export const PersonnelForm = ({ personnel, onSuccess, onCancel, defaultVendorId,
       hourly_rate: personnel?.hourly_rate || 0,
       status: (personnel?.status as any) || "active",
       ssn_last_four: personnel?.ssn_last_four || "",
+      work_authorization_type: (personnel?.work_authorization_type as any) || undefined,
+      work_auth_expiry: personnel?.work_auth_expiry || "",
+      i9_completed_at: personnel?.i9_completed_at || "",
       everify_status: (personnel?.everify_status as any) || "pending",
       everify_case_number: personnel?.everify_case_number || "",
       notes: personnel?.notes || "",
@@ -234,6 +238,14 @@ export const PersonnelForm = ({ personnel, onSuccess, onCancel, defaultVendorId,
                   </p>
                 </div>
               )}
+
+              <div className="space-y-2">
+                <Label htmlFor="i9_completed_at">I-9 Completion Date</Label>
+                <Input id="i9_completed_at" type="date" {...register("i9_completed_at")} />
+                <p className="text-sm text-muted-foreground">
+                  Date when Form I-9 employment verification was completed
+                </p>
+              </div>
             </CardContent>
           </Card>
 
