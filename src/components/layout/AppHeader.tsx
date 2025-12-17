@@ -14,15 +14,20 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { ChevronDown, Settings, LogOut, MessageCircle } from "lucide-react";
+import { AdminNotificationBell } from "@/components/notifications/AdminNotificationBell";
+import { useUserRole } from "@/hooks/useUserRole";
 
 export function AppHeader() {
   const navigate = useNavigate();
   const { signOut, user } = useAuth();
   const { isOpen, toggleOpen, messages } = useAIAssistant();
+  const { isAdmin, isManager } = useUserRole();
 
   const userInitials = user?.email
     ? user.email.substring(0, 2).toUpperCase()
     : "U";
+
+  const showNotificationBell = isAdmin || isManager;
 
   return (
     <header className="h-14 bg-header sticky top-0 z-50 flex items-center justify-between px-4 border-b border-sidebar-border">
@@ -37,7 +42,7 @@ export function AppHeader() {
         </div>
       </div>
 
-      {/* Right side: AI Assistant + Theme toggle + User menu */}
+      {/* Right side: AI Assistant + Notifications + Theme toggle + User menu */}
       <div className="flex items-center gap-3">
         <Button
           variant="ghost"
@@ -54,6 +59,8 @@ export function AppHeader() {
             </span>
           )}
         </Button>
+
+        {showNotificationBell && <AdminNotificationBell />}
 
         <ThemeToggleSimple />
 

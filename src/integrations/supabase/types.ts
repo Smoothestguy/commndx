@@ -81,6 +81,45 @@ export type Database = {
           },
         ]
       }
+      admin_notifications: {
+        Row: {
+          created_at: string | null
+          id: string
+          is_read: boolean
+          link_url: string | null
+          message: string
+          metadata: Json | null
+          notification_type: string
+          related_id: string | null
+          title: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string | null
+          id?: string
+          is_read?: boolean
+          link_url?: string | null
+          message: string
+          metadata?: Json | null
+          notification_type?: string
+          related_id?: string | null
+          title: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string | null
+          id?: string
+          is_read?: boolean
+          link_url?: string | null
+          message?: string
+          metadata?: Json | null
+          notification_type?: string
+          related_id?: string | null
+          title?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       appointments: {
         Row: {
           appointment_type: Database["public"]["Enums"]["appointment_type"]
@@ -1803,6 +1842,7 @@ export type Database = {
       }
       notification_preferences: {
         Row: {
+          co_submitted_for_approval: boolean | null
           created_at: string | null
           event_accepted: boolean | null
           event_cancelled: boolean | null
@@ -1814,6 +1854,7 @@ export type Database = {
           notification_browser: boolean | null
           notification_sound: boolean | null
           notification_toast: boolean | null
+          personnel_registration_pending: boolean | null
           po_approved: boolean | null
           po_rejected: boolean | null
           po_sent: boolean | null
@@ -1823,6 +1864,7 @@ export type Database = {
           user_id: string
         }
         Insert: {
+          co_submitted_for_approval?: boolean | null
           created_at?: string | null
           event_accepted?: boolean | null
           event_cancelled?: boolean | null
@@ -1834,6 +1876,7 @@ export type Database = {
           notification_browser?: boolean | null
           notification_sound?: boolean | null
           notification_toast?: boolean | null
+          personnel_registration_pending?: boolean | null
           po_approved?: boolean | null
           po_rejected?: boolean | null
           po_sent?: boolean | null
@@ -1843,6 +1886,7 @@ export type Database = {
           user_id: string
         }
         Update: {
+          co_submitted_for_approval?: boolean | null
           created_at?: string | null
           event_accepted?: boolean | null
           event_cancelled?: boolean | null
@@ -1854,6 +1898,7 @@ export type Database = {
           notification_browser?: boolean | null
           notification_sound?: boolean | null
           notification_toast?: boolean | null
+          personnel_registration_pending?: boolean | null
           po_approved?: boolean | null
           po_rejected?: boolean | null
           po_sent?: boolean | null

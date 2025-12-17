@@ -98,3 +98,6 @@ verify_jwt = false
 
 [functions.accept-portal-invitation]
 verify_jwt = false
+
+[functions.create-admin-notification]
+verify_jwt = false
