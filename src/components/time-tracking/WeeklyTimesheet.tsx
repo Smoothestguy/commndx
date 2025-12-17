@@ -54,6 +54,7 @@ export function WeeklyTimesheet({ currentWeek, onWeekChange }: WeeklyTimesheetPr
   const { data: companySettings } = useCompanySettings();
   
   const overtimeMultiplier = companySettings?.overtime_multiplier || 1.5;
+  const weeklyOvertimeThreshold = companySettings?.weekly_overtime_threshold ?? 40;
 
   // Query to find the most recent time entry date
   const { data: latestEntryDate } = useQuery({
@@ -163,26 +164,11 @@ export function WeeklyTimesheet({ currentWeek, onWeekChange }: WeeklyTimesheetPr
       .reduce((sum, e) => sum + Number(e.hours), 0);
   };
 
-  const getRowRegularHours = (rowKey: string) => {
+  // Get total hours for a personnel across ALL projects for the week
+  const getPersonnelTotalWeeklyHours = (personnelId: string | null) => {
     return entries
-      .filter((e) => {
-        const entryRowKey = e.personnel_id 
-          ? `${e.project_id}-${e.personnel_id}` 
-          : `${e.project_id}-self`;
-        return entryRowKey === rowKey;
-      })
-      .reduce((sum, e) => sum + Number(e.regular_hours || 0), 0);
-  };
-
-  const getRowOvertimeHours = (rowKey: string) => {
-    return entries
-      .filter((e) => {
-        const entryRowKey = e.personnel_id 
-          ? `${e.project_id}-${e.personnel_id}` 
-          : `${e.project_id}-self`;
-        return entryRowKey === rowKey;
-      })
-      .reduce((sum, e) => sum + Number(e.overtime_hours || 0), 0);
+      .filter((e) => e.personnel_id === personnelId)
+      .reduce((sum, e) => sum + Number(e.hours), 0);
   };
 
   const getRowTotal = (rowKey: string) => {
@@ -196,27 +182,71 @@ export function WeeklyTimesheet({ currentWeek, onWeekChange }: WeeklyTimesheetPr
       .reduce((sum, e) => sum + Number(e.hours), 0);
   };
 
-  const getRowPay = (rowKey: string, rate: number | null) => {
+  // Calculate regular hours based on weekly 40-hour threshold
+  const getRowRegularHours = (rowKey: string, personnelId: string | null) => {
+    const totalPersonnelHours = getPersonnelTotalWeeklyHours(personnelId);
+    const rowTotalHours = getRowTotal(rowKey);
+    
+    if (totalPersonnelHours <= weeklyOvertimeThreshold) {
+      // All hours are regular
+      return rowTotalHours;
+    } else {
+      // Proportionally distribute regular hours across this row
+      const regularRatio = weeklyOvertimeThreshold / totalPersonnelHours;
+      return rowTotalHours * regularRatio;
+    }
+  };
+
+  // Calculate overtime hours based on weekly 40-hour threshold
+  const getRowOvertimeHours = (rowKey: string, personnelId: string | null) => {
+    const totalPersonnelHours = getPersonnelTotalWeeklyHours(personnelId);
+    const rowTotalHours = getRowTotal(rowKey);
+    
+    if (totalPersonnelHours <= weeklyOvertimeThreshold) {
+      // No overtime
+      return 0;
+    } else {
+      // Proportionally distribute overtime across this row
+      const overtimeRatio = (totalPersonnelHours - weeklyOvertimeThreshold) / totalPersonnelHours;
+      return rowTotalHours * overtimeRatio;
+    }
+  };
+
+  const getRowPay = (rowKey: string, personnelId: string | null, rate: number | null) => {
     if (!rate) return null;
-    const regular = getRowRegularHours(rowKey);
-    const overtime = getRowOvertimeHours(rowKey);
+    const regular = getRowRegularHours(rowKey, personnelId);
+    const overtime = getRowOvertimeHours(rowKey, personnelId);
     return (regular * rate) + (overtime * rate * overtimeMultiplier);
   };
 
-  const weekTotalRegular = entries.reduce((sum, e) => sum + Number(e.regular_hours || 0), 0);
-  const weekTotalOvertime = entries.reduce((sum, e) => sum + Number(e.overtime_hours || 0), 0);
+  // Calculate weekly totals based on per-personnel 40-hour threshold
   const weekTotal = entries.reduce((sum, e) => sum + Number(e.hours), 0);
+  
+  const weekTotalRegular = useMemo(() => {
+    // Get unique personnel IDs
+    const personnelIds = [...new Set(entries.map(e => e.personnel_id))];
+    let totalRegular = 0;
+    
+    personnelIds.forEach(personnelId => {
+      const personnelTotal = getPersonnelTotalWeeklyHours(personnelId);
+      totalRegular += Math.min(personnelTotal, weeklyOvertimeThreshold);
+    });
+    
+    return totalRegular;
+  }, [entries, weeklyOvertimeThreshold]);
+
+  const weekTotalOvertime = weekTotal - weekTotalRegular;
   
   const weekTotalPay = useMemo(() => {
     let total = 0;
     rows.forEach((row) => {
-      const pay = getRowPay(row.rowKey, row.personnelRate ?? null);
+      const pay = getRowPay(row.rowKey, row.personnelId ?? null, row.personnelRate ?? null);
       if (pay !== null) {
         total += pay;
       }
     });
     return total;
-  }, [rows, entries, overtimeMultiplier]);
+  }, [rows, entries, overtimeMultiplier, weeklyOvertimeThreshold]);
 
   const handleJumpToRecentEntries = () => {
     if (latestEntryDate && onWeekChange) {
@@ -447,10 +477,10 @@ export function WeeklyTimesheet({ currentWeek, onWeekChange }: WeeklyTimesheetPr
           </thead>
           <tbody>
             {rows.map((row) => {
-              const regularHrs = getRowRegularHours(row.rowKey);
-              const overtimeHrs = getRowOvertimeHours(row.rowKey);
+              const regularHrs = getRowRegularHours(row.rowKey, row.personnelId ?? null);
+              const overtimeHrs = getRowOvertimeHours(row.rowKey, row.personnelId ?? null);
               const totalHrs = getRowTotal(row.rowKey);
-              const pay = getRowPay(row.rowKey, row.personnelRate ?? null);
+              const pay = getRowPay(row.rowKey, row.personnelId ?? null, row.personnelRate ?? null);
 
               return (
                 <tr key={row.rowKey} className="border-b hover:bg-muted/30">
