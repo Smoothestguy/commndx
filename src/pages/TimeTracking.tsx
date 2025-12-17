@@ -132,7 +132,7 @@ export default function TimeTracking() {
             </div>
             
             {/* Weekly Timesheet */}
-            <WeeklyTimesheet currentWeek={weeklyViewWeek} />
+            <WeeklyTimesheet currentWeek={weeklyViewWeek} onWeekChange={setWeeklyViewWeek} />
           </TabsContent>
 
           <TabsContent value="assignments" className="mt-4">

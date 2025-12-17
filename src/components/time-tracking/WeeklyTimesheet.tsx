@@ -2,7 +2,7 @@ import { useState, useMemo } from "react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Plus, Edit, Clock, User } from "lucide-react";
+import { Plus, Edit, Clock, User, CalendarSearch } from "lucide-react";
 import { TimeEntryForm } from "./TimeEntryForm";
 import {
   TimeEntry,
@@ -10,9 +10,12 @@ import {
 } from "@/integrations/supabase/hooks/useTimeEntries";
 import { format, addDays, startOfWeek } from "date-fns";
 import { useIsMobile } from "@/hooks/use-mobile";
+import { useQuery } from "@tanstack/react-query";
+import { supabase } from "@/integrations/supabase/client";
 
 interface WeeklyTimesheetProps {
   currentWeek: Date;
+  onWeekChange?: (date: Date) => void;
 }
 
 interface TimeEntryWithRelations extends TimeEntry {
@@ -29,7 +32,7 @@ interface RowData {
   isPersonnelEntry: boolean;
 }
 
-export function WeeklyTimesheet({ currentWeek }: WeeklyTimesheetProps) {
+export function WeeklyTimesheet({ currentWeek, onWeekChange }: WeeklyTimesheetProps) {
   const [formOpen, setFormOpen] = useState(false);
   const [selectedDate, setSelectedDate] = useState<string>("");
   const [selectedProjectId, setSelectedProjectId] = useState<string>("");
@@ -39,6 +42,24 @@ export function WeeklyTimesheet({ currentWeek }: WeeklyTimesheetProps) {
   const weekStart = startOfWeek(currentWeek, { weekStartsOn: 1 });
   const { data: rawEntries = [], isLoading } = useAdminTimeEntriesByWeek(currentWeek);
   const entries = rawEntries as TimeEntryWithRelations[];
+
+  // Query to find the most recent time entry date
+  const { data: latestEntryDate } = useQuery({
+    queryKey: ["latest-time-entry-date"],
+    queryFn: async () => {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return null;
+
+      const { data } = await supabase
+        .from("time_entries")
+        .select("entry_date")
+        .eq("user_id", user.id)
+        .order("entry_date", { ascending: false })
+        .limit(1);
+      
+      return data?.[0]?.entry_date || null;
+    },
+  });
 
   // Get all days of the week
   const weekDays = Array.from({ length: 7 }, (_, i) => addDays(weekStart, i));
@@ -132,18 +153,50 @@ export function WeeklyTimesheet({ currentWeek }: WeeklyTimesheetProps) {
 
   const weekTotal = entries.reduce((sum, e) => sum + Number(e.hours), 0);
 
+  const handleJumpToRecentEntries = () => {
+    if (latestEntryDate && onWeekChange) {
+      onWeekChange(new Date(latestEntryDate));
+    }
+  };
+
+  // Check if the latest entry is in a different week
+  const latestEntryWeekStart = latestEntryDate 
+    ? startOfWeek(new Date(latestEntryDate), { weekStartsOn: 1 })
+    : null;
+  const hasEntriesInDifferentWeek = latestEntryWeekStart && 
+    latestEntryWeekStart.getTime() !== weekStart.getTime();
+
   if (isLoading) {
     return <div className="text-center py-8 text-muted-foreground">Loading...</div>;
   }
 
   if (rows.length === 0) {
     return (
-      <div className="text-center py-12">
-        <p className="text-muted-foreground mb-4">No time entries for this week yet.</p>
-        <p className="text-sm text-muted-foreground">
-          Switch to Time Entries tab to add your first entry.
-        </p>
-      </div>
+      <Card className="p-8 text-center">
+        <div className="flex flex-col items-center gap-4">
+          <div className="rounded-full bg-muted p-3">
+            <CalendarSearch className="h-8 w-8 text-muted-foreground" />
+          </div>
+          <div className="space-y-2">
+            <p className="text-lg font-medium">No time entries for this week</p>
+            <p className="text-sm text-muted-foreground">
+              {hasEntriesInDifferentWeek 
+                ? "You have entries in other weeks. Jump to your most recent entries or use the week navigator above."
+                : "Switch to the Time Entries tab to add your first entry, or navigate to a different week."}
+            </p>
+          </div>
+          {hasEntriesInDifferentWeek && onWeekChange && latestEntryDate && (
+            <Button 
+              variant="default" 
+              onClick={handleJumpToRecentEntries}
+              className="mt-2"
+            >
+              <CalendarSearch className="h-4 w-4 mr-2" />
+              Jump to Week of {format(new Date(latestEntryDate), "MMM d, yyyy")}
+            </Button>
+          )}
+        </div>
+      </Card>
     );
   }
 
