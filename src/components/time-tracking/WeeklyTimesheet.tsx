@@ -219,6 +219,18 @@ export function WeeklyTimesheet({ currentWeek, onWeekChange }: WeeklyTimesheetPr
     return (regular * rate) + (overtime * rate * overtimeMultiplier);
   };
 
+  const getRowRegularPay = (rowKey: string, personnelId: string | null, rate: number | null) => {
+    if (!rate) return null;
+    const regular = getRowRegularHours(rowKey, personnelId);
+    return regular * rate;
+  };
+
+  const getRowOvertimePay = (rowKey: string, personnelId: string | null, rate: number | null) => {
+    if (!rate) return null;
+    const overtime = getRowOvertimeHours(rowKey, personnelId);
+    return overtime * rate * overtimeMultiplier;
+  };
+
   // Calculate weekly totals based on per-personnel 40-hour threshold
   const weekTotal = entries.reduce((sum, e) => sum + Number(e.hours), 0);
   
@@ -549,10 +561,8 @@ export function WeeklyTimesheet({ currentWeek, onWeekChange }: WeeklyTimesheetPr
                   <div className="text-sm">{format(day, "MMM d")}</div>
                 </th>
               ))}
-              <th className="p-3 text-center font-medium min-w-[80px]">Regular</th>
-              <th className="p-3 text-center font-medium min-w-[80px]">OT</th>
-              <th className="p-3 text-center font-medium min-w-[80px]">Total</th>
-              <th className="p-3 text-center font-medium min-w-[100px]">Pay</th>
+              <th className="p-3 text-center font-medium min-w-[200px]">Hours Breakdown</th>
+              <th className="p-3 text-center font-medium min-w-[250px]">Pay Breakdown</th>
             </tr>
           </thead>
           <tbody>
@@ -560,7 +570,9 @@ export function WeeklyTimesheet({ currentWeek, onWeekChange }: WeeklyTimesheetPr
               const regularHrs = getRowRegularHours(row.rowKey, row.personnelId ?? null);
               const overtimeHrs = getRowOvertimeHours(row.rowKey, row.personnelId ?? null);
               const totalHrs = getRowTotal(row.rowKey);
-              const pay = getRowPay(row.rowKey, row.personnelId ?? null, row.personnelRate ?? null);
+              const regularPay = getRowRegularPay(row.rowKey, row.personnelId ?? null, row.personnelRate ?? null);
+              const overtimePay = getRowOvertimePay(row.rowKey, row.personnelId ?? null, row.personnelRate ?? null);
+              const totalPay = getRowPay(row.rowKey, row.personnelId ?? null, row.personnelRate ?? null);
 
               return (
                 <tr key={row.rowKey} className="border-b hover:bg-muted/30">
@@ -619,15 +631,27 @@ export function WeeklyTimesheet({ currentWeek, onWeekChange }: WeeklyTimesheetPr
                       </td>
                     );
                   })}
-                  <td className="p-3 text-center">{regularHrs.toFixed(2)}h</td>
-                  <td className="p-3 text-center text-amber-600">
-                    {overtimeHrs > 0 ? `${overtimeHrs.toFixed(2)}h` : "-"}
+                  <td className="p-3 text-center">
+                    <div className="flex items-center justify-center gap-1 text-sm">
+                      <span>{regularHrs.toFixed(2)}h</span>
+                      <span className="text-muted-foreground">+</span>
+                      <span className="text-amber-600">{overtimeHrs.toFixed(2)}h</span>
+                      <span className="text-muted-foreground">=</span>
+                      <span className="font-semibold">{totalHrs.toFixed(2)}h</span>
+                    </div>
                   </td>
-                  <td className="p-3 text-center font-semibold">
-                    {totalHrs.toFixed(2)}h
-                  </td>
-                  <td className="p-3 text-center font-semibold">
-                    {pay !== null ? formatCurrency(pay) : "-"}
+                  <td className="p-3 text-center">
+                    {totalPay !== null ? (
+                      <div className="flex items-center justify-center gap-1 text-sm">
+                        <span>{formatCurrency(regularPay!)}</span>
+                        <span className="text-muted-foreground">+</span>
+                        <span className="text-amber-600">{formatCurrency(overtimePay!)}</span>
+                        <span className="text-muted-foreground">=</span>
+                        <span className="font-semibold">{formatCurrency(totalPay)}</span>
+                      </div>
+                    ) : (
+                      <span className="text-muted-foreground">-</span>
+                    )}
                   </td>
                 </tr>
               );
@@ -639,12 +663,24 @@ export function WeeklyTimesheet({ currentWeek, onWeekChange }: WeeklyTimesheetPr
                   {getDayTotal(day).toFixed(2)}h
                 </td>
               ))}
-              <td className="p-3 text-center">{weekTotalRegular.toFixed(2)}h</td>
-              <td className="p-3 text-center text-amber-600">
-                {weekTotalOvertime > 0 ? `${weekTotalOvertime.toFixed(2)}h` : "-"}
+              <td className="p-3 text-center">
+                <div className="flex items-center justify-center gap-1 text-sm">
+                  <span>{weekTotalRegular.toFixed(2)}h</span>
+                  <span className="text-muted-foreground font-normal">+</span>
+                  <span className="text-amber-600">{weekTotalOvertime.toFixed(2)}h</span>
+                  <span className="text-muted-foreground font-normal">=</span>
+                  <span>{weekTotal.toFixed(2)}h</span>
+                </div>
               </td>
-              <td className="p-3 text-center">{weekTotal.toFixed(2)}h</td>
-              <td className="p-3 text-center">{formatCurrency(weekTotalPay)}</td>
+              <td className="p-3 text-center">
+                <div className="flex items-center justify-center gap-1 text-sm">
+                  <span>{formatCurrency(weekRegularPay)}</span>
+                  <span className="text-muted-foreground font-normal">+</span>
+                  <span className="text-amber-600">{formatCurrency(weekOvertimePay)}</span>
+                  <span className="text-muted-foreground font-normal">=</span>
+                  <span>{formatCurrency(weekTotalPay)}</span>
+                </div>
+              </td>
             </tr>
           </tbody>
         </table>
