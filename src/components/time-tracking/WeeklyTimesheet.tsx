@@ -2,12 +2,14 @@ import { useState, useMemo } from "react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Plus, Edit, Clock, User, CalendarSearch } from "lucide-react";
+import { Plus, Edit, Clock, User, CalendarSearch, DollarSign } from "lucide-react";
 import { TimeEntryForm } from "./TimeEntryForm";
+import { QuickRateEditDialog } from "./QuickRateEditDialog";
 import {
   TimeEntry,
   useAdminTimeEntriesByWeek,
 } from "@/integrations/supabase/hooks/useTimeEntries";
+import { useCompanySettings } from "@/integrations/supabase/hooks/useCompanySettings";
 import { format, addDays, startOfWeek } from "date-fns";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { useQuery } from "@tanstack/react-query";
@@ -19,7 +21,7 @@ interface WeeklyTimesheetProps {
 }
 
 interface TimeEntryWithRelations extends TimeEntry {
-  personnel?: { id: string; first_name: string; last_name: string } | null;
+  personnel?: { id: string; first_name: string; last_name: string; hourly_rate?: number | null } | null;
   projects?: { id: string; name: string } | null;
 }
 
@@ -29,6 +31,7 @@ interface RowData {
   projectName: string;
   personnelId?: string | null;
   personnelName?: string;
+  personnelRate?: number | null;
   isPersonnelEntry: boolean;
 }
 
@@ -37,11 +40,20 @@ export function WeeklyTimesheet({ currentWeek, onWeekChange }: WeeklyTimesheetPr
   const [selectedDate, setSelectedDate] = useState<string>("");
   const [selectedProjectId, setSelectedProjectId] = useState<string>("");
   const [editingEntry, setEditingEntry] = useState<TimeEntry | null>(null);
+  const [rateDialogOpen, setRateDialogOpen] = useState(false);
+  const [selectedPersonnel, setSelectedPersonnel] = useState<{
+    id: string;
+    name: string;
+    rate: number;
+  } | null>(null);
   const isMobile = useIsMobile();
 
   const weekStart = startOfWeek(currentWeek, { weekStartsOn: 1 });
   const { data: rawEntries = [], isLoading } = useAdminTimeEntriesByWeek(currentWeek);
   const entries = rawEntries as TimeEntryWithRelations[];
+  const { data: companySettings } = useCompanySettings();
+  
+  const overtimeMultiplier = companySettings?.overtime_multiplier || 1.5;
 
   // Query to find the most recent time entry date
   const { data: latestEntryDate } = useQuery({
@@ -83,13 +95,13 @@ export function WeeklyTimesheet({ currentWeek, onWeekChange }: WeeklyTimesheetPr
           personnelName: entry.personnel 
             ? `${entry.personnel.first_name} ${entry.personnel.last_name}` 
             : undefined,
+          personnelRate: entry.personnel?.hourly_rate ?? null,
           isPersonnelEntry,
         });
       }
     });
     
     return Array.from(rowMap.values()).sort((a, b) => {
-      // Sort by project name first, then by personnel name
       const projectCompare = a.projectName.localeCompare(b.projectName);
       if (projectCompare !== 0) return projectCompare;
       if (!a.personnelName) return -1;
@@ -133,11 +145,44 @@ export function WeeklyTimesheet({ currentWeek, onWeekChange }: WeeklyTimesheetPr
     setSelectedProjectId("");
   };
 
+  const handleEditRate = (row: RowData) => {
+    if (row.personnelId && row.personnelName) {
+      setSelectedPersonnel({
+        id: row.personnelId,
+        name: row.personnelName,
+        rate: row.personnelRate ?? 0,
+      });
+      setRateDialogOpen(true);
+    }
+  };
+
   const getDayTotal = (date: Date) => {
     const dateString = format(date, "yyyy-MM-dd");
     return entries
       .filter((e) => e.entry_date === dateString)
       .reduce((sum, e) => sum + Number(e.hours), 0);
+  };
+
+  const getRowRegularHours = (rowKey: string) => {
+    return entries
+      .filter((e) => {
+        const entryRowKey = e.personnel_id 
+          ? `${e.project_id}-${e.personnel_id}` 
+          : `${e.project_id}-self`;
+        return entryRowKey === rowKey;
+      })
+      .reduce((sum, e) => sum + Number(e.regular_hours || 0), 0);
+  };
+
+  const getRowOvertimeHours = (rowKey: string) => {
+    return entries
+      .filter((e) => {
+        const entryRowKey = e.personnel_id 
+          ? `${e.project_id}-${e.personnel_id}` 
+          : `${e.project_id}-self`;
+        return entryRowKey === rowKey;
+      })
+      .reduce((sum, e) => sum + Number(e.overtime_hours || 0), 0);
   };
 
   const getRowTotal = (rowKey: string) => {
@@ -151,7 +196,27 @@ export function WeeklyTimesheet({ currentWeek, onWeekChange }: WeeklyTimesheetPr
       .reduce((sum, e) => sum + Number(e.hours), 0);
   };
 
+  const getRowPay = (rowKey: string, rate: number | null) => {
+    if (!rate) return null;
+    const regular = getRowRegularHours(rowKey);
+    const overtime = getRowOvertimeHours(rowKey);
+    return (regular * rate) + (overtime * rate * overtimeMultiplier);
+  };
+
+  const weekTotalRegular = entries.reduce((sum, e) => sum + Number(e.regular_hours || 0), 0);
+  const weekTotalOvertime = entries.reduce((sum, e) => sum + Number(e.overtime_hours || 0), 0);
   const weekTotal = entries.reduce((sum, e) => sum + Number(e.hours), 0);
+  
+  const weekTotalPay = useMemo(() => {
+    let total = 0;
+    rows.forEach((row) => {
+      const pay = getRowPay(row.rowKey, row.personnelRate ?? null);
+      if (pay !== null) {
+        total += pay;
+      }
+    });
+    return total;
+  }, [rows, entries, overtimeMultiplier]);
 
   const handleJumpToRecentEntries = () => {
     if (latestEntryDate && onWeekChange) {
@@ -159,12 +224,18 @@ export function WeeklyTimesheet({ currentWeek, onWeekChange }: WeeklyTimesheetPr
     }
   };
 
-  // Check if the latest entry is in a different week
   const latestEntryWeekStart = latestEntryDate 
     ? startOfWeek(new Date(latestEntryDate), { weekStartsOn: 1 })
     : null;
   const hasEntriesInDifferentWeek = latestEntryWeekStart && 
     latestEntryWeekStart.getTime() !== weekStart.getTime();
+
+  const formatCurrency = (amount: number) => {
+    return new Intl.NumberFormat("en-US", {
+      style: "currency",
+      currency: "USD",
+    }).format(amount);
+  };
 
   if (isLoading) {
     return <div className="text-center py-8 text-muted-foreground">Loading...</div>;
@@ -206,12 +277,28 @@ export function WeeklyTimesheet({ currentWeek, onWeekChange }: WeeklyTimesheetPr
       <div className="w-full max-w-full overflow-hidden space-y-3">
         {/* Weekly Total Card */}
         <Card className="p-3 bg-primary/5 border-primary/20">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-2">
-              <Clock className="h-4 w-4 text-primary" />
-              <span className="font-medium">Week Total</span>
+          <div className="space-y-2">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <Clock className="h-4 w-4 text-primary" />
+                <span className="font-medium">Week Total</span>
+              </div>
+              <span className="text-lg font-bold text-primary">{weekTotal.toFixed(1)}h</span>
             </div>
-            <span className="text-lg font-bold text-primary">{weekTotal.toFixed(1)}h</span>
+            <div className="grid grid-cols-3 gap-2 text-sm">
+              <div className="text-center p-2 bg-background rounded">
+                <p className="text-muted-foreground text-xs">Regular</p>
+                <p className="font-medium">{weekTotalRegular.toFixed(1)}h</p>
+              </div>
+              <div className="text-center p-2 bg-background rounded">
+                <p className="text-muted-foreground text-xs">Overtime</p>
+                <p className="font-medium">{weekTotalOvertime.toFixed(1)}h</p>
+              </div>
+              <div className="text-center p-2 bg-background rounded">
+                <p className="text-muted-foreground text-xs">Pay</p>
+                <p className="font-medium">{formatCurrency(weekTotalPay)}</p>
+              </div>
+            </div>
           </div>
         </Card>
 
@@ -246,30 +333,59 @@ export function WeeklyTimesheet({ currentWeek, onWeekChange }: WeeklyTimesheetPr
                     const entry = entryMap.get(key);
                     if (!entry) return null;
 
+                    const regularHrs = Number(entry.regular_hours || 0);
+                    const overtimeHrs = Number(entry.overtime_hours || 0);
+                    const pay = row.personnelRate 
+                      ? (regularHrs * row.personnelRate) + (overtimeHrs * row.personnelRate * overtimeMultiplier)
+                      : null;
+
                     return (
                       <div
                         key={key}
-                        className="flex items-center justify-between p-2 bg-muted/30 rounded-lg"
-                        onClick={() => handleCellClick(row, day)}
+                        className="p-2 bg-muted/30 rounded-lg"
                       >
-                        <div className="flex-1 min-w-0">
-                          <p className="text-sm font-medium truncate">{row.projectName}</p>
-                          {row.personnelName && (
-                            <p className="text-xs text-muted-foreground flex items-center gap-1">
-                              <User className="h-3 w-3" />
-                              {row.personnelName}
-                            </p>
-                          )}
-                          <Badge 
-                            variant={entry.billable ? "default" : "secondary"} 
-                            className="text-xs mt-1"
-                          >
-                            {entry.billable ? "Billable" : "Non-billable"}
-                          </Badge>
+                        <div 
+                          className="flex items-center justify-between"
+                          onClick={() => handleCellClick(row, day)}
+                        >
+                          <div className="flex-1 min-w-0">
+                            <p className="text-sm font-medium truncate">{row.projectName}</p>
+                            {row.personnelName && (
+                              <div className="flex items-center gap-1 text-xs text-muted-foreground">
+                                <User className="h-3 w-3" />
+                                <span>{row.personnelName}</span>
+                                {row.personnelRate !== null && (
+                                  <Button
+                                    variant="ghost"
+                                    size="sm"
+                                    className="h-5 px-1 text-xs"
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      handleEditRate(row);
+                                    }}
+                                  >
+                                    <DollarSign className="h-3 w-3" />
+                                    {row.personnelRate}/hr
+                                  </Button>
+                                )}
+                              </div>
+                            )}
+                          </div>
+                          <div className="flex items-center gap-2">
+                            <span className="font-semibold">{Number(entry.hours).toFixed(1)}h</span>
+                            <Edit className="h-4 w-4 text-muted-foreground" />
+                          </div>
                         </div>
-                        <div className="flex items-center gap-2">
-                          <span className="font-semibold">{Number(entry.hours).toFixed(1)}h</span>
-                          <Edit className="h-4 w-4 text-muted-foreground" />
+                        <div className="flex items-center justify-between mt-2 text-xs text-muted-foreground">
+                          <div className="flex gap-2">
+                            <span>Reg: {regularHrs.toFixed(1)}h</span>
+                            {overtimeHrs > 0 && (
+                              <span className="text-amber-600">OT: {overtimeHrs.toFixed(1)}h</span>
+                            )}
+                          </div>
+                          {pay !== null && (
+                            <span className="font-medium text-foreground">{formatCurrency(pay)}</span>
+                          )}
                         </div>
                       </div>
                     );
@@ -293,6 +409,16 @@ export function WeeklyTimesheet({ currentWeek, onWeekChange }: WeeklyTimesheetPr
           defaultDate={selectedDate}
           defaultProjectId={selectedProjectId}
         />
+
+        {selectedPersonnel && (
+          <QuickRateEditDialog
+            open={rateDialogOpen}
+            onOpenChange={setRateDialogOpen}
+            personnelId={selectedPersonnel.id}
+            personnelName={selectedPersonnel.name}
+            currentRate={selectedPersonnel.rate}
+          />
+        )}
       </div>
     );
   }
@@ -313,61 +439,89 @@ export function WeeklyTimesheet({ currentWeek, onWeekChange }: WeeklyTimesheetPr
                   <div className="text-sm">{format(day, "MMM d")}</div>
                 </th>
               ))}
+              <th className="p-3 text-center font-medium min-w-[80px]">Regular</th>
+              <th className="p-3 text-center font-medium min-w-[80px]">OT</th>
               <th className="p-3 text-center font-medium min-w-[80px]">Total</th>
+              <th className="p-3 text-center font-medium min-w-[100px]">Pay</th>
             </tr>
           </thead>
           <tbody>
-            {rows.map((row) => (
-              <tr key={row.rowKey} className="border-b hover:bg-muted/30">
-                <td className="p-3">
-                  <div className="font-medium">{row.projectName}</div>
-                  {row.personnelName && (
-                    <div className="text-sm text-muted-foreground flex items-center gap-1 mt-0.5">
-                      <User className="h-3 w-3" />
-                      {row.personnelName}
-                    </div>
-                  )}
-                </td>
-                {weekDays.map((day) => {
-                  const dateString = format(day, "yyyy-MM-dd");
-                  const key = `${row.rowKey}-${dateString}`;
-                  const entry = entryMap.get(key);
+            {rows.map((row) => {
+              const regularHrs = getRowRegularHours(row.rowKey);
+              const overtimeHrs = getRowOvertimeHours(row.rowKey);
+              const totalHrs = getRowTotal(row.rowKey);
+              const pay = getRowPay(row.rowKey, row.personnelRate ?? null);
 
-                  return (
-                    <td key={dateString} className="p-2 text-center">
-                      <Button
-                        variant={entry ? "secondary" : "ghost"}
-                        size="sm"
-                        className="w-full h-12 relative"
-                        onClick={() => handleCellClick(row, day)}
-                      >
-                        {entry ? (
-                          <div className="flex flex-col items-center gap-1">
-                            <span className="font-semibold">
-                              {Number(entry.hours).toFixed(2)}h
-                            </span>
-                            {entry.billable ? (
-                              <Badge variant="default" className="h-4 text-[10px]">
-                                Bill
-                              </Badge>
-                            ) : (
-                              <Badge variant="secondary" className="h-4 text-[10px]">
-                                Non
-                              </Badge>
-                            )}
-                          </div>
-                        ) : (
-                          <Plus className="h-4 w-4 text-muted-foreground" />
+              return (
+                <tr key={row.rowKey} className="border-b hover:bg-muted/30">
+                  <td className="p-3">
+                    <div className="font-medium">{row.projectName}</div>
+                    {row.personnelName && (
+                      <div className="flex items-center gap-1 mt-0.5">
+                        <User className="h-3 w-3 text-muted-foreground" />
+                        <span className="text-sm text-muted-foreground">{row.personnelName}</span>
+                        {row.personnelId && (
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            className="h-5 px-1 text-xs ml-1"
+                            onClick={() => handleEditRate(row)}
+                          >
+                            <DollarSign className="h-3 w-3" />
+                            {row.personnelRate !== null ? `${row.personnelRate}/hr` : "Set rate"}
+                          </Button>
                         )}
-                      </Button>
-                    </td>
-                  );
-                })}
-                <td className="p-3 text-center font-semibold">
-                  {getRowTotal(row.rowKey).toFixed(2)}h
-                </td>
-              </tr>
-            ))}
+                      </div>
+                    )}
+                  </td>
+                  {weekDays.map((day) => {
+                    const dateString = format(day, "yyyy-MM-dd");
+                    const key = `${row.rowKey}-${dateString}`;
+                    const entry = entryMap.get(key);
+
+                    return (
+                      <td key={dateString} className="p-2 text-center">
+                        <Button
+                          variant={entry ? "secondary" : "ghost"}
+                          size="sm"
+                          className="w-full h-12 relative"
+                          onClick={() => handleCellClick(row, day)}
+                        >
+                          {entry ? (
+                            <div className="flex flex-col items-center gap-1">
+                              <span className="font-semibold">
+                                {Number(entry.hours).toFixed(2)}h
+                              </span>
+                              {entry.billable ? (
+                                <Badge variant="default" className="h-4 text-[10px]">
+                                  Bill
+                                </Badge>
+                              ) : (
+                                <Badge variant="secondary" className="h-4 text-[10px]">
+                                  Non
+                                </Badge>
+                              )}
+                            </div>
+                          ) : (
+                            <Plus className="h-4 w-4 text-muted-foreground" />
+                          )}
+                        </Button>
+                      </td>
+                    );
+                  })}
+                  <td className="p-3 text-center">{regularHrs.toFixed(2)}h</td>
+                  <td className="p-3 text-center text-amber-600">
+                    {overtimeHrs > 0 ? `${overtimeHrs.toFixed(2)}h` : "-"}
+                  </td>
+                  <td className="p-3 text-center font-semibold">
+                    {totalHrs.toFixed(2)}h
+                  </td>
+                  <td className="p-3 text-center font-semibold">
+                    {pay !== null ? formatCurrency(pay) : "-"}
+                  </td>
+                </tr>
+              );
+            })}
             <tr className="bg-muted/50 font-semibold">
               <td className="p-3">Daily Total</td>
               {weekDays.map((day) => (
@@ -375,7 +529,12 @@ export function WeeklyTimesheet({ currentWeek, onWeekChange }: WeeklyTimesheetPr
                   {getDayTotal(day).toFixed(2)}h
                 </td>
               ))}
+              <td className="p-3 text-center">{weekTotalRegular.toFixed(2)}h</td>
+              <td className="p-3 text-center text-amber-600">
+                {weekTotalOvertime > 0 ? `${weekTotalOvertime.toFixed(2)}h` : "-"}
+              </td>
               <td className="p-3 text-center">{weekTotal.toFixed(2)}h</td>
+              <td className="p-3 text-center">{formatCurrency(weekTotalPay)}</td>
             </tr>
           </tbody>
         </table>
@@ -388,6 +547,16 @@ export function WeeklyTimesheet({ currentWeek, onWeekChange }: WeeklyTimesheetPr
         defaultDate={selectedDate}
         defaultProjectId={selectedProjectId}
       />
+
+      {selectedPersonnel && (
+        <QuickRateEditDialog
+          open={rateDialogOpen}
+          onOpenChange={setRateDialogOpen}
+          personnelId={selectedPersonnel.id}
+          personnelName={selectedPersonnel.name}
+          currentRate={selectedPersonnel.rate}
+        />
+      )}
     </div>
   );
 }
