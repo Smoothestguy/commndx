@@ -181,6 +181,62 @@ export const useTimeEntriesByWeek = (weekStartDate: Date) => {
   });
 };
 
+// Fetch all time entries logged by current user for a specific week (includes personnel entries)
+export const useAdminTimeEntriesByWeek = (weekStartDate: Date) => {
+  const weekStart = startOfWeek(weekStartDate, { weekStartsOn: 1 }); // Monday
+  const weekEnd = endOfWeek(weekStartDate, { weekStartsOn: 1 });
+
+  return useQuery({
+    queryKey: ["admin-time-entries", "week", weekStart.toISOString()],
+    queryFn: async () => {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) throw new Error("Not authenticated");
+
+      const { data, error } = await supabase
+        .from("time_entries")
+        .select(`
+          *,
+          personnel:personnel_id(id, first_name, last_name),
+          projects:project_id(id, name)
+        `)
+        .eq("user_id", user.id)
+        .gte("entry_date", weekStart.toISOString().split("T")[0])
+        .lte("entry_date", weekEnd.toISOString().split("T")[0])
+        .order("entry_date", { ascending: true });
+
+      if (error) throw error;
+      return data;
+    },
+  });
+};
+
+// Update time entry status (approve/reject)
+export const useUpdateTimeEntryStatus = () => {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async ({ ids, status }: { ids: string[]; status: string }) => {
+      const { data, error } = await supabase
+        .from("time_entries")
+        .update({ status })
+        .in("id", ids)
+        .select();
+
+      if (error) throw error;
+      return data;
+    },
+    onSuccess: (_, { status }) => {
+      queryClient.invalidateQueries({ queryKey: ["time-entries"] });
+      queryClient.invalidateQueries({ queryKey: ["all-time-entries"] });
+      queryClient.invalidateQueries({ queryKey: ["admin-time-entries"] });
+      toast.success(`Time entries ${status === 'approved' ? 'approved' : 'updated'}`);
+    },
+    onError: () => {
+      toast.error("Failed to update time entry status");
+    },
+  });
+};
+
 // Fetch personnel time entries for a specific project and week
 export const usePersonnelTimeEntriesByWeek = (projectId: string, weekStartDate: Date) => {
   const weekStart = startOfWeek(weekStartDate, { weekStartsOn: 1 });

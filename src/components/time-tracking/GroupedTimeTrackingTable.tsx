@@ -1,6 +1,6 @@
 import { useState, useMemo } from "react";
 import { format } from "date-fns";
-import { ChevronDown, ChevronRight, Pencil, Trash2, AlertTriangle, Gift, Clock, DollarSign } from "lucide-react";
+import { ChevronDown, ChevronRight, Pencil, Trash2, AlertTriangle, Gift, Clock, DollarSign, Check, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Badge } from "@/components/ui/badge";
@@ -25,6 +25,12 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 
 type Status = 
   | "draft" 
@@ -72,14 +78,18 @@ interface GroupedTimeTrackingTableProps {
   entries: TimeEntryWithDetails[];
   onEdit: (entry: TimeEntryWithDetails) => void;
   onBulkDelete?: (ids: string[]) => void;
+  onStatusChange?: (ids: string[], status: string) => void;
   isDeleting?: boolean;
+  isUpdatingStatus?: boolean;
 }
 
 export function GroupedTimeTrackingTable({ 
   entries, 
   onEdit, 
   onBulkDelete, 
-  isDeleting 
+  onStatusChange,
+  isDeleting,
+  isUpdatingStatus
 }: GroupedTimeTrackingTableProps) {
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [expandedGroups, setExpandedGroups] = useState<Set<string>>(new Set());
@@ -257,20 +267,54 @@ export function GroupedTimeTrackingTable({
     return (
       <>
         {/* Bulk Actions Bar */}
-        {selectedIds.size > 0 && onBulkDelete && (
-          <div className="flex items-center justify-between p-3 mb-4 glass rounded-lg border border-border/50">
+        {selectedIds.size > 0 && (
+          <div className="flex items-center justify-between p-3 mb-4 glass rounded-lg border border-border/50 flex-wrap gap-2">
             <span className="text-sm text-muted-foreground">
               {selectedIds.size} selected
             </span>
-            <Button
-              variant="destructive"
-              size="sm"
-              onClick={() => setShowDeleteDialog(true)}
-              disabled={isDeleting}
-            >
-              <Trash2 className="h-4 w-4 mr-2" />
-              Delete
-            </Button>
+            <div className="flex items-center gap-2">
+              {onStatusChange && (
+                <>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => {
+                      onStatusChange(Array.from(selectedIds), 'approved');
+                      setSelectedIds(new Set());
+                    }}
+                    disabled={isUpdatingStatus}
+                    className="text-green-600 border-green-600/30 hover:bg-green-600/10"
+                  >
+                    <Check className="h-4 w-4 mr-1" />
+                    Approve
+                  </Button>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => {
+                      onStatusChange(Array.from(selectedIds), 'rejected');
+                      setSelectedIds(new Set());
+                    }}
+                    disabled={isUpdatingStatus}
+                    className="text-red-600 border-red-600/30 hover:bg-red-600/10"
+                  >
+                    <X className="h-4 w-4 mr-1" />
+                    Reject
+                  </Button>
+                </>
+              )}
+              {onBulkDelete && (
+                <Button
+                  variant="destructive"
+                  size="sm"
+                  onClick={() => setShowDeleteDialog(true)}
+                  disabled={isDeleting}
+                >
+                  <Trash2 className="h-4 w-4 mr-2" />
+                  Delete
+                </Button>
+              )}
+            </div>
           </div>
         )}
 
@@ -472,20 +516,54 @@ export function GroupedTimeTrackingTable({
   return (
     <>
       {/* Bulk Actions Bar */}
-      {selectedIds.size > 0 && onBulkDelete && (
-        <div className="flex items-center justify-between p-3 mb-4 glass rounded-lg border border-border/50">
+      {selectedIds.size > 0 && (
+        <div className="flex items-center justify-between p-3 mb-4 glass rounded-lg border border-border/50 flex-wrap gap-2">
           <span className="text-sm text-muted-foreground">
             {selectedIds.size} {selectedIds.size === 1 ? "entry" : "entries"} selected
           </span>
-          <Button
-            variant="destructive"
-            size="sm"
-            onClick={() => setShowDeleteDialog(true)}
-            disabled={isDeleting}
-          >
-            <Trash2 className="h-4 w-4 mr-2" />
-            Delete Selected
-          </Button>
+          <div className="flex items-center gap-2">
+            {onStatusChange && (
+              <>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => {
+                    onStatusChange(Array.from(selectedIds), 'approved');
+                    setSelectedIds(new Set());
+                  }}
+                  disabled={isUpdatingStatus}
+                  className="text-green-600 border-green-600/30 hover:bg-green-600/10"
+                >
+                  <Check className="h-4 w-4 mr-1" />
+                  Approve
+                </Button>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => {
+                    onStatusChange(Array.from(selectedIds), 'rejected');
+                    setSelectedIds(new Set());
+                  }}
+                  disabled={isUpdatingStatus}
+                  className="text-red-600 border-red-600/30 hover:bg-red-600/10"
+                >
+                  <X className="h-4 w-4 mr-1" />
+                  Reject
+                </Button>
+              </>
+            )}
+            {onBulkDelete && (
+              <Button
+                variant="destructive"
+                size="sm"
+                onClick={() => setShowDeleteDialog(true)}
+                disabled={isDeleting}
+              >
+                <Trash2 className="h-4 w-4 mr-2" />
+                Delete
+              </Button>
+            )}
+          </div>
         </div>
       )}
 

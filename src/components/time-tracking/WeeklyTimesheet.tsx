@@ -2,19 +2,31 @@ import { useState, useMemo } from "react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Plus, Lock, Edit, Clock } from "lucide-react";
+import { Plus, Edit, Clock, User } from "lucide-react";
 import { TimeEntryForm } from "./TimeEntryForm";
 import {
   TimeEntry,
-  useTimeEntriesByWeek,
-  useDeleteTimeEntry,
-  useAssignedProjects,
+  useAdminTimeEntriesByWeek,
 } from "@/integrations/supabase/hooks/useTimeEntries";
 import { format, addDays, startOfWeek } from "date-fns";
 import { useIsMobile } from "@/hooks/use-mobile";
 
 interface WeeklyTimesheetProps {
   currentWeek: Date;
+}
+
+interface TimeEntryWithRelations extends TimeEntry {
+  personnel?: { id: string; first_name: string; last_name: string } | null;
+  projects?: { id: string; name: string } | null;
+}
+
+interface RowData {
+  rowKey: string;
+  projectId: string;
+  projectName: string;
+  personnelId?: string | null;
+  personnelName?: string;
+  isPersonnelEntry: boolean;
 }
 
 export function WeeklyTimesheet({ currentWeek }: WeeklyTimesheetProps) {
@@ -25,37 +37,68 @@ export function WeeklyTimesheet({ currentWeek }: WeeklyTimesheetProps) {
   const isMobile = useIsMobile();
 
   const weekStart = startOfWeek(currentWeek, { weekStartsOn: 1 });
-  const { data: entries = [], isLoading } = useTimeEntriesByWeek(currentWeek);
-  const { data: projects = [] } = useAssignedProjects();
+  const { data: rawEntries = [], isLoading } = useAdminTimeEntriesByWeek(currentWeek);
+  const entries = rawEntries as TimeEntryWithRelations[];
 
   // Get all days of the week
   const weekDays = Array.from({ length: 7 }, (_, i) => addDays(weekStart, i));
 
-  // Get unique projects that have entries this week
-  const projectsWithEntries = useMemo(() => {
-    const projectIds = new Set(entries.map((e) => e.project_id));
-    return projects.filter((p) => projectIds.has(p.id));
-  }, [entries, projects]);
-
-  // Create a map of entries by project and date
-  const entryMap = useMemo(() => {
-    const map = new Map<string, TimeEntry>();
+  // Get unique rows (project + optional personnel combination)
+  const rows = useMemo(() => {
+    const rowMap = new Map<string, RowData>();
+    
     entries.forEach((entry) => {
-      const key = `${entry.project_id}-${entry.entry_date}`;
+      const isPersonnelEntry = !!entry.personnel_id;
+      const rowKey = isPersonnelEntry 
+        ? `${entry.project_id}-${entry.personnel_id}` 
+        : `${entry.project_id}-self`;
+      
+      if (!rowMap.has(rowKey)) {
+        rowMap.set(rowKey, {
+          rowKey,
+          projectId: entry.project_id,
+          projectName: entry.projects?.name || "Unknown Project",
+          personnelId: entry.personnel_id,
+          personnelName: entry.personnel 
+            ? `${entry.personnel.first_name} ${entry.personnel.last_name}` 
+            : undefined,
+          isPersonnelEntry,
+        });
+      }
+    });
+    
+    return Array.from(rowMap.values()).sort((a, b) => {
+      // Sort by project name first, then by personnel name
+      const projectCompare = a.projectName.localeCompare(b.projectName);
+      if (projectCompare !== 0) return projectCompare;
+      if (!a.personnelName) return -1;
+      if (!b.personnelName) return 1;
+      return a.personnelName.localeCompare(b.personnelName);
+    });
+  }, [entries]);
+
+  // Create a map of entries by rowKey and date
+  const entryMap = useMemo(() => {
+    const map = new Map<string, TimeEntryWithRelations>();
+    entries.forEach((entry) => {
+      const rowKey = entry.personnel_id 
+        ? `${entry.project_id}-${entry.personnel_id}` 
+        : `${entry.project_id}-self`;
+      const key = `${rowKey}-${entry.entry_date}`;
       map.set(key, entry);
     });
     return map;
   }, [entries]);
 
-  const handleCellClick = (projectId: string, date: Date) => {
+  const handleCellClick = (row: RowData, date: Date) => {
     const dateString = format(date, "yyyy-MM-dd");
-    const key = `${projectId}-${dateString}`;
+    const key = `${row.rowKey}-${dateString}`;
     const existingEntry = entryMap.get(key);
 
     if (existingEntry) {
       setEditingEntry(existingEntry);
     } else {
-      setSelectedProjectId(projectId);
+      setSelectedProjectId(row.projectId);
       setSelectedDate(dateString);
       setEditingEntry(null);
     }
@@ -76,9 +119,14 @@ export function WeeklyTimesheet({ currentWeek }: WeeklyTimesheetProps) {
       .reduce((sum, e) => sum + Number(e.hours), 0);
   };
 
-  const getProjectTotal = (projectId: string) => {
+  const getRowTotal = (rowKey: string) => {
     return entries
-      .filter((e) => e.project_id === projectId)
+      .filter((e) => {
+        const entryRowKey = e.personnel_id 
+          ? `${e.project_id}-${e.personnel_id}` 
+          : `${e.project_id}-self`;
+        return entryRowKey === rowKey;
+      })
       .reduce((sum, e) => sum + Number(e.hours), 0);
   };
 
@@ -88,7 +136,7 @@ export function WeeklyTimesheet({ currentWeek }: WeeklyTimesheetProps) {
     return <div className="text-center py-8 text-muted-foreground">Loading...</div>;
   }
 
-  if (projectsWithEntries.length === 0) {
+  if (rows.length === 0) {
     return (
       <div className="text-center py-12">
         <p className="text-muted-foreground mb-4">No time entries for this week yet.</p>
@@ -140,8 +188,8 @@ export function WeeklyTimesheet({ currentWeek }: WeeklyTimesheetProps) {
               {/* Day Entries */}
               {dayEntries.length > 0 ? (
                 <div className="space-y-2 mt-3 pt-3 border-t border-border/30">
-                  {projectsWithEntries.map((project) => {
-                    const key = `${project.id}-${dateString}`;
+                  {rows.map((row) => {
+                    const key = `${row.rowKey}-${dateString}`;
                     const entry = entryMap.get(key);
                     if (!entry) return null;
 
@@ -149,10 +197,16 @@ export function WeeklyTimesheet({ currentWeek }: WeeklyTimesheetProps) {
                       <div
                         key={key}
                         className="flex items-center justify-between p-2 bg-muted/30 rounded-lg"
-                        onClick={() => handleCellClick(project.id, day)}
+                        onClick={() => handleCellClick(row, day)}
                       >
                         <div className="flex-1 min-w-0">
-                          <p className="text-sm font-medium truncate">{project.name}</p>
+                          <p className="text-sm font-medium truncate">{row.projectName}</p>
+                          {row.personnelName && (
+                            <p className="text-xs text-muted-foreground flex items-center gap-1">
+                              <User className="h-3 w-3" />
+                              {row.personnelName}
+                            </p>
+                          )}
                           <Badge 
                             variant={entry.billable ? "default" : "secondary"} 
                             className="text-xs mt-1"
@@ -197,7 +251,7 @@ export function WeeklyTimesheet({ currentWeek }: WeeklyTimesheetProps) {
         <table className="w-full">
           <thead>
             <tr className="border-b bg-muted/50">
-              <th className="p-3 text-left font-medium min-w-[150px]">Project</th>
+              <th className="p-3 text-left font-medium min-w-[200px]">Project / Personnel</th>
               {weekDays.map((day) => (
                 <th key={day.toISOString()} className="p-3 text-center font-medium min-w-[100px]">
                   <div className="text-xs text-muted-foreground">
@@ -210,12 +264,20 @@ export function WeeklyTimesheet({ currentWeek }: WeeklyTimesheetProps) {
             </tr>
           </thead>
           <tbody>
-            {projectsWithEntries.map((project) => (
-              <tr key={project.id} className="border-b hover:bg-muted/30">
-                <td className="p-3 font-medium">{project.name}</td>
+            {rows.map((row) => (
+              <tr key={row.rowKey} className="border-b hover:bg-muted/30">
+                <td className="p-3">
+                  <div className="font-medium">{row.projectName}</div>
+                  {row.personnelName && (
+                    <div className="text-sm text-muted-foreground flex items-center gap-1 mt-0.5">
+                      <User className="h-3 w-3" />
+                      {row.personnelName}
+                    </div>
+                  )}
+                </td>
                 {weekDays.map((day) => {
                   const dateString = format(day, "yyyy-MM-dd");
-                  const key = `${project.id}-${dateString}`;
+                  const key = `${row.rowKey}-${dateString}`;
                   const entry = entryMap.get(key);
 
                   return (
@@ -224,7 +286,7 @@ export function WeeklyTimesheet({ currentWeek }: WeeklyTimesheetProps) {
                         variant={entry ? "secondary" : "ghost"}
                         size="sm"
                         className="w-full h-12 relative"
-                        onClick={() => handleCellClick(project.id, day)}
+                        onClick={() => handleCellClick(row, day)}
                       >
                         {entry ? (
                           <div className="flex flex-col items-center gap-1">
@@ -249,7 +311,7 @@ export function WeeklyTimesheet({ currentWeek }: WeeklyTimesheetProps) {
                   );
                 })}
                 <td className="p-3 text-center font-semibold">
-                  {getProjectTotal(project.id).toFixed(2)}h
+                  {getRowTotal(row.rowKey).toFixed(2)}h
                 </td>
               </tr>
             ))}

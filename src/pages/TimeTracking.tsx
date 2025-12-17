@@ -12,7 +12,7 @@ import { WeeklyTimesheet } from "@/components/time-tracking/WeeklyTimesheet";
 import { WeekNavigator } from "@/components/time-tracking/WeekNavigator";
 import { ProjectAssignmentsSection } from "@/components/time-tracking/ProjectAssignmentsSection";
 import { PersonnelAssignmentDialog } from "@/components/time-tracking/PersonnelAssignmentDialog";
-import { useAllTimeEntries, useTimeEntries, useBulkDeleteTimeEntries, TimeEntryWithDetails } from "@/integrations/supabase/hooks/useTimeEntries";
+import { useAllTimeEntries, useTimeEntries, useBulkDeleteTimeEntries, useUpdateTimeEntryStatus, TimeEntryWithDetails } from "@/integrations/supabase/hooks/useTimeEntries";
 import { useUserRole } from "@/hooks/useUserRole";
 import { SEO } from "@/components/SEO";
 
@@ -37,6 +37,7 @@ export default function TimeTracking() {
   
   const { data: userEntries = [] } = useTimeEntries();
   const bulkDelete = useBulkDeleteTimeEntries();
+  const updateStatus = useUpdateTimeEntryStatus();
 
   // Convert userEntries to match TimeEntryWithDetails structure for consistent rendering
   const userEntriesWithDetails: TimeEntryWithDetails[] = userEntries.map(entry => ({
@@ -118,7 +119,9 @@ export default function TimeTracking() {
               entries={entries} 
               onEdit={handleEdit} 
               onBulkDelete={canManageTeam ? (ids) => bulkDelete.mutate(ids) : undefined}
+              onStatusChange={canManageTeam ? (ids, status) => updateStatus.mutate({ ids, status }) : undefined}
               isDeleting={bulkDelete.isPending}
+              isUpdatingStatus={updateStatus.isPending}
             />
           </TabsContent>
 
