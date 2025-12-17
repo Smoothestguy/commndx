@@ -950,6 +950,54 @@ export type Database = {
           },
         ]
       }
+      estimate_versions: {
+        Row: {
+          change_summary: string | null
+          created_at: string
+          created_by: string | null
+          created_by_email: string | null
+          estimate_id: string
+          id: string
+          snapshot: Json
+          version_number: number
+        }
+        Insert: {
+          change_summary?: string | null
+          created_at?: string
+          created_by?: string | null
+          created_by_email?: string | null
+          estimate_id: string
+          id?: string
+          snapshot: Json
+          version_number: number
+        }
+        Update: {
+          change_summary?: string | null
+          created_at?: string
+          created_by?: string | null
+          created_by_email?: string | null
+          estimate_id?: string
+          id?: string
+          snapshot?: Json
+          version_number?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "estimate_versions_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "estimate_versions_estimate_id_fkey"
+            columns: ["estimate_id"]
+            isOneToOne: false
+            referencedRelation: "estimates"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       estimates: {
         Row: {
           approval_token: string | null
