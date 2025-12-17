@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -34,7 +34,17 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { Plus, Trash2, Save, X, ArrowRightLeft, Check, ChevronsUpDown, Lock } from "lucide-react";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
+import { Plus, Trash2, Save, X, ArrowRightLeft, Check, ChevronsUpDown, Lock, RotateCcw } from "lucide-react";
 import {
   Tooltip,
   TooltipContent,
@@ -56,6 +66,7 @@ import {
   ChangeType,
 } from "@/integrations/supabase/hooks/useChangeOrders";
 import { ChangeOrderPermissions } from "@/hooks/useChangeOrderPermissions";
+import { useUnsavedChangesWarning } from "@/hooks/useUnsavedChangesWarning";
 import { cn } from "@/lib/utils";
 
 interface LineItem {
@@ -139,6 +150,134 @@ export function ChangeOrderForm({
   const [joSearch, setJOSearch] = useState("");
   const [productOpenIndex, setProductOpenIndex] = useState<number | null>(null);
   const [productSearch, setProductSearch] = useState("");
+
+  // Unsaved changes tracking
+  const [showRevertDialog, setShowRevertDialog] = useState(false);
+  const initialStateRef = useRef<{
+    projectId: string;
+    customerId: string;
+    customerName: string;
+    vendorId: string;
+    vendorName: string;
+    purchaseOrderId: string;
+    jobOrderId: string;
+    reason: string;
+    description: string;
+    taxRate: number;
+    changeType: ChangeType;
+    lineItems: string;
+  } | null>(null);
+
+  // Initialize initial state for change tracking (only in edit mode)
+  useEffect(() => {
+    if (initialData && !initialStateRef.current) {
+      initialStateRef.current = {
+        projectId: initialData.project_id || "",
+        customerId: initialData.customer_id || "",
+        customerName: initialData.customer_name || "",
+        vendorId: initialData.vendor_id || "",
+        vendorName: initialData.vendor_name || "",
+        purchaseOrderId: initialData.purchase_order_id || "",
+        jobOrderId: initialData.job_order_id || "",
+        reason: initialData.reason || "",
+        description: initialData.description || "",
+        taxRate: initialData.tax_rate || 0,
+        changeType: initialData.change_type || "additive",
+        lineItems: JSON.stringify(initialData.line_items?.map(item => ({
+          product_id: item.product_id,
+          description: item.description,
+          quantity: item.quantity,
+          unit_price: item.unit_price,
+          vendor_cost: item.vendor_cost || 0,
+          markup: item.markup,
+          total: item.total,
+          is_taxable: item.is_taxable,
+        })) || []),
+      };
+    }
+  }, [initialData]);
+
+  // Calculate if there are unsaved changes
+  const hasUnsavedChanges = useMemo(() => {
+    if (!initialStateRef.current || !initialData) return false;
+
+    const currentLineItems = JSON.stringify(lineItems.map(item => ({
+      product_id: item.product_id,
+      description: item.description,
+      quantity: item.quantity,
+      unit_price: item.unit_price,
+      vendor_cost: item.vendor_cost || 0,
+      markup: item.markup,
+      total: item.total,
+      is_taxable: item.is_taxable,
+    })));
+
+    return (
+      projectId !== initialStateRef.current.projectId ||
+      customerId !== initialStateRef.current.customerId ||
+      customerName !== initialStateRef.current.customerName ||
+      vendorId !== initialStateRef.current.vendorId ||
+      vendorName !== initialStateRef.current.vendorName ||
+      purchaseOrderId !== initialStateRef.current.purchaseOrderId ||
+      jobOrderId !== initialStateRef.current.jobOrderId ||
+      reason !== initialStateRef.current.reason ||
+      description !== initialStateRef.current.description ||
+      taxRate !== initialStateRef.current.taxRate ||
+      changeType !== initialStateRef.current.changeType ||
+      currentLineItems !== initialStateRef.current.lineItems
+    );
+  }, [projectId, customerId, customerName, vendorId, vendorName, purchaseOrderId, jobOrderId, reason, description, taxRate, changeType, lineItems, initialData]);
+
+  // Navigation guard hook
+  const {
+    showLeaveDialog,
+    setShowLeaveDialog,
+    confirmLeave,
+    cancelLeave,
+    handleCancelClick,
+  } = useUnsavedChangesWarning({
+    hasUnsavedChanges,
+    enabled: !!initialData,
+  });
+
+  // Handle cancel button click
+  const handleCancel = () => {
+    const shouldProceed = handleCancelClick();
+    if (shouldProceed) {
+      navigate(-1);
+    }
+  };
+
+  // Handle confirmed leave
+  const handleConfirmLeave = () => {
+    confirmLeave();
+    navigate(-1);
+  };
+
+  // Handle revert changes
+  const handleRevertChanges = () => {
+    if (!initialStateRef.current || !initialData) return;
+
+    setProjectId(initialStateRef.current.projectId);
+    setCustomerId(initialStateRef.current.customerId);
+    setCustomerName(initialStateRef.current.customerName);
+    setVendorId(initialStateRef.current.vendorId);
+    setVendorName(initialStateRef.current.vendorName);
+    setPurchaseOrderId(initialStateRef.current.purchaseOrderId);
+    setJobOrderId(initialStateRef.current.jobOrderId);
+    setReason(initialStateRef.current.reason);
+    setDescription(initialStateRef.current.description);
+    setTaxRate(initialStateRef.current.taxRate);
+    setChangeType(initialStateRef.current.changeType);
+    setLineItems(initialData.line_items?.map((item) => ({
+      ...item,
+      id: item.id,
+      vendor_cost: item.vendor_cost || 0,
+      calculation_mode: 'forward' as const,
+    })) || []);
+
+    setShowRevertDialog(false);
+  };
 
   // Auto-populate customer when project changes
   useEffect(() => {
@@ -894,21 +1033,81 @@ export function ChangeOrderForm({
         </CardContent>
       </Card>
 
-      <div className="flex justify-end gap-4">
-        <Button type="button" variant="outline" onClick={() => navigate(-1)}>
-          <X className="mr-2 h-4 w-4" />
-          Cancel
-        </Button>
-        {!isReadOnly && (
-          <Button
-            type="submit"
-            disabled={addChangeOrder.isPending || updateChangeOrder.isPending || isReadOnly}
-          >
-            <Save className="mr-2 h-4 w-4" />
-            {initialData?.id ? "Update" : "Create"} Change Order
+      <div className="flex justify-between gap-4">
+        {/* Left side - Revert button */}
+        <div>
+          {initialData?.id && hasUnsavedChanges && !isReadOnly && (
+            <Button
+              type="button"
+              variant="destructive"
+              onClick={() => setShowRevertDialog(true)}
+            >
+              <RotateCcw className="mr-2 h-4 w-4" />
+              Revert Changes
+            </Button>
+          )}
+        </div>
+
+        {/* Right side - Cancel and Save buttons */}
+        <div className="flex gap-4">
+          <Button type="button" variant="outline" onClick={handleCancel}>
+            <X className="mr-2 h-4 w-4" />
+            Cancel
           </Button>
-        )}
+          {!isReadOnly && (
+            <Button
+              type="submit"
+              disabled={addChangeOrder.isPending || updateChangeOrder.isPending || isReadOnly}
+            >
+              <Save className="mr-2 h-4 w-4" />
+              {initialData?.id ? "Update" : "Create"} Change Order
+            </Button>
+          )}
+        </div>
       </div>
+
+      {/* Leave Confirmation Dialog */}
+      <AlertDialog open={showLeaveDialog} onOpenChange={(open) => !open && cancelLeave()}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Unsaved Changes</AlertDialogTitle>
+            <AlertDialogDescription>
+              You have unsaved changes. Are you sure you want to leave? Your changes will be lost.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel onClick={cancelLeave}>
+              Continue Editing
+            </AlertDialogCancel>
+            <AlertDialogAction onClick={handleConfirmLeave}>
+              Discard Changes
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {/* Revert Confirmation Dialog */}
+      <AlertDialog open={showRevertDialog} onOpenChange={setShowRevertDialog}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Revert All Changes?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Are you sure you want to discard all unsaved changes? This will restore the form to its original state. This action cannot be undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>
+              Keep Editing
+            </AlertDialogCancel>
+            <AlertDialogAction 
+              onClick={handleRevertChanges} 
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              Revert Changes
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </form>
   );
 }
