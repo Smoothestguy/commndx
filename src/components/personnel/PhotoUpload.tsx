@@ -8,12 +8,14 @@ import { toast } from "sonner";
 interface PhotoUploadProps {
   currentPhotoUrl?: string;
   onPhotoChange: (url: string) => void;
+  onPhotoSaved?: (url: string) => Promise<void>;
   personnelId?: string;
 }
 
 export const PhotoUpload = ({
   currentPhotoUrl,
   onPhotoChange,
+  onPhotoSaved,
   personnelId,
 }: PhotoUploadProps) => {
   const [uploading, setUploading] = useState(false);
@@ -63,7 +65,19 @@ export const PhotoUpload = ({
       } = supabase.storage.from("personnel-photos").getPublicUrl(filePath);
 
       onPhotoChange(publicUrl);
-      toast.success("Photo uploaded successfully");
+      
+      // Auto-save to database if callback provided (for existing personnel)
+      if (onPhotoSaved) {
+        try {
+          await onPhotoSaved(publicUrl);
+          toast.success("Photo uploaded and saved");
+        } catch (saveError) {
+          console.error("Error saving photo to database:", saveError);
+          toast.error("Photo uploaded but failed to save - please save the form");
+        }
+      } else {
+        toast.success("Photo uploaded - remember to save the form");
+      }
     } catch (error) {
       console.error("Error uploading photo:", error);
       toast.error("Failed to upload photo");

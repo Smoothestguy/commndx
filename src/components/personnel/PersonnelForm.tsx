@@ -56,6 +56,16 @@ export const PersonnelForm = ({ personnel, onSuccess, onCancel, defaultVendorId,
   const updateMutation = useUpdatePersonnel();
   const { data: vendors } = useVendors();
 
+  // Auto-save photo for existing personnel
+  const handlePhotoSaved = async (url: string) => {
+    if (personnel?.id) {
+      await updateMutation.mutateAsync({
+        id: personnel.id,
+        updates: { photo_url: url },
+      });
+    }
+  };
+
   const {
     register,
     handleSubmit,
@@ -130,6 +140,7 @@ export const PersonnelForm = ({ personnel, onSuccess, onCancel, defaultVendorId,
               <PhotoUpload
                 currentPhotoUrl={photoUrl}
                 onPhotoChange={setPhotoUrl}
+                onPhotoSaved={personnel?.id ? handlePhotoSaved : undefined}
                 personnelId={personnel?.id}
               />
 
