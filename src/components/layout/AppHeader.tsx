@@ -12,20 +12,27 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { ChevronDown, Settings, LogOut, MessageCircle } from "lucide-react";
 import { AdminNotificationBell } from "@/components/notifications/AdminNotificationBell";
 import { useUserRole } from "@/hooks/useUserRole";
+import { useCurrentPersonnel } from "@/integrations/supabase/hooks/usePortal";
 
 export function AppHeader() {
   const navigate = useNavigate();
   const { signOut, user } = useAuth();
   const { isOpen, toggleOpen, messages } = useAIAssistant();
   const { isAdmin, isManager } = useUserRole();
+  const { data: personnel } = useCurrentPersonnel();
 
-  const userInitials = user?.email
+  // Use personnel photo if available, otherwise use email initials
+  const userInitials = personnel
+    ? `${personnel.first_name?.[0] || ""}${personnel.last_name?.[0] || ""}`.toUpperCase()
+    : user?.email
     ? user.email.substring(0, 2).toUpperCase()
     : "U";
+  
+  const userPhotoUrl = personnel?.photo_url;
 
   const showNotificationBell = isAdmin || isManager;
 
@@ -67,6 +74,7 @@ export function AppHeader() {
         <DropdownMenu>
           <DropdownMenuTrigger className="flex items-center gap-2 hover:opacity-80 transition-opacity outline-none">
             <Avatar className="h-8 w-8 bg-sidebar-accent">
+              <AvatarImage src={userPhotoUrl || undefined} alt="User avatar" />
               <AvatarFallback className="bg-primary text-primary-foreground text-xs font-medium">
                 {userInitials}
               </AvatarFallback>

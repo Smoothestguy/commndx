@@ -2,9 +2,10 @@ import { useState, useMemo } from "react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Plus, Edit, Clock, User, CalendarSearch, DollarSign } from "lucide-react";
+import { Plus, Edit, Clock, CalendarSearch, DollarSign } from "lucide-react";
 import { TimeEntryForm } from "./TimeEntryForm";
 import { QuickRateEditDialog } from "./QuickRateEditDialog";
+import { PersonnelAvatar } from "@/components/personnel/PersonnelAvatar";
 import {
   TimeEntry,
   useAdminTimeEntriesByWeek,
@@ -21,7 +22,7 @@ interface WeeklyTimesheetProps {
 }
 
 interface TimeEntryWithRelations extends TimeEntry {
-  personnel?: { id: string; first_name: string; last_name: string; hourly_rate?: number | null } | null;
+  personnel?: { id: string; first_name: string; last_name: string; hourly_rate?: number | null; photo_url?: string | null } | null;
   projects?: { id: string; name: string } | null;
 }
 
@@ -32,6 +33,7 @@ interface RowData {
   personnelId?: string | null;
   personnelName?: string;
   personnelRate?: number | null;
+  personnelPhotoUrl?: string | null;
   isPersonnelEntry: boolean;
 }
 
@@ -97,6 +99,7 @@ export function WeeklyTimesheet({ currentWeek, onWeekChange }: WeeklyTimesheetPr
             ? `${entry.personnel.first_name} ${entry.personnel.last_name}` 
             : undefined,
           personnelRate: entry.personnel?.hourly_rate ?? null,
+          personnelPhotoUrl: entry.personnel?.photo_url ?? null,
           isPersonnelEntry,
         });
       }
@@ -426,8 +429,13 @@ export function WeeklyTimesheet({ currentWeek, onWeekChange }: WeeklyTimesheetPr
                           <div className="flex-1 min-w-0">
                             <p className="text-sm font-medium truncate">{row.projectName}</p>
                             {row.personnelName && (
-                              <div className="flex items-center gap-1 text-xs text-muted-foreground">
-                                <User className="h-3 w-3" />
+                              <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
+                                <PersonnelAvatar
+                                  photoUrl={row.personnelPhotoUrl}
+                                  firstName={row.personnelName.split(' ')[0] || ''}
+                                  lastName={row.personnelName.split(' ')[1] || ''}
+                                  size="xs"
+                                />
                                 <span>{row.personnelName}</span>
                                 {row.personnelRate !== null && (
                                   <Button
@@ -579,8 +587,13 @@ export function WeeklyTimesheet({ currentWeek, onWeekChange }: WeeklyTimesheetPr
                   <td className="p-3">
                     <div className="font-medium">{row.projectName}</div>
                     {row.personnelName && (
-                      <div className="flex items-center gap-1 mt-0.5">
-                        <User className="h-3 w-3 text-muted-foreground" />
+                      <div className="flex items-center gap-1.5 mt-0.5">
+                        <PersonnelAvatar
+                          photoUrl={row.personnelPhotoUrl}
+                          firstName={row.personnelName?.split(' ')[0] || ''}
+                          lastName={row.personnelName?.split(' ')[1] || ''}
+                          size="xs"
+                        />
                         <span className="text-sm text-muted-foreground">{row.personnelName}</span>
                         {row.personnelId && (
                           <Button
