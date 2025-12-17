@@ -1,6 +1,7 @@
+import { useState } from "react";
 import { useSortable } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
-import { GripVertical, Trash2, Check, ChevronsUpDown, ChevronDown } from "lucide-react";
+import { GripVertical, Trash2, Check, ChevronsUpDown, ChevronDown, Plus } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { CalculatorInput } from "@/components/ui/calculator-input";
@@ -23,6 +24,7 @@ import {
   CommandInput,
   CommandItem,
   CommandList,
+  CommandSeparator,
 } from "@/components/ui/command";
 import {
   Collapsible,
@@ -30,6 +32,8 @@ import {
   CollapsibleTrigger,
 } from "@/components/ui/collapsible";
 import { cn } from "@/lib/utils";
+import { InlineProductDialog } from "@/components/products/InlineProductDialog";
+import { Product as FullProduct } from "@/integrations/supabase/hooks/useProducts";
 
 interface LineItem {
   id: string;
@@ -93,6 +97,8 @@ export function SortableLineItem({
   onSetProductComboboxOpen,
   onSetProductSearch,
 }: SortableLineItemProps) {
+  const [createDialogOpen, setCreateDialogOpen] = useState(false);
+  
   const {
     attributes,
     listeners,
@@ -101,6 +107,12 @@ export function SortableLineItem({
     transition,
     isDragging,
   } = useSortable({ id: item.id });
+  
+  const handleProductCreated = (newProduct: FullProduct) => {
+    onSelectProduct(index, newProduct.id);
+    onSetProductComboboxOpen(index, false);
+    onSetProductSearch(index, "");
+  };
 
   const style = {
     transform: CSS.Transform.toString(transform),
@@ -119,6 +131,7 @@ export function SortableLineItem({
     : displayDescription;
 
   return (
+    <>
     <Collapsible open={isExpanded} onOpenChange={onToggleExpand}>
       <div
         ref={setNodeRef}
@@ -334,6 +347,19 @@ export function SortableLineItem({
                           ))}
                         </CommandGroup>
                       )}
+                      <CommandSeparator />
+                      <CommandGroup>
+                        <CommandItem
+                          onSelect={() => {
+                            setCreateDialogOpen(true);
+                            onSetProductComboboxOpen(index, false);
+                          }}
+                          className="text-primary"
+                        >
+                          <Plus className="mr-2 h-4 w-4" />
+                          Create New Item...
+                        </CommandItem>
+                      </CommandGroup>
                     </CommandList>
                   </Command>
                 </PopoverContent>
@@ -435,5 +461,12 @@ export function SortableLineItem({
         </CollapsibleContent>
       </div>
     </Collapsible>
+    
+    <InlineProductDialog
+      open={createDialogOpen}
+      onOpenChange={setCreateDialogOpen}
+      onSuccess={handleProductCreated}
+    />
+    </>
   );
 }
