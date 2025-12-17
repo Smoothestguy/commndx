@@ -23,14 +23,12 @@ export function ComplianceBadge({ personnel, compact = false }: ComplianceBadgeP
   const badge = (
     <Badge
       variant="destructive"
-      className={`gap-1 ${
-        compliance.severity === 'critical'
-          ? 'bg-destructive hover:bg-destructive/90'
-          : 'bg-amber-500 hover:bg-amber-500/90'
-      } ${compact ? 'h-5 px-1.5 text-[10px]' : ''}`}
+      className={`gap-1 bg-destructive hover:bg-destructive/90 animate-pulse ${
+        compact ? 'h-5 px-1.5 text-[10px]' : ''
+      }`}
     >
       <AlertTriangle className={compact ? "h-2.5 w-2.5" : "h-3 w-3"} />
-      {!compact && (compliance.severity === 'critical' ? '!' : '⚠')}
+      {!compact && '!'}
     </Badge>
   );
 
