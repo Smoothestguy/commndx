@@ -31,6 +31,7 @@ import {
   IdCard,
   Link2,
   Send,
+  ClipboardList,
 } from "lucide-react";
 
 const navigation = [
@@ -49,6 +50,7 @@ const navigation = [
 const staffingNavigation = [
   { name: "Time Tracking", href: "/time-tracking", icon: Clock },
   { name: "Project Assignments", href: "/project-assignments", icon: UserCog, requiresManager: true },
+  { name: "Applications", href: "/staffing/applications", icon: ClipboardList, requiresManager: true },
   { name: "Badge Templates", href: "/badge-templates", icon: IdCard, requiresManager: true },
 ];
 
@@ -75,7 +77,7 @@ export function MobileNav() {
     const staffingRoutes = staffingNavigation.map((item) => item.href);
     const vendorsRoutes = vendorsNavigation.map((item) => item.href);
 
-    if (staffingRoutes.some((r) => location.pathname === r)) setStaffingOpen(true);
+    if (staffingRoutes.some((r) => location.pathname === r || location.pathname.startsWith("/staffing/"))) setStaffingOpen(true);
     if (vendorsRoutes.some((r) => location.pathname === r || location.pathname.startsWith(r))) setVendorsOpen(true);
   }, [location.pathname]);
 

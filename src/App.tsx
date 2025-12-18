@@ -104,6 +104,8 @@ import EditChangeOrder from "./pages/EditChangeOrder";
 import ChangeOrderDetail from "./pages/ChangeOrderDetail";
 import ApproveChangeOrder from "./pages/ApproveChangeOrder";
 import AuditLogs from "./pages/AuditLogs";
+import StaffingApplications from "./pages/StaffingApplications";
+import PublicApplicationForm from "./pages/PublicApplicationForm";
 
 const queryClient = new QueryClient();
 
@@ -143,6 +145,8 @@ const App = () => {
                   />
                   <Route path="/legal/privacy" element={<PrivacyPolicy />} />
                   <Route path="/legal/eula" element={<EULA />} />
+                  {/* Public Application Form */}
+                  <Route path="/apply/:token" element={<PublicApplicationForm />} />
                   {/* Public Contractor Routes */}
                   <Route path="/contractor" element={<ContractorPortal />} />
                   <Route
@@ -328,6 +332,10 @@ const App = () => {
                     <Route
                       path="/admin/audit-logs"
                       element={<AuditLogs />}
+                    />
+                    <Route
+                      path="/staffing/applications"
+                      element={<StaffingApplications />}
                     />
                   </Route>
 
