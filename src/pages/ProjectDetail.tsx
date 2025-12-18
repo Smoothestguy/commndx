@@ -31,7 +31,7 @@ import { ProjectTMTicketsList } from "@/components/project-hub/ProjectTMTicketsL
 import { ProjectPurchaseOrdersList } from "@/components/project-hub/ProjectPurchaseOrdersList";
 import { ProjectVendorBillsList } from "@/components/project-hub/ProjectVendorBillsList";
 import { ProjectTimeEntriesList } from "@/components/project-hub/ProjectTimeEntriesList";
-import { ProjectLaborExpensesList } from "@/components/project-hub/ProjectLaborExpensesList";
+
 import { ProjectActivityTimeline } from "@/components/project-hub/ProjectActivityTimeline";
 import { AddTMTicketDialog } from "@/components/tm-tickets/AddTMTicketDialog";
 import { CreateJobOrderDialog } from "@/components/job-orders/CreateJobOrderDialog";
@@ -697,10 +697,6 @@ const ProjectDetail = () => {
         <ProjectTimeEntriesList projectId={id!} />
       </div>
 
-      {/* Labor Expenses */}
-      <div className="mb-8">
-        <ProjectLaborExpensesList projectId={id!} />
-      </div>
 
       {/* Project Documents */}
       <div className="mb-8">
