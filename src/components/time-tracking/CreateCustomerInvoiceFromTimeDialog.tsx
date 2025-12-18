@@ -44,8 +44,8 @@ interface PersonnelSummary {
   totalHours: number;
   regularHours: number;
   overtimeHours: number;
-  totalCost: number;
-  hourlyRate: number;
+  totalBillable: number; // Customer-facing billable amount
+  billRate: number; // Customer billing rate (NOT shown in UI)
   entryIds: string[];
 }
 
@@ -95,7 +95,8 @@ export function CreateCustomerInvoiceFromTimeDialog({
         : entry.profiles?.first_name && entry.profiles?.last_name
           ? `${entry.profiles.first_name} ${entry.profiles.last_name}`
           : entry.profiles?.email || "Unknown";
-      const hourlyRate = entry.personnel?.hourly_rate || entry.profiles?.hourly_rate || 0;
+      // Use bill_rate for customer invoices (customer-facing rate)
+      const billRate = (entry.personnel as any)?.bill_rate || 0;
 
       if (!groups.has(personnelId)) {
         groups.set(personnelId, {
@@ -104,8 +105,8 @@ export function CreateCustomerInvoiceFromTimeDialog({
           totalHours: 0,
           regularHours: 0,
           overtimeHours: 0,
-          totalCost: 0,
-          hourlyRate,
+          totalBillable: 0,
+          billRate,
           entryIds: [],
         });
       }
@@ -115,14 +116,15 @@ export function CreateCustomerInvoiceFromTimeDialog({
       summary.entryIds.push(entry.id);
     });
 
-    // Calculate overtime and costs for each personnel
+    // Calculate overtime and billable amounts for each personnel
     groups.forEach((summary) => {
       summary.regularHours = Math.min(summary.totalHours, weeklyOvertimeThreshold);
       summary.overtimeHours = Math.max(0, summary.totalHours - weeklyOvertimeThreshold);
       
-      const regularCost = summary.regularHours * summary.hourlyRate;
-      const overtimeCost = summary.overtimeHours * summary.hourlyRate * overtimeMultiplier;
-      summary.totalCost = regularCost + overtimeCost;
+      // Use bill_rate for customer invoicing
+      const regularBillable = summary.regularHours * summary.billRate;
+      const overtimeBillable = summary.overtimeHours * summary.billRate * overtimeMultiplier;
+      summary.totalBillable = regularBillable + overtimeBillable;
     });
 
     return Array.from(groups.values());
@@ -146,7 +148,7 @@ export function CreateCustomerInvoiceFromTimeDialog({
   );
 
   const subtotal = useMemo(() =>
-    selectedSummaries.reduce((sum, p) => sum + p.totalCost, 0),
+    selectedSummaries.reduce((sum, p) => sum + p.totalBillable, 0),
     [selectedSummaries]
   );
 
@@ -187,16 +189,23 @@ export function CreateCustomerInvoiceFromTimeDialog({
       return;
     }
 
+    // Validate that all selected personnel have bill rates
+    const missingBillRates = selectedSummaries.filter(s => !s.billRate || s.billRate <= 0);
+    if (missingBillRates.length > 0) {
+      toast.error(`Missing bill rate for: ${missingBillRates.map(s => s.personnelName).join(', ')}`);
+      return;
+    }
+
     setIsSubmitting(true);
 
     try {
-      // Create line items from selected personnel summaries
+      // Create line items - shows hours and amount (NOT rate) to customer
       const lineItems = selectedSummaries.map((summary) => ({
         description: `Labor - ${summary.personnelName} (${summary.regularHours.toFixed(1)}h${summary.overtimeHours > 0 ? ` + ${summary.overtimeHours.toFixed(1)}h OT` : ''})`,
         quantity: 1,
-        unit_price: summary.totalCost,
+        unit_price: summary.totalBillable,
         markup: 0,
-        total: summary.totalCost,
+        total: summary.totalBillable,
       }));
 
       // Collect all entry IDs to update
@@ -383,37 +392,49 @@ export function CreateCustomerInvoiceFromTimeDialog({
                       </TableHead>
                       <TableHead>Personnel</TableHead>
                       <TableHead className="text-right">Hours</TableHead>
-                      <TableHead className="text-right">Rate</TableHead>
+                      {/* Rate column intentionally omitted - customer should not see rates */}
                       <TableHead className="text-right">Amount</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {personnelSummaries.map((summary) => (
-                      <TableRow
-                        key={summary.personnelId}
-                        className={!selectedPersonnel.has(summary.personnelId) ? 'opacity-50' : ''}
-                      >
-                        <TableCell>
-                          <Checkbox
-                            checked={selectedPersonnel.has(summary.personnelId)}
-                            onCheckedChange={() => togglePersonnel(summary.personnelId)}
-                          />
-                        </TableCell>
-                        <TableCell className="font-medium">{summary.personnelName}</TableCell>
-                        <TableCell className="text-right">
-                          {summary.regularHours.toFixed(1)}h
-                          {summary.overtimeHours > 0 && (
-                            <span className="text-orange-500 ml-1">+ {summary.overtimeHours.toFixed(1)}h OT</span>
-                          )}
-                        </TableCell>
-                        <TableCell className="text-right text-muted-foreground">
-                          {formatCurrency(summary.hourlyRate)}/hr
-                        </TableCell>
-                        <TableCell className="text-right font-medium">
-                          {formatCurrency(summary.totalCost)}
-                        </TableCell>
-                      </TableRow>
-                    ))}
+                    {personnelSummaries.map((summary) => {
+                      const hasMissingRate = !summary.billRate || summary.billRate <= 0;
+                      return (
+                        <TableRow
+                          key={summary.personnelId}
+                          className={!selectedPersonnel.has(summary.personnelId) ? 'opacity-50' : hasMissingRate ? 'bg-destructive/10' : ''}
+                        >
+                          <TableCell>
+                            <Checkbox
+                              checked={selectedPersonnel.has(summary.personnelId)}
+                              onCheckedChange={() => togglePersonnel(summary.personnelId)}
+                            />
+                          </TableCell>
+                          <TableCell className="font-medium">
+                            {summary.personnelName}
+                            {hasMissingRate && (
+                              <Badge variant="destructive" className="ml-2 text-xs">
+                                No Bill Rate
+                              </Badge>
+                            )}
+                          </TableCell>
+                          <TableCell className="text-right">
+                            {summary.regularHours.toFixed(1)}h
+                            {summary.overtimeHours > 0 && (
+                              <span className="text-orange-500 ml-1">+ {summary.overtimeHours.toFixed(1)}h OT</span>
+                            )}
+                          </TableCell>
+                          {/* Rate column intentionally omitted - customer should not see rates */}
+                          <TableCell className="text-right font-medium">
+                            {hasMissingRate ? (
+                              <span className="text-destructive">$0.00</span>
+                            ) : (
+                              formatCurrency(summary.totalBillable)
+                            )}
+                          </TableCell>
+                        </TableRow>
+                      );
+                    })}
                   </TableBody>
                 </Table>
               </div>

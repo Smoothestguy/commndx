@@ -17,6 +17,7 @@ interface TimeEntry {
     first_name: string;
     last_name: string;
     hourly_rate: number | null;
+    pay_rate: number | null; // Internal pay rate for payroll
   };
   project: {
     id: string;
@@ -27,7 +28,7 @@ interface TimeEntry {
 interface PersonnelProjectHours {
   personnelId: string;
   personnelName: string;
-  hourlyRate: number;
+  payRate: number; // Use pay_rate for payroll calculations
   projectId: string;
   projectName: string;
   regularHours: number;
@@ -133,7 +134,7 @@ Deno.serve(async (req) => {
         entry_date,
         regular_hours,
         overtime_hours,
-        personnel:personnel_id(id, first_name, last_name, hourly_rate),
+        personnel:personnel_id(id, first_name, last_name, hourly_rate, pay_rate),
         project:project_id(id, name)
       `)
       .gte("entry_date", startDate)
@@ -167,7 +168,8 @@ Deno.serve(async (req) => {
 
       const key = `${entry.personnel_id}-${entry.project_id}`;
       const personnelName = `${entry.personnel.first_name} ${entry.personnel.last_name}`;
-      const hourlyRate = entry.personnel.hourly_rate || 0;
+      // Use pay_rate for payroll, fall back to hourly_rate for backwards compatibility
+      const payRate = entry.personnel.pay_rate || entry.personnel.hourly_rate || 0;
 
       // Track total hours per personnel for overtime calculation
       const currentTotal = personnelTotalHours.get(entry.personnel_id) || 0;
@@ -178,7 +180,7 @@ Deno.serve(async (req) => {
         personnelProjectMap.set(key, {
           personnelId: entry.personnel_id,
           personnelName,
-          hourlyRate,
+          payRate,
           projectId: entry.project_id,
           projectName: entry.project.name,
           regularHours: 0,
@@ -195,7 +197,7 @@ Deno.serve(async (req) => {
     const personnelPayments = new Map<string, {
       personnelId: string;
       personnelName: string;
-      hourlyRate: number;
+      payRate: number;
       totalRegularHours: number;
       totalOvertimeHours: number;
       projects: Array<{
@@ -212,7 +214,7 @@ Deno.serve(async (req) => {
         personnelPayments.set(record.personnelId, {
           personnelId: record.personnelId,
           personnelName: record.personnelName,
-          hourlyRate: record.hourlyRate,
+          payRate: record.payRate,
           totalRegularHours: 0,
           totalOvertimeHours: 0,
           projects: [],
@@ -221,9 +223,9 @@ Deno.serve(async (req) => {
 
       const payment = personnelPayments.get(record.personnelId)!;
       
-      // Calculate pay for this project
-      const regularPay = record.regularHours * record.hourlyRate;
-      const overtimePay = record.overtimeHours * record.hourlyRate * overtimeMultiplier;
+      // Calculate pay for this project using pay_rate
+      const regularPay = record.regularHours * record.payRate;
+      const overtimePay = record.overtimeHours * record.payRate * overtimeMultiplier;
       const projectAmount = regularPay + overtimePay;
 
       payment.totalRegularHours += record.regularHours;
@@ -265,7 +267,7 @@ Deno.serve(async (req) => {
           pay_period_end: endDate,
           regular_hours: paymentData.totalRegularHours,
           overtime_hours: paymentData.totalOvertimeHours,
-          hourly_rate: paymentData.hourlyRate,
+          hourly_rate: paymentData.payRate, // Store pay_rate as hourly_rate in payment record
           notes: `Payroll for ${startDate} to ${endDate}`,
         })
         .select()
