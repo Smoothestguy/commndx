@@ -18,10 +18,17 @@ export function useGenerateWeeklyPayroll() {
         body: payPeriodEnd ? { payPeriodEnd } : {},
       });
 
-      if (error) throw error;
-      
-      if (!data.success) {
+      // Check data first - even with HTTP errors, the response body may contain the message
+      if (data && !data.success) {
         throw new Error(data.message || data.error || "Failed to generate payroll");
+      }
+      
+      if (error) {
+        throw new Error(error.message || "Failed to generate payroll");
+      }
+      
+      if (!data) {
+        throw new Error("No response from payroll generation");
       }
       
       return data;
