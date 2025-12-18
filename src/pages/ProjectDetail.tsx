@@ -657,6 +657,14 @@ const ProjectDetail = () => {
         )}
       </div>
 
+      {/* Vendor Bills */}
+      <div className="mb-8">
+        <ProjectVendorBillsList
+          projectId={id!}
+          onAddNew={() => navigate(`/vendor-bills/new?projectId=${id}`)}
+        />
+      </div>
+
       {/* Change Orders */}
       <div className="mb-8">
         <ProjectChangeOrdersList
@@ -681,14 +689,6 @@ const ProjectDetail = () => {
           purchaseOrders={projectPurchaseOrders}
           projectId={id!}
           onAddNew={() => navigate(`/purchase-orders/new?projectId=${id}`)}
-        />
-      </div>
-
-      {/* Vendor Bills */}
-      <div className="mb-8">
-        <ProjectVendorBillsList
-          projectId={id!}
-          onAddNew={() => navigate(`/vendor-bills/new?projectId=${id}`)}
         />
       </div>
 
