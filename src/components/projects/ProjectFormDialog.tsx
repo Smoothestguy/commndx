@@ -7,7 +7,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Separator } from "@/components/ui/separator";
-import { Project } from "@/integrations/supabase/hooks/useProjects";
+import { Project, ProjectStage } from "@/integrations/supabase/hooks/useProjects";
 
 interface Customer {
   id: string;
@@ -24,6 +24,7 @@ interface ProjectFormData {
   name: string;
   customer_id: string;
   status: "active" | "completed" | "on-hold";
+  stage: ProjectStage;
   start_date: string;
   end_date: string;
   description: string;
@@ -123,15 +124,34 @@ export const ProjectFormDialog = ({
                 </div>
 
                 <div className="space-y-2">
-                  <Label htmlFor="customer_po">Customer PO #</Label>
-                  <Input
-                    id="customer_po"
-                    value={formData.customer_po}
-                    onChange={(e) => setFormData({ ...formData, customer_po: e.target.value })}
-                    className="bg-secondary border-border"
-                    placeholder="Customer reference number"
-                  />
+                  <Label htmlFor="stage">Stage</Label>
+                  <Select
+                    value={formData.stage}
+                    onValueChange={(value: ProjectStage) => setFormData({ ...formData, stage: value })}
+                  >
+                    <SelectTrigger className="bg-secondary border-border">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="quote">Quote</SelectItem>
+                      <SelectItem value="task_order">Task Order</SelectItem>
+                      <SelectItem value="active">Active</SelectItem>
+                      <SelectItem value="complete">Complete</SelectItem>
+                      <SelectItem value="canceled">Canceled</SelectItem>
+                    </SelectContent>
+                  </Select>
                 </div>
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="customer_po">Customer PO #</Label>
+                <Input
+                  id="customer_po"
+                  value={formData.customer_po}
+                  onChange={(e) => setFormData({ ...formData, customer_po: e.target.value })}
+                  className="bg-secondary border-border"
+                  placeholder="Customer reference number"
+                />
               </div>
             </div>
 
@@ -335,6 +355,7 @@ export const initialProjectFormData: ProjectFormData = {
   name: "",
   customer_id: "",
   status: "active",
+  stage: "quote",
   start_date: "",
   end_date: "",
   description: "",

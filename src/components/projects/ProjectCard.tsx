@@ -1,8 +1,9 @@
 import { StatusBadge } from "@/components/shared/StatusBadge";
 import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
 import { Edit, Trash2, Calendar, User, ChevronRight } from "lucide-react";
 import { format } from "date-fns";
-import { Project } from "@/integrations/supabase/hooks/useProjects";
+import { Project, ProjectStage } from "@/integrations/supabase/hooks/useProjects";
 
 interface ProjectCardProps {
   project: Project;
@@ -12,6 +13,14 @@ interface ProjectCardProps {
   onClick: () => void;
   index: number;
 }
+
+const stageConfig: Record<ProjectStage, { label: string; variant: "default" | "secondary" | "outline" | "destructive"; className: string }> = {
+  quote: { label: "Quote", variant: "outline", className: "border-blue-500/50 text-blue-600 dark:text-blue-400" },
+  task_order: { label: "Task Order", variant: "outline", className: "border-purple-500/50 text-purple-600 dark:text-purple-400" },
+  active: { label: "Active", variant: "outline", className: "border-success/50 text-success" },
+  complete: { label: "Complete", variant: "outline", className: "border-primary/50 text-primary" },
+  canceled: { label: "Canceled", variant: "outline", className: "border-destructive/50 text-destructive" },
+};
 
 export function ProjectCard({ 
   project, 
@@ -27,18 +36,25 @@ export function ProjectCard({
     "on-hold": "border-warning/30",
   };
 
+  const stage = stageConfig[project.stage] || stageConfig.quote;
+
   return (
     <div
       className={`glass rounded-xl p-4 transition-all duration-300 hover:border-primary/30 hover:shadow-lg hover:shadow-primary/5 cursor-pointer group animate-fade-in border-l-4 ${statusColorMap[project.status]}`}
       style={{ animationDelay: `${index * 50}ms` }}
       onClick={onClick}
     >
-      {/* Header: Name & Status */}
+      {/* Header: Name & Badges */}
       <div className="flex items-start justify-between mb-3">
         <h3 className="font-heading text-lg font-semibold text-foreground group-hover:text-primary transition-colors">
           {project.name}
         </h3>
-        <StatusBadge status={project.status} />
+        <div className="flex items-center gap-2">
+          <Badge variant={stage.variant} className={`text-xs ${stage.className}`}>
+            {stage.label}
+          </Badge>
+          <StatusBadge status={project.status} />
+        </div>
       </div>
 
       {/* Customer Info */}
@@ -94,3 +110,5 @@ export function ProjectCard({
     </div>
   );
 }
+
+export { stageConfig };
