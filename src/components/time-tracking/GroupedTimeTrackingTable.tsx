@@ -468,7 +468,6 @@ export function GroupedTimeTrackingTable({
               {expandedGroups.has(group.personnelKey) && (
                 <div className="border-t border-border/30 pt-3 space-y-2">
                   {group.entries.map((entry) => {
-                    const hasOvertime = Number(entry.overtime_hours || 0) > 0;
                     const isHoliday = entry.is_holiday;
                     const entryCost = getEntryCost(entry);
                     
@@ -496,12 +495,6 @@ export function GroupedTimeTrackingTable({
                           </div>
                           <div className="flex items-center gap-1 mt-1 flex-wrap">
                             <StatusBadge status={getStatus(entry)} />
-                            {hasOvertime && (
-                              <Badge variant="outline" className="text-xs bg-orange-500/10 text-orange-500 border-orange-500/20">
-                                <AlertTriangle className="h-2 w-2 mr-0.5" />
-                                OT
-                              </Badge>
-                            )}
                             {isHoliday && (
                               <Badge variant="outline" className="text-xs bg-purple-500/10 text-purple-500 border-purple-500/20">
                                 <Gift className="h-2 w-2 mr-0.5" />
@@ -762,7 +755,6 @@ export function GroupedTimeTrackingTable({
                 <div className="border-t border-border/30 bg-muted/10">
                   <div className="divide-y divide-border/20">
                     {group.entries.map((entry) => {
-                      const hasOvertime = Number(entry.overtime_hours || 0) > 0;
                       const isHoliday = entry.is_holiday;
                       const entryCost = getEntryCost(entry);
                       
@@ -795,14 +787,8 @@ export function GroupedTimeTrackingTable({
                             <div>
                               <StatusBadge status={getStatus(entry)} />
                             </div>
-                            {/* OT/Holiday/Billing badges */}
+                            {/* Holiday/Billing badges - OT is shown at group level */}
                             <div className="flex gap-1 flex-wrap">
-                              {hasOvertime && (
-                                <Badge variant="outline" className="text-xs bg-orange-500/10 text-orange-500 border-orange-500/20 gap-1">
-                                  <AlertTriangle className="h-3 w-3" />
-                                  OT +{Number(entry.overtime_hours).toFixed(1)}h
-                                </Badge>
-                              )}
                               {isHoliday && (
                                 <Badge variant="outline" className="text-xs bg-purple-500/10 text-purple-500 border-purple-500/20 gap-1">
                                   <Gift className="h-3 w-3" />
