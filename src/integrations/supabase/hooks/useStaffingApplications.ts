@@ -302,7 +302,7 @@ export const useSubmitApplication = () => {
       };
       answers: Record<string, unknown>;
     }) => {
-      // First, upsert the applicant by email
+      // First, check if applicant exists
       const { data: existingApplicant, error: fetchError } = await supabase
         .from("applicants")
         .select("id")
@@ -310,6 +310,22 @@ export const useSubmitApplication = () => {
         .maybeSingle();
 
       if (fetchError) throw fetchError;
+
+      // If applicant exists, check if they already applied to this posting
+      if (existingApplicant) {
+        const { data: existingApplication, error: appCheckError } = await supabase
+          .from("applications")
+          .select("id")
+          .eq("applicant_id", existingApplicant.id)
+          .eq("job_posting_id", posting_id)
+          .maybeSingle();
+
+        if (appCheckError) throw appCheckError;
+
+        if (existingApplication) {
+          throw new Error("DUPLICATE_APPLICATION");
+        }
+      }
 
       let applicantId: string;
 

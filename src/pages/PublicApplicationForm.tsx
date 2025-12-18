@@ -123,10 +123,15 @@ export default function PublicApplicationForm() {
         },
         answers: customAnswers,
       });
+      toast.success("Thank you for applying! We appreciate your interest and will review your application soon.");
       setSubmitted(true);
-    } catch (err) {
+    } catch (err: any) {
       console.error("Application submission error:", err);
-      toast.error("Failed to submit application. Please try again.");
+      if (err?.message === "DUPLICATE_APPLICATION") {
+        toast.error("You have already applied for this position. Only one application per person is allowed.");
+      } else {
+        toast.error("Failed to submit application. Please try again.");
+      }
     }
   };
 
