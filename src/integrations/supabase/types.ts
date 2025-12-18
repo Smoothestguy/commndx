@@ -2060,6 +2060,7 @@ export type Database = {
           id_document_url: string | null
           immigration_status: string | null
           last_name: string
+          linked_vendor_id: string | null
           notes: string | null
           pay_rate: number | null
           personnel_number: string
@@ -2100,6 +2101,7 @@ export type Database = {
           id_document_url?: string | null
           immigration_status?: string | null
           last_name: string
+          linked_vendor_id?: string | null
           notes?: string | null
           pay_rate?: number | null
           personnel_number: string
@@ -2140,6 +2142,7 @@ export type Database = {
           id_document_url?: string | null
           immigration_status?: string | null
           last_name?: string
+          linked_vendor_id?: string | null
           notes?: string | null
           pay_rate?: number | null
           personnel_number?: string
@@ -2166,6 +2169,13 @@ export type Database = {
             columns: ["applicant_id"]
             isOneToOne: false
             referencedRelation: "applicants"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "personnel_linked_vendor_id_fkey"
+            columns: ["linked_vendor_id"]
+            isOneToOne: false
+            referencedRelation: "vendors"
             referencedColumns: ["id"]
           },
           {
@@ -2535,6 +2545,7 @@ export type Database = {
         Row: {
           assigned_at: string
           assigned_by: string | null
+          bill_rate: number | null
           created_at: string | null
           id: string
           last_time_entry_at: string | null
@@ -2546,6 +2557,7 @@ export type Database = {
         Insert: {
           assigned_at?: string
           assigned_by?: string | null
+          bill_rate?: number | null
           created_at?: string | null
           id?: string
           last_time_entry_at?: string | null
@@ -2557,6 +2569,7 @@ export type Database = {
         Update: {
           assigned_at?: string
           assigned_by?: string | null
+          bill_rate?: number | null
           created_at?: string | null
           id?: string
           last_time_entry_at?: string | null
@@ -5383,6 +5396,10 @@ export type Database = {
       accept_invitation: {
         Args: { _invitation_id: string; _user_id: string }
         Returns: Json
+      }
+      create_personnel_vendor: {
+        Args: { p_personnel_id: string }
+        Returns: string
       }
       expire_old_invitations: { Args: never; Returns: undefined }
       generate_change_order_number: {
