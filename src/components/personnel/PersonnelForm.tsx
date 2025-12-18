@@ -27,6 +27,8 @@ const personnelSchema = z.object({
   zip: z.string().optional(),
   date_of_birth: z.string().optional(),
   hourly_rate: z.number().min(0).optional(),
+  pay_rate: z.number().min(0).optional(),
+  bill_rate: z.number().min(0).optional(),
   status: z.enum(["active", "inactive", "do_not_hire"]),
   ssn_last_four: z.string().max(4).optional(),
   work_authorization_type: z.enum(["citizen", "permanent_resident", "work_visa", "ead", "other"]).optional(),
@@ -85,6 +87,8 @@ export const PersonnelForm = ({ personnel, onSuccess, onCancel, defaultVendorId,
       zip: personnel?.zip || "",
       date_of_birth: personnel?.date_of_birth || "",
       hourly_rate: personnel?.hourly_rate || 0,
+      pay_rate: (personnel as any)?.pay_rate || personnel?.hourly_rate || 0,
+      bill_rate: (personnel as any)?.bill_rate || 0,
       status: (personnel?.status as any) || "active",
       ssn_last_four: personnel?.ssn_last_four || "",
       work_authorization_type: (personnel?.work_authorization_type as any) || undefined,
@@ -107,6 +111,9 @@ export const PersonnelForm = ({ personnel, onSuccess, onCancel, defaultVendorId,
       date_of_birth: data.date_of_birth || null,
       work_auth_expiry: data.work_auth_expiry || null,
       i9_completed_at: data.i9_completed_at || null,
+      // Ensure pay_rate and bill_rate are included
+      pay_rate: data.pay_rate || 0,
+      bill_rate: data.bill_rate || 0,
     };
 
     if (personnel) {
@@ -321,15 +328,50 @@ export const PersonnelForm = ({ personnel, onSuccess, onCancel, defaultVendorId,
                 </Select>
               </div>
 
-              <div className="space-y-2">
-                <Label htmlFor="hourly_rate">Hourly Rate</Label>
-                <Input
-                  id="hourly_rate"
-                  type="number"
-                  step="0.01"
-                  {...register("hourly_rate", { valueAsNumber: true })}
-                />
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label htmlFor="pay_rate">Pay Rate (Internal)</Label>
+                  <div className="relative">
+                    <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground">$</span>
+                    <Input
+                      id="pay_rate"
+                      type="number"
+                      step="0.01"
+                      className="pl-7"
+                      {...register("pay_rate", { valueAsNumber: true })}
+                    />
+                  </div>
+                  <p className="text-xs text-muted-foreground">
+                    Used for payroll & vendor bills
+                  </p>
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="bill_rate">Bill Rate (Customer)</Label>
+                  <div className="relative">
+                    <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground">$</span>
+                    <Input
+                      id="bill_rate"
+                      type="number"
+                      step="0.01"
+                      className="pl-7"
+                      {...register("bill_rate", { valueAsNumber: true })}
+                    />
+                  </div>
+                  <p className="text-xs text-muted-foreground">
+                    Used for customer invoices
+                  </p>
+                </div>
               </div>
+
+              {/* Show warning if bill_rate <= pay_rate */}
+              {watch("bill_rate") !== undefined && watch("pay_rate") !== undefined && 
+               watch("bill_rate")! > 0 && watch("pay_rate")! > 0 && 
+               watch("bill_rate")! <= watch("pay_rate")! && (
+                <p className="text-sm text-yellow-600">
+                  ⚠️ Bill rate should typically be higher than pay rate for margin
+                </p>
+              )}
 
               <div className="space-y-2">
                 <Label htmlFor="vendor_id">Assigned Vendor</Label>

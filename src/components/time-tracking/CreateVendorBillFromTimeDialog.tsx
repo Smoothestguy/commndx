@@ -45,7 +45,7 @@ interface PersonnelSummary {
   regularHours: number;
   overtimeHours: number;
   totalCost: number;
-  hourlyRate: number;
+  payRate: number; // Internal pay rate for vendor bills
   entryIds: string[];
 }
 
@@ -101,7 +101,8 @@ export function CreateVendorBillFromTimeDialog({
         : entry.profiles?.first_name && entry.profiles?.last_name
           ? `${entry.profiles.first_name} ${entry.profiles.last_name}`
           : entry.profiles?.email || "Unknown";
-      const hourlyRate = entry.personnel?.hourly_rate || entry.profiles?.hourly_rate || 0;
+      // Use pay_rate for vendor bills (internal payroll cost)
+      const payRate = (entry.personnel as any)?.pay_rate || entry.personnel?.hourly_rate || 0;
 
       if (!groups.has(personnelId)) {
         groups.set(personnelId, {
@@ -111,7 +112,7 @@ export function CreateVendorBillFromTimeDialog({
           regularHours: 0,
           overtimeHours: 0,
           totalCost: 0,
-          hourlyRate,
+          payRate,
           entryIds: [],
         });
       }
@@ -126,8 +127,8 @@ export function CreateVendorBillFromTimeDialog({
       summary.regularHours = Math.min(summary.totalHours, weeklyOvertimeThreshold);
       summary.overtimeHours = Math.max(0, summary.totalHours - weeklyOvertimeThreshold);
       
-      const regularCost = summary.regularHours * summary.hourlyRate;
-      const overtimeCost = summary.overtimeHours * summary.hourlyRate * overtimeMultiplier;
+      const regularCost = summary.regularHours * summary.payRate;
+      const overtimeCost = summary.overtimeHours * summary.payRate * overtimeMultiplier;
       summary.totalCost = regularCost + overtimeCost;
     });
 
@@ -428,7 +429,7 @@ export function CreateVendorBillFromTimeDialog({
                           )}
                         </TableCell>
                         <TableCell className="text-right text-muted-foreground">
-                          {formatCurrency(summary.hourlyRate)}/hr
+                          {formatCurrency(summary.payRate)}/hr
                         </TableCell>
                         <TableCell className="text-right font-medium">
                           {formatCurrency(summary.totalCost)}

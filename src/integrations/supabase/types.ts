@@ -2043,6 +2043,7 @@ export type Database = {
         Row: {
           address: string | null
           applicant_id: string | null
+          bill_rate: number | null
           citizenship_status: string | null
           city: string | null
           created_at: string | null
@@ -2060,6 +2061,7 @@ export type Database = {
           immigration_status: string | null
           last_name: string
           notes: string | null
+          pay_rate: number | null
           personnel_number: string
           phone: string | null
           photo_url: string | null
@@ -2081,6 +2083,7 @@ export type Database = {
         Insert: {
           address?: string | null
           applicant_id?: string | null
+          bill_rate?: number | null
           citizenship_status?: string | null
           city?: string | null
           created_at?: string | null
@@ -2098,6 +2101,7 @@ export type Database = {
           immigration_status?: string | null
           last_name: string
           notes?: string | null
+          pay_rate?: number | null
           personnel_number: string
           phone?: string | null
           photo_url?: string | null
@@ -2119,6 +2123,7 @@ export type Database = {
         Update: {
           address?: string | null
           applicant_id?: string | null
+          bill_rate?: number | null
           citizenship_status?: string | null
           city?: string | null
           created_at?: string | null
@@ -2136,6 +2141,7 @@ export type Database = {
           immigration_status?: string | null
           last_name?: string
           notes?: string | null
+          pay_rate?: number | null
           personnel_number?: string
           phone?: string | null
           photo_url?: string | null
