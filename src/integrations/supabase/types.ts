@@ -162,6 +162,36 @@ export type Database = {
         }
         Relationships: []
       }
+      application_form_templates: {
+        Row: {
+          created_at: string
+          description: string | null
+          fields: Json
+          id: string
+          is_active: boolean
+          name: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          description?: string | null
+          fields?: Json
+          id?: string
+          is_active?: boolean
+          name: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          description?: string | null
+          fields?: Json
+          id?: string
+          is_active?: boolean
+          name?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       applications: {
         Row: {
           answers: Json | null
@@ -1838,6 +1868,7 @@ export type Database = {
       job_postings: {
         Row: {
           created_at: string
+          form_template_id: string | null
           id: string
           is_open: boolean
           public_token: string
@@ -1845,6 +1876,7 @@ export type Database = {
         }
         Insert: {
           created_at?: string
+          form_template_id?: string | null
           id?: string
           is_open?: boolean
           public_token?: string
@@ -1852,12 +1884,20 @@ export type Database = {
         }
         Update: {
           created_at?: string
+          form_template_id?: string | null
           id?: string
           is_open?: boolean
           public_token?: string
           task_order_id?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "job_postings_form_template_id_fkey"
+            columns: ["form_template_id"]
+            isOneToOne: false
+            referencedRelation: "application_form_templates"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "job_postings_task_order_id_fkey"
             columns: ["task_order_id"]

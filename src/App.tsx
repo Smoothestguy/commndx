@@ -107,6 +107,8 @@ import ApproveChangeOrder from "./pages/ApproveChangeOrder";
 import AuditLogs from "./pages/AuditLogs";
 import StaffingApplications from "./pages/StaffingApplications";
 import PublicApplicationForm from "./pages/PublicApplicationForm";
+import ApplicationFormTemplates from "./pages/ApplicationFormTemplates";
+import ApplicationFormBuilder from "./pages/ApplicationFormBuilder";
 
 const queryClient = new QueryClient();
 
@@ -338,6 +340,18 @@ const App = () => {
                     <Route
                       path="/staffing/applications"
                       element={<StaffingApplications />}
+                    />
+                    <Route
+                      path="/staffing/form-templates"
+                      element={<ApplicationFormTemplates />}
+                    />
+                    <Route
+                      path="/staffing/form-templates/new"
+                      element={<ApplicationFormBuilder />}
+                    />
+                    <Route
+                      path="/staffing/form-templates/:id"
+                      element={<ApplicationFormBuilder />}
                     />
                   </Route>
 
