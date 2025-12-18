@@ -10,6 +10,7 @@ export interface PersonnelProjectAssignment {
   assigned_at: string;
   status: string;
   bill_rate: number | null;
+  rate_bracket_id: string | null;
   created_at: string | null;
   updated_at: string | null;
 }
@@ -38,6 +39,13 @@ export interface AssignmentWithDetails extends PersonnelProjectAssignment {
   } | null;
 }
 
+export interface RateBracketInfo {
+  id: string;
+  name: string;
+  bill_rate: number;
+  overtime_multiplier: number;
+}
+
 // Get all personnel assigned to a specific project (filters out inactive/do_not_hire personnel)
 export function usePersonnelByProject(projectId: string | undefined) {
   return useQuery({
@@ -55,6 +63,7 @@ export function usePersonnelByProject(projectId: string | undefined) {
           assigned_at,
           status,
           bill_rate,
+          rate_bracket_id,
           created_at,
           updated_at,
           personnel!inner (
@@ -69,6 +78,12 @@ export function usePersonnelByProject(projectId: string | undefined) {
             status,
             vendor_id,
             linked_vendor_id
+          ),
+          project_rate_brackets (
+            id,
+            name,
+            bill_rate,
+            overtime_multiplier
           )
         `)
         .eq("project_id", projectId)
@@ -76,7 +91,10 @@ export function usePersonnelByProject(projectId: string | undefined) {
         .eq("personnel.status", "active");
 
       if (error) throw error;
-      return data as (PersonnelProjectAssignment & { personnel: PersonnelWithAssignment | null })[];
+      return data as (PersonnelProjectAssignment & { 
+        personnel: PersonnelWithAssignment | null;
+        project_rate_brackets: RateBracketInfo | null;
+      })[];
     },
     enabled: !!projectId,
   });
@@ -166,7 +184,7 @@ export function useAssignPersonnelToProject() {
   });
 }
 
-// Bulk assign multiple personnel to a project with optional bill rates
+// Bulk assign multiple personnel to a project with rate bracket
 export function useBulkAssignPersonnelToProject() {
   const queryClient = useQueryClient();
 
@@ -174,11 +192,11 @@ export function useBulkAssignPersonnelToProject() {
     mutationFn: async ({
       personnelIds,
       projectId,
-      billRates,
+      rateBracketIds,
     }: {
       personnelIds: string[];
       projectId: string;
-      billRates?: Record<string, number | null>;
+      rateBracketIds: Record<string, string>;
     }) => {
       const { data: { user } } = await supabase.auth.getUser();
       
@@ -188,7 +206,7 @@ export function useBulkAssignPersonnelToProject() {
         assigned_by: user?.id || null,
         status: 'active',
         assigned_at: new Date().toISOString(),
-        bill_rate: billRates?.[personnelId] ?? null,
+        rate_bracket_id: rateBracketIds[personnelId] || null,
       }));
 
       const { data, error } = await supabase
@@ -201,6 +219,7 @@ export function useBulkAssignPersonnelToProject() {
     },
     onSuccess: (data) => {
       queryClient.invalidateQueries({ queryKey: ["personnel-project-assignments"] });
+      queryClient.invalidateQueries({ queryKey: ["project-rate-brackets"] });
       toast.success(`${data.length} personnel assigned to project`);
     },
     onError: () => {
@@ -282,7 +301,40 @@ export function useProjectsForPersonnel(personnelId: string | undefined) {
   });
 }
 
-// Update assignment bill rate
+// Update assignment rate bracket
+export function useUpdateAssignmentRateBracket() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async ({
+      assignmentId,
+      rateBracketId,
+    }: {
+      assignmentId: string;
+      rateBracketId: string | null;
+    }) => {
+      const { data, error } = await supabase
+        .from("personnel_project_assignments")
+        .update({ rate_bracket_id: rateBracketId })
+        .eq("id", assignmentId)
+        .select()
+        .single();
+
+      if (error) throw error;
+      return data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["personnel-project-assignments"] });
+      queryClient.invalidateQueries({ queryKey: ["project-rate-brackets"] });
+      toast.success("Rate bracket updated");
+    },
+    onError: () => {
+      toast.error("Failed to update rate bracket");
+    },
+  });
+}
+
+// Update assignment bill rate (deprecated - keep for backward compatibility)
 export function useUpdateAssignmentBillRate() {
   const queryClient = useQueryClient();
 

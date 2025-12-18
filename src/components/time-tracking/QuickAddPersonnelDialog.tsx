@@ -24,16 +24,11 @@ export function QuickAddPersonnelDialog({
   const assignToProject = useBulkAssignPersonnelToProject();
 
   const handleSuccess = async (newPersonnelId?: string) => {
+    // Note: Personnel added via quick add won't be auto-assigned to project
+    // because rate bracket selection is now required.
+    // User will need to assign them via the Personnel Assignment dialog.
     if (projectId && newPersonnelId) {
-      try {
-        await assignToProject.mutateAsync({
-          personnelIds: [newPersonnelId],
-          projectId,
-        });
-        toast.success(`Personnel added and assigned to ${projectName || "project"}`);
-      } catch (error) {
-        toast.error("Personnel added but failed to assign to project");
-      }
+      toast.info(`Personnel added. Please assign them to the project with a rate bracket.`);
     }
     
     queryClient.invalidateQueries({ queryKey: ["personnel-by-project"] });

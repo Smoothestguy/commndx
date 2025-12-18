@@ -2,7 +2,6 @@ import { useState, useMemo, useEffect } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
-import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useProjects } from "@/integrations/supabase/hooks/useProjects";
 import { usePersonnel } from "@/integrations/supabase/hooks/usePersonnel";
@@ -10,11 +9,13 @@ import {
   usePersonnelByProject, 
   useBulkAssignPersonnelToProject,
   useRemovePersonnelFromProject,
-  useUpdateAssignmentBillRate
+  useUpdateAssignmentRateBracket
 } from "@/integrations/supabase/hooks/usePersonnelProjectAssignments";
-import { Users, UserPlus, X, DollarSign, Pencil, Check } from "lucide-react";
+import { useActiveProjectRateBrackets } from "@/integrations/supabase/hooks/useProjectRateBrackets";
+import { Users, UserPlus, X, Briefcase, Pencil, Check, AlertCircle } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { formatCurrency } from "@/lib/utils";
+import { Alert, AlertDescription } from "@/components/ui/alert";
 
 interface PersonnelAssignmentDialogProps {
   open: boolean;
@@ -31,16 +32,17 @@ export function PersonnelAssignmentDialog({
 }: PersonnelAssignmentDialogProps) {
   const [selectedProject, setSelectedProject] = useState(defaultProjectId || "");
   const [selectedPersonnel, setSelectedPersonnel] = useState<Set<string>>(new Set());
-  const [billRates, setBillRates] = useState<Record<string, number | null>>({});
+  const [rateBracketSelections, setRateBracketSelections] = useState<Record<string, string>>({});
   const [editingAssignmentId, setEditingAssignmentId] = useState<string | null>(null);
-  const [editingBillRate, setEditingBillRate] = useState<string>("");
+  const [editingRateBracketId, setEditingRateBracketId] = useState<string>("");
 
   const { data: projects = [] } = useProjects();
   const { data: allPersonnel = [] } = usePersonnel();
   const { data: assignedPersonnel = [], isLoading } = usePersonnelByProject(selectedProject);
+  const { data: rateBrackets = [] } = useActiveProjectRateBrackets(selectedProject);
   const assignMutation = useBulkAssignPersonnelToProject();
   const removeMutation = useRemovePersonnelFromProject();
-  const updateBillRateMutation = useUpdateAssignmentBillRate();
+  const updateRateBracketMutation = useUpdateAssignmentRateBracket();
 
   // Set project from prop when dialog opens
   useEffect(() => {
@@ -69,38 +71,41 @@ export function PersonnelAssignmentDialog({
     [activePersonnel, assignedIds]
   );
 
-  const togglePersonnel = (personnelId: string, defaultBillRate: number | null) => {
+  const togglePersonnel = (personnelId: string) => {
     const newSelected = new Set(selectedPersonnel);
     if (newSelected.has(personnelId)) {
       newSelected.delete(personnelId);
-      // Remove bill rate
-      const newRates = { ...billRates };
-      delete newRates[personnelId];
-      setBillRates(newRates);
+      // Remove rate bracket selection
+      const newSelections = { ...rateBracketSelections };
+      delete newSelections[personnelId];
+      setRateBracketSelections(newSelections);
     } else {
       newSelected.add(personnelId);
-      // Initialize with default bill rate
-      setBillRates(prev => ({ ...prev, [personnelId]: defaultBillRate }));
     }
     setSelectedPersonnel(newSelected);
   };
 
-  const updateBillRate = (personnelId: string, rate: string) => {
-    const numRate = rate ? parseFloat(rate) : null;
-    setBillRates(prev => ({ ...prev, [personnelId]: numRate }));
+  const updateRateBracketSelection = (personnelId: string, bracketId: string) => {
+    setRateBracketSelections(prev => ({ ...prev, [personnelId]: bracketId }));
   };
 
+  // Check if all selected personnel have rate brackets assigned
+  const allHaveRateBrackets = useMemo(() => {
+    if (selectedPersonnel.size === 0) return true;
+    return Array.from(selectedPersonnel).every(id => rateBracketSelections[id]);
+  }, [selectedPersonnel, rateBracketSelections]);
+
   const handleAssign = () => {
-    if (!selectedProject || selectedPersonnel.size === 0) return;
+    if (!selectedProject || selectedPersonnel.size === 0 || !allHaveRateBrackets) return;
     
     assignMutation.mutate({
       personnelIds: Array.from(selectedPersonnel),
       projectId: selectedProject,
-      billRates,
+      rateBracketIds: rateBracketSelections,
     }, {
       onSuccess: () => {
         setSelectedPersonnel(new Set());
-        setBillRates({});
+        setRateBracketSelections({});
         onAssignmentChange?.();
       },
     });
@@ -114,30 +119,29 @@ export function PersonnelAssignmentDialog({
     });
   };
 
-  const startEditingBillRate = (assignmentId: string, currentRate: number | null) => {
+  const startEditingRateBracket = (assignmentId: string, currentBracketId: string | null) => {
     setEditingAssignmentId(assignmentId);
-    setEditingBillRate(currentRate?.toString() || "");
+    setEditingRateBracketId(currentBracketId || "");
   };
 
-  const saveEditingBillRate = () => {
-    if (!editingAssignmentId) return;
+  const saveEditingRateBracket = () => {
+    if (!editingAssignmentId || !editingRateBracketId) return;
     
-    const newRate = editingBillRate ? parseFloat(editingBillRate) : null;
-    updateBillRateMutation.mutate({
+    updateRateBracketMutation.mutate({
       assignmentId: editingAssignmentId,
-      billRate: newRate,
+      rateBracketId: editingRateBracketId,
     }, {
       onSuccess: () => {
         setEditingAssignmentId(null);
-        setEditingBillRate("");
+        setEditingRateBracketId("");
         onAssignmentChange?.();
       },
     });
   };
 
-  const cancelEditingBillRate = () => {
+  const cancelEditingRateBracket = () => {
     setEditingAssignmentId(null);
-    setEditingBillRate("");
+    setEditingRateBracketId("");
   };
 
   return (
@@ -154,7 +158,7 @@ export function PersonnelAssignmentDialog({
             <Select value={selectedProject} onValueChange={(v) => {
               setSelectedProject(v);
               setSelectedPersonnel(new Set());
-              setBillRates({});
+              setRateBracketSelections({});
             }}>
               <SelectTrigger>
                 <SelectValue placeholder="Select a project" />
@@ -171,6 +175,17 @@ export function PersonnelAssignmentDialog({
 
           {selectedProject && (
             <>
+              {/* Rate Brackets Warning */}
+              {rateBrackets.length === 0 && (
+                <Alert variant="destructive">
+                  <AlertCircle className="h-4 w-4" />
+                  <AlertDescription>
+                    No rate brackets defined for this project. 
+                    Please add rate brackets in Project Settings before assigning personnel.
+                  </AlertDescription>
+                </Alert>
+              )}
+
               {/* Currently Assigned */}
               <div className="space-y-2">
                 <Label className="flex items-center gap-2">
@@ -187,43 +202,45 @@ export function PersonnelAssignmentDialog({
                       const person = assignment.personnel;
                       if (!person) return null;
                       const isEditing = editingAssignmentId === assignment.id;
+                      const bracket = assignment.project_rate_brackets;
+                      
                       return (
                         <div 
                           key={assignment.id} 
                           className="flex items-center justify-between p-2 bg-muted/50 rounded-lg"
                         >
-                          <div className="flex items-center gap-2 flex-1">
+                          <div className="flex items-center gap-2 flex-1 flex-wrap">
                             <span className="font-medium text-sm">
                               {person.first_name} {person.last_name}
                             </span>
                             {isEditing ? (
                               <div className="flex items-center gap-1">
-                                <DollarSign className="h-3 w-3 text-muted-foreground" />
-                                <Input
-                                  type="number"
-                                  step="0.01"
-                                  min="0"
-                                  placeholder="Rate"
-                                  value={editingBillRate}
-                                  onChange={(e) => setEditingBillRate(e.target.value)}
-                                  className="h-7 w-20 text-xs"
-                                  autoFocus
-                                  onKeyDown={(e) => {
-                                    if (e.key === 'Enter') saveEditingBillRate();
-                                    if (e.key === 'Escape') cancelEditingBillRate();
-                                  }}
-                                />
+                                <Select 
+                                  value={editingRateBracketId} 
+                                  onValueChange={setEditingRateBracketId}
+                                >
+                                  <SelectTrigger className="h-7 w-40 text-xs">
+                                    <SelectValue placeholder="Select role" />
+                                  </SelectTrigger>
+                                  <SelectContent>
+                                    {rateBrackets.map((rb) => (
+                                      <SelectItem key={rb.id} value={rb.id}>
+                                        {rb.name} ({formatCurrency(rb.bill_rate)}/hr)
+                                      </SelectItem>
+                                    ))}
+                                  </SelectContent>
+                                </Select>
                                 <button
                                   type="button"
-                                  onClick={saveEditingBillRate}
-                                  disabled={updateBillRateMutation.isPending}
-                                  className="hover:bg-primary/20 rounded p-1 text-primary"
+                                  onClick={saveEditingRateBracket}
+                                  disabled={!editingRateBracketId || updateRateBracketMutation.isPending}
+                                  className="hover:bg-primary/20 rounded p-1 text-primary disabled:opacity-50"
                                 >
                                   <Check className="h-4 w-4" />
                                 </button>
                                 <button
                                   type="button"
-                                  onClick={cancelEditingBillRate}
+                                  onClick={cancelEditingRateBracket}
                                   className="hover:bg-muted rounded p-1"
                                 >
                                   <X className="h-4 w-4" />
@@ -232,17 +249,19 @@ export function PersonnelAssignmentDialog({
                             ) : (
                               <button
                                 type="button"
-                                onClick={() => startEditingBillRate(assignment.id, assignment.bill_rate)}
+                                onClick={() => startEditingRateBracket(assignment.id, assignment.rate_bracket_id)}
                                 className="flex items-center gap-1 hover:bg-muted rounded px-1"
                               >
-                                {assignment.bill_rate ? (
+                                {bracket ? (
                                   <Badge variant="outline" className="text-xs cursor-pointer">
-                                    {formatCurrency(assignment.bill_rate)}/hr
+                                    <Briefcase className="h-3 w-3 mr-1" />
+                                    {bracket.name} ({formatCurrency(bracket.bill_rate)}/hr)
                                     <Pencil className="h-3 w-3 ml-1" />
                                   </Badge>
                                 ) : (
-                                  <Badge variant="secondary" className="text-xs cursor-pointer text-muted-foreground">
-                                    No rate
+                                  <Badge variant="destructive" className="text-xs cursor-pointer">
+                                    <AlertCircle className="h-3 w-3 mr-1" />
+                                    No role assigned
                                     <Pencil className="h-3 w-3 ml-1" />
                                   </Badge>
                                 )}
@@ -270,7 +289,11 @@ export function PersonnelAssignmentDialog({
                   <UserPlus className="h-4 w-4" />
                   Add Personnel
                 </Label>
-                {unassignedPersonnel.length === 0 ? (
+                {rateBrackets.length === 0 ? (
+                  <div className="py-2 text-sm text-muted-foreground">
+                    Define rate brackets before assigning personnel
+                  </div>
+                ) : unassignedPersonnel.length === 0 ? (
                   <div className="py-2 text-sm text-muted-foreground">
                     All active personnel are already assigned
                   </div>
@@ -279,7 +302,7 @@ export function PersonnelAssignmentDialog({
                     <div className="max-h-64 overflow-y-auto border rounded-lg divide-y">
                       {unassignedPersonnel.map((person) => {
                         const isSelected = selectedPersonnel.has(person.id);
-                        const defaultRate = (person as any).bill_rate || null;
+                        const payRate = (person as any).pay_rate;
                         return (
                           <div
                             key={person.id}
@@ -289,7 +312,7 @@ export function PersonnelAssignmentDialog({
                           >
                             <div 
                               className="flex items-center gap-2 cursor-pointer"
-                              onClick={() => togglePersonnel(person.id, defaultRate)}
+                              onClick={() => togglePersonnel(person.id)}
                             >
                               <span
                                 className={`flex h-4 w-4 items-center justify-center rounded border text-[10px] font-bold ${
@@ -303,28 +326,38 @@ export function PersonnelAssignmentDialog({
                               <span className="text-sm font-medium flex-1">
                                 {person.first_name} {person.last_name}
                               </span>
-                              {defaultRate && (
+                              {payRate && (
                                 <span className="text-xs text-muted-foreground">
-                                  Default: {formatCurrency(defaultRate)}/hr
+                                  Pay: {formatCurrency(payRate)}/hr
                                 </span>
                               )}
                             </div>
                             
-                            {/* Bill Rate Input - only shown when selected */}
+                            {/* Rate Bracket Selection - only shown when selected */}
                             {isSelected && (
                               <div className="mt-2 ml-6 flex items-center gap-2">
-                                <DollarSign className="h-4 w-4 text-muted-foreground" />
-                                <Input
-                                  type="number"
-                                  step="0.01"
-                                  min="0"
-                                  placeholder="Bill rate for this project"
-                                  value={billRates[person.id] ?? ""}
-                                  onChange={(e) => updateBillRate(person.id, e.target.value)}
-                                  onClick={(e) => e.stopPropagation()}
-                                  className="h-8 w-32"
-                                />
-                                <span className="text-xs text-muted-foreground">/hr</span>
+                                <Briefcase className="h-4 w-4 text-muted-foreground" />
+                                <Select
+                                  value={rateBracketSelections[person.id] || ""}
+                                  onValueChange={(value) => updateRateBracketSelection(person.id, value)}
+                                >
+                                  <SelectTrigger 
+                                    className="h-8 w-48"
+                                    onClick={(e) => e.stopPropagation()}
+                                  >
+                                    <SelectValue placeholder="Select role *" />
+                                  </SelectTrigger>
+                                  <SelectContent>
+                                    {rateBrackets.map((rb) => (
+                                      <SelectItem key={rb.id} value={rb.id}>
+                                        {rb.name} ({formatCurrency(rb.bill_rate)}/hr)
+                                      </SelectItem>
+                                    ))}
+                                  </SelectContent>
+                                </Select>
+                                {!rateBracketSelections[person.id] && (
+                                  <span className="text-xs text-destructive">Required</span>
+                                )}
                               </div>
                             )}
                           </div>
@@ -333,13 +366,18 @@ export function PersonnelAssignmentDialog({
                     </div>
                     <Button
                       onClick={handleAssign}
-                      disabled={selectedPersonnel.size === 0 || assignMutation.isPending}
+                      disabled={selectedPersonnel.size === 0 || !allHaveRateBrackets || assignMutation.isPending}
                       className="w-full"
                     >
                       {assignMutation.isPending 
                         ? "Assigning..." 
                         : `Assign ${selectedPersonnel.size} Personnel`}
                     </Button>
+                    {selectedPersonnel.size > 0 && !allHaveRateBrackets && (
+                      <p className="text-xs text-destructive text-center">
+                        All selected personnel must have a role assigned
+                      </p>
+                    )}
                   </>
                 )}
               </div>
