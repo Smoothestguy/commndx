@@ -9,6 +9,7 @@ export interface PersonnelProjectAssignment {
   assigned_by: string | null;
   assigned_at: string;
   status: string;
+  bill_rate: number | null;
   created_at: string | null;
   updated_at: string | null;
 }
@@ -18,9 +19,13 @@ export interface PersonnelWithAssignment {
   first_name: string;
   last_name: string;
   hourly_rate: number | null;
+  pay_rate: number | null;
+  bill_rate: number | null;
   email: string;
   phone: string | null;
   status: string | null;
+  vendor_id: string | null;
+  linked_vendor_id: string | null;
 }
 
 export interface AssignmentWithDetails extends PersonnelProjectAssignment {
@@ -49,6 +54,7 @@ export function usePersonnelByProject(projectId: string | undefined) {
           assigned_by,
           assigned_at,
           status,
+          bill_rate,
           created_at,
           updated_at,
           personnel!inner (
@@ -56,9 +62,13 @@ export function usePersonnelByProject(projectId: string | undefined) {
             first_name,
             last_name,
             hourly_rate,
+            pay_rate,
+            bill_rate,
             email,
             phone,
-            status
+            status,
+            vendor_id,
+            linked_vendor_id
           )
         `)
         .eq("project_id", projectId)
@@ -156,7 +166,7 @@ export function useAssignPersonnelToProject() {
   });
 }
 
-// Bulk assign multiple personnel to a project
+// Bulk assign multiple personnel to a project with optional bill rates
 export function useBulkAssignPersonnelToProject() {
   const queryClient = useQueryClient();
 
@@ -164,9 +174,11 @@ export function useBulkAssignPersonnelToProject() {
     mutationFn: async ({
       personnelIds,
       projectId,
+      billRates,
     }: {
       personnelIds: string[];
       projectId: string;
+      billRates?: Record<string, number | null>;
     }) => {
       const { data: { user } } = await supabase.auth.getUser();
       
@@ -176,6 +188,7 @@ export function useBulkAssignPersonnelToProject() {
         assigned_by: user?.id || null,
         status: 'active',
         assigned_at: new Date().toISOString(),
+        bill_rate: billRates?.[personnelId] ?? null,
       }));
 
       const { data, error } = await supabase

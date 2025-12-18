@@ -1,4 +1,4 @@
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import {
   Dialog,
@@ -11,7 +11,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
-import { Loader2, Receipt, Check, AlertTriangle, Edit } from "lucide-react";
+import { Loader2, Receipt, AlertTriangle, Edit, Info } from "lucide-react";
 import { format, nextFriday } from "date-fns";
 import { formatCurrency } from "@/lib/utils";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -24,14 +24,6 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
-import { useCustomers } from "@/integrations/supabase/hooks/useCustomers";
 import { useCompanySettings } from "@/integrations/supabase/hooks/useCompanySettings";
 import { TimeEntryWithDetails } from "@/integrations/supabase/hooks/useTimeEntries";
 import { useAddInvoice } from "@/integrations/supabase/hooks/useInvoices";
@@ -44,8 +36,8 @@ interface PersonnelSummary {
   totalHours: number;
   regularHours: number;
   overtimeHours: number;
-  totalBillable: number; // Customer-facing billable amount
-  billRate: number; // Customer billing rate (NOT shown in UI)
+  totalBillable: number;
+  billRate: number; // Project-specific or default bill rate
   entryIds: string[];
 }
 
@@ -63,23 +55,56 @@ export function CreateCustomerInvoiceFromTimeDialog({
   onSuccess,
 }: CreateCustomerInvoiceFromTimeDialogProps) {
   const navigate = useNavigate();
-  const [customerId, setCustomerId] = useState<string>("");
   const [invoiceDate, setInvoiceDate] = useState(format(new Date(), "yyyy-MM-dd"));
   const [dueDate, setDueDate] = useState(format(nextFriday(new Date()), "yyyy-MM-dd"));
   const [selectedPersonnel, setSelectedPersonnel] = useState<Set<string>>(new Set());
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [projectAssignments, setProjectAssignments] = useState<Record<string, number | null>>({});
 
-  const { data: customers = [] } = useCustomers();
   const { data: companySettings } = useCompanySettings();
   const addInvoice = useAddInvoice();
 
   const overtimeMultiplier = companySettings?.overtime_multiplier ?? 1.5;
   const weeklyOvertimeThreshold = companySettings?.weekly_overtime_threshold ?? 40;
-  const defaultTaxRate = companySettings?.default_tax_rate ?? 0;
+
+  // Get project and customer info from first entry
+  const projectInfo = selectedEntries[0]?.projects;
+  const projectId = selectedEntries[0]?.project_id;
+  const customerId = projectInfo?.customer_id;
+  const customerName = projectInfo?.customers?.name || "Unknown Customer";
 
   // Check for already invoiced entries
   const alreadyInvoicedEntries = selectedEntries.filter(e => e.invoice_id);
   const hasAlreadyInvoiced = alreadyInvoicedEntries.length > 0;
+
+  // Fetch project-specific bill rates for personnel
+  useEffect(() => {
+    const fetchAssignmentRates = async () => {
+      if (!projectId || selectedEntries.length === 0) return;
+
+      const personnelIds = [...new Set(selectedEntries.map(e => e.personnel_id).filter(Boolean))];
+      
+      if (personnelIds.length === 0) return;
+
+      const { data, error } = await supabase
+        .from('personnel_project_assignments')
+        .select('personnel_id, bill_rate')
+        .eq('project_id', projectId)
+        .in('personnel_id', personnelIds);
+
+      if (!error && data) {
+        const ratesMap: Record<string, number | null> = {};
+        data.forEach(a => {
+          ratesMap[a.personnel_id] = a.bill_rate;
+        });
+        setProjectAssignments(ratesMap);
+      }
+    };
+
+    if (open) {
+      fetchAssignmentRates();
+    }
+  }, [open, projectId, selectedEntries]);
 
   // Group entries by personnel and calculate summaries
   const personnelSummaries = useMemo(() => {
@@ -95,8 +120,11 @@ export function CreateCustomerInvoiceFromTimeDialog({
         : entry.profiles?.first_name && entry.profiles?.last_name
           ? `${entry.profiles.first_name} ${entry.profiles.last_name}`
           : entry.profiles?.email || "Unknown";
-      // Use bill_rate for customer invoices (customer-facing rate)
-      const billRate = (entry.personnel as any)?.bill_rate || 0;
+      
+      // Priority: project-specific bill_rate > personnel default bill_rate
+      const projectBillRate = projectAssignments[personnelId];
+      const personnelBillRate = (entry.personnel as any)?.bill_rate || 0;
+      const billRate = projectBillRate ?? personnelBillRate;
 
       if (!groups.has(personnelId)) {
         groups.set(personnelId, {
@@ -121,26 +149,20 @@ export function CreateCustomerInvoiceFromTimeDialog({
       summary.regularHours = Math.min(summary.totalHours, weeklyOvertimeThreshold);
       summary.overtimeHours = Math.max(0, summary.totalHours - weeklyOvertimeThreshold);
       
-      // Use bill_rate for customer invoicing
       const regularBillable = summary.regularHours * summary.billRate;
       const overtimeBillable = summary.overtimeHours * summary.billRate * overtimeMultiplier;
       summary.totalBillable = regularBillable + overtimeBillable;
     });
 
     return Array.from(groups.values());
-  }, [selectedEntries, weeklyOvertimeThreshold, overtimeMultiplier]);
+  }, [selectedEntries, weeklyOvertimeThreshold, overtimeMultiplier, projectAssignments]);
 
   // Initialize selected personnel when dialog opens
-  useMemo(() => {
-    if (open && selectedPersonnel.size === 0 && personnelSummaries.length > 0) {
+  useEffect(() => {
+    if (open && personnelSummaries.length > 0) {
       setSelectedPersonnel(new Set(personnelSummaries.map(p => p.personnelId)));
-      // Auto-select customer from project if available
-      const projectCustomerId = selectedEntries[0]?.projects?.customer_id;
-      if (projectCustomerId && !customerId) {
-        setCustomerId(projectCustomerId);
-      }
     }
-  }, [open, personnelSummaries, selectedEntries, customerId, selectedPersonnel.size]);
+  }, [open, personnelSummaries.length]);
 
   const selectedSummaries = useMemo(() =>
     personnelSummaries.filter(p => selectedPersonnel.has(p.personnelId)),
@@ -152,16 +174,15 @@ export function CreateCustomerInvoiceFromTimeDialog({
     [selectedSummaries]
   );
 
-  const taxAmount = subtotal * (defaultTaxRate / 100);
+  // Tax defaults to 0 unless customer is not tax exempt
+  const taxRate = 0; // Per user request: "taxes should be 0 unless added"
+  const taxAmount = subtotal * (taxRate / 100);
   const totalAmount = subtotal + taxAmount;
 
   const totalHours = useMemo(() =>
     selectedSummaries.reduce((sum, p) => sum + p.totalHours, 0),
     [selectedSummaries]
   );
-
-  // Get project info from first entry
-  const projectInfo = selectedEntries[0]?.projects;
 
   const togglePersonnel = (personnelId: string) => {
     const newSelected = new Set(selectedPersonnel);
@@ -181,11 +202,9 @@ export function CreateCustomerInvoiceFromTimeDialog({
     }
   };
 
-  const selectedCustomer = customers.find(c => c.id === customerId);
-
   const handleCreate = async () => {
     if (!customerId || selectedSummaries.length === 0) {
-      toast.error("Please select a customer and at least one personnel");
+      toast.error("No customer assigned to this project or no personnel selected");
       return;
     }
 
@@ -199,7 +218,7 @@ export function CreateCustomerInvoiceFromTimeDialog({
     setIsSubmitting(true);
 
     try {
-      // Create line items - shows hours and amount (NOT rate) to customer
+      // Create line items - shows hours and amount only (NOT rate)
       const lineItems = selectedSummaries.map((summary) => ({
         description: `Labor - ${summary.personnelName} (${summary.regularHours.toFixed(1)}h${summary.overtimeHours > 0 ? ` + ${summary.overtimeHours.toFixed(1)}h OT` : ''})`,
         quantity: 1,
@@ -214,11 +233,11 @@ export function CreateCustomerInvoiceFromTimeDialog({
       const result = await addInvoice.mutateAsync({
         number: '', // Auto-generated by database trigger
         customer_id: customerId,
-        customer_name: selectedCustomer?.name || "Unknown",
+        customer_name: customerName,
         project_name: projectInfo?.name || null,
         due_date: dueDate,
         subtotal: subtotal,
-        tax_rate: defaultTaxRate,
+        tax_rate: taxRate,
         tax_amount: taxAmount,
         total: totalAmount,
         status: "draft",
@@ -261,12 +280,10 @@ export function CreateCustomerInvoiceFromTimeDialog({
   };
 
   const handleClose = () => {
-    setCustomerId("");
     setSelectedPersonnel(new Set());
     onOpenChange(false);
   };
 
-  // Navigate to existing invoice
   const navigateToExistingInvoice = (invoiceId: string) => {
     onOpenChange(false);
     navigate(`/invoices/${invoiceId}`);
@@ -312,39 +329,17 @@ export function CreateCustomerInvoiceFromTimeDialog({
             </div>
           )}
 
-          {/* Customer Selection */}
-          <div>
-            <Label htmlFor="customer">Customer *</Label>
-            <Select value={customerId} onValueChange={setCustomerId}>
-              <SelectTrigger className="mt-1.5">
-                <SelectValue placeholder="Select customer..." />
-              </SelectTrigger>
-              <SelectContent>
-                {customers.length === 0 ? (
-                  <div className="p-2 text-sm text-muted-foreground">
-                    No customers found
-                  </div>
-                ) : (
-                  customers.map((customer) => (
-                    <SelectItem key={customer.id} value={customer.id}>
-                      {customer.name} {customer.company && `(${customer.company})`}
-                    </SelectItem>
-                  ))
-                )}
-              </SelectContent>
-            </Select>
-          </div>
-
-          {/* Project Info */}
-          {projectInfo && (
-            <div className="p-3 bg-muted/50 rounded-lg">
-              <Label className="text-sm">Project</Label>
-              <p className="text-sm font-medium mt-1">{projectInfo.name}</p>
-              {projectInfo.customers?.name && (
-                <p className="text-xs text-muted-foreground">{projectInfo.customers.name}</p>
-              )}
+          {/* Customer Info - Auto-filled from project */}
+          <div className="p-3 bg-primary/10 rounded-lg border border-primary/20">
+            <div className="flex items-center gap-2 mb-1">
+              <Info className="h-4 w-4 text-primary" />
+              <Label className="text-sm font-medium">Customer (from Project)</Label>
             </div>
-          )}
+            <p className="text-sm font-medium">{customerName}</p>
+            {projectInfo?.name && (
+              <p className="text-xs text-muted-foreground">Project: {projectInfo.name}</p>
+            )}
+          </div>
 
           {/* Date Fields */}
           <div className="grid grid-cols-2 gap-4">
@@ -399,6 +394,8 @@ export function CreateCustomerInvoiceFromTimeDialog({
                   <TableBody>
                     {personnelSummaries.map((summary) => {
                       const hasMissingRate = !summary.billRate || summary.billRate <= 0;
+                      const hasProjectRate = projectAssignments[summary.personnelId] != null;
+                      
                       return (
                         <TableRow
                           key={summary.personnelId}
@@ -411,12 +408,19 @@ export function CreateCustomerInvoiceFromTimeDialog({
                             />
                           </TableCell>
                           <TableCell className="font-medium">
-                            {summary.personnelName}
-                            {hasMissingRate && (
-                              <Badge variant="destructive" className="ml-2 text-xs">
-                                No Bill Rate
-                              </Badge>
-                            )}
+                            <div className="flex items-center gap-2">
+                              {summary.personnelName}
+                              {hasMissingRate && (
+                                <Badge variant="destructive" className="text-xs">
+                                  No Bill Rate
+                                </Badge>
+                              )}
+                              {hasProjectRate && !hasMissingRate && (
+                                <Badge variant="outline" className="text-xs">
+                                  Project Rate
+                                </Badge>
+                              )}
+                            </div>
                           </TableCell>
                           <TableCell className="text-right">
                             {summary.regularHours.toFixed(1)}h
@@ -461,9 +465,9 @@ export function CreateCustomerInvoiceFromTimeDialog({
               <span className="text-muted-foreground">Subtotal</span>
               <span>{formatCurrency(subtotal)}</span>
             </div>
-            {defaultTaxRate > 0 && (
+            {taxAmount > 0 && (
               <div className="flex justify-between text-sm">
-                <span className="text-muted-foreground">Tax ({defaultTaxRate}%)</span>
+                <span className="text-muted-foreground">Tax ({taxRate}%)</span>
                 <span>{formatCurrency(taxAmount)}</span>
               </div>
             )}
@@ -473,22 +477,24 @@ export function CreateCustomerInvoiceFromTimeDialog({
             </div>
           </div>
 
-          {/* Warning if no customer selected */}
-          {!customerId && customers.length === 0 && (
+          {/* Missing customer warning */}
+          {!customerId && (
             <div className="flex items-center gap-2 p-3 bg-destructive/10 text-destructive rounded-lg">
               <AlertTriangle className="h-4 w-4" />
-              <span className="text-sm">No customers found. Please create a customer first.</span>
+              <span className="text-sm">
+                No customer assigned to this project. Please assign a customer first.
+              </span>
             </div>
           )}
         </div>
 
-        <DialogFooter>
-          <Button variant="outline" onClick={handleClose} disabled={isSubmitting}>
+        <DialogFooter className="mt-4">
+          <Button variant="outline" onClick={handleClose}>
             Cancel
           </Button>
           <Button
             onClick={handleCreate}
-            disabled={isSubmitting || !customerId || selectedSummaries.length === 0}
+            disabled={isSubmitting || selectedSummaries.length === 0 || !customerId}
           >
             {isSubmitting ? (
               <>
@@ -496,10 +502,7 @@ export function CreateCustomerInvoiceFromTimeDialog({
                 Creating...
               </>
             ) : (
-              <>
-                <Check className="h-4 w-4 mr-2" />
-                Create Invoice ({formatCurrency(totalAmount)})
-              </>
+              "Create Invoice"
             )}
           </Button>
         </DialogFooter>
