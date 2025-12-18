@@ -2,7 +2,7 @@ import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { PageLayout } from "@/components/layout/PageLayout";
 import { Button } from "@/components/ui/button";
-import { Plus, Users } from "lucide-react";
+import { Plus, Users, DollarSign, Loader2 } from "lucide-react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { TimeTrackingStats } from "@/components/time-tracking/TimeTrackingStats";
 import { TimeTrackingFilters } from "@/components/time-tracking/TimeTrackingFilters";
@@ -14,6 +14,7 @@ import { ProjectAssignmentsSection } from "@/components/time-tracking/ProjectAss
 import { PersonnelAssignmentDialog } from "@/components/time-tracking/PersonnelAssignmentDialog";
 import { useAllTimeEntries, useTimeEntries, useBulkDeleteTimeEntries, useUpdateTimeEntryStatus, TimeEntryWithDetails } from "@/integrations/supabase/hooks/useTimeEntries";
 import { useUserRole } from "@/hooks/useUserRole";
+import { useGenerateWeeklyPayroll } from "@/hooks/useGenerateWeeklyPayroll";
 import { SEO } from "@/components/SEO";
 
 export default function TimeTracking() {
@@ -38,6 +39,7 @@ export default function TimeTracking() {
   const { data: userEntries = [] } = useTimeEntries();
   const bulkDelete = useBulkDeleteTimeEntries();
   const updateStatus = useUpdateTimeEntryStatus();
+  const generatePayroll = useGenerateWeeklyPayroll();
 
   // Convert userEntries to match TimeEntryWithDetails structure for consistent rendering
   const userEntriesWithDetails: TimeEntryWithDetails[] = userEntries.map(entry => ({
@@ -78,6 +80,19 @@ export default function TimeTracking() {
         <div className="grid grid-cols-2 gap-2 sm:flex sm:justify-end sm:gap-2">
           {canManageTeam && (
             <>
+              <Button 
+                variant="outline" 
+                className="w-full sm:w-auto" 
+                onClick={() => generatePayroll.mutate(undefined)}
+                disabled={generatePayroll.isPending}
+              >
+                {generatePayroll.isPending ? (
+                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                ) : (
+                  <DollarSign className="h-4 w-4 mr-2" />
+                )}
+                <span className="truncate">Generate Payroll</span>
+              </Button>
               <Button variant="outline" className="w-full sm:w-auto" onClick={() => setAssignmentDialogOpen(true)}>
                 <Users className="h-4 w-4 mr-2" />
                 <span className="truncate">Manage Personnel</span>
