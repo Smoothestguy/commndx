@@ -266,7 +266,10 @@ export const useAddVendorBill = () => {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["vendor-bills"] });
       queryClient.invalidateQueries({ queryKey: ["vendor-bills-by-po"] });
+      queryClient.invalidateQueries({ queryKey: ["vendor-bills-by-project"] });
+      queryClient.invalidateQueries({ queryKey: ["project-labor-expenses"] });
       queryClient.invalidateQueries({ queryKey: ["purchase_orders"] });
+      queryClient.invalidateQueries({ queryKey: ["time-entries"] });
       toast.success("Vendor bill created successfully");
     },
     onError: (error: Error) => {

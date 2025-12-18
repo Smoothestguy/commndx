@@ -12,7 +12,7 @@ import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import { Loader2, FileText, AlertTriangle, Edit, User } from "lucide-react";
-import { format, nextFriday } from "date-fns";
+import { format, nextFriday, startOfWeek, endOfWeek } from "date-fns";
 import { formatCurrency } from "@/lib/utils";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Badge } from "@/components/ui/badge";
@@ -312,6 +312,35 @@ export function CreateVendorBillFromTimeDialog({
 
           if (updateError) {
             console.error("Error linking time entries to bill:", updateError);
+          }
+
+          // Create project_labor_expenses record to track labor costs for job costing
+          if (projectId) {
+            const weekStart = startOfWeek(new Date(billDate), { weekStartsOn: 1 });
+            const weekEnd = endOfWeek(new Date(billDate), { weekStartsOn: 1 });
+            
+            const { error: expenseError } = await supabase
+              .from('project_labor_expenses')
+              .insert({
+                project_id: projectId,
+                customer_id: projectInfo?.customer_id || null,
+                personnel_id: summary.personnelId,
+                personnel_name: summary.personnelName,
+                week_start_date: format(weekStart, 'yyyy-MM-dd'),
+                week_end_date: format(weekEnd, 'yyyy-MM-dd'),
+                regular_hours: summary.regularHours,
+                overtime_hours: summary.overtimeHours,
+                hourly_rate: summary.payRate,
+                overtime_rate: summary.payRate * overtimeMultiplier,
+                total_amount: summary.totalCost,
+                status: 'billed',
+                billable: true,
+                vendor_bill_id: result.id,
+              });
+
+            if (expenseError) {
+              console.error("Error creating project labor expense:", expenseError);
+            }
           }
         }
       }
