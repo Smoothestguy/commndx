@@ -6,6 +6,7 @@ import { EnhancedDataTable, EnhancedColumn } from "@/components/shared/EnhancedD
 import { formatCurrency } from "@/lib/utils";
 import { format } from "date-fns";
 import { useMemo } from "react";
+import { calculateWeeklyOvertimeByEmployee, calculateLaborCost } from "@/lib/overtimeUtils";
 
 interface ProjectTimeEntriesListProps {
   projectId: string;
@@ -19,18 +20,38 @@ export function ProjectTimeEntriesList({ projectId }: ProjectTimeEntriesListProp
   }, [allTimeEntries]);
 
   const totals = useMemo(() => {
-    let regularHours = 0;
-    let overtimeHours = 0;
-    let laborCost = 0;
-
+    // Calculate overtime PER EMPLOYEE using 40-hour weekly threshold
+    const { regularHours, overtimeHours, totalHours } = calculateWeeklyOvertimeByEmployee(
+      timeEntries.map(e => ({
+        hours: (e.regular_hours || 0) + (e.overtime_hours || 0),
+        personnel_id: e.personnel_id,
+      })),
+      40
+    );
+    
+    // Calculate labor cost per employee
+    const employeeData = new Map<string, { hours: number; rate: number }>();
     timeEntries.forEach((entry) => {
+      const key = entry.personnel_id || "unknown";
       const rate = entry.personnel?.hourly_rate || 0;
-      regularHours += entry.regular_hours || 0;
-      overtimeHours += entry.overtime_hours || 0;
-      laborCost += (entry.regular_hours || 0) * rate + (entry.overtime_hours || 0) * rate * 1.5;
+      const hours = (entry.regular_hours || 0) + (entry.overtime_hours || 0);
+      
+      const existing = employeeData.get(key);
+      if (existing) {
+        employeeData.set(key, { hours: existing.hours + hours, rate: rate || existing.rate });
+      } else {
+        employeeData.set(key, { hours, rate });
+      }
+    });
+    
+    let laborCost = 0;
+    employeeData.forEach(({ hours, rate }) => {
+      const empRegular = Math.min(hours, 40);
+      const empOvertime = Math.max(0, hours - 40);
+      laborCost += calculateLaborCost(empRegular, empOvertime, rate, 1.5);
     });
 
-    return { regularHours, overtimeHours, totalHours: regularHours + overtimeHours, laborCost };
+    return { regularHours, overtimeHours, totalHours, laborCost };
   }, [timeEntries]);
 
   const columns: EnhancedColumn<TimeEntryWithDetails>[] = [

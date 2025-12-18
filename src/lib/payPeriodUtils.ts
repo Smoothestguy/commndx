@@ -160,23 +160,57 @@ export function getDailyBreakdownForPeriod(
 
 /**
  * Calculate totals for a pay period from time entries
+ * Uses 40-hour weekly threshold: first 40 hours = regular, anything over = overtime
  */
 export function calculatePayPeriodTotals(
   entries: { entry_date: string; regular_hours: number | null; overtime_hours: number | null }[],
   payPeriod: PayPeriod,
   hourlyRate: number = 0,
-  overtimeMultiplier: number = 1.5
+  overtimeMultiplier: number = 1.5,
+  weeklyOvertimeThreshold: number = 40
 ) {
   const dailyBreakdown = getDailyBreakdownForPeriod(entries, payPeriod);
   
-  const regularHours = dailyBreakdown.reduce((sum, d) => sum + d.regularHours, 0);
-  const overtimeHours = dailyBreakdown.reduce((sum, d) => sum + d.overtimeHours, 0);
-  const totalHours = regularHours + overtimeHours;
+  // Calculate total hours worked in the week (ignore stored regular/overtime split)
+  const totalHours = dailyBreakdown.reduce((sum, d) => sum + d.totalHours, 0);
   const daysWorked = dailyBreakdown.filter(d => d.totalHours > 0).length;
+  
+  // Apply 40-hour weekly threshold for single employee
+  const regularHours = Math.min(totalHours, weeklyOvertimeThreshold);
+  const overtimeHours = Math.max(0, totalHours - weeklyOvertimeThreshold);
   
   const regularPay = regularHours * hourlyRate;
   const overtimePay = overtimeHours * hourlyRate * overtimeMultiplier;
   const totalPay = regularPay + overtimePay;
+  
+  // Update daily breakdown to reflect correct overtime distribution
+  // Overtime only kicks in after 40 weekly hours, so we need to recalculate
+  let hoursAccumulated = 0;
+  const updatedDailyBreakdown = dailyBreakdown.map((day) => {
+    const dayTotalHours = day.totalHours;
+    let dayRegular = 0;
+    let dayOvertime = 0;
+    
+    if (hoursAccumulated >= weeklyOvertimeThreshold) {
+      // Already past threshold, all hours are overtime
+      dayOvertime = dayTotalHours;
+    } else if (hoursAccumulated + dayTotalHours > weeklyOvertimeThreshold) {
+      // This day crosses the threshold
+      dayRegular = weeklyOvertimeThreshold - hoursAccumulated;
+      dayOvertime = dayTotalHours - dayRegular;
+    } else {
+      // Still under threshold
+      dayRegular = dayTotalHours;
+    }
+    
+    hoursAccumulated += dayTotalHours;
+    
+    return {
+      ...day,
+      regularHours: dayRegular,
+      overtimeHours: dayOvertime,
+    };
+  });
   
   return {
     regularHours,
@@ -186,6 +220,6 @@ export function calculatePayPeriodTotals(
     regularPay,
     overtimePay,
     totalPay,
-    dailyBreakdown
+    dailyBreakdown: updatedDailyBreakdown
   };
 }

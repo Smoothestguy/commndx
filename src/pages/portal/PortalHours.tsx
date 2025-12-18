@@ -3,10 +3,11 @@ import { useCurrentPersonnel, usePersonnelTimeEntries } from "@/integrations/sup
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Skeleton } from "@/components/ui/skeleton";
-import { format, parseISO, startOfWeek, endOfWeek, eachWeekOfInterval, subMonths, isWithinInterval } from "date-fns";
-import { useState } from "react";
+import { format, parseISO, startOfWeek, endOfWeek, isWithinInterval } from "date-fns";
+import { useState, useMemo } from "react";
 import { Button } from "@/components/ui/button";
 import { ChevronLeft, ChevronRight, Clock } from "lucide-react";
+import { calculateSingleEmployeeOvertime } from "@/lib/overtimeUtils";
 
 export default function PortalHours() {
   const { data: personnel } = useCurrentPersonnel();
@@ -23,10 +24,15 @@ export default function PortalHours() {
     return isWithinInterval(entryDate, { start: selectedWeekStart, end: weekEnd });
   }) || [];
 
-  // Calculate totals
-  const totalRegular = weekEntries.reduce((sum, e) => sum + (e.regular_hours || 0), 0);
-  const totalOvertime = weekEntries.reduce((sum, e) => sum + (e.overtime_hours || 0), 0);
-  const totalHours = totalRegular + totalOvertime;
+  // Calculate totals using 40-hour weekly threshold for this single employee
+  const { totalRegular, totalOvertime, totalHours } = useMemo(() => {
+    // Sum all hours for the week (ignore stored regular/overtime split)
+    const weeklyTotal = weekEntries.reduce((sum, e) => 
+      sum + (e.regular_hours || 0) + (e.overtime_hours || 0), 0
+    );
+    const { regularHours, overtimeHours } = calculateSingleEmployeeOvertime(weeklyTotal, 40);
+    return { totalRegular: regularHours, totalOvertime: overtimeHours, totalHours: weeklyTotal };
+  }, [weekEntries]);
 
   // Group by project
   const entriesByProject = weekEntries.reduce((acc, entry) => {
@@ -142,8 +148,13 @@ export default function PortalHours() {
         {/* Hours by Project */}
         {Object.keys(entriesByProject).length > 0 ? (
           Object.entries(entriesByProject).map(([projectName, entries]) => {
-            const projectRegular = entries.reduce((sum, e) => sum + (e.regular_hours || 0), 0);
-            const projectOvertime = entries.reduce((sum, e) => sum + (e.overtime_hours || 0), 0);
+            // Sum total hours for this project and recalculate based on 40-hour threshold
+            const projectTotalHours = entries.reduce((sum, e) => 
+              sum + (e.regular_hours || 0) + (e.overtime_hours || 0), 0
+            );
+            // Note: For per-project breakdown, we show raw hours since overtime is calculated weekly across all projects
+            const projectRegular = projectTotalHours;
+            const projectOvertime = 0; // Overtime is calculated at weekly level, not per-project
             
             return (
               <Card key={projectName}>
