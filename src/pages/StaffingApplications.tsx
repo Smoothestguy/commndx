@@ -11,7 +11,8 @@ import {
   Plus,
   Copy,
   ExternalLink,
-  FileText
+  FileText,
+  Pencil
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -49,10 +50,12 @@ import {
   useJobPostings,
   useCreateTaskOrder,
   useCreateJobPosting,
+  useUpdateJobPosting,
   useApproveApplication,
   useRejectApplication,
   Application,
 } from "@/integrations/supabase/hooks/useStaffingApplications";
+import { useApplicationFormTemplates } from "@/integrations/supabase/hooks/useApplicationFormTemplates";
 import { toast } from "sonner";
 
 const statusColors: Record<string, string> = {
@@ -70,6 +73,8 @@ export default function StaffingApplications() {
   const [selectedApp, setSelectedApp] = useState<Application | null>(null);
   const [showDetailDialog, setShowDetailDialog] = useState(false);
   const [showCreateDialog, setShowCreateDialog] = useState(false);
+  const [showEditPostingDialog, setShowEditPostingDialog] = useState(false);
+  const [editingPosting, setEditingPosting] = useState<{ id: string; formTemplateId: string | null } | null>(null);
   const [actionNotes, setActionNotes] = useState("");
   
   // New task order form state
@@ -79,6 +84,7 @@ export default function StaffingApplications() {
     job_description: "",
     headcount_needed: 1,
     location_address: "",
+    form_template_id: "",
   });
 
   const { data: projects } = useProjects();
@@ -88,9 +94,11 @@ export default function StaffingApplications() {
   });
   const { data: taskOrders } = useTaskOrders();
   const { data: jobPostings } = useJobPostings();
+  const { data: formTemplates } = useApplicationFormTemplates();
 
   const createTaskOrder = useCreateTaskOrder();
   const createJobPosting = useCreateJobPosting();
+  const updateJobPosting = useUpdateJobPosting();
   const approveApplication = useApproveApplication();
   const rejectApplication = useRejectApplication();
 
@@ -156,7 +164,10 @@ export default function StaffingApplications() {
       });
 
       // Automatically create a job posting
-      const posting = await createJobPosting.mutateAsync(taskOrder.id);
+      const posting = await createJobPosting.mutateAsync({
+        taskOrderId: taskOrder.id,
+        formTemplateId: newTaskOrder.form_template_id || undefined,
+      });
       
       const publicUrl = `${window.location.origin}/apply/${posting.public_token}`;
       await navigator.clipboard.writeText(publicUrl);
@@ -169,6 +180,7 @@ export default function StaffingApplications() {
         job_description: "",
         headcount_needed: 1,
         location_address: "",
+        form_template_id: "",
       });
     } catch (error) {
       toast.error("Failed to create task order");
@@ -179,6 +191,29 @@ export default function StaffingApplications() {
     const url = `${window.location.origin}/apply/${token}`;
     navigator.clipboard.writeText(url);
     toast.success("Application link copied to clipboard");
+  };
+
+  const handleEditPosting = (posting: any) => {
+    setEditingPosting({
+      id: posting.id,
+      formTemplateId: posting.form_template_id || "",
+    });
+    setShowEditPostingDialog(true);
+  };
+
+  const handleSavePostingEdit = async () => {
+    if (!editingPosting) return;
+    try {
+      await updateJobPosting.mutateAsync({
+        id: editingPosting.id,
+        formTemplateId: editingPosting.formTemplateId || null,
+      });
+      toast.success("Job posting updated");
+      setShowEditPostingDialog(false);
+      setEditingPosting(null);
+    } catch (error) {
+      toast.error("Failed to update job posting");
+    }
   };
 
   return (
@@ -217,11 +252,26 @@ export default function StaffingApplications() {
                 >
                   <div>
                     <p className="font-medium">{posting.project_task_orders?.title}</p>
-                    <p className="text-sm text-muted-foreground">
-                      {posting.project_task_orders?.projects?.name}
-                    </p>
+                    <div className="flex items-center gap-2">
+                      <p className="text-sm text-muted-foreground">
+                        {posting.project_task_orders?.projects?.name}
+                      </p>
+                      {posting.form_template_id && (
+                        <Badge variant="outline" className="text-xs">
+                          {formTemplates?.find(t => t.id === posting.form_template_id)?.name || "Custom Form"}
+                        </Badge>
+                      )}
+                    </div>
                   </div>
                   <div className="flex items-center gap-2" onClick={(e) => e.stopPropagation()}>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => handleEditPosting(posting)}
+                      title="Edit form template"
+                    >
+                      <Pencil className="h-4 w-4" />
+                    </Button>
                     <Button
                       variant="outline"
                       size="sm"
@@ -501,6 +551,50 @@ export default function StaffingApplications() {
         </DialogContent>
       </Dialog>
 
+      {/* Edit Job Posting Dialog */}
+      <Dialog open={showEditPostingDialog} onOpenChange={setShowEditPostingDialog}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Edit Job Posting</DialogTitle>
+            <DialogDescription>
+              Change the form template for this job posting
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div>
+              <Label>Application Form Template</Label>
+              <Select
+                value={editingPosting?.formTemplateId || ""}
+                onValueChange={(v) => setEditingPosting(prev => prev ? { ...prev, formTemplateId: v || null } : null)}
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="No custom form (basic fields only)" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="">No custom form (basic fields only)</SelectItem>
+                  {formTemplates?.filter(t => t.is_active).map((template) => (
+                    <SelectItem key={template.id} value={template.id}>
+                      {template.name} ({template.fields.length} fields)
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              <p className="text-xs text-muted-foreground mt-1">
+                Changes will apply to new applications only
+              </p>
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setShowEditPostingDialog(false)}>
+              Cancel
+            </Button>
+            <Button onClick={handleSavePostingEdit} disabled={updateJobPosting.isPending}>
+              Save Changes
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
       {/* Create Task Order Dialog */}
       <Dialog open={showCreateDialog} onOpenChange={setShowCreateDialog}>
         <DialogContent>
@@ -563,6 +657,28 @@ export default function StaffingApplications() {
                   placeholder="Job site address"
                 />
               </div>
+            </div>
+            <div>
+              <Label>Application Form Template</Label>
+              <Select
+                value={newTaskOrder.form_template_id}
+                onValueChange={(v) => setNewTaskOrder({ ...newTaskOrder, form_template_id: v })}
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="No custom form (basic fields only)" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="">No custom form (basic fields only)</SelectItem>
+                  {formTemplates?.filter(t => t.is_active).map((template) => (
+                    <SelectItem key={template.id} value={template.id}>
+                      {template.name} ({template.fields.length} fields)
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              <p className="text-xs text-muted-foreground mt-1">
+                Select a form template to add custom fields to the application
+              </p>
             </div>
           </div>
           <DialogFooter>

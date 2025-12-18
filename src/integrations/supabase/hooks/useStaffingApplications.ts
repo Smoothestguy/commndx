@@ -184,10 +184,34 @@ export const useCreateJobPosting = () => {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: async (taskOrderId: string) => {
+    mutationFn: async ({ taskOrderId, formTemplateId }: { taskOrderId: string; formTemplateId?: string }) => {
       const { data, error } = await supabase
         .from("job_postings")
-        .insert({ task_order_id: taskOrderId })
+        .insert({ 
+          task_order_id: taskOrderId,
+          form_template_id: formTemplateId || null
+        })
+        .select()
+        .single();
+
+      if (error) throw error;
+      return data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["job-postings"] });
+    },
+  });
+};
+
+export const useUpdateJobPosting = () => {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async ({ id, formTemplateId }: { id: string; formTemplateId: string | null }) => {
+      const { data, error } = await supabase
+        .from("job_postings")
+        .update({ form_template_id: formTemplateId })
+        .eq("id", id)
         .select()
         .single();
 
