@@ -26,6 +26,32 @@ export function useCurrentPersonnel() {
   });
 }
 
+// Update personnel photo (for self-update by personnel)
+export function useUpdatePersonnelPhoto() {
+  const queryClient = useQueryClient();
+  const { user } = useAuth();
+
+  return useMutation({
+    mutationFn: async (photoUrl: string) => {
+      if (!user?.id) throw new Error("Not authenticated");
+
+      const { error } = await supabase
+        .from("personnel")
+        .update({ photo_url: photoUrl })
+        .eq("user_id", user.id);
+
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["current-personnel"] });
+      toast.success("Profile photo saved!");
+    },
+    onError: (error) => {
+      toast.error("Failed to save photo: " + error.message);
+    },
+  });
+}
+
 // Get time entries for current personnel
 export function usePersonnelTimeEntries(personnelId: string | undefined) {
   return useQuery({

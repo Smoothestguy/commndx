@@ -3,6 +3,7 @@ import { Navigate } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
 import { useCurrentPersonnel } from "@/integrations/supabase/hooks/usePortal";
 import { Loader2 } from "lucide-react";
+import { PhotoUploadRequired } from "./PhotoUploadRequired";
 
 interface PortalProtectedRouteProps {
   children: ReactNode;
@@ -35,6 +36,11 @@ export function PortalProtectedRoute({ children }: PortalProtectedRouteProps) {
         </div>
       </div>
     );
+  }
+
+  // Require profile photo before allowing portal access
+  if (!personnel.photo_url) {
+    return <PhotoUploadRequired personnelId={personnel.id} />;
   }
 
   return <>{children}</>;
