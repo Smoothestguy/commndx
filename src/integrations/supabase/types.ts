@@ -3153,6 +3153,7 @@ export type Database = {
           status: string
           total_amount: number
           updated_at: string | null
+          vendor_bill_id: string | null
           week_closeout_id: string | null
           week_end_date: string
           week_start_date: string
@@ -3175,6 +3176,7 @@ export type Database = {
           status?: string
           total_amount?: number
           updated_at?: string | null
+          vendor_bill_id?: string | null
           week_closeout_id?: string | null
           week_end_date: string
           week_start_date: string
@@ -3197,6 +3199,7 @@ export type Database = {
           status?: string
           total_amount?: number
           updated_at?: string | null
+          vendor_bill_id?: string | null
           week_closeout_id?: string | null
           week_end_date?: string
           week_start_date?: string
@@ -3242,6 +3245,13 @@ export type Database = {
             columns: ["project_id"]
             isOneToOne: false
             referencedRelation: "projects"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "project_labor_expenses_vendor_bill_id_fkey"
+            columns: ["vendor_bill_id"]
+            isOneToOne: false
+            referencedRelation: "vendor_bills"
             referencedColumns: ["id"]
           },
           {
