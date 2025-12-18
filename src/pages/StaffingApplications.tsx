@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { format } from "date-fns";
 import { 
   Search, 
@@ -9,7 +10,8 @@ import {
   Users,
   Plus,
   Copy,
-  ExternalLink
+  ExternalLink,
+  FileText
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -61,6 +63,7 @@ const statusColors: Record<string, string> = {
 };
 
 export default function StaffingApplications() {
+  const navigate = useNavigate();
   const [search, setSearch] = useState("");
   const [projectFilter, setProjectFilter] = useState<string>("all");
   const [statusFilter, setStatusFilter] = useState<string>("all");
@@ -185,10 +188,16 @@ export default function StaffingApplications() {
           <h1 className="text-2xl font-bold text-foreground">Staffing Applications</h1>
           <p className="text-muted-foreground">Review and manage job applications</p>
         </div>
-        <Button onClick={() => setShowCreateDialog(true)}>
-          <Plus className="h-4 w-4 mr-2" />
-          New Task Order
-        </Button>
+        <div className="flex gap-2">
+          <Button variant="outline" onClick={() => navigate("/staffing/form-templates")}>
+            <FileText className="h-4 w-4 mr-2" />
+            Form Templates
+          </Button>
+          <Button onClick={() => setShowCreateDialog(true)}>
+            <Plus className="h-4 w-4 mr-2" />
+            New Task Order
+          </Button>
+        </div>
       </div>
 
       {/* Active Postings */}
@@ -203,7 +212,8 @@ export default function StaffingApplications() {
               {jobPostings.filter(p => p.is_open).map((posting) => (
                 <div
                   key={posting.id}
-                  className="flex items-center justify-between p-3 rounded-lg border bg-muted/30"
+                  className="flex items-center justify-between p-3 rounded-lg border bg-muted/30 cursor-pointer hover:bg-muted/50 transition-colors"
+                  onClick={() => window.open(`/apply/${posting.public_token}`, "_blank")}
                 >
                   <div>
                     <p className="font-medium">{posting.project_task_orders?.title}</p>
@@ -211,7 +221,7 @@ export default function StaffingApplications() {
                       {posting.project_task_orders?.projects?.name}
                     </p>
                   </div>
-                  <div className="flex items-center gap-2">
+                  <div className="flex items-center gap-2" onClick={(e) => e.stopPropagation()}>
                     <Button
                       variant="outline"
                       size="sm"
@@ -441,24 +451,16 @@ export default function StaffingApplications() {
                 <div className="space-y-2">
                   <Label className="text-muted-foreground">Form Responses</Label>
                   <div className="rounded-lg border p-3 space-y-2 bg-muted/30">
-                    {(selectedApp.answers as Record<string, unknown>).experience && (
-                      <div>
-                        <p className="text-xs font-medium text-muted-foreground">Experience</p>
-                        <p className="text-sm">{String((selectedApp.answers as Record<string, unknown>).experience)}</p>
+                    {Object.entries(selectedApp.answers as Record<string, unknown>).map(([key, value]) => (
+                      <div key={key}>
+                        <p className="text-xs font-medium text-muted-foreground capitalize">
+                          {key.replace(/_/g, " ")}
+                        </p>
+                        <p className="text-sm">
+                          {typeof value === "boolean" ? (value ? "Yes" : "No") : String(value || "N/A")}
+                        </p>
                       </div>
-                    )}
-                    {(selectedApp.answers as Record<string, unknown>).can_start_immediately !== undefined && (
-                      <div>
-                        <p className="text-xs font-medium text-muted-foreground">Can Start Immediately</p>
-                        <p className="text-sm">{(selectedApp.answers as Record<string, unknown>).can_start_immediately ? "Yes" : "No"}</p>
-                      </div>
-                    )}
-                    {(selectedApp.answers as Record<string, unknown>).notes && (
-                      <div>
-                        <p className="text-xs font-medium text-muted-foreground">Notes</p>
-                        <p className="text-sm">{String((selectedApp.answers as Record<string, unknown>).notes)}</p>
-                      </div>
-                    )}
+                    ))}
                   </div>
                 </div>
               )}

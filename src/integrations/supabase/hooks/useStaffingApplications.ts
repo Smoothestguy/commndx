@@ -17,7 +17,7 @@ export interface TaskOrder {
   updated_at: string;
   projects?: {
     name: string;
-    customer_id: string;
+    customer_id?: string;
   };
 }
 
@@ -26,6 +26,7 @@ export interface JobPosting {
   task_order_id: string;
   public_token: string;
   is_open: boolean;
+  form_template_id: string | null;
   created_at: string;
   project_task_orders?: TaskOrder;
 }
