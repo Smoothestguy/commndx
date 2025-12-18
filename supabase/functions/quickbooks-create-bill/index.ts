@@ -102,7 +102,33 @@ async function getOrCreateQBVendor(supabase: any, vendorId: string, accessToken:
     throw new Error(`Vendor not found: ${vendorId}`);
   }
 
-  console.log(`Creating vendor in QuickBooks: ${vendor.name}`);
+  // First, search for existing vendor in QuickBooks by name
+  console.log(`Searching QuickBooks for existing vendor: ${vendor.name}`);
+  
+  try {
+    const searchQuery = encodeURIComponent(`SELECT * FROM Vendor WHERE DisplayName = '${vendor.name.replace(/'/g, "\\'")}'`);
+    const searchResult = await qbRequest('GET', `/query?query=${searchQuery}&minorversion=65`, accessToken, realmId);
+    
+    if (searchResult.QueryResponse?.Vendor?.length > 0) {
+      const existingVendor = searchResult.QueryResponse.Vendor[0];
+      console.log(`Found existing QuickBooks vendor: ${existingVendor.DisplayName} (ID: ${existingVendor.Id})`);
+      
+      // Create mapping for existing vendor
+      await supabase.from('quickbooks_vendor_mappings').insert({
+        vendor_id: vendorId,
+        quickbooks_vendor_id: existingVendor.Id,
+        sync_status: 'synced',
+        last_synced_at: new Date().toISOString(),
+        sync_direction: 'export',
+      });
+      
+      return existingVendor.Id;
+    }
+  } catch (e) {
+    console.log(`Error searching for vendor, will try to create: ${e}`);
+  }
+
+  console.log(`Creating new vendor in QuickBooks: ${vendor.name}`);
 
   // Create vendor in QuickBooks
   const qbVendor = {
@@ -116,22 +142,52 @@ async function getOrCreateQBVendor(supabase: any, vendorId: string, accessToken:
     Active: vendor.status === 'active',
   };
 
-  const result = await qbRequest('POST', '/vendor?minorversion=65', accessToken, realmId, qbVendor);
+  try {
+    const result = await qbRequest('POST', '/vendor?minorversion=65', accessToken, realmId, qbVendor);
+    const qbVendorId = result.Vendor.Id;
 
-  const qbVendorId = result.Vendor.Id;
+    // Create mapping
+    await supabase.from('quickbooks_vendor_mappings').insert({
+      vendor_id: vendorId,
+      quickbooks_vendor_id: qbVendorId,
+      sync_status: 'synced',
+      last_synced_at: new Date().toISOString(),
+      sync_direction: 'export',
+    });
 
-  // Create mapping
-  await supabase.from('quickbooks_vendor_mappings').insert({
-    vendor_id: vendorId,
-    quickbooks_vendor_id: qbVendorId,
-    sync_status: 'synced',
-    last_synced_at: new Date().toISOString(),
-    sync_direction: 'export',
-  });
-
-  console.log(`Created vendor in QuickBooks with ID: ${qbVendorId}`);
-
-  return qbVendorId;
+    console.log(`Created vendor in QuickBooks with ID: ${qbVendorId}`);
+    return qbVendorId;
+  } catch (createError: any) {
+    // Handle duplicate name error - try to find by partial match
+    if (createError.message?.includes('Duplicate Name Exists')) {
+      console.log(`Duplicate name error, searching with LIKE query...`);
+      
+      const likeQuery = encodeURIComponent(`SELECT * FROM Vendor WHERE DisplayName LIKE '%${vendor.name.replace(/'/g, "\\'")}%' MAXRESULTS 10`);
+      const likeResult = await qbRequest('GET', `/query?query=${likeQuery}&minorversion=65`, accessToken, realmId);
+      
+      if (likeResult.QueryResponse?.Vendor?.length > 0) {
+        // Find best match (exact or closest)
+        const exactMatch = likeResult.QueryResponse.Vendor.find(
+          (v: any) => v.DisplayName.toLowerCase() === vendor.name.toLowerCase()
+        );
+        const matchedVendor = exactMatch || likeResult.QueryResponse.Vendor[0];
+        
+        console.log(`Found matching vendor after duplicate error: ${matchedVendor.DisplayName} (ID: ${matchedVendor.Id})`);
+        
+        await supabase.from('quickbooks_vendor_mappings').insert({
+          vendor_id: vendorId,
+          quickbooks_vendor_id: matchedVendor.Id,
+          sync_status: 'synced',
+          last_synced_at: new Date().toISOString(),
+          sync_direction: 'export',
+        });
+        
+        return matchedVendor.Id;
+      }
+    }
+    
+    throw createError;
+  }
 }
 
 // Cache for QuickBooks accounts to avoid repeated API calls
