@@ -1,7 +1,8 @@
 import { useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { SEO } from "@/components/SEO";
 import { PageLayout } from "@/components/layout/PageLayout";
-import { DataTable } from "@/components/shared/DataTable";
+import { EnhancedDataTable, EnhancedColumn } from "@/components/shared/EnhancedDataTable";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Plus, Edit, Trash2, FolderOpen, Loader2, Cloud, RefreshCw } from "lucide-react";
@@ -27,6 +28,7 @@ import { useProjects } from "@/integrations/supabase/hooks/useProjects";
 import { useQuickBooksConfig, useImportCustomersFromQB, useExportCustomersToQB } from "@/integrations/supabase/hooks/useQuickBooks";
 
 const Customers = () => {
+  const navigate = useNavigate();
   const { data: customers, isLoading, error, refetch, isFetching } = useCustomers();
   const { data: projects } = useProjects();
   const addCustomer = useAddCustomer();
@@ -73,14 +75,16 @@ const Customers = () => {
   ).length || 0;
   const noProjects = total - withProjects;
 
-  const columns = [
-    { key: "name", header: "Contact Name" },
-    { key: "company", header: "Company" },
-    { key: "email", header: "Email" },
-    { key: "phone", header: "Phone" },
+  const columns: EnhancedColumn<Customer>[] = [
+    { key: "name", header: "Contact Name", sortable: true, filterable: true },
+    { key: "company", header: "Company", sortable: true, filterable: true },
+    { key: "email", header: "Email", sortable: true, filterable: true },
+    { key: "phone", header: "Phone", sortable: true, filterable: true },
     {
       key: "projects",
       header: "Projects",
+      sortable: false,
+      filterable: false,
       render: (item: Customer) => {
         const projectCount = projects?.filter(p => p.customer_id === item.id).length || 0;
         return (
@@ -96,6 +100,8 @@ const Customers = () => {
     {
       key: "actions",
       header: "",
+      sortable: false,
+      filterable: false,
       render: (item: Customer) => (
         <div className="flex items-center gap-2">
           <Button
@@ -303,7 +309,12 @@ const Customers = () => {
                 })}
               </div>
             ) : (
-              <DataTable data={filteredCustomers} columns={columns} />
+              <EnhancedDataTable 
+                tableId="customers"
+                data={filteredCustomers} 
+                columns={columns}
+                onRowClick={(customer) => navigate(`/customers/${customer.id}`)}
+              />
             )}
           </>
         )}
