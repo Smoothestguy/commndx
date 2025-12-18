@@ -28,6 +28,9 @@ import { ProjectFinancialSummary } from "@/components/project-hub/ProjectFinanci
 import { ProjectChangeOrdersList } from "@/components/project-hub/ProjectChangeOrdersList";
 import { ProjectTMTicketsList } from "@/components/project-hub/ProjectTMTicketsList";
 import { ProjectPurchaseOrdersList } from "@/components/project-hub/ProjectPurchaseOrdersList";
+import { ProjectTimeEntriesList } from "@/components/project-hub/ProjectTimeEntriesList";
+import { ProjectLaborExpensesList } from "@/components/project-hub/ProjectLaborExpensesList";
+import { ProjectActivityTimeline } from "@/components/project-hub/ProjectActivityTimeline";
 import { AddTMTicketDialog } from "@/components/tm-tickets/AddTMTicketDialog";
 import { CreateJobOrderDialog } from "@/components/job-orders/CreateJobOrderDialog";
 
@@ -676,9 +679,24 @@ const ProjectDetail = () => {
         />
       </div>
 
+      {/* Time Tracking */}
+      <div className="mb-8">
+        <ProjectTimeEntriesList projectId={id!} />
+      </div>
+
+      {/* Labor Expenses */}
+      <div className="mb-8">
+        <ProjectLaborExpensesList projectId={id!} />
+      </div>
+
       {/* Project Documents */}
       <div className="mb-8">
         <ProjectDocuments projectId={id!} />
+      </div>
+
+      {/* Project Activity */}
+      <div className="mb-8">
+        <ProjectActivityTimeline projectId={id!} />
       </div>
 
       {/* Milestone Dialog */}
