@@ -9,6 +9,7 @@ import { useMilestonesByProject, useAddMilestone, useUpdateMilestone, useDeleteM
 import { useChangeOrdersByProject } from "@/integrations/supabase/hooks/useChangeOrders";
 import { useTMTicketsByProject } from "@/integrations/supabase/hooks/useTMTickets";
 import { usePurchaseOrders } from "@/integrations/supabase/hooks/usePurchaseOrders";
+import { useVendorBills } from "@/integrations/supabase/hooks/useVendorBills";
 import { PageLayout } from "@/components/layout/PageLayout";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -28,6 +29,7 @@ import { ProjectFinancialSummary } from "@/components/project-hub/ProjectFinanci
 import { ProjectChangeOrdersList } from "@/components/project-hub/ProjectChangeOrdersList";
 import { ProjectTMTicketsList } from "@/components/project-hub/ProjectTMTicketsList";
 import { ProjectPurchaseOrdersList } from "@/components/project-hub/ProjectPurchaseOrdersList";
+import { ProjectVendorBillsList } from "@/components/project-hub/ProjectVendorBillsList";
 import { ProjectTimeEntriesList } from "@/components/project-hub/ProjectTimeEntriesList";
 import { ProjectLaborExpensesList } from "@/components/project-hub/ProjectLaborExpensesList";
 import { ProjectActivityTimeline } from "@/components/project-hub/ProjectActivityTimeline";
@@ -47,6 +49,7 @@ const ProjectDetail = () => {
   const { data: changeOrders } = useChangeOrdersByProject(id);
   const { data: tmTickets } = useTMTicketsByProject(id);
   const { data: allPurchaseOrders } = usePurchaseOrders();
+  const { data: projectVendorBills } = useVendorBills({ project_id: id });
 
   const addMilestone = useAddMilestone();
   const updateMilestone = useUpdateMilestone();
@@ -127,7 +130,8 @@ const ProjectDetail = () => {
       return sum + po.total + (po.total_addendum_amount || 0);
     }, 0);
     
-    const totalVendorBilled = projectPurchaseOrders.reduce((sum, po) => sum + (po.billed_amount || 0), 0);
+    const totalVendorBilled = (projectVendorBills || []).reduce((sum, bill) => sum + bill.total, 0);
+    const totalVendorPaid = (projectVendorBills || []).reduce((sum, bill) => sum + (bill.paid_amount || 0), 0);
     const totalInvoiced = projectInvoices.reduce((sum, i) => sum + i.total, 0);
     const totalPaid = projectInvoices.reduce((sum, i) => sum + (i.paid_amount || 0), 0);
     const grossProfit = totalContractValue - totalPOValue;
@@ -140,12 +144,13 @@ const ProjectDetail = () => {
       totalContractValue,
       totalPOValue,
       totalVendorBilled,
+      totalVendorPaid,
       totalInvoiced,
       totalPaid,
       grossProfit,
       grossMargin,
     };
-  }, [projectJobOrders, changeOrders, tmTickets, projectPurchaseOrders, projectInvoices]);
+  }, [projectJobOrders, changeOrders, tmTickets, projectPurchaseOrders, projectInvoices, projectVendorBills]);
 
   // Calculate overall project completion
   const overallCompletion = useMemo(() => {
@@ -676,6 +681,14 @@ const ProjectDetail = () => {
           purchaseOrders={projectPurchaseOrders}
           projectId={id!}
           onAddNew={() => navigate(`/purchase-orders/new?projectId=${id}`)}
+        />
+      </div>
+
+      {/* Vendor Bills */}
+      <div className="mb-8">
+        <ProjectVendorBillsList
+          projectId={id!}
+          onAddNew={() => navigate(`/vendor-bills/new?projectId=${id}`)}
         />
       </div>
 

@@ -10,6 +10,7 @@ interface FinancialData {
   totalContractValue: number;
   totalPOValue: number;
   totalVendorBilled: number;
+  totalVendorPaid: number;
   totalInvoiced: number;
   totalPaid: number;
   grossProfit: number;
@@ -29,8 +30,8 @@ export function ProjectFinancialSummary({ data }: ProjectFinancialSummaryProps) 
     ? (data.totalPaid / data.totalInvoiced) * 100 
     : 0;
 
-  const costProgress = data.totalPOValue > 0
-    ? (data.totalVendorBilled / data.totalPOValue) * 100
+  const costProgress = data.totalVendorBilled > 0
+    ? (data.totalVendorPaid / data.totalVendorBilled) * 100
     : 0;
 
   return (
@@ -117,12 +118,15 @@ export function ProjectFinancialSummary({ data }: ProjectFinancialSummaryProps) 
 
           <div className="space-y-2">
             <div className="flex justify-between text-sm">
-              <span className="text-muted-foreground">Vendor Billing</span>
+              <span className="text-muted-foreground">Vendor Payments</span>
               <span className="font-medium">
-                {formatCurrency(data.totalVendorBilled)} / {formatCurrency(data.totalPOValue)}
+                {formatCurrency(data.totalVendorPaid)} / {formatCurrency(data.totalVendorBilled)}
               </span>
             </div>
             <Progress value={costProgress} className="h-2 [&>div]:bg-orange-500" />
+            <div className="text-xs text-muted-foreground">
+              Outstanding: {formatCurrency(data.totalVendorBilled - data.totalVendorPaid)}
+            </div>
           </div>
         </div>
       </CardContent>
