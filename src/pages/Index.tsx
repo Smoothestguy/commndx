@@ -19,6 +19,7 @@ import { useProducts } from "@/integrations/supabase/hooks/useProducts";
 import { useCustomers } from "@/integrations/supabase/hooks/useCustomers";
 import { useProjects } from "@/integrations/supabase/hooks/useProjects";
 import { useAllProjectAssignments } from "@/integrations/supabase/hooks/useProjectAssignments";
+import { useProfiles } from "@/integrations/supabase/hooks/useProfile";
 import { PullToRefreshWrapper } from "@/components/shared/PullToRefreshWrapper";
 import {
   Package,
@@ -45,6 +46,23 @@ import {
 } from "recharts";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { formatCurrency } from "@/lib/utils";
+
+// Type for project assignments with joined profile and project data
+interface ProjectAssignmentWithDetails {
+  id: string;
+  project_id: string;
+  user_id: string;
+  assigned_at: string;
+  status: 'active' | 'removed';
+  profiles: {
+    first_name: string | null;
+    last_name: string | null;
+    email: string | null;
+  } | null;
+  projects: {
+    name: string;
+  } | null;
+}
 
 const Dashboard = () => {
   const navigate = useNavigate();
@@ -86,6 +104,7 @@ const Dashboard = () => {
     refetch: refetchAssignments,
     isFetching: isFetchingAssignments,
   } = useAllProjectAssignments();
+  const { data: profiles, isLoading: profilesLoading } = useProfiles();
 
   const handleRefresh = async () => {
     await Promise.all([
@@ -138,9 +157,16 @@ const Dashboard = () => {
 
   const recentInvoices = useMemo(() => invoices?.slice(0, 5) ?? [], [invoices]);
 
-  // Memoize recent assignments (active only)
+  // Memoize recent assignments (active only, sorted by assigned_at desc)
   const recentAssignments = useMemo(
-    () => assignments?.filter(a => a.status === 'active').slice(0, 5) ?? [],
+    () => (assignments as ProjectAssignmentWithDetails[] | undefined)
+      ?.filter(a => a.status === 'active')
+      .sort((a, b) => {
+        const dateA = a.assigned_at ? new Date(a.assigned_at).getTime() : 0;
+        const dateB = b.assigned_at ? new Date(b.assigned_at).getTime() : 0;
+        return dateB - dateA;
+      })
+      .slice(0, 5) ?? [],
     [assignments]
   );
 
@@ -149,6 +175,18 @@ const Dashboard = () => {
     () => projects?.filter((p) => p.status === "active").length ?? 0,
     [projects]
   );
+
+  // Staffing stats computation
+  const staffingStats = useMemo(() => {
+    const activeAssignments = (assignments as ProjectAssignmentWithDetails[] | undefined)
+      ?.filter(a => a.status === 'active') ?? [];
+    const assignedUserIds = new Set(activeAssignments.map(a => a.user_id));
+    const assignedStaff = assignedUserIds.size;
+    const totalStaff = profiles?.length ?? 0;
+    const availableStaff = Math.max(0, totalStaff - assignedStaff);
+    
+    return { assignedStaff, totalStaff, availableStaff };
+  }, [assignments, profiles]);
 
   // Project analytics data
   const projectsByStatus = useMemo(() => {
@@ -164,12 +202,20 @@ const Dashboard = () => {
     }));
   }, [projects]);
 
+  // O(n) customer lookup using Map instead of O(n²) find()
   const projectsByCustomer = useMemo(() => {
     if (!projects || !customers) return [];
+    
+    // Build customer lookup Map O(n)
+    const customerMap = new Map<string, string>(
+      customers.map(c => [c.id, c.name])
+    );
+    
+    // Single pass O(n)
     const customerCount = projects.reduce((acc, project) => {
-      const customer = customers.find((c) => c.id === project.customer_id);
-      if (customer) {
-        acc[customer.name] = (acc[customer.name] || 0) + 1;
+      const customerName = customerMap.get(project.customer_id);
+      if (customerName) {
+        acc[customerName] = (acc[customerName] || 0) + 1;
       }
       return acc;
     }, {} as Record<string, number>);
@@ -192,7 +238,8 @@ const Dashboard = () => {
     productsLoading ||
     customersLoading ||
     projectsLoading ||
-    assignmentsLoading;
+    assignmentsLoading ||
+    profilesLoading;
 
   // Properly typed column definitions with snake_case keys matching Supabase data
   const estimateColumns: Column<Estimate>[] = useMemo(
@@ -296,11 +343,20 @@ const Dashboard = () => {
             />
             <StatCard
               title="Active Projects"
-              value={isLoading ? "..." : projects?.length ?? 0}
-              change={`${activeProjectsCount} active`}
+              value={isLoading ? "..." : activeProjectsCount}
+              change={`${projects?.length ?? 0} total`}
               changeType="positive"
               icon={FolderKanban}
               href="/projects"
+              compact={isMobile}
+            />
+            <StatCard
+              title="Staffing"
+              value={isLoading ? "..." : `${staffingStats.assignedStaff}/${staffingStats.totalStaff}`}
+              change={`${staffingStats.availableStaff} available`}
+              changeType={staffingStats.availableStaff > 0 ? "positive" : "neutral"}
+              icon={Users}
+              href="/project-assignments"
               compact={isMobile}
             />
             <StatCard
@@ -582,14 +638,25 @@ const Dashboard = () => {
               <h3 className="font-heading text-base sm:text-lg font-semibold text-foreground">
                 Recent Assignments
               </h3>
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={() => navigate("/project-assignments")}
-                className="text-xs sm:text-sm min-h-[44px]"
-              >
-                View all
-              </Button>
+              <div className="flex items-center gap-2">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => navigate("/project-assignments")}
+                  className="text-xs sm:text-sm min-h-[44px]"
+                >
+                  <UserPlus className="h-4 w-4 mr-1" />
+                  Assign Staff
+                </Button>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => navigate("/project-assignments")}
+                  className="text-xs sm:text-sm min-h-[44px]"
+                >
+                  View all
+                </Button>
+              </div>
             </div>
             {isLoading ? (
               <div className="glass rounded-xl p-8 text-center text-muted-foreground">
@@ -601,7 +668,7 @@ const Dashboard = () => {
               </div>
             ) : (
               <div className="space-y-3">
-                {recentAssignments.map((assignment: any) => (
+                {recentAssignments.map((assignment) => (
                   <Card
                     key={assignment.id}
                     className="glass p-4 hover:bg-secondary/50 transition-colors"
