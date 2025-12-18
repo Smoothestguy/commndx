@@ -2458,39 +2458,54 @@ export type Database = {
           category_id: string | null
           created_at: string
           gross_amount: number
+          hourly_rate: number | null
           id: string
           notes: string | null
           number: string
+          overtime_hours: number | null
+          pay_period_end: string | null
+          pay_period_start: string | null
           payment_date: string
           payment_type: Database["public"]["Enums"]["personnel_payment_type"]
           personnel_id: string
           personnel_name: string
+          regular_hours: number | null
           updated_at: string
         }
         Insert: {
           category_id?: string | null
           created_at?: string
           gross_amount: number
+          hourly_rate?: number | null
           id?: string
           notes?: string | null
           number: string
+          overtime_hours?: number | null
+          pay_period_end?: string | null
+          pay_period_start?: string | null
           payment_date: string
           payment_type?: Database["public"]["Enums"]["personnel_payment_type"]
           personnel_id: string
           personnel_name: string
+          regular_hours?: number | null
           updated_at?: string
         }
         Update: {
           category_id?: string | null
           created_at?: string
           gross_amount?: number
+          hourly_rate?: number | null
           id?: string
           notes?: string | null
           number?: string
+          overtime_hours?: number | null
+          pay_period_end?: string | null
+          pay_period_start?: string | null
           payment_date?: string
           payment_type?: Database["public"]["Enums"]["personnel_payment_type"]
           personnel_id?: string
           personnel_name?: string
+          regular_hours?: number | null
           updated_at?: string
         }
         Relationships: [
@@ -3779,6 +3794,7 @@ export type Database = {
           id: string
           notes: string | null
           paid_at: string | null
+          payment_id: string | null
           personnel_id: string
           project_id: string | null
           receipt_url: string | null
@@ -3796,6 +3812,7 @@ export type Database = {
           id?: string
           notes?: string | null
           paid_at?: string | null
+          payment_id?: string | null
           personnel_id: string
           project_id?: string | null
           receipt_url?: string | null
@@ -3813,6 +3830,7 @@ export type Database = {
           id?: string
           notes?: string | null
           paid_at?: string | null
+          payment_id?: string | null
           personnel_id?: string
           project_id?: string | null
           receipt_url?: string | null
@@ -3823,6 +3841,13 @@ export type Database = {
           updated_at?: string | null
         }
         Relationships: [
+          {
+            foreignKeyName: "reimbursements_payment_id_fkey"
+            columns: ["payment_id"]
+            isOneToOne: false
+            referencedRelation: "personnel_payments"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "reimbursements_personnel_id_fkey"
             columns: ["personnel_id"]
