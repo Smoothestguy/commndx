@@ -3,6 +3,8 @@ import { Clock, DollarSign, FileText, AlertCircle, Gift } from "lucide-react";
 import { TimeEntryWithDetails } from "@/integrations/supabase/hooks/useTimeEntries";
 import { useCompanySettings } from "@/integrations/supabase/hooks/useCompanySettings";
 import { formatCurrency } from "@/lib/utils";
+import { calculateWeeklyOvertimeByEmployee, calculateLaborCost } from "@/lib/overtimeUtils";
+import { useMemo } from "react";
 
 interface TimeTrackingStatsProps {
   entries: TimeEntryWithDetails[];
@@ -15,28 +17,58 @@ export function TimeTrackingStats({ entries }: TimeTrackingStatsProps) {
   const holidayMultiplier = companySettings?.holiday_multiplier ?? 1.5;
   const weeklyOvertimeThreshold = companySettings?.weekly_overtime_threshold ?? 40;
 
-  const totalHours = entries.reduce((sum, entry) => sum + Number(entry.hours), 0);
-  
-  // Calculate weekly overtime (hours over threshold)
-  const regularHours = Math.min(totalHours, weeklyOvertimeThreshold);
-  const overtimeHours = Math.max(0, totalHours - weeklyOvertimeThreshold);
+  // Calculate overtime PER EMPLOYEE using 40-hour weekly threshold
+  const { regularHours, overtimeHours, totalHours } = useMemo(() => {
+    return calculateWeeklyOvertimeByEmployee(
+      entries.map(e => ({
+        hours: Number(e.hours),
+        personnel_id: e.personnel_id,
+        user_id: e.user_id,
+      })),
+      weeklyOvertimeThreshold
+    );
+  }, [entries, weeklyOvertimeThreshold]);
 
   const holidayHours = entries
     .filter((entry) => entry.is_holiday)
     .reduce((sum, entry) => sum + Number(entry.hours), 0);
   
-  // Calculate total cost with weekly overtime
-  const avgHourlyRate = entries.length > 0
-    ? entries.reduce((sum, entry) => {
-        return sum + (entry.personnel?.hourly_rate || entry.profiles?.hourly_rate || 0);
-      }, 0) / entries.length
-    : 0;
-  
-  const regularCost = regularHours * avgHourlyRate;
-  const overtimeCost = overtimeHours * avgHourlyRate * overtimeMultiplier;
-  const holidayBonus = holidayHours * avgHourlyRate * (holidayMultiplier - 1);
-  
-  const totalCost = regularCost + overtimeCost + holidayBonus;
+  // Calculate total cost per employee and sum up
+  const totalCost = useMemo(() => {
+    // Group entries by employee to calculate cost correctly
+    const employeeData = new Map<string, { hours: number; rate: number }>();
+    
+    entries.forEach((entry) => {
+      const key = entry.personnel_id || entry.user_id || "unknown";
+      const rate = entry.personnel?.hourly_rate || entry.profiles?.hourly_rate || 0;
+      const hours = Number(entry.hours);
+      
+      const existing = employeeData.get(key);
+      if (existing) {
+        employeeData.set(key, { 
+          hours: existing.hours + hours, 
+          rate: rate || existing.rate // Use first non-zero rate found
+        });
+      } else {
+        employeeData.set(key, { hours, rate });
+      }
+    });
+    
+    let cost = 0;
+    employeeData.forEach(({ hours, rate }) => {
+      const empRegular = Math.min(hours, weeklyOvertimeThreshold);
+      const empOvertime = Math.max(0, hours - weeklyOvertimeThreshold);
+      cost += calculateLaborCost(empRegular, empOvertime, rate, overtimeMultiplier);
+    });
+    
+    // Add holiday bonus
+    const avgRate = entries.length > 0
+      ? entries.reduce((sum, e) => sum + (e.personnel?.hourly_rate || e.profiles?.hourly_rate || 0), 0) / entries.length
+      : 0;
+    cost += holidayHours * avgRate * (holidayMultiplier - 1);
+    
+    return cost;
+  }, [entries, weeklyOvertimeThreshold, overtimeMultiplier, holidayMultiplier, holidayHours]);
   
   const uninvoicedHours = entries
     .filter((entry) => entry.status !== "invoiced")
