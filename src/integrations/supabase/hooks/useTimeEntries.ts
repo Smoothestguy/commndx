@@ -398,6 +398,7 @@ export const useAllTimeEntries = (projectFilter?: string, personnelFilter?: stri
           personnel:personnel_id(first_name, last_name, hourly_rate, pay_rate, bill_rate, photo_url, everify_status, everify_expiry, work_auth_expiry, i9_completed_at),
           projects:project_id(
             name,
+            customer_id,
             customers:customer_id(name)
           )
         `)
