@@ -11,10 +11,11 @@ import {
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
-import { Loader2, FileText, Check, AlertTriangle, Edit } from "lucide-react";
+import { Loader2, Receipt, Check, AlertTriangle, Edit } from "lucide-react";
 import { format, nextFriday } from "date-fns";
 import { formatCurrency } from "@/lib/utils";
 import { Checkbox } from "@/components/ui/checkbox";
+import { Badge } from "@/components/ui/badge";
 import {
   Table,
   TableBody,
@@ -30,11 +31,10 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { useVendors } from "@/integrations/supabase/hooks/useVendors";
-import { useExpenseCategories } from "@/integrations/supabase/hooks/useExpenseCategories";
-import { useAddVendorBill } from "@/integrations/supabase/hooks/useVendorBills";
+import { useCustomers } from "@/integrations/supabase/hooks/useCustomers";
 import { useCompanySettings } from "@/integrations/supabase/hooks/useCompanySettings";
 import { TimeEntryWithDetails } from "@/integrations/supabase/hooks/useTimeEntries";
+import { useAddInvoice } from "@/integrations/supabase/hooks/useInvoices";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 
@@ -49,50 +49,44 @@ interface PersonnelSummary {
   entryIds: string[];
 }
 
-interface CreateVendorBillFromTimeDialogProps {
+interface CreateCustomerInvoiceFromTimeDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   selectedEntries: TimeEntryWithDetails[];
   onSuccess?: () => void;
 }
 
-export function CreateVendorBillFromTimeDialog({
+export function CreateCustomerInvoiceFromTimeDialog({
   open,
   onOpenChange,
   selectedEntries,
   onSuccess,
-}: CreateVendorBillFromTimeDialogProps) {
+}: CreateCustomerInvoiceFromTimeDialogProps) {
   const navigate = useNavigate();
-  const [vendorId, setVendorId] = useState<string>("");
-  const [billDate, setBillDate] = useState(format(new Date(), "yyyy-MM-dd"));
+  const [customerId, setCustomerId] = useState<string>("");
+  const [invoiceDate, setInvoiceDate] = useState(format(new Date(), "yyyy-MM-dd"));
   const [dueDate, setDueDate] = useState(format(nextFriday(new Date()), "yyyy-MM-dd"));
-  const [categoryId, setCategoryId] = useState<string>("");
   const [selectedPersonnel, setSelectedPersonnel] = useState<Set<string>>(new Set());
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
-  const { data: vendors = [] } = useVendors();
-  const { data: categories = [] } = useExpenseCategories();
+  const { data: customers = [] } = useCustomers();
   const { data: companySettings } = useCompanySettings();
-  const addBill = useAddVendorBill();
+  const addInvoice = useAddInvoice();
 
   const overtimeMultiplier = companySettings?.overtime_multiplier ?? 1.5;
   const weeklyOvertimeThreshold = companySettings?.weekly_overtime_threshold ?? 40;
+  const defaultTaxRate = companySettings?.default_tax_rate ?? 0;
 
-  // Filter to only labor vendors (personnel type)
-  const laborVendors = vendors.filter(v => v.vendor_type === "personnel" || v.vendor_type === "contractor");
+  // Check for already invoiced entries
+  const alreadyInvoicedEntries = selectedEntries.filter(e => e.invoice_id);
+  const hasAlreadyInvoiced = alreadyInvoicedEntries.length > 0;
 
-  // Find "Contract Labor" category as default
-  const contractLaborCategory = categories.find(c => c.name === "Contract Labor");
-
-  // Check for already billed entries
-  const alreadyBilledEntries = selectedEntries.filter(e => e.vendor_bill_id);
-  const hasAlreadyBilled = alreadyBilledEntries.length > 0;
-
-  // Group entries by personnel and calculate summaries (only non-billed entries)
+  // Group entries by personnel and calculate summaries
   const personnelSummaries = useMemo(() => {
     const groups = new Map<string, PersonnelSummary>();
 
-    // Only process non-billed entries
-    const entriesToProcess = selectedEntries.filter(e => !e.vendor_bill_id);
+    // Only process non-invoiced entries
+    const entriesToProcess = selectedEntries.filter(e => !e.invoice_id);
 
     entriesToProcess.forEach((entry) => {
       const personnelId = entry.personnel_id || entry.user_id;
@@ -138,22 +132,26 @@ export function CreateVendorBillFromTimeDialog({
   useMemo(() => {
     if (open && selectedPersonnel.size === 0 && personnelSummaries.length > 0) {
       setSelectedPersonnel(new Set(personnelSummaries.map(p => p.personnelId)));
-      // Set default category
-      if (contractLaborCategory && !categoryId) {
-        setCategoryId(contractLaborCategory.id);
+      // Auto-select customer from project if available
+      const projectCustomerId = selectedEntries[0]?.projects?.customer_id;
+      if (projectCustomerId && !customerId) {
+        setCustomerId(projectCustomerId);
       }
     }
-  }, [open, personnelSummaries, contractLaborCategory, categoryId, selectedPersonnel.size]);
+  }, [open, personnelSummaries, selectedEntries, customerId, selectedPersonnel.size]);
 
   const selectedSummaries = useMemo(() =>
     personnelSummaries.filter(p => selectedPersonnel.has(p.personnelId)),
     [personnelSummaries, selectedPersonnel]
   );
 
-  const totalAmount = useMemo(() =>
+  const subtotal = useMemo(() =>
     selectedSummaries.reduce((sum, p) => sum + p.totalCost, 0),
     [selectedSummaries]
   );
+
+  const taxAmount = subtotal * (defaultTaxRate / 100);
+  const totalAmount = subtotal + taxAmount;
 
   const totalHours = useMemo(() =>
     selectedSummaries.reduce((sum, p) => sum + p.totalHours, 0),
@@ -162,7 +160,6 @@ export function CreateVendorBillFromTimeDialog({
 
   // Get project info from first entry
   const projectInfo = selectedEntries[0]?.projects;
-  const projectId = selectedEntries[0]?.project_id;
 
   const togglePersonnel = (personnelId: string) => {
     const newSelected = new Set(selectedPersonnel);
@@ -182,83 +179,88 @@ export function CreateVendorBillFromTimeDialog({
     }
   };
 
-  const selectedVendor = laborVendors.find(v => v.id === vendorId);
+  const selectedCustomer = customers.find(c => c.id === customerId);
 
   const handleCreate = async () => {
-    if (!vendorId || selectedSummaries.length === 0) {
-      toast.error("Please select a vendor and at least one personnel");
+    if (!customerId || selectedSummaries.length === 0) {
+      toast.error("Please select a customer and at least one personnel");
       return;
     }
+
+    setIsSubmitting(true);
 
     try {
       // Create line items from selected personnel summaries
       const lineItems = selectedSummaries.map((summary) => ({
         description: `Labor - ${summary.personnelName} (${summary.regularHours.toFixed(1)}h${summary.overtimeHours > 0 ? ` + ${summary.overtimeHours.toFixed(1)}h OT` : ''})`,
         quantity: 1,
-        unit_cost: summary.totalCost,
+        unit_price: summary.totalCost,
+        markup: 0,
         total: summary.totalCost,
-        project_id: projectId || null,
-        category_id: categoryId || null,
       }));
 
       // Collect all entry IDs to update
       const entryIdsToUpdate = selectedSummaries.flatMap(s => s.entryIds);
 
-      const result = await addBill.mutateAsync({
-        bill: {
-          vendor_id: vendorId,
-          vendor_name: selectedVendor?.company || selectedVendor?.name || "Unknown",
-          bill_date: billDate,
-          due_date: dueDate,
-          subtotal: totalAmount,
-          tax_rate: 0,
-          tax_amount: 0,
-          total: totalAmount,
-          status: "open",
-          notes: `Labor bill for ${projectInfo?.name || 'project'} - ${format(new Date(billDate), "MMM d, yyyy")}`,
-          purchase_order_id: null,
-          purchase_order_number: null,
-        },
-        lineItems,
+      const result = await addInvoice.mutateAsync({
+        number: '', // Auto-generated by database trigger
+        customer_id: customerId,
+        customer_name: selectedCustomer?.name || "Unknown",
+        project_name: projectInfo?.name || null,
+        due_date: dueDate,
+        subtotal: subtotal,
+        tax_rate: defaultTaxRate,
+        tax_amount: taxAmount,
+        total: totalAmount,
+        status: "draft",
+        line_items: lineItems.map(item => ({
+          ...item,
+          id: '',
+          invoice_id: '',
+        })),
       });
 
-      // Update time entries with vendor_bill_id
+      // Update time entries with invoice_id and invoiced_at
       if (result?.id) {
         const { error: updateError } = await supabase
           .from('time_entries')
-          .update({ vendor_bill_id: result.id })
+          .update({ 
+            invoice_id: result.id, 
+            invoiced_at: new Date().toISOString() 
+          })
           .in('id', entryIdsToUpdate);
 
         if (updateError) {
-          console.error("Error linking time entries to bill:", updateError);
-          toast.error("Bill created but failed to link time entries");
+          console.error("Error linking time entries to invoice:", updateError);
+          toast.error("Invoice created but failed to link time entries");
         }
       }
 
-      toast.success("Vendor bill created successfully");
+      toast.success("Customer invoice created successfully");
       onOpenChange(false);
       onSuccess?.();
       
-      // Navigate to the created bill
+      // Navigate to the created invoice
       if (result?.id) {
-        navigate(`/vendor-bills/${result.id}`);
+        navigate(`/invoices/${result.id}`);
       }
     } catch (error) {
-      console.error("Error creating vendor bill:", error);
+      console.error("Error creating customer invoice:", error);
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
-  // Navigate to existing bill
-  const navigateToExistingBill = (billId: string) => {
+  const handleClose = () => {
+    setCustomerId("");
+    setSelectedPersonnel(new Set());
     onOpenChange(false);
-    navigate(`/vendor-bills/${billId}`);
   };
 
-  const handleClose = () => {
-    setVendorId("");
-    setSelectedPersonnel(new Set());
-    setCategoryId("");
+  // Navigate to existing invoice
+  const navigateToExistingInvoice = (invoiceId: string) => {
     onOpenChange(false);
+    navigate(`/invoices/${invoiceId}`);
   };
 
   return (
@@ -266,57 +268,57 @@ export function CreateVendorBillFromTimeDialog({
       <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
-            <FileText className="h-5 w-5" />
-            Create Vendor Bill from Time Entries
+            <Receipt className="h-5 w-5" />
+            Create Customer Invoice from Time Entries
           </DialogTitle>
           <DialogDescription>
-            Create a vendor bill for the selected labor hours ({selectedEntries.length} entries)
+            Create an invoice for the selected labor hours ({selectedEntries.length} entries)
           </DialogDescription>
         </DialogHeader>
 
         <div className="space-y-4">
-          {/* Warning for already billed entries */}
-          {hasAlreadyBilled && (
+          {/* Warning for already invoiced entries */}
+          {hasAlreadyInvoiced && (
             <div className="flex items-start gap-2 p-3 bg-amber-500/10 text-amber-700 dark:text-amber-400 rounded-lg border border-amber-500/20">
               <AlertTriangle className="h-4 w-4 mt-0.5 shrink-0" />
               <div className="space-y-1">
                 <span className="text-sm font-medium">
-                  {alreadyBilledEntries.length} entries already billed
+                  {alreadyInvoicedEntries.length} entries already invoiced
                 </span>
                 <p className="text-xs">
-                  These entries will be skipped. Only un-billed entries will be included.
+                  These entries will be skipped. Only un-invoiced entries will be included.
                 </p>
-                {alreadyBilledEntries[0]?.vendor_bill_id && (
+                {alreadyInvoicedEntries[0]?.invoice_id && (
                   <Button 
                     variant="link" 
                     size="sm" 
                     className="h-auto p-0 text-xs"
-                    onClick={() => navigateToExistingBill(alreadyBilledEntries[0].vendor_bill_id!)}
+                    onClick={() => navigateToExistingInvoice(alreadyInvoicedEntries[0].invoice_id!)}
                   >
                     <Edit className="h-3 w-3 mr-1" />
-                    Edit Existing Bill
+                    Edit Existing Invoice
                   </Button>
                 )}
               </div>
             </div>
           )}
 
-          {/* Vendor Selection */}
+          {/* Customer Selection */}
           <div>
-            <Label htmlFor="vendor">Labor Vendor *</Label>
-            <Select value={vendorId} onValueChange={setVendorId}>
+            <Label htmlFor="customer">Customer *</Label>
+            <Select value={customerId} onValueChange={setCustomerId}>
               <SelectTrigger className="mt-1.5">
-                <SelectValue placeholder="Select labor vendor..." />
+                <SelectValue placeholder="Select customer..." />
               </SelectTrigger>
               <SelectContent>
-                {laborVendors.length === 0 ? (
+                {customers.length === 0 ? (
                   <div className="p-2 text-sm text-muted-foreground">
-                    No labor vendors found
+                    No customers found
                   </div>
                 ) : (
-                  laborVendors.map((vendor) => (
-                    <SelectItem key={vendor.id} value={vendor.id}>
-                      {vendor.company || vendor.name}
+                  customers.map((customer) => (
+                    <SelectItem key={customer.id} value={customer.id}>
+                      {customer.name} {customer.company && `(${customer.company})`}
                     </SelectItem>
                   ))
                 )}
@@ -338,12 +340,12 @@ export function CreateVendorBillFromTimeDialog({
           {/* Date Fields */}
           <div className="grid grid-cols-2 gap-4">
             <div>
-              <Label htmlFor="billDate">Bill Date</Label>
+              <Label htmlFor="invoiceDate">Invoice Date</Label>
               <Input
-                id="billDate"
+                id="invoiceDate"
                 type="date"
-                value={billDate}
-                onChange={(e) => setBillDate(e.target.value)}
+                value={invoiceDate}
+                onChange={(e) => setInvoiceDate(e.target.value)}
                 className="mt-1.5"
               />
             </div>
@@ -359,57 +361,34 @@ export function CreateVendorBillFromTimeDialog({
             </div>
           </div>
 
-          {/* Category Selection */}
-          <div>
-            <Label htmlFor="category">Expense Category</Label>
-            <Select value={categoryId} onValueChange={setCategoryId}>
-              <SelectTrigger className="mt-1.5">
-                <SelectValue placeholder="Select category..." />
-              </SelectTrigger>
-              <SelectContent>
-                {categories.map((category) => (
-                  <SelectItem key={category.id} value={category.id}>
-                    {category.name}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
-
           {/* Personnel Selection */}
-          <div>
-            <div className="flex items-center justify-between mb-2">
-              <Label>Select Personnel to Bill</Label>
-              <Button variant="ghost" size="sm" onClick={toggleAll}>
-                {selectedPersonnel.size === personnelSummaries.length ? 'Deselect All' : 'Select All'}
-              </Button>
-            </div>
+          {personnelSummaries.length > 0 ? (
+            <div>
+              <div className="flex items-center justify-between mb-2">
+                <Label>Select Personnel to Invoice</Label>
+                <Button variant="ghost" size="sm" onClick={toggleAll}>
+                  {selectedPersonnel.size === personnelSummaries.length ? 'Deselect All' : 'Select All'}
+                </Button>
+              </div>
 
-            <div className="border rounded-lg overflow-hidden">
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead className="w-12">
-                      <Checkbox
-                        checked={selectedPersonnel.size === personnelSummaries.length && personnelSummaries.length > 0}
-                        onCheckedChange={toggleAll}
-                      />
-                    </TableHead>
-                    <TableHead>Personnel</TableHead>
-                    <TableHead className="text-right">Hours</TableHead>
-                    <TableHead className="text-right">Rate</TableHead>
-                    <TableHead className="text-right">Amount</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {personnelSummaries.length === 0 ? (
+              <div className="border rounded-lg overflow-hidden">
+                <Table>
+                  <TableHeader>
                     <TableRow>
-                      <TableCell colSpan={5} className="text-center text-muted-foreground py-4">
-                        No personnel data available
-                      </TableCell>
+                      <TableHead className="w-12">
+                        <Checkbox
+                          checked={selectedPersonnel.size === personnelSummaries.length && personnelSummaries.length > 0}
+                          onCheckedChange={toggleAll}
+                        />
+                      </TableHead>
+                      <TableHead>Personnel</TableHead>
+                      <TableHead className="text-right">Hours</TableHead>
+                      <TableHead className="text-right">Rate</TableHead>
+                      <TableHead className="text-right">Amount</TableHead>
                     </TableRow>
-                  ) : (
-                    personnelSummaries.map((summary) => (
+                  </TableHeader>
+                  <TableBody>
+                    {personnelSummaries.map((summary) => (
                       <TableRow
                         key={summary.personnelId}
                         className={!selectedPersonnel.has(summary.personnelId) ? 'opacity-50' : ''}
@@ -434,14 +413,20 @@ export function CreateVendorBillFromTimeDialog({
                           {formatCurrency(summary.totalCost)}
                         </TableCell>
                       </TableRow>
-                    ))
-                  )}
-                </TableBody>
-              </Table>
+                    ))}
+                  </TableBody>
+                </Table>
+              </div>
             </div>
-          </div>
+          ) : (
+            <div className="p-4 text-center text-muted-foreground border rounded-lg">
+              {hasAlreadyInvoiced && alreadyInvoicedEntries.length === selectedEntries.length
+                ? "All selected entries have already been invoiced"
+                : "No personnel data available"}
+            </div>
+          )}
 
-          {/* Bill Summary */}
+          {/* Invoice Summary */}
           <div className="p-4 bg-muted/50 rounded-lg space-y-2">
             <div className="flex justify-between text-sm">
               <span className="text-muted-foreground">Selected Personnel</span>
@@ -451,30 +436,40 @@ export function CreateVendorBillFromTimeDialog({
               <span className="text-muted-foreground">Total Hours</span>
               <span>{totalHours.toFixed(1)}h</span>
             </div>
+            <div className="flex justify-between text-sm">
+              <span className="text-muted-foreground">Subtotal</span>
+              <span>{formatCurrency(subtotal)}</span>
+            </div>
+            {defaultTaxRate > 0 && (
+              <div className="flex justify-between text-sm">
+                <span className="text-muted-foreground">Tax ({defaultTaxRate}%)</span>
+                <span>{formatCurrency(taxAmount)}</span>
+              </div>
+            )}
             <div className="flex justify-between font-medium pt-2 border-t">
-              <span>Bill Total</span>
+              <span>Invoice Total</span>
               <span className="text-lg">{formatCurrency(totalAmount)}</span>
             </div>
           </div>
 
-          {/* Warning if no vendor selected */}
-          {!vendorId && laborVendors.length === 0 && (
+          {/* Warning if no customer selected */}
+          {!customerId && customers.length === 0 && (
             <div className="flex items-center gap-2 p-3 bg-destructive/10 text-destructive rounded-lg">
               <AlertTriangle className="h-4 w-4" />
-              <span className="text-sm">No labor vendors found. Please create a vendor first.</span>
+              <span className="text-sm">No customers found. Please create a customer first.</span>
             </div>
           )}
         </div>
 
         <DialogFooter>
-          <Button variant="outline" onClick={handleClose} disabled={addBill.isPending}>
+          <Button variant="outline" onClick={handleClose} disabled={isSubmitting}>
             Cancel
           </Button>
           <Button
             onClick={handleCreate}
-            disabled={addBill.isPending || !vendorId || selectedSummaries.length === 0}
+            disabled={isSubmitting || !customerId || selectedSummaries.length === 0}
           >
-            {addBill.isPending ? (
+            {isSubmitting ? (
               <>
                 <Loader2 className="h-4 w-4 mr-2 animate-spin" />
                 Creating...
@@ -482,7 +477,7 @@ export function CreateVendorBillFromTimeDialog({
             ) : (
               <>
                 <Check className="h-4 w-4 mr-2" />
-                Create Bill ({formatCurrency(totalAmount)})
+                Create Invoice ({formatCurrency(totalAmount)})
               </>
             )}
           </Button>

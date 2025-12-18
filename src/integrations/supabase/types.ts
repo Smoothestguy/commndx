@@ -4330,6 +4330,7 @@ export type Database = {
           status: string | null
           updated_at: string
           user_id: string
+          vendor_bill_id: string | null
           week_closeout_id: string | null
         }
         Insert: {
@@ -4351,6 +4352,7 @@ export type Database = {
           status?: string | null
           updated_at?: string
           user_id: string
+          vendor_bill_id?: string | null
           week_closeout_id?: string | null
         }
         Update: {
@@ -4372,6 +4374,7 @@ export type Database = {
           status?: string | null
           updated_at?: string
           user_id?: string
+          vendor_bill_id?: string | null
           week_closeout_id?: string | null
         }
         Relationships: [
@@ -4408,6 +4411,13 @@ export type Database = {
             columns: ["user_id"]
             isOneToOne: false
             referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "time_entries_vendor_bill_id_fkey"
+            columns: ["vendor_bill_id"]
+            isOneToOne: false
+            referencedRelation: "vendor_bills"
             referencedColumns: ["id"]
           },
           {

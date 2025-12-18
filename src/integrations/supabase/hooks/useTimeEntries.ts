@@ -23,6 +23,9 @@ export interface TimeEntry {
 
 export interface TimeEntryWithDetails extends TimeEntry {
   personnel_id?: string | null;
+  invoice_id?: string | null;
+  invoiced_at?: string | null;
+  vendor_bill_id?: string | null;
   profiles?: {
     first_name: string | null;
     last_name: string | null;
@@ -41,6 +44,7 @@ export interface TimeEntryWithDetails extends TimeEntry {
   } | null;
   projects?: {
     name: string;
+    customer_id?: string | null;
     customers?: {
       name: string;
     } | null;

@@ -1,6 +1,6 @@
 import { useState, useMemo } from "react";
 import { format } from "date-fns";
-import { ChevronDown, ChevronRight, Pencil, Trash2, AlertTriangle, Gift, Clock, DollarSign, Check, X, FileText } from "lucide-react";
+import { ChevronDown, ChevronRight, Pencil, Trash2, AlertTriangle, Gift, Clock, DollarSign, Check, X, FileText, Receipt, ClipboardList, CircleDollarSign } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Badge } from "@/components/ui/badge";
@@ -32,6 +32,11 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
 
 type Status = 
   | "draft" 
@@ -81,6 +86,7 @@ interface GroupedTimeTrackingTableProps {
   onBulkDelete?: (ids: string[]) => void;
   onStatusChange?: (ids: string[], status: string) => void;
   onCreateVendorBill?: (entries: TimeEntryWithDetails[]) => void;
+  onCreateCustomerInvoice?: (entries: TimeEntryWithDetails[]) => void;
   isDeleting?: boolean;
   isUpdatingStatus?: boolean;
 }
@@ -91,6 +97,7 @@ export function GroupedTimeTrackingTable({
   onBulkDelete, 
   onStatusChange,
   onCreateVendorBill,
+  onCreateCustomerInvoice,
   isDeleting,
   isUpdatingStatus
 }: GroupedTimeTrackingTableProps) {
@@ -320,6 +327,20 @@ export function GroupedTimeTrackingTable({
                   Create Bill
                 </Button>
               )}
+              {onCreateCustomerInvoice && (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => {
+                    const selectedEntryList = entries.filter(e => selectedIds.has(e.id));
+                    onCreateCustomerInvoice(selectedEntryList);
+                  }}
+                  className="text-green-600 border-green-600/30 hover:bg-green-600/10"
+                >
+                  <Receipt className="h-4 w-4 mr-1" />
+                  Invoice Customer
+                </Button>
+              )}
               {onBulkDelete && (
                 <Button
                   variant="destructive"
@@ -487,6 +508,28 @@ export function GroupedTimeTrackingTable({
                                 Hol
                               </Badge>
                             )}
+                            {entry.vendor_bill_id && (
+                              <Tooltip>
+                                <TooltipTrigger asChild>
+                                  <Badge variant="outline" className="text-xs bg-blue-500/10 text-blue-500 border-blue-500/20">
+                                    <ClipboardList className="h-2 w-2 mr-0.5" />
+                                    Billed
+                                  </Badge>
+                                </TooltipTrigger>
+                                <TooltipContent>Vendor bill created</TooltipContent>
+                              </Tooltip>
+                            )}
+                            {entry.invoice_id && (
+                              <Tooltip>
+                                <TooltipTrigger asChild>
+                                  <Badge variant="outline" className="text-xs bg-green-500/10 text-green-500 border-green-500/20">
+                                    <CircleDollarSign className="h-2 w-2 mr-0.5" />
+                                    Invoiced
+                                  </Badge>
+                                </TooltipTrigger>
+                                <TooltipContent>Customer invoice created</TooltipContent>
+                              </Tooltip>
+                            )}
                           </div>
                         </div>
                         <Button
@@ -589,6 +632,20 @@ export function GroupedTimeTrackingTable({
               >
                 <FileText className="h-4 w-4 mr-1" />
                 Create Bill
+              </Button>
+            )}
+            {onCreateCustomerInvoice && (
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => {
+                  const selectedEntryList = entries.filter(e => selectedIds.has(e.id));
+                  onCreateCustomerInvoice(selectedEntryList);
+                }}
+                className="text-green-600 border-green-600/30 hover:bg-green-600/10"
+              >
+                <Receipt className="h-4 w-4 mr-1" />
+                Invoice Customer
               </Button>
             )}
             {onBulkDelete && (
@@ -738,8 +795,8 @@ export function GroupedTimeTrackingTable({
                             <div>
                               <StatusBadge status={getStatus(entry)} />
                             </div>
-                            {/* OT/Holiday badges */}
-                            <div className="flex gap-1">
+                            {/* OT/Holiday/Billing badges */}
+                            <div className="flex gap-1 flex-wrap">
                               {hasOvertime && (
                                 <Badge variant="outline" className="text-xs bg-orange-500/10 text-orange-500 border-orange-500/20 gap-1">
                                   <AlertTriangle className="h-3 w-3" />
@@ -751,6 +808,28 @@ export function GroupedTimeTrackingTable({
                                   <Gift className="h-3 w-3" />
                                   Holiday
                                 </Badge>
+                              )}
+                              {entry.vendor_bill_id && (
+                                <Tooltip>
+                                  <TooltipTrigger asChild>
+                                    <Badge variant="outline" className="text-xs bg-blue-500/10 text-blue-500 border-blue-500/20 gap-1">
+                                      <ClipboardList className="h-3 w-3" />
+                                      Billed
+                                    </Badge>
+                                  </TooltipTrigger>
+                                  <TooltipContent>Vendor bill created</TooltipContent>
+                                </Tooltip>
+                              )}
+                              {entry.invoice_id && (
+                                <Tooltip>
+                                  <TooltipTrigger asChild>
+                                    <Badge variant="outline" className="text-xs bg-green-500/10 text-green-500 border-green-500/20 gap-1">
+                                      <CircleDollarSign className="h-3 w-3" />
+                                      Invoiced
+                                    </Badge>
+                                  </TooltipTrigger>
+                                  <TooltipContent>Customer invoice created</TooltipContent>
+                                </Tooltip>
                               )}
                             </div>
                             <div className="text-sm text-muted-foreground truncate md:col-span-1" title={entry.description || ""}>
