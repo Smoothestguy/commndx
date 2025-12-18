@@ -46,6 +46,7 @@ import {
   KeyRound,
   Eye,
   ScrollText,
+  ClipboardList,
 } from "lucide-react";
 import logo from "@/assets/logo.png";
 
@@ -79,6 +80,12 @@ const staffingNavigation = [
     name: "Project Assignments",
     href: "/project-assignments",
     icon: UserCog,
+    requiresManager: true,
+  },
+  {
+    name: "Applications",
+    href: "/staffing/applications",
+    icon: ClipboardList,
     requiresManager: true,
   },
   {
@@ -118,7 +125,7 @@ export function AppSidebar() {
       )
     )
       setVendorsOpen(true);
-    if (staffingRoutes.some((r) => location.pathname === r))
+    if (staffingRoutes.some((r) => location.pathname === r) || location.pathname.startsWith("/staffing/"))
       setStaffingOpen(true);
     if (
       accountRoutes.some(

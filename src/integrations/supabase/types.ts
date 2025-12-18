@@ -120,6 +120,96 @@ export type Database = {
         }
         Relationships: []
       }
+      applicants: {
+        Row: {
+          created_at: string
+          email: string
+          first_name: string
+          home_lat: number | null
+          home_lng: number | null
+          home_zip: string | null
+          id: string
+          last_name: string
+          phone: string | null
+          status: Database["public"]["Enums"]["applicant_status"]
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          email: string
+          first_name: string
+          home_lat?: number | null
+          home_lng?: number | null
+          home_zip?: string | null
+          id?: string
+          last_name: string
+          phone?: string | null
+          status?: Database["public"]["Enums"]["applicant_status"]
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          email?: string
+          first_name?: string
+          home_lat?: number | null
+          home_lng?: number | null
+          home_zip?: string | null
+          id?: string
+          last_name?: string
+          phone?: string | null
+          status?: Database["public"]["Enums"]["applicant_status"]
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      applications: {
+        Row: {
+          answers: Json | null
+          applicant_id: string
+          created_at: string
+          id: string
+          job_posting_id: string
+          notes: string | null
+          status: Database["public"]["Enums"]["application_status"]
+          updated_at: string
+        }
+        Insert: {
+          answers?: Json | null
+          applicant_id: string
+          created_at?: string
+          id?: string
+          job_posting_id: string
+          notes?: string | null
+          status?: Database["public"]["Enums"]["application_status"]
+          updated_at?: string
+        }
+        Update: {
+          answers?: Json | null
+          applicant_id?: string
+          created_at?: string
+          id?: string
+          job_posting_id?: string
+          notes?: string | null
+          status?: Database["public"]["Enums"]["application_status"]
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "applications_applicant_id_fkey"
+            columns: ["applicant_id"]
+            isOneToOne: false
+            referencedRelation: "applicants"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "applications_job_posting_id_fkey"
+            columns: ["job_posting_id"]
+            isOneToOne: false
+            referencedRelation: "job_postings"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       appointments: {
         Row: {
           appointment_type: Database["public"]["Enums"]["appointment_type"]
@@ -1745,6 +1835,38 @@ export type Database = {
           },
         ]
       }
+      job_postings: {
+        Row: {
+          created_at: string
+          id: string
+          is_open: boolean
+          public_token: string
+          task_order_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          is_open?: boolean
+          public_token?: string
+          task_order_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          is_open?: boolean
+          public_token?: string
+          task_order_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "job_postings_task_order_id_fkey"
+            columns: ["task_order_id"]
+            isOneToOne: false
+            referencedRelation: "project_task_orders"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       messages: {
         Row: {
           content: string
@@ -1920,6 +2042,7 @@ export type Database = {
       personnel: {
         Row: {
           address: string | null
+          applicant_id: string | null
           citizenship_status: string | null
           city: string | null
           created_at: string | null
@@ -1957,6 +2080,7 @@ export type Database = {
         }
         Insert: {
           address?: string | null
+          applicant_id?: string | null
           citizenship_status?: string | null
           city?: string | null
           created_at?: string | null
@@ -1994,6 +2118,7 @@ export type Database = {
         }
         Update: {
           address?: string | null
+          applicant_id?: string | null
           citizenship_status?: string | null
           city?: string | null
           created_at?: string | null
@@ -2030,6 +2155,13 @@ export type Database = {
           zip?: string | null
         }
         Relationships: [
+          {
+            foreignKeyName: "personnel_applicant_id_fkey"
+            columns: ["applicant_id"]
+            isOneToOne: false
+            referencedRelation: "applicants"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "personnel_vendor_id_fkey"
             columns: ["vendor_id"]
@@ -2961,6 +3093,59 @@ export type Database = {
         Relationships: [
           {
             foreignKeyName: "project_documents_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "projects"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      project_task_orders: {
+        Row: {
+          created_at: string
+          headcount_needed: number
+          id: string
+          job_description: string | null
+          location_address: string | null
+          location_lat: number | null
+          location_lng: number | null
+          project_id: string
+          start_at: string | null
+          status: Database["public"]["Enums"]["task_order_status"]
+          title: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          headcount_needed?: number
+          id?: string
+          job_description?: string | null
+          location_address?: string | null
+          location_lat?: number | null
+          location_lng?: number | null
+          project_id: string
+          start_at?: string | null
+          status?: Database["public"]["Enums"]["task_order_status"]
+          title: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          headcount_needed?: number
+          id?: string
+          job_description?: string | null
+          location_address?: string | null
+          location_lat?: number | null
+          location_lng?: number | null
+          project_id?: string
+          start_at?: string | null
+          status?: Database["public"]["Enums"]["task_order_status"]
+          title?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "project_task_orders_project_id_fkey"
             columns: ["project_id"]
             isOneToOne: false
             referencedRelation: "projects"
@@ -4918,6 +5103,8 @@ export type Database = {
         | "site_visit"
         | "follow_up"
       app_role: "admin" | "manager" | "user" | "personnel" | "vendor"
+      applicant_status: "new" | "approved" | "rejected" | "inactive"
+      application_status: "submitted" | "reviewing" | "approved" | "rejected"
       appointment_status:
         | "scheduled"
         | "confirmed"
@@ -4995,6 +5182,7 @@ export type Database = {
         | "gambrel"
         | "shed"
         | "combination"
+      task_order_status: "draft" | "open" | "filled" | "closed"
       task_priority: "low" | "medium" | "high" | "urgent"
       task_status: "pending" | "in_progress" | "completed" | "cancelled"
       tm_ticket_status:
@@ -5152,6 +5340,8 @@ export const Constants = {
         "follow_up",
       ],
       app_role: ["admin", "manager", "user", "personnel", "vendor"],
+      applicant_status: ["new", "approved", "rejected", "inactive"],
+      application_status: ["submitted", "reviewing", "approved", "rejected"],
       appointment_status: [
         "scheduled",
         "confirmed",
@@ -5238,6 +5428,7 @@ export const Constants = {
         "shed",
         "combination",
       ],
+      task_order_status: ["draft", "open", "filled", "closed"],
       task_priority: ["low", "medium", "high", "urgent"],
       task_status: ["pending", "in_progress", "completed", "cancelled"],
       tm_ticket_status: [
