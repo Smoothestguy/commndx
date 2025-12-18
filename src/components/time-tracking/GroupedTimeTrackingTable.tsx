@@ -1,6 +1,6 @@
 import { useState, useMemo } from "react";
 import { format } from "date-fns";
-import { ChevronDown, ChevronRight, Pencil, Trash2, AlertTriangle, Gift, Clock, DollarSign, Check, X } from "lucide-react";
+import { ChevronDown, ChevronRight, Pencil, Trash2, AlertTriangle, Gift, Clock, DollarSign, Check, X, FileText } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Badge } from "@/components/ui/badge";
@@ -80,6 +80,7 @@ interface GroupedTimeTrackingTableProps {
   onEdit: (entry: TimeEntryWithDetails) => void;
   onBulkDelete?: (ids: string[]) => void;
   onStatusChange?: (ids: string[], status: string) => void;
+  onCreateVendorBill?: (entries: TimeEntryWithDetails[]) => void;
   isDeleting?: boolean;
   isUpdatingStatus?: boolean;
 }
@@ -89,6 +90,7 @@ export function GroupedTimeTrackingTable({
   onEdit, 
   onBulkDelete, 
   onStatusChange,
+  onCreateVendorBill,
   isDeleting,
   isUpdatingStatus
 }: GroupedTimeTrackingTableProps) {
@@ -303,6 +305,20 @@ export function GroupedTimeTrackingTable({
                     Reject
                   </Button>
                 </>
+              )}
+              {onCreateVendorBill && (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => {
+                    const selectedEntryList = entries.filter(e => selectedIds.has(e.id));
+                    onCreateVendorBill(selectedEntryList);
+                  }}
+                  className="text-blue-600 border-blue-600/30 hover:bg-blue-600/10"
+                >
+                  <FileText className="h-4 w-4 mr-1" />
+                  Create Bill
+                </Button>
               )}
               {onBulkDelete && (
                 <Button
@@ -560,6 +576,20 @@ export function GroupedTimeTrackingTable({
                   Reject
                 </Button>
               </>
+            )}
+            {onCreateVendorBill && (
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => {
+                  const selectedEntryList = entries.filter(e => selectedIds.has(e.id));
+                  onCreateVendorBill(selectedEntryList);
+                }}
+                className="text-blue-600 border-blue-600/30 hover:bg-blue-600/10"
+              >
+                <FileText className="h-4 w-4 mr-1" />
+                Create Bill
+              </Button>
             )}
             {onBulkDelete && (
               <Button
