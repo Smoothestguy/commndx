@@ -13,6 +13,7 @@ import { WeekNavigator } from "@/components/time-tracking/WeekNavigator";
 import { ProjectAssignmentsSection } from "@/components/time-tracking/ProjectAssignmentsSection";
 import { PersonnelAssignmentDialog } from "@/components/time-tracking/PersonnelAssignmentDialog";
 import { CreateVendorBillFromTimeDialog } from "@/components/time-tracking/CreateVendorBillFromTimeDialog";
+import { CreateCustomerInvoiceFromTimeDialog } from "@/components/time-tracking/CreateCustomerInvoiceFromTimeDialog";
 import { useAllTimeEntries, useTimeEntries, useBulkDeleteTimeEntries, useUpdateTimeEntryStatus, TimeEntryWithDetails } from "@/integrations/supabase/hooks/useTimeEntries";
 import { useUserRole } from "@/hooks/useUserRole";
 import { useGenerateWeeklyPayroll } from "@/hooks/useGenerateWeeklyPayroll";
@@ -25,8 +26,10 @@ export default function TimeTracking() {
   const [formOpen, setFormOpen] = useState(false);
   const [assignmentDialogOpen, setAssignmentDialogOpen] = useState(false);
   const [vendorBillDialogOpen, setVendorBillDialogOpen] = useState(false);
+  const [customerInvoiceDialogOpen, setCustomerInvoiceDialogOpen] = useState(false);
   const [selectedEntry, setSelectedEntry] = useState<TimeEntryWithDetails | undefined>();
   const [selectedEntriesForBill, setSelectedEntriesForBill] = useState<TimeEntryWithDetails[]>([]);
+  const [selectedEntriesForInvoice, setSelectedEntriesForInvoice] = useState<TimeEntryWithDetails[]>([]);
   const [weeklyViewWeek, setWeeklyViewWeek] = useState(() => new Date());
   
   const { isAdmin, isManager } = useUserRole();
@@ -74,6 +77,11 @@ export default function TimeTracking() {
   const handleCreateVendorBill = (selectedEntries: TimeEntryWithDetails[]) => {
     setSelectedEntriesForBill(selectedEntries);
     setVendorBillDialogOpen(true);
+  };
+
+  const handleCreateCustomerInvoice = (selectedEntries: TimeEntryWithDetails[]) => {
+    setSelectedEntriesForInvoice(selectedEntries);
+    setCustomerInvoiceDialogOpen(true);
   };
 
   return (
@@ -144,6 +152,7 @@ export default function TimeTracking() {
               onBulkDelete={canManageTeam ? (ids) => bulkDelete.mutate(ids) : undefined}
               onStatusChange={canManageTeam ? (ids, status) => updateStatus.mutate({ ids, status }) : undefined}
               onCreateVendorBill={canManageTeam ? handleCreateVendorBill : undefined}
+              onCreateCustomerInvoice={canManageTeam ? handleCreateCustomerInvoice : undefined}
               isDeleting={bulkDelete.isPending}
               isUpdatingStatus={updateStatus.isPending}
             />
@@ -186,6 +195,16 @@ export default function TimeTracking() {
             onOpenChange={setVendorBillDialogOpen}
             selectedEntries={selectedEntriesForBill}
             onSuccess={() => setSelectedEntriesForBill([])}
+          />
+        )}
+
+        {/* Create Customer Invoice from Time Entries Dialog */}
+        {canManageTeam && (
+          <CreateCustomerInvoiceFromTimeDialog
+            open={customerInvoiceDialogOpen}
+            onOpenChange={setCustomerInvoiceDialogOpen}
+            selectedEntries={selectedEntriesForInvoice}
+            onSuccess={() => setSelectedEntriesForInvoice([])}
           />
         )}
       </div>
