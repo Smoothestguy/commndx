@@ -31,6 +31,7 @@ import { ProjectTMTicketsList } from "@/components/project-hub/ProjectTMTicketsL
 import { ProjectPurchaseOrdersList } from "@/components/project-hub/ProjectPurchaseOrdersList";
 import { ProjectVendorBillsList } from "@/components/project-hub/ProjectVendorBillsList";
 import { ProjectTimeEntriesList } from "@/components/project-hub/ProjectTimeEntriesList";
+import { ProjectRateBracketsSection } from "@/components/project-hub/ProjectRateBracketsSection";
 
 import { ProjectActivityTimeline } from "@/components/project-hub/ProjectActivityTimeline";
 import { AddTMTicketDialog } from "@/components/tm-tickets/AddTMTicketDialog";
@@ -509,6 +510,11 @@ const ProjectDetail = () => {
           </CardContent>
         </Card>
       )}
+
+      {/* Rate Brackets */}
+      <div className="mb-8">
+        <ProjectRateBracketsSection projectId={id!} />
+      </div>
 
       {/* Milestones */}
       <div className="space-y-4 mb-8">

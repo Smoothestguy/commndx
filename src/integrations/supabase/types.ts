@@ -2551,6 +2551,7 @@ export type Database = {
           last_time_entry_at: string | null
           personnel_id: string
           project_id: string
+          rate_bracket_id: string | null
           status: string
           updated_at: string | null
         }
@@ -2563,6 +2564,7 @@ export type Database = {
           last_time_entry_at?: string | null
           personnel_id: string
           project_id: string
+          rate_bracket_id?: string | null
           status?: string
           updated_at?: string | null
         }
@@ -2575,6 +2577,7 @@ export type Database = {
           last_time_entry_at?: string | null
           personnel_id?: string
           project_id?: string
+          rate_bracket_id?: string | null
           status?: string
           updated_at?: string | null
         }
@@ -2598,6 +2601,13 @@ export type Database = {
             columns: ["project_id"]
             isOneToOne: false
             referencedRelation: "projects"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "personnel_project_assignments_rate_bracket_id_fkey"
+            columns: ["rate_bracket_id"]
+            isOneToOne: false
+            referencedRelation: "project_rate_brackets"
             referencedColumns: ["id"]
           },
         ]
@@ -3259,6 +3269,47 @@ export type Database = {
             columns: ["week_closeout_id"]
             isOneToOne: false
             referencedRelation: "time_week_closeouts"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      project_rate_brackets: {
+        Row: {
+          bill_rate: number
+          created_at: string
+          id: string
+          is_active: boolean
+          name: string
+          overtime_multiplier: number
+          project_id: string
+          updated_at: string
+        }
+        Insert: {
+          bill_rate?: number
+          created_at?: string
+          id?: string
+          is_active?: boolean
+          name: string
+          overtime_multiplier?: number
+          project_id: string
+          updated_at?: string
+        }
+        Update: {
+          bill_rate?: number
+          created_at?: string
+          id?: string
+          is_active?: boolean
+          name?: string
+          overtime_multiplier?: number
+          project_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "project_rate_brackets_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "projects"
             referencedColumns: ["id"]
           },
         ]
