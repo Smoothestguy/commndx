@@ -302,17 +302,26 @@ export const useSubmitApplication = () => {
       };
       answers: Record<string, unknown>;
     }) => {
+      console.log("[Application] Starting submission for posting:", posting_id);
+      console.log("[Application] Applicant data:", applicantData);
+      
       // First, check if applicant exists
+      console.log("[Application] Checking for existing applicant by email:", applicantData.email);
       const { data: existingApplicant, error: fetchError } = await supabase
         .from("applicants")
         .select("id")
         .eq("email", applicantData.email)
         .maybeSingle();
 
-      if (fetchError) throw fetchError;
+      if (fetchError) {
+        console.error("[Application] Error checking existing applicant:", fetchError);
+        throw fetchError;
+      }
+      console.log("[Application] Existing applicant result:", existingApplicant);
 
       // If applicant exists, check if they already applied to this posting
       if (existingApplicant) {
+        console.log("[Application] Checking for duplicate application for applicant:", existingApplicant.id);
         const { data: existingApplication, error: appCheckError } = await supabase
           .from("applications")
           .select("id")
@@ -320,17 +329,23 @@ export const useSubmitApplication = () => {
           .eq("job_posting_id", posting_id)
           .maybeSingle();
 
-        if (appCheckError) throw appCheckError;
+        if (appCheckError) {
+          console.error("[Application] Error checking duplicate application:", appCheckError);
+          throw appCheckError;
+        }
 
         if (existingApplication) {
+          console.log("[Application] Duplicate application found:", existingApplication.id);
           throw new Error("DUPLICATE_APPLICATION");
         }
+        console.log("[Application] No duplicate application found");
       }
 
       let applicantId: string;
 
       if (existingApplicant) {
         // Update existing applicant
+        console.log("[Application] Updating existing applicant:", existingApplicant.id);
         const { error: updateError } = await supabase
           .from("applicants")
           .update({
@@ -341,10 +356,15 @@ export const useSubmitApplication = () => {
           } as any)
           .eq("id", existingApplicant.id);
 
-        if (updateError) throw updateError;
+        if (updateError) {
+          console.error("[Application] Error updating applicant:", updateError);
+          throw updateError;
+        }
         applicantId = existingApplicant.id;
+        console.log("[Application] Applicant updated successfully");
       } else {
         // Create new applicant
+        console.log("[Application] Creating new applicant");
         const { data: newApplicant, error: insertError } = await supabase
           .from("applicants")
           .insert({
@@ -358,11 +378,16 @@ export const useSubmitApplication = () => {
           .select("id")
           .single();
 
-        if (insertError) throw insertError;
+        if (insertError) {
+          console.error("[Application] Error creating applicant:", insertError);
+          throw insertError;
+        }
         applicantId = newApplicant.id;
+        console.log("[Application] New applicant created:", applicantId);
       }
 
       // Create the application
+      console.log("[Application] Creating application record for applicant:", applicantId);
       const { data: application, error: appError } = await supabase
         .from("applications")
         .insert({
@@ -374,7 +399,11 @@ export const useSubmitApplication = () => {
         .select()
         .single();
 
-      if (appError) throw appError;
+      if (appError) {
+        console.error("[Application] Error creating application:", appError);
+        throw appError;
+      }
+      console.log("[Application] Application created successfully:", application.id);
       return application;
     },
   });
