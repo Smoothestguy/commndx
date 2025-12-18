@@ -113,6 +113,9 @@ export default function PublicApplicationForm() {
     // Validate custom fields
     if (!validateCustomFields()) return;
 
+    console.log("[Form] Submitting application with data:", data);
+    console.log("[Form] Custom answers:", customAnswers);
+
     try {
       await submitApplication.mutateAsync({
         posting_id: posting.id,
@@ -125,14 +128,23 @@ export default function PublicApplicationForm() {
         },
         answers: customAnswers,
       });
+      console.log("[Form] Application submitted successfully");
       toast.success("Thank you for applying! We appreciate your interest and will review your application soon.");
       setSubmitted(true);
     } catch (err: any) {
-      console.error("Application submission error:", err);
+      console.error("[Form] Application submission error:", err);
+      
       if (err?.message === "DUPLICATE_APPLICATION") {
         toast.error("You have already applied for this position. Only one application per person is allowed.");
+      } else if (err?.message?.includes("row-level security")) {
+        toast.error("Permission error. Please contact support if this persists.");
+        console.error("[Form] RLS policy error - check database policies");
+      } else if (err?.code === "PGRST301") {
+        toast.error("Database connection error. Please try again.");
+      } else if (err?.code === "23505") {
+        toast.error("This email has already been used. Please use a different email.");
       } else {
-        toast.error("Failed to submit application. Please try again.");
+        toast.error(err?.message || "Failed to submit application. Please try again.");
       }
     }
   };
