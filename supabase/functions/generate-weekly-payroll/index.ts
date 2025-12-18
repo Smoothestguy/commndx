@@ -86,12 +86,13 @@ Deno.serve(async (req) => {
       .limit(1);
 
     if (existingPayments && existingPayments.length > 0) {
+      // Return 200 so the client can surface the message without treating it as a transport failure
       return new Response(
-        JSON.stringify({ 
-          success: false, 
-          message: `Payroll already generated for period ${startDate} to ${endDate}` 
+        JSON.stringify({
+          success: false,
+          message: `Payroll already generated for period ${startDate} to ${endDate}`,
         }),
-        { headers: { ...corsHeaders, "Content-Type": "application/json" }, status: 400 }
+        { headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
 
