@@ -9,9 +9,10 @@ import { usePersonnel } from "@/integrations/supabase/hooks/usePersonnel";
 import { 
   usePersonnelByProject, 
   useBulkAssignPersonnelToProject,
-  useRemovePersonnelFromProject
+  useRemovePersonnelFromProject,
+  useUpdateAssignmentBillRate
 } from "@/integrations/supabase/hooks/usePersonnelProjectAssignments";
-import { Users, UserPlus, X, DollarSign } from "lucide-react";
+import { Users, UserPlus, X, DollarSign, Pencil, Check } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { formatCurrency } from "@/lib/utils";
 
@@ -31,12 +32,15 @@ export function PersonnelAssignmentDialog({
   const [selectedProject, setSelectedProject] = useState(defaultProjectId || "");
   const [selectedPersonnel, setSelectedPersonnel] = useState<Set<string>>(new Set());
   const [billRates, setBillRates] = useState<Record<string, number | null>>({});
+  const [editingAssignmentId, setEditingAssignmentId] = useState<string | null>(null);
+  const [editingBillRate, setEditingBillRate] = useState<string>("");
 
   const { data: projects = [] } = useProjects();
   const { data: allPersonnel = [] } = usePersonnel();
   const { data: assignedPersonnel = [], isLoading } = usePersonnelByProject(selectedProject);
   const assignMutation = useBulkAssignPersonnelToProject();
   const removeMutation = useRemovePersonnelFromProject();
+  const updateBillRateMutation = useUpdateAssignmentBillRate();
 
   // Set project from prop when dialog opens
   useEffect(() => {
@@ -110,6 +114,32 @@ export function PersonnelAssignmentDialog({
     });
   };
 
+  const startEditingBillRate = (assignmentId: string, currentRate: number | null) => {
+    setEditingAssignmentId(assignmentId);
+    setEditingBillRate(currentRate?.toString() || "");
+  };
+
+  const saveEditingBillRate = () => {
+    if (!editingAssignmentId) return;
+    
+    const newRate = editingBillRate ? parseFloat(editingBillRate) : null;
+    updateBillRateMutation.mutate({
+      assignmentId: editingAssignmentId,
+      billRate: newRate,
+    }, {
+      onSuccess: () => {
+        setEditingAssignmentId(null);
+        setEditingBillRate("");
+        onAssignmentChange?.();
+      },
+    });
+  };
+
+  const cancelEditingBillRate = () => {
+    setEditingAssignmentId(null);
+    setEditingBillRate("");
+  };
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-xl max-h-[90vh] overflow-y-auto">
@@ -156,19 +186,67 @@ export function PersonnelAssignmentDialog({
                     {assignedPersonnel.map((assignment) => {
                       const person = assignment.personnel;
                       if (!person) return null;
+                      const isEditing = editingAssignmentId === assignment.id;
                       return (
                         <div 
                           key={assignment.id} 
                           className="flex items-center justify-between p-2 bg-muted/50 rounded-lg"
                         >
-                          <div className="flex items-center gap-2">
+                          <div className="flex items-center gap-2 flex-1">
                             <span className="font-medium text-sm">
                               {person.first_name} {person.last_name}
                             </span>
-                            {assignment.bill_rate && (
-                              <Badge variant="outline" className="text-xs">
-                                {formatCurrency(assignment.bill_rate)}/hr
-                              </Badge>
+                            {isEditing ? (
+                              <div className="flex items-center gap-1">
+                                <DollarSign className="h-3 w-3 text-muted-foreground" />
+                                <Input
+                                  type="number"
+                                  step="0.01"
+                                  min="0"
+                                  placeholder="Rate"
+                                  value={editingBillRate}
+                                  onChange={(e) => setEditingBillRate(e.target.value)}
+                                  className="h-7 w-20 text-xs"
+                                  autoFocus
+                                  onKeyDown={(e) => {
+                                    if (e.key === 'Enter') saveEditingBillRate();
+                                    if (e.key === 'Escape') cancelEditingBillRate();
+                                  }}
+                                />
+                                <button
+                                  type="button"
+                                  onClick={saveEditingBillRate}
+                                  disabled={updateBillRateMutation.isPending}
+                                  className="hover:bg-primary/20 rounded p-1 text-primary"
+                                >
+                                  <Check className="h-4 w-4" />
+                                </button>
+                                <button
+                                  type="button"
+                                  onClick={cancelEditingBillRate}
+                                  className="hover:bg-muted rounded p-1"
+                                >
+                                  <X className="h-4 w-4" />
+                                </button>
+                              </div>
+                            ) : (
+                              <button
+                                type="button"
+                                onClick={() => startEditingBillRate(assignment.id, assignment.bill_rate)}
+                                className="flex items-center gap-1 hover:bg-muted rounded px-1"
+                              >
+                                {assignment.bill_rate ? (
+                                  <Badge variant="outline" className="text-xs cursor-pointer">
+                                    {formatCurrency(assignment.bill_rate)}/hr
+                                    <Pencil className="h-3 w-3 ml-1" />
+                                  </Badge>
+                                ) : (
+                                  <Badge variant="secondary" className="text-xs cursor-pointer text-muted-foreground">
+                                    No rate
+                                    <Pencil className="h-3 w-3 ml-1" />
+                                  </Badge>
+                                )}
+                              </button>
                             )}
                           </div>
                           <button
