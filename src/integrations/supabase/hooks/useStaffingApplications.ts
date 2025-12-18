@@ -296,7 +296,7 @@ export const useSubmitApplication = () => {
       applicant: {
         first_name: string;
         last_name: string;
-        phone?: string;
+        phone: string;
         email: string;
         home_zip?: string;
       };
@@ -336,7 +336,7 @@ export const useSubmitApplication = () => {
           .update({
             first_name: applicantData.first_name,
             last_name: applicantData.last_name,
-            phone: applicantData.phone || null,
+            phone: applicantData.phone,
             home_zip: applicantData.home_zip || null,
           } as any)
           .eq("id", existingApplicant.id);
@@ -350,7 +350,7 @@ export const useSubmitApplication = () => {
           .insert({
             first_name: applicantData.first_name,
             last_name: applicantData.last_name,
-            phone: applicantData.phone || null,
+            phone: applicantData.phone,
             email: applicantData.email,
             home_zip: applicantData.home_zip || null,
             status: 'new' as const,
