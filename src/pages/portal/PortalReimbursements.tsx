@@ -10,8 +10,9 @@ import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, Di
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Receipt, Plus, DollarSign } from "lucide-react";
+import { Receipt, Plus, DollarSign, Image } from "lucide-react";
 import { format, parseISO } from "date-fns";
+import { ReceiptUpload } from "@/components/portal/ReceiptUpload";
 
 const CATEGORIES = [
   { value: "materials", label: "Materials" },
@@ -40,6 +41,7 @@ export default function PortalReimbursements() {
     description: "",
     category: "materials",
     project_id: "",
+    receipt_url: "",
   });
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -53,11 +55,11 @@ export default function PortalReimbursements() {
       category: formData.category,
       project_id: formData.project_id || null,
       status: "pending",
-      receipt_url: null,
+      receipt_url: formData.receipt_url || null,
       notes: null,
     });
 
-    setFormData({ amount: "", description: "", category: "materials", project_id: "" });
+    setFormData({ amount: "", description: "", category: "materials", project_id: "", receipt_url: "" });
     setDialogOpen(false);
   };
 
@@ -167,6 +169,17 @@ export default function PortalReimbursements() {
                     required
                   />
                 </div>
+
+                {personnel?.id && (
+                  <div className="space-y-2">
+                    <Label>Receipt (Optional)</Label>
+                    <ReceiptUpload
+                      personnelId={personnel.id}
+                      onUpload={(url) => setFormData({ ...formData, receipt_url: url })}
+                      existingUrl={formData.receipt_url || null}
+                    />
+                  </div>
+                )}
                 
                 <div className="flex justify-end gap-2">
                   <Button type="button" variant="outline" onClick={() => setDialogOpen(false)}>
@@ -213,13 +226,36 @@ export default function PortalReimbursements() {
               <Card key={reimbursement.id}>
                 <CardContent className="p-4">
                   <div className="flex items-start justify-between gap-4">
-                    <div className="flex items-start gap-3">
-                      <div className="p-2 rounded-lg bg-muted">
-                        <Receipt className="h-5 w-5 text-muted-foreground" />
-                      </div>
-                      <div>
+                    <div className="flex items-start gap-3 flex-1">
+                      {reimbursement.receipt_url ? (
+                        <a 
+                          href={reimbursement.receipt_url} 
+                          target="_blank" 
+                          rel="noopener noreferrer"
+                          className="flex-shrink-0"
+                        >
+                          <div className="w-12 h-12 rounded-lg overflow-hidden border bg-muted hover:opacity-80 transition-opacity">
+                            {reimbursement.receipt_url.endsWith('.pdf') ? (
+                              <div className="w-full h-full flex items-center justify-center">
+                                <Image className="h-5 w-5 text-muted-foreground" />
+                              </div>
+                            ) : (
+                              <img
+                                src={reimbursement.receipt_url}
+                                alt="Receipt"
+                                className="w-full h-full object-cover"
+                              />
+                            )}
+                          </div>
+                        </a>
+                      ) : (
+                        <div className="p-2 rounded-lg bg-muted flex-shrink-0">
+                          <Receipt className="h-5 w-5 text-muted-foreground" />
+                        </div>
+                      )}
+                      <div className="flex-1 min-w-0">
                         <p className="font-medium">{reimbursement.description}</p>
-                        <div className="flex items-center gap-2 text-sm text-muted-foreground mt-1">
+                        <div className="flex items-center gap-2 text-sm text-muted-foreground mt-1 flex-wrap">
                           <span className="capitalize">{reimbursement.category}</span>
                           {reimbursement.project && (
                             <>
@@ -237,7 +273,7 @@ export default function PortalReimbursements() {
                         )}
                       </div>
                     </div>
-                    <div className="text-right">
+                    <div className="text-right flex-shrink-0">
                       <p className="text-lg font-semibold">${reimbursement.amount.toFixed(2)}</p>
                       <Badge variant={STATUS_COLORS[reimbursement.status]} className="mt-1">
                         {reimbursement.status}
