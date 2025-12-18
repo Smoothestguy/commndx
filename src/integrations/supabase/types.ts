@@ -3115,6 +3115,125 @@ export type Database = {
           },
         ]
       }
+      project_labor_expenses: {
+        Row: {
+          billable: boolean | null
+          created_at: string | null
+          customer_id: string
+          hourly_rate: number
+          id: string
+          invoice_id: string | null
+          invoice_line_item_id: string | null
+          overtime_hours: number
+          overtime_rate: number
+          personnel_id: string
+          personnel_name: string
+          personnel_payment_id: string | null
+          project_id: string
+          regular_hours: number
+          status: string
+          total_amount: number
+          updated_at: string | null
+          week_closeout_id: string | null
+          week_end_date: string
+          week_start_date: string
+        }
+        Insert: {
+          billable?: boolean | null
+          created_at?: string | null
+          customer_id: string
+          hourly_rate?: number
+          id?: string
+          invoice_id?: string | null
+          invoice_line_item_id?: string | null
+          overtime_hours?: number
+          overtime_rate?: number
+          personnel_id: string
+          personnel_name: string
+          personnel_payment_id?: string | null
+          project_id: string
+          regular_hours?: number
+          status?: string
+          total_amount?: number
+          updated_at?: string | null
+          week_closeout_id?: string | null
+          week_end_date: string
+          week_start_date: string
+        }
+        Update: {
+          billable?: boolean | null
+          created_at?: string | null
+          customer_id?: string
+          hourly_rate?: number
+          id?: string
+          invoice_id?: string | null
+          invoice_line_item_id?: string | null
+          overtime_hours?: number
+          overtime_rate?: number
+          personnel_id?: string
+          personnel_name?: string
+          personnel_payment_id?: string | null
+          project_id?: string
+          regular_hours?: number
+          status?: string
+          total_amount?: number
+          updated_at?: string | null
+          week_closeout_id?: string | null
+          week_end_date?: string
+          week_start_date?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "project_labor_expenses_customer_id_fkey"
+            columns: ["customer_id"]
+            isOneToOne: false
+            referencedRelation: "customers"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "project_labor_expenses_invoice_id_fkey"
+            columns: ["invoice_id"]
+            isOneToOne: false
+            referencedRelation: "invoices"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "project_labor_expenses_invoice_line_item_id_fkey"
+            columns: ["invoice_line_item_id"]
+            isOneToOne: false
+            referencedRelation: "invoice_line_items"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "project_labor_expenses_personnel_id_fkey"
+            columns: ["personnel_id"]
+            isOneToOne: false
+            referencedRelation: "personnel"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "project_labor_expenses_personnel_payment_id_fkey"
+            columns: ["personnel_payment_id"]
+            isOneToOne: false
+            referencedRelation: "personnel_payments"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "project_labor_expenses_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "projects"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "project_labor_expenses_week_closeout_id_fkey"
+            columns: ["week_closeout_id"]
+            isOneToOne: false
+            referencedRelation: "time_week_closeouts"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       project_task_orders: {
         Row: {
           created_at: string
@@ -4202,6 +4321,7 @@ export type Database = {
           invoice_id: string | null
           invoiced_at: string | null
           is_holiday: boolean | null
+          is_locked: boolean | null
           job_order_id: string | null
           overtime_hours: number | null
           personnel_id: string | null
@@ -4210,6 +4330,7 @@ export type Database = {
           status: string | null
           updated_at: string
           user_id: string
+          week_closeout_id: string | null
         }
         Insert: {
           billable?: boolean | null
@@ -4221,6 +4342,7 @@ export type Database = {
           invoice_id?: string | null
           invoiced_at?: string | null
           is_holiday?: boolean | null
+          is_locked?: boolean | null
           job_order_id?: string | null
           overtime_hours?: number | null
           personnel_id?: string | null
@@ -4229,6 +4351,7 @@ export type Database = {
           status?: string | null
           updated_at?: string
           user_id: string
+          week_closeout_id?: string | null
         }
         Update: {
           billable?: boolean | null
@@ -4240,6 +4363,7 @@ export type Database = {
           invoice_id?: string | null
           invoiced_at?: string | null
           is_holiday?: boolean | null
+          is_locked?: boolean | null
           job_order_id?: string | null
           overtime_hours?: number | null
           personnel_id?: string | null
@@ -4248,6 +4372,7 @@ export type Database = {
           status?: string | null
           updated_at?: string
           user_id?: string
+          week_closeout_id?: string | null
         }
         Relationships: [
           {
@@ -4283,6 +4408,76 @@ export type Database = {
             columns: ["user_id"]
             isOneToOne: false
             referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "time_entries_week_closeout_id_fkey"
+            columns: ["week_closeout_id"]
+            isOneToOne: false
+            referencedRelation: "time_week_closeouts"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      time_week_closeouts: {
+        Row: {
+          closed_at: string | null
+          closed_by: string | null
+          created_at: string | null
+          customer_id: string | null
+          id: string
+          notes: string | null
+          project_id: string | null
+          reopened_at: string | null
+          reopened_by: string | null
+          status: string
+          updated_at: string | null
+          week_end_date: string
+          week_start_date: string
+        }
+        Insert: {
+          closed_at?: string | null
+          closed_by?: string | null
+          created_at?: string | null
+          customer_id?: string | null
+          id?: string
+          notes?: string | null
+          project_id?: string | null
+          reopened_at?: string | null
+          reopened_by?: string | null
+          status?: string
+          updated_at?: string | null
+          week_end_date: string
+          week_start_date: string
+        }
+        Update: {
+          closed_at?: string | null
+          closed_by?: string | null
+          created_at?: string | null
+          customer_id?: string | null
+          id?: string
+          notes?: string | null
+          project_id?: string | null
+          reopened_at?: string | null
+          reopened_by?: string | null
+          status?: string
+          updated_at?: string | null
+          week_end_date?: string
+          week_start_date?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "time_week_closeouts_customer_id_fkey"
+            columns: ["customer_id"]
+            isOneToOne: false
+            referencedRelation: "customers"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "time_week_closeouts_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "projects"
             referencedColumns: ["id"]
           },
         ]
@@ -5069,6 +5264,94 @@ export type Database = {
         Relationships: [
           {
             foreignKeyName: "weather_logs_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "projects"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      weekly_labor_invoice_sources: {
+        Row: {
+          created_at: string | null
+          id: string
+          project_labor_expense_id: string
+          weekly_labor_invoice_id: string
+        }
+        Insert: {
+          created_at?: string | null
+          id?: string
+          project_labor_expense_id: string
+          weekly_labor_invoice_id: string
+        }
+        Update: {
+          created_at?: string | null
+          id?: string
+          project_labor_expense_id?: string
+          weekly_labor_invoice_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "weekly_labor_invoice_sources_project_labor_expense_id_fkey"
+            columns: ["project_labor_expense_id"]
+            isOneToOne: false
+            referencedRelation: "project_labor_expenses"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "weekly_labor_invoice_sources_weekly_labor_invoice_id_fkey"
+            columns: ["weekly_labor_invoice_id"]
+            isOneToOne: false
+            referencedRelation: "weekly_labor_invoices"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      weekly_labor_invoices: {
+        Row: {
+          created_at: string | null
+          customer_id: string
+          id: string
+          invoice_id: string
+          project_id: string
+          week_end_date: string
+          week_start_date: string
+        }
+        Insert: {
+          created_at?: string | null
+          customer_id: string
+          id?: string
+          invoice_id: string
+          project_id: string
+          week_end_date: string
+          week_start_date: string
+        }
+        Update: {
+          created_at?: string | null
+          customer_id?: string
+          id?: string
+          invoice_id?: string
+          project_id?: string
+          week_end_date?: string
+          week_start_date?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "weekly_labor_invoices_customer_id_fkey"
+            columns: ["customer_id"]
+            isOneToOne: false
+            referencedRelation: "customers"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "weekly_labor_invoices_invoice_id_fkey"
+            columns: ["invoice_id"]
+            isOneToOne: false
+            referencedRelation: "invoices"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "weekly_labor_invoices_project_id_fkey"
             columns: ["project_id"]
             isOneToOne: false
             referencedRelation: "projects"
