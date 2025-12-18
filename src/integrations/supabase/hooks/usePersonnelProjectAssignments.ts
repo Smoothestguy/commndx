@@ -282,6 +282,38 @@ export function useProjectsForPersonnel(personnelId: string | undefined) {
   });
 }
 
+// Update assignment bill rate
+export function useUpdateAssignmentBillRate() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async ({
+      assignmentId,
+      billRate,
+    }: {
+      assignmentId: string;
+      billRate: number | null;
+    }) => {
+      const { data, error } = await supabase
+        .from("personnel_project_assignments")
+        .update({ bill_rate: billRate })
+        .eq("id", assignmentId)
+        .select()
+        .single();
+
+      if (error) throw error;
+      return data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["personnel-project-assignments"] });
+      toast.success("Bill rate updated");
+    },
+    onError: () => {
+      toast.error("Failed to update bill rate");
+    },
+  });
+}
+
 // Hard delete assignment
 export function useDeletePersonnelAssignment() {
   const queryClient = useQueryClient();
