@@ -275,17 +275,15 @@ export const useAddTimeEntry = () => {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) throw new Error("Not authenticated");
 
-      // Calculate overtime
-      const { regularHours, overtimeHours } = calculateOvertimeHours(entry.hours);
-
+      // Store full hours - overtime is calculated at weekly aggregation time
       const { data, error } = await supabase
         .from("time_entries")
         .upsert(
           { 
             ...entry, 
             user_id: user.id,
-            regular_hours: regularHours,
-            overtime_hours: overtimeHours,
+            regular_hours: entry.hours,
+            overtime_hours: 0,
           },
           { onConflict: 'user_id,project_id,entry_date' }
         )
@@ -311,11 +309,10 @@ export const useUpdateTimeEntry = () => {
 
   return useMutation({
     mutationFn: async ({ id, ...updates }: Partial<TimeEntry> & { id: string }) => {
-      // If hours are being updated, recalculate overtime
+      // Store full hours - overtime is calculated at weekly aggregation time
       if (updates.hours !== undefined) {
-        const { regularHours, overtimeHours } = calculateOvertimeHours(updates.hours);
-        updates.regular_hours = regularHours;
-        updates.overtime_hours = overtimeHours;
+        updates.regular_hours = updates.hours;
+        updates.overtime_hours = 0;
       }
 
       const { data, error } = await supabase
@@ -431,18 +428,15 @@ export const useBulkAddTimeEntries = () => {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) throw new Error("Not authenticated");
 
-      // Filter out entries with 0 or no hours and calculate overtime
+      // Filter out entries with 0 or no hours - overtime calculated at weekly aggregation
       const validEntries = entries
         .filter(e => e.hours && e.hours > 0)
-        .map(entry => {
-          const { regularHours, overtimeHours } = calculateOvertimeHours(entry.hours);
-          return { 
-            ...entry, 
-            user_id: user.id,
-            regular_hours: regularHours,
-            overtime_hours: overtimeHours,
-          };
-        });
+        .map(entry => ({ 
+          ...entry, 
+          user_id: user.id,
+          regular_hours: entry.hours,
+          overtime_hours: 0,
+        }));
 
       if (validEntries.length === 0) {
         throw new Error("No valid entries to save");
@@ -491,19 +485,16 @@ export const useBulkAddPersonnelTimeEntries = () => {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) throw new Error("Not authenticated");
 
-      // Filter out entries with 0 or no hours and calculate overtime
+      // Filter out entries with 0 or no hours - overtime calculated at weekly aggregation
       const validEntries = entries
         .filter(e => e.hours && e.hours > 0)
-        .map(entry => {
-          const { regularHours, overtimeHours } = calculateOvertimeHours(entry.hours);
-          return { 
-            ...entry, 
-            user_id: user.id, // The user who logged this entry
-            billable: true,
-            regular_hours: regularHours,
-            overtime_hours: overtimeHours,
-          };
-        });
+        .map(entry => ({ 
+          ...entry, 
+          user_id: user.id, // The user who logged this entry
+          billable: true,
+          regular_hours: entry.hours,
+          overtime_hours: 0,
+        }));
 
       if (validEntries.length === 0) {
         throw new Error("No valid entries to save");
