@@ -5446,6 +5446,10 @@ export type Database = {
       }
       is_personnel: { Args: { _user_id: string }; Returns: boolean }
       is_vendor: { Args: { _user_id: string }; Returns: boolean }
+      reset_vendor_bill_sequence_for_new_year: {
+        Args: never
+        Returns: undefined
+      }
     }
     Enums: {
       activity_priority: "low" | "medium" | "high" | "urgent"
