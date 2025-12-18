@@ -3182,6 +3182,7 @@ export type Database = {
           poc_email: string | null
           poc_name: string | null
           poc_phone: string | null
+          stage: Database["public"]["Enums"]["project_stage"]
           start_date: string
           state: string | null
           status: Database["public"]["Enums"]["project_status"]
@@ -3202,6 +3203,7 @@ export type Database = {
           poc_email?: string | null
           poc_name?: string | null
           poc_phone?: string | null
+          stage?: Database["public"]["Enums"]["project_stage"]
           start_date: string
           state?: string | null
           status?: Database["public"]["Enums"]["project_status"]
@@ -3222,6 +3224,7 @@ export type Database = {
           poc_email?: string | null
           poc_name?: string | null
           poc_phone?: string | null
+          stage?: Database["public"]["Enums"]["project_stage"]
           start_date?: string
           state?: string | null
           status?: Database["public"]["Enums"]["project_status"]
@@ -5185,6 +5188,7 @@ export type Database = {
       job_order_status: "active" | "in-progress" | "completed" | "on-hold"
       personnel_payment_type: "regular" | "bonus" | "reimbursement" | "advance"
       personnel_status: "active" | "inactive" | "do_not_hire"
+      project_stage: "quote" | "task_order" | "active" | "complete" | "canceled"
       project_status: "active" | "completed" | "on-hold"
       purchase_order_status:
         | "draft"
@@ -5429,6 +5433,7 @@ export const Constants = {
       job_order_status: ["active", "in-progress", "completed", "on-hold"],
       personnel_payment_type: ["regular", "bonus", "reimbursement", "advance"],
       personnel_status: ["active", "inactive", "do_not_hire"],
+      project_stage: ["quote", "task_order", "active", "complete", "canceled"],
       project_status: ["active", "completed", "on-hold"],
       purchase_order_status: [
         "draft",

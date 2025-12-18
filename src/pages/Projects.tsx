@@ -24,9 +24,11 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { useProjects, useAddProject, useUpdateProject, useDeleteProject, Project } from "@/integrations/supabase/hooks/useProjects";
+import { useProjects, useAddProject, useUpdateProject, useDeleteProject, Project, ProjectStage } from "@/integrations/supabase/hooks/useProjects";
 import { useCustomers } from "@/integrations/supabase/hooks/useCustomers";
 import { format } from "date-fns";
+import { Badge } from "@/components/ui/badge";
+import { stageConfig } from "@/components/projects/ProjectCard";
 
 const Projects = () => {
   const navigate = useNavigate();
@@ -40,6 +42,7 @@ const Projects = () => {
   const [search, setSearch] = useState("");
   const [showFilters, setShowFilters] = useState(false);
   const [filterStatus, setFilterStatus] = useState<string>("all");
+  const [filterStage, setFilterStage] = useState<string>("all");
   const [filterCustomer, setFilterCustomer] = useState<string>("all");
   const [filterDateFrom, setFilterDateFrom] = useState<string>("");
   const [filterDateTo, setFilterDateTo] = useState<string>("");
@@ -61,6 +64,9 @@ const Projects = () => {
       // Status filter
       const statusMatch = filterStatus === "all" || p.status === filterStatus;
       
+      // Stage filter
+      const stageMatch = filterStage === "all" || p.stage === filterStage;
+      
       // Customer filter
       const customerMatch = filterCustomer === "all" || p.customer_id === filterCustomer;
       
@@ -74,7 +80,7 @@ const Projects = () => {
         dateMatch = dateMatch && new Date(projectEndDate) <= new Date(filterDateTo);
       }
       
-      return searchMatch && statusMatch && customerMatch && dateMatch;
+      return searchMatch && statusMatch && stageMatch && customerMatch && dateMatch;
     })
     .sort((a, b) => {
       let comparison = 0;
@@ -94,13 +100,14 @@ const Projects = () => {
 
   const clearFilters = () => {
     setFilterStatus("all");
+    setFilterStage("all");
     setFilterCustomer("all");
     setFilterDateFrom("");
     setFilterDateTo("");
     setSearch("");
   };
 
-  const hasActiveFilters = filterStatus !== "all" || filterCustomer !== "all" || !!filterDateFrom || !!filterDateTo || !!search;
+  const hasActiveFilters = filterStatus !== "all" || filterStage !== "all" || filterCustomer !== "all" || !!filterDateFrom || !!filterDateTo || !!search;
 
   const columns = [
     { key: "name", header: "Project Name" },
@@ -121,6 +128,18 @@ const Projects = () => {
       key: "end_date",
       header: "End Date",
       render: (item: Project) => item.end_date ? format(new Date(item.end_date), "MMM dd, yyyy") : "-",
+    },
+    {
+      key: "stage",
+      header: "Stage",
+      render: (item: Project) => {
+        const stage = stageConfig[item.stage] || stageConfig.quote;
+        return (
+          <Badge variant={stage.variant} className={`text-xs ${stage.className}`}>
+            {stage.label}
+          </Badge>
+        );
+      },
     },
     {
       key: "status",
@@ -163,6 +182,7 @@ const Projects = () => {
       name: project.name,
       customer_id: project.customer_id,
       status: project.status,
+      stage: project.stage || "quote",
       start_date: project.start_date,
       end_date: project.end_date || "",
       description: project.description || "",
@@ -279,6 +299,8 @@ const Projects = () => {
             <ProjectFilters
               filterStatus={filterStatus}
               setFilterStatus={setFilterStatus}
+              filterStage={filterStage}
+              setFilterStage={setFilterStage}
               activeFiltersCount={hasActiveFilters ? 1 : 0}
               onClearFilters={clearFilters}
               search={search}
@@ -290,6 +312,23 @@ const Projects = () => {
             <Card className="glass border-border">
               <CardContent className="pt-6">
                 <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="filterStage">Stage</Label>
+                    <Select value={filterStage} onValueChange={setFilterStage}>
+                      <SelectTrigger className="bg-secondary border-border">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="all">All Stages</SelectItem>
+                        <SelectItem value="quote">Quote</SelectItem>
+                        <SelectItem value="task_order">Task Order</SelectItem>
+                        <SelectItem value="active">Active</SelectItem>
+                        <SelectItem value="complete">Complete</SelectItem>
+                        <SelectItem value="canceled">Canceled</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+
                   <div className="space-y-2">
                     <Label htmlFor="filterStatus">Status</Label>
                     <Select value={filterStatus} onValueChange={setFilterStatus}>

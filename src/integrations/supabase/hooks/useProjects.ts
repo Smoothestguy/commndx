@@ -2,11 +2,14 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "../client";
 import { toast } from "sonner";
 
+export type ProjectStage = "quote" | "task_order" | "active" | "complete" | "canceled";
+
 export interface Project {
   id: string;
   name: string;
   customer_id: string;
   status: "active" | "completed" | "on-hold";
+  stage: ProjectStage;
   start_date: string;
   end_date: string | null;
   description: string | null;
