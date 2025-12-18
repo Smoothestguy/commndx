@@ -1,17 +1,9 @@
 import { useState } from "react";
 import { useNavigate, Link } from "react-router-dom";
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
-import { Checkbox } from "@/components/ui/checkbox";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { Checkbox } from "@/components/ui/checkbox";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -49,6 +41,7 @@ import { toast } from "sonner";
 import type { Database } from "@/integrations/supabase/types";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { MobilePersonnelCard } from "./MobilePersonnelCard";
+import { EnhancedDataTable, EnhancedColumn } from "@/components/shared/EnhancedDataTable";
 
 type Personnel = Database["public"]["Tables"]["personnel"]["Row"];
 
@@ -160,6 +153,244 @@ export function PersonnelTable({
   const someSelected =
     selectedIds.length > 0 && selectedIds.length < personnel.length;
 
+  // Define columns for EnhancedDataTable
+  const columns: EnhancedColumn<Personnel>[] = [
+    ...(selectionMode ? [{
+      key: "select",
+      header: "",
+      sortable: false,
+      filterable: false,
+      render: (person: Personnel) => (
+        <Checkbox
+          checked={selectedIds.includes(person.id)}
+          onCheckedChange={() => onToggleSelection(person.id)}
+          onClick={(e: React.MouseEvent) => e.stopPropagation()}
+        />
+      ),
+    }] : []),
+    {
+      key: "action",
+      header: "Action",
+      sortable: false,
+      filterable: false,
+      render: (person: Personnel) => (
+        <Button
+          variant="ghost"
+          size="icon"
+          className="h-9 w-9"
+          onClick={(e) => {
+            e.stopPropagation();
+            navigate(`/personnel/${person.id}`);
+          }}
+        >
+          <Eye className="h-4 w-4" />
+        </Button>
+      ),
+    },
+    {
+      key: "avatar",
+      header: "",
+      sortable: false,
+      filterable: false,
+      render: (person: Personnel) => (
+        <Avatar className="h-8 w-8">
+          <AvatarImage src={person.photo_url || ""} />
+          <AvatarFallback className="text-xs">
+            {person.first_name[0]}
+            {person.last_name[0]}
+          </AvatarFallback>
+        </Avatar>
+      ),
+    },
+    {
+      key: "name",
+      header: "Name",
+      sortable: true,
+      filterable: true,
+      getValue: (person) => `${person.first_name} ${person.last_name}`,
+      render: (person: Personnel) => (
+        <div className="flex items-center gap-1.5">
+          <Link
+            to={`/personnel/${person.id}`}
+            className="text-primary hover:underline font-medium"
+            onClick={(e) => e.stopPropagation()}
+          >
+            {person.first_name} {person.last_name}
+          </Link>
+          <ComplianceBadge personnel={person} compact />
+        </div>
+      ),
+    },
+    {
+      key: "personnel_number",
+      header: "Personnel #",
+      sortable: true,
+      filterable: true,
+      getValue: (person) => person.personnel_number || "",
+      render: (person: Personnel) => (
+        <span className="text-muted-foreground text-sm">
+          {person.personnel_number}
+        </span>
+      ),
+    },
+    {
+      key: "status",
+      header: "Status",
+      sortable: true,
+      filterable: true,
+      getValue: (person) => person.status || "active",
+      render: (person: Personnel) => getStatusBadge(person.status),
+    },
+    {
+      key: "everify_status",
+      header: "E-Verify",
+      sortable: true,
+      filterable: true,
+      getValue: (person) => person.everify_status || "",
+      render: (person: Personnel) => getEVerifyBadge(person.everify_status),
+    },
+    {
+      key: "phone",
+      header: "Phone",
+      sortable: true,
+      filterable: true,
+      getValue: (person) => person.phone || "",
+      render: (person: Personnel) => (
+        <span className="text-muted-foreground text-sm">
+          {person.phone || "—"}
+        </span>
+      ),
+    },
+    {
+      key: "email",
+      header: "Email",
+      sortable: true,
+      filterable: true,
+      getValue: (person) => person.email || "",
+      render: (person: Personnel) => (
+        <span className="text-muted-foreground max-w-[200px] truncate text-sm">
+          {person.email || "—"}
+        </span>
+      ),
+    },
+    {
+      key: "location",
+      header: "Location",
+      sortable: true,
+      filterable: true,
+      getValue: (person) => 
+        person.city && person.state ? `${person.city}, ${person.state}` : "",
+      render: (person: Personnel) => (
+        <span className="text-muted-foreground text-sm">
+          {person.city && person.state
+            ? `${person.city}, ${person.state}`
+            : "—"}
+        </span>
+      ),
+    },
+    {
+      key: "vendor",
+      header: "Vendor",
+      sortable: true,
+      filterable: true,
+      getValue: (person) => getVendor(person.vendor_id)?.name || "",
+      render: (person: Personnel) => {
+        const vendor = getVendor(person.vendor_id);
+        return vendor ? (
+          <Link
+            to={`/vendors/${vendor.id}`}
+            className="text-primary hover:underline flex items-center gap-1 text-sm"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <Building2 className="h-3 w-3 shrink-0" />
+            <span className="max-w-[100px] truncate">
+              {vendor.name}
+            </span>
+          </Link>
+        ) : (
+          <span className="text-muted-foreground">—</span>
+        );
+      },
+    },
+    {
+      key: "rate",
+      header: "Rate",
+      sortable: true,
+      filterable: false,
+      getValue: (person) => person.hourly_rate || 0,
+      render: (person: Personnel) => (
+        (person.hourly_rate ?? 0) > 0 ? (
+          <span className="font-medium text-sm">
+            ${person.hourly_rate}/hr
+          </span>
+        ) : (
+          <span className="text-muted-foreground">—</span>
+        )
+      ),
+    },
+    {
+      key: "actions",
+      header: "",
+      sortable: false,
+      filterable: false,
+      render: (person: Personnel) => (
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild onClick={(e) => e.stopPropagation()}>
+            <Button variant="ghost" size="icon" className="h-9 w-9">
+              <MoreHorizontal className="h-4 w-4" />
+            </Button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="end">
+            <DropdownMenuItem
+              onClick={() => navigate(`/personnel/${person.id}`)}
+            >
+              <Eye className="mr-2 h-4 w-4" />
+              View
+            </DropdownMenuItem>
+            <DropdownMenuItem
+              onClick={() =>
+                navigate(`/personnel/${person.id}?edit=true`)
+              }
+            >
+              <Edit className="mr-2 h-4 w-4" />
+              Edit
+            </DropdownMenuItem>
+            <DropdownMenuItem
+              onClick={() => handlePrintSingleBadge(person.id)}
+            >
+              <Printer className="mr-2 h-4 w-4" />
+              Print Badge
+            </DropdownMenuItem>
+            <DropdownMenuSeparator />
+            <DropdownMenuItem
+              onClick={() => handleToggleDNH(person)}
+              className={
+                person.status === "do_not_hire"
+                  ? ""
+                  : "text-destructive"
+              }
+            >
+              <AlertTriangle className="mr-2 h-4 w-4" />
+              {person.status === "do_not_hire"
+                ? "Remove from DNH"
+                : "Mark DNH"}
+            </DropdownMenuItem>
+            <DropdownMenuItem
+              onClick={() => {
+                setPersonToDelete(person);
+                setDeleteDialogOpen(true);
+              }}
+              className="text-destructive"
+            >
+              <Trash2 className="mr-2 h-4 w-4" />
+              Deactivate
+            </DropdownMenuItem>
+          </DropdownMenuContent>
+        </DropdownMenu>
+      ),
+    },
+  ] as EnhancedColumn<Personnel>[];
+
   return (
     <div className="space-y-3 sm:space-y-4">
       {/* Bulk Action Bar */}
@@ -205,194 +436,17 @@ export function PersonnelTable({
           ))}
         </div>
       ) : (
-        /* Desktop/Tablet: Table view */
-        <div className="rounded-md border">
-          <Table>
-            <TableHeader>
-              <TableRow>
-                {selectionMode && (
-                  <TableHead className="w-[40px]">
-                    <Checkbox
-                      checked={allSelected}
-                      ref={(ref) => {
-                        if (ref) {
-                          (ref as any).indeterminate = someSelected;
-                        }
-                      }}
-                      onCheckedChange={() => {
-                        if (allSelected) {
-                          onClearSelection();
-                        } else {
-                          onSelectAll();
-                        }
-                      }}
-                    />
-                  </TableHead>
-                )}
-                <TableHead className="w-[60px]">Action</TableHead>
-                <TableHead className="w-[50px]"></TableHead>
-                <TableHead className="min-w-[100px]">Name</TableHead>
-                <TableHead>Personnel #</TableHead>
-                <TableHead>Status</TableHead>
-                <TableHead>E-Verify</TableHead>
-                <TableHead className="hidden md:table-cell">Phone</TableHead>
-                <TableHead className="hidden lg:table-cell">Email</TableHead>
-                <TableHead className="hidden lg:table-cell">Location</TableHead>
-                <TableHead className="hidden md:table-cell">Vendor</TableHead>
-                <TableHead className="hidden md:table-cell">Rate</TableHead>
-                <TableHead className="w-[50px]"></TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {personnel.map((person) => {
-                const vendor = getVendor(person.vendor_id);
-                return (
-                  <TableRow
-                    key={person.id}
-                    className="cursor-pointer hover:bg-muted/50 active:bg-muted/70"
-                    onClick={() => {
-                      if (!selectionMode) {
-                        navigate(`/personnel/${person.id}`);
-                      }
-                    }}
-                  >
-                    {selectionMode && (
-                      <TableCell onClick={(e) => e.stopPropagation()}>
-                        <Checkbox
-                          checked={selectedIds.includes(person.id)}
-                          onCheckedChange={() => onToggleSelection(person.id)}
-                        />
-                      </TableCell>
-                    )}
-                    <TableCell onClick={(e) => e.stopPropagation()}>
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        className="h-9 w-9"
-                        onClick={() => navigate(`/personnel/${person.id}`)}
-                      >
-                        <Eye className="h-4 w-4" />
-                      </Button>
-                    </TableCell>
-                    <TableCell>
-                      <Avatar className="h-8 w-8">
-                        <AvatarImage src={person.photo_url || ""} />
-                        <AvatarFallback className="text-xs">
-                          {person.first_name[0]}
-                          {person.last_name[0]}
-                        </AvatarFallback>
-                      </Avatar>
-                    </TableCell>
-                    <TableCell className="font-medium text-sm">
-                      <div className="flex items-center gap-1.5">
-                        <span>{person.first_name} {person.last_name}</span>
-                        <ComplianceBadge personnel={person} compact />
-                      </div>
-                    </TableCell>
-                    <TableCell className="text-muted-foreground text-sm">
-                      {person.personnel_number}
-                    </TableCell>
-                    <TableCell>{getStatusBadge(person.status)}</TableCell>
-                    <TableCell>{getEVerifyBadge(person.everify_status)}</TableCell>
-                    <TableCell className="hidden md:table-cell text-muted-foreground text-sm">
-                      {person.phone || "—"}
-                    </TableCell>
-                    <TableCell className="hidden lg:table-cell text-muted-foreground max-w-[200px] truncate text-sm">
-                      {person.email || "—"}
-                    </TableCell>
-                    <TableCell className="hidden lg:table-cell text-muted-foreground text-sm">
-                      {person.city && person.state
-                        ? `${person.city}, ${person.state}`
-                        : "—"}
-                    </TableCell>
-                    <TableCell
-                      className="hidden md:table-cell"
-                      onClick={(e) => e.stopPropagation()}
-                    >
-                      {vendor ? (
-                        <Link
-                          to={`/vendors/${vendor.id}`}
-                          className="text-primary hover:underline flex items-center gap-1 text-sm"
-                        >
-                          <Building2 className="h-3 w-3 shrink-0" />
-                          <span className="max-w-[100px] truncate">
-                            {vendor.name}
-                          </span>
-                        </Link>
-                      ) : (
-                        <span className="text-muted-foreground">—</span>
-                      )}
-                    </TableCell>
-                    <TableCell className="hidden md:table-cell text-sm">
-                      {(person.hourly_rate ?? 0) > 0 ? (
-                        <span className="font-medium">
-                          ${person.hourly_rate}/hr
-                        </span>
-                      ) : (
-                        <span className="text-muted-foreground">—</span>
-                      )}
-                    </TableCell>
-                    <TableCell onClick={(e) => e.stopPropagation()}>
-                      <DropdownMenu>
-                        <DropdownMenuTrigger asChild>
-                          <Button variant="ghost" size="icon" className="h-9 w-9">
-                            <MoreHorizontal className="h-4 w-4" />
-                          </Button>
-                        </DropdownMenuTrigger>
-                        <DropdownMenuContent align="end">
-                          <DropdownMenuItem
-                            onClick={() => navigate(`/personnel/${person.id}`)}
-                          >
-                            <Eye className="mr-2 h-4 w-4" />
-                            View
-                          </DropdownMenuItem>
-                          <DropdownMenuItem
-                            onClick={() =>
-                              navigate(`/personnel/${person.id}?edit=true`)
-                            }
-                          >
-                            <Edit className="mr-2 h-4 w-4" />
-                            Edit
-                          </DropdownMenuItem>
-                          <DropdownMenuItem
-                            onClick={() => handlePrintSingleBadge(person.id)}
-                          >
-                            <Printer className="mr-2 h-4 w-4" />
-                            Print Badge
-                          </DropdownMenuItem>
-                          <DropdownMenuSeparator />
-                          <DropdownMenuItem
-                            onClick={() => handleToggleDNH(person)}
-                            className={
-                              person.status === "do_not_hire"
-                                ? ""
-                                : "text-destructive"
-                            }
-                          >
-                            <AlertTriangle className="mr-2 h-4 w-4" />
-                            {person.status === "do_not_hire"
-                              ? "Remove from DNH"
-                              : "Mark DNH"}
-                          </DropdownMenuItem>
-                          <DropdownMenuItem
-                            onClick={() => {
-                              setPersonToDelete(person);
-                              setDeleteDialogOpen(true);
-                            }}
-                            className="text-destructive"
-                          >
-                            <Trash2 className="mr-2 h-4 w-4" />
-                            Deactivate
-                          </DropdownMenuItem>
-                        </DropdownMenuContent>
-                      </DropdownMenu>
-                    </TableCell>
-                  </TableRow>
-                );
-              })}
-            </TableBody>
-          </Table>
-        </div>
+        /* Desktop/Tablet: Enhanced Table view */
+        <EnhancedDataTable
+          tableId="personnel"
+          data={personnel}
+          columns={columns}
+          onRowClick={(person) => {
+            if (!selectionMode) {
+              navigate(`/personnel/${person.id}`);
+            }
+          }}
+        />
       )}
 
       {/* Delete Confirmation Dialog */}

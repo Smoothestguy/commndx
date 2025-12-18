@@ -1,8 +1,8 @@
 import { useState, useMemo } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, Link } from "react-router-dom";
 import { SEO } from "@/components/SEO";
 import { PageLayout } from "@/components/layout/PageLayout";
-import { DataTable, Column } from "@/components/shared/DataTable";
+import { EnhancedDataTable, EnhancedColumn } from "@/components/shared/EnhancedDataTable";
 import { StatusBadge } from "@/components/shared/StatusBadge";
 import { Button } from "@/components/ui/button";
 import { Plus, Eye, ShoppingCart, Loader2 } from "lucide-react";
@@ -15,38 +15,6 @@ import { useIsMobile } from "@/hooks/use-mobile";
 import { PurchaseOrderCard } from "@/components/purchase-orders/PurchaseOrderCard";
 import { PurchaseOrderStats } from "@/components/purchase-orders/PurchaseOrderStats";
 import { PurchaseOrderEmptyState } from "@/components/purchase-orders/PurchaseOrderEmptyState";
-import { EnhancedFilters, FilterOption } from "@/components/shared/EnhancedFilters";
-import { ColumnCustomizer, useColumnVisibility, ColumnConfig } from "@/components/shared/ColumnCustomizer";
-
-const statusOptions: FilterOption[] = [
-  { value: "all", label: "All Statuses" },
-  { value: "draft", label: "Draft" },
-  { value: "sent", label: "Sent" },
-  { value: "acknowledged", label: "Acknowledged" },
-  { value: "in-progress", label: "In Progress" },
-  { value: "completed", label: "Completed" },
-  { value: "cancelled", label: "Cancelled" },
-];
-
-const sortOptions = [
-  { value: "number", label: "PO #" },
-  { value: "vendor_name", label: "Vendor" },
-  { value: "total", label: "Amount" },
-  { value: "created_at", label: "Created Date" },
-  { value: "due_date", label: "Due Date" },
-];
-
-const columnConfigs: ColumnConfig[] = [
-  { key: "number", label: "PO #" },
-  { key: "vendor_name", label: "Vendor" },
-  { key: "customer_name", label: "Customer" },
-  { key: "project_name", label: "Project" },
-  { key: "job_order_number", label: "Job Order" },
-  { key: "status", label: "Status" },
-  { key: "total", label: "Amount" },
-  { key: "due_date", label: "Due Date" },
-  { key: "actions", label: "Actions" },
-];
 
 const PurchaseOrders = () => {
   const navigate = useNavigate();
@@ -57,121 +25,139 @@ const PurchaseOrders = () => {
   
   const [search, setSearch] = useState("");
   const [selectedStatus, setSelectedStatus] = useState("all");
-  const [vendorFilter, setVendorFilter] = useState("all");
-  const [projectFilter, setProjectFilter] = useState("all");
-  const [dateFrom, setDateFrom] = useState("");
-  const [dateTo, setDateTo] = useState("");
-  const [sortBy, setSortBy] = useState("created_at");
-  const [sortOrder, setSortOrder] = useState<"asc" | "desc">("desc");
 
-  const { visibleColumns, setVisibleColumns, isColumnVisible } = useColumnVisibility(
-    columnConfigs,
-    "purchase-orders"
-  );
-
-  // Build entity filter options
-  const vendorOptions: FilterOption[] = [
-    { value: "all", label: "All Vendors" },
-    ...(vendors?.map((v) => ({ value: v.id, label: v.name })) || []),
-  ];
-
-  const projectOptions: FilterOption[] = [
-    { value: "all", label: "All Projects" },
-    ...(projects?.map((p) => ({ value: p.id, label: p.name })) || []),
-  ];
-
-  const filteredAndSortedPOs = useMemo(() => {
-    let filtered = purchaseOrders?.filter((po) => {
+  const filteredPOs = useMemo(() => {
+    return purchaseOrders?.filter((po) => {
       const matchesSearch = po.number.toLowerCase().includes(search.toLowerCase()) ||
         po.vendor_name.toLowerCase().includes(search.toLowerCase()) ||
         po.project_name.toLowerCase().includes(search.toLowerCase()) ||
         po.customer_name.toLowerCase().includes(search.toLowerCase());
       const matchesStatus = selectedStatus === "all" || po.status === selectedStatus;
-      const matchesVendor = vendorFilter === "all" || po.vendor_id === vendorFilter;
-      const matchesProject = projectFilter === "all" || po.project_id === projectFilter;
       
-      let matchesDate = true;
-      if (dateFrom) {
-        matchesDate = matchesDate && new Date(po.created_at) >= new Date(dateFrom);
-      }
-      if (dateTo) {
-        matchesDate = matchesDate && new Date(po.created_at) <= new Date(dateTo);
-      }
-      
-      return matchesSearch && matchesStatus && matchesVendor && matchesProject && matchesDate;
+      return matchesSearch && matchesStatus;
     }) || [];
+  }, [purchaseOrders, search, selectedStatus]);
 
-    // Sort
-    filtered.sort((a, b) => {
-      let comparison = 0;
-      if (sortBy === "number") {
-        comparison = a.number.localeCompare(b.number);
-      } else if (sortBy === "vendor_name") {
-        comparison = a.vendor_name.localeCompare(b.vendor_name);
-      } else if (sortBy === "total") {
-        comparison = a.total - b.total;
-      } else if (sortBy === "created_at") {
-        comparison = new Date(a.created_at).getTime() - new Date(b.created_at).getTime();
-      } else if (sortBy === "due_date") {
-        comparison = new Date(a.due_date).getTime() - new Date(b.due_date).getTime();
-      }
-      return sortOrder === "asc" ? comparison : -comparison;
-    });
+  const hasActiveFilters = selectedStatus !== "all" || !!search;
 
-    return filtered;
-  }, [purchaseOrders, search, selectedStatus, vendorFilter, projectFilter, dateFrom, dateTo, sortBy, sortOrder]);
-
-  const hasActiveFilters = selectedStatus !== "all" || vendorFilter !== "all" || projectFilter !== "all" || !!dateFrom || !!dateTo || !!search;
-
-  const allColumns: Column<PurchaseOrder>[] = [
+  const columns: EnhancedColumn<PurchaseOrder>[] = [
     {
       key: "number",
       header: "PO #",
-      render: (item: PurchaseOrder) => (
+      sortable: true,
+      filterable: true,
+      getValue: (item) => item.number,
+      render: (item) => (
         <div className="flex items-center gap-2">
           <ShoppingCart className="h-4 w-4 text-primary" />
-          <span className="font-medium">{item.number}</span>
+          <Link
+            to={`/purchase-orders/${item.id}`}
+            className="font-medium text-primary hover:underline"
+            onClick={(e) => e.stopPropagation()}
+          >
+            {item.number}
+          </Link>
         </div>
       ),
     },
-    { key: "vendor_name", header: "Vendor" },
-    { key: "customer_name", header: "Customer" },
-    { key: "project_name", header: "Project" },
+    { 
+      key: "vendor_name", 
+      header: "Vendor",
+      sortable: true,
+      filterable: true,
+      getValue: (item) => item.vendor_name,
+      render: (item) => (
+        <Link
+          to={`/vendors/${item.vendor_id}`}
+          className="text-primary hover:underline"
+          onClick={(e) => e.stopPropagation()}
+        >
+          {item.vendor_name}
+        </Link>
+      ),
+    },
+    { 
+      key: "customer_name", 
+      header: "Customer",
+      sortable: true,
+      filterable: true,
+      getValue: (item) => item.customer_name,
+      render: (item) => (
+        <Link
+          to={`/customers/${item.customer_id}`}
+          className="text-primary hover:underline"
+          onClick={(e) => e.stopPropagation()}
+        >
+          {item.customer_name}
+        </Link>
+      ),
+    },
+    { 
+      key: "project_name", 
+      header: "Project",
+      sortable: true,
+      filterable: true,
+      getValue: (item) => item.project_name,
+      render: (item) => (
+        <Link
+          to={`/projects/${item.project_id}`}
+          className="text-primary hover:underline"
+          onClick={(e) => e.stopPropagation()}
+        >
+          {item.project_name}
+        </Link>
+      ),
+    },
     {
       key: "job_order_number",
       header: "Job Order",
-      render: (item: PurchaseOrder) => (
-        <Button
-          variant="link"
-          className="p-0 h-auto text-primary"
-          onClick={(e) => {
-            e.stopPropagation();
-            navigate(`/job-orders/${item.job_order_id}`);
-          }}
+      sortable: true,
+      filterable: true,
+      getValue: (item) => item.job_order_number,
+      render: (item) => (
+        <Link
+          to={`/job-orders/${item.job_order_id}`}
+          className="text-primary hover:underline"
+          onClick={(e) => e.stopPropagation()}
         >
           {item.job_order_number}
-        </Button>
+        </Link>
       ),
     },
     {
       key: "status",
       header: "Status",
-      render: (item: PurchaseOrder) => <StatusBadge status={item.status} />,
+      sortable: true,
+      filterable: true,
+      getValue: (item) => item.status,
+      render: (item) => <StatusBadge status={item.status} />,
     },
     {
       key: "total",
       header: "Amount",
-      render: (item: PurchaseOrder) => (
+      sortable: true,
+      filterable: false,
+      getValue: (item) => item.total,
+      render: (item) => (
         <span className="font-semibold text-primary">
           ${item.total.toLocaleString(undefined, { minimumFractionDigits: 2 })}
         </span>
       ),
     },
-    { key: "due_date", header: "Due Date" },
+    { 
+      key: "due_date", 
+      header: "Due Date",
+      sortable: true,
+      filterable: false,
+      getValue: (item) => item.due_date,
+      render: (item) => new Date(item.due_date).toLocaleDateString(),
+    },
     {
       key: "actions",
       header: "",
-      render: (item: PurchaseOrder) => (
+      sortable: false,
+      filterable: false,
+      render: (item) => (
         <Button
           variant="ghost"
           size="icon"
@@ -185,8 +171,6 @@ const PurchaseOrders = () => {
       ),
     },
   ];
-
-  const columns = allColumns.filter((col) => isColumnVisible(col.key as string));
 
   return (
     <>
@@ -217,45 +201,6 @@ const PurchaseOrders = () => {
                   className="bg-secondary border-border"
                 />
               </div>
-              {!isMobile && (
-                <div className="flex items-center gap-2">
-                  <EnhancedFilters
-                    statusOptions={statusOptions}
-                    statusValue={selectedStatus}
-                    onStatusChange={setSelectedStatus}
-                    entityFilters={[
-                      {
-                        label: "Vendor",
-                        options: vendorOptions,
-                        value: vendorFilter,
-                        onChange: setVendorFilter,
-                      },
-                      {
-                        label: "Project",
-                        options: projectOptions,
-                        value: projectFilter,
-                        onChange: setProjectFilter,
-                      },
-                    ]}
-                    showDateRange
-                    dateFromValue={dateFrom}
-                    dateToValue={dateTo}
-                    onDateFromChange={setDateFrom}
-                    onDateToChange={setDateTo}
-                    sortOptions={sortOptions}
-                    sortValue={sortBy}
-                    onSortChange={setSortBy}
-                    sortOrderValue={sortOrder}
-                    onSortOrderChange={setSortOrder}
-                  />
-                  <ColumnCustomizer
-                    columns={columnConfigs}
-                    visibleColumns={visibleColumns}
-                    onVisibleColumnsChange={setVisibleColumns}
-                    storageKey="purchase-orders"
-                  />
-                </div>
-              )}
             </div>
           </div>
 
@@ -278,14 +223,14 @@ const PurchaseOrders = () => {
               <PurchaseOrderStats purchaseOrders={purchaseOrders || []} />
 
               {/* Purchase Orders Display */}
-              {filteredAndSortedPOs.length === 0 ? (
+              {filteredPOs.length === 0 ? (
                 <PurchaseOrderEmptyState
                   onCreatePO={() => navigate("/purchase-orders/new")}
                   hasFilters={hasActiveFilters}
                 />
               ) : isMobile ? (
                 <div className="grid gap-4 sm:grid-cols-2">
-                  {filteredAndSortedPOs.map((po, index) => (
+                  {filteredPOs.map((po, index) => (
                     <PurchaseOrderCard
                       key={po.id}
                       purchaseOrder={po}
@@ -296,8 +241,9 @@ const PurchaseOrders = () => {
                   ))}
                 </div>
               ) : (
-                <DataTable
-                  data={filteredAndSortedPOs}
+                <EnhancedDataTable
+                  tableId="purchase-orders"
+                  data={filteredPOs}
                   columns={columns}
                   onRowClick={(item) => navigate(`/purchase-orders/${item.id}`)}
                 />

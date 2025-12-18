@@ -1,8 +1,8 @@
 import { useState, useMemo } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, Link } from "react-router-dom";
 import { SEO } from "@/components/SEO";
 import { PageLayout } from "@/components/layout/PageLayout";
-import { DataTable, Column } from "@/components/shared/DataTable";
+import { EnhancedDataTable, EnhancedColumn } from "@/components/shared/EnhancedDataTable";
 import { StatusBadge } from "@/components/shared/StatusBadge";
 import { Button } from "@/components/ui/button";
 import { Plus, Eye, Receipt, Clock, CheckCircle } from "lucide-react";
@@ -14,36 +14,7 @@ import { InvoiceCard } from "@/components/invoices/InvoiceCard";
 import { InvoiceEmptyState } from "@/components/invoices/InvoiceEmptyState";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { useQuickBooksConfig } from "@/integrations/supabase/hooks/useQuickBooks";
-import { EnhancedFilters, FilterOption } from "@/components/shared/EnhancedFilters";
-import { ColumnCustomizer, useColumnVisibility, ColumnConfig } from "@/components/shared/ColumnCustomizer";
-
-const statusOptions: FilterOption[] = [
-  { value: "all", label: "All Statuses" },
-  { value: "draft", label: "Draft" },
-  { value: "sent", label: "Sent" },
-  { value: "partially_paid", label: "Partially Paid" },
-  { value: "paid", label: "Paid" },
-  { value: "overdue", label: "Overdue" },
-];
-
-const sortOptions = [
-  { value: "number", label: "Invoice #" },
-  { value: "customer_name", label: "Customer" },
-  { value: "total", label: "Amount" },
-  { value: "created_at", label: "Created Date" },
-  { value: "due_date", label: "Due Date" },
-];
-
-const columnConfigs: ColumnConfig[] = [
-  { key: "number", label: "Invoice #" },
-  { key: "customer_name", label: "Customer" },
-  { key: "project_name", label: "Project" },
-  { key: "status", label: "Status" },
-  { key: "total", label: "Amount" },
-  { key: "due_date", label: "Due Date" },
-  { key: "paid_date", label: "Paid Date" },
-  { key: "actions", label: "Actions" },
-];
+import { Invoice } from "@/integrations/supabase/hooks/useInvoices";
 
 const Invoices = () => {
   const navigate = useNavigate();
@@ -54,63 +25,19 @@ const Invoices = () => {
   
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
-  const [customerFilter, setCustomerFilter] = useState("all");
-  const [dateFrom, setDateFrom] = useState("");
-  const [dateTo, setDateTo] = useState("");
-  const [sortBy, setSortBy] = useState("created_at");
-  const [sortOrder, setSortOrder] = useState<"asc" | "desc">("desc");
 
-  const { visibleColumns, setVisibleColumns, isColumnVisible } = useColumnVisibility(
-    columnConfigs,
-    "invoices"
-  );
-
-  // Build customer filter options
-  const customerOptions: FilterOption[] = [
-    { value: "all", label: "All Customers" },
-    ...(customers?.map((c) => ({ value: c.id, label: c.name })) || []),
-  ];
-
-  const filteredAndSortedInvoices = useMemo(() => {
-    let filtered = allInvoices.filter((i) => {
+  const filteredInvoices = useMemo(() => {
+    return allInvoices.filter((i) => {
       const matchesSearch = 
         i.number.toLowerCase().includes(search.toLowerCase()) ||
         i.customer_name.toLowerCase().includes(search.toLowerCase());
       const matchesStatus = statusFilter === "all" || i.status === statusFilter;
-      const matchesCustomer = customerFilter === "all" || i.customer_id === customerFilter;
       
-      let matchesDate = true;
-      if (dateFrom) {
-        matchesDate = matchesDate && new Date(i.created_at) >= new Date(dateFrom);
-      }
-      if (dateTo) {
-        matchesDate = matchesDate && new Date(i.created_at) <= new Date(dateTo);
-      }
-      
-      return matchesSearch && matchesStatus && matchesCustomer && matchesDate;
+      return matchesSearch && matchesStatus;
     });
+  }, [allInvoices, search, statusFilter]);
 
-    // Sort
-    filtered.sort((a, b) => {
-      let comparison = 0;
-      if (sortBy === "number") {
-        comparison = a.number.localeCompare(b.number);
-      } else if (sortBy === "customer_name") {
-        comparison = a.customer_name.localeCompare(b.customer_name);
-      } else if (sortBy === "total") {
-        comparison = a.total - b.total;
-      } else if (sortBy === "created_at") {
-        comparison = new Date(a.created_at).getTime() - new Date(b.created_at).getTime();
-      } else if (sortBy === "due_date") {
-        comparison = new Date(a.due_date).getTime() - new Date(b.due_date).getTime();
-      }
-      return sortOrder === "asc" ? comparison : -comparison;
-    });
-
-    return filtered;
-  }, [allInvoices, search, statusFilter, customerFilter, dateFrom, dateTo, sortBy, sortOrder]);
-
-  const hasActiveFilters = statusFilter !== "all" || customerFilter !== "all" || !!dateFrom || !!dateTo || !!search;
+  const hasActiveFilters = statusFilter !== "all" || !!search;
 
   const totalRevenue = allInvoices
     .filter((i) => i.status === "paid")
@@ -120,28 +47,65 @@ const Invoices = () => {
     .filter((i) => i.status === "sent" || i.status === "overdue")
     .reduce((sum, i) => sum + i.total, 0);
 
-  const allColumns: Column<any>[] = [
+  const columns: EnhancedColumn<Invoice>[] = [
     {
       key: "number",
       header: "Invoice #",
-      render: (item: any) => (
+      sortable: true,
+      filterable: true,
+      getValue: (item) => item.number,
+      render: (item) => (
         <div className="flex items-center gap-2">
           <Receipt className="h-4 w-4 text-primary" />
-          <span className="font-medium">{item.number}</span>
+          <Link
+            to={`/invoices/${item.id}`}
+            className="font-medium text-primary hover:underline"
+            onClick={(e) => e.stopPropagation()}
+          >
+            {item.number}
+          </Link>
         </div>
       ),
     },
-    { key: "customer_name", header: "Customer" },
-    { key: "project_name", header: "Project" },
+    { 
+      key: "customer_name", 
+      header: "Customer",
+      sortable: true,
+      filterable: true,
+      getValue: (item) => item.customer_name,
+      render: (item) => (
+        <Link
+          to={`/customers/${item.customer_id}`}
+          className="text-primary hover:underline"
+          onClick={(e) => e.stopPropagation()}
+        >
+          {item.customer_name}
+        </Link>
+      ),
+    },
+    { 
+      key: "project_name", 
+      header: "Project",
+      sortable: true,
+      filterable: true,
+      getValue: (item) => item.project_name || "",
+      render: (item) => item.project_name || <span className="text-muted-foreground">-</span>,
+    },
     {
       key: "status",
       header: "Status",
-      render: (item: any) => <StatusBadge status={item.status} />,
+      sortable: true,
+      filterable: true,
+      getValue: (item) => item.status as string,
+      render: (item) => <StatusBadge status={item.status} />,
     },
     {
       key: "total",
       header: "Amount",
-      render: (item: any) => (
+      sortable: true,
+      filterable: false,
+      getValue: (item) => item.total,
+      render: (item) => (
         <span className="font-semibold text-primary">
           ${item.total.toLocaleString(undefined, { minimumFractionDigits: 2 })}
         </span>
@@ -150,17 +114,25 @@ const Invoices = () => {
     { 
       key: "due_date", 
       header: "Due Date",
-      render: (item: any) => new Date(item.due_date).toLocaleDateString(),
+      sortable: true,
+      filterable: false,
+      getValue: (item) => item.due_date,
+      render: (item) => new Date(item.due_date).toLocaleDateString(),
     },
     {
       key: "paid_date",
       header: "Paid Date",
-      render: (item: any) => item.paid_date ? new Date(item.paid_date).toLocaleDateString() : "-",
+      sortable: true,
+      filterable: false,
+      getValue: (item) => item.paid_date || "",
+      render: (item) => item.paid_date ? new Date(item.paid_date).toLocaleDateString() : "-",
     },
     {
       key: "actions",
       header: "",
-      render: (item: any) => (
+      sortable: false,
+      filterable: false,
+      render: (item) => (
         <Button
           variant="ghost"
           size="icon"
@@ -174,8 +146,6 @@ const Invoices = () => {
       ),
     },
   ];
-
-  const columns = allColumns.filter((col) => isColumnVisible(col.key as string));
 
   if (isLoading) {
     return (
@@ -256,39 +226,6 @@ const Invoices = () => {
                   className="bg-secondary border-border"
                 />
               </div>
-              {!isMobile && (
-                <div className="flex items-center gap-2">
-                  <EnhancedFilters
-                    statusOptions={statusOptions}
-                    statusValue={statusFilter}
-                    onStatusChange={setStatusFilter}
-                    entityFilters={[
-                      {
-                        label: "Customer",
-                        options: customerOptions,
-                        value: customerFilter,
-                        onChange: setCustomerFilter,
-                      },
-                    ]}
-                    showDateRange
-                    dateFromValue={dateFrom}
-                    dateToValue={dateTo}
-                    onDateFromChange={setDateFrom}
-                    onDateToChange={setDateTo}
-                    sortOptions={sortOptions}
-                    sortValue={sortBy}
-                    onSortChange={setSortBy}
-                    sortOrderValue={sortOrder}
-                    onSortOrderChange={setSortOrder}
-                  />
-                  <ColumnCustomizer
-                    columns={columnConfigs}
-                    visibleColumns={visibleColumns}
-                    onVisibleColumnsChange={setVisibleColumns}
-                    storageKey="invoices"
-                  />
-                </div>
-              )}
             </div>
           </div>
 
@@ -321,7 +258,7 @@ const Invoices = () => {
           </div>
 
           {/* Empty State */}
-          {filteredAndSortedInvoices.length === 0 && (
+          {filteredInvoices.length === 0 && (
             <InvoiceEmptyState 
               onAddInvoice={() => navigate("/invoices/new")} 
               isFiltered={hasActiveFilters}
@@ -329,11 +266,11 @@ const Invoices = () => {
           )}
 
           {/* Invoices - Responsive Layout */}
-          {filteredAndSortedInvoices.length > 0 && (
+          {filteredInvoices.length > 0 && (
             <>
               {isMobile ? (
                 <div className="grid gap-4">
-                  {filteredAndSortedInvoices.map((invoice, index) => (
+                  {filteredInvoices.map((invoice, index) => (
                     <InvoiceCard
                       key={invoice.id}
                       invoice={invoice}
@@ -343,8 +280,9 @@ const Invoices = () => {
                   ))}
                 </div>
               ) : (
-                <DataTable
-                  data={filteredAndSortedInvoices}
+                <EnhancedDataTable
+                  tableId="invoices"
+                  data={filteredInvoices}
                   columns={columns}
                   onRowClick={(item) => navigate(`/invoices/${item.id}`)}
                 />

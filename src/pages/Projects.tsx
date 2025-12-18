@@ -1,14 +1,12 @@
 import { useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, Link } from "react-router-dom";
 import { SEO } from "@/components/SEO";
 import { PageLayout } from "@/components/layout/PageLayout";
-import { DataTable } from "@/components/shared/DataTable";
+import { EnhancedDataTable, EnhancedColumn } from "@/components/shared/EnhancedDataTable";
 import { StatusBadge } from "@/components/shared/StatusBadge";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Plus, Edit, Trash2, Loader2, Filter, X } from "lucide-react";
+import { Plus, Edit, Trash2, Loader2 } from "lucide-react";
 import { SearchInput } from "@/components/ui/search-input";
-import { Card, CardContent } from "@/components/ui/card";
 import { PullToRefreshWrapper } from "@/components/shared/PullToRefreshWrapper";
 import { ProjectCard } from "@/components/projects/ProjectCard";
 import { ProjectStats } from "@/components/projects/ProjectStats";
@@ -16,14 +14,6 @@ import { ProjectFilters } from "@/components/projects/ProjectFilters";
 import { ProjectEmptyState } from "@/components/projects/ProjectEmptyState";
 import { ProjectFormDialog, initialProjectFormData, type ProjectFormData } from "@/components/projects/ProjectFormDialog";
 import { useIsMobile } from "@/hooks/use-mobile";
-import { Label } from "@/components/ui/label";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
 import { useProjects, useAddProject, useUpdateProject, useDeleteProject, Project, ProjectStage } from "@/integrations/supabase/hooks/useProjects";
 import { useCustomers } from "@/integrations/supabase/hooks/useCustomers";
 import { format } from "date-fns";
@@ -40,20 +30,14 @@ const Projects = () => {
   const deleteProject = useDeleteProject();
   
   const [search, setSearch] = useState("");
-  const [showFilters, setShowFilters] = useState(false);
   const [filterStatus, setFilterStatus] = useState<string>("all");
   const [filterStage, setFilterStage] = useState<string>("all");
-  const [filterCustomer, setFilterCustomer] = useState<string>("all");
-  const [filterDateFrom, setFilterDateFrom] = useState<string>("");
-  const [filterDateTo, setFilterDateTo] = useState<string>("");
-  const [sortBy, setSortBy] = useState<"name" | "start_date" | "end_date">("start_date");
-  const [sortOrder, setSortOrder] = useState<"asc" | "desc">("desc");
   
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [editingProject, setEditingProject] = useState<Project | null>(null);
   const [formData, setFormData] = useState<ProjectFormData>(initialProjectFormData);
 
-  // Apply filters and sorting
+  // Apply filters
   const filteredProjects = projects
     ?.filter((p) => {
       // Search filter
@@ -67,72 +51,78 @@ const Projects = () => {
       // Stage filter
       const stageMatch = filterStage === "all" || p.stage === filterStage;
       
-      // Customer filter
-      const customerMatch = filterCustomer === "all" || p.customer_id === filterCustomer;
-      
-      // Date range filter
-      let dateMatch = true;
-      if (filterDateFrom) {
-        dateMatch = dateMatch && new Date(p.start_date) >= new Date(filterDateFrom);
-      }
-      if (filterDateTo) {
-        const projectEndDate = p.end_date || p.start_date;
-        dateMatch = dateMatch && new Date(projectEndDate) <= new Date(filterDateTo);
-      }
-      
-      return searchMatch && statusMatch && stageMatch && customerMatch && dateMatch;
-    })
-    .sort((a, b) => {
-      let comparison = 0;
-      
-      if (sortBy === "name") {
-        comparison = a.name.localeCompare(b.name);
-      } else if (sortBy === "start_date") {
-        comparison = new Date(a.start_date).getTime() - new Date(b.start_date).getTime();
-      } else if (sortBy === "end_date") {
-        const aDate = a.end_date || "9999-12-31";
-        const bDate = b.end_date || "9999-12-31";
-        comparison = new Date(aDate).getTime() - new Date(bDate).getTime();
-      }
-      
-      return sortOrder === "asc" ? comparison : -comparison;
+      return searchMatch && statusMatch && stageMatch;
     }) || [];
+
+  const hasActiveFilters = filterStatus !== "all" || filterStage !== "all" || !!search;
 
   const clearFilters = () => {
     setFilterStatus("all");
     setFilterStage("all");
-    setFilterCustomer("all");
-    setFilterDateFrom("");
-    setFilterDateTo("");
     setSearch("");
   };
 
-  const hasActiveFilters = filterStatus !== "all" || filterStage !== "all" || filterCustomer !== "all" || !!filterDateFrom || !!filterDateTo || !!search;
-
-  const columns = [
-    { key: "name", header: "Project Name" },
+  const columns: EnhancedColumn<Project>[] = [
+    { 
+      key: "name", 
+      header: "Project Name",
+      sortable: true,
+      filterable: true,
+      getValue: (item) => item.name,
+      render: (item) => (
+        <Link 
+          to={`/projects/${item.id}`}
+          className="text-primary hover:underline font-medium"
+          onClick={(e) => e.stopPropagation()}
+        >
+          {item.name}
+        </Link>
+      ),
+    },
     { 
       key: "customer", 
       header: "Customer",
-      render: (item: Project) => {
+      sortable: true,
+      filterable: true,
+      getValue: (item) => customers?.find(c => c.id === item.customer_id)?.name || "Unknown",
+      render: (item) => {
         const customer = customers?.find(c => c.id === item.customer_id);
-        return customer?.name || "Unknown";
-      }
+        return customer ? (
+          <Link
+            to={`/customers/${customer.id}`}
+            className="text-primary hover:underline"
+            onClick={(e) => e.stopPropagation()}
+          >
+            {customer.name}
+          </Link>
+        ) : (
+          <span className="text-muted-foreground">Unknown</span>
+        );
+      },
     },
     {
       key: "start_date",
       header: "Start Date",
-      render: (item: Project) => format(new Date(item.start_date), "MMM dd, yyyy"),
+      sortable: true,
+      filterable: false,
+      getValue: (item) => item.start_date,
+      render: (item) => format(new Date(item.start_date), "MMM dd, yyyy"),
     },
     {
       key: "end_date",
       header: "End Date",
-      render: (item: Project) => item.end_date ? format(new Date(item.end_date), "MMM dd, yyyy") : "-",
+      sortable: true,
+      filterable: false,
+      getValue: (item) => item.end_date || "",
+      render: (item) => item.end_date ? format(new Date(item.end_date), "MMM dd, yyyy") : "-",
     },
     {
       key: "stage",
       header: "Stage",
-      render: (item: Project) => {
+      sortable: true,
+      filterable: true,
+      getValue: (item) => item.stage || "quote",
+      render: (item) => {
         const stage = stageConfig[item.stage] || stageConfig.quote;
         return (
           <Badge variant={stage.variant} className={`text-xs ${stage.className}`}>
@@ -144,12 +134,17 @@ const Projects = () => {
     {
       key: "status",
       header: "Status",
-      render: (item: Project) => <StatusBadge status={item.status} />,
+      sortable: true,
+      filterable: true,
+      getValue: (item) => item.status,
+      render: (item) => <StatusBadge status={item.status} />,
     },
     {
       key: "actions",
       header: "",
-      render: (item: Project) => (
+      sortable: false,
+      filterable: false,
+      render: (item) => (
         <div className="flex items-center gap-2">
           <Button
             variant="ghost"
@@ -267,7 +262,7 @@ const Projects = () => {
         {/* Search & Filters */}
         <div className="mb-6 space-y-4">
           <div className="flex gap-3">
-            <div className="flex-1">
+            <div className="flex-1 max-w-md">
               <SearchInput
                 placeholder="Search projects..."
                 value={search}
@@ -275,23 +270,6 @@ const Projects = () => {
                 className="bg-secondary border-border"
               />
             </div>
-            {!isMobile && (
-              <>
-                <Button
-                  variant={showFilters ? "default" : "outline"}
-                  onClick={() => setShowFilters(!showFilters)}
-                >
-                  <Filter className="h-4 w-4 mr-2" />
-                  Filters
-                </Button>
-                {hasActiveFilters && (
-                  <Button variant="ghost" onClick={clearFilters}>
-                    <X className="h-4 w-4 mr-2" />
-                    Clear
-                  </Button>
-                )}
-              </>
-            )}
           </div>
 
           {/* Mobile Filters */}
@@ -305,111 +283,6 @@ const Projects = () => {
               onClearFilters={clearFilters}
               search={search}
             />
-          )}
-
-          {/* Desktop Filters */}
-          {!isMobile && showFilters && (
-            <Card className="glass border-border">
-              <CardContent className="pt-6">
-                <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-                  <div className="space-y-2">
-                    <Label htmlFor="filterStage">Stage</Label>
-                    <Select value={filterStage} onValueChange={setFilterStage}>
-                      <SelectTrigger className="bg-secondary border-border">
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="all">All Stages</SelectItem>
-                        <SelectItem value="quote">Quote</SelectItem>
-                        <SelectItem value="task_order">Task Order</SelectItem>
-                        <SelectItem value="active">Active</SelectItem>
-                        <SelectItem value="complete">Complete</SelectItem>
-                        <SelectItem value="canceled">Canceled</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
-
-                  <div className="space-y-2">
-                    <Label htmlFor="filterStatus">Status</Label>
-                    <Select value={filterStatus} onValueChange={setFilterStatus}>
-                      <SelectTrigger className="bg-secondary border-border">
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="all">All Statuses</SelectItem>
-                        <SelectItem value="active">Active</SelectItem>
-                        <SelectItem value="completed">Completed</SelectItem>
-                        <SelectItem value="on-hold">On Hold</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
-
-                  <div className="space-y-2">
-                    <Label htmlFor="filterCustomer">Customer</Label>
-                    <Select value={filterCustomer} onValueChange={setFilterCustomer}>
-                      <SelectTrigger className="bg-secondary border-border">
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="all">All Customers</SelectItem>
-                        {customers?.map((customer) => (
-                          <SelectItem key={customer.id} value={customer.id}>
-                            {customer.name}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </div>
-
-                  <div className="space-y-2">
-                    <Label htmlFor="filterDateFrom">Start Date From</Label>
-                    <Input
-                      id="filterDateFrom"
-                      type="date"
-                      value={filterDateFrom}
-                      onChange={(e) => setFilterDateFrom(e.target.value)}
-                      className="bg-secondary border-border"
-                    />
-                  </div>
-
-                  <div className="space-y-2">
-                    <Label htmlFor="filterDateTo">End Date To</Label>
-                    <Input
-                      id="filterDateTo"
-                      type="date"
-                      value={filterDateTo}
-                      onChange={(e) => setFilterDateTo(e.target.value)}
-                      className="bg-secondary border-border"
-                    />
-                  </div>
-                </div>
-
-                <div className="mt-4 pt-4 border-t border-border">
-                  <div className="flex items-center gap-4">
-                    <Label className="text-sm font-medium">Sort by:</Label>
-                    <Select value={sortBy} onValueChange={(v: any) => setSortBy(v)}>
-                      <SelectTrigger className="w-[180px] bg-secondary border-border">
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="name">Name</SelectItem>
-                        <SelectItem value="start_date">Start Date</SelectItem>
-                        <SelectItem value="end_date">End Date</SelectItem>
-                      </SelectContent>
-                    </Select>
-                    <Select value={sortOrder} onValueChange={(v: any) => setSortOrder(v)}>
-                      <SelectTrigger className="w-[150px] bg-secondary border-border">
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="asc">Ascending</SelectItem>
-                        <SelectItem value="desc">Descending</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
           )}
         </div>
 
@@ -452,9 +325,10 @@ const Projects = () => {
           </div>
         )}
 
-        {/* Desktop Table Layout */}
+        {/* Desktop Table Layout with EnhancedDataTable */}
         {!isLoading && !error && filteredProjects.length > 0 && !isMobile && (
-          <DataTable
+          <EnhancedDataTable
+            tableId="projects"
             data={filteredProjects}
             columns={columns}
             onRowClick={(item) => navigate(`/projects/${item.id}`)}

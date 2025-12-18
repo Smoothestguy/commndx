@@ -1,8 +1,8 @@
 import { useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, Link } from "react-router-dom";
 import { SEO } from "@/components/SEO";
 import { PageLayout } from "@/components/layout/PageLayout";
-import { DataTable } from "@/components/shared/DataTable";
+import { EnhancedDataTable, EnhancedColumn } from "@/components/shared/EnhancedDataTable";
 import { StatusBadge } from "@/components/shared/StatusBadge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -255,61 +255,84 @@ const Vendors = () => {
     setIsTypeChangeDialogOpen(false);
   };
 
-  // Vendor columns for DataTable
-  const vendorColumns = [
+  // Vendor columns for EnhancedDataTable
+  const vendorColumns: EnhancedColumn<Vendor>[] = [
     {
       key: "select",
-      header: (
-        <Checkbox
-          checked={filteredVendors.length > 0 && selectedVendors.length === filteredVendors.length}
-          onCheckedChange={handleSelectAll}
-        />
-      ),
-      render: (item: Vendor) => (
+      header: "",
+      sortable: false,
+      filterable: false,
+      render: (item) => (
         <Checkbox
           checked={selectedVendors.includes(item.id)}
           onCheckedChange={() => handleSelectVendor(item.id)}
           onClick={(e) => e.stopPropagation()}
         />
       ),
-      className: "w-10",
     },
     { 
       key: "name", 
       header: "Vendor Name",
-      render: (item: Vendor) => (
-        <span 
-          className="text-primary hover:underline cursor-pointer font-medium"
-          onClick={(e) => {
-            e.stopPropagation();
-            navigate(`/vendors/${item.id}`);
-          }}
+      sortable: true,
+      filterable: true,
+      getValue: (item) => item.name,
+      render: (item) => (
+        <Link 
+          to={`/vendors/${item.id}`}
+          className="text-primary hover:underline font-medium"
+          onClick={(e) => e.stopPropagation()}
         >
           {item.name}
-        </span>
+        </Link>
       ),
     },
-    { key: "company", header: "Company" },
-    { key: "specialty", header: "Specialty" },
+    { 
+      key: "company", 
+      header: "Company",
+      sortable: true,
+      filterable: true,
+      getValue: (item) => item.company || "",
+    },
+    { 
+      key: "specialty", 
+      header: "Specialty",
+      sortable: true,
+      filterable: true,
+      getValue: (item) => item.specialty || "",
+    },
     {
       key: "vendor_type",
       header: "Type",
-      render: (item: Vendor) => (
+      sortable: true,
+      filterable: true,
+      getValue: (item) => item.vendor_type,
+      render: (item) => (
         <Badge variant="outline" className={vendorTypeColors[item.vendor_type]}>
           {item.vendor_type}
         </Badge>
       ),
     },
-    { key: "email", header: "Email" },
+    { 
+      key: "email", 
+      header: "Email",
+      sortable: true,
+      filterable: true,
+      getValue: (item) => item.email,
+    },
     {
       key: "status",
       header: "Status",
-      render: (item: Vendor) => <StatusBadge status={item.status} />,
+      sortable: true,
+      filterable: true,
+      getValue: (item) => item.status,
+      render: (item) => <StatusBadge status={item.status} />,
     },
     {
       key: "actions",
       header: "",
-      render: (item: Vendor) => (
+      sortable: false,
+      filterable: false,
+      render: (item) => (
         <div className="flex items-center gap-2">
           <Button
             variant="ghost"
@@ -336,20 +359,52 @@ const Vendors = () => {
     },
   ];
 
-  // Personnel columns for DataTable
-  const personnelColumns = [
+  // Personnel columns for EnhancedDataTable
+  const personnelColumns: EnhancedColumn<Personnel>[] = [
     {
       key: "name",
       header: "Name",
-      render: (item: Personnel) => `${item.first_name} ${item.last_name}`,
+      sortable: true,
+      filterable: true,
+      getValue: (item) => `${item.first_name} ${item.last_name}`,
+      render: (item) => (
+        <Link
+          to={`/personnel/${item.id}`}
+          className="text-primary hover:underline font-medium"
+          onClick={(e) => e.stopPropagation()}
+        >
+          {item.first_name} {item.last_name}
+        </Link>
+      ),
     },
-    { key: "personnel_number", header: "ID" },
-    { key: "email", header: "Email" },
-    { key: "phone", header: "Phone" },
+    { 
+      key: "personnel_number", 
+      header: "ID",
+      sortable: true,
+      filterable: true,
+      getValue: (item) => item.personnel_number || "",
+    },
+    { 
+      key: "email", 
+      header: "Email",
+      sortable: true,
+      filterable: true,
+      getValue: (item) => item.email,
+    },
+    { 
+      key: "phone", 
+      header: "Phone",
+      sortable: true,
+      filterable: true,
+      getValue: (item) => item.phone || "",
+    },
     {
       key: "status",
       header: "Status",
-      render: (item: Personnel) => {
+      sortable: true,
+      filterable: true,
+      getValue: (item) => item.status || "active",
+      render: (item) => {
         const status = item.status;
         if (status === "do_not_hire") {
           return <Badge variant="destructive">Do Not Hire</Badge>;
@@ -360,7 +415,10 @@ const Vendors = () => {
     {
       key: "everify_status",
       header: "E-Verify",
-      render: (item: Personnel) => {
+      sortable: true,
+      filterable: true,
+      getValue: (item) => item.everify_status || "pending",
+      render: (item) => {
         const status = item.everify_status;
         const colors: Record<string, string> = {
           verified: "bg-green-600 text-white",
@@ -379,7 +437,9 @@ const Vendors = () => {
     {
       key: "actions",
       header: "",
-      render: (item: Personnel) => (
+      sortable: false,
+      filterable: false,
+      render: (item) => (
         <Button
           variant="ghost"
           size="icon"
@@ -596,7 +656,8 @@ const Vendors = () => {
                   ))}
                 </div>
               ) : (
-                <DataTable
+                <EnhancedDataTable
+                  tableId="vendors-personnel"
                   data={filteredPersonnel}
                   columns={personnelColumns}
                   onRowClick={(person) => navigate(`/personnel/${person.id}`)}
@@ -623,7 +684,8 @@ const Vendors = () => {
                   ))}
                 </div>
               ) : (
-                <DataTable 
+                <EnhancedDataTable
+                  tableId="vendors"
                   data={filteredVendors} 
                   columns={vendorColumns} 
                   onRowClick={(vendor) => navigate(`/vendors/${vendor.id}`)}
