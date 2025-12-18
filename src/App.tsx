@@ -16,6 +16,7 @@ import Index from "./pages/Index";
 import Auth from "./pages/Auth";
 import Products from "./pages/Products";
 import Customers from "./pages/Customers";
+import CustomerDetail from "./pages/CustomerDetail";
 import Projects from "./pages/Projects";
 import ProjectDetail from "./pages/ProjectDetail";
 import Vendors from "./pages/Vendors";
@@ -227,6 +228,7 @@ const App = () => {
                     <Route path="/" element={<Index />} />
                     <Route path="/products" element={<Products />} />
                     <Route path="/customers" element={<Customers />} />
+                    <Route path="/customers/:id" element={<CustomerDetail />} />
                     <Route path="/projects" element={<Projects />} />
                     <Route path="/projects/:id" element={<ProjectDetail />} />
                     <Route path="/vendors" element={<Vendors />} />
