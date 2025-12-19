@@ -1,16 +1,19 @@
 import { useRef, useState, useCallback } from "react";
-import { Upload, X, FileText, Image as ImageIcon } from "lucide-react";
+import { Upload, X, FileText, Image as ImageIcon, Loader2 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
+import { supabase } from "@/integrations/supabase/client";
 
 interface FormFileUploadProps {
-  value?: File | null;
-  onChange: (file: File | null) => void;
+  value?: File | string | null;
+  onChange: (value: string | null) => void;
   label?: string;
   required?: boolean;
   helpText?: string;
   acceptedFileTypes?: string[];
   maxFileSize?: number; // in MB
+  storageBucket?: string;
+  storagePath?: string;
 }
 
 export function FormFileUpload({
@@ -21,11 +24,19 @@ export function FormFileUpload({
   helpText,
   acceptedFileTypes = ["image/*", ".pdf", ".doc", ".docx"],
   maxFileSize = 5,
+  storageBucket = "application-files",
+  storagePath = "uploads",
 }: FormFileUploadProps) {
   const inputRef = useRef<HTMLInputElement>(null);
   const [dragOver, setDragOver] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [preview, setPreview] = useState<string | null>(null);
+  const [uploading, setUploading] = useState(false);
+  const [fileName, setFileName] = useState<string | null>(null);
+  const [fileSize, setFileSize] = useState<number | null>(null);
+
+  // Check if value is a URL string (already uploaded)
+  const isUrlValue = typeof value === "string" && value.length > 0;
 
   const validateFile = useCallback((file: File): string | null => {
     if (file.size > maxFileSize * 1024 * 1024) {
@@ -34,7 +45,36 @@ export function FormFileUpload({
     return null;
   }, [maxFileSize]);
 
-  const processFile = useCallback((file: File) => {
+  const uploadFile = async (file: File): Promise<string | null> => {
+    try {
+      const fileExt = file.name.split(".").pop();
+      const uniqueFileName = `${storagePath}/${Date.now()}-${Math.random().toString(36).substring(7)}.${fileExt}`;
+
+      const { error: uploadError, data } = await supabase.storage
+        .from(storageBucket)
+        .upload(uniqueFileName, file, {
+          cacheControl: "3600",
+          upsert: true,
+        });
+
+      if (uploadError) {
+        console.error("Upload error:", uploadError);
+        throw uploadError;
+      }
+
+      // Get public URL
+      const { data: { publicUrl } } = supabase.storage
+        .from(storageBucket)
+        .getPublicUrl(uniqueFileName);
+
+      return publicUrl;
+    } catch (err) {
+      console.error("Failed to upload file:", err);
+      return null;
+    }
+  };
+
+  const processFile = useCallback(async (file: File) => {
     setError(null);
     
     const validationError = validateFile(file);
@@ -42,6 +82,10 @@ export function FormFileUpload({
       setError(validationError);
       return;
     }
+
+    // Store file info for display
+    setFileName(file.name);
+    setFileSize(file.size);
 
     // Create preview for images
     if (file.type.startsWith("image/")) {
@@ -51,8 +95,20 @@ export function FormFileUpload({
       setPreview(null);
     }
 
-    onChange(file);
-  }, [validateFile, onChange]);
+    // Upload immediately
+    setUploading(true);
+    const publicUrl = await uploadFile(file);
+    setUploading(false);
+
+    if (publicUrl) {
+      onChange(publicUrl);
+    } else {
+      setError("Failed to upload file. Please try again.");
+      setFileName(null);
+      setFileSize(null);
+      setPreview(null);
+    }
+  }, [validateFile, onChange, storageBucket, storagePath]);
 
   const handleClick = () => {
     inputRef.current?.click();
@@ -87,6 +143,8 @@ export function FormFileUpload({
       URL.revokeObjectURL(preview);
       setPreview(null);
     }
+    setFileName(null);
+    setFileSize(null);
     onChange(null);
     if (inputRef.current) {
       inputRef.current.value = "";
@@ -100,12 +158,18 @@ export function FormFileUpload({
   };
 
   const getFileIcon = () => {
-    if (!value) return null;
-    if (value.type.startsWith("image/")) {
+    if (preview || (isUrlValue && value?.match(/\.(jpg|jpeg|png|gif|webp)$/i))) {
       return <ImageIcon className="h-4 w-4 text-blue-500" />;
     }
     return <FileText className="h-4 w-4 text-orange-500" />;
   };
+
+  // Determine display name
+  const displayName = fileName || (isUrlValue ? value.split("/").pop() : null);
+  const hasFile = isUrlValue || fileName;
+
+  // Determine preview URL
+  const displayPreview = preview || (isUrlValue && value?.match(/\.(jpg|jpeg|png|gif|webp)$/i) ? value : null);
 
   return (
     <div className="space-y-2">
@@ -124,12 +188,12 @@ export function FormFileUpload({
         onChange={handleFileInput}
       />
 
-      {value ? (
+      {hasFile ? (
         <div className="border rounded-lg p-3 bg-muted/30">
           <div className="flex items-center gap-3">
-            {preview ? (
+            {displayPreview ? (
               <img
-                src={preview}
+                src={displayPreview}
                 alt="Preview"
                 className="h-12 w-12 object-cover rounded"
               />
@@ -139,8 +203,17 @@ export function FormFileUpload({
               </div>
             )}
             <div className="flex-1 min-w-0">
-              <p className="text-sm font-medium truncate">{value.name}</p>
-              <p className="text-xs text-muted-foreground">{formatFileSize(value.size)}</p>
+              <p className="text-sm font-medium truncate">{displayName}</p>
+              {fileSize && <p className="text-xs text-muted-foreground">{formatFileSize(fileSize)}</p>}
+              {uploading && (
+                <div className="flex items-center gap-1 text-xs text-primary">
+                  <Loader2 className="h-3 w-3 animate-spin" />
+                  Uploading...
+                </div>
+              )}
+              {isUrlValue && !uploading && (
+                <p className="text-xs text-green-600">Uploaded</p>
+              )}
             </div>
             <Button
               type="button"
@@ -148,6 +221,7 @@ export function FormFileUpload({
               size="sm"
               className="h-8 w-8 p-0 flex-shrink-0"
               onClick={removeFile}
+              disabled={uploading}
             >
               <X className="h-4 w-4 text-muted-foreground" />
             </Button>
