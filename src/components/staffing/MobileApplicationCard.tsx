@@ -2,13 +2,14 @@ import { format } from "date-fns";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { Eye, CheckCircle, XCircle, MoreVertical, Mail, Calendar, Briefcase } from "lucide-react";
+import { Eye, CheckCircle, XCircle, MoreVertical, Mail, Calendar, Briefcase, User } from "lucide-react";
 import type { Application } from "@/integrations/supabase/hooks/useStaffingApplications";
 
 const statusColors: Record<string, string> = {
@@ -18,11 +19,48 @@ const statusColors: Record<string, string> = {
   rejected: "bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-300",
 };
 
+// Helper to extract profile picture from application answers using field type info
+function getProfilePicture(
+  answers: Record<string, unknown> | null | undefined,
+  fieldTypeMap: Record<string, { label: string; type: string }>
+): string | null {
+  if (!answers) return null;
+  
+  // First pass: look for file type fields with images (excludes signatures)
+  for (const [fieldId, value] of Object.entries(answers)) {
+    const fieldInfo = fieldTypeMap[fieldId];
+    if (
+      fieldInfo?.type === "file" &&
+      typeof value === "string" &&
+      (value.startsWith("data:image") || value.startsWith("http"))
+    ) {
+      return value;
+    }
+  }
+
+  // Fallback: if no field metadata, look for first image that's not from a signature field
+  for (const [fieldId, value] of Object.entries(answers)) {
+    const fieldInfo = fieldTypeMap[fieldId];
+    // Skip if we know it's a signature
+    if (fieldInfo?.type === "signature") continue;
+
+    if (
+      typeof value === "string" &&
+      (value.startsWith("data:image") || value.startsWith("http"))
+    ) {
+      return value;
+    }
+  }
+  
+  return null;
+}
+
 interface MobileApplicationCardProps {
   application: Application;
   onView: (app: Application) => void;
   onApprove: (app: Application) => void;
   onReject: (app: Application) => void;
+  fieldTypeMap?: Record<string, { label: string; type: string }>;
 }
 
 export function MobileApplicationCard({
@@ -30,10 +68,13 @@ export function MobileApplicationCard({
   onView,
   onApprove,
   onReject,
+  fieldTypeMap = {},
 }: MobileApplicationCardProps) {
   const handleClick = () => {
     onView(application);
   };
+
+  const profilePic = getProfilePicture(application.answers as Record<string, unknown>, fieldTypeMap);
 
   return (
     <Card
@@ -42,6 +83,12 @@ export function MobileApplicationCard({
     >
       <CardContent className="p-4">
         <div className="flex items-start gap-3">
+          <Avatar className="h-10 w-10 flex-shrink-0">
+            <AvatarImage src={profilePic || undefined} alt="Profile" />
+            <AvatarFallback className="text-xs">
+              <User className="h-4 w-4" />
+            </AvatarFallback>
+          </Avatar>
           <div className="flex-1 min-w-0 space-y-2">
             <div className="flex items-start justify-between gap-2">
               <div className="min-w-0 flex-1">

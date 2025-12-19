@@ -243,15 +243,19 @@ export function ApplicationsTable({
   if (isMobile) {
     return (
       <div className="space-y-3">
-        {applications.map((app) => (
-          <MobileApplicationCard
-            key={app.id}
-            application={app}
-            onView={onViewApplication}
-            onApprove={onApprove}
-            onReject={onReject}
-          />
-        ))}
+        {applications.map((app) => {
+          const fieldTypeMap = getFieldTypeMap(app);
+          return (
+            <MobileApplicationCard
+              key={app.id}
+              application={app}
+              onView={onViewApplication}
+              onApprove={onApprove}
+              onReject={onReject}
+              fieldTypeMap={fieldTypeMap}
+            />
+          );
+        })}
       </div>
     );
   }
