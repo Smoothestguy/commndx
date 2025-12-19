@@ -415,7 +415,7 @@ export function WeeklyTimesheet({
     }
   };
 
-  const handleExport = async (format: "excel" | "pdf" | "json") => {
+  const handleExport = async (exportFormat: "excel" | "pdf" | "json") => {
     if (entries.length === 0) {
       toast.error("No time entries to export for this week");
       return;
@@ -436,7 +436,7 @@ export function WeeklyTimesheet({
         "MMM-d-yyyy"
       )}`;
 
-      switch (format) {
+      switch (exportFormat) {
         case "excel":
           await exportTimeEntriesToExcel(exportData, `timesheet-${weekLabel}`);
           toast.success("Excel file downloaded successfully");
@@ -458,7 +458,9 @@ export function WeeklyTimesheet({
     }
   };
 
-  const handleExportSelected = async (format: "excel" | "pdf" | "json") => {
+  const handleExportSelected = async (
+    exportFormat: "excel" | "pdf" | "json"
+  ) => {
     // Get entries for selected rows
     const selectedEntries = entries.filter((entry) => {
       const rowKey = entry.personnel_id
@@ -487,7 +489,7 @@ export function WeeklyTimesheet({
         "MMM-d-yyyy"
       )}`;
 
-      switch (format) {
+      switch (exportFormat) {
         case "excel":
           await exportTimeEntriesToExcel(
             exportData,
