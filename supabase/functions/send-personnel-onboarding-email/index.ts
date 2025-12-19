@@ -61,7 +61,7 @@ const handler = async (req: Request): Promise<Response> => {
 
     // Send the email
     const emailResponse = await resend.emails.send({
-      from: "Fairfield RG <noreply@fairfieldrg.com>",
+      from: "Fairfield <admin@fairfieldrg.com>",
       to: [email],
       subject: "Welcome! Complete Your Onboarding Documentation",
       html: `
