@@ -350,10 +350,17 @@ export function FormPreview({ name, description, fields, layout, theme, successM
         "mx-auto",
         isFullWidth ? "max-w-full" : "max-w-xl"
       )}>
-        <Card className={cn(
-          isFullWidth && "border-0 shadow-none bg-transparent",
-          !isFullWidth && (theme.backgroundImage || theme.backgroundGradient) && "bg-background/90 backdrop-blur-lg shadow-xl border-white/20"
-        )}>
+        <Card 
+          className={cn(
+            isFullWidth && "border-0 shadow-none bg-transparent",
+            !isFullWidth && (theme.backgroundImage || theme.backgroundGradient) && "backdrop-blur-lg shadow-xl border-white/20"
+          )}
+          style={
+            !isFullWidth && (theme.backgroundImage || theme.backgroundGradient)
+              ? { backgroundColor: `rgba(255, 255, 255, ${(theme.cardOpacity ?? 90) / 100})` }
+              : undefined
+          }
+        >
           <CardHeader className={cn(isFullWidth && "px-0")}>
             <CardTitle className="text-lg">
               {name || "Untitled Form"}

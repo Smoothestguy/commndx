@@ -71,6 +71,7 @@ export interface FormTheme {
   buttonTextColor?: string;
   borderRadius?: string;
   cardShadow?: string;
+  cardOpacity?: number; // 0-100, defaults to 90
 }
 
 // Template categories
