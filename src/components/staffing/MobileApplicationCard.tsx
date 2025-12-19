@@ -74,7 +74,7 @@ export function MobileApplicationCard({
     onView(application);
   };
 
-  const profilePic = getProfilePicture(application.answers as Record<string, unknown>, fieldTypeMap);
+  const profilePic = application.applicants?.photo_url || getProfilePicture(application.answers as Record<string, unknown>, fieldTypeMap);
 
   return (
     <Card

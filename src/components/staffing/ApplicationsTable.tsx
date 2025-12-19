@@ -125,8 +125,8 @@ export function ApplicationsTable({
       filterable: true,
       getValue: (app) => `${app.applicants?.first_name || ""} ${app.applicants?.last_name || ""}`,
       render: (app: Application) => {
-        const fieldTypeMap = getFieldTypeMap(app);
-        const profilePic = getProfilePicture(app.answers as Record<string, unknown>, fieldTypeMap);
+          const fieldTypeMap = getFieldTypeMap(app);
+          const profilePic = app.applicants?.photo_url || getProfilePicture(app.answers as Record<string, unknown>, fieldTypeMap);
         return (
           <div className="flex items-center gap-3">
             <Avatar className="h-9 w-9">
