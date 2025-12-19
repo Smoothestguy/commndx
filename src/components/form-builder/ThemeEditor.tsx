@@ -34,7 +34,7 @@ const FONT_OPTIONS = [
 ];
 
 const PRESET_GRADIENTS = [
-  { value: "", label: "None" },
+  { value: "none", label: "None" },
   { value: "linear-gradient(135deg, #667eea 0%, #764ba2 100%)", label: "Purple Gradient" },
   { value: "linear-gradient(135deg, #f093fb 0%, #f5576c 100%)", label: "Pink Gradient" },
   { value: "linear-gradient(135deg, #4facfe 0%, #00f2fe 100%)", label: "Blue Gradient" },
@@ -161,11 +161,11 @@ export function ThemeEditor({ theme, onUpdate }: ThemeEditorProps) {
       <div className="space-y-2">
         <Label className="text-sm font-medium">Background Gradient</Label>
         <Select
-          value={theme.backgroundGradient || ""}
+          value={theme.backgroundGradient || "none"}
           onValueChange={(value) => onUpdate({ 
             ...theme, 
-            backgroundGradient: value,
-            backgroundImage: value ? undefined : theme.backgroundImage
+            backgroundGradient: value === "none" ? "" : value,
+            backgroundImage: value !== "none" ? undefined : theme.backgroundImage
           })}
         >
           <SelectTrigger className="h-9">
