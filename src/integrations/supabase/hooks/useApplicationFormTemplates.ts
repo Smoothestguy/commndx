@@ -15,6 +15,12 @@ export interface ConditionalLogic {
   logicType: "all" | "any";
 }
 
+// Row layout structure for auto-arranging grid
+export interface FormRow {
+  id: string;
+  fieldIds: string[];
+}
+
 // Enhanced form field with all new properties
 export interface FormField {
   id: string;
@@ -24,7 +30,6 @@ export interface FormField {
   placeholder?: string;
   showIcon?: boolean;
   optionLayout?: "vertical" | "grid";
-  width?: "full" | "half" | "third"; // Field width for side-by-side layout
   options?: string[];
   helpText?: string;
   defaultValue?: string;
@@ -71,6 +76,7 @@ export interface ApplicationFormTemplate {
   name: string;
   description: string | null;
   fields: FormField[];
+  layout?: FormRow[]; // Row-based layout structure
   is_active: boolean;
   created_at: string;
   updated_at: string;
