@@ -4,7 +4,7 @@ import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
 import { format } from "date-fns";
-import { MapPin, Calendar, Users, CheckCircle2, Loader2, Mail } from "lucide-react";
+import { MapPin, Calendar, Users, CheckCircle2, Loader2, Mail, AlertTriangle, Navigation } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -13,6 +13,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Label } from "@/components/ui/label";
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import {
   Select,
   SelectContent,
@@ -23,11 +24,12 @@ import {
 import { useJobPostingByToken, useSubmitApplication } from "@/integrations/supabase/hooks/useStaffingApplications";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
-import { FormField as FormFieldType, FormTheme, FormRow, CoreFieldsConfig, DEFAULT_CORE_FIELDS } from "@/integrations/supabase/hooks/useApplicationFormTemplates";
+import { FormField as FormFieldType, FormTheme, FormRow, CoreFieldsConfig, DEFAULT_CORE_FIELDS, FormSettings } from "@/integrations/supabase/hooks/useApplicationFormTemplates";
 import { AddressField, AddressValue } from "@/components/form-builder/AddressField";
 import { FormattedPhoneInput } from "@/components/form-builder/FormattedPhoneInput";
 import { LanguageSelector } from "@/components/form-builder/LanguageSelector";
 import { useFormTranslation } from "@/hooks/useFormTranslation";
+import { useGeolocation } from "@/hooks/useGeolocation";
 import { cn } from "@/lib/utils";
 import { SignaturePad } from "@/components/form-builder/SignaturePad";
 import { FormFileUpload } from "@/components/form-builder/FormFileUpload";
@@ -95,9 +97,14 @@ export default function PublicApplicationForm() {
   const [formTemplateId, setFormTemplateId] = useState<string | undefined>();
   const [uploadingFields, setUploadingFields] = useState<Set<string>>(new Set());
   const [coreFields, setCoreFields] = useState<CoreFieldsConfig>(DEFAULT_CORE_FIELDS);
+  const [formSettings, setFormSettings] = useState<FormSettings>({});
+  const [photoError, setPhotoError] = useState<string | null>(null);
 
   const { data: posting, isLoading, error } = useJobPostingByToken(token || "");
   const submitApplication = useSubmitApplication();
+  
+  // Geolocation hook - start capturing on mount
+  const { geoData, isRequesting: isRequestingLocation, requestLocation, hasLocation } = useGeolocation(true);
 
   // Translation hook
   const {
@@ -126,10 +133,13 @@ export default function PublicApplicationForm() {
           .single();
         
         if (!error && template) {
-          // Parse core fields from settings
-          const settings = template.settings as unknown as { coreFields?: CoreFieldsConfig } | null;
-          if (settings?.coreFields) {
-            setCoreFields(settings.coreFields);
+          // Parse settings including core fields and requirements
+          const settings = template.settings as unknown as FormSettings | null;
+          if (settings) {
+            setFormSettings(settings);
+            if (settings.coreFields) {
+              setCoreFields(settings.coreFields);
+            }
           }
           if (template.fields) {
             const fields = template.fields as unknown as FormFieldType[];
@@ -250,11 +260,29 @@ export default function PublicApplicationForm() {
   const onSubmit = async (data: z.infer<typeof baseSchema>) => {
     if (!posting) return;
 
+    // Clear previous errors
+    setPhotoError(null);
+
+    // Validate required profile photo
+    const requiresPhoto = coreFields.profilePicture && (formSettings.requireProfilePhoto !== false);
+    if (requiresPhoto && !data.photo_url) {
+      setPhotoError("Profile photo is required");
+      toast.error("Please upload a profile photo to submit your application");
+      return;
+    }
+
+    // Validate required location
+    if (formSettings.requireLocation && !hasLocation) {
+      toast.error("Location access is required to submit this form. Please enable location services and try again.");
+      return;
+    }
+
     // Validate custom fields
     if (!validateCustomFields()) return;
 
     console.log("[Form] Submitting application with data:", data);
     console.log("[Form] Custom answers:", customAnswers);
+    console.log("[Form] Geo data:", geoData);
 
     try {
       await submitApplication.mutateAsync({
@@ -268,6 +296,9 @@ export default function PublicApplicationForm() {
           photo_url: data.photo_url,
         },
         answers: customAnswers,
+        geo: geoData,
+        clientSubmittedAt: new Date().toISOString(),
+        userAgent: navigator.userAgent,
       });
       console.log("[Form] Application submitted successfully");
       toast.success("Thank you for applying! We appreciate your interest and will review your application soon.");
@@ -710,21 +741,56 @@ export default function PublicApplicationForm() {
           <CardContent>
             <Form {...form}>
               <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
+                {/* Location requirement notice */}
+                {formSettings.requireLocation && !hasLocation && (
+                  <Alert variant="default" className="border-blue-200 bg-blue-50 dark:bg-blue-950/30 dark:border-blue-800">
+                    <Navigation className="h-4 w-4 text-blue-600" />
+                    <AlertTitle className="text-blue-900 dark:text-blue-100">Location Required</AlertTitle>
+                    <AlertDescription className="text-blue-700 dark:text-blue-300">
+                      {isRequestingLocation 
+                        ? "Requesting your location..."
+                        : geoData.error 
+                          ? `${geoData.error}. Please enable location access to submit this form.`
+                          : "Please allow location access when prompted to submit this form."
+                      }
+                      {geoData.error && (
+                        <Button 
+                          type="button"
+                          variant="link" 
+                          className="p-0 h-auto text-blue-600 dark:text-blue-400 ml-2"
+                          onClick={requestLocation}
+                        >
+                          Try again
+                        </Button>
+                      )}
+                    </AlertDescription>
+                  </Alert>
+                )}
+                
                 {/* Profile Picture - Core Field */}
                 {coreFields.profilePicture && (
                   <div className="space-y-2">
                     <FormFileUpload
                       value={form.watch("photo_url") || null}
-                      onChange={(url) => form.setValue("photo_url", url || "")}
+                      onChange={(url) => {
+                        form.setValue("photo_url", url || "");
+                        setPhotoError(null);
+                      }}
                       onUploadStateChange={(isUploading) => handleFileUploadStateChange("core_photo", isUploading)}
-                      label={getCoreLabel('profilePicture')}
-                      required={false}
-                      helpText="Upload a clear photo of yourself"
-                      acceptedFileTypes={["image/*"]}
-                      maxFileSize={5}
+                      label={`${getCoreLabel('profilePicture')}${formSettings.requireProfilePhoto !== false ? ' *' : ''}`}
+                      required={formSettings.requireProfilePhoto !== false}
+                      helpText={formSettings.requireProfilePhoto !== false 
+                        ? "A clear photo is required for your application (max 10MB)" 
+                        : "Upload a clear photo of yourself (optional)"
+                      }
+                      acceptedFileTypes={["image/jpeg", "image/jpg", "image/png", "image/heic"]}
+                      maxFileSize={10}
                       storageBucket="application-files"
                       storagePath="profile-photos"
                     />
+                    {photoError && (
+                      <p className="text-sm font-medium text-destructive">{photoError}</p>
+                    )}
                   </div>
                 )}
 

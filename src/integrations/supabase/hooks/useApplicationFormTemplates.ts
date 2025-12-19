@@ -114,6 +114,9 @@ export interface FormSettings {
   showInlineErrors?: boolean;
   showErrorSummary?: boolean;
   coreFields?: CoreFieldsConfig;
+  // New settings for photo and location requirements
+  requireProfilePhoto?: boolean;
+  requireLocation?: boolean;
 }
 
 export interface ApplicationFormTemplate {

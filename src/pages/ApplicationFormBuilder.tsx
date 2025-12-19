@@ -391,6 +391,8 @@ export default function ApplicationFormBuilder() {
               <CoreFieldsCard
                 coreFields={coreFields}
                 onChange={setCoreFields}
+                settings={settings}
+                onSettingsChange={setSettings}
               />
 
               <Card>
