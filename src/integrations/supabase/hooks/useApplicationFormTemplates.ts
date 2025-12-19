@@ -21,6 +21,16 @@ export interface FormRow {
   fieldIds: string[];
 }
 
+// Field validation rules
+export interface FieldValidation {
+  minLength?: number;
+  maxLength?: number;
+  min?: number;
+  max?: number;
+  pattern?: string;
+  customErrorMessage?: string;
+}
+
 // Enhanced form field with all new properties
 export interface FormField {
   id: string;
@@ -38,9 +48,14 @@ export interface FormField {
   acceptedFileTypes?: string[];
   maxFileSize?: number; // in MB
   // Validation
-  minLength?: number;
-  maxLength?: number;
-  pattern?: string;
+  validation?: FieldValidation;
+  // Visibility
+  defaultVisible?: boolean;
+  // URL pre-fill
+  prefillParam?: string;
+  // Section-specific
+  sectionDescription?: string;
+  isPageBreak?: boolean;
 }
 
 // Form theme configuration
@@ -71,6 +86,16 @@ export const TEMPLATE_CATEGORIES = [
 
 export type TemplateCategory = typeof TEMPLATE_CATEGORIES[number];
 
+export interface FormSettings {
+  redirectUrl?: string;
+  allowMultipleSubmissions?: boolean;
+  isPublic?: boolean;
+  enableCaptcha?: boolean;
+  rateLimitPerHour?: number;
+  showInlineErrors?: boolean;
+  showErrorSummary?: boolean;
+}
+
 export interface ApplicationFormTemplate {
   id: string;
   name: string;
@@ -84,6 +109,11 @@ export interface ApplicationFormTemplate {
   category?: TemplateCategory | null;
   success_message?: string;
   version?: number;
+  // New fields for draft/publish workflow
+  is_draft?: boolean;
+  published_at?: string | null;
+  published_version?: number | null;
+  settings?: FormSettings;
 }
 
 export const useApplicationFormTemplates = () => {
@@ -99,8 +129,10 @@ export const useApplicationFormTemplates = () => {
       return data.map(t => ({
         ...t,
         fields: (t.fields || []) as unknown as FormField[],
-        theme: (t.theme || {}) as FormTheme,
-      })) as ApplicationFormTemplate[];
+        layout: (t.layout || []) as unknown as FormRow[],
+        theme: (t.theme || {}) as unknown as FormTheme,
+        settings: (t.settings || {}) as unknown as FormSettings,
+      })) as unknown as ApplicationFormTemplate[];
     },
   });
 };
@@ -119,8 +151,10 @@ export const useApplicationFormTemplate = (id: string) => {
       return {
         ...data,
         fields: (data.fields || []) as unknown as FormField[],
-        theme: (data.theme || {}) as FormTheme,
-      } as ApplicationFormTemplate;
+        layout: (data.layout || []) as unknown as FormRow[],
+        theme: (data.theme || {}) as unknown as FormTheme,
+        settings: (data.settings || {}) as unknown as FormSettings,
+      } as unknown as ApplicationFormTemplate;
     },
     enabled: !!id,
   });
@@ -134,9 +168,11 @@ export const useCreateApplicationFormTemplate = () => {
       name: string;
       description?: string;
       fields: FormField[];
+      layout?: FormRow[];
       theme?: FormTheme;
       category?: TemplateCategory | null;
       success_message?: string;
+      settings?: FormSettings;
     }) => {
       const { data, error } = await supabase
         .from("application_form_templates")
@@ -144,10 +180,13 @@ export const useCreateApplicationFormTemplate = () => {
           name: template.name,
           description: template.description || null,
           fields: template.fields as any,
+          layout: (template.layout || []) as any,
           theme: (template.theme || {}) as any,
           category: template.category || null,
           success_message: template.success_message || "Thank you for your submission!",
+          settings: (template.settings || {}) as any,
           is_active: true,
+          is_draft: true,
           version: 1,
         })
         .select()
@@ -174,10 +213,13 @@ export const useUpdateApplicationFormTemplate = () => {
       name?: string;
       description?: string;
       fields?: FormField[];
+      layout?: FormRow[];
       is_active?: boolean;
       theme?: FormTheme;
       category?: TemplateCategory | null;
       success_message?: string;
+      settings?: FormSettings;
+      is_draft?: boolean;
     }) => {
       // First get current version
       const { data: current } = await supabase
@@ -190,10 +232,13 @@ export const useUpdateApplicationFormTemplate = () => {
       if (updates.name !== undefined) updateData.name = updates.name;
       if (updates.description !== undefined) updateData.description = updates.description;
       if (updates.fields !== undefined) updateData.fields = updates.fields;
+      if (updates.layout !== undefined) updateData.layout = updates.layout;
       if (updates.is_active !== undefined) updateData.is_active = updates.is_active;
       if (updates.theme !== undefined) updateData.theme = updates.theme;
       if (updates.category !== undefined) updateData.category = updates.category;
       if (updates.success_message !== undefined) updateData.success_message = updates.success_message;
+      if (updates.settings !== undefined) updateData.settings = updates.settings;
+      if (updates.is_draft !== undefined) updateData.is_draft = updates.is_draft;
       
       // Increment version if fields are being updated
       if (updates.fields !== undefined) {
@@ -203,6 +248,40 @@ export const useUpdateApplicationFormTemplate = () => {
       const { data, error } = await supabase
         .from("application_form_templates")
         .update(updateData)
+        .eq("id", id)
+        .select()
+        .single();
+
+      if (error) throw error;
+      return data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["application-form-templates"] });
+    },
+  });
+};
+
+export const usePublishApplicationFormTemplate = () => {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async (id: string) => {
+      // Get current template data
+      const { data: current, error: fetchError } = await supabase
+        .from("application_form_templates")
+        .select("version")
+        .eq("id", id)
+        .single();
+
+      if (fetchError) throw fetchError;
+
+      const { data, error } = await supabase
+        .from("application_form_templates")
+        .update({
+          is_draft: false,
+          published_at: new Date().toISOString(),
+          published_version: current?.version || 1,
+        })
         .eq("id", id)
         .select()
         .single();
@@ -237,10 +316,13 @@ export const useCloneApplicationFormTemplate = () => {
           name: `${original.name} (Copy)`,
           description: original.description,
           fields: original.fields,
+          layout: original.layout,
           theme: original.theme,
           category: original.category,
           success_message: original.success_message,
+          settings: original.settings,
           is_active: false, // Start as inactive
+          is_draft: true,
           version: 1,
         })
         .select()

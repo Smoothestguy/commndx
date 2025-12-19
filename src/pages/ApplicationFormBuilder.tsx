@@ -22,6 +22,9 @@ import {
   Loader2,
   User,
   MapPin,
+  Settings,
+  Send,
+  FileCheck,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -29,6 +32,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Badge } from "@/components/ui/badge";
 import {
   Select,
   SelectContent,
@@ -40,15 +44,18 @@ import {
   useApplicationFormTemplate,
   useCreateApplicationFormTemplate,
   useUpdateApplicationFormTemplate,
+  usePublishApplicationFormTemplate,
   FormField,
   FormRow,
   FormTheme,
+  FormSettings,
   TEMPLATE_CATEGORIES,
   TemplateCategory,
 } from "@/integrations/supabase/hooks/useApplicationFormTemplates";
 import { RowBasedFieldGrid } from "@/components/form-builder/RowBasedFieldGrid";
 import { ThemeEditor } from "@/components/form-builder/ThemeEditor";
 import { FormPreview } from "@/components/form-builder/FormPreview";
+import { FormSettingsPanel } from "@/components/form-builder/FormSettingsPanel";
 import { toast } from "sonner";
 
 const FIELD_TYPES = [
@@ -78,6 +85,7 @@ export default function ApplicationFormBuilder() {
   const { data: existingTemplate, isLoading } = useApplicationFormTemplate(id || "");
   const createTemplate = useCreateApplicationFormTemplate();
   const updateTemplate = useUpdateApplicationFormTemplate();
+  const publishTemplate = usePublishApplicationFormTemplate();
 
   const [activeTab, setActiveTab] = useState("fields");
   const [name, setName] = useState("");
@@ -87,6 +95,9 @@ export default function ApplicationFormBuilder() {
   const [fields, setFields] = useState<FormField[]>([]);
   const [layout, setLayout] = useState<FormRow[]>([]);
   const [theme, setTheme] = useState<FormTheme>({});
+  const [settings, setSettings] = useState<FormSettings>({});
+  const [isDraft, setIsDraft] = useState(true);
+  const [publishedAt, setPublishedAt] = useState<string | null>(null);
   const [initialized, setInitialized] = useState(false);
 
   // Initialize form with existing data
@@ -98,6 +109,9 @@ export default function ApplicationFormBuilder() {
       setSuccessMessage(existingTemplate.success_message || "Thank you for your submission!");
       setFields(existingTemplate.fields);
       setTheme(existingTemplate.theme || {});
+      setSettings(existingTemplate.settings || {});
+      setIsDraft(existingTemplate.is_draft !== false);
+      setPublishedAt(existingTemplate.published_at || null);
       
       // Initialize layout from existing or generate from fields
       if (existingTemplate.layout && existingTemplate.layout.length > 0) {
@@ -122,6 +136,7 @@ export default function ApplicationFormBuilder() {
       label: "",
       required: false,
       placeholder: "",
+      defaultVisible: true,
       options: ["dropdown", "radio", "multiselect"].includes(type) 
         ? ["Option 1", "Option 2"] 
         : undefined,
@@ -178,7 +193,7 @@ export default function ApplicationFormBuilder() {
     }));
   };
 
-  const handleSave = async () => {
+  const handleSave = async (asDraft = true) => {
     if (!name.trim()) {
       toast.error("Please enter a form name");
       return;
@@ -198,25 +213,48 @@ export default function ApplicationFormBuilder() {
           name,
           description,
           fields,
+          layout,
           theme,
           category,
           success_message: successMessage,
+          settings,
+          is_draft: asDraft,
         });
-        toast.success("Form template updated");
+        setIsDraft(asDraft);
+        toast.success(asDraft ? "Draft saved" : "Form saved");
       } else {
-        await createTemplate.mutateAsync({
+        const result = await createTemplate.mutateAsync({
           name,
           description,
           fields,
+          layout,
           theme,
           category,
           success_message: successMessage,
+          settings,
         });
         toast.success("Form template created");
+        navigate(`/staffing/form-templates/${result.id}`);
+        return;
       }
-      navigate("/staffing/form-templates");
     } catch (error) {
       toast.error("Failed to save form template");
+    }
+  };
+
+  const handlePublish = async () => {
+    if (!id) return;
+    
+    // First save the current state
+    await handleSave(false);
+    
+    try {
+      await publishTemplate.mutateAsync(id);
+      setIsDraft(false);
+      setPublishedAt(new Date().toISOString());
+      toast.success("Form published successfully!");
+    } catch (error) {
+      toast.error("Failed to publish form");
     }
   };
 
@@ -236,21 +274,46 @@ export default function ApplicationFormBuilder() {
           <ArrowLeft className="h-4 w-4" />
         </Button>
         <div className="flex-1">
-          <h1 className="text-2xl font-bold text-foreground">
-            {isEditing ? "Edit Form Template" : "Create Form Template"}
-          </h1>
+          <div className="flex items-center gap-2">
+            <h1 className="text-2xl font-bold text-foreground">
+              {isEditing ? "Edit Form Template" : "Create Form Template"}
+            </h1>
+            {isEditing && (
+              <Badge variant={isDraft ? "secondary" : "default"}>
+                {isDraft ? "Draft" : "Published"}
+              </Badge>
+            )}
+          </div>
           <p className="text-muted-foreground">
-            Build custom application forms with drag-and-drop
+            {publishedAt && !isDraft 
+              ? `Last published: ${new Date(publishedAt).toLocaleDateString()}`
+              : "Build custom application forms with drag-and-drop"
+            }
           </p>
         </div>
-        <Button onClick={handleSave} disabled={createTemplate.isPending || updateTemplate.isPending}>
-          <Save className="h-4 w-4 mr-2" />
-          {createTemplate.isPending || updateTemplate.isPending ? "Saving..." : "Save Template"}
-        </Button>
+        <div className="flex items-center gap-2">
+          <Button 
+            variant="outline" 
+            onClick={() => handleSave(true)} 
+            disabled={createTemplate.isPending || updateTemplate.isPending}
+          >
+            <Save className="h-4 w-4 mr-2" />
+            Save Draft
+          </Button>
+          {isEditing && (
+            <Button 
+              onClick={handlePublish} 
+              disabled={createTemplate.isPending || updateTemplate.isPending || publishTemplate.isPending}
+            >
+              <Send className="h-4 w-4 mr-2" />
+              {publishTemplate.isPending ? "Publishing..." : "Publish"}
+            </Button>
+          )}
+        </div>
       </div>
 
       <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-4">
-        <TabsList className="grid w-full max-w-md grid-cols-3">
+        <TabsList className="grid w-full max-w-lg grid-cols-4">
           <TabsTrigger value="fields" className="gap-2">
             <FileText className="h-4 w-4" />
             Fields
@@ -258,6 +321,10 @@ export default function ApplicationFormBuilder() {
           <TabsTrigger value="style" className="gap-2">
             <Paintbrush className="h-4 w-4" />
             Style
+          </TabsTrigger>
+          <TabsTrigger value="settings" className="gap-2">
+            <Settings className="h-4 w-4" />
+            Settings
           </TabsTrigger>
           <TabsTrigger value="preview" className="gap-2">
             <Eye className="h-4 w-4" />
@@ -309,18 +376,6 @@ export default function ApplicationFormBuilder() {
                       onChange={(e) => setDescription(e.target.value)}
                       placeholder="Brief description of this form..."
                     />
-                  </div>
-                  <div>
-                    <Label>Success Message</Label>
-                    <Textarea
-                      value={successMessage}
-                      onChange={(e) => setSuccessMessage(e.target.value)}
-                      placeholder="Thank you for your submission!"
-                      className="min-h-[60px]"
-                    />
-                    <p className="text-xs text-muted-foreground mt-1">
-                      Shown after successful form submission
-                    </p>
                   </div>
                 </CardContent>
               </Card>
@@ -401,6 +456,57 @@ export default function ApplicationFormBuilder() {
                   theme={theme}
                   successMessage={successMessage}
                 />
+              </CardContent>
+            </Card>
+          </div>
+        </TabsContent>
+
+        {/* Settings Tab */}
+        <TabsContent value="settings" className="space-y-4">
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            <FormSettingsPanel
+              successMessage={successMessage}
+              onSuccessMessageChange={setSuccessMessage}
+              settings={settings}
+              onSettingsChange={setSettings}
+            />
+
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <FileCheck className="h-5 w-5" />
+                  Version Info
+                </CardTitle>
+                <CardDescription>
+                  Form versioning and publishing status
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div className="p-4 bg-muted/50 rounded-lg space-y-3">
+                  <div className="flex justify-between text-sm">
+                    <span className="text-muted-foreground">Status:</span>
+                    <Badge variant={isDraft ? "secondary" : "default"}>
+                      {isDraft ? "Draft" : "Published"}
+                    </Badge>
+                  </div>
+                  <div className="flex justify-between text-sm">
+                    <span className="text-muted-foreground">Version:</span>
+                    <span>{existingTemplate?.version || 1}</span>
+                  </div>
+                  {publishedAt && (
+                    <div className="flex justify-between text-sm">
+                      <span className="text-muted-foreground">Published:</span>
+                      <span>{new Date(publishedAt).toLocaleString()}</span>
+                    </div>
+                  )}
+                </div>
+
+                <div className="p-3 bg-blue-500/10 border border-blue-500/20 rounded-lg">
+                  <p className="text-sm text-blue-700 dark:text-blue-400">
+                    <strong>Safe editing:</strong> Changes to drafts don't affect live forms. 
+                    Submissions are tied to the version they were submitted on.
+                  </p>
+                </div>
               </CardContent>
             </Card>
           </div>
