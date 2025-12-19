@@ -564,14 +564,14 @@ export default function StaffingApplications() {
             <div>
               <Label>Application Form Template</Label>
               <Select
-                value={editingPosting?.formTemplateId || ""}
-                onValueChange={(v) => setEditingPosting(prev => prev ? { ...prev, formTemplateId: v || null } : null)}
+                value={editingPosting?.formTemplateId || "none"}
+                onValueChange={(v) => setEditingPosting(prev => prev ? { ...prev, formTemplateId: v === "none" ? null : v } : null)}
               >
                 <SelectTrigger>
                   <SelectValue placeholder="No custom form (basic fields only)" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="">No custom form (basic fields only)</SelectItem>
+                  <SelectItem value="none">No custom form (basic fields only)</SelectItem>
                   {formTemplates?.filter(t => t.is_active).map((template) => (
                     <SelectItem key={template.id} value={template.id}>
                       {template.name} ({template.fields.length} fields)
@@ -661,14 +661,14 @@ export default function StaffingApplications() {
             <div>
               <Label>Application Form Template</Label>
               <Select
-                value={newTaskOrder.form_template_id}
-                onValueChange={(v) => setNewTaskOrder({ ...newTaskOrder, form_template_id: v })}
+                value={newTaskOrder.form_template_id || "none"}
+                onValueChange={(v) => setNewTaskOrder({ ...newTaskOrder, form_template_id: v === "none" ? "" : v })}
               >
                 <SelectTrigger>
                   <SelectValue placeholder="No custom form (basic fields only)" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="">No custom form (basic fields only)</SelectItem>
+                  <SelectItem value="none">No custom form (basic fields only)</SelectItem>
                   {formTemplates?.filter(t => t.is_active).map((template) => (
                     <SelectItem key={template.id} value={template.id}>
                       {template.name} ({template.fields.length} fields)
