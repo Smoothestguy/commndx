@@ -31,6 +31,7 @@ interface FieldSettingsPanelProps {
   onAddOption: () => void;
   onRemoveOption: (optionIndex: number) => void;
   fieldTypes: readonly { value: string; label: string; icon: any }[];
+  dragHandleProps?: Record<string, any>;
 }
 
 export function FieldSettingsPanel({
@@ -43,11 +44,12 @@ export function FieldSettingsPanel({
   onAddOption,
   onRemoveOption,
   fieldTypes,
+  dragHandleProps,
 }: FieldSettingsPanelProps) {
   const [isExpanded, setIsExpanded] = useState(false);
 
   const hasOptions = field.type === "dropdown" || field.type === "radio" || field.type === "multiselect";
-  const hasPlaceholder = ["text", "textarea", "number", "email", "phone"].includes(field.type);
+  const hasPlaceholder = ["text", "textarea", "number", "email", "phone", "firstname", "lastname"].includes(field.type);
   const isNonInput = field.type === "section";
 
   const getFieldTypeLabel = (type: string) => {
@@ -61,7 +63,10 @@ export function FieldSettingsPanel({
     )}>
       {/* Header - Always visible */}
       <div className="flex items-center gap-2 p-3">
-        <div className="cursor-grab hover:bg-muted rounded p-1">
+        <div 
+          className="cursor-grab hover:bg-muted rounded p-1 touch-none"
+          {...dragHandleProps}
+        >
           <GripVertical className="h-4 w-4 text-muted-foreground" />
         </div>
         
