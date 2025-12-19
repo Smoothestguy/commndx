@@ -355,3 +355,69 @@ export const usePersonnelStats = () => {
     },
   });
 };
+
+export const useResendOnboardingEmail = () => {
+  return useMutation({
+    mutationFn: async ({
+      personnelId,
+      email,
+      firstName,
+      lastName,
+    }: {
+      personnelId: string;
+      email: string;
+      firstName: string;
+      lastName: string;
+    }) => {
+      const { data, error } = await supabase.functions.invoke(
+        "send-personnel-onboarding-email",
+        {
+          body: { personnelId, email, firstName, lastName },
+        }
+      );
+
+      if (error) throw error;
+      return data;
+    },
+    onSuccess: () => {
+      toast.success("Onboarding email sent successfully!");
+    },
+    onError: (error: Error) => {
+      toast.error(`Failed to send email: ${error.message}`);
+    },
+  });
+};
+
+export const useHardDeletePersonnel = () => {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async (id: string) => {
+      // Delete related records first
+      await supabase.from("emergency_contacts").delete().eq("personnel_id", id);
+      await supabase.from("personnel_certifications").delete().eq("personnel_id", id);
+      await supabase.from("personnel_languages").delete().eq("personnel_id", id);
+      await supabase.from("personnel_capabilities").delete().eq("personnel_id", id);
+      await supabase.from("personnel_onboarding_tokens").delete().eq("personnel_id", id);
+      
+      // Clear the link in personnel_registrations
+      await supabase
+        .from("personnel_registrations")
+        .update({ personnel_id: null })
+        .eq("personnel_id", id);
+
+      // Finally delete personnel
+      const { error } = await supabase.from("personnel").delete().eq("id", id);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["personnel"] });
+      queryClient.invalidateQueries({ queryKey: ["personnel-stats"] });
+      queryClient.invalidateQueries({ queryKey: ["personnel-registrations"] });
+      toast.success("Personnel permanently deleted");
+    },
+    onError: (error: Error) => {
+      toast.error(`Failed to delete: ${error.message}`);
+    },
+  });
+};

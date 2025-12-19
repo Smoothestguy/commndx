@@ -54,6 +54,7 @@ export interface PersonnelRegistration {
   rejection_reason: string | null;
   reviewed_by: string | null;
   reviewed_at: string | null;
+  personnel_id: string | null;
   created_at: string;
   updated_at: string;
 }
