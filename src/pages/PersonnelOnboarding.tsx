@@ -164,11 +164,12 @@ const PersonnelOnboarding = () => {
       case 2:
         return true; // Address is optional
       case 3: {
-        // Required: SSN (9 digits), citizenship status
+        // Required: SSN (9 digits), citizenship status, SSN card
         const hasValidSSN = formData.ssn_full?.length === 9;
         const hasCitizenship = !!formData.citizenship_status;
+        const hasSSNCard = !!getDocumentByType("ssn_card");
 
-        if (!hasValidSSN || !hasCitizenship) return false;
+        if (!hasValidSSN || !hasCitizenship || !hasSSNCard) return false;
 
         // Citizenship-specific requirements
         if (formData.citizenship_status === "us_citizen") {
@@ -541,8 +542,9 @@ const PersonnelOnboarding = () => {
 
                   <CategoryDocumentUpload
                     documentType="ssn_card"
-                    label="Social Security Card"
-                    helperText="Upload a clear image of your Social Security card (optional)"
+                    label="Social Security Card *"
+                    helperText="Upload a clear image of your Social Security card"
+                    required
                     existingDocument={getDocumentByType("ssn_card")}
                     onUpload={handleDocumentUpload}
                     onRemove={() => handleDocumentRemove("ssn_card")}
