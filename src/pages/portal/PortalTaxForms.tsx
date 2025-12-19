@@ -352,11 +352,16 @@ export default function PortalTaxForms() {
             </CardContent>
           </Card>
 
-          {w9Form.status !== "verified" && (
+          <div className="flex items-center gap-4">
             <Button onClick={() => setIsEditing(true)} variant="outline">
               Edit W-9 Form
             </Button>
-          )}
+            {w9Form.status === "verified" && (
+              <p className="text-sm text-muted-foreground">
+                Note: Editing will require re-verification by an administrator.
+              </p>
+            )}
+          </div>
         </div>
       </PortalLayout>
     );
