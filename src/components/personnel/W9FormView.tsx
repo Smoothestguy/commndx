@@ -27,15 +27,19 @@ import {
   Clock, 
   AlertCircle,
   ShieldCheck,
-  ShieldX
+  ShieldX,
+  Download
 } from "lucide-react";
+import { downloadFormW9 } from "@/lib/generateW9";
+import { toast } from "sonner";
 
 interface W9FormViewProps {
   personnelId: string;
   personnelSsnLastFour?: string | null;
+  personnelSsnFull?: string | null;
 }
 
-export function W9FormView({ personnelId, personnelSsnLastFour }: W9FormViewProps) {
+export function W9FormView({ personnelId, personnelSsnLastFour, personnelSsnFull }: W9FormViewProps) {
   const { data: w9Form, isLoading } = usePersonnelW9Form(personnelId);
   const verifyW9 = useVerifyW9Form();
   const [rejectDialogOpen, setRejectDialogOpen] = useState(false);
@@ -113,6 +117,21 @@ export function W9FormView({ personnelId, personnelSsnLastFour }: W9FormViewProp
     );
   }
 
+  const handleDownloadW9 = () => {
+    if (!w9Form) return;
+    try {
+      downloadFormW9({
+        w9Form,
+        ssnLastFour: personnelSsnLastFour,
+        ssnFull: personnelSsnFull,
+      });
+      toast.success("W-9 PDF downloaded successfully");
+    } catch (error) {
+      console.error("Error generating W-9 PDF:", error);
+      toast.error("Failed to generate W-9 PDF");
+    }
+  };
+
   return (
     <>
       <Card>
@@ -125,7 +144,18 @@ export function W9FormView({ personnelId, personnelSsnLastFour }: W9FormViewProp
                 <CardDescription>Request for Taxpayer Identification Number and Certification</CardDescription>
               </div>
             </div>
-            {getStatusBadge(w9Form.status)}
+            <div className="flex items-center gap-2">
+              <Button 
+                variant="outline" 
+                size="sm" 
+                onClick={handleDownloadW9}
+                className="gap-1"
+              >
+                <Download className="h-4 w-4" />
+                Download PDF
+              </Button>
+              {getStatusBadge(w9Form.status)}
+            </div>
           </div>
         </CardHeader>
         <CardContent className="space-y-6">

@@ -673,6 +673,7 @@ const PersonnelDetail = () => {
             <W9FormView 
               personnelId={personnel.id} 
               personnelSsnLastFour={personnel.ssn_last_four}
+              personnelSsnFull={personnel.ssn_full}
             />
             
             {w9Form && (
