@@ -5636,6 +5636,27 @@ export type Database = {
         Args: { _invitation_id: string; _user_id: string }
         Returns: Json
       }
+      complete_personnel_onboarding: {
+        Args: {
+          p_address?: string
+          p_citizenship_status?: string
+          p_city?: string
+          p_date_of_birth?: string
+          p_email: string
+          p_emergency_contacts?: Json
+          p_first_name: string
+          p_immigration_status?: string
+          p_last_name: string
+          p_personnel_id: string
+          p_phone?: string
+          p_photo_url?: string
+          p_ssn_full?: string
+          p_state?: string
+          p_token: string
+          p_zip?: string
+        }
+        Returns: Json
+      }
       create_personnel_vendor: {
         Args: { p_personnel_id: string }
         Returns: string

@@ -180,84 +180,41 @@ export function useCompleteOnboarding() {
     }) => {
       console.log("[Onboarding] Starting onboarding completion for personnel:", personnelId);
 
-      // 1. Update personnel record with all the new data
-      const { error: personnelError } = await supabase
-        .from("personnel")
-        .update({
-          first_name: formData.first_name,
-          last_name: formData.last_name,
-          email: formData.email,
-          phone: formData.phone || null,
-          date_of_birth: formData.date_of_birth || null,
-          photo_url: formData.photo_url || null,
-          address: formData.address || null,
-          city: formData.city || null,
-          state: formData.state || null,
-          zip: formData.zip || null,
-          ssn_full: formData.ssn_full || null,
-          ssn_last_four: formData.ssn_full ? formData.ssn_full.slice(-4) : null,
-          citizenship_status: formData.citizenship_status || null,
-          immigration_status: formData.immigration_status || null,
-          onboarding_status: "completed",
-          onboarding_completed_at: new Date().toISOString(),
-          updated_at: new Date().toISOString(),
-        })
-        .eq("id", personnelId);
+      // Use the security definer function to complete onboarding
+      // This bypasses RLS policies after validating the token
+      const { data, error } = await supabase.rpc("complete_personnel_onboarding", {
+        p_token: token,
+        p_personnel_id: personnelId,
+        p_first_name: formData.first_name,
+        p_last_name: formData.last_name,
+        p_email: formData.email,
+        p_phone: formData.phone || null,
+        p_date_of_birth: formData.date_of_birth || null,
+        p_photo_url: formData.photo_url || null,
+        p_address: formData.address || null,
+        p_city: formData.city || null,
+        p_state: formData.state || null,
+        p_zip: formData.zip || null,
+        p_ssn_full: formData.ssn_full || null,
+        p_citizenship_status: formData.citizenship_status || null,
+        p_immigration_status: formData.immigration_status || null,
+        p_emergency_contacts: JSON.parse(JSON.stringify(formData.emergency_contacts)),
+      });
 
-      if (personnelError) {
-        console.error("[Onboarding] Error updating personnel:", personnelError);
-        throw personnelError;
+      if (error) {
+        console.error("[Onboarding] RPC error:", error);
+        throw error;
       }
 
-      console.log("[Onboarding] Personnel record updated successfully");
+      const result = data as { success: boolean; error?: string; message?: string };
 
-      // 2. Save emergency contacts
-      if (formData.emergency_contacts.length > 0) {
-        // First delete existing contacts
-        await supabase
-          .from("emergency_contacts")
-          .delete()
-          .eq("personnel_id", personnelId);
-
-        // Then insert new contacts
-        const contactsToInsert = formData.emergency_contacts.map((contact) => ({
-          personnel_id: personnelId,
-          contact_name: contact.name,
-          relationship: contact.relationship,
-          phone: contact.phone,
-          email: contact.email || null,
-          is_primary: contact.is_primary,
-        }));
-
-        const { error: contactsError } = await supabase
-          .from("emergency_contacts")
-          .insert(contactsToInsert);
-
-        if (contactsError) {
-          console.error("[Onboarding] Error saving emergency contacts:", contactsError);
-          throw contactsError;
-        }
-
-        console.log("[Onboarding] Emergency contacts saved successfully");
+      if (!result.success) {
+        console.error("[Onboarding] Function returned error:", result.error);
+        throw new Error(result.error || "Failed to complete onboarding");
       }
 
-      // 3. Documents are already uploaded to storage via the form
-      // The file paths are stored in the documents array but we don't have a personnel_documents table
-      // If needed in the future, we can create that table and save them here
+      console.log("[Onboarding] Completed successfully:", result.message);
       console.log("[Onboarding] Documents uploaded:", formData.documents.length);
-
-      // 4. Mark token as used
-      const { error: tokenError } = await supabase
-        .from("personnel_onboarding_tokens")
-        .update({ used_at: new Date().toISOString() })
-        .eq("token", token);
-
-      if (tokenError) {
-        console.error("[Onboarding] Error marking token as used:", tokenError);
-        throw tokenError;
-      }
-
-      console.log("[Onboarding] Token marked as used");
 
       return { success: true };
     },
