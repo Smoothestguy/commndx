@@ -111,6 +111,7 @@ import PublicApplicationForm from "./pages/PublicApplicationForm";
 import EditApplication from "./pages/EditApplication";
 import ApplicationFormTemplates from "./pages/ApplicationFormTemplates";
 import ApplicationFormBuilder from "./pages/ApplicationFormBuilder";
+import PersonnelOnboarding from "./pages/PersonnelOnboarding";
 const queryClient = new QueryClient();
 
 const App = () => {
@@ -152,6 +153,8 @@ const App = () => {
                   {/* Public Application Form */}
                   <Route path="/apply/:token" element={<PublicApplicationForm />} />
                   <Route path="/apply/edit/:editToken" element={<EditApplication />} />
+                  {/* Onboarding Route */}
+                  <Route path="/onboard/:token" element={<PersonnelOnboarding />} />
                   {/* Public Contractor Routes */}
                   <Route path="/contractor" element={<ContractorPortal />} />
                   <Route
