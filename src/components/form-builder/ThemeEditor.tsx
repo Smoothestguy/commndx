@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Paintbrush, Upload, X } from "lucide-react";
+import { Upload, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -14,6 +14,8 @@ import {
 import { FormTheme } from "@/integrations/supabase/hooks/useApplicationFormTemplates";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
+import { ThemeGallery } from "./ThemeGallery";
+import { Separator } from "@/components/ui/separator";
 
 interface ThemeEditorProps {
   theme: FormTheme;
@@ -90,6 +92,13 @@ export function ThemeEditor({ theme, onUpdate }: ThemeEditorProps) {
 
   return (
     <div className="space-y-6">
+      {/* Theme Gallery */}
+      <ThemeGallery currentTheme={theme} onSelectTheme={onUpdate} />
+      
+      <Separator />
+      
+      <div className="text-sm font-medium">Customize Theme</div>
+
       {/* Layout Style */}
       <div className="space-y-3">
         <Label className="text-sm font-medium">Layout Style</Label>

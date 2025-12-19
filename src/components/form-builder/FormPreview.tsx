@@ -351,7 +351,8 @@ export function FormPreview({ name, description, fields, layout, theme, successM
         isFullWidth ? "max-w-full" : "max-w-xl"
       )}>
         <Card className={cn(
-          isFullWidth && "border-0 shadow-none bg-transparent"
+          isFullWidth && "border-0 shadow-none bg-transparent",
+          !isFullWidth && (theme.backgroundImage || theme.backgroundGradient) && "bg-background/90 backdrop-blur-lg shadow-xl border-white/20"
         )}>
           <CardHeader className={cn(isFullWidth && "px-0")}>
             <CardTitle className="text-lg">
