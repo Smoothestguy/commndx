@@ -2210,6 +2210,8 @@ export type Database = {
           everify_status: Database["public"]["Enums"]["everify_status"] | null
           everify_verified_at: string | null
           first_name: string
+          home_lat: number | null
+          home_lng: number | null
           hourly_rate: number | null
           i9_completed_at: string | null
           id: string
@@ -2253,6 +2255,8 @@ export type Database = {
           everify_status?: Database["public"]["Enums"]["everify_status"] | null
           everify_verified_at?: string | null
           first_name: string
+          home_lat?: number | null
+          home_lng?: number | null
           hourly_rate?: number | null
           i9_completed_at?: string | null
           id?: string
@@ -2296,6 +2300,8 @@ export type Database = {
           everify_status?: Database["public"]["Enums"]["everify_status"] | null
           everify_verified_at?: string | null
           first_name?: string
+          home_lat?: number | null
+          home_lng?: number | null
           hourly_rate?: number | null
           i9_completed_at?: string | null
           id?: string

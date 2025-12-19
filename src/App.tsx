@@ -79,6 +79,7 @@ import ContractorFormBuilder from "./pages/admin/ContractorFormBuilder";
 import VendorPortalPreview from "./pages/admin/VendorPortalPreview";
 import PersonnelPortalPreview from "./pages/admin/PersonnelPortalPreview";
 import PermissionsManagement from "./pages/PermissionsManagement";
+import StaffingMapView from "./pages/StaffingMapView";
 
 // Vendor Portal
 import { VendorProtectedRoute } from "./components/vendor-portal/VendorProtectedRoute";
@@ -370,6 +371,10 @@ const App = () => {
                     <Route
                       path="/staffing/form-templates/:id"
                       element={<ApplicationFormBuilder />}
+                    />
+                    <Route
+                      path="/staffing/map"
+                      element={<StaffingMapView />}
                     />
                   </Route>
 
