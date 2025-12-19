@@ -32,7 +32,7 @@ export default function PortalProjectDetail() {
     
     projectTimeEntries.forEach(entry => {
       const entryDate = parseISO(entry.entry_date);
-      const weekStart = startOfWeek(entryDate, { weekStartsOn: 0 }).toISOString();
+      const weekStart = startOfWeek(entryDate, { weekStartsOn: 1 }).toISOString();
       const entryHours = (entry.regular_hours || 0) + (entry.overtime_hours || 0);
       entriesByWeek.set(weekStart, (entriesByWeek.get(weekStart) || 0) + entryHours);
     });
