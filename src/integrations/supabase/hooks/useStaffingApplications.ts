@@ -559,3 +559,83 @@ export const useUpdateApplicationNotes = () => {
     },
   });
 };
+
+// ============ UPDATE APPLICANT ============
+
+export const useUpdateApplicant = () => {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async ({
+      id,
+      first_name,
+      last_name,
+      email,
+      phone,
+      home_zip,
+    }: {
+      id: string;
+      first_name?: string;
+      last_name?: string;
+      email?: string;
+      phone?: string;
+      home_zip?: string;
+    }) => {
+      const updates: Record<string, unknown> = {};
+      if (first_name !== undefined) updates.first_name = first_name;
+      if (last_name !== undefined) updates.last_name = last_name;
+      if (email !== undefined) updates.email = email;
+      if (phone !== undefined) updates.phone = phone || null;
+      if (home_zip !== undefined) updates.home_zip = home_zip || null;
+
+      const { data, error } = await supabase
+        .from("applicants")
+        .update(updates)
+        .eq("id", id)
+        .select()
+        .single();
+
+      if (error) throw error;
+      return data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["applications"] });
+      queryClient.invalidateQueries({ queryKey: ["applicants"] });
+    },
+  });
+};
+
+// ============ UPDATE APPLICATION ============
+
+export const useUpdateApplication = () => {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async ({
+      id,
+      notes,
+      answers,
+    }: {
+      id: string;
+      notes?: string;
+      answers?: Record<string, unknown>;
+    }) => {
+      const updates: Record<string, unknown> = {};
+      if (notes !== undefined) updates.notes = notes;
+      if (answers !== undefined) updates.answers = answers;
+
+      const { data, error } = await supabase
+        .from("applications")
+        .update(updates)
+        .eq("id", id)
+        .select()
+        .single();
+
+      if (error) throw error;
+      return data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["applications"] });
+    },
+  });
+};

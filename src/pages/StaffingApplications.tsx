@@ -1,10 +1,7 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { format } from "date-fns";
 import { 
   Search, 
-  CheckCircle, 
-  XCircle, 
   Plus,
   Copy,
   ExternalLink,
@@ -50,13 +47,8 @@ import {
 import { useApplicationFormTemplates } from "@/integrations/supabase/hooks/useApplicationFormTemplates";
 import { toast } from "sonner";
 import { ApplicationsTable } from "@/components/staffing/ApplicationsTable";
+import { ApplicationDetailDialog } from "@/components/staffing/ApplicationDetailDialog";
 
-const statusColors: Record<string, string> = {
-  submitted: "bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-300",
-  reviewing: "bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-300",
-  approved: "bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-300",
-  rejected: "bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-300",
-};
 
 export default function StaffingApplications() {
   const navigate = useNavigate();
@@ -70,7 +62,6 @@ export default function StaffingApplications() {
   const [showEditTaskOrderDialog, setShowEditTaskOrderDialog] = useState(false);
   const [editingPosting, setEditingPosting] = useState<{ id: string; formTemplateId: string | null } | null>(null);
   const [editingTaskOrder, setEditingTaskOrder] = useState<TaskOrder | null>(null);
-  const [actionNotes, setActionNotes] = useState("");
   
   // New task order form state
   const [newTaskOrder, setNewTaskOrder] = useState({
@@ -116,37 +107,6 @@ export default function StaffingApplications() {
     return fullName.includes(searchLower) || email.includes(searchLower);
   });
 
-  const handleApprove = async () => {
-    if (!selectedApp) return;
-    try {
-      await approveApplication.mutateAsync({
-        applicationId: selectedApp.id,
-        notes: actionNotes,
-      });
-      toast.success("Application approved! Applicant added to Personnel.");
-      setShowDetailDialog(false);
-      setSelectedApp(null);
-      setActionNotes("");
-    } catch (error) {
-      toast.error("Failed to approve application");
-    }
-  };
-
-  const handleReject = async () => {
-    if (!selectedApp) return;
-    try {
-      await rejectApplication.mutateAsync({
-        applicationId: selectedApp.id,
-        notes: actionNotes,
-      });
-      toast.success("Application rejected");
-      setShowDetailDialog(false);
-      setSelectedApp(null);
-      setActionNotes("");
-    } catch (error) {
-      toast.error("Failed to reject application");
-    }
-  };
 
   const handleCreateTaskOrder = async () => {
     if (!newTaskOrder.project_id || !newTaskOrder.title) {
@@ -391,8 +351,6 @@ export default function StaffingApplications() {
           setShowDetailDialog(true);
         }}
         onApprove={(app) => {
-          setSelectedApp(app);
-          setActionNotes("");
           approveApplication.mutateAsync({
             applicationId: app.id,
             notes: "",
@@ -403,8 +361,6 @@ export default function StaffingApplications() {
           });
         }}
         onReject={(app) => {
-          setSelectedApp(app);
-          setActionNotes("");
           rejectApplication.mutateAsync({
             applicationId: app.id,
             notes: "",
@@ -417,111 +373,11 @@ export default function StaffingApplications() {
       />
 
       {/* Application Detail Dialog */}
-      <Dialog open={showDetailDialog} onOpenChange={setShowDetailDialog}>
-        <DialogContent className="max-w-lg">
-          <DialogHeader>
-            <DialogTitle>Application Details</DialogTitle>
-            <DialogDescription>
-              Review application from {selectedApp?.applicants?.first_name}{" "}
-              {selectedApp?.applicants?.last_name}
-            </DialogDescription>
-          </DialogHeader>
-          {selectedApp && (
-            <div className="space-y-4">
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <Label className="text-muted-foreground">Name</Label>
-                  <p className="font-medium">
-                    {selectedApp.applicants?.first_name} {selectedApp.applicants?.last_name}
-                  </p>
-                </div>
-                <div>
-                  <Label className="text-muted-foreground">Status</Label>
-                  <Badge className={statusColors[selectedApp.status]}>
-                    {selectedApp.status}
-                  </Badge>
-                </div>
-                <div>
-                  <Label className="text-muted-foreground">Email</Label>
-                  <p>{selectedApp.applicants?.email}</p>
-                </div>
-                <div>
-                  <Label className="text-muted-foreground">Phone</Label>
-                  <p>{selectedApp.applicants?.phone || "N/A"}</p>
-                </div>
-                <div>
-                  <Label className="text-muted-foreground">Home ZIP</Label>
-                  <p>{selectedApp.applicants?.home_zip || "N/A"}</p>
-                </div>
-                <div>
-                  <Label className="text-muted-foreground">Submitted</Label>
-                  <p>{format(new Date(selectedApp.created_at), "MMM d, yyyy h:mm a")}</p>
-                </div>
-              </div>
-
-              <div>
-                <Label className="text-muted-foreground">Position</Label>
-                <p className="font-medium">
-                  {selectedApp.job_postings?.project_task_orders?.title}
-                </p>
-                <p className="text-sm text-muted-foreground">
-                  {selectedApp.job_postings?.project_task_orders?.projects?.name}
-                </p>
-              </div>
-
-              {selectedApp.answers && Object.keys(selectedApp.answers).length > 0 && (
-                <div className="space-y-2">
-                  <Label className="text-muted-foreground">Form Responses</Label>
-                  <div className="rounded-lg border p-3 space-y-2 bg-muted/30">
-                    {Object.entries(selectedApp.answers as Record<string, unknown>).map(([key, value]) => (
-                      <div key={key}>
-                        <p className="text-xs font-medium text-muted-foreground capitalize">
-                          {key.replace(/_/g, " ")}
-                        </p>
-                        <p className="text-sm">
-                          {typeof value === "boolean" ? (value ? "Yes" : "No") : String(value || "N/A")}
-                        </p>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              )}
-
-              {selectedApp.status === "submitted" && (
-                <div>
-                  <Label>Admin Notes</Label>
-                  <Textarea
-                    value={actionNotes}
-                    onChange={(e) => setActionNotes(e.target.value)}
-                    placeholder="Add notes about this application..."
-                  />
-                </div>
-              )}
-            </div>
-          )}
-          <DialogFooter>
-            {selectedApp?.status === "submitted" && (
-              <>
-                <Button
-                  variant="outline"
-                  onClick={handleReject}
-                  disabled={rejectApplication.isPending}
-                >
-                  <XCircle className="h-4 w-4 mr-2" />
-                  Reject
-                </Button>
-                <Button
-                  onClick={handleApprove}
-                  disabled={approveApplication.isPending}
-                >
-                  <CheckCircle className="h-4 w-4 mr-2" />
-                  Approve & Add to Personnel
-                </Button>
-              </>
-            )}
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+      <ApplicationDetailDialog
+        open={showDetailDialog}
+        onOpenChange={setShowDetailDialog}
+        application={selectedApp}
+      />
 
       {/* Edit Job Posting Dialog */}
       <Dialog open={showEditPostingDialog} onOpenChange={setShowEditPostingDialog}>
