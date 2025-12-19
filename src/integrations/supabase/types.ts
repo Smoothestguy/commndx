@@ -2188,6 +2188,8 @@ export type Database = {
           last_name: string
           linked_vendor_id: string | null
           notes: string | null
+          onboarding_completed_at: string | null
+          onboarding_status: string | null
           pay_rate: number | null
           personnel_number: string
           phone: string | null
@@ -2229,6 +2231,8 @@ export type Database = {
           last_name: string
           linked_vendor_id?: string | null
           notes?: string | null
+          onboarding_completed_at?: string | null
+          onboarding_status?: string | null
           pay_rate?: number | null
           personnel_number: string
           phone?: string | null
@@ -2270,6 +2274,8 @@ export type Database = {
           last_name?: string
           linked_vendor_id?: string | null
           notes?: string | null
+          onboarding_completed_at?: string | null
+          onboarding_status?: string | null
           pay_rate?: number | null
           personnel_number?: string
           phone?: string | null

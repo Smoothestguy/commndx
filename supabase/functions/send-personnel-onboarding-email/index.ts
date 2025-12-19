@@ -26,6 +26,7 @@ const handler = async (req: Request): Promise<Response> => {
     const { personnelId, email, firstName, lastName }: OnboardingEmailRequest = await req.json();
 
     console.log("[Onboarding Email] Received request for personnel:", personnelId);
+    console.log("[Onboarding Email] Email:", email, "Name:", firstName, lastName);
 
     // Create Supabase client with service role for database operations
     const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
@@ -35,7 +36,7 @@ const handler = async (req: Request): Promise<Response> => {
     // Generate a unique token and store it
     const token = crypto.randomUUID();
     const expiresAt = new Date();
-    expiresAt.setDate(expiresAt.getDate() + 30); // 30 days expiry
+    expiresAt.setDate(expiresAt.getDate() + 7); // 7 days expiry
 
     const { error: tokenError } = await supabase
       .from("personnel_onboarding_tokens")
@@ -50,15 +51,17 @@ const handler = async (req: Request): Promise<Response> => {
       throw tokenError;
     }
 
-    console.log("[Onboarding Email] Token created successfully");
+    console.log("[Onboarding Email] Token created successfully, expires:", expiresAt.toISOString());
 
-    // Build onboarding URL
-    const siteUrl = Deno.env.get("SITE_URL") || "https://your-app.lovable.app";
-    const onboardingUrl = `${siteUrl}/onboard/${token}`;
+    // Build onboarding URL - ensure no whitespace
+    const siteUrl = (Deno.env.get("SITE_URL") || "https://command-x.lovable.app").trim();
+    const onboardingUrl = encodeURI(`${siteUrl}/onboard/${token}`);
+
+    console.log("[Onboarding Email] Onboarding URL:", onboardingUrl);
 
     // Send the email
     const emailResponse = await resend.emails.send({
-      from: "Onboarding <onboarding@resend.dev>",
+      from: "Fairfield RG <noreply@fairfieldrg.com>",
       to: [email],
       subject: "Welcome! Complete Your Onboarding Documentation",
       html: `
@@ -79,27 +82,26 @@ const handler = async (req: Request): Promise<Response> => {
             <p>Congratulations! Your application has been approved. To complete your onboarding, we need you to provide some additional documentation.</p>
             
             <div style="background: #f8fafc; padding: 20px; border-radius: 8px; margin: 24px 0;">
-              <h3 style="margin-top: 0; color: #1e40af;">Required Documents:</h3>
+              <h3 style="margin-top: 0; color: #1e40af;">Required Information:</h3>
               <ul style="margin: 0; padding-left: 20px;">
-                <li style="margin-bottom: 8px;"><strong>I-9 Employment Eligibility Verification</strong></li>
-                <li style="margin-bottom: 8px;"><strong>Social Security Number</strong></li>
-                <li style="margin-bottom: 8px;"><strong>W-9 / 1099 Tax Information</strong></li>
+                <li style="margin-bottom: 8px;"><strong>Social Security Number & Card</strong></li>
+                <li style="margin-bottom: 8px;"><strong>Work Authorization Documents</strong></li>
                 <li style="margin-bottom: 8px;"><strong>Emergency Contact Information</strong></li>
-                <li style="margin-bottom: 8px;"><strong>Direct Deposit Information</strong> (optional)</li>
+                <li style="margin-bottom: 8px;"><strong>Address & Contact Details</strong></li>
               </ul>
             </div>
             
             <div style="text-align: center; margin: 30px 0;">
-              <a href="${onboardingUrl}" style="display: inline-block; background: #3b82f6; color: white; padding: 14px 28px; text-decoration: none; border-radius: 8px; font-weight: 600; font-size: 16px;">Complete Onboarding</a>
+              <a href="${onboardingUrl}" target="_blank" rel="noopener noreferrer" style="display: inline-block; background: #3b82f6; color: white; padding: 14px 28px; text-decoration: none; border-radius: 8px; font-weight: 600; font-size: 16px;">Complete Onboarding</a>
             </div>
             
-            <p style="color: #6b7280; font-size: 14px;">This link will expire in 30 days. If you have any questions, please contact your supervisor.</p>
+            <p style="color: #6b7280; font-size: 14px;">This link will expire in 7 days. If you have any questions, please contact your supervisor.</p>
             
             <hr style="border: none; border-top: 1px solid #e5e7eb; margin: 24px 0;">
             
-            <p style="color: #9ca3af; font-size: 12px; margin-bottom: 0;">
+            <p style="color: #9ca3af; font-size: 12px; margin-bottom: 0; word-break: break-all;">
               If the button doesn't work, copy and paste this link into your browser:<br>
-              <a href="${onboardingUrl}" style="color: #3b82f6;">${onboardingUrl}</a>
+              <a href="${onboardingUrl}" target="_blank" rel="noopener noreferrer" style="color: #3b82f6; word-break: break-all;">${onboardingUrl}</a>
             </p>
           </div>
         </body>
@@ -107,10 +109,18 @@ const handler = async (req: Request): Promise<Response> => {
       `,
     });
 
-    console.log("[Onboarding Email] Email sent successfully:", emailResponse);
+    console.log("[Onboarding Email] Resend response:", JSON.stringify(emailResponse));
+
+    // Check for Resend API error
+    if (emailResponse.error) {
+      console.error("[Onboarding Email] Resend error:", emailResponse.error);
+      throw new Error(`Email sending failed: ${emailResponse.error.message}`);
+    }
+
+    console.log("[Onboarding Email] Email sent successfully, ID:", emailResponse.data?.id);
 
     return new Response(
-      JSON.stringify({ success: true, token }),
+      JSON.stringify({ success: true, token, emailId: emailResponse.data?.id }),
       {
         status: 200,
         headers: { "Content-Type": "application/json", ...corsHeaders },
