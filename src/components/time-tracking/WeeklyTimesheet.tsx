@@ -2,7 +2,7 @@ import { useState, useMemo } from "react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Plus, Edit, Clock, CalendarSearch, DollarSign, Trash2, X } from "lucide-react";
+import { Plus, Edit, Clock, CalendarSearch, DollarSign, Trash2, X, Loader2 } from "lucide-react";
 import { TimeEntryForm } from "./TimeEntryForm";
 import { QuickRateEditDialog } from "./QuickRateEditDialog";
 import { PersonnelAvatar } from "@/components/personnel/PersonnelAvatar";
@@ -17,6 +17,7 @@ import { useIsMobile } from "@/hooks/use-mobile";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { Checkbox } from "@/components/ui/checkbox";
+import { useUserRole } from "@/hooks/useUserRole";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -64,9 +65,18 @@ export function WeeklyTimesheet({ currentWeek, onWeekChange }: WeeklyTimesheetPr
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
   const isMobile = useIsMobile();
 
+  // Get user role to determine if we should show all entries
+  const { isAdmin, isManager, loading: roleLoading } = useUserRole();
+  const showAllEntries = isAdmin || isManager;
+
   const weekStart = startOfWeek(currentWeek, { weekStartsOn: 1 });
-  const { data: rawEntries = [], isLoading } = useAdminTimeEntriesByWeek(currentWeek);
+  const { data: rawEntries = [], isLoading: entriesLoading } = useAdminTimeEntriesByWeek(
+    currentWeek,
+    { showAllEntries: showAllEntries && !roleLoading }
+  );
   const entries = rawEntries as TimeEntryWithRelations[];
+  
+  const isLoading = roleLoading || entriesLoading;
   const { data: companySettings } = useCompanySettings();
   const bulkDeleteMutation = useBulkDeleteTimeEntries();
   

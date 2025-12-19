@@ -191,7 +191,11 @@ export const useTimeEntriesByWeek = (weekStartDate: Date) => {
 };
 
 // Fetch all time entries logged by current user for a specific week (includes personnel entries)
-export const useAdminTimeEntriesByWeek = (weekStartDate: Date) => {
+// When showAllEntries is true (for admins), fetch all entries regardless of user_id
+export const useAdminTimeEntriesByWeek = (
+  weekStartDate: Date,
+  options?: { showAllEntries?: boolean }
+) => {
   const weekStart = startOfWeek(weekStartDate, { weekStartsOn: 1 }); // Monday
   const weekEnd = endOfWeek(weekStartDate, { weekStartsOn: 1 });
   
@@ -200,23 +204,28 @@ export const useAdminTimeEntriesByWeek = (weekStartDate: Date) => {
   const endDateStr = format(weekEnd, 'yyyy-MM-dd');
 
   return useQuery({
-    queryKey: ["admin-time-entries", "week", startDateStr],
+    queryKey: ["admin-time-entries", "week", startDateStr, options?.showAllEntries],
     queryFn: async () => {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) throw new Error("Not authenticated");
 
-      const { data, error } = await supabase
+      let query = supabase
         .from("time_entries")
         .select(`
           *,
           personnel:personnel_id(id, first_name, last_name, hourly_rate, photo_url),
           projects:project_id(id, name)
         `)
-        .eq("user_id", user.id)
         .gte("entry_date", startDateStr)
         .lte("entry_date", endDateStr)
         .order("entry_date", { ascending: true });
 
+      // Only filter by user_id if NOT showing all entries (for non-admins)
+      if (!options?.showAllEntries) {
+        query = query.eq("user_id", user.id);
+      }
+
+      const { data, error } = await query;
       if (error) throw error;
       return data;
     },
