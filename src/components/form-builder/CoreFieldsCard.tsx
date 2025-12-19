@@ -1,7 +1,7 @@
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
-import { User, Mail, Phone, MapPin } from "lucide-react";
+import { User, Mail, Phone, MapPin, Camera } from "lucide-react";
 import { CoreFieldsConfig, DEFAULT_CORE_FIELDS } from "@/integrations/supabase/hooks/useApplicationFormTemplates";
 
 interface CoreFieldsCardProps {
@@ -10,6 +10,7 @@ interface CoreFieldsCardProps {
 }
 
 const CORE_FIELD_OPTIONS = [
+  { key: "profilePicture" as const, label: "Profile Picture", icon: Camera, required: false },
   { key: "firstName" as const, label: "First Name", icon: User, required: true },
   { key: "lastName" as const, label: "Last Name", icon: User, required: true },
   { key: "email" as const, label: "Email", icon: Mail, required: true },

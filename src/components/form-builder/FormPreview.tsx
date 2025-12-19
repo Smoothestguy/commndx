@@ -13,7 +13,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
-import { Upload, PenLine, Mail, Phone } from "lucide-react";
+import { Upload, PenLine, Mail, Phone, Camera } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { AddressField } from "./AddressField";
 import { FormattedPhoneInput } from "./FormattedPhoneInput";
@@ -370,6 +370,22 @@ export function FormPreview({ name, description, fields, layout, theme, successM
             )}
           </CardHeader>
           <CardContent className={cn("space-y-4", isFullWidth && "px-0")}>
+            {/* Profile Picture - Core Field */}
+            {activeCoreFields.profilePicture && (
+              <div className="space-y-2">
+                <Label className="text-sm font-medium">Profile Picture</Label>
+                <div className="border-2 border-dashed rounded-lg p-4 text-center bg-muted/30 border-muted-foreground/25">
+                  <Camera className="h-6 w-6 mx-auto text-muted-foreground mb-2" />
+                  <p className="text-sm text-muted-foreground">
+                    Click to upload or drag and drop
+                  </p>
+                  <p className="text-xs text-muted-foreground mt-1">
+                    Max 5MB
+                  </p>
+                </div>
+              </div>
+            )}
+
             {/* Core Fields Preview - conditionally rendered */}
             {(activeCoreFields.firstName || activeCoreFields.lastName) && (
               <div className="grid grid-cols-2 gap-3">

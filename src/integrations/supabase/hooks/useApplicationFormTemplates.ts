@@ -93,6 +93,7 @@ export interface CoreFieldsConfig {
   email: boolean;
   phone: boolean;
   homeZip: boolean;
+  profilePicture: boolean;
 }
 
 export const DEFAULT_CORE_FIELDS: CoreFieldsConfig = {
@@ -101,6 +102,7 @@ export const DEFAULT_CORE_FIELDS: CoreFieldsConfig = {
   email: true,
   phone: true,
   homeZip: false,
+  profilePicture: false,
 };
 
 export interface FormSettings {
