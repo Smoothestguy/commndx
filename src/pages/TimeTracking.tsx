@@ -32,17 +32,18 @@ export default function TimeTracking() {
   const [selectedEntriesForInvoice, setSelectedEntriesForInvoice] = useState<TimeEntryWithDetails[]>([]);
   const [weeklyViewWeek, setWeeklyViewWeek] = useState(() => new Date());
   
-  const { isAdmin, isManager } = useUserRole();
+  const { isAdmin, isManager, loading: roleLoading } = useUserRole();
   const canManageTeam = isAdmin || isManager;
   const showAllEntries = isAdmin || isManager;
 
-  // Fetch data based on role
-  const { data: allEntries = [] } = useAllTimeEntries(
+  // Fetch data based on role - only enable admin query when role is confirmed
+  const { data: allEntries = [], isLoading: allEntriesLoading } = useAllTimeEntries(
     projectFilter === "all" ? undefined : projectFilter,
-    personnelFilter === "all" ? undefined : personnelFilter
+    personnelFilter === "all" ? undefined : personnelFilter,
+    { enabled: showAllEntries && !roleLoading }
   );
   
-  const { data: userEntries = [] } = useTimeEntries();
+  const { data: userEntries = [], isLoading: userEntriesLoading } = useTimeEntries();
   const bulkDelete = useBulkDeleteTimeEntries();
   const updateStatus = useUpdateTimeEntryStatus();
   const generatePayroll = useGenerateWeeklyPayroll();
@@ -55,6 +56,7 @@ export default function TimeTracking() {
   }));
 
   const entries = showAllEntries ? allEntries : userEntriesWithDetails;
+  const isLoading = roleLoading || (showAllEntries ? allEntriesLoading : userEntriesLoading);
 
   const handleProjectChange = (value: string) => {
     setProjectFilter(value === "all" ? undefined : value);
@@ -83,6 +85,21 @@ export default function TimeTracking() {
     setSelectedEntriesForInvoice(selectedEntries);
     setCustomerInvoiceDialogOpen(true);
   };
+
+  if (isLoading) {
+    return (
+      <PageLayout title="Time Tracking">
+        <SEO 
+          title="Time Tracking - Command X"
+          description="Track your time with daily and weekly timesheet views. Log hours against projects and job orders with automatic synchronization."
+        />
+        <div className="flex items-center justify-center h-64">
+          <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+          <span className="ml-2 text-muted-foreground">Loading time entries...</span>
+        </div>
+      </PageLayout>
+    );
+  }
 
   return (
     <PageLayout title="Time Tracking">

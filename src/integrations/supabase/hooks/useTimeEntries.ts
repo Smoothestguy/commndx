@@ -398,7 +398,11 @@ export const useBulkDeleteTimeEntries = () => {
 };
 
 // Fetch all time entries with details (for admin/manager view)
-export const useAllTimeEntries = (projectFilter?: string, personnelFilter?: string) => {
+export const useAllTimeEntries = (
+  projectFilter?: string, 
+  personnelFilter?: string,
+  options?: { enabled?: boolean }
+) => {
   return useQuery({
     queryKey: ["all-time-entries", projectFilter, personnelFilter],
     queryFn: async () => {
@@ -429,6 +433,7 @@ export const useAllTimeEntries = (projectFilter?: string, personnelFilter?: stri
       if (error) throw error;
       return data as TimeEntryWithDetails[];
     },
+    enabled: options?.enabled ?? true,
   });
 };
 
