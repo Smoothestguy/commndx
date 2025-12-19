@@ -391,12 +391,13 @@ export default function StaffingApplications() {
                       Export as CSV
                     </DropdownMenuItem>
                     <DropdownMenuItem
-                      onClick={() => {
+                      onClick={async () => {
                         const selected = (filteredApplications || []).filter(
                           (app) => selectedIds.has(app.id)
                         );
                         try {
-                          exportApplicationsToExcel(selected);
+                          toast.info("Generating Excel with images...");
+                          await exportApplicationsToExcel(selected, formTemplates || []);
                           toast.success("Exported to Excel");
                         } catch (e) {
                           toast.error("Failed to export");
