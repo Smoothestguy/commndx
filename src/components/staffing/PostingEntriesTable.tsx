@@ -4,7 +4,13 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Checkbox } from "@/components/ui/checkbox";
-import { Eye, CheckCircle, XCircle, User } from "lucide-react";
+import { Eye, CheckCircle, XCircle, ImageOff } from "lucide-react";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
 import {
   Table,
   TableBody,
@@ -255,12 +261,29 @@ export function PostingEntriesTable({
                     </Button>
                   </TableCell>
                   <TableCell>
-                    <Avatar className="h-10 w-10">
-                      <AvatarImage src={profilePic || undefined} alt="Profile" />
-                      <AvatarFallback className="text-xs">
-                        <User className="h-4 w-4" />
-                      </AvatarFallback>
-                    </Avatar>
+                    <TooltipProvider>
+                      <Tooltip>
+                        <TooltipTrigger asChild>
+                          <div className="relative">
+                            {profilePic ? (
+                              <Avatar className="h-10 w-10 ring-2 ring-primary/20">
+                                <AvatarImage src={profilePic} alt="Profile" />
+                                <AvatarFallback className="bg-muted">
+                                  <ImageOff className="h-4 w-4 text-muted-foreground" />
+                                </AvatarFallback>
+                              </Avatar>
+                            ) : (
+                              <div className="h-10 w-10 rounded-full bg-muted/50 border-2 border-dashed border-muted-foreground/30 flex items-center justify-center">
+                                <ImageOff className="h-4 w-4 text-muted-foreground/50" />
+                              </div>
+                            )}
+                          </div>
+                        </TooltipTrigger>
+                        <TooltipContent>
+                          {profilePic ? "View photo" : "No photo uploaded"}
+                        </TooltipContent>
+                      </Tooltip>
+                    </TooltipProvider>
                   </TableCell>
                   <TableCell className="font-medium">
                     {app.applicants?.first_name} {app.applicants?.last_name}
