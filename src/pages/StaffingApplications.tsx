@@ -3,11 +3,8 @@ import { useNavigate } from "react-router-dom";
 import { format } from "date-fns";
 import { 
   Search, 
-  Filter, 
   CheckCircle, 
   XCircle, 
-  Eye, 
-  Users,
   Plus,
   Copy,
   ExternalLink,
@@ -25,14 +22,6 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
 import {
   Dialog,
   DialogContent,
@@ -57,6 +46,7 @@ import {
 } from "@/integrations/supabase/hooks/useStaffingApplications";
 import { useApplicationFormTemplates } from "@/integrations/supabase/hooks/useApplicationFormTemplates";
 import { toast } from "sonner";
+import { ApplicationsTable } from "@/components/staffing/ApplicationsTable";
 
 const statusColors: Record<string, string> = {
   submitted: "bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-300",
@@ -340,109 +330,38 @@ export default function StaffingApplications() {
       </Card>
 
       {/* Applications Table */}
-      <Card>
-        <CardContent className="p-0">
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>Applicant</TableHead>
-                <TableHead className="hidden sm:table-cell">Position</TableHead>
-                <TableHead className="hidden md:table-cell">Submitted</TableHead>
-                <TableHead>Status</TableHead>
-                <TableHead className="text-right">Actions</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {isLoading ? (
-                <TableRow>
-                  <TableCell colSpan={5} className="text-center py-8">
-                    Loading applications...
-                  </TableCell>
-                </TableRow>
-              ) : filteredApplications?.length === 0 ? (
-                <TableRow>
-                  <TableCell colSpan={5} className="text-center py-8 text-muted-foreground">
-                    No applications found
-                  </TableCell>
-                </TableRow>
-              ) : (
-                filteredApplications?.map((app) => (
-                  <TableRow key={app.id}>
-                    <TableCell>
-                      <div>
-                        <p className="font-medium">
-                          {app.applicants?.first_name} {app.applicants?.last_name}
-                        </p>
-                        <p className="text-sm text-muted-foreground">{app.applicants?.email}</p>
-                      </div>
-                    </TableCell>
-                    <TableCell className="hidden sm:table-cell">
-                      <div>
-                        <p className="font-medium">
-                          {app.job_postings?.project_task_orders?.title}
-                        </p>
-                        <p className="text-sm text-muted-foreground">
-                          {app.job_postings?.project_task_orders?.projects?.name}
-                        </p>
-                      </div>
-                    </TableCell>
-                    <TableCell className="hidden md:table-cell">
-                      {format(new Date(app.created_at), "MMM d, yyyy")}
-                    </TableCell>
-                    <TableCell>
-                      <Badge className={statusColors[app.status]}>
-                        {app.status.charAt(0).toUpperCase() + app.status.slice(1)}
-                      </Badge>
-                    </TableCell>
-                    <TableCell className="text-right">
-                      <div className="flex items-center justify-end gap-1">
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          onClick={() => {
-                            setSelectedApp(app);
-                            setShowDetailDialog(true);
-                          }}
-                        >
-                          <Eye className="h-4 w-4" />
-                        </Button>
-                        {app.status === "submitted" && (
-                          <>
-                            <Button
-                              variant="ghost"
-                              size="icon"
-                              className="text-green-600"
-                              onClick={() => {
-                                setSelectedApp(app);
-                                setActionNotes("");
-                                handleApprove();
-                              }}
-                            >
-                              <CheckCircle className="h-4 w-4" />
-                            </Button>
-                            <Button
-                              variant="ghost"
-                              size="icon"
-                              className="text-destructive"
-                              onClick={() => {
-                                setSelectedApp(app);
-                                setActionNotes("");
-                                handleReject();
-                              }}
-                            >
-                              <XCircle className="h-4 w-4" />
-                            </Button>
-                          </>
-                        )}
-                      </div>
-                    </TableCell>
-                  </TableRow>
-                ))
-              )}
-            </TableBody>
-          </Table>
-        </CardContent>
-      </Card>
+      <ApplicationsTable
+        applications={filteredApplications || []}
+        isLoading={isLoading}
+        onViewApplication={(app) => {
+          setSelectedApp(app);
+          setShowDetailDialog(true);
+        }}
+        onApprove={(app) => {
+          setSelectedApp(app);
+          setActionNotes("");
+          approveApplication.mutateAsync({
+            applicationId: app.id,
+            notes: "",
+          }).then(() => {
+            toast.success("Application approved! Applicant added to Personnel.");
+          }).catch(() => {
+            toast.error("Failed to approve application");
+          });
+        }}
+        onReject={(app) => {
+          setSelectedApp(app);
+          setActionNotes("");
+          rejectApplication.mutateAsync({
+            applicationId: app.id,
+            notes: "",
+          }).then(() => {
+            toast.success("Application rejected");
+          }).catch(() => {
+            toast.error("Failed to reject application");
+          });
+        }}
+      />
 
       {/* Application Detail Dialog */}
       <Dialog open={showDetailDialog} onOpenChange={setShowDetailDialog}>
