@@ -1,3 +1,4 @@
+import { useMemo } from "react";
 import { format } from "date-fns";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -7,6 +8,7 @@ import { EnhancedDataTable, EnhancedColumn } from "@/components/shared/EnhancedD
 import { useIsMobile } from "@/hooks/use-mobile";
 import { MobileApplicationCard } from "./MobileApplicationCard";
 import type { Application } from "@/integrations/supabase/hooks/useStaffingApplications";
+import { useApplicationFormTemplates, FormField } from "@/integrations/supabase/hooks/useApplicationFormTemplates";
 
 const statusColors: Record<string, string> = {
   submitted: "bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-300",
@@ -15,14 +17,36 @@ const statusColors: Record<string, string> = {
   rejected: "bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-300",
 };
 
-// Helper to extract profile picture from application answers
-function getProfilePicture(answers: Record<string, unknown> | null | undefined): string | null {
+// Helper to extract profile picture from application answers using field type info
+function getProfilePicture(
+  answers: Record<string, unknown> | null | undefined,
+  fieldTypeMap: Record<string, { label: string; type: string }>
+): string | null {
   if (!answers) return null;
-  for (const value of Object.values(answers)) {
+  
+  // First pass: look for file type fields with images (excludes signatures)
+  for (const [fieldId, value] of Object.entries(answers)) {
+    const fieldInfo = fieldTypeMap[fieldId];
+    if (
+      fieldInfo?.type === "file" &&
+      typeof value === "string" &&
+      value.startsWith("data:image")
+    ) {
+      return value;
+    }
+  }
+  
+  // Fallback: if no field metadata, look for first image that's not from a signature field
+  for (const [fieldId, value] of Object.entries(answers)) {
+    const fieldInfo = fieldTypeMap[fieldId];
+    // Skip if we know it's a signature
+    if (fieldInfo?.type === "signature") continue;
+    
     if (typeof value === "string" && value.startsWith("data:image")) {
       return value;
     }
   }
+  
   return null;
 }
 
@@ -42,6 +66,28 @@ export function ApplicationsTable({
   onReject,
 }: ApplicationsTableProps) {
   const isMobile = useIsMobile();
+  const { data: formTemplates } = useApplicationFormTemplates();
+
+  // Build a map of form template id -> field type map for quick lookup
+  const templateFieldMaps = useMemo(() => {
+    const maps: Record<string, Record<string, { label: string; type: string }>> = {};
+    if (formTemplates) {
+      formTemplates.forEach((template) => {
+        const fieldMap: Record<string, { label: string; type: string }> = {};
+        template.fields?.forEach((field: FormField) => {
+          fieldMap[field.id] = { label: field.label, type: field.type };
+        });
+        maps[template.id] = fieldMap;
+      });
+    }
+    return maps;
+  }, [formTemplates]);
+
+  // Helper to get field type map for an application
+  const getFieldTypeMap = (app: Application): Record<string, { label: string; type: string }> => {
+    const templateId = app.job_postings?.form_template_id;
+    return templateId ? templateFieldMaps[templateId] || {} : {};
+  };
 
   const columns: EnhancedColumn<Application>[] = [
     {
@@ -70,7 +116,8 @@ export function ApplicationsTable({
       filterable: true,
       getValue: (app) => `${app.applicants?.first_name || ""} ${app.applicants?.last_name || ""}`,
       render: (app: Application) => {
-        const profilePic = getProfilePicture(app.answers as Record<string, unknown>);
+        const fieldTypeMap = getFieldTypeMap(app);
+        const profilePic = getProfilePicture(app.answers as Record<string, unknown>, fieldTypeMap);
         return (
           <div className="flex items-center gap-3">
             <Avatar className="h-9 w-9">
