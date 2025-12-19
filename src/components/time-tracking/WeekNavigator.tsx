@@ -15,6 +15,7 @@ export function WeekNavigator({ currentWeek, onWeekChange, showLabels = true }: 
   return (
     <div className="flex items-center gap-2">
       <Button
+        type="button"
         variant="outline"
         size={showLabels ? "sm" : "icon"}
         onClick={() => onWeekChange(subWeeks(currentWeek, 1))}
@@ -29,6 +30,7 @@ export function WeekNavigator({ currentWeek, onWeekChange, showLabels = true }: 
       </div>
 
       <Button
+        type="button"
         variant="outline"
         size={showLabels ? "sm" : "icon"}
         onClick={() => onWeekChange(addWeeks(currentWeek, 1))}
@@ -39,6 +41,7 @@ export function WeekNavigator({ currentWeek, onWeekChange, showLabels = true }: 
       </Button>
 
       <Button
+        type="button"
         variant="ghost"
         size="sm"
         onClick={() => onWeekChange(new Date())}
