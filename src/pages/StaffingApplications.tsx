@@ -10,7 +10,8 @@ import {
   Settings,
   Download,
   FileSpreadsheet,
-  File
+  File,
+  Table as TableIcon,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -274,6 +275,14 @@ export default function StaffingApplications() {
                     </div>
                   </div>
                   <div className="flex items-center gap-2" onClick={(e) => e.stopPropagation()}>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => navigate(`/staffing/applications/posting/${posting.id}`)}
+                      title="View all entries"
+                    >
+                      <TableIcon className="h-4 w-4" />
+                    </Button>
                     <Button
                       variant="ghost"
                       size="sm"

@@ -106,10 +106,10 @@ import ChangeOrderDetail from "./pages/ChangeOrderDetail";
 import ApproveChangeOrder from "./pages/ApproveChangeOrder";
 import AuditLogs from "./pages/AuditLogs";
 import StaffingApplications from "./pages/StaffingApplications";
+import JobPostingEntries from "./pages/JobPostingEntries";
 import PublicApplicationForm from "./pages/PublicApplicationForm";
 import ApplicationFormTemplates from "./pages/ApplicationFormTemplates";
 import ApplicationFormBuilder from "./pages/ApplicationFormBuilder";
-
 const queryClient = new QueryClient();
 
 const App = () => {
@@ -340,6 +340,10 @@ const App = () => {
                     <Route
                       path="/staffing/applications"
                       element={<StaffingApplications />}
+                    />
+                    <Route
+                      path="/staffing/applications/posting/:postingId"
+                      element={<JobPostingEntries />}
                     />
                     <Route
                       path="/staffing/form-templates"
