@@ -156,9 +156,9 @@ export default function SubcontractorNewBill() {
                     </SelectTrigger>
                     <SelectContent>
                       {posLoading ? (
-                        <SelectItem value="" disabled>Loading...</SelectItem>
+                        <SelectItem value="__loading__" disabled>Loading...</SelectItem>
                       ) : availablePOs.length === 0 ? (
-                        <SelectItem value="" disabled>No POs available to bill</SelectItem>
+                        <SelectItem value="__empty__" disabled>No POs available to bill</SelectItem>
                       ) : (
                         availablePOs.map((po) => (
                           <SelectItem key={po.id} value={po.id}>
