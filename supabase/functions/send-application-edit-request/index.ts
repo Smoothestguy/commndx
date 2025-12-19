@@ -99,7 +99,7 @@ const handler = async (req: Request): Promise<Response> => {
 
     // Send the email
     const emailResponse = await resend.emails.send({
-      from: "Applications <onboarding@resend.dev>",
+      from: "Applications <noreply@fairfieldrg.com>",
       to: [applicant.email],
       subject: "Action Required: Please Update Your Application",
       html: `
@@ -150,7 +150,25 @@ const handler = async (req: Request): Promise<Response> => {
       `,
     });
 
-    console.log("[Edit Request] Email sent successfully:", emailResponse);
+    // Check if email sending failed
+    if (emailResponse.error) {
+      console.error("[Edit Request] Email failed to send:", emailResponse.error);
+      return new Response(
+        JSON.stringify({ 
+          success: false,
+          error: "Failed to send email", 
+          emailError: emailResponse.error.message,
+          editToken,
+          applicationUpdated: true
+        }),
+        {
+          status: 500,
+          headers: { "Content-Type": "application/json", ...corsHeaders },
+        }
+      );
+    }
+
+    console.log("[Edit Request] Email sent successfully:", emailResponse.data);
 
     return new Response(
       JSON.stringify({ success: true, editToken }),

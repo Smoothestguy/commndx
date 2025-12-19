@@ -87,7 +87,7 @@ export function RequestMissingInfoDialog({
       // Extract just the labels for the email
       const missingFieldLabels = selectedFields.map((f) => f.split(":")[1]);
 
-      const { error } = await supabase.functions.invoke("send-application-edit-request", {
+      const { data, error } = await supabase.functions.invoke("send-application-edit-request", {
         body: {
           applicationId: application.id,
           missingFields: missingFieldLabels,
@@ -97,7 +97,20 @@ export function RequestMissingInfoDialog({
 
       if (error) throw error;
 
-      toast.success("Edit request sent to applicant");
+      // Check if the response indicates email failure
+      if (data && !data.success) {
+        if (data.applicationUpdated) {
+          toast.warning(
+            `Application status updated, but email could not be sent: ${data.emailError || 'Unknown error'}. You may need to contact the applicant manually.`,
+            { duration: 8000 }
+          );
+        } else {
+          throw new Error(data.emailError || "Failed to send edit request");
+        }
+      } else {
+        toast.success("Edit request sent to applicant");
+      }
+
       setSelectedFields([]);
       setAdminMessage("");
       onOpenChange(false);
