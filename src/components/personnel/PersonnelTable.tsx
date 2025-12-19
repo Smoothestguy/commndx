@@ -391,7 +391,8 @@ export function PersonnelTable({
                 : "Mark DNH"}
             </DropdownMenuItem>
             <DropdownMenuItem
-              onClick={() => {
+              onClick={(e) => {
+                e.stopPropagation();
                 setPersonToDelete(person);
                 setDeleteDialogOpen(true);
               }}
@@ -401,7 +402,8 @@ export function PersonnelTable({
               Deactivate
             </DropdownMenuItem>
             <DropdownMenuItem
-              onClick={() => {
+              onClick={(e) => {
+                e.stopPropagation();
                 setPersonToHardDelete(person);
                 setHardDeleteDialogOpen(true);
               }}
