@@ -588,6 +588,24 @@ export default function EditApplication() {
           </div>
         );
 
+      case "date":
+        return (
+          <div key={field.id} className={wrapperClass}>
+            <FormLabel>
+              {field.label}
+              {field.required && " *"}
+              {isMissing && <span className="ml-2 text-orange-600 text-xs">(Please update)</span>}
+            </FormLabel>
+            <Input
+              type="date"
+              value={value || ""}
+              onChange={(e) => updateCustomAnswer(field.id, e.target.value)}
+              placeholder={field.placeholder}
+            />
+            {field.helpText && <p className="text-xs text-muted-foreground">{field.helpText}</p>}
+          </div>
+        );
+
       default:
         return null;
     }
@@ -774,6 +792,26 @@ export default function EditApplication() {
                         </FormItem>
                       )}
                     />
+                  )}
+
+                  {coreFields.profilePicture && (
+                    <div className={cn(
+                      "space-y-2",
+                      isMissingField("Profile Photo") && "ring-2 ring-orange-400 ring-offset-2 rounded-md p-2 bg-orange-50 dark:bg-orange-950/20"
+                    )}>
+                      <FormFileUpload
+                        value={form.watch("photo_url") || null}
+                        onChange={(url) => form.setValue("photo_url", url || "")}
+                        onUploadStateChange={(isUploading) => handleFileUploadStateChange("core_photo", isUploading)}
+                        label={`Profile Photo${isMissingField("Profile Photo") ? " (Please update)" : ""}`}
+                        required={false}
+                        helpText="Upload a clear photo of yourself"
+                        acceptedFileTypes={["image/*"]}
+                        maxFileSize={5}
+                        storageBucket="application-files"
+                        storagePath="profile-photos"
+                      />
+                    </div>
                   )}
                 </div>
 
