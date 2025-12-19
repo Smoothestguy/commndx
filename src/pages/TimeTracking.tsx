@@ -2,23 +2,8 @@ import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { PageLayout } from "@/components/layout/PageLayout";
 import { Button } from "@/components/ui/button";
-import {
-  Plus,
-  Users,
-  DollarSign,
-  Loader2,
-  Download,
-  FileSpreadsheet,
-  FileText,
-  FileJson,
-} from "lucide-react";
+import { Plus, Users, DollarSign, Loader2 } from "lucide-react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
 import { TimeTrackingStats } from "@/components/time-tracking/TimeTrackingStats";
 import { TimeTrackingFilters } from "@/components/time-tracking/TimeTrackingFilters";
 import { GroupedTimeTrackingTable } from "@/components/time-tracking/GroupedTimeTrackingTable";
@@ -38,14 +23,7 @@ import {
 } from "@/integrations/supabase/hooks/useTimeEntries";
 import { useUserRole } from "@/hooks/useUserRole";
 import { useGenerateWeeklyPayroll } from "@/hooks/useGenerateWeeklyPayroll";
-import { useCompanySettings } from "@/integrations/supabase/hooks/useCompanySettings";
 import { SEO } from "@/components/SEO";
-import { toast } from "sonner";
-import {
-  exportTimeEntriesToExcel,
-  exportTimeEntriesToPDF,
-  exportTimeEntriesToJSON,
-} from "@/utils/timeEntryExportUtils";
 
 export default function TimeTracking() {
   const navigate = useNavigate();
@@ -84,10 +62,6 @@ export default function TimeTracking() {
   const bulkDelete = useBulkDeleteTimeEntries();
   const updateStatus = useUpdateTimeEntryStatus();
   const generatePayroll = useGenerateWeeklyPayroll();
-  const { data: companySettings } = useCompanySettings();
-  const [isExporting, setIsExporting] = useState(false);
-
-  const overtimeMultiplier = companySettings?.overtime_multiplier || 1.5;
 
   // Convert userEntries to match TimeEntryWithDetails structure for consistent rendering
   const userEntriesWithDetails: TimeEntryWithDetails[] = userEntries.map(
@@ -130,41 +104,6 @@ export default function TimeTracking() {
   ) => {
     setSelectedEntriesForInvoice(selectedEntries);
     setCustomerInvoiceDialogOpen(true);
-  };
-
-  const handleExport = async (format: "excel" | "pdf" | "json") => {
-    if (entries.length === 0) {
-      toast.error("No time entries to export");
-      return;
-    }
-
-    setIsExporting(true);
-    try {
-      const exportData = {
-        entries,
-        overtimeMultiplier,
-      };
-
-      switch (format) {
-        case "excel":
-          await exportTimeEntriesToExcel(exportData, "time-entries");
-          toast.success("Excel file downloaded successfully");
-          break;
-        case "pdf":
-          exportTimeEntriesToPDF(exportData, "time-entries");
-          toast.success("PDF file downloaded successfully");
-          break;
-        case "json":
-          exportTimeEntriesToJSON(exportData, "time-entries");
-          toast.success("JSON file downloaded successfully");
-          break;
-      }
-    } catch (error) {
-      console.error("Export error:", error);
-      toast.error("Failed to export time entries");
-    } finally {
-      setIsExporting(false);
-    }
   };
 
   if (isLoading) {
@@ -238,36 +177,6 @@ export default function TimeTracking() {
             <Plus className="h-4 w-4 mr-2" />
             Log Time
           </Button>
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <Button
-                variant="outline"
-                className="w-full sm:w-auto"
-                disabled={isExporting || entries.length === 0}
-              >
-                {isExporting ? (
-                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                ) : (
-                  <Download className="h-4 w-4 mr-2" />
-                )}
-                Export
-              </Button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="end">
-              <DropdownMenuItem onClick={() => handleExport("excel")}>
-                <FileSpreadsheet className="h-4 w-4 mr-2" />
-                Export to Excel (.xlsx)
-              </DropdownMenuItem>
-              <DropdownMenuItem onClick={() => handleExport("pdf")}>
-                <FileText className="h-4 w-4 mr-2" />
-                Export to PDF
-              </DropdownMenuItem>
-              <DropdownMenuItem onClick={() => handleExport("json")}>
-                <FileJson className="h-4 w-4 mr-2" />
-                Export to JSON
-              </DropdownMenuItem>
-            </DropdownMenuContent>
-          </DropdownMenu>
         </div>
 
         {/* Stats */}

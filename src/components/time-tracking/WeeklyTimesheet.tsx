@@ -2,8 +2,34 @@ import { useState, useMemo } from "react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Plus, Edit, Clock, CalendarSearch, DollarSign, Trash2, X, Loader2 } from "lucide-react";
+import {
+  Plus,
+  Edit,
+  Clock,
+  CalendarSearch,
+  DollarSign,
+  Trash2,
+  X,
+  Loader2,
+  Download,
+  FileSpreadsheet,
+  FileText,
+  FileJson,
+} from "lucide-react";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import { TimeEntryForm } from "./TimeEntryForm";
+import { toast } from "sonner";
+import {
+  exportTimeEntriesToExcel,
+  exportTimeEntriesToPDF,
+  exportTimeEntriesToJSON,
+  type TimeEntryExportData,
+} from "@/utils/timeEntryExportUtils";
 import { QuickRateEditDialog } from "./QuickRateEditDialog";
 import { PersonnelAvatar } from "@/components/personnel/PersonnelAvatar";
 import {
@@ -35,7 +61,13 @@ interface WeeklyTimesheetProps {
 }
 
 interface TimeEntryWithRelations extends TimeEntry {
-  personnel?: { id: string; first_name: string; last_name: string; hourly_rate?: number | null; photo_url?: string | null } | null;
+  personnel?: {
+    id: string;
+    first_name: string;
+    last_name: string;
+    hourly_rate?: number | null;
+    photo_url?: string | null;
+  } | null;
   projects?: { id: string; name: string } | null;
 }
 
@@ -50,7 +82,10 @@ interface RowData {
   isPersonnelEntry: boolean;
 }
 
-export function WeeklyTimesheet({ currentWeek, onWeekChange }: WeeklyTimesheetProps) {
+export function WeeklyTimesheet({
+  currentWeek,
+  onWeekChange,
+}: WeeklyTimesheetProps) {
   const [formOpen, setFormOpen] = useState(false);
   const [selectedDate, setSelectedDate] = useState<string>("");
   const [selectedProjectId, setSelectedProjectId] = useState<string>("");
@@ -63,6 +98,7 @@ export function WeeklyTimesheet({ currentWeek, onWeekChange }: WeeklyTimesheetPr
   } | null>(null);
   const [selectedRows, setSelectedRows] = useState<Set<string>>(new Set());
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
+  const [isExporting, setIsExporting] = useState(false);
   const isMobile = useIsMobile();
 
   // Get user role to determine if we should show all entries
@@ -70,24 +106,28 @@ export function WeeklyTimesheet({ currentWeek, onWeekChange }: WeeklyTimesheetPr
   const showAllEntries = isAdmin || isManager;
 
   const weekStart = startOfWeek(currentWeek, { weekStartsOn: 1 });
-  const { data: rawEntries = [], isLoading: entriesLoading } = useAdminTimeEntriesByWeek(
-    currentWeek,
-    { showAllEntries: showAllEntries && !roleLoading }
-  );
+  const weekEnd = addDays(weekStart, 6);
+  const { data: rawEntries = [], isLoading: entriesLoading } =
+    useAdminTimeEntriesByWeek(currentWeek, {
+      showAllEntries: showAllEntries && !roleLoading,
+    });
   const entries = rawEntries as TimeEntryWithRelations[];
-  
+
   const isLoading = roleLoading || entriesLoading;
   const { data: companySettings } = useCompanySettings();
   const bulkDeleteMutation = useBulkDeleteTimeEntries();
-  
+
   const overtimeMultiplier = companySettings?.overtime_multiplier || 1.5;
-  const weeklyOvertimeThreshold = companySettings?.weekly_overtime_threshold ?? 40;
+  const weeklyOvertimeThreshold =
+    companySettings?.weekly_overtime_threshold ?? 40;
 
   // Query to find the most recent time entry date
   const { data: latestEntryDate } = useQuery({
     queryKey: ["latest-time-entry-date"],
     queryFn: async () => {
-      const { data: { user } } = await supabase.auth.getUser();
+      const {
+        data: { user },
+      } = await supabase.auth.getUser();
       if (!user) return null;
 
       const { data } = await supabase
@@ -96,7 +136,7 @@ export function WeeklyTimesheet({ currentWeek, onWeekChange }: WeeklyTimesheetPr
         .eq("user_id", user.id)
         .order("entry_date", { ascending: false })
         .limit(1);
-      
+
       return data?.[0]?.entry_date || null;
     },
   });
@@ -107,21 +147,21 @@ export function WeeklyTimesheet({ currentWeek, onWeekChange }: WeeklyTimesheetPr
   // Get unique rows (project + optional personnel combination)
   const rows = useMemo(() => {
     const rowMap = new Map<string, RowData>();
-    
+
     entries.forEach((entry) => {
       const isPersonnelEntry = !!entry.personnel_id;
-      const rowKey = isPersonnelEntry 
-        ? `${entry.project_id}-${entry.personnel_id}` 
+      const rowKey = isPersonnelEntry
+        ? `${entry.project_id}-${entry.personnel_id}`
         : `${entry.project_id}-self`;
-      
+
       if (!rowMap.has(rowKey)) {
         rowMap.set(rowKey, {
           rowKey,
           projectId: entry.project_id,
           projectName: entry.projects?.name || "Unknown Project",
           personnelId: entry.personnel_id,
-          personnelName: entry.personnel 
-            ? `${entry.personnel.first_name} ${entry.personnel.last_name}` 
+          personnelName: entry.personnel
+            ? `${entry.personnel.first_name} ${entry.personnel.last_name}`
             : undefined,
           personnelRate: entry.personnel?.hourly_rate ?? null,
           personnelPhotoUrl: entry.personnel?.photo_url ?? null,
@@ -129,7 +169,7 @@ export function WeeklyTimesheet({ currentWeek, onWeekChange }: WeeklyTimesheetPr
         });
       }
     });
-    
+
     return Array.from(rowMap.values()).sort((a, b) => {
       const projectCompare = a.projectName.localeCompare(b.projectName);
       if (projectCompare !== 0) return projectCompare;
@@ -143,8 +183,8 @@ export function WeeklyTimesheet({ currentWeek, onWeekChange }: WeeklyTimesheetPr
   const entryMap = useMemo(() => {
     const map = new Map<string, TimeEntryWithRelations>();
     entries.forEach((entry) => {
-      const rowKey = entry.personnel_id 
-        ? `${entry.project_id}-${entry.personnel_id}` 
+      const rowKey = entry.personnel_id
+        ? `${entry.project_id}-${entry.personnel_id}`
         : `${entry.project_id}-self`;
       const key = `${rowKey}-${entry.entry_date}`;
       map.set(key, entry);
@@ -186,8 +226,8 @@ export function WeeklyTimesheet({ currentWeek, onWeekChange }: WeeklyTimesheetPr
   };
 
   // Selection handlers for bulk delete
-  const personnelRows = useMemo(() => 
-    rows.filter(r => r.isPersonnelEntry && r.personnelId), 
+  const personnelRows = useMemo(
+    () => rows.filter((r) => r.isPersonnelEntry && r.personnelId),
     [rows]
   );
 
@@ -202,7 +242,7 @@ export function WeeklyTimesheet({ currentWeek, onWeekChange }: WeeklyTimesheetPr
   };
 
   const selectAllRows = () => {
-    setSelectedRows(new Set(personnelRows.map(r => r.rowKey)));
+    setSelectedRows(new Set(personnelRows.map((r) => r.rowKey)));
   };
 
   const deselectAllRows = () => {
@@ -213,12 +253,12 @@ export function WeeklyTimesheet({ currentWeek, onWeekChange }: WeeklyTimesheetPr
     // Get all time entry IDs for selected rows
     const entriesToDelete = entries
       .filter((entry) => {
-        const rowKey = entry.personnel_id 
-          ? `${entry.project_id}-${entry.personnel_id}` 
+        const rowKey = entry.personnel_id
+          ? `${entry.project_id}-${entry.personnel_id}`
           : `${entry.project_id}-self`;
         return selectedRows.has(rowKey);
       })
-      .map(entry => entry.id);
+      .map((entry) => entry.id);
 
     if (entriesToDelete.length > 0) {
       await bulkDeleteMutation.mutateAsync(entriesToDelete);
@@ -230,8 +270,8 @@ export function WeeklyTimesheet({ currentWeek, onWeekChange }: WeeklyTimesheetPr
   // Count entries for selected rows (for confirmation message)
   const selectedEntriesCount = useMemo(() => {
     return entries.filter((entry) => {
-      const rowKey = entry.personnel_id 
-        ? `${entry.project_id}-${entry.personnel_id}` 
+      const rowKey = entry.personnel_id
+        ? `${entry.project_id}-${entry.personnel_id}`
         : `${entry.project_id}-self`;
       return selectedRows.has(rowKey);
     }).length;
@@ -254,8 +294,8 @@ export function WeeklyTimesheet({ currentWeek, onWeekChange }: WeeklyTimesheetPr
   const getRowTotal = (rowKey: string) => {
     return entries
       .filter((e) => {
-        const entryRowKey = e.personnel_id 
-          ? `${e.project_id}-${e.personnel_id}` 
+        const entryRowKey = e.personnel_id
+          ? `${e.project_id}-${e.personnel_id}`
           : `${e.project_id}-self`;
         return entryRowKey === rowKey;
       })
@@ -266,7 +306,7 @@ export function WeeklyTimesheet({ currentWeek, onWeekChange }: WeeklyTimesheetPr
   const getRowRegularHours = (rowKey: string, personnelId: string | null) => {
     const totalPersonnelHours = getPersonnelTotalWeeklyHours(personnelId);
     const rowTotalHours = getRowTotal(rowKey);
-    
+
     if (totalPersonnelHours <= weeklyOvertimeThreshold) {
       // All hours are regular
       return rowTotalHours;
@@ -281,31 +321,44 @@ export function WeeklyTimesheet({ currentWeek, onWeekChange }: WeeklyTimesheetPr
   const getRowOvertimeHours = (rowKey: string, personnelId: string | null) => {
     const totalPersonnelHours = getPersonnelTotalWeeklyHours(personnelId);
     const rowTotalHours = getRowTotal(rowKey);
-    
+
     if (totalPersonnelHours <= weeklyOvertimeThreshold) {
       // No overtime
       return 0;
     } else {
       // Proportionally distribute overtime across this row
-      const overtimeRatio = (totalPersonnelHours - weeklyOvertimeThreshold) / totalPersonnelHours;
+      const overtimeRatio =
+        (totalPersonnelHours - weeklyOvertimeThreshold) / totalPersonnelHours;
       return rowTotalHours * overtimeRatio;
     }
   };
 
-  const getRowPay = (rowKey: string, personnelId: string | null, rate: number | null) => {
+  const getRowPay = (
+    rowKey: string,
+    personnelId: string | null,
+    rate: number | null
+  ) => {
     if (!rate) return null;
     const regular = getRowRegularHours(rowKey, personnelId);
     const overtime = getRowOvertimeHours(rowKey, personnelId);
-    return (regular * rate) + (overtime * rate * overtimeMultiplier);
+    return regular * rate + overtime * rate * overtimeMultiplier;
   };
 
-  const getRowRegularPay = (rowKey: string, personnelId: string | null, rate: number | null) => {
+  const getRowRegularPay = (
+    rowKey: string,
+    personnelId: string | null,
+    rate: number | null
+  ) => {
     if (!rate) return null;
     const regular = getRowRegularHours(rowKey, personnelId);
     return regular * rate;
   };
 
-  const getRowOvertimePay = (rowKey: string, personnelId: string | null, rate: number | null) => {
+  const getRowOvertimePay = (
+    rowKey: string,
+    personnelId: string | null,
+    rate: number | null
+  ) => {
     if (!rate) return null;
     const overtime = getRowOvertimeHours(rowKey, personnelId);
     return overtime * rate * overtimeMultiplier;
@@ -313,31 +366,34 @@ export function WeeklyTimesheet({ currentWeek, onWeekChange }: WeeklyTimesheetPr
 
   // Calculate weekly totals based on per-personnel 40-hour threshold
   const weekTotal = entries.reduce((sum, e) => sum + Number(e.hours), 0);
-  
+
   const weekTotalRegular = useMemo(() => {
     // Get unique personnel IDs
-    const personnelIds = [...new Set(entries.map(e => e.personnel_id))];
+    const personnelIds = [...new Set(entries.map((e) => e.personnel_id))];
     let totalRegular = 0;
-    
-    personnelIds.forEach(personnelId => {
+
+    personnelIds.forEach((personnelId) => {
       const personnelTotal = getPersonnelTotalWeeklyHours(personnelId);
       totalRegular += Math.min(personnelTotal, weeklyOvertimeThreshold);
     });
-    
+
     return totalRegular;
   }, [entries, weeklyOvertimeThreshold]);
 
   const weekTotalOvertime = weekTotal - weekTotalRegular;
-  
+
   const { weekTotalPay, weekRegularPay, weekOvertimePay } = useMemo(() => {
     let totalPay = 0;
     let regularPay = 0;
     let overtimePay = 0;
-    
+
     rows.forEach((row) => {
       if (row.personnelRate) {
         const regular = getRowRegularHours(row.rowKey, row.personnelId ?? null);
-        const overtime = getRowOvertimeHours(row.rowKey, row.personnelId ?? null);
+        const overtime = getRowOvertimeHours(
+          row.rowKey,
+          row.personnelId ?? null
+        );
         const regPay = regular * row.personnelRate;
         const otPay = overtime * row.personnelRate * overtimeMultiplier;
         regularPay += regPay;
@@ -345,8 +401,12 @@ export function WeeklyTimesheet({ currentWeek, onWeekChange }: WeeklyTimesheetPr
         totalPay += regPay + otPay;
       }
     });
-    
-    return { weekTotalPay: totalPay, weekRegularPay: regularPay, weekOvertimePay: overtimePay };
+
+    return {
+      weekTotalPay: totalPay,
+      weekRegularPay: regularPay,
+      weekOvertimePay: overtimePay,
+    };
   }, [rows, entries, overtimeMultiplier, weeklyOvertimeThreshold]);
 
   const handleJumpToRecentEntries = () => {
@@ -355,10 +415,54 @@ export function WeeklyTimesheet({ currentWeek, onWeekChange }: WeeklyTimesheetPr
     }
   };
 
-  const latestEntryWeekStart = latestEntryDate 
+  const handleExport = async (format: "excel" | "pdf" | "json") => {
+    if (entries.length === 0) {
+      toast.error("No time entries to export for this week");
+      return;
+    }
+
+    setIsExporting(true);
+    try {
+      const exportData: TimeEntryExportData = {
+        entries: entries as any,
+        weekStart,
+        weekEnd,
+        overtimeMultiplier,
+        weeklyOvertimeThreshold,
+      };
+
+      const weekLabel = `${format(weekStart, "MMM-d")}-to-${format(
+        weekEnd,
+        "MMM-d-yyyy"
+      )}`;
+
+      switch (format) {
+        case "excel":
+          await exportTimeEntriesToExcel(exportData, `timesheet-${weekLabel}`);
+          toast.success("Excel file downloaded successfully");
+          break;
+        case "pdf":
+          exportTimeEntriesToPDF(exportData, `timesheet-${weekLabel}`);
+          toast.success("PDF file downloaded successfully");
+          break;
+        case "json":
+          exportTimeEntriesToJSON(exportData, `timesheet-${weekLabel}`);
+          toast.success("JSON file downloaded successfully");
+          break;
+      }
+    } catch (error) {
+      console.error("Export error:", error);
+      toast.error("Failed to export time entries");
+    } finally {
+      setIsExporting(false);
+    }
+  };
+
+  const latestEntryWeekStart = latestEntryDate
     ? startOfWeek(new Date(latestEntryDate), { weekStartsOn: 1 })
     : null;
-  const hasEntriesInDifferentWeek = latestEntryWeekStart && 
+  const hasEntriesInDifferentWeek =
+    latestEntryWeekStart &&
     latestEntryWeekStart.getTime() !== weekStart.getTime();
 
   const formatCurrency = (amount: number) => {
@@ -369,7 +473,9 @@ export function WeeklyTimesheet({ currentWeek, onWeekChange }: WeeklyTimesheetPr
   };
 
   if (isLoading) {
-    return <div className="text-center py-8 text-muted-foreground">Loading...</div>;
+    return (
+      <div className="text-center py-8 text-muted-foreground">Loading...</div>
+    );
   }
 
   if (rows.length === 0) {
@@ -382,14 +488,14 @@ export function WeeklyTimesheet({ currentWeek, onWeekChange }: WeeklyTimesheetPr
           <div className="space-y-2">
             <p className="text-lg font-medium">No time entries for this week</p>
             <p className="text-sm text-muted-foreground">
-              {hasEntriesInDifferentWeek 
+              {hasEntriesInDifferentWeek
                 ? "You have entries in other weeks. Jump to your most recent entries or use the week navigator above."
                 : "Switch to the Time Entries tab to add your first entry, or navigate to a different week."}
             </p>
           </div>
           {hasEntriesInDifferentWeek && onWeekChange && latestEntryDate && (
-            <Button 
-              variant="default" 
+            <Button
+              variant="default"
               onClick={handleJumpToRecentEntries}
               className="mt-2"
             >
@@ -414,16 +520,24 @@ export function WeeklyTimesheet({ currentWeek, onWeekChange }: WeeklyTimesheetPr
                 <Clock className="h-4 w-4 text-primary" />
                 <span className="font-medium">Week Total</span>
               </div>
-              <span className="text-lg font-bold text-primary">{weekTotal.toFixed(1)}h</span>
+              <span className="text-lg font-bold text-primary">
+                {weekTotal.toFixed(1)}h
+              </span>
             </div>
-            
+
             {/* Hours Breakdown */}
             <div className="p-2 bg-background rounded space-y-1">
-              <p className="text-xs text-muted-foreground font-medium">Hours Breakdown</p>
+              <p className="text-xs text-muted-foreground font-medium">
+                Hours Breakdown
+              </p>
               <div className="flex items-center justify-center gap-2 text-sm">
-                <span className="font-medium">{weekTotalRegular.toFixed(1)}h</span>
+                <span className="font-medium">
+                  {weekTotalRegular.toFixed(1)}h
+                </span>
                 <span className="text-muted-foreground">+</span>
-                <span className="font-medium text-amber-600">{weekTotalOvertime.toFixed(1)}h</span>
+                <span className="font-medium text-amber-600">
+                  {weekTotalOvertime.toFixed(1)}h
+                </span>
                 <span className="text-muted-foreground">=</span>
                 <span className="font-bold">{weekTotal.toFixed(1)}h</span>
               </div>
@@ -435,16 +549,24 @@ export function WeeklyTimesheet({ currentWeek, onWeekChange }: WeeklyTimesheetPr
                 <span>Total</span>
               </div>
             </div>
-            
+
             {/* Pay Breakdown */}
             <div className="p-2 bg-background rounded space-y-1">
-              <p className="text-xs text-muted-foreground font-medium">Pay Breakdown ({overtimeMultiplier}x OT)</p>
+              <p className="text-xs text-muted-foreground font-medium">
+                Pay Breakdown ({overtimeMultiplier}x OT)
+              </p>
               <div className="flex items-center justify-center gap-2 text-sm">
-                <span className="font-medium">{formatCurrency(weekRegularPay)}</span>
+                <span className="font-medium">
+                  {formatCurrency(weekRegularPay)}
+                </span>
                 <span className="text-muted-foreground">+</span>
-                <span className="font-medium text-amber-600">{formatCurrency(weekOvertimePay)}</span>
+                <span className="font-medium text-amber-600">
+                  {formatCurrency(weekOvertimePay)}
+                </span>
                 <span className="text-muted-foreground">=</span>
-                <span className="font-bold">{formatCurrency(weekTotalPay)}</span>
+                <span className="font-bold">
+                  {formatCurrency(weekTotalPay)}
+                </span>
               </div>
               <div className="flex items-center justify-center gap-2 text-xs text-muted-foreground">
                 <span>Regular</span>
@@ -454,6 +576,39 @@ export function WeeklyTimesheet({ currentWeek, onWeekChange }: WeeklyTimesheetPr
                 <span>Total</span>
               </div>
             </div>
+
+            {/* Export Button */}
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="w-full"
+                  disabled={isExporting || entries.length === 0}
+                >
+                  {isExporting ? (
+                    <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                  ) : (
+                    <Download className="h-4 w-4 mr-2" />
+                  )}
+                  Export Week
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="center" className="w-48">
+                <DropdownMenuItem onClick={() => handleExport("excel")}>
+                  <FileSpreadsheet className="h-4 w-4 mr-2" />
+                  Export to Excel (.xlsx)
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={() => handleExport("pdf")}>
+                  <FileText className="h-4 w-4 mr-2" />
+                  Export to PDF
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={() => handleExport("json")}>
+                  <FileJson className="h-4 w-4 mr-2" />
+                  Export to JSON
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
           </div>
         </Card>
 
@@ -461,19 +616,21 @@ export function WeeklyTimesheet({ currentWeek, onWeekChange }: WeeklyTimesheetPr
         {weekDays.map((day) => {
           const dateString = format(day, "yyyy-MM-dd");
           const dayTotal = getDayTotal(day);
-          const dayEntries = entries.filter(e => e.entry_date === dateString);
+          const dayEntries = entries.filter((e) => e.entry_date === dateString);
           const isToday = format(new Date(), "yyyy-MM-dd") === dateString;
 
           return (
-            <Card 
-              key={dateString} 
-              className={`p-3 ${isToday ? 'ring-2 ring-primary/50' : ''}`}
+            <Card
+              key={dateString}
+              className={`p-3 ${isToday ? "ring-2 ring-primary/50" : ""}`}
             >
               {/* Day Header */}
               <div className="flex items-center justify-between mb-2">
                 <div>
                   <p className="font-medium">{format(day, "EEEE")}</p>
-                  <p className="text-sm text-muted-foreground">{format(day, "MMM d")}</p>
+                  <p className="text-sm text-muted-foreground">
+                    {format(day, "MMM d")}
+                  </p>
                 </div>
                 <div className="text-right">
                   <p className="text-lg font-bold">{dayTotal.toFixed(1)}h</p>
@@ -490,27 +647,31 @@ export function WeeklyTimesheet({ currentWeek, onWeekChange }: WeeklyTimesheetPr
 
                     const regularHrs = Number(entry.regular_hours || 0);
                     const overtimeHrs = Number(entry.overtime_hours || 0);
-                    const pay = row.personnelRate 
-                      ? (regularHrs * row.personnelRate) + (overtimeHrs * row.personnelRate * overtimeMultiplier)
+                    const pay = row.personnelRate
+                      ? regularHrs * row.personnelRate +
+                        overtimeHrs * row.personnelRate * overtimeMultiplier
                       : null;
 
                     return (
-                      <div
-                        key={key}
-                        className="p-2 bg-muted/30 rounded-lg"
-                      >
-                        <div 
+                      <div key={key} className="p-2 bg-muted/30 rounded-lg">
+                        <div
                           className="flex items-center justify-between"
                           onClick={() => handleCellClick(row, day)}
                         >
                           <div className="flex-1 min-w-0">
-                            <p className="text-sm font-medium truncate">{row.projectName}</p>
+                            <p className="text-sm font-medium truncate">
+                              {row.projectName}
+                            </p>
                             {row.personnelName && (
                               <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
                                 <PersonnelAvatar
                                   photoUrl={row.personnelPhotoUrl}
-                                  firstName={row.personnelName.split(' ')[0] || ''}
-                                  lastName={row.personnelName.split(' ')[1] || ''}
+                                  firstName={
+                                    row.personnelName.split(" ")[0] || ""
+                                  }
+                                  lastName={
+                                    row.personnelName.split(" ")[1] || ""
+                                  }
                                   size="xs"
                                 />
                                 <span>{row.personnelName}</span>
@@ -532,7 +693,9 @@ export function WeeklyTimesheet({ currentWeek, onWeekChange }: WeeklyTimesheetPr
                             )}
                           </div>
                           <div className="flex items-center gap-2">
-                            <span className="font-semibold">{Number(entry.hours).toFixed(1)}h</span>
+                            <span className="font-semibold">
+                              {Number(entry.hours).toFixed(1)}h
+                            </span>
                             <Edit className="h-4 w-4 text-muted-foreground" />
                           </div>
                         </div>
@@ -540,11 +703,15 @@ export function WeeklyTimesheet({ currentWeek, onWeekChange }: WeeklyTimesheetPr
                           <div className="flex gap-2">
                             <span>Reg: {regularHrs.toFixed(1)}h</span>
                             {overtimeHrs > 0 && (
-                              <span className="text-amber-600">OT: {overtimeHrs.toFixed(1)}h</span>
+                              <span className="text-amber-600">
+                                OT: {overtimeHrs.toFixed(1)}h
+                              </span>
                             )}
                           </div>
                           {pay !== null && (
-                            <span className="font-medium text-foreground">{formatCurrency(pay)}</span>
+                            <span className="font-medium text-foreground">
+                              {formatCurrency(pay)}
+                            </span>
                           )}
                         </div>
                       </div>
@@ -591,44 +758,94 @@ export function WeeklyTimesheet({ currentWeek, onWeekChange }: WeeklyTimesheetPr
         <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
           {/* Hours Breakdown */}
           <div className="flex-1">
-            <p className="text-sm text-muted-foreground font-medium mb-2">Hours Breakdown</p>
+            <p className="text-sm text-muted-foreground font-medium mb-2">
+              Hours Breakdown
+            </p>
             <div className="flex items-center gap-3">
               <div className="text-center">
-                <p className="text-2xl font-bold">{weekTotalRegular.toFixed(1)}h</p>
+                <p className="text-2xl font-bold">
+                  {weekTotalRegular.toFixed(1)}h
+                </p>
                 <p className="text-xs text-muted-foreground">Regular</p>
               </div>
               <span className="text-2xl text-muted-foreground">+</span>
               <div className="text-center">
-                <p className="text-2xl font-bold text-amber-600">{weekTotalOvertime.toFixed(1)}h</p>
+                <p className="text-2xl font-bold text-amber-600">
+                  {weekTotalOvertime.toFixed(1)}h
+                </p>
                 <p className="text-xs text-muted-foreground">Overtime</p>
               </div>
               <span className="text-2xl text-muted-foreground">=</span>
               <div className="text-center">
-                <p className="text-2xl font-bold text-primary">{weekTotal.toFixed(1)}h</p>
+                <p className="text-2xl font-bold text-primary">
+                  {weekTotal.toFixed(1)}h
+                </p>
                 <p className="text-xs text-muted-foreground">Total</p>
               </div>
             </div>
           </div>
-          
+
           {/* Pay Breakdown */}
           <div className="flex-1">
-            <p className="text-sm text-muted-foreground font-medium mb-2">Pay Breakdown ({overtimeMultiplier}x OT)</p>
+            <p className="text-sm text-muted-foreground font-medium mb-2">
+              Pay Breakdown ({overtimeMultiplier}x OT)
+            </p>
             <div className="flex items-center gap-3">
               <div className="text-center">
-                <p className="text-2xl font-bold">{formatCurrency(weekRegularPay)}</p>
+                <p className="text-2xl font-bold">
+                  {formatCurrency(weekRegularPay)}
+                </p>
                 <p className="text-xs text-muted-foreground">Regular</p>
               </div>
               <span className="text-2xl text-muted-foreground">+</span>
               <div className="text-center">
-                <p className="text-2xl font-bold text-amber-600">{formatCurrency(weekOvertimePay)}</p>
+                <p className="text-2xl font-bold text-amber-600">
+                  {formatCurrency(weekOvertimePay)}
+                </p>
                 <p className="text-xs text-muted-foreground">Overtime</p>
               </div>
               <span className="text-2xl text-muted-foreground">=</span>
               <div className="text-center">
-                <p className="text-2xl font-bold text-primary">{formatCurrency(weekTotalPay)}</p>
+                <p className="text-2xl font-bold text-primary">
+                  {formatCurrency(weekTotalPay)}
+                </p>
                 <p className="text-xs text-muted-foreground">Total</p>
               </div>
             </div>
+          </div>
+
+          {/* Export Button */}
+          <div className="flex items-center">
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  disabled={isExporting || entries.length === 0}
+                >
+                  {isExporting ? (
+                    <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                  ) : (
+                    <Download className="h-4 w-4 mr-2" />
+                  )}
+                  Export Week
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end">
+                <DropdownMenuItem onClick={() => handleExport("excel")}>
+                  <FileSpreadsheet className="h-4 w-4 mr-2" />
+                  Export to Excel (.xlsx)
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={() => handleExport("pdf")}>
+                  <FileText className="h-4 w-4 mr-2" />
+                  Export to PDF
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={() => handleExport("json")}>
+                  <FileJson className="h-4 w-4 mr-2" />
+                  Export to JSON
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
           </div>
         </div>
       </Card>
@@ -650,11 +867,7 @@ export function WeeklyTimesheet({ currentWeek, onWeekChange }: WeeklyTimesheetPr
                 >
                   Select All ({personnelRows.length})
                 </Button>
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={deselectAllRows}
-                >
+                <Button variant="ghost" size="sm" onClick={deselectAllRows}>
                   <X className="h-4 w-4 mr-1" />
                   Deselect
                 </Button>
@@ -679,7 +892,10 @@ export function WeeklyTimesheet({ currentWeek, onWeekChange }: WeeklyTimesheetPr
               {personnelRows.length > 0 && (
                 <th className="p-3 text-center font-medium w-12">
                   <Checkbox
-                    checked={selectedRows.size === personnelRows.length && personnelRows.length > 0}
+                    checked={
+                      selectedRows.size === personnelRows.length &&
+                      personnelRows.length > 0
+                    }
                     onCheckedChange={(checked) => {
                       if (checked) {
                         selectAllRows();
@@ -690,32 +906,64 @@ export function WeeklyTimesheet({ currentWeek, onWeekChange }: WeeklyTimesheetPr
                   />
                 </th>
               )}
-              <th className="p-3 text-left font-medium min-w-[200px]">Personnel / Project</th>
+              <th className="p-3 text-left font-medium min-w-[200px]">
+                Personnel / Project
+              </th>
               {weekDays.map((day) => (
-                <th key={day.toISOString()} className="p-3 text-center font-medium min-w-[100px]">
+                <th
+                  key={day.toISOString()}
+                  className="p-3 text-center font-medium min-w-[100px]"
+                >
                   <div className="text-xs text-muted-foreground">
                     {format(day, "EEE")}
                   </div>
                   <div className="text-sm">{format(day, "MMM d")}</div>
                 </th>
               ))}
-              <th className="p-3 text-center font-medium min-w-[200px]">Hours Breakdown</th>
-              <th className="p-3 text-center font-medium min-w-[250px]">Pay Breakdown</th>
+              <th className="p-3 text-center font-medium min-w-[200px]">
+                Hours Breakdown
+              </th>
+              <th className="p-3 text-center font-medium min-w-[250px]">
+                Pay Breakdown
+              </th>
             </tr>
           </thead>
           <tbody>
             {rows.map((row) => {
-              const regularHrs = getRowRegularHours(row.rowKey, row.personnelId ?? null);
-              const overtimeHrs = getRowOvertimeHours(row.rowKey, row.personnelId ?? null);
+              const regularHrs = getRowRegularHours(
+                row.rowKey,
+                row.personnelId ?? null
+              );
+              const overtimeHrs = getRowOvertimeHours(
+                row.rowKey,
+                row.personnelId ?? null
+              );
               const totalHrs = getRowTotal(row.rowKey);
-              const regularPay = getRowRegularPay(row.rowKey, row.personnelId ?? null, row.personnelRate ?? null);
-              const overtimePay = getRowOvertimePay(row.rowKey, row.personnelId ?? null, row.personnelRate ?? null);
-              const totalPay = getRowPay(row.rowKey, row.personnelId ?? null, row.personnelRate ?? null);
+              const regularPay = getRowRegularPay(
+                row.rowKey,
+                row.personnelId ?? null,
+                row.personnelRate ?? null
+              );
+              const overtimePay = getRowOvertimePay(
+                row.rowKey,
+                row.personnelId ?? null,
+                row.personnelRate ?? null
+              );
+              const totalPay = getRowPay(
+                row.rowKey,
+                row.personnelId ?? null,
+                row.personnelRate ?? null
+              );
               const isSelected = selectedRows.has(row.rowKey);
               const canSelect = row.isPersonnelEntry && row.personnelId;
 
               return (
-                <tr key={row.rowKey} className={`border-b hover:bg-muted/30 ${isSelected ? 'bg-destructive/5' : ''}`}>
+                <tr
+                  key={row.rowKey}
+                  className={`border-b hover:bg-muted/30 ${
+                    isSelected ? "bg-destructive/5" : ""
+                  }`}
+                >
                   {personnelRows.length > 0 && (
                     <td className="p-3 text-center">
                       {canSelect ? (
@@ -732,11 +980,13 @@ export function WeeklyTimesheet({ currentWeek, onWeekChange }: WeeklyTimesheetPr
                         <div className="flex items-center gap-1.5">
                           <PersonnelAvatar
                             photoUrl={row.personnelPhotoUrl}
-                            firstName={row.personnelName?.split(' ')[0] || ''}
-                            lastName={row.personnelName?.split(' ')[1] || ''}
+                            firstName={row.personnelName?.split(" ")[0] || ""}
+                            lastName={row.personnelName?.split(" ")[1] || ""}
                             size="xs"
                           />
-                          <span className="font-medium">{row.personnelName}</span>
+                          <span className="font-medium">
+                            {row.personnelName}
+                          </span>
                           {row.personnelId && (
                             <Button
                               variant="ghost"
@@ -745,11 +995,15 @@ export function WeeklyTimesheet({ currentWeek, onWeekChange }: WeeklyTimesheetPr
                               onClick={() => handleEditRate(row)}
                             >
                               <DollarSign className="h-3 w-3" />
-                              {row.personnelRate !== null ? `${row.personnelRate}/hr` : "Set rate"}
+                              {row.personnelRate !== null
+                                ? `${row.personnelRate}/hr`
+                                : "Set rate"}
                             </Button>
                           )}
                         </div>
-                        <div className="text-sm text-muted-foreground mt-0.5">{row.projectName}</div>
+                        <div className="text-sm text-muted-foreground mt-0.5">
+                          {row.projectName}
+                        </div>
                       </>
                     ) : (
                       <div className="font-medium">{row.projectName}</div>
@@ -774,11 +1028,17 @@ export function WeeklyTimesheet({ currentWeek, onWeekChange }: WeeklyTimesheetPr
                                 {Number(entry.hours).toFixed(2)}h
                               </span>
                               {entry.billable ? (
-                                <Badge variant="default" className="h-4 text-[10px]">
+                                <Badge
+                                  variant="default"
+                                  className="h-4 text-[10px]"
+                                >
                                   Bill
                                 </Badge>
                               ) : (
-                                <Badge variant="secondary" className="h-4 text-[10px]">
+                                <Badge
+                                  variant="secondary"
+                                  className="h-4 text-[10px]"
+                                >
                                   Non
                                 </Badge>
                               )}
@@ -794,9 +1054,13 @@ export function WeeklyTimesheet({ currentWeek, onWeekChange }: WeeklyTimesheetPr
                     <div className="flex items-center justify-center gap-1 text-sm">
                       <span>{regularHrs.toFixed(2)}h</span>
                       <span className="text-muted-foreground">+</span>
-                      <span className="text-amber-600">{overtimeHrs.toFixed(2)}h</span>
+                      <span className="text-amber-600">
+                        {overtimeHrs.toFixed(2)}h
+                      </span>
                       <span className="text-muted-foreground">=</span>
-                      <span className="font-semibold">{totalHrs.toFixed(2)}h</span>
+                      <span className="font-semibold">
+                        {totalHrs.toFixed(2)}h
+                      </span>
                     </div>
                   </td>
                   <td className="p-3 text-center">
@@ -804,9 +1068,13 @@ export function WeeklyTimesheet({ currentWeek, onWeekChange }: WeeklyTimesheetPr
                       <div className="flex items-center justify-center gap-1 text-sm">
                         <span>{formatCurrency(regularPay!)}</span>
                         <span className="text-muted-foreground">+</span>
-                        <span className="text-amber-600">{formatCurrency(overtimePay!)}</span>
+                        <span className="text-amber-600">
+                          {formatCurrency(overtimePay!)}
+                        </span>
                         <span className="text-muted-foreground">=</span>
-                        <span className="font-semibold">{formatCurrency(totalPay)}</span>
+                        <span className="font-semibold">
+                          {formatCurrency(totalPay)}
+                        </span>
                       </div>
                     ) : (
                       <span className="text-muted-foreground">-</span>
@@ -827,7 +1095,9 @@ export function WeeklyTimesheet({ currentWeek, onWeekChange }: WeeklyTimesheetPr
                 <div className="flex items-center justify-center gap-1 text-sm">
                   <span>{weekTotalRegular.toFixed(2)}h</span>
                   <span className="text-muted-foreground font-normal">+</span>
-                  <span className="text-amber-600">{weekTotalOvertime.toFixed(2)}h</span>
+                  <span className="text-amber-600">
+                    {weekTotalOvertime.toFixed(2)}h
+                  </span>
                   <span className="text-muted-foreground font-normal">=</span>
                   <span>{weekTotal.toFixed(2)}h</span>
                 </div>
@@ -836,7 +1106,9 @@ export function WeeklyTimesheet({ currentWeek, onWeekChange }: WeeklyTimesheetPr
                 <div className="flex items-center justify-center gap-1 text-sm">
                   <span>{formatCurrency(weekRegularPay)}</span>
                   <span className="text-muted-foreground font-normal">+</span>
-                  <span className="text-amber-600">{formatCurrency(weekOvertimePay)}</span>
+                  <span className="text-amber-600">
+                    {formatCurrency(weekOvertimePay)}
+                  </span>
                   <span className="text-muted-foreground font-normal">=</span>
                   <span>{formatCurrency(weekTotalPay)}</span>
                 </div>
@@ -870,7 +1142,8 @@ export function WeeklyTimesheet({ currentWeek, onWeekChange }: WeeklyTimesheetPr
           <AlertDialogHeader>
             <AlertDialogTitle>Delete Time Entries?</AlertDialogTitle>
             <AlertDialogDescription>
-              This will permanently delete {selectedEntriesCount} time entr{selectedEntriesCount === 1 ? 'y' : 'ies'} for the selected rows. 
+              This will permanently delete {selectedEntriesCount} time entr
+              {selectedEntriesCount === 1 ? "y" : "ies"} for the selected rows.
               This action cannot be undone.
             </AlertDialogDescription>
           </AlertDialogHeader>
