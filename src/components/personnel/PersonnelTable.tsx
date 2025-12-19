@@ -35,6 +35,7 @@ import { useVendors } from "@/integrations/supabase/hooks/useVendors";
 import {
   useDeletePersonnel,
   useToggleDoNotHire,
+  useHardDeletePersonnel,
 } from "@/integrations/supabase/hooks/usePersonnel";
 import { ComplianceBadge } from "./ComplianceBadge";
 import { toast } from "sonner";
@@ -69,9 +70,12 @@ export function PersonnelTable({
   const { data: vendors } = useVendors();
   const deletePersonnel = useDeletePersonnel();
   const toggleDoNotHire = useToggleDoNotHire();
+  const hardDeletePersonnel = useHardDeletePersonnel();
 
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [personToDelete, setPersonToDelete] = useState<Personnel | null>(null);
+  const [hardDeleteDialogOpen, setHardDeleteDialogOpen] = useState(false);
+  const [personToHardDelete, setPersonToHardDelete] = useState<Personnel | null>(null);
 
   const getVendor = (vendorId: string | null) => {
     if (!vendorId) return null;
@@ -145,6 +149,17 @@ export function PersonnelTable({
       );
     } catch (error) {
       toast.error("Failed to update status");
+    }
+  };
+
+  const handleHardDelete = async () => {
+    if (!personToHardDelete) return;
+    try {
+      await hardDeletePersonnel.mutateAsync(personToHardDelete.id);
+      setHardDeleteDialogOpen(false);
+      setPersonToHardDelete(null);
+    } catch (error) {
+      // Error handling is in the hook
     }
   };
 
@@ -385,6 +400,16 @@ export function PersonnelTable({
               <Trash2 className="mr-2 h-4 w-4" />
               Deactivate
             </DropdownMenuItem>
+            <DropdownMenuItem
+              onClick={() => {
+                setPersonToHardDelete(person);
+                setHardDeleteDialogOpen(true);
+              }}
+              className="text-destructive"
+            >
+              <Trash2 className="mr-2 h-4 w-4" />
+              Delete Permanently
+            </DropdownMenuItem>
           </DropdownMenuContent>
         </DropdownMenu>
       ),
@@ -449,7 +474,7 @@ export function PersonnelTable({
         />
       )}
 
-      {/* Delete Confirmation Dialog */}
+      {/* Deactivate Confirmation Dialog */}
       <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
         <AlertDialogContent>
           <AlertDialogHeader>
@@ -469,6 +494,48 @@ export function PersonnelTable({
               className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
             >
               Deactivate
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {/* Permanent Delete Confirmation Dialog */}
+      <AlertDialog open={hardDeleteDialogOpen} onOpenChange={setHardDeleteDialogOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle className="text-destructive flex items-center gap-2">
+              <AlertTriangle className="h-5 w-5" />
+              Permanently Delete Personnel
+            </AlertDialogTitle>
+            <AlertDialogDescription asChild>
+              <div>
+                Are you sure you want to <strong>permanently delete</strong>{" "}
+                <strong>
+                  {personToHardDelete?.first_name} {personToHardDelete?.last_name}
+                </strong>
+                ?
+                <br /><br />
+                This will also delete:
+                <ul className="list-disc list-inside mt-2 text-muted-foreground">
+                  <li>Emergency contacts</li>
+                  <li>Certifications</li>
+                  <li>Languages</li>
+                  <li>Capabilities</li>
+                  <li>Onboarding tokens</li>
+                </ul>
+                <br />
+                <strong className="text-destructive">This action cannot be undone.</strong>
+              </div>
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={handleHardDelete}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              disabled={hardDeletePersonnel.isPending}
+            >
+              {hardDeletePersonnel.isPending ? "Deleting..." : "Delete Permanently"}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
