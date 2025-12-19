@@ -170,7 +170,12 @@ export type Database = {
           fields: Json
           id: string
           is_active: boolean
+          is_draft: boolean | null
+          layout: Json | null
           name: string
+          published_at: string | null
+          published_version: number | null
+          settings: Json | null
           success_message: string | null
           theme: Json | null
           updated_at: string
@@ -183,7 +188,12 @@ export type Database = {
           fields?: Json
           id?: string
           is_active?: boolean
+          is_draft?: boolean | null
+          layout?: Json | null
           name: string
+          published_at?: string | null
+          published_version?: number | null
+          settings?: Json | null
           success_message?: string | null
           theme?: Json | null
           updated_at?: string
@@ -196,7 +206,12 @@ export type Database = {
           fields?: Json
           id?: string
           is_active?: boolean
+          is_draft?: boolean | null
+          layout?: Json | null
           name?: string
+          published_at?: string | null
+          published_version?: number | null
+          settings?: Json | null
           success_message?: string | null
           theme?: Json | null
           updated_at?: string
