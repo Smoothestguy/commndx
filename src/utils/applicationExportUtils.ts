@@ -55,7 +55,12 @@ function formatFieldValue(value: any, field: FormField): string {
       return "";
     case "signature":
       return value ? "[Signature]" : "";
+    case "dropdown":
+    case "radio":
+      return String(value);
     default:
+      if (Array.isArray(value)) return value.join(", ");
+      if (typeof value === "object") return JSON.stringify(value);
       return String(value);
   }
 }
@@ -106,6 +111,14 @@ function buildColumnsFromTemplate(template: ApplicationFormTemplate | null): For
   return template.fields.filter(f => f.type !== "section");
 }
 
+// Escape CSV value to handle commas, quotes, and newlines
+function escapeCSVValue(value: string): string {
+  if (value.includes(",") || value.includes('"') || value.includes("\n") || value.includes("\r")) {
+    return `"${value.replace(/"/g, '""')}"`;
+  }
+  return value;
+}
+
 function formatApplicationsForExport(applications: Application[]): ExportApplication[] {
   return applications.map((app) => ({
     name: `${app.applicants?.first_name || ""} ${app.applicants?.last_name || ""}`.trim(),
@@ -118,27 +131,68 @@ function formatApplicationsForExport(applications: Application[]): ExportApplica
   }));
 }
 
-export function exportApplicationsToCSV(applications: Application[], filename = "applications"): void {
+export function exportApplicationsToCSV(
+  applications: Application[], 
+  templates: ApplicationFormTemplate[] = [],
+  filename = "applications"
+): void {
   if (applications.length === 0) {
     throw new Error("No applications to export");
   }
 
-  const data = formatApplicationsForExport(applications);
-  const headers = ["Name", "Email", "Phone", "Position", "Project", "Submitted Date", "Status"];
+  // Get the first application's template to determine dynamic columns
+  const firstTemplate = getTemplateForApplication(applications[0], templates);
+  const formFields = buildColumnsFromTemplate(firstTemplate);
   
+  // Filter out profile picture and signature fields for CSV (not useful as text)
+  const exportableFields = formFields.filter(f => 
+    !isProfilePictureField(f) && 
+    f.type !== "signature" &&
+    !["firstname", "lastname", "email", "phone"].includes(f.type)
+  );
+
+  // Build headers: Core fields + Dynamic fields + Status + Submitted
+  const headers = [
+    "Name",
+    "Email", 
+    "Phone",
+    "Position",
+    "Project",
+    ...exportableFields.map(f => f.label),
+    "Status",
+    "Submitted Date"
+  ];
+  
+  // Build rows
+  const rows = applications.map((app) => {
+    const answers = (app.answers || {}) as Record<string, any>;
+    
+    // Core fields
+    const coreValues = [
+      `${app.applicants?.first_name || ""} ${app.applicants?.last_name || ""}`.trim(),
+      app.applicants?.email || "",
+      app.applicants?.phone || "",
+      app.job_postings?.project_task_orders?.title || "",
+      app.job_postings?.project_task_orders?.projects?.name || "",
+    ];
+    
+    // Dynamic form field values
+    const dynamicValues = exportableFields.map(field => {
+      const value = getAnswerValue(answers, field.id);
+      return formatFieldValue(value, field);
+    });
+    
+    // Status and date
+    const status = app.status.charAt(0).toUpperCase() + app.status.slice(1);
+    const submittedDate = format(new Date(app.created_at), "MMM d, yyyy");
+    
+    return [...coreValues, ...dynamicValues, status, submittedDate];
+  });
+
+  // Build CSV content
   const csvContent = [
-    headers.join(","),
-    ...data.map((row) =>
-      [
-        `"${row.name}"`,
-        `"${row.email}"`,
-        `"${row.phone}"`,
-        `"${row.position}"`,
-        `"${row.project}"`,
-        `"${row.submittedDate}"`,
-        `"${row.status}"`,
-      ].join(",")
-    ),
+    headers.map(h => escapeCSVValue(h)).join(","),
+    ...rows.map(row => row.map(cell => escapeCSVValue(cell)).join(","))
   ].join("\n");
 
   const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
@@ -146,6 +200,48 @@ export function exportApplicationsToCSV(applications: Application[], filename = 
   const link = document.createElement("a");
   link.href = url;
   link.download = `${filename}-${format(new Date(), "yyyy-MM-dd")}.csv`;
+  document.body.appendChild(link);
+  link.click();
+  document.body.removeChild(link);
+  URL.revokeObjectURL(url);
+}
+
+export function exportApplicationsToJSON(
+  applications: Application[],
+  filename = "applications"
+): void {
+  if (applications.length === 0) {
+    throw new Error("No applications to export");
+  }
+
+  const data = applications.map(app => ({
+    id: app.id,
+    applicant: {
+      id: app.applicant_id,
+      firstName: app.applicants?.first_name || "",
+      lastName: app.applicants?.last_name || "",
+      email: app.applicants?.email || "",
+      phone: app.applicants?.phone || "",
+      photoUrl: app.applicants?.photo_url || null,
+    },
+    jobPosting: {
+      id: app.job_posting_id,
+      position: app.job_postings?.project_task_orders?.title || "",
+      project: app.job_postings?.project_task_orders?.projects?.name || "",
+    },
+    status: app.status,
+    submittedAt: app.created_at,
+    updatedAt: app.updated_at,
+    notes: app.notes,
+    answers: app.answers, // Raw answers object - includes ALL form data
+  }));
+
+  const jsonContent = JSON.stringify(data, null, 2);
+  const blob = new Blob([jsonContent], { type: "application/json" });
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement("a");
+  link.href = url;
+  link.download = `${filename}-${format(new Date(), "yyyy-MM-dd")}.json`;
   document.body.appendChild(link);
   link.click();
   document.body.removeChild(link);
@@ -322,12 +418,26 @@ export async function exportApplicationsToExcel(
   URL.revokeObjectURL(url);
 }
 
-export function exportApplicationsToPDF(applications: Application[], filename = "applications"): void {
+export function exportApplicationsToPDF(
+  applications: Application[], 
+  templates: ApplicationFormTemplate[] = [],
+  filename = "applications"
+): void {
   if (applications.length === 0) {
     throw new Error("No applications to export");
   }
 
-  const data = formatApplicationsForExport(applications);
+  // Get the first application's template to determine dynamic columns
+  const firstTemplate = getTemplateForApplication(applications[0], templates);
+  const formFields = buildColumnsFromTemplate(firstTemplate);
+  
+  // Filter exportable fields (limit to first 4 for PDF width constraints)
+  const exportableFields = formFields.filter(f => 
+    !isProfilePictureField(f) && 
+    f.type !== "signature" &&
+    !["firstname", "lastname", "email", "phone"].includes(f.type)
+  ).slice(0, 4); // Limit to 4 dynamic fields for PDF
+
   const doc = new jsPDF({ orientation: "landscape" });
 
   // Title
@@ -335,23 +445,47 @@ export function exportApplicationsToPDF(applications: Application[], filename = 
   doc.text("Applications Report", 14, 20);
   doc.setFontSize(10);
   doc.text(`Generated: ${format(new Date(), "MMM d, yyyy h:mm a")}`, 14, 28);
+  
+  // Note about full data
+  if (formFields.length > exportableFields.length + 4) {
+    doc.setFontSize(8);
+    doc.setTextColor(128, 128, 128);
+    doc.text("Note: Some fields omitted. Export to CSV or Excel for complete data.", 14, 34);
+    doc.setTextColor(0, 0, 0);
+  }
 
-  // Table headers
-  const headers = ["Name", "Email", "Phone", "Position", "Project", "Date", "Status"];
-  const colWidths = [40, 55, 30, 45, 45, 25, 25];
-  const startY = 40;
+  // Build headers dynamically
+  const headers = ["Name", "Email", "Phone", ...exportableFields.map(f => f.label), "Status", "Date"];
+  
+  // Calculate column widths dynamically
+  const totalWidth = 265;
+  const fixedCols = 5; // Name, Email, Phone, Status, Date
+  const dynamicCols = exportableFields.length;
+  const baseWidth = totalWidth / (fixedCols + dynamicCols);
+  
+  const colWidths = [
+    baseWidth * 1.2, // Name
+    baseWidth * 1.5, // Email
+    baseWidth * 0.9, // Phone
+    ...exportableFields.map(() => baseWidth), // Dynamic fields
+    baseWidth * 0.7, // Status
+    baseWidth * 0.7, // Date
+  ];
+
+  const startY = formFields.length > exportableFields.length + 4 ? 42 : 40;
   let y = startY;
 
   // Header row
   doc.setFillColor(59, 130, 246);
   doc.rect(14, y - 6, 265, 10, "F");
   doc.setTextColor(255, 255, 255);
-  doc.setFontSize(9);
+  doc.setFontSize(8);
   doc.setFont("helvetica", "bold");
 
   let x = 14;
   headers.forEach((header, i) => {
-    doc.text(header, x + 2, y);
+    const text = header.length > 12 ? header.substring(0, 11) + "…" : header;
+    doc.text(text, x + 2, y);
     x += colWidths[i];
   });
 
@@ -360,7 +494,7 @@ export function exportApplicationsToPDF(applications: Application[], filename = 
   doc.setFont("helvetica", "normal");
   y += 10;
 
-  data.forEach((row, rowIndex) => {
+  applications.forEach((app, rowIndex) => {
     if (y > 180) {
       doc.addPage();
       y = 20;
@@ -372,10 +506,22 @@ export function exportApplicationsToPDF(applications: Application[], filename = 
       doc.rect(14, y - 5, 265, 8, "F");
     }
 
+    const answers = (app.answers || {}) as Record<string, any>;
+    
+    // Build row values
+    const values = [
+      `${app.applicants?.first_name || ""} ${app.applicants?.last_name || ""}`.trim(),
+      app.applicants?.email || "",
+      app.applicants?.phone || "",
+      ...exportableFields.map(field => formatFieldValue(getAnswerValue(answers, field.id), field)),
+      app.status.charAt(0).toUpperCase() + app.status.slice(1),
+      format(new Date(app.created_at), "MMM d, yyyy"),
+    ];
+
     x = 14;
-    const values = [row.name, row.email, row.phone, row.position, row.project, row.submittedDate, row.status];
     values.forEach((value, i) => {
-      const text = String(value).substring(0, Math.floor(colWidths[i] / 2.5));
+      const maxChars = Math.floor(colWidths[i] / 2);
+      const text = String(value).length > maxChars ? String(value).substring(0, maxChars - 1) + "…" : String(value);
       doc.text(text, x + 2, y);
       x += colWidths[i];
     });
@@ -385,7 +531,7 @@ export function exportApplicationsToPDF(applications: Application[], filename = 
   // Footer
   doc.setFontSize(8);
   doc.setTextColor(128, 128, 128);
-  doc.text(`Total: ${data.length} application(s)`, 14, doc.internal.pageSize.height - 10);
+  doc.text(`Total: ${applications.length} application(s)`, 14, doc.internal.pageSize.height - 10);
 
   doc.save(`${filename}-${format(new Date(), "yyyy-MM-dd")}.pdf`);
 }

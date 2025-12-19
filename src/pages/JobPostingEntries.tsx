@@ -1,6 +1,6 @@
 import { useState, useMemo } from "react";
 import { useParams, useNavigate } from "react-router-dom";
-import { ArrowLeft, Download, FileText, FileSpreadsheet, File } from "lucide-react";
+import { ArrowLeft, Download, FileText, FileSpreadsheet, File, Code } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -32,6 +32,7 @@ import {
   exportApplicationsToCSV,
   exportApplicationsToExcel,
   exportApplicationsToPDF,
+  exportApplicationsToJSON,
 } from "@/utils/applicationExportUtils";
 
 export default function JobPostingEntries() {
@@ -72,7 +73,7 @@ export default function JobPostingEntries() {
       ? filteredApplications.filter((app) => selectedIds.has(app.id))
       : filteredApplications;
     try {
-      exportApplicationsToCSV(selected);
+      exportApplicationsToCSV(selected, formTemplates || []);
       toast.success("Exported to CSV");
     } catch {
       toast.error("Failed to export");
@@ -97,8 +98,20 @@ export default function JobPostingEntries() {
       ? filteredApplications.filter((app) => selectedIds.has(app.id))
       : filteredApplications;
     try {
-      exportApplicationsToPDF(selected);
+      exportApplicationsToPDF(selected, formTemplates || []);
       toast.success("Exported to PDF");
+    } catch {
+      toast.error("Failed to export");
+    }
+  };
+
+  const handleExportJSON = () => {
+    const selected = selectedIds.size > 0
+      ? filteredApplications.filter((app) => selectedIds.has(app.id))
+      : filteredApplications;
+    try {
+      exportApplicationsToJSON(selected);
+      toast.success("Exported to JSON");
     } catch {
       toast.error("Failed to export");
     }
@@ -150,6 +163,10 @@ export default function JobPostingEntries() {
               <DropdownMenuItem onClick={handleExportPDF}>
                 <File className="h-4 w-4 mr-2" />
                 Export as PDF
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={handleExportJSON}>
+                <Code className="h-4 w-4 mr-2" />
+                Export as JSON (Raw Data)
               </DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>
