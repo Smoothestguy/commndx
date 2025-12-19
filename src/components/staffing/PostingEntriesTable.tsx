@@ -42,14 +42,20 @@ interface PostingEntriesTableProps {
   onSelectionChange?: (ids: Set<string>) => void;
 }
 
-// Helper to find profile picture from answers
+// Helper to find profile picture - prioritize applicant.photo_url, then answers
 function getProfilePicture(
   answers: Record<string, unknown> | null,
-  fields: FormField[]
+  fields: FormField[],
+  applicantPhotoUrl?: string | null
 ): string | null {
+  // First check if applicant has a photo_url (core field)
+  if (applicantPhotoUrl && typeof applicantPhotoUrl === "string" && applicantPhotoUrl.startsWith("http")) {
+    return applicantPhotoUrl;
+  }
+
   if (!answers) return null;
 
-  // First look for fields that are specifically "file" type (profile picture candidates)
+  // Fallback: look for file type fields in custom answers
   for (const field of fields) {
     if (field.type === "file") {
       const value = answers[field.id];
@@ -234,7 +240,7 @@ export function PostingEntriesTable({
           <TableBody>
             {applications.map((app) => {
               const answers = app.answers as Record<string, unknown> | null;
-              const profilePic = getProfilePicture(answers, formFields);
+              const profilePic = getProfilePicture(answers, formFields, (app.applicants as any)?.photo_url);
 
               return (
                 <TableRow

@@ -63,6 +63,7 @@ export function useFormTranslation({
       email: 'Email',
       phone: 'Phone',
       homeZip: 'Home ZIP Code',
+      profilePicture: 'Profile Picture',
     },
     customFields: customFields.map(f => ({
       id: f.id,
@@ -151,7 +152,7 @@ export function useFormTranslation({
   }, []);
 
   // Helper to get translated label for core fields
-  const getCoreLabel = useCallback((field: 'firstName' | 'lastName' | 'email' | 'phone' | 'homeZip') => {
+  const getCoreLabel = useCallback((field: 'firstName' | 'lastName' | 'email' | 'phone' | 'homeZip' | 'profilePicture') => {
     return translations?.coreLabels?.[field] || defaultContent.coreLabels[field];
   }, [translations, defaultContent]);
 

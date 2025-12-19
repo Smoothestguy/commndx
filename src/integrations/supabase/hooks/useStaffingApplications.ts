@@ -40,6 +40,7 @@ export interface Applicant {
   home_zip: string | null;
   home_lat: number | null;
   home_lng: number | null;
+  photo_url: string | null;
   status: 'new' | 'approved' | 'rejected' | 'inactive';
   created_at: string;
   updated_at: string;
@@ -323,6 +324,7 @@ export const useSubmitApplication = () => {
         phone: string;
         email: string;
         home_zip?: string;
+        photo_url?: string;
       };
       answers: Record<string, unknown>;
     }) => {
@@ -377,6 +379,7 @@ export const useSubmitApplication = () => {
             last_name: applicantData.last_name,
             phone: applicantData.phone,
             home_zip: applicantData.home_zip || null,
+            photo_url: applicantData.photo_url || null,
           } as any)
           .eq("id", existingApplicant.id);
 
@@ -397,6 +400,7 @@ export const useSubmitApplication = () => {
             phone: applicantData.phone,
             email: applicantData.email,
             home_zip: applicantData.home_zip || null,
+            photo_url: applicantData.photo_url || null,
             status: 'new' as const,
           } as any)
           .select("id")

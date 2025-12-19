@@ -81,6 +81,7 @@ const baseSchema = z.object({
     .min(1, "Phone number is required")
     .regex(/^\d{10}$/, "Phone number must be exactly 10 digits"),
   home_zip: z.string().optional(),
+  photo_url: z.string().optional(),
 });
 
 export default function PublicApplicationForm() {
@@ -175,6 +176,7 @@ export default function PublicApplicationForm() {
       email: "",
       phone: "",
       home_zip: "",
+      photo_url: "",
     },
   });
 
@@ -257,6 +259,7 @@ export default function PublicApplicationForm() {
           email: data.email,
           phone: data.phone,
           home_zip: data.home_zip,
+          photo_url: data.photo_url,
         },
         answers: customAnswers,
       });
@@ -702,6 +705,22 @@ export default function PublicApplicationForm() {
           <CardContent>
             <Form {...form}>
               <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
+                {/* Profile Picture - Core Field */}
+                <div className="space-y-2">
+                  <FormFileUpload
+                    value={form.watch("photo_url") || null}
+                    onChange={(url) => form.setValue("photo_url", url || "")}
+                    onUploadStateChange={(isUploading) => handleFileUploadStateChange("core_photo", isUploading)}
+                    label={getCoreLabel('profilePicture')}
+                    required={false}
+                    helpText="Upload a clear photo of yourself"
+                    acceptedFileTypes={["image/*"]}
+                    maxFileSize={5}
+                    storageBucket="application-files"
+                    storagePath="profile-photos"
+                  />
+                </div>
+
                 {/* Core Fields */}
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <FormField
