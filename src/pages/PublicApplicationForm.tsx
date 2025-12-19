@@ -28,6 +28,60 @@ import { AddressField, AddressValue } from "@/components/form-builder/AddressFie
 import { FormattedPhoneInput } from "@/components/form-builder/FormattedPhoneInput";
 import { cn } from "@/lib/utils";
 
+// Helper function to group fields into rows based on width
+function renderFieldsWithLayout(fields: FormFieldType[], renderField: (field: FormFieldType) => React.ReactNode) {
+  const rows: FormFieldType[][] = [];
+  let currentRow: FormFieldType[] = [];
+  let currentRowWidth = 0;
+
+  fields.forEach((field) => {
+    const fieldWidth = field.width === "third" ? 1/3 : field.width === "half" ? 0.5 : 1;
+    
+    // If field is full width or would overflow current row, start new row
+    if (fieldWidth === 1 || currentRowWidth + fieldWidth > 1) {
+      if (currentRow.length > 0) {
+        rows.push(currentRow);
+      }
+      currentRow = [field];
+      currentRowWidth = fieldWidth;
+    } else {
+      currentRow.push(field);
+      currentRowWidth += fieldWidth;
+    }
+
+    // If row is full, push it
+    if (currentRowWidth >= 1) {
+      rows.push(currentRow);
+      currentRow = [];
+      currentRowWidth = 0;
+    }
+  });
+
+  // Push any remaining fields
+  if (currentRow.length > 0) {
+    rows.push(currentRow);
+  }
+
+  return rows.map((row, rowIndex) => {
+    if (row.length === 1 && (!row[0].width || row[0].width === "full")) {
+      // Single full-width field
+      return <div key={rowIndex}>{renderField(row[0])}</div>;
+    }
+
+    // Multiple fields in a row
+    return (
+      <div key={rowIndex} className="grid gap-3" style={{ 
+        gridTemplateColumns: row.map(() => "1fr").join(" ")
+      }}>
+        {row.map((field) => (
+          <div key={field.id}>
+            {renderField(field)}
+          </div>
+        ))}
+      </div>
+    );
+  });
+}
 // Base schema for core fields
 const baseSchema = z.object({
   first_name: z.string().min(1, "First name is required"),
@@ -680,7 +734,7 @@ export default function PublicApplicationForm() {
                 {customFields.length > 0 && (
                   <div className="space-y-4 pt-4 border-t">
                     <h3 className="font-medium text-sm text-muted-foreground">Additional Questions</h3>
-                    {customFields.map(renderCustomField)}
+                    {renderFieldsWithLayout(customFields, renderCustomField)}
                   </div>
                 )}
 

@@ -26,6 +26,66 @@ interface FormPreviewProps {
   successMessage?: string;
 }
 
+// Helper function to group fields into rows based on width
+function renderFieldsWithLayout(fields: FormField[], renderField: (field: FormField) => React.ReactNode) {
+  const rows: FormField[][] = [];
+  let currentRow: FormField[] = [];
+  let currentRowWidth = 0;
+
+  fields.forEach((field) => {
+    const fieldWidth = field.width === "third" ? 1/3 : field.width === "half" ? 0.5 : 1;
+    
+    // If field is full width or would overflow current row, start new row
+    if (fieldWidth === 1 || currentRowWidth + fieldWidth > 1) {
+      if (currentRow.length > 0) {
+        rows.push(currentRow);
+      }
+      currentRow = [field];
+      currentRowWidth = fieldWidth;
+    } else {
+      currentRow.push(field);
+      currentRowWidth += fieldWidth;
+    }
+
+    // If row is full, push it
+    if (currentRowWidth >= 1) {
+      rows.push(currentRow);
+      currentRow = [];
+      currentRowWidth = 0;
+    }
+  });
+
+  // Push any remaining fields
+  if (currentRow.length > 0) {
+    rows.push(currentRow);
+  }
+
+  return rows.map((row, rowIndex) => {
+    if (row.length === 1 && (!row[0].width || row[0].width === "full")) {
+      // Single full-width field
+      return <div key={rowIndex}>{renderField(row[0])}</div>;
+    }
+
+    // Multiple fields in a row
+    return (
+      <div key={rowIndex} className="grid gap-3" style={{ 
+        gridTemplateColumns: row.map(f => 
+          f.width === "third" ? "1fr" : f.width === "half" ? "1fr" : "1fr"
+        ).join(" ")
+      }}>
+        {row.map((field) => (
+          <div key={field.id} className={cn(
+            field.width === "third" ? "col-span-1" : 
+            field.width === "half" ? "col-span-1" : "col-span-full"
+          )}>
+            {renderField(field)}
+          </div>
+        ))}
+      </div>
+    );
+  });
+}
+
 export function FormPreview({ name, description, fields, theme, successMessage }: FormPreviewProps) {
   const getBackgroundStyle = () => {
     if (theme.backgroundImage) {
@@ -345,13 +405,13 @@ export function FormPreview({ name, description, fields, theme, successMessage }
               <Input placeholder="12345" disabled className="w-1/3 min-w-[120px]" />
             </div>
 
-            {/* Custom Fields */}
+            {/* Custom Fields with side-by-side layout */}
             {fields.length > 0 && (
               <>
                 <div className="border-t pt-4 mt-4">
                   <p className="text-xs text-muted-foreground mb-3">Additional Questions</p>
                 </div>
-                {fields.map(renderField)}
+                {renderFieldsWithLayout(fields, renderField)}
               </>
             )}
 

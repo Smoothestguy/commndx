@@ -101,6 +101,37 @@ export function FieldSettingsPanel({
           </Select>
         </div>
 
+        {/* Width selector buttons */}
+        <div className="flex items-center gap-1 border rounded-md p-0.5">
+          <Button
+            variant={field.width === "full" || !field.width ? "secondary" : "ghost"}
+            size="sm"
+            className="h-6 px-2 text-xs"
+            onClick={() => onUpdate({ width: "full" })}
+            title="Full width"
+          >
+            Full
+          </Button>
+          <Button
+            variant={field.width === "half" ? "secondary" : "ghost"}
+            size="sm"
+            className="h-6 px-2 text-xs"
+            onClick={() => onUpdate({ width: "half" })}
+            title="Half width (50%)"
+          >
+            1/2
+          </Button>
+          <Button
+            variant={field.width === "third" ? "secondary" : "ghost"}
+            size="sm"
+            className="h-6 px-2 text-xs"
+            onClick={() => onUpdate({ width: "third" })}
+            title="Third width (33%)"
+          >
+            1/3
+          </Button>
+        </div>
+
         <div className="flex items-center gap-1">
           {!isNonInput && (
             <div className="flex items-center gap-2 px-2">
