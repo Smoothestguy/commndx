@@ -268,46 +268,76 @@ export type Database = {
           admin_message: string | null
           answers: Json | null
           applicant_id: string
+          client_submitted_at: string | null
           created_at: string
           edit_token: string | null
           edit_token_expires_at: string | null
           form_version: number | null
+          geo_accuracy: number | null
+          geo_captured_at: string | null
+          geo_error: string | null
+          geo_lat: number | null
+          geo_lng: number | null
+          geo_source: string | null
           id: string
           job_posting_id: string
           missing_fields: Json | null
           notes: string | null
           status: Database["public"]["Enums"]["application_status"]
+          submitted_at: string | null
+          submitted_by_user_id: string | null
           updated_at: string
+          user_agent: string | null
         }
         Insert: {
           admin_message?: string | null
           answers?: Json | null
           applicant_id: string
+          client_submitted_at?: string | null
           created_at?: string
           edit_token?: string | null
           edit_token_expires_at?: string | null
           form_version?: number | null
+          geo_accuracy?: number | null
+          geo_captured_at?: string | null
+          geo_error?: string | null
+          geo_lat?: number | null
+          geo_lng?: number | null
+          geo_source?: string | null
           id?: string
           job_posting_id: string
           missing_fields?: Json | null
           notes?: string | null
           status?: Database["public"]["Enums"]["application_status"]
+          submitted_at?: string | null
+          submitted_by_user_id?: string | null
           updated_at?: string
+          user_agent?: string | null
         }
         Update: {
           admin_message?: string | null
           answers?: Json | null
           applicant_id?: string
+          client_submitted_at?: string | null
           created_at?: string
           edit_token?: string | null
           edit_token_expires_at?: string | null
           form_version?: number | null
+          geo_accuracy?: number | null
+          geo_captured_at?: string | null
+          geo_error?: string | null
+          geo_lat?: number | null
+          geo_lng?: number | null
+          geo_source?: string | null
           id?: string
           job_posting_id?: string
           missing_fields?: Json | null
           notes?: string | null
           status?: Database["public"]["Enums"]["application_status"]
+          submitted_at?: string | null
+          submitted_by_user_id?: string | null
           updated_at?: string
+          user_agent?: string | null
         }
         Relationships: [
           {

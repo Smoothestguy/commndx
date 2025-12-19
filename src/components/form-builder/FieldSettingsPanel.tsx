@@ -52,7 +52,8 @@ export function FieldSettingsPanel({
   const hasPlaceholder = ["text", "textarea", "number", "email", "phone", "firstname", "lastname"].includes(field.type);
   const hasLayoutOption = field.type === "multiselect" || field.type === "radio";
   const hasIconOption = field.type === "email" || field.type === "phone";
-  const isNonInput = field.type === "section" || field.type === "address";
+  // Only section type cannot be required - address fields can be required
+  const isNonInput = field.type === "section";
 
   const getFieldTypeLabel = (type: string) => {
     return fieldTypes.find(t => t.value === type)?.label || type;

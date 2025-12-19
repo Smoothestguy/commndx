@@ -314,12 +314,24 @@ export const useApplications = (filters?: { postingId?: string; status?: string;
 
 // ============ PUBLIC SUBMISSION (no auth required) ============
 
+export interface GeoSubmissionData {
+  lat: number | null;
+  lng: number | null;
+  accuracy: number | null;
+  source: "device" | "ip_fallback" | null;
+  capturedAt: string | null;
+  error: string | null;
+}
+
 export const useSubmitApplication = () => {
   return useMutation({
     mutationFn: async ({
       posting_id,
       applicant: applicantData,
       answers,
+      geo,
+      clientSubmittedAt,
+      userAgent,
     }: {
       posting_id: string;
       applicant: {
@@ -331,6 +343,9 @@ export const useSubmitApplication = () => {
         photo_url?: string;
       };
       answers: Record<string, unknown>;
+      geo?: GeoSubmissionData;
+      clientSubmittedAt?: string;
+      userAgent?: string;
     }) => {
       console.log("[Application] Starting submission for posting:", posting_id);
       console.log("[Application] Applicant data:", applicantData);
@@ -432,8 +447,10 @@ export const useSubmitApplication = () => {
       }
       console.log("[Application] Processed answers:", processedAnswers);
 
-      // Create the application
+      // Create the application with geo data and timestamps
       console.log("[Application] Creating application record for applicant:", applicantId);
+      console.log("[Application] Geo data:", geo);
+      
       const { data: application, error: appError } = await supabase
         .from("applications")
         .insert({
@@ -441,6 +458,15 @@ export const useSubmitApplication = () => {
           applicant_id: applicantId,
           answers: processedAnswers,
           status: 'submitted' as const,
+          submitted_at: new Date().toISOString(),
+          client_submitted_at: clientSubmittedAt || null,
+          geo_lat: geo?.lat || null,
+          geo_lng: geo?.lng || null,
+          geo_accuracy: geo?.accuracy || null,
+          geo_source: geo?.source || null,
+          geo_captured_at: geo?.capturedAt || null,
+          geo_error: geo?.error || null,
+          user_agent: userAgent || null,
         } as any)
         .select()
         .single();

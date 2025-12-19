@@ -4,7 +4,7 @@ import { Switch } from "@/components/ui/switch";
 import { Textarea } from "@/components/ui/textarea";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
-import { AlertCircle, ExternalLink, Lock, Shield, Bell } from "lucide-react";
+import { AlertCircle, ExternalLink, Lock, Shield, Bell, MapPin } from "lucide-react";
 
 export interface FormSettings {
   redirectUrl?: string;
@@ -14,6 +14,8 @@ export interface FormSettings {
   rateLimitPerHour?: number;
   showInlineErrors?: boolean;
   showErrorSummary?: boolean;
+  requireProfilePhoto?: boolean;
+  requireLocation?: boolean;
 }
 
 interface FormSettingsPanelProps {
@@ -146,6 +148,45 @@ export function FormSettingsPanel({
             />
             <p className="text-xs text-muted-foreground mt-1">
               Limit submissions to prevent spam (optional)
+            </p>
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* Location & Tracking */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <MapPin className="h-5 w-5" />
+            Location & Tracking
+          </CardTitle>
+          <CardDescription>
+            Capture geolocation and timestamp data with submissions
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <div className="flex items-center justify-between">
+            <div className="space-y-0.5">
+              <Label>Require Location on Submit</Label>
+              <p className="text-xs text-muted-foreground">
+                Block submission if location access is denied
+              </p>
+            </div>
+            <Switch
+              checked={settings.requireLocation || false}
+              onCheckedChange={(checked) => updateSetting("requireLocation", checked)}
+            />
+          </div>
+
+          <div className="p-3 bg-muted/50 rounded-lg border">
+            <div className="flex items-center gap-2 text-sm font-medium">
+              <Shield className="h-4 w-4 text-primary" />
+              Automatic Tracking
+            </div>
+            <p className="text-xs text-muted-foreground mt-1">
+              All submissions automatically capture: server timestamp, client timestamp, 
+              GPS coordinates (when permitted), and user agent. Location falls back gracefully 
+              if permission is denied.
             </p>
           </div>
         </CardContent>
