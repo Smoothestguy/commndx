@@ -1,5 +1,8 @@
 project_id = "xfjjvznxkcckuwxmcsdc"
 
+[functions.translate-form]
+verify_jwt = false
+
 [functions.accept-vendor-invitation]
 verify_jwt = false
 

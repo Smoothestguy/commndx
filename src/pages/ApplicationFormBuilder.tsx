@@ -59,6 +59,7 @@ import { ThemeEditor } from "@/components/form-builder/ThemeEditor";
 import { FormPreview } from "@/components/form-builder/FormPreview";
 import { FormSettingsPanel } from "@/components/form-builder/FormSettingsPanel";
 import { CoreFieldsCard } from "@/components/form-builder/CoreFieldsCard";
+import { LiveFormPreview } from "@/components/form-builder/LiveFormPreview";
 import { toast } from "sonner";
 
 const FIELD_TYPES = [
@@ -341,9 +342,9 @@ export default function ApplicationFormBuilder() {
 
         {/* Fields Tab */}
         <TabsContent value="fields" className="space-y-4">
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-            {/* Form Builder */}
-            <div className="lg:col-span-2 space-y-4">
+          <div className="grid grid-cols-1 xl:grid-cols-12 gap-6">
+            {/* Form Builder - Left Side */}
+            <div className="xl:col-span-5 space-y-4">
               <Card>
                 <CardHeader>
                   <CardTitle>Form Details</CardTitle>
@@ -415,22 +416,36 @@ export default function ApplicationFormBuilder() {
               </Card>
             </div>
 
-            {/* Field Types Sidebar */}
-            <div>
+            {/* Live Preview - Center (visible on xl screens) */}
+            <div className="hidden xl:block xl:col-span-5">
+              <LiveFormPreview
+                name={name}
+                description={description}
+                fields={fields}
+                layout={layout}
+                theme={theme}
+                successMessage={successMessage}
+                coreFields={coreFields}
+                onExpandClick={() => setActiveTab("preview")}
+              />
+            </div>
+
+            {/* Field Types Sidebar - Right */}
+            <div className="xl:col-span-2">
               <Card className="sticky top-6">
-                <CardHeader>
-                  <CardTitle>Add Field</CardTitle>
-                  <CardDescription>Click to add a new field</CardDescription>
+                <CardHeader className="py-3">
+                  <CardTitle className="text-sm">Add Field</CardTitle>
+                  <CardDescription className="text-xs">Click to add a new field</CardDescription>
                 </CardHeader>
-                <CardContent className="grid grid-cols-2 gap-2">
+                <CardContent className="grid grid-cols-2 gap-1.5 pt-0">
                   {FIELD_TYPES.map((type) => (
                     <Button
                       key={type.value}
                       variant="outline"
-                      className="h-auto py-3 px-3 flex flex-col items-center gap-1.5 text-xs"
+                      className="h-auto py-2 px-2 flex flex-col items-center gap-1 text-[10px]"
                       onClick={() => addField(type.value)}
                     >
-                      <type.icon className="h-4 w-4" />
+                      <type.icon className="h-3.5 w-3.5" />
                       <span className="text-center leading-tight">{type.label}</span>
                     </Button>
                   ))}
