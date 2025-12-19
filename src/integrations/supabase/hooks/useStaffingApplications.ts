@@ -510,6 +510,29 @@ export const useApproveApplication = () => {
 
       if (personnelError) throw personnelError;
 
+      // Send onboarding email
+      try {
+        const { error: emailError } = await supabase.functions.invoke(
+          "send-personnel-onboarding-email",
+          {
+            body: {
+              personnelId: personnel.id,
+              email: applicant.email,
+              firstName: applicant.first_name,
+              lastName: applicant.last_name,
+            },
+          }
+        );
+
+        if (emailError) {
+          console.error("[Approve] Failed to send onboarding email:", emailError);
+          // Don't throw - approval succeeded, email is secondary
+        }
+      } catch (emailErr) {
+        console.error("[Approve] Error sending onboarding email:", emailErr);
+        // Don't throw - approval succeeded, email is secondary
+      }
+
       return personnel;
     },
     onSuccess: () => {

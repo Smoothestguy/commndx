@@ -59,6 +59,9 @@ interface ApplicationsTableProps {
   onViewApplication: (app: Application) => void;
   onApprove: (app: Application) => void;
   onReject: (app: Application) => void;
+  selectable?: boolean;
+  selectedIds?: Set<string>;
+  onSelectionChange?: (ids: Set<string>) => void;
 }
 
 export function ApplicationsTable({
@@ -67,6 +70,9 @@ export function ApplicationsTable({
   onViewApplication,
   onApprove,
   onReject,
+  selectable = false,
+  selectedIds,
+  onSelectionChange,
 }: ApplicationsTableProps) {
   const isMobile = useIsMobile();
   const { data: formTemplates } = useApplicationFormTemplates();
@@ -256,6 +262,9 @@ export function ApplicationsTable({
       data={applications}
       columns={columns}
       onRowClick={onViewApplication}
+      selectable={selectable}
+      selectedIds={selectedIds}
+      onSelectionChange={onSelectionChange}
     />
   );
 }
