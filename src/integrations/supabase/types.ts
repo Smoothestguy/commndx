@@ -2913,6 +2913,110 @@ export type Database = {
           },
         ]
       }
+      personnel_w9_forms: {
+        Row: {
+          account_numbers: string | null
+          address: string
+          business_name: string | null
+          certified_correct_tin: boolean | null
+          certified_fatca_exempt: boolean | null
+          certified_not_subject_backup_withholding: boolean | null
+          certified_us_person: boolean | null
+          city: string
+          created_at: string | null
+          document_url: string | null
+          ein: string | null
+          exempt_payee_code: string | null
+          fatca_exemption_code: string | null
+          federal_tax_classification: string
+          id: string
+          llc_tax_classification: string | null
+          name_on_return: string
+          other_classification: string | null
+          personnel_id: string
+          rejection_reason: string | null
+          signature_data: string | null
+          signature_date: string
+          state: string
+          status: string
+          tin_type: string
+          updated_at: string | null
+          verified_at: string | null
+          verified_by: string | null
+          zip: string
+        }
+        Insert: {
+          account_numbers?: string | null
+          address: string
+          business_name?: string | null
+          certified_correct_tin?: boolean | null
+          certified_fatca_exempt?: boolean | null
+          certified_not_subject_backup_withholding?: boolean | null
+          certified_us_person?: boolean | null
+          city: string
+          created_at?: string | null
+          document_url?: string | null
+          ein?: string | null
+          exempt_payee_code?: string | null
+          fatca_exemption_code?: string | null
+          federal_tax_classification: string
+          id?: string
+          llc_tax_classification?: string | null
+          name_on_return: string
+          other_classification?: string | null
+          personnel_id: string
+          rejection_reason?: string | null
+          signature_data?: string | null
+          signature_date: string
+          state: string
+          status?: string
+          tin_type?: string
+          updated_at?: string | null
+          verified_at?: string | null
+          verified_by?: string | null
+          zip: string
+        }
+        Update: {
+          account_numbers?: string | null
+          address?: string
+          business_name?: string | null
+          certified_correct_tin?: boolean | null
+          certified_fatca_exempt?: boolean | null
+          certified_not_subject_backup_withholding?: boolean | null
+          certified_us_person?: boolean | null
+          city?: string
+          created_at?: string | null
+          document_url?: string | null
+          ein?: string | null
+          exempt_payee_code?: string | null
+          fatca_exemption_code?: string | null
+          federal_tax_classification?: string
+          id?: string
+          llc_tax_classification?: string | null
+          name_on_return?: string
+          other_classification?: string | null
+          personnel_id?: string
+          rejection_reason?: string | null
+          signature_data?: string | null
+          signature_date?: string
+          state?: string
+          status?: string
+          tin_type?: string
+          updated_at?: string | null
+          verified_at?: string | null
+          verified_by?: string | null
+          zip?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "personnel_w9_forms_personnel_id_fkey"
+            columns: ["personnel_id"]
+            isOneToOne: true
+            referencedRelation: "personnel"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       po_addendum_line_items: {
         Row: {
           billed_quantity: number
