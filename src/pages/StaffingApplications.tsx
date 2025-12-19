@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
 import { 
   Search, 
@@ -12,6 +12,7 @@ import {
   FileSpreadsheet,
   File,
   Table as TableIcon,
+  Check,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -64,12 +65,42 @@ import {
   exportApplicationsToPDF,
 } from "@/utils/applicationExportUtils";
 
+const EXPERIENCE_OPTIONS = [
+  { key: "all", label: "All Experience" },
+  { key: "Event setup / teardown", label: "Event Setup / Tear down" },
+  { key: "Tent installation", label: "Tent Installation" },
+  { key: "Forklift / equipment operation", label: "Forklift / Equipment" },
+  { key: "None of the above", label: "No Prior Experience" },
+];
+
+// Helper to find experience array from application answers
+const findExperienceArray = (
+  answers: Record<string, unknown> | null,
+  formTemplates: Array<{ id: string; fields: Array<{ id: string; type: string; label: string }> }> | undefined,
+  formTemplateId: string | null | undefined
+): string[] | null => {
+  if (!answers || !formTemplates || !formTemplateId) return null;
+  
+  const template = formTemplates.find(t => t.id === formTemplateId);
+  if (!template) return null;
+  
+  // Find multiselect field with "experience" in the label
+  const experienceField = template.fields.find(
+    f => f.type === "multiselect" && f.label.toLowerCase().includes("experience")
+  );
+  
+  if (!experienceField) return null;
+  
+  const value = answers[experienceField.id];
+  return Array.isArray(value) ? value : null;
+};
 
 export default function StaffingApplications() {
   const navigate = useNavigate();
   const [search, setSearch] = useState("");
   const [projectFilter, setProjectFilter] = useState<string>("all");
   const [statusFilter, setStatusFilter] = useState<string>("all");
+  const [experienceFilter, setExperienceFilter] = useState<string>("all");
   const [selectedApp, setSelectedApp] = useState<Application | null>(null);
   const [showDetailDialog, setShowDetailDialog] = useState(false);
   const [showCreateDialog, setShowCreateDialog] = useState(false);
@@ -113,16 +144,34 @@ export default function StaffingApplications() {
   const approveApplication = useApproveApplication();
   const rejectApplication = useRejectApplication();
 
-  // Filter applications by search
-  const filteredApplications = applications?.filter((app) => {
-    const applicant = app.applicants;
-    if (!applicant) return false;
-    const fullName = `${applicant.first_name} ${applicant.last_name}`.toLowerCase();
-    const email = applicant.email.toLowerCase();
-    const searchLower = search.toLowerCase();
-    return fullName.includes(searchLower) || email.includes(searchLower);
-  });
-
+  // Filter applications by search and experience
+  const filteredApplications = useMemo(() => {
+    return applications?.filter((app) => {
+      const applicant = app.applicants;
+      if (!applicant) return false;
+      
+      // Search filter
+      const fullName = `${applicant.first_name} ${applicant.last_name}`.toLowerCase();
+      const email = applicant.email.toLowerCase();
+      const searchLower = search.toLowerCase();
+      const matchesSearch = fullName.includes(searchLower) || email.includes(searchLower);
+      if (!matchesSearch) return false;
+      
+      // Experience filter
+      if (experienceFilter !== "all") {
+        const experienceArray = findExperienceArray(
+          app.answers as Record<string, unknown>,
+          formTemplates as Array<{ id: string; fields: Array<{ id: string; type: string; label: string }> }>,
+          app.job_postings?.form_template_id
+        );
+        if (!experienceArray || !experienceArray.includes(experienceFilter)) {
+          return false;
+        }
+      }
+      
+      return true;
+    });
+  }, [applications, search, experienceFilter, formTemplates]);
 
   const handleCreateTaskOrder = async () => {
     if (!newTaskOrder.project_id || !newTaskOrder.title) {
@@ -324,7 +373,7 @@ export default function StaffingApplications() {
 
       {/* Filters */}
       <Card>
-        <CardContent className="pt-6">
+        <CardContent className="pt-6 space-y-4">
           <div className="flex flex-col sm:flex-row gap-4">
             <div className="flex-1">
               <div className="relative">
@@ -362,6 +411,22 @@ export default function StaffingApplications() {
                 <SelectItem value="rejected">Rejected</SelectItem>
               </SelectContent>
             </Select>
+          </div>
+          
+          {/* Experience Filter */}
+          <div className="flex flex-wrap gap-2">
+            <span className="text-sm text-muted-foreground mr-2 self-center">Experience:</span>
+            {EXPERIENCE_OPTIONS.map((option) => (
+              <Badge
+                key={option.key}
+                variant={experienceFilter === option.key ? "default" : "outline"}
+                className="cursor-pointer hover:bg-primary/80 transition-colors"
+                onClick={() => setExperienceFilter(option.key)}
+              >
+                {option.label}
+                {experienceFilter === option.key && <Check className="h-3 w-3 ml-1" />}
+              </Badge>
+            ))}
           </div>
         </CardContent>
       </Card>
