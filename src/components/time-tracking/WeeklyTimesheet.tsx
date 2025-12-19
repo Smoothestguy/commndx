@@ -2,7 +2,7 @@ import { useState, useMemo } from "react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Plus, Edit, Clock, CalendarSearch, DollarSign } from "lucide-react";
+import { Plus, Edit, Clock, CalendarSearch, DollarSign, Trash2, X } from "lucide-react";
 import { TimeEntryForm } from "./TimeEntryForm";
 import { QuickRateEditDialog } from "./QuickRateEditDialog";
 import { PersonnelAvatar } from "@/components/personnel/PersonnelAvatar";
@@ -11,10 +11,22 @@ import {
   useAdminTimeEntriesByWeek,
 } from "@/integrations/supabase/hooks/useTimeEntries";
 import { useCompanySettings } from "@/integrations/supabase/hooks/useCompanySettings";
+import { useBulkRemovePersonnelFromProject } from "@/integrations/supabase/hooks/usePersonnelProjectAssignments";
 import { format, addDays, startOfWeek } from "date-fns";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
+import { Checkbox } from "@/components/ui/checkbox";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 
 interface WeeklyTimesheetProps {
   currentWeek: Date;
@@ -48,12 +60,15 @@ export function WeeklyTimesheet({ currentWeek, onWeekChange }: WeeklyTimesheetPr
     name: string;
     rate: number;
   } | null>(null);
+  const [selectedRows, setSelectedRows] = useState<Set<string>>(new Set());
+  const [showDeleteDialog, setShowDeleteDialog] = useState(false);
   const isMobile = useIsMobile();
 
   const weekStart = startOfWeek(currentWeek, { weekStartsOn: 1 });
   const { data: rawEntries = [], isLoading } = useAdminTimeEntriesByWeek(currentWeek);
   const entries = rawEntries as TimeEntryWithRelations[];
   const { data: companySettings } = useCompanySettings();
+  const bulkRemoveMutation = useBulkRemovePersonnelFromProject();
   
   const overtimeMultiplier = companySettings?.overtime_multiplier || 1.5;
   const weeklyOvertimeThreshold = companySettings?.weekly_overtime_threshold ?? 40;
@@ -157,6 +172,48 @@ export function WeeklyTimesheet({ currentWeek, onWeekChange }: WeeklyTimesheetPr
         rate: row.personnelRate ?? 0,
       });
       setRateDialogOpen(true);
+    }
+  };
+
+  // Selection handlers for bulk delete
+  const personnelRows = useMemo(() => 
+    rows.filter(r => r.isPersonnelEntry && r.personnelId), 
+    [rows]
+  );
+
+  const toggleRowSelection = (rowKey: string) => {
+    const newSelected = new Set(selectedRows);
+    if (newSelected.has(rowKey)) {
+      newSelected.delete(rowKey);
+    } else {
+      newSelected.add(rowKey);
+    }
+    setSelectedRows(newSelected);
+  };
+
+  const selectAllRows = () => {
+    setSelectedRows(new Set(personnelRows.map(r => r.rowKey)));
+  };
+
+  const deselectAllRows = () => {
+    setSelectedRows(new Set());
+  };
+
+  const handleBulkDelete = async () => {
+    const assignmentsToRemove = Array.from(selectedRows)
+      .map(rowKey => {
+        const row = rows.find(r => r.rowKey === rowKey);
+        if (row?.personnelId && row?.projectId) {
+          return { projectId: row.projectId, personnelId: row.personnelId };
+        }
+        return null;
+      })
+      .filter((a): a is { projectId: string; personnelId: string } => a !== null);
+
+    if (assignmentsToRemove.length > 0) {
+      await bulkRemoveMutation.mutateAsync(assignmentsToRemove);
+      setSelectedRows(new Set());
+      setShowDeleteDialog(false);
     }
   };
 
@@ -556,10 +613,63 @@ export function WeeklyTimesheet({ currentWeek, onWeekChange }: WeeklyTimesheetPr
         </div>
       </Card>
 
+      {/* Bulk Action Bar */}
+      {selectedRows.size > 0 && (
+        <Card className="p-3 bg-destructive/5 border-destructive/20">
+          <div className="flex items-center justify-between gap-4">
+            <div className="flex items-center gap-4">
+              <span className="text-sm font-medium">
+                {selectedRows.size} selected
+              </span>
+              <div className="flex items-center gap-2">
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={selectAllRows}
+                  disabled={selectedRows.size === personnelRows.length}
+                >
+                  Select All ({personnelRows.length})
+                </Button>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={deselectAllRows}
+                >
+                  <X className="h-4 w-4 mr-1" />
+                  Deselect
+                </Button>
+              </div>
+            </div>
+            <Button
+              variant="destructive"
+              size="sm"
+              onClick={() => setShowDeleteDialog(true)}
+            >
+              <Trash2 className="h-4 w-4 mr-2" />
+              Remove from Project
+            </Button>
+          </div>
+        </Card>
+      )}
+
       <Card className="overflow-x-auto">
         <table className="w-full">
           <thead>
             <tr className="border-b bg-muted/50">
+              {personnelRows.length > 0 && (
+                <th className="p-3 text-center font-medium w-12">
+                  <Checkbox
+                    checked={selectedRows.size === personnelRows.length && personnelRows.length > 0}
+                    onCheckedChange={(checked) => {
+                      if (checked) {
+                        selectAllRows();
+                      } else {
+                        deselectAllRows();
+                      }
+                    }}
+                  />
+                </th>
+              )}
               <th className="p-3 text-left font-medium min-w-[200px]">Project / Personnel</th>
               {weekDays.map((day) => (
                 <th key={day.toISOString()} className="p-3 text-center font-medium min-w-[100px]">
@@ -581,9 +691,21 @@ export function WeeklyTimesheet({ currentWeek, onWeekChange }: WeeklyTimesheetPr
               const regularPay = getRowRegularPay(row.rowKey, row.personnelId ?? null, row.personnelRate ?? null);
               const overtimePay = getRowOvertimePay(row.rowKey, row.personnelId ?? null, row.personnelRate ?? null);
               const totalPay = getRowPay(row.rowKey, row.personnelId ?? null, row.personnelRate ?? null);
+              const isSelected = selectedRows.has(row.rowKey);
+              const canSelect = row.isPersonnelEntry && row.personnelId;
 
               return (
-                <tr key={row.rowKey} className="border-b hover:bg-muted/30">
+                <tr key={row.rowKey} className={`border-b hover:bg-muted/30 ${isSelected ? 'bg-destructive/5' : ''}`}>
+                  {personnelRows.length > 0 && (
+                    <td className="p-3 text-center">
+                      {canSelect ? (
+                        <Checkbox
+                          checked={isSelected}
+                          onCheckedChange={() => toggleRowSelection(row.rowKey)}
+                        />
+                      ) : null}
+                    </td>
+                  )}
                   <td className="p-3">
                     <div className="font-medium">{row.projectName}</div>
                     {row.personnelName && (
@@ -670,6 +792,7 @@ export function WeeklyTimesheet({ currentWeek, onWeekChange }: WeeklyTimesheetPr
               );
             })}
             <tr className="bg-muted/50 font-semibold">
+              {personnelRows.length > 0 && <td className="p-3"></td>}
               <td className="p-3">Daily Total</td>
               {weekDays.map((day) => (
                 <td key={day.toISOString()} className="p-3 text-center">
@@ -716,6 +839,28 @@ export function WeeklyTimesheet({ currentWeek, onWeekChange }: WeeklyTimesheetPr
           currentRate={selectedPersonnel.rate}
         />
       )}
+
+      {/* Delete Confirmation Dialog */}
+      <AlertDialog open={showDeleteDialog} onOpenChange={setShowDeleteDialog}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Remove Personnel from Projects?</AlertDialogTitle>
+            <AlertDialogDescription>
+              This will remove {selectedRows.size} personnel assignment{selectedRows.size > 1 ? 's' : ''} from their projects. 
+              Time entries will remain intact, but the personnel will no longer be assigned to these projects.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={handleBulkDelete}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              {bulkRemoveMutation.isPending ? "Removing..." : "Remove"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }
