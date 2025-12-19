@@ -1,4 +1,4 @@
-import { FormField, FormTheme, FormRow } from "@/integrations/supabase/hooks/useApplicationFormTemplates";
+import { FormField, FormTheme, FormRow, CoreFieldsConfig, DEFAULT_CORE_FIELDS } from "@/integrations/supabase/hooks/useApplicationFormTemplates";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -25,6 +25,7 @@ interface FormPreviewProps {
   layout?: FormRow[];
   theme: FormTheme;
   successMessage?: string;
+  coreFields?: CoreFieldsConfig;
 }
 
 // Helper function to render fields based on layout
@@ -68,7 +69,13 @@ function renderFieldsWithLayout(
   ));
 }
 
-export function FormPreview({ name, description, fields, layout, theme, successMessage }: FormPreviewProps) {
+export function FormPreview({ name, description, fields, layout, theme, successMessage, coreFields }: FormPreviewProps) {
+  // Merge provided coreFields with defaults
+  const activeCoreFields: CoreFieldsConfig = {
+    ...DEFAULT_CORE_FIELDS,
+    ...coreFields,
+  };
+
   const getBackgroundStyle = () => {
     if (theme.backgroundImage) {
       return {
@@ -355,48 +362,57 @@ export function FormPreview({ name, description, fields, layout, theme, successM
             )}
           </CardHeader>
           <CardContent className={cn("space-y-4", isFullWidth && "px-0")}>
-            {/* Core Fields Preview */}
-            <div className="grid grid-cols-2 gap-3">
-              <div className="space-y-2">
-                <Label className="text-sm font-medium">First Name *</Label>
-                <Input placeholder="John" disabled />
-              </div>
-              <div className="space-y-2">
-                <Label className="text-sm font-medium">Last Name *</Label>
-                <Input placeholder="Doe" disabled />
-              </div>
-            </div>
-            <div className="grid grid-cols-2 gap-3">
-              <div className="space-y-2">
-                <Label className="text-sm font-medium">Email *</Label>
-                <div className="relative flex items-center">
-                  <div className="absolute left-0 flex items-center justify-center w-10 h-full bg-muted border border-r-0 rounded-l-md">
-                    <Mail className="h-4 w-4 text-muted-foreground" />
+            {/* Core Fields Preview - conditionally rendered */}
+            {(activeCoreFields.firstName || activeCoreFields.lastName) && (
+              <div className="grid grid-cols-2 gap-3">
+                {activeCoreFields.firstName && (
+                  <div className="space-y-2">
+                    <Label className="text-sm font-medium">First Name *</Label>
+                    <Input placeholder="John" disabled />
                   </div>
-                  <Input type="email" placeholder="john@example.com" className="pl-12 rounded-l-none" disabled />
-                </div>
+                )}
+                {activeCoreFields.lastName && (
+                  <div className="space-y-2">
+                    <Label className="text-sm font-medium">Last Name *</Label>
+                    <Input placeholder="Doe" disabled />
+                  </div>
+                )}
               </div>
-              <FormattedPhoneInput
-                label="Phone *"
-                disabled
-                showIcon
-              />
-            </div>
-            <div className="space-y-2">
-              <Label className="text-sm font-medium">Home ZIP Code</Label>
-              <Input placeholder="12345" disabled className="w-1/3 min-w-[120px]" />
-            </div>
+            )}
+            {(activeCoreFields.email || activeCoreFields.phone) && (
+              <div className="grid grid-cols-2 gap-3">
+                {activeCoreFields.email && (
+                  <div className="space-y-2">
+                    <Label className="text-sm font-medium">Email *</Label>
+                    <div className="relative flex items-center">
+                      <div className="absolute left-0 flex items-center justify-center w-10 h-full bg-muted border border-r-0 rounded-l-md">
+                        <Mail className="h-4 w-4 text-muted-foreground" />
+                      </div>
+                      <Input type="email" placeholder="john@example.com" className="pl-12 rounded-l-none" disabled />
+                    </div>
+                  </div>
+                )}
+                {activeCoreFields.phone && (
+                  <FormattedPhoneInput
+                    label="Phone *"
+                    disabled
+                    showIcon
+                  />
+                )}
+              </div>
+            )}
+            {activeCoreFields.homeZip && (
+              <div className="space-y-2">
+                <Label className="text-sm font-medium">Home ZIP Code</Label>
+                <Input placeholder="12345" disabled className="w-1/3 min-w-[120px]" />
+              </div>
+            )}
 
             {/* Custom Fields with row-based layout */}
             {fields.length > 0 && (
-              <>
-                <div className="border-t pt-4 mt-4">
-                  <p className="text-xs text-muted-foreground mb-3">Additional Questions</p>
-                </div>
-                <div className="space-y-4">
-                  {renderFieldsWithLayout(fields, layout, renderField)}
-                </div>
-              </>
+              <div className="space-y-4">
+                {renderFieldsWithLayout(fields, layout, renderField)}
+              </div>
             )}
 
             {/* Submit Button */}

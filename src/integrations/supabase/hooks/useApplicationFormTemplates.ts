@@ -86,6 +86,22 @@ export const TEMPLATE_CATEGORIES = [
 
 export type TemplateCategory = typeof TEMPLATE_CATEGORIES[number];
 
+export interface CoreFieldsConfig {
+  firstName: boolean;
+  lastName: boolean;
+  email: boolean;
+  phone: boolean;
+  homeZip: boolean;
+}
+
+export const DEFAULT_CORE_FIELDS: CoreFieldsConfig = {
+  firstName: true,
+  lastName: true,
+  email: true,
+  phone: true,
+  homeZip: false,
+};
+
 export interface FormSettings {
   redirectUrl?: string;
   allowMultipleSubmissions?: boolean;
@@ -94,6 +110,7 @@ export interface FormSettings {
   rateLimitPerHour?: number;
   showInlineErrors?: boolean;
   showErrorSummary?: boolean;
+  coreFields?: CoreFieldsConfig;
 }
 
 export interface ApplicationFormTemplate {
