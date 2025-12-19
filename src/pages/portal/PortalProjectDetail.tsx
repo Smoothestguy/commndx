@@ -1,4 +1,5 @@
 import { useParams, useNavigate } from "react-router-dom";
+import { useMemo } from "react";
 import { PortalLayout } from "@/components/portal/PortalLayout";
 import { useCurrentPersonnel, usePersonnelTimeEntries, usePersonnelAssignments } from "@/integrations/supabase/hooks/usePortal";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -6,7 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { ArrowLeft, Briefcase, Calendar, Clock, MapPin, User, Building, Phone, Mail, FileText, DollarSign } from "lucide-react";
-import { format, parseISO } from "date-fns";
+import { format, parseISO, startOfWeek } from "date-fns";
 import { ProjectWeeklyPayHistory } from "@/components/portal/ProjectWeeklyPayHistory";
 import { formatCurrency } from "@/lib/utils";
 
@@ -24,10 +25,37 @@ export default function PortalProjectDetail() {
   // Filter time entries for this project
   const projectTimeEntries = timeEntries?.filter(entry => entry.project_id === id) || [];
 
-  // Calculate hours for this project
-  const totalRegularHours = projectTimeEntries.reduce((sum, entry) => sum + (entry.regular_hours || 0), 0);
-  const totalOvertimeHours = projectTimeEntries.reduce((sum, entry) => sum + (entry.overtime_hours || 0), 0);
-  const totalHours = totalRegularHours + totalOvertimeHours;
+  // Calculate hours for this project using 40-hour weekly overtime threshold
+  const { totalRegularHours, totalOvertimeHours, totalHours } = useMemo(() => {
+    // Group entries by week
+    const entriesByWeek = new Map<string, number>();
+    
+    projectTimeEntries.forEach(entry => {
+      const entryDate = parseISO(entry.entry_date);
+      const weekStart = startOfWeek(entryDate, { weekStartsOn: 0 }).toISOString();
+      const entryHours = (entry.regular_hours || 0) + (entry.overtime_hours || 0);
+      entriesByWeek.set(weekStart, (entriesByWeek.get(weekStart) || 0) + entryHours);
+    });
+    
+    // Calculate regular and overtime based on 40-hour weekly threshold
+    let regular = 0;
+    let overtime = 0;
+    
+    entriesByWeek.forEach((weekHours) => {
+      if (weekHours <= 40) {
+        regular += weekHours;
+      } else {
+        regular += 40;
+        overtime += weekHours - 40;
+      }
+    });
+    
+    return {
+      totalRegularHours: regular,
+      totalOvertimeHours: overtime,
+      totalHours: regular + overtime
+    };
+  }, [projectTimeEntries]);
 
   // Calculate pay
   const hourlyRate = personnel?.hourly_rate || 0;
