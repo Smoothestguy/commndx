@@ -1,7 +1,8 @@
 import { format } from "date-fns";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Eye, CheckCircle, XCircle } from "lucide-react";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { Eye, CheckCircle, XCircle, User } from "lucide-react";
 import { EnhancedDataTable, EnhancedColumn } from "@/components/shared/EnhancedDataTable";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { MobileApplicationCard } from "./MobileApplicationCard";
@@ -13,6 +14,17 @@ const statusColors: Record<string, string> = {
   approved: "bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-300",
   rejected: "bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-300",
 };
+
+// Helper to extract profile picture from application answers
+function getProfilePicture(answers: Record<string, unknown> | null | undefined): string | null {
+  if (!answers) return null;
+  for (const value of Object.values(answers)) {
+    if (typeof value === "string" && value.startsWith("data:image")) {
+      return value;
+    }
+  }
+  return null;
+}
 
 interface ApplicationsTableProps {
   applications: Application[];
@@ -57,14 +69,25 @@ export function ApplicationsTable({
       sortable: true,
       filterable: true,
       getValue: (app) => `${app.applicants?.first_name || ""} ${app.applicants?.last_name || ""}`,
-      render: (app: Application) => (
-        <div>
-          <p className="font-medium">
-            {app.applicants?.first_name} {app.applicants?.last_name}
-          </p>
-          <p className="text-sm text-muted-foreground">{app.applicants?.email}</p>
-        </div>
-      ),
+      render: (app: Application) => {
+        const profilePic = getProfilePicture(app.answers as Record<string, unknown>);
+        return (
+          <div className="flex items-center gap-3">
+            <Avatar className="h-9 w-9">
+              <AvatarImage src={profilePic || undefined} alt="Profile" />
+              <AvatarFallback className="text-xs">
+                <User className="h-4 w-4" />
+              </AvatarFallback>
+            </Avatar>
+            <div>
+              <p className="font-medium">
+                {app.applicants?.first_name} {app.applicants?.last_name}
+              </p>
+              <p className="text-sm text-muted-foreground">{app.applicants?.email}</p>
+            </div>
+          </div>
+        );
+      },
     },
     {
       key: "position",
