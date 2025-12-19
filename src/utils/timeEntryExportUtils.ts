@@ -77,6 +77,96 @@ function calculateTotals(
   };
 }
 
+// Export to CSV
+export function exportTimeEntriesToCSV(
+  data: TimeEntryExportData,
+  filename = "time-entries"
+): void {
+  const { entries, overtimeMultiplier = 1.5 } = data;
+
+  if (entries.length === 0) {
+    throw new Error("No time entries to export");
+  }
+
+  // CSV headers
+  const headers = [
+    "Date",
+    "Personnel",
+    "Project",
+    "Customer",
+    "Hours",
+    "Regular Hrs",
+    "OT Hrs",
+    "Rate",
+    "Regular Pay",
+    "OT Pay",
+    "Total Pay",
+    "Billable",
+    "Status",
+    "Description",
+  ];
+
+  // Build CSV rows
+  const rows = entries.map((entry) => {
+    const rate = getHourlyRate(entry) || 0;
+    const regularHours = Number(entry.regular_hours) || Number(entry.hours);
+    const overtimeHours = Number(entry.overtime_hours) || 0;
+    const regularPay = regularHours * rate;
+    const overtimePay = overtimeHours * rate * overtimeMultiplier;
+
+    return [
+      format(new Date(entry.entry_date), "yyyy-MM-dd"),
+      getPersonnelName(entry),
+      entry.projects?.name || "Unknown",
+      entry.projects?.customers?.name || "",
+      Number(entry.hours).toFixed(2),
+      regularHours.toFixed(2),
+      overtimeHours.toFixed(2),
+      rate.toFixed(2),
+      regularPay.toFixed(2),
+      overtimePay.toFixed(2),
+      (regularPay + overtimePay).toFixed(2),
+      entry.billable ? "Yes" : "No",
+      entry.status || "pending",
+      (entry.description || "").replace(/"/g, '""'), // Escape quotes
+    ]
+      .map((val) => `"${val}"`)
+      .join(",");
+  });
+
+  // Add totals row
+  const totals = calculateTotals(entries, overtimeMultiplier);
+  const totalsRow = [
+    "TOTALS",
+    "",
+    "",
+    "",
+    totals.totalHours.toFixed(2),
+    totals.totalRegularHours.toFixed(2),
+    totals.totalOvertimeHours.toFixed(2),
+    "",
+    totals.totalRegularPay.toFixed(2),
+    totals.totalOvertimePay.toFixed(2),
+    totals.totalPay.toFixed(2),
+    "",
+    "",
+    "",
+  ]
+    .map((val) => `"${val}"`)
+    .join(",");
+
+  const csvContent = [headers.join(","), ...rows, totalsRow].join("\n");
+  const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement("a");
+  link.href = url;
+  link.download = `${filename}-${format(new Date(), "yyyy-MM-dd")}.csv`;
+  document.body.appendChild(link);
+  link.click();
+  document.body.removeChild(link);
+  URL.revokeObjectURL(url);
+}
+
 // Export to JSON
 export function exportTimeEntriesToJSON(
   data: TimeEntryExportData,

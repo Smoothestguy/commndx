@@ -15,6 +15,7 @@ import {
   FileSpreadsheet,
   FileText,
   FileJson,
+  FileType,
 } from "lucide-react";
 import {
   DropdownMenu,
@@ -28,6 +29,7 @@ import {
   exportTimeEntriesToExcel,
   exportTimeEntriesToPDF,
   exportTimeEntriesToJSON,
+  exportTimeEntriesToCSV,
   type TimeEntryExportData,
 } from "@/utils/timeEntryExportUtils";
 import { QuickRateEditDialog } from "./QuickRateEditDialog";
@@ -415,7 +417,9 @@ export function WeeklyTimesheet({
     }
   };
 
-  const handleExport = async (exportFormat: "excel" | "pdf" | "json") => {
+  const handleExport = async (
+    exportFormat: "excel" | "pdf" | "json" | "csv"
+  ) => {
     if (entries.length === 0) {
       toast.error("No time entries to export for this week");
       return;
@@ -445,6 +449,10 @@ export function WeeklyTimesheet({
           exportTimeEntriesToPDF(exportData, `timesheet-${weekLabel}`);
           toast.success("PDF file downloaded successfully");
           break;
+        case "csv":
+          exportTimeEntriesToCSV(exportData, `timesheet-${weekLabel}`);
+          toast.success("CSV file downloaded successfully");
+          break;
         case "json":
           exportTimeEntriesToJSON(exportData, `timesheet-${weekLabel}`);
           toast.success("JSON file downloaded successfully");
@@ -459,7 +467,7 @@ export function WeeklyTimesheet({
   };
 
   const handleExportSelected = async (
-    exportFormat: "excel" | "pdf" | "json"
+    exportFormat: "excel" | "pdf" | "json" | "csv"
   ) => {
     // Get entries for selected rows
     const selectedEntries = entries.filter((entry) => {
@@ -500,6 +508,10 @@ export function WeeklyTimesheet({
         case "pdf":
           exportTimeEntriesToPDF(exportData, `timesheet-selected-${weekLabel}`);
           toast.success(`Exported ${selectedEntries.length} entries to PDF`);
+          break;
+        case "csv":
+          exportTimeEntriesToCSV(exportData, `timesheet-selected-${weekLabel}`);
+          toast.success(`Exported ${selectedEntries.length} entries to CSV`);
           break;
         case "json":
           exportTimeEntriesToJSON(
@@ -657,6 +669,10 @@ export function WeeklyTimesheet({
                 <DropdownMenuItem onClick={() => handleExport("excel")}>
                   <FileSpreadsheet className="h-4 w-4 mr-2" />
                   Export to Excel (.xlsx)
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={() => handleExport("csv")}>
+                  <FileType className="h-4 w-4 mr-2" />
+                  Export to CSV
                 </DropdownMenuItem>
                 <DropdownMenuItem onClick={() => handleExport("pdf")}>
                   <FileText className="h-4 w-4 mr-2" />
@@ -895,6 +911,10 @@ export function WeeklyTimesheet({
                   <FileSpreadsheet className="h-4 w-4 mr-2" />
                   Export to Excel (.xlsx)
                 </DropdownMenuItem>
+                <DropdownMenuItem onClick={() => handleExport("csv")}>
+                  <FileType className="h-4 w-4 mr-2" />
+                  Export to CSV
+                </DropdownMenuItem>
                 <DropdownMenuItem onClick={() => handleExport("pdf")}>
                   <FileText className="h-4 w-4 mr-2" />
                   Export to PDF
@@ -950,6 +970,10 @@ export function WeeklyTimesheet({
                   >
                     <FileSpreadsheet className="h-4 w-4 mr-2" />
                     Export to Excel (.xlsx)
+                  </DropdownMenuItem>
+                  <DropdownMenuItem onClick={() => handleExportSelected("csv")}>
+                    <FileType className="h-4 w-4 mr-2" />
+                    Export to CSV
                   </DropdownMenuItem>
                   <DropdownMenuItem onClick={() => handleExportSelected("pdf")}>
                     <FileText className="h-4 w-4 mr-2" />
