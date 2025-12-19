@@ -24,6 +24,7 @@ export interface FormField {
   placeholder?: string;
   showIcon?: boolean;
   optionLayout?: "vertical" | "grid";
+  width?: "full" | "half" | "third"; // Field width for side-by-side layout
   options?: string[];
   helpText?: string;
   defaultValue?: string;
