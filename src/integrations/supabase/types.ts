@@ -164,31 +164,43 @@ export type Database = {
       }
       application_form_templates: {
         Row: {
+          category: string | null
           created_at: string
           description: string | null
           fields: Json
           id: string
           is_active: boolean
           name: string
+          success_message: string | null
+          theme: Json | null
           updated_at: string
+          version: number | null
         }
         Insert: {
+          category?: string | null
           created_at?: string
           description?: string | null
           fields?: Json
           id?: string
           is_active?: boolean
           name: string
+          success_message?: string | null
+          theme?: Json | null
           updated_at?: string
+          version?: number | null
         }
         Update: {
+          category?: string | null
           created_at?: string
           description?: string | null
           fields?: Json
           id?: string
           is_active?: boolean
           name?: string
+          success_message?: string | null
+          theme?: Json | null
           updated_at?: string
+          version?: number | null
         }
         Relationships: []
       }
@@ -197,6 +209,7 @@ export type Database = {
           answers: Json | null
           applicant_id: string
           created_at: string
+          form_version: number | null
           id: string
           job_posting_id: string
           notes: string | null
@@ -207,6 +220,7 @@ export type Database = {
           answers?: Json | null
           applicant_id: string
           created_at?: string
+          form_version?: number | null
           id?: string
           job_posting_id: string
           notes?: string | null
@@ -217,6 +231,7 @@ export type Database = {
           answers?: Json | null
           applicant_id?: string
           created_at?: string
+          form_version?: number | null
           id?: string
           job_posting_id?: string
           notes?: string | null

@@ -1,9 +1,6 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { 
-  Plus, 
-  Trash2, 
-  GripVertical, 
   Save,
   ArrowLeft,
   Type,
@@ -12,14 +9,41 @@ import {
   List,
   CheckSquare,
   Circle,
-  Calendar
+  Calendar,
+  Mail,
+  Phone,
+  Upload,
+  ListChecks,
+  Minus,
+  PenLine,
+  Eye,
+  Paintbrush,
+  FileText,
+  Loader2,
 } from "lucide-react";
+import {
+  DndContext,
+  closestCenter,
+  KeyboardSensor,
+  PointerSensor,
+  useSensor,
+  useSensors,
+  DragEndEvent,
+} from "@dnd-kit/core";
+import {
+  arrayMove,
+  SortableContext,
+  sortableKeyboardCoordinates,
+  verticalListSortingStrategy,
+  useSortable,
+} from "@dnd-kit/sortable";
+import { CSS } from "@dnd-kit/utilities";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
-import { Switch } from "@/components/ui/switch";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
   Select,
   SelectContent,
@@ -32,18 +56,86 @@ import {
   useCreateApplicationFormTemplate,
   useUpdateApplicationFormTemplate,
   FormField,
+  FormTheme,
+  TEMPLATE_CATEGORIES,
+  TemplateCategory,
 } from "@/integrations/supabase/hooks/useApplicationFormTemplates";
+import { FieldSettingsPanel } from "@/components/form-builder/FieldSettingsPanel";
+import { ThemeEditor } from "@/components/form-builder/ThemeEditor";
+import { FormPreview } from "@/components/form-builder/FormPreview";
 import { toast } from "sonner";
+import { cn } from "@/lib/utils";
 
 const FIELD_TYPES = [
   { value: "text", label: "Short Text", icon: Type },
   { value: "textarea", label: "Long Text", icon: AlignLeft },
   { value: "number", label: "Number", icon: Hash },
+  { value: "email", label: "Email", icon: Mail },
+  { value: "phone", label: "Phone", icon: Phone },
   { value: "dropdown", label: "Dropdown", icon: List },
+  { value: "multiselect", label: "Multi-Select", icon: ListChecks },
   { value: "checkbox", label: "Checkbox", icon: CheckSquare },
   { value: "radio", label: "Radio Buttons", icon: Circle },
   { value: "date", label: "Date", icon: Calendar },
+  { value: "file", label: "File Upload", icon: Upload },
+  { value: "section", label: "Section Header", icon: Minus },
+  { value: "signature", label: "Signature", icon: PenLine },
 ] as const;
+
+// Sortable field wrapper component
+function SortableField({ 
+  field, 
+  index, 
+  allFields,
+  onUpdate, 
+  onRemove,
+  onUpdateOption,
+  onAddOption,
+  onRemoveOption,
+}: {
+  field: FormField;
+  index: number;
+  allFields: FormField[];
+  onUpdate: (updates: Partial<FormField>) => void;
+  onRemove: () => void;
+  onUpdateOption: (optionIndex: number, value: string) => void;
+  onAddOption: () => void;
+  onRemoveOption: (optionIndex: number) => void;
+}) {
+  const {
+    attributes,
+    listeners,
+    setNodeRef,
+    transform,
+    transition,
+    isDragging,
+  } = useSortable({ id: field.id });
+
+  const style = {
+    transform: CSS.Transform.toString(transform),
+    transition,
+    opacity: isDragging ? 0.5 : 1,
+    zIndex: isDragging ? 1000 : 1,
+  };
+
+  return (
+    <div ref={setNodeRef} style={style} {...attributes}>
+      <div {...listeners}>
+        <FieldSettingsPanel
+          field={field}
+          index={index}
+          allFields={allFields}
+          onUpdate={onUpdate}
+          onRemove={onRemove}
+          onUpdateOption={onUpdateOption}
+          onAddOption={onAddOption}
+          onRemoveOption={onRemoveOption}
+          fieldTypes={FIELD_TYPES}
+        />
+      </div>
+    </div>
+  );
+}
 
 export default function ApplicationFormBuilder() {
   const navigate = useNavigate();
@@ -54,18 +146,50 @@ export default function ApplicationFormBuilder() {
   const createTemplate = useCreateApplicationFormTemplate();
   const updateTemplate = useUpdateApplicationFormTemplate();
 
+  const [activeTab, setActiveTab] = useState("fields");
   const [name, setName] = useState("");
   const [description, setDescription] = useState("");
+  const [category, setCategory] = useState<TemplateCategory | null>(null);
+  const [successMessage, setSuccessMessage] = useState("Thank you for your submission!");
   const [fields, setFields] = useState<FormField[]>([]);
+  const [theme, setTheme] = useState<FormTheme>({});
   const [initialized, setInitialized] = useState(false);
 
   // Initialize form with existing data
-  if (isEditing && existingTemplate && !initialized) {
-    setName(existingTemplate.name);
-    setDescription(existingTemplate.description || "");
-    setFields(existingTemplate.fields);
-    setInitialized(true);
-  }
+  useEffect(() => {
+    if (isEditing && existingTemplate && !initialized) {
+      setName(existingTemplate.name);
+      setDescription(existingTemplate.description || "");
+      setCategory(existingTemplate.category || null);
+      setSuccessMessage(existingTemplate.success_message || "Thank you for your submission!");
+      setFields(existingTemplate.fields);
+      setTheme(existingTemplate.theme || {});
+      setInitialized(true);
+    }
+  }, [isEditing, existingTemplate, initialized]);
+
+  // DnD sensors
+  const sensors = useSensors(
+    useSensor(PointerSensor, {
+      activationConstraint: {
+        distance: 5,
+      },
+    }),
+    useSensor(KeyboardSensor, {
+      coordinateGetter: sortableKeyboardCoordinates,
+    })
+  );
+
+  const handleDragEnd = (event: DragEndEvent) => {
+    const { active, over } = event;
+    if (over && active.id !== over.id) {
+      setFields((items) => {
+        const oldIndex = items.findIndex((item) => item.id === active.id);
+        const newIndex = items.findIndex((item) => item.id === over.id);
+        return arrayMove(items, oldIndex, newIndex);
+      });
+    }
+  };
 
   const addField = (type: FormField["type"]) => {
     const newField: FormField = {
@@ -74,7 +198,9 @@ export default function ApplicationFormBuilder() {
       label: "",
       required: false,
       placeholder: "",
-      options: type === "dropdown" || type === "radio" ? ["Option 1", "Option 2"] : undefined,
+      options: ["dropdown", "radio", "multiselect"].includes(type) 
+        ? ["Option 1", "Option 2"] 
+        : undefined,
     };
     setFields([...fields, newField]);
   };
@@ -87,14 +213,6 @@ export default function ApplicationFormBuilder() {
 
   const removeField = (index: number) => {
     setFields(fields.filter((_, i) => i !== index));
-  };
-
-  const moveField = (from: number, to: number) => {
-    if (to < 0 || to >= fields.length) return;
-    const newFields = [...fields];
-    const [removed] = newFields.splice(from, 1);
-    newFields.splice(to, 0, removed);
-    setFields(newFields);
   };
 
   const updateOption = (fieldIndex: number, optionIndex: number, value: string) => {
@@ -126,8 +244,8 @@ export default function ApplicationFormBuilder() {
       return;
     }
 
-    // Validate all fields have labels
-    const invalidFields = fields.filter(f => !f.label.trim());
+    // Validate all fields have labels (except sections which can be empty)
+    const invalidFields = fields.filter(f => f.type !== "section" && !f.label.trim());
     if (invalidFields.length > 0) {
       toast.error("All fields must have a label");
       return;
@@ -140,6 +258,9 @@ export default function ApplicationFormBuilder() {
           name,
           description,
           fields,
+          theme,
+          category,
+          success_message: successMessage,
         });
         toast.success("Form template updated");
       } else {
@@ -147,6 +268,9 @@ export default function ApplicationFormBuilder() {
           name,
           description,
           fields,
+          theme,
+          category,
+          success_message: successMessage,
         });
         toast.success("Form template created");
       }
@@ -157,11 +281,16 @@ export default function ApplicationFormBuilder() {
   };
 
   if (isEditing && isLoading) {
-    return <div className="container mx-auto py-6 px-4">Loading...</div>;
+    return (
+      <div className="container mx-auto py-6 px-4 flex items-center justify-center min-h-[400px]">
+        <Loader2 className="h-8 w-8 animate-spin text-primary" />
+      </div>
+    );
   }
 
   return (
     <div className="container mx-auto py-6 px-4 space-y-6">
+      {/* Header */}
       <div className="flex items-center gap-4">
         <Button variant="ghost" size="icon" onClick={() => navigate("/staffing/form-templates")}>
           <ArrowLeft className="h-4 w-4" />
@@ -171,198 +300,213 @@ export default function ApplicationFormBuilder() {
             {isEditing ? "Edit Form Template" : "Create Form Template"}
           </h1>
           <p className="text-muted-foreground">
-            Build custom application forms for job postings
+            Build custom application forms with drag-and-drop
           </p>
         </div>
         <Button onClick={handleSave} disabled={createTemplate.isPending || updateTemplate.isPending}>
           <Save className="h-4 w-4 mr-2" />
-          Save Template
+          {createTemplate.isPending || updateTemplate.isPending ? "Saving..." : "Save Template"}
         </Button>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        {/* Form Builder */}
-        <div className="lg:col-span-2 space-y-4">
-          <Card>
-            <CardHeader>
-              <CardTitle>Form Details</CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <div>
-                <Label>Form Name *</Label>
-                <Input
-                  value={name}
-                  onChange={(e) => setName(e.target.value)}
-                  placeholder="e.g., Warehouse Worker Application"
-                />
-              </div>
-              <div>
-                <Label>Description</Label>
-                <Textarea
-                  value={description}
-                  onChange={(e) => setDescription(e.target.value)}
-                  placeholder="Brief description of this form..."
-                />
-              </div>
-            </CardContent>
-          </Card>
+      <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-4">
+        <TabsList className="grid w-full max-w-md grid-cols-3">
+          <TabsTrigger value="fields" className="gap-2">
+            <FileText className="h-4 w-4" />
+            Fields
+          </TabsTrigger>
+          <TabsTrigger value="style" className="gap-2">
+            <Paintbrush className="h-4 w-4" />
+            Style
+          </TabsTrigger>
+          <TabsTrigger value="preview" className="gap-2">
+            <Eye className="h-4 w-4" />
+            Preview
+          </TabsTrigger>
+        </TabsList>
 
+        {/* Fields Tab */}
+        <TabsContent value="fields" className="space-y-4">
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+            {/* Form Builder */}
+            <div className="lg:col-span-2 space-y-4">
+              <Card>
+                <CardHeader>
+                  <CardTitle>Form Details</CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                      <Label>Form Name *</Label>
+                      <Input
+                        value={name}
+                        onChange={(e) => setName(e.target.value)}
+                        placeholder="e.g., Warehouse Worker Application"
+                      />
+                    </div>
+                    <div>
+                      <Label>Category</Label>
+                      <Select
+                        value={category || "none"}
+                        onValueChange={(v) => setCategory(v === "none" ? null : v as TemplateCategory)}
+                      >
+                        <SelectTrigger>
+                          <SelectValue placeholder="Select category" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="none">No Category</SelectItem>
+                          {TEMPLATE_CATEGORIES.map((cat) => (
+                            <SelectItem key={cat} value={cat}>{cat}</SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  </div>
+                  <div>
+                    <Label>Description</Label>
+                    <Textarea
+                      value={description}
+                      onChange={(e) => setDescription(e.target.value)}
+                      placeholder="Brief description of this form..."
+                    />
+                  </div>
+                  <div>
+                    <Label>Success Message</Label>
+                    <Textarea
+                      value={successMessage}
+                      onChange={(e) => setSuccessMessage(e.target.value)}
+                      placeholder="Thank you for your submission!"
+                      className="min-h-[60px]"
+                    />
+                    <p className="text-xs text-muted-foreground mt-1">
+                      Shown after successful form submission
+                    </p>
+                  </div>
+                </CardContent>
+              </Card>
+
+              <Card>
+                <CardHeader>
+                  <CardTitle>Custom Fields</CardTitle>
+                  <CardDescription>
+                    Drag to reorder. Core fields (Name, Email, Phone, ZIP) are always included.
+                  </CardDescription>
+                </CardHeader>
+                <CardContent className="space-y-3">
+                  {fields.length === 0 ? (
+                    <div className="text-center py-12 text-muted-foreground border-2 border-dashed rounded-lg">
+                      <FileText className="h-10 w-10 mx-auto mb-3 opacity-50" />
+                      <p className="font-medium">No custom fields yet</p>
+                      <p className="text-sm">Add fields from the sidebar to get started</p>
+                    </div>
+                  ) : (
+                    <DndContext
+                      sensors={sensors}
+                      collisionDetection={closestCenter}
+                      onDragEnd={handleDragEnd}
+                    >
+                      <SortableContext
+                        items={fields.map(f => f.id)}
+                        strategy={verticalListSortingStrategy}
+                      >
+                        {fields.map((field, index) => (
+                          <SortableField
+                            key={field.id}
+                            field={field}
+                            index={index}
+                            allFields={fields}
+                            onUpdate={(updates) => updateField(index, updates)}
+                            onRemove={() => removeField(index)}
+                            onUpdateOption={(optIndex, value) => updateOption(index, optIndex, value)}
+                            onAddOption={() => addOption(index)}
+                            onRemoveOption={(optIndex) => removeOption(index, optIndex)}
+                          />
+                        ))}
+                      </SortableContext>
+                    </DndContext>
+                  )}
+                </CardContent>
+              </Card>
+            </div>
+
+            {/* Field Types Sidebar */}
+            <div>
+              <Card className="sticky top-6">
+                <CardHeader>
+                  <CardTitle>Add Field</CardTitle>
+                  <CardDescription>Click to add a new field</CardDescription>
+                </CardHeader>
+                <CardContent className="grid grid-cols-2 gap-2">
+                  {FIELD_TYPES.map((type) => (
+                    <Button
+                      key={type.value}
+                      variant="outline"
+                      className="h-auto py-3 px-3 flex flex-col items-center gap-1.5 text-xs"
+                      onClick={() => addField(type.value)}
+                    >
+                      <type.icon className="h-4 w-4" />
+                      <span className="text-center leading-tight">{type.label}</span>
+                    </Button>
+                  ))}
+                </CardContent>
+              </Card>
+            </div>
+          </div>
+        </TabsContent>
+
+        {/* Style Tab */}
+        <TabsContent value="style" className="space-y-4">
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            <Card>
+              <CardHeader>
+                <CardTitle>Visual Customization</CardTitle>
+                <CardDescription>
+                  Customize the appearance of your public form
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                <ThemeEditor theme={theme} onUpdate={setTheme} />
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardHeader>
+                <CardTitle>Live Preview</CardTitle>
+              </CardHeader>
+              <CardContent className="p-0 overflow-hidden rounded-b-lg">
+                <FormPreview
+                  name={name}
+                  description={description}
+                  fields={fields}
+                  theme={theme}
+                  successMessage={successMessage}
+                />
+              </CardContent>
+            </Card>
+          </div>
+        </TabsContent>
+
+        {/* Preview Tab */}
+        <TabsContent value="preview" className="space-y-4">
           <Card>
             <CardHeader>
-              <CardTitle>Custom Fields</CardTitle>
+              <CardTitle>Full Preview</CardTitle>
               <CardDescription>
-                Add fields to collect additional information. Core fields (Name, Email, Phone, ZIP) are always included.
+                This is how your form will appear to applicants
               </CardDescription>
             </CardHeader>
-            <CardContent className="space-y-4">
-              {fields.length === 0 ? (
-                <div className="text-center py-8 text-muted-foreground border-2 border-dashed rounded-lg">
-                  No custom fields yet. Add fields from the sidebar.
-                </div>
-              ) : (
-                fields.map((field, index) => (
-                  <div
-                    key={field.id}
-                    className="border rounded-lg p-4 space-y-3 bg-muted/30"
-                  >
-                    <div className="flex items-center gap-2">
-                      <GripVertical className="h-4 w-4 text-muted-foreground cursor-move" />
-                      <div className="flex-1 flex items-center gap-2">
-                        <Input
-                          value={field.label}
-                          onChange={(e) => updateField(index, { label: e.target.value })}
-                          placeholder="Field label"
-                          className="flex-1"
-                        />
-                        <Select
-                          value={field.type}
-                          onValueChange={(value) => updateField(index, { 
-                            type: value as FormField["type"],
-                            options: value === "dropdown" || value === "radio" ? ["Option 1", "Option 2"] : undefined
-                          })}
-                        >
-                          <SelectTrigger className="w-[140px]">
-                            <SelectValue />
-                          </SelectTrigger>
-                          <SelectContent>
-                            {FIELD_TYPES.map((type) => (
-                              <SelectItem key={type.value} value={type.value}>
-                                {type.label}
-                              </SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
-                      </div>
-                      <div className="flex items-center gap-2">
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          onClick={() => moveField(index, index - 1)}
-                          disabled={index === 0}
-                        >
-                          ↑
-                        </Button>
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          onClick={() => moveField(index, index + 1)}
-                          disabled={index === fields.length - 1}
-                        >
-                          ↓
-                        </Button>
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          className="text-destructive"
-                          onClick={() => removeField(index)}
-                        >
-                          <Trash2 className="h-4 w-4" />
-                        </Button>
-                      </div>
-                    </div>
-
-                    <div className="grid grid-cols-2 gap-3">
-                      {(field.type === "text" || field.type === "textarea" || field.type === "number") && (
-                        <div>
-                          <Label className="text-xs">Placeholder</Label>
-                          <Input
-                            value={field.placeholder || ""}
-                            onChange={(e) => updateField(index, { placeholder: e.target.value })}
-                            placeholder="Placeholder text"
-                            className="h-8"
-                          />
-                        </div>
-                      )}
-                      <div className="flex items-center gap-2">
-                        <Switch
-                          checked={field.required}
-                          onCheckedChange={(checked) => updateField(index, { required: checked })}
-                        />
-                        <Label className="text-xs">Required</Label>
-                      </div>
-                    </div>
-
-                    {(field.type === "dropdown" || field.type === "radio") && (
-                      <div className="space-y-2">
-                        <Label className="text-xs">Options</Label>
-                        {field.options?.map((option, optIndex) => (
-                          <div key={optIndex} className="flex items-center gap-2">
-                            <Input
-                              value={option}
-                              onChange={(e) => updateOption(index, optIndex, e.target.value)}
-                              className="h-8"
-                            />
-                            <Button
-                              variant="ghost"
-                              size="icon"
-                              className="h-8 w-8 text-destructive"
-                              onClick={() => removeOption(index, optIndex)}
-                              disabled={(field.options?.length || 0) <= 1}
-                            >
-                              <Trash2 className="h-3 w-3" />
-                            </Button>
-                          </div>
-                        ))}
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          onClick={() => addOption(index)}
-                        >
-                          <Plus className="h-3 w-3 mr-1" />
-                          Add Option
-                        </Button>
-                      </div>
-                    )}
-                  </div>
-                ))
-              )}
+            <CardContent className="p-0 overflow-hidden rounded-b-lg">
+              <FormPreview
+                name={name}
+                description={description}
+                fields={fields}
+                theme={theme}
+                successMessage={successMessage}
+              />
             </CardContent>
           </Card>
-        </div>
-
-        {/* Field Types Sidebar */}
-        <div>
-          <Card className="sticky top-6">
-            <CardHeader>
-              <CardTitle>Add Field</CardTitle>
-              <CardDescription>Click to add a new field</CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-2">
-              {FIELD_TYPES.map((type) => (
-                <Button
-                  key={type.value}
-                  variant="outline"
-                  className="w-full justify-start"
-                  onClick={() => addField(type.value)}
-                >
-                  <type.icon className="h-4 w-4 mr-2" />
-                  {type.label}
-                </Button>
-              ))}
-            </CardContent>
-          </Card>
-        </div>
-      </div>
+        </TabsContent>
+      </Tabs>
     </div>
   );
 }
