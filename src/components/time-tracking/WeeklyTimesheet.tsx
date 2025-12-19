@@ -458,6 +458,63 @@ export function WeeklyTimesheet({
     }
   };
 
+  const handleExportSelected = async (format: "excel" | "pdf" | "json") => {
+    // Get entries for selected rows
+    const selectedEntries = entries.filter((entry) => {
+      const rowKey = entry.personnel_id
+        ? `${entry.project_id}-${entry.personnel_id}`
+        : entry.project_id;
+      return selectedRows.has(rowKey);
+    });
+
+    if (selectedEntries.length === 0) {
+      toast.error("No time entries found for selected rows");
+      return;
+    }
+
+    setIsExporting(true);
+    try {
+      const exportData: TimeEntryExportData = {
+        entries: selectedEntries as any,
+        weekStart,
+        weekEnd,
+        overtimeMultiplier,
+        weeklyOvertimeThreshold,
+      };
+
+      const weekLabel = `${format(weekStart, "MMM-d")}-to-${format(
+        weekEnd,
+        "MMM-d-yyyy"
+      )}`;
+
+      switch (format) {
+        case "excel":
+          await exportTimeEntriesToExcel(
+            exportData,
+            `timesheet-selected-${weekLabel}`
+          );
+          toast.success(`Exported ${selectedEntries.length} entries to Excel`);
+          break;
+        case "pdf":
+          exportTimeEntriesToPDF(exportData, `timesheet-selected-${weekLabel}`);
+          toast.success(`Exported ${selectedEntries.length} entries to PDF`);
+          break;
+        case "json":
+          exportTimeEntriesToJSON(
+            exportData,
+            `timesheet-selected-${weekLabel}`
+          );
+          toast.success(`Exported ${selectedEntries.length} entries to JSON`);
+          break;
+      }
+    } catch (error) {
+      console.error("Export error:", error);
+      toast.error("Failed to export selected entries");
+    } finally {
+      setIsExporting(false);
+    }
+  };
+
   const latestEntryWeekStart = latestEntryDate
     ? startOfWeek(new Date(latestEntryDate), { weekStartsOn: 1 })
     : null;
@@ -873,14 +930,46 @@ export function WeeklyTimesheet({
                 </Button>
               </div>
             </div>
-            <Button
-              variant="destructive"
-              size="sm"
-              onClick={() => setShowDeleteDialog(true)}
-            >
-              <Trash2 className="h-4 w-4 mr-2" />
-              Delete Time Entries
-            </Button>
+            <div className="flex items-center gap-2">
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button variant="outline" size="sm" disabled={isExporting}>
+                    {isExporting ? (
+                      <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                    ) : (
+                      <Download className="h-4 w-4 mr-2" />
+                    )}
+                    Export Selected
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end">
+                  <DropdownMenuItem
+                    onClick={() => handleExportSelected("excel")}
+                  >
+                    <FileSpreadsheet className="h-4 w-4 mr-2" />
+                    Export to Excel (.xlsx)
+                  </DropdownMenuItem>
+                  <DropdownMenuItem onClick={() => handleExportSelected("pdf")}>
+                    <FileText className="h-4 w-4 mr-2" />
+                    Export to PDF
+                  </DropdownMenuItem>
+                  <DropdownMenuItem
+                    onClick={() => handleExportSelected("json")}
+                  >
+                    <FileJson className="h-4 w-4 mr-2" />
+                    Export to JSON
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
+              <Button
+                variant="destructive"
+                size="sm"
+                onClick={() => setShowDeleteDialog(true)}
+              >
+                <Trash2 className="h-4 w-4 mr-2" />
+                Delete Time Entries
+              </Button>
+            </div>
           </div>
         </Card>
       )}
