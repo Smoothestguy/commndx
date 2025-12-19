@@ -76,7 +76,7 @@ export function ThemeEditor({ theme, onUpdate }: ThemeEditorProps) {
         .from("form-uploads")
         .getPublicUrl(filePath);
 
-      onUpdate({ ...theme, backgroundImage: publicUrl, backgroundGradient: "" });
+      onUpdate({ ...theme, backgroundImage: publicUrl, backgroundGradient: undefined });
       toast.success("Background image uploaded");
     } catch (error) {
       console.error("Upload error:", error);
@@ -162,11 +162,13 @@ export function ThemeEditor({ theme, onUpdate }: ThemeEditorProps) {
         <Label className="text-sm font-medium">Background Gradient</Label>
         <Select
           value={theme.backgroundGradient || "none"}
-          onValueChange={(value) => onUpdate({ 
-            ...theme, 
-            backgroundGradient: value === "none" ? "" : value,
-            backgroundImage: value !== "none" ? undefined : theme.backgroundImage
-          })}
+          onValueChange={(value) =>
+            onUpdate({
+              ...theme,
+              backgroundGradient: value === "none" ? undefined : value,
+              backgroundImage: value !== "none" ? undefined : theme.backgroundImage,
+            })
+          }
         >
           <SelectTrigger className="h-9">
             <SelectValue placeholder="Select a gradient" />
@@ -175,9 +177,9 @@ export function ThemeEditor({ theme, onUpdate }: ThemeEditorProps) {
             {PRESET_GRADIENTS.map((gradient) => (
               <SelectItem key={gradient.label} value={gradient.value}>
                 <div className="flex items-center gap-2">
-                  {gradient.value && (
-                    <div 
-                      className="w-4 h-4 rounded" 
+                  {gradient.value !== "none" && (
+                    <div
+                      className="w-4 h-4 rounded"
                       style={{ background: gradient.value }}
                     />
                   )}
