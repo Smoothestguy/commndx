@@ -25,6 +25,7 @@ import {
 } from "@/components/ui/table";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Separator } from "@/components/ui/separator";
+import { ImageLightbox } from "@/components/ui/image-lightbox";
 import {
   Application,
   useApproveApplication,
@@ -58,6 +59,7 @@ export function ApplicationDetailDialog({
 }: ApplicationDetailDialogProps) {
   const [isEditing, setIsEditing] = useState(false);
   const [actionNotes, setActionNotes] = useState(application?.notes || "");
+  const [enlargedImage, setEnlargedImage] = useState<string | null>(null);
   const [editForm, setEditForm] = useState({
     first_name: "",
     last_name: "",
@@ -247,16 +249,23 @@ export function ApplicationDetailDialog({
           </div>
         </DialogHeader>
 
-        <ScrollArea className="flex-1 pr-4">
+        <ScrollArea className="flex-1 pr-4 max-h-[60vh]">
           <div className="space-y-6">
             {/* Profile Section */}
             <div className="flex items-start gap-4">
-              <Avatar className="h-20 w-20">
-                <AvatarImage src={profilePicture || undefined} alt="Profile" />
-                <AvatarFallback className="text-lg">
-                  <User className="h-8 w-8" />
-                </AvatarFallback>
-              </Avatar>
+              <button
+                type="button"
+                onClick={() => profilePicture && setEnlargedImage(profilePicture)}
+                className={`rounded-full transition-all ${profilePicture ? 'cursor-pointer hover:ring-2 hover:ring-primary hover:ring-offset-2' : 'cursor-default'}`}
+                disabled={!profilePicture}
+              >
+                <Avatar className="h-20 w-20">
+                  <AvatarImage src={profilePicture || undefined} alt="Profile" />
+                  <AvatarFallback className="text-lg">
+                    <User className="h-8 w-8" />
+                  </AvatarFallback>
+                </Avatar>
+              </button>
               
               <div className="flex-1 space-y-3">
                 {isEditing ? (
@@ -365,11 +374,17 @@ export function ApplicationDetailDialog({
                           </TableCell>
                           <TableCell>
                             {response.isImage ? (
-                              <img
-                                src={response.value}
-                                alt={response.label}
-                                className="max-h-24 rounded border"
-                              />
+                              <button
+                                type="button"
+                                onClick={() => setEnlargedImage(response.value)}
+                                className="cursor-pointer hover:opacity-80 transition-opacity"
+                              >
+                                <img
+                                  src={response.value}
+                                  alt={response.label}
+                                  className="max-h-24 rounded border"
+                                />
+                              </button>
                             ) : (
                               <span className="whitespace-pre-wrap">{response.value}</span>
                             )}
@@ -436,6 +451,12 @@ export function ApplicationDetailDialog({
             </>
           )}
         </DialogFooter>
+
+        <ImageLightbox
+          imageUrl={enlargedImage}
+          onClose={() => setEnlargedImage(null)}
+          alt="Application image"
+        />
       </DialogContent>
     </Dialog>
   );
