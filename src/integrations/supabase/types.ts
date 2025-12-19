@@ -2497,6 +2497,41 @@ export type Database = {
           },
         ]
       }
+      personnel_onboarding_tokens: {
+        Row: {
+          created_at: string | null
+          expires_at: string
+          id: string
+          personnel_id: string
+          token: string
+          used_at: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          expires_at?: string
+          id?: string
+          personnel_id: string
+          token?: string
+          used_at?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          expires_at?: string
+          id?: string
+          personnel_id?: string
+          token?: string
+          used_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "personnel_onboarding_tokens_personnel_id_fkey"
+            columns: ["personnel_id"]
+            isOneToOne: false
+            referencedRelation: "personnel"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       personnel_payment_allocations: {
         Row: {
           amount: number

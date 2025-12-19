@@ -7,7 +7,10 @@ import {
   ExternalLink,
   FileText,
   Pencil,
-  Settings
+  Settings,
+  Download,
+  FileSpreadsheet,
+  File
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -28,6 +31,12 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { useProjects } from "@/integrations/supabase/hooks/useProjects";
@@ -48,6 +57,11 @@ import { useApplicationFormTemplates } from "@/integrations/supabase/hooks/useAp
 import { toast } from "sonner";
 import { ApplicationsTable } from "@/components/staffing/ApplicationsTable";
 import { ApplicationDetailDialog } from "@/components/staffing/ApplicationDetailDialog";
+import {
+  exportApplicationsToCSV,
+  exportApplicationsToExcel,
+  exportApplicationsToPDF,
+} from "@/utils/applicationExportUtils";
 
 
 export default function StaffingApplications() {
@@ -62,6 +76,7 @@ export default function StaffingApplications() {
   const [showEditTaskOrderDialog, setShowEditTaskOrderDialog] = useState(false);
   const [editingPosting, setEditingPosting] = useState<{ id: string; formTemplateId: string | null } | null>(null);
   const [editingTaskOrder, setEditingTaskOrder] = useState<TaskOrder | null>(null);
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   
   // New task order form state
   const [newTaskOrder, setNewTaskOrder] = useState({
@@ -342,10 +357,93 @@ export default function StaffingApplications() {
         </CardContent>
       </Card>
 
+      {/* Bulk Actions Bar */}
+      {selectedIds.size > 0 && (
+        <Card className="border-primary/50 bg-primary/5">
+          <CardContent className="py-3">
+            <div className="flex items-center justify-between">
+              <span className="text-sm font-medium">
+                {selectedIds.size} application(s) selected
+              </span>
+              <div className="flex gap-2">
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <Button variant="outline" size="sm">
+                      <Download className="h-4 w-4 mr-2" />
+                      Export
+                    </Button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align="end">
+                    <DropdownMenuItem
+                      onClick={() => {
+                        const selected = (filteredApplications || []).filter(
+                          (app) => selectedIds.has(app.id)
+                        );
+                        try {
+                          exportApplicationsToCSV(selected);
+                          toast.success("Exported to CSV");
+                        } catch (e) {
+                          toast.error("Failed to export");
+                        }
+                      }}
+                    >
+                      <FileText className="h-4 w-4 mr-2" />
+                      Export as CSV
+                    </DropdownMenuItem>
+                    <DropdownMenuItem
+                      onClick={() => {
+                        const selected = (filteredApplications || []).filter(
+                          (app) => selectedIds.has(app.id)
+                        );
+                        try {
+                          exportApplicationsToExcel(selected);
+                          toast.success("Exported to Excel");
+                        } catch (e) {
+                          toast.error("Failed to export");
+                        }
+                      }}
+                    >
+                      <FileSpreadsheet className="h-4 w-4 mr-2" />
+                      Export as Excel
+                    </DropdownMenuItem>
+                    <DropdownMenuItem
+                      onClick={() => {
+                        const selected = (filteredApplications || []).filter(
+                          (app) => selectedIds.has(app.id)
+                        );
+                        try {
+                          exportApplicationsToPDF(selected);
+                          toast.success("Exported to PDF");
+                        } catch (e) {
+                          toast.error("Failed to export");
+                        }
+                      }}
+                    >
+                      <File className="h-4 w-4 mr-2" />
+                      Export as PDF
+                    </DropdownMenuItem>
+                  </DropdownMenuContent>
+                </DropdownMenu>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => setSelectedIds(new Set())}
+                >
+                  Clear Selection
+                </Button>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
       {/* Applications Table */}
       <ApplicationsTable
         applications={filteredApplications || []}
         isLoading={isLoading}
+        selectable
+        selectedIds={selectedIds}
+        onSelectionChange={setSelectedIds}
         onViewApplication={(app) => {
           setSelectedApp(app);
           setShowDetailDialog(true);

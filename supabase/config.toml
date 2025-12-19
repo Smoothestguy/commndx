@@ -107,3 +107,6 @@ verify_jwt = false
 
 [functions.generate-weekly-payroll]
 verify_jwt = false
+
+[functions.send-personnel-onboarding-email]
+verify_jwt = false
