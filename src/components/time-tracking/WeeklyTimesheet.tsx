@@ -680,7 +680,7 @@ export function WeeklyTimesheet({ currentWeek, onWeekChange }: WeeklyTimesheetPr
                   />
                 </th>
               )}
-              <th className="p-3 text-left font-medium min-w-[200px]">Project / Personnel</th>
+              <th className="p-3 text-left font-medium min-w-[200px]">Personnel / Project</th>
               {weekDays.map((day) => (
                 <th key={day.toISOString()} className="p-3 text-center font-medium min-w-[100px]">
                   <div className="text-xs text-muted-foreground">
@@ -717,28 +717,32 @@ export function WeeklyTimesheet({ currentWeek, onWeekChange }: WeeklyTimesheetPr
                     </td>
                   )}
                   <td className="p-3">
-                    <div className="font-medium">{row.projectName}</div>
-                    {row.personnelName && (
-                      <div className="flex items-center gap-1.5 mt-0.5">
-                        <PersonnelAvatar
-                          photoUrl={row.personnelPhotoUrl}
-                          firstName={row.personnelName?.split(' ')[0] || ''}
-                          lastName={row.personnelName?.split(' ')[1] || ''}
-                          size="xs"
-                        />
-                        <span className="text-sm text-muted-foreground">{row.personnelName}</span>
-                        {row.personnelId && (
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            className="h-5 px-1 text-xs ml-1"
-                            onClick={() => handleEditRate(row)}
-                          >
-                            <DollarSign className="h-3 w-3" />
-                            {row.personnelRate !== null ? `${row.personnelRate}/hr` : "Set rate"}
-                          </Button>
-                        )}
-                      </div>
+                    {row.personnelName ? (
+                      <>
+                        <div className="flex items-center gap-1.5">
+                          <PersonnelAvatar
+                            photoUrl={row.personnelPhotoUrl}
+                            firstName={row.personnelName?.split(' ')[0] || ''}
+                            lastName={row.personnelName?.split(' ')[1] || ''}
+                            size="xs"
+                          />
+                          <span className="font-medium">{row.personnelName}</span>
+                          {row.personnelId && (
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              className="h-5 px-1 text-xs ml-1"
+                              onClick={() => handleEditRate(row)}
+                            >
+                              <DollarSign className="h-3 w-3" />
+                              {row.personnelRate !== null ? `${row.personnelRate}/hr` : "Set rate"}
+                            </Button>
+                          )}
+                        </div>
+                        <div className="text-sm text-muted-foreground mt-0.5">{row.projectName}</div>
+                      </>
+                    ) : (
+                      <div className="font-medium">{row.projectName}</div>
                     )}
                   </td>
                   {weekDays.map((day) => {
