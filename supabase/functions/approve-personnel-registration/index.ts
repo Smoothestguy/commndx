@@ -249,11 +249,12 @@ Deno.serve(async (req) => {
         }
       }
 
-      // Update registration status to approved
+      // Update registration status to approved with personnel_id link
       const { error: updateError } = await serviceClient
         .from("personnel_registrations")
         .update({
           status: "approved",
+          personnel_id: personnel.id,
           reviewed_by: user.id,
           reviewed_at: new Date().toISOString(),
         })
@@ -267,6 +268,36 @@ Deno.serve(async (req) => {
       console.log(
         `Registration ${registrationId} approved by ${user.id}, created personnel ${personnel.id}`
       );
+
+      // Send onboarding email to the new personnel
+      try {
+        const emailResponse = await fetch(
+          `${supabaseUrl}/functions/v1/send-personnel-onboarding-email`,
+          {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+              Authorization: `Bearer ${supabaseServiceKey}`,
+            },
+            body: JSON.stringify({
+              personnelId: personnel.id,
+              email: personnel.email,
+              firstName: personnel.first_name,
+              lastName: personnel.last_name,
+            }),
+          }
+        );
+
+        if (!emailResponse.ok) {
+          const errorText = await emailResponse.text();
+          console.error("Failed to send onboarding email:", errorText);
+        } else {
+          console.log(`Onboarding email sent to ${personnel.email}`);
+        }
+      } catch (emailError) {
+        console.error("Error sending onboarding email:", emailError);
+        // Non-fatal, continue with success response
+      }
 
       return new Response(
         JSON.stringify({

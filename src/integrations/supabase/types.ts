@@ -2835,6 +2835,7 @@ export type Database = {
           id: string
           immigration_status: string | null
           last_name: string
+          personnel_id: string | null
           phone: string | null
           rejection_reason: string | null
           reviewed_at: string | null
@@ -2861,6 +2862,7 @@ export type Database = {
           id?: string
           immigration_status?: string | null
           last_name: string
+          personnel_id?: string | null
           phone?: string | null
           rejection_reason?: string | null
           reviewed_at?: string | null
@@ -2887,6 +2889,7 @@ export type Database = {
           id?: string
           immigration_status?: string | null
           last_name?: string
+          personnel_id?: string | null
           phone?: string | null
           rejection_reason?: string | null
           reviewed_at?: string | null
@@ -2900,7 +2903,15 @@ export type Database = {
           work_authorization_type?: string | null
           zip?: string | null
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "personnel_registrations_personnel_id_fkey"
+            columns: ["personnel_id"]
+            isOneToOne: false
+            referencedRelation: "personnel"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       po_addendum_line_items: {
         Row: {

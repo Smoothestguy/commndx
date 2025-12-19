@@ -1,7 +1,7 @@
 import { useParams } from "react-router-dom";
 import { DetailPageLayout } from "@/components/layout/DetailPageLayout";
 import { SEO } from "@/components/SEO";
-import { usePersonnelById } from "@/integrations/supabase/hooks/usePersonnel";
+import { usePersonnelById, useResendOnboardingEmail } from "@/integrations/supabase/hooks/usePersonnel";
 import { usePersonnelInvitationCheck } from "@/integrations/supabase/hooks/usePortal";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -9,7 +9,7 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { Mail, Phone, MapPin, Calendar, DollarSign, AlertTriangle, IdCard, MessageSquare, Edit, Flag, FileCheck, Shield, Award, AlertCircle, LucideIcon } from "lucide-react";
+import { Mail, Phone, MapPin, Calendar, DollarSign, AlertTriangle, IdCard, MessageSquare, Edit, Flag, FileCheck, Shield, Award, AlertCircle, LucideIcon, Clock, Check, Send } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { format } from "date-fns";
 import { useState } from "react";
@@ -35,10 +35,21 @@ const PersonnelDetail = () => {
   const { id } = useParams<{ id: string }>();
   const { data: personnel, isLoading } = usePersonnelById(id);
   const { data: existingInvitation } = usePersonnelInvitationCheck(id);
+  const resendOnboardingEmail = useResendOnboardingEmail();
   const [badgeDialogOpen, setBadgeDialogOpen] = useState(false);
   const [editDialogOpen, setEditDialogOpen] = useState(false);
   const [smsDialogOpen, setSmsDialogOpen] = useState(false);
   const [defaultEditTab, setDefaultEditTab] = useState("personal");
+
+  const handleResendOnboardingEmail = () => {
+    if (!personnel) return;
+    resendOnboardingEmail.mutate({
+      personnelId: personnel.id,
+      email: personnel.email,
+      firstName: personnel.first_name,
+      lastName: personnel.last_name,
+    });
+  };
 
   if (isLoading) {
     return (
@@ -262,6 +273,18 @@ const PersonnelDetail = () => {
                 <div className="flex flex-wrap gap-2">
                   {getStatusBadge()}
                   {getEVerifyBadge()}
+                  {personnel.onboarding_status === "pending" && (
+                    <Badge variant="outline" className="gap-1">
+                      <Clock className="h-3 w-3" />
+                      Onboarding Pending
+                    </Badge>
+                  )}
+                  {personnel.onboarding_status === "completed" && (
+                    <Badge className="bg-green-600 gap-1">
+                      <Check className="h-3 w-3" />
+                      Onboarding Complete
+                    </Badge>
+                  )}
                   {complianceIssues.length > 0 && (
                     <Badge variant="destructive" className="gap-1 animate-pulse">
                       <Flag className="h-3 w-3" />
@@ -288,6 +311,17 @@ const PersonnelDetail = () => {
                     <MessageSquare className="mr-2 h-4 w-4" />
                     Send SMS
                   </Button>
+                  {personnel.onboarding_status !== "completed" && (
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={handleResendOnboardingEmail}
+                      disabled={resendOnboardingEmail.isPending}
+                    >
+                      <Send className="mr-2 h-4 w-4" />
+                      {resendOnboardingEmail.isPending ? "Sending..." : "Resend Onboarding Email"}
+                    </Button>
+                  )}
                   <InviteToPortalDialog
                     personnelId={personnel.id}
                     personnelName={`${personnel.first_name} ${personnel.last_name}`}

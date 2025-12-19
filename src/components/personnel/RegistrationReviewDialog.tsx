@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { Link } from "react-router-dom";
 import {
   Dialog,
   DialogContent,
@@ -39,6 +40,7 @@ import {
   XCircle,
   Loader2,
   ExternalLink,
+  ArrowRight,
 } from "lucide-react";
 import { format } from "date-fns";
 
@@ -119,6 +121,20 @@ export const RegistrationReviewDialog = ({
   const isProcessing =
     approveRegistration.isPending || rejectRegistration.isPending;
 
+  const isPending = registration.status === "pending";
+  const isApproved = registration.status === "approved";
+  const isRejected = registration.status === "rejected";
+
+  const getStatusBadge = () => {
+    if (isApproved) {
+      return <Badge className="bg-green-600">Approved</Badge>;
+    }
+    if (isRejected) {
+      return <Badge variant="destructive">Rejected</Badge>;
+    }
+    return <Badge variant="secondary">Pending</Badge>;
+  };
+
   return (
     <>
       <Dialog open={open} onOpenChange={onOpenChange}>
@@ -126,7 +142,7 @@ export const RegistrationReviewDialog = ({
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
               Review Registration
-              <Badge variant="secondary">Pending</Badge>
+              {getStatusBadge()}
             </DialogTitle>
             <DialogDescription>
               Submitted{" "}
@@ -136,6 +152,37 @@ export const RegistrationReviewDialog = ({
 
           <ScrollArea className="max-h-[60vh] pr-4">
             <div className="space-y-6">
+              {/* Approved: Show link to personnel record */}
+              {isApproved && registration.personnel_id && (
+                <div className="bg-green-500/10 border border-green-500/30 rounded-lg p-4">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2 text-green-700 dark:text-green-400">
+                      <CheckCircle className="h-5 w-5" />
+                      <span className="font-medium">Personnel record created</span>
+                    </div>
+                    <Link to={`/personnel/${registration.personnel_id}`}>
+                      <Button variant="outline" size="sm" className="gap-2">
+                        View Personnel
+                        <ArrowRight className="h-4 w-4" />
+                      </Button>
+                    </Link>
+                  </div>
+                </div>
+              )}
+
+              {/* Rejected: Show reason */}
+              {isRejected && registration.rejection_reason && (
+                <div className="bg-destructive/10 border border-destructive/30 rounded-lg p-4">
+                  <div className="flex items-start gap-2 text-destructive">
+                    <XCircle className="h-5 w-5 shrink-0 mt-0.5" />
+                    <div>
+                      <span className="font-medium block">Rejection Reason:</span>
+                      <p className="text-sm mt-1">{registration.rejection_reason}</p>
+                    </div>
+                  </div>
+                </div>
+              )}
+
               {/* Personal Information */}
               <section className="space-y-3">
                 <div className="flex items-center gap-2 text-sm font-medium">
@@ -337,23 +384,31 @@ export const RegistrationReviewDialog = ({
           </ScrollArea>
 
           <DialogFooter className="gap-2 sm:gap-0">
-            <Button
-              variant="outline"
-              onClick={() => setShowRejectDialog(true)}
-              disabled={isProcessing}
-              className="text-destructive hover:text-destructive"
-            >
-              <XCircle className="h-4 w-4 mr-2" />
-              Reject
-            </Button>
-            <Button onClick={handleApprove} disabled={isProcessing}>
-              {approveRegistration.isPending ? (
-                <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-              ) : (
-                <CheckCircle className="h-4 w-4 mr-2" />
-              )}
-              Approve & Create Personnel
-            </Button>
+            {isPending ? (
+              <>
+                <Button
+                  variant="outline"
+                  onClick={() => setShowRejectDialog(true)}
+                  disabled={isProcessing}
+                  className="text-destructive hover:text-destructive"
+                >
+                  <XCircle className="h-4 w-4 mr-2" />
+                  Reject
+                </Button>
+                <Button onClick={handleApprove} disabled={isProcessing}>
+                  {approveRegistration.isPending ? (
+                    <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                  ) : (
+                    <CheckCircle className="h-4 w-4 mr-2" />
+                  )}
+                  Approve & Create Personnel
+                </Button>
+              </>
+            ) : (
+              <Button variant="outline" onClick={() => onOpenChange(false)}>
+                Close
+              </Button>
+            )}
           </DialogFooter>
         </DialogContent>
       </Dialog>
