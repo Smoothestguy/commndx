@@ -394,7 +394,7 @@ const PersonnelDetail = () => {
 
         <Tabs defaultValue="personal" className="w-full">
           <ScrollArea className="w-full">
-            <TabsList className="inline-flex w-full sm:grid sm:grid-cols-7">
+            <TabsList className="inline-flex w-full sm:grid sm:grid-cols-8">
               <TabsTrigger value="personal" className="whitespace-nowrap">
                 <span className="sm:hidden">Info</span>
                 <span className="hidden sm:inline">Personal</span>
@@ -668,6 +668,32 @@ const PersonnelDetail = () => {
               </CardContent>
             </Card>
           </TabsContent>
+
+          <TabsContent value="tax" className="space-y-4">
+            <W9FormView 
+              personnelId={personnel.id} 
+              personnelSsnLastFour={personnel.ssn_last_four}
+            />
+            
+            {w9Form && (
+              <Card>
+                <CardHeader>
+                  <CardTitle className="flex items-center justify-between">
+                    <span>1099 Generation</span>
+                    <Button onClick={() => setGenerate1099Open(true)}>
+                      <DollarSign className="mr-2 h-4 w-4" />
+                      Generate 1099
+                    </Button>
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <p className="text-sm text-muted-foreground">
+                    Generate a 1099-NEC form for this personnel based on their W-9 information and payment history.
+                  </p>
+                </CardContent>
+              </Card>
+            )}
+          </TabsContent>
         </Tabs>
       </div>
 
@@ -701,6 +727,15 @@ const PersonnelDetail = () => {
         recipientId={personnel.id}
         recipientName={`${personnel.first_name} ${personnel.last_name}`}
         recipientPhone={personnel.phone || ""}
+      />
+
+      <Generate1099Dialog
+        open={generate1099Open}
+        onOpenChange={setGenerate1099Open}
+        personnelId={personnel.id}
+        personnelName={`${personnel.first_name} ${personnel.last_name}`}
+        w9Form={w9Form}
+        personnelData={personnel}
       />
     </DetailPageLayout>
   );
