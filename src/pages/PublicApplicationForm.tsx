@@ -23,64 +23,50 @@ import {
 import { useJobPostingByToken, useSubmitApplication } from "@/integrations/supabase/hooks/useStaffingApplications";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
-import { FormField as FormFieldType, FormTheme } from "@/integrations/supabase/hooks/useApplicationFormTemplates";
+import { FormField as FormFieldType, FormTheme, FormRow } from "@/integrations/supabase/hooks/useApplicationFormTemplates";
 import { AddressField, AddressValue } from "@/components/form-builder/AddressField";
 import { FormattedPhoneInput } from "@/components/form-builder/FormattedPhoneInput";
 import { cn } from "@/lib/utils";
 
-// Helper function to group fields into rows based on width
-function renderFieldsWithLayout(fields: FormFieldType[], renderField: (field: FormFieldType) => React.ReactNode) {
-  const rows: FormFieldType[][] = [];
-  let currentRow: FormFieldType[] = [];
-  let currentRowWidth = 0;
-
-  fields.forEach((field) => {
-    const fieldWidth = field.width === "third" ? 1/3 : field.width === "half" ? 0.5 : 1;
+// Helper function to render fields based on layout
+function renderFieldsWithLayout(
+  fields: FormFieldType[], 
+  layout: FormRow[] | undefined, 
+  renderField: (field: FormFieldType) => React.ReactNode
+) {
+  // If we have a layout, use it
+  if (layout && layout.length > 0) {
+    const fieldMap = new Map(fields.map(f => [f.id, f]));
     
-    // If field is full width or would overflow current row, start new row
-    if (fieldWidth === 1 || currentRowWidth + fieldWidth > 1) {
-      if (currentRow.length > 0) {
-        rows.push(currentRow);
-      }
-      currentRow = [field];
-      currentRowWidth = fieldWidth;
-    } else {
-      currentRow.push(field);
-      currentRowWidth += fieldWidth;
-    }
+    return layout.map((row, rowIndex) => {
+      const rowFields = row.fieldIds
+        .map(id => fieldMap.get(id))
+        .filter((f): f is FormFieldType => f !== undefined);
+      
+      if (rowFields.length === 0) return null;
 
-    // If row is full, push it
-    if (currentRowWidth >= 1) {
-      rows.push(currentRow);
-      currentRow = [];
-      currentRowWidth = 0;
-    }
-  });
+      const gridClass = rowFields.length === 1 
+        ? "grid-cols-1" 
+        : rowFields.length === 2 
+          ? "grid-cols-1 sm:grid-cols-2" 
+          : "grid-cols-1 sm:grid-cols-3";
 
-  // Push any remaining fields
-  if (currentRow.length > 0) {
-    rows.push(currentRow);
+      return (
+        <div key={row.id || rowIndex} className={cn("grid gap-4", gridClass)}>
+          {rowFields.map((field) => (
+            <div key={field.id}>
+              {renderField(field)}
+            </div>
+          ))}
+        </div>
+      );
+    });
   }
 
-  return rows.map((row, rowIndex) => {
-    if (row.length === 1 && (!row[0].width || row[0].width === "full")) {
-      // Single full-width field
-      return <div key={rowIndex}>{renderField(row[0])}</div>;
-    }
-
-    // Multiple fields in a row
-    return (
-      <div key={rowIndex} className="grid gap-3" style={{ 
-        gridTemplateColumns: row.map(() => "1fr").join(" ")
-      }}>
-        {row.map((field) => (
-          <div key={field.id}>
-            {renderField(field)}
-          </div>
-        ))}
-      </div>
-    );
-  });
+  // Fallback: render each field as full width
+  return fields.map((field) => (
+    <div key={field.id}>{renderField(field)}</div>
+  ));
 }
 // Base schema for core fields
 const baseSchema = z.object({
@@ -97,6 +83,7 @@ export default function PublicApplicationForm() {
   const { token } = useParams<{ token: string }>();
   const [submitted, setSubmitted] = useState(false);
   const [customFields, setCustomFields] = useState<FormFieldType[]>([]);
+  const [customLayout, setCustomLayout] = useState<FormRow[]>([]);
   const [customAnswers, setCustomAnswers] = useState<Record<string, any>>({});
   const [theme, setTheme] = useState<FormTheme>({});
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
@@ -116,10 +103,19 @@ export default function PublicApplicationForm() {
         
         if (!error && template) {
           if (template.fields) {
-            setCustomFields(template.fields as unknown as FormFieldType[]);
+            const fields = template.fields as unknown as FormFieldType[];
+            setCustomFields(fields);
+            
+            // Generate layout from fields if not provided (each field gets its own row)
+            const generatedLayout: FormRow[] = fields.map(f => ({
+              id: `row_${f.id}`,
+              fieldIds: [f.id]
+            }));
+            setCustomLayout(generatedLayout);
+            
             // Initialize default values for custom fields
             const defaults: Record<string, any> = {};
-            (template.fields as unknown as FormFieldType[]).forEach(field => {
+            fields.forEach(field => {
               if (field.type === "checkbox") {
                 defaults[field.id] = false;
               } else if (field.type === "multiselect") {
@@ -734,7 +730,9 @@ export default function PublicApplicationForm() {
                 {customFields.length > 0 && (
                   <div className="space-y-4 pt-4 border-t">
                     <h3 className="font-medium text-sm text-muted-foreground">Additional Questions</h3>
-                    {renderFieldsWithLayout(customFields, renderCustomField)}
+                    <div className="space-y-4">
+                      {renderFieldsWithLayout(customFields, customLayout, renderCustomField)}
+                    </div>
                   </div>
                 )}
 

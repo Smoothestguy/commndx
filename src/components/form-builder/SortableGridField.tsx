@@ -1,5 +1,7 @@
 import { useState } from "react";
-import { ChevronDown, ChevronUp, Trash2, GripVertical, Settings2 } from "lucide-react";
+import { useSortable } from "@dnd-kit/sortable";
+import { CSS } from "@dnd-kit/utilities";
+import { ChevronDown, Trash2, GripVertical, Settings2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -21,9 +23,8 @@ import { FormField } from "@/integrations/supabase/hooks/useApplicationFormTempl
 import { ConditionalLogicBuilder } from "./ConditionalLogicBuilder";
 import { cn } from "@/lib/utils";
 
-interface FieldSettingsPanelProps {
+interface SortableGridFieldProps {
   field: FormField;
-  index: number;
   allFields: FormField[];
   onUpdate: (updates: Partial<FormField>) => void;
   onRemove: () => void;
@@ -31,12 +32,11 @@ interface FieldSettingsPanelProps {
   onAddOption: () => void;
   onRemoveOption: (optionIndex: number) => void;
   fieldTypes: readonly { value: string; label: string; icon: any }[];
-  dragHandleProps?: Record<string, any>;
+  isDragOverlay?: boolean;
 }
 
-export function FieldSettingsPanel({
+export function SortableGridField({
   field,
-  index,
   allFields,
   onUpdate,
   onRemove,
@@ -44,9 +44,25 @@ export function FieldSettingsPanel({
   onAddOption,
   onRemoveOption,
   fieldTypes,
-  dragHandleProps,
-}: FieldSettingsPanelProps) {
+  isDragOverlay = false,
+}: SortableGridFieldProps) {
   const [isExpanded, setIsExpanded] = useState(false);
+
+  const {
+    attributes,
+    listeners,
+    setNodeRef,
+    transform,
+    transition,
+    isDragging,
+  } = useSortable({ id: field.id, disabled: isDragOverlay });
+
+  const style = {
+    transform: CSS.Transform.toString(transform),
+    transition,
+    opacity: isDragging ? 0.3 : 1,
+    zIndex: isDragging ? 1000 : 1,
+  };
 
   const hasOptions = field.type === "dropdown" || field.type === "radio" || field.type === "multiselect";
   const hasPlaceholder = ["text", "textarea", "number", "email", "phone", "firstname", "lastname"].includes(field.type);
@@ -54,69 +70,59 @@ export function FieldSettingsPanel({
   const hasIconOption = field.type === "email" || field.type === "phone";
   const isNonInput = field.type === "section" || field.type === "address";
 
-  const getFieldTypeLabel = (type: string) => {
-    return fieldTypes.find(t => t.value === type)?.label || type;
+  const getFieldTypeIcon = (type: string) => {
+    const fieldType = fieldTypes.find(t => t.value === type);
+    return fieldType?.icon;
   };
 
+  const Icon = getFieldTypeIcon(field.type);
+
   return (
-    <div className={cn(
-      "border rounded-lg bg-card transition-all",
-      isExpanded ? "ring-2 ring-primary/20" : ""
-    )}>
-      {/* Header - Always visible */}
-      <div className="flex items-center gap-2 p-3">
+    <div
+      ref={setNodeRef}
+      style={style}
+      {...attributes}
+      className={cn(
+        "border rounded-lg bg-card transition-all",
+        isExpanded ? "ring-2 ring-primary/20" : "",
+        isDragging && "shadow-lg"
+      )}
+    >
+      {/* Compact Header */}
+      <div className="flex items-center gap-2 p-2">
         <div 
           className="cursor-grab hover:bg-muted rounded p-1 touch-none"
-          {...dragHandleProps}
+          {...listeners}
         >
           <GripVertical className="h-4 w-4 text-muted-foreground" />
         </div>
         
-        <div className="flex-1 flex items-center gap-2">
+        <div className="flex-1 flex items-center gap-2 min-w-0">
+          {Icon && <Icon className="h-4 w-4 text-muted-foreground shrink-0" />}
           <Input
             value={field.label}
             onChange={(e) => onUpdate({ label: e.target.value })}
             placeholder={isNonInput ? "Section title" : "Field label"}
-            className="flex-1 h-9"
+            className="flex-1 h-8 text-sm"
           />
-          <Select
-            value={field.type}
-            onValueChange={(value) => onUpdate({ 
-              type: value as FormField["type"],
-              options: ["dropdown", "radio", "multiselect"].includes(value) 
-                ? (field.options?.length ? field.options : ["Option 1", "Option 2"]) 
-                : undefined
-            })}
-          >
-            <SelectTrigger className="w-[140px] h-9">
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              {fieldTypes.map((type) => (
-                <SelectItem key={type.value} value={type.value}>
-                  {type.label}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
         </div>
 
-        <div className="flex items-center gap-1">
+        <div className="flex items-center gap-1 shrink-0">
           {!isNonInput && (
-            <div className="flex items-center gap-2 px-2">
+            <div className="flex items-center gap-1.5 px-2">
               <Switch
                 checked={field.required}
                 onCheckedChange={(checked) => onUpdate({ required: checked })}
-                className="scale-90"
+                className="scale-75"
               />
-              <Label className="text-xs text-muted-foreground">Required</Label>
+              <Label className="text-xs text-muted-foreground">Req</Label>
             </div>
           )}
           
           <Collapsible open={isExpanded} onOpenChange={setIsExpanded}>
             <CollapsibleTrigger asChild>
-              <Button variant="ghost" size="icon" className="h-8 w-8">
-                <Settings2 className={cn("h-4 w-4 transition-colors", isExpanded && "text-primary")} />
+              <Button variant="ghost" size="icon" className="h-7 w-7">
+                <Settings2 className={cn("h-3.5 w-3.5 transition-colors", isExpanded && "text-primary")} />
               </Button>
             </CollapsibleTrigger>
           </Collapsible>
@@ -124,10 +130,10 @@ export function FieldSettingsPanel({
           <Button
             variant="ghost"
             size="icon"
-            className="h-8 w-8 text-destructive hover:text-destructive"
+            className="h-7 w-7 text-destructive hover:text-destructive"
             onClick={onRemove}
           >
-            <Trash2 className="h-4 w-4" />
+            <Trash2 className="h-3.5 w-3.5" />
           </Button>
         </div>
       </div>
@@ -135,9 +141,34 @@ export function FieldSettingsPanel({
       {/* Expanded Settings */}
       <Collapsible open={isExpanded} onOpenChange={setIsExpanded}>
         <CollapsibleContent>
-          <div className="px-3 pb-3 pt-1 border-t space-y-4">
+          <div className="px-3 pb-3 pt-1 border-t space-y-3 text-sm">
+            {/* Field Type Selector */}
+            <div>
+              <Label className="text-xs">Field Type</Label>
+              <Select
+                value={field.type}
+                onValueChange={(value) => onUpdate({ 
+                  type: value as FormField["type"],
+                  options: ["dropdown", "radio", "multiselect"].includes(value) 
+                    ? (field.options?.length ? field.options : ["Option 1", "Option 2"]) 
+                    : undefined
+                })}
+              >
+                <SelectTrigger className="h-8">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {fieldTypes.map((type) => (
+                    <SelectItem key={type.value} value={type.value}>
+                      {type.label}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+
             {/* Placeholder / Help Text */}
-            <div className="grid grid-cols-2 gap-3">
+            <div className="grid grid-cols-2 gap-2">
               {hasPlaceholder && (
                 <div>
                   <Label className="text-xs">Placeholder</Label>
@@ -220,7 +251,7 @@ export function FieldSettingsPanel({
                   variant="outline"
                   size="sm"
                   onClick={onAddOption}
-                  className="h-8"
+                  className="h-7 text-xs"
                 >
                   + Add Option
                 </Button>
@@ -248,7 +279,7 @@ export function FieldSettingsPanel({
 
             {/* File upload settings */}
             {field.type === "file" && (
-              <div className="grid grid-cols-2 gap-3">
+              <div className="grid grid-cols-2 gap-2">
                 <div>
                   <Label className="text-xs">Accepted File Types</Label>
                   <Input

@@ -20,24 +20,9 @@ import {
   Paintbrush,
   FileText,
   Loader2,
+  User,
+  MapPin,
 } from "lucide-react";
-import {
-  DndContext,
-  closestCenter,
-  KeyboardSensor,
-  PointerSensor,
-  useSensor,
-  useSensors,
-  DragEndEvent,
-} from "@dnd-kit/core";
-import {
-  arrayMove,
-  SortableContext,
-  sortableKeyboardCoordinates,
-  verticalListSortingStrategy,
-  useSortable,
-} from "@dnd-kit/sortable";
-import { CSS } from "@dnd-kit/utilities";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -56,17 +41,15 @@ import {
   useCreateApplicationFormTemplate,
   useUpdateApplicationFormTemplate,
   FormField,
+  FormRow,
   FormTheme,
   TEMPLATE_CATEGORIES,
   TemplateCategory,
 } from "@/integrations/supabase/hooks/useApplicationFormTemplates";
-import { FieldSettingsPanel } from "@/components/form-builder/FieldSettingsPanel";
+import { RowBasedFieldGrid } from "@/components/form-builder/RowBasedFieldGrid";
 import { ThemeEditor } from "@/components/form-builder/ThemeEditor";
 import { FormPreview } from "@/components/form-builder/FormPreview";
 import { toast } from "sonner";
-import { cn } from "@/lib/utils";
-
-import { User, MapPin } from "lucide-react";
 
 const FIELD_TYPES = [
   { value: "firstname", label: "First Name", icon: User },
@@ -87,60 +70,6 @@ const FIELD_TYPES = [
   { value: "signature", label: "Signature", icon: PenLine },
 ] as const;
 
-// Sortable field wrapper component
-function SortableField({ 
-  field, 
-  index, 
-  allFields,
-  onUpdate, 
-  onRemove,
-  onUpdateOption,
-  onAddOption,
-  onRemoveOption,
-}: {
-  field: FormField;
-  index: number;
-  allFields: FormField[];
-  onUpdate: (updates: Partial<FormField>) => void;
-  onRemove: () => void;
-  onUpdateOption: (optionIndex: number, value: string) => void;
-  onAddOption: () => void;
-  onRemoveOption: (optionIndex: number) => void;
-}) {
-  const {
-    attributes,
-    listeners,
-    setNodeRef,
-    transform,
-    transition,
-    isDragging,
-  } = useSortable({ id: field.id });
-
-  const style = {
-    transform: CSS.Transform.toString(transform),
-    transition,
-    opacity: isDragging ? 0.5 : 1,
-    zIndex: isDragging ? 1000 : 1,
-  };
-
-  return (
-    <div ref={setNodeRef} style={style} {...attributes}>
-      <FieldSettingsPanel
-        field={field}
-        index={index}
-        allFields={allFields}
-        onUpdate={onUpdate}
-        onRemove={onRemove}
-        onUpdateOption={onUpdateOption}
-        onAddOption={onAddOption}
-        onRemoveOption={onRemoveOption}
-        fieldTypes={FIELD_TYPES}
-        dragHandleProps={listeners}
-      />
-    </div>
-  );
-}
-
 export default function ApplicationFormBuilder() {
   const navigate = useNavigate();
   const { id } = useParams<{ id: string }>();
@@ -156,6 +85,7 @@ export default function ApplicationFormBuilder() {
   const [category, setCategory] = useState<TemplateCategory | null>(null);
   const [successMessage, setSuccessMessage] = useState("Thank you for your submission!");
   const [fields, setFields] = useState<FormField[]>([]);
+  const [layout, setLayout] = useState<FormRow[]>([]);
   const [theme, setTheme] = useState<FormTheme>({});
   const [initialized, setInitialized] = useState(false);
 
@@ -168,32 +98,22 @@ export default function ApplicationFormBuilder() {
       setSuccessMessage(existingTemplate.success_message || "Thank you for your submission!");
       setFields(existingTemplate.fields);
       setTheme(existingTemplate.theme || {});
+      
+      // Initialize layout from existing or generate from fields
+      if (existingTemplate.layout && existingTemplate.layout.length > 0) {
+        setLayout(existingTemplate.layout);
+      } else {
+        // Generate layout with each field in its own row
+        const generatedLayout: FormRow[] = existingTemplate.fields.map(f => ({
+          id: `row_${f.id}`,
+          fieldIds: [f.id]
+        }));
+        setLayout(generatedLayout);
+      }
+      
       setInitialized(true);
     }
   }, [isEditing, existingTemplate, initialized]);
-
-  // DnD sensors
-  const sensors = useSensors(
-    useSensor(PointerSensor, {
-      activationConstraint: {
-        distance: 5,
-      },
-    }),
-    useSensor(KeyboardSensor, {
-      coordinateGetter: sortableKeyboardCoordinates,
-    })
-  );
-
-  const handleDragEnd = (event: DragEndEvent) => {
-    const { active, over } = event;
-    if (over && active.id !== over.id) {
-      setFields((items) => {
-        const oldIndex = items.findIndex((item) => item.id === active.id);
-        const newIndex = items.findIndex((item) => item.id === over.id);
-        return arrayMove(items, oldIndex, newIndex);
-      });
-    }
-  };
 
   const addField = (type: FormField["type"]) => {
     const newField: FormField = {
@@ -206,40 +126,56 @@ export default function ApplicationFormBuilder() {
         ? ["Option 1", "Option 2"] 
         : undefined,
     };
+    
+    // Add field to fields array
     setFields([...fields, newField]);
+    
+    // Add new row for this field
+    const newRow: FormRow = {
+      id: `row_${newField.id}`,
+      fieldIds: [newField.id],
+    };
+    setLayout([...layout, newRow]);
   };
 
-  const updateField = (index: number, updates: Partial<FormField>) => {
-    const newFields = [...fields];
-    newFields[index] = { ...newFields[index], ...updates };
-    setFields(newFields);
+  const updateField = (fieldId: string, updates: Partial<FormField>) => {
+    setFields(fields.map(f => f.id === fieldId ? { ...f, ...updates } : f));
   };
 
-  const removeField = (index: number) => {
-    setFields(fields.filter((_, i) => i !== index));
+  const removeField = (fieldId: string) => {
+    setFields(fields.filter(f => f.id !== fieldId));
   };
 
-  const updateOption = (fieldIndex: number, optionIndex: number, value: string) => {
-    const newFields = [...fields];
-    const options = [...(newFields[fieldIndex].options || [])];
-    options[optionIndex] = value;
-    newFields[fieldIndex].options = options;
-    setFields(newFields);
+  const updateOption = (fieldId: string, optionIndex: number, value: string) => {
+    setFields(fields.map(f => {
+      if (f.id === fieldId) {
+        const options = [...(f.options || [])];
+        options[optionIndex] = value;
+        return { ...f, options };
+      }
+      return f;
+    }));
   };
 
-  const addOption = (fieldIndex: number) => {
-    const newFields = [...fields];
-    const options = [...(newFields[fieldIndex].options || [])];
-    options.push(`Option ${options.length + 1}`);
-    newFields[fieldIndex].options = options;
-    setFields(newFields);
+  const addOption = (fieldId: string) => {
+    setFields(fields.map(f => {
+      if (f.id === fieldId) {
+        const options = [...(f.options || [])];
+        options.push(`Option ${options.length + 1}`);
+        return { ...f, options };
+      }
+      return f;
+    }));
   };
 
-  const removeOption = (fieldIndex: number, optionIndex: number) => {
-    const newFields = [...fields];
-    const options = (newFields[fieldIndex].options || []).filter((_, i) => i !== optionIndex);
-    newFields[fieldIndex].options = options;
-    setFields(newFields);
+  const removeOption = (fieldId: string, optionIndex: number) => {
+    setFields(fields.map(f => {
+      if (f.id === fieldId) {
+        const options = (f.options || []).filter((_, i) => i !== optionIndex);
+        return { ...f, options };
+      }
+      return f;
+    }));
   };
 
   const handleSave = async () => {
@@ -393,42 +329,21 @@ export default function ApplicationFormBuilder() {
                 <CardHeader>
                   <CardTitle>Custom Fields</CardTitle>
                   <CardDescription>
-                    Drag to reorder. Core fields (Name, Email, Phone, ZIP) are always included.
+                    Drag fields to reorder. Fields in the same row auto-size (1=100%, 2=50%, 3=33%).
                   </CardDescription>
                 </CardHeader>
-                <CardContent className="space-y-3">
-                  {fields.length === 0 ? (
-                    <div className="text-center py-12 text-muted-foreground border-2 border-dashed rounded-lg">
-                      <FileText className="h-10 w-10 mx-auto mb-3 opacity-50" />
-                      <p className="font-medium">No custom fields yet</p>
-                      <p className="text-sm">Add fields from the sidebar to get started</p>
-                    </div>
-                  ) : (
-                    <DndContext
-                      sensors={sensors}
-                      collisionDetection={closestCenter}
-                      onDragEnd={handleDragEnd}
-                    >
-                      <SortableContext
-                        items={fields.map(f => f.id)}
-                        strategy={verticalListSortingStrategy}
-                      >
-                        {fields.map((field, index) => (
-                          <SortableField
-                            key={field.id}
-                            field={field}
-                            index={index}
-                            allFields={fields}
-                            onUpdate={(updates) => updateField(index, updates)}
-                            onRemove={() => removeField(index)}
-                            onUpdateOption={(optIndex, value) => updateOption(index, optIndex, value)}
-                            onAddOption={() => addOption(index)}
-                            onRemoveOption={(optIndex) => removeOption(index, optIndex)}
-                          />
-                        ))}
-                      </SortableContext>
-                    </DndContext>
-                  )}
+                <CardContent>
+                  <RowBasedFieldGrid
+                    fields={fields}
+                    layout={layout}
+                    onLayoutChange={setLayout}
+                    onFieldUpdate={updateField}
+                    onFieldRemove={removeField}
+                    onUpdateOption={updateOption}
+                    onAddOption={addOption}
+                    onRemoveOption={removeOption}
+                    fieldTypes={FIELD_TYPES}
+                  />
                 </CardContent>
               </Card>
             </div>
@@ -482,6 +397,7 @@ export default function ApplicationFormBuilder() {
                   name={name}
                   description={description}
                   fields={fields}
+                  layout={layout}
                   theme={theme}
                   successMessage={successMessage}
                 />
@@ -504,6 +420,7 @@ export default function ApplicationFormBuilder() {
                 name={name}
                 description={description}
                 fields={fields}
+                layout={layout}
                 theme={theme}
                 successMessage={successMessage}
               />

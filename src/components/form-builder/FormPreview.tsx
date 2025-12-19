@@ -1,4 +1,4 @@
-import { FormField, FormTheme } from "@/integrations/supabase/hooks/useApplicationFormTemplates";
+import { FormField, FormTheme, FormRow } from "@/integrations/supabase/hooks/useApplicationFormTemplates";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -22,71 +22,53 @@ interface FormPreviewProps {
   name: string;
   description: string;
   fields: FormField[];
+  layout?: FormRow[];
   theme: FormTheme;
   successMessage?: string;
 }
 
-// Helper function to group fields into rows based on width
-function renderFieldsWithLayout(fields: FormField[], renderField: (field: FormField) => React.ReactNode) {
-  const rows: FormField[][] = [];
-  let currentRow: FormField[] = [];
-  let currentRowWidth = 0;
-
-  fields.forEach((field) => {
-    const fieldWidth = field.width === "third" ? 1/3 : field.width === "half" ? 0.5 : 1;
+// Helper function to render fields based on layout
+function renderFieldsWithLayout(
+  fields: FormField[], 
+  layout: FormRow[] | undefined, 
+  renderField: (field: FormField) => React.ReactNode
+) {
+  // If we have a layout, use it
+  if (layout && layout.length > 0) {
+    const fieldMap = new Map(fields.map(f => [f.id, f]));
     
-    // If field is full width or would overflow current row, start new row
-    if (fieldWidth === 1 || currentRowWidth + fieldWidth > 1) {
-      if (currentRow.length > 0) {
-        rows.push(currentRow);
-      }
-      currentRow = [field];
-      currentRowWidth = fieldWidth;
-    } else {
-      currentRow.push(field);
-      currentRowWidth += fieldWidth;
-    }
+    return layout.map((row, rowIndex) => {
+      const rowFields = row.fieldIds
+        .map(id => fieldMap.get(id))
+        .filter((f): f is FormField => f !== undefined);
+      
+      if (rowFields.length === 0) return null;
 
-    // If row is full, push it
-    if (currentRowWidth >= 1) {
-      rows.push(currentRow);
-      currentRow = [];
-      currentRowWidth = 0;
-    }
-  });
+      const gridClass = rowFields.length === 1 
+        ? "grid-cols-1" 
+        : rowFields.length === 2 
+          ? "grid-cols-2" 
+          : "grid-cols-3";
 
-  // Push any remaining fields
-  if (currentRow.length > 0) {
-    rows.push(currentRow);
+      return (
+        <div key={row.id || rowIndex} className={cn("grid gap-3", gridClass)}>
+          {rowFields.map((field) => (
+            <div key={field.id}>
+              {renderField(field)}
+            </div>
+          ))}
+        </div>
+      );
+    });
   }
 
-  return rows.map((row, rowIndex) => {
-    if (row.length === 1 && (!row[0].width || row[0].width === "full")) {
-      // Single full-width field
-      return <div key={rowIndex}>{renderField(row[0])}</div>;
-    }
-
-    // Multiple fields in a row
-    return (
-      <div key={rowIndex} className="grid gap-3" style={{ 
-        gridTemplateColumns: row.map(f => 
-          f.width === "third" ? "1fr" : f.width === "half" ? "1fr" : "1fr"
-        ).join(" ")
-      }}>
-        {row.map((field) => (
-          <div key={field.id} className={cn(
-            field.width === "third" ? "col-span-1" : 
-            field.width === "half" ? "col-span-1" : "col-span-full"
-          )}>
-            {renderField(field)}
-          </div>
-        ))}
-      </div>
-    );
-  });
+  // Fallback: render each field as full width
+  return fields.map((field) => (
+    <div key={field.id}>{renderField(field)}</div>
+  ));
 }
 
-export function FormPreview({ name, description, fields, theme, successMessage }: FormPreviewProps) {
+export function FormPreview({ name, description, fields, layout, theme, successMessage }: FormPreviewProps) {
   const getBackgroundStyle = () => {
     if (theme.backgroundImage) {
       return {
@@ -121,7 +103,7 @@ export function FormPreview({ name, description, fields, theme, successMessage }
     switch (field.type) {
       case "section":
         return (
-          <div key={field.id} className="pt-4 pb-2 border-b">
+          <div key={field.id} className="pt-4 pb-2 border-b col-span-full">
             <h3 className="text-lg font-semibold">{field.label || "Section Title"}</h3>
             {field.helpText && (
               <p className="text-sm text-muted-foreground mt-1">{field.helpText}</p>
@@ -195,7 +177,7 @@ export function FormPreview({ name, description, fields, theme, successMessage }
 
       case "address":
         return (
-          <div key={field.id}>
+          <div key={field.id} className="col-span-full">
             <AddressField
               label={field.label}
               required={field.required}
@@ -405,13 +387,15 @@ export function FormPreview({ name, description, fields, theme, successMessage }
               <Input placeholder="12345" disabled className="w-1/3 min-w-[120px]" />
             </div>
 
-            {/* Custom Fields with side-by-side layout */}
+            {/* Custom Fields with row-based layout */}
             {fields.length > 0 && (
               <>
                 <div className="border-t pt-4 mt-4">
                   <p className="text-xs text-muted-foreground mb-3">Additional Questions</p>
                 </div>
-                {renderFieldsWithLayout(fields, renderField)}
+                <div className="space-y-4">
+                  {renderFieldsWithLayout(fields, layout, renderField)}
+                </div>
               </>
             )}
 
