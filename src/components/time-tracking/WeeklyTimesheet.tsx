@@ -9,9 +9,9 @@ import { PersonnelAvatar } from "@/components/personnel/PersonnelAvatar";
 import {
   TimeEntry,
   useAdminTimeEntriesByWeek,
+  useBulkDeleteTimeEntries,
 } from "@/integrations/supabase/hooks/useTimeEntries";
 import { useCompanySettings } from "@/integrations/supabase/hooks/useCompanySettings";
-import { useBulkRemovePersonnelFromProject } from "@/integrations/supabase/hooks/usePersonnelProjectAssignments";
 import { format, addDays, startOfWeek } from "date-fns";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { useQuery } from "@tanstack/react-query";
@@ -68,7 +68,7 @@ export function WeeklyTimesheet({ currentWeek, onWeekChange }: WeeklyTimesheetPr
   const { data: rawEntries = [], isLoading } = useAdminTimeEntriesByWeek(currentWeek);
   const entries = rawEntries as TimeEntryWithRelations[];
   const { data: companySettings } = useCompanySettings();
-  const bulkRemoveMutation = useBulkRemovePersonnelFromProject();
+  const bulkDeleteMutation = useBulkDeleteTimeEntries();
   
   const overtimeMultiplier = companySettings?.overtime_multiplier || 1.5;
   const weeklyOvertimeThreshold = companySettings?.weekly_overtime_threshold ?? 40;
@@ -200,22 +200,32 @@ export function WeeklyTimesheet({ currentWeek, onWeekChange }: WeeklyTimesheetPr
   };
 
   const handleBulkDelete = async () => {
-    const assignmentsToRemove = Array.from(selectedRows)
-      .map(rowKey => {
-        const row = rows.find(r => r.rowKey === rowKey);
-        if (row?.personnelId && row?.projectId) {
-          return { projectId: row.projectId, personnelId: row.personnelId };
-        }
-        return null;
+    // Get all time entry IDs for selected rows
+    const entriesToDelete = entries
+      .filter((entry) => {
+        const rowKey = entry.personnel_id 
+          ? `${entry.project_id}-${entry.personnel_id}` 
+          : `${entry.project_id}-self`;
+        return selectedRows.has(rowKey);
       })
-      .filter((a): a is { projectId: string; personnelId: string } => a !== null);
+      .map(entry => entry.id);
 
-    if (assignmentsToRemove.length > 0) {
-      await bulkRemoveMutation.mutateAsync(assignmentsToRemove);
+    if (entriesToDelete.length > 0) {
+      await bulkDeleteMutation.mutateAsync(entriesToDelete);
       setSelectedRows(new Set());
       setShowDeleteDialog(false);
     }
   };
+
+  // Count entries for selected rows (for confirmation message)
+  const selectedEntriesCount = useMemo(() => {
+    return entries.filter((entry) => {
+      const rowKey = entry.personnel_id 
+        ? `${entry.project_id}-${entry.personnel_id}` 
+        : `${entry.project_id}-self`;
+      return selectedRows.has(rowKey);
+    }).length;
+  }, [entries, selectedRows]);
 
   const getDayTotal = (date: Date) => {
     const dateString = format(date, "yyyy-MM-dd");
@@ -646,7 +656,7 @@ export function WeeklyTimesheet({ currentWeek, onWeekChange }: WeeklyTimesheetPr
               onClick={() => setShowDeleteDialog(true)}
             >
               <Trash2 className="h-4 w-4 mr-2" />
-              Remove from Project
+              Delete Time Entries
             </Button>
           </div>
         </Card>
@@ -844,10 +854,10 @@ export function WeeklyTimesheet({ currentWeek, onWeekChange }: WeeklyTimesheetPr
       <AlertDialog open={showDeleteDialog} onOpenChange={setShowDeleteDialog}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Remove Personnel from Projects?</AlertDialogTitle>
+            <AlertDialogTitle>Delete Time Entries?</AlertDialogTitle>
             <AlertDialogDescription>
-              This will remove {selectedRows.size} personnel assignment{selectedRows.size > 1 ? 's' : ''} from their projects. 
-              Time entries will remain intact, but the personnel will no longer be assigned to these projects.
+              This will permanently delete {selectedEntriesCount} time entr{selectedEntriesCount === 1 ? 'y' : 'ies'} for the selected rows. 
+              This action cannot be undone.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
@@ -856,7 +866,7 @@ export function WeeklyTimesheet({ currentWeek, onWeekChange }: WeeklyTimesheetPr
               onClick={handleBulkDelete}
               className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
             >
-              {bulkRemoveMutation.isPending ? "Removing..." : "Remove"}
+              {bulkDeleteMutation.isPending ? "Deleting..." : "Delete"}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
