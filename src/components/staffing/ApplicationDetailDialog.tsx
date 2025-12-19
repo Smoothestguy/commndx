@@ -1,6 +1,6 @@
 import { useState, useMemo } from "react";
 import { format } from "date-fns";
-import { Pencil, User, Save, X } from "lucide-react";
+import { Pencil, User, Save, X, AlertCircle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
@@ -38,10 +38,13 @@ import {
   FormField,
 } from "@/integrations/supabase/hooks/useApplicationFormTemplates";
 import { toast } from "sonner";
+import { RequestMissingInfoDialog } from "./RequestMissingInfoDialog";
 
 const statusColors: Record<string, string> = {
   submitted: "bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-300",
   reviewing: "bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-300",
+  needs_info: "bg-orange-100 text-orange-800 dark:bg-orange-900/30 dark:text-orange-300",
+  updated: "bg-purple-100 text-purple-800 dark:bg-purple-900/30 dark:text-purple-300",
   approved: "bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-300",
   rejected: "bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-300",
 };
@@ -60,6 +63,7 @@ export function ApplicationDetailDialog({
   const [isEditing, setIsEditing] = useState(false);
   const [actionNotes, setActionNotes] = useState(application?.notes || "");
   const [enlargedImage, setEnlargedImage] = useState<string | null>(null);
+  const [requestInfoDialogOpen, setRequestInfoDialogOpen] = useState(false);
   const [editForm, setEditForm] = useState({
     first_name: "",
     last_name: "",
@@ -435,8 +439,15 @@ export function ApplicationDetailDialog({
             </div>
           ) : (
             <>
-              {application.status === "submitted" && (
+              {(application.status === "submitted" || application.status === "updated") && (
                 <>
+                  <Button
+                    variant="outline"
+                    onClick={() => setRequestInfoDialogOpen(true)}
+                  >
+                    <AlertCircle className="h-4 w-4 mr-1" />
+                    Request Info
+                  </Button>
                   <Button
                     variant="destructive"
                     onClick={handleReject}
@@ -452,7 +463,12 @@ export function ApplicationDetailDialog({
                   </Button>
                 </>
               )}
-              {application.status !== "submitted" && (
+              {application.status === "needs_info" && (
+                <Button variant="outline" onClick={() => onOpenChange(false)}>
+                  Close (Awaiting Applicant Update)
+                </Button>
+              )}
+              {(application.status !== "submitted" && application.status !== "updated" && application.status !== "needs_info") && (
                 <Button variant="outline" onClick={() => onOpenChange(false)}>
                   Close
                 </Button>
@@ -467,6 +483,13 @@ export function ApplicationDetailDialog({
       imageUrl={enlargedImage}
       onClose={() => setEnlargedImage(null)}
       alt="Application image"
+    />
+
+    <RequestMissingInfoDialog
+      open={requestInfoDialogOpen}
+      onOpenChange={setRequestInfoDialogOpen}
+      application={application}
+      onSuccess={() => onOpenChange(false)}
     />
   </>
   );
