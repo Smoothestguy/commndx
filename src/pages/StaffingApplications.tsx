@@ -9,7 +9,8 @@ import {
   Copy,
   ExternalLink,
   FileText,
-  Pencil
+  Pencil,
+  Settings
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -40,9 +41,11 @@ import {
   useCreateTaskOrder,
   useCreateJobPosting,
   useUpdateJobPosting,
+  useUpdateTaskOrder,
   useApproveApplication,
   useRejectApplication,
   Application,
+  TaskOrder,
 } from "@/integrations/supabase/hooks/useStaffingApplications";
 import { useApplicationFormTemplates } from "@/integrations/supabase/hooks/useApplicationFormTemplates";
 import { toast } from "sonner";
@@ -64,7 +67,9 @@ export default function StaffingApplications() {
   const [showDetailDialog, setShowDetailDialog] = useState(false);
   const [showCreateDialog, setShowCreateDialog] = useState(false);
   const [showEditPostingDialog, setShowEditPostingDialog] = useState(false);
+  const [showEditTaskOrderDialog, setShowEditTaskOrderDialog] = useState(false);
   const [editingPosting, setEditingPosting] = useState<{ id: string; formTemplateId: string | null } | null>(null);
+  const [editingTaskOrder, setEditingTaskOrder] = useState<TaskOrder | null>(null);
   const [actionNotes, setActionNotes] = useState("");
   
   // New task order form state
@@ -75,6 +80,14 @@ export default function StaffingApplications() {
     headcount_needed: 1,
     location_address: "",
     form_template_id: "",
+  });
+
+  // Edit task order form state
+  const [editTaskOrderForm, setEditTaskOrderForm] = useState({
+    title: "",
+    job_description: "",
+    headcount_needed: 1,
+    location_address: "",
   });
 
   const { data: projects } = useProjects();
@@ -89,6 +102,7 @@ export default function StaffingApplications() {
   const createTaskOrder = useCreateTaskOrder();
   const createJobPosting = useCreateJobPosting();
   const updateJobPosting = useUpdateJobPosting();
+  const updateTaskOrder = useUpdateTaskOrder();
   const approveApplication = useApproveApplication();
   const rejectApplication = useRejectApplication();
 
@@ -191,6 +205,37 @@ export default function StaffingApplications() {
     setShowEditPostingDialog(true);
   };
 
+  const handleEditTaskOrder = (posting: any) => {
+    const taskOrder = posting.project_task_orders;
+    if (!taskOrder) return;
+    setEditingTaskOrder(taskOrder);
+    setEditTaskOrderForm({
+      title: taskOrder.title || "",
+      job_description: taskOrder.job_description || "",
+      headcount_needed: taskOrder.headcount_needed || 1,
+      location_address: taskOrder.location_address || "",
+    });
+    setShowEditTaskOrderDialog(true);
+  };
+
+  const handleSaveTaskOrderEdit = async () => {
+    if (!editingTaskOrder) return;
+    try {
+      await updateTaskOrder.mutateAsync({
+        id: editingTaskOrder.id,
+        title: editTaskOrderForm.title,
+        job_description: editTaskOrderForm.job_description || null,
+        headcount_needed: editTaskOrderForm.headcount_needed,
+        location_address: editTaskOrderForm.location_address || null,
+      });
+      toast.success("Task order updated");
+      setShowEditTaskOrderDialog(false);
+      setEditingTaskOrder(null);
+    } catch (error) {
+      toast.error("Failed to update task order");
+    }
+  };
+
   const handleSavePostingEdit = async () => {
     if (!editingPosting) return;
     try {
@@ -254,6 +299,14 @@ export default function StaffingApplications() {
                     </div>
                   </div>
                   <div className="flex items-center gap-2" onClick={(e) => e.stopPropagation()}>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => handleEditTaskOrder(posting)}
+                      title="Edit task order details"
+                    >
+                      <Settings className="h-4 w-4" />
+                    </Button>
                     <Button
                       variant="ghost"
                       size="sm"
@@ -609,6 +662,66 @@ export default function StaffingApplications() {
               disabled={createTaskOrder.isPending}
             >
               Create & Copy Link
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Edit Task Order Dialog */}
+      <Dialog open={showEditTaskOrderDialog} onOpenChange={setShowEditTaskOrderDialog}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Edit Task Order</DialogTitle>
+            <DialogDescription>
+              Update the task order details
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div>
+              <Label>Position Title *</Label>
+              <Input
+                value={editTaskOrderForm.title}
+                onChange={(e) => setEditTaskOrderForm({ ...editTaskOrderForm, title: e.target.value })}
+                placeholder="e.g., General Laborer, Foreman"
+              />
+            </div>
+            <div>
+              <Label>Job Description</Label>
+              <Textarea
+                value={editTaskOrderForm.job_description}
+                onChange={(e) => setEditTaskOrderForm({ ...editTaskOrderForm, job_description: e.target.value })}
+                placeholder="Describe the role and requirements..."
+              />
+            </div>
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <Label>Headcount Needed</Label>
+                <Input
+                  type="number"
+                  min={1}
+                  value={editTaskOrderForm.headcount_needed}
+                  onChange={(e) => setEditTaskOrderForm({ ...editTaskOrderForm, headcount_needed: parseInt(e.target.value) || 1 })}
+                />
+              </div>
+              <div>
+                <Label>Location</Label>
+                <Input
+                  value={editTaskOrderForm.location_address}
+                  onChange={(e) => setEditTaskOrderForm({ ...editTaskOrderForm, location_address: e.target.value })}
+                  placeholder="Job site address"
+                />
+              </div>
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setShowEditTaskOrderDialog(false)}>
+              Cancel
+            </Button>
+            <Button
+              onClick={handleSaveTaskOrderEdit}
+              disabled={updateTaskOrder.isPending}
+            >
+              Save Changes
             </Button>
           </DialogFooter>
         </DialogContent>
