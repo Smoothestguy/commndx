@@ -1,6 +1,6 @@
 import { useState, useMemo } from "react";
 import { format } from "date-fns";
-import { Pencil, User, Save, X, AlertCircle } from "lucide-react";
+import { Pencil, User, Save, X, AlertCircle, RefreshCw } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
@@ -37,6 +37,7 @@ import {
   useApplicationFormTemplate,
   FormField,
 } from "@/integrations/supabase/hooks/useApplicationFormTemplates";
+import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { RequestMissingInfoDialog } from "./RequestMissingInfoDialog";
 
@@ -64,6 +65,7 @@ export function ApplicationDetailDialog({
   const [actionNotes, setActionNotes] = useState(application?.notes || "");
   const [enlargedImage, setEnlargedImage] = useState<string | null>(null);
   const [requestInfoDialogOpen, setRequestInfoDialogOpen] = useState(false);
+  const [isResending, setIsResending] = useState(false);
   const [editForm, setEditForm] = useState({
     first_name: "",
     last_name: "",
@@ -231,6 +233,37 @@ export function ApplicationDetailDialog({
       onOpenChange(false);
     } catch (error) {
       toast.error("Failed to reject application");
+    }
+  };
+
+  const handleResendEmail = async () => {
+    if (!application) return;
+    
+    setIsResending(true);
+    try {
+      const { data, error } = await supabase.functions.invoke("send-application-edit-request", {
+        body: {
+          applicationId: application.id,
+          missingFields: application.missing_fields || [],
+          adminMessage: application.admin_message || undefined,
+        },
+      });
+
+      if (error) throw error;
+
+      if (data && !data.success) {
+        toast.warning(
+          `Application token refreshed, but email could not be sent: ${data.emailError || 'Unknown error'}`,
+          { duration: 8000 }
+        );
+      } else {
+        toast.success("Edit request email resent to applicant");
+      }
+    } catch (error: any) {
+      console.error("Error resending edit request:", error);
+      toast.error(error.message || "Failed to resend edit request");
+    } finally {
+      setIsResending(false);
     }
   };
 
@@ -464,9 +497,19 @@ export function ApplicationDetailDialog({
                 </>
               )}
               {application.status === "needs_info" && (
-                <Button variant="outline" onClick={() => onOpenChange(false)}>
-                  Close (Awaiting Applicant Update)
-                </Button>
+                <>
+                  <Button
+                    variant="outline"
+                    onClick={handleResendEmail}
+                    disabled={isResending}
+                  >
+                    <RefreshCw className={`h-4 w-4 mr-1 ${isResending ? 'animate-spin' : ''}`} />
+                    {isResending ? 'Sending...' : 'Resend Email'}
+                  </Button>
+                  <Button variant="outline" onClick={() => onOpenChange(false)}>
+                    Close (Awaiting Applicant Update)
+                  </Button>
+                </>
               )}
               {(application.status !== "submitted" && application.status !== "updated" && application.status !== "needs_info") && (
                 <Button variant="outline" onClick={() => onOpenChange(false)}>
