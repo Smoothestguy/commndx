@@ -233,7 +233,7 @@ export function FormPreview({ name, description, fields, layout, theme, successM
                 <SelectValue placeholder={`Select ${field.label?.toLowerCase() || "option"}`} />
               </SelectTrigger>
               <SelectContent>
-                {field.options?.map((opt) => (
+                {field.options?.filter(opt => opt && opt.trim() !== '').map((opt) => (
                   <SelectItem key={opt} value={opt}>{opt}</SelectItem>
                 ))}
               </SelectContent>
