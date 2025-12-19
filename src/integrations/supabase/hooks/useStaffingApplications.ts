@@ -410,6 +410,30 @@ export const useSubmitApplication = () => {
         console.log("[Application] New applicant created:", applicantId);
       }
 
+      // Upload any file-type answers to storage and replace value with public URL
+      const processedAnswers: Record<string, unknown> = { ...answers };
+      for (const [fieldId, value] of Object.entries(answers)) {
+        if (value instanceof File) {
+          const safeName = value.name.replace(/[^a-zA-Z0-9._-]/g, "_");
+          const filePath = `applications/${posting_id}/${applicantId}/${Date.now()}-${fieldId}-${safeName}`;
+
+          const { error: uploadError } = await supabase.storage
+            .from("form-uploads")
+            .upload(filePath, value);
+
+          if (uploadError) {
+            console.error("[Application] Error uploading file for field:", fieldId, uploadError);
+            throw uploadError;
+          }
+
+          const {
+            data: { publicUrl },
+          } = supabase.storage.from("form-uploads").getPublicUrl(filePath);
+
+          processedAnswers[fieldId] = publicUrl;
+        }
+      }
+
       // Create the application
       console.log("[Application] Creating application record for applicant:", applicantId);
       const { data: application, error: appError } = await supabase
@@ -417,7 +441,7 @@ export const useSubmitApplication = () => {
         .insert({
           job_posting_id: posting_id,
           applicant_id: applicantId,
-          answers,
+          answers: processedAnswers,
           status: 'submitted' as const,
         } as any)
         .select()
