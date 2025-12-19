@@ -51,7 +51,7 @@ export default function PortalTaxForms() {
 
   const [isEditing, setIsEditing] = useState(false);
 
-  // Pre-populate form when personnel data is loaded
+  // Pre-populate form when personnel data is loaded (for new W-9)
   useEffect(() => {
     if (personnel && !w9Form) {
       setFormData(prev => ({
@@ -64,6 +64,33 @@ export default function PortalTaxForms() {
       }));
     }
   }, [personnel, w9Form]);
+
+  // Pre-populate form when editing an existing W-9
+  useEffect(() => {
+    if (w9Form && isEditing) {
+      setFormData({
+        name_on_return: w9Form.name_on_return || "",
+        business_name: w9Form.business_name || "",
+        federal_tax_classification: w9Form.federal_tax_classification || "",
+        llc_tax_classification: w9Form.llc_tax_classification || "",
+        other_classification: w9Form.other_classification || "",
+        exempt_payee_code: w9Form.exempt_payee_code || "",
+        fatca_exemption_code: w9Form.fatca_exemption_code || "",
+        address: w9Form.address || "",
+        city: w9Form.city || "",
+        state: w9Form.state || "",
+        zip: w9Form.zip || "",
+        account_numbers: w9Form.account_numbers || "",
+        tin_type: w9Form.tin_type || "ssn",
+        ein: w9Form.ein || "",
+        certified_us_person: w9Form.certified_us_person ?? true,
+        certified_correct_tin: w9Form.certified_correct_tin ?? true,
+        certified_not_subject_backup_withholding: w9Form.certified_not_subject_backup_withholding ?? true,
+        certified_fatca_exempt: w9Form.certified_fatca_exempt ?? false,
+        signature_data: "", // Clear signature to require re-signing
+      });
+    }
+  }, [w9Form, isEditing]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
