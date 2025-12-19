@@ -673,7 +673,6 @@ export default function PublicApplicationForm() {
         <Card className={cn(theme.backgroundImage && "bg-background/95 backdrop-blur-sm")}>
           <CardHeader>
             <CardTitle className="text-xl">{taskOrder.title}</CardTitle>
-            <CardDescription>{taskOrder.projects?.name}</CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
             {taskOrder.job_description && (
