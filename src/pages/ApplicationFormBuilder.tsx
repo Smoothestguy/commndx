@@ -66,7 +66,11 @@ import { FormPreview } from "@/components/form-builder/FormPreview";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 
+import { User } from "lucide-react";
+
 const FIELD_TYPES = [
+  { value: "firstname", label: "First Name", icon: User },
+  { value: "lastname", label: "Last Name", icon: User },
   { value: "text", label: "Short Text", icon: Type },
   { value: "textarea", label: "Long Text", icon: AlignLeft },
   { value: "number", label: "Number", icon: Hash },
@@ -120,19 +124,18 @@ function SortableField({
 
   return (
     <div ref={setNodeRef} style={style} {...attributes}>
-      <div {...listeners}>
-        <FieldSettingsPanel
-          field={field}
-          index={index}
-          allFields={allFields}
-          onUpdate={onUpdate}
-          onRemove={onRemove}
-          onUpdateOption={onUpdateOption}
-          onAddOption={onAddOption}
-          onRemoveOption={onRemoveOption}
-          fieldTypes={FIELD_TYPES}
-        />
-      </div>
+      <FieldSettingsPanel
+        field={field}
+        index={index}
+        allFields={allFields}
+        onUpdate={onUpdate}
+        onRemove={onRemove}
+        onUpdateOption={onUpdateOption}
+        onAddOption={onAddOption}
+        onRemoveOption={onRemoveOption}
+        fieldTypes={FIELD_TYPES}
+        dragHandleProps={listeners}
+      />
     </div>
   );
 }
