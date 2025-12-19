@@ -61,7 +61,7 @@ export function PersonnelApplicantMap({ mapboxToken }: PersonnelApplicantMapProp
         .from('personnel')
         .select('id, first_name, last_name, email, phone, photo_url, home_lat, home_lng, status')
         .not('home_lat', 'is', null)
-        .not('home_lng', 'is', null);
+        .not('home_lng', 'is', null) as { data: any[] | null };
       
       // Fetch applicants with locations
       const { data: applicantsData } = await supabase
@@ -71,29 +71,29 @@ export function PersonnelApplicantMap({ mapboxToken }: PersonnelApplicantMapProp
         .not('home_lng', 'is', null);
       
       if (personnelData) {
-        setPersonnel(personnelData.map(p => ({ 
+        setPersonnel(personnelData.map((p: any) => ({ 
           id: p.id,
           first_name: p.first_name,
           last_name: p.last_name,
           email: p.email,
           phone: p.phone,
           photo_url: p.photo_url,
-          home_lat: p.home_lat!,
-          home_lng: p.home_lng!,
+          home_lat: p.home_lat,
+          home_lng: p.home_lng,
           status: p.status,
           type: 'personnel' as const 
         })));
       }
       if (applicantsData) {
-        setApplicants(applicantsData.map(a => ({ 
+        setApplicants(applicantsData.map((a: any) => ({ 
           id: a.id,
           first_name: a.first_name,
           last_name: a.last_name,
           email: a.email,
           phone: a.phone,
           photo_url: a.photo_url,
-          home_lat: a.home_lat!,
-          home_lng: a.home_lng!,
+          home_lat: a.home_lat,
+          home_lng: a.home_lng,
           status: a.status,
           type: 'applicant' as const 
         })));

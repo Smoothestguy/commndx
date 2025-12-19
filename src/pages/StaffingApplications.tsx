@@ -13,6 +13,7 @@ import {
   File,
   Table as TableIcon,
   Check,
+  MapPin,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -284,6 +285,10 @@ export default function StaffingApplications() {
           <p className="text-muted-foreground">Review and manage job applications</p>
         </div>
         <div className="flex gap-2">
+          <Button variant="outline" onClick={() => navigate("/staffing/map")}>
+            <MapPin className="h-4 w-4 mr-2" />
+            Map View
+          </Button>
           <Button variant="outline" onClick={() => navigate("/staffing/form-templates")}>
             <FileText className="h-4 w-4 mr-2" />
             Form Templates
