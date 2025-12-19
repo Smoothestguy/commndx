@@ -7,7 +7,7 @@ export interface GenerateW9Options {
   ssnFull?: string | null;
 }
 
-// Map database tax classification to display format
+// Map database tax classification to internal format
 const mapTaxClassification = (dbClassification: string): 'individual' | 'c_corp' | 's_corp' | 'partnership' | 'trust' | 'llc' | 'other' => {
   const map: Record<string, 'individual' | 'c_corp' | 's_corp' | 'partnership' | 'trust' | 'llc' | 'other'> = {
     'individual': 'individual',
@@ -204,9 +204,19 @@ export function generateW9(options: GenerateW9Options): jsPDF {
   const llcX = margin + 15 + checkboxSpacing * 1.3;
   drawCheckbox(llcX, checkbox2Y, 'LLC. Enter the tax classification (C = C corporation, S = S corporation, P = Partnership)', taxClassification === 'llc');
   
-  if (taxClassification === 'llc' && llcClassification) {
-    doc.setFontSize(10);
-    doc.text(llcClassification.toUpperCase(), llcX + 420, checkbox2Y + 7);
+  // Draw small box for LLC classification and fill it in
+  if (taxClassification === 'llc') {
+    const llcInputX = llcX + 425;
+    const llcInputY = checkbox2Y;
+    doc.rect(llcInputX, llcInputY, 15, checkboxSize);
+    
+    if (llcClassification) {
+      doc.setFontSize(10);
+      doc.setFont('helvetica', 'bold');
+      doc.text(llcClassification.toUpperCase(), llcInputX + 4, llcInputY + 8);
+      doc.setFontSize(7);
+      doc.setFont('helvetica', 'normal');
+    }
   }
 
   // Note about LLC
@@ -222,8 +232,9 @@ export function generateW9(options: GenerateW9Options): jsPDF {
   const otherY = checkbox2Y + 50;
   drawCheckbox(margin + 15, otherY, 'Other (see instructions)', taxClassification === 'other');
   if (taxClassification === 'other' && w9Form.other_classification) {
+    doc.rect(margin + 120, otherY, 100, checkboxSize);
     doc.setFontSize(9);
-    doc.text(w9Form.other_classification, margin + 120, otherY + 7);
+    doc.text(w9Form.other_classification, margin + 125, otherY + 7);
   }
 
   // ============================================================================
@@ -240,15 +251,15 @@ export function generateW9(options: GenerateW9Options): jsPDF {
   doc.text('and you are providing this form to a partnership, trust, or estate in which you have an ownership interest, check', margin + 15, currentY + 8);
   doc.text('this box if you have any foreign partners, owners, or beneficiaries. See instructions', margin + 15, currentY + 16);
   
-  // Foreign partners checkbox (not checked - field not in database)
-  const foreignCheckY = currentY + 24;
-  doc.rect(margin + 450, foreignCheckY - 8, checkboxSize, checkboxSize);
+  // Foreign partners checkbox - positioned on the right
+  const foreignCheckY = currentY + 8;
+  doc.rect(pageWidth - margin - 15, foreignCheckY - 8, checkboxSize, checkboxSize);
 
   // ============================================================================
   // LINE 4: EXEMPTIONS
   // ============================================================================
   
-  currentY += 50;
+  currentY += 40;
   
   doc.setFontSize(7);
   doc.setFont('helvetica', 'bold');
@@ -370,104 +381,175 @@ export function generateW9(options: GenerateW9Options): jsPDF {
   doc.text('If the account is in more than one name, see the instructions for line 1. See also What Name and', margin + 25, currentY);
   doc.text('Number To Give the Requester for guidelines on whose number to enter.', margin, currentY + 8);
 
-  // SSN Section
+  // TIN Display Logic: Prioritize EIN for business entities, SSN for individuals
   currentY += 25;
-  doc.setFontSize(8);
-  doc.setFont('helvetica', 'bold');
-  doc.text('Social security number', margin, currentY);
-
-  const ssnY = currentY + 10;
   const boxWidth = 18;
   const boxHeight = 22;
+  
+  // Determine which TIN to display
+  const useEIN = ein && (taxClassification !== 'individual');
+  const ssnY = currentY + 10;
 
-  const ssnFormatted = maskSSN(ssnLastFour || null, ssnFull || null);
-  const ssnDigits = ssnFormatted.replace(/-/g, '').split('');
-
-  // Draw SSN boxes (XXX-XX-XXXX format)
-  // First 3 digits
-  for (let i = 0; i < 3; i++) {
-    doc.rect(margin + (i * boxWidth), ssnY, boxWidth, boxHeight);
-    if (ssnDigits[i] && ssnDigits[i] !== '*') {
-      doc.setFontSize(12);
-      doc.setFont('helvetica', 'normal');
-      doc.text(ssnDigits[i], margin + (i * boxWidth) + 6, ssnY + 15);
-    } else if (ssnDigits[i] === '*') {
-      doc.text('*', margin + (i * boxWidth) + 6, ssnY + 15);
+  if (useEIN) {
+    // Show EIN only (or both with "or" if SSN also provided)
+    const showSSN = (ssnFull || ssnLastFour);
+    
+    if (showSSN) {
+      // Show SSN on left
+      doc.setFontSize(8);
+      doc.setFont('helvetica', 'bold');
+      doc.text('Social security number', margin, currentY);
+      
+      const ssnFormatted = maskSSN(ssnLastFour || null, ssnFull || null);
+      const ssnDigits = ssnFormatted.replace(/-/g, '').split('');
+      
+      // Draw SSN boxes (XXX-XX-XXXX format)
+      for (let i = 0; i < 3; i++) {
+        doc.rect(margin + (i * boxWidth), ssnY, boxWidth, boxHeight);
+        if (ssnDigits[i] && ssnDigits[i] !== '*') {
+          doc.setFontSize(12);
+          doc.setFont('helvetica', 'normal');
+          doc.text(ssnDigits[i], margin + (i * boxWidth) + 6, ssnY + 15);
+        } else if (ssnDigits[i] === '*') {
+          doc.text('*', margin + (i * boxWidth) + 6, ssnY + 15);
+        }
+      }
+      
+      doc.setFontSize(14);
+      doc.setFont('helvetica', 'bold');
+      doc.text('—', margin + (3 * boxWidth) + 5, ssnY + 15);
+      
+      for (let i = 3; i < 5; i++) {
+        doc.rect(margin + (i * boxWidth) + 12, ssnY, boxWidth, boxHeight);
+        if (ssnDigits[i] && ssnDigits[i] !== '*') {
+          doc.setFontSize(12);
+          doc.setFont('helvetica', 'normal');
+          doc.text(ssnDigits[i], margin + (i * boxWidth) + 12 + 6, ssnY + 15);
+        } else if (ssnDigits[i] === '*') {
+          doc.text('*', margin + (i * boxWidth) + 12 + 6, ssnY + 15);
+        }
+      }
+      
+      doc.setFontSize(14);
+      doc.setFont('helvetica', 'bold');
+      doc.text('—', margin + (5 * boxWidth) + 17, ssnY + 15);
+      
+      for (let i = 5; i < 9; i++) {
+        doc.rect(margin + (i * boxWidth) + 24, ssnY, boxWidth, boxHeight);
+        if (ssnDigits[i] && ssnDigits[i] !== '*') {
+          doc.setFontSize(12);
+          doc.setFont('helvetica', 'normal');
+          doc.text(ssnDigits[i], margin + (i * boxWidth) + 24 + 6, ssnY + 15);
+        } else if (ssnDigits[i] === '*') {
+          doc.text('*', margin + (i * boxWidth) + 24 + 6, ssnY + 15);
+        }
+      }
+      
+      doc.setFontSize(10);
+      doc.setFont('helvetica', 'bold');
+      doc.text('or', margin + 200, ssnY + 15);
     }
-  }
-
-  // Dash
-  doc.setFontSize(14);
-  doc.setFont('helvetica', 'bold');
-  doc.text('—', margin + (3 * boxWidth) + 5, ssnY + 15);
-
-  // Next 2 digits
-  for (let i = 3; i < 5; i++) {
-    doc.rect(margin + (i * boxWidth) + 12, ssnY, boxWidth, boxHeight);
-    if (ssnDigits[i] && ssnDigits[i] !== '*') {
-      doc.setFontSize(12);
-      doc.setFont('helvetica', 'normal');
-      doc.text(ssnDigits[i], margin + (i * boxWidth) + 12 + 6, ssnY + 15);
-    } else if (ssnDigits[i] === '*') {
-      doc.text('*', margin + (i * boxWidth) + 12 + 6, ssnY + 15);
+    
+    // Show EIN
+    const einStartX = showSSN ? margin + 230 : margin;
+    doc.setFontSize(8);
+    doc.setFont('helvetica', 'bold');
+    doc.text('Employer identification number', einStartX, currentY);
+    
+    const einFormatted = formatEIN(ein);
+    const einDigits = einFormatted.replace(/-/g, '').split('');
+    
+    // Draw EIN boxes (XX-XXXXXXX format)
+    for (let i = 0; i < 2; i++) {
+      doc.rect(einStartX + (i * boxWidth), ssnY, boxWidth, boxHeight);
+      if (einDigits[i]) {
+        doc.setFontSize(12);
+        doc.setFont('helvetica', 'normal');
+        doc.text(einDigits[i], einStartX + (i * boxWidth) + 6, ssnY + 15);
+      }
     }
-  }
-
-  // Dash
-  doc.setFontSize(14);
-  doc.setFont('helvetica', 'bold');
-  doc.text('—', margin + (5 * boxWidth) + 17, ssnY + 15);
-
-  // Last 4 digits
-  for (let i = 5; i < 9; i++) {
-    doc.rect(margin + (i * boxWidth) + 24, ssnY, boxWidth, boxHeight);
-    if (ssnDigits[i] && ssnDigits[i] !== '*') {
-      doc.setFontSize(12);
-      doc.setFont('helvetica', 'normal');
-      doc.text(ssnDigits[i], margin + (i * boxWidth) + 24 + 6, ssnY + 15);
-    } else if (ssnDigits[i] === '*') {
-      doc.text('*', margin + (i * boxWidth) + 24 + 6, ssnY + 15);
+    
+    doc.setFontSize(14);
+    doc.setFont('helvetica', 'bold');
+    doc.text('—', einStartX + (2 * boxWidth) + 5, ssnY + 15);
+    
+    for (let i = 2; i < 9; i++) {
+      doc.rect(einStartX + (i * boxWidth) + 12, ssnY, boxWidth, boxHeight);
+      if (einDigits[i]) {
+        doc.setFontSize(12);
+        doc.setFont('helvetica', 'normal');
+        doc.text(einDigits[i], einStartX + (i * boxWidth) + 12 + 6, ssnY + 15);
+      }
     }
-  }
-
-  // "or" text
-  doc.setFontSize(10);
-  doc.setFont('helvetica', 'bold');
-  doc.text('or', margin + 200, ssnY + 15);
-
-  // EIN Section
-  doc.setFontSize(8);
-  doc.text('Employer identification number', margin + 230, currentY);
-
-  const einY = ssnY;
-  const einFormatted = formatEIN(ein);
-  const einDigits = einFormatted.replace(/-/g, '').split('');
-
-  // Draw EIN boxes (XX-XXXXXXX format)
-  const einStartX = margin + 230;
-
-  // First 2 digits
-  for (let i = 0; i < 2; i++) {
-    doc.rect(einStartX + (i * boxWidth), einY, boxWidth, boxHeight);
-    if (einDigits[i]) {
-      doc.setFontSize(12);
-      doc.setFont('helvetica', 'normal');
-      doc.text(einDigits[i], einStartX + (i * boxWidth) + 6, einY + 15);
+  } else {
+    // Show SSN only (individual/sole proprietor)
+    doc.setFontSize(8);
+    doc.setFont('helvetica', 'bold');
+    doc.text('Social security number', margin, currentY);
+    
+    const ssnFormatted = maskSSN(ssnLastFour || null, ssnFull || null);
+    const ssnDigits = ssnFormatted.replace(/-/g, '').split('');
+    
+    // Draw SSN boxes
+    for (let i = 0; i < 3; i++) {
+      doc.rect(margin + (i * boxWidth), ssnY, boxWidth, boxHeight);
+      if (ssnDigits[i] && ssnDigits[i] !== '*') {
+        doc.setFontSize(12);
+        doc.setFont('helvetica', 'normal');
+        doc.text(ssnDigits[i], margin + (i * boxWidth) + 6, ssnY + 15);
+      } else if (ssnDigits[i] === '*') {
+        doc.text('*', margin + (i * boxWidth) + 6, ssnY + 15);
+      }
     }
-  }
-
-  // Dash
-  doc.setFontSize(14);
-  doc.setFont('helvetica', 'bold');
-  doc.text('—', einStartX + (2 * boxWidth) + 5, einY + 15);
-
-  // Last 7 digits
-  for (let i = 2; i < 9; i++) {
-    doc.rect(einStartX + (i * boxWidth) + 12, einY, boxWidth, boxHeight);
-    if (einDigits[i]) {
-      doc.setFontSize(12);
-      doc.setFont('helvetica', 'normal');
-      doc.text(einDigits[i], einStartX + (i * boxWidth) + 12 + 6, einY + 15);
+    
+    doc.setFontSize(14);
+    doc.setFont('helvetica', 'bold');
+    doc.text('—', margin + (3 * boxWidth) + 5, ssnY + 15);
+    
+    for (let i = 3; i < 5; i++) {
+      doc.rect(margin + (i * boxWidth) + 12, ssnY, boxWidth, boxHeight);
+      if (ssnDigits[i] && ssnDigits[i] !== '*') {
+        doc.setFontSize(12);
+        doc.setFont('helvetica', 'normal');
+        doc.text(ssnDigits[i], margin + (i * boxWidth) + 12 + 6, ssnY + 15);
+      } else if (ssnDigits[i] === '*') {
+        doc.text('*', margin + (i * boxWidth) + 12 + 6, ssnY + 15);
+      }
+    }
+    
+    doc.setFontSize(14);
+    doc.setFont('helvetica', 'bold');
+    doc.text('—', margin + (5 * boxWidth) + 17, ssnY + 15);
+    
+    for (let i = 5; i < 9; i++) {
+      doc.rect(margin + (i * boxWidth) + 24, ssnY, boxWidth, boxHeight);
+      if (ssnDigits[i] && ssnDigits[i] !== '*') {
+        doc.setFontSize(12);
+        doc.setFont('helvetica', 'normal');
+        doc.text(ssnDigits[i], margin + (i * boxWidth) + 24 + 6, ssnY + 15);
+      } else if (ssnDigits[i] === '*') {
+        doc.text('*', margin + (i * boxWidth) + 24 + 6, ssnY + 15);
+      }
+    }
+    
+    doc.setFontSize(10);
+    doc.setFont('helvetica', 'bold');
+    doc.text('or', margin + 200, ssnY + 15);
+    
+    // Show empty EIN boxes
+    doc.setFontSize(8);
+    doc.text('Employer identification number', margin + 230, currentY);
+    
+    const einStartX = margin + 230;
+    for (let i = 0; i < 2; i++) {
+      doc.rect(einStartX + (i * boxWidth), ssnY, boxWidth, boxHeight);
+    }
+    
+    doc.setFontSize(14);
+    doc.text('—', einStartX + (2 * boxWidth) + 5, ssnY + 15);
+    
+    for (let i = 2; i < 9; i++) {
+      doc.rect(einStartX + (i * boxWidth) + 12, ssnY, boxWidth, boxHeight);
     }
   }
 
@@ -475,7 +557,7 @@ export function generateW9(options: GenerateW9Options): jsPDF {
   // PART II: CERTIFICATION
   // ============================================================================
   
-  currentY = einY + boxHeight + 20;
+  currentY = ssnY + boxHeight + 20;
   
   doc.setFontSize(9);
   doc.setFont('helvetica', 'bold');
@@ -505,7 +587,6 @@ export function generateW9(options: GenerateW9Options): jsPDF {
   });
 
   currentY += (certText.length * 8) + 10;
-
   doc.setFont('helvetica', 'bold');
   doc.text('Certification instructions.', margin, currentY);
   doc.setFont('helvetica', 'normal');
@@ -518,7 +599,7 @@ export function generateW9(options: GenerateW9Options): jsPDF {
   // SIGNATURE SECTION
   // ============================================================================
   
-  currentY += 45;
+  currentY += 40;
   
   doc.setLineWidth(1.5);
   doc.rect(margin, currentY, contentWidth, 50);
@@ -558,33 +639,12 @@ export function generateW9(options: GenerateW9Options): jsPDF {
   }
 
   // ============================================================================
-  // FOOTER: General Instructions
+  // FOOTER: Cat No and Form ID
   // ============================================================================
   
-  currentY += 65;
-  
-  doc.setFontSize(9);
-  doc.setFont('helvetica', 'bold');
-  doc.text('General Instructions', margin, currentY);
-
-  currentY += 12;
-  doc.setFontSize(7);
-  doc.setFont('helvetica', 'normal');
-  doc.text('Section references are to the Internal Revenue Code unless otherwise noted.', margin, currentY);
-  
-  currentY += 10;
-  doc.setFont('helvetica', 'bold');
-  doc.text('Future developments.', margin, currentY);
-  doc.setFont('helvetica', 'normal');
-  doc.text('For the latest information about developments related to Form W-9 and its instructions, such as legislation enacted', margin + 80, currentY);
-  doc.text('after they were published, go to', margin, currentY + 8);
-  doc.setFont('helvetica', 'bold');
-  doc.text('www.irs.gov/FormW9', margin + 115, currentY + 8);
-  doc.setFont('helvetica', 'normal');
-  doc.text('.', margin + 195, currentY + 8);
-
   // Form identifier at bottom
   doc.setFontSize(6);
+  doc.setFont('helvetica', 'normal');
   doc.text('Cat. No. 10231X', margin, pageHeight - 25);
   doc.setFont('helvetica', 'bold');
   doc.text('Form W-9 (Rev. 3-2024)', pageWidth - margin - 80, pageHeight - 25);
