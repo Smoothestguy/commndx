@@ -26,6 +26,8 @@ import { toast } from "sonner";
 import { FormField as FormFieldType, FormTheme, FormRow } from "@/integrations/supabase/hooks/useApplicationFormTemplates";
 import { AddressField, AddressValue } from "@/components/form-builder/AddressField";
 import { FormattedPhoneInput } from "@/components/form-builder/FormattedPhoneInput";
+import { LanguageSelector } from "@/components/form-builder/LanguageSelector";
+import { useFormTranslation } from "@/hooks/useFormTranslation";
 import { cn } from "@/lib/utils";
 
 // Helper function to render fields based on layout
@@ -87,14 +89,31 @@ export default function PublicApplicationForm() {
   const [customAnswers, setCustomAnswers] = useState<Record<string, any>>({});
   const [theme, setTheme] = useState<FormTheme>({});
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
+  const [formTemplateId, setFormTemplateId] = useState<string | undefined>();
 
   const { data: posting, isLoading, error } = useJobPostingByToken(token || "");
   const submitApplication = useSubmitApplication();
+
+  // Translation hook
+  const {
+    currentLanguage,
+    changeLanguage,
+    isTranslating,
+    getCoreLabel,
+    getCustomField,
+    getUIText,
+    supportedLanguages,
+  } = useFormTranslation({
+    formTemplateId,
+    customFields,
+    successMessage: successMessage || undefined,
+  });
 
   // Fetch form template if the posting has one
   useEffect(() => {
     const fetchTemplate = async () => {
       if (posting?.form_template_id) {
+        setFormTemplateId(posting.form_template_id);
         const { data: template, error } = await supabase
           .from("application_form_templates")
           .select("fields, theme, success_message")
@@ -228,6 +247,7 @@ export default function PublicApplicationForm() {
 
   const renderCustomField = (field: FormFieldType) => {
     const value = customAnswers[field.id];
+    const translated = getCustomField(field.id);
     
     // Grid layout for options
     const optionGridClass = field.optionLayout === "grid" 
@@ -238,9 +258,9 @@ export default function PublicApplicationForm() {
       case "section":
         return (
           <div key={field.id} className="pt-4 pb-2 border-b">
-            <h3 className="text-lg font-semibold">{field.label}</h3>
-            {field.helpText && (
-              <p className="text-sm text-muted-foreground mt-1">{field.helpText}</p>
+            <h3 className="text-lg font-semibold">{translated.label}</h3>
+            {translated.helpText && (
+              <p className="text-sm text-muted-foreground mt-1">{translated.helpText}</p>
             )}
           </div>
         );
@@ -251,15 +271,15 @@ export default function PublicApplicationForm() {
         return (
           <div key={field.id} className="space-y-2">
             <FormLabel>
-              {field.label}
+              {translated.label}
               {field.required && " *"}
             </FormLabel>
             <Input
               value={value || ""}
               onChange={(e) => updateCustomAnswer(field.id, e.target.value)}
-              placeholder={field.placeholder}
+              placeholder={translated.placeholder}
             />
-            {field.helpText && <p className="text-xs text-muted-foreground">{field.helpText}</p>}
+            {translated.helpText && <p className="text-xs text-muted-foreground">{translated.helpText}</p>}
           </div>
         );
 
@@ -267,7 +287,7 @@ export default function PublicApplicationForm() {
         return (
           <div key={field.id} className="space-y-2">
             <FormLabel>
-              {field.label}
+              {translated.label}
               {field.required && " *"}
             </FormLabel>
             <div className="relative flex items-center">
@@ -280,11 +300,11 @@ export default function PublicApplicationForm() {
                 type="email"
                 value={value || ""}
                 onChange={(e) => updateCustomAnswer(field.id, e.target.value)}
-                placeholder={field.placeholder}
+                placeholder={translated.placeholder}
                 className={field.showIcon !== false ? "pl-12 rounded-l-none" : ""}
               />
             </div>
-            {field.helpText && <p className="text-xs text-muted-foreground">{field.helpText}</p>}
+            {translated.helpText && <p className="text-xs text-muted-foreground">{translated.helpText}</p>}
           </div>
         );
 
@@ -293,26 +313,26 @@ export default function PublicApplicationForm() {
           <div key={field.id}>
             {field.showIcon !== false ? (
               <FormattedPhoneInput
-                label={field.label + (field.required ? " *" : "")}
+                label={translated.label + (field.required ? " *" : "")}
                 value={value || ""}
                 onChange={(v) => updateCustomAnswer(field.id, v)}
-                helpText={field.helpText}
+                helpText={translated.helpText}
                 showIcon={true}
               />
             ) : (
               <div className="space-y-2">
                 <FormLabel>
-                  {field.label}
+                  {translated.label}
                   {field.required && " *"}
                 </FormLabel>
                 <Input
                   type="tel"
                   value={value || ""}
                   onChange={(e) => updateCustomAnswer(field.id, e.target.value.replace(/\D/g, ""))}
-                  placeholder={field.placeholder}
+                  placeholder={translated.placeholder}
                   maxLength={10}
                 />
-                {field.helpText && <p className="text-xs text-muted-foreground">{field.helpText}</p>}
+                {translated.helpText && <p className="text-xs text-muted-foreground">{translated.helpText}</p>}
               </div>
             )}
           </div>
@@ -322,10 +342,10 @@ export default function PublicApplicationForm() {
         return (
           <div key={field.id}>
             <AddressField
-              label={field.label + (field.required ? " *" : "")}
+              label={translated.label + (field.required ? " *" : "")}
               value={value as AddressValue}
               onChange={(v) => updateCustomAnswer(field.id, v)}
-              helpText={field.helpText}
+              helpText={translated.helpText}
             />
           </div>
         );
@@ -334,16 +354,16 @@ export default function PublicApplicationForm() {
         return (
           <div key={field.id} className="space-y-2">
             <FormLabel>
-              {field.label}
+              {translated.label}
               {field.required && " *"}
             </FormLabel>
             <Textarea
               value={value || ""}
               onChange={(e) => updateCustomAnswer(field.id, e.target.value)}
-              placeholder={field.placeholder}
+              placeholder={translated.placeholder}
               className="min-h-[100px]"
             />
-            {field.helpText && <p className="text-xs text-muted-foreground">{field.helpText}</p>}
+            {translated.helpText && <p className="text-xs text-muted-foreground">{translated.helpText}</p>}
           </div>
         );
 
@@ -351,16 +371,16 @@ export default function PublicApplicationForm() {
         return (
           <div key={field.id} className="space-y-2">
             <FormLabel>
-              {field.label}
+              {translated.label}
               {field.required && " *"}
             </FormLabel>
             <Input
               type="number"
               value={value || ""}
               onChange={(e) => updateCustomAnswer(field.id, e.target.value)}
-              placeholder={field.placeholder}
+              placeholder={translated.placeholder}
             />
-            {field.helpText && <p className="text-xs text-muted-foreground">{field.helpText}</p>}
+            {translated.helpText && <p className="text-xs text-muted-foreground">{translated.helpText}</p>}
           </div>
         );
 
@@ -368,7 +388,7 @@ export default function PublicApplicationForm() {
         return (
           <div key={field.id} className="space-y-2">
             <FormLabel>
-              {field.label}
+              {translated.label}
               {field.required && " *"}
             </FormLabel>
             <Select
@@ -376,30 +396,31 @@ export default function PublicApplicationForm() {
               onValueChange={(v) => updateCustomAnswer(field.id, v)}
             >
               <SelectTrigger>
-                <SelectValue placeholder={`Select ${field.label.toLowerCase()}`} />
+                <SelectValue placeholder={`Select ${translated.label.toLowerCase()}`} />
               </SelectTrigger>
               <SelectContent>
-                {field.options?.map((option) => (
+                {(translated.options || field.options)?.map((option) => (
                   <SelectItem key={option} value={option}>
                     {option}
                   </SelectItem>
                 ))}
               </SelectContent>
             </Select>
-            {field.helpText && <p className="text-xs text-muted-foreground">{field.helpText}</p>}
+            {translated.helpText && <p className="text-xs text-muted-foreground">{translated.helpText}</p>}
           </div>
         );
 
       case "multiselect":
         const selectedValues = Array.isArray(value) ? value : [];
+        const multiselectOptions = translated.options || field.options || [];
         return (
           <div key={field.id} className="space-y-2">
             <FormLabel>
-              {field.label}
+              {translated.label}
               {field.required && " *"}
             </FormLabel>
             <div className={optionGridClass}>
-              {field.options?.map((option) => (
+              {multiselectOptions.map((option) => (
                 <div key={option} className="flex items-center gap-2">
                   <Checkbox
                     checked={selectedValues.includes(option)}
@@ -415,7 +436,7 @@ export default function PublicApplicationForm() {
                 </div>
               ))}
             </div>
-            {field.helpText && <p className="text-xs text-muted-foreground">{field.helpText}</p>}
+            {translated.helpText && <p className="text-xs text-muted-foreground">{translated.helpText}</p>}
           </div>
         );
 
@@ -428,19 +449,20 @@ export default function PublicApplicationForm() {
             />
             <div className="space-y-1 leading-none">
               <FormLabel>
-                {field.label}
+                {translated.label}
                 {field.required && " *"}
               </FormLabel>
-              {field.helpText && <p className="text-xs text-muted-foreground">{field.helpText}</p>}
+              {translated.helpText && <p className="text-xs text-muted-foreground">{translated.helpText}</p>}
             </div>
           </div>
         );
 
       case "radio":
+        const radioOptions = translated.options || field.options || [];
         return (
           <div key={field.id} className="space-y-2">
             <FormLabel>
-              {field.label}
+              {translated.label}
               {field.required && " *"}
             </FormLabel>
             <RadioGroup
@@ -448,7 +470,7 @@ export default function PublicApplicationForm() {
               onValueChange={(v) => updateCustomAnswer(field.id, v)}
               className={optionGridClass}
             >
-              {field.options?.map((option) => (
+              {radioOptions.map((option) => (
                 <div key={option} className="flex items-center space-x-2">
                   <RadioGroupItem value={option} id={`${field.id}-${option}`} />
                   <FormLabel htmlFor={`${field.id}-${option}`} className="font-normal">
@@ -457,7 +479,7 @@ export default function PublicApplicationForm() {
                 </div>
               ))}
             </RadioGroup>
-            {field.helpText && <p className="text-xs text-muted-foreground">{field.helpText}</p>}
+            {translated.helpText && <p className="text-xs text-muted-foreground">{translated.helpText}</p>}
           </div>
         );
 
@@ -465,7 +487,7 @@ export default function PublicApplicationForm() {
         return (
           <div key={field.id} className="space-y-2">
             <FormLabel>
-              {field.label}
+              {translated.label}
               {field.required && " *"}
             </FormLabel>
             <Input
@@ -473,7 +495,7 @@ export default function PublicApplicationForm() {
               value={value || ""}
               onChange={(e) => updateCustomAnswer(field.id, e.target.value)}
             />
-            {field.helpText && <p className="text-xs text-muted-foreground">{field.helpText}</p>}
+            {translated.helpText && <p className="text-xs text-muted-foreground">{translated.helpText}</p>}
           </div>
         );
 
@@ -481,7 +503,7 @@ export default function PublicApplicationForm() {
         return (
           <div key={field.id} className="space-y-2">
             <FormLabel>
-              {field.label}
+              {translated.label}
               {field.required && " *"}
             </FormLabel>
             <div className="border-2 border-dashed rounded-lg p-4 text-center bg-muted/30 cursor-pointer hover:bg-muted/50 transition-colors">
@@ -495,7 +517,7 @@ export default function PublicApplicationForm() {
                 </p>
               )}
             </div>
-            {field.helpText && <p className="text-xs text-muted-foreground">{field.helpText}</p>}
+            {translated.helpText && <p className="text-xs text-muted-foreground">{translated.helpText}</p>}
           </div>
         );
 
@@ -503,7 +525,7 @@ export default function PublicApplicationForm() {
         return (
           <div key={field.id} className="space-y-2">
             <FormLabel>
-              {field.label}
+              {translated.label}
               {field.required && " *"}
             </FormLabel>
             <div className="border rounded-lg p-4 bg-muted/30 h-24 flex items-center justify-center cursor-pointer hover:bg-muted/50 transition-colors">
@@ -512,7 +534,7 @@ export default function PublicApplicationForm() {
                 <p className="text-sm">Click to sign</p>
               </div>
             </div>
-            {field.helpText && <p className="text-xs text-muted-foreground">{field.helpText}</p>}
+            {translated.helpText && <p className="text-xs text-muted-foreground">{translated.helpText}</p>}
           </div>
         );
 
@@ -597,6 +619,15 @@ export default function PublicApplicationForm() {
       }}
     >
       <div className="max-w-2xl mx-auto space-y-6">
+        {/* Language Selector */}
+        <div className="flex justify-end">
+          <LanguageSelector
+            currentLanguage={currentLanguage}
+            onLanguageChange={changeLanguage}
+            isTranslating={isTranslating}
+          />
+        </div>
+
         {/* Job Info Card */}
         <Card className={cn(theme.backgroundImage && "bg-background/95 backdrop-blur-sm")}>
           <CardHeader>
@@ -641,12 +672,12 @@ export default function PublicApplicationForm() {
               <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
                 {/* Core Fields */}
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                  <FormField
+                <FormField
                     control={form.control}
                     name="first_name"
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel>First Name *</FormLabel>
+                        <FormLabel>{getCoreLabel('firstName')} *</FormLabel>
                         <FormControl>
                           <Input placeholder="John" {...field} />
                         </FormControl>
@@ -659,7 +690,7 @@ export default function PublicApplicationForm() {
                     name="last_name"
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel>Last Name *</FormLabel>
+                        <FormLabel>{getCoreLabel('lastName')} *</FormLabel>
                         <FormControl>
                           <Input placeholder="Doe" {...field} />
                         </FormControl>
@@ -675,7 +706,7 @@ export default function PublicApplicationForm() {
                     name="email"
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel>Email *</FormLabel>
+                        <FormLabel>{getCoreLabel('email')} *</FormLabel>
                         <FormControl>
                           <div className="relative flex items-center">
                             <div className="absolute left-0 flex items-center justify-center w-10 h-full bg-muted border border-r-0 rounded-l-md">
