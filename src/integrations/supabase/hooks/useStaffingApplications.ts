@@ -410,29 +410,19 @@ export const useSubmitApplication = () => {
         console.log("[Application] New applicant created:", applicantId);
       }
 
-      // Upload any file-type answers to storage and replace value with public URL
-      const processedAnswers: Record<string, unknown> = { ...answers };
+      // Files are now uploaded immediately by FormFileUpload component
+      // Just filter out any empty objects or null values that might have been left from failed uploads
+      const processedAnswers: Record<string, unknown> = {};
       for (const [fieldId, value] of Object.entries(answers)) {
-        if (value instanceof File) {
-          const safeName = value.name.replace(/[^a-zA-Z0-9._-]/g, "_");
-          const filePath = `applications/${posting_id}/${applicantId}/${Date.now()}-${fieldId}-${safeName}`;
-
-          const { error: uploadError } = await supabase.storage
-            .from("form-uploads")
-            .upload(filePath, value);
-
-          if (uploadError) {
-            console.error("[Application] Error uploading file for field:", fieldId, uploadError);
-            throw uploadError;
-          }
-
-          const {
-            data: { publicUrl },
-          } = supabase.storage.from("form-uploads").getPublicUrl(filePath);
-
-          processedAnswers[fieldId] = publicUrl;
+        // Skip empty objects (failed uploads or unset file fields)
+        if (typeof value === "object" && value !== null && !Array.isArray(value) && Object.keys(value).length === 0) {
+          console.log("[Application] Skipping empty object for field:", fieldId);
+          continue;
         }
+        // Keep all other values (including URL strings from successful uploads)
+        processedAnswers[fieldId] = value;
       }
+      console.log("[Application] Processed answers:", processedAnswers);
 
       // Create the application
       console.log("[Application] Creating application record for applicant:", applicantId);

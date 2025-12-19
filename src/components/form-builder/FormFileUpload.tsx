@@ -1,5 +1,5 @@
-import { useRef, useState, useCallback } from "react";
-import { Upload, X, FileText, Image as ImageIcon, Loader2 } from "lucide-react";
+import { useRef, useState, useCallback, useEffect } from "react";
+import { Upload, X, FileText, Image as ImageIcon, Loader2, CheckCircle2, AlertCircle } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { supabase } from "@/integrations/supabase/client";
@@ -7,6 +7,7 @@ import { supabase } from "@/integrations/supabase/client";
 interface FormFileUploadProps {
   value?: File | string | null;
   onChange: (value: string | null) => void;
+  onUploadStateChange?: (uploading: boolean) => void;
   label?: string;
   required?: boolean;
   helpText?: string;
@@ -19,6 +20,7 @@ interface FormFileUploadProps {
 export function FormFileUpload({
   value,
   onChange,
+  onUploadStateChange,
   label,
   required,
   helpText,
@@ -32,13 +34,20 @@ export function FormFileUpload({
   const [error, setError] = useState<string | null>(null);
   const [preview, setPreview] = useState<string | null>(null);
   const [uploading, setUploading] = useState(false);
+  const [uploadSuccess, setUploadSuccess] = useState(false);
   const [fileName, setFileName] = useState<string | null>(null);
   const [fileSize, setFileSize] = useState<number | null>(null);
 
   // Check if value is a URL string (already uploaded)
   const isUrlValue = typeof value === "string" && value.length > 0;
 
+  // Notify parent of upload state changes
+  useEffect(() => {
+    onUploadStateChange?.(uploading);
+  }, [uploading, onUploadStateChange]);
+
   const validateFile = useCallback((file: File): string | null => {
+    console.log("[FormFileUpload] Validating file:", file.name, "Size:", file.size, "Type:", file.type);
     if (file.size > maxFileSize * 1024 * 1024) {
       return `File exceeds ${maxFileSize}MB limit`;
     }
@@ -46,9 +55,11 @@ export function FormFileUpload({
   }, [maxFileSize]);
 
   const uploadFile = async (file: File): Promise<string | null> => {
+    console.log("[FormFileUpload] Starting upload to bucket:", storageBucket);
     try {
       const fileExt = file.name.split(".").pop();
       const uniqueFileName = `${storagePath}/${Date.now()}-${Math.random().toString(36).substring(7)}.${fileExt}`;
+      console.log("[FormFileUpload] Uploading file as:", uniqueFileName);
 
       const { error: uploadError, data } = await supabase.storage
         .from(storageBucket)
@@ -58,27 +69,33 @@ export function FormFileUpload({
         });
 
       if (uploadError) {
-        console.error("Upload error:", uploadError);
+        console.error("[FormFileUpload] Upload error:", uploadError);
         throw uploadError;
       }
+
+      console.log("[FormFileUpload] Upload successful, data:", data);
 
       // Get public URL
       const { data: { publicUrl } } = supabase.storage
         .from(storageBucket)
         .getPublicUrl(uniqueFileName);
 
+      console.log("[FormFileUpload] Public URL generated:", publicUrl);
       return publicUrl;
     } catch (err) {
-      console.error("Failed to upload file:", err);
+      console.error("[FormFileUpload] Failed to upload file:", err);
       return null;
     }
   };
 
   const processFile = useCallback(async (file: File) => {
+    console.log("[FormFileUpload] Processing file:", file.name);
     setError(null);
+    setUploadSuccess(false);
     
     const validationError = validateFile(file);
     if (validationError) {
+      console.error("[FormFileUpload] Validation failed:", validationError);
       setError(validationError);
       return;
     }
@@ -91,22 +108,28 @@ export function FormFileUpload({
     if (file.type.startsWith("image/")) {
       const url = URL.createObjectURL(file);
       setPreview(url);
+      console.log("[FormFileUpload] Image preview created");
     } else {
       setPreview(null);
     }
 
     // Upload immediately
     setUploading(true);
+    console.log("[FormFileUpload] Starting upload...");
     const publicUrl = await uploadFile(file);
     setUploading(false);
 
     if (publicUrl) {
+      console.log("[FormFileUpload] Upload complete, calling onChange with URL:", publicUrl);
+      setUploadSuccess(true);
       onChange(publicUrl);
     } else {
+      console.error("[FormFileUpload] Upload failed - no URL returned");
       setError("Failed to upload file. Please try again.");
       setFileName(null);
       setFileSize(null);
       setPreview(null);
+      onChange(null);
     }
   }, [validateFile, onChange, storageBucket, storagePath]);
 
@@ -211,8 +234,17 @@ export function FormFileUpload({
                   Uploading...
                 </div>
               )}
-              {isUrlValue && !uploading && (
-                <p className="text-xs text-green-600">Uploaded</p>
+              {(isUrlValue || uploadSuccess) && !uploading && (
+                <div className="flex items-center gap-1 text-xs text-green-600">
+                  <CheckCircle2 className="h-3 w-3" />
+                  Uploaded successfully
+                </div>
+              )}
+              {error && !uploading && (
+                <div className="flex items-center gap-1 text-xs text-destructive">
+                  <AlertCircle className="h-3 w-3" />
+                  {error}
+                </div>
               )}
             </div>
             <Button
