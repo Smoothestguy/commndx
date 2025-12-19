@@ -4,7 +4,7 @@ import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
 import { format } from "date-fns";
-import { MapPin, Calendar, Users, CheckCircle2, Loader2, Upload, PenLine, Mail } from "lucide-react";
+import { MapPin, Calendar, Users, CheckCircle2, Loader2, Mail } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -29,6 +29,8 @@ import { FormattedPhoneInput } from "@/components/form-builder/FormattedPhoneInp
 import { LanguageSelector } from "@/components/form-builder/LanguageSelector";
 import { useFormTranslation } from "@/hooks/useFormTranslation";
 import { cn } from "@/lib/utils";
+import { SignaturePad } from "@/components/form-builder/SignaturePad";
+import { FormFileUpload } from "@/components/form-builder/FormFileUpload";
 
 // Helper function to render fields based on layout
 function renderFieldsWithLayout(
@@ -501,40 +503,29 @@ export default function PublicApplicationForm() {
 
       case "file":
         return (
-          <div key={field.id} className="space-y-2">
-            <FormLabel>
-              {translated.label}
-              {field.required && " *"}
-            </FormLabel>
-            <div className="border-2 border-dashed rounded-lg p-4 text-center bg-muted/30 cursor-pointer hover:bg-muted/50 transition-colors">
-              <Upload className="h-6 w-6 mx-auto text-muted-foreground mb-2" />
-              <p className="text-sm text-muted-foreground">
-                Click to upload or drag and drop
-              </p>
-              {field.acceptedFileTypes && (
-                <p className="text-xs text-muted-foreground mt-1">
-                  {field.acceptedFileTypes.join(", ")} • Max {field.maxFileSize || 5}MB
-                </p>
-              )}
-            </div>
-            {translated.helpText && <p className="text-xs text-muted-foreground">{translated.helpText}</p>}
+          <div key={field.id}>
+            <FormFileUpload
+              value={value as File | null}
+              onChange={(file) => updateCustomAnswer(field.id, file)}
+              label={translated.label}
+              required={field.required}
+              helpText={translated.helpText}
+              acceptedFileTypes={field.acceptedFileTypes}
+              maxFileSize={field.maxFileSize}
+            />
           </div>
         );
 
       case "signature":
         return (
-          <div key={field.id} className="space-y-2">
-            <FormLabel>
-              {translated.label}
-              {field.required && " *"}
-            </FormLabel>
-            <div className="border rounded-lg p-4 bg-muted/30 h-24 flex items-center justify-center cursor-pointer hover:bg-muted/50 transition-colors">
-              <div className="text-center text-muted-foreground">
-                <PenLine className="h-6 w-6 mx-auto mb-2" />
-                <p className="text-sm">Click to sign</p>
-              </div>
-            </div>
-            {translated.helpText && <p className="text-xs text-muted-foreground">{translated.helpText}</p>}
+          <div key={field.id}>
+            <SignaturePad
+              value={value as string | undefined}
+              onChange={(sig) => updateCustomAnswer(field.id, sig)}
+              label={translated.label}
+              required={field.required}
+              helpText={translated.helpText}
+            />
           </div>
         );
 
