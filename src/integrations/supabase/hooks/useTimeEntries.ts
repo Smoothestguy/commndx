@@ -1,7 +1,7 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
-import { startOfWeek, endOfWeek } from "date-fns";
+import { startOfWeek, endOfWeek, format } from "date-fns";
 import { useMyProjectAssignments } from "./useProjectAssignments";
 
 export interface TimeEntry {
@@ -165,9 +165,13 @@ export const useTimeEntriesByDate = (date: string) => {
 export const useTimeEntriesByWeek = (weekStartDate: Date) => {
   const weekStart = startOfWeek(weekStartDate, { weekStartsOn: 1 }); // Monday
   const weekEnd = endOfWeek(weekStartDate, { weekStartsOn: 1 });
+  
+  // Use format() to get local date strings, avoiding timezone shift issues
+  const startDateStr = format(weekStart, 'yyyy-MM-dd');
+  const endDateStr = format(weekEnd, 'yyyy-MM-dd');
 
   return useQuery({
-    queryKey: ["time-entries", "week", weekStart.toISOString()],
+    queryKey: ["time-entries", "week", startDateStr],
     queryFn: async () => {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) throw new Error("Not authenticated");
@@ -176,8 +180,8 @@ export const useTimeEntriesByWeek = (weekStartDate: Date) => {
         .from("time_entries")
         .select("*")
         .eq("user_id", user.id)
-        .gte("entry_date", weekStart.toISOString().split("T")[0])
-        .lte("entry_date", weekEnd.toISOString().split("T")[0])
+        .gte("entry_date", startDateStr)
+        .lte("entry_date", endDateStr)
         .order("entry_date", { ascending: true });
 
       if (error) throw error;
@@ -190,9 +194,13 @@ export const useTimeEntriesByWeek = (weekStartDate: Date) => {
 export const useAdminTimeEntriesByWeek = (weekStartDate: Date) => {
   const weekStart = startOfWeek(weekStartDate, { weekStartsOn: 1 }); // Monday
   const weekEnd = endOfWeek(weekStartDate, { weekStartsOn: 1 });
+  
+  // Use format() to get local date strings, avoiding timezone shift issues
+  const startDateStr = format(weekStart, 'yyyy-MM-dd');
+  const endDateStr = format(weekEnd, 'yyyy-MM-dd');
 
   return useQuery({
-    queryKey: ["admin-time-entries", "week", weekStart.toISOString()],
+    queryKey: ["admin-time-entries", "week", startDateStr],
     queryFn: async () => {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) throw new Error("Not authenticated");
@@ -205,8 +213,8 @@ export const useAdminTimeEntriesByWeek = (weekStartDate: Date) => {
           projects:project_id(id, name)
         `)
         .eq("user_id", user.id)
-        .gte("entry_date", weekStart.toISOString().split("T")[0])
-        .lte("entry_date", weekEnd.toISOString().split("T")[0])
+        .gte("entry_date", startDateStr)
+        .lte("entry_date", endDateStr)
         .order("entry_date", { ascending: true });
 
       if (error) throw error;
@@ -246,17 +254,21 @@ export const useUpdateTimeEntryStatus = () => {
 export const usePersonnelTimeEntriesByWeek = (projectId: string, weekStartDate: Date) => {
   const weekStart = startOfWeek(weekStartDate, { weekStartsOn: 1 });
   const weekEnd = endOfWeek(weekStartDate, { weekStartsOn: 1 });
+  
+  // Use format() to get local date strings, avoiding timezone shift issues
+  const startDateStr = format(weekStart, 'yyyy-MM-dd');
+  const endDateStr = format(weekEnd, 'yyyy-MM-dd');
 
   return useQuery({
-    queryKey: ["personnel-time-entries", projectId, weekStart.toISOString()],
+    queryKey: ["personnel-time-entries", projectId, startDateStr],
     queryFn: async () => {
       const { data, error } = await supabase
         .from("time_entries")
         .select("*")
         .eq("project_id", projectId)
         .not("personnel_id", "is", null)
-        .gte("entry_date", weekStart.toISOString().split("T")[0])
-        .lte("entry_date", weekEnd.toISOString().split("T")[0])
+        .gte("entry_date", startDateStr)
+        .lte("entry_date", endDateStr)
         .order("entry_date", { ascending: true });
 
       if (error) throw error;
