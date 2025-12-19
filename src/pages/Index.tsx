@@ -29,6 +29,7 @@ import {
   Plus,
   FolderKanban,
   UserPlus,
+  MapPin,
 } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { useMemo } from "react";
@@ -308,15 +309,26 @@ const Dashboard = () => {
         title="Dashboard"
         description="Welcome back to Command X"
         actions={
-          <Button
-            variant="glow"
-            size="sm"
-            onClick={() => navigate("/estimates/new")}
-            className="min-h-[36px]"
-          >
-            <Plus className="h-4 w-4" />
-            <span className="ml-1.5">New Estimate</span>
-          </Button>
+          <div className="flex gap-2">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => navigate("/staffing/map")}
+              className="min-h-[36px]"
+            >
+              <MapPin className="h-4 w-4" />
+              <span className="ml-1.5 hidden sm:inline">Map View</span>
+            </Button>
+            <Button
+              variant="glow"
+              size="sm"
+              onClick={() => navigate("/estimates/new")}
+              className="min-h-[36px]"
+            >
+              <Plus className="h-4 w-4" />
+              <span className="ml-1.5">New Estimate</span>
+            </Button>
+          </div>
         }
       >
         <PullToRefreshWrapper
