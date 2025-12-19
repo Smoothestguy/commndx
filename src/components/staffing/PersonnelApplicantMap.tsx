@@ -194,6 +194,8 @@ export function PersonnelApplicantMap({ mapboxToken }: PersonnelApplicantMapProp
       ? personnel.length 
       : applicants.length;
 
+  const hasNoGeocodedData = !loading && personnel.length === 0 && applicants.length === 0;
+
   return (
     <div className="flex flex-col lg:flex-row gap-4 h-[calc(100vh-12rem)]">
       {/* Map */}
@@ -203,6 +205,23 @@ export function PersonnelApplicantMap({ mapboxToken }: PersonnelApplicantMapProp
             <Loader2 className="h-8 w-8 animate-spin text-primary" />
           </div>
         )}
+        
+        {/* Empty state overlay */}
+        {hasNoGeocodedData && (
+          <div className="absolute inset-0 bg-background/90 z-10 flex flex-col items-center justify-center text-center p-6">
+            <MapPin className="h-16 w-16 text-muted-foreground/50 mb-4" />
+            <h3 className="text-lg font-semibold mb-2">No Geocoded Records</h3>
+            <p className="text-muted-foreground max-w-md mb-4">
+              Personnel and applicants need address coordinates to appear on the map. 
+              Run the backfill script to geocode existing records, or new applicants will be 
+              geocoded automatically when they submit applications with address information.
+            </p>
+            <div className="text-sm text-muted-foreground bg-muted p-3 rounded-lg font-mono">
+              deno run --allow-net --allow-env scripts/backfill-geocodes.ts
+            </div>
+          </div>
+        )}
+        
         <div ref={mapContainer} className="absolute inset-0" />
         
         {/* Filter controls */}

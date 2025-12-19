@@ -476,6 +476,52 @@ export const useSubmitApplication = () => {
         throw appError;
       }
       console.log("[Application] Application created successfully:", application.id);
+
+      // Auto-geocode applicant if they have address info but no coordinates
+      try {
+        // Check if applicant already has coordinates
+        const { data: applicant } = await supabase
+          .from("applicants")
+          .select("home_lat, home_lng")
+          .eq("id", applicantId)
+          .single();
+
+        if (!applicant?.home_lat && !applicant?.home_lng) {
+          // Try to build address from answers
+          const addressParts = [
+            answers.address || answers.street_address,
+            answers.city,
+            answers.state,
+            answers.zip || answers.zipcode || applicantData.home_zip,
+          ].filter(Boolean);
+
+          const address = addressParts.join(", ");
+          
+          if (address) {
+            console.log("[Application] Auto-geocoding applicant address:", address);
+            const { data: geo } = await supabase.functions.invoke("geocode", {
+              body: { address },
+            });
+
+            if (geo?.ok && geo.lat && geo.lng) {
+              console.log("[Application] Geocode successful:", geo.lat, geo.lng);
+              await supabase
+                .from("applicants")
+                .update({
+                  home_lat: geo.lat,
+                  home_lng: geo.lng,
+                })
+                .eq("id", applicantId);
+            } else {
+              console.log("[Application] Geocode returned no result:", geo?.reason || geo?.error);
+            }
+          }
+        }
+      } catch (geoError) {
+        // Non-critical error - log but don't fail the submission
+        console.error("[Application] Geocoding failed (non-critical):", geoError);
+      }
+
       return application;
     },
   });

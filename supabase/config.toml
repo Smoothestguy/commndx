@@ -113,3 +113,9 @@ verify_jwt = false
 
 [functions.send-application-edit-request]
 verify_jwt = false
+
+[functions.geocode]
+verify_jwt = false
+
+[functions.get-mapbox-token]
+verify_jwt = false
