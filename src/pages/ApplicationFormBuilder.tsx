@@ -49,6 +49,8 @@ import {
   FormRow,
   FormTheme,
   FormSettings,
+  CoreFieldsConfig,
+  DEFAULT_CORE_FIELDS,
   TEMPLATE_CATEGORIES,
   TemplateCategory,
 } from "@/integrations/supabase/hooks/useApplicationFormTemplates";
@@ -56,6 +58,7 @@ import { RowBasedFieldGrid } from "@/components/form-builder/RowBasedFieldGrid";
 import { ThemeEditor } from "@/components/form-builder/ThemeEditor";
 import { FormPreview } from "@/components/form-builder/FormPreview";
 import { FormSettingsPanel } from "@/components/form-builder/FormSettingsPanel";
+import { CoreFieldsCard } from "@/components/form-builder/CoreFieldsCard";
 import { toast } from "sonner";
 
 const FIELD_TYPES = [
@@ -96,6 +99,7 @@ export default function ApplicationFormBuilder() {
   const [layout, setLayout] = useState<FormRow[]>([]);
   const [theme, setTheme] = useState<FormTheme>({});
   const [settings, setSettings] = useState<FormSettings>({});
+  const [coreFields, setCoreFields] = useState<CoreFieldsConfig>(DEFAULT_CORE_FIELDS);
   const [isDraft, setIsDraft] = useState(true);
   const [publishedAt, setPublishedAt] = useState<string | null>(null);
   const [initialized, setInitialized] = useState(false);
@@ -110,6 +114,7 @@ export default function ApplicationFormBuilder() {
       setFields(existingTemplate.fields);
       setTheme(existingTemplate.theme || {});
       setSettings(existingTemplate.settings || {});
+      setCoreFields(existingTemplate.settings?.coreFields || DEFAULT_CORE_FIELDS);
       setIsDraft(existingTemplate.is_draft !== false);
       setPublishedAt(existingTemplate.published_at || null);
       
@@ -206,6 +211,8 @@ export default function ApplicationFormBuilder() {
       return;
     }
 
+    const settingsWithCoreFields = { ...settings, coreFields };
+    
     try {
       if (isEditing && id) {
         await updateTemplate.mutateAsync({
@@ -217,7 +224,7 @@ export default function ApplicationFormBuilder() {
           theme,
           category,
           success_message: successMessage,
-          settings,
+          settings: settingsWithCoreFields,
           is_draft: asDraft,
         });
         setIsDraft(asDraft);
@@ -231,7 +238,7 @@ export default function ApplicationFormBuilder() {
           theme,
           category,
           success_message: successMessage,
-          settings,
+          settings: settingsWithCoreFields,
         });
         toast.success("Form template created");
         navigate(`/staffing/form-templates/${result.id}`);
@@ -380,6 +387,11 @@ export default function ApplicationFormBuilder() {
                 </CardContent>
               </Card>
 
+              <CoreFieldsCard
+                coreFields={coreFields}
+                onChange={setCoreFields}
+              />
+
               <Card>
                 <CardHeader>
                   <CardTitle>Custom Fields</CardTitle>
@@ -455,6 +467,7 @@ export default function ApplicationFormBuilder() {
                   layout={layout}
                   theme={theme}
                   successMessage={successMessage}
+                  coreFields={coreFields}
                 />
               </CardContent>
             </Card>
@@ -529,6 +542,7 @@ export default function ApplicationFormBuilder() {
                 layout={layout}
                 theme={theme}
                 successMessage={successMessage}
+                coreFields={coreFields}
               />
             </CardContent>
           </Card>
