@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { useParams } from "react-router-dom";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -92,6 +92,7 @@ export default function PublicApplicationForm() {
   const [theme, setTheme] = useState<FormTheme>({});
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
   const [formTemplateId, setFormTemplateId] = useState<string | undefined>();
+  const [uploadingFields, setUploadingFields] = useState<Set<string>>(new Set());
 
   const { data: posting, isLoading, error } = useJobPostingByToken(token || "");
   const submitApplication = useSubmitApplication();
@@ -177,14 +178,48 @@ export default function PublicApplicationForm() {
     },
   });
 
+  const handleFileUploadStateChange = useCallback((fieldId: string, isUploading: boolean) => {
+    setUploadingFields(prev => {
+      const next = new Set(prev);
+      if (isUploading) {
+        next.add(fieldId);
+      } else {
+        next.delete(fieldId);
+      }
+      return next;
+    });
+  }, []);
+
+  const isAnyFileUploading = uploadingFields.size > 0;
+
   const validateCustomFields = () => {
+    console.log("[Validation] Starting validation of custom fields");
+    console.log("[Validation] Custom answers:", customAnswers);
+    
     for (const field of customFields) {
       if (field.required) {
         const value = customAnswers[field.id];
+        console.log(`[Validation] Checking field ${field.id} (${field.type}):`, value);
+        
+        // Check for empty values
         if (value === undefined || value === "" || value === null) {
           toast.error(`${field.label} is required`);
           return false;
         }
+        
+        // Special validation for file fields - check for empty objects or non-URL strings
+        if (field.type === "file") {
+          const isEmptyObject = typeof value === "object" && Object.keys(value).length === 0;
+          const isValidUrl = typeof value === "string" && value.startsWith("http");
+          
+          if (isEmptyObject || !isValidUrl) {
+            console.error(`[Validation] File field ${field.id} has invalid value:`, value);
+            toast.error(`Please upload a file for ${field.label}`);
+            return false;
+          }
+          console.log(`[Validation] File field ${field.id} is valid URL:`, value);
+        }
+        
         // Special validation for address
         if (field.type === "address" && typeof value === "object") {
           const addr = value as AddressValue;
@@ -200,6 +235,7 @@ export default function PublicApplicationForm() {
         }
       }
     }
+    console.log("[Validation] All custom fields validated successfully");
     return true;
   };
 
@@ -509,6 +545,7 @@ export default function PublicApplicationForm() {
             <FormFileUpload
               value={value as string | null}
               onChange={(url) => updateCustomAnswer(field.id, url)}
+              onUploadStateChange={(isUploading) => handleFileUploadStateChange(field.id, isUploading)}
               label={translated.label}
               required={field.required}
               helpText={translated.helpText}
@@ -765,13 +802,18 @@ export default function PublicApplicationForm() {
                 <Button
                   type="submit"
                   className="w-full"
-                  disabled={submitApplication.isPending}
+                  disabled={submitApplication.isPending || isAnyFileUploading}
                   style={{
                     backgroundColor: theme.buttonColor || undefined,
                     color: theme.buttonTextColor || undefined,
                   }}
                 >
-                  {submitApplication.isPending ? (
+                  {isAnyFileUploading ? (
+                    <>
+                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                      Uploading files...
+                    </>
+                  ) : submitApplication.isPending ? (
                     <>
                       <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                       Submitting...
