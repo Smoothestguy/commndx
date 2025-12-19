@@ -1,28 +1,18 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { PortalLayout } from "@/components/portal/PortalLayout";
 import { useCurrentPersonnel } from "@/integrations/supabase/hooks/usePortal";
 import { useCurrentPersonnelW9Form, useSubmitW9Form, W9FormInput } from "@/integrations/supabase/hooks/useW9Forms";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
+import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { CheckCircle, AlertCircle, FileText, Clock, XCircle } from "lucide-react";
 import { format } from "date-fns";
-
-const FEDERAL_TAX_CLASSIFICATIONS = [
-  { value: "individual", label: "Individual/sole proprietor or single-member LLC" },
-  { value: "c_corporation", label: "C Corporation" },
-  { value: "s_corporation", label: "S Corporation" },
-  { value: "partnership", label: "Partnership" },
-  { value: "trust_estate", label: "Trust/estate" },
-  { value: "llc", label: "Limited liability company" },
-  { value: "other", label: "Other" },
-];
 
 const US_STATES = [
   "AL", "AK", "AZ", "AR", "CA", "CO", "CT", "DE", "FL", "GA",
@@ -62,7 +52,7 @@ export default function PortalTaxForms() {
   const [isEditing, setIsEditing] = useState(false);
 
   // Pre-populate form when personnel data is loaded
-  useState(() => {
+  useEffect(() => {
     if (personnel && !w9Form) {
       setFormData(prev => ({
         ...prev,
@@ -73,7 +63,7 @@ export default function PortalTaxForms() {
         zip: personnel.zip || "",
       }));
     }
-  });
+  }, [personnel, w9Form]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -140,87 +130,212 @@ export default function PortalTaxForms() {
               <h1 className="text-2xl font-bold">Tax Forms</h1>
               <p className="text-muted-foreground">View and manage your tax documentation</p>
             </div>
+            {getStatusBadge(w9Form.status)}
           </div>
 
-          <Card>
-            <CardHeader>
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-3">
-                  <FileText className="h-6 w-6 text-primary" />
-                  <div>
-                    <CardTitle>W-9 Form</CardTitle>
-                    <CardDescription>Request for Taxpayer Identification Number and Certification</CardDescription>
+          {w9Form.status === "rejected" && w9Form.rejection_reason && (
+            <Alert variant="destructive">
+              <XCircle className="h-4 w-4" />
+              <AlertTitle>W-9 Rejected</AlertTitle>
+              <AlertDescription>{w9Form.rejection_reason}</AlertDescription>
+            </Alert>
+          )}
+
+          {/* IRS-Style Read-Only View */}
+          <Card className="border-2 border-foreground/20 overflow-hidden">
+            {/* Form Header */}
+            <div className="border-b-2 border-foreground/20">
+              <div className="flex">
+                <div className="w-24 border-r-2 border-foreground/20 p-3 flex flex-col justify-center">
+                  <span className="text-xs">Form</span>
+                  <span className="text-2xl font-bold">W-9</span>
+                  <span className="text-[10px] text-muted-foreground">(Rev. October 2018)</span>
+                </div>
+                <div className="flex-1 p-3">
+                  <p className="text-xs text-muted-foreground">Department of the Treasury</p>
+                  <p className="text-xs text-muted-foreground">Internal Revenue Service</p>
+                  <p className="font-semibold mt-1">Request for Taxpayer Identification Number and Certification</p>
+                </div>
+              </div>
+            </div>
+
+            <CardContent className="p-0">
+              {/* Line 1 - Name */}
+              <div className="border-b border-foreground/20 p-3">
+                <div className="flex items-start gap-2">
+                  <span className="font-bold text-sm">1</span>
+                  <div className="flex-1">
+                    <p className="text-xs text-muted-foreground mb-1">Name (as shown on your income tax return)</p>
+                    <p className="font-medium">{w9Form.name_on_return}</p>
                   </div>
                 </div>
-                {getStatusBadge(w9Form.status)}
               </div>
-            </CardHeader>
-            <CardContent className="space-y-6">
-              {w9Form.status === "rejected" && w9Form.rejection_reason && (
-                <Alert variant="destructive">
-                  <XCircle className="h-4 w-4" />
-                  <AlertTitle>W-9 Rejected</AlertTitle>
-                  <AlertDescription>{w9Form.rejection_reason}</AlertDescription>
-                </Alert>
-              )}
 
-              <div className="grid gap-4 md:grid-cols-2">
-                <div>
-                  <Label className="text-muted-foreground text-xs">Name (as shown on tax return)</Label>
-                  <p className="font-medium">{w9Form.name_on_return}</p>
-                </div>
-                {w9Form.business_name && (
-                  <div>
-                    <Label className="text-muted-foreground text-xs">Business Name</Label>
-                    <p className="font-medium">{w9Form.business_name}</p>
+              {/* Line 2 - Business Name */}
+              <div className="border-b border-foreground/20 p-3">
+                <div className="flex items-start gap-2">
+                  <span className="font-bold text-sm">2</span>
+                  <div className="flex-1">
+                    <p className="text-xs text-muted-foreground mb-1">Business name/disregarded entity name, if different from above</p>
+                    <p className="font-medium">{w9Form.business_name || "—"}</p>
                   </div>
-                )}
-                <div>
-                  <Label className="text-muted-foreground text-xs">Federal Tax Classification</Label>
-                  <p className="font-medium capitalize">{w9Form.federal_tax_classification.replace(/_/g, " ")}</p>
-                </div>
-                <div>
-                  <Label className="text-muted-foreground text-xs">TIN Type</Label>
-                  <p className="font-medium uppercase">{w9Form.tin_type}</p>
                 </div>
               </div>
 
-              <Separator />
-
-              <div>
-                <Label className="text-muted-foreground text-xs">Address</Label>
-                <p className="font-medium">
-                  {w9Form.address}<br />
-                  {w9Form.city}, {w9Form.state} {w9Form.zip}
-                </p>
-              </div>
-
-              <Separator />
-
-              <div className="grid gap-4 md:grid-cols-2">
-                <div>
-                  <Label className="text-muted-foreground text-xs">Signature Date</Label>
-                  <p className="font-medium">{format(new Date(w9Form.signature_date), "MMMM d, yyyy")}</p>
-                </div>
-                <div>
-                  <Label className="text-muted-foreground text-xs">Last Updated</Label>
-                  <p className="font-medium">{format(new Date(w9Form.updated_at), "MMMM d, yyyy")}</p>
+              {/* Line 3 - Tax Classification */}
+              <div className="border-b border-foreground/20 p-3">
+                <div className="flex items-start gap-2">
+                  <span className="font-bold text-sm">3</span>
+                  <div className="flex-1">
+                    <p className="text-xs text-muted-foreground mb-2">Check appropriate box for federal tax classification</p>
+                    <p className="font-medium capitalize">{w9Form.federal_tax_classification.replace(/_/g, " ")}</p>
+                    {w9Form.llc_tax_classification && (
+                      <p className="text-sm text-muted-foreground mt-1">LLC Classification: {w9Form.llc_tax_classification}</p>
+                    )}
+                    {w9Form.other_classification && (
+                      <p className="text-sm text-muted-foreground mt-1">Other: {w9Form.other_classification}</p>
+                    )}
+                  </div>
                 </div>
               </div>
 
-              {w9Form.status !== "verified" && (
-                <Button onClick={() => setIsEditing(true)} variant="outline">
-                  Edit W-9 Form
-                </Button>
-              )}
+              {/* Line 4 - Exemptions */}
+              <div className="border-b border-foreground/20 p-3">
+                <div className="flex items-start gap-2">
+                  <span className="font-bold text-sm">4</span>
+                  <div className="flex-1">
+                    <p className="text-xs text-muted-foreground mb-1">Exemptions (codes apply only to certain entities, not individuals)</p>
+                    <div className="flex gap-6">
+                      <div>
+                        <span className="text-xs text-muted-foreground">Exempt payee code: </span>
+                        <span className="font-medium">{w9Form.exempt_payee_code || "—"}</span>
+                      </div>
+                      <div>
+                        <span className="text-xs text-muted-foreground">FATCA exemption code: </span>
+                        <span className="font-medium">{w9Form.fatca_exemption_code || "—"}</span>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* Line 5 - Address */}
+              <div className="border-b border-foreground/20 p-3">
+                <div className="flex items-start gap-2">
+                  <span className="font-bold text-sm">5</span>
+                  <div className="flex-1">
+                    <p className="text-xs text-muted-foreground mb-1">Address (number, street, and apt. or suite no.)</p>
+                    <p className="font-medium">{w9Form.address}</p>
+                  </div>
+                </div>
+              </div>
+
+              {/* Line 6 - City, State, ZIP */}
+              <div className="border-b border-foreground/20 p-3">
+                <div className="flex items-start gap-2">
+                  <span className="font-bold text-sm">6</span>
+                  <div className="flex-1">
+                    <p className="text-xs text-muted-foreground mb-1">City, state, and ZIP code</p>
+                    <p className="font-medium">{w9Form.city}, {w9Form.state} {w9Form.zip}</p>
+                  </div>
+                </div>
+              </div>
+
+              {/* Line 7 - Account Numbers */}
+              <div className="border-b border-foreground/20 p-3">
+                <div className="flex items-start gap-2">
+                  <span className="font-bold text-sm">7</span>
+                  <div className="flex-1">
+                    <p className="text-xs text-muted-foreground mb-1">List account number(s) here (optional)</p>
+                    <p className="font-medium">{w9Form.account_numbers || "—"}</p>
+                  </div>
+                </div>
+              </div>
+
+              {/* Part I - TIN */}
+              <div className="bg-slate-800 text-white px-3 py-2">
+                <span className="font-bold">Part I</span>
+                <span className="ml-4">Taxpayer Identification Number (TIN)</span>
+              </div>
+              <div className="border-b border-foreground/20 p-3">
+                <div className="flex gap-8">
+                  <div>
+                    <p className="text-xs text-muted-foreground mb-1">TIN Type</p>
+                    <p className="font-medium uppercase">{w9Form.tin_type}</p>
+                  </div>
+                  {w9Form.tin_type === "ssn" && (
+                    <div>
+                      <p className="text-xs text-muted-foreground mb-1">Social Security Number</p>
+                      <p className="font-medium font-mono">XXX-XX-{personnel?.ssn_last_four || "XXXX"}</p>
+                    </div>
+                  )}
+                  {w9Form.tin_type === "ein" && w9Form.ein && (
+                    <div>
+                      <p className="text-xs text-muted-foreground mb-1">Employer Identification Number</p>
+                      <p className="font-medium font-mono">{w9Form.ein}</p>
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              {/* Part II - Certification */}
+              <div className="bg-slate-800 text-white px-3 py-2">
+                <span className="font-bold">Part II</span>
+                <span className="ml-4">Certification</span>
+              </div>
+              <div className="border-b border-foreground/20 p-3">
+                <p className="text-sm mb-2">Under penalties of perjury, I certify that:</p>
+                <div className="space-y-1 text-sm text-muted-foreground">
+                  <p className="flex items-start gap-2">
+                    <CheckCircle className="h-4 w-4 text-green-600 mt-0.5 flex-shrink-0" />
+                    <span>1. The number shown on this form is my correct taxpayer identification number</span>
+                  </p>
+                  <p className="flex items-start gap-2">
+                    <CheckCircle className="h-4 w-4 text-green-600 mt-0.5 flex-shrink-0" />
+                    <span>2. I am not subject to backup withholding</span>
+                  </p>
+                  <p className="flex items-start gap-2">
+                    <CheckCircle className="h-4 w-4 text-green-600 mt-0.5 flex-shrink-0" />
+                    <span>3. I am a U.S. citizen or other U.S. person</span>
+                  </p>
+                  <p className="flex items-start gap-2">
+                    {w9Form.certified_fatca_exempt ? (
+                      <CheckCircle className="h-4 w-4 text-green-600 mt-0.5 flex-shrink-0" />
+                    ) : (
+                      <span className="h-4 w-4 flex-shrink-0" />
+                    )}
+                    <span>4. FATCA code(s) indicating I am exempt from FATCA reporting is correct</span>
+                  </p>
+                </div>
+              </div>
+
+              {/* Signature */}
+              <div className="p-3">
+                <div className="flex flex-col md:flex-row md:items-end gap-4">
+                  <div className="flex-1">
+                    <p className="text-xs text-muted-foreground mb-1">Signature of U.S. person</p>
+                    <p className="font-medium italic text-lg border-b border-foreground/40 pb-1">{w9Form.signature_data}</p>
+                  </div>
+                  <div className="md:w-48">
+                    <p className="text-xs text-muted-foreground mb-1">Date</p>
+                    <p className="font-medium">{format(new Date(w9Form.signature_date), "MM/dd/yyyy")}</p>
+                  </div>
+                </div>
+              </div>
             </CardContent>
           </Card>
+
+          {w9Form.status !== "verified" && (
+            <Button onClick={() => setIsEditing(true)} variant="outline">
+              Edit W-9 Form
+            </Button>
+          )}
         </div>
       </PortalLayout>
     );
   }
 
-  // Show W-9 form input
+  // Show W-9 form input - IRS Style
   return (
     <PortalLayout>
       <div className="space-y-6">
@@ -239,200 +354,408 @@ export default function PortalTaxForms() {
           </Alert>
         )}
 
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <FileText className="h-5 w-5" />
-              W-9 Form
-            </CardTitle>
-            <CardDescription>
-              Request for Taxpayer Identification Number and Certification
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            <form onSubmit={handleSubmit} className="space-y-6">
-              {/* Part 1: Identification */}
-              <div className="space-y-4">
-                <h3 className="font-semibold">Part I: Identification</h3>
-                
-                <div className="grid gap-4 md:grid-cols-2">
-                  <div className="space-y-2">
-                    <Label htmlFor="name_on_return">Name (as shown on your income tax return) *</Label>
+        <Card className="border-2 border-foreground/20 overflow-hidden">
+          {/* IRS Form Header */}
+          <div className="border-b-2 border-foreground/20">
+            <div className="flex flex-col sm:flex-row">
+              <div className="sm:w-28 border-b-2 sm:border-b-0 sm:border-r-2 border-foreground/20 p-3 flex flex-col justify-center items-center sm:items-start">
+                <span className="text-xs text-muted-foreground">Form</span>
+                <span className="text-3xl font-bold tracking-tight">W-9</span>
+                <span className="text-[10px] text-muted-foreground">(Rev. October 2018)</span>
+              </div>
+              <div className="flex-1 p-3">
+                <p className="text-xs text-muted-foreground">Department of the Treasury</p>
+                <p className="text-xs text-muted-foreground">Internal Revenue Service</p>
+                <p className="font-semibold text-lg mt-1">Request for Taxpayer Identification Number and Certification</p>
+                <p className="text-xs text-muted-foreground mt-1">▶ Go to www.irs.gov/FormW9 for instructions and the latest information.</p>
+              </div>
+            </div>
+          </div>
+
+          <CardContent className="p-0">
+            <form onSubmit={handleSubmit}>
+              {/* Line 1 - Name */}
+              <div className="border-b border-foreground/20 p-3">
+                <div className="flex items-start gap-2">
+                  <span className="font-bold text-sm w-4 flex-shrink-0">1</span>
+                  <div className="flex-1">
+                    <Label htmlFor="name_on_return" className="text-xs text-muted-foreground">
+                      Name (as shown on your income tax return). Name is required on this line; do not leave this line blank.
+                    </Label>
                     <Input
                       id="name_on_return"
                       value={formData.name_on_return}
                       onChange={(e) => setFormData({ ...formData, name_on_return: e.target.value })}
+                      className="mt-1 border-foreground/30 bg-muted/30"
                       required
                     />
                   </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="business_name">Business name/disregarded entity name (if different)</Label>
+                </div>
+              </div>
+
+              {/* Line 2 - Business Name */}
+              <div className="border-b border-foreground/20 p-3">
+                <div className="flex items-start gap-2">
+                  <span className="font-bold text-sm w-4 flex-shrink-0">2</span>
+                  <div className="flex-1">
+                    <Label htmlFor="business_name" className="text-xs text-muted-foreground">
+                      Business name/disregarded entity name, if different from above
+                    </Label>
                     <Input
                       id="business_name"
                       value={formData.business_name}
                       onChange={(e) => setFormData({ ...formData, business_name: e.target.value })}
+                      className="mt-1 border-foreground/30 bg-muted/30"
                     />
                   </div>
                 </div>
-
-                <div className="space-y-2">
-                  <Label htmlFor="federal_tax_classification">Federal tax classification *</Label>
-                  <Select
-                    value={formData.federal_tax_classification}
-                    onValueChange={(value) => setFormData({ ...formData, federal_tax_classification: value })}
-                  >
-                    <SelectTrigger>
-                      <SelectValue placeholder="Select classification" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {FEDERAL_TAX_CLASSIFICATIONS.map((item) => (
-                        <SelectItem key={item.value} value={item.value}>
-                          {item.label}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-
-                {formData.federal_tax_classification === "llc" && (
-                  <div className="space-y-2">
-                    <Label htmlFor="llc_tax_classification">LLC Tax Classification</Label>
-                    <Select
-                      value={formData.llc_tax_classification}
-                      onValueChange={(value) => setFormData({ ...formData, llc_tax_classification: value })}
-                    >
-                      <SelectTrigger>
-                        <SelectValue placeholder="Select LLC classification" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="C">C Corporation</SelectItem>
-                        <SelectItem value="S">S Corporation</SelectItem>
-                        <SelectItem value="P">Partnership</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
-                )}
-
-                {formData.federal_tax_classification === "other" && (
-                  <div className="space-y-2">
-                    <Label htmlFor="other_classification">Other Classification</Label>
-                    <Input
-                      id="other_classification"
-                      value={formData.other_classification}
-                      onChange={(e) => setFormData({ ...formData, other_classification: e.target.value })}
-                      placeholder="Specify classification"
-                    />
-                  </div>
-                )}
               </div>
 
-              <Separator />
+              {/* Line 3 - Federal Tax Classification */}
+              <div className="border-b border-foreground/20 p-3">
+                <div className="flex items-start gap-2">
+                  <span className="font-bold text-sm w-4 flex-shrink-0">3</span>
+                  <div className="flex-1">
+                    <Label className="text-xs text-muted-foreground block mb-2">
+                      Check appropriate box for federal tax classification of the person whose name is entered on line 1. Check only one of the following seven boxes.
+                    </Label>
+                    <RadioGroup
+                      value={formData.federal_tax_classification}
+                      onValueChange={(value) => setFormData({ ...formData, federal_tax_classification: value })}
+                      className="space-y-2"
+                    >
+                      <div className="flex flex-wrap gap-x-4 gap-y-2">
+                        <div className="flex items-center space-x-2">
+                          <RadioGroupItem value="individual" id="individual" />
+                          <Label htmlFor="individual" className="text-sm font-normal cursor-pointer">
+                            Individual/sole proprietor or single-member LLC
+                          </Label>
+                        </div>
+                        <div className="flex items-center space-x-2">
+                          <RadioGroupItem value="c_corporation" id="c_corporation" />
+                          <Label htmlFor="c_corporation" className="text-sm font-normal cursor-pointer">C Corporation</Label>
+                        </div>
+                        <div className="flex items-center space-x-2">
+                          <RadioGroupItem value="s_corporation" id="s_corporation" />
+                          <Label htmlFor="s_corporation" className="text-sm font-normal cursor-pointer">S Corporation</Label>
+                        </div>
+                        <div className="flex items-center space-x-2">
+                          <RadioGroupItem value="partnership" id="partnership" />
+                          <Label htmlFor="partnership" className="text-sm font-normal cursor-pointer">Partnership</Label>
+                        </div>
+                        <div className="flex items-center space-x-2">
+                          <RadioGroupItem value="trust_estate" id="trust_estate" />
+                          <Label htmlFor="trust_estate" className="text-sm font-normal cursor-pointer">Trust/estate</Label>
+                        </div>
+                      </div>
+                      
+                      <div className="flex flex-wrap items-center gap-x-4 gap-y-2">
+                        <div className="flex items-center space-x-2">
+                          <RadioGroupItem value="llc" id="llc" />
+                          <Label htmlFor="llc" className="text-sm font-normal cursor-pointer">
+                            Limited liability company. Enter the tax classification (C=C corporation, S=S corporation, P=Partnership) ▶
+                          </Label>
+                          {formData.federal_tax_classification === "llc" && (
+                            <Input
+                              value={formData.llc_tax_classification}
+                              onChange={(e) => setFormData({ ...formData, llc_tax_classification: e.target.value.toUpperCase() })}
+                              className="w-12 h-7 text-center border-foreground/30 font-mono"
+                              maxLength={1}
+                              placeholder="C/S/P"
+                            />
+                          )}
+                        </div>
+                      </div>
 
-              {/* Address */}
-              <div className="space-y-4">
-                <h3 className="font-semibold">Address</h3>
-                
-                <div className="space-y-2">
-                  <Label htmlFor="address">Street Address *</Label>
-                  <Input
-                    id="address"
-                    value={formData.address}
-                    onChange={(e) => setFormData({ ...formData, address: e.target.value })}
-                    required
-                  />
+                      <div className="flex items-center space-x-2">
+                        <RadioGroupItem value="other" id="other" />
+                        <Label htmlFor="other" className="text-sm font-normal cursor-pointer">Other (see instructions) ▶</Label>
+                        {formData.federal_tax_classification === "other" && (
+                          <Input
+                            value={formData.other_classification}
+                            onChange={(e) => setFormData({ ...formData, other_classification: e.target.value })}
+                            className="w-48 h-7 border-foreground/30"
+                            placeholder="Specify"
+                          />
+                        )}
+                      </div>
+                    </RadioGroup>
+
+                    <p className="text-xs text-muted-foreground mt-3">
+                      <strong>Note:</strong> Check the appropriate box in the line above for the tax classification of the single-member owner. 
+                      Do not check LLC if the LLC is classified as a single-member LLC that is disregarded from the owner unless the owner of the LLC is 
+                      another LLC that is not disregarded from the owner for U.S. federal tax purposes. Otherwise, a single-member LLC that 
+                      is disregarded from the owner should check the appropriate box for the tax classification of its owner.
+                    </p>
+                  </div>
                 </div>
+              </div>
 
-                <div className="grid gap-4 md:grid-cols-3">
-                  <div className="space-y-2">
-                    <Label htmlFor="city">City *</Label>
+              {/* Line 4 - Exemptions */}
+              <div className="border-b border-foreground/20 p-3">
+                <div className="flex items-start gap-2">
+                  <span className="font-bold text-sm w-4 flex-shrink-0">4</span>
+                  <div className="flex-1">
+                    <Label className="text-xs text-muted-foreground block mb-2">
+                      Exemptions (codes apply only to certain entities, not individuals; see instructions on page 3):
+                    </Label>
+                    <div className="flex flex-col sm:flex-row gap-4">
+                      <div className="flex items-center gap-2">
+                        <span className="text-sm">Exempt payee code (if any)</span>
+                        <Input
+                          value={formData.exempt_payee_code}
+                          onChange={(e) => setFormData({ ...formData, exempt_payee_code: e.target.value })}
+                          className="w-16 h-7 text-center border-foreground/30 font-mono"
+                          maxLength={2}
+                        />
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <span className="text-sm">Exemption from FATCA reporting code (if any)</span>
+                        <Input
+                          value={formData.fatca_exemption_code}
+                          onChange={(e) => setFormData({ ...formData, fatca_exemption_code: e.target.value })}
+                          className="w-16 h-7 text-center border-foreground/30 font-mono"
+                          maxLength={2}
+                        />
+                      </div>
+                    </div>
+                    <p className="text-xs text-muted-foreground mt-2 italic">
+                      (Applies to accounts maintained outside the U.S.)
+                    </p>
+                  </div>
+                </div>
+              </div>
+
+              {/* Line 5 - Address */}
+              <div className="border-b border-foreground/20 p-3">
+                <div className="flex items-start gap-2">
+                  <span className="font-bold text-sm w-4 flex-shrink-0">5</span>
+                  <div className="flex-1">
+                    <Label htmlFor="address" className="text-xs text-muted-foreground">
+                      Address (number, street, and apt. or suite no.) See instructions.
+                    </Label>
                     <Input
-                      id="city"
-                      value={formData.city}
-                      onChange={(e) => setFormData({ ...formData, city: e.target.value })}
+                      id="address"
+                      value={formData.address}
+                      onChange={(e) => setFormData({ ...formData, address: e.target.value })}
+                      className="mt-1 border-foreground/30 bg-muted/30"
                       required
                     />
                   </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="state">State *</Label>
-                    <Select
-                      value={formData.state}
-                      onValueChange={(value) => setFormData({ ...formData, state: value })}
-                    >
-                      <SelectTrigger>
-                        <SelectValue placeholder="Select state" />
-                      </SelectTrigger>
-                      <SelectContent>
+                </div>
+              </div>
+
+              {/* Line 6 - City, State, ZIP */}
+              <div className="border-b border-foreground/20 p-3">
+                <div className="flex items-start gap-2">
+                  <span className="font-bold text-sm w-4 flex-shrink-0">6</span>
+                  <div className="flex-1">
+                    <Label className="text-xs text-muted-foreground block mb-1">City, state, and ZIP code</Label>
+                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
+                      <Input
+                        value={formData.city}
+                        onChange={(e) => setFormData({ ...formData, city: e.target.value })}
+                        placeholder="City"
+                        className="border-foreground/30 bg-muted/30"
+                        required
+                      />
+                      <select
+                        value={formData.state}
+                        onChange={(e) => setFormData({ ...formData, state: e.target.value })}
+                        className="flex h-10 w-full rounded-md border border-foreground/30 bg-muted/30 px-3 py-2 text-sm"
+                        required
+                      >
+                        <option value="">State</option>
                         {US_STATES.map((state) => (
-                          <SelectItem key={state} value={state}>
-                            {state}
-                          </SelectItem>
+                          <option key={state} value={state}>{state}</option>
                         ))}
-                      </SelectContent>
-                    </Select>
+                      </select>
+                      <Input
+                        value={formData.zip}
+                        onChange={(e) => setFormData({ ...formData, zip: e.target.value })}
+                        placeholder="ZIP code"
+                        className="border-foreground/30 bg-muted/30"
+                        required
+                      />
+                    </div>
                   </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="zip">ZIP Code *</Label>
+                </div>
+              </div>
+
+              {/* Line 7 - Account Numbers */}
+              <div className="border-b border-foreground/20 p-3">
+                <div className="flex items-start gap-2">
+                  <span className="font-bold text-sm w-4 flex-shrink-0">7</span>
+                  <div className="flex-1">
+                    <Label htmlFor="account_numbers" className="text-xs text-muted-foreground">
+                      List account number(s) here (optional)
+                    </Label>
                     <Input
-                      id="zip"
-                      value={formData.zip}
-                      onChange={(e) => setFormData({ ...formData, zip: e.target.value })}
-                      required
+                      id="account_numbers"
+                      value={formData.account_numbers}
+                      onChange={(e) => setFormData({ ...formData, account_numbers: e.target.value })}
+                      className="mt-1 border-foreground/30 bg-muted/30"
                     />
                   </div>
                 </div>
               </div>
 
-              <Separator />
-
-              {/* Part I: TIN */}
-              <div className="space-y-4">
-                <h3 className="font-semibold">Part I: Taxpayer Identification Number (TIN)</h3>
-                
-                <div className="space-y-2">
-                  <Label>TIN Type *</Label>
-                  <Select
-                    value={formData.tin_type}
-                    onValueChange={(value: "ssn" | "ein") => setFormData({ ...formData, tin_type: value })}
-                  >
-                    <SelectTrigger>
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="ssn">Social Security Number (SSN)</SelectItem>
-                      <SelectItem value="ein">Employer Identification Number (EIN)</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-
-                {formData.tin_type === "ssn" ? (
-                  <Alert>
-                    <AlertCircle className="h-4 w-4" />
-                    <AlertDescription>
-                      Your SSN on file will be used for this W-9. If you need to update your SSN, please contact your administrator.
-                    </AlertDescription>
-                  </Alert>
-                ) : (
-                  <div className="space-y-2">
-                    <Label htmlFor="ein">Employer Identification Number (EIN)</Label>
-                    <Input
-                      id="ein"
-                      value={formData.ein}
-                      onChange={(e) => setFormData({ ...formData, ein: e.target.value })}
-                      placeholder="XX-XXXXXXX"
-                    />
-                  </div>
-                )}
+              {/* Part I - TIN */}
+              <div className="bg-slate-800 text-white px-3 py-2 flex items-center gap-4">
+                <span className="font-bold">Part I</span>
+                <span>Taxpayer Identification Number (TIN)</span>
               </div>
-
-              <Separator />
-
-              {/* Part II: Certification */}
-              <div className="space-y-4">
-                <h3 className="font-semibold">Part II: Certification</h3>
-                <p className="text-sm text-muted-foreground">
-                  Under penalties of perjury, I certify that:
+              <div className="border-b border-foreground/20 p-4">
+                <p className="text-sm mb-4">
+                  Enter your TIN in the appropriate box. The TIN provided must match the name given on line 1 to avoid 
+                  backup withholding. For individuals, this is generally your social security number (SSN). However, for a 
+                  resident alien, sole proprietor, or disregarded entity, see the instructions for Part I, later. For other 
+                  entities, it is your employer identification number (EIN). If you do not have a number, see How to get a 
+                  TIN, later.
                 </p>
 
+                <div className="flex flex-col md:flex-row gap-6">
+                  <div className="flex-1 border border-foreground/30 rounded-md p-4">
+                    <div className="flex items-center gap-2 mb-3">
+                      <input
+                        type="radio"
+                        id="tin_ssn"
+                        name="tin_type"
+                        checked={formData.tin_type === "ssn"}
+                        onChange={() => setFormData({ ...formData, tin_type: "ssn" })}
+                        className="h-4 w-4"
+                      />
+                      <Label htmlFor="tin_ssn" className="font-semibold cursor-pointer">Social security number</Label>
+                    </div>
+                    <div className="flex items-center gap-1 font-mono text-lg">
+                      <div className="w-10 h-8 border border-foreground/40 rounded flex items-center justify-center bg-muted/50">
+                        X
+                      </div>
+                      <div className="w-10 h-8 border border-foreground/40 rounded flex items-center justify-center bg-muted/50">
+                        X
+                      </div>
+                      <div className="w-10 h-8 border border-foreground/40 rounded flex items-center justify-center bg-muted/50">
+                        X
+                      </div>
+                      <span className="mx-1">-</span>
+                      <div className="w-10 h-8 border border-foreground/40 rounded flex items-center justify-center bg-muted/50">
+                        X
+                      </div>
+                      <div className="w-10 h-8 border border-foreground/40 rounded flex items-center justify-center bg-muted/50">
+                        X
+                      </div>
+                      <span className="mx-1">-</span>
+                      <div className="w-10 h-8 border border-foreground/40 rounded flex items-center justify-center bg-muted/50">
+                        {personnel?.ssn_last_four?.[0] || "X"}
+                      </div>
+                      <div className="w-10 h-8 border border-foreground/40 rounded flex items-center justify-center bg-muted/50">
+                        {personnel?.ssn_last_four?.[1] || "X"}
+                      </div>
+                      <div className="w-10 h-8 border border-foreground/40 rounded flex items-center justify-center bg-muted/50">
+                        {personnel?.ssn_last_four?.[2] || "X"}
+                      </div>
+                      <div className="w-10 h-8 border border-foreground/40 rounded flex items-center justify-center bg-muted/50">
+                        {personnel?.ssn_last_four?.[3] || "X"}
+                      </div>
+                    </div>
+                    {formData.tin_type === "ssn" && (
+                      <p className="text-xs text-muted-foreground mt-2">
+                        Your SSN on file will be used. Contact your administrator to update.
+                      </p>
+                    )}
+                  </div>
+
+                  <div className="text-center self-center font-bold text-muted-foreground">
+                    or
+                  </div>
+
+                  <div className="flex-1 border border-foreground/30 rounded-md p-4">
+                    <div className="flex items-center gap-2 mb-3">
+                      <input
+                        type="radio"
+                        id="tin_ein"
+                        name="tin_type"
+                        checked={formData.tin_type === "ein"}
+                        onChange={() => setFormData({ ...formData, tin_type: "ein" })}
+                        className="h-4 w-4"
+                      />
+                      <Label htmlFor="tin_ein" className="font-semibold cursor-pointer">Employer identification number</Label>
+                    </div>
+                    {formData.tin_type === "ein" ? (
+                      <div className="flex items-center gap-1">
+                        <Input
+                          value={formData.ein.slice(0, 2)}
+                          onChange={(e) => {
+                            const val = e.target.value.replace(/\D/g, "").slice(0, 2);
+                            const rest = formData.ein.slice(2);
+                            setFormData({ ...formData, ein: val + rest });
+                          }}
+                          className="w-14 h-8 text-center font-mono border-foreground/40"
+                          maxLength={2}
+                          placeholder="XX"
+                        />
+                        <span className="font-mono">-</span>
+                        <Input
+                          value={formData.ein.slice(2)}
+                          onChange={(e) => {
+                            const val = e.target.value.replace(/\D/g, "").slice(0, 7);
+                            const prefix = formData.ein.slice(0, 2);
+                            setFormData({ ...formData, ein: prefix + val });
+                          }}
+                          className="w-28 h-8 text-center font-mono border-foreground/40"
+                          maxLength={7}
+                          placeholder="XXXXXXX"
+                        />
+                      </div>
+                    ) : (
+                      <div className="flex items-center gap-1 font-mono text-lg text-muted-foreground">
+                        <div className="w-10 h-8 border border-foreground/20 rounded flex items-center justify-center bg-muted/30">
+                          
+                        </div>
+                        <div className="w-10 h-8 border border-foreground/20 rounded flex items-center justify-center bg-muted/30">
+                          
+                        </div>
+                        <span className="mx-1">-</span>
+                        <div className="w-10 h-8 border border-foreground/20 rounded flex items-center justify-center bg-muted/30">
+                          
+                        </div>
+                        <div className="w-10 h-8 border border-foreground/20 rounded flex items-center justify-center bg-muted/30">
+                          
+                        </div>
+                        <div className="w-10 h-8 border border-foreground/20 rounded flex items-center justify-center bg-muted/30">
+                          
+                        </div>
+                        <div className="w-10 h-8 border border-foreground/20 rounded flex items-center justify-center bg-muted/30">
+                          
+                        </div>
+                        <div className="w-10 h-8 border border-foreground/20 rounded flex items-center justify-center bg-muted/30">
+                          
+                        </div>
+                        <div className="w-10 h-8 border border-foreground/20 rounded flex items-center justify-center bg-muted/30">
+                          
+                        </div>
+                        <div className="w-10 h-8 border border-foreground/20 rounded flex items-center justify-center bg-muted/30">
+                          
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                </div>
+
+                <p className="text-xs text-muted-foreground mt-4">
+                  <strong>Note:</strong> If the account is in more than one name, see the instructions for line 1. Also see What Name and 
+                  Number To Give the Requester for guidelines on whose number to enter.
+                </p>
+              </div>
+
+              {/* Part II - Certification */}
+              <div className="bg-slate-800 text-white px-3 py-2 flex items-center gap-4">
+                <span className="font-bold">Part II</span>
+                <span>Certification</span>
+              </div>
+              <div className="border-b border-foreground/20 p-4">
+                <p className="font-semibold mb-3">Under penalties of perjury, I certify that:</p>
+                
                 <div className="space-y-3">
                   <div className="flex items-start space-x-3">
                     <Checkbox
@@ -442,8 +765,8 @@ export default function PortalTaxForms() {
                         setFormData({ ...formData, certified_correct_tin: checked as boolean })
                       }
                     />
-                    <Label htmlFor="certified_correct_tin" className="text-sm leading-relaxed">
-                      1. The number shown on this form is my correct taxpayer identification number (or I am waiting for a number to be issued to me)
+                    <Label htmlFor="certified_correct_tin" className="text-sm leading-relaxed cursor-pointer">
+                      <strong>1.</strong> The number shown on this form is my correct taxpayer identification number (or I am waiting for a number to be issued to me); and
                     </Label>
                   </div>
 
@@ -455,8 +778,8 @@ export default function PortalTaxForms() {
                         setFormData({ ...formData, certified_not_subject_backup_withholding: checked as boolean })
                       }
                     />
-                    <Label htmlFor="certified_not_subject_backup_withholding" className="text-sm leading-relaxed">
-                      2. I am not subject to backup withholding because: (a) I am exempt from backup withholding, or (b) I have not been notified by the IRS that I am subject to backup withholding
+                    <Label htmlFor="certified_not_subject_backup_withholding" className="text-sm leading-relaxed cursor-pointer">
+                      <strong>2.</strong> I am not subject to backup withholding because: (a) I am exempt from backup withholding, or (b) I have not been notified by the Internal Revenue Service (IRS) that I am subject to backup withholding as a result of a failure to report all interest or dividends, or (c) the IRS has notified me that I am no longer subject to backup withholding; and
                     </Label>
                   </div>
 
@@ -468,8 +791,8 @@ export default function PortalTaxForms() {
                         setFormData({ ...formData, certified_us_person: checked as boolean })
                       }
                     />
-                    <Label htmlFor="certified_us_person" className="text-sm leading-relaxed">
-                      3. I am a U.S. citizen or other U.S. person
+                    <Label htmlFor="certified_us_person" className="text-sm leading-relaxed cursor-pointer">
+                      <strong>3.</strong> I am a U.S. citizen or other U.S. person (defined below); and
                     </Label>
                   </div>
 
@@ -481,38 +804,57 @@ export default function PortalTaxForms() {
                         setFormData({ ...formData, certified_fatca_exempt: checked as boolean })
                       }
                     />
-                    <Label htmlFor="certified_fatca_exempt" className="text-sm leading-relaxed">
-                      4. The FATCA code(s) entered on this form (if any) indicating that I am exempt from FATCA reporting is correct
+                    <Label htmlFor="certified_fatca_exempt" className="text-sm leading-relaxed cursor-pointer">
+                      <strong>4.</strong> The FATCA code(s) entered on this form (if any) indicating that I am exempt from FATCA reporting is correct.
                     </Label>
+                  </div>
+                </div>
+
+                <div className="mt-4 p-3 bg-muted/50 rounded-md border border-foreground/20">
+                  <p className="text-sm">
+                    <strong>Certification instructions.</strong> You must cross out item 2 above if you have been notified by the IRS that you are currently subject to backup withholding because you have failed to report all interest and dividends on your tax return. For real estate transactions, item 2 does not apply. For mortgage interest paid, acquisition or abandonment of secured property, cancellation of debt, contributions to an individual retirement arrangement (IRA), and generally, payments other than interest and dividends, you are not required to sign the certification, but you must provide your correct TIN. See the instructions for Part II, later.
+                  </p>
+                </div>
+              </div>
+
+              {/* Sign Here */}
+              <div className="bg-slate-800 text-white px-3 py-1 text-sm">
+                <span className="font-bold">Sign Here</span>
+              </div>
+              <div className="p-4">
+                <div className="flex flex-col md:flex-row gap-4">
+                  <div className="flex-1">
+                    <Label className="text-xs text-muted-foreground mb-1 block">Signature of U.S. person ▶</Label>
+                    <Input
+                      value={formData.signature_data}
+                      onChange={(e) => setFormData({ ...formData, signature_data: e.target.value })}
+                      className="border-foreground/40 bg-muted/30 italic font-serif text-lg h-12"
+                      placeholder="Type your full legal name to sign"
+                      required
+                    />
+                    <p className="text-xs text-muted-foreground mt-1">
+                      By typing your name above, you are electronically signing this W-9 form.
+                    </p>
+                  </div>
+                  <div className="md:w-48">
+                    <Label className="text-xs text-muted-foreground mb-1 block">Date ▶</Label>
+                    <Input
+                      value={format(new Date(), "MM/dd/yyyy")}
+                      readOnly
+                      className="border-foreground/40 bg-muted/50 h-12"
+                    />
                   </div>
                 </div>
               </div>
 
               <Separator />
 
-              {/* Signature */}
-              <div className="space-y-4">
-                <h3 className="font-semibold">Electronic Signature</h3>
-                
-                <div className="space-y-2">
-                  <Label htmlFor="signature_data">Type your full legal name to sign *</Label>
-                  <Input
-                    id="signature_data"
-                    value={formData.signature_data}
-                    onChange={(e) => setFormData({ ...formData, signature_data: e.target.value })}
-                    placeholder="Your full legal name"
-                    required
-                  />
-                  <p className="text-xs text-muted-foreground">
-                    By typing your name above, you are electronically signing this W-9 form and certifying that the information provided is true and correct.
-                  </p>
-                </div>
-              </div>
-
-              <div className="flex gap-3">
+              {/* Submit Buttons */}
+              <div className="p-4 flex gap-3">
                 <Button
                   type="submit"
                   disabled={submitW9.isPending || !formData.signature_data || !formData.federal_tax_classification}
+                  className="min-w-32"
                 >
                   {submitW9.isPending ? "Submitting..." : "Submit W-9 Form"}
                 </Button>
