@@ -23,7 +23,7 @@ import {
 import { useJobPostingByToken, useSubmitApplication } from "@/integrations/supabase/hooks/useStaffingApplications";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
-import { FormField as FormFieldType, FormTheme, FormRow } from "@/integrations/supabase/hooks/useApplicationFormTemplates";
+import { FormField as FormFieldType, FormTheme, FormRow, CoreFieldsConfig, DEFAULT_CORE_FIELDS } from "@/integrations/supabase/hooks/useApplicationFormTemplates";
 import { AddressField, AddressValue } from "@/components/form-builder/AddressField";
 import { FormattedPhoneInput } from "@/components/form-builder/FormattedPhoneInput";
 import { LanguageSelector } from "@/components/form-builder/LanguageSelector";
@@ -94,6 +94,7 @@ export default function PublicApplicationForm() {
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
   const [formTemplateId, setFormTemplateId] = useState<string | undefined>();
   const [uploadingFields, setUploadingFields] = useState<Set<string>>(new Set());
+  const [coreFields, setCoreFields] = useState<CoreFieldsConfig>(DEFAULT_CORE_FIELDS);
 
   const { data: posting, isLoading, error } = useJobPostingByToken(token || "");
   const submitApplication = useSubmitApplication();
@@ -120,11 +121,16 @@ export default function PublicApplicationForm() {
         setFormTemplateId(posting.form_template_id);
         const { data: template, error } = await supabase
           .from("application_form_templates")
-          .select("fields, theme, success_message")
+          .select("fields, theme, success_message, settings")
           .eq("id", posting.form_template_id)
           .single();
         
         if (!error && template) {
+          // Parse core fields from settings
+          const settings = template.settings as unknown as { coreFields?: CoreFieldsConfig } | null;
+          if (settings?.coreFields) {
+            setCoreFields(settings.coreFields);
+          }
           if (template.fields) {
             const fields = template.fields as unknown as FormFieldType[];
             setCustomFields(fields);
@@ -706,107 +712,119 @@ export default function PublicApplicationForm() {
             <Form {...form}>
               <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
                 {/* Profile Picture - Core Field */}
-                <div className="space-y-2">
-                  <FormFileUpload
-                    value={form.watch("photo_url") || null}
-                    onChange={(url) => form.setValue("photo_url", url || "")}
-                    onUploadStateChange={(isUploading) => handleFileUploadStateChange("core_photo", isUploading)}
-                    label={getCoreLabel('profilePicture')}
-                    required={false}
-                    helpText="Upload a clear photo of yourself"
-                    acceptedFileTypes={["image/*"]}
-                    maxFileSize={5}
-                    storageBucket="application-files"
-                    storagePath="profile-photos"
-                  />
-                </div>
+                {coreFields.profilePicture && (
+                  <div className="space-y-2">
+                    <FormFileUpload
+                      value={form.watch("photo_url") || null}
+                      onChange={(url) => form.setValue("photo_url", url || "")}
+                      onUploadStateChange={(isUploading) => handleFileUploadStateChange("core_photo", isUploading)}
+                      label={getCoreLabel('profilePicture')}
+                      required={false}
+                      helpText="Upload a clear photo of yourself"
+                      acceptedFileTypes={["image/*"]}
+                      maxFileSize={5}
+                      storageBucket="application-files"
+                      storagePath="profile-photos"
+                    />
+                  </div>
+                )}
 
                 {/* Core Fields */}
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                <FormField
-                    control={form.control}
-                    name="first_name"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>{getCoreLabel('firstName')} *</FormLabel>
-                        <FormControl>
-                          <Input placeholder="John" {...field} />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                  <FormField
-                    control={form.control}
-                    name="last_name"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>{getCoreLabel('lastName')} *</FormLabel>
-                        <FormControl>
-                          <Input placeholder="Doe" {...field} />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
+                  {coreFields.firstName && (
+                    <FormField
+                      control={form.control}
+                      name="first_name"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>{getCoreLabel('firstName')} *</FormLabel>
+                          <FormControl>
+                            <Input placeholder="John" {...field} />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                  )}
+                  {coreFields.lastName && (
+                    <FormField
+                      control={form.control}
+                      name="last_name"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>{getCoreLabel('lastName')} *</FormLabel>
+                          <FormControl>
+                            <Input placeholder="Doe" {...field} />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                  )}
                 </div>
 
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                  <FormField
-                    control={form.control}
-                    name="email"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>{getCoreLabel('email')} *</FormLabel>
-                        <FormControl>
-                          <div className="relative flex items-center">
-                            <div className="absolute left-0 flex items-center justify-center w-10 h-full bg-muted border border-r-0 rounded-l-md">
-                              <Mail className="h-4 w-4 text-muted-foreground" />
+                  {coreFields.email && (
+                    <FormField
+                      control={form.control}
+                      name="email"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>{getCoreLabel('email')} *</FormLabel>
+                          <FormControl>
+                            <div className="relative flex items-center">
+                              <div className="absolute left-0 flex items-center justify-center w-10 h-full bg-muted border border-r-0 rounded-l-md">
+                                <Mail className="h-4 w-4 text-muted-foreground" />
+                              </div>
+                              <Input 
+                                type="email" 
+                                placeholder="john@example.com" 
+                                className="pl-12 rounded-l-none" 
+                                {...field} 
+                              />
                             </div>
-                            <Input 
-                              type="email" 
-                              placeholder="john@example.com" 
-                              className="pl-12 rounded-l-none" 
-                              {...field} 
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                  )}
+                  {coreFields.phone && (
+                    <FormField
+                      control={form.control}
+                      name="phone"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormControl>
+                            <FormattedPhoneInput
+                              label="Phone *"
+                              value={field.value}
+                              onChange={field.onChange}
+                              showIcon
                             />
-                          </div>
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                  <FormField
-                    control={form.control}
-                    name="phone"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormControl>
-                          <FormattedPhoneInput
-                            label="Phone *"
-                            value={field.value}
-                            onChange={field.onChange}
-                            showIcon
-                          />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                  )}
                 </div>
 
-                <FormField
-                  control={form.control}
-                  name="home_zip"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Home ZIP Code</FormLabel>
-                      <FormControl>
-                        <Input placeholder="12345" maxLength={10} className="w-1/3 min-w-[120px]" {...field} />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
+                {coreFields.homeZip && (
+                  <FormField
+                    control={form.control}
+                    name="home_zip"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Home ZIP Code</FormLabel>
+                        <FormControl>
+                          <Input placeholder="12345" maxLength={10} className="w-1/3 min-w-[120px]" {...field} />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                )}
 
                 {/* Custom Fields from Form Template */}
                 {customFields.length > 0 && (
