@@ -11,6 +11,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { Slider } from "@/components/ui/slider";
 import { FormTheme } from "@/integrations/supabase/hooks/useApplicationFormTemplates";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
@@ -135,6 +136,29 @@ export function ThemeEditor({ theme, onUpdate }: ThemeEditorProps) {
           </div>
         </RadioGroup>
       </div>
+
+      {/* Card Transparency - only show for card layout */}
+      {(theme.layout || "card") === "card" && (
+        <div className="space-y-3">
+          <div className="flex items-center justify-between">
+            <Label className="text-sm font-medium">Card Transparency</Label>
+            <span className="text-sm text-muted-foreground">
+              {100 - (theme.cardOpacity ?? 90)}%
+            </span>
+          </div>
+          <Slider
+            value={[100 - (theme.cardOpacity ?? 90)]}
+            onValueChange={([value]) => onUpdate({ ...theme, cardOpacity: 100 - value })}
+            min={0}
+            max={100}
+            step={5}
+            className="w-full"
+          />
+          <p className="text-xs text-muted-foreground">
+            Adjust how much the background shows through the card
+          </p>
+        </div>
+      )}
 
       {/* Background Color */}
       <div className="space-y-2">
