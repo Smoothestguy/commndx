@@ -1,4 +1,4 @@
-import { jsPDF } from "jspdf";
+import { jsPDF } from 'jspdf';
 import { W9Form } from "@/integrations/supabase/hooks/useW9Forms";
 
 export interface GenerateW9Options {
@@ -7,537 +7,598 @@ export interface GenerateW9Options {
   ssnFull?: string | null;
 }
 
-// Mask SSN for display
-const maskSSN = (ssnLastFour: string | null | undefined, ssnFull?: string | null): string => {
-  if (ssnFull) {
-    // Format full SSN: XXX-XX-XXXX
-    const cleaned = ssnFull.replace(/\D/g, '');
-    if (cleaned.length === 9) {
-      return `${cleaned.slice(0, 3)}-${cleaned.slice(3, 5)}-${cleaned.slice(5)}`;
-    }
-    return ssnFull;
-  }
-  if (!ssnLastFour) return "";
-  return `***-**-${ssnLastFour}`;
+// Map database tax classification to display format
+const mapTaxClassification = (dbClassification: string): 'individual' | 'c_corp' | 's_corp' | 'partnership' | 'trust' | 'llc' | 'other' => {
+  const map: Record<string, 'individual' | 'c_corp' | 's_corp' | 'partnership' | 'trust' | 'llc' | 'other'> = {
+    'individual': 'individual',
+    'c_corporation': 'c_corp',
+    's_corporation': 's_corp',
+    'partnership': 'partnership',
+    'trust_estate': 'trust',
+    'llc': 'llc',
+    'other': 'other',
+  };
+  return map[dbClassification] || 'other';
 };
 
-// Format EIN: XX-XXXXXXX
-const formatEIN = (ein: string | null): string => {
-  if (!ein) return "";
-  const cleaned = ein.replace(/\D/g, '');
-  if (cleaned.length === 9) {
-    return `${cleaned.slice(0, 2)}-${cleaned.slice(2)}`;
+// Helper to mask SSN
+const maskSSN = (ssnLastFour: string | null, ssnFull: string | null): string => {
+  if (ssnFull && ssnFull.length === 9) {
+    return `${ssnFull.substring(0, 3)}-${ssnFull.substring(3, 5)}-${ssnFull.substring(5, 9)}`;
+  }
+  if (ssnLastFour) {
+    return `***-**-${ssnLastFour}`;
+  }
+  return '';
+};
+
+// Helper to format EIN
+const formatEIN = (ein: string | null | undefined): string => {
+  if (!ein) return '';
+  const digits = ein.replace(/\D/g, '');
+  if (digits.length === 9) {
+    return `${digits.substring(0, 2)}-${digits.substring(2, 9)}`;
   }
   return ein;
 };
 
-// Get tax classification display text
-const getTaxClassificationText = (classification: string): string => {
-  const classifications: Record<string, string> = {
-    'individual': 'Individual/sole proprietor or single-member LLC',
-    'c_corporation': 'C Corporation',
-    's_corporation': 'S Corporation',
-    'partnership': 'Partnership',
-    'trust_estate': 'Trust/estate',
-    'llc': 'Limited liability company',
-    'other': 'Other',
-  };
-  return classifications[classification] || classification;
-};
-
 export function generateW9(options: GenerateW9Options): jsPDF {
+  const doc = new jsPDF({
+    orientation: 'portrait',
+    unit: 'pt',
+    format: 'letter'
+  });
+
   const { w9Form, ssnLastFour, ssnFull } = options;
   
-  const doc = new jsPDF({
-    orientation: "portrait",
-    unit: "mm",
-    format: "letter",
-  });
-
-  // Page dimensions
-  const pageWidth = 215.9;
-  const margin = 10;
-  const formWidth = pageWidth - margin * 2;
-  const formStartX = margin;
-
-  let y = margin;
-
-  // ============== HEADER SECTION ==============
+  // Map database fields to display values
+  const taxClassification = mapTaxClassification(w9Form.federal_tax_classification);
+  const llcClassification = w9Form.llc_tax_classification as 'c' | 's' | 'p' | null;
+  const cityStateZip = `${w9Form.city}, ${w9Form.state} ${w9Form.zip}`;
+  const signature = w9Form.signature_data;
+  const signatureDate = w9Form.signature_date ? new Date(w9Form.signature_date).toLocaleDateString() : null;
+  const ein = w9Form.ein;
   
-  // Form title line
-  doc.setFontSize(12);
-  doc.setFont("helvetica", "bold");
-  doc.text("Form", formStartX, y + 5);
-  
-  doc.setFontSize(24);
-  doc.text("W-9", formStartX + 12, y + 5);
-  
-  // Revision info
-  doc.setFontSize(8);
-  doc.setFont("helvetica", "normal");
-  doc.text("(Rev. March 2024)", formStartX, y + 10);
+  const pageWidth = 612;
+  const pageHeight = 792;
+  const margin = 36;
+  const contentWidth = pageWidth - (margin * 2);
 
-  // Department info
-  doc.setFontSize(7);
-  doc.text("Department of the Treasury", formStartX, y + 14);
-  doc.text("Internal Revenue Service", formStartX, y + 17);
+  // ============================================================================
+  // HEADER SECTION
+  // ============================================================================
+  
+  // Top border
+  doc.setLineWidth(2);
+  doc.line(margin, 40, pageWidth - margin, 40);
 
-  // Main title (center-right)
+  // Form number and title - left side
+  doc.setFontSize(18);
+  doc.setFont('helvetica', 'bold');
+  doc.text('Form W-9', margin + 5, 60);
+  
+  doc.setFontSize(9);
+  doc.setFont('helvetica', 'normal');
+  doc.text('(Rev. March 2024)', margin + 5, 72);
+  
+  // Main title - center area
   doc.setFontSize(11);
-  doc.setFont("helvetica", "bold");
-  doc.text("Request for Taxpayer", formStartX + 50, y + 3);
-  doc.text("Identification Number and Certification", formStartX + 50, y + 7);
+  doc.setFont('helvetica', 'bold');
+  doc.text('Request for Taxpayer', 180, 52);
+  doc.text('Identification Number and Certification', 180, 64);
 
-  // Right side instructions
+  // Department info - right side
+  doc.setFontSize(9);
+  doc.setFont('helvetica', 'normal');
+  doc.text('Department of the Treasury', pageWidth - margin - 150, 52);
+  doc.text('Internal Revenue Service', pageWidth - margin - 150, 64);
+
+  // Website instruction
   doc.setFontSize(7);
-  doc.setFont("helvetica", "normal");
-  const rightX = formStartX + formWidth - 60;
-  doc.text("Go to www.irs.gov/FormW9 for", rightX, y + 3);
-  doc.text("instructions and the latest information.", rightX, y + 6);
+  doc.text('Go to www.irs.gov/FormW9 for instructions and the latest information.', margin + 5, 85);
 
-  // OMB Number
-  doc.setFontSize(8);
-  doc.setFont("helvetica", "bold");
-  doc.text("OMB No. 1545-0074", formStartX + formWidth - 30, y + 12);
-
-  y += 22;
-
-  // Horizontal line under header
+  // Right side instruction box
   doc.setLineWidth(0.5);
-  doc.setDrawColor(0, 0, 0);
-  doc.line(formStartX, y, formStartX + formWidth, y);
+  doc.rect(pageWidth - margin - 100, 42, 100, 45);
+  doc.setFontSize(8);
+  doc.setFont('helvetica', 'bold');
+  doc.text('Give form to the', pageWidth - margin - 95, 52);
+  doc.text('requester. Do not', pageWidth - margin - 95, 62);
+  doc.text('send to the IRS.', pageWidth - margin - 95, 72);
 
-  y += 2;
+  // Before you begin instruction
+  doc.setFontSize(8);
+  doc.setFont('helvetica', 'bold');
+  doc.text('Before you begin.', margin + 5, 100);
+  doc.setFont('helvetica', 'normal');
+  doc.text('For guidance related to the purpose of Form W-9, see Purpose of Form, below.', margin + 80, 100);
+  doc.setFont('helvetica', 'bold');
+  doc.text('Print or type.', margin + 5, 110);
+  doc.setFont('helvetica', 'normal');
+  doc.text('See Specific Instructions on page 3.', margin + 60, 110);
 
-  // ============== LINE 1: NAME ==============
+  // ============================================================================
+  // LINE 1: NAME
+  // ============================================================================
+  
+  let currentY = 130;
+  
   doc.setFontSize(7);
-  doc.setFont("helvetica", "bold");
-  doc.text("1", formStartX + 1, y + 3);
-  doc.setFont("helvetica", "normal");
-  doc.text("Name (as shown on your income tax return). Name is required on this line; do not leave this line blank.", formStartX + 5, y + 3);
-  
-  y += 5;
-  
-  // Name box
-  doc.setLineWidth(0.3);
-  doc.rect(formStartX, y, formWidth, 8);
-  doc.setFontSize(10);
-  doc.setFont("helvetica", "bold");
-  doc.text(w9Form.name_on_return, formStartX + 2, y + 5.5);
-  
-  y += 10;
+  doc.setFont('helvetica', 'bold');
+  doc.text('1', margin, currentY);
+  doc.setFont('helvetica', 'normal');
+  doc.text('Name of entity/individual. An entry is required.', margin + 10, currentY);
+  doc.setFontSize(6);
+  doc.text('(For a sole proprietor or disregarded entity, enter the owner\'s name on line 1, and enter the business/disregarded', margin + 10, currentY + 8);
+  doc.text('entity\'s name on line 2.)', margin + 10, currentY + 16);
 
-  // ============== LINE 2: BUSINESS NAME ==============
+  // Line 1 input box
+  doc.setLineWidth(0.5);
+  doc.rect(margin, currentY + 20, contentWidth, 20);
+  if (w9Form.name_on_return) {
+    doc.setFontSize(10);
+    doc.setFont('helvetica', 'normal');
+    doc.text(w9Form.name_on_return, margin + 5, currentY + 33);
+  }
+
+  // ============================================================================
+  // LINE 2: BUSINESS NAME
+  // ============================================================================
+  
+  currentY += 50;
+  
   doc.setFontSize(7);
-  doc.setFont("helvetica", "bold");
-  doc.text("2", formStartX + 1, y + 3);
-  doc.setFont("helvetica", "normal");
-  doc.text("Business name/disregarded entity name, if different from above", formStartX + 5, y + 3);
-  
-  y += 5;
-  
-  // Business name box
-  doc.rect(formStartX, y, formWidth, 8);
+  doc.setFont('helvetica', 'bold');
+  doc.text('2', margin, currentY);
+  doc.setFont('helvetica', 'normal');
+  doc.text('Business name/disregarded entity name, if different from above.', margin + 10, currentY);
+
+  // Line 2 input box
+  doc.rect(margin, currentY + 5, contentWidth, 20);
   if (w9Form.business_name) {
     doc.setFontSize(10);
-    doc.setFont("helvetica", "normal");
-    doc.text(w9Form.business_name, formStartX + 2, y + 5.5);
+    doc.text(w9Form.business_name, margin + 5, currentY + 18);
   }
-  
-  y += 10;
 
-  // ============== LINE 3: FEDERAL TAX CLASSIFICATION ==============
+  // ============================================================================
+  // LINE 3A: TAX CLASSIFICATION
+  // ============================================================================
+  
+  currentY += 35;
+  
   doc.setFontSize(7);
-  doc.setFont("helvetica", "bold");
-  doc.text("3", formStartX + 1, y + 3);
-  doc.setFont("helvetica", "normal");
-  doc.text("Check appropriate box for federal tax classification of the person whose name is entered on line 1. Check only one of the", formStartX + 5, y + 3);
-  doc.text("following seven boxes.", formStartX + 5, y + 6);
-  
-  y += 9;
+  doc.setFont('helvetica', 'bold');
+  doc.text('3a', margin, currentY);
+  doc.setFont('helvetica', 'normal');
+  doc.text('Check the appropriate box for federal tax classification of the entity/individual whose name is entered on line 1.', margin + 15, currentY);
+  doc.text('Check only one of the following seven boxes.', margin + 15, currentY + 8);
 
-  // Tax classification checkboxes
-  const checkboxSize = 3;
-  const classifications = [
-    { key: 'individual', label: 'Individual/sole proprietor or single-member LLC' },
-    { key: 'c_corporation', label: 'C Corporation' },
-    { key: 's_corporation', label: 'S Corporation' },
-    { key: 'partnership', label: 'Partnership' },
-    { key: 'trust_estate', label: 'Trust/estate' },
-  ];
-  
-  let checkX = formStartX + 2;
-  doc.setFontSize(6.5);
-  
-  classifications.forEach((item) => {
-    doc.rect(checkX, y, checkboxSize, checkboxSize);
-    if (w9Form.federal_tax_classification === item.key) {
-      doc.setFont("helvetica", "bold");
-      doc.text("X", checkX + 0.7, y + 2.5);
-      doc.setFont("helvetica", "normal");
+  const checkboxY = currentY + 20;
+  const checkboxSize = 10;
+  const checkboxSpacing = 85;
+
+  // Helper function to draw checkbox with label
+  const drawCheckbox = (x: number, y: number, label: string, isChecked: boolean) => {
+    doc.rect(x, y, checkboxSize, checkboxSize);
+    if (isChecked) {
+      doc.setFont('helvetica', 'bold');
+      doc.setFontSize(12);
+      doc.text('X', x + 2, y + 8);
+      doc.setFontSize(7);
     }
-    doc.text(item.label, checkX + checkboxSize + 1, y + 2.5);
-    checkX += doc.getTextWidth(item.label) + checkboxSize + 6;
-    
-    // Wrap to next line if needed
-    if (checkX > formStartX + formWidth - 40) {
-      checkX = formStartX + 2;
-      y += 5;
-    }
-  });
+    doc.setFont('helvetica', 'normal');
+    doc.text(label, x + checkboxSize + 3, y + 7);
+  };
 
-  y += 5;
-  
-  // LLC checkbox with tax classification
-  doc.rect(formStartX + 2, y, checkboxSize, checkboxSize);
-  if (w9Form.federal_tax_classification === 'llc') {
-    doc.setFont("helvetica", "bold");
-    doc.text("X", formStartX + 2.7, y + 2.5);
-    doc.setFont("helvetica", "normal");
-  }
-  doc.text("Limited liability company. Enter the tax classification (C=C corporation, S=S corporation, P=Partnership)", formStartX + 6, y + 2.5);
-  
-  // LLC tax classification box
-  doc.rect(formStartX + 135, y - 0.5, 8, 4);
-  if (w9Form.llc_tax_classification) {
-    doc.setFontSize(8);
-    doc.text(w9Form.llc_tax_classification.toUpperCase().charAt(0), formStartX + 138, y + 2);
-    doc.setFontSize(6.5);
-  }
-  
-  y += 5;
-  
-  // Other checkbox
-  doc.rect(formStartX + 2, y, checkboxSize, checkboxSize);
-  if (w9Form.federal_tax_classification === 'other') {
-    doc.setFont("helvetica", "bold");
-    doc.text("X", formStartX + 2.7, y + 2.5);
-    doc.setFont("helvetica", "normal");
-  }
-  doc.text("Other (see instructions)", formStartX + 6, y + 2.5);
-  
-  // Other classification line
-  doc.line(formStartX + 40, y + 3, formStartX + 100, y + 3);
-  if (w9Form.other_classification) {
-    doc.setFontSize(8);
-    doc.text(w9Form.other_classification, formStartX + 42, y + 2);
-    doc.setFontSize(6.5);
-  }
-  
-  y += 8;
+  // First row of checkboxes
+  drawCheckbox(margin + 15, checkboxY, 'Individual/sole proprietor', taxClassification === 'individual');
+  drawCheckbox(margin + 15 + checkboxSpacing * 1.8, checkboxY, 'C corporation', taxClassification === 'c_corp');
+  drawCheckbox(margin + 15 + checkboxSpacing * 3, checkboxY, 'S corporation', taxClassification === 's_corp');
+  drawCheckbox(margin + 15 + checkboxSpacing * 4.2, checkboxY, 'Partnership', taxClassification === 'partnership');
 
-  // ============== LINE 4: EXEMPTIONS ==============
-  doc.setFontSize(7);
-  doc.setFont("helvetica", "bold");
-  doc.text("4", formStartX + 1, y + 3);
-  doc.setFont("helvetica", "normal");
-  doc.text("Exemptions (codes apply only to certain entities, not individuals; see instructions on page 3):", formStartX + 5, y + 3);
-  
-  y += 6;
-  
-  // Exemption code boxes
-  doc.text("Exempt payee code (if any)", formStartX + 5, y + 3);
-  doc.rect(formStartX + 50, y, 20, 5);
-  if (w9Form.exempt_payee_code) {
-    doc.setFontSize(8);
-    doc.text(w9Form.exempt_payee_code, formStartX + 52, y + 3.5);
-    doc.setFontSize(7);
-  }
-  
-  doc.text("Exemption from FATCA reporting code (if any)", formStartX + 80, y + 3);
-  doc.rect(formStartX + 145, y, 20, 5);
-  if (w9Form.fatca_exemption_code) {
-    doc.setFontSize(8);
-    doc.text(w9Form.fatca_exemption_code, formStartX + 147, y + 3.5);
-    doc.setFontSize(7);
-  }
-  
-  y += 8;
+  // Second row of checkboxes
+  const checkbox2Y = checkboxY + 15;
+  drawCheckbox(margin + 15, checkbox2Y, 'Trust/estate', taxClassification === 'trust');
 
-  // ============== LINE 5: ADDRESS ==============
-  doc.setFontSize(7);
-  doc.setFont("helvetica", "bold");
-  doc.text("5", formStartX + 1, y + 3);
-  doc.setFont("helvetica", "normal");
-  doc.text("Address (number, street, and apt. or suite no.) See instructions.", formStartX + 5, y + 3);
+  // LLC checkbox with classification input
+  const llcX = margin + 15 + checkboxSpacing * 1.3;
+  drawCheckbox(llcX, checkbox2Y, 'LLC. Enter the tax classification (C = C corporation, S = S corporation, P = Partnership)', taxClassification === 'llc');
   
-  y += 5;
-  
-  // Address box
-  doc.rect(formStartX, y, formWidth * 0.65, 8);
-  doc.setFontSize(10);
-  doc.text(w9Form.address, formStartX + 2, y + 5.5);
-  
-  // Requester's name box (right side)
+  if (taxClassification === 'llc' && llcClassification) {
+    doc.setFontSize(10);
+    doc.text(llcClassification.toUpperCase(), llcX + 420, checkbox2Y + 7);
+  }
+
+  // Note about LLC
   doc.setFontSize(6);
-  doc.text("Requester's name and address (optional)", formStartX + formWidth * 0.67, y - 2);
-  doc.rect(formStartX + formWidth * 0.65, y, formWidth * 0.35, 8);
-  
-  y += 10;
+  doc.setFont('helvetica', 'bold');
+  doc.text('Note:', margin + 20, checkbox2Y + 25);
+  doc.setFont('helvetica', 'normal');
+  doc.text('Check the "LLC" box above and, in the entry space, enter the appropriate code (C, S, or P) for the tax', margin + 38, checkbox2Y + 25);
+  doc.text('classification of the LLC, unless it is a disregarded entity. A disregarded entity should instead check the appropriate', margin + 20, checkbox2Y + 33);
+  doc.text('box for the tax classification of its owner.', margin + 20, checkbox2Y + 41);
 
-  // ============== LINE 6: CITY, STATE, ZIP ==============
-  doc.setFontSize(7);
-  doc.setFont("helvetica", "bold");
-  doc.text("6", formStartX + 1, y + 3);
-  doc.setFont("helvetica", "normal");
-  doc.text("City, state, and ZIP code", formStartX + 5, y + 3);
-  
-  y += 5;
-  
-  // City/State/ZIP box
-  doc.rect(formStartX, y, formWidth * 0.65, 8);
-  doc.setFontSize(10);
-  doc.text(`${w9Form.city}, ${w9Form.state} ${w9Form.zip}`, formStartX + 2, y + 5.5);
-  
-  // Continue requester box
-  doc.rect(formStartX + formWidth * 0.65, y, formWidth * 0.35, 8);
-  
-  y += 10;
+  // Other checkbox
+  const otherY = checkbox2Y + 50;
+  drawCheckbox(margin + 15, otherY, 'Other (see instructions)', taxClassification === 'other');
+  if (taxClassification === 'other' && w9Form.other_classification) {
+    doc.setFontSize(9);
+    doc.text(w9Form.other_classification, margin + 120, otherY + 7);
+  }
 
-  // ============== LINE 7: ACCOUNT NUMBERS ==============
+  // ============================================================================
+  // LINE 3B: FOREIGN PARTNERS
+  // ============================================================================
+  
+  currentY = otherY + 20;
+  
   doc.setFontSize(7);
-  doc.setFont("helvetica", "bold");
-  doc.text("7", formStartX + 1, y + 3);
-  doc.setFont("helvetica", "normal");
-  doc.text("List account number(s) here (optional)", formStartX + 5, y + 3);
+  doc.setFont('helvetica', 'bold');
+  doc.text('3b', margin, currentY);
+  doc.setFont('helvetica', 'normal');
+  doc.text('If on line 3a you checked "Partnership" or "Trust/estate," or checked "LLC" and entered "P" as its tax classification,', margin + 15, currentY);
+  doc.text('and you are providing this form to a partnership, trust, or estate in which you have an ownership interest, check', margin + 15, currentY + 8);
+  doc.text('this box if you have any foreign partners, owners, or beneficiaries. See instructions', margin + 15, currentY + 16);
   
-  y += 5;
+  // Foreign partners checkbox (not checked - field not in database)
+  const foreignCheckY = currentY + 24;
+  doc.rect(margin + 450, foreignCheckY - 8, checkboxSize, checkboxSize);
+
+  // ============================================================================
+  // LINE 4: EXEMPTIONS
+  // ============================================================================
   
-  // Account numbers box
-  doc.rect(formStartX, y, formWidth, 8);
+  currentY += 50;
+  
+  doc.setFontSize(7);
+  doc.setFont('helvetica', 'bold');
+  doc.text('4', margin, currentY);
+  doc.setFont('helvetica', 'normal');
+  doc.text('Exemptions (codes apply only to', margin + 10, currentY);
+  doc.text('certain entities, not individuals;', margin + 10, currentY + 8);
+  doc.text('see instructions on page 3):', margin + 10, currentY + 16);
+
+  // Exemption boxes
+  const exemptX = margin + 140;
+  doc.text('Exempt payee code (if any)', exemptX, currentY);
+  doc.rect(exemptX, currentY + 5, 60, 18);
+  if (w9Form.exempt_payee_code) {
+    doc.setFontSize(10);
+    doc.text(w9Form.exempt_payee_code, exemptX + 5, currentY + 17);
+  }
+
+  const fatcaX = exemptX + 150;
+  doc.setFontSize(7);
+  doc.text('Exemption from Foreign Account Tax', fatcaX, currentY);
+  doc.text('Compliance Act (FATCA) reporting', fatcaX, currentY + 8);
+  doc.text('code (if any)', fatcaX, currentY + 16);
+  doc.setFontSize(6);
+  doc.text('(Applies to accounts maintained', fatcaX, currentY + 24);
+  doc.text('outside the United States.)', fatcaX, currentY + 31);
+  doc.rect(fatcaX + 145, currentY + 5, 60, 18);
+  if (w9Form.fatca_exemption_code) {
+    doc.setFontSize(10);
+    doc.text(w9Form.fatca_exemption_code, fatcaX + 150, currentY + 17);
+  }
+
+  // ============================================================================
+  // LINE 5: ADDRESS
+  // ============================================================================
+  
+  currentY += 50;
+  
+  doc.setFontSize(7);
+  doc.setFont('helvetica', 'bold');
+  doc.text('5', margin, currentY);
+  doc.setFont('helvetica', 'normal');
+  doc.text('Address (number, street, and apt. or suite no.). See instructions.', margin + 10, currentY);
+
+  // Address box
+  doc.rect(margin, currentY + 5, contentWidth * 0.6, 20);
+  if (w9Form.address) {
+    doc.setFontSize(10);
+    doc.text(w9Form.address, margin + 5, currentY + 18);
+  }
+
+  // Requester box
+  const requesterX = margin + (contentWidth * 0.6) + 10;
+  doc.setFontSize(7);
+  doc.text('Requester\'s name and address (optional)', requesterX, currentY);
+  doc.rect(requesterX, currentY + 5, contentWidth * 0.4 - 10, 20);
+
+  // ============================================================================
+  // LINE 6: CITY, STATE, ZIP
+  // ============================================================================
+  
+  currentY += 35;
+  
+  doc.setFontSize(7);
+  doc.setFont('helvetica', 'bold');
+  doc.text('6', margin, currentY);
+  doc.setFont('helvetica', 'normal');
+  doc.text('City, state, and ZIP code', margin + 10, currentY);
+  doc.rect(margin, currentY + 5, contentWidth, 20);
+  if (cityStateZip) {
+    doc.setFontSize(10);
+    doc.text(cityStateZip, margin + 5, currentY + 18);
+  }
+
+  // ============================================================================
+  // LINE 7: ACCOUNT NUMBERS
+  // ============================================================================
+  
+  currentY += 35;
+  
+  doc.setFontSize(7);
+  doc.setFont('helvetica', 'bold');
+  doc.text('7', margin, currentY);
+  doc.setFont('helvetica', 'normal');
+  doc.text('List account number(s) here (optional)', margin + 10, currentY);
+  doc.rect(margin, currentY + 5, contentWidth, 20);
   if (w9Form.account_numbers) {
     doc.setFontSize(10);
-    doc.text(w9Form.account_numbers, formStartX + 2, y + 5.5);
+    doc.text(w9Form.account_numbers, margin + 5, currentY + 18);
   }
-  
-  y += 12;
 
-  // ============== PART I: TAXPAYER IDENTIFICATION NUMBER (TIN) ==============
-  doc.setFillColor(220, 220, 220);
-  doc.rect(formStartX, y, formWidth, 7, 'F');
+  // ============================================================================
+  // PART I: TAXPAYER IDENTIFICATION NUMBER (TIN)
+  // ============================================================================
+  
+  currentY += 40;
+  
   doc.setFontSize(9);
-  doc.setFont("helvetica", "bold");
-  doc.text("Part I", formStartX + 2, y + 5);
-  doc.text("Taxpayer Identification Number (TIN)", formStartX + 20, y + 5);
-  
-  y += 9;
-  
+  doc.setFont('helvetica', 'bold');
+  doc.text('Part I', margin, currentY);
+  doc.text('Taxpayer Identification Number (TIN)', margin + 40, currentY);
+  currentY += 5;
+  doc.setLineWidth(1);
+  doc.line(margin, currentY, pageWidth - margin, currentY);
+
+  currentY += 15;
   doc.setFontSize(7);
-  doc.setFont("helvetica", "normal");
-  doc.text("Enter your TIN in the appropriate box. The TIN provided must match the name given on line 1 to avoid", formStartX + 2, y + 3);
-  doc.text("backup withholding. For individuals, this is generally your social security number (SSN). However, for a", formStartX + 2, y + 6);
-  doc.text("resident alien, sole proprietor, or disregarded entity, see the instructions for Part I, later. For other", formStartX + 2, y + 9);
-  doc.text("entities, it is your employer identification number (EIN). If you do not have a number, see How to get a", formStartX + 2, y + 12);
-  doc.text("TIN, later.", formStartX + 2, y + 15);
-  
-  // TIN boxes on right side
-  const tinBoxX = formStartX + formWidth - 60;
-  
-  // SSN label and boxes
-  doc.setFontSize(7);
-  doc.setFont("helvetica", "bold");
-  doc.text("Social security number", tinBoxX, y + 3);
-  doc.setFont("helvetica", "normal");
-  
-  // SSN digit boxes (3-2-4 format)
-  const ssnBoxY = y + 5;
-  const digitWidth = 5;
-  const ssnValue = ssnFull ? ssnFull.replace(/\D/g, '') : '';
-  
+  doc.setFont('helvetica', 'normal');
+  doc.text('Enter your TIN in the appropriate box. The TIN provided must match the name given on line 1 to avoid', margin, currentY);
+  doc.text('backup withholding. For individuals, this is generally your social security number (SSN). However, for a', margin, currentY + 8);
+  doc.text('resident alien, sole proprietor, or disregarded entity, see the instructions for Part I, later. For other', margin, currentY + 16);
+  doc.text('entities, it is your employer identification number (EIN). If you do not have a number, see How to get a', margin, currentY + 24);
+  doc.text('TIN, later.', margin, currentY + 32);
+
+  currentY += 42;
+  doc.setFont('helvetica', 'bold');
+  doc.text('Note:', margin, currentY);
+  doc.setFont('helvetica', 'normal');
+  doc.text('If the account is in more than one name, see the instructions for line 1. See also What Name and', margin + 25, currentY);
+  doc.text('Number To Give the Requester for guidelines on whose number to enter.', margin, currentY + 8);
+
+  // SSN Section
+  currentY += 25;
+  doc.setFontSize(8);
+  doc.setFont('helvetica', 'bold');
+  doc.text('Social security number', margin, currentY);
+
+  const ssnY = currentY + 10;
+  const boxWidth = 18;
+  const boxHeight = 22;
+
+  const ssnFormatted = maskSSN(ssnLastFour || null, ssnFull || null);
+  const ssnDigits = ssnFormatted.replace(/-/g, '').split('');
+
+  // Draw SSN boxes (XXX-XX-XXXX format)
   // First 3 digits
   for (let i = 0; i < 3; i++) {
-    doc.rect(tinBoxX + i * digitWidth, ssnBoxY, digitWidth, 6);
-    if (w9Form.tin_type === 'ssn' && ssnValue[i]) {
-      doc.setFontSize(10);
-      doc.text(ssnValue[i], tinBoxX + i * digitWidth + 1.5, ssnBoxY + 4.5);
-      doc.setFontSize(7);
+    doc.rect(margin + (i * boxWidth), ssnY, boxWidth, boxHeight);
+    if (ssnDigits[i] && ssnDigits[i] !== '*') {
+      doc.setFontSize(12);
+      doc.setFont('helvetica', 'normal');
+      doc.text(ssnDigits[i], margin + (i * boxWidth) + 6, ssnY + 15);
+    } else if (ssnDigits[i] === '*') {
+      doc.text('*', margin + (i * boxWidth) + 6, ssnY + 15);
     }
   }
-  doc.text("-", tinBoxX + 3 * digitWidth + 0.5, ssnBoxY + 4);
-  
+
+  // Dash
+  doc.setFontSize(14);
+  doc.setFont('helvetica', 'bold');
+  doc.text('—', margin + (3 * boxWidth) + 5, ssnY + 15);
+
   // Next 2 digits
-  for (let i = 0; i < 2; i++) {
-    doc.rect(tinBoxX + 17 + i * digitWidth, ssnBoxY, digitWidth, 6);
-    if (w9Form.tin_type === 'ssn' && ssnValue[3 + i]) {
-      doc.setFontSize(10);
-      doc.text(ssnValue[3 + i], tinBoxX + 17 + i * digitWidth + 1.5, ssnBoxY + 4.5);
-      doc.setFontSize(7);
+  for (let i = 3; i < 5; i++) {
+    doc.rect(margin + (i * boxWidth) + 12, ssnY, boxWidth, boxHeight);
+    if (ssnDigits[i] && ssnDigits[i] !== '*') {
+      doc.setFontSize(12);
+      doc.setFont('helvetica', 'normal');
+      doc.text(ssnDigits[i], margin + (i * boxWidth) + 12 + 6, ssnY + 15);
+    } else if (ssnDigits[i] === '*') {
+      doc.text('*', margin + (i * boxWidth) + 12 + 6, ssnY + 15);
     }
   }
-  doc.text("-", tinBoxX + 17 + 2 * digitWidth + 0.5, ssnBoxY + 4);
-  
+
+  // Dash
+  doc.setFontSize(14);
+  doc.setFont('helvetica', 'bold');
+  doc.text('—', margin + (5 * boxWidth) + 17, ssnY + 15);
+
   // Last 4 digits
-  for (let i = 0; i < 4; i++) {
-    doc.rect(tinBoxX + 30 + i * digitWidth, ssnBoxY, digitWidth, 6);
-    if (w9Form.tin_type === 'ssn' && ssnValue[5 + i]) {
-      doc.setFontSize(10);
-      doc.text(ssnValue[5 + i], tinBoxX + 30 + i * digitWidth + 1.5, ssnBoxY + 4.5);
-      doc.setFontSize(7);
-    } else if (w9Form.tin_type === 'ssn' && ssnLastFour && i < 4) {
-      // Show last 4 if we only have that
-      doc.setFontSize(10);
-      doc.text(ssnLastFour[i] || '', tinBoxX + 30 + i * digitWidth + 1.5, ssnBoxY + 4.5);
-      doc.setFontSize(7);
+  for (let i = 5; i < 9; i++) {
+    doc.rect(margin + (i * boxWidth) + 24, ssnY, boxWidth, boxHeight);
+    if (ssnDigits[i] && ssnDigits[i] !== '*') {
+      doc.setFontSize(12);
+      doc.setFont('helvetica', 'normal');
+      doc.text(ssnDigits[i], margin + (i * boxWidth) + 24 + 6, ssnY + 15);
+    } else if (ssnDigits[i] === '*') {
+      doc.text('*', margin + (i * boxWidth) + 24 + 6, ssnY + 15);
     }
   }
-  
-  // "or" divider
+
+  // "or" text
+  doc.setFontSize(10);
+  doc.setFont('helvetica', 'bold');
+  doc.text('or', margin + 200, ssnY + 15);
+
+  // EIN Section
   doc.setFontSize(8);
-  doc.text("or", tinBoxX + 25, ssnBoxY + 14);
-  
-  // EIN label and boxes
-  doc.setFontSize(7);
-  doc.setFont("helvetica", "bold");
-  doc.text("Employer identification number", tinBoxX, ssnBoxY + 18);
-  doc.setFont("helvetica", "normal");
-  
-  const einBoxY = ssnBoxY + 20;
-  const einValue = w9Form.ein ? w9Form.ein.replace(/\D/g, '') : '';
-  
+  doc.text('Employer identification number', margin + 230, currentY);
+
+  const einY = ssnY;
+  const einFormatted = formatEIN(ein);
+  const einDigits = einFormatted.replace(/-/g, '').split('');
+
+  // Draw EIN boxes (XX-XXXXXXX format)
+  const einStartX = margin + 230;
+
   // First 2 digits
   for (let i = 0; i < 2; i++) {
-    doc.rect(tinBoxX + i * digitWidth, einBoxY, digitWidth, 6);
-    if (w9Form.tin_type === 'ein' && einValue[i]) {
-      doc.setFontSize(10);
-      doc.text(einValue[i], tinBoxX + i * digitWidth + 1.5, einBoxY + 4.5);
-      doc.setFontSize(7);
+    doc.rect(einStartX + (i * boxWidth), einY, boxWidth, boxHeight);
+    if (einDigits[i]) {
+      doc.setFontSize(12);
+      doc.setFont('helvetica', 'normal');
+      doc.text(einDigits[i], einStartX + (i * boxWidth) + 6, einY + 15);
     }
   }
-  doc.text("-", tinBoxX + 2 * digitWidth + 0.5, einBoxY + 4);
-  
+
+  // Dash
+  doc.setFontSize(14);
+  doc.setFont('helvetica', 'bold');
+  doc.text('—', einStartX + (2 * boxWidth) + 5, einY + 15);
+
   // Last 7 digits
-  for (let i = 0; i < 7; i++) {
-    doc.rect(tinBoxX + 13 + i * digitWidth, einBoxY, digitWidth, 6);
-    if (w9Form.tin_type === 'ein' && einValue[2 + i]) {
-      doc.setFontSize(10);
-      doc.text(einValue[2 + i], tinBoxX + 13 + i * digitWidth + 1.5, einBoxY + 4.5);
-      doc.setFontSize(7);
+  for (let i = 2; i < 9; i++) {
+    doc.rect(einStartX + (i * boxWidth) + 12, einY, boxWidth, boxHeight);
+    if (einDigits[i]) {
+      doc.setFontSize(12);
+      doc.setFont('helvetica', 'normal');
+      doc.text(einDigits[i], einStartX + (i * boxWidth) + 12 + 6, einY + 15);
     }
   }
-  
-  y += 45;
 
-  // ============== PART II: CERTIFICATION ==============
-  doc.setFillColor(220, 220, 220);
-  doc.rect(formStartX, y, formWidth, 7, 'F');
+  // ============================================================================
+  // PART II: CERTIFICATION
+  // ============================================================================
+  
+  currentY = einY + boxHeight + 20;
+  
   doc.setFontSize(9);
-  doc.setFont("helvetica", "bold");
-  doc.text("Part II", formStartX + 2, y + 5);
-  doc.text("Certification", formStartX + 20, y + 5);
-  
-  y += 9;
-  
+  doc.setFont('helvetica', 'bold');
+  doc.text('Part II', margin, currentY);
+  doc.text('Certification', margin + 40, currentY);
+  currentY += 5;
+  doc.setLineWidth(1);
+  doc.line(margin, currentY, pageWidth - margin, currentY);
+
+  currentY += 15;
   doc.setFontSize(7);
-  doc.setFont("helvetica", "normal");
-  doc.text("Under penalties of perjury, I certify that:", formStartX + 2, y + 3);
-  
-  y += 5;
-  
-  // Certification items
-  const certItems = [
-    "1. The number shown on this form is my correct taxpayer identification number (or I am waiting for a number to be issued to me); and",
-    "2. I am not subject to backup withholding because: (a) I am exempt from backup withholding, or (b) I have not been notified by the Internal Revenue",
-    "   Service (IRS) that I am subject to backup withholding as a result of a failure to report all interest or dividends, or (c) the IRS has notified me that I am",
-    "   no longer subject to backup withholding; and",
-    "3. I am a U.S. citizen or other U.S. person (defined below); and",
-    "4. The FATCA code(s) entered on this form (if any) indicating that I am exempt from FATCA reporting is correct.",
+  doc.setFont('helvetica', 'normal');
+  doc.text('Under penalties of perjury, I certify that:', margin, currentY);
+
+  currentY += 10;
+  const certText = [
+    '1. The number shown on this form is my correct taxpayer identification number (or I am waiting for a number to be issued to me); and',
+    '2. I am not subject to backup withholding because (a) I am exempt from backup withholding, or (b) I have not been notified by the Internal Revenue',
+    '    Service (IRS) that I am subject to backup withholding as a result of a failure to report all interest or dividends, or (c) the IRS has notified me that I am',
+    '    no longer subject to backup withholding; and',
+    '3. I am a U.S. citizen or other U.S. person (defined below); and',
+    '4. The FATCA code(s) entered on this form (if any) indicating that I am exempt from FATCA reporting is correct.'
   ];
-  
-  doc.setFontSize(6.5);
-  certItems.forEach((item) => {
-    doc.text(item, formStartX + 2, y + 3);
-    y += 3;
+
+  certText.forEach((line, index) => {
+    doc.text(line, margin, currentY + (index * 8));
   });
-  
-  y += 3;
-  
-  doc.setFontSize(7);
-  doc.setFont("helvetica", "bold");
-  doc.text("Certification instructions.", formStartX + 2, y + 3);
-  doc.setFont("helvetica", "normal");
-  doc.text("You must cross out item 2 above if you have been notified by the IRS that you are currently subject to backup", formStartX + 35, y + 3);
-  doc.text("withholding because you have failed to report all interest and dividends on your tax return. For real estate transactions, item 2 does not apply.", formStartX + 2, y + 6);
-  doc.text("For mortgage interest paid, acquisition or abandonment of secured property, cancellation of debt, contributions to an individual retirement arrangement", formStartX + 2, y + 9);
-  doc.text("(IRA), and generally, payments other than interest and dividends, you are not required to sign the certification, but you must provide your correct TIN.", formStartX + 2, y + 12);
-  
-  y += 18;
 
-  // ============== SIGNATURE SECTION ==============
-  doc.setLineWidth(0.3);
-  doc.line(formStartX, y, formStartX + formWidth, y);
+  currentY += (certText.length * 8) + 10;
+
+  doc.setFont('helvetica', 'bold');
+  doc.text('Certification instructions.', margin, currentY);
+  doc.setFont('helvetica', 'normal');
+  doc.text('You must cross out item 2 above if you have been notified by the IRS that you are currently subject to backup withholding', margin + 95, currentY);
+  doc.text('because you have failed to report all interest and dividends on your tax return. For real estate transactions, item 2 does not apply. For mortgage interest paid,', margin, currentY + 8);
+  doc.text('acquisition or abandonment of secured property, cancellation of debt, contributions to an individual retirement arrangement (IRA), and, generally, payments', margin, currentY + 16);
+  doc.text('other than interest and dividends, you are not required to sign the certification, but you must provide your correct TIN. See the instructions for Part II, later.', margin, currentY + 24);
+
+  // ============================================================================
+  // SIGNATURE SECTION
+  // ============================================================================
   
-  y += 3;
+  currentY += 45;
   
-  // Sign Here label
+  doc.setLineWidth(1.5);
+  doc.rect(margin, currentY, contentWidth, 50);
+
   doc.setFontSize(8);
-  doc.setFont("helvetica", "bold");
-  doc.text("Sign", formStartX + 2, y + 4);
-  doc.text("Here", formStartX + 2, y + 8);
-  
-  // Signature line
-  doc.setFont("helvetica", "normal");
-  doc.setFontSize(7);
-  doc.text("Signature of", formStartX + 15, y + 3);
-  doc.text("U.S. person", formStartX + 15, y + 6);
-  doc.line(formStartX + 30, y + 10, formStartX + 120, y + 10);
-  
-  // Electronic signature
-  if (w9Form.signature_data) {
-    doc.setFontSize(12);
-    doc.setFont("helvetica", "italic");
-    doc.text(w9Form.signature_data, formStartX + 35, y + 8);
-  }
-  
-  // Date
-  doc.setFontSize(7);
-  doc.setFont("helvetica", "normal");
-  doc.text("Date", formStartX + 125, y + 6);
-  doc.line(formStartX + 133, y + 10, formStartX + formWidth - 5, y + 10);
-  
-  // Format and display signature date
-  if (w9Form.signature_date) {
-    const sigDate = new Date(w9Form.signature_date);
-    const formattedDate = `${sigDate.getMonth() + 1}/${sigDate.getDate()}/${sigDate.getFullYear()}`;
-    doc.setFontSize(10);
-    doc.text(formattedDate, formStartX + 145, y + 8);
-  }
-  
-  y += 15;
+  doc.setFont('helvetica', 'bold');
+  doc.text('Sign', margin + 5, currentY + 15);
+  doc.text('Here', margin + 5, currentY + 23);
 
-  // ============== FOOTER ==============
+  // Signature line
+  const sigLineY = currentY + 30;
   doc.setLineWidth(0.5);
-  doc.line(formStartX, y, formStartX + formWidth, y);
-  
-  y += 4;
+  doc.line(margin + 60, sigLineY, margin + 360, sigLineY);
   
   doc.setFontSize(7);
-  doc.setFont("helvetica", "bold");
-  doc.text("General Instructions", formStartX + 2, y + 3);
-  doc.setFont("helvetica", "normal");
+  doc.setFont('helvetica', 'normal');
+  doc.text('Signature of', margin + 60, currentY + 15);
+  doc.text('U.S. person', margin + 60, currentY + 23);
+
+  if (signature) {
+    doc.setFontSize(14);
+    doc.setFont('helvetica', 'italic');
+    doc.text(signature, margin + 65, sigLineY - 5);
+  }
+
+  // Date line
+  const dateLineY = sigLineY;
+  doc.line(margin + 380, dateLineY, pageWidth - margin - 10, dateLineY);
+  doc.setFontSize(7);
+  doc.setFont('helvetica', 'normal');
+  doc.text('Date', margin + 380, currentY + 15);
+
+  if (signatureDate) {
+    doc.setFontSize(10);
+    doc.setFont('helvetica', 'normal');
+    doc.text(signatureDate, margin + 385, dateLineY - 5);
+  }
+
+  // ============================================================================
+  // FOOTER: General Instructions
+  // ============================================================================
+  
+  currentY += 65;
+  
+  doc.setFontSize(9);
+  doc.setFont('helvetica', 'bold');
+  doc.text('General Instructions', margin, currentY);
+
+  currentY += 12;
+  doc.setFontSize(7);
+  doc.setFont('helvetica', 'normal');
+  doc.text('Section references are to the Internal Revenue Code unless otherwise noted.', margin, currentY);
+  
+  currentY += 10;
+  doc.setFont('helvetica', 'bold');
+  doc.text('Future developments.', margin, currentY);
+  doc.setFont('helvetica', 'normal');
+  doc.text('For the latest information about developments related to Form W-9 and its instructions, such as legislation enacted', margin + 80, currentY);
+  doc.text('after they were published, go to', margin, currentY + 8);
+  doc.setFont('helvetica', 'bold');
+  doc.text('www.irs.gov/FormW9', margin + 115, currentY + 8);
+  doc.setFont('helvetica', 'normal');
+  doc.text('.', margin + 195, currentY + 8);
+
+  // Form identifier at bottom
   doc.setFontSize(6);
-  doc.text("Section references are to the Internal Revenue Code unless otherwise noted.", formStartX + 2, y + 6);
-  doc.text("Future developments. For the latest information about developments related to Form W-9 and its instructions, such as legislation enacted", formStartX + 2, y + 9);
-  doc.text("after they were published, go to www.irs.gov/FormW9.", formStartX + 2, y + 12);
-  
-  // Form identification at bottom
-  y = 270;
-  doc.setFontSize(7);
-  doc.setFont("helvetica", "normal");
-  doc.text("Cat. No. 10231X", formStartX, y);
-  doc.setFont("helvetica", "bold");
-  doc.text("Form W-9 (Rev. 3-2024)", formStartX + formWidth - 35, y);
+  doc.text('Cat. No. 10231X', margin, pageHeight - 25);
+  doc.setFont('helvetica', 'bold');
+  doc.text('Form W-9 (Rev. 3-2024)', pageWidth - margin - 80, pageHeight - 25);
 
   return doc;
 }
 
-// Download the generated PDF
-export function downloadFormW9(options: GenerateW9Options) {
+// Export helper functions
+export function downloadFormW9(options: GenerateW9Options): void {
   const doc = generateW9(options);
   const fileName = `W-9_${options.w9Form.name_on_return.replace(/\s+/g, '_')}.pdf`;
   doc.save(fileName);
 }
 
-// Get blob for preview/upload
 export function getW9Blob(options: GenerateW9Options): Blob {
   const doc = generateW9(options);
   return doc.output('blob');
