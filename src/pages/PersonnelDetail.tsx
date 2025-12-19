@@ -20,6 +20,9 @@ import { SendSMSDialog } from "@/components/messaging/SendSMSDialog";
 import { MessageHistory } from "@/components/messaging/MessageHistory";
 import { InviteToPortalDialog } from "@/components/personnel/InviteToPortalDialog";
 import { PersonnelProjectsList } from "@/components/personnel/PersonnelProjectsList";
+import { W9FormView } from "@/components/personnel/W9FormView";
+import { Generate1099Dialog } from "@/components/personnel/Generate1099Dialog";
+import { usePersonnelW9Form } from "@/integrations/supabase/hooks/useW9Forms";
 
 interface ComplianceIssue {
   type: string;
@@ -36,9 +39,11 @@ const PersonnelDetail = () => {
   const { data: personnel, isLoading } = usePersonnelById(id);
   const { data: existingInvitation } = usePersonnelInvitationCheck(id);
   const resendOnboardingEmail = useResendOnboardingEmail();
+  const { data: w9Form } = usePersonnelW9Form(id);
   const [badgeDialogOpen, setBadgeDialogOpen] = useState(false);
   const [editDialogOpen, setEditDialogOpen] = useState(false);
   const [smsDialogOpen, setSmsDialogOpen] = useState(false);
+  const [generate1099Open, setGenerate1099Open] = useState(false);
   const [defaultEditTab, setDefaultEditTab] = useState("personal");
 
   const handleResendOnboardingEmail = () => {
@@ -411,6 +416,10 @@ const PersonnelDetail = () => {
               <TabsTrigger value="messages" className="whitespace-nowrap">
                 <span className="sm:hidden">SMS</span>
                 <span className="hidden sm:inline">Messages</span>
+              </TabsTrigger>
+              <TabsTrigger value="tax" className="whitespace-nowrap">
+                <span className="sm:hidden">Tax</span>
+                <span className="hidden sm:inline">Tax Info</span>
               </TabsTrigger>
             </TabsList>
           </ScrollArea>

@@ -8,7 +8,8 @@ import {
   Bell, 
   Settings, 
   LogOut,
-  Menu
+  Menu,
+  FileText
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/contexts/AuthContext";
@@ -22,6 +23,7 @@ const navItems = [
   { href: "/portal/hours", label: "My Hours", icon: Clock },
   { href: "/portal/projects", label: "My Projects", icon: Briefcase },
   { href: "/portal/reimbursements", label: "Reimbursements", icon: Receipt },
+  { href: "/portal/tax-forms", label: "Tax Forms", icon: FileText },
   { href: "/portal/notifications", label: "Notifications", icon: Bell },
   { href: "/portal/settings", label: "Settings", icon: Settings },
 ];
