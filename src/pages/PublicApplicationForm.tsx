@@ -143,6 +143,8 @@ export default function PublicApplicationForm() {
                 defaults[field.id] = [];
               } else if (field.type === "address") {
                 defaults[field.id] = { street: "", line2: "", city: "", state: "", zip: "" };
+              } else if (field.type === "file") {
+                defaults[field.id] = null;
               } else {
                 defaults[field.id] = "";
               }
@@ -505,13 +507,15 @@ export default function PublicApplicationForm() {
         return (
           <div key={field.id}>
             <FormFileUpload
-              value={value as File | null}
-              onChange={(file) => updateCustomAnswer(field.id, file)}
+              value={value as string | null}
+              onChange={(url) => updateCustomAnswer(field.id, url)}
               label={translated.label}
               required={field.required}
               helpText={translated.helpText}
               acceptedFileTypes={field.acceptedFileTypes}
               maxFileSize={field.maxFileSize}
+              storageBucket="application-files"
+              storagePath="form-uploads"
             />
           </div>
         );
