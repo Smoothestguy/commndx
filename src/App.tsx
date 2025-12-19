@@ -108,6 +108,7 @@ import AuditLogs from "./pages/AuditLogs";
 import StaffingApplications from "./pages/StaffingApplications";
 import JobPostingEntries from "./pages/JobPostingEntries";
 import PublicApplicationForm from "./pages/PublicApplicationForm";
+import EditApplication from "./pages/EditApplication";
 import ApplicationFormTemplates from "./pages/ApplicationFormTemplates";
 import ApplicationFormBuilder from "./pages/ApplicationFormBuilder";
 const queryClient = new QueryClient();
@@ -150,6 +151,7 @@ const App = () => {
                   <Route path="/legal/eula" element={<EULA />} />
                   {/* Public Application Form */}
                   <Route path="/apply/:token" element={<PublicApplicationForm />} />
+                  <Route path="/apply/edit/:editToken" element={<EditApplication />} />
                   {/* Public Contractor Routes */}
                   <Route path="/contractor" element={<ContractorPortal />} />
                   <Route

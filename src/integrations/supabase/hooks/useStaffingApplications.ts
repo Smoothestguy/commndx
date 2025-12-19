@@ -51,10 +51,14 @@ export interface Application {
   job_posting_id: string;
   applicant_id: string;
   answers: Record<string, unknown>;
-  status: 'submitted' | 'reviewing' | 'approved' | 'rejected';
+  status: 'submitted' | 'reviewing' | 'approved' | 'rejected' | 'needs_info' | 'updated';
   notes: string | null;
   created_at: string;
   updated_at: string;
+  edit_token?: string | null;
+  edit_token_expires_at?: string | null;
+  missing_fields?: string[];
+  admin_message?: string | null;
   applicants?: Applicant;
   job_postings?: JobPosting & {
     project_task_orders?: TaskOrder & {

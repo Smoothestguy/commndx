@@ -222,36 +222,89 @@ export type Database = {
         }
         Relationships: []
       }
+      application_revisions: {
+        Row: {
+          application_id: string
+          changed_by: string | null
+          changed_fields: Json | null
+          created_at: string | null
+          id: string
+          previous_answers: Json | null
+          previous_applicant_data: Json | null
+          revision_number: number
+        }
+        Insert: {
+          application_id: string
+          changed_by?: string | null
+          changed_fields?: Json | null
+          created_at?: string | null
+          id?: string
+          previous_answers?: Json | null
+          previous_applicant_data?: Json | null
+          revision_number?: number
+        }
+        Update: {
+          application_id?: string
+          changed_by?: string | null
+          changed_fields?: Json | null
+          created_at?: string | null
+          id?: string
+          previous_answers?: Json | null
+          previous_applicant_data?: Json | null
+          revision_number?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "application_revisions_application_id_fkey"
+            columns: ["application_id"]
+            isOneToOne: false
+            referencedRelation: "applications"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       applications: {
         Row: {
+          admin_message: string | null
           answers: Json | null
           applicant_id: string
           created_at: string
+          edit_token: string | null
+          edit_token_expires_at: string | null
           form_version: number | null
           id: string
           job_posting_id: string
+          missing_fields: Json | null
           notes: string | null
           status: Database["public"]["Enums"]["application_status"]
           updated_at: string
         }
         Insert: {
+          admin_message?: string | null
           answers?: Json | null
           applicant_id: string
           created_at?: string
+          edit_token?: string | null
+          edit_token_expires_at?: string | null
           form_version?: number | null
           id?: string
           job_posting_id: string
+          missing_fields?: Json | null
           notes?: string | null
           status?: Database["public"]["Enums"]["application_status"]
           updated_at?: string
         }
         Update: {
+          admin_message?: string | null
           answers?: Json | null
           applicant_id?: string
           created_at?: string
+          edit_token?: string | null
+          edit_token_expires_at?: string | null
           form_version?: number | null
           id?: string
           job_posting_id?: string
+          missing_fields?: Json | null
           notes?: string | null
           status?: Database["public"]["Enums"]["application_status"]
           updated_at?: string
@@ -5621,7 +5674,13 @@ export type Database = {
         | "follow_up"
       app_role: "admin" | "manager" | "user" | "personnel" | "vendor"
       applicant_status: "new" | "approved" | "rejected" | "inactive"
-      application_status: "submitted" | "reviewing" | "approved" | "rejected"
+      application_status:
+        | "submitted"
+        | "reviewing"
+        | "approved"
+        | "rejected"
+        | "needs_info"
+        | "updated"
       appointment_status:
         | "scheduled"
         | "confirmed"
@@ -5859,7 +5918,14 @@ export const Constants = {
       ],
       app_role: ["admin", "manager", "user", "personnel", "vendor"],
       applicant_status: ["new", "approved", "rejected", "inactive"],
-      application_status: ["submitted", "reviewing", "approved", "rejected"],
+      application_status: [
+        "submitted",
+        "reviewing",
+        "approved",
+        "rejected",
+        "needs_info",
+        "updated",
+      ],
       appointment_status: [
         "scheduled",
         "confirmed",
