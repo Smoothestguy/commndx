@@ -87,13 +87,21 @@ export function ApplicationDetailDialog({
     return map;
   }, [formTemplate]);
 
-  // Find profile picture from answers
+  // Find profile picture - check applicant.photo_url first, then fall back to answers
   const profilePicture = useMemo(() => {
+    // First check the applicant's photo_url (core field)
+    if (application?.applicants?.photo_url) {
+      return application.applicants.photo_url;
+    }
+    
+    // Fall back to checking answers for file type fields (legacy behavior)
     if (!application?.answers) return null;
     const answers = application.answers as Record<string, unknown>;
     
     for (const [fieldId, value] of Object.entries(answers)) {
       const fieldInfo = fieldLabelMap[fieldId];
+      // Skip signature fields - they're not profile pictures
+      if (fieldInfo?.type === "signature") continue;
       if (
         fieldInfo?.type === "file" &&
         typeof value === "string" &&
@@ -103,7 +111,7 @@ export function ApplicationDetailDialog({
       }
     }
     return null;
-  }, [application?.answers, fieldLabelMap]);
+  }, [application?.applicants?.photo_url, application?.answers, fieldLabelMap]);
 
   // Format form responses for display
   const formResponses = useMemo(() => {
@@ -249,7 +257,7 @@ export function ApplicationDetailDialog({
           </div>
         </DialogHeader>
 
-        <ScrollArea className="flex-1 pr-4 max-h-[60vh]">
+        <ScrollArea className="flex-1 pr-4" style={{ maxHeight: 'calc(90vh - 200px)' }}>
           <div className="space-y-6">
             {/* Profile Section */}
             <div className="flex items-start gap-4">
