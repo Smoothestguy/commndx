@@ -18,10 +18,12 @@ export interface ConditionalLogic {
 // Enhanced form field with all new properties
 export interface FormField {
   id: string;
-  type: "text" | "textarea" | "number" | "dropdown" | "checkbox" | "radio" | "date" | "email" | "phone" | "file" | "multiselect" | "section" | "signature" | "firstname" | "lastname";
+  type: "text" | "textarea" | "number" | "dropdown" | "checkbox" | "radio" | "date" | "email" | "phone" | "file" | "multiselect" | "section" | "signature" | "firstname" | "lastname" | "address";
   label: string;
   required: boolean;
   placeholder?: string;
+  showIcon?: boolean;
+  optionLayout?: "vertical" | "grid";
   options?: string[];
   helpText?: string;
   defaultValue?: string;

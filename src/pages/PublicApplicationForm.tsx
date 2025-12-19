@@ -4,7 +4,7 @@ import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
 import { format } from "date-fns";
-import { MapPin, Calendar, Users, CheckCircle2, Loader2 } from "lucide-react";
+import { MapPin, Calendar, Users, CheckCircle2, Loader2, Upload, PenLine, Mail } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -12,6 +12,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
+import { Label } from "@/components/ui/label";
 import {
   Select,
   SelectContent,
@@ -22,15 +23,10 @@ import {
 import { useJobPostingByToken, useSubmitApplication } from "@/integrations/supabase/hooks/useStaffingApplications";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
-
-interface FormFieldConfig {
-  id: string;
-  type: "text" | "textarea" | "number" | "dropdown" | "checkbox" | "radio" | "date";
-  label: string;
-  required: boolean;
-  placeholder?: string;
-  options?: string[];
-}
+import { FormField as FormFieldType, FormTheme } from "@/integrations/supabase/hooks/useApplicationFormTemplates";
+import { AddressField, AddressValue } from "@/components/form-builder/AddressField";
+import { FormattedPhoneInput } from "@/components/form-builder/FormattedPhoneInput";
+import { cn } from "@/lib/utils";
 
 // Base schema for core fields
 const baseSchema = z.object({
@@ -46,8 +42,10 @@ const baseSchema = z.object({
 export default function PublicApplicationForm() {
   const { token } = useParams<{ token: string }>();
   const [submitted, setSubmitted] = useState(false);
-  const [customFields, setCustomFields] = useState<FormFieldConfig[]>([]);
+  const [customFields, setCustomFields] = useState<FormFieldType[]>([]);
   const [customAnswers, setCustomAnswers] = useState<Record<string, any>>({});
+  const [theme, setTheme] = useState<FormTheme>({});
+  const [successMessage, setSuccessMessage] = useState<string | null>(null);
 
   const { data: posting, isLoading, error } = useJobPostingByToken(token || "");
   const submitApplication = useSubmitApplication();
@@ -58,22 +56,34 @@ export default function PublicApplicationForm() {
       if (posting?.form_template_id) {
         const { data: template, error } = await supabase
           .from("application_form_templates")
-          .select("fields")
+          .select("fields, theme, success_message")
           .eq("id", posting.form_template_id)
           .single();
         
-        if (!error && template?.fields) {
-          setCustomFields(template.fields as unknown as FormFieldConfig[]);
-          // Initialize default values for custom fields
-          const defaults: Record<string, any> = {};
-          (template.fields as unknown as FormFieldConfig[]).forEach(field => {
-            if (field.type === "checkbox") {
-              defaults[field.id] = false;
-            } else {
-              defaults[field.id] = "";
-            }
-          });
-          setCustomAnswers(defaults);
+        if (!error && template) {
+          if (template.fields) {
+            setCustomFields(template.fields as unknown as FormFieldType[]);
+            // Initialize default values for custom fields
+            const defaults: Record<string, any> = {};
+            (template.fields as unknown as FormFieldType[]).forEach(field => {
+              if (field.type === "checkbox") {
+                defaults[field.id] = false;
+              } else if (field.type === "multiselect") {
+                defaults[field.id] = [];
+              } else if (field.type === "address") {
+                defaults[field.id] = { street: "", line2: "", city: "", state: "", zip: "" };
+              } else {
+                defaults[field.id] = "";
+              }
+            });
+            setCustomAnswers(defaults);
+          }
+          if (template.theme) {
+            setTheme(template.theme as unknown as FormTheme);
+          }
+          if (template.success_message) {
+            setSuccessMessage(template.success_message);
+          }
         }
       }
     };
@@ -99,6 +109,19 @@ export default function PublicApplicationForm() {
       if (field.required) {
         const value = customAnswers[field.id];
         if (value === undefined || value === "" || value === null) {
+          toast.error(`${field.label} is required`);
+          return false;
+        }
+        // Special validation for address
+        if (field.type === "address" && typeof value === "object") {
+          const addr = value as AddressValue;
+          if (!addr.street || !addr.city || !addr.state || !addr.zip) {
+            toast.error(`Please complete all required fields in ${field.label}`);
+            return false;
+          }
+        }
+        // Special validation for multiselect
+        if (field.type === "multiselect" && Array.isArray(value) && value.length === 0) {
           toast.error(`${field.label} is required`);
           return false;
         }
@@ -153,10 +176,27 @@ export default function PublicApplicationForm() {
     setCustomAnswers(prev => ({ ...prev, [fieldId]: value }));
   };
 
-  const renderCustomField = (field: FormFieldConfig) => {
+  const renderCustomField = (field: FormFieldType) => {
     const value = customAnswers[field.id];
+    
+    // Grid layout for options
+    const optionGridClass = field.optionLayout === "grid" 
+      ? "grid grid-cols-2 sm:grid-cols-3 gap-2" 
+      : "space-y-2";
 
     switch (field.type) {
+      case "section":
+        return (
+          <div key={field.id} className="pt-4 pb-2 border-b">
+            <h3 className="text-lg font-semibold">{field.label}</h3>
+            {field.helpText && (
+              <p className="text-sm text-muted-foreground mt-1">{field.helpText}</p>
+            )}
+          </div>
+        );
+
+      case "firstname":
+      case "lastname":
       case "text":
         return (
           <div key={field.id} className="space-y-2">
@@ -168,6 +208,74 @@ export default function PublicApplicationForm() {
               value={value || ""}
               onChange={(e) => updateCustomAnswer(field.id, e.target.value)}
               placeholder={field.placeholder}
+            />
+            {field.helpText && <p className="text-xs text-muted-foreground">{field.helpText}</p>}
+          </div>
+        );
+
+      case "email":
+        return (
+          <div key={field.id} className="space-y-2">
+            <FormLabel>
+              {field.label}
+              {field.required && " *"}
+            </FormLabel>
+            <div className="relative flex items-center">
+              {field.showIcon !== false && (
+                <div className="absolute left-0 flex items-center justify-center w-10 h-full bg-muted border border-r-0 rounded-l-md">
+                  <Mail className="h-4 w-4 text-muted-foreground" />
+                </div>
+              )}
+              <Input
+                type="email"
+                value={value || ""}
+                onChange={(e) => updateCustomAnswer(field.id, e.target.value)}
+                placeholder={field.placeholder}
+                className={field.showIcon !== false ? "pl-12 rounded-l-none" : ""}
+              />
+            </div>
+            {field.helpText && <p className="text-xs text-muted-foreground">{field.helpText}</p>}
+          </div>
+        );
+
+      case "phone":
+        return (
+          <div key={field.id}>
+            {field.showIcon !== false ? (
+              <FormattedPhoneInput
+                label={field.label + (field.required ? " *" : "")}
+                value={value || ""}
+                onChange={(v) => updateCustomAnswer(field.id, v)}
+                helpText={field.helpText}
+                showIcon={true}
+              />
+            ) : (
+              <div className="space-y-2">
+                <FormLabel>
+                  {field.label}
+                  {field.required && " *"}
+                </FormLabel>
+                <Input
+                  type="tel"
+                  value={value || ""}
+                  onChange={(e) => updateCustomAnswer(field.id, e.target.value.replace(/\D/g, ""))}
+                  placeholder={field.placeholder}
+                  maxLength={10}
+                />
+                {field.helpText && <p className="text-xs text-muted-foreground">{field.helpText}</p>}
+              </div>
+            )}
+          </div>
+        );
+
+      case "address":
+        return (
+          <div key={field.id}>
+            <AddressField
+              label={field.label + (field.required ? " *" : "")}
+              value={value as AddressValue}
+              onChange={(v) => updateCustomAnswer(field.id, v)}
+              helpText={field.helpText}
             />
           </div>
         );
@@ -185,6 +293,7 @@ export default function PublicApplicationForm() {
               placeholder={field.placeholder}
               className="min-h-[100px]"
             />
+            {field.helpText && <p className="text-xs text-muted-foreground">{field.helpText}</p>}
           </div>
         );
 
@@ -201,6 +310,7 @@ export default function PublicApplicationForm() {
               onChange={(e) => updateCustomAnswer(field.id, e.target.value)}
               placeholder={field.placeholder}
             />
+            {field.helpText && <p className="text-xs text-muted-foreground">{field.helpText}</p>}
           </div>
         );
 
@@ -226,6 +336,36 @@ export default function PublicApplicationForm() {
                 ))}
               </SelectContent>
             </Select>
+            {field.helpText && <p className="text-xs text-muted-foreground">{field.helpText}</p>}
+          </div>
+        );
+
+      case "multiselect":
+        const selectedValues = Array.isArray(value) ? value : [];
+        return (
+          <div key={field.id} className="space-y-2">
+            <FormLabel>
+              {field.label}
+              {field.required && " *"}
+            </FormLabel>
+            <div className={optionGridClass}>
+              {field.options?.map((option) => (
+                <div key={option} className="flex items-center gap-2">
+                  <Checkbox
+                    checked={selectedValues.includes(option)}
+                    onCheckedChange={(checked) => {
+                      if (checked) {
+                        updateCustomAnswer(field.id, [...selectedValues, option]);
+                      } else {
+                        updateCustomAnswer(field.id, selectedValues.filter((v: string) => v !== option));
+                      }
+                    }}
+                  />
+                  <Label className="font-normal text-sm">{option}</Label>
+                </div>
+              ))}
+            </div>
+            {field.helpText && <p className="text-xs text-muted-foreground">{field.helpText}</p>}
           </div>
         );
 
@@ -241,6 +381,7 @@ export default function PublicApplicationForm() {
                 {field.label}
                 {field.required && " *"}
               </FormLabel>
+              {field.helpText && <p className="text-xs text-muted-foreground">{field.helpText}</p>}
             </div>
           </div>
         );
@@ -255,6 +396,7 @@ export default function PublicApplicationForm() {
             <RadioGroup
               value={value || ""}
               onValueChange={(v) => updateCustomAnswer(field.id, v)}
+              className={optionGridClass}
             >
               {field.options?.map((option) => (
                 <div key={option} className="flex items-center space-x-2">
@@ -265,6 +407,7 @@ export default function PublicApplicationForm() {
                 </div>
               ))}
             </RadioGroup>
+            {field.helpText && <p className="text-xs text-muted-foreground">{field.helpText}</p>}
           </div>
         );
 
@@ -280,12 +423,71 @@ export default function PublicApplicationForm() {
               value={value || ""}
               onChange={(e) => updateCustomAnswer(field.id, e.target.value)}
             />
+            {field.helpText && <p className="text-xs text-muted-foreground">{field.helpText}</p>}
+          </div>
+        );
+
+      case "file":
+        return (
+          <div key={field.id} className="space-y-2">
+            <FormLabel>
+              {field.label}
+              {field.required && " *"}
+            </FormLabel>
+            <div className="border-2 border-dashed rounded-lg p-4 text-center bg-muted/30 cursor-pointer hover:bg-muted/50 transition-colors">
+              <Upload className="h-6 w-6 mx-auto text-muted-foreground mb-2" />
+              <p className="text-sm text-muted-foreground">
+                Click to upload or drag and drop
+              </p>
+              {field.acceptedFileTypes && (
+                <p className="text-xs text-muted-foreground mt-1">
+                  {field.acceptedFileTypes.join(", ")} • Max {field.maxFileSize || 5}MB
+                </p>
+              )}
+            </div>
+            {field.helpText && <p className="text-xs text-muted-foreground">{field.helpText}</p>}
+          </div>
+        );
+
+      case "signature":
+        return (
+          <div key={field.id} className="space-y-2">
+            <FormLabel>
+              {field.label}
+              {field.required && " *"}
+            </FormLabel>
+            <div className="border rounded-lg p-4 bg-muted/30 h-24 flex items-center justify-center cursor-pointer hover:bg-muted/50 transition-colors">
+              <div className="text-center text-muted-foreground">
+                <PenLine className="h-6 w-6 mx-auto mb-2" />
+                <p className="text-sm">Click to sign</p>
+              </div>
+            </div>
+            {field.helpText && <p className="text-xs text-muted-foreground">{field.helpText}</p>}
           </div>
         );
 
       default:
         return null;
     }
+  };
+
+  // Get background style from theme
+  const getBackgroundStyle = () => {
+    if (theme.backgroundImage) {
+      return {
+        backgroundImage: `url(${theme.backgroundImage})`,
+        backgroundSize: "cover",
+        backgroundPosition: "center",
+        backgroundAttachment: "fixed",
+      };
+    }
+    if (theme.backgroundGradient) {
+      return { background: theme.backgroundGradient };
+    }
+    if (theme.backgroundColor) {
+      return { backgroundColor: theme.backgroundColor };
+    }
+    return {};
   };
 
   if (isLoading) {
@@ -313,13 +515,19 @@ export default function PublicApplicationForm() {
 
   if (submitted) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-muted/30 p-4">
+      <div 
+        className="min-h-screen flex items-center justify-center p-4"
+        style={{
+          ...getBackgroundStyle(),
+          fontFamily: theme.fontFamily || "inherit",
+        }}
+      >
         <Card className="max-w-md w-full">
           <CardHeader className="text-center">
             <CheckCircle2 className="h-16 w-16 text-green-500 mx-auto mb-4" />
             <CardTitle>Application Received!</CardTitle>
             <CardDescription>
-              Thank you for applying. We will review your application and contact you if you're selected.
+              {successMessage || "Thank you for applying. We will review your application and contact you if you're selected."}
             </CardDescription>
           </CardHeader>
         </Card>
@@ -328,12 +536,19 @@ export default function PublicApplicationForm() {
   }
 
   const taskOrder = posting.project_task_orders;
+  const hasTheme = theme.backgroundImage || theme.backgroundGradient || theme.backgroundColor;
 
   return (
-    <div className="min-h-screen bg-muted/30 py-8 px-4">
+    <div 
+      className={cn("min-h-screen py-8 px-4", !hasTheme && "bg-muted/30")}
+      style={{
+        ...getBackgroundStyle(),
+        fontFamily: theme.fontFamily || "inherit",
+      }}
+    >
       <div className="max-w-2xl mx-auto space-y-6">
         {/* Job Info Card */}
-        <Card>
+        <Card className={cn(theme.backgroundImage && "bg-background/95 backdrop-blur-sm")}>
           <CardHeader>
             <CardTitle className="text-xl">{taskOrder.title}</CardTitle>
             <CardDescription>{taskOrder.projects?.name}</CardDescription>
@@ -366,7 +581,7 @@ export default function PublicApplicationForm() {
         </Card>
 
         {/* Application Form */}
-        <Card>
+        <Card className={cn(theme.backgroundImage && "bg-background/95 backdrop-blur-sm")}>
           <CardHeader>
             <CardTitle>Apply for this Position</CardTitle>
             <CardDescription>Fill out the form below to submit your application</CardDescription>
@@ -412,7 +627,17 @@ export default function PublicApplicationForm() {
                       <FormItem>
                         <FormLabel>Email *</FormLabel>
                         <FormControl>
-                          <Input type="email" placeholder="john@example.com" {...field} />
+                          <div className="relative flex items-center">
+                            <div className="absolute left-0 flex items-center justify-center w-10 h-full bg-muted border border-r-0 rounded-l-md">
+                              <Mail className="h-4 w-4 text-muted-foreground" />
+                            </div>
+                            <Input 
+                              type="email" 
+                              placeholder="john@example.com" 
+                              className="pl-12 rounded-l-none" 
+                              {...field} 
+                            />
+                          </div>
                         </FormControl>
                         <FormMessage />
                       </FormItem>
@@ -423,18 +648,12 @@ export default function PublicApplicationForm() {
                     name="phone"
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel>Phone *</FormLabel>
                         <FormControl>
-                          <Input 
-                            type="tel" 
-                            placeholder="5551234567" 
-                            maxLength={10}
-                            {...field} 
-                            onChange={(e) => {
-                              // Only allow digits
-                              const value = e.target.value.replace(/\D/g, '');
-                              field.onChange(value);
-                            }}
+                          <FormattedPhoneInput
+                            label="Phone *"
+                            value={field.value}
+                            onChange={field.onChange}
+                            showIcon
                           />
                         </FormControl>
                         <FormMessage />
@@ -450,7 +669,7 @@ export default function PublicApplicationForm() {
                     <FormItem>
                       <FormLabel>Home ZIP Code</FormLabel>
                       <FormControl>
-                        <Input placeholder="12345" maxLength={10} {...field} />
+                        <Input placeholder="12345" maxLength={10} className="w-1/3 min-w-[120px]" {...field} />
                       </FormControl>
                       <FormMessage />
                     </FormItem>
@@ -469,6 +688,10 @@ export default function PublicApplicationForm() {
                   type="submit"
                   className="w-full"
                   disabled={submitApplication.isPending}
+                  style={{
+                    backgroundColor: theme.buttonColor || undefined,
+                    color: theme.buttonTextColor || undefined,
+                  }}
                 >
                   {submitApplication.isPending ? (
                     <>
@@ -476,7 +699,7 @@ export default function PublicApplicationForm() {
                       Submitting...
                     </>
                   ) : (
-                    "Submit Application"
+                    theme.buttonText || "Submit Application"
                   )}
                 </Button>
               </form>

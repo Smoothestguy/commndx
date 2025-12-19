@@ -50,7 +50,9 @@ export function FieldSettingsPanel({
 
   const hasOptions = field.type === "dropdown" || field.type === "radio" || field.type === "multiselect";
   const hasPlaceholder = ["text", "textarea", "number", "email", "phone", "firstname", "lastname"].includes(field.type);
-  const isNonInput = field.type === "section";
+  const hasLayoutOption = field.type === "multiselect" || field.type === "radio";
+  const hasIconOption = field.type === "email" || field.type === "phone";
+  const isNonInput = field.type === "section" || field.type === "address";
 
   const getFieldTypeLabel = (type: string) => {
     return fieldTypes.find(t => t.value === type)?.label || type;
@@ -159,8 +161,19 @@ export function FieldSettingsPanel({
               </div>
             </div>
 
+            {/* Icon toggle for email/phone */}
+            {hasIconOption && (
+              <div className="flex items-center gap-3">
+                <Switch
+                  checked={field.showIcon !== false}
+                  onCheckedChange={(checked) => onUpdate({ showIcon: checked })}
+                />
+                <Label className="text-xs">Show Input Icon</Label>
+              </div>
+            )}
+
             {/* Default Value */}
-            {!isNonInput && !["checkbox", "file", "signature"].includes(field.type) && (
+            {!isNonInput && !hasIconOption && !["checkbox", "file", "signature"].includes(field.type) && (
               <div>
                 <Label className="text-xs">Default Value</Label>
                 {field.type === "textarea" ? (
@@ -211,6 +224,25 @@ export function FieldSettingsPanel({
                 >
                   + Add Option
                 </Button>
+
+                {/* Layout option for multiselect/radio */}
+                {hasLayoutOption && (
+                  <div className="pt-2 flex items-center gap-3">
+                    <Label className="text-xs">Layout:</Label>
+                    <Select
+                      value={field.optionLayout || "vertical"}
+                      onValueChange={(v) => onUpdate({ optionLayout: v as "vertical" | "grid" })}
+                    >
+                      <SelectTrigger className="w-[120px] h-8">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="vertical">Vertical</SelectItem>
+                        <SelectItem value="grid">Grid (2-3 cols)</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                )}
               </div>
             )}
 

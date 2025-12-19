@@ -66,7 +66,7 @@ import { FormPreview } from "@/components/form-builder/FormPreview";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 
-import { User } from "lucide-react";
+import { User, MapPin } from "lucide-react";
 
 const FIELD_TYPES = [
   { value: "firstname", label: "First Name", icon: User },
@@ -74,6 +74,7 @@ const FIELD_TYPES = [
   { value: "text", label: "Short Text", icon: Type },
   { value: "textarea", label: "Long Text", icon: AlignLeft },
   { value: "number", label: "Number", icon: Hash },
+  { value: "address", label: "Address", icon: MapPin },
   { value: "email", label: "Email", icon: Mail },
   { value: "phone", label: "Phone", icon: Phone },
   { value: "dropdown", label: "Dropdown", icon: List },

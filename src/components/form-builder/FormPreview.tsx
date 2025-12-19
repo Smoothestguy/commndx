@@ -13,8 +13,10 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
-import { Upload, PenLine } from "lucide-react";
+import { Upload, PenLine, Mail, Phone } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { AddressField } from "./AddressField";
+import { FormattedPhoneInput } from "./FormattedPhoneInput";
 
 interface FormPreviewProps {
   name: string;
@@ -51,6 +53,11 @@ export function FormPreview({ name, description, fields, theme, successMessage }
       <p className="text-xs text-muted-foreground mt-1">{field.helpText}</p>
     );
 
+    // Grid layout for options
+    const optionGridClass = field.optionLayout === "grid" 
+      ? "grid grid-cols-2 sm:grid-cols-3 gap-2" 
+      : "space-y-2";
+
     switch (field.type) {
       case "section":
         return (
@@ -62,19 +69,79 @@ export function FormPreview({ name, description, fields, theme, successMessage }
           </div>
         );
 
+      case "firstname":
+      case "lastname":
       case "text":
-      case "email":
-      case "phone":
         return (
           <div key={field.id} className="space-y-2">
             {commonLabel}
             <Input 
-              type={field.type === "email" ? "email" : field.type === "phone" ? "tel" : "text"}
+              type="text"
               placeholder={field.placeholder || ""} 
               defaultValue={field.defaultValue}
               disabled 
             />
             {helpText}
+          </div>
+        );
+
+      case "email":
+        return (
+          <div key={field.id} className="space-y-2">
+            {commonLabel}
+            <div className="relative flex items-center">
+              {field.showIcon !== false && (
+                <div className="absolute left-0 flex items-center justify-center w-10 h-full bg-muted border border-r-0 rounded-l-md">
+                  <Mail className="h-4 w-4 text-muted-foreground" />
+                </div>
+              )}
+              <Input 
+                type="email"
+                placeholder={field.placeholder || ""} 
+                defaultValue={field.defaultValue}
+                className={field.showIcon !== false ? "pl-12 rounded-l-none" : ""}
+                disabled 
+              />
+            </div>
+            {helpText}
+          </div>
+        );
+
+      case "phone":
+        return (
+          <div key={field.id}>
+            {field.showIcon !== false ? (
+              <FormattedPhoneInput
+                label={field.label}
+                required={field.required}
+                disabled
+                helpText={field.helpText}
+                showIcon={true}
+              />
+            ) : (
+              <div className="space-y-2">
+                {commonLabel}
+                <Input 
+                  type="tel"
+                  placeholder={field.placeholder || ""} 
+                  defaultValue={field.defaultValue}
+                  disabled 
+                />
+                {helpText}
+              </div>
+            )}
+          </div>
+        );
+
+      case "address":
+        return (
+          <div key={field.id}>
+            <AddressField
+              label={field.label}
+              required={field.required}
+              disabled
+              helpText={field.helpText}
+            />
           </div>
         );
 
@@ -137,7 +204,7 @@ export function FormPreview({ name, description, fields, theme, successMessage }
         return (
           <div key={field.id} className="space-y-2">
             {commonLabel}
-            <div className="space-y-2">
+            <div className={optionGridClass}>
               {field.options?.map((opt) => (
                 <div key={opt} className="flex items-center gap-2">
                   <Checkbox disabled />
@@ -167,7 +234,7 @@ export function FormPreview({ name, description, fields, theme, successMessage }
         return (
           <div key={field.id} className="space-y-2">
             {commonLabel}
-            <RadioGroup disabled>
+            <RadioGroup disabled className={optionGridClass}>
               {field.options?.map((opt) => (
                 <div key={opt} className="flex items-center gap-2">
                   <RadioGroupItem value={opt} disabled />
@@ -260,16 +327,22 @@ export function FormPreview({ name, description, fields, theme, successMessage }
             <div className="grid grid-cols-2 gap-3">
               <div className="space-y-2">
                 <Label className="text-sm font-medium">Email *</Label>
-                <Input type="email" placeholder="john@example.com" disabled />
+                <div className="relative flex items-center">
+                  <div className="absolute left-0 flex items-center justify-center w-10 h-full bg-muted border border-r-0 rounded-l-md">
+                    <Mail className="h-4 w-4 text-muted-foreground" />
+                  </div>
+                  <Input type="email" placeholder="john@example.com" className="pl-12 rounded-l-none" disabled />
+                </div>
               </div>
-              <div className="space-y-2">
-                <Label className="text-sm font-medium">Phone *</Label>
-                <Input type="tel" placeholder="5551234567" disabled />
-              </div>
+              <FormattedPhoneInput
+                label="Phone *"
+                disabled
+                showIcon
+              />
             </div>
             <div className="space-y-2">
               <Label className="text-sm font-medium">Home ZIP Code</Label>
-              <Input placeholder="12345" disabled />
+              <Input placeholder="12345" disabled className="w-1/3 min-w-[120px]" />
             </div>
 
             {/* Custom Fields */}
