@@ -92,7 +92,11 @@ export function ApplicationDetailDialog({
     
     for (const [fieldId, value] of Object.entries(answers)) {
       const fieldInfo = fieldLabelMap[fieldId];
-      if (fieldInfo?.type === "file" && typeof value === "string" && value.startsWith("data:image")) {
+      if (
+        fieldInfo?.type === "file" &&
+        typeof value === "string" &&
+        (value.startsWith("data:image") || value.startsWith("http"))
+      ) {
         return value;
       }
     }

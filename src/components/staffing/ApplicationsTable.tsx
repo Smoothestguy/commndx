@@ -30,19 +30,22 @@ function getProfilePicture(
     if (
       fieldInfo?.type === "file" &&
       typeof value === "string" &&
-      value.startsWith("data:image")
+      (value.startsWith("data:image") || value.startsWith("http"))
     ) {
       return value;
     }
   }
-  
+
   // Fallback: if no field metadata, look for first image that's not from a signature field
   for (const [fieldId, value] of Object.entries(answers)) {
     const fieldInfo = fieldTypeMap[fieldId];
     // Skip if we know it's a signature
     if (fieldInfo?.type === "signature") continue;
-    
-    if (typeof value === "string" && value.startsWith("data:image")) {
+
+    if (
+      typeof value === "string" &&
+      (value.startsWith("data:image") || value.startsWith("http"))
+    ) {
       return value;
     }
   }
