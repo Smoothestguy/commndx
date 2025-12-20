@@ -204,11 +204,11 @@ export function useMergePreview(entityType: EntityType, sourceId: string | undef
         // Get payment counts
         const { data: payments } = await supabase
           .from("personnel_payments")
-          .select("id, total_amount")
+          .select("id, gross_amount")
           .eq("personnel_id", sourceId);
         
         preview.payments = payments?.length || 0;
-        preview.paymentTotal = payments?.reduce((sum, p) => sum + (Number(p.total_amount) || 0), 0) || 0;
+        preview.paymentTotal = payments?.reduce((sum, p) => sum + (Number(p.gross_amount) || 0), 0) || 0;
       }
 
       return preview;
