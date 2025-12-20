@@ -47,7 +47,7 @@ async function getValidToken(supabase: any) {
 }
 
 // QuickBooks API helper
-async function qbRequest(method: string, endpoint: string, accessToken: string, realmId: string, body?: any) {
+async function qbRequest(method: string, endpoint: string, accessToken: string, realmId: string, body?: any): Promise<any> {
   const url = `https://quickbooks.api.intuit.com/v3/company/${realmId}${endpoint}`;
   
   const options: RequestInit = {
@@ -64,14 +64,69 @@ async function qbRequest(method: string, endpoint: string, accessToken: string, 
   }
 
   const response = await fetch(url, options);
+  const responseText = await response.text();
   
   if (!response.ok) {
-    const errorText = await response.text();
-    console.error(`QuickBooks API error: ${errorText}`);
+    console.error(`QuickBooks API error: ${responseText}`);
+    // Parse error to check for duplicate name
+    try {
+      const errorJson = JSON.parse(responseText);
+      const errorCode = errorJson?.Fault?.Error?.[0]?.code;
+      if (errorCode === "6240") {
+        // Duplicate name error - throw specific error
+        throw new DuplicateNameError(errorJson?.Fault?.Error?.[0]?.Message || "Duplicate name exists");
+      }
+    } catch (e) {
+      if (e instanceof DuplicateNameError) throw e;
+    }
     throw new Error(`QuickBooks API error: ${response.status}`);
   }
 
-  return response.json();
+  return responseText ? JSON.parse(responseText) : {};
+}
+
+// Custom error for duplicate names
+class DuplicateNameError extends Error {
+  constructor(message: string) {
+    super(message);
+    this.name = "DuplicateNameError";
+  }
+}
+
+// Find existing QB customer by name
+async function findQBCustomerByName(name: string, accessToken: string, realmId: string): Promise<any | null> {
+  const escapedName = name.replace(/'/g, "\\'");
+  const query = `SELECT * FROM Customer WHERE DisplayName = '${escapedName}'`;
+  try {
+    const result = await qbRequest('GET', `/query?query=${encodeURIComponent(query)}&minorversion=65`, accessToken, realmId);
+    return result.QueryResponse?.Customer?.[0] || null;
+  } catch (e) {
+    console.log("Error searching for customer:", e);
+    return null;
+  }
+}
+
+// Create QB customer with duplicate name handling
+async function createQBCustomerSafe(qbCustomer: any, accessToken: string, realmId: string): Promise<any> {
+  try {
+    return await qbRequest('POST', '/customer?minorversion=65', accessToken, realmId, qbCustomer);
+  } catch (error) {
+    if (error instanceof DuplicateNameError) {
+      console.log(`Duplicate name found for "${qbCustomer.DisplayName}", searching for existing...`);
+      // Try to find the existing customer
+      const existing = await findQBCustomerByName(qbCustomer.DisplayName, accessToken, realmId);
+      if (existing) {
+        console.log(`Found existing QB customer with ID ${existing.Id}`);
+        return { Customer: existing };
+      }
+      // If not found by exact name, append unique suffix and retry
+      const uniqueSuffix = Date.now().toString().slice(-4);
+      qbCustomer.DisplayName = `${qbCustomer.DisplayName} (${uniqueSuffix})`.substring(0, 500);
+      console.log(`Retrying with unique name: ${qbCustomer.DisplayName}`);
+      return await qbRequest('POST', '/customer?minorversion=65', accessToken, realmId, qbCustomer);
+    }
+    throw error;
+  }
 }
 
 serve(async (req) => {
@@ -249,8 +304,8 @@ serve(async (req) => {
               .eq('id', mapping.id);
             updated++;
           } else {
-            // Create new QB customer
-            const result = await qbRequest('POST', '/customer?minorversion=65', accessToken, realmId, qbCustomer);
+            // Create new QB customer with duplicate handling
+            const result = await createQBCustomerSafe(qbCustomer, accessToken, realmId);
             
             await supabase
               .from('quickbooks_customer_mappings')
@@ -347,8 +402,8 @@ serve(async (req) => {
           })
           .eq('id', mapping.id);
       } else {
-        // Create new
-        const result = await qbRequest('POST', '/customer?minorversion=65', accessToken, realmId, qbCustomer);
+        // Create new with duplicate handling
+        const result = await createQBCustomerSafe(qbCustomer, accessToken, realmId);
         
         await supabase
           .from('quickbooks_customer_mappings')
@@ -395,7 +450,7 @@ serve(async (req) => {
         });
       }
 
-      // Create in QuickBooks
+      // Create in QuickBooks with duplicate handling
       const addressParts = (customer.address || '').split(', ');
       
       const qbCustomer: any = {
@@ -414,7 +469,7 @@ serve(async (req) => {
         };
       }
 
-      const result = await qbRequest('POST', '/customer?minorversion=65', accessToken, realmId, qbCustomer);
+      const result = await createQBCustomerSafe(qbCustomer, accessToken, realmId);
       
       await supabase
         .from('quickbooks_customer_mappings')
