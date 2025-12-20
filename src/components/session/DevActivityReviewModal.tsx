@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { format } from "date-fns";
 import { Check, X, ChevronDown, ChevronUp, Sparkles } from "lucide-react";
 import {
@@ -49,10 +49,15 @@ export function DevActivityReviewModal({
   activities: initialActivities,
   onComplete,
 }: DevActivityReviewModalProps) {
-  const [activities, setActivities] = useState<(ExtractedActivity & { selected: boolean; expanded: boolean })[]>(
-    initialActivities.map((a) => ({ ...a, selected: true, expanded: false }))
-  );
+  const [activities, setActivities] = useState<(ExtractedActivity & { selected: boolean; expanded: boolean })[]>([]);
   const { createActivities, projectNames } = useDevActivities();
+
+  // Sync initialActivities prop to internal state when it changes
+  useEffect(() => {
+    setActivities(
+      initialActivities.map((a) => ({ ...a, selected: true, expanded: false }))
+    );
+  }, [initialActivities]);
 
   const updateActivity = (index: number, updates: Partial<ExtractedActivity>) => {
     setActivities((prev) =>
