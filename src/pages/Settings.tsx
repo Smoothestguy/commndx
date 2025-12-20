@@ -81,9 +81,6 @@ export default function Settings() {
       />
       <PageLayout title="Settings" description="Manage your account settings and preferences">
       <div className="max-w-4xl space-y-6">
-        {/* Company Settings Section (Admin Only) */}
-        {role === "admin" && <CompanySettingsForm />}
-
         {/* Integrations Section */}
         <Card>
           <CardHeader>
@@ -136,6 +133,9 @@ export default function Settings() {
             )}
           </CardContent>
         </Card>
+
+        {/* Company Settings Section (Admin Only) */}
+        {role === "admin" && <CompanySettingsForm />}
 
         {/* Profile Section */}
         <Card>
