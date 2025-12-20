@@ -114,6 +114,7 @@ import EditApplication from "./pages/EditApplication";
 import ApplicationFormTemplates from "./pages/ApplicationFormTemplates";
 import ApplicationFormBuilder from "./pages/ApplicationFormBuilder";
 import PersonnelOnboarding from "./pages/PersonnelOnboarding";
+import SessionHistory from "./pages/SessionHistory";
 const queryClient = new QueryClient();
 
 const App = () => {
@@ -375,6 +376,10 @@ const App = () => {
                     <Route
                       path="/staffing/map"
                       element={<StaffingMapView />}
+                    />
+                    <Route
+                      path="/session-history"
+                      element={<SessionHistory />}
                     />
                   </Route>
 

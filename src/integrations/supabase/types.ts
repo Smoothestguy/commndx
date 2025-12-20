@@ -4694,6 +4694,47 @@ export type Database = {
           },
         ]
       }
+      session_activity_log: {
+        Row: {
+          action_name: string | null
+          activity_type: string
+          created_at: string | null
+          id: string
+          metadata: Json | null
+          route: string | null
+          session_id: string
+          user_id: string
+        }
+        Insert: {
+          action_name?: string | null
+          activity_type: string
+          created_at?: string | null
+          id?: string
+          metadata?: Json | null
+          route?: string | null
+          session_id: string
+          user_id: string
+        }
+        Update: {
+          action_name?: string | null
+          activity_type?: string
+          created_at?: string | null
+          id?: string
+          metadata?: Json | null
+          route?: string | null
+          session_id?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "session_activity_log_session_id_fkey"
+            columns: ["session_id"]
+            isOneToOne: false
+            referencedRelation: "user_work_sessions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       tasks: {
         Row: {
           assigned_to: string | null
@@ -5217,6 +5258,48 @@ export type Database = {
           created_at?: string | null
           id?: string
           updated_at?: string | null
+          user_id?: string
+        }
+        Relationships: []
+      }
+      user_work_sessions: {
+        Row: {
+          clock_in_type: string | null
+          created_at: string | null
+          id: string
+          is_active: boolean | null
+          session_end: string | null
+          session_start: string
+          total_active_seconds: number | null
+          total_idle_seconds: number | null
+          updated_at: string | null
+          user_email: string
+          user_id: string
+        }
+        Insert: {
+          clock_in_type?: string | null
+          created_at?: string | null
+          id?: string
+          is_active?: boolean | null
+          session_end?: string | null
+          session_start?: string
+          total_active_seconds?: number | null
+          total_idle_seconds?: number | null
+          updated_at?: string | null
+          user_email: string
+          user_id: string
+        }
+        Update: {
+          clock_in_type?: string | null
+          created_at?: string | null
+          id?: string
+          is_active?: boolean | null
+          session_end?: string | null
+          session_start?: string
+          total_active_seconds?: number | null
+          total_idle_seconds?: number | null
+          updated_at?: string | null
+          user_email?: string
           user_id?: string
         }
         Relationships: []
