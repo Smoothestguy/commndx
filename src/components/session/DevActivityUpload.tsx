@@ -95,25 +95,28 @@ export function DevActivityUpload({ onAnalysisComplete, onManualEntry }: DevActi
     if (!selectedFile) return;
 
     try {
-      const reader = new FileReader();
-      reader.onload = async (e) => {
-        const dataUrl = e.target?.result as string;
-        // Extract base64 data (remove data:image/xxx;base64, prefix)
-        const base64 = dataUrl.split(",")[1];
-        
-        const result = await analyzeScreenshot(base64, selectedFile.type);
-        
-        if (result.activities.length === 0) {
-          toast.info(result.message || "No activities found. Try a clearer image or add manually.");
-          return;
-        }
+      // Convert file reading to a Promise to properly catch errors
+      const dataUrl = await new Promise<string>((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = (e) => resolve(e.target?.result as string);
+        reader.onerror = () => reject(new Error("Failed to read file"));
+        reader.readAsDataURL(selectedFile);
+      });
 
-        onAnalysisComplete(result.activities);
-      };
-      reader.readAsDataURL(selectedFile);
+      // Extract base64 data (remove data:image/xxx;base64, prefix)
+      const base64 = dataUrl.split(",")[1];
+      
+      const result = await analyzeScreenshot(base64, selectedFile.type);
+      
+      if (result.activities.length === 0) {
+        toast.info(result.message || "No activities found. Try a clearer image or add manually.");
+        return;
+      }
+
+      onAnalysisComplete(result.activities);
     } catch (error) {
       console.error("Analysis failed:", error);
-      toast.error(error instanceof Error ? error.message : "Analysis failed");
+      toast.error(error instanceof Error ? error.message : "Analysis failed. Please try again.");
     }
   };
 
