@@ -17,6 +17,7 @@ import { ChevronDown, Settings, LogOut, MessageCircle } from "lucide-react";
 import { AdminNotificationBell } from "@/components/notifications/AdminNotificationBell";
 import { useUserRole } from "@/hooks/useUserRole";
 import { useCurrentPersonnel } from "@/integrations/supabase/hooks/usePortal";
+import { SessionTimer } from "@/components/session/SessionTimer";
 
 export function AppHeader() {
   const navigate = useNavigate();
@@ -66,6 +67,9 @@ export function AppHeader() {
             </span>
           )}
         </Button>
+
+        {/* Session Timer - only visible for chris.guevara97@gmail.com */}
+        <SessionTimer />
 
         {showNotificationBell && <AdminNotificationBell />}
 

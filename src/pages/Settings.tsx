@@ -9,7 +9,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
-import { Loader2, Cloud, ChevronRight } from "lucide-react";
+import { Loader2, Cloud, ChevronRight, Clock } from "lucide-react";
 import { useTheme } from "next-themes";
 import { Switch } from "@/components/ui/switch";
 import { useUserRole } from "@/hooks/useUserRole";
@@ -114,6 +114,26 @@ export default function Settings() {
                 </div>
               </div>
             </Link>
+
+            {/* Session History - only for target user */}
+            {user?.email === "chris.guevara97@gmail.com" && (
+              <Link to="/session-history">
+                <div className="flex items-center justify-between p-4 rounded-lg border hover:bg-muted/50 transition-colors cursor-pointer mt-3">
+                  <div className="flex items-center gap-3">
+                    <div className="p-2 rounded-lg bg-primary/10">
+                      <Clock className="h-5 w-5 text-primary" />
+                    </div>
+                    <div>
+                      <p className="font-medium">Session History</p>
+                      <p className="text-sm text-muted-foreground">
+                        View your work sessions and activity logs
+                      </p>
+                    </div>
+                  </div>
+                  <ChevronRight className="h-4 w-4 text-muted-foreground" />
+                </div>
+              </Link>
+            )}
           </CardContent>
         </Card>
 
