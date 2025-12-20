@@ -9,6 +9,8 @@ interface AuthContextType {
   loading: boolean;
   signUp: (email: string, password: string, firstName: string, lastName: string) => Promise<{ error: Error | null }>;
   signIn: (email: string, password: string) => Promise<{ error: Error | null }>;
+  signInWithGoogle: () => Promise<{ error: Error | null }>;
+  signInWithMicrosoft: () => Promise<{ error: Error | null }>;
   signOut: () => Promise<void>;
 }
 
@@ -136,8 +138,43 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     navigate("/auth");
   }, [user, navigate]);
 
+  const signInWithGoogle = useCallback(async () => {
+    try {
+      const redirectTo = `${window.location.origin}/auth/callback`;
+      const { error } = await supabase.auth.signInWithOAuth({
+        provider: 'google',
+        options: { redirectTo }
+      });
+      if (error) {
+        return { error };
+      }
+      return { error: null };
+    } catch (error) {
+      return { error: error as Error };
+    }
+  }, []);
+
+  const signInWithMicrosoft = useCallback(async () => {
+    try {
+      const redirectTo = `${window.location.origin}/auth/callback`;
+      const { error } = await supabase.auth.signInWithOAuth({
+        provider: 'azure',
+        options: { 
+          redirectTo,
+          scopes: 'email profile openid'
+        }
+      });
+      if (error) {
+        return { error };
+      }
+      return { error: null };
+    } catch (error) {
+      return { error: error as Error };
+    }
+  }, []);
+
   return (
-    <AuthContext.Provider value={{ user, session, loading, signUp, signIn, signOut }}>
+    <AuthContext.Provider value={{ user, session, loading, signUp, signIn, signInWithGoogle, signInWithMicrosoft, signOut }}>
       {children}
     </AuthContext.Provider>
   );

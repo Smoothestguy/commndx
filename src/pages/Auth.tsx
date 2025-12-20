@@ -11,11 +11,14 @@ import { ParticleBackground } from "@/components/ui/particle-background";
 import { Loader2 } from "lucide-react";
 import { toast } from "sonner";
 import logo from "@/assets/logo.png";
+import { GoogleIcon } from "@/components/icons/GoogleIcon";
+import { MicrosoftIcon } from "@/components/icons/MicrosoftIcon";
 
 const Auth = () => {
   const navigate = useNavigate();
-  const { user, signIn, loading: authLoading } = useAuth();
+  const { user, signIn, signInWithGoogle, signInWithMicrosoft, loading: authLoading } = useAuth();
   const [isLoading, setIsLoading] = useState(false);
+  const [isOAuthLoading, setIsOAuthLoading] = useState<"google" | "microsoft" | null>(null);
 
   // Login form state
   const [loginEmail, setLoginEmail] = useState("");
@@ -105,6 +108,24 @@ const Auth = () => {
     setIsLoading(false);
   };
 
+  const handleGoogleLogin = async () => {
+    setIsOAuthLoading("google");
+    const { error } = await signInWithGoogle();
+    if (error) {
+      toast.error(error.message);
+      setIsOAuthLoading(null);
+    }
+  };
+
+  const handleMicrosoftLogin = async () => {
+    setIsOAuthLoading("microsoft");
+    const { error } = await signInWithMicrosoft();
+    if (error) {
+      toast.error(error.message);
+      setIsOAuthLoading(null);
+    }
+  };
+
   if (authLoading) {
     return (
       <div className="flex h-screen items-center justify-center">
@@ -147,7 +168,53 @@ const Auth = () => {
             Sign in to your account
           </CardDescription>
         </CardHeader>
-        <CardContent>
+        <CardContent className="space-y-6">
+          {/* OAuth Buttons */}
+          <div className="space-y-3">
+            <Button 
+              type="button"
+              variant="outline" 
+              className="w-full bg-secondary/50 border-border hover:bg-secondary"
+              onClick={handleGoogleLogin}
+              disabled={isOAuthLoading !== null}
+            >
+              {isOAuthLoading === "google" ? (
+                <Loader2 className="mr-2 h-5 w-5 animate-spin" />
+              ) : (
+                <GoogleIcon className="mr-2 h-5 w-5" />
+              )}
+              Continue with Google
+            </Button>
+            
+            <Button 
+              type="button"
+              variant="outline" 
+              className="w-full bg-secondary/50 border-border hover:bg-secondary"
+              onClick={handleMicrosoftLogin}
+              disabled={isOAuthLoading !== null}
+            >
+              {isOAuthLoading === "microsoft" ? (
+                <Loader2 className="mr-2 h-5 w-5 animate-spin" />
+              ) : (
+                <MicrosoftIcon className="mr-2 h-5 w-5" />
+              )}
+              Continue with Microsoft
+            </Button>
+          </div>
+
+          {/* Divider */}
+          <div className="relative">
+            <div className="absolute inset-0 flex items-center">
+              <span className="w-full border-t border-border" />
+            </div>
+            <div className="relative flex justify-center text-xs uppercase">
+              <span className="bg-card px-2 text-muted-foreground">
+                Or continue with email
+              </span>
+            </div>
+          </div>
+
+          {/* Email/Password Form */}
           <form onSubmit={handleLogin} className="space-y-4">
             <div className="space-y-2">
               <Label htmlFor="login-email">Email</Label>
@@ -173,7 +240,7 @@ const Auth = () => {
                 className="bg-secondary border-border" 
               />
             </div>
-            <Button type="submit" className="w-full" variant="glow" disabled={isLoading}>
+            <Button type="submit" className="w-full" variant="glow" disabled={isLoading || isOAuthLoading !== null}>
               {isLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
               Sign In
             </Button>
