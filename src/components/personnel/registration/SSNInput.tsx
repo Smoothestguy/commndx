@@ -11,11 +11,11 @@ interface SSNInputProps {
 
 export const SSNInput = ({ value, onChange, required }: SSNInputProps) => {
   const [showFull, setShowFull] = useState(false);
+  const [isFocused, setIsFocused] = useState(false);
 
   const formatSSN = (input: string) => {
-    // Remove all non-digits
-    const digits = input.replace(/\D/g, "").slice(0, 9);
-    return digits;
+    // Remove all non-digits and limit to 9
+    return input.replace(/\D/g, "").slice(0, 9);
   };
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -23,38 +23,48 @@ export const SSNInput = ({ value, onChange, required }: SSNInputProps) => {
     onChange(formatted);
   };
 
+  const formatWithDashes = (digits: string) => {
+    if (digits.length <= 3) return digits;
+    if (digits.length <= 5) return `${digits.slice(0, 3)}-${digits.slice(3)}`;
+    return `${digits.slice(0, 3)}-${digits.slice(3, 5)}-${digits.slice(5)}`;
+  };
+
+  const getMaskedValue = (digits: string) => {
+    if (!digits) return "";
+    if (digits.length <= 5) return "•".repeat(digits.length);
+    const lastFour = digits.slice(5);
+    const maskedLastFour = lastFour.padEnd(4, "•").slice(0, 4);
+    return `•••-••-${maskedLastFour}`;
+  };
+
   const getDisplayValue = () => {
     if (!value) return "";
     
-    if (showFull) {
-      // Show full formatted SSN: XXX-XX-XXXX
-      if (value.length <= 3) return value;
-      if (value.length <= 5) return `${value.slice(0, 3)}-${value.slice(3)}`;
-      return `${value.slice(0, 3)}-${value.slice(3, 5)}-${value.slice(5)}`;
-    } else {
-      // Show masked: •••-••-XXXX
-      if (value.length <= 5) return "•".repeat(value.length);
-      const lastFour = value.slice(5);
-      return `•••-••-${lastFour || "••••".slice(0, 4 - lastFour.length)}`;
+    // When focused, show raw digits for easy typing
+    if (isFocused) {
+      return value;
     }
+    
+    // When blurred, show masked or full based on toggle
+    if (showFull) {
+      return formatWithDashes(value);
+    }
+    return getMaskedValue(value);
   };
 
   return (
     <div className="relative">
       <Input
-        type={showFull ? "text" : "text"}
-        value={showFull ? value : ""}
+        type="text"
+        value={getDisplayValue()}
         onChange={handleChange}
+        onFocus={() => setIsFocused(true)}
+        onBlur={() => setIsFocused(false)}
         placeholder="Enter 9-digit SSN"
-        maxLength={11}
+        maxLength={11} // Allow for dashes in formatted view
         required={required}
         className="pr-10 font-mono"
       />
-      {value && !showFull && (
-        <div className="absolute inset-0 flex items-center px-3 pointer-events-none font-mono text-foreground">
-          {getDisplayValue()}
-        </div>
-      )}
       <Button
         type="button"
         variant="ghost"
