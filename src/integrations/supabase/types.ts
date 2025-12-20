@@ -1098,6 +1098,68 @@ export type Database = {
         }
         Relationships: []
       }
+      dev_activities: {
+        Row: {
+          activity_date: string
+          activity_type: string
+          created_at: string
+          description: string | null
+          duration_minutes: number | null
+          extraction_confidence: string | null
+          id: string
+          project_name: string | null
+          session_id: string | null
+          source_screenshot_url: string | null
+          tags: string[] | null
+          technologies: string[] | null
+          title: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          activity_date?: string
+          activity_type: string
+          created_at?: string
+          description?: string | null
+          duration_minutes?: number | null
+          extraction_confidence?: string | null
+          id?: string
+          project_name?: string | null
+          session_id?: string | null
+          source_screenshot_url?: string | null
+          tags?: string[] | null
+          technologies?: string[] | null
+          title: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          activity_date?: string
+          activity_type?: string
+          created_at?: string
+          description?: string | null
+          duration_minutes?: number | null
+          extraction_confidence?: string | null
+          id?: string
+          project_name?: string | null
+          session_id?: string | null
+          source_screenshot_url?: string | null
+          tags?: string[] | null
+          technologies?: string[] | null
+          title?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "dev_activities_session_id_fkey"
+            columns: ["session_id"]
+            isOneToOne: false
+            referencedRelation: "user_work_sessions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       emergency_contacts: {
         Row: {
           contact_name: string

@@ -1,5 +1,8 @@
 project_id = "xfjjvznxkcckuwxmcsdc"
 
+[functions.analyze-dev-screenshot]
+verify_jwt = false
+
 [functions.translate-form]
 verify_jwt = false
 
