@@ -120,6 +120,68 @@ export type Database = {
         }
         Relationships: []
       }
+      ai_dev_conversations: {
+        Row: {
+          created_at: string | null
+          id: string
+          title: string | null
+          updated_at: string | null
+          user_id: string
+        }
+        Insert: {
+          created_at?: string | null
+          id?: string
+          title?: string | null
+          updated_at?: string | null
+          user_id: string
+        }
+        Update: {
+          created_at?: string | null
+          id?: string
+          title?: string | null
+          updated_at?: string | null
+          user_id?: string
+        }
+        Relationships: []
+      }
+      ai_dev_messages: {
+        Row: {
+          content: string
+          context: Json | null
+          conversation_id: string
+          created_at: string | null
+          id: string
+          response_data: Json | null
+          role: string
+        }
+        Insert: {
+          content: string
+          context?: Json | null
+          conversation_id: string
+          created_at?: string | null
+          id?: string
+          response_data?: Json | null
+          role: string
+        }
+        Update: {
+          content?: string
+          context?: Json | null
+          conversation_id?: string
+          created_at?: string | null
+          id?: string
+          response_data?: Json | null
+          role?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "ai_dev_messages_conversation_id_fkey"
+            columns: ["conversation_id"]
+            isOneToOne: false
+            referencedRelation: "ai_dev_conversations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       applicants: {
         Row: {
           address: string | null

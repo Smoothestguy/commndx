@@ -12,6 +12,9 @@ verify_jwt = false
 [functions.ai-assistant]
 verify_jwt = false
 
+[functions.ai-dev-assistant]
+verify_jwt = false
+
 [functions.approve-estimate]
 verify_jwt = false
 

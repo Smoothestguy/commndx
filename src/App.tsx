@@ -115,6 +115,7 @@ import ApplicationFormTemplates from "./pages/ApplicationFormTemplates";
 import ApplicationFormBuilder from "./pages/ApplicationFormBuilder";
 import PersonnelOnboarding from "./pages/PersonnelOnboarding";
 import SessionHistory from "./pages/SessionHistory";
+import AiDevAssistant from "./pages/admin/AiDevAssistant";
 const queryClient = new QueryClient();
 
 const App = () => {
@@ -380,6 +381,10 @@ const App = () => {
                     <Route
                       path="/session-history"
                       element={<SessionHistory />}
+                    />
+                    <Route
+                      path="/ai-dev"
+                      element={<AiDevAssistant />}
                     />
                   </Route>
 
