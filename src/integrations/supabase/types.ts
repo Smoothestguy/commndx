@@ -1124,6 +1124,10 @@ export type Database = {
           email: string
           id: string
           jobsite_address: string | null
+          merge_reason: string | null
+          merged_at: string | null
+          merged_by: string | null
+          merged_into_id: string | null
           name: string
           notes: string | null
           phone: string | null
@@ -1138,6 +1142,10 @@ export type Database = {
           email: string
           id?: string
           jobsite_address?: string | null
+          merge_reason?: string | null
+          merged_at?: string | null
+          merged_by?: string | null
+          merged_into_id?: string | null
           name: string
           notes?: string | null
           phone?: string | null
@@ -1152,13 +1160,25 @@ export type Database = {
           email?: string
           id?: string
           jobsite_address?: string | null
+          merge_reason?: string | null
+          merged_at?: string | null
+          merged_by?: string | null
+          merged_into_id?: string | null
           name?: string
           notes?: string | null
           phone?: string | null
           tax_exempt?: boolean | null
           updated_at?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "customers_merged_into_id_fkey"
+            columns: ["merged_into_id"]
+            isOneToOne: false
+            referencedRelation: "customers"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       dev_activities: {
         Row: {
@@ -1265,6 +1285,69 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      entity_merge_audit: {
+        Row: {
+          created_at: string | null
+          entity_type: string
+          field_overrides: Json | null
+          id: string
+          is_reversed: boolean | null
+          merged_at: string | null
+          merged_by: string | null
+          merged_by_email: string | null
+          merged_entity_snapshot: Json
+          notes: string | null
+          quickbooks_resolution: Json | null
+          related_records_updated: Json | null
+          reversed_at: string | null
+          reversed_by: string | null
+          source_entity_id: string
+          source_entity_snapshot: Json
+          target_entity_id: string
+          target_entity_snapshot: Json
+        }
+        Insert: {
+          created_at?: string | null
+          entity_type: string
+          field_overrides?: Json | null
+          id?: string
+          is_reversed?: boolean | null
+          merged_at?: string | null
+          merged_by?: string | null
+          merged_by_email?: string | null
+          merged_entity_snapshot: Json
+          notes?: string | null
+          quickbooks_resolution?: Json | null
+          related_records_updated?: Json | null
+          reversed_at?: string | null
+          reversed_by?: string | null
+          source_entity_id: string
+          source_entity_snapshot: Json
+          target_entity_id: string
+          target_entity_snapshot: Json
+        }
+        Update: {
+          created_at?: string | null
+          entity_type?: string
+          field_overrides?: Json | null
+          id?: string
+          is_reversed?: boolean | null
+          merged_at?: string | null
+          merged_by?: string | null
+          merged_by_email?: string | null
+          merged_entity_snapshot?: Json
+          notes?: string | null
+          quickbooks_resolution?: Json | null
+          related_records_updated?: Json | null
+          reversed_at?: string | null
+          reversed_by?: string | null
+          source_entity_id?: string
+          source_entity_snapshot?: Json
+          target_entity_id?: string
+          target_entity_snapshot?: Json
+        }
+        Relationships: []
       }
       estimate_attachments: {
         Row: {
@@ -2400,6 +2483,10 @@ export type Database = {
           is_geocodable: boolean | null
           last_name: string
           linked_vendor_id: string | null
+          merge_reason: string | null
+          merged_at: string | null
+          merged_by: string | null
+          merged_into_id: string | null
           notes: string | null
           onboarding_completed_at: string | null
           onboarding_status: string | null
@@ -2448,6 +2535,10 @@ export type Database = {
           is_geocodable?: boolean | null
           last_name: string
           linked_vendor_id?: string | null
+          merge_reason?: string | null
+          merged_at?: string | null
+          merged_by?: string | null
+          merged_into_id?: string | null
           notes?: string | null
           onboarding_completed_at?: string | null
           onboarding_status?: string | null
@@ -2496,6 +2587,10 @@ export type Database = {
           is_geocodable?: boolean | null
           last_name?: string
           linked_vendor_id?: string | null
+          merge_reason?: string | null
+          merged_at?: string | null
+          merged_by?: string | null
+          merged_into_id?: string | null
           notes?: string | null
           onboarding_completed_at?: string | null
           onboarding_status?: string | null
@@ -2531,6 +2626,13 @@ export type Database = {
             columns: ["linked_vendor_id"]
             isOneToOne: false
             referencedRelation: "vendors"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "personnel_merged_into_id_fkey"
+            columns: ["merged_into_id"]
+            isOneToOne: false
+            referencedRelation: "personnel"
             referencedColumns: ["id"]
           },
           {
@@ -5810,7 +5912,12 @@ export type Database = {
           email: string
           id: string
           insurance_expiry: string | null
+          is_active: boolean | null
           license_number: string | null
+          merge_reason: string | null
+          merged_at: string | null
+          merged_by: string | null
+          merged_into_id: string | null
           name: string
           notes: string | null
           opening_balance: number | null
@@ -5839,7 +5946,12 @@ export type Database = {
           email: string
           id?: string
           insurance_expiry?: string | null
+          is_active?: boolean | null
           license_number?: string | null
+          merge_reason?: string | null
+          merged_at?: string | null
+          merged_by?: string | null
+          merged_into_id?: string | null
           name: string
           notes?: string | null
           opening_balance?: number | null
@@ -5868,7 +5980,12 @@ export type Database = {
           email?: string
           id?: string
           insurance_expiry?: string | null
+          is_active?: boolean | null
           license_number?: string | null
+          merge_reason?: string | null
+          merged_at?: string | null
+          merged_by?: string | null
+          merged_into_id?: string | null
           name?: string
           notes?: string | null
           opening_balance?: number | null
@@ -5892,6 +6009,13 @@ export type Database = {
             columns: ["default_expense_category_id"]
             isOneToOne: false
             referencedRelation: "expense_categories"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "vendors_merged_into_id_fkey"
+            columns: ["merged_into_id"]
+            isOneToOne: false
+            referencedRelation: "vendors"
             referencedColumns: ["id"]
           },
         ]
@@ -6072,6 +6196,43 @@ export type Database = {
         Returns: string
       }
       expire_old_invitations: { Args: never; Returns: undefined }
+      find_duplicate_customers: {
+        Args: { p_customer_id: string }
+        Returns: {
+          duplicate_company: string
+          duplicate_email: string
+          duplicate_id: string
+          duplicate_name: string
+          duplicate_phone: string
+          match_score: number
+          match_type: string
+        }[]
+      }
+      find_duplicate_personnel: {
+        Args: { p_personnel_id: string }
+        Returns: {
+          duplicate_email: string
+          duplicate_id: string
+          duplicate_name: string
+          duplicate_phone: string
+          duplicate_ssn_last_four: string
+          match_score: number
+          match_type: string
+        }[]
+      }
+      find_duplicate_vendors: {
+        Args: { p_vendor_id: string }
+        Returns: {
+          duplicate_company: string
+          duplicate_email: string
+          duplicate_id: string
+          duplicate_name: string
+          duplicate_phone: string
+          duplicate_tax_id: string
+          match_score: number
+          match_type: string
+        }[]
+      }
       generate_change_order_number: {
         Args: { p_project_id: string }
         Returns: string
@@ -6110,6 +6271,8 @@ export type Database = {
         Args: never
         Returns: undefined
       }
+      show_limit: { Args: never; Returns: number }
+      show_trgm: { Args: { "": string }; Returns: string[] }
     }
     Enums: {
       activity_priority: "low" | "medium" | "high" | "urgent"
