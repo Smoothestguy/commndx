@@ -14,6 +14,7 @@ import { SidebarLayout } from "@/components/layout/SidebarLayout";
 import { ChatInterface } from "@/components/ai-assistant/ChatInterface";
 import Index from "./pages/Index";
 import Auth from "./pages/Auth";
+import AuthCallback from "./pages/AuthCallback";
 import Products from "./pages/Products";
 import Customers from "./pages/Customers";
 import CustomerDetail from "./pages/CustomerDetail";
@@ -132,6 +133,7 @@ const App = () => {
               <AIAssistantProvider>
                 <Routes>
                   <Route path="/auth" element={<Auth />} />
+                  <Route path="/auth/callback" element={<AuthCallback />} />
                   <Route
                     path="/accept-invitation"
                     element={<AcceptInvitation />}
