@@ -8,12 +8,16 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { useUserRole } from "@/hooks/useUserRole";
 
 export default function StaffingMapView() {
   const [mapboxToken, setMapboxToken] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [manualToken, setManualToken] = useState("");
+  const { isAdmin: isAdminRole, isManager } = useUserRole();
+
+  const isAdmin = isAdminRole || isManager;
 
   useEffect(() => {
     const fetchToken = async () => {
@@ -105,7 +109,7 @@ export default function StaffingMapView() {
       title="Personnel & Applicant Map" 
       description="View personnel and applicant locations on a map"
     >
-      {mapboxToken && <PersonnelApplicantMap mapboxToken={mapboxToken} />}
+      {mapboxToken && <PersonnelApplicantMap mapboxToken={mapboxToken} isAdmin={isAdmin} />}
     </PageLayout>
   );
 }

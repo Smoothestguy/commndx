@@ -119,3 +119,6 @@ verify_jwt = false
 
 [functions.get-mapbox-token]
 verify_jwt = false
+
+[functions.run-geocode-backfill]
+verify_jwt = false

@@ -122,44 +122,62 @@ export type Database = {
       }
       applicants: {
         Row: {
+          address: string | null
+          city: string | null
           created_at: string
           email: string
           first_name: string
+          geocode_source: string | null
+          geocoded_at: string | null
           home_lat: number | null
           home_lng: number | null
           home_zip: string | null
           id: string
+          is_geocodable: boolean | null
           last_name: string
           phone: string | null
           photo_url: string | null
+          state: string | null
           status: Database["public"]["Enums"]["applicant_status"]
           updated_at: string
         }
         Insert: {
+          address?: string | null
+          city?: string | null
           created_at?: string
           email: string
           first_name: string
+          geocode_source?: string | null
+          geocoded_at?: string | null
           home_lat?: number | null
           home_lng?: number | null
           home_zip?: string | null
           id?: string
+          is_geocodable?: boolean | null
           last_name: string
           phone?: string | null
           photo_url?: string | null
+          state?: string | null
           status?: Database["public"]["Enums"]["applicant_status"]
           updated_at?: string
         }
         Update: {
+          address?: string | null
+          city?: string | null
           created_at?: string
           email?: string
           first_name?: string
+          geocode_source?: string | null
+          geocoded_at?: string | null
           home_lat?: number | null
           home_lng?: number | null
           home_zip?: string | null
           id?: string
+          is_geocodable?: boolean | null
           last_name?: string
           phone?: string | null
           photo_url?: string | null
+          state?: string | null
           status?: Database["public"]["Enums"]["applicant_status"]
           updated_at?: string
         }
@@ -1396,6 +1414,42 @@ export type Database = {
         }
         Relationships: []
       }
+      geocode_logs: {
+        Row: {
+          address_input: string | null
+          created_at: string | null
+          error_message: string | null
+          id: string
+          lat: number | null
+          lng: number | null
+          record_id: string
+          record_type: string
+          success: boolean
+        }
+        Insert: {
+          address_input?: string | null
+          created_at?: string | null
+          error_message?: string | null
+          id?: string
+          lat?: number | null
+          lng?: number | null
+          record_id: string
+          record_type: string
+          success: boolean
+        }
+        Update: {
+          address_input?: string | null
+          created_at?: string | null
+          error_message?: string | null
+          id?: string
+          lat?: number | null
+          lng?: number | null
+          record_id?: string
+          record_type?: string
+          success?: boolean
+        }
+        Relationships: []
+      }
       insurance_claims: {
         Row: {
           adjuster_email: string | null
@@ -2210,6 +2264,8 @@ export type Database = {
           everify_status: Database["public"]["Enums"]["everify_status"] | null
           everify_verified_at: string | null
           first_name: string
+          geocode_source: string | null
+          geocoded_at: string | null
           home_lat: number | null
           home_lng: number | null
           hourly_rate: number | null
@@ -2217,6 +2273,7 @@ export type Database = {
           id: string
           id_document_url: string | null
           immigration_status: string | null
+          is_geocodable: boolean | null
           last_name: string
           linked_vendor_id: string | null
           notes: string | null
@@ -2255,6 +2312,8 @@ export type Database = {
           everify_status?: Database["public"]["Enums"]["everify_status"] | null
           everify_verified_at?: string | null
           first_name: string
+          geocode_source?: string | null
+          geocoded_at?: string | null
           home_lat?: number | null
           home_lng?: number | null
           hourly_rate?: number | null
@@ -2262,6 +2321,7 @@ export type Database = {
           id?: string
           id_document_url?: string | null
           immigration_status?: string | null
+          is_geocodable?: boolean | null
           last_name: string
           linked_vendor_id?: string | null
           notes?: string | null
@@ -2300,6 +2360,8 @@ export type Database = {
           everify_status?: Database["public"]["Enums"]["everify_status"] | null
           everify_verified_at?: string | null
           first_name?: string
+          geocode_source?: string | null
+          geocoded_at?: string | null
           home_lat?: number | null
           home_lng?: number | null
           hourly_rate?: number | null
@@ -2307,6 +2369,7 @@ export type Database = {
           id?: string
           id_document_url?: string | null
           immigration_status?: string | null
+          is_geocodable?: boolean | null
           last_name?: string
           linked_vendor_id?: string | null
           notes?: string | null
