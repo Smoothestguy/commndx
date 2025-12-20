@@ -1,5 +1,5 @@
-import { useState, useCallback } from "react";
-import { Upload, ImageIcon, Loader2, AlertCircle } from "lucide-react";
+import { useState, useCallback, useEffect } from "react";
+import { Upload, ImageIcon, Loader2, AlertCircle, Keyboard } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { toast } from "sonner";
@@ -65,6 +65,32 @@ export function DevActivityUpload({ onAnalysisComplete, onManualEntry }: DevActi
     }
   }, [handleFile]);
 
+  const handlePaste = useCallback((e: ClipboardEvent) => {
+    const items = e.clipboardData?.items;
+    if (!items) return;
+
+    for (const item of items) {
+      if (item.type.startsWith('image/')) {
+        e.preventDefault();
+        const file = item.getAsFile();
+        if (file) {
+          handleFile(file);
+        }
+        return;
+      }
+    }
+  }, [handleFile]);
+
+  // Listen for paste events when no preview is shown
+  useEffect(() => {
+    if (preview) return;
+
+    document.addEventListener('paste', handlePaste);
+    return () => {
+      document.removeEventListener('paste', handlePaste);
+    };
+  }, [preview, handlePaste]);
+
   const handleAnalyze = async () => {
     if (!selectedFile) return;
 
@@ -119,8 +145,18 @@ export function DevActivityUpload({ onAnalysisComplete, onManualEntry }: DevActi
                 <div>
                   <p className="text-lg font-medium">Upload a screenshot</p>
                   <p className="text-sm text-muted-foreground mt-1">
-                    Drag & drop or click to browse
+                    Drag & drop, click to browse, or paste
                   </p>
+                  <div className="flex items-center justify-center gap-2 mt-2">
+                    <kbd className="inline-flex items-center gap-1 px-2 py-0.5 rounded bg-muted border text-xs font-mono">
+                      <Keyboard className="h-3 w-3" />
+                      ⌘V
+                    </kbd>
+                    <span className="text-xs text-muted-foreground">or</span>
+                    <kbd className="inline-flex items-center gap-1 px-2 py-0.5 rounded bg-muted border text-xs font-mono">
+                      Ctrl+V
+                    </kbd>
+                  </div>
                   <p className="text-xs text-muted-foreground mt-2">
                     PNG, JPG, WEBP up to 5MB
                   </p>
