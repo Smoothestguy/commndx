@@ -9,7 +9,7 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { Mail, Phone, MapPin, Calendar, DollarSign, AlertTriangle, IdCard, MessageSquare, Edit, Flag, FileCheck, Shield, Award, AlertCircle, LucideIcon, Clock, Check, Send } from "lucide-react";
+import { Mail, Phone, MapPin, Calendar, DollarSign, AlertTriangle, IdCard, MessageSquare, Edit, Flag, FileCheck, Shield, Award, AlertCircle, LucideIcon, Clock, Check, Send, Link2, Building2 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { format } from "date-fns";
 import { useState } from "react";
@@ -23,6 +23,7 @@ import { PersonnelProjectsList } from "@/components/personnel/PersonnelProjectsL
 import { W9FormView } from "@/components/personnel/W9FormView";
 import { Generate1099Dialog } from "@/components/personnel/Generate1099Dialog";
 import { usePersonnelW9Form } from "@/integrations/supabase/hooks/useW9Forms";
+import { PersonnelVendorMergeDialog } from "@/components/merge/PersonnelVendorMergeDialog";
 
 interface ComplianceIssue {
   type: string;
@@ -45,6 +46,7 @@ const PersonnelDetail = () => {
   const [smsDialogOpen, setSmsDialogOpen] = useState(false);
   const [generate1099Open, setGenerate1099Open] = useState(false);
   const [defaultEditTab, setDefaultEditTab] = useState("personal");
+  const [vendorMergeOpen, setVendorMergeOpen] = useState(false);
 
   const handleResendOnboardingEmail = () => {
     if (!personnel) return;
@@ -296,6 +298,12 @@ const PersonnelDetail = () => {
                       Out of Compliance
                     </Badge>
                   )}
+                  {personnel.vendor_id && (
+                    <Badge variant="outline" className="gap-1">
+                      <Building2 className="h-3 w-3" />
+                      Linked to Vendor
+                    </Badge>
+                  )}
                 </div>
 
                 <div className="flex flex-wrap gap-2">
@@ -335,6 +343,14 @@ const PersonnelDetail = () => {
                     existingInvitationDate={existingInvitation?.created_at}
                     isLinked={!!personnel.user_id}
                   />
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setVendorMergeOpen(true)}
+                  >
+                    <Link2 className="mr-2 h-4 w-4" />
+                    {personnel.vendor_id ? "Change Vendor" : "Link to Vendor"}
+                  </Button>
                 </div>
               </div>
             </div>
@@ -737,6 +753,16 @@ const PersonnelDetail = () => {
         personnelName={`${personnel.first_name} ${personnel.last_name}`}
         w9Form={w9Form}
         personnelData={personnel}
+      />
+
+      <PersonnelVendorMergeDialog
+        open={vendorMergeOpen}
+        onOpenChange={setVendorMergeOpen}
+        personnelId={personnel.id}
+        personnelName={`${personnel.first_name} ${personnel.last_name}`}
+        personnelEmail={personnel.email}
+        personnelPhone={personnel.phone}
+        currentVendorId={personnel.vendor_id}
       />
     </DetailPageLayout>
   );
