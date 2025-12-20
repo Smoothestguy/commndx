@@ -1,12 +1,13 @@
 import { useState } from "react";
 import { useForm } from "react-hook-form";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { useCompanySettings, useUpdateCompanySettings, useUploadLogo } from "@/integrations/supabase/hooks/useCompanySettings";
-import { Building2, Loader2, Upload } from "lucide-react";
+import { Building2, Loader2, ChevronDown } from "lucide-react";
 
 export const CompanySettingsForm = () => {
   const { data: settings, isLoading } = useCompanySettings();
@@ -14,6 +15,7 @@ export const CompanySettingsForm = () => {
   const uploadLogo = useUploadLogo();
   const [logoFile, setLogoFile] = useState<File | null>(null);
   const [logoPreview, setLogoPreview] = useState<string | null>(null);
+  const [isOpen, setIsOpen] = useState(false);
 
   const { register, handleSubmit, formState: { errors } } = useForm<any>({
     values: settings || {},
@@ -63,18 +65,27 @@ export const CompanySettingsForm = () => {
   }
 
   return (
-    <Card>
-      <CardHeader>
-        <CardTitle className="flex items-center gap-2">
-          <Building2 className="h-5 w-5" />
-          Company Settings
-        </CardTitle>
-        <CardDescription>
-          Manage your company information and defaults
-        </CardDescription>
-      </CardHeader>
-      <CardContent>
-        <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
+    <Collapsible open={isOpen} onOpenChange={setIsOpen}>
+      <Card>
+        <CollapsibleTrigger asChild>
+          <CardHeader className="cursor-pointer hover:bg-muted/50 transition-colors">
+            <div className="flex items-center justify-between">
+              <div>
+                <CardTitle className="flex items-center gap-2">
+                  <Building2 className="h-5 w-5" />
+                  Company Settings
+                </CardTitle>
+                <CardDescription>
+                  Manage your company information and defaults
+                </CardDescription>
+              </div>
+              <ChevronDown className={`h-5 w-5 text-muted-foreground transition-transform duration-200 ${isOpen ? 'rotate-180' : ''}`} />
+            </div>
+          </CardHeader>
+        </CollapsibleTrigger>
+        <CollapsibleContent>
+          <CardContent>
+            <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
           <div className="space-y-4">
             <div className="space-y-2">
               <Label>Company Logo</Label>
@@ -224,17 +235,19 @@ export const CompanySettingsForm = () => {
             </div>
           </div>
 
-          <Button
-            type="submit"
-            disabled={updateSettings.isPending || uploadLogo.isPending}
-          >
-            {(updateSettings.isPending || uploadLogo.isPending) && (
-              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-            )}
-            Save Changes
-          </Button>
-        </form>
-      </CardContent>
-    </Card>
+              <Button
+                type="submit"
+                disabled={updateSettings.isPending || uploadLogo.isPending}
+              >
+                {(updateSettings.isPending || uploadLogo.isPending) && (
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                )}
+                Save Changes
+              </Button>
+            </form>
+          </CardContent>
+        </CollapsibleContent>
+      </Card>
+    </Collapsible>
   );
 };
