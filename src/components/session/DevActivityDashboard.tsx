@@ -1,0 +1,332 @@
+import { useState } from "react";
+import { format } from "date-fns";
+import { Plus, Upload, Search, Edit, Trash2, ChevronDown, ChevronUp } from "lucide-react";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Badge } from "@/components/ui/badge";
+import { ScrollArea } from "@/components/ui/scroll-area";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
+import { DateRange } from "react-day-picker";
+import { useDevActivities, DevActivity } from "@/hooks/useDevActivities";
+import { DevActivityUpload } from "./DevActivityUpload";
+import { DevActivityReviewModal } from "./DevActivityReviewModal";
+import { DevActivityManualForm } from "./DevActivityManualForm";
+import { DevActivityStats } from "./DevActivityStats";
+import { getActivityTypeConfig, formatDuration, ACTIVITY_TYPES } from "./devActivityUtils";
+
+interface DevActivityDashboardProps {
+  dateRange?: DateRange;
+}
+
+export function DevActivityDashboard({ dateRange }: DevActivityDashboardProps) {
+  const { activities, isLoading, deleteActivity } = useDevActivities(dateRange);
+  const [showUpload, setShowUpload] = useState(false);
+  const [showManualForm, setShowManualForm] = useState(false);
+  const [editActivity, setEditActivity] = useState<DevActivity | null>(null);
+  const [deleteId, setDeleteId] = useState<string | null>(null);
+  const [extractedActivities, setExtractedActivities] = useState<any[]>([]);
+  const [showReviewModal, setShowReviewModal] = useState(false);
+  const [searchQuery, setSearchQuery] = useState("");
+  const [typeFilter, setTypeFilter] = useState<string>("all");
+  const [projectFilter, setProjectFilter] = useState<string>("all");
+  const [expandedId, setExpandedId] = useState<string | null>(null);
+
+  // Get unique projects for filter
+  const uniqueProjects = [...new Set(activities.map((a) => a.project_name).filter(Boolean))];
+
+  // Filter activities
+  const filteredActivities = activities.filter((activity) => {
+    const matchesSearch =
+      searchQuery === "" ||
+      activity.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      activity.description?.toLowerCase().includes(searchQuery.toLowerCase());
+    
+    const matchesType = typeFilter === "all" || activity.activity_type === typeFilter;
+    const matchesProject =
+      projectFilter === "all" ||
+      (projectFilter === "none" && !activity.project_name) ||
+      activity.project_name === projectFilter;
+
+    return matchesSearch && matchesType && matchesProject;
+  });
+
+  // Group by date
+  const groupedByDate = filteredActivities.reduce((acc, activity) => {
+    const date = activity.activity_date;
+    if (!acc[date]) acc[date] = [];
+    acc[date].push(activity);
+    return acc;
+  }, {} as Record<string, DevActivity[]>);
+
+  const handleAnalysisComplete = (activities: any[]) => {
+    setExtractedActivities(activities);
+    setShowUpload(false);
+    setShowReviewModal(true);
+  };
+
+  const handleDelete = async () => {
+    if (deleteId) {
+      await deleteActivity.mutateAsync(deleteId);
+      setDeleteId(null);
+    }
+  };
+
+  if (isLoading) {
+    return (
+      <div className="space-y-4">
+        <div className="h-32 bg-muted animate-pulse rounded-lg" />
+        <div className="h-64 bg-muted animate-pulse rounded-lg" />
+      </div>
+    );
+  }
+
+  return (
+    <div className="space-y-6">
+      {/* Stats */}
+      <DevActivityStats activities={activities} />
+
+      {/* Actions & Filters */}
+      <div className="flex flex-col sm:flex-row gap-4">
+        <div className="flex gap-2">
+          <Button onClick={() => setShowUpload(true)}>
+            <Upload className="h-4 w-4 mr-2" />
+            Upload Screenshot
+          </Button>
+          <Button variant="outline" onClick={() => setShowManualForm(true)}>
+            <Plus className="h-4 w-4 mr-2" />
+            Add Manual
+          </Button>
+        </div>
+
+        <div className="flex-1 flex gap-2 flex-wrap">
+          <div className="relative flex-1 min-w-[200px]">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+            <Input
+              placeholder="Search activities..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className="pl-9"
+            />
+          </div>
+          <Select value={typeFilter} onValueChange={setTypeFilter}>
+            <SelectTrigger className="w-[150px]">
+              <SelectValue placeholder="All types" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">All types</SelectItem>
+              {ACTIVITY_TYPES.map((type) => (
+                <SelectItem key={type.value} value={type.value}>
+                  {type.label}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+          <Select value={projectFilter} onValueChange={setProjectFilter}>
+            <SelectTrigger className="w-[150px]">
+              <SelectValue placeholder="All projects" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">All projects</SelectItem>
+              <SelectItem value="none">No project</SelectItem>
+              {uniqueProjects.map((project) => (
+                <SelectItem key={project} value={project!}>
+                  {project}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
+      </div>
+
+      {/* Upload Panel */}
+      {showUpload && (
+        <DevActivityUpload
+          onAnalysisComplete={handleAnalysisComplete}
+          onManualEntry={() => {
+            setShowUpload(false);
+            setShowManualForm(true);
+          }}
+        />
+      )}
+
+      {/* Timeline */}
+      <Card>
+        <CardHeader>
+          <CardTitle>Activity Timeline</CardTitle>
+        </CardHeader>
+        <CardContent>
+          {filteredActivities.length === 0 ? (
+            <div className="text-center py-12 text-muted-foreground">
+              <p>No development activities found.</p>
+              <p className="text-sm mt-1">
+                Upload a screenshot or add activities manually to get started.
+              </p>
+            </div>
+          ) : (
+            <ScrollArea className="h-[500px] pr-4">
+              <div className="space-y-6">
+                {Object.entries(groupedByDate).map(([date, dayActivities]) => (
+                  <div key={date}>
+                    <div className="sticky top-0 bg-background py-2 z-10">
+                      <Badge variant="secondary" className="text-xs">
+                        {format(new Date(date), "EEEE, MMMM d, yyyy")}
+                      </Badge>
+                    </div>
+                    <div className="space-y-3 mt-2">
+                      {dayActivities.map((activity) => {
+                        const config = getActivityTypeConfig(activity.activity_type);
+                        const Icon = config.icon;
+                        const isExpanded = expandedId === activity.id;
+
+                        return (
+                          <div
+                            key={activity.id}
+                            className="relative pl-6 border-l-2 border-muted ml-2"
+                          >
+                            <div
+                              className={`absolute left-[-9px] top-0 w-4 h-4 rounded-full ${config.bgClass}`}
+                            />
+                            <div className="bg-card border rounded-lg p-4">
+                              <div className="flex items-start justify-between gap-2">
+                                <div className="flex-1 min-w-0">
+                                  <div className="flex items-center gap-2 flex-wrap">
+                                    <Badge className={config.className}>
+                                      <Icon className="h-3 w-3 mr-1" />
+                                      {config.label}
+                                    </Badge>
+                                    {activity.project_name && (
+                                      <Badge variant="outline">{activity.project_name}</Badge>
+                                    )}
+                                    {activity.duration_minutes && (
+                                      <span className="text-xs text-muted-foreground">
+                                        {formatDuration(activity.duration_minutes)}
+                                      </span>
+                                    )}
+                                  </div>
+                                  <h4 className="font-medium mt-2">{activity.title}</h4>
+                                  {activity.description && !isExpanded && (
+                                    <p className="text-sm text-muted-foreground mt-1 line-clamp-2">
+                                      {activity.description}
+                                    </p>
+                                  )}
+                                  {isExpanded && activity.description && (
+                                    <p className="text-sm text-muted-foreground mt-1 whitespace-pre-wrap">
+                                      {activity.description}
+                                    </p>
+                                  )}
+                                  {activity.technologies.length > 0 && (
+                                    <div className="flex gap-1 flex-wrap mt-2">
+                                      {activity.technologies.map((tech) => (
+                                        <Badge key={tech} variant="secondary" className="text-xs">
+                                          {tech}
+                                        </Badge>
+                                      ))}
+                                    </div>
+                                  )}
+                                </div>
+                                <div className="flex items-center gap-1">
+                                  {activity.description && (
+                                    <Button
+                                      variant="ghost"
+                                      size="icon"
+                                      className="h-8 w-8"
+                                      onClick={() =>
+                                        setExpandedId(isExpanded ? null : activity.id)
+                                      }
+                                    >
+                                      {isExpanded ? (
+                                        <ChevronUp className="h-4 w-4" />
+                                      ) : (
+                                        <ChevronDown className="h-4 w-4" />
+                                      )}
+                                    </Button>
+                                  )}
+                                  <Button
+                                    variant="ghost"
+                                    size="icon"
+                                    className="h-8 w-8"
+                                    onClick={() => setEditActivity(activity)}
+                                  >
+                                    <Edit className="h-4 w-4" />
+                                  </Button>
+                                  <Button
+                                    variant="ghost"
+                                    size="icon"
+                                    className="h-8 w-8 text-destructive"
+                                    onClick={() => setDeleteId(activity.id)}
+                                  >
+                                    <Trash2 className="h-4 w-4" />
+                                  </Button>
+                                </div>
+                              </div>
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </ScrollArea>
+          )}
+        </CardContent>
+      </Card>
+
+      {/* Modals */}
+      <DevActivityReviewModal
+        open={showReviewModal}
+        onOpenChange={setShowReviewModal}
+        activities={extractedActivities}
+        onComplete={() => setExtractedActivities([])}
+      />
+
+      <DevActivityManualForm
+        open={showManualForm || !!editActivity}
+        onOpenChange={(open) => {
+          if (!open) {
+            setShowManualForm(false);
+            setEditActivity(null);
+          }
+        }}
+        editActivity={editActivity}
+      />
+
+      <AlertDialog open={!!deleteId} onOpenChange={(open) => !open && setDeleteId(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete Activity</AlertDialogTitle>
+            <AlertDialogDescription>
+              Are you sure you want to delete this activity? This action cannot be undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={handleDelete}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              Delete
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+    </div>
+  );
+}
