@@ -2,7 +2,7 @@ import { useState } from "react";
 import { Navigate } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
 import { SEO } from "@/components/SEO";
-import { PageLayout } from "@/components/layout/PageLayout";
+import { DetailPageLayout } from "@/components/layout/DetailPageLayout";
 import { SessionHistoryStats } from "@/components/session/SessionHistoryStats";
 import { SessionHistoryTable } from "@/components/session/SessionHistoryTable";
 import { SessionActivityTimeline } from "@/components/session/SessionActivityTimeline";
@@ -33,9 +33,10 @@ export default function SessionHistory() {
         description="View your work session history and activity logs"
         keywords="session history, time tracking, activity log, work hours"
       />
-      <PageLayout
+      <DetailPageLayout
         title="Session History"
-        description="Review your work sessions, active time, and activity logs"
+        subtitle="Review your work sessions, active time, and activity logs"
+        backPath="/settings"
       >
         <div className="space-y-6">
           <div className="flex justify-end">
@@ -72,7 +73,7 @@ export default function SessionHistory() {
             </TabsContent>
           </Tabs>
         </div>
-      </PageLayout>
+      </DetailPageLayout>
     </>
   );
 }
