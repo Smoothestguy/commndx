@@ -37,11 +37,17 @@ export interface Applicant {
   last_name: string;
   phone: string | null;
   email: string;
+  address: string | null;
+  city: string | null;
+  state: string | null;
   home_zip: string | null;
   home_lat: number | null;
   home_lng: number | null;
   photo_url: string | null;
   status: 'new' | 'approved' | 'rejected' | 'inactive';
+  geocoded_at: string | null;
+  geocode_source: string | null;
+  is_geocodable: boolean | null;
   created_at: string;
   updated_at: string;
 }
@@ -339,6 +345,9 @@ export const useSubmitApplication = () => {
         last_name: string;
         phone: string;
         email: string;
+        address?: string;
+        city?: string;
+        state?: string;
         home_zip?: string;
         photo_url?: string;
       };
@@ -397,6 +406,9 @@ export const useSubmitApplication = () => {
             first_name: applicantData.first_name,
             last_name: applicantData.last_name,
             phone: applicantData.phone,
+            address: applicantData.address || null,
+            city: applicantData.city || null,
+            state: applicantData.state || null,
             home_zip: applicantData.home_zip || null,
             photo_url: applicantData.photo_url || null,
           } as any)
@@ -418,6 +430,9 @@ export const useSubmitApplication = () => {
             last_name: applicantData.last_name,
             phone: applicantData.phone,
             email: applicantData.email,
+            address: applicantData.address || null,
+            city: applicantData.city || null,
+            state: applicantData.state || null,
             home_zip: applicantData.home_zip || null,
             photo_url: applicantData.photo_url || null,
             status: 'new' as const,
@@ -482,17 +497,17 @@ export const useSubmitApplication = () => {
         // Check if applicant already has coordinates
         const { data: applicant } = await supabase
           .from("applicants")
-          .select("home_lat, home_lng")
+          .select("home_lat, home_lng, address, city, state, home_zip")
           .eq("id", applicantId)
           .single();
 
         if (!applicant?.home_lat && !applicant?.home_lng) {
-          // Try to build address from answers
+          // Build address from applicant data or form answers
           const addressParts = [
-            answers.address || answers.street_address,
-            answers.city,
-            answers.state,
-            answers.zip || answers.zipcode || applicantData.home_zip,
+            applicant?.address || applicantData.address || answers.address || answers.street_address,
+            applicant?.city || applicantData.city || answers.city,
+            applicant?.state || applicantData.state || answers.state,
+            applicant?.home_zip || applicantData.home_zip || answers.zip || answers.zipcode,
           ].filter(Boolean);
 
           const address = addressParts.join(", ");
@@ -510,11 +525,25 @@ export const useSubmitApplication = () => {
                 .update({
                   home_lat: geo.lat,
                   home_lng: geo.lng,
+                  geocoded_at: new Date().toISOString(),
+                  geocode_source: 'mapbox_submission',
+                  is_geocodable: true,
                 })
                 .eq("id", applicantId);
             } else {
               console.log("[Application] Geocode returned no result:", geo?.reason || geo?.error);
+              // Mark as geocodable but without coordinates
+              await supabase
+                .from("applicants")
+                .update({ is_geocodable: false })
+                .eq("id", applicantId);
             }
+          } else {
+            // No address data available
+            await supabase
+              .from("applicants")
+              .update({ is_geocodable: false })
+              .eq("id", applicantId);
           }
         }
       } catch (geoError) {
