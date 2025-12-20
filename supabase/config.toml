@@ -128,3 +128,9 @@ verify_jwt = false
 
 [functions.run-geocode-backfill]
 verify_jwt = false
+
+[functions.entity-merge]
+verify_jwt = false
+
+[functions.entity-duplicate-check]
+verify_jwt = false
