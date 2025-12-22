@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { FileText, Download, Trash2, Loader2 } from "lucide-react";
+import { FileText, Download, Trash2, Loader2, Eye, X } from "lucide-react";
 import { format } from "date-fns";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -14,6 +14,12 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import {
   usePersonnelDocuments,
   useDeletePersonnelDocument,
@@ -38,6 +44,11 @@ export function PersonnelDocumentsList({
   const [downloadingId, setDownloadingId] = useState<string | null>(null);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [documentToDelete, setDocumentToDelete] = useState<PersonnelDocument | null>(null);
+  
+  // Preview state
+  const [previewDoc, setPreviewDoc] = useState<PersonnelDocument | null>(null);
+  const [previewUrl, setPreviewUrl] = useState<string | null>(null);
+  const [previewLoading, setPreviewLoading] = useState(false);
 
   const handleDownload = async (document: PersonnelDocument) => {
     setDownloadingId(document.id);
@@ -49,6 +60,22 @@ export function PersonnelDocumentsList({
     } finally {
       setDownloadingId(null);
     }
+  };
+
+  const handlePreview = async (document: PersonnelDocument) => {
+    setPreviewDoc(document);
+    setPreviewLoading(true);
+    try {
+      const url = await getDocumentUrl(document.file_path);
+      setPreviewUrl(url);
+    } finally {
+      setPreviewLoading(false);
+    }
+  };
+
+  const closePreview = () => {
+    setPreviewDoc(null);
+    setPreviewUrl(null);
   };
 
   const handleDeleteClick = (document: PersonnelDocument) => {
@@ -72,6 +99,16 @@ export function PersonnelDocumentsList({
     if (bytes < 1024) return `${bytes} B`;
     if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
     return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
+  };
+
+  const isImage = (fileType: string | null): boolean => {
+    if (!fileType) return false;
+    return fileType.startsWith("image/");
+  };
+
+  const isPdf = (fileType: string | null): boolean => {
+    if (!fileType) return false;
+    return fileType === "application/pdf";
   };
 
   if (isLoading) {
@@ -140,8 +177,17 @@ export function PersonnelDocumentsList({
                   <Button
                     variant="ghost"
                     size="icon"
+                    onClick={() => handlePreview(doc)}
+                    title="Preview"
+                  >
+                    <Eye className="h-4 w-4" />
+                  </Button>
+                  <Button
+                    variant="ghost"
+                    size="icon"
                     onClick={() => handleDownload(doc)}
                     disabled={downloadingId === doc.id}
+                    title="Download"
                   >
                     {downloadingId === doc.id ? (
                       <Loader2 className="h-4 w-4 animate-spin" />
@@ -157,6 +203,7 @@ export function PersonnelDocumentsList({
                       onClick={() => handleDeleteClick(doc)}
                       disabled={deleteDocument.isPending}
                       className="text-destructive hover:text-destructive"
+                      title="Delete"
                     >
                       <Trash2 className="h-4 w-4" />
                     </Button>
@@ -168,6 +215,57 @@ export function PersonnelDocumentsList({
         </CardContent>
       </Card>
 
+      {/* Preview Dialog */}
+      <Dialog open={!!previewDoc} onOpenChange={(open) => !open && closePreview()}>
+        <DialogContent className="max-w-4xl max-h-[90vh] overflow-hidden">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <FileText className="h-5 w-5" />
+              {previewDoc?.file_name}
+            </DialogTitle>
+          </DialogHeader>
+          <div className="relative min-h-[300px] max-h-[70vh] overflow-auto">
+            {previewLoading ? (
+              <div className="flex items-center justify-center h-64">
+                <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+              </div>
+            ) : previewUrl ? (
+              <>
+                {isImage(previewDoc?.file_type || null) ? (
+                  <img
+                    src={previewUrl}
+                    alt={previewDoc?.file_name}
+                    className="max-w-full h-auto mx-auto rounded-lg"
+                  />
+                ) : isPdf(previewDoc?.file_type || null) ? (
+                  <iframe
+                    src={previewUrl}
+                    className="w-full h-[65vh] rounded-lg border"
+                    title={previewDoc?.file_name}
+                  />
+                ) : (
+                  <div className="flex flex-col items-center justify-center h-64 text-center">
+                    <FileText className="h-16 w-16 text-muted-foreground mb-4" />
+                    <p className="text-muted-foreground mb-4">
+                      Preview not available for this file type
+                    </p>
+                    <Button onClick={() => previewUrl && window.open(previewUrl, "_blank")}>
+                      <Download className="h-4 w-4 mr-2" />
+                      Download to View
+                    </Button>
+                  </div>
+                )}
+              </>
+            ) : (
+              <div className="flex items-center justify-center h-64 text-muted-foreground">
+                Failed to load preview
+              </div>
+            )}
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Delete Dialog */}
       <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
         <AlertDialogContent>
           <AlertDialogHeader>

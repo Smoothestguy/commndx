@@ -691,6 +691,11 @@ const PersonnelDetail = () => {
               icaSignedAt={personnel.ica_signed_at}
               w9Signature={personnel.w9_signature}
               w9SignedAt={personnel.w9_signed_at}
+              personnelName={`${personnel.first_name} ${personnel.last_name}`}
+              personnelAddress={[
+                personnel.address,
+                [personnel.city, personnel.state, personnel.zip].filter(Boolean).join(", ")
+              ].filter(Boolean).join(", ")}
             />
             <W9FormView 
               personnelId={personnel.id} 
