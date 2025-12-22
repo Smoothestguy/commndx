@@ -1,6 +1,8 @@
+import { useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Building2, CreditCard, Check, X } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { Building2, CreditCard, Check, X, Eye, EyeOff } from "lucide-react";
 import { format } from "date-fns";
 
 interface DirectDepositViewProps {
@@ -20,6 +22,7 @@ export function DirectDepositView({
   signature,
   signedAt,
 }: DirectDepositViewProps) {
+  const [showNumbers, setShowNumbers] = useState(false);
   const hasDirectDeposit = bankName || routingNumber || accountNumber;
   const isSigned = !!signature && !!signedAt;
 
@@ -27,6 +30,11 @@ export function DirectDepositView({
     if (!num) return null;
     if (num.length <= 4) return num;
     return "****" + num.slice(-4);
+  };
+
+  const displayNumber = (num: string | null | undefined) => {
+    if (!num) return "Not provided";
+    return showNumbers ? num : maskNumber(num);
   };
 
   return (
@@ -53,14 +61,34 @@ export function DirectDepositView({
                 <label className="text-sm font-medium text-muted-foreground">Routing Number</label>
                 <div className="flex items-center gap-2">
                   <CreditCard className="h-4 w-4 text-muted-foreground" />
-                  <p className="font-mono">{maskNumber(routingNumber) || "Not provided"}</p>
+                  <p className="font-mono">{displayNumber(routingNumber)}</p>
+                  {routingNumber && (
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="h-6 w-6"
+                      onClick={() => setShowNumbers(!showNumbers)}
+                    >
+                      {showNumbers ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                    </Button>
+                  )}
                 </div>
               </div>
               <div>
                 <label className="text-sm font-medium text-muted-foreground">Account Number</label>
                 <div className="flex items-center gap-2">
                   <CreditCard className="h-4 w-4 text-muted-foreground" />
-                  <p className="font-mono">{maskNumber(accountNumber) || "Not provided"}</p>
+                  <p className="font-mono">{displayNumber(accountNumber)}</p>
+                  {accountNumber && !routingNumber && (
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="h-6 w-6"
+                      onClick={() => setShowNumbers(!showNumbers)}
+                    >
+                      {showNumbers ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                    </Button>
+                  )}
                 </div>
               </div>
             </div>

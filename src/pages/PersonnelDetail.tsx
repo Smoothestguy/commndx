@@ -715,6 +715,11 @@ const PersonnelDetail = () => {
               w9Signature={personnel.w9_signature}
               w9SignedAt={personnel.w9_signed_at}
             />
+            <W9FormView 
+              personnelId={personnel.id} 
+              personnelSsnLastFour={personnel.ssn_last_four}
+              personnelSsnFull={personnel.ssn_full}
+            />
           </TabsContent>
 
           <TabsContent value="tax" className="space-y-4">
