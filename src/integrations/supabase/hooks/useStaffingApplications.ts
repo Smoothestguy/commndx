@@ -785,3 +785,57 @@ export const useUpdateApplication = () => {
     },
   });
 };
+
+// ============ REVOKE APPROVAL ============
+
+export const useRevokeApproval = () => {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async ({ applicationId }: { applicationId: string }) => {
+      // 1. Get the application with applicant data
+      const { data: application, error: fetchError } = await supabase
+        .from("applications")
+        .select("*, applicants (*)")
+        .eq("id", applicationId)
+        .single();
+
+      if (fetchError) throw fetchError;
+
+      // 2. Find and delete the personnel record linked to this applicant
+      const { error: personnelDeleteError } = await supabase
+        .from("personnel")
+        .delete()
+        .eq("applicant_id", application.applicant_id);
+
+      if (personnelDeleteError) throw personnelDeleteError;
+
+      // 3. Reset application status to 'rejected' with note
+      const { error: appUpdateError } = await supabase
+        .from("applications")
+        .update({ 
+          status: 'rejected', 
+          notes: (application.notes ? application.notes + '\n\n' : '') + 
+            '[Approval revoked on ' + new Date().toLocaleDateString() + '] - Applicant can reapply'
+        })
+        .eq("id", applicationId);
+
+      if (appUpdateError) throw appUpdateError;
+
+      // 4. Reset applicant status to 'pending' so they can reapply
+      const { error: applicantUpdateError } = await supabase
+        .from("applicants")
+        .update({ status: 'new' })
+        .eq("id", application.applicant_id);
+
+      if (applicantUpdateError) throw applicantUpdateError;
+
+      return application;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["applications"] });
+      queryClient.invalidateQueries({ queryKey: ["applicants"] });
+      queryClient.invalidateQueries({ queryKey: ["personnel"] });
+    },
+  });
+};

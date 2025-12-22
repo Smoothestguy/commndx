@@ -53,6 +53,7 @@ import {
   useUpdateTaskOrder,
   useApproveApplication,
   useRejectApplication,
+  useRevokeApproval,
   Application,
   TaskOrder,
 } from "@/integrations/supabase/hooks/useStaffingApplications";
@@ -144,6 +145,7 @@ export default function StaffingApplications() {
   const updateTaskOrder = useUpdateTaskOrder();
   const approveApplication = useApproveApplication();
   const rejectApplication = useRejectApplication();
+  const revokeApproval = useRevokeApproval();
 
   // Filter applications by search and experience
   const filteredApplications = useMemo(() => {
@@ -546,6 +548,15 @@ export default function StaffingApplications() {
             toast.success("Application rejected");
           }).catch(() => {
             toast.error("Failed to reject application");
+          });
+        }}
+        onRevokeApproval={(app) => {
+          revokeApproval.mutateAsync({
+            applicationId: app.id,
+          }).then(() => {
+            toast.success("Approval revoked. Applicant can now reapply.");
+          }).catch(() => {
+            toast.error("Failed to revoke approval");
           });
         }}
       />
