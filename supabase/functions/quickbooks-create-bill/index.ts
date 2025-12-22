@@ -567,13 +567,22 @@ serve(async (req) => {
     let attachmentsSynced = 0;
     let attachmentsFailed = 0;
     
-    const { data: attachments } = await supabase
+    console.log(`[QB-SYNC] Querying attachments for bill ID: ${billId}`);
+    
+    const { data: attachments, error: attachmentError } = await supabase
       .from('vendor_bill_attachments')
       .select('*')
       .eq('bill_id', billId);
 
+    if (attachmentError) {
+      console.error(`[QB-SYNC] Error fetching attachments:`, attachmentError);
+    }
+    
+    console.log(`[QB-SYNC] Found ${attachments?.length || 0} attachments for bill ${billId}`);
+    
     if (attachments && attachments.length > 0) {
-      console.log(`Uploading ${attachments.length} attachments to QuickBooks...`);
+      console.log(`[QB-SYNC] Attachment details:`, attachments.map(a => ({ id: a.id, file_name: a.file_name })));
+      console.log(`[QB-SYNC] Uploading ${attachments.length} attachments to QuickBooks...`);
       
       for (const attachment of attachments) {
         const result = await uploadAttachmentToQB(
@@ -588,11 +597,13 @@ serve(async (req) => {
           attachmentsSynced++;
         } else {
           attachmentsFailed++;
-          console.warn(`Failed to upload attachment: ${attachment.file_name} - ${result.error}`);
+          console.warn(`[QB-SYNC] Failed to upload attachment: ${attachment.file_name} - ${result.error}`);
         }
       }
       
-      console.log(`Attachments sync complete: ${attachmentsSynced} success, ${attachmentsFailed} failed`);
+      console.log(`[QB-SYNC] Attachments sync complete: ${attachmentsSynced} success, ${attachmentsFailed} failed`);
+    } else {
+      console.log(`[QB-SYNC] No attachments found to sync for bill ${billId}`);
     }
 
     return new Response(JSON.stringify({ 
