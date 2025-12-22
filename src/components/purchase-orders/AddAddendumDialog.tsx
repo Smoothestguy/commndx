@@ -13,9 +13,13 @@ import { CalculatorInput } from "@/components/ui/calculator-input";
 import { Label } from "@/components/ui/label";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "@/components/ui/command";
-import { Loader2, Upload, FileText, X, Plus, Trash2, Send, Save, ChevronDown, Check, ChevronsUpDown, Package, Wrench, HardHat } from "lucide-react";
+import { Loader2, Plus, Trash2, Send, Save, ChevronDown, Check, ChevronsUpDown, Package, Wrench, HardHat } from "lucide-react";
 import { useAddPOAddendum, useUpdatePOAddendum, usePOAddendums, POAddendum, POAddendumLineItem } from "@/integrations/supabase/hooks/usePOAddendums";
 import { useProducts } from "@/integrations/supabase/hooks/useProducts";
+import { PendingFile, PendingAttachmentsUpload } from "@/components/shared/PendingAttachmentsUpload";
+import { finalizeAttachments, cleanupPendingAttachments } from "@/utils/attachmentUtils";
+import { useAuth } from "@/contexts/AuthContext";
+import { toast } from "sonner";
 
 import { Switch } from "@/components/ui/switch";
 import { Separator } from "@/components/ui/separator";
@@ -49,12 +53,11 @@ export function AddAddendumDialog({
   editAddendum,
   editLineItems,
 }: AddAddendumDialogProps) {
+  const { user } = useAuth();
   const [description, setDescription] = useState("");
   const [lineItems, setLineItems] = useState<LineItem[]>([]);
   const [expandedItems, setExpandedItems] = useState<Set<string>>(new Set());
-  const [file, setFile] = useState<File | null>(null);
-  const [removeExistingFile, setRemoveExistingFile] = useState(false);
-  const [isDragOver, setIsDragOver] = useState(false);
+  const [pendingAttachments, setPendingAttachments] = useState<PendingFile[]>([]);
   
   // Customer representative fields
   const [customerRepName, setCustomerRepName] = useState("");
@@ -87,8 +90,7 @@ export function AddAddendumDialog({
       setCustomerRepTitle(editAddendum.customer_rep_title || "");
       setCustomerRepEmail(editAddendum.customer_rep_email || "");
       setRequireApproval(!!editAddendum.customer_rep_email);
-      setRemoveExistingFile(false);
-      setFile(null);
+      setPendingAttachments([]);
       
       // Populate line items
       if (editLineItems && editLineItems.length > 0) {
@@ -122,8 +124,8 @@ export function AddAddendumDialog({
     setDescription("");
     setLineItems([]);
     setExpandedItems(new Set());
-    setFile(null);
-    setRemoveExistingFile(false);
+    cleanupPendingAttachments(pendingAttachments);
+    setPendingAttachments([]);
     setCustomerRepName("");
     setCustomerRepTitle("");
     setCustomerRepEmail("");
@@ -227,6 +229,8 @@ export function AddAddendumDialog({
       sortOrder: index,
     }));
 
+    let addendumId: string;
+
     if (isEditMode && editAddendum) {
       await updateAddendum.mutateAsync({
         id: editAddendum.id,
@@ -235,42 +239,42 @@ export function AddAddendumDialog({
         subtotal,
         amount: total,
         lineItems: lineItemsData,
-        file: file || undefined,
-        removeExistingFile,
-        existingFilePath: editAddendum.file_path,
         customerRepName: customerRepName.trim() || undefined,
         customerRepTitle: customerRepTitle.trim() || undefined,
         customerRepEmail: customerRepEmail.trim() || undefined,
         sendForApproval,
       });
+      addendumId = editAddendum.id;
     } else {
-      await addAddendum.mutateAsync({
+      const result = await addAddendum.mutateAsync({
         purchaseOrderId,
         number: nextNumber,
         description: description.trim(),
         subtotal,
         amount: total,
         lineItems: lineItemsData,
-        file: file || undefined,
         customerRepName: customerRepName.trim() || undefined,
         customerRepTitle: customerRepTitle.trim() || undefined,
         customerRepEmail: customerRepEmail.trim() || undefined,
         sendForApproval,
       });
+      addendumId = result.id;
+    }
+
+    // Finalize pending attachments
+    if (pendingAttachments.length > 0 && user) {
+      const attachResult = await finalizeAttachments(
+        pendingAttachments,
+        addendumId,
+        "po_addendum",
+        user.id
+      );
+      if (!attachResult.success) {
+        toast.error(`Addendum saved but attachments failed: ${attachResult.error}`);
+      }
     }
 
     handleClose();
-  };
-
-  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const selectedFile = e.target.files?.[0];
-    if (selectedFile) {
-      const allowedTypes = ['application/pdf', 'image/jpeg', 'image/png', 'image/webp'];
-      if (!allowedTypes.includes(selectedFile.type)) {
-        return;
-      }
-      setFile(selectedFile);
-    }
   };
 
   const isValid = description.trim() && lineItems.length > 0 && lineItems.every(item => item.description.trim());
@@ -606,85 +610,13 @@ export function AddAddendumDialog({
 
             {/* File Upload */}
             <div className="space-y-2">
-              <Label>Supporting Document (Optional)</Label>
-              {editAddendum?.file_path && !removeExistingFile && !file && (
-                <div className="flex items-center gap-2 p-2 border border-border rounded-md bg-secondary/30">
-                  <FileText className="h-4 w-4 text-primary" />
-                  <span className="text-sm flex-1 truncate">{editAddendum.file_name}</span>
-                  <Button
-                    type="button"
-                    variant="ghost"
-                    size="icon"
-                    className="h-6 w-6"
-                    onClick={() => setRemoveExistingFile(true)}
-                  >
-                    <X className="h-4 w-4" />
-                  </Button>
-                </div>
-              )}
-              {(removeExistingFile || !editAddendum?.file_path) && !file && (
-                <label 
-                  className={cn(
-                    "flex flex-col items-center justify-center w-full h-24 border-2 border-dashed rounded-lg cursor-pointer transition-colors",
-                    isDragOver
-                      ? "border-primary bg-primary/10"
-                      : "border-border hover:bg-secondary/50"
-                  )}
-                  onDrop={(e) => {
-                    e.preventDefault();
-                    e.stopPropagation();
-                    setIsDragOver(false);
-                    const droppedFile = e.dataTransfer.files?.[0];
-                    if (droppedFile) {
-                      const allowedTypes = ['application/pdf', 'image/jpeg', 'image/png', 'image/webp'];
-                      if (allowedTypes.includes(droppedFile.type)) {
-                        setFile(droppedFile);
-                      }
-                    }
-                  }}
-                  onDragOver={(e) => {
-                    e.preventDefault();
-                    e.stopPropagation();
-                    setIsDragOver(true);
-                  }}
-                  onDragLeave={(e) => {
-                    e.preventDefault();
-                    e.stopPropagation();
-                    setIsDragOver(false);
-                  }}
-                >
-                  <div className="flex flex-col items-center justify-center pt-2 pb-3">
-                    <Upload className="h-6 w-6 mb-1 text-muted-foreground" />
-                    <p className="text-xs text-muted-foreground">
-                      {isDragOver ? "Drop file here" : "Drag & drop or click to upload"}
-                    </p>
-                    <p className="text-xs text-muted-foreground">
-                      PDF, JPG, PNG, or WebP
-                    </p>
-                  </div>
-                  <input
-                    type="file"
-                    className="hidden"
-                    accept=".pdf,.jpg,.jpeg,.png,.webp"
-                    onChange={handleFileChange}
-                  />
-                </label>
-              )}
-              {file && (
-                <div className="flex items-center gap-2 p-2 border border-border rounded-md bg-secondary/30">
-                  <FileText className="h-4 w-4 text-primary" />
-                  <span className="text-sm flex-1 truncate">{file.name}</span>
-                  <Button
-                    type="button"
-                    variant="ghost"
-                    size="icon"
-                    className="h-6 w-6"
-                    onClick={() => setFile(null)}
-                  >
-                    <X className="h-4 w-4" />
-                  </Button>
-                </div>
-              )}
+              <Label>Supporting Documents (Optional)</Label>
+              <PendingAttachmentsUpload
+                entityType="po_addendum"
+                pendingFiles={pendingAttachments}
+                onFilesChange={setPendingAttachments}
+                compact
+              />
             </div>
           </div>
         </div>
