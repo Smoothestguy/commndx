@@ -1,6 +1,6 @@
 import { useState, useMemo } from "react";
 import { format } from "date-fns";
-import { ChevronDown, ChevronRight, Pencil, Trash2, AlertTriangle, Gift, Clock, DollarSign, Check, X, FileText, Receipt, ClipboardList, CircleDollarSign, Lock } from "lucide-react";
+import { ChevronDown, ChevronRight, Pencil, Trash2, Gift, Clock, DollarSign, Check, X, FileText, Receipt, ClipboardList, CircleDollarSign, Lock, ArrowUp, ArrowDown, ArrowUpDown } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Badge } from "@/components/ui/badge";
@@ -16,6 +16,14 @@ import {
   CollapsibleContent,
   CollapsibleTrigger,
 } from "@/components/ui/collapsible";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -37,6 +45,7 @@ import {
   TooltipContent,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
+import { cn } from "@/lib/utils";
 
 type Status = 
   | "draft" 
@@ -93,7 +102,10 @@ interface GroupedTimeTrackingTableProps {
   lockedEntryIds?: Set<string>;
 }
 
-export function GroupedTimeTrackingTable({ 
+type SortKey = 'personnelName' | 'project' | 'customer' | 'totalHours' | 'totalCost' | 'entries';
+type SortDirection = 'asc' | 'desc';
+
+export function GroupedTimeTrackingTable({
   entries, 
   onEdit, 
   onBulkDelete, 
@@ -108,12 +120,28 @@ export function GroupedTimeTrackingTable({
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [expandedGroups, setExpandedGroups] = useState<Set<string>>(new Set());
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
+  const [sortKey, setSortKey] = useState<SortKey>('personnelName');
+  const [sortDirection, setSortDirection] = useState<SortDirection>('asc');
   const isMobile = useIsMobile();
 
   const { data: companySettings } = useCompanySettings();
   const overtimeMultiplier = companySettings?.overtime_multiplier ?? 1.5;
   const holidayMultiplier = companySettings?.holiday_multiplier ?? 1.5;
   const weeklyOvertimeThreshold = companySettings?.weekly_overtime_threshold ?? 40;
+
+  const handleSort = (key: SortKey) => {
+    if (sortKey === key) {
+      setSortDirection(sortDirection === 'asc' ? 'desc' : 'asc');
+    } else {
+      setSortKey(key);
+      setSortDirection('asc');
+    }
+  };
+
+  const getSortIcon = (key: SortKey) => {
+    if (sortKey !== key) return ArrowUpDown;
+    return sortDirection === 'asc' ? ArrowUp : ArrowDown;
+  };
 
   const getPersonnelName = (entry: TimeEntryWithDetails) => {
     if (entry.personnel_id && entry.personnel) {
@@ -212,8 +240,51 @@ export function GroupedTimeTrackingTable({
       );
     });
 
-    return Array.from(groups.values());
-  }, [entries, overtimeMultiplier, holidayMultiplier, weeklyOvertimeThreshold]);
+    // Sort groups
+    const groupsArray = Array.from(groups.values());
+    groupsArray.sort((a, b) => {
+      let aValue: string | number;
+      let bValue: string | number;
+      
+      switch (sortKey) {
+        case 'personnelName':
+          aValue = a.personnelName;
+          bValue = b.personnelName;
+          break;
+        case 'project':
+          aValue = a.project;
+          bValue = b.project;
+          break;
+        case 'customer':
+          aValue = a.customer;
+          bValue = b.customer;
+          break;
+        case 'totalHours':
+          aValue = a.totalHours;
+          bValue = b.totalHours;
+          break;
+        case 'totalCost':
+          aValue = a.totalCost;
+          bValue = b.totalCost;
+          break;
+        case 'entries':
+          aValue = a.entries.length;
+          bValue = b.entries.length;
+          break;
+        default:
+          aValue = a.personnelName;
+          bValue = b.personnelName;
+      }
+      
+      const comparison = typeof aValue === 'string' 
+        ? aValue.localeCompare(bValue as string)
+        : (aValue as number) - (bValue as number);
+      
+      return sortDirection === 'asc' ? comparison : -comparison;
+    });
+
+    return groupsArray;
+  }, [entries, overtimeMultiplier, holidayMultiplier, weeklyOvertimeThreshold, sortKey, sortDirection]);
 
   const toggleGroup = (key: string) => {
     const newExpanded = new Set(expandedGroups);
@@ -671,177 +742,262 @@ export function GroupedTimeTrackingTable({
         </div>
       )}
 
-      <div className="space-y-3">
-        {/* Select All Header */}
-        {onBulkDelete && groupedEntries.length > 0 && (
-          <div className="glass rounded-xl border border-border/50 p-3">
-            <div className="flex items-center gap-3">
-              <Checkbox
-                checked={allSelected}
-                ref={(el) => {
-                  if (el) {
-                    (el as HTMLButtonElement & { indeterminate: boolean }).indeterminate = someSelected;
-                  }
-                }}
-                onCheckedChange={(checked) => handleSelectAll(!!checked)}
-                aria-label="Select all entries"
-              />
-              <span className="text-sm font-medium">
-                Select All ({entries.length} {entries.length === 1 ? "entry" : "entries"})
-              </span>
-            </div>
-          </div>
-        )}
-
-        {groupedEntries.map((group) => (
-          <Collapsible
-            key={group.personnelKey}
-            open={expandedGroups.has(group.personnelKey)}
-            onOpenChange={() => toggleGroup(group.personnelKey)}
-          >
-            {/* Personnel Group Header */}
-            <div className="glass rounded-xl border border-border/50 overflow-hidden">
-              <CollapsibleTrigger asChild>
-                <div className="flex items-center gap-3 p-4 cursor-pointer hover:bg-muted/30 transition-colors">
-                  {onBulkDelete && (
-                    <Checkbox
-                      checked={isGroupSelected(group)}
-                      ref={(el) => {
-                        if (el) {
-                          (el as HTMLButtonElement & { indeterminate: boolean }).indeterminate = isGroupIndeterminate(group);
-                        }
-                      }}
-                      onCheckedChange={(checked) => handleSelectGroup(group, !!checked)}
-                      onClick={(e) => e.stopPropagation()}
-                      aria-label={`Select all entries for ${group.personnelName}`}
-                    />
-                  )}
-                  
-                  <div className="flex items-center">
-                    {expandedGroups.has(group.personnelKey) ? (
-                      <ChevronDown className="h-5 w-5 text-muted-foreground" />
-                    ) : (
-                      <ChevronRight className="h-5 w-5 text-muted-foreground" />
-                    )}
-                  </div>
-
-                  <div className="flex-1 grid grid-cols-1 md:grid-cols-6 gap-2 md:gap-4 items-center">
-                    <div className="md:col-span-2">
-                      <div className="flex items-center gap-1.5">
-                        <p className="font-medium text-foreground">{group.personnelName}</p>
-                        <ComplianceBadge personnel={getComplianceData(group.personnelData)} compact />
-                      </div>
-                      <p className="text-sm text-muted-foreground">{group.project}</p>
-                    </div>
-                    <div className="hidden md:block text-sm text-muted-foreground">
-                      {group.customer}
-                    </div>
-                    <div className="text-sm md:text-right">
-                      <span className="font-semibold text-foreground">{group.totalHours.toFixed(2)}</span>
-                      <span className="text-muted-foreground ml-1">hrs</span>
-                      {/* Show breakdown badges */}
-                      <div className="flex gap-1 mt-1 justify-end flex-wrap">
-                        {group.overtimeHours > 0 && (
-                          <Badge variant="outline" className="text-xs bg-orange-500/10 text-orange-500 border-orange-500/20">
-                            OT: {group.overtimeHours.toFixed(1)}h
-                          </Badge>
-                        )}
-                        {group.holidayHours > 0 && (
-                          <Badge variant="outline" className="text-xs bg-purple-500/10 text-purple-500 border-purple-500/20">
-                            Holiday: {group.holidayHours.toFixed(1)}h
-                          </Badge>
-                        )}
-                      </div>
-                    </div>
-                    <div className="text-sm md:text-right">
-                      <span className="font-semibold text-foreground">${group.totalCost.toFixed(2)}</span>
-                    </div>
-                    <div className="flex justify-end">
-                      <Badge variant="secondary" className="text-xs">
-                        {group.entries.length} {group.entries.length === 1 ? "entry" : "entries"}
-                      </Badge>
-                    </div>
-                  </div>
+      <div className="bg-card rounded-lg border border-border shadow-sm overflow-hidden">
+        <Table className="text-xs">
+          <TableHeader>
+            <TableRow className="bg-table-header hover:bg-table-header border-b border-table-border">
+              {onBulkDelete && (
+                <TableHead className="w-10 text-table-header-foreground font-semibold py-2 px-3 h-9">
+                  <Checkbox
+                    checked={allSelected}
+                    ref={(el) => {
+                      if (el) {
+                        (el as HTMLButtonElement).dataset.state = someSelected ? "indeterminate" : allSelected ? "checked" : "unchecked";
+                      }
+                    }}
+                    onCheckedChange={handleSelectAll}
+                    aria-label="Select all"
+                    className="border-table-header-foreground/50"
+                  />
+                </TableHead>
+              )}
+              <TableHead className="w-10 text-table-header-foreground font-semibold py-2 px-3 h-9">
+                {/* Expand/collapse icon column */}
+              </TableHead>
+              <TableHead 
+                className="text-table-header-foreground font-semibold py-2 px-3 h-9 cursor-pointer select-none whitespace-nowrap"
+                onClick={() => handleSort('personnelName')}
+              >
+                <div className="flex items-center gap-1">
+                  <span>Personnel</span>
+                  {(() => {
+                    const Icon = getSortIcon('personnelName');
+                    return <Icon className={cn("h-3.5 w-3.5", sortKey === 'personnelName' ? "text-primary" : "text-table-header-foreground/50")} />;
+                  })()}
                 </div>
-              </CollapsibleTrigger>
+              </TableHead>
+              <TableHead 
+                className="text-table-header-foreground font-semibold py-2 px-3 h-9 cursor-pointer select-none whitespace-nowrap"
+                onClick={() => handleSort('project')}
+              >
+                <div className="flex items-center gap-1">
+                  <span>Project</span>
+                  {(() => {
+                    const Icon = getSortIcon('project');
+                    return <Icon className={cn("h-3.5 w-3.5", sortKey === 'project' ? "text-primary" : "text-table-header-foreground/50")} />;
+                  })()}
+                </div>
+              </TableHead>
+              <TableHead 
+                className="text-table-header-foreground font-semibold py-2 px-3 h-9 cursor-pointer select-none whitespace-nowrap"
+                onClick={() => handleSort('customer')}
+              >
+                <div className="flex items-center gap-1">
+                  <span>Customer</span>
+                  {(() => {
+                    const Icon = getSortIcon('customer');
+                    return <Icon className={cn("h-3.5 w-3.5", sortKey === 'customer' ? "text-primary" : "text-table-header-foreground/50")} />;
+                  })()}
+                </div>
+              </TableHead>
+              <TableHead 
+                className="text-table-header-foreground font-semibold py-2 px-3 h-9 cursor-pointer select-none whitespace-nowrap text-right"
+                onClick={() => handleSort('totalHours')}
+              >
+                <div className="flex items-center gap-1 justify-end">
+                  <span>Hours</span>
+                  {(() => {
+                    const Icon = getSortIcon('totalHours');
+                    return <Icon className={cn("h-3.5 w-3.5", sortKey === 'totalHours' ? "text-primary" : "text-table-header-foreground/50")} />;
+                  })()}
+                </div>
+              </TableHead>
+              <TableHead 
+                className="text-table-header-foreground font-semibold py-2 px-3 h-9 cursor-pointer select-none whitespace-nowrap text-right"
+                onClick={() => handleSort('totalCost')}
+              >
+                <div className="flex items-center gap-1 justify-end">
+                  <span>Cost</span>
+                  {(() => {
+                    const Icon = getSortIcon('totalCost');
+                    return <Icon className={cn("h-3.5 w-3.5", sortKey === 'totalCost' ? "text-primary" : "text-table-header-foreground/50")} />;
+                  })()}
+                </div>
+              </TableHead>
+              <TableHead 
+                className="text-table-header-foreground font-semibold py-2 px-3 h-9 cursor-pointer select-none whitespace-nowrap text-right"
+                onClick={() => handleSort('entries')}
+              >
+                <div className="flex items-center gap-1 justify-end">
+                  <span>Entries</span>
+                  {(() => {
+                    const Icon = getSortIcon('entries');
+                    return <Icon className={cn("h-3.5 w-3.5", sortKey === 'entries' ? "text-primary" : "text-table-header-foreground/50")} />;
+                  })()}
+                </div>
+              </TableHead>
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {groupedEntries.map((group, groupIndex) => (
+              <Collapsible
+                key={group.personnelKey}
+                open={expandedGroups.has(group.personnelKey)}
+                onOpenChange={() => toggleGroup(group.personnelKey)}
+                asChild
+              >
+                <>
+                  {/* Group Header Row */}
+                  <CollapsibleTrigger asChild>
+                    <TableRow
+                      className={cn(
+                        "border-b border-table-border transition-colors duration-100 cursor-pointer",
+                        groupIndex % 2 === 1 && "bg-table-stripe",
+                        "hover:bg-muted/50"
+                      )}
+                    >
+                      {onBulkDelete && (
+                        <TableCell className="py-1.5 px-3 w-10">
+                          <Checkbox
+                            checked={isGroupSelected(group)}
+                            ref={(el) => {
+                              if (el) {
+                                (el as HTMLButtonElement & { indeterminate: boolean }).indeterminate = isGroupIndeterminate(group);
+                              }
+                            }}
+                            onCheckedChange={(checked) => handleSelectGroup(group, !!checked)}
+                            onClick={(e) => e.stopPropagation()}
+                            aria-label={`Select all entries for ${group.personnelName}`}
+                          />
+                        </TableCell>
+                      )}
+                      <TableCell className="py-1.5 px-3 w-10">
+                        {expandedGroups.has(group.personnelKey) ? (
+                          <ChevronDown className="h-4 w-4 text-muted-foreground" />
+                        ) : (
+                          <ChevronRight className="h-4 w-4 text-muted-foreground" />
+                        )}
+                      </TableCell>
+                      <TableCell className="py-1.5 px-3">
+                        <div className="flex items-center gap-1.5">
+                          <span className="font-medium text-primary">{group.personnelName}</span>
+                          <ComplianceBadge personnel={getComplianceData(group.personnelData)} compact />
+                        </div>
+                      </TableCell>
+                      <TableCell className="py-1.5 px-3 text-foreground">
+                        {group.project}
+                      </TableCell>
+                      <TableCell className="py-1.5 px-3 text-muted-foreground">
+                        {group.customer}
+                      </TableCell>
+                      <TableCell className="py-1.5 px-3 text-right">
+                        <div className="font-semibold text-foreground">{group.totalHours.toFixed(2)}h</div>
+                        {(group.overtimeHours > 0 || group.holidayHours > 0) && (
+                          <div className="flex gap-1 mt-0.5 justify-end flex-wrap">
+                            {group.overtimeHours > 0 && (
+                              <Badge variant="outline" className="text-[10px] px-1 py-0 bg-orange-500/10 text-orange-500 border-orange-500/20">
+                                OT: {group.overtimeHours.toFixed(1)}h
+                              </Badge>
+                            )}
+                            {group.holidayHours > 0 && (
+                              <Badge variant="outline" className="text-[10px] px-1 py-0 bg-purple-500/10 text-purple-500 border-purple-500/20">
+                                Hol: {group.holidayHours.toFixed(1)}h
+                              </Badge>
+                            )}
+                          </div>
+                        )}
+                      </TableCell>
+                      <TableCell className="py-1.5 px-3 text-right font-semibold text-foreground">
+                        ${group.totalCost.toFixed(2)}
+                      </TableCell>
+                      <TableCell className="py-1.5 px-3 text-right">
+                        <Badge variant="secondary" className="text-[10px]">
+                          {group.entries.length}
+                        </Badge>
+                      </TableCell>
+                    </TableRow>
+                  </CollapsibleTrigger>
 
-              {/* Expanded Date Entries */}
-              <CollapsibleContent>
-                <div className="border-t border-border/30 bg-muted/10">
-                  <div className="divide-y divide-border/20">
-                    {group.entries.map((entry) => {
-                      const isHoliday = entry.is_holiday;
-                      const entryCost = getEntryCost(entry);
-                      
-                      return (
-                        <div
-                          key={entry.id}
-                          className="flex items-center gap-3 px-4 py-3 hover:bg-muted/20 transition-colors"
-                        >
-                          {onBulkDelete && (
-                            <div className="pl-8">
-                              <Checkbox
-                                checked={selectedIds.has(entry.id)}
-                                onCheckedChange={(checked) => handleSelectOne(entry.id, !!checked)}
-                                aria-label={`Select entry for ${format(new Date(entry.entry_date), "MMM dd, yyyy")}`}
-                              />
-                            </div>
-                          )}
-
-                          <div className={`flex-1 grid grid-cols-2 md:grid-cols-7 gap-2 md:gap-4 items-center ${!onBulkDelete ? 'pl-12' : ''}`}>
-                            <div className="text-sm text-foreground">
+                  {/* Expanded Detail Rows */}
+                  <CollapsibleContent asChild>
+                    <>
+                      {group.entries.map((entry, entryIndex) => {
+                        const isHoliday = entry.is_holiday;
+                        const entryCost = getEntryCost(entry);
+                        const isLocked = isWeekLocked || lockedEntryIds.has(entry.id);
+                        
+                        return (
+                          <TableRow
+                            key={entry.id}
+                            className={cn(
+                              "border-b border-table-border/50 transition-colors duration-100",
+                              "bg-muted/30 hover:bg-muted/50"
+                            )}
+                          >
+                            {onBulkDelete && (
+                              <TableCell className="py-1.5 px-3 w-10">
+                                <div className="pl-4">
+                                  <Checkbox
+                                    checked={selectedIds.has(entry.id)}
+                                    onCheckedChange={(checked) => handleSelectOne(entry.id, !!checked)}
+                                    aria-label={`Select entry for ${format(new Date(entry.entry_date), "MMM dd, yyyy")}`}
+                                  />
+                                </div>
+                              </TableCell>
+                            )}
+                            <TableCell className="py-1.5 px-3 w-10">
+                              {/* Empty for alignment */}
+                            </TableCell>
+                            <TableCell className="py-1.5 px-3 pl-8 text-sm text-foreground">
                               {format(new Date(entry.entry_date), "MMM dd, yyyy")}
-                            </div>
-                            <div className="text-sm text-right md:text-left">
-                              <span className="font-medium">{Number(entry.hours).toFixed(2)}</span>
-                              <span className="text-muted-foreground ml-1">hrs</span>
-                            </div>
-                            <div className="text-sm text-foreground">
-                              ${entryCost.toFixed(2)}
-                            </div>
-                            <div>
+                            </TableCell>
+                            <TableCell className="py-1.5 px-3">
                               <StatusBadge status={getStatus(entry)} />
-                            </div>
-                            {/* Holiday/Billing badges - OT is shown at group level */}
-                            <div className="flex gap-1 flex-wrap">
-                              {isHoliday && (
-                                <Badge variant="outline" className="text-xs bg-purple-500/10 text-purple-500 border-purple-500/20 gap-1">
-                                  <Gift className="h-3 w-3" />
-                                  Holiday
-                                </Badge>
-                              )}
-                              {entry.vendor_bill_id && (
+                            </TableCell>
+                            <TableCell className="py-1.5 px-3">
+                              <div className="flex gap-1 flex-wrap">
+                                {isHoliday && (
+                                  <Badge variant="outline" className="text-[10px] px-1 py-0 bg-purple-500/10 text-purple-500 border-purple-500/20 gap-0.5">
+                                    <Gift className="h-2.5 w-2.5" />
+                                    Holiday
+                                  </Badge>
+                                )}
+                                {entry.vendor_bill_id && (
+                                  <Tooltip>
+                                    <TooltipTrigger asChild>
+                                      <Badge variant="outline" className="text-[10px] px-1 py-0 bg-blue-500/10 text-blue-500 border-blue-500/20 gap-0.5">
+                                        <ClipboardList className="h-2.5 w-2.5" />
+                                        Billed
+                                      </Badge>
+                                    </TooltipTrigger>
+                                    <TooltipContent>Vendor bill created</TooltipContent>
+                                  </Tooltip>
+                                )}
+                                {entry.invoice_id && (
+                                  <Tooltip>
+                                    <TooltipTrigger asChild>
+                                      <Badge variant="outline" className="text-[10px] px-1 py-0 bg-green-500/10 text-green-500 border-green-500/20 gap-0.5">
+                                        <CircleDollarSign className="h-2.5 w-2.5" />
+                                        Invoiced
+                                      </Badge>
+                                    </TooltipTrigger>
+                                    <TooltipContent>Customer invoice created</TooltipContent>
+                                  </Tooltip>
+                                )}
+                              </div>
+                            </TableCell>
+                            <TableCell className="py-1.5 px-3 text-right text-sm">
+                              {Number(entry.hours).toFixed(2)}h
+                            </TableCell>
+                            <TableCell className="py-1.5 px-3 text-right text-sm">
+                              ${entryCost.toFixed(2)}
+                            </TableCell>
+                            <TableCell className="py-1.5 px-3 text-right">
+                              {isLocked ? (
                                 <Tooltip>
                                   <TooltipTrigger asChild>
-                                    <Badge variant="outline" className="text-xs bg-blue-500/10 text-blue-500 border-blue-500/20 gap-1">
-                                      <ClipboardList className="h-3 w-3" />
-                                      Billed
-                                    </Badge>
-                                  </TooltipTrigger>
-                                  <TooltipContent>Vendor bill created</TooltipContent>
-                                </Tooltip>
-                              )}
-                              {entry.invoice_id && (
-                                <Tooltip>
-                                  <TooltipTrigger asChild>
-                                    <Badge variant="outline" className="text-xs bg-green-500/10 text-green-500 border-green-500/20 gap-1">
-                                      <CircleDollarSign className="h-3 w-3" />
-                                      Invoiced
-                                    </Badge>
-                                  </TooltipTrigger>
-                                  <TooltipContent>Customer invoice created</TooltipContent>
-                                </Tooltip>
-                              )}
-                            </div>
-                            <div className="text-sm text-muted-foreground truncate md:col-span-1" title={entry.description || ""}>
-                              {entry.description || "-"}
-                            </div>
-                            <div className="flex justify-end">
-                              {isWeekLocked || lockedEntryIds.has(entry.id) ? (
-                                <Tooltip>
-                                  <TooltipTrigger asChild>
-                                    <div className="h-8 w-8 flex items-center justify-center">
-                                      <Lock className="h-4 w-4 text-muted-foreground" />
+                                    <div className="h-7 w-7 inline-flex items-center justify-center">
+                                      <Lock className="h-3.5 w-3.5 text-muted-foreground" />
                                     </div>
                                   </TooltipTrigger>
                                   <TooltipContent>Entry locked - week is closed</TooltipContent>
@@ -850,29 +1006,36 @@ export function GroupedTimeTrackingTable({
                                 <Button
                                   variant="ghost"
                                   size="icon"
-                                  onClick={() => onEdit(entry)}
-                                  className="h-8 w-8"
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    onEdit(entry);
+                                  }}
+                                  className="h-7 w-7"
                                 >
-                                  <Pencil className="h-4 w-4" />
+                                  <Pencil className="h-3.5 w-3.5" />
                                 </Button>
                               )}
-                            </div>
-                          </div>
-                        </div>
-                      );
-                    })}
-                  </div>
-                </div>
-              </CollapsibleContent>
-            </div>
-          </Collapsible>
-        ))}
-
-        {groupedEntries.length === 0 && (
-          <div className="glass rounded-xl p-8 text-center text-muted-foreground">
-            No time entries found
-          </div>
-        )}
+                            </TableCell>
+                          </TableRow>
+                        );
+                      })}
+                    </>
+                  </CollapsibleContent>
+                </>
+              </Collapsible>
+            ))}
+            {groupedEntries.length === 0 && (
+              <TableRow>
+                <TableCell
+                  colSpan={onBulkDelete ? 8 : 7}
+                  className="h-24 text-center text-muted-foreground"
+                >
+                  No time entries found
+                </TableCell>
+              </TableRow>
+            )}
+          </TableBody>
+        </Table>
       </div>
 
       {/* Delete Confirmation Dialog */}
