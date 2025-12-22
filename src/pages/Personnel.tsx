@@ -51,6 +51,8 @@ const Personnel = () => {
   const [bulkBadgeDialogOpen, setBulkBadgeDialogOpen] = useState(false);
   const [selectionMode, setSelectionMode] = useState(false);
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
+  const [currentPage, setCurrentPage] = useState(1);
+  const [rowsPerPage, setRowsPerPage] = useState(10);
 
   const { isAdmin, isManager } = useUserRole();
   const { data: pendingCount } = usePendingRegistrationsCount();
@@ -212,7 +214,18 @@ const Personnel = () => {
           </div>
         ) : personnel && personnel.length > 0 ? (
           <PersonnelTable
-            personnel={personnel}
+            personnel={personnel.slice(
+              (currentPage - 1) * rowsPerPage,
+              currentPage * rowsPerPage
+            )}
+            totalCount={personnel.length}
+            currentPage={currentPage}
+            rowsPerPage={rowsPerPage}
+            onPageChange={setCurrentPage}
+            onRowsPerPageChange={(size) => {
+              setRowsPerPage(size);
+              setCurrentPage(1);
+            }}
             selectionMode={selectionMode}
             selectedIds={selectedIds}
             onToggleSelection={handleToggleSelection}
