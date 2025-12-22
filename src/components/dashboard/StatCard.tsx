@@ -23,13 +23,13 @@ export function StatCard({
 }: StatCardProps) {
   const cardContent = compact ? (
     <>
-      <div className="flex items-center gap-1.5 mb-1">
-        <div className="flex h-6 w-6 items-center justify-center rounded bg-primary/10 flex-shrink-0">
-          <Icon className="h-3.5 w-3.5 text-primary" />
+      <div className="flex items-center gap-1 sm:gap-1.5 mb-0.5 sm:mb-1 min-w-0">
+        <div className="flex h-5 w-5 sm:h-6 sm:w-6 items-center justify-center rounded bg-primary/10 flex-shrink-0">
+          <Icon className="h-3 w-3 sm:h-3.5 sm:w-3.5 text-primary" />
         </div>
-        <p className="text-[10px] font-medium text-muted-foreground truncate">{title}</p>
+        <p className="text-[9px] sm:text-[10px] font-medium text-muted-foreground truncate min-w-0">{title}</p>
       </div>
-      <p className="font-heading text-lg font-bold text-foreground">{value}</p>
+      <p className="font-heading text-base sm:text-lg font-bold text-foreground truncate">{value}</p>
     </>
   ) : (
     <>
@@ -58,8 +58,8 @@ export function StatCard({
   );
 
   const cardClasses = cn(
-    "bg-card rounded-lg border border-border shadow-sm transition-all duration-200 hover:shadow-md group block",
-    compact ? "p-2" : "p-4 sm:p-5",
+    "bg-card rounded-lg border border-border shadow-sm transition-all duration-200 hover:shadow-md group block min-w-0 overflow-hidden",
+    compact ? "p-1.5 sm:p-2" : "p-4 sm:p-5",
     href && "cursor-pointer hover:border-primary/50"
   );
 

@@ -280,6 +280,7 @@ export function PersonnelTable({
       header: "Phone",
       sortable: true,
       filterable: true,
+      hideBelow: "lg",
       getValue: (person) => person.phone || "",
       render: (person: Personnel) => (
         <span className="text-muted-foreground text-sm">
@@ -292,6 +293,7 @@ export function PersonnelTable({
       header: "Email",
       sortable: true,
       filterable: true,
+      hideBelow: "lg",
       getValue: (person) => person.email || "",
       render: (person: Personnel) => (
         <span className="text-muted-foreground max-w-[200px] truncate text-sm">
@@ -304,6 +306,7 @@ export function PersonnelTable({
       header: "Location",
       sortable: true,
       filterable: true,
+      hideBelow: "xl",
       getValue: (person) => 
         person.city && person.state ? `${person.city}, ${person.state}` : "",
       render: (person: Personnel) => (
@@ -319,6 +322,7 @@ export function PersonnelTable({
       header: "Vendor",
       sortable: true,
       filterable: true,
+      hideBelow: "xl",
       getValue: (person) => getVendor(person.vendor_id)?.name || "",
       render: (person: Personnel) => {
         const vendor = getVendor(person.vendor_id);
@@ -343,6 +347,7 @@ export function PersonnelTable({
       header: "Rate",
       sortable: true,
       filterable: false,
+      hideBelow: "xl",
       getValue: (person) => person.hourly_rate || 0,
       render: (person: Personnel) => (
         (person.hourly_rate ?? 0) > 0 ? (

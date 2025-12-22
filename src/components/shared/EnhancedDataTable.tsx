@@ -38,6 +38,8 @@ export interface EnhancedColumn<T> {
   sortable?: boolean;
   filterable?: boolean;
   getValue?: (item: T) => string | number | null;
+  /** Hide column at specific breakpoints: 'sm' | 'md' | 'lg' | 'xl' */
+  hideBelow?: 'sm' | 'md' | 'lg' | 'xl';
 }
 
 interface EnhancedDataTableProps<T> {
@@ -228,8 +230,21 @@ export function EnhancedDataTable<T extends { id: string | number }>({
     }
   };
 
+  // Helper to get responsive visibility classes
+  const getResponsiveClass = (hideBelow?: 'sm' | 'md' | 'lg' | 'xl') => {
+    if (!hideBelow) return '';
+    const breakpointMap = {
+      'sm': 'hidden sm:table-cell',
+      'md': 'hidden md:table-cell',
+      'lg': 'hidden lg:table-cell',
+      'xl': 'hidden xl:table-cell',
+    };
+    return breakpointMap[hideBelow];
+  };
+
   return (
-    <div className="bg-card rounded-lg border border-border shadow-sm overflow-x-auto">
+    <div className="bg-card rounded-lg border border-border shadow-sm overflow-hidden">
+      <div className="overflow-x-auto">
       <DndContext
         sensors={sensors}
         collisionDetection={closestCenter}
@@ -273,8 +288,9 @@ export function EnhancedDataTable<T extends { id: string | number }>({
                       id={key}
                       className={cn(
                         "text-table-header-foreground font-semibold whitespace-nowrap",
-                        compact ? "py-2 px-3 h-9" : "py-3 px-4",
-                        column.className
+                        compact ? "py-2 px-2 md:px-3 h-9" : "py-3 px-4",
+                        column.className,
+                        getResponsiveClass(column.hideBelow)
                       )}
                     >
                       <div 
@@ -340,14 +356,17 @@ export function EnhancedDataTable<T extends { id: string | number }>({
                     <TableCell
                       key={String(column.key)}
                       className={cn(
-                        "text-foreground",
-                        compact ? "py-1.5 px-3" : "py-2 px-4",
-                        column.className
+                        "text-foreground min-w-0",
+                        compact ? "py-1.5 px-2 md:px-3" : "py-2 px-4",
+                        column.className,
+                        getResponsiveClass(column.hideBelow)
                       )}
                     >
-                      {column.render
-                        ? column.render(item)
-                        : String(item[column.key as keyof T] ?? "")}
+                      <div className="truncate">
+                        {column.render
+                          ? column.render(item)
+                          : String(item[column.key as keyof T] ?? "")}
+                      </div>
                     </TableCell>
                   ))}
                 </TableRow>
@@ -366,6 +385,7 @@ export function EnhancedDataTable<T extends { id: string | number }>({
           </TableBody>
         </Table>
       </DndContext>
+      </div>
     </div>
   );
 }
