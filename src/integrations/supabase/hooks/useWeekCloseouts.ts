@@ -41,6 +41,26 @@ export function useWeekCloseout(projectId: string | undefined, weekStartDate: Da
   });
 }
 
+export function useWeekCloseouts(weekStartDate: Date | undefined) {
+  const weekStart = weekStartDate ? format(startOfWeek(weekStartDate, { weekStartsOn: 1 }), 'yyyy-MM-dd') : null;
+  
+  return useQuery({
+    queryKey: ['week-closeouts', weekStart],
+    queryFn: async () => {
+      if (!weekStart) return [];
+      
+      const { data, error } = await supabase
+        .from('time_week_closeouts')
+        .select('*')
+        .eq('week_start_date', weekStart);
+      
+      if (error) throw error;
+      return data as WeekCloseout[];
+    },
+    enabled: !!weekStart,
+  });
+}
+
 export function useCloseWeek() {
   const queryClient = useQueryClient();
   
