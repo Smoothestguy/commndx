@@ -146,6 +146,29 @@ export function useSubmitRegistration() {
         .single();
 
       if (error) throw error;
+
+      // Notify admins about the new application
+      try {
+        await supabase.functions.invoke("create-admin-notification", {
+          body: {
+            notification_type: "new_application",
+            title: `New Application: ${data.first_name} ${data.last_name}`,
+            message: `A new personnel application has been submitted by ${data.first_name} ${data.last_name} (${data.email}).`,
+            link_url: "/staffing/applications",
+            related_id: result.id,
+            metadata: {
+              applicant_name: `${data.first_name} ${data.last_name}`,
+              applicant_email: data.email,
+              applicant_phone: data.phone || null,
+            },
+          },
+        });
+        console.log("[Registration] Admin notification sent for new application");
+      } catch (notifError) {
+        console.error("[Registration] Failed to send admin notification:", notifError);
+        // Non-fatal, don't throw
+      }
+
       return result;
     },
     onSuccess: () => {

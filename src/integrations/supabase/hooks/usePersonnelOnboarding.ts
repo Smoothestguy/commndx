@@ -124,6 +124,40 @@ export function useOnboardingToken(token: string | undefined) {
       }
 
       // Fetch the personnel record
+      // Also notify admins that someone started onboarding (fire and forget)
+      try {
+        const { data: personnelPreview } = await supabase
+          .from("personnel")
+          .select("first_name, last_name, email")
+          .eq("id", tokenData.personnel_id)
+          .maybeSingle();
+
+        if (personnelPreview) {
+          // Check if we've already notified for this token to avoid duplicates
+          const notifiedKey = `onboarding_started_${token}`;
+          if (!sessionStorage.getItem(notifiedKey)) {
+            sessionStorage.setItem(notifiedKey, "true");
+            
+            supabase.functions.invoke("create-admin-notification", {
+              body: {
+                notification_type: "onboarding_started",
+                title: `Onboarding Started: ${personnelPreview.first_name} ${personnelPreview.last_name}`,
+                message: `${personnelPreview.first_name} ${personnelPreview.last_name} has opened their onboarding link and started the process.`,
+                link_url: `/staffing/personnel/${tokenData.personnel_id}`,
+                related_id: tokenData.personnel_id,
+                metadata: {
+                  personnel_name: `${personnelPreview.first_name} ${personnelPreview.last_name}`,
+                  personnel_email: personnelPreview.email,
+                },
+              },
+            }).catch((err) => {
+              console.error("[Onboarding] Failed to send started notification:", err);
+            });
+          }
+        }
+      } catch (notifError) {
+        console.error("[Onboarding] Error sending started notification:", notifError);
+      }
       const { data: personnelData, error: personnelError } = await supabase
         .from("personnel")
         .select("id, first_name, last_name, email, phone, date_of_birth, address, city, state, zip, photo_url, applicant_id, onboarding_status, onboarding_completed_at")
@@ -275,6 +309,26 @@ export function useCompleteOnboarding() {
       } catch (emailError) {
         // Don't fail the whole operation if email fails
         console.error("[Onboarding] Failed to send confirmation email:", emailError);
+      }
+
+      // Notify admins about completed onboarding
+      try {
+        await supabase.functions.invoke("create-admin-notification", {
+          body: {
+            notification_type: "onboarding_complete",
+            title: `Onboarding Complete: ${formData.first_name} ${formData.last_name}`,
+            message: `${formData.first_name} ${formData.last_name} has completed all onboarding documentation.`,
+            link_url: `/staffing/personnel/${personnelId}`,
+            related_id: personnelId,
+            metadata: {
+              personnel_name: `${formData.first_name} ${formData.last_name}`,
+              personnel_email: formData.email,
+            },
+          },
+        });
+        console.log("[Onboarding] Admin notification sent for completed onboarding");
+      } catch (notifError) {
+        console.error("[Onboarding] Failed to send completion notification:", notifError);
       }
 
       return { success: true };

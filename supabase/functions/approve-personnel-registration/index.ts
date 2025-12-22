@@ -141,6 +141,33 @@ Deno.serve(async (req) => {
 
       console.log(`Registration ${registrationId} rejected by ${user.id}`);
 
+      // Send notification to admins about rejection
+      try {
+        await fetch(`${supabaseUrl}/functions/v1/create-admin-notification`, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${supabaseServiceKey}`,
+          },
+          body: JSON.stringify({
+            notification_type: "application_rejected",
+            title: `Application Rejected: ${registration.first_name} ${registration.last_name}`,
+            message: `Registration for ${registration.first_name} ${registration.last_name} was rejected${reason ? `: ${reason}` : ""}`,
+            link_url: "/staffing/applications",
+            related_id: registrationId,
+            metadata: {
+              applicant_name: `${registration.first_name} ${registration.last_name}`,
+              applicant_email: registration.email,
+              rejected_by: user.id,
+              reason: reason || null,
+            },
+          }),
+        });
+        console.log("Rejection notification sent to admins");
+      } catch (notifError) {
+        console.error("Failed to send rejection notification:", notifError);
+      }
+
       return new Response(
         JSON.stringify({ success: true, action: "rejected" }),
         {
@@ -268,6 +295,33 @@ Deno.serve(async (req) => {
       console.log(
         `Registration ${registrationId} approved by ${user.id}, created personnel ${personnel.id}`
       );
+
+      // Send notification to admins about approval
+      try {
+        await fetch(`${supabaseUrl}/functions/v1/create-admin-notification`, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${supabaseServiceKey}`,
+          },
+          body: JSON.stringify({
+            notification_type: "application_approved",
+            title: `Application Approved: ${registration.first_name} ${registration.last_name}`,
+            message: `Registration for ${registration.first_name} ${registration.last_name} has been approved. Personnel record created.`,
+            link_url: `/staffing/personnel/${personnel.id}`,
+            related_id: personnel.id,
+            metadata: {
+              personnel_name: `${registration.first_name} ${registration.last_name}`,
+              personnel_email: registration.email,
+              approved_by: user.id,
+              registration_id: registrationId,
+            },
+          }),
+        });
+        console.log("Approval notification sent to admins");
+      } catch (notifError) {
+        console.error("Failed to send approval notification:", notifError);
+      }
 
       // Send onboarding email to the new personnel
       try {
