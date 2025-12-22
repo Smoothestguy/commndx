@@ -53,6 +53,9 @@ import { PendingAttachmentsUpload, PendingFile } from "@/components/shared/Pendi
 import { finalizeAttachments, cleanupPendingAttachments } from "@/utils/attachmentUtils";
 import { toast } from "sonner";
 import { InlineProductDialog } from "@/components/products/InlineProductDialog";
+import { ImportDocumentDialog } from "./ImportDocumentDialog";
+import { ExtractedItem } from "@/components/job-orders/ExtractedItemsTable";
+import { Upload } from "lucide-react";
 
 const lineItemSchema = z.object({
   description: z.string().min(1, "Description is required").max(500),
@@ -145,6 +148,9 @@ export const EstimateForm = ({ initialData }: EstimateFormProps) => {
   
   // Create product dialog state
   const [createProductDialogOpen, setCreateProductDialogOpen] = useState(false);
+  
+  // Import document dialog state
+  const [importDialogOpen, setImportDialogOpen] = useState(false);
 
   // Expanded state for collapsible line items
   const [expandedItems, setExpandedItems] = useState<Set<string>>(() => new Set());
@@ -792,6 +798,16 @@ export const EstimateForm = ({ initialData }: EstimateFormProps) => {
                 type="button"
                 variant="outline"
                 size="sm"
+                onClick={() => setImportDialogOpen(true)}
+                className="text-xs"
+              >
+                <Upload className="h-4 w-4 mr-1" />
+                Import Document
+              </Button>
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
                 onClick={() => setCreateProductDialogOpen(true)}
                 className="text-xs"
               >
@@ -1034,6 +1050,27 @@ export const EstimateForm = ({ initialData }: EstimateFormProps) => {
         onOpenChange={setCreateProductDialogOpen}
         onSuccess={() => {
           // Products query will automatically refetch
+        }}
+      />
+
+      {/* Import Document Dialog */}
+      <ImportDocumentDialog
+        open={importDialogOpen}
+        onOpenChange={setImportDialogOpen}
+        onImport={(items: ExtractedItem[]) => {
+          // Convert ExtractedItem[] to LineItem[] and append
+          const newItems: LineItem[] = items.map((item) => ({
+            id: crypto.randomUUID(),
+            product_id: item.matchedProductId || undefined,
+            description: item.description,
+            quantity: item.quantity.toString(),
+            unit_price: item.unitPrice.toString(),
+            margin: "0",
+            pricing_type: "margin" as const,
+            is_taxable: true,
+            total: item.total,
+          }));
+          setLineItems((prev) => [...prev, ...newItems]);
         }}
       />
     </>
