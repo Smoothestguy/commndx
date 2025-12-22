@@ -143,15 +143,20 @@ serve(async (req) => {
     const qbLineItems = [];
 
     for (const item of lineItems) {
-      // Try to find product mapping for the line item description
-      // For now, we'll use SalesItemLineDetail with description
+      // QuickBooks requires Amount = Qty × UnitPrice
+      // Since our total may include markup, calculate the effective unit price
+      const effectiveUnitPrice = item.quantity !== 0 
+        ? Math.round((item.total / item.quantity) * 100) / 100 
+        : item.unit_price;
+      const qbAmount = Math.round(effectiveUnitPrice * item.quantity * 100) / 100;
+      
       qbLineItems.push({
         DetailType: 'SalesItemLineDetail',
-        Amount: item.total,
+        Amount: qbAmount,
         Description: item.description,
         SalesItemLineDetail: {
           Qty: item.quantity,
-          UnitPrice: item.unit_price,
+          UnitPrice: effectiveUnitPrice,
         },
       });
     }
