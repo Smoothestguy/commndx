@@ -2,9 +2,11 @@ import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Clock, Activity, Pause, Calendar } from "lucide-react";
+import { Clock, Activity, Pause, Calendar, DollarSign, TrendingUp } from "lucide-react";
 import { DateRange } from "react-day-picker";
 import { Skeleton } from "@/components/ui/skeleton";
+
+const HOURLY_RATE = 23; // $23/hour
 
 interface SessionHistoryStatsProps {
   dateRange?: DateRange;
@@ -48,11 +50,17 @@ export function SessionHistoryStats({ dateRange }: SessionHistoryStatsProps) {
       const avgActivePerSession =
         sessionCount > 0 ? Math.round(totalActiveSecs / sessionCount) : 0;
 
+      // Calculate earnings
+      const totalEarnings = (totalActiveSecs / 3600) * HOURLY_RATE;
+      const avgEarningsPerSession = sessionCount > 0 ? totalEarnings / sessionCount : 0;
+
       return {
         totalActiveSecs,
         totalIdleSecs,
         sessionCount,
         avgActivePerSession,
+        totalEarnings,
+        avgEarningsPerSession,
       };
     },
     enabled: !!user,
@@ -67,10 +75,14 @@ export function SessionHistoryStats({ dateRange }: SessionHistoryStatsProps) {
     return `${mins}m`;
   };
 
+  const formatCurrency = (amount: number): string => {
+    return `$${amount.toFixed(2)}`;
+  };
+
   if (isLoading) {
     return (
-      <div className="grid gap-4 md:grid-cols-4">
-        {[1, 2, 3, 4].map((i) => (
+      <div className="grid gap-4 md:grid-cols-3 lg:grid-cols-6">
+        {[1, 2, 3, 4, 5, 6].map((i) => (
           <Card key={i}>
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
               <Skeleton className="h-4 w-20" />
@@ -86,7 +98,7 @@ export function SessionHistoryStats({ dateRange }: SessionHistoryStatsProps) {
   }
 
   return (
-    <div className="grid gap-4 md:grid-cols-4">
+    <div className="grid gap-4 md:grid-cols-3 lg:grid-cols-6">
       <Card>
         <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
           <CardTitle className="text-sm font-medium">Total Active Time</CardTitle>
@@ -141,6 +153,36 @@ export function SessionHistoryStats({ dateRange }: SessionHistoryStatsProps) {
           </div>
           <p className="text-xs text-muted-foreground">
             Average active time
+          </p>
+        </CardContent>
+      </Card>
+
+      <Card className="bg-green-500/5 border-green-500/20">
+        <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+          <CardTitle className="text-sm font-medium">Total Earnings</CardTitle>
+          <DollarSign className="h-4 w-4 text-green-500" />
+        </CardHeader>
+        <CardContent>
+          <div className="text-2xl font-bold text-green-600 dark:text-green-400">
+            {formatCurrency(stats?.totalEarnings || 0)}
+          </div>
+          <p className="text-xs text-muted-foreground">
+            at ${HOURLY_RATE}/hour
+          </p>
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+          <CardTitle className="text-sm font-medium">Avg Earnings</CardTitle>
+          <TrendingUp className="h-4 w-4 text-muted-foreground" />
+        </CardHeader>
+        <CardContent>
+          <div className="text-2xl font-bold">
+            {formatCurrency(stats?.avgEarningsPerSession || 0)}
+          </div>
+          <p className="text-xs text-muted-foreground">
+            Per session average
           </p>
         </CardContent>
       </Card>

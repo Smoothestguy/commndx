@@ -6,6 +6,7 @@ import { useIdleDetection } from "./useIdleDetection";
 const TARGET_USER_EMAIL = "chris.guevara97@gmail.com";
 const STORAGE_KEY = "session_tracking_state";
 const SYNC_INTERVAL_MS = 30000; // Sync to DB every 30 seconds
+const HOURLY_RATE = 23; // $23/hour
 
 interface SessionState {
   sessionId: string | null;
@@ -252,6 +253,18 @@ export function useSessionTracking() {
       .padStart(2, "0")}:${secs.toString().padStart(2, "0")}`;
   }, []);
 
+  // Calculate earnings from active seconds
+  const calculateEarnings = useCallback((seconds: number): number => {
+    return (seconds / 3600) * HOURLY_RATE;
+  }, []);
+
+  // Format currency
+  const formatCurrency = useCallback((amount: number): string => {
+    return `$${amount.toFixed(2)}`;
+  }, []);
+
+  const currentEarnings = calculateEarnings(activeSeconds);
+
   return {
     isTargetUser,
     isLoading,
@@ -265,5 +278,11 @@ export function useSessionTracking() {
     clockIn,
     clockOut,
     logActivity,
+    // Earnings
+    hourlyRate: HOURLY_RATE,
+    currentEarnings,
+    formattedEarnings: formatCurrency(currentEarnings),
+    calculateEarnings,
+    formatCurrency,
   };
 }
