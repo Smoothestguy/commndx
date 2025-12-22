@@ -55,6 +55,12 @@ export function W9TaxForm({ data, onChange, personnelData }: W9TaxFormProps) {
     <div className="w9-form-container">
       {/* Styles */}
       <style>{`
+        /* Force dark text colors throughout the form - override theme */
+        .w9-form-container,
+        .w9-form-container * {
+          color: #000 !important;
+        }
+
         .w9-form-container {
           font-family: Arial, Helvetica, sans-serif;
           font-size: 10pt;
@@ -64,17 +70,18 @@ export function W9TaxForm({ data, onChange, personnelData }: W9TaxFormProps) {
         }
 
         .w9-page {
-          background: white;
-          border: 1px solid hsl(var(--border));
+          background: white !important;
+          border: 1px solid #ccc;
           border-radius: 8px;
           overflow: hidden;
+          color: #000 !important;
         }
 
         .w9-header {
           display: flex;
           border-bottom: 2pt solid black;
           padding: 8px;
-          background: white;
+          background: white !important;
         }
 
         .w9-header-left {
@@ -85,17 +92,20 @@ export function W9TaxForm({ data, onChange, personnelData }: W9TaxFormProps) {
           font-size: 28pt;
           font-weight: bold;
           line-height: 1;
+          color: #000 !important;
         }
 
         .w9-form-rev {
           font-size: 7.5pt;
           margin-top: 2px;
+          color: #000 !important;
         }
 
         .w9-form-dept {
           font-size: 7.5pt;
           margin-top: 4px;
           line-height: 1.1;
+          color: #000 !important;
         }
 
         .w9-header-center {
@@ -108,11 +118,13 @@ export function W9TaxForm({ data, onChange, personnelData }: W9TaxFormProps) {
           font-size: 13pt;
           font-weight: bold;
           line-height: 1.15;
+          color: #000 !important;
         }
 
         .w9-center-url {
           font-size: 7.5pt;
           margin-top: 3px;
+          color: #000 !important;
         }
 
         .w9-header-right {
@@ -121,26 +133,30 @@ export function W9TaxForm({ data, onChange, personnelData }: W9TaxFormProps) {
           font-size: 8pt;
           font-weight: bold;
           line-height: 1.2;
+          color: #000 !important;
         }
 
         .w9-instruction-box {
           border: 1pt solid black;
-          background: #f5f5f5;
+          background: #f5f5f5 !important;
           padding: 6px 8px;
           font-size: 7.5pt;
           margin: 8px;
           line-height: 1.3;
+          color: #000 !important;
         }
 
         .w9-form-body {
           border: 1pt solid black;
           margin: 0 8px 8px 8px;
+          background: white !important;
         }
 
         .w9-form-row {
           border-bottom: 1pt solid black;
           padding: 6px 8px;
           min-height: 36px;
+          background: white !important;
         }
 
         .w9-form-row:last-child {
@@ -151,12 +167,13 @@ export function W9TaxForm({ data, onChange, personnelData }: W9TaxFormProps) {
           font-weight: bold;
           font-size: 9pt;
           margin-right: 4px;
+          color: #000 !important;
         }
 
         .w9-row-label {
           font-size: 7.5pt;
           line-height: 1.3;
-          color: #333;
+          color: #000 !important;
         }
 
         .w9-input-field {
@@ -165,10 +182,11 @@ export function W9TaxForm({ data, onChange, personnelData }: W9TaxFormProps) {
           width: 100%;
           font-size: 11pt;
           font-family: Arial, Helvetica, sans-serif;
-          background: transparent;
+          background: transparent !important;
           margin-top: 4px;
           padding: 2px 0;
           box-shadow: none !important;
+          color: #000 !important;
         }
 
         .w9-split-section {
@@ -233,7 +251,7 @@ export function W9TaxForm({ data, onChange, personnelData }: W9TaxFormProps) {
           font-size: 7pt;
           line-height: 1.25;
           margin: 6px 0;
-          color: #555;
+          color: #000 !important;
         }
 
         .w9-address-section {
@@ -342,7 +360,7 @@ export function W9TaxForm({ data, onChange, personnelData }: W9TaxFormProps) {
           margin-top: 8px;
           font-size: 7pt;
           line-height: 1.35;
-          color: #555;
+          color: #000 !important;
         }
 
         .w9-signature-area {
@@ -370,7 +388,7 @@ export function W9TaxForm({ data, onChange, personnelData }: W9TaxFormProps) {
 
         .w9-small-label {
           font-size: 7pt;
-          color: #666;
+          color: #000 !important;
           margin-bottom: 4px;
         }
 
