@@ -88,7 +88,20 @@ const Auth = () => {
           return;
         }
 
-        // Regular user goes to dashboard
+        // Check if user has a valid role (authorized user)
+        const { data: userRole } = await supabase
+          .from("user_roles")
+          .select("role")
+          .eq("user_id", user.id)
+          .maybeSingle();
+
+        // If no personnel link, no vendor link, and no role - unauthorized
+        if (!userRole) {
+          navigate("/unauthorized");
+          return;
+        }
+
+        // Authorized user with role goes to dashboard
         navigate("/");
       };
 
