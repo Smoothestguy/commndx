@@ -8,7 +8,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { ScrollArea } from "@/components/ui/scroll-area";
+import { ScrollArea, ScrollBar } from "@/components/ui/scroll-area";
 import { Mail, Phone, MapPin, Calendar, DollarSign, AlertTriangle, IdCard, MessageSquare, Edit, Flag, FileCheck, Shield, Award, AlertCircle, LucideIcon, Clock, Check, Send, Link2, Building2, FileText, Landmark } from "lucide-react";
 import { DirectDepositView } from "@/components/personnel/DirectDepositView";
 import { AgreementSignatureView } from "@/components/personnel/AgreementSignatureView";
@@ -412,43 +412,20 @@ const PersonnelDetail = () => {
         )}
 
         <Tabs defaultValue="personal" className="w-full">
-          <ScrollArea className="w-full">
-            <TabsList className="inline-flex w-full sm:grid sm:grid-cols-10">
-              <TabsTrigger value="personal" className="whitespace-nowrap">
-                <span className="sm:hidden">Info</span>
-                <span className="hidden sm:inline">Personal</span>
-              </TabsTrigger>
-              <TabsTrigger value="projects" className="whitespace-nowrap">Projects</TabsTrigger>
-              <TabsTrigger value="documents" className="whitespace-nowrap">
-                <span className="sm:hidden">Docs</span>
-                <span className="hidden sm:inline">Documents</span>
-              </TabsTrigger>
-              <TabsTrigger value="i9" className="whitespace-nowrap">
-                <span className="sm:hidden">I-9</span>
-                <span className="hidden sm:inline">I-9 Compliance</span>
-              </TabsTrigger>
-              <TabsTrigger value="everify" className="whitespace-nowrap">E-Verify</TabsTrigger>
-              <TabsTrigger value="certs" className="whitespace-nowrap">
-                <span className="sm:hidden">Certs</span>
-                <span className="hidden sm:inline">Certifications</span>
-              </TabsTrigger>
-              <TabsTrigger value="emergency" className="whitespace-nowrap">
-                <span className="sm:hidden">Contact</span>
-                <span className="hidden sm:inline">Emergency</span>
-              </TabsTrigger>
-              <TabsTrigger value="messages" className="whitespace-nowrap">
-                <span className="sm:hidden">SMS</span>
-                <span className="hidden sm:inline">Messages</span>
-              </TabsTrigger>
-              <TabsTrigger value="banking" className="whitespace-nowrap">
-                <span className="sm:hidden">Bank</span>
-                <span className="hidden sm:inline">Banking</span>
-              </TabsTrigger>
-              <TabsTrigger value="tax" className="whitespace-nowrap">
-                <span className="sm:hidden">Tax</span>
-                <span className="hidden sm:inline">Tax Info</span>
-              </TabsTrigger>
+          <ScrollArea className="w-full whitespace-nowrap">
+            <TabsList className="inline-flex w-max min-w-full h-auto gap-1 p-1">
+              <TabsTrigger value="personal" className="px-3 py-1.5">Personal</TabsTrigger>
+              <TabsTrigger value="projects" className="px-3 py-1.5">Projects</TabsTrigger>
+              <TabsTrigger value="documents" className="px-3 py-1.5">Documents</TabsTrigger>
+              <TabsTrigger value="i9" className="px-3 py-1.5">I-9</TabsTrigger>
+              <TabsTrigger value="everify" className="px-3 py-1.5">E-Verify</TabsTrigger>
+              <TabsTrigger value="certs" className="px-3 py-1.5">Certifications</TabsTrigger>
+              <TabsTrigger value="emergency" className="px-3 py-1.5">Emergency</TabsTrigger>
+              <TabsTrigger value="messages" className="px-3 py-1.5">Messages</TabsTrigger>
+              <TabsTrigger value="banking" className="px-3 py-1.5">Banking</TabsTrigger>
+              <TabsTrigger value="tax" className="px-3 py-1.5">Tax Info</TabsTrigger>
             </TabsList>
+            <ScrollBar orientation="horizontal" className="invisible" />
           </ScrollArea>
 
           <TabsContent value="personal" className="space-y-4">
