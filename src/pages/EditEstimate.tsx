@@ -421,36 +421,41 @@ const EditEstimate = () => {
 
     if (!customer) return;
 
-    // Save current version before updating
+    // Save current version before updating (non-blocking)
     if (estimate) {
-      await createVersion.mutateAsync({
-        estimateId: id,
-        snapshot: {
-          customer_id: estimate.customer_id,
-          customer_name: estimate.customer_name,
-          project_id: estimate.project_id,
-          project_name: estimate.project_name,
-          status: estimate.status,
-          subtotal: estimate.subtotal,
-          tax_rate: estimate.tax_rate,
-          tax_amount: estimate.tax_amount,
-          total: estimate.total,
-          notes: estimate.notes,
-          valid_until: estimate.valid_until,
-          default_pricing_type: estimate.default_pricing_type,
-          line_items: estimate.line_items.map((item) => ({
-            product_id: item.product_id,
-            description: item.description,
-            quantity: item.quantity,
-            unit_price: item.unit_price,
-            markup: item.markup,
-            pricing_type: item.pricing_type,
-            is_taxable: item.is_taxable ?? true,
-            total: item.total,
-          })),
-        },
-        changeSummary: "Saved before editing",
-      });
+      try {
+        await createVersion.mutateAsync({
+          estimateId: id,
+          snapshot: {
+            customer_id: estimate.customer_id,
+            customer_name: estimate.customer_name,
+            project_id: estimate.project_id,
+            project_name: estimate.project_name,
+            status: estimate.status,
+            subtotal: estimate.subtotal,
+            tax_rate: estimate.tax_rate,
+            tax_amount: estimate.tax_amount,
+            total: estimate.total,
+            notes: estimate.notes,
+            valid_until: estimate.valid_until,
+            default_pricing_type: estimate.default_pricing_type,
+            line_items: estimate.line_items.map((item) => ({
+              product_id: item.product_id,
+              description: item.description,
+              quantity: item.quantity,
+              unit_price: item.unit_price,
+              markup: item.markup,
+              pricing_type: item.pricing_type,
+              is_taxable: item.is_taxable ?? true,
+              total: item.total,
+            })),
+          },
+          changeSummary: "Saved before editing",
+        });
+      } catch (versionError) {
+        console.error("Failed to create version snapshot:", versionError);
+        // Continue with save anyway - version history is non-critical
+      }
     }
 
     const estimateData = {

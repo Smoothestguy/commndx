@@ -5,11 +5,24 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Clock, Activity, Pause, Calendar, DollarSign, TrendingUp } from "lucide-react";
 import { DateRange } from "react-day-picker";
 import { Skeleton } from "@/components/ui/skeleton";
-
-const HOURLY_RATE = 23; // $23/hour
+import {
+  sumActiveSeconds,
+  sumIdleSeconds,
+  calculateEarningsFromSeconds,
+  formatDuration,
+  formatSessionCurrency,
+  HOURLY_RATE,
+} from "@/utils/sessionTime";
 
 interface SessionHistoryStatsProps {
   dateRange?: DateRange;
+}
+
+interface SessionData {
+  session_start: string;
+  session_end: string | null;
+  is_active: boolean;
+  total_idle_seconds: number | null;
 }
 
 export function SessionHistoryStats({ dateRange }: SessionHistoryStatsProps) {
@@ -22,7 +35,7 @@ export function SessionHistoryStats({ dateRange }: SessionHistoryStatsProps) {
 
       let query = supabase
         .from("user_work_sessions")
-        .select("total_active_seconds, total_idle_seconds, session_start, session_end, is_active")
+        .select("session_start, session_end, is_active, total_idle_seconds")
         .eq("user_id", user.id);
 
       if (dateRange?.from) {
@@ -36,28 +49,20 @@ export function SessionHistoryStats({ dateRange }: SessionHistoryStatsProps) {
 
       if (error) throw error;
 
-      // Calculate active seconds using timestamps (same as SessionHistoryTable)
+      const sessions: SessionData[] = data || [];
       const now = new Date();
-      const totalActiveSecs = data.reduce((acc, s) => {
-        const start = new Date(s.session_start);
-        const end = s.session_end ? new Date(s.session_end) : (s.is_active ? now : start);
-        const elapsedSeconds = Math.floor((end.getTime() - start.getTime()) / 1000);
-        const activeSeconds = Math.max(0, elapsedSeconds - (s.total_idle_seconds || 0));
-        return acc + activeSeconds;
-      }, 0);
 
-      const totalIdleSecs = data.reduce(
-        (acc, s) => acc + (s.total_idle_seconds || 0),
-        0
-      );
-      const sessionCount = data.length;
+      // Use shared utility functions
+      const totalActiveSecs = sumActiveSeconds(sessions, now);
+      const totalIdleSecs = sumIdleSeconds(sessions);
+      const sessionCount = sessions.length;
 
       // Calculate average per session
       const avgActivePerSession =
         sessionCount > 0 ? Math.round(totalActiveSecs / sessionCount) : 0;
 
-      // Calculate earnings
-      const totalEarnings = (totalActiveSecs / 3600) * HOURLY_RATE;
+      // Calculate earnings using shared utility
+      const totalEarnings = calculateEarningsFromSeconds(totalActiveSecs);
       const avgEarningsPerSession = sessionCount > 0 ? totalEarnings / sessionCount : 0;
 
       return {
@@ -71,19 +76,6 @@ export function SessionHistoryStats({ dateRange }: SessionHistoryStatsProps) {
     },
     enabled: !!user,
   });
-
-  const formatDuration = (seconds: number): string => {
-    const hours = Math.floor(seconds / 3600);
-    const mins = Math.floor((seconds % 3600) / 60);
-    if (hours > 0) {
-      return `${hours}h ${mins}m`;
-    }
-    return `${mins}m`;
-  };
-
-  const formatCurrency = (amount: number): string => {
-    return `$${amount.toFixed(2)}`;
-  };
 
   if (isLoading) {
     return (
@@ -170,7 +162,7 @@ export function SessionHistoryStats({ dateRange }: SessionHistoryStatsProps) {
         </CardHeader>
         <CardContent>
           <div className="text-2xl font-bold text-green-600 dark:text-green-400">
-            {formatCurrency(stats?.totalEarnings || 0)}
+            {formatSessionCurrency(stats?.totalEarnings || 0)}
           </div>
           <p className="text-xs text-muted-foreground">
             at ${HOURLY_RATE}/hour
@@ -185,7 +177,7 @@ export function SessionHistoryStats({ dateRange }: SessionHistoryStatsProps) {
         </CardHeader>
         <CardContent>
           <div className="text-2xl font-bold">
-            {formatCurrency(stats?.avgEarningsPerSession || 0)}
+            {formatSessionCurrency(stats?.avgEarningsPerSession || 0)}
           </div>
           <p className="text-xs text-muted-foreground">
             Per session average
