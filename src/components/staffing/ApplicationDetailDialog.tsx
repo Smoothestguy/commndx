@@ -559,85 +559,98 @@ export function ApplicationDetailDialog({
 
           <DialogFooter className="flex-shrink-0 pt-4 border-t">
             {isEditing ? (
-              <div className="flex gap-2 w-full justify-end">
-                <Button variant="outline" onClick={handleCancelEdit}>
-                  <X className="h-4 w-4 mr-1" />
-                  Cancel
+              <div className="flex flex-wrap gap-2 w-full justify-end">
+                <Button variant="outline" onClick={handleCancelEdit} className="flex-1 sm:flex-none">
+                  <X className="h-4 w-4 sm:mr-1" />
+                  <span className="hidden sm:inline">Cancel</span>
                 </Button>
                 <Button
                   onClick={handleSaveEdit}
                   disabled={updateApplicant.isPending}
+                  className="flex-1 sm:flex-none"
                 >
-                  <Save className="h-4 w-4 mr-1" />
-                  Save Changes
+                  <Save className="h-4 w-4 sm:mr-1" />
+                  <span className="hidden sm:inline">Save Changes</span>
+                  <span className="sm:hidden">Save</span>
                 </Button>
               </div>
             ) : (
               <>
                 {(application.status === "submitted" ||
                   application.status === "updated") && (
-                  <>
+                  <div className="flex flex-wrap gap-2 w-full justify-end">
                     <Button
                       variant="outline"
                       onClick={() => setRequestInfoDialogOpen(true)}
+                      className="flex-1 sm:flex-none"
                     >
-                      <AlertCircle className="h-4 w-4 mr-1" />
-                      Request Info
+                      <AlertCircle className="h-4 w-4 sm:mr-1" />
+                      <span className="hidden sm:inline">Request Info</span>
+                      <span className="sm:hidden">Info</span>
                     </Button>
                     <Button
                       variant="destructive"
                       onClick={handleReject}
                       disabled={rejectApplication.isPending}
+                      className="flex-1 sm:flex-none"
                     >
                       Reject
                     </Button>
                     <Button
                       onClick={handleApprove}
                       disabled={approveApplication.isPending}
+                      className="flex-1 sm:flex-none"
                     >
-                      Approve & Add to Personnel
+                      <span className="hidden lg:inline">Approve & Add to Personnel</span>
+                      <span className="lg:hidden">Approve</span>
                     </Button>
-                  </>
+                  </div>
                 )}
                 {application.status === "needs_info" && (
-                  <>
+                  <div className="flex flex-wrap gap-2 w-full justify-end">
                     <Button
                       variant="outline"
                       onClick={handleResendEmail}
                       disabled={isResending}
+                      className="flex-1 sm:flex-none"
                     >
                       <RefreshCw
-                        className={`h-4 w-4 mr-1 ${
+                        className={`h-4 w-4 sm:mr-1 ${
                           isResending ? "animate-spin" : ""
                         }`}
                       />
-                      {isResending ? "Sending..." : "Resend Email"}
+                      <span className="hidden sm:inline">{isResending ? "Sending..." : "Resend Email"}</span>
+                      <span className="sm:hidden">{isResending ? "..." : "Resend"}</span>
                     </Button>
                     <Button
                       variant="outline"
                       onClick={() => onOpenChange(false)}
+                      className="flex-1 sm:flex-none"
                     >
-                      Close (Awaiting Applicant Update)
+                      <span className="hidden md:inline">Close (Awaiting Applicant Update)</span>
+                      <span className="md:hidden">Close</span>
                     </Button>
-                  </>
+                  </div>
                 )}
                 {!showRevokeConfirm && (
-                  <>
+                  <div className="flex flex-wrap gap-2 w-full justify-end">
                     <Button
                       variant="outline"
-                      className="text-destructive hover:bg-destructive/10"
+                      className="text-destructive hover:bg-destructive/10 flex-1 sm:flex-none"
                       onClick={() => setShowRevokeConfirm(true)}
                     >
-                      <Trash2 className="h-4 w-4 mr-1" />
-                      Delete Applicant
+                      <Trash2 className="h-4 w-4 sm:mr-1" />
+                      <span className="hidden sm:inline">Delete Applicant</span>
+                      <span className="sm:hidden">Delete</span>
                     </Button>
                     <Button
                       variant="outline"
                       onClick={() => onOpenChange(false)}
+                      className="flex-1 sm:flex-none"
                     >
                       Close
                     </Button>
-                  </>
+                  </div>
                 )}
                 {showRevokeConfirm && (
                   <div className="flex flex-col gap-3 w-full">
@@ -650,10 +663,11 @@ export function ApplicationDetailDialog({
                       </ul>
                       <p className="mt-2 text-xs font-medium">They will be able to submit a new application.</p>
                     </div>
-                    <div className="flex gap-2 justify-end">
+                    <div className="flex flex-wrap gap-2 justify-end">
                       <Button
                         variant="outline"
                         onClick={() => setShowRevokeConfirm(false)}
+                        className="flex-1 sm:flex-none"
                       >
                         Cancel
                       </Button>
@@ -661,8 +675,10 @@ export function ApplicationDetailDialog({
                         variant="destructive"
                         onClick={handleRevokeApproval}
                         disabled={revokeApproval.isPending}
+                        className="flex-1 sm:flex-none"
                       >
-                        {revokeApproval.isPending ? "Deleting..." : "Yes, Delete Applicant"}
+                        <span className="hidden sm:inline">{revokeApproval.isPending ? "Deleting..." : "Yes, Delete Applicant"}</span>
+                        <span className="sm:hidden">{revokeApproval.isPending ? "..." : "Delete"}</span>
                       </Button>
                     </div>
                   </div>
