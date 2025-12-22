@@ -2,10 +2,24 @@ import { useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Building2, CreditCard, Check, X, Eye, EyeOff } from "lucide-react";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import { Building2, CreditCard, Check, X, Eye, EyeOff, FileText } from "lucide-react";
 import { format } from "date-fns";
+import { DirectDepositFormPreview } from "./DirectDepositFormPreview";
 
 interface DirectDepositViewProps {
+  name?: string;
+  address?: string | null;
+  city?: string | null;
+  state?: string | null;
+  zip?: string | null;
+  phone?: string | null;
+  email?: string | null;
   bankName?: string | null;
   accountType?: string | null;
   routingNumber?: string | null;
@@ -15,6 +29,13 @@ interface DirectDepositViewProps {
 }
 
 export function DirectDepositView({
+  name,
+  address,
+  city,
+  state,
+  zip,
+  phone,
+  email,
   bankName,
   accountType,
   routingNumber,
@@ -23,6 +44,7 @@ export function DirectDepositView({
   signedAt,
 }: DirectDepositViewProps) {
   const [showNumbers, setShowNumbers] = useState(false);
+  const [showFullForm, setShowFullForm] = useState(false);
   const hasDirectDeposit = bankName || routingNumber || accountNumber;
   const isSigned = !!signature && !!signedAt;
 
@@ -98,10 +120,16 @@ export function DirectDepositView({
               <div className="mt-2">
                 {isSigned ? (
                   <div className="space-y-3">
-                    <Badge className="bg-green-600 gap-1">
-                      <Check className="h-3 w-3" />
-                      Authorization Signed
-                    </Badge>
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <Badge className="bg-green-600 gap-1">
+                        <Check className="h-3 w-3" />
+                        Authorization Signed
+                      </Badge>
+                      <Button variant="outline" size="sm" onClick={() => setShowFullForm(true)}>
+                        <FileText className="h-4 w-4 mr-2" />
+                        View Full Form
+                      </Button>
+                    </div>
                     <p className="text-sm text-muted-foreground">
                       Signed on {format(new Date(signedAt), "MMMM dd, yyyy 'at' h:mm a")}
                     </p>
@@ -137,6 +165,35 @@ export function DirectDepositView({
           </div>
         )}
       </CardContent>
+
+      {/* Full Direct Deposit Form Dialog */}
+      <Dialog open={showFullForm} onOpenChange={setShowFullForm}>
+        <DialogContent className="max-w-3xl max-h-[90vh] overflow-hidden">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <FileText className="h-5 w-5" />
+              Direct Deposit Authorization Form
+            </DialogTitle>
+          </DialogHeader>
+          <DirectDepositFormPreview 
+            data={{
+              name: name || '',
+              address,
+              city,
+              state,
+              zip,
+              phone,
+              email,
+              bankName,
+              accountType,
+              routingNumber,
+              accountNumber,
+              signature,
+              signedAt,
+            }}
+          />
+        </DialogContent>
+      </Dialog>
     </Card>
   );
 }

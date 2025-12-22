@@ -679,6 +679,13 @@ const PersonnelDetail = () => {
 
           <TabsContent value="banking" className="space-y-4">
             <DirectDepositView
+              name={`${personnel.first_name} ${personnel.last_name}`}
+              address={personnel.address}
+              city={personnel.city}
+              state={personnel.state}
+              zip={personnel.zip}
+              phone={personnel.phone}
+              email={personnel.email}
               bankName={personnel.bank_name}
               accountType={personnel.bank_account_type}
               routingNumber={personnel.bank_routing_number}
