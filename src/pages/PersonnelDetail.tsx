@@ -9,7 +9,7 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { Mail, Phone, MapPin, Calendar, DollarSign, AlertTriangle, IdCard, MessageSquare, Edit, Flag, FileCheck, Shield, Award, AlertCircle, LucideIcon, Clock, Check, Send, Link2, Building2 } from "lucide-react";
+import { Mail, Phone, MapPin, Calendar, DollarSign, AlertTriangle, IdCard, MessageSquare, Edit, Flag, FileCheck, Shield, Award, AlertCircle, LucideIcon, Clock, Check, Send, Link2, Building2, FileText } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { format } from "date-fns";
 import { useState } from "react";
@@ -24,6 +24,7 @@ import { W9FormView } from "@/components/personnel/W9FormView";
 import { Generate1099Dialog } from "@/components/personnel/Generate1099Dialog";
 import { usePersonnelW9Form } from "@/integrations/supabase/hooks/useW9Forms";
 import { PersonnelVendorMergeDialog } from "@/components/merge/PersonnelVendorMergeDialog";
+import { PersonnelDocumentsList } from "@/components/personnel/PersonnelDocumentsList";
 
 interface ComplianceIssue {
   type: string;
@@ -410,12 +411,16 @@ const PersonnelDetail = () => {
 
         <Tabs defaultValue="personal" className="w-full">
           <ScrollArea className="w-full">
-            <TabsList className="inline-flex w-full sm:grid sm:grid-cols-8">
+            <TabsList className="inline-flex w-full sm:grid sm:grid-cols-9">
               <TabsTrigger value="personal" className="whitespace-nowrap">
                 <span className="sm:hidden">Info</span>
                 <span className="hidden sm:inline">Personal</span>
               </TabsTrigger>
               <TabsTrigger value="projects" className="whitespace-nowrap">Projects</TabsTrigger>
+              <TabsTrigger value="documents" className="whitespace-nowrap">
+                <span className="sm:hidden">Docs</span>
+                <span className="hidden sm:inline">Documents</span>
+              </TabsTrigger>
               <TabsTrigger value="i9" className="whitespace-nowrap">
                 <span className="sm:hidden">I-9</span>
                 <span className="hidden sm:inline">I-9 Compliance</span>
@@ -522,6 +527,10 @@ const PersonnelDetail = () => {
 
           <TabsContent value="projects">
             <PersonnelProjectsList personnelId={personnel.id} />
+          </TabsContent>
+
+          <TabsContent value="documents">
+            <PersonnelDocumentsList personnelId={personnel.id} canDelete={true} />
           </TabsContent>
 
           <TabsContent value="i9">

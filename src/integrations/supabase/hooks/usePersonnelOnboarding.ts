@@ -202,6 +202,15 @@ export function useCompleteOnboarding() {
     }) => {
       console.log("[Onboarding] Starting onboarding completion for personnel:", personnelId);
 
+      // Prepare documents array for the RPC function
+      const documentsPayload = formData.documents.map(doc => ({
+        type: doc.type,
+        name: doc.name,
+        path: doc.path,
+        fileType: (doc as { fileType?: string }).fileType || null,
+        fileSize: (doc as { fileSize?: number }).fileSize || 0,
+      }));
+
       // Use the security definer function to complete onboarding
       // This bypasses RLS policies after validating the token
       const { data, error } = await supabase.rpc("complete_personnel_onboarding", {
@@ -232,6 +241,7 @@ export function useCompleteOnboarding() {
         p_w9_signature: w9Signature || null,
         p_w9_certification: w9Certification || false,
         p_ica_signature: icaSignature || null,
+        p_documents: JSON.parse(JSON.stringify(documentsPayload)),
       });
 
       if (error) {
@@ -247,13 +257,32 @@ export function useCompleteOnboarding() {
       }
 
       console.log("[Onboarding] Completed successfully:", result.message);
-      console.log("[Onboarding] Documents uploaded:", formData.documents.length);
+      console.log("[Onboarding] Documents saved:", formData.documents.length);
+
+      // Send confirmation email (fire and forget - don't block on this)
+      try {
+        const personnelName = `${formData.first_name} ${formData.last_name}`;
+        console.log("[Onboarding] Sending confirmation email to:", formData.email);
+        
+        await supabase.functions.invoke("send-onboarding-confirmation-email", {
+          body: {
+            personnelId,
+            personnelEmail: formData.email,
+            personnelName,
+          },
+        });
+        console.log("[Onboarding] Confirmation email sent successfully");
+      } catch (emailError) {
+        // Don't fail the whole operation if email fails
+        console.error("[Onboarding] Failed to send confirmation email:", emailError);
+      }
 
       return { success: true };
     },
     onSuccess: (_, variables) => {
       queryClient.invalidateQueries({ queryKey: ["onboarding-token", variables.token] });
       queryClient.invalidateQueries({ queryKey: ["personnel"] });
+      queryClient.invalidateQueries({ queryKey: ["personnel-documents", variables.personnelId] });
       toast.success("Onboarding completed successfully!");
     },
     onError: (error: Error) => {
