@@ -24,7 +24,10 @@ const handler = async (req: Request): Promise<Response> => {
   try {
     const authHeader = req.headers.get("Authorization");
     if (!authHeader) {
-      throw new Error("No authorization header");
+      return new Response(
+        JSON.stringify({ error: "No authorization header - please log in again" }),
+        { status: 401, headers: { "Content-Type": "application/json", ...corsHeaders } }
+      );
     }
 
     const supabaseClient = createClient(
@@ -35,7 +38,11 @@ const handler = async (req: Request): Promise<Response> => {
 
     const { data: { user }, error: userError } = await supabaseClient.auth.getUser();
     if (userError || !user) {
-      throw new Error("Unauthorized");
+      console.error("Auth error:", userError?.message || "No user found");
+      return new Response(
+        JSON.stringify({ error: "Session expired - please log out and log back in" }),
+        { status: 401, headers: { "Content-Type": "application/json", ...corsHeaders } }
+      );
     }
 
     // Verify user is admin or manager
