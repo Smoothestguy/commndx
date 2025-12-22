@@ -210,7 +210,7 @@ export function CreateBillFromPODialog({
         lineItems: billLineItems,
       });
 
-      // Finalize any pending attachments
+      // Finalize any pending attachments FIRST
       if (pendingAttachments.length > 0 && user) {
         const attachResult = await finalizeAttachments(
           pendingAttachments,
@@ -221,6 +221,25 @@ export function CreateBillFromPODialog({
         if (!attachResult.success) {
           toast.warning("Bill created but some attachments failed to upload");
         }
+      }
+
+      // Sync to QuickBooks AFTER attachments are finalized
+      try {
+        const { data: qbConfig } = await supabase
+          .from("quickbooks_config")
+          .select("is_connected")
+          .single();
+
+        if (qbConfig?.is_connected) {
+          console.log("Syncing vendor bill to QuickBooks:", result.id);
+          await supabase.functions.invoke("quickbooks-create-bill", {
+            body: { billId: result.id },
+          });
+          toast.success("Bill created and synced to QuickBooks");
+        }
+      } catch (qbError) {
+        console.warn("QuickBooks sync failed:", qbError);
+        toast.warning("Bill created, but QuickBooks sync failed. You can retry later.");
       }
 
       onOpenChange(false);

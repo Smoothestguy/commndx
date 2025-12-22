@@ -247,19 +247,9 @@ export const useAddVendorBill = () => {
         if (lineError) throw lineError;
       }
 
-      // Auto-sync to QuickBooks if connected
-      try {
-        const qbConnected = await isQuickBooksConnected();
-        if (qbConnected) {
-          console.log("QuickBooks connected - syncing vendor bill:", newBill.id);
-          await supabase.functions.invoke("quickbooks-create-bill", {
-            body: { billId: newBill.id },
-          });
-        }
-      } catch (qbError) {
-        console.error("QuickBooks sync error (non-blocking):", qbError);
-        // Don't throw - QB sync failure shouldn't prevent bill creation
-      }
+      // NOTE: QuickBooks sync is NOT triggered here anymore.
+      // Callers should sync AFTER attachments are finalized to ensure
+      // attachments are in the database before QuickBooks sync runs.
 
       return newBill;
     },
