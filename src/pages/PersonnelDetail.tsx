@@ -696,6 +696,9 @@ const PersonnelDetail = () => {
                 personnel.address,
                 [personnel.city, personnel.state, personnel.zip].filter(Boolean).join(", ")
               ].filter(Boolean).join(", ")}
+              w9Form={w9Form}
+              ssnLastFour={personnel.ssn_last_four}
+              ssnFull={personnel.ssn_full}
             />
             <W9FormView 
               personnelId={personnel.id} 
