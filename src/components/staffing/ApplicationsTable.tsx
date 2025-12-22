@@ -3,7 +3,7 @@ import { format } from "date-fns";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { Eye, CheckCircle, XCircle, User, Undo2 } from "lucide-react";
+import { Eye, CheckCircle, XCircle, User, Trash2 } from "lucide-react";
 import { EnhancedDataTable, EnhancedColumn } from "@/components/shared/EnhancedDataTable";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { MobileApplicationCard } from "./MobileApplicationCard";
@@ -232,9 +232,9 @@ export function ApplicationsTable({
                 e.stopPropagation();
                 onRevokeApproval(app);
               }}
-              title="Revoke Approval"
+              title="Delete Applicant"
             >
-              <Undo2 className="h-4 w-4" />
+              <Trash2 className="h-4 w-4" />
             </Button>
           )}
         </div>

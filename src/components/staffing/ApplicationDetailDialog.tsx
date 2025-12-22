@@ -1,6 +1,6 @@
 import { useState, useMemo } from "react";
 import { format } from "date-fns";
-import { Pencil, User, Save, X, AlertCircle, RefreshCw, Undo2 } from "lucide-react";
+import { Pencil, User, Save, X, AlertCircle, RefreshCw, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
@@ -628,8 +628,8 @@ export function ApplicationDetailDialog({
                       className="text-destructive hover:bg-destructive/10"
                       onClick={() => setShowRevokeConfirm(true)}
                     >
-                      <Undo2 className="h-4 w-4 mr-1" />
-                      Revoke Approval
+                      <Trash2 className="h-4 w-4 mr-1" />
+                      Delete Applicant
                     </Button>
                     <Button
                       variant="outline"
@@ -642,12 +642,13 @@ export function ApplicationDetailDialog({
                 {application.status === "approved" && showRevokeConfirm && (
                   <div className="flex flex-col gap-3 w-full">
                     <div className="text-sm text-destructive bg-destructive/10 p-3 rounded-md">
-                      <p className="font-medium">Are you sure you want to revoke this approval?</p>
+                      <p className="font-medium">Are you sure you want to delete this applicant?</p>
                       <ul className="mt-2 list-disc pl-4 text-muted-foreground text-xs space-y-1">
-                        <li>The personnel record will be deleted</li>
-                        <li>Any onboarding progress will be lost</li>
-                        <li>The applicant can reapply for positions</li>
+                        <li>The applicant record for {application.applicants?.first_name} {application.applicants?.last_name} will be deleted</li>
+                        <li>Their application for this position will be deleted</li>
+                        <li>Any associated personnel record will be deleted</li>
                       </ul>
+                      <p className="mt-2 text-xs font-medium">They will be able to submit a new application.</p>
                     </div>
                     <div className="flex gap-2 justify-end">
                       <Button
@@ -661,7 +662,7 @@ export function ApplicationDetailDialog({
                         onClick={handleRevokeApproval}
                         disabled={revokeApproval.isPending}
                       >
-                        {revokeApproval.isPending ? "Revoking..." : "Yes, Revoke Approval"}
+                        {revokeApproval.isPending ? "Deleting..." : "Yes, Delete Applicant"}
                       </Button>
                     </div>
                   </div>

@@ -801,34 +801,31 @@ export const useRevokeApproval = () => {
         .single();
 
       if (fetchError) throw fetchError;
+      if (!application) throw new Error("Application not found");
 
-      // 2. Find and delete the personnel record linked to this applicant
-      const { error: personnelDeleteError } = await supabase
+      const applicantId = application.applicant_id;
+
+      // 2. Delete the personnel record linked to this applicant (if exists)
+      await supabase
         .from("personnel")
         .delete()
-        .eq("applicant_id", application.applicant_id);
+        .eq("applicant_id", applicantId);
 
-      if (personnelDeleteError) throw personnelDeleteError;
-
-      // 3. Reset application status to 'rejected' with note
-      const { error: appUpdateError } = await supabase
+      // 3. Delete the application record
+      const { error: appError } = await supabase
         .from("applications")
-        .update({ 
-          status: 'rejected', 
-          notes: (application.notes ? application.notes + '\n\n' : '') + 
-            '[Approval revoked on ' + new Date().toLocaleDateString() + '] - Applicant can reapply'
-        })
+        .delete()
         .eq("id", applicationId);
 
-      if (appUpdateError) throw appUpdateError;
+      if (appError) throw appError;
 
-      // 4. Reset applicant status to 'pending' so they can reapply
-      const { error: applicantUpdateError } = await supabase
+      // 4. Delete the applicant record so they can reapply fresh
+      const { error: applicantError } = await supabase
         .from("applicants")
-        .update({ status: 'new' })
-        .eq("id", application.applicant_id);
+        .delete()
+        .eq("id", applicantId);
 
-      if (applicantUpdateError) throw applicantUpdateError;
+      if (applicantError) throw applicantError;
 
       return application;
     },
