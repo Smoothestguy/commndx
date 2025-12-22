@@ -83,6 +83,17 @@ export function SessionHistoryTable({
     return `${secs}s`;
   };
 
+  // Calculate active time from timestamps (not stored value) for accuracy
+  const getActiveSecondsFromTimestamps = (session: Session): number => {
+    const start = new Date(session.session_start).getTime();
+    const end = session.session_end 
+      ? new Date(session.session_end).getTime() 
+      : Date.now();
+    const totalSeconds = Math.floor((end - start) / 1000);
+    const idleSeconds = session.total_idle_seconds || 0;
+    return Math.max(0, totalSeconds - idleSeconds);
+  };
+
   const calculateEarnings = (seconds: number): number => {
     return (seconds / 3600) * HOURLY_RATE;
   };
@@ -102,17 +113,18 @@ export function SessionHistoryTable({
 
     const csvContent = [
       ["Date", "Start Time", "End Time", "Active Time", "Idle Time", "Earnings", "Type"].join(","),
-      ...sessions.map((s) =>
-        [
+      ...sessions.map((s) => {
+        const activeSeconds = getActiveSecondsFromTimestamps(s);
+        return [
           format(new Date(s.session_start), "yyyy-MM-dd"),
           format(new Date(s.session_start), "HH:mm:ss"),
           s.session_end ? format(new Date(s.session_end), "HH:mm:ss") : "Active",
-          formatDuration(s.total_active_seconds || 0),
+          formatDuration(activeSeconds),
           formatDuration(s.total_idle_seconds || 0),
-          formatCurrency(calculateEarnings(s.total_active_seconds || 0)),
+          formatCurrency(calculateEarnings(activeSeconds)),
           s.clock_in_type,
-        ].join(",")
-      ),
+        ].join(",");
+      }),
     ].join("\n");
 
     const blob = new Blob([csvContent], { type: "text/csv" });
@@ -171,40 +183,42 @@ export function SessionHistoryTable({
               </TableRow>
             </TableHeader>
             <TableBody>
-              {sessions.map((session) => (
-                <TableRow
-                  key={session.id}
-                  className={
-                    selectedSessionId === session.id ? "bg-muted/50" : ""
-                  }
-                >
-                  <TableCell>
-                    {format(new Date(session.session_start), "MMM d, yyyy")}
-                  </TableCell>
-                  <TableCell>
-                    {format(new Date(session.session_start), "h:mm a")}
-                  </TableCell>
-                  <TableCell>
-                    {session.session_end ? (
-                      format(new Date(session.session_end), "h:mm a")
-                    ) : (
-                      <Badge variant="default" className="bg-green-500">
-                        Active
-                      </Badge>
-                    )}
-                  </TableCell>
-                  <TableCell className="font-mono">
-                    {formatDuration(session.total_active_seconds || 0)}
-                  </TableCell>
-                  <TableCell className="font-mono text-muted-foreground">
-                    {formatDuration(session.total_idle_seconds || 0)}
-                  </TableCell>
-                  <TableCell className="font-mono text-green-600 dark:text-green-400 font-medium">
-                    {formatCurrency(calculateEarnings(session.total_active_seconds || 0))}
-                  </TableCell>
-                  <TableCell>
-                    <Badge variant="outline">{session.clock_in_type}</Badge>
-                  </TableCell>
+              {sessions.map((session) => {
+                const activeSeconds = getActiveSecondsFromTimestamps(session);
+                return (
+                  <TableRow
+                    key={session.id}
+                    className={
+                      selectedSessionId === session.id ? "bg-muted/50" : ""
+                    }
+                  >
+                    <TableCell>
+                      {format(new Date(session.session_start), "MMM d, yyyy")}
+                    </TableCell>
+                    <TableCell>
+                      {format(new Date(session.session_start), "h:mm a")}
+                    </TableCell>
+                    <TableCell>
+                      {session.session_end ? (
+                        format(new Date(session.session_end), "h:mm a")
+                      ) : (
+                        <Badge variant="default" className="bg-green-500">
+                          Active
+                        </Badge>
+                      )}
+                    </TableCell>
+                    <TableCell className="font-mono">
+                      {formatDuration(activeSeconds)}
+                    </TableCell>
+                    <TableCell className="font-mono text-muted-foreground">
+                      {formatDuration(session.total_idle_seconds || 0)}
+                    </TableCell>
+                    <TableCell className="font-mono text-green-600 dark:text-green-400 font-medium">
+                      {formatCurrency(calculateEarnings(activeSeconds))}
+                    </TableCell>
+                    <TableCell>
+                      <Badge variant="outline">{session.clock_in_type}</Badge>
+                    </TableCell>
                   <TableCell>
                     <Button
                       variant="ghost"
@@ -219,7 +233,8 @@ export function SessionHistoryTable({
                     </Button>
                   </TableCell>
                 </TableRow>
-              ))}
+                );
+              })}
             </TableBody>
           </Table>
         ) : (
