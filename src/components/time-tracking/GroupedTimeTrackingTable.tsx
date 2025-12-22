@@ -1,6 +1,6 @@
 import { useState, useMemo } from "react";
 import { format } from "date-fns";
-import { ChevronDown, ChevronRight, Pencil, Trash2, AlertTriangle, Gift, Clock, DollarSign, Check, X, FileText, Receipt, ClipboardList, CircleDollarSign } from "lucide-react";
+import { ChevronDown, ChevronRight, Pencil, Trash2, AlertTriangle, Gift, Clock, DollarSign, Check, X, FileText, Receipt, ClipboardList, CircleDollarSign, Lock } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Badge } from "@/components/ui/badge";
@@ -89,6 +89,8 @@ interface GroupedTimeTrackingTableProps {
   onCreateCustomerInvoice?: (entries: TimeEntryWithDetails[]) => void;
   isDeleting?: boolean;
   isUpdatingStatus?: boolean;
+  isWeekLocked?: boolean;
+  lockedEntryIds?: Set<string>;
 }
 
 export function GroupedTimeTrackingTable({ 
@@ -99,7 +101,9 @@ export function GroupedTimeTrackingTable({
   onCreateVendorBill,
   onCreateCustomerInvoice,
   isDeleting,
-  isUpdatingStatus
+  isUpdatingStatus,
+  isWeekLocked = false,
+  lockedEntryIds = new Set()
 }: GroupedTimeTrackingTableProps) {
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [expandedGroups, setExpandedGroups] = useState<Set<string>>(new Set());
@@ -525,14 +529,25 @@ export function GroupedTimeTrackingTable({
                             )}
                           </div>
                         </div>
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          onClick={() => onEdit(entry)}
-                          className="h-8 w-8 shrink-0"
-                        >
-                          <Pencil className="h-4 w-4" />
-                        </Button>
+                        {isWeekLocked || lockedEntryIds.has(entry.id) ? (
+                          <Tooltip>
+                            <TooltipTrigger asChild>
+                              <div className="h-8 w-8 shrink-0 flex items-center justify-center">
+                                <Lock className="h-4 w-4 text-muted-foreground" />
+                              </div>
+                            </TooltipTrigger>
+                            <TooltipContent>Entry locked - week is closed</TooltipContent>
+                          </Tooltip>
+                        ) : (
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            onClick={() => onEdit(entry)}
+                            className="h-8 w-8 shrink-0"
+                          >
+                            <Pencil className="h-4 w-4" />
+                          </Button>
+                        )}
                       </div>
                     );
                   })}
@@ -822,14 +837,25 @@ export function GroupedTimeTrackingTable({
                               {entry.description || "-"}
                             </div>
                             <div className="flex justify-end">
-                              <Button
-                                variant="ghost"
-                                size="icon"
-                                onClick={() => onEdit(entry)}
-                                className="h-8 w-8"
-                              >
-                                <Pencil className="h-4 w-4" />
-                              </Button>
+                              {isWeekLocked || lockedEntryIds.has(entry.id) ? (
+                                <Tooltip>
+                                  <TooltipTrigger asChild>
+                                    <div className="h-8 w-8 flex items-center justify-center">
+                                      <Lock className="h-4 w-4 text-muted-foreground" />
+                                    </div>
+                                  </TooltipTrigger>
+                                  <TooltipContent>Entry locked - week is closed</TooltipContent>
+                                </Tooltip>
+                              ) : (
+                                <Button
+                                  variant="ghost"
+                                  size="icon"
+                                  onClick={() => onEdit(entry)}
+                                  className="h-8 w-8"
+                                >
+                                  <Pencil className="h-4 w-4" />
+                                </Button>
+                              )}
                             </div>
                           </div>
                         </div>

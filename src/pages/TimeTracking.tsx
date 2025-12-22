@@ -8,7 +8,7 @@ import { Plus, Users, DollarSign, Loader2, Lock, LockOpen } from "lucide-react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { TimeTrackingStats } from "@/components/time-tracking/TimeTrackingStats";
-import { TimeEntriesDataTable } from "@/components/time-tracking/TimeEntriesDataTable";
+import { GroupedTimeTrackingTable } from "@/components/time-tracking/GroupedTimeTrackingTable";
 import { EnhancedTimeEntryForm } from "@/components/time-tracking/EnhancedTimeEntryForm";
 import { WeeklyTimesheet } from "@/components/time-tracking/WeeklyTimesheet";
 import { WeekNavigator } from "@/components/time-tracking/WeekNavigator";
@@ -298,8 +298,8 @@ export default function TimeTracking() {
               )}
             </div>
 
-            {/* Data Table */}
-            <TimeEntriesDataTable
+            {/* Grouped Time Entries Table */}
+            <GroupedTimeTrackingTable
               entries={filteredEntries}
               onEdit={handleEdit}
               onBulkDelete={
