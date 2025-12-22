@@ -377,7 +377,7 @@ export const useConvertEstimateToJobOrder = () => {
 
       if (jobOrderError) throw jobOrderError;
 
-      // Create job order line items
+      // Create job order line items (preserve is_taxable from estimate)
       const jobOrderLineItems = lineItems.map((item) => ({
         job_order_id: jobOrder.id,
         description: item.description,
@@ -385,6 +385,7 @@ export const useConvertEstimateToJobOrder = () => {
         unit_price: item.unit_price,
         markup: item.markup,
         total: item.total,
+        is_taxable: item.is_taxable ?? true,
       }));
 
       const { error: lineItemsInsertError } = await supabase

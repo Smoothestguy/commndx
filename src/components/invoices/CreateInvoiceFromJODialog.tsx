@@ -41,6 +41,7 @@ interface LineItemQuantity {
   unitPrice: number;
   markup: number;
   quantityToInvoice: number;
+  isTaxable: boolean;
 }
 
 export function CreateInvoiceFromJODialog({
@@ -61,6 +62,7 @@ export function CreateInvoiceFromJODialog({
     unitPrice: Number(item.unit_price),
     markup: Number(item.markup || 0),
     quantityToInvoice: Math.max(0, Number(item.quantity) - Number(item.invoiced_quantity || 0)),
+    isTaxable: item.is_taxable ?? true,
   }));
 
   const [lineItems, setLineItems] = useState<LineItemQuantity[]>(initialLineItems);
@@ -86,8 +88,11 @@ export function CreateInvoiceFromJODialog({
   };
 
   const subtotal = lineItems.reduce((sum, item) => sum + calculateLineTotal(item), 0);
+  const taxableSubtotal = lineItems
+    .filter((item) => item.isTaxable)
+    .reduce((sum, item) => sum + calculateLineTotal(item), 0);
   const taxRate = jobOrder.tax_rate;
-  const taxAmount = subtotal * (taxRate / 100);
+  const taxAmount = taxableSubtotal * (taxRate / 100);
   const total = subtotal + taxAmount;
 
   const hasValidItems = lineItems.some((item) => item.quantityToInvoice > 0);
