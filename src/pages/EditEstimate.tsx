@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef, useMemo } from "react";
+import { useState, useEffect, useRef, useMemo, useCallback } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { PageLayout } from "@/components/layout/PageLayout";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -108,6 +108,16 @@ const EditEstimate = () => {
   const [allExpanded, setAllExpanded] = useState(false);
   const [productComboboxStates, setProductComboboxStates] = useState<Record<number, boolean>>({});
   const [productSearchStates, setProductSearchStates] = useState<Record<number, string>>({});
+  const [showRecoveryDialog, setShowRecoveryDialog] = useState(false);
+  const [recoveredDraft, setRecoveredDraft] = useState<{
+    customerId: string;
+    projectId: string;
+    taxRate: string;
+    validUntil: string;
+    notes: string;
+    status: string;
+    lineItems: LineItem[];
+  } | null>(null);
 
   const { data: projects } = useProjectsByCustomer(selectedCustomerId);
 
@@ -175,6 +185,28 @@ const EditEstimate = () => {
     }
   }, [isInitialized, selectedCustomerId, selectedProjectId, taxRate, validUntil, notes, status, lineItems]);
 
+  // Check for recovered draft on mount
+  useEffect(() => {
+    if (!id) return;
+    
+    const draftKey = `estimate_edit_draft:${id}`;
+    const savedDraft = localStorage.getItem(draftKey);
+    
+    if (savedDraft) {
+      try {
+        const parsed = JSON.parse(savedDraft);
+        // Only show recovery if the draft has actual content
+        if (parsed.lineItems && parsed.lineItems.length > 0) {
+          setRecoveredDraft(parsed);
+          setShowRecoveryDialog(true);
+        }
+      } catch (e) {
+        console.error("Failed to parse saved draft:", e);
+        localStorage.removeItem(draftKey);
+      }
+    }
+  }, [id]);
+
   // Calculate if there are unsaved changes
   const hasUnsavedChanges = useMemo(() => {
     if (!initialStateRef.current) return false;
@@ -199,6 +231,61 @@ const EditEstimate = () => {
       currentState.lineItems !== initialStateRef.current.lineItems
     );
   }, [selectedCustomerId, selectedProjectId, taxRate, validUntil, notes, status, lineItems]);
+
+  // Autosave to localStorage (debounced) - must be after hasUnsavedChanges is defined
+  const autosaveTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  
+  useEffect(() => {
+    if (!isInitialized || !id || !hasUnsavedChanges) return;
+    
+    // Clear existing timeout
+    if (autosaveTimeoutRef.current) {
+      clearTimeout(autosaveTimeoutRef.current);
+    }
+    
+    // Debounce save by 1 second
+    autosaveTimeoutRef.current = setTimeout(() => {
+      const draft = {
+        customerId: selectedCustomerId,
+        projectId: selectedProjectId,
+        taxRate,
+        validUntil,
+        notes,
+        status,
+        lineItems,
+      };
+      localStorage.setItem(`estimate_edit_draft:${id}`, JSON.stringify(draft));
+    }, 1000);
+    
+    return () => {
+      if (autosaveTimeoutRef.current) {
+        clearTimeout(autosaveTimeoutRef.current);
+      }
+    };
+  }, [isInitialized, id, hasUnsavedChanges, selectedCustomerId, selectedProjectId, taxRate, validUntil, notes, status, lineItems]);
+
+  // Recovery handlers
+  const handleRestoreDraft = useCallback(() => {
+    if (recoveredDraft) {
+      setSelectedCustomerId(recoveredDraft.customerId);
+      setSelectedProjectId(recoveredDraft.projectId);
+      setTaxRate(recoveredDraft.taxRate);
+      setValidUntil(recoveredDraft.validUntil);
+      setNotes(recoveredDraft.notes);
+      setStatus(recoveredDraft.status as "draft" | "pending" | "sent" | "approved");
+      setLineItems(recoveredDraft.lineItems);
+    }
+    setShowRecoveryDialog(false);
+    setRecoveredDraft(null);
+  }, [recoveredDraft]);
+
+  const handleDiscardDraft = useCallback(() => {
+    if (id) {
+      localStorage.removeItem(`estimate_edit_draft:${id}`);
+    }
+    setShowRecoveryDialog(false);
+    setRecoveredDraft(null);
+  }, [id]);
 
   // Unsaved changes warning hook
   const {
@@ -488,6 +575,18 @@ const EditEstimate = () => {
 
     updateEstimate.mutate(estimateData, {
       onSuccess: () => {
+        // Reset initial state to match saved data - allows repeat saves without refresh
+        initialStateRef.current = {
+          customerId: selectedCustomerId,
+          projectId: selectedProjectId,
+          taxRate,
+          validUntil,
+          notes,
+          status,
+          lineItems: JSON.stringify(lineItems),
+        };
+        // Clear any local draft
+        localStorage.removeItem(`estimate_edit_draft:${id}`);
         navigate(`/estimates/${id}`);
       },
     });
@@ -843,6 +942,26 @@ const EditEstimate = () => {
           onOpenChange={setCreateProductDialogOpen}
         />
       </form>
+
+      {/* Draft Recovery Dialog */}
+      <AlertDialog open={showRecoveryDialog} onOpenChange={setShowRecoveryDialog}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Restore Unsaved Edits?</AlertDialogTitle>
+            <AlertDialogDescription>
+              We found unsaved changes from a previous session. Would you like to restore them or start fresh from the saved version?
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel onClick={handleDiscardDraft}>
+              Discard
+            </AlertDialogCancel>
+            <AlertDialogAction onClick={handleRestoreDraft}>
+              Restore
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
 
       {/* Unsaved Changes Confirmation Dialog */}
       <AlertDialog open={showLeaveDialog} onOpenChange={(open) => !open && cancelLeave()}>

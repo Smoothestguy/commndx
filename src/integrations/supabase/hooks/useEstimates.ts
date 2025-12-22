@@ -237,8 +237,9 @@ export const useUpdateEstimate = () => {
 
       return estimateData;
     },
-    onSuccess: () => {
+    onSuccess: (data) => {
       queryClient.invalidateQueries({ queryKey: ["estimates"] });
+      queryClient.invalidateQueries({ queryKey: ["estimates", data.id] });
       toast.success("Estimate updated successfully");
     },
     onError: (error: Error) => {
