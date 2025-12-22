@@ -63,7 +63,7 @@ export function BulkEditModal({
       updates.activity_type = activityType;
     }
     if (applyProject) {
-      updates.project_name = projectName || undefined;
+      updates.project_name = projectName === "__none__" ? undefined : projectName;
     }
     if (applyDate && activityDate) {
       updates.activity_date = format(activityDate, "yyyy-MM-dd");
@@ -162,7 +162,7 @@ export function BulkEditModal({
                   <SelectValue placeholder="Select or clear project" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="">No project</SelectItem>
+                  <SelectItem value="__none__">No project</SelectItem>
                   {projectNames.map((project) => (
                     <SelectItem key={project} value={project}>
                       {project}
