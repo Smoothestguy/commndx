@@ -9,7 +9,8 @@ import {
   Settings, 
   LogOut,
   Menu,
-  FileText
+  FileText,
+  FolderOpen
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/contexts/AuthContext";
@@ -22,6 +23,7 @@ const navItems = [
   { href: "/portal", label: "Dashboard", icon: Home },
   { href: "/portal/hours", label: "My Hours", icon: Clock },
   { href: "/portal/projects", label: "My Projects", icon: Briefcase },
+  { href: "/portal/documents", label: "My Documents", icon: FolderOpen },
   { href: "/portal/reimbursements", label: "Reimbursements", icon: Receipt },
   { href: "/portal/tax-forms", label: "Tax Forms", icon: FileText },
   { href: "/portal/notifications", label: "Notifications", icon: Bell },
