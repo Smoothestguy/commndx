@@ -154,6 +154,50 @@ export function useDevActivities(dateRange?: DateRange) {
     },
   });
 
+  const bulkUpdateActivities = useMutation({
+    mutationFn: async ({ ids, updates }: { ids: string[]; updates: Partial<DevActivityInput> }) => {
+      if (!user) throw new Error("Not authenticated");
+
+      const { error } = await supabase
+        .from("dev_activities")
+        .update(updates)
+        .in("id", ids)
+        .eq("user_id", user.id);
+
+      if (error) throw error;
+    },
+    onSuccess: (_, { ids }) => {
+      queryClient.invalidateQueries({ queryKey: ["dev-activities"] });
+      toast.success(`${ids.length} activities updated`);
+    },
+    onError: (error) => {
+      console.error("Failed to bulk update activities:", error);
+      toast.error("Failed to update activities");
+    },
+  });
+
+  const bulkDeleteActivities = useMutation({
+    mutationFn: async (ids: string[]) => {
+      if (!user) throw new Error("Not authenticated");
+
+      const { error } = await supabase
+        .from("dev_activities")
+        .delete()
+        .in("id", ids)
+        .eq("user_id", user.id);
+
+      if (error) throw error;
+    },
+    onSuccess: (_, ids) => {
+      queryClient.invalidateQueries({ queryKey: ["dev-activities"] });
+      toast.success(`${ids.length} activities deleted`);
+    },
+    onError: (error) => {
+      console.error("Failed to bulk delete activities:", error);
+      toast.error("Failed to delete activities");
+    },
+  });
+
   // Get unique project names for autocomplete
   const { data: projectNames } = useQuery({
     queryKey: ["dev-activity-projects", user?.id],
@@ -182,6 +226,8 @@ export function useDevActivities(dateRange?: DateRange) {
     createActivities,
     updateActivity,
     deleteActivity,
+    bulkUpdateActivities,
+    bulkDeleteActivities,
     projectNames: projectNames || [],
   };
 }

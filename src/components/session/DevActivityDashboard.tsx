@@ -1,11 +1,12 @@
 import { useState } from "react";
 import { format } from "date-fns";
-import { Plus, Upload, Search, Edit, Trash2, ChevronDown, ChevronUp } from "lucide-react";
+import { Plus, Upload, Search, Edit, Trash2, ChevronDown, ChevronUp, CheckSquare, Square, X } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { ScrollArea } from "@/components/ui/scroll-area";
+import { Checkbox } from "@/components/ui/checkbox";
 import {
   Select,
   SelectContent,
@@ -29,6 +30,7 @@ import { DevActivityUpload } from "./DevActivityUpload";
 import { DevActivityReviewModal } from "./DevActivityReviewModal";
 import { DevActivityManualForm } from "./DevActivityManualForm";
 import { DevActivityStats } from "./DevActivityStats";
+import { BulkEditModal } from "./BulkEditModal";
 import { getActivityTypeConfig, formatDuration, ACTIVITY_TYPES } from "./devActivityUtils";
 
 interface DevActivityDashboardProps {
@@ -36,7 +38,7 @@ interface DevActivityDashboardProps {
 }
 
 export function DevActivityDashboard({ dateRange }: DevActivityDashboardProps) {
-  const { activities, isLoading, deleteActivity } = useDevActivities(dateRange);
+  const { activities, isLoading, deleteActivity, bulkUpdateActivities, bulkDeleteActivities, projectNames } = useDevActivities(dateRange);
   const [showUpload, setShowUpload] = useState(false);
   const [showManualForm, setShowManualForm] = useState(false);
   const [editActivity, setEditActivity] = useState<DevActivity | null>(null);
@@ -47,6 +49,12 @@ export function DevActivityDashboard({ dateRange }: DevActivityDashboardProps) {
   const [typeFilter, setTypeFilter] = useState<string>("all");
   const [projectFilter, setProjectFilter] = useState<string>("all");
   const [expandedId, setExpandedId] = useState<string | null>(null);
+
+  // Selection mode state
+  const [isSelectionMode, setIsSelectionMode] = useState(false);
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+  const [showBulkEditModal, setShowBulkEditModal] = useState(false);
+  const [showBulkDeleteDialog, setShowBulkDeleteDialog] = useState(false);
 
   // Get unique projects for filter
   const uniqueProjects = [...new Set(activities.map((a) => a.project_name).filter(Boolean))];
@@ -88,6 +96,47 @@ export function DevActivityDashboard({ dateRange }: DevActivityDashboardProps) {
     }
   };
 
+  // Selection handlers
+  const toggleSelection = (id: string) => {
+    const newSelected = new Set(selectedIds);
+    if (newSelected.has(id)) {
+      newSelected.delete(id);
+    } else {
+      newSelected.add(id);
+    }
+    setSelectedIds(newSelected);
+  };
+
+  const selectAll = () => {
+    setSelectedIds(new Set(filteredActivities.map((a) => a.id)));
+  };
+
+  const deselectAll = () => {
+    setSelectedIds(new Set());
+  };
+
+  const exitSelectionMode = () => {
+    setIsSelectionMode(false);
+    setSelectedIds(new Set());
+  };
+
+  const handleBulkEdit = async (updates: Partial<typeof activities[0]>) => {
+    await bulkUpdateActivities.mutateAsync({
+      ids: Array.from(selectedIds),
+      updates,
+    });
+    setShowBulkEditModal(false);
+    exitSelectionMode();
+  };
+
+  const handleBulkDelete = async () => {
+    await bulkDeleteActivities.mutateAsync(Array.from(selectedIds));
+    setShowBulkDeleteDialog(false);
+    exitSelectionMode();
+  };
+
+  const allSelected = filteredActivities.length > 0 && selectedIds.size === filteredActivities.length;
+
   if (isLoading) {
     return (
       <div className="space-y-4">
@@ -113,6 +162,12 @@ export function DevActivityDashboard({ dateRange }: DevActivityDashboardProps) {
             <Plus className="h-4 w-4 mr-2" />
             Add Manual
           </Button>
+          {!isSelectionMode && filteredActivities.length > 0 && (
+            <Button variant="outline" onClick={() => setIsSelectionMode(true)}>
+              <CheckSquare className="h-4 w-4 mr-2" />
+              Select
+            </Button>
+          )}
         </div>
 
         <div className="flex-1 flex gap-2 flex-wrap">
@@ -155,6 +210,46 @@ export function DevActivityDashboard({ dateRange }: DevActivityDashboardProps) {
         </div>
       </div>
 
+      {/* Bulk Action Bar */}
+      {isSelectionMode && (
+        <div className="flex items-center gap-4 p-3 bg-muted/50 border rounded-lg">
+          <div className="flex items-center gap-2">
+            <Checkbox
+              checked={allSelected}
+              onCheckedChange={(checked) => (checked ? selectAll() : deselectAll())}
+            />
+            <span className="text-sm font-medium">
+              {selectedIds.size} of {filteredActivities.length} selected
+            </span>
+          </div>
+          <div className="flex-1" />
+          <div className="flex gap-2">
+            <Button
+              size="sm"
+              variant="outline"
+              onClick={() => setShowBulkEditModal(true)}
+              disabled={selectedIds.size === 0}
+            >
+              <Edit className="h-4 w-4 mr-2" />
+              Bulk Edit
+            </Button>
+            <Button
+              size="sm"
+              variant="destructive"
+              onClick={() => setShowBulkDeleteDialog(true)}
+              disabled={selectedIds.size === 0}
+            >
+              <Trash2 className="h-4 w-4 mr-2" />
+              Delete Selected
+            </Button>
+            <Button size="sm" variant="ghost" onClick={exitSelectionMode}>
+              <X className="h-4 w-4 mr-2" />
+              Cancel
+            </Button>
+          </div>
+        </div>
+      )}
+
       {/* Upload Panel */}
       {showUpload && (
         <DevActivityUpload
@@ -194,17 +289,27 @@ export function DevActivityDashboard({ dateRange }: DevActivityDashboardProps) {
                         const config = getActivityTypeConfig(activity.activity_type);
                         const Icon = config.icon;
                         const isExpanded = expandedId === activity.id;
+                        const isSelected = selectedIds.has(activity.id);
 
                         return (
                           <div
                             key={activity.id}
-                            className="relative pl-6 border-l-2 border-muted ml-2"
+                            className={`relative pl-6 border-l-2 border-muted ml-2 ${
+                              isSelected ? "ring-2 ring-primary ring-offset-2 rounded-lg" : ""
+                            }`}
                           >
                             <div
                               className={`absolute left-[-9px] top-0 w-4 h-4 rounded-full ${config.bgClass}`}
                             />
                             <div className="bg-card border rounded-lg p-4">
                               <div className="flex items-start justify-between gap-2">
+                                {isSelectionMode && (
+                                  <Checkbox
+                                    checked={isSelected}
+                                    onCheckedChange={() => toggleSelection(activity.id)}
+                                    className="mt-1"
+                                  />
+                                )}
                                 <div className="flex-1 min-w-0">
                                   <div className="flex items-center gap-2 flex-wrap">
                                     <Badge className={config.className}>
@@ -241,40 +346,42 @@ export function DevActivityDashboard({ dateRange }: DevActivityDashboardProps) {
                                     </div>
                                   )}
                                 </div>
-                                <div className="flex items-center gap-1">
-                                  {activity.description && (
+                                {!isSelectionMode && (
+                                  <div className="flex items-center gap-1">
+                                    {activity.description && (
+                                      <Button
+                                        variant="ghost"
+                                        size="icon"
+                                        className="h-8 w-8"
+                                        onClick={() =>
+                                          setExpandedId(isExpanded ? null : activity.id)
+                                        }
+                                      >
+                                        {isExpanded ? (
+                                          <ChevronUp className="h-4 w-4" />
+                                        ) : (
+                                          <ChevronDown className="h-4 w-4" />
+                                        )}
+                                      </Button>
+                                    )}
                                     <Button
                                       variant="ghost"
                                       size="icon"
                                       className="h-8 w-8"
-                                      onClick={() =>
-                                        setExpandedId(isExpanded ? null : activity.id)
-                                      }
+                                      onClick={() => setEditActivity(activity)}
                                     >
-                                      {isExpanded ? (
-                                        <ChevronUp className="h-4 w-4" />
-                                      ) : (
-                                        <ChevronDown className="h-4 w-4" />
-                                      )}
+                                      <Edit className="h-4 w-4" />
                                     </Button>
-                                  )}
-                                  <Button
-                                    variant="ghost"
-                                    size="icon"
-                                    className="h-8 w-8"
-                                    onClick={() => setEditActivity(activity)}
-                                  >
-                                    <Edit className="h-4 w-4" />
-                                  </Button>
-                                  <Button
-                                    variant="ghost"
-                                    size="icon"
-                                    className="h-8 w-8 text-destructive"
-                                    onClick={() => setDeleteId(activity.id)}
-                                  >
-                                    <Trash2 className="h-4 w-4" />
-                                  </Button>
-                                </div>
+                                    <Button
+                                      variant="ghost"
+                                      size="icon"
+                                      className="h-8 w-8 text-destructive"
+                                      onClick={() => setDeleteId(activity.id)}
+                                    >
+                                      <Trash2 className="h-4 w-4" />
+                                    </Button>
+                                  </div>
+                                )}
                               </div>
                             </div>
                           </div>
@@ -308,6 +415,16 @@ export function DevActivityDashboard({ dateRange }: DevActivityDashboardProps) {
         editActivity={editActivity}
       />
 
+      <BulkEditModal
+        open={showBulkEditModal}
+        onOpenChange={setShowBulkEditModal}
+        selectedCount={selectedIds.size}
+        projectNames={projectNames}
+        onApply={handleBulkEdit}
+        isLoading={bulkUpdateActivities.isPending}
+      />
+
+      {/* Single Delete Dialog */}
       <AlertDialog open={!!deleteId} onOpenChange={(open) => !open && setDeleteId(null)}>
         <AlertDialogContent>
           <AlertDialogHeader>
@@ -323,6 +440,29 @@ export function DevActivityDashboard({ dateRange }: DevActivityDashboardProps) {
               className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
             >
               Delete
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {/* Bulk Delete Dialog */}
+      <AlertDialog open={showBulkDeleteDialog} onOpenChange={setShowBulkDeleteDialog}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete {selectedIds.size} Activities</AlertDialogTitle>
+            <AlertDialogDescription>
+              Are you sure you want to delete {selectedIds.size} selected activities? This action
+              cannot be undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={handleBulkDelete}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              disabled={bulkDeleteActivities.isPending}
+            >
+              {bulkDeleteActivities.isPending ? "Deleting..." : `Delete ${selectedIds.size} Activities`}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
