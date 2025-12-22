@@ -23,9 +23,9 @@ import { cn } from "@/lib/utils";
 import { z } from "zod";
 
 const lineItemSchema = z.object({
-  description: z.string().min(1, "Description is required").max(500),
-  quantity: z.number().positive("Quantity must be positive"),
-  unit_price: z.number().positive("Vendor cost must be positive"),
+  description: z.string().min(1, "Description is required").max(1000),
+  quantity: z.number().min(0, "Quantity cannot be negative"),
+  unit_price: z.number(),
 });
 
 const purchaseOrderSchema = z.object({
