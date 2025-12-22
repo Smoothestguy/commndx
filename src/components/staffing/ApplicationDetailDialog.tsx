@@ -1,6 +1,6 @@
 import { useState, useMemo } from "react";
 import { format } from "date-fns";
-import { Pencil, User, Save, X, AlertCircle, RefreshCw } from "lucide-react";
+import { Pencil, User, Save, X, AlertCircle, RefreshCw, Undo2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
@@ -30,6 +30,7 @@ import {
   Application,
   useApproveApplication,
   useRejectApplication,
+  useRevokeApproval,
   useUpdateApplicant,
   useUpdateApplication,
 } from "@/integrations/supabase/hooks/useStaffingApplications";
@@ -85,8 +86,10 @@ export function ApplicationDetailDialog({
 
   const approveApplication = useApproveApplication();
   const rejectApplication = useRejectApplication();
+  const revokeApproval = useRevokeApproval();
   const updateApplicant = useUpdateApplicant();
   const updateApplication = useUpdateApplication();
+  const [showRevokeConfirm, setShowRevokeConfirm] = useState(false);
 
   // Build field label map from form template
   const fieldLabelMap = useMemo(() => {
@@ -249,6 +252,18 @@ export function ApplicationDetailDialog({
       onOpenChange(false);
     } catch (error) {
       toast.error("Failed to reject application");
+    }
+  };
+
+  const handleRevokeApproval = async () => {
+    if (!application) return;
+    try {
+      await revokeApproval.mutateAsync({ applicationId: application.id });
+      toast.success("Approval revoked. Applicant can now reapply.");
+      setShowRevokeConfirm(false);
+      onOpenChange(false);
+    } catch (error) {
+      toast.error("Failed to revoke approval");
     }
   };
 
@@ -606,9 +621,55 @@ export function ApplicationDetailDialog({
                     </Button>
                   </>
                 )}
+                {application.status === "approved" && !showRevokeConfirm && (
+                  <>
+                    <Button
+                      variant="outline"
+                      className="text-destructive hover:bg-destructive/10"
+                      onClick={() => setShowRevokeConfirm(true)}
+                    >
+                      <Undo2 className="h-4 w-4 mr-1" />
+                      Revoke Approval
+                    </Button>
+                    <Button
+                      variant="outline"
+                      onClick={() => onOpenChange(false)}
+                    >
+                      Close
+                    </Button>
+                  </>
+                )}
+                {application.status === "approved" && showRevokeConfirm && (
+                  <div className="flex flex-col gap-3 w-full">
+                    <div className="text-sm text-destructive bg-destructive/10 p-3 rounded-md">
+                      <p className="font-medium">Are you sure you want to revoke this approval?</p>
+                      <ul className="mt-2 list-disc pl-4 text-muted-foreground text-xs space-y-1">
+                        <li>The personnel record will be deleted</li>
+                        <li>Any onboarding progress will be lost</li>
+                        <li>The applicant can reapply for positions</li>
+                      </ul>
+                    </div>
+                    <div className="flex gap-2 justify-end">
+                      <Button
+                        variant="outline"
+                        onClick={() => setShowRevokeConfirm(false)}
+                      >
+                        Cancel
+                      </Button>
+                      <Button
+                        variant="destructive"
+                        onClick={handleRevokeApproval}
+                        disabled={revokeApproval.isPending}
+                      >
+                        {revokeApproval.isPending ? "Revoking..." : "Yes, Revoke Approval"}
+                      </Button>
+                    </div>
+                  </div>
+                )}
                 {application.status !== "submitted" &&
                   application.status !== "updated" &&
-                  application.status !== "needs_info" && (
+                  application.status !== "needs_info" &&
+                  application.status !== "approved" && (
                     <Button
                       variant="outline"
                       onClick={() => onOpenChange(false)}

@@ -9,7 +9,7 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { Eye, CheckCircle, XCircle, MoreVertical, Mail, Calendar, Briefcase, User } from "lucide-react";
+import { Eye, CheckCircle, XCircle, MoreVertical, Mail, Calendar, Briefcase, User, Undo2 } from "lucide-react";
 import type { Application } from "@/integrations/supabase/hooks/useStaffingApplications";
 
 const statusColors: Record<string, string> = {
@@ -60,6 +60,7 @@ interface MobileApplicationCardProps {
   onView: (app: Application) => void;
   onApprove: (app: Application) => void;
   onReject: (app: Application) => void;
+  onRevokeApproval?: (app: Application) => void;
   fieldTypeMap?: Record<string, { label: string; type: string }>;
 }
 
@@ -68,6 +69,7 @@ export function MobileApplicationCard({
   onView,
   onApprove,
   onReject,
+  onRevokeApproval,
   fieldTypeMap = {},
 }: MobileApplicationCardProps) {
   const handleClick = () => {
@@ -125,6 +127,15 @@ export function MobileApplicationCard({
                           Reject
                         </DropdownMenuItem>
                       </>
+                    )}
+                    {application.status === "approved" && onRevokeApproval && (
+                      <DropdownMenuItem 
+                        onClick={() => onRevokeApproval(application)}
+                        className="text-destructive"
+                      >
+                        <Undo2 className="mr-2 h-4 w-4" />
+                        Revoke Approval
+                      </DropdownMenuItem>
                     )}
                   </DropdownMenuContent>
                 </DropdownMenu>

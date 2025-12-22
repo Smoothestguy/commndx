@@ -3,7 +3,7 @@ import { format } from "date-fns";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { Eye, CheckCircle, XCircle, User } from "lucide-react";
+import { Eye, CheckCircle, XCircle, User, Undo2 } from "lucide-react";
 import { EnhancedDataTable, EnhancedColumn } from "@/components/shared/EnhancedDataTable";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { MobileApplicationCard } from "./MobileApplicationCard";
@@ -59,6 +59,7 @@ interface ApplicationsTableProps {
   onViewApplication: (app: Application) => void;
   onApprove: (app: Application) => void;
   onReject: (app: Application) => void;
+  onRevokeApproval?: (app: Application) => void;
   selectable?: boolean;
   selectedIds?: Set<string>;
   onSelectionChange?: (ids: Set<string>) => void;
@@ -70,6 +71,7 @@ export function ApplicationsTable({
   onViewApplication,
   onApprove,
   onReject,
+  onRevokeApproval,
   selectable = false,
   selectedIds,
   onSelectionChange,
@@ -192,34 +194,50 @@ export function ApplicationsTable({
       sortable: false,
       filterable: false,
       render: (app: Application) => (
-        app.status === "submitted" ? (
-          <div className="flex items-center justify-end gap-1">
-            <Button
-              variant="ghost"
-              size="icon"
-              className="text-green-600 hover:text-green-700 hover:bg-green-50"
-              onClick={(e) => {
-                e.stopPropagation();
-                onApprove(app);
-              }}
-              title="Approve"
-            >
-              <CheckCircle className="h-4 w-4" />
-            </Button>
+        <div className="flex items-center justify-end gap-1">
+          {app.status === "submitted" && (
+            <>
+              <Button
+                variant="ghost"
+                size="icon"
+                className="text-green-600 hover:text-green-700 hover:bg-green-50"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onApprove(app);
+                }}
+                title="Approve"
+              >
+                <CheckCircle className="h-4 w-4" />
+              </Button>
+              <Button
+                variant="ghost"
+                size="icon"
+                className="text-destructive hover:text-destructive hover:bg-destructive/10"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onReject(app);
+                }}
+                title="Reject"
+              >
+                <XCircle className="h-4 w-4" />
+              </Button>
+            </>
+          )}
+          {app.status === "approved" && onRevokeApproval && (
             <Button
               variant="ghost"
               size="icon"
               className="text-destructive hover:text-destructive hover:bg-destructive/10"
               onClick={(e) => {
                 e.stopPropagation();
-                onReject(app);
+                onRevokeApproval(app);
               }}
-              title="Reject"
+              title="Revoke Approval"
             >
-              <XCircle className="h-4 w-4" />
+              <Undo2 className="h-4 w-4" />
             </Button>
-          </div>
-        ) : null
+          )}
+        </div>
       ),
     },
   ];
@@ -252,6 +270,7 @@ export function ApplicationsTable({
               onView={onViewApplication}
               onApprove={onApprove}
               onReject={onReject}
+              onRevokeApproval={onRevokeApproval}
               fieldTypeMap={fieldTypeMap}
             />
           );
