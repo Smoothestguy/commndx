@@ -128,7 +128,7 @@ export function MobileApplicationCard({
                         </DropdownMenuItem>
                       </>
                     )}
-                    {application.status === "approved" && onRevokeApproval && (
+                    {onRevokeApproval && (
                       <DropdownMenuItem 
                         onClick={() => onRevokeApproval(application)}
                         className="text-destructive"

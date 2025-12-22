@@ -223,7 +223,7 @@ export function ApplicationsTable({
               </Button>
             </>
           )}
-          {app.status === "approved" && onRevokeApproval && (
+          {onRevokeApproval && (
             <Button
               variant="ghost"
               size="icon"
