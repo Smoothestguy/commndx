@@ -1,7 +1,6 @@
 import { ReactNode } from "react";
 import { AppHeader } from "./AppHeader";
 import { useSwipeNavigation } from "@/hooks/useSwipeNavigation";
-import { useIsMobile } from "@/hooks/use-mobile";
 import { cn } from "@/lib/utils";
 
 interface PageLayoutProps {
@@ -21,8 +20,7 @@ export function PageLayout({
   description,
   actions,
 }: PageLayoutProps) {
-  const { swipeRef } = useSwipeNavigation();
-  const isMobile = useIsMobile();
+  const { swipeRef, isMobile } = useSwipeNavigation();
 
   return (
     <>
