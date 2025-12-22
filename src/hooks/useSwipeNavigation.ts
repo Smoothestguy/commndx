@@ -43,6 +43,7 @@ export function useSwipeNavigation() {
 
   return {
     swipeRef,
+    isMobile,
     currentPage: currentIndex !== -1 ? NAVIGATION_ORDER[currentIndex] : null,
     nextPage:
       currentIndex !== -1
