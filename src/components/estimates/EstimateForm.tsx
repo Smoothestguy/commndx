@@ -52,6 +52,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { PendingAttachmentsUpload, PendingFile } from "@/components/shared/PendingAttachmentsUpload";
 import { finalizeAttachments, cleanupPendingAttachments } from "@/utils/attachmentUtils";
 import { toast } from "sonner";
+import { InlineProductDialog } from "@/components/products/InlineProductDialog";
 
 const lineItemSchema = z.object({
   description: z.string().min(1, "Description is required").max(500),
@@ -141,6 +142,9 @@ export const EstimateForm = ({ initialData }: EstimateFormProps) => {
   
   // Preview dialog state
   const [previewOpen, setPreviewOpen] = useState(false);
+  
+  // Create product dialog state
+  const [createProductDialogOpen, setCreateProductDialogOpen] = useState(false);
 
   // Expanded state for collapsible line items
   const [expandedItems, setExpandedItems] = useState<Set<string>>(() => new Set());
@@ -786,6 +790,16 @@ export const EstimateForm = ({ initialData }: EstimateFormProps) => {
             <div className="flex items-center gap-2">
               <Button
                 type="button"
+                variant="outline"
+                size="sm"
+                onClick={() => setCreateProductDialogOpen(true)}
+                className="text-xs"
+              >
+                <Plus className="h-4 w-4 mr-1" />
+                New Product
+              </Button>
+              <Button
+                type="button"
                 variant="ghost"
                 size="sm"
                 onClick={() => {
@@ -1013,6 +1027,15 @@ export const EstimateForm = ({ initialData }: EstimateFormProps) => {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      {/* Create Product Dialog */}
+      <InlineProductDialog
+        open={createProductDialogOpen}
+        onOpenChange={setCreateProductDialogOpen}
+        onSuccess={() => {
+          // Products query will automatically refetch
+        }}
+      />
     </>
   );
 };
