@@ -11,6 +11,8 @@ import {
 } from "@/components/ui/dialog";
 import { FileText, Check, X, Eye } from "lucide-react";
 import { format } from "date-fns";
+import { W9Form } from "@/integrations/supabase/hooks/useW9Forms";
+import { W9FormPreview } from "./W9FormPreview";
 
 interface AgreementSignatureViewProps {
   icaSignature?: string | null;
@@ -19,6 +21,9 @@ interface AgreementSignatureViewProps {
   w9SignedAt?: string | null;
   personnelName?: string;
   personnelAddress?: string;
+  w9Form?: W9Form | null;
+  ssnLastFour?: string | null;
+  ssnFull?: string | null;
 }
 
 export function AgreementSignatureView({
@@ -28,12 +33,16 @@ export function AgreementSignatureView({
   w9SignedAt,
   personnelName,
   personnelAddress,
+  w9Form,
+  ssnLastFour,
+  ssnFull,
 }: AgreementSignatureViewProps) {
   const [showAgreement, setShowAgreement] = useState(false);
   const [showW9, setShowW9] = useState(false);
 
   const hasIcaSigned = !!icaSignature && !!icaSignedAt;
   const hasW9Signed = !!w9Signature && !!w9SignedAt;
+  const hasW9Form = !!w9Form;
 
   const renderSignature = (signature: string | null | undefined, label: string) => {
     if (!signature) return null;
@@ -99,32 +108,34 @@ export function AgreementSignatureView({
 
           {/* W-9 Form Signature */}
           <div className="border-t pt-6">
-            <h4 className="font-semibold mb-3">W-9 Form Signature</h4>
-            {hasW9Signed ? (
+            <h4 className="font-semibold mb-3">W-9 Form</h4>
+            {hasW9Signed || hasW9Form ? (
               <div className="space-y-3">
                 <div className="flex items-center gap-2 flex-wrap">
                   <Badge className="bg-green-600 gap-1">
                     <Check className="h-3 w-3" />
-                    W-9 Signed
+                    W-9 Completed
                   </Badge>
                   <Button variant="outline" size="sm" onClick={() => setShowW9(true)}>
                     <Eye className="h-4 w-4 mr-2" />
-                    View W-9 Details
+                    View W-9 Form
                   </Button>
                 </div>
-                <p className="text-sm text-muted-foreground">
-                  Signed on {format(new Date(w9SignedAt), "MMMM dd, yyyy 'at' h:mm a")}
-                </p>
-                {renderSignature(w9Signature, "W-9 Signature")}
+                {w9SignedAt && (
+                  <p className="text-sm text-muted-foreground">
+                    Signed on {format(new Date(w9SignedAt), "MMMM dd, yyyy 'at' h:mm a")}
+                  </p>
+                )}
+                {!hasW9Form && renderSignature(w9Signature, "W-9 Signature")}
               </div>
             ) : (
               <div className="py-4">
                 <Badge variant="outline" className="gap-1">
                   <X className="h-3 w-3" />
-                  Not Signed
+                  Not Completed
                 </Badge>
                 <p className="text-sm text-muted-foreground mt-2">
-                  The contractor has not signed the W-9 form yet.
+                  The contractor has not completed the W-9 form yet.
                 </p>
               </div>
             )}
@@ -227,54 +238,64 @@ export function AgreementSignatureView({
         </DialogContent>
       </Dialog>
 
-      {/* W-9 Signature Details Dialog */}
+      {/* W-9 Form Preview Dialog */}
       <Dialog open={showW9} onOpenChange={setShowW9}>
-        <DialogContent className="max-w-xl">
+        <DialogContent className="max-w-4xl max-h-[90vh] overflow-hidden">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
               <FileText className="h-5 w-5" />
-              W-9 Form Signature
+              Form W-9 (Request for Taxpayer Identification Number)
             </DialogTitle>
           </DialogHeader>
-          <div className="space-y-4">
-            <p className="text-sm text-muted-foreground">
-              The W-9 (Request for Taxpayer Identification Number and Certification) form was signed by the contractor to provide their TIN for tax reporting purposes.
-            </p>
-            
-            <div className="bg-muted/30 p-4 rounded-lg space-y-4">
-              <div>
-                <p className="text-xs text-muted-foreground">Contractor Name</p>
-                <p className="font-medium">{personnelName || "N/A"}</p>
-              </div>
+          {w9Form ? (
+            <W9FormPreview 
+              w9Form={w9Form} 
+              ssnLastFour={ssnLastFour}
+              ssnFull={ssnFull}
+            />
+          ) : (
+            <div className="space-y-4 py-4">
+              <p className="text-sm text-muted-foreground">
+                The W-9 (Request for Taxpayer Identification Number and Certification) form was signed by the contractor to provide their TIN for tax reporting purposes.
+              </p>
               
-              {personnelAddress && (
+              <div className="bg-muted/30 p-4 rounded-lg space-y-4">
                 <div>
-                  <p className="text-xs text-muted-foreground">Address</p>
-                  <p className="font-medium">{personnelAddress}</p>
+                  <p className="text-xs text-muted-foreground">Contractor Name</p>
+                  <p className="font-medium">{personnelName || "N/A"}</p>
                 </div>
-              )}
-              
-              <div className="border-t pt-4">
-                <p className="text-xs text-muted-foreground mb-2">Signature</p>
-                {w9Signature?.startsWith("data:image") ? (
-                  <img 
-                    src={w9Signature} 
-                    alt="W-9 Signature"
-                    className="max-h-16 object-contain"
-                  />
-                ) : (
-                  <p className="font-signature text-xl italic">{w9Signature}</p>
+                
+                {personnelAddress && (
+                  <div>
+                    <p className="text-xs text-muted-foreground">Address</p>
+                    <p className="font-medium">{personnelAddress}</p>
+                  </div>
                 )}
-                <p className="text-xs text-muted-foreground mt-2">
-                  Signed on {w9SignedAt && format(new Date(w9SignedAt), "MMMM dd, yyyy 'at' h:mm a")}
-                </p>
+                
+                <div className="border-t pt-4">
+                  <p className="text-xs text-muted-foreground mb-2">Signature</p>
+                  {w9Signature?.startsWith("data:image") ? (
+                    <img 
+                      src={w9Signature} 
+                      alt="W-9 Signature"
+                      className="max-h-16 object-contain"
+                    />
+                  ) : (
+                    <p className="font-signature text-xl italic">{w9Signature}</p>
+                  )}
+                  {w9SignedAt && (
+                    <p className="text-xs text-muted-foreground mt-2">
+                      Signed on {format(new Date(w9SignedAt), "MMMM dd, yyyy 'at' h:mm a")}
+                    </p>
+                  )}
+                </div>
               </div>
-            </div>
 
-            <p className="text-xs text-muted-foreground">
-              For complete W-9 details including TIN information, view the Tax Info tab.
-            </p>
-          </div>
+              <p className="text-xs text-muted-foreground">
+                For complete W-9 details including TIN information, view the Tax Info tab.
+              </p>
+            </div>
+          )}
         </DialogContent>
       </Dialog>
     </>
