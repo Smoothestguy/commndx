@@ -196,6 +196,97 @@ const accountCache: Map<string, { value: string; name: string }> = new Map();
 // Valid account types for expense accounts
 const VALID_EXPENSE_ACCOUNT_TYPES = ['Expense', 'Cost of Goods Sold', 'Other Current Liability'];
 
+// Upload attachment to QuickBooks
+async function uploadAttachmentToQB(
+  supabase: any,
+  attachment: { file_name: string; file_path: string; file_type: string },
+  qbBillId: string,
+  accessToken: string,
+  realmId: string
+): Promise<{ success: boolean; attachableId?: string; error?: string }> {
+  try {
+    console.log(`Downloading attachment from storage: ${attachment.file_path}`);
+    
+    // Download file from Supabase storage
+    const { data: fileData, error: downloadError } = await supabase.storage
+      .from('document-attachments')
+      .download(attachment.file_path);
+
+    if (downloadError || !fileData) {
+      throw new Error(`Failed to download file: ${attachment.file_name} - ${downloadError?.message || 'No data'}`);
+    }
+
+    // Create multipart form data
+    const boundary = `----FormBoundary${Date.now()}`;
+    
+    const metadata = JSON.stringify({
+      AttachableRef: [{
+        EntityRef: {
+          type: "Bill",
+          value: qbBillId
+        }
+      }],
+      FileName: attachment.file_name,
+      ContentType: attachment.file_type
+    });
+
+    // Convert blob to array buffer for multipart
+    const fileBuffer = await fileData.arrayBuffer();
+    const fileBytes = new Uint8Array(fileBuffer);
+
+    // Build multipart body
+    const encoder = new TextEncoder();
+    const parts = [
+      `--${boundary}\r\n`,
+      `Content-Disposition: form-data; name="file_metadata_01"\r\n`,
+      `Content-Type: application/json\r\n\r\n`,
+      metadata,
+      `\r\n--${boundary}\r\n`,
+      `Content-Disposition: form-data; name="file_content_01"; filename="${attachment.file_name}"\r\n`,
+      `Content-Type: ${attachment.file_type}\r\n\r\n`,
+    ];
+    
+    const preamble = encoder.encode(parts.join(''));
+    const postamble = encoder.encode(`\r\n--${boundary}--\r\n`);
+    
+    // Combine all parts
+    const body = new Uint8Array(preamble.length + fileBytes.length + postamble.length);
+    body.set(preamble, 0);
+    body.set(fileBytes, preamble.length);
+    body.set(postamble, preamble.length + fileBytes.length);
+
+    // Upload to QuickBooks
+    const uploadUrl = `https://quickbooks.api.intuit.com/v3/company/${realmId}/upload?minorversion=65`;
+    
+    console.log(`Uploading attachment "${attachment.file_name}" to QuickBooks...`);
+    
+    const response = await fetch(uploadUrl, {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${accessToken}`,
+        'Content-Type': `multipart/form-data; boundary=${boundary}`,
+        'Accept': 'application/json',
+      },
+      body: body,
+    });
+
+    if (!response.ok) {
+      const errorText = await response.text();
+      throw new Error(`QuickBooks upload failed (${response.status}): ${errorText}`);
+    }
+
+    const result = await response.json();
+    const attachableId = result.AttachableResponse?.[0]?.Attachable?.Id;
+    
+    console.log(`Successfully uploaded attachment "${attachment.file_name}" to QuickBooks: ${attachableId}`);
+    return { success: true, attachableId };
+
+  } catch (error: any) {
+    console.error(`Attachment upload error for "${attachment.file_name}": ${error.message}`);
+    return { success: false, error: error.message };
+  }
+}
+
 // Get expense account reference - tries to match by category name first
 async function getExpenseAccountRef(
   categoryName: string | null,
@@ -472,10 +563,44 @@ serve(async (req) => {
       details: { doc_number: qbDocNumber, vendor_name: bill.vendor_name },
     });
 
+    // Fetch and upload attachments
+    let attachmentsSynced = 0;
+    let attachmentsFailed = 0;
+    
+    const { data: attachments } = await supabase
+      .from('vendor_bill_attachments')
+      .select('*')
+      .eq('bill_id', billId);
+
+    if (attachments && attachments.length > 0) {
+      console.log(`Uploading ${attachments.length} attachments to QuickBooks...`);
+      
+      for (const attachment of attachments) {
+        const result = await uploadAttachmentToQB(
+          supabase,
+          attachment,
+          qbBillId,
+          accessToken,
+          realmId
+        );
+        
+        if (result.success) {
+          attachmentsSynced++;
+        } else {
+          attachmentsFailed++;
+          console.warn(`Failed to upload attachment: ${attachment.file_name} - ${result.error}`);
+        }
+      }
+      
+      console.log(`Attachments sync complete: ${attachmentsSynced} success, ${attachmentsFailed} failed`);
+    }
+
     return new Response(JSON.stringify({ 
       success: true, 
       quickbooksBillId: qbBillId,
       quickbooksDocNumber: qbDocNumber,
+      attachmentsSynced,
+      attachmentsFailed,
     }), {
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
     });
