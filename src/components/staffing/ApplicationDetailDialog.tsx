@@ -621,7 +621,7 @@ export function ApplicationDetailDialog({
                     </Button>
                   </>
                 )}
-                {application.status === "approved" && !showRevokeConfirm && (
+                {!showRevokeConfirm && (
                   <>
                     <Button
                       variant="outline"
@@ -639,7 +639,7 @@ export function ApplicationDetailDialog({
                     </Button>
                   </>
                 )}
-                {application.status === "approved" && showRevokeConfirm && (
+                {showRevokeConfirm && (
                   <div className="flex flex-col gap-3 w-full">
                     <div className="text-sm text-destructive bg-destructive/10 p-3 rounded-md">
                       <p className="font-medium">Are you sure you want to delete this applicant?</p>
@@ -667,17 +667,6 @@ export function ApplicationDetailDialog({
                     </div>
                   </div>
                 )}
-                {application.status !== "submitted" &&
-                  application.status !== "updated" &&
-                  application.status !== "needs_info" &&
-                  application.status !== "approved" && (
-                    <Button
-                      variant="outline"
-                      onClick={() => onOpenChange(false)}
-                    >
-                      Close
-                    </Button>
-                  )}
               </>
             )}
           </DialogFooter>
