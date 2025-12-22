@@ -161,15 +161,25 @@ serve(async (req) => {
       });
     }
 
+    // Add tax as a separate line item so QuickBooks includes it in the total
+    if (invoice.tax_amount > 0) {
+      qbLineItems.push({
+        DetailType: 'SalesItemLineDetail',
+        Amount: invoice.tax_amount,
+        Description: 'Sales Tax',
+        SalesItemLineDetail: {
+          Qty: 1,
+          UnitPrice: invoice.tax_amount,
+        },
+      });
+    }
+
     // Create QB invoice
     const qbInvoice = {
       CustomerRef: { value: quickbooksCustomerId },
       Line: qbLineItems,
       DueDate: invoice.due_date,
       DocNumber: invoice.number,
-      TxnTaxDetail: invoice.tax_amount > 0 ? {
-        TotalTax: invoice.tax_amount,
-      } : undefined,
       PrivateNote: `CommandX Invoice: ${invoice.number}`,
     };
 
