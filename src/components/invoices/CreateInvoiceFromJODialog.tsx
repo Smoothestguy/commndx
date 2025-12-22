@@ -87,19 +87,44 @@ export function CreateInvoiceFromJODialog({
       : baseTotal;
   };
 
-  const subtotal = lineItems.reduce((sum, item) => sum + calculateLineTotal(item), 0);
-  const taxableSubtotal = lineItems
-    .filter((item) => item.isTaxable)
-    .reduce((sum, item) => sum + calculateLineTotal(item), 0);
+  const computedSubtotal = lineItems.reduce((sum, item) => sum + calculateLineTotal(item), 0);
   const taxRate = jobOrder.tax_rate;
-  const taxAmount = taxableSubtotal * (taxRate / 100);
-  const total = subtotal + taxAmount;
+
+  // Detect if this is a "full remaining invoice" - invoicing all remaining quantities
+  // and this is the first invoice for this job order
+  const isFullRemainingInvoice = 
+    jobOrder.invoiced_amount === 0 && 
+    lineItems.every((item) => item.quantityToInvoice === item.remainingQuantity && item.remainingQuantity > 0);
+
+  // Use stored Job Order tax/totals for full invoice to avoid recalculation discrepancies
+  // Otherwise, calculate tax only on taxable items
+  let subtotal: number;
+  let taxAmount: number;
+  let total: number;
+
+  if (isFullRemainingInvoice) {
+    // Use exact Job Order values to maintain consistency
+    subtotal = jobOrder.subtotal;
+    taxAmount = jobOrder.tax_amount;
+    total = jobOrder.total;
+  } else {
+    // For partial invoices, calculate based on selected quantities
+    subtotal = computedSubtotal;
+    const taxableSubtotal = lineItems
+      .filter((item) => item.isTaxable)
+      .reduce((sum, item) => sum + calculateLineTotal(item), 0);
+    taxAmount = Math.round(taxableSubtotal * (taxRate / 100) * 100) / 100;
+    total = Math.round((subtotal + taxAmount) * 100) / 100;
+  }
 
   const hasValidItems = lineItems.some((item) => item.quantityToInvoice > 0);
   const hasExceededQuantity = lineItems.some(
     (item) => item.quantityToInvoice > item.remainingQuantity
   );
-  const exceedsBalance = total > jobOrder.remaining_amount;
+  // For full invoice, total should match exactly; for partial, allow small rounding tolerance
+  const exceedsBalance = isFullRemainingInvoice 
+    ? false 
+    : total > jobOrder.remaining_amount + 0.01;
 
   const handleSubmit = async () => {
     if (!hasValidItems || hasExceededQuantity || exceedsBalance) return;
