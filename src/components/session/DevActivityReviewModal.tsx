@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { format } from "date-fns";
-import { Check, X, ChevronDown, ChevronUp, Sparkles } from "lucide-react";
+import { Check, X, ChevronDown, ChevronUp, Sparkles, AlertTriangle, Clock } from "lucide-react";
 import {
   Dialog,
   DialogContent,
@@ -43,6 +43,21 @@ interface DevActivityReviewModalProps {
   onComplete: () => void;
 }
 
+// Default duration suggestions based on activity type
+const DEFAULT_DURATIONS: Record<string, number> = {
+  git_commit: 15,
+  deployment: 30,
+  database_migration: 45,
+  schema_change: 30,
+  feature_development: 60,
+  bug_fix: 30,
+  code_review: 20,
+  configuration: 15,
+  testing: 45,
+  documentation: 30,
+  other: 30,
+};
+
 export function DevActivityReviewModal({
   open,
   onOpenChange,
@@ -53,9 +68,16 @@ export function DevActivityReviewModal({
   const { createActivities, projectNames } = useDevActivities();
 
   // Sync initialActivities prop to internal state when it changes
+  // Also apply default durations for activities without duration
   useEffect(() => {
     setActivities(
-      initialActivities.map((a) => ({ ...a, selected: true, expanded: false }))
+      initialActivities.map((a) => ({
+        ...a,
+        // Apply default duration if null
+        duration_minutes: a.duration_minutes ?? DEFAULT_DURATIONS[a.activity_type] ?? 30,
+        selected: true,
+        expanded: false,
+      }))
     );
   }, [initialActivities]);
 
@@ -77,6 +99,12 @@ export function DevActivityReviewModal({
     );
   };
 
+  const setAllDurations = (minutes: number) => {
+    setActivities((prev) =>
+      prev.map((a) => (a.selected ? { ...a, duration_minutes: minutes } : a))
+    );
+  };
+
   const getConfidenceBadge = (confidence: string) => {
     switch (confidence) {
       case "high":
@@ -90,18 +118,21 @@ export function DevActivityReviewModal({
     }
   };
 
+  // Count selected activities missing duration
+  const selectedActivities = activities.filter((a) => a.selected);
+  const missingDurationCount = selectedActivities.filter(
+    (a) => !a.duration_minutes || a.duration_minutes <= 0
+  ).length;
+  const canSave = selectedActivities.length > 0 && missingDurationCount === 0;
+
   const handleSave = async () => {
-    const selectedActivities = activities.filter((a) => a.selected);
-    if (selectedActivities.length === 0) {
-      onOpenChange(false);
-      return;
-    }
+    if (!canSave) return;
 
     const inputs: DevActivityInput[] = selectedActivities.map((a) => ({
       activity_type: a.activity_type,
       title: a.title,
       description: a.description || undefined,
-      duration_minutes: a.duration_minutes || undefined,
+      duration_minutes: a.duration_minutes!, // We validated it's not null
       activity_date: a.activity_date,
       project_name: a.project_name || undefined,
       technologies: a.technologies,
@@ -113,8 +144,6 @@ export function DevActivityReviewModal({
     onOpenChange(false);
   };
 
-  const selectedCount = activities.filter((a) => a.selected).length;
-
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-2xl max-h-[90vh]">
@@ -125,18 +154,71 @@ export function DevActivityReviewModal({
           </DialogTitle>
         </DialogHeader>
 
-        <ScrollArea className="max-h-[60vh] pr-4">
+        {/* Duration warning and quick set buttons */}
+        {selectedActivities.length > 0 && (
+          <div className="space-y-3">
+            {missingDurationCount > 0 && (
+              <div className="flex items-center gap-2 text-sm text-amber-600 dark:text-amber-400 bg-amber-50 dark:bg-amber-950/30 px-3 py-2 rounded-md">
+                <AlertTriangle className="h-4 w-4 flex-shrink-0" />
+                <span>
+                  {missingDurationCount} {missingDurationCount === 1 ? "activity needs" : "activities need"} duration
+                </span>
+              </div>
+            )}
+            <div className="flex items-center gap-2 flex-wrap">
+              <span className="text-xs text-muted-foreground flex items-center gap-1">
+                <Clock className="h-3 w-3" />
+                Set all to:
+              </span>
+              <Button
+                variant="outline"
+                size="sm"
+                className="h-7 text-xs"
+                onClick={() => setAllDurations(15)}
+              >
+                15m
+              </Button>
+              <Button
+                variant="outline"
+                size="sm"
+                className="h-7 text-xs"
+                onClick={() => setAllDurations(30)}
+              >
+                30m
+              </Button>
+              <Button
+                variant="outline"
+                size="sm"
+                className="h-7 text-xs"
+                onClick={() => setAllDurations(60)}
+              >
+                1h
+              </Button>
+              <Button
+                variant="outline"
+                size="sm"
+                className="h-7 text-xs"
+                onClick={() => setAllDurations(120)}
+              >
+                2h
+              </Button>
+            </div>
+          </div>
+        )}
+
+        <ScrollArea className="max-h-[50vh] pr-4">
           <div className="space-y-4">
             {activities.map((activity, index) => {
               const config = getActivityTypeConfig(activity.activity_type);
               const Icon = config.icon;
+              const hasDuration = activity.duration_minutes && activity.duration_minutes > 0;
 
               return (
                 <div
                   key={index}
                   className={`border rounded-lg p-4 transition-colors ${
                     activity.selected ? "bg-card" : "bg-muted/30 opacity-60"
-                  }`}
+                  } ${activity.selected && !hasDuration ? "border-amber-400 dark:border-amber-600" : ""}`}
                 >
                   <div className="flex items-start gap-3">
                     <Checkbox
@@ -155,6 +237,12 @@ export function DevActivityReviewModal({
                         <span className="text-xs text-muted-foreground">
                           {format(new Date(activity.activity_date), "MMM d, yyyy")}
                         </span>
+                        {activity.selected && !hasDuration && (
+                          <Badge variant="outline" className="text-amber-600 border-amber-400 text-xs">
+                            <AlertTriangle className="h-3 w-3 mr-1" />
+                            Needs duration
+                          </Badge>
+                        )}
                       </div>
 
                       <Input
@@ -163,6 +251,24 @@ export function DevActivityReviewModal({
                         className="mt-2 font-medium"
                         placeholder="Activity title"
                       />
+
+                      {/* Always show duration input for convenience */}
+                      <div className="mt-2 flex items-center gap-2">
+                        <Label className="text-xs text-muted-foreground whitespace-nowrap">Duration:</Label>
+                        <Input
+                          type="number"
+                          value={activity.duration_minutes || ""}
+                          onChange={(e) =>
+                            updateActivity(index, {
+                              duration_minutes: e.target.value ? parseInt(e.target.value) : null,
+                            })
+                          }
+                          className={`w-24 h-8 text-sm ${!hasDuration && activity.selected ? "border-amber-400 focus:ring-amber-400" : ""}`}
+                          placeholder="min"
+                          min={1}
+                        />
+                        <span className="text-xs text-muted-foreground">minutes</span>
+                      </div>
 
                       <Button
                         variant="ghost"
@@ -216,23 +322,6 @@ export function DevActivityReviewModal({
                             </div>
 
                             <div>
-                              <Label className="text-xs">Duration (minutes)</Label>
-                              <Input
-                                type="number"
-                                value={activity.duration_minutes || ""}
-                                onChange={(e) =>
-                                  updateActivity(index, {
-                                    duration_minutes: e.target.value ? parseInt(e.target.value) : null,
-                                  })
-                                }
-                                className="mt-1"
-                                placeholder="e.g., 60"
-                              />
-                            </div>
-                          </div>
-
-                          <div className="grid grid-cols-2 gap-3">
-                            <div>
                               <Label className="text-xs">Date</Label>
                               <Input
                                 type="date"
@@ -241,22 +330,22 @@ export function DevActivityReviewModal({
                                 className="mt-1"
                               />
                             </div>
+                          </div>
 
-                            <div>
-                              <Label className="text-xs">Project</Label>
-                              <Input
-                                value={activity.project_name || ""}
-                                onChange={(e) => updateActivity(index, { project_name: e.target.value })}
-                                className="mt-1"
-                                placeholder="Project name"
-                                list={`project-names-${index}`}
-                              />
-                              <datalist id={`project-names-${index}`}>
-                                {projectNames.map((name) => (
-                                  <option key={name} value={name} />
-                                ))}
-                              </datalist>
-                            </div>
+                          <div>
+                            <Label className="text-xs">Project</Label>
+                            <Input
+                              value={activity.project_name || ""}
+                              onChange={(e) => updateActivity(index, { project_name: e.target.value })}
+                              className="mt-1"
+                              placeholder="Project name"
+                              list={`project-names-${index}`}
+                            />
+                            <datalist id={`project-names-${index}`}>
+                              {projectNames.map((name) => (
+                                <option key={name} value={name} />
+                              ))}
+                            </datalist>
                           </div>
 
                           <div>
@@ -289,10 +378,11 @@ export function DevActivityReviewModal({
           </Button>
           <Button
             onClick={handleSave}
-            disabled={selectedCount === 0 || createActivities.isPending}
+            disabled={!canSave || createActivities.isPending}
+            title={!canSave && missingDurationCount > 0 ? "Please add duration to all selected activities" : undefined}
           >
             <Check className="h-4 w-4 mr-2" />
-            Save {selectedCount} {selectedCount === 1 ? "Activity" : "Activities"}
+            Save {selectedActivities.length} {selectedActivities.length === 1 ? "Activity" : "Activities"}
           </Button>
         </DialogFooter>
       </DialogContent>

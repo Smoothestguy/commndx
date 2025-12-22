@@ -24,20 +24,34 @@ For EACH activity found, return a JSON object with these exact fields:
 - title: Brief summary (50 chars max)
 - description: Full details extracted
 - activity_type: One of: git_commit, deployment, database_migration, schema_change, feature_development, bug_fix, code_review, configuration, testing, documentation, other
-- duration_minutes: Estimated time in minutes or null if not visible
+- duration_minutes: REQUIRED - Estimated time in minutes. If time is not explicitly visible, you MUST estimate based on the complexity:
+  * Small changes (typo fix, config tweak): 10-15 minutes
+  * Git commits (single commit): 15-30 minutes
+  * Bug fixes: 20-45 minutes depending on complexity
+  * Code reviews: 15-30 minutes per PR
+  * Feature development: 30-120 minutes based on scope
+  * Database migrations/schema changes: 30-60 minutes
+  * Deployments: 15-30 minutes
+  * Documentation: 20-45 minutes
+  * Testing: 30-60 minutes
+  NEVER return null for duration - always provide your best estimate!
 - activity_date: YYYY-MM-DD format (extract from screenshot or use today's date)
 - project_name: Project/client name if visible, or null
 - technologies: Array of technologies/languages used (e.g., ["React", "TypeScript", "Supabase"])
 - confidence: "high", "medium", or "low" based on how clear the information is
 
-IMPORTANT: Return ONLY a valid JSON object with an "activities" array. Example format:
+IMPORTANT: 
+1. Return ONLY a valid JSON object with an "activities" array
+2. ALWAYS provide a duration_minutes value - this is REQUIRED. Estimate based on activity complexity if not visible.
+
+Example format:
 {
   "activities": [
     {
       "title": "Added user authentication",
       "description": "Implemented login/signup flow with email verification",
       "activity_type": "feature_development",
-      "duration_minutes": 120,
+      "duration_minutes": 90,
       "activity_date": "2024-01-15",
       "project_name": "MyApp",
       "technologies": ["React", "Supabase"],
@@ -125,6 +139,21 @@ serve(async (req) => {
 
     console.log('Raw AI response content:', content.substring(0, 500));
 
+    // Default duration estimates based on activity type
+    const defaultDurations: Record<string, number> = {
+      git_commit: 15,
+      deployment: 30,
+      database_migration: 45,
+      schema_change: 30,
+      feature_development: 60,
+      bug_fix: 30,
+      code_review: 20,
+      configuration: 15,
+      testing: 45,
+      documentation: 30,
+      other: 30,
+    };
+
     // Parse the JSON response
     let activities = [];
     try {
@@ -140,19 +169,28 @@ serve(async (req) => {
       const parsed = JSON.parse(jsonStr);
       activities = parsed.activities || [];
       
-      // Validate and clean each activity
-      activities = activities.map((activity: any) => ({
-        title: String(activity.title || '').substring(0, 100),
-        description: String(activity.description || ''),
-        activity_type: ['git_commit', 'deployment', 'database_migration', 'schema_change', 'feature_development', 'bug_fix', 'code_review', 'configuration', 'testing', 'documentation', 'other'].includes(activity.activity_type) 
+      // Validate and clean each activity - ensure duration is always set
+      activities = activities.map((activity: any) => {
+        const activityType = ['git_commit', 'deployment', 'database_migration', 'schema_change', 'feature_development', 'bug_fix', 'code_review', 'configuration', 'testing', 'documentation', 'other'].includes(activity.activity_type) 
           ? activity.activity_type 
-          : 'other',
-        duration_minutes: typeof activity.duration_minutes === 'number' ? activity.duration_minutes : null,
-        activity_date: activity.activity_date || today,
-        project_name: activity.project_name || null,
-        technologies: Array.isArray(activity.technologies) ? activity.technologies : [],
-        confidence: ['high', 'medium', 'low'].includes(activity.confidence) ? activity.confidence : 'medium',
-      }));
+          : 'other';
+        
+        // Ensure duration is always a positive number
+        let duration = typeof activity.duration_minutes === 'number' && activity.duration_minutes > 0 
+          ? activity.duration_minutes 
+          : defaultDurations[activityType] || 30;
+        
+        return {
+          title: String(activity.title || '').substring(0, 100),
+          description: String(activity.description || ''),
+          activity_type: activityType,
+          duration_minutes: duration,
+          activity_date: activity.activity_date || today,
+          project_name: activity.project_name || null,
+          technologies: Array.isArray(activity.technologies) ? activity.technologies : [],
+          confidence: ['high', 'medium', 'low'].includes(activity.confidence) ? activity.confidence : 'medium',
+        };
+      });
 
       console.log(`Extracted ${activities.length} activities`);
     } catch (parseError) {
