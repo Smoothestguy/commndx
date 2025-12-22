@@ -360,7 +360,7 @@ export function CreateJobOrderDialog({
                           type="number"
                           value={item.quantity}
                           onChange={(e) => updateLineItem(item.id, "quantity", e.target.value)}
-                          min="1"
+                          min="0"
                         />
                       </div>
                       <div className="col-span-2 space-y-1">

@@ -54,9 +54,9 @@ import {
 } from "@dnd-kit/sortable";
 
 const lineItemSchema = z.object({
-  description: z.string().min(1, "Description is required").max(500),
-  quantity: z.number().positive("Quantity must be positive"),
-  unit_price: z.number().min(0, "Unit price cannot be negative"),
+  description: z.string().min(1, "Description is required").max(1000),
+  quantity: z.number().min(0, "Quantity cannot be negative"),
+  unit_price: z.number(),
   margin: z.number().min(0, "Margin cannot be negative").max(99.99, "Margin must be less than 100%"),
 });
 
