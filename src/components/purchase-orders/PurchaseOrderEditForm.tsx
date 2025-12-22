@@ -23,7 +23,7 @@ import { cn } from "@/lib/utils";
 import { z } from "zod";
 
 const lineItemSchema = z.object({
-  description: z.string().min(1, "Description is required").max(1000),
+  description: z.string().min(1, "Description is required").max(2000),
   quantity: z.number().min(0, "Quantity cannot be negative"),
   unit_price: z.number(),
 });
