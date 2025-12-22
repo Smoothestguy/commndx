@@ -443,24 +443,46 @@ export const useConvertEstimateToInvoice = () => {
         throw new Error("This estimate has already been converted to an invoice");
       }
 
-      // Generate invoice number
-      const { data: latestInvoice } = await supabase
-        .from("invoices")
-        .select("number")
-        .order("created_at", { ascending: false })
-        .limit(1)
+      // Check if QuickBooks is connected
+      const { data: qbConfig } = await supabase
+        .from("quickbooks_config")
+        .select("is_connected")
+        .eq("is_connected", true)
         .maybeSingle();
 
-      let nextNumber = 1;
-      if (latestInvoice?.number) {
-        const match = latestInvoice.number.match(/INV-\d{2}(\d+)/);
-        if (match) {
-          nextNumber = parseInt(match[1]) + 1;
-        }
-      }
+      let invoiceNumber: string;
 
-      const year = new Date().getFullYear().toString().slice(-2);
-      const invoiceNumber = `INV-${year}${String(nextNumber).padStart(5, "0")}`;
+      if (qbConfig?.is_connected) {
+        // Use QuickBooks sequence
+        const { data: qbData, error: qbError } = await supabase.functions.invoke(
+          'quickbooks-get-next-number',
+          { body: { type: 'invoice' } }
+        );
+        
+        if (qbError || qbData?.error) {
+          throw new Error('Failed to get next invoice number from QuickBooks');
+        }
+        invoiceNumber = qbData.nextNumber;
+      } else {
+        // Fallback to local sequence
+        const { data: latestInvoice } = await supabase
+          .from("invoices")
+          .select("number")
+          .order("created_at", { ascending: false })
+          .limit(1)
+          .maybeSingle();
+
+        let nextNumber = 1;
+        if (latestInvoice?.number) {
+          const match = latestInvoice.number.match(/INV-\d{2}(\d+)/);
+          if (match) {
+            nextNumber = parseInt(match[1]) + 1;
+          }
+        }
+
+        const year = new Date().getFullYear().toString().slice(-2);
+        invoiceNumber = `INV-${year}${String(nextNumber).padStart(5, "0")}`;
+      }
 
       // Calculate due date (30 days from now)
       const dueDate = new Date();
