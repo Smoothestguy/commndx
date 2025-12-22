@@ -7,7 +7,25 @@ interface SwipeGestureOptions {
   onSwipeDown?: () => void;
   threshold?: number;
   velocityThreshold?: number;
+  edgeThreshold?: number; // Distance from screen edge to allow navigation even in scrollable areas
 }
+
+// Check if element or any parent has horizontal scroll capability
+const isInsideScrollableX = (element: HTMLElement | null): boolean => {
+  let current: HTMLElement | null = element;
+  while (current) {
+    const style = window.getComputedStyle(current);
+    const overflowX = style.overflowX;
+    const hasOverflowScroll = overflowX === 'auto' || overflowX === 'scroll';
+    const hasScrollableContent = current.scrollWidth > current.clientWidth;
+    
+    if (hasOverflowScroll && hasScrollableContent) {
+      return true;
+    }
+    current = current.parentElement;
+  }
+  return false;
+};
 
 export function useSwipeGesture({
   onSwipeLeft,
@@ -16,16 +34,19 @@ export function useSwipeGesture({
   onSwipeDown,
   threshold = 50,
   velocityThreshold = 0.5,
+  edgeThreshold = 30, // Allow navigation from screen edges even in scrollable areas
 }: SwipeGestureOptions) {
   const startX = useRef(0);
   const startY = useRef(0);
   const startTime = useRef(0);
+  const touchTarget = useRef<HTMLElement | null>(null);
   const elementRef = useRef<HTMLDivElement>(null);
 
   const handleTouchStart = useCallback((e: TouchEvent) => {
     startX.current = e.touches[0].clientX;
     startY.current = e.touches[0].clientY;
     startTime.current = Date.now();
+    touchTarget.current = e.target as HTMLElement;
   }, []);
 
   const handleTouchEnd = useCallback((e: TouchEvent) => {
@@ -43,8 +64,25 @@ export function useSwipeGesture({
     const absX = Math.abs(deltaX);
     const absY = Math.abs(deltaY);
 
-    // Horizontal swipe (must be more horizontal than vertical)
-    if (absX > absY && (absX > threshold || velocityX > velocityThreshold)) {
+    // Check if this is a horizontal swipe
+    const isHorizontalSwipe = absX > absY && (absX > threshold || velocityX > velocityThreshold);
+    
+    if (isHorizontalSwipe) {
+      // Check if touch started inside a horizontally scrollable container
+      const inScrollable = isInsideScrollableX(touchTarget.current);
+      
+      // Check if swipe started from screen edge (escape hatch for navigation)
+      const screenWidth = window.innerWidth;
+      const startedFromLeftEdge = startX.current < edgeThreshold;
+      const startedFromRightEdge = startX.current > screenWidth - edgeThreshold;
+      const startedFromEdge = startedFromLeftEdge || startedFromRightEdge;
+      
+      // If inside scrollable area and not from edge, let browser handle scroll
+      if (inScrollable && !startedFromEdge) {
+        return;
+      }
+      
+      // Trigger navigation
       if (deltaX > 0 && onSwipeRight) {
         onSwipeRight();
       } else if (deltaX < 0 && onSwipeLeft) {
@@ -59,7 +97,7 @@ export function useSwipeGesture({
         onSwipeUp();
       }
     }
-  }, [onSwipeLeft, onSwipeRight, onSwipeUp, onSwipeDown, threshold, velocityThreshold]);
+  }, [onSwipeLeft, onSwipeRight, onSwipeUp, onSwipeDown, threshold, velocityThreshold, edgeThreshold]);
 
   useEffect(() => {
     const element = elementRef.current;
