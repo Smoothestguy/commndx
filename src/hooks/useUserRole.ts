@@ -6,19 +6,24 @@ import type { Database } from "@/integrations/supabase/types";
 type AppRole = Database["public"]["Enums"]["app_role"];
 
 export function useUserRole() {
-  const { user } = useAuth();
+  const { user, loading: authLoading } = useAuth();
   const [role, setRole] = useState<AppRole | null>(null);
   const [isVendor, setIsVendor] = useState(false);
   const [isPersonnel, setIsPersonnel] = useState(false);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
+    // Don't fetch until auth is done loading
+    if (authLoading) {
+      return; // Keep loading = true while auth is loading
+    }
+
     async function fetchUserRole() {
       if (!user) {
         setRole(null);
         setIsVendor(false);
         setIsPersonnel(false);
-        setLoading(false);
+        setLoading(false); // Safe to set false now - auth is done and no user
         return;
       }
 
@@ -72,7 +77,7 @@ export function useUserRole() {
     }
 
     fetchUserRole();
-  }, [user]);
+  }, [user, authLoading]);
 
   return {
     role,
