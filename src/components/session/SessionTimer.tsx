@@ -1,4 +1,5 @@
 import { useSessionTracking } from "@/hooks/useSessionTracking";
+import { useTodaySessions } from "@/hooks/useTodaySessions";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import {
@@ -7,6 +8,7 @@ import {
   TooltipTrigger,
 } from "@/components/ui/tooltip";
 import { Clock, Play, Square, Pause, DollarSign } from "lucide-react";
+import { formatTimeHMS, formatSessionCurrency } from "@/utils/sessionTime";
 
 export function SessionTimer() {
   const {
@@ -14,13 +16,18 @@ export function SessionTimer() {
     isLoading,
     isClockedIn,
     isIdle,
-    formattedTime,
     formattedIdleTime,
-    formattedEarnings,
     hourlyRate,
     clockIn,
     clockOut,
   } = useSessionTracking();
+
+  const {
+    todayActiveSeconds,
+    todayIdleSeconds,
+    todayEarnings,
+    sessionCount,
+  } = useTodaySessions();
 
   // Only render for the target user
   if (!isTargetUser || isLoading) {
@@ -48,6 +55,11 @@ export function SessionTimer() {
     );
   }
 
+  // Use today's totals for display
+  const formattedTodayTime = formatTimeHMS(todayActiveSeconds);
+  const formattedTodayEarnings = formatSessionCurrency(todayEarnings);
+  const formattedTodayIdleTime = formatTimeHMS(todayIdleSeconds);
+
   return (
     <div className="flex items-center gap-2">
       <Tooltip>
@@ -59,7 +71,7 @@ export function SessionTimer() {
               <Clock className="h-4 w-4 text-green-500 animate-pulse" />
             )}
             <span className="font-mono text-sm text-header-foreground">
-              {formattedTime}
+              {formattedTodayTime}
             </span>
             {isIdle && (
               <Badge
@@ -73,8 +85,10 @@ export function SessionTimer() {
         </TooltipTrigger>
         <TooltipContent>
           <div className="text-xs space-y-1">
-            <p>Active time: {formattedTime}</p>
-            <p>Idle time: {formattedIdleTime}</p>
+            <p className="font-medium">Today's Totals</p>
+            <p>Active time: {formattedTodayTime}</p>
+            <p>Idle time: {formattedTodayIdleTime}</p>
+            <p className="text-muted-foreground">{sessionCount} session{sessionCount !== 1 ? 's' : ''} today</p>
             {isIdle && (
               <p className="text-amber-500">Timer paused - you're idle</p>
             )}
@@ -87,13 +101,13 @@ export function SessionTimer() {
           <div className="flex items-center gap-1.5 px-2 py-1 rounded-md bg-green-500/10 border border-green-500/20">
             <DollarSign className="h-4 w-4 text-green-500" />
             <span className="font-mono text-sm text-green-600 dark:text-green-400 font-medium">
-              {formattedEarnings}
+              {formattedTodayEarnings}
             </span>
           </div>
         </TooltipTrigger>
         <TooltipContent>
           <div className="text-xs space-y-1">
-            <p>Current session earnings</p>
+            <p>Today's earnings</p>
             <p className="text-muted-foreground">Rate: ${hourlyRate}/hour</p>
           </div>
         </TooltipContent>
