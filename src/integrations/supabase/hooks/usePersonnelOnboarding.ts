@@ -237,11 +237,12 @@ export function useCompleteOnboarding() {
       console.log("[Onboarding] Starting onboarding completion for personnel:", personnelId);
 
       // Prepare documents array for the RPC function
+      // Map the document fields correctly - CategoryDocumentUpload uses 'type' for MIME type
       const documentsPayload = formData.documents.map(doc => ({
-        type: doc.type,
+        type: doc.document_type,
         name: doc.name,
         path: doc.path,
-        fileType: (doc as { fileType?: string }).fileType || null,
+        fileType: (doc as { type?: string }).type || null, // The MIME type is stored in 'type' from upload
         fileSize: (doc as { fileSize?: number }).fileSize || 0,
       }));
 

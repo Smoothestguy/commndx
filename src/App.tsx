@@ -117,6 +117,7 @@ import EditApplication from "./pages/EditApplication";
 import ApplicationFormTemplates from "./pages/ApplicationFormTemplates";
 import ApplicationFormBuilder from "./pages/ApplicationFormBuilder";
 import PersonnelOnboarding from "./pages/PersonnelOnboarding";
+import OnboardingComplete from "./pages/OnboardingComplete";
 import SessionHistory from "./pages/SessionHistory";
 import AiDevAssistant from "./pages/admin/AiDevAssistant";
 const queryClient = new QueryClient();
@@ -162,8 +163,9 @@ const App = () => {
                   {/* Public Application Form */}
                   <Route path="/apply/:token" element={<PublicApplicationForm />} />
                   <Route path="/apply/edit/:editToken" element={<EditApplication />} />
-                  {/* Onboarding Route */}
+                  {/* Onboarding Routes */}
                   <Route path="/onboard/:token" element={<PersonnelOnboarding />} />
+                  <Route path="/onboarding-complete/:token" element={<OnboardingComplete />} />
                   {/* Public Contractor Routes */}
                   <Route path="/contractor" element={<ContractorPortal />} />
                   <Route

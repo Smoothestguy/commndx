@@ -1,5 +1,5 @@
 import { useState, useMemo } from "react";
-import { useParams } from "react-router-dom";
+import { useParams, useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -107,6 +107,7 @@ interface ExtendedOnboardingFormData extends OnboardingFormData {
 
 const PersonnelOnboarding = () => {
   const { token } = useParams<{ token: string }>();
+  const navigate = useNavigate();
   
   const { data: validationResult, isLoading, error } = useOnboardingToken(token);
   const completeOnboarding = useCompleteOnboarding();
@@ -118,7 +119,6 @@ const PersonnelOnboarding = () => {
   );
 
   const [currentStep, setCurrentStep] = useState(1);
-  const [submitted, setSubmitted] = useState(false);
   const [agreedToTerms, setAgreedToTerms] = useState(false);
 
   // Initialize form data from personnel record
@@ -310,7 +310,9 @@ const PersonnelOnboarding = () => {
       w9Certification: formData.w9_certification,
       icaSignature: formData.ica_signature,
     });
-    setSubmitted(true);
+    
+    // Redirect to personalized thank you page
+    navigate(`/onboarding-complete/${token}`, { replace: true });
   };
 
   // Loading state
@@ -378,30 +380,6 @@ const PersonnelOnboarding = () => {
                 : validationResult?.isUsed
                   ? "This onboarding link has already been used. If you need to make changes, please contact your supervisor."
                   : "This onboarding link is not valid. Please check your email for the correct link or contact your supervisor."}
-            </p>
-          </CardContent>
-        </Card>
-      </div>
-    );
-  }
-
-  // Success state
-  if (submitted) {
-    return (
-      <div className="min-h-screen bg-background flex items-center justify-center p-4">
-        <SEO title="Onboarding Complete" description="Your onboarding has been completed" />
-        <Card className="max-w-lg w-full">
-          <CardContent className="pt-6 text-center">
-            <div className="rounded-full bg-success/10 p-4 w-fit mx-auto mb-4">
-              <CheckCircle className="h-12 w-12 text-success" />
-            </div>
-            <h2 className="text-2xl font-bold mb-2">Onboarding Complete!</h2>
-            <p className="text-muted-foreground mb-6">
-              Thank you for completing your onboarding documentation. Your information has been
-              saved and your supervisor will be notified.
-            </p>
-            <p className="text-sm text-muted-foreground">
-              You can close this window now.
             </p>
           </CardContent>
         </Card>
