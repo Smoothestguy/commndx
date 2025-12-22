@@ -203,28 +203,43 @@ export function W9FormView({ personnelId, personnelSsnLastFour, personnelSsnFull
           {/* Part 1: Identification */}
           <div className="space-y-4">
             <h3 className="font-semibold text-sm text-muted-foreground uppercase tracking-wide">
-              Part I: Identification
+              Part I: Identification (Rev. March 2024)
             </h3>
             
             <div className="grid gap-4 md:grid-cols-2">
               <div>
-                <Label className="text-muted-foreground text-xs">Name (as shown on tax return)</Label>
+                <Label className="text-muted-foreground text-xs">Name of entity/individual (Line 1)</Label>
                 <p className="font-medium">{w9Form.name_on_return}</p>
               </div>
               {w9Form.business_name && (
                 <div>
-                  <Label className="text-muted-foreground text-xs">Business Name</Label>
+                  <Label className="text-muted-foreground text-xs">Business Name (Line 2)</Label>
                   <p className="font-medium">{w9Form.business_name}</p>
                 </div>
               )}
               <div>
-                <Label className="text-muted-foreground text-xs">Federal Tax Classification</Label>
+                <Label className="text-muted-foreground text-xs">Federal Tax Classification (Line 3a)</Label>
                 <p className="font-medium capitalize">{w9Form.federal_tax_classification.replace(/_/g, " ")}</p>
               </div>
               {w9Form.llc_tax_classification && (
                 <div>
                   <Label className="text-muted-foreground text-xs">LLC Tax Classification</Label>
                   <p className="font-medium">{w9Form.llc_tax_classification}</p>
+                </div>
+              )}
+              {/* Line 3b - Foreign Partners */}
+              {(w9Form.federal_tax_classification === "partnership" || 
+                w9Form.federal_tax_classification === "trust_estate" ||
+                (w9Form.federal_tax_classification === "llc" && w9Form.llc_tax_classification?.toUpperCase() === "P")) && (
+                <div>
+                  <Label className="text-muted-foreground text-xs">Foreign Partners/Owners/Beneficiaries (Line 3b)</Label>
+                  <p className="font-medium flex items-center gap-1">
+                    {w9Form.has_foreign_partners ? (
+                      <><CheckCircle className="h-4 w-4 text-amber-600" /> Yes</>
+                    ) : (
+                      <><XCircle className="h-4 w-4 text-muted-foreground" /> No</>
+                    )}
+                  </p>
                 </div>
               )}
             </div>

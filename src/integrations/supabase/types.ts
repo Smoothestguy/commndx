@@ -3254,6 +3254,7 @@ export type Database = {
           exempt_payee_code: string | null
           fatca_exemption_code: string | null
           federal_tax_classification: string
+          has_foreign_partners: boolean | null
           id: string
           llc_tax_classification: string | null
           name_on_return: string
@@ -3285,6 +3286,7 @@ export type Database = {
           exempt_payee_code?: string | null
           fatca_exemption_code?: string | null
           federal_tax_classification: string
+          has_foreign_partners?: boolean | null
           id?: string
           llc_tax_classification?: string | null
           name_on_return: string
@@ -3316,6 +3318,7 @@ export type Database = {
           exempt_payee_code?: string | null
           fatca_exemption_code?: string | null
           federal_tax_classification?: string
+          has_foreign_partners?: boolean | null
           id?: string
           llc_tax_classification?: string | null
           name_on_return?: string
