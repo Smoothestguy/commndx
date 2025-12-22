@@ -2119,6 +2119,7 @@ export type Database = {
           description: string
           id: string
           invoiced_quantity: number | null
+          is_taxable: boolean | null
           job_order_id: string
           markup: number
           quantity: number
@@ -2130,6 +2131,7 @@ export type Database = {
           description: string
           id?: string
           invoiced_quantity?: number | null
+          is_taxable?: boolean | null
           job_order_id: string
           markup: number
           quantity: number
@@ -2141,6 +2143,7 @@ export type Database = {
           description?: string
           id?: string
           invoiced_quantity?: number | null
+          is_taxable?: boolean | null
           job_order_id?: string
           markup?: number
           quantity?: number
