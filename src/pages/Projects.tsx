@@ -260,14 +260,14 @@ const Projects = () => {
         )}
 
         {/* Search & Filters */}
-        <div className="mb-6 space-y-4">
+        <div className="mb-6 space-y-4 overflow-hidden">
           <div className="flex gap-3">
-            <div className="flex-1 max-w-md">
+            <div className="flex-1 w-full sm:max-w-md min-w-0">
               <SearchInput
                 placeholder="Search projects..."
                 value={search}
                 onChange={setSearch}
-                className="bg-secondary border-border"
+                className="bg-secondary border-border w-full"
               />
             </div>
           </div>
