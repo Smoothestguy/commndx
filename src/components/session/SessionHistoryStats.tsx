@@ -22,7 +22,7 @@ export function SessionHistoryStats({ dateRange }: SessionHistoryStatsProps) {
 
       let query = supabase
         .from("user_work_sessions")
-        .select("total_active_seconds, total_idle_seconds, session_start")
+        .select("total_active_seconds, total_idle_seconds, session_start, session_end, is_active")
         .eq("user_id", user.id);
 
       if (dateRange?.from) {
@@ -36,10 +36,16 @@ export function SessionHistoryStats({ dateRange }: SessionHistoryStatsProps) {
 
       if (error) throw error;
 
-      const totalActiveSecs = data.reduce(
-        (acc, s) => acc + (s.total_active_seconds || 0),
-        0
-      );
+      // Calculate active seconds using timestamps (same as SessionHistoryTable)
+      const now = new Date();
+      const totalActiveSecs = data.reduce((acc, s) => {
+        const start = new Date(s.session_start);
+        const end = s.session_end ? new Date(s.session_end) : (s.is_active ? now : start);
+        const elapsedSeconds = Math.floor((end.getTime() - start.getTime()) / 1000);
+        const activeSeconds = Math.max(0, elapsedSeconds - (s.total_idle_seconds || 0));
+        return acc + activeSeconds;
+      }, 0);
+
       const totalIdleSecs = data.reduce(
         (acc, s) => acc + (s.total_idle_seconds || 0),
         0
