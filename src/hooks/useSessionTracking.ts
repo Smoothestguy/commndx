@@ -1,21 +1,20 @@
 import { useState, useEffect, useCallback, useRef } from "react";
-import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
+import { useAuth } from "@/contexts/AuthContext";
 
 const TARGET_USER_EMAIL = "chris.guevara97@gmail.com";
+const HOURLY_RATE = 35;
 const STORAGE_KEY = "session_tracking_state";
-const SYNC_INTERVAL_MS = 30000; // Sync to DB every 30 seconds
-const HOURLY_RATE = 23; // $23/hour
-const IDLE_TIMEOUT_MS = 5 * 60 * 1000; // 5 minutes
+const IDLE_TIMEOUT_MS = 5 * 60 * 1000; // 5 minutes of inactivity = idle
+const SYNC_INTERVAL_MS = 30 * 1000; // Sync to DB every 30 seconds
 
-interface SessionState {
+interface StoredState {
   sessionId: string | null;
+  clockedInAt: number | null;
   activeSeconds: number;
   idleSeconds: number;
-  lastTickTime: number;
-  isClockedIn: boolean;
-  lastActivityTime: number;
-  isIdle: boolean;
+  lastSyncAt: number;
+  wasIdleAtLastSync: boolean;
 }
 
 export function useSessionTracking() {
@@ -30,6 +29,7 @@ export function useSessionTracking() {
   const [isIdle, setIsIdle] = useState(false);
 
   // Refs for timestamp-based tracking
+  const clockedInAtRef = useRef<number | null>(null);
   const lastUpdateTimeRef = useRef<number>(Date.now());
   const lastActivityTimeRef = useRef<number>(Date.now());
   const isIdleRef = useRef(false);
@@ -38,6 +38,7 @@ export function useSessionTracking() {
   const updateIntervalRef = useRef<NodeJS.Timeout | null>(null);
 
   // Calculate elapsed time and update counters based on timestamps
+  // KEY CHANGE: Background time counts as ACTIVE, only in-tab inactivity counts as idle
   const updateTimeCounters = useCallback(() => {
     if (!isClockedIn) return;
 
@@ -46,6 +47,7 @@ export function useSessionTracking() {
     const elapsedSeconds = Math.floor(elapsedMs / 1000);
 
     if (elapsedSeconds > 0) {
+      // Only count as idle if user was idle IN THE TAB (not just tab hidden)
       if (isIdleRef.current) {
         setIdleSeconds((prev) => prev + elapsedSeconds);
       } else {
@@ -55,7 +57,7 @@ export function useSessionTracking() {
     }
   }, [isClockedIn]);
 
-  // Reset idle timer on activity
+  // Reset idle timer on activity (only when tab is visible)
   const resetIdleTimer = useCallback(() => {
     if (!isClockedIn) return;
 
@@ -63,13 +65,10 @@ export function useSessionTracking() {
 
     // If was idle, mark as active
     if (isIdleRef.current) {
-      // First update counters with idle time
       updateTimeCounters();
-      
       isIdleRef.current = false;
       setIsIdle(false);
-      
-      // Log activity resume
+
       if (sessionId && user) {
         supabase.from("session_activity_log").insert([{
           session_id: sessionId,
@@ -87,72 +86,69 @@ export function useSessionTracking() {
     }
 
     idleTimeoutRef.current = setTimeout(() => {
-      if (!isClockedIn) return;
+      if (!isClockedIn || document.hidden) return; // Don't mark idle if tab is hidden
       
-      // Update counters before switching to idle
       updateTimeCounters();
-      
       isIdleRef.current = true;
       setIsIdle(true);
       
-      // Log idle start
       if (sessionId && user) {
         supabase.from("session_activity_log").insert([{
           session_id: sessionId,
           user_id: user.id,
           activity_type: "idle_start",
           route: window.location.pathname,
-          action_name: "User became idle",
+          action_name: "User became idle (5 min no activity)",
         }]).then(() => {});
       }
     }, IDLE_TIMEOUT_MS);
   }, [isClockedIn, sessionId, user, updateTimeCounters]);
 
-  // Handle visibility change - crucial for background tab tracking
+  // Handle visibility change - KEY CHANGE: Hidden tab still counts as ACTIVE
   useEffect(() => {
     if (!isTargetUser || !isClockedIn) return;
 
     const handleVisibilityChange = () => {
       if (document.hidden) {
-        // Tab is now hidden - update counters and switch to idle mode
+        // Tab is now hidden - but DON'T switch to idle!
+        // Just update counters and continue counting as active
         updateTimeCounters();
         
-        if (!isIdleRef.current) {
-          isIdleRef.current = true;
-          setIsIdle(true);
-          
-          if (sessionId && user) {
-            supabase.from("session_activity_log").insert([{
-              session_id: sessionId,
-              user_id: user.id,
-              activity_type: "tab_hidden",
-              route: window.location.pathname,
-              action_name: "Tab became hidden (tracking as idle)",
-            }]).then(() => {});
-          }
-        }
-        
-        // Clear the idle timeout since we're already idle
+        // Clear the idle timeout since we're in background
         if (idleTimeoutRef.current) {
           clearTimeout(idleTimeoutRef.current);
           idleTimeoutRef.current = null;
         }
+        
+        if (sessionId && user) {
+          supabase.from("session_activity_log").insert([{
+            session_id: sessionId,
+            user_id: user.id,
+            activity_type: "tab_hidden",
+            route: window.location.pathname,
+            action_name: "Tab hidden (still counting as active)",
+          }]).then(() => {});
+        }
       } else {
-        // Tab is now visible - calculate time spent hidden and add to idle
+        // Tab is now visible - calculate time spent hidden as ACTIVE
         const now = Date.now();
         const elapsedMs = now - lastUpdateTimeRef.current;
         const elapsedSeconds = Math.floor(elapsedMs / 1000);
         
         if (elapsedSeconds > 0) {
-          // All time while hidden counts as idle
-          setIdleSeconds((prev) => prev + elapsedSeconds);
+          // Time while hidden counts as ACTIVE (key change!)
+          setActiveSeconds((prev) => prev + elapsedSeconds);
           lastUpdateTimeRef.current = now;
         }
         
-        // Resume as active
-        isIdleRef.current = false;
-        setIsIdle(false);
+        // Reset activity tracking
         lastActivityTimeRef.current = now;
+        
+        // If was idle before hiding, resume as active
+        if (isIdleRef.current) {
+          isIdleRef.current = false;
+          setIsIdle(false);
+        }
         
         // Restart idle timer
         resetIdleTimer();
@@ -163,7 +159,7 @@ export function useSessionTracking() {
             user_id: user.id,
             activity_type: "tab_visible",
             route: window.location.pathname,
-            action_name: "Tab became visible (resumed active)",
+            action_name: "Tab visible (added background time as active)",
           }]).then(() => {});
         }
       }
@@ -175,7 +171,7 @@ export function useSessionTracking() {
     };
   }, [isTargetUser, isClockedIn, sessionId, user, updateTimeCounters, resetIdleTimer]);
 
-  // Activity event listeners
+  // Activity event listeners (only matter when tab is visible)
   useEffect(() => {
     if (!isTargetUser || !isClockedIn) return;
 
@@ -183,8 +179,9 @@ export function useSessionTracking() {
     
     let lastReset = 0;
     const throttledReset = () => {
+      if (document.hidden) return; // Ignore events if tab is hidden
       const now = Date.now();
-      if (now - lastReset > 1000) { // Throttle to once per second
+      if (now - lastReset > 1000) {
         lastReset = now;
         resetIdleTimer();
       }
@@ -194,7 +191,6 @@ export function useSessionTracking() {
       document.addEventListener(event, throttledReset, { passive: true });
     });
 
-    // Start the idle timer
     resetIdleTimer();
 
     return () => {
@@ -217,7 +213,6 @@ export function useSessionTracking() {
       return;
     }
 
-    // Reset the update time when starting
     lastUpdateTimeRef.current = Date.now();
 
     updateIntervalRef.current = setInterval(() => {
@@ -241,18 +236,26 @@ export function useSessionTracking() {
     const savedState = localStorage.getItem(STORAGE_KEY);
     if (savedState) {
       try {
-        const state: SessionState = JSON.parse(savedState);
-        // Only restore if session is recent (within 24 hours)
-        const hoursSinceLastTick = (Date.now() - state.lastTickTime) / (1000 * 60 * 60);
+        const state: StoredState = JSON.parse(savedState);
+        const hoursSinceLastSync = (Date.now() - state.lastSyncAt) / (1000 * 60 * 60);
         
-        if (hoursSinceLastTick < 24 && state.isClockedIn) {
-          // Calculate additional idle time while the app was closed
-          const additionalIdleSeconds = Math.floor((Date.now() - state.lastTickTime) / 1000);
+        if (hoursSinceLastSync < 24 && state.sessionId && state.clockedInAt) {
+          // Calculate additional time while the app was closed
+          const additionalSeconds = Math.floor((Date.now() - state.lastSyncAt) / 1000);
+          
+          // KEY: If user was NOT idle when app closed, add elapsed time as ACTIVE
+          const newActiveSeconds = state.wasIdleAtLastSync 
+            ? state.activeSeconds 
+            : state.activeSeconds + additionalSeconds;
+          const newIdleSeconds = state.wasIdleAtLastSync 
+            ? state.idleSeconds + additionalSeconds 
+            : state.idleSeconds;
           
           setSessionId(state.sessionId);
-          setActiveSeconds(state.activeSeconds);
-          setIdleSeconds(state.idleSeconds + additionalIdleSeconds);
+          setActiveSeconds(newActiveSeconds);
+          setIdleSeconds(newIdleSeconds);
           setIsClockedIn(true);
+          clockedInAtRef.current = state.clockedInAt;
           lastUpdateTimeRef.current = Date.now();
           lastActivityTimeRef.current = Date.now();
         }
@@ -267,14 +270,13 @@ export function useSessionTracking() {
   useEffect(() => {
     if (!isTargetUser || !isClockedIn) return;
 
-    const state: SessionState = {
+    const state: StoredState = {
       sessionId,
+      clockedInAt: clockedInAtRef.current,
       activeSeconds,
       idleSeconds,
-      lastTickTime: Date.now(),
-      isClockedIn,
-      lastActivityTime: lastActivityTimeRef.current,
-      isIdle: isIdleRef.current,
+      lastSyncAt: Date.now(),
+      wasIdleAtLastSync: isIdleRef.current,
     };
     localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
   }, [isTargetUser, sessionId, activeSeconds, idleSeconds, isClockedIn]);
@@ -312,29 +314,20 @@ export function useSessionTracking() {
     };
   }, [isTargetUser, isClockedIn, sessionId, activeSeconds, idleSeconds]);
 
-  // Handle page unload - sync before closing
+  // Handle page unload
   useEffect(() => {
     if (!isTargetUser || !isClockedIn || !sessionId) return;
 
     const handleBeforeUnload = () => {
-      // Update counters one final time
       updateTimeCounters();
       
-      // Sync to database using sendBeacon for reliability
-      const payload = JSON.stringify({
-        total_active_seconds: activeSeconds,
-        total_idle_seconds: idleSeconds,
-      });
-      
-      // Save to localStorage as backup
-      const state: SessionState = {
+      const state: StoredState = {
         sessionId,
+        clockedInAt: clockedInAtRef.current,
         activeSeconds,
         idleSeconds,
-        lastTickTime: Date.now(),
-        isClockedIn: true,
-        lastActivityTime: lastActivityTimeRef.current,
-        isIdle: isIdleRef.current,
+        lastSyncAt: Date.now(),
+        wasIdleAtLastSync: isIdleRef.current,
       };
       localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
     };
@@ -377,30 +370,30 @@ export function useSessionTracking() {
       if (!isTargetUser || !user || isClockedIn) return;
 
       try {
+        const now = Date.now();
         const { data, error } = await supabase
           .from("user_work_sessions")
           .insert({
             user_id: user.id,
             user_email: user.email!,
             clock_in_type: type,
-            session_start: new Date().toISOString(),
+            session_start: new Date(now).toISOString(),
           })
           .select()
           .single();
 
         if (error) throw error;
 
-        const now = Date.now();
         setSessionId(data.id);
         setActiveSeconds(0);
         setIdleSeconds(0);
         setIsClockedIn(true);
         setIsIdle(false);
         isIdleRef.current = false;
+        clockedInAtRef.current = now;
         lastUpdateTimeRef.current = now;
         lastActivityTimeRef.current = now;
 
-        // Log the clock in
         await supabase.from("session_activity_log").insert([{
           session_id: data.id,
           user_id: user.id,
@@ -420,10 +413,8 @@ export function useSessionTracking() {
     if (!isTargetUser || !sessionId || !user) return;
 
     try {
-      // Update counters one final time
       updateTimeCounters();
 
-      // Final sync
       await supabase
         .from("user_work_sessions")
         .update({
@@ -434,7 +425,6 @@ export function useSessionTracking() {
         })
         .eq("id", sessionId);
 
-      // Log the clock out
       await supabase.from("session_activity_log").insert([{
         session_id: sessionId,
         user_id: user.id,
@@ -443,13 +433,13 @@ export function useSessionTracking() {
         action_name: "Clocked out",
       }]);
 
-      // Clear state
       setSessionId(null);
       setActiveSeconds(0);
       setIdleSeconds(0);
       setIsClockedIn(false);
       setIsIdle(false);
       isIdleRef.current = false;
+      clockedInAtRef.current = null;
       localStorage.removeItem(STORAGE_KEY);
       
       if (idleTimeoutRef.current) {
@@ -496,11 +486,10 @@ export function useSessionTracking() {
     clockIn,
     clockOut,
     logActivity,
-    // Earnings
     hourlyRate: HOURLY_RATE,
     currentEarnings,
     formattedEarnings: formatCurrency(currentEarnings),
     calculateEarnings,
-    formatCurrency,
+    formatTime,
   };
 }
