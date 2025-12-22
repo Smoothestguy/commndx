@@ -30,6 +30,7 @@ import { cn } from "@/lib/utils";
 import { useAuth } from "@/contexts/AuthContext";
 import { PendingAttachmentsUpload, PendingFile } from "@/components/shared/PendingAttachmentsUpload";
 import { finalizeAttachments, cleanupPendingAttachments } from "@/utils/attachmentUtils";
+import { VendorBillAttachments } from "@/components/vendor-bills/VendorBillAttachments";
 
 interface VendorBillFormProps {
   bill?: VendorBill;
@@ -499,8 +500,10 @@ export function VendorBillForm({ bill, isEditing = false }: VendorBillFormProps)
         </CardContent>
       </Card>
 
-      {/* Attachments Section - Only for new bills */}
-      {!isEditing && (
+      {/* Attachments Section */}
+      {isEditing && bill ? (
+        <VendorBillAttachments billId={bill.id} />
+      ) : (
         <PendingAttachmentsUpload
           entityType="vendor_bill"
           pendingFiles={pendingAttachments}
