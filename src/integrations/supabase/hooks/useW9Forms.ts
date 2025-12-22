@@ -10,6 +10,7 @@ export interface W9Form {
   federal_tax_classification: string;
   llc_tax_classification: string | null;
   other_classification: string | null;
+  has_foreign_partners: boolean;
   exempt_payee_code: string | null;
   fatca_exemption_code: string | null;
   address: string;
@@ -41,6 +42,7 @@ export interface W9FormInput {
   federal_tax_classification: string;
   llc_tax_classification?: string | null;
   other_classification?: string | null;
+  has_foreign_partners?: boolean;
   exempt_payee_code?: string | null;
   fatca_exemption_code?: string | null;
   address: string;

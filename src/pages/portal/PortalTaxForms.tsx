@@ -11,7 +11,7 @@ import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
-import { CheckCircle, AlertCircle, FileText, Clock, XCircle } from "lucide-react";
+import { CheckCircle, AlertCircle, Clock, XCircle } from "lucide-react";
 import { format } from "date-fns";
 
 const US_STATES = [
@@ -33,6 +33,7 @@ export default function PortalTaxForms() {
     federal_tax_classification: "",
     llc_tax_classification: "",
     other_classification: "",
+    has_foreign_partners: false,
     exempt_payee_code: "",
     fatca_exemption_code: "",
     address: "",
@@ -50,6 +51,12 @@ export default function PortalTaxForms() {
   });
 
   const [isEditing, setIsEditing] = useState(false);
+
+  // Check if Line 3b should be shown (Partnership, Trust/estate, or LLC with P classification)
+  const showLine3b = 
+    formData.federal_tax_classification === "partnership" ||
+    formData.federal_tax_classification === "trust_estate" ||
+    (formData.federal_tax_classification === "llc" && formData.llc_tax_classification?.toUpperCase() === "P");
 
   // Pre-populate form when personnel data is loaded (for new W-9)
   useEffect(() => {
@@ -74,6 +81,7 @@ export default function PortalTaxForms() {
         federal_tax_classification: w9Form.federal_tax_classification || "",
         llc_tax_classification: w9Form.llc_tax_classification || "",
         other_classification: w9Form.other_classification || "",
+        has_foreign_partners: w9Form.has_foreign_partners ?? false,
         exempt_payee_code: w9Form.exempt_payee_code || "",
         fatca_exemption_code: w9Form.fatca_exemption_code || "",
         address: w9Form.address || "",
@@ -103,6 +111,7 @@ export default function PortalTaxForms() {
       federal_tax_classification: formData.federal_tax_classification,
       llc_tax_classification: formData.llc_tax_classification || null,
       other_classification: formData.other_classification || null,
+      has_foreign_partners: showLine3b ? formData.has_foreign_partners : false,
       exempt_payee_code: formData.exempt_payee_code || null,
       fatca_exemption_code: formData.fatca_exemption_code || null,
       address: formData.address,
@@ -149,6 +158,12 @@ export default function PortalTaxForms() {
 
   // Show completed W-9 view
   if (w9Form && !isEditing) {
+    // Check if Line 3b applies for the saved form
+    const savedShowLine3b = 
+      w9Form.federal_tax_classification === "partnership" ||
+      w9Form.federal_tax_classification === "trust_estate" ||
+      (w9Form.federal_tax_classification === "llc" && w9Form.llc_tax_classification?.toUpperCase() === "P");
+
     return (
       <PortalLayout>
         <div className="space-y-6">
@@ -176,7 +191,7 @@ export default function PortalTaxForms() {
                 <div className="w-24 border-r-2 border-foreground/20 p-3 flex flex-col justify-center">
                   <span className="text-xs">Form</span>
                   <span className="text-2xl font-bold">W-9</span>
-                  <span className="text-[10px] text-muted-foreground">(Rev. October 2018)</span>
+                  <span className="text-[10px] text-muted-foreground">(Rev. March 2024)</span>
                 </div>
                 <div className="flex-1 p-3">
                   <p className="text-xs text-muted-foreground">Department of the Treasury</p>
@@ -192,7 +207,7 @@ export default function PortalTaxForms() {
                 <div className="flex items-start gap-2">
                   <span className="font-bold text-sm">1</span>
                   <div className="flex-1">
-                    <p className="text-xs text-muted-foreground mb-1">Name (as shown on your income tax return)</p>
+                    <p className="text-xs text-muted-foreground mb-1">Name of entity/individual</p>
                     <p className="font-medium">{w9Form.name_on_return}</p>
                   </div>
                 </div>
@@ -209,12 +224,12 @@ export default function PortalTaxForms() {
                 </div>
               </div>
 
-              {/* Line 3 - Tax Classification */}
+              {/* Line 3a - Tax Classification */}
               <div className="border-b border-foreground/20 p-3">
                 <div className="flex items-start gap-2">
-                  <span className="font-bold text-sm">3</span>
+                  <span className="font-bold text-sm">3a</span>
                   <div className="flex-1">
-                    <p className="text-xs text-muted-foreground mb-2">Check appropriate box for federal tax classification</p>
+                    <p className="text-xs text-muted-foreground mb-2">Federal tax classification</p>
                     <p className="font-medium capitalize">{w9Form.federal_tax_classification.replace(/_/g, " ")}</p>
                     {w9Form.llc_tax_classification && (
                       <p className="text-sm text-muted-foreground mt-1">LLC Classification: {w9Form.llc_tax_classification}</p>
@@ -225,6 +240,25 @@ export default function PortalTaxForms() {
                   </div>
                 </div>
               </div>
+
+              {/* Line 3b - Foreign Partners (conditional) */}
+              {savedShowLine3b && (
+                <div className="border-b border-foreground/20 p-3">
+                  <div className="flex items-start gap-2">
+                    <span className="font-bold text-sm">3b</span>
+                    <div className="flex-1">
+                      <p className="text-xs text-muted-foreground mb-1">Foreign partners, owners, or beneficiaries</p>
+                      <p className="font-medium flex items-center gap-2">
+                        {w9Form.has_foreign_partners ? (
+                          <><CheckCircle className="h-4 w-4 text-amber-600" /> Yes - Has foreign partners/owners/beneficiaries</>
+                        ) : (
+                          <><XCircle className="h-4 w-4 text-muted-foreground" /> No</>
+                        )}
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              )}
 
               {/* Line 4 - Exemptions */}
               <div className="border-b border-foreground/20 p-3">
@@ -367,7 +401,7 @@ export default function PortalTaxForms() {
     );
   }
 
-  // Show W-9 form input - IRS Style
+  // Show W-9 form input - IRS Style (March 2024 Revision)
   return (
     <PortalLayout>
       <div className="space-y-6">
@@ -393,7 +427,7 @@ export default function PortalTaxForms() {
               <div className="sm:w-28 border-b-2 sm:border-b-0 sm:border-r-2 border-foreground/20 p-3 flex flex-col justify-center items-center sm:items-start">
                 <span className="text-xs text-muted-foreground">Form</span>
                 <span className="text-3xl font-bold tracking-tight">W-9</span>
-                <span className="text-[10px] text-muted-foreground">(Rev. October 2018)</span>
+                <span className="text-[10px] text-muted-foreground">(Rev. March 2024)</span>
               </div>
               <div className="flex-1 p-3">
                 <p className="text-xs text-muted-foreground">Department of the Treasury</p>
@@ -406,13 +440,18 @@ export default function PortalTaxForms() {
 
           <CardContent className="p-0">
             <form onSubmit={handleSubmit}>
+              {/* Before you begin instruction */}
+              <div className="bg-muted/50 border-b border-foreground/20 p-3 text-sm">
+                <span className="font-semibold">Before you begin.</span> For guidance related to the purpose of Form W-9, see Purpose of Form, below. <span className="font-semibold">Print or type.</span> See Specific Instructions on page 3.
+              </div>
+
               {/* Line 1 - Name */}
               <div className="border-b border-foreground/20 p-3">
                 <div className="flex items-start gap-2">
                   <span className="font-bold text-sm w-4 flex-shrink-0">1</span>
                   <div className="flex-1">
                     <Label htmlFor="name_on_return" className="text-xs text-muted-foreground">
-                      Name (as shown on your income tax return). Name is required on this line; do not leave this line blank.
+                      Name of entity/individual. An entry is required. <span className="text-[10px]">(For a sole proprietor or disregarded entity, enter the owner's name on line 1, and enter the business/disregarded entity's name on line 2.)</span>
                     </Label>
                     <Input
                       id="name_on_return"
@@ -443,24 +482,24 @@ export default function PortalTaxForms() {
                 </div>
               </div>
 
-              {/* Line 3 - Federal Tax Classification */}
+              {/* Line 3a - Federal Tax Classification */}
               <div className="border-b border-foreground/20 p-3">
                 <div className="flex items-start gap-2">
-                  <span className="font-bold text-sm w-4 flex-shrink-0">3</span>
+                  <span className="font-bold text-sm w-4 flex-shrink-0">3a</span>
                   <div className="flex-1">
                     <Label className="text-xs text-muted-foreground block mb-2">
-                      Check appropriate box for federal tax classification of the person whose name is entered on line 1. Check only one of the following seven boxes.
+                      Check the appropriate box for federal tax classification of the entity/individual whose name is entered on line 1. Check only one of the following seven boxes.
                     </Label>
                     <RadioGroup
                       value={formData.federal_tax_classification}
-                      onValueChange={(value) => setFormData({ ...formData, federal_tax_classification: value })}
+                      onValueChange={(value) => setFormData({ ...formData, federal_tax_classification: value, has_foreign_partners: false })}
                       className="space-y-2"
                     >
                       <div className="flex flex-wrap gap-x-4 gap-y-2">
                         <div className="flex items-center space-x-2">
                           <RadioGroupItem value="individual" id="individual" />
                           <Label htmlFor="individual" className="text-sm font-normal cursor-pointer">
-                            Individual/sole proprietor or single-member LLC
+                            Individual/sole proprietor
                           </Label>
                         </div>
                         <div className="flex items-center space-x-2">
@@ -485,12 +524,12 @@ export default function PortalTaxForms() {
                         <div className="flex items-center space-x-2">
                           <RadioGroupItem value="llc" id="llc" />
                           <Label htmlFor="llc" className="text-sm font-normal cursor-pointer">
-                            Limited liability company. Enter the tax classification (C=C corporation, S=S corporation, P=Partnership) ▶
+                            LLC. Enter the tax classification (C=C corporation, S=S corporation, P=Partnership) ▶
                           </Label>
                           {formData.federal_tax_classification === "llc" && (
                             <Input
                               value={formData.llc_tax_classification}
-                              onChange={(e) => setFormData({ ...formData, llc_tax_classification: e.target.value.toUpperCase() })}
+                              onChange={(e) => setFormData({ ...formData, llc_tax_classification: e.target.value.toUpperCase(), has_foreign_partners: false })}
                               className="w-12 h-7 text-center border-foreground/30 font-mono"
                               maxLength={1}
                               placeholder="C/S/P"
@@ -514,14 +553,38 @@ export default function PortalTaxForms() {
                     </RadioGroup>
 
                     <p className="text-xs text-muted-foreground mt-3">
-                      <strong>Note:</strong> Check the appropriate box in the line above for the tax classification of the single-member owner. 
-                      Do not check LLC if the LLC is classified as a single-member LLC that is disregarded from the owner unless the owner of the LLC is 
-                      another LLC that is not disregarded from the owner for U.S. federal tax purposes. Otherwise, a single-member LLC that 
-                      is disregarded from the owner should check the appropriate box for the tax classification of its owner.
+                      <strong>Note:</strong> Check the "LLC" box above and, in the entry space, enter the appropriate code (C, S, or P) for the tax 
+                      classification of the LLC, unless it is a disregarded entity. A disregarded entity should instead check the appropriate 
+                      box for the tax classification of its owner.
                     </p>
                   </div>
                 </div>
               </div>
+
+              {/* Line 3b - Foreign Partners (conditional) */}
+              {showLine3b && (
+                <div className="border-b border-foreground/20 p-3 bg-amber-50/50 dark:bg-amber-950/20">
+                  <div className="flex items-start gap-2">
+                    <span className="font-bold text-sm w-4 flex-shrink-0">3b</span>
+                    <div className="flex-1">
+                      <div className="flex items-start space-x-3">
+                        <Checkbox
+                          id="has_foreign_partners"
+                          checked={formData.has_foreign_partners}
+                          onCheckedChange={(checked) => 
+                            setFormData({ ...formData, has_foreign_partners: checked as boolean })
+                          }
+                        />
+                        <Label htmlFor="has_foreign_partners" className="text-sm leading-relaxed cursor-pointer">
+                          If on line 3a you checked "Partnership" or "Trust/estate," or checked "LLC" and entered "P" as its tax classification, 
+                          and you are providing this form to a partnership, trust, or estate in which you have an ownership interest, check this box 
+                          if you have any <strong>foreign partners, owners, or beneficiaries</strong>. See instructions.
+                        </Label>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              )}
 
               {/* Line 4 - Exemptions */}
               <div className="border-b border-foreground/20 p-3">
@@ -564,7 +627,7 @@ export default function PortalTaxForms() {
                   <span className="font-bold text-sm w-4 flex-shrink-0">5</span>
                   <div className="flex-1">
                     <Label htmlFor="address" className="text-xs text-muted-foreground">
-                      Address (number, street, and apt. or suite no.) See instructions.
+                      Address (number, street, and apt. or suite no.). See instructions.
                     </Label>
                     <Input
                       id="address"

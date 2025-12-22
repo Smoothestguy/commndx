@@ -243,6 +243,10 @@ export function generateW9(options: GenerateW9Options): jsPDF {
   
   currentY = otherY + 20;
   
+  // Check if Line 3b applies
+  const showLine3b = taxClassification === 'partnership' || taxClassification === 'trust' || 
+    (taxClassification === 'llc' && llcClassification?.toLowerCase() === 'p');
+  
   doc.setFontSize(7);
   doc.setFont('helvetica', 'bold');
   doc.text('3b', margin, currentY);
@@ -254,6 +258,15 @@ export function generateW9(options: GenerateW9Options): jsPDF {
   // Foreign partners checkbox - positioned on the right
   const foreignCheckY = currentY + 8;
   doc.rect(pageWidth - margin - 15, foreignCheckY - 8, checkboxSize, checkboxSize);
+  
+  // Check the box if has_foreign_partners is true and Line 3b applies
+  if (showLine3b && w9Form.has_foreign_partners) {
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(12);
+    doc.text('X', pageWidth - margin - 13, foreignCheckY);
+    doc.setFontSize(7);
+    doc.setFont('helvetica', 'normal');
+  }
 
   // ============================================================================
   // LINE 4: EXEMPTIONS
