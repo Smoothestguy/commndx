@@ -8,7 +8,7 @@ import { TimeTrackingStats } from "@/components/time-tracking/TimeTrackingStats"
 import { TimeTrackingFilters } from "@/components/time-tracking/TimeTrackingFilters";
 import { GroupedTimeTrackingTable } from "@/components/time-tracking/GroupedTimeTrackingTable";
 import { EnhancedTimeEntryForm } from "@/components/time-tracking/EnhancedTimeEntryForm";
-import { WeeklyTimesheet } from "@/components/time-tracking/WeeklyTimesheet";
+import { WeeklyTimesheetWithProject } from "@/components/time-tracking/WeeklyTimesheetWithProject";
 import { WeekNavigator } from "@/components/time-tracking/WeekNavigator";
 import { ProjectAssignmentsSection } from "@/components/time-tracking/ProjectAssignmentsSection";
 import { PersonnelAssignmentDialog } from "@/components/time-tracking/PersonnelAssignmentDialog";
@@ -231,8 +231,8 @@ export default function TimeTracking() {
               />
             </div>
 
-            {/* Weekly Timesheet */}
-            <WeeklyTimesheet
+            {/* Weekly Timesheet with Project Selector */}
+            <WeeklyTimesheetWithProject
               currentWeek={weeklyViewWeek}
               onWeekChange={setWeeklyViewWeek}
             />
