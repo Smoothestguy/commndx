@@ -20,9 +20,17 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { useAddVendorBill } from "@/integrations/supabase/hooks/useVendorBills";
 import { PurchaseOrderWithLineItems } from "@/integrations/supabase/hooks/usePurchaseOrders";
 import { usePOAddendums, POAddendumLineItem } from "@/integrations/supabase/hooks/usePOAddendums";
+import { useExpenseCategories } from "@/integrations/supabase/hooks/useExpenseCategories";
 import { supabase } from "@/integrations/supabase/client";
 import { format } from "date-fns";
 import { AlertTriangle, Receipt, FileText } from "lucide-react";
@@ -61,11 +69,13 @@ export function CreateBillFromPODialog({
   
   // Fetch addendums for this PO
   const { data: addendums } = usePOAddendums(purchaseOrder.id);
+  const { data: categories } = useExpenseCategories("vendor");
   
   const [addendumLineItems, setAddendumLineItems] = useState<(POAddendumLineItem & { addendumNumber: string })[]>([]);
   const [lineItems, setLineItems] = useState<LineItemQuantity[]>([]);
   const [billDate, setBillDate] = useState(format(new Date(), "yyyy-MM-dd"));
   const [dueDate, setDueDate] = useState(format(new Date(Date.now() + 30 * 24 * 60 * 60 * 1000), "yyyy-MM-dd"));
+  const [categoryId, setCategoryId] = useState<string | null>(null);
   const [pendingAttachments, setPendingAttachments] = useState<PendingFile[]>([]);
 
   // Fetch addendum line items when addendums change
@@ -172,7 +182,7 @@ export function CreateBillFromPODialog({
         po_line_item_id: item.source === 'po' ? item.id : null,
         po_addendum_line_item_id: item.source === 'addendum' ? item.id : null,
         project_id: purchaseOrder.project_id,
-        category_id: null,
+        category_id: categoryId,
         description: item.source === 'addendum' 
           ? `[${item.addendumNumber}] ${item.description}`
           : item.description,
@@ -247,7 +257,7 @@ export function CreateBillFromPODialog({
           </DialogDescription>
         </DialogHeader>
 
-        <div className="grid grid-cols-2 gap-4 py-4">
+        <div className="grid grid-cols-3 gap-4 py-4">
           <div className="space-y-2">
             <Label htmlFor="billDate">Bill Date</Label>
             <Input
@@ -265,6 +275,23 @@ export function CreateBillFromPODialog({
               value={dueDate}
               onChange={(e) => setDueDate(e.target.value)}
             />
+          </div>
+          <div className="space-y-2">
+            <Label htmlFor="category">Category</Label>
+            <Select
+              value={categoryId || "none"}
+              onValueChange={(v) => setCategoryId(v === "none" ? null : v)}
+            >
+              <SelectTrigger id="category">
+                <SelectValue placeholder="Select category" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="none">No Category</SelectItem>
+                {categories?.map((c) => (
+                  <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
           </div>
         </div>
 
