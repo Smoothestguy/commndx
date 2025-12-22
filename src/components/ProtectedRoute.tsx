@@ -6,7 +6,7 @@ import { Loader2 } from "lucide-react";
 
 export const ProtectedRoute = ({ children }: { children: ReactNode }) => {
   const { user, loading: authLoading } = useAuth();
-  const { isPersonnel, isVendor, isAdmin, isManager, loading: roleLoading } = useUserRole();
+  const { isPersonnel, isVendor, isAdmin, isManager, isUser, role, loading: roleLoading } = useUserRole();
 
   if (authLoading || roleLoading) {
     return (
@@ -31,6 +31,13 @@ export const ProtectedRoute = ({ children }: { children: ReactNode }) => {
   // Redirect vendor users to vendor portal (unless they have admin/manager role)
   if (isVendor && !hasAdminAccess) {
     return <Navigate to="/vendor" replace />;
+  }
+
+  // Check if user is authorized (has a valid role or is personnel/vendor)
+  const isAuthorized = hasAdminAccess || isUser || isPersonnel || isVendor || role !== null;
+  
+  if (!isAuthorized) {
+    return <Navigate to="/unauthorized" replace />;
   }
 
   return <>{children}</>;

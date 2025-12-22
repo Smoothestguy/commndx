@@ -15,6 +15,7 @@ import { ChatInterface } from "@/components/ai-assistant/ChatInterface";
 import Index from "./pages/Index";
 import Auth from "./pages/Auth";
 import AuthCallback from "./pages/AuthCallback";
+import Unauthorized from "./pages/Unauthorized";
 import Products from "./pages/Products";
 import Customers from "./pages/Customers";
 import CustomerDetail from "./pages/CustomerDetail";
@@ -134,6 +135,7 @@ const App = () => {
                 <Routes>
                   <Route path="/auth" element={<Auth />} />
                   <Route path="/auth/callback" element={<AuthCallback />} />
+                  <Route path="/unauthorized" element={<Unauthorized />} />
                   <Route
                     path="/accept-invitation"
                     element={<AcceptInvitation />}
