@@ -210,12 +210,10 @@ const PersonnelOnboarding = () => {
       case 2:
         return true; // Address is optional
       case 3: {
-        // Required: SSN (9 digits), citizenship status, SSN card
-        const hasValidSSN = formData.ssn_full?.length === 9;
+        // Required: citizenship status only (SSN and SSN card are optional)
         const hasCitizenship = !!formData.citizenship_status;
-        const hasSSNCard = !!getDocumentByType("ssn_card");
 
-        if (!hasValidSSN || !hasCitizenship || !hasSSNCard) return false;
+        if (!hasCitizenship) return false;
 
         // Citizenship-specific requirements
         if (formData.citizenship_status === "us_citizen") {
