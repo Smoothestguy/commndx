@@ -69,10 +69,6 @@ const AuthCallback = () => {
             .update({ user_id: user.id })
             .eq("id", personnel.id);
 
-          // Remove any auto-assigned role and set personnel role
-          await supabase.from("user_roles").delete().eq("user_id", user.id);
-          await supabase.from("user_roles").insert({ user_id: user.id, role: "personnel" });
-
           toast.success("Welcome! Redirecting to your portal...");
           navigate("/portal");
           return;
@@ -96,9 +92,6 @@ const AuthCallback = () => {
             .from("vendors")
             .update({ user_id: user.id })
             .eq("id", vendor.id);
-
-          // Remove any auto-assigned role
-          await supabase.from("user_roles").delete().eq("user_id", user.id);
 
           toast.success("Welcome! Redirecting to vendor portal...");
           navigate("/vendor");

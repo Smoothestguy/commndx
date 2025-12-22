@@ -1,7 +1,6 @@
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
-import { supabase } from "@/integrations/supabase/client";
 import { SEO } from "@/components/SEO";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -24,88 +23,11 @@ const Auth = () => {
   const [loginEmail, setLoginEmail] = useState("");
   const [loginPassword, setLoginPassword] = useState("");
 
-  // Check for unlinked personnel/vendor and redirect appropriately
+  // Simply redirect logged-in users away from auth page
+  // Authorization checks are handled by ProtectedRoute and AuthCallback
   useEffect(() => {
     if (user && !authLoading) {
-      const checkAndRedirect = async () => {
-        // Check if user email matches an unlinked personnel record
-        const { data: personnel } = await supabase
-          .from("personnel")
-          .select("id, user_id")
-          .eq("email", user.email || "")
-          .maybeSingle();
-
-        if (personnel && !personnel.user_id) {
-          // Link the personnel record to this user
-          await supabase
-            .from("personnel")
-            .update({ user_id: user.id })
-            .eq("id", personnel.id);
-
-          // Remove any auto-assigned role
-          await supabase
-            .from("user_roles")
-            .delete()
-            .eq("user_id", user.id);
-
-          navigate("/portal");
-          return;
-        }
-
-        // Check if already linked personnel
-        if (personnel && personnel.user_id === user.id) {
-          navigate("/portal");
-          return;
-        }
-
-        // Check if user email matches an unlinked vendor record
-        const { data: vendor } = await supabase
-          .from("vendors")
-          .select("id, user_id")
-          .eq("email", user.email || "")
-          .maybeSingle();
-
-        if (vendor && !vendor.user_id) {
-          // Link the vendor record to this user
-          await supabase
-            .from("vendors")
-            .update({ user_id: user.id })
-            .eq("id", vendor.id);
-
-          // Remove any auto-assigned role
-          await supabase
-            .from("user_roles")
-            .delete()
-            .eq("user_id", user.id);
-
-          navigate("/vendor");
-          return;
-        }
-
-        // Check if already linked vendor
-        if (vendor && vendor.user_id === user.id) {
-          navigate("/vendor");
-          return;
-        }
-
-        // Check if user has a valid role (authorized user)
-        const { data: userRole } = await supabase
-          .from("user_roles")
-          .select("role")
-          .eq("user_id", user.id)
-          .maybeSingle();
-
-        // If no personnel link, no vendor link, and no role - unauthorized
-        if (!userRole) {
-          navigate("/unauthorized");
-          return;
-        }
-
-        // Authorized user with role goes to dashboard
-        navigate("/");
-      };
-
-      checkAndRedirect();
+      navigate("/");
     }
   }, [user, authLoading, navigate]);
 
