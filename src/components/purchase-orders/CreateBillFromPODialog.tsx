@@ -26,6 +26,10 @@ import { usePOAddendums, POAddendumLineItem } from "@/integrations/supabase/hook
 import { supabase } from "@/integrations/supabase/client";
 import { format } from "date-fns";
 import { AlertTriangle, Receipt, FileText } from "lucide-react";
+import { useAuth } from "@/contexts/AuthContext";
+import { PendingAttachmentsUpload, PendingFile } from "@/components/shared/PendingAttachmentsUpload";
+import { finalizeAttachments, cleanupPendingAttachments } from "@/utils/attachmentUtils";
+import { toast } from "sonner";
 
 interface CreateBillFromPODialogProps {
   open: boolean;
@@ -52,6 +56,7 @@ export function CreateBillFromPODialog({
   purchaseOrder,
 }: CreateBillFromPODialogProps) {
   const navigate = useNavigate();
+  const { user } = useAuth();
   const addVendorBill = useAddVendorBill();
   
   // Fetch addendums for this PO
@@ -61,6 +66,7 @@ export function CreateBillFromPODialog({
   const [lineItems, setLineItems] = useState<LineItemQuantity[]>([]);
   const [billDate, setBillDate] = useState(format(new Date(), "yyyy-MM-dd"));
   const [dueDate, setDueDate] = useState(format(new Date(Date.now() + 30 * 24 * 60 * 60 * 1000), "yyyy-MM-dd"));
+  const [pendingAttachments, setPendingAttachments] = useState<PendingFile[]>([]);
 
   // Fetch addendum line items when addendums change
   useEffect(() => {
@@ -194,6 +200,19 @@ export function CreateBillFromPODialog({
         lineItems: billLineItems,
       });
 
+      // Finalize any pending attachments
+      if (pendingAttachments.length > 0 && user) {
+        const attachResult = await finalizeAttachments(
+          pendingAttachments,
+          result.id,
+          "vendor_bill",
+          user.id
+        );
+        if (!attachResult.success) {
+          toast.warning("Bill created but some attachments failed to upload");
+        }
+      }
+
       onOpenChange(false);
       navigate(`/vendor-bills/${result.id}`);
     } catch (error) {
@@ -201,8 +220,17 @@ export function CreateBillFromPODialog({
     }
   };
 
+  const handleDialogClose = async (newOpen: boolean) => {
+    if (!newOpen && pendingAttachments.length > 0) {
+      // Clean up pending attachments if dialog is closed without creating the bill
+      await cleanupPendingAttachments(pendingAttachments);
+      setPendingAttachments([]);
+    }
+    onOpenChange(newOpen);
+  };
+
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
+    <Dialog open={open} onOpenChange={handleDialogClose}>
       <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
@@ -359,6 +387,16 @@ export function CreateBillFromPODialog({
             </span>
           </div>
         )}
+
+        {/* Attachments Section */}
+        <div className="pt-4 border-t">
+          <PendingAttachmentsUpload
+            entityType="vendor_bill"
+            pendingFiles={pendingAttachments}
+            onFilesChange={setPendingAttachments}
+            compact={true}
+          />
+        </div>
 
         <div className="space-y-2 pt-4 border-t">
           <div className="flex justify-between text-sm">
