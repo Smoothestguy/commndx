@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import {
   Dialog,
@@ -25,6 +25,7 @@ import { format } from "date-fns";
 import { AlertTriangle, Receipt } from "lucide-react";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { Card } from "@/components/ui/card";
+import { supabase } from "@/integrations/supabase/client";
 
 interface CreateInvoiceFromJODialogProps {
   open: boolean;
@@ -67,6 +68,71 @@ export function CreateInvoiceFromJODialog({
 
   const [lineItems, setLineItems] = useState<LineItemQuantity[]>(initialLineItems);
   const [dueDate, setDueDate] = useState(format(new Date(Date.now() + 30 * 24 * 60 * 60 * 1000), "yyyy-MM-dd"));
+  const [invoiceNumber, setInvoiceNumber] = useState<string>("");
+  const [isLoadingNumber, setIsLoadingNumber] = useState(false);
+
+  // Fetch the next invoice number from QuickBooks or generate locally
+  useEffect(() => {
+    if (!open) return;
+
+    const fetchInvoiceNumber = async () => {
+      setIsLoadingNumber(true);
+      try {
+        // Check if QuickBooks is connected
+        const { data: qbConfig } = await supabase
+          .from("quickbooks_config")
+          .select("is_connected")
+          .eq("is_connected", true)
+          .maybeSingle();
+
+        if (qbConfig?.is_connected) {
+          // Use QuickBooks sequence
+          const { data: qbData, error: qbError } = await supabase.functions.invoke(
+            'quickbooks-get-next-number',
+            { body: { type: 'invoice' } }
+          );
+
+          if (!qbError && qbData?.nextNumber) {
+            setInvoiceNumber(qbData.nextNumber);
+          } else {
+            console.error('Error fetching QB number:', qbError);
+            // Fallback to local
+            await generateLocalNumber();
+          }
+        } else {
+          // Fallback to local sequence (INV-YYXXXXX)
+          await generateLocalNumber();
+        }
+      } catch (error) {
+        console.error('Error fetching invoice number:', error);
+        await generateLocalNumber();
+      } finally {
+        setIsLoadingNumber(false);
+      }
+    };
+
+    const generateLocalNumber = async () => {
+      const { data: latestInvoice } = await supabase
+        .from("invoices")
+        .select("number")
+        .order("created_at", { ascending: false })
+        .limit(1)
+        .maybeSingle();
+
+      let nextNumber = 1;
+      if (latestInvoice?.number) {
+        const match = latestInvoice.number.match(/INV-\d{2}(\d+)/);
+        if (match) {
+          nextNumber = parseInt(match[1]) + 1;
+        }
+      }
+
+      const year = new Date().getFullYear().toString().slice(-2);
+      setInvoiceNumber(`INV-${year}${String(nextNumber).padStart(5, "0")}`);
+    };
+
+    fetchInvoiceNumber();
+  }, [open]);
 
   const updateQuantity = (id: string, value: number) => {
     setLineItems((prev) =>
@@ -142,7 +208,7 @@ export function CreateInvoiceFromJODialog({
 
     try {
       const result = await addInvoice.mutateAsync({
-        number: "", // Will be auto-generated
+        number: invoiceNumber,
         job_order_id: jobOrder.id,
         job_order_number: jobOrder.number,
         customer_id: jobOrder.customer_id,
@@ -322,9 +388,9 @@ export function CreateInvoiceFromJODialog({
           </Button>
           <Button
             onClick={handleSubmit}
-            disabled={!hasValidItems || hasExceededQuantity || exceedsBalance || addInvoice.isPending}
+            disabled={!hasValidItems || hasExceededQuantity || exceedsBalance || addInvoice.isPending || isLoadingNumber || !invoiceNumber}
           >
-            {addInvoice.isPending ? "Creating..." : "Create Invoice"}
+            {isLoadingNumber ? "Loading..." : addInvoice.isPending ? "Creating..." : "Create Invoice"}
           </Button>
         </DialogFooter>
       </DialogContent>
