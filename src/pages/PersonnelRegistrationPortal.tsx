@@ -145,11 +145,10 @@ const PersonnelRegistrationPortal = () => {
       case 2:
         return true; // Address is optional
       case 3: {
-        // Required for all: SSN (9 digits), citizenship status
-        const hasValidSSN = formData.ssn_full?.length === 9;
+        // Required: citizenship status only (SSN is optional)
         const hasCitizenship = !!formData.citizenship_status;
 
-        if (!hasValidSSN || !hasCitizenship) return false;
+        if (!hasCitizenship) return false;
 
         // Citizenship-specific requirements
         if (formData.citizenship_status === "us_citizen") {
