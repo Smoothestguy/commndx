@@ -23,7 +23,10 @@ import {
 } from "@/components/ui/alert-dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Plus, Loader2, AlertTriangle, ArrowLeft, Edit, Eye } from "lucide-react";
+import { Plus, Loader2, AlertTriangle, ArrowLeft, Edit, Eye, Upload, ChevronUp, ChevronDown } from "lucide-react";
+import { ImportDocumentDialog } from "@/components/estimates/ImportDocumentDialog";
+import { InlineProductDialog } from "@/components/products/InlineProductDialog";
+import { ExtractedItem } from "@/components/job-orders/ExtractedItemsTable";
 import { EstimatePreviewDialog } from "@/components/estimates/EstimatePreviewDialog";
 import { SortableLineItem } from "@/components/estimates/SortableLineItem";
 import { useCustomers } from "@/integrations/supabase/hooks/useCustomers";
@@ -100,6 +103,9 @@ const EditEstimate = () => {
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [isInitialized, setIsInitialized] = useState(false);
   const [previewOpen, setPreviewOpen] = useState(false);
+  const [importDialogOpen, setImportDialogOpen] = useState(false);
+  const [createProductDialogOpen, setCreateProductDialogOpen] = useState(false);
+  const [allExpanded, setAllExpanded] = useState(false);
   const [productComboboxStates, setProductComboboxStates] = useState<Record<number, boolean>>({});
   const [productSearchStates, setProductSearchStates] = useState<Record<number, string>>({});
 
@@ -256,6 +262,35 @@ const EditEstimate = () => {
       ...lineItems,
       { id: crypto.randomUUID(), description: "", quantity: "1", unit_price: "", margin: "0", pricing_type: defaultPricingType, is_taxable: true, total: 0, isExpanded: true },
     ]);
+  };
+
+  // Handle imported items from document
+  const handleImportedItems = (items: ExtractedItem[]) => {
+    const newLineItems = items.map(item => ({
+      id: crypto.randomUUID(),
+      product_id: item.matchedProductId || undefined,
+      description: item.description,
+      quantity: item.quantity.toString(),
+      unit_price: item.unitPrice.toString(),
+      margin: defaultMarginPercent,
+      pricing_type: defaultPricingType,
+      is_taxable: true,
+      total: calculateLineItemTotal(
+        item.quantity.toString(),
+        item.unitPrice.toString(),
+        defaultMarginPercent,
+        defaultPricingType
+      ),
+      isExpanded: false,
+    }));
+    setLineItems(prev => [...prev, ...newLineItems]);
+  };
+
+  // Toggle all line items expand/collapse
+  const toggleAllExpanded = () => {
+    const newExpanded = !allExpanded;
+    setAllExpanded(newExpanded);
+    setLineItems(prev => prev.map(item => ({ ...item, isExpanded: newExpanded })));
   };
 
   const toggleItemExpanded = (index: number) => {
@@ -633,8 +668,22 @@ const EditEstimate = () => {
 
         {/* Line Items */}
         <Card className="glass border-border">
-          <CardHeader>
+          <CardHeader className="flex flex-row items-center justify-between">
             <CardTitle className="font-heading">Line Items</CardTitle>
+            <div className="flex items-center gap-2">
+              <Button type="button" variant="outline" size="sm" onClick={() => setImportDialogOpen(true)}>
+                <Upload className="h-4 w-4 mr-1" />
+                Import Document
+              </Button>
+              <Button type="button" variant="outline" size="sm" onClick={() => setCreateProductDialogOpen(true)}>
+                <Plus className="h-4 w-4 mr-1" />
+                New Product
+              </Button>
+              <Button type="button" variant="ghost" size="sm" onClick={toggleAllExpanded}>
+                {allExpanded ? <ChevronUp className="h-4 w-4 mr-1" /> : <ChevronDown className="h-4 w-4 mr-1" />}
+                {allExpanded ? "Collapse All" : "Expand All"}
+              </Button>
+            </div>
           </CardHeader>
           <CardContent className="space-y-4">
             <DndContext
@@ -775,6 +824,18 @@ const EditEstimate = () => {
           }))}
           taxRate={effectiveTaxRate}
           status={status}
+        />
+        {/* Import Document Dialog */}
+        <ImportDocumentDialog
+          open={importDialogOpen}
+          onOpenChange={setImportDialogOpen}
+          onImport={handleImportedItems}
+        />
+
+        {/* Inline Product Dialog */}
+        <InlineProductDialog
+          open={createProductDialogOpen}
+          onOpenChange={setCreateProductDialogOpen}
         />
       </form>
 
