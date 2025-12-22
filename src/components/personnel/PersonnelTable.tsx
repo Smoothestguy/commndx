@@ -43,11 +43,17 @@ import type { Database } from "@/integrations/supabase/types";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { MobilePersonnelCard } from "./MobilePersonnelCard";
 import { EnhancedDataTable, EnhancedColumn } from "@/components/shared/EnhancedDataTable";
+import { TablePagination } from "@/components/shared/TablePagination";
 
 type Personnel = Database["public"]["Tables"]["personnel"]["Row"];
 
 interface PersonnelTableProps {
   personnel: Personnel[];
+  totalCount: number;
+  currentPage: number;
+  rowsPerPage: number;
+  onPageChange: (page: number) => void;
+  onRowsPerPageChange: (size: number) => void;
   selectionMode: boolean;
   selectedIds: string[];
   onToggleSelection: (id: string) => void;
@@ -58,6 +64,11 @@ interface PersonnelTableProps {
 
 export function PersonnelTable({
   personnel,
+  totalCount,
+  currentPage,
+  rowsPerPage,
+  onPageChange,
+  onRowsPerPageChange,
   selectionMode,
   selectedIds,
   onToggleSelection,
@@ -475,6 +486,16 @@ export function PersonnelTable({
           }}
         />
       )}
+
+      {/* Pagination */}
+      <TablePagination
+        currentPage={currentPage}
+        totalCount={totalCount}
+        rowsPerPage={rowsPerPage}
+        onPageChange={onPageChange}
+        onRowsPerPageChange={onRowsPerPageChange}
+        rowsPerPageOptions={[10, 20, 30, 40]}
+      />
 
       {/* Deactivate Confirmation Dialog */}
       <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
