@@ -9,10 +9,12 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import { FileText, Check, X, Eye } from "lucide-react";
+import { FileText, Check, X, Eye, Download } from "lucide-react";
 import { format } from "date-fns";
 import { W9Form } from "@/integrations/supabase/hooks/useW9Forms";
 import { W9FormPreview } from "./W9FormPreview";
+import { ICAFormPreview } from "./ICAFormPreview";
+import { downloadICAForm } from "@/lib/generateICA";
 
 interface AgreementSignatureViewProps {
   icaSignature?: string | null;
@@ -145,96 +147,21 @@ export function AgreementSignatureView({
 
       {/* Full ICA Agreement Dialog */}
       <Dialog open={showAgreement} onOpenChange={setShowAgreement}>
-        <DialogContent className="max-w-3xl max-h-[85vh] overflow-hidden">
+        <DialogContent className="max-w-3xl max-h-[90vh] overflow-hidden">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
               <FileText className="h-5 w-5" />
               Independent Contractor Agreement
             </DialogTitle>
           </DialogHeader>
-          <ScrollArea className="h-[65vh] pr-4">
-            <div className="space-y-6 text-sm">
-              <div className="text-center border-b pb-4">
-                <h2 className="text-lg font-bold">INDEPENDENT CONTRACTOR AGREEMENT</h2>
-                <p className="text-muted-foreground">
-                  This Agreement is entered into as of {icaSignedAt ? format(new Date(icaSignedAt), "MMMM dd, yyyy") : "the date signed"}
-                </p>
-              </div>
-
-              <div>
-                <p className="font-semibold">PARTIES:</p>
-                <p><strong>Company:</strong> The Company</p>
-                <p><strong>Contractor:</strong> {personnelName || "Contractor"}</p>
-                {personnelAddress && <p><strong>Address:</strong> {personnelAddress}</p>}
-              </div>
-
-              <div>
-                <p className="font-semibold">1. ENGAGEMENT</p>
-                <p>The Company hereby engages the Contractor, and the Contractor agrees to provide services to the Company as an independent contractor, subject to the terms and conditions set forth in this Agreement.</p>
-              </div>
-
-              <div>
-                <p className="font-semibold">2. SERVICES</p>
-                <p>The Contractor shall provide such services as may be assigned by the Company from time to time. The Contractor shall perform all services in a professional and workmanlike manner, consistent with industry standards.</p>
-              </div>
-
-              <div>
-                <p className="font-semibold">3. INDEPENDENT CONTRACTOR STATUS</p>
-                <p>The Contractor is an independent contractor and not an employee, partner, or agent of the Company. The Contractor shall not be entitled to any employee benefits, including but not limited to health insurance, retirement benefits, or paid time off. The Contractor is responsible for paying all taxes arising from compensation received under this Agreement.</p>
-              </div>
-
-              <div>
-                <p className="font-semibold">4. COMPENSATION</p>
-                <p>The Company shall pay the Contractor for services at rates agreed upon in writing. Payment shall be made according to the Company's standard payment schedule for contractors.</p>
-              </div>
-
-              <div>
-                <p className="font-semibold">5. CONFIDENTIALITY</p>
-                <p>The Contractor agrees to keep confidential all proprietary information, trade secrets, and business information of the Company and its clients. This obligation shall survive the termination of this Agreement.</p>
-              </div>
-
-              <div>
-                <p className="font-semibold">6. WORK PRODUCT</p>
-                <p>All work product created by the Contractor in the performance of services under this Agreement shall be the sole property of the Company or its clients, as applicable.</p>
-              </div>
-
-              <div>
-                <p className="font-semibold">7. INSURANCE</p>
-                <p>The Contractor shall maintain adequate liability insurance and workers' compensation insurance as required by law.</p>
-              </div>
-
-              <div>
-                <p className="font-semibold">8. TERMINATION</p>
-                <p>Either party may terminate this Agreement at any time, with or without cause, upon written notice to the other party.</p>
-              </div>
-
-              <div>
-                <p className="font-semibold">9. GOVERNING LAW</p>
-                <p>This Agreement shall be governed by and construed in accordance with the laws of the state in which the Company is located.</p>
-              </div>
-
-              {hasIcaSigned && (
-                <div className="border-t pt-6 mt-6">
-                  <p className="font-semibold mb-4">SIGNATURE</p>
-                  <div className="bg-muted/30 p-4 rounded-lg">
-                    <p className="text-xs text-muted-foreground mb-2">Contractor Signature</p>
-                    {icaSignature?.startsWith("data:image") ? (
-                      <img 
-                        src={icaSignature} 
-                        alt="ICA Signature"
-                        className="max-h-16 object-contain"
-                      />
-                    ) : (
-                      <p className="font-signature text-xl italic">{icaSignature}</p>
-                    )}
-                    <p className="text-xs text-muted-foreground mt-2">
-                      Signed on {format(new Date(icaSignedAt!), "MMMM dd, yyyy 'at' h:mm a")}
-                    </p>
-                  </div>
-                </div>
-              )}
-            </div>
-          </ScrollArea>
+          <ICAFormPreview 
+            data={{
+              contractorName: personnelName || 'Contractor',
+              contractorAddress: personnelAddress,
+              signature: icaSignature,
+              signedAt: icaSignedAt,
+            }}
+          />
         </DialogContent>
       </Dialog>
 
