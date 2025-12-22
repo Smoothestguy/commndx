@@ -18,6 +18,8 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Download, Eye } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 
+const HOURLY_RATE = 23; // $23/hour
+
 interface SessionHistoryTableProps {
   dateRange?: DateRange;
   onSelectSession: (sessionId: string | null) => void;
@@ -81,6 +83,14 @@ export function SessionHistoryTable({
     return `${secs}s`;
   };
 
+  const calculateEarnings = (seconds: number): number => {
+    return (seconds / 3600) * HOURLY_RATE;
+  };
+
+  const formatCurrency = (amount: number): string => {
+    return `$${amount.toFixed(2)}`;
+  };
+
   const exportToCSV = () => {
     if (!sessions || sessions.length === 0) {
       toast({
@@ -91,7 +101,7 @@ export function SessionHistoryTable({
     }
 
     const csvContent = [
-      ["Date", "Start Time", "End Time", "Active Time", "Idle Time", "Type"].join(","),
+      ["Date", "Start Time", "End Time", "Active Time", "Idle Time", "Earnings", "Type"].join(","),
       ...sessions.map((s) =>
         [
           format(new Date(s.session_start), "yyyy-MM-dd"),
@@ -99,6 +109,7 @@ export function SessionHistoryTable({
           s.session_end ? format(new Date(s.session_end), "HH:mm:ss") : "Active",
           formatDuration(s.total_active_seconds || 0),
           formatDuration(s.total_idle_seconds || 0),
+          formatCurrency(calculateEarnings(s.total_active_seconds || 0)),
           s.clock_in_type,
         ].join(",")
       ),
@@ -154,6 +165,7 @@ export function SessionHistoryTable({
                 <TableHead>End</TableHead>
                 <TableHead>Active Time</TableHead>
                 <TableHead>Idle Time</TableHead>
+                <TableHead>Earnings</TableHead>
                 <TableHead>Type</TableHead>
                 <TableHead className="w-[50px]"></TableHead>
               </TableRow>
@@ -186,6 +198,9 @@ export function SessionHistoryTable({
                   </TableCell>
                   <TableCell className="font-mono text-muted-foreground">
                     {formatDuration(session.total_idle_seconds || 0)}
+                  </TableCell>
+                  <TableCell className="font-mono text-green-600 dark:text-green-400 font-medium">
+                    {formatCurrency(calculateEarnings(session.total_active_seconds || 0))}
                   </TableCell>
                   <TableCell>
                     <Badge variant="outline">{session.clock_in_type}</Badge>

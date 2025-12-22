@@ -6,7 +6,7 @@ import {
   TooltipContent,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
-import { Clock, Play, Square, Pause } from "lucide-react";
+import { Clock, Play, Square, Pause, DollarSign } from "lucide-react";
 
 export function SessionTimer() {
   const {
@@ -16,6 +16,8 @@ export function SessionTimer() {
     isIdle,
     formattedTime,
     formattedIdleTime,
+    formattedEarnings,
+    hourlyRate,
     clockIn,
     clockOut,
   } = useSessionTracking();
@@ -76,6 +78,23 @@ export function SessionTimer() {
             {isIdle && (
               <p className="text-amber-500">Timer paused - you're idle</p>
             )}
+          </div>
+        </TooltipContent>
+      </Tooltip>
+
+      <Tooltip>
+        <TooltipTrigger asChild>
+          <div className="flex items-center gap-1.5 px-2 py-1 rounded-md bg-green-500/10 border border-green-500/20">
+            <DollarSign className="h-4 w-4 text-green-500" />
+            <span className="font-mono text-sm text-green-600 dark:text-green-400 font-medium">
+              {formattedEarnings}
+            </span>
+          </div>
+        </TooltipTrigger>
+        <TooltipContent>
+          <div className="text-xs space-y-1">
+            <p>Current session earnings</p>
+            <p className="text-muted-foreground">Rate: ${hourlyRate}/hour</p>
           </div>
         </TooltipContent>
       </Tooltip>
