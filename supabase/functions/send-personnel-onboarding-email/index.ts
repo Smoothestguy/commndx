@@ -119,6 +119,32 @@ const handler = async (req: Request): Promise<Response> => {
 
     console.log("[Onboarding Email] Email sent successfully, ID:", emailResponse.data?.id);
 
+    // Send notification to admins that onboarding email was sent
+    try {
+      await fetch(`${supabaseUrl}/functions/v1/create-admin-notification`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${supabaseServiceKey}`,
+        },
+        body: JSON.stringify({
+          notification_type: "onboarding_email_sent",
+          title: `Onboarding Email Sent: ${firstName} ${lastName}`,
+          message: `Onboarding documentation link sent to ${email}. Link expires in 7 days.`,
+          link_url: `/staffing/personnel/${personnelId}`,
+          related_id: personnelId,
+          metadata: {
+            personnel_name: `${firstName} ${lastName}`,
+            personnel_email: email,
+            token_expires: expiresAt.toISOString(),
+          },
+        }),
+      });
+      console.log("[Onboarding Email] Admin notification sent");
+    } catch (notifError) {
+      console.error("[Onboarding Email] Failed to send admin notification:", notifError);
+    }
+
     return new Response(
       JSON.stringify({ success: true, token, emailId: emailResponse.data?.id }),
       {

@@ -7,7 +7,17 @@ const corsHeaders = {
 };
 
 interface CreateNotificationRequest {
-  notification_type: "po_approval" | "co_approval" | "personnel_registration" | "general";
+  notification_type: 
+    | "po_approval" 
+    | "co_approval" 
+    | "personnel_registration" 
+    | "new_application"
+    | "application_approved"
+    | "application_rejected"
+    | "onboarding_email_sent"
+    | "onboarding_started"
+    | "onboarding_complete"
+    | "general";
   title: string;
   message: string;
   link_url?: string;
