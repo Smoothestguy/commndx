@@ -2765,6 +2765,50 @@ export type Database = {
           },
         ]
       }
+      personnel_documents: {
+        Row: {
+          created_at: string | null
+          document_type: string
+          file_name: string
+          file_path: string
+          file_size: number | null
+          file_type: string | null
+          id: string
+          personnel_id: string
+          uploaded_at: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          document_type: string
+          file_name: string
+          file_path: string
+          file_size?: number | null
+          file_type?: string | null
+          id?: string
+          personnel_id: string
+          uploaded_at?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          document_type?: string
+          file_name?: string
+          file_path?: string
+          file_size?: number | null
+          file_type?: string | null
+          id?: string
+          personnel_id?: string
+          uploaded_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "personnel_documents_personnel_id_fkey"
+            columns: ["personnel_id"]
+            isOneToOne: false
+            referencedRelation: "personnel"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       personnel_invitations: {
         Row: {
           accepted_at: string | null
@@ -6289,6 +6333,39 @@ export type Database = {
               p_city?: string
               p_date_of_birth?: string
               p_direct_deposit_signature?: string
+              p_email: string
+              p_emergency_contacts?: Json
+              p_first_name: string
+              p_ica_signature?: string
+              p_immigration_status?: string
+              p_last_name: string
+              p_personnel_id: string
+              p_phone?: string
+              p_photo_url?: string
+              p_ssn_full?: string
+              p_state?: string
+              p_tax_business_name?: string
+              p_tax_classification?: string
+              p_tax_ein?: string
+              p_token: string
+              p_w9_certification?: boolean
+              p_w9_signature?: string
+              p_zip?: string
+            }
+            Returns: Json
+          }
+        | {
+            Args: {
+              p_address?: string
+              p_bank_account_number?: string
+              p_bank_account_type?: string
+              p_bank_name?: string
+              p_bank_routing_number?: string
+              p_citizenship_status?: string
+              p_city?: string
+              p_date_of_birth?: string
+              p_direct_deposit_signature?: string
+              p_documents?: Json
               p_email: string
               p_emergency_contacts?: Json
               p_first_name: string
