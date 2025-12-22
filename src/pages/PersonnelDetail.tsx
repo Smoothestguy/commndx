@@ -9,7 +9,9 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { Mail, Phone, MapPin, Calendar, DollarSign, AlertTriangle, IdCard, MessageSquare, Edit, Flag, FileCheck, Shield, Award, AlertCircle, LucideIcon, Clock, Check, Send, Link2, Building2, FileText } from "lucide-react";
+import { Mail, Phone, MapPin, Calendar, DollarSign, AlertTriangle, IdCard, MessageSquare, Edit, Flag, FileCheck, Shield, Award, AlertCircle, LucideIcon, Clock, Check, Send, Link2, Building2, FileText, Landmark } from "lucide-react";
+import { DirectDepositView } from "@/components/personnel/DirectDepositView";
+import { AgreementSignatureView } from "@/components/personnel/AgreementSignatureView";
 import { cn } from "@/lib/utils";
 import { format } from "date-fns";
 import { useState } from "react";
@@ -411,7 +413,7 @@ const PersonnelDetail = () => {
 
         <Tabs defaultValue="personal" className="w-full">
           <ScrollArea className="w-full">
-            <TabsList className="inline-flex w-full sm:grid sm:grid-cols-9">
+            <TabsList className="inline-flex w-full sm:grid sm:grid-cols-10">
               <TabsTrigger value="personal" className="whitespace-nowrap">
                 <span className="sm:hidden">Info</span>
                 <span className="hidden sm:inline">Personal</span>
@@ -437,6 +439,10 @@ const PersonnelDetail = () => {
               <TabsTrigger value="messages" className="whitespace-nowrap">
                 <span className="sm:hidden">SMS</span>
                 <span className="hidden sm:inline">Messages</span>
+              </TabsTrigger>
+              <TabsTrigger value="banking" className="whitespace-nowrap">
+                <span className="sm:hidden">Bank</span>
+                <span className="hidden sm:inline">Banking</span>
               </TabsTrigger>
               <TabsTrigger value="tax" className="whitespace-nowrap">
                 <span className="sm:hidden">Tax</span>
@@ -692,6 +698,23 @@ const PersonnelDetail = () => {
                 />
               </CardContent>
             </Card>
+          </TabsContent>
+
+          <TabsContent value="banking" className="space-y-4">
+            <DirectDepositView
+              bankName={personnel.bank_name}
+              accountType={personnel.bank_account_type}
+              routingNumber={personnel.bank_routing_number}
+              accountNumber={personnel.bank_account_number}
+              signature={personnel.direct_deposit_signature}
+              signedAt={personnel.direct_deposit_signed_at}
+            />
+            <AgreementSignatureView
+              icaSignature={personnel.ica_signature}
+              icaSignedAt={personnel.ica_signed_at}
+              w9Signature={personnel.w9_signature}
+              w9SignedAt={personnel.w9_signed_at}
+            />
           </TabsContent>
 
           <TabsContent value="tax" className="space-y-4">
