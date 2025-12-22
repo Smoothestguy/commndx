@@ -173,10 +173,32 @@ export function useCompleteOnboarding() {
       token,
       personnelId,
       formData,
+      bankName,
+      bankAccountType,
+      bankRoutingNumber,
+      bankAccountNumber,
+      directDepositSignature,
+      taxClassification,
+      taxEin,
+      taxBusinessName,
+      w9Signature,
+      w9Certification,
+      icaSignature,
     }: {
       token: string;
       personnelId: string;
       formData: OnboardingFormData;
+      bankName?: string;
+      bankAccountType?: string;
+      bankRoutingNumber?: string;
+      bankAccountNumber?: string;
+      directDepositSignature?: string | null;
+      taxClassification?: string;
+      taxEin?: string;
+      taxBusinessName?: string;
+      w9Signature?: string | null;
+      w9Certification?: boolean;
+      icaSignature?: string | null;
     }) => {
       console.log("[Onboarding] Starting onboarding completion for personnel:", personnelId);
 
@@ -199,6 +221,17 @@ export function useCompleteOnboarding() {
         p_citizenship_status: formData.citizenship_status || null,
         p_immigration_status: formData.immigration_status || null,
         p_emergency_contacts: JSON.parse(JSON.stringify(formData.emergency_contacts)),
+        p_bank_name: bankName || null,
+        p_bank_account_type: bankAccountType || null,
+        p_bank_routing_number: bankRoutingNumber || null,
+        p_bank_account_number: bankAccountNumber || null,
+        p_direct_deposit_signature: directDepositSignature || null,
+        p_tax_classification: taxClassification || null,
+        p_tax_ein: taxEin || null,
+        p_tax_business_name: taxBusinessName || null,
+        p_w9_signature: w9Signature || null,
+        p_w9_certification: w9Certification || false,
+        p_ica_signature: icaSignature || null,
       });
 
       if (error) {

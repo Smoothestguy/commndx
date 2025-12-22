@@ -2460,11 +2460,17 @@ export type Database = {
         Row: {
           address: string | null
           applicant_id: string | null
+          bank_account_number: string | null
+          bank_account_type: string | null
+          bank_name: string | null
+          bank_routing_number: string | null
           bill_rate: number | null
           citizenship_status: string | null
           city: string | null
           created_at: string | null
           date_of_birth: string | null
+          direct_deposit_signature: string | null
+          direct_deposit_signed_at: string | null
           email: string
           everify_case_number: string | null
           everify_expiry: string | null
@@ -2477,6 +2483,8 @@ export type Database = {
           home_lng: number | null
           hourly_rate: number | null
           i9_completed_at: string | null
+          ica_signature: string | null
+          ica_signed_at: string | null
           id: string
           id_document_url: string | null
           immigration_status: string | null
@@ -2499,9 +2507,15 @@ export type Database = {
           ssn_last_four: string | null
           state: string | null
           status: Database["public"]["Enums"]["personnel_status"] | null
+          tax_business_name: string | null
+          tax_classification: string | null
+          tax_ein: string | null
           updated_at: string | null
           user_id: string | null
           vendor_id: string | null
+          w9_certification: boolean | null
+          w9_signature: string | null
+          w9_signed_at: string | null
           work_auth_expiry: string | null
           work_authorization_status: string | null
           work_authorization_type:
@@ -2512,11 +2526,17 @@ export type Database = {
         Insert: {
           address?: string | null
           applicant_id?: string | null
+          bank_account_number?: string | null
+          bank_account_type?: string | null
+          bank_name?: string | null
+          bank_routing_number?: string | null
           bill_rate?: number | null
           citizenship_status?: string | null
           city?: string | null
           created_at?: string | null
           date_of_birth?: string | null
+          direct_deposit_signature?: string | null
+          direct_deposit_signed_at?: string | null
           email: string
           everify_case_number?: string | null
           everify_expiry?: string | null
@@ -2529,6 +2549,8 @@ export type Database = {
           home_lng?: number | null
           hourly_rate?: number | null
           i9_completed_at?: string | null
+          ica_signature?: string | null
+          ica_signed_at?: string | null
           id?: string
           id_document_url?: string | null
           immigration_status?: string | null
@@ -2551,9 +2573,15 @@ export type Database = {
           ssn_last_four?: string | null
           state?: string | null
           status?: Database["public"]["Enums"]["personnel_status"] | null
+          tax_business_name?: string | null
+          tax_classification?: string | null
+          tax_ein?: string | null
           updated_at?: string | null
           user_id?: string | null
           vendor_id?: string | null
+          w9_certification?: boolean | null
+          w9_signature?: string | null
+          w9_signed_at?: string | null
           work_auth_expiry?: string | null
           work_authorization_status?: string | null
           work_authorization_type?:
@@ -2564,11 +2592,17 @@ export type Database = {
         Update: {
           address?: string | null
           applicant_id?: string | null
+          bank_account_number?: string | null
+          bank_account_type?: string | null
+          bank_name?: string | null
+          bank_routing_number?: string | null
           bill_rate?: number | null
           citizenship_status?: string | null
           city?: string | null
           created_at?: string | null
           date_of_birth?: string | null
+          direct_deposit_signature?: string | null
+          direct_deposit_signed_at?: string | null
           email?: string
           everify_case_number?: string | null
           everify_expiry?: string | null
@@ -2581,6 +2615,8 @@ export type Database = {
           home_lng?: number | null
           hourly_rate?: number | null
           i9_completed_at?: string | null
+          ica_signature?: string | null
+          ica_signed_at?: string | null
           id?: string
           id_document_url?: string | null
           immigration_status?: string | null
@@ -2603,9 +2639,15 @@ export type Database = {
           ssn_last_four?: string | null
           state?: string | null
           status?: Database["public"]["Enums"]["personnel_status"] | null
+          tax_business_name?: string | null
+          tax_classification?: string | null
+          tax_ein?: string | null
           updated_at?: string | null
           user_id?: string | null
           vendor_id?: string | null
+          w9_certification?: boolean | null
+          w9_signature?: string | null
+          w9_signed_at?: string | null
           work_auth_expiry?: string | null
           work_authorization_status?: string | null
           work_authorization_type?:
@@ -6214,27 +6256,60 @@ export type Database = {
         Args: { _invitation_id: string; _user_id: string }
         Returns: Json
       }
-      complete_personnel_onboarding: {
-        Args: {
-          p_address?: string
-          p_citizenship_status?: string
-          p_city?: string
-          p_date_of_birth?: string
-          p_email: string
-          p_emergency_contacts?: Json
-          p_first_name: string
-          p_immigration_status?: string
-          p_last_name: string
-          p_personnel_id: string
-          p_phone?: string
-          p_photo_url?: string
-          p_ssn_full?: string
-          p_state?: string
-          p_token: string
-          p_zip?: string
-        }
-        Returns: Json
-      }
+      complete_personnel_onboarding:
+        | {
+            Args: {
+              p_address?: string
+              p_citizenship_status?: string
+              p_city?: string
+              p_date_of_birth?: string
+              p_email: string
+              p_emergency_contacts?: Json
+              p_first_name: string
+              p_immigration_status?: string
+              p_last_name: string
+              p_personnel_id: string
+              p_phone?: string
+              p_photo_url?: string
+              p_ssn_full?: string
+              p_state?: string
+              p_token: string
+              p_zip?: string
+            }
+            Returns: Json
+          }
+        | {
+            Args: {
+              p_address?: string
+              p_bank_account_number?: string
+              p_bank_account_type?: string
+              p_bank_name?: string
+              p_bank_routing_number?: string
+              p_citizenship_status?: string
+              p_city?: string
+              p_date_of_birth?: string
+              p_direct_deposit_signature?: string
+              p_email: string
+              p_emergency_contacts?: Json
+              p_first_name: string
+              p_ica_signature?: string
+              p_immigration_status?: string
+              p_last_name: string
+              p_personnel_id: string
+              p_phone?: string
+              p_photo_url?: string
+              p_ssn_full?: string
+              p_state?: string
+              p_tax_business_name?: string
+              p_tax_classification?: string
+              p_tax_ein?: string
+              p_token: string
+              p_w9_certification?: boolean
+              p_w9_signature?: string
+              p_zip?: string
+            }
+            Returns: Json
+          }
       create_personnel_vendor: {
         Args: { p_personnel_id: string }
         Returns: string

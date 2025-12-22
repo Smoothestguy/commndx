@@ -1,5 +1,5 @@
 import { useState, useMemo } from "react";
-import { useParams, useNavigate } from "react-router-dom";
+import { useParams } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -18,6 +18,9 @@ import { SEO } from "@/components/SEO";
 import { EmergencyContactForm } from "@/components/personnel/registration/EmergencyContactForm";
 import { SSNInput } from "@/components/personnel/registration/SSNInput";
 import { CategoryDocumentUpload } from "@/components/personnel/registration/CategoryDocumentUpload";
+import { DirectDepositForm } from "@/components/personnel/onboarding/DirectDepositForm";
+import { W9TaxForm } from "@/components/personnel/onboarding/W9TaxForm";
+import { ContractorAgreementForm } from "@/components/personnel/onboarding/ContractorAgreementForm";
 import {
   useOnboardingToken,
   useCompleteOnboarding,
@@ -41,14 +44,20 @@ import {
   Info,
   AlertTriangle,
   Clock,
+  CreditCard,
+  FileText,
+  FileSignature,
 } from "lucide-react";
 
 const STEPS = [
   { id: 1, title: "Personal Info", icon: User },
   { id: 2, title: "Address", icon: MapPin },
   { id: 3, title: "Work Authorization", icon: Shield },
-  { id: 4, title: "Emergency Contacts", icon: Users },
-  { id: 5, title: "Review & Submit", icon: CheckCircle },
+  { id: 4, title: "Direct Deposit", icon: CreditCard },
+  { id: 5, title: "W-9 Tax Form", icon: FileText },
+  { id: 6, title: "Contractor Agreement", icon: FileSignature },
+  { id: 7, title: "Emergency Contacts", icon: Users },
+  { id: 8, title: "Review & Submit", icon: CheckCircle },
 ];
 
 const IMMIGRATION_STATUS_OPTIONS = [
@@ -70,9 +79,34 @@ const IMMIGRATION_LABELS: Record<string, string> = {
   other: "Other",
 };
 
+const TAX_CLASSIFICATION_LABELS: Record<string, string> = {
+  individual: "Individual/sole proprietor",
+  c_corporation: "C Corporation",
+  s_corporation: "S Corporation",
+  partnership: "Partnership",
+  trust_estate: "Trust/estate",
+  llc_c: "LLC (C Corp)",
+  llc_s: "LLC (S Corp)",
+  llc_p: "LLC (Partnership)",
+};
+
+// Extended form data to include new fields
+interface ExtendedOnboardingFormData extends OnboardingFormData {
+  bank_name: string;
+  bank_account_type: string;
+  bank_routing_number: string;
+  bank_account_number: string;
+  direct_deposit_signature: string | null;
+  tax_classification: string;
+  tax_ein: string;
+  tax_business_name: string;
+  w9_signature: string | null;
+  w9_certification: boolean;
+  ica_signature: string | null;
+}
+
 const PersonnelOnboarding = () => {
   const { token } = useParams<{ token: string }>();
-  const navigate = useNavigate();
   
   const { data: validationResult, isLoading, error } = useOnboardingToken(token);
   const completeOnboarding = useCompleteOnboarding();
@@ -88,7 +122,7 @@ const PersonnelOnboarding = () => {
   const [agreedToTerms, setAgreedToTerms] = useState(false);
 
   // Initialize form data from personnel record
-  const [formData, setFormData] = useState<OnboardingFormData>({
+  const [formData, setFormData] = useState<ExtendedOnboardingFormData>({
     first_name: "",
     last_name: "",
     email: "",
@@ -104,6 +138,18 @@ const PersonnelOnboarding = () => {
     immigration_status: undefined,
     emergency_contacts: [],
     documents: [],
+    // New fields
+    bank_name: "",
+    bank_account_type: "",
+    bank_routing_number: "",
+    bank_account_number: "",
+    direct_deposit_signature: null,
+    tax_classification: "",
+    tax_ein: "",
+    tax_business_name: "",
+    w9_signature: null,
+    w9_certification: false,
+    ica_signature: null,
   });
 
   // Sync form data when personnel data loads
@@ -126,7 +172,7 @@ const PersonnelOnboarding = () => {
     setInitialized(true);
   }
 
-  const updateField = (field: keyof OnboardingFormData, value: string | CitizenshipStatus | ImmigrationStatus | undefined) => {
+  const updateField = (field: keyof ExtendedOnboardingFormData, value: string | boolean | CitizenshipStatus | ImmigrationStatus | undefined | null) => {
     setFormData((prev) => ({ ...prev, [field]: value }));
   };
 
@@ -192,7 +238,32 @@ const PersonnelOnboarding = () => {
           }
         }
       }
-      case 4:
+      case 4: {
+        // Direct Deposit: bank info and signature required
+        return (
+          formData.bank_name.trim() !== "" &&
+          formData.bank_account_type !== "" &&
+          formData.bank_routing_number.length === 9 &&
+          formData.bank_account_number.length >= 4 &&
+          !!formData.direct_deposit_signature
+        );
+      }
+      case 5: {
+        // W-9: classification, certification, and signature required
+        const needsEIN = formData.tax_classification && !["individual"].includes(formData.tax_classification);
+        const hasEIN = !needsEIN || (formData.tax_ein && formData.tax_ein.length >= 9);
+        return (
+          formData.tax_classification !== "" &&
+          formData.w9_certification &&
+          !!formData.w9_signature &&
+          hasEIN
+        );
+      }
+      case 6: {
+        // ICA: signature required
+        return !!formData.ica_signature;
+      }
+      case 7:
         return (
           formData.emergency_contacts.length > 0 &&
           formData.emergency_contacts.every(
@@ -202,7 +273,7 @@ const PersonnelOnboarding = () => {
               c.phone.trim() !== ""
           )
         );
-      case 5:
+      case 8:
         return agreedToTerms;
       default:
         return true;
@@ -227,7 +298,19 @@ const PersonnelOnboarding = () => {
     await completeOnboarding.mutateAsync({
       token: validationResult.token.token,
       personnelId: validationResult.personnel.id,
-      formData,
+      formData: formData as OnboardingFormData,
+      // Pass extended fields separately
+      bankName: formData.bank_name,
+      bankAccountType: formData.bank_account_type,
+      bankRoutingNumber: formData.bank_routing_number,
+      bankAccountNumber: formData.bank_account_number,
+      directDepositSignature: formData.direct_deposit_signature,
+      taxClassification: formData.tax_classification,
+      taxEin: formData.tax_ein,
+      taxBusinessName: formData.tax_business_name,
+      w9Signature: formData.w9_signature,
+      w9Certification: formData.w9_certification,
+      icaSignature: formData.ica_signature,
     });
     setSubmitted(true);
   };
@@ -328,6 +411,20 @@ const PersonnelOnboarding = () => {
     );
   }
 
+  const getStepDescription = () => {
+    switch (currentStep) {
+      case 1: return "Verify your personal information";
+      case 2: return "Provide your current address";
+      case 3: return "Share your work authorization details and upload documents";
+      case 4: return "Set up your direct deposit for payments";
+      case 5: return "Complete your W-9 tax form for tax reporting";
+      case 6: return "Review and sign the Independent Contractor Agreement";
+      case 7: return "Add at least one emergency contact";
+      case 8: return "Review your information and submit";
+      default: return "";
+    }
+  };
+
   // Main form
   return (
     <div className="min-h-screen bg-background py-8 px-4">
@@ -347,7 +444,7 @@ const PersonnelOnboarding = () => {
 
         {/* Progress */}
         <div className="mb-8">
-          <div className="flex justify-between mb-2">
+          <div className="flex justify-between mb-2 overflow-x-auto">
             {STEPS.map((step) => {
               const Icon = step.icon;
               const isActive = step.id === currentStep;
@@ -356,7 +453,7 @@ const PersonnelOnboarding = () => {
               return (
                 <div
                   key={step.id}
-                  className={`flex flex-col items-center ${
+                  className={`flex flex-col items-center min-w-[60px] ${
                     isActive
                       ? "text-primary"
                       : isComplete
@@ -375,7 +472,7 @@ const PersonnelOnboarding = () => {
                   >
                     <Icon className="h-4 w-4" />
                   </div>
-                  <span className="text-xs hidden sm:block">{step.title}</span>
+                  <span className="text-xs hidden sm:block text-center">{step.title}</span>
                 </div>
               );
             })}
@@ -393,13 +490,7 @@ const PersonnelOnboarding = () => {
               })()}
               Step {currentStep}: {STEPS[currentStep - 1].title}
             </CardTitle>
-            <CardDescription>
-              {currentStep === 1 && "Verify your personal information"}
-              {currentStep === 2 && "Provide your current address"}
-              {currentStep === 3 && "Share your work authorization details and upload documents"}
-              {currentStep === 4 && "Add at least one emergency contact"}
-              {currentStep === 5 && "Review your information and submit"}
-            </CardDescription>
+            <CardDescription>{getStepDescription()}</CardDescription>
           </CardHeader>
           <CardContent>
             {/* Step 1: Personal Info */}
@@ -694,8 +785,64 @@ const PersonnelOnboarding = () => {
               </div>
             )}
 
-            {/* Step 4: Emergency Contacts */}
+            {/* Step 4: Direct Deposit */}
             {currentStep === 4 && (
+              <DirectDepositForm
+                data={{
+                  bank_name: formData.bank_name,
+                  bank_account_type: formData.bank_account_type,
+                  bank_routing_number: formData.bank_routing_number,
+                  bank_account_number: formData.bank_account_number,
+                  direct_deposit_signature: formData.direct_deposit_signature,
+                }}
+                onChange={(field, value) => updateField(field as keyof ExtendedOnboardingFormData, value)}
+                personnelName={`${formData.first_name} ${formData.last_name}`}
+              />
+            )}
+
+            {/* Step 5: W-9 Tax Form */}
+            {currentStep === 5 && (
+              <W9TaxForm
+                data={{
+                  tax_classification: formData.tax_classification,
+                  tax_ein: formData.tax_ein,
+                  tax_business_name: formData.tax_business_name,
+                  w9_signature: formData.w9_signature,
+                  w9_certification: formData.w9_certification,
+                }}
+                onChange={(field, value) => updateField(field as keyof ExtendedOnboardingFormData, value)}
+                personnelData={{
+                  first_name: formData.first_name,
+                  last_name: formData.last_name,
+                  address: formData.address || "",
+                  city: formData.city || "",
+                  state: formData.state || "",
+                  zip: formData.zip || "",
+                  ssn_full: formData.ssn_full || "",
+                }}
+              />
+            )}
+
+            {/* Step 6: Contractor Agreement */}
+            {currentStep === 6 && (
+              <ContractorAgreementForm
+                data={{
+                  ica_signature: formData.ica_signature,
+                }}
+                onChange={(field, value) => updateField(field as keyof ExtendedOnboardingFormData, value)}
+                personnelData={{
+                  first_name: formData.first_name,
+                  last_name: formData.last_name,
+                  address: formData.address || "",
+                  city: formData.city || "",
+                  state: formData.state || "",
+                  zip: formData.zip || "",
+                }}
+              />
+            )}
+
+            {/* Step 7: Emergency Contacts */}
+            {currentStep === 7 && (
               <div className="space-y-4">
                 <p className="text-sm text-muted-foreground">
                   Please provide at least one emergency contact.
@@ -709,8 +856,8 @@ const PersonnelOnboarding = () => {
               </div>
             )}
 
-            {/* Step 5: Review */}
-            {currentStep === 5 && (
+            {/* Step 8: Review */}
+            {currentStep === 8 && (
               <div className="space-y-6">
                 <div className="space-y-4">
                   <h3 className="font-medium">Personal Information</h3>
@@ -753,6 +900,48 @@ const PersonnelOnboarding = () => {
                     )}
                     <span className="text-muted-foreground">Documents:</span>
                     <span>{formData.documents.length} uploaded</span>
+                  </div>
+                </div>
+
+                <div className="space-y-4">
+                  <h3 className="font-medium">Direct Deposit</h3>
+                  <div className="grid grid-cols-2 gap-2 text-sm">
+                    <span className="text-muted-foreground">Bank:</span>
+                    <span>{formData.bank_name}</span>
+                    <span className="text-muted-foreground">Account Type:</span>
+                    <span className="capitalize">{formData.bank_account_type}</span>
+                    <span className="text-muted-foreground">Routing Number:</span>
+                    <span>****{formData.bank_routing_number.slice(-4)}</span>
+                    <span className="text-muted-foreground">Account Number:</span>
+                    <span>****{formData.bank_account_number.slice(-4)}</span>
+                    <span className="text-muted-foreground">Signed:</span>
+                    <span>{formData.direct_deposit_signature ? "Yes" : "No"}</span>
+                  </div>
+                </div>
+
+                <div className="space-y-4">
+                  <h3 className="font-medium">W-9 Tax Information</h3>
+                  <div className="grid grid-cols-2 gap-2 text-sm">
+                    <span className="text-muted-foreground">Tax Classification:</span>
+                    <span>{TAX_CLASSIFICATION_LABELS[formData.tax_classification] || "Not provided"}</span>
+                    {formData.tax_business_name && (
+                      <>
+                        <span className="text-muted-foreground">Business Name:</span>
+                        <span>{formData.tax_business_name}</span>
+                      </>
+                    )}
+                    <span className="text-muted-foreground">Certified:</span>
+                    <span>{formData.w9_certification ? "Yes" : "No"}</span>
+                    <span className="text-muted-foreground">Signed:</span>
+                    <span>{formData.w9_signature ? "Yes" : "No"}</span>
+                  </div>
+                </div>
+
+                <div className="space-y-4">
+                  <h3 className="font-medium">Independent Contractor Agreement</h3>
+                  <div className="grid grid-cols-2 gap-2 text-sm">
+                    <span className="text-muted-foreground">Signed:</span>
+                    <span>{formData.ica_signature ? "Yes" : "No"}</span>
                   </div>
                 </div>
 
