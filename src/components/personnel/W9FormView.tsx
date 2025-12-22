@@ -329,7 +329,15 @@ export function W9FormView({ personnelId, personnelSsnLastFour, personnelSsnFull
             <div className="grid gap-4 md:grid-cols-2">
               <div>
                 <Label className="text-muted-foreground text-xs">Electronic Signature</Label>
-                <p className="font-medium italic">{w9Form.signature_data || "—"}</p>
+                {w9Form.signature_data?.startsWith("data:image") ? (
+                  <img 
+                    src={w9Form.signature_data} 
+                    alt="Electronic Signature"
+                    className="max-h-16 object-contain border rounded p-1 bg-white"
+                  />
+                ) : (
+                  <p className="font-medium italic">{w9Form.signature_data || "—"}</p>
+                )}
               </div>
               <div>
                 <Label className="text-muted-foreground text-xs">Signature Date</Label>
