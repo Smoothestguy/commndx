@@ -375,7 +375,17 @@ export default function PortalTaxForms() {
                 <div className="flex flex-col md:flex-row md:items-end gap-4">
                   <div className="flex-1">
                     <p className="text-xs text-muted-foreground mb-1">Signature of U.S. person</p>
-                    <p className="font-medium italic text-lg border-b border-foreground/40 pb-1">{w9Form.signature_data}</p>
+                    {w9Form.signature_data?.startsWith("data:image") ? (
+                      <img 
+                        src={w9Form.signature_data} 
+                        alt="Electronic Signature"
+                        className="max-h-16 object-contain border-b border-foreground/40 pb-1"
+                      />
+                    ) : (
+                      <p className="font-medium italic text-lg border-b border-foreground/40 pb-1">
+                        {w9Form.signature_data || "—"}
+                      </p>
+                    )}
                   </div>
                   <div className="md:w-48">
                     <p className="text-xs text-muted-foreground mb-1">Date</p>
