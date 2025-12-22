@@ -54,6 +54,7 @@ export function AddAddendumDialog({
   const [expandedItems, setExpandedItems] = useState<Set<string>>(new Set());
   const [file, setFile] = useState<File | null>(null);
   const [removeExistingFile, setRemoveExistingFile] = useState(false);
+  const [isDragOver, setIsDragOver] = useState(false);
   
   // Customer representative fields
   const [customerRepName, setCustomerRepName] = useState("");
@@ -622,9 +623,41 @@ export function AddAddendumDialog({
                 </div>
               )}
               {(removeExistingFile || !editAddendum?.file_path) && !file && (
-                <label className="flex flex-col items-center justify-center w-full h-24 border-2 border-dashed border-border rounded-lg cursor-pointer hover:bg-secondary/50 transition-colors">
+                <label 
+                  className={cn(
+                    "flex flex-col items-center justify-center w-full h-24 border-2 border-dashed rounded-lg cursor-pointer transition-colors",
+                    isDragOver
+                      ? "border-primary bg-primary/10"
+                      : "border-border hover:bg-secondary/50"
+                  )}
+                  onDrop={(e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    setIsDragOver(false);
+                    const droppedFile = e.dataTransfer.files?.[0];
+                    if (droppedFile) {
+                      const allowedTypes = ['application/pdf', 'image/jpeg', 'image/png', 'image/webp'];
+                      if (allowedTypes.includes(droppedFile.type)) {
+                        setFile(droppedFile);
+                      }
+                    }
+                  }}
+                  onDragOver={(e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    setIsDragOver(true);
+                  }}
+                  onDragLeave={(e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    setIsDragOver(false);
+                  }}
+                >
                   <div className="flex flex-col items-center justify-center pt-2 pb-3">
                     <Upload className="h-6 w-6 mb-1 text-muted-foreground" />
+                    <p className="text-xs text-muted-foreground">
+                      {isDragOver ? "Drop file here" : "Drag & drop or click to upload"}
+                    </p>
                     <p className="text-xs text-muted-foreground">
                       PDF, JPG, PNG, or WebP
                     </p>
