@@ -3,16 +3,13 @@ import { useNavigate } from "react-router-dom";
 import { startOfWeek, endOfWeek, isWithinInterval, parseISO } from "date-fns";
 import { PageLayout } from "@/components/layout/PageLayout";
 import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
-import { Plus, Users, DollarSign, Loader2, Lock, LockOpen } from "lucide-react";
+import { Plus, Users, DollarSign, Loader2 } from "lucide-react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { TimeTrackingStats } from "@/components/time-tracking/TimeTrackingStats";
-import { GroupedTimeTrackingTable } from "@/components/time-tracking/GroupedTimeTrackingTable";
+import { ProjectTimeEntriesTable } from "@/components/time-tracking/ProjectTimeEntriesTable";
 import { EnhancedTimeEntryForm } from "@/components/time-tracking/EnhancedTimeEntryForm";
 import { WeeklyTimesheet } from "@/components/time-tracking/WeeklyTimesheet";
 import { WeekNavigator } from "@/components/time-tracking/WeekNavigator";
-import { WeekCloseoutControls } from "@/components/time-tracking/WeekCloseoutControls";
 import { ProjectAssignmentsSection } from "@/components/time-tracking/ProjectAssignmentsSection";
 import { PersonnelAssignmentDialog } from "@/components/time-tracking/PersonnelAssignmentDialog";
 import { CreateVendorBillFromTimeDialog } from "@/components/time-tracking/CreateVendorBillFromTimeDialog";
@@ -24,17 +21,12 @@ import {
   useUpdateTimeEntryStatus,
   TimeEntryWithDetails,
 } from "@/integrations/supabase/hooks/useTimeEntries";
-import { useProjects } from "@/integrations/supabase/hooks/useProjects";
-import { usePersonnel } from "@/integrations/supabase/hooks/usePersonnel";
-import { useWeekCloseout } from "@/integrations/supabase/hooks/useWeekCloseouts";
 import { useUserRole } from "@/hooks/useUserRole";
 import { useGenerateWeeklyPayroll } from "@/hooks/useGenerateWeeklyPayroll";
 import { SEO } from "@/components/SEO";
 
 export default function TimeTracking() {
   const navigate = useNavigate();
-  const [projectFilter, setProjectFilter] = useState<string>();
-  const [personnelFilter, setPersonnelFilter] = useState<string>();
   const [formOpen, setFormOpen] = useState(false);
   const [assignmentDialogOpen, setAssignmentDialogOpen] = useState(false);
   const [vendorBillDialogOpen, setVendorBillDialogOpen] = useState(false);
@@ -55,33 +47,18 @@ export default function TimeTracking() {
   const canManageTeam = isAdmin || isManager;
   const showAllEntries = isAdmin || isManager;
 
-  // Fetch projects and personnel for filters
-  const { data: projects = [] } = useProjects();
-  const { data: personnel = [] } = usePersonnel({ status: "active" });
-
-  // Get the selected project for week closeout
-  const selectedProject = useMemo(() => 
-    projects.find(p => p.id === projectFilter),
-    [projects, projectFilter]
-  );
-
-  // Calculate week start for closeout query
+  // Calculate week start for queries
   const weekStart = useMemo(() => 
     startOfWeek(weeklyViewWeek, { weekStartsOn: 1 }),
     [weeklyViewWeek]
   );
 
-  // Fetch week closeout status for selected project
-  const { data: weekCloseout } = useWeekCloseout(
-    projectFilter && projectFilter !== "all" ? projectFilter : undefined,
-    weekStart
-  );
-
   // Fetch data based on role - only enable admin query when role is confirmed
+  // No filters - we show all entries grouped by project
   const { data: allEntries = [], isLoading: allEntriesLoading } =
     useAllTimeEntries(
-      projectFilter === "all" ? undefined : projectFilter,
-      personnelFilter === "all" ? undefined : personnelFilter,
+      undefined,
+      undefined,
       { enabled: showAllEntries && !roleLoading }
     );
 
@@ -112,14 +89,6 @@ export default function TimeTracking() {
       return isWithinInterval(entryDate, { start: weekStart, end: weekEnd });
     });
   }, [entries, weekStart, weeklyViewWeek]);
-
-  const handleProjectChange = (value: string) => {
-    setProjectFilter(value === "all" ? undefined : value);
-  };
-
-  const handlePersonnelChange = (value: string) => {
-    setPersonnelFilter(value === "all" ? undefined : value);
-  };
 
   const handleEdit = (entry: TimeEntryWithDetails) => {
     setSelectedEntry(entry);
@@ -228,79 +197,18 @@ export default function TimeTracking() {
           </TabsList>
 
           <TabsContent value="entries" className="space-y-4 mt-4">
-            {/* Project Selector and Week Controls */}
-            <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-              <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:gap-4">
-                {/* Project Filter */}
-                <div className="w-full sm:w-[240px]">
-                  <Select value={projectFilter || "all"} onValueChange={handleProjectChange}>
-                    <SelectTrigger>
-                      <SelectValue placeholder="All Projects" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="all">All Projects</SelectItem>
-                      {projects.map((project) => (
-                        <SelectItem key={project.id} value={project.id}>
-                          {project.name}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-
-                {/* Personnel Filter (Admin/Manager only) */}
-                {canManageTeam && (
-                  <div className="w-full sm:w-[240px]">
-                    <Select value={personnelFilter || "all"} onValueChange={handlePersonnelChange}>
-                      <SelectTrigger>
-                        <SelectValue placeholder="All Personnel" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="all">All Personnel</SelectItem>
-                        {personnel.map((person) => (
-                          <SelectItem key={person.id} value={person.id}>
-                            {`${person.first_name} ${person.last_name}`}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </div>
-                )}
-
-                {/* Week Navigator */}
-                <WeekNavigator
-                  currentWeek={weeklyViewWeek}
-                  onWeekChange={setWeeklyViewWeek}
-                  showLabels={false}
-                />
-              </div>
-
-              {/* Week Status Badge & Controls */}
-              {projectFilter && projectFilter !== "all" && (
-                <div className="flex items-center gap-3">
-                  {weekCloseout?.status === 'closed' ? (
-                    <Badge variant="outline" className="bg-orange-500/10 text-orange-500 border-orange-500/20 gap-1">
-                      <Lock className="h-3 w-3" />
-                      Week Closed
-                    </Badge>
-                  ) : (
-                    <Badge variant="outline" className="bg-primary/10 text-primary border-primary/20 gap-1">
-                      <LockOpen className="h-3 w-3" />
-                      Week Open
-                    </Badge>
-                  )}
-                  <WeekCloseoutControls 
-                    projectId={projectFilter}
-                    customerId={selectedProject?.customer_id || ""}
-                    currentWeek={weeklyViewWeek}
-                  />
-                </div>
-              )}
+            {/* Week Navigator */}
+            <div className="flex justify-center">
+              <WeekNavigator
+                currentWeek={weeklyViewWeek}
+                onWeekChange={setWeeklyViewWeek}
+              />
             </div>
 
-            {/* Grouped Time Entries Table */}
-            <GroupedTimeTrackingTable
+            {/* Project Time Entries Table - Hierarchical View */}
+            <ProjectTimeEntriesTable
               entries={filteredEntries}
+              weekStart={weekStart}
               onEdit={handleEdit}
               onBulkDelete={
                 canManageTeam ? (ids) => bulkDelete.mutate(ids) : undefined
@@ -318,7 +226,6 @@ export default function TimeTracking() {
               }
               isDeleting={bulkDelete.isPending}
               isUpdatingStatus={updateStatus.isPending}
-              isWeekLocked={weekCloseout?.status === 'closed'}
             />
           </TabsContent>
 
