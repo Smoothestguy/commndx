@@ -54,49 +54,57 @@ export const PendingAttachmentsUpload = ({
   const handleFileChange = async (files: FileList | null) => {
     if (!files || files.length === 0 || !user) return;
 
-    const file = files[0];
-
-    if (!ALLOWED_TYPES.includes(file.type)) {
-      toast.error("Invalid file type. Please upload PDF, images, or Word documents.");
-      return;
-    }
-
-    if (file.size > MAX_FILE_SIZE) {
-      toast.error("File size exceeds 10MB limit.");
-      return;
-    }
-
     setUploading(true);
+    const newPendingFiles: PendingFile[] = [];
+
     try {
-      const fileExt = file.name.split(".").pop();
-      const tempPath = `pending/${user.id}/${Date.now()}.${fileExt}`;
+      for (let i = 0; i < files.length; i++) {
+        const file = files[i];
 
-      const { error: uploadError } = await supabase.storage
-        .from("document-attachments")
-        .upload(tempPath, file);
+        if (!ALLOWED_TYPES.includes(file.type)) {
+          toast.error(`Invalid file type: ${file.name}. Skipping.`);
+          continue;
+        }
 
-      if (uploadError) throw uploadError;
+        if (file.size > MAX_FILE_SIZE) {
+          toast.error(`File too large: ${file.name}. Skipping.`);
+          continue;
+        }
 
-      const newPendingFile: PendingFile = {
-        id: crypto.randomUUID(),
-        file,
-        tempPath,
-        file_name: file.name,
-        file_type: file.type,
-        file_size: file.size,
-      };
+        const fileExt = file.name.split(".").pop();
+        const tempPath = `pending/${user.id}/${Date.now()}-${i}.${fileExt}`;
 
-      onFilesChange([...pendingFiles, newPendingFile]);
-      toast.success("File added");
-      
-      if (fileInputRef.current) {
-        fileInputRef.current.value = "";
+        const { error: uploadError } = await supabase.storage
+          .from("document-attachments")
+          .upload(tempPath, file);
+
+        if (uploadError) {
+          toast.error(`Failed to upload ${file.name}`);
+          continue;
+        }
+
+        newPendingFiles.push({
+          id: crypto.randomUUID(),
+          file,
+          tempPath,
+          file_name: file.name,
+          file_type: file.type,
+          file_size: file.size,
+        });
+      }
+
+      if (newPendingFiles.length > 0) {
+        onFilesChange([...pendingFiles, ...newPendingFiles]);
+        toast.success(`${newPendingFiles.length} file(s) added`);
       }
     } catch (error: any) {
       console.error("Upload error:", error);
-      toast.error(error.message || "Failed to upload file");
+      toast.error(error.message || "Failed to upload files");
     } finally {
       setUploading(false);
+      if (fileInputRef.current) {
+        fileInputRef.current.value = "";
+      }
     }
   };
 
@@ -157,6 +165,7 @@ export const PendingAttachmentsUpload = ({
           className="hidden"
           id={inputId}
           disabled={uploading}
+          multiple
         />
         <label
           htmlFor={inputId}
