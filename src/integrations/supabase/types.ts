@@ -3345,6 +3345,47 @@ export type Database = {
           },
         ]
       }
+      po_addendum_attachments: {
+        Row: {
+          addendum_id: string
+          created_at: string
+          file_name: string
+          file_path: string
+          file_size: number
+          file_type: string
+          id: string
+          uploaded_by: string | null
+        }
+        Insert: {
+          addendum_id: string
+          created_at?: string
+          file_name: string
+          file_path: string
+          file_size: number
+          file_type: string
+          id?: string
+          uploaded_by?: string | null
+        }
+        Update: {
+          addendum_id?: string
+          created_at?: string
+          file_name?: string
+          file_path?: string
+          file_size?: number
+          file_type?: string
+          id?: string
+          uploaded_by?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "po_addendum_attachments_addendum_id_fkey"
+            columns: ["addendum_id"]
+            isOneToOne: false
+            referencedRelation: "po_addendums"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       po_addendum_line_items: {
         Row: {
           billed_quantity: number

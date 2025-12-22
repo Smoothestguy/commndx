@@ -17,7 +17,7 @@ export interface PendingFile {
 }
 
 interface PendingAttachmentsUploadProps {
-  entityType: "invoice" | "estimate" | "vendor_bill";
+  entityType: "invoice" | "estimate" | "vendor_bill" | "po_addendum";
   pendingFiles: PendingFile[];
   onFilesChange: (files: PendingFile[]) => void;
   compact?: boolean;

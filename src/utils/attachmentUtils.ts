@@ -1,7 +1,7 @@
 import { supabase } from "@/integrations/supabase/client";
 import { PendingFile } from "@/components/shared/PendingAttachmentsUpload";
 
-export type AttachmentEntityType = "invoice" | "estimate" | "vendor_bill";
+export type AttachmentEntityType = "invoice" | "estimate" | "vendor_bill" | "po_addendum";
 
 interface FinalizeResult {
   success: boolean;
@@ -70,6 +70,18 @@ export async function finalizeAttachments(
           .from("vendor_bill_attachments")
           .insert({
             bill_id: entityId,
+            file_name: pending.file_name,
+            file_path: finalPath,
+            file_type: pending.file_type,
+            file_size: pending.file_size,
+            uploaded_by: userId,
+          });
+        dbError = error;
+      } else if (entityType === "po_addendum") {
+        const { error } = await supabase
+          .from("po_addendum_attachments")
+          .insert({
+            addendum_id: entityId,
             file_name: pending.file_name,
             file_path: finalPath,
             file_type: pending.file_type,
