@@ -18,8 +18,18 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { ArrowLeft, Receipt, ShoppingCart, Plus, Briefcase, Pencil, MoreVertical } from "lucide-react";
-import { useJobOrder } from "@/integrations/supabase/hooks/useJobOrders";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
+import { ArrowLeft, Receipt, ShoppingCart, Plus, Briefcase, Pencil, MoreVertical, Trash2 } from "lucide-react";
+import { useJobOrder, useDeleteJobOrder } from "@/integrations/supabase/hooks/useJobOrders";
 import { useInvoicesByJobOrder } from "@/integrations/supabase/hooks/useInvoices";
 import { usePurchaseOrders } from "@/integrations/supabase/hooks/usePurchaseOrders";
 import { useIsMobile } from "@/hooks/use-mobile";
@@ -31,6 +41,8 @@ const JobOrderDetail = () => {
   const navigate = useNavigate();
   const isMobile = useIsMobile();
   const [invoiceDialogOpen, setInvoiceDialogOpen] = useState(false);
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const deleteJobOrder = useDeleteJobOrder();
 
   const { data: jobOrder, isLoading: loadingJobOrder, error: errorJobOrder } = useJobOrder(id || "");
   const { data: allInvoices = [], isLoading: loadingInvoices } = useInvoicesByJobOrder(id || "");
@@ -103,6 +115,12 @@ const JobOrderDetail = () => {
                   </DropdownMenuItem>
                 </>
               )}
+              <DropdownMenuItem 
+                onClick={() => setDeleteDialogOpen(true)}
+                className="text-destructive focus:text-destructive"
+              >
+                <Trash2 className="mr-2 h-4 w-4" /> Delete Job Order
+              </DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>
         </div>
@@ -435,6 +453,36 @@ const JobOrderDetail = () => {
         onOpenChange={setInvoiceDialogOpen}
         jobOrder={jobOrder}
       />
+
+      {/* Delete Confirmation Dialog */}
+      <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete Job Order</AlertDialogTitle>
+            <AlertDialogDescription>
+              Are you sure you want to delete <strong>{jobOrder.number}</strong>?
+              {(relatedInvoices.length > 0 || relatedPOs.length > 0) && (
+                <span className="block mt-2 text-destructive">
+                  Warning: This job order has {relatedInvoices.length} invoice(s) and {relatedPOs.length} purchase order(s) linked to it. Deleting may affect these records.
+                </span>
+              )}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              disabled={deleteJobOrder.isPending}
+              onClick={async () => {
+                await deleteJobOrder.mutateAsync(id!);
+                navigate(`/projects/${jobOrder.project_id}`);
+              }}
+            >
+              {deleteJobOrder.isPending ? "Deleting..." : "Delete"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </PageLayout>
   );
 };
