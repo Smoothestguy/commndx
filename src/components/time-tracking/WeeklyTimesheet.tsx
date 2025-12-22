@@ -16,6 +16,7 @@ import {
   FileText,
   FileJson,
   FileType,
+  Lock,
 } from "lucide-react";
 import {
   DropdownMenu,
@@ -40,6 +41,7 @@ import {
   useBulkDeleteTimeEntries,
 } from "@/integrations/supabase/hooks/useTimeEntries";
 import { useCompanySettings } from "@/integrations/supabase/hooks/useCompanySettings";
+import { useWeekCloseout } from "@/integrations/supabase/hooks/useWeekCloseouts";
 import { format, addDays, startOfWeek } from "date-fns";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { useQuery } from "@tanstack/react-query";
@@ -60,6 +62,7 @@ import {
 interface WeeklyTimesheetProps {
   currentWeek: Date;
   onWeekChange?: (date: Date) => void;
+  projectFilter?: string;
 }
 
 interface TimeEntryWithRelations extends TimeEntry {
@@ -71,6 +74,7 @@ interface TimeEntryWithRelations extends TimeEntry {
     photo_url?: string | null;
   } | null;
   projects?: { id: string; name: string } | null;
+  is_locked?: boolean;
 }
 
 interface RowData {
@@ -87,6 +91,7 @@ interface RowData {
 export function WeeklyTimesheet({
   currentWeek,
   onWeekChange,
+  projectFilter,
 }: WeeklyTimesheetProps) {
   const [formOpen, setFormOpen] = useState(false);
   const [selectedDate, setSelectedDate] = useState<string>("");
@@ -113,7 +118,18 @@ export function WeeklyTimesheet({
     useAdminTimeEntriesByWeek(currentWeek, {
       showAllEntries: showAllEntries && !roleLoading,
     });
-  const entries = rawEntries as TimeEntryWithRelations[];
+  
+  // Filter entries by project if projectFilter is set
+  const filteredEntries = useMemo(() => {
+    if (!projectFilter) return rawEntries as TimeEntryWithRelations[];
+    return (rawEntries as TimeEntryWithRelations[]).filter(e => e.project_id === projectFilter);
+  }, [rawEntries, projectFilter]);
+  
+  const entries = filteredEntries;
+
+  // Check if the week is closed for the selected project
+  const { data: weekCloseout } = useWeekCloseout(projectFilter, currentWeek);
+  const isWeekClosed = weekCloseout?.status === 'closed';
 
   const isLoading = roleLoading || entriesLoading;
   const { data: companySettings } = useCompanySettings();
@@ -198,6 +214,12 @@ export function WeeklyTimesheet({
     const dateString = format(date, "yyyy-MM-dd");
     const key = `${row.rowKey}-${dateString}`;
     const existingEntry = entryMap.get(key);
+
+    // Check if the entry or week is locked
+    if (existingEntry?.is_locked || isWeekClosed) {
+      toast.error("This week is closed. Cannot edit entries.");
+      return;
+    }
 
     if (existingEntry) {
       setEditingEntry(existingEntry);
@@ -728,9 +750,18 @@ export function WeeklyTimesheet({
                       : null;
 
                     return (
-                      <div key={key} className="p-2 bg-muted/30 rounded-lg">
+                      <div 
+                        key={key} 
+                        className={`p-2 rounded-lg ${
+                          entry.is_locked || isWeekClosed 
+                            ? "bg-muted/50 opacity-75" 
+                            : "bg-muted/30"
+                        }`}
+                      >
                         <div
-                          className="flex items-center justify-between"
+                          className={`flex items-center justify-between ${
+                            entry.is_locked || isWeekClosed ? "cursor-not-allowed" : "cursor-pointer"
+                          }`}
                           onClick={() => handleCellClick(row, day)}
                         >
                           <div className="flex-1 min-w-0">
@@ -771,7 +802,11 @@ export function WeeklyTimesheet({
                             <span className="font-semibold">
                               {Number(entry.hours).toFixed(1)}h
                             </span>
-                            <Edit className="h-4 w-4 text-muted-foreground" />
+                            {entry.is_locked || isWeekClosed ? (
+                              <Lock className="h-4 w-4 text-muted-foreground" />
+                            ) : (
+                              <Edit className="h-4 w-4 text-muted-foreground" />
+                            )}
                           </div>
                         </div>
                         <div className="flex items-center justify-between mt-2 text-xs text-muted-foreground">
@@ -1134,14 +1169,24 @@ export function WeeklyTimesheet({
                         <Button
                           variant={entry ? "secondary" : "ghost"}
                           size="sm"
-                          className="w-full h-12 relative"
+                          className={`w-full h-12 relative ${
+                            entry?.is_locked || isWeekClosed 
+                              ? "opacity-60 cursor-not-allowed bg-muted/50" 
+                              : ""
+                          }`}
                           onClick={() => handleCellClick(row, day)}
+                          disabled={entry?.is_locked || isWeekClosed}
                         >
                           {entry ? (
                             <div className="flex flex-col items-center gap-1">
-                              <span className="font-semibold">
-                                {Number(entry.hours).toFixed(2)}h
-                              </span>
+                              <div className="flex items-center gap-1">
+                                <span className="font-semibold">
+                                  {Number(entry.hours).toFixed(2)}h
+                                </span>
+                                {(entry.is_locked || isWeekClosed) && (
+                                  <Lock className="h-3 w-3 text-muted-foreground" />
+                                )}
+                              </div>
                               {entry.billable ? (
                                 <Badge
                                   variant="default"
@@ -1159,7 +1204,11 @@ export function WeeklyTimesheet({
                               )}
                             </div>
                           ) : (
-                            <Plus className="h-4 w-4 text-muted-foreground" />
+                            isWeekClosed ? (
+                              <Lock className="h-4 w-4 text-muted-foreground" />
+                            ) : (
+                              <Plus className="h-4 w-4 text-muted-foreground" />
+                            )
                           )}
                         </Button>
                       </td>
