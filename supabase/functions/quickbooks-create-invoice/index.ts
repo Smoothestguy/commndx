@@ -297,7 +297,7 @@ serve(async (req) => {
 
     console.log("Creating QB invoice:", JSON.stringify(qbInvoice, null, 2));
 
-    const qbResponse = await qbRequest("POST", "invoice", accessToken, realmId, qbInvoice);
+    const qbResponse = await qbRequest("POST", "/invoice", accessToken, realmId, qbInvoice);
     const qbInvoiceId = qbResponse.Invoice.Id;
 
     console.log("Created QB invoice:", qbInvoiceId);
