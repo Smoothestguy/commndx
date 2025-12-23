@@ -15,8 +15,9 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { format } from "date-fns";
 import { DateRange } from "react-day-picker";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Download, Eye } from "lucide-react";
+import { Download, Eye, Clock, DollarSign } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
+import { useIsMobile } from "@/hooks/use-mobile";
 
 const HOURLY_RATE = 23; // $23/hour
 
@@ -45,6 +46,7 @@ export function SessionHistoryTable({
 }: SessionHistoryTableProps) {
   const { user } = useAuth();
   const { toast } = useToast();
+  const isMobile = useIsMobile();
   const userId = targetUserId || user?.id;
 
   const { data: sessions, isLoading } = useQuery({
@@ -161,85 +163,142 @@ export function SessionHistoryTable({
     );
   }
 
+  // Mobile Card View Component
+  const MobileSessionCard = ({ session }: { session: Session }) => {
+    const activeSeconds = getActiveSecondsFromTimestamps(session);
+    const isSelected = selectedSessionId === session.id;
+    
+    return (
+      <div 
+        className={`border rounded-lg p-4 space-y-3 ${isSelected ? 'ring-2 ring-primary bg-muted/50' : 'bg-card'}`}
+        onClick={() => onSelectSession(isSelected ? null : session.id)}
+      >
+        <div className="flex items-start justify-between">
+          <div>
+            <p className="font-medium">
+              {format(new Date(session.session_start), "MMM d, yyyy")}
+            </p>
+            <p className="text-sm text-muted-foreground">
+              {format(new Date(session.session_start), "h:mm a")} - {session.session_end ? format(new Date(session.session_end), "h:mm a") : "Now"}
+            </p>
+          </div>
+          <div className="flex items-center gap-2">
+            {session.is_active && (
+              <Badge variant="default" className="bg-green-500 text-xs">Active</Badge>
+            )}
+            <Badge variant="outline" className="text-xs">{session.clock_in_type}</Badge>
+          </div>
+        </div>
+        
+        <div className="flex items-center justify-between pt-2 border-t">
+          <div className="flex items-center gap-4">
+            <div className="flex items-center gap-1.5">
+              <Clock className="h-3.5 w-3.5 text-muted-foreground" />
+              <span className="text-sm font-mono">{formatDuration(activeSeconds)}</span>
+            </div>
+            <div className="flex items-center gap-1.5">
+              <DollarSign className="h-3.5 w-3.5 text-green-500" />
+              <span className="text-sm font-mono text-green-600 dark:text-green-400 font-medium">
+                {formatCurrency(calculateEarnings(activeSeconds))}
+              </span>
+            </div>
+          </div>
+          <Button variant="ghost" size="sm" className="h-8 w-8 p-0">
+            <Eye className="h-4 w-4" />
+          </Button>
+        </div>
+      </div>
+    );
+  };
+
   return (
     <Card>
-      <CardHeader className="flex flex-row items-center justify-between">
-        <CardTitle>Session History</CardTitle>
-        <Button variant="outline" size="sm" onClick={exportToCSV}>
-          <Download className="h-4 w-4 mr-2" />
-          Export CSV
+      <CardHeader className="flex flex-row items-center justify-between p-4 sm:p-6">
+        <CardTitle className="text-base sm:text-lg">Session History</CardTitle>
+        <Button variant="outline" size="sm" onClick={exportToCSV} className="h-8 text-xs sm:text-sm">
+          <Download className="h-3.5 w-3.5 sm:h-4 sm:w-4 mr-1.5 sm:mr-2" />
+          <span className="hidden sm:inline">Export CSV</span>
+          <span className="sm:hidden">Export</span>
         </Button>
       </CardHeader>
-      <CardContent>
+      <CardContent className="p-4 pt-0 sm:p-6 sm:pt-0">
         {sessions && sessions.length > 0 ? (
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>Date</TableHead>
-                <TableHead>Start</TableHead>
-                <TableHead>End</TableHead>
-                <TableHead>Active Time</TableHead>
-                <TableHead>Idle Time</TableHead>
-                <TableHead>Earnings</TableHead>
-                <TableHead>Type</TableHead>
-                <TableHead className="w-[50px]"></TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {sessions.map((session) => {
-                const activeSeconds = getActiveSecondsFromTimestamps(session);
-                return (
-                  <TableRow
-                    key={session.id}
-                    className={
-                      selectedSessionId === session.id ? "bg-muted/50" : ""
-                    }
-                  >
-                    <TableCell>
-                      {format(new Date(session.session_start), "MMM d, yyyy")}
-                    </TableCell>
-                    <TableCell>
-                      {format(new Date(session.session_start), "h:mm a")}
-                    </TableCell>
-                    <TableCell>
-                      {session.session_end ? (
-                        format(new Date(session.session_end), "h:mm a")
-                      ) : (
-                        <Badge variant="default" className="bg-green-500">
-                          Active
-                        </Badge>
-                      )}
-                    </TableCell>
-                    <TableCell className="font-mono">
-                      {formatDuration(activeSeconds)}
-                    </TableCell>
-                    <TableCell className="font-mono text-muted-foreground">
-                      {formatDuration(session.total_idle_seconds || 0)}
-                    </TableCell>
-                    <TableCell className="font-mono text-green-600 dark:text-green-400 font-medium">
-                      {formatCurrency(calculateEarnings(activeSeconds))}
-                    </TableCell>
-                    <TableCell>
-                      <Badge variant="outline">{session.clock_in_type}</Badge>
-                    </TableCell>
-                  <TableCell>
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      onClick={() =>
-                        onSelectSession(
-                          selectedSessionId === session.id ? null : session.id
-                        )
+          isMobile ? (
+            <div className="space-y-3">
+              {sessions.map((session) => (
+                <MobileSessionCard key={session.id} session={session} />
+              ))}
+            </div>
+          ) : (
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Date</TableHead>
+                  <TableHead>Start</TableHead>
+                  <TableHead>End</TableHead>
+                  <TableHead>Active Time</TableHead>
+                  <TableHead>Idle Time</TableHead>
+                  <TableHead>Earnings</TableHead>
+                  <TableHead>Type</TableHead>
+                  <TableHead className="w-[50px]"></TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {sessions.map((session) => {
+                  const activeSeconds = getActiveSecondsFromTimestamps(session);
+                  return (
+                    <TableRow
+                      key={session.id}
+                      className={
+                        selectedSessionId === session.id ? "bg-muted/50" : ""
                       }
                     >
-                      <Eye className="h-4 w-4" />
-                    </Button>
-                  </TableCell>
-                </TableRow>
-                );
-              })}
-            </TableBody>
-          </Table>
+                      <TableCell>
+                        {format(new Date(session.session_start), "MMM d, yyyy")}
+                      </TableCell>
+                      <TableCell>
+                        {format(new Date(session.session_start), "h:mm a")}
+                      </TableCell>
+                      <TableCell>
+                        {session.session_end ? (
+                          format(new Date(session.session_end), "h:mm a")
+                        ) : (
+                          <Badge variant="default" className="bg-green-500">
+                            Active
+                          </Badge>
+                        )}
+                      </TableCell>
+                      <TableCell className="font-mono">
+                        {formatDuration(activeSeconds)}
+                      </TableCell>
+                      <TableCell className="font-mono text-muted-foreground">
+                        {formatDuration(session.total_idle_seconds || 0)}
+                      </TableCell>
+                      <TableCell className="font-mono text-green-600 dark:text-green-400 font-medium">
+                        {formatCurrency(calculateEarnings(activeSeconds))}
+                      </TableCell>
+                      <TableCell>
+                        <Badge variant="outline">{session.clock_in_type}</Badge>
+                      </TableCell>
+                      <TableCell>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() =>
+                            onSelectSession(
+                              selectedSessionId === session.id ? null : session.id
+                            )
+                          }
+                        >
+                          <Eye className="h-4 w-4" />
+                        </Button>
+                      </TableCell>
+                    </TableRow>
+                  );
+                })}
+              </TableBody>
+            </Table>
+          )
         ) : (
           <div className="text-center py-8 text-muted-foreground">
             No sessions found for the selected date range

@@ -95,13 +95,13 @@ export default function SessionHistory() {
         subtitle="Review your work sessions, active time, and activity logs"
         backPath="/settings"
       >
-        <div className="space-y-6">
-          <div className="flex flex-wrap gap-4 justify-between items-center">
+        <div className="space-y-4 sm:space-y-6">
+          <div className="flex flex-col sm:flex-row gap-3 sm:gap-4 sm:justify-between sm:items-center">
             {canSelectUser && sessionUsers && sessionUsers.length > 0 && (
-              <div className="flex items-center gap-2">
+              <div className="flex flex-col sm:flex-row sm:items-center gap-2">
                 <span className="text-sm text-muted-foreground">Viewing:</span>
                 <Select value={targetUserId || ""} onValueChange={setTargetUserId}>
-                  <SelectTrigger className="w-[250px]">
+                  <SelectTrigger className="w-full sm:w-[250px]">
                     <SelectValue placeholder="Select user" />
                   </SelectTrigger>
                   <SelectContent>
@@ -116,14 +116,16 @@ export default function SessionHistory() {
                 </Select>
               </div>
             )}
-            <DatePickerWithRange date={dateRange} setDate={setDateRange} />
+            <div className="w-full sm:w-auto">
+              <DatePickerWithRange date={dateRange} setDate={setDateRange} />
+            </div>
           </div>
 
           <Tabs defaultValue="sessions" className="space-y-4">
-            <TabsList>
-              <TabsTrigger value="sessions">Sessions</TabsTrigger>
-              <TabsTrigger value="activity">Activity Timeline</TabsTrigger>
-              <TabsTrigger value="dev-activities">Dev Activities</TabsTrigger>
+            <TabsList className="w-full sm:w-auto overflow-x-auto">
+              <TabsTrigger value="sessions" className="text-xs sm:text-sm">Sessions</TabsTrigger>
+              <TabsTrigger value="activity" className="text-xs sm:text-sm">Activity</TabsTrigger>
+              <TabsTrigger value="dev-activities" className="text-xs sm:text-sm">Dev Activities</TabsTrigger>
             </TabsList>
 
             <TabsContent value="sessions">
