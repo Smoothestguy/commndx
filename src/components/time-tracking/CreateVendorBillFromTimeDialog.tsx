@@ -109,8 +109,8 @@ export function CreateVendorBillFromTimeDialog({
         : entry.profiles?.first_name && entry.profiles?.last_name
           ? `${entry.profiles.first_name} ${entry.profiles.last_name}`
           : entry.profiles?.email || "Unknown";
-      // Use pay_rate for vendor bills (internal payroll cost)
-      const payRate = (entry.personnel as any)?.pay_rate || entry.personnel?.hourly_rate || 0;
+      // Use hourly_rate for vendor bills
+      const payRate = entry.personnel?.hourly_rate || 0;
       // Get vendor IDs
       const vendorId = (entry.personnel as any)?.vendor_id || null;
       const linkedVendorId = (entry.personnel as any)?.linked_vendor_id || null;
