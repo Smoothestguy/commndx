@@ -15,12 +15,4 @@ export default defineConfig(({ mode }) => ({
       "@": path.resolve(__dirname, "./src"),
     },
   },
-  optimizeDeps: {
-    include: ['pdf-lib'],
-  },
-  build: {
-    commonjsOptions: {
-      include: [/pdf-lib/, /node_modules/],
-    },
-  },
 }));
