@@ -127,56 +127,56 @@ async function generateW9PDF(
   
   console.log("Available form fields:", fields.map(f => f.getName()));
   
-  // Try to fill form fields - field names vary by PDF version
-  // Common W-9 fillable PDF field patterns
+  console.log("Form data received:", JSON.stringify(formData, null, 2));
+  
+  // Exact field mappings based on the uploaded W-9 PDF template
+  const cityStateZip = `${formData.city || ""}, ${formData.state || ""} ${formData.zip || ""}`.trim();
+  
   const fieldMappings: Record<string, string | undefined> = {
-    // Various common field name patterns for W-9 forms
-    "f1_1": formData.name_on_return,
-    "f1_2": formData.business_name || undefined,
-    "f1_5": formData.address || undefined,
-    "f1_6": `${formData.city || ""}, ${formData.state || ""} ${formData.zip || ""}`.trim(),
-    "f1_7": formData.account_numbers || undefined,
     // Line 1 - Name
-    "topmostSubform[0].Page1[0].f1_1[0]": formData.name_on_return,
-    "Line1[0]": formData.name_on_return,
-    // Line 2 - Business name
-    "topmostSubform[0].Page1[0].f1_2[0]": formData.business_name || undefined,
-    "Line2[0]": formData.business_name || undefined,
-    // Address
-    "topmostSubform[0].Page1[0].f1_5[0]": formData.address || undefined,
-    "topmostSubform[0].Page1[0].f1_6[0]": `${formData.city || ""}, ${formData.state || ""} ${formData.zip || ""}`.trim(),
-    // Account numbers
-    "topmostSubform[0].Page1[0].f1_7[0]": formData.account_numbers || undefined,
-    // Exemptions
-    "topmostSubform[0].Page1[0].f1_3[0]": formData.exempt_payee_code || undefined,
-    "topmostSubform[0].Page1[0].f1_4[0]": formData.fatca_exemption_code || undefined,
+    "topmostSubform[0].Page1[0].f1_01[0]": formData.name_on_return,
+    // Line 2 - Business name/disregarded entity name
+    "topmostSubform[0].Page1[0].f1_02[0]": formData.business_name || undefined,
+    // LLC Tax Classification (Line 3b)
+    "topmostSubform[0].Page1[0].Boxes3a-b_ReadOrder[0].f1_03[0]": formData.llc_tax_classification || undefined,
+    // Other classification description
+    "topmostSubform[0].Page1[0].Boxes3a-b_ReadOrder[0].f1_04[0]": formData.other_classification || undefined,
+    // Exempt payee code (Line 4)
+    "topmostSubform[0].Page1[0].f1_05[0]": formData.exempt_payee_code || undefined,
+    // FATCA exemption code (Line 4)
+    "topmostSubform[0].Page1[0].f1_06[0]": formData.fatca_exemption_code || undefined,
+    // Address (Line 5)
+    "topmostSubform[0].Page1[0].Address_ReadOrder[0].f1_07[0]": formData.address || undefined,
+    // City, State, ZIP (Line 6)
+    "topmostSubform[0].Page1[0].Address_ReadOrder[0].f1_08[0]": cityStateZip || undefined,
+    // Account numbers (Line 7)
+    "topmostSubform[0].Page1[0].f1_09[0]": formData.account_numbers || undefined,
+    // Signature date
+    "topmostSubform[0].Page1[0].f1_15[0]": formData.signature_date || undefined,
   };
 
-  // SSN fields
+  // SSN fields (Part I - f1_10, f1_11, f1_12)
   if (ssnFull && ssnFull.length === 9) {
-    const ssnPart1 = ssnFull.substring(0, 3);
-    const ssnPart2 = ssnFull.substring(3, 5);
-    const ssnPart3 = ssnFull.substring(5, 9);
+    const ssnPart1 = ssnFull.substring(0, 3);  // XXX
+    const ssnPart2 = ssnFull.substring(3, 5);  // XX
+    const ssnPart3 = ssnFull.substring(5, 9);  // XXXX
     
-    fieldMappings["f1_8"] = ssnPart1;
-    fieldMappings["f1_9"] = ssnPart2;
-    fieldMappings["f1_10"] = ssnPart3;
-    fieldMappings["topmostSubform[0].Page1[0].f1_8[0]"] = ssnPart1;
-    fieldMappings["topmostSubform[0].Page1[0].f1_9[0]"] = ssnPart2;
-    fieldMappings["topmostSubform[0].Page1[0].f1_10[0]"] = ssnPart3;
+    fieldMappings["topmostSubform[0].Page1[0].f1_10[0]"] = ssnPart1;
+    fieldMappings["topmostSubform[0].Page1[0].f1_11[0]"] = ssnPart2;
+    fieldMappings["topmostSubform[0].Page1[0].f1_12[0]"] = ssnPart3;
+    console.log(`SSN filled: ${ssnPart1}-${ssnPart2}-${ssnPart3}`);
   }
 
-  // EIN fields
+  // EIN fields (Part I - f1_13, f1_14)
   if (formData.ein) {
     const einDigits = formData.ein.replace(/\D/g, "");
     if (einDigits.length >= 2) {
-      const einPart1 = einDigits.substring(0, 2);
-      const einPart2 = einDigits.substring(2);
+      const einPart1 = einDigits.substring(0, 2);      // XX
+      const einPart2 = einDigits.substring(2);         // XXXXXXX
       
-      fieldMappings["f1_11"] = einPart1;
-      fieldMappings["f1_12"] = einPart2;
-      fieldMappings["topmostSubform[0].Page1[0].f1_11[0]"] = einPart1;
-      fieldMappings["topmostSubform[0].Page1[0].f1_12[0]"] = einPart2;
+      fieldMappings["topmostSubform[0].Page1[0].f1_13[0]"] = einPart1;
+      fieldMappings["topmostSubform[0].Page1[0].f1_14[0]"] = einPart2;
+      console.log(`EIN filled: ${einPart1}-${einPart2}`);
     }
   }
 
@@ -192,28 +192,47 @@ async function generateW9PDF(
     }
   }
 
-  // Handle checkboxes for tax classification
-  const classificationCheckboxes: Record<string, string[]> = {
-    "individual": ["c1_1", "topmostSubform[0].Page1[0].c1_1[0]"],
-    "c_corporation": ["c1_2", "topmostSubform[0].Page1[0].c1_2[0]"],
-    "s_corporation": ["c1_3", "topmostSubform[0].Page1[0].c1_3[0]"],
-    "partnership": ["c1_4", "topmostSubform[0].Page1[0].c1_4[0]"],
-    "trust_estate": ["c1_5", "topmostSubform[0].Page1[0].c1_5[0]"],
-    "llc": ["c1_6", "topmostSubform[0].Page1[0].c1_6[0]"],
-    "other": ["c1_7", "topmostSubform[0].Page1[0].c1_7[0]"],
+  // Handle checkboxes for tax classification (Line 3a)
+  // Checkbox order in PDF: c1_1[0]=Individual, c1_1[1]=C Corp, c1_1[2]=S Corp, 
+  // c1_1[3]=Partnership, c1_1[4]=Trust/Estate, c1_1[5]=LLC, c1_1[6]=Other
+  const classificationToCheckbox: Record<string, string> = {
+    "individual": "topmostSubform[0].Page1[0].Boxes3a-b_ReadOrder[0].c1_1[0]",
+    "sole_proprietor": "topmostSubform[0].Page1[0].Boxes3a-b_ReadOrder[0].c1_1[0]",
+    "c_corporation": "topmostSubform[0].Page1[0].Boxes3a-b_ReadOrder[0].c1_1[1]",
+    "s_corporation": "topmostSubform[0].Page1[0].Boxes3a-b_ReadOrder[0].c1_1[2]",
+    "partnership": "topmostSubform[0].Page1[0].Boxes3a-b_ReadOrder[0].c1_1[3]",
+    "trust_estate": "topmostSubform[0].Page1[0].Boxes3a-b_ReadOrder[0].c1_1[4]",
+    "trust": "topmostSubform[0].Page1[0].Boxes3a-b_ReadOrder[0].c1_1[4]",
+    "estate": "topmostSubform[0].Page1[0].Boxes3a-b_ReadOrder[0].c1_1[4]",
+    "llc": "topmostSubform[0].Page1[0].Boxes3a-b_ReadOrder[0].c1_1[5]",
+    "limited_liability": "topmostSubform[0].Page1[0].Boxes3a-b_ReadOrder[0].c1_1[5]",
+    "other": "topmostSubform[0].Page1[0].Boxes3a-b_ReadOrder[0].c1_1[6]",
   };
 
-  const classification = formData.federal_tax_classification?.toLowerCase() || "";
-  for (const [classType, fieldNames] of Object.entries(classificationCheckboxes)) {
+  const classification = formData.federal_tax_classification?.toLowerCase().replace(/[\s\/]+/g, "_") || "";
+  console.log(`Tax classification: ${formData.federal_tax_classification} -> normalized: ${classification}`);
+  
+  for (const [classType, fieldName] of Object.entries(classificationToCheckbox)) {
     if (classification.includes(classType)) {
-      for (const fieldName of fieldNames) {
-        try {
-          const checkbox = form.getCheckBox(fieldName);
-          checkbox.check();
-        } catch (e) {
-          // Checkbox doesn't exist, skip
-        }
+      try {
+        const checkbox = form.getCheckBox(fieldName);
+        checkbox.check();
+        console.log(`Checked checkbox: ${fieldName}`);
+        break; // Only check one
+      } catch (e) {
+        console.log(`Could not check ${fieldName}: ${e}`);
       }
+    }
+  }
+
+  // Handle foreign partners checkbox (c1_2[0])
+  if (formData.has_foreign_partners) {
+    try {
+      const foreignCheckbox = form.getCheckBox("topmostSubform[0].Page1[0].Boxes3a-b_ReadOrder[0].c1_2[0]");
+      foreignCheckbox.check();
+      console.log("Checked foreign partners checkbox");
+    } catch (e) {
+      console.log(`Could not check foreign partners checkbox: ${e}`);
     }
   }
 
