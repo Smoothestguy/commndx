@@ -642,123 +642,135 @@ export function InvoiceForm({ onSubmit, initialData, jobOrderId }: InvoiceFormPr
             </div>
             
             <div className="space-y-3">
-              {/* Product Selection */}
-              <div className="space-y-2">
-                <Label>Product (Optional)</Label>
-                <Popover
-                  open={productComboboxOpen[item.id] || false}
-                  onOpenChange={(open) =>
-                    setProductComboboxOpen((prev) => ({ ...prev, [item.id]: open }))
-                  }
-                >
-                  <PopoverTrigger asChild>
-                    <Button
-                      variant="outline"
-                      role="combobox"
-                      aria-expanded={productComboboxOpen[item.id] || false}
-                      className="w-full justify-between font-normal"
-                    >
-                      {item.productId
-                        ? products.find((p) => p.id === item.productId)?.name || "Select product..."
-                        : "Search products..."}
-                      <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
-                    </Button>
-                  </PopoverTrigger>
-                  <PopoverContent className="w-[--radix-popover-trigger-width] p-0 z-50 bg-popover" align="start">
-                    <Command>
-                      <CommandInput 
-                        placeholder="Search by name, SKU, or category..." 
-                        value={productSearch[item.id] || ""}
-                        onValueChange={(v) => setProductSearch(prev => ({ ...prev, [item.id]: v }))}
-                      />
-                      <CommandList>
-                        <CommandEmpty>No products found.</CommandEmpty>
-                        {getProductsByType('product').length > 0 && (
-                          <CommandGroup heading="Products">
-                            {getProductsByType('product').map((product) => (
-                              <CommandItem
-                                key={product.id}
-                                value={`${product.name} ${product.sku || ""} ${product.category}`}
-                                onSelect={() => {
-                                  handleProductSelect(item.id, product);
-                                  setProductSearch(prev => ({ ...prev, [item.id]: "" }));
-                                }}
-                              >
-                                <Check
-                                  className={cn(
-                                    "mr-2 h-4 w-4",
-                                    item.productId === product.id ? "opacity-100" : "opacity-0"
-                                  )}
-                                />
-                                <div className="flex flex-col">
-                                  <span>{product.name}</span>
-                                  <span className="text-xs text-muted-foreground">
-                                    {product.category} • ${product.price.toFixed(2)} / {product.unit}
-                                  </span>
-                                </div>
-                              </CommandItem>
-                            ))}
-                          </CommandGroup>
-                        )}
-                        {getProductsByType('service').length > 0 && (
-                          <CommandGroup heading="Services">
-                            {getProductsByType('service').map((product) => (
-                              <CommandItem
-                                key={product.id}
-                                value={`${product.name} ${product.sku || ""} ${product.category}`}
-                                onSelect={() => {
-                                  handleProductSelect(item.id, product);
-                                  setProductSearch(prev => ({ ...prev, [item.id]: "" }));
-                                }}
-                              >
-                                <Check
-                                  className={cn(
-                                    "mr-2 h-4 w-4",
-                                    item.productId === product.id ? "opacity-100" : "opacity-0"
-                                  )}
-                                />
-                                <div className="flex flex-col">
-                                  <span>{product.name}</span>
-                                  <span className="text-xs text-muted-foreground">
-                                    {product.category} • ${product.price.toFixed(2)} / {product.unit}
-                                  </span>
-                                </div>
-                              </CommandItem>
-                            ))}
-                          </CommandGroup>
-                        )}
-                        {getProductsByType('labor').length > 0 && (
-                          <CommandGroup heading="Labor">
-                            {getProductsByType('labor').map((product) => (
-                              <CommandItem
-                                key={product.id}
-                                value={`${product.name} ${product.sku || ""} ${product.category}`}
-                                onSelect={() => {
-                                  handleProductSelect(item.id, product);
-                                  setProductSearch(prev => ({ ...prev, [item.id]: "" }));
-                                }}
-                              >
-                                <Check
-                                  className={cn(
-                                    "mr-2 h-4 w-4",
-                                    item.productId === product.id ? "opacity-100" : "opacity-0"
-                                  )}
-                                />
-                                <div className="flex flex-col">
-                                  <span>{product.name}</span>
-                                  <span className="text-xs text-muted-foreground">
-                                    {product.category} • ${product.price.toFixed(2)} / {product.unit}
-                                  </span>
-                                </div>
-                              </CommandItem>
-                            ))}
-                          </CommandGroup>
-                        )}
-                      </CommandList>
-                    </Command>
-                  </PopoverContent>
-                </Popover>
-              </div>
+              {/* Show Product Name prominently if it exists (from job order) */}
+              {item.productName && !item.productId && (
+                <div className="space-y-2">
+                  <Label>Product</Label>
+                  <div className="h-10 flex items-center px-3 bg-muted rounded-md font-medium border">
+                    {item.productName}
+                  </div>
+                </div>
+              )}
+
+              {/* Product Selection - only show if no product name exists yet */}
+              {(!item.productName || item.productId) && (
+                <div className="space-y-2">
+                  <Label>Product (Optional)</Label>
+                  <Popover
+                    open={productComboboxOpen[item.id] || false}
+                    onOpenChange={(open) =>
+                      setProductComboboxOpen((prev) => ({ ...prev, [item.id]: open }))
+                    }
+                  >
+                    <PopoverTrigger asChild>
+                      <Button
+                        variant="outline"
+                        role="combobox"
+                        aria-expanded={productComboboxOpen[item.id] || false}
+                        className="w-full justify-between font-normal"
+                      >
+                        {item.productId
+                          ? products.find((p) => p.id === item.productId)?.name || "Select product..."
+                          : "Search products..."}
+                        <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                      </Button>
+                    </PopoverTrigger>
+                    <PopoverContent className="w-[--radix-popover-trigger-width] p-0 z-50 bg-popover" align="start">
+                      <Command>
+                        <CommandInput 
+                          placeholder="Search by name, SKU, or category..." 
+                          value={productSearch[item.id] || ""}
+                          onValueChange={(v) => setProductSearch(prev => ({ ...prev, [item.id]: v }))}
+                        />
+                        <CommandList>
+                          <CommandEmpty>No products found.</CommandEmpty>
+                          {getProductsByType('product').length > 0 && (
+                            <CommandGroup heading="Products">
+                              {getProductsByType('product').map((product) => (
+                                <CommandItem
+                                  key={product.id}
+                                  value={`${product.name} ${product.sku || ""} ${product.category}`}
+                                  onSelect={() => {
+                                    handleProductSelect(item.id, product);
+                                    setProductSearch(prev => ({ ...prev, [item.id]: "" }));
+                                  }}
+                                >
+                                  <Check
+                                    className={cn(
+                                      "mr-2 h-4 w-4",
+                                      item.productId === product.id ? "opacity-100" : "opacity-0"
+                                    )}
+                                  />
+                                  <div className="flex flex-col">
+                                    <span>{product.name}</span>
+                                    <span className="text-xs text-muted-foreground">
+                                      {product.category} • ${product.price.toFixed(2)} / {product.unit}
+                                    </span>
+                                  </div>
+                                </CommandItem>
+                              ))}
+                            </CommandGroup>
+                          )}
+                          {getProductsByType('service').length > 0 && (
+                            <CommandGroup heading="Services">
+                              {getProductsByType('service').map((product) => (
+                                <CommandItem
+                                  key={product.id}
+                                  value={`${product.name} ${product.sku || ""} ${product.category}`}
+                                  onSelect={() => {
+                                    handleProductSelect(item.id, product);
+                                    setProductSearch(prev => ({ ...prev, [item.id]: "" }));
+                                  }}
+                                >
+                                  <Check
+                                    className={cn(
+                                      "mr-2 h-4 w-4",
+                                      item.productId === product.id ? "opacity-100" : "opacity-0"
+                                    )}
+                                  />
+                                  <div className="flex flex-col">
+                                    <span>{product.name}</span>
+                                    <span className="text-xs text-muted-foreground">
+                                      {product.category} • ${product.price.toFixed(2)} / {product.unit}
+                                    </span>
+                                  </div>
+                                </CommandItem>
+                              ))}
+                            </CommandGroup>
+                          )}
+                          {getProductsByType('labor').length > 0 && (
+                            <CommandGroup heading="Labor">
+                              {getProductsByType('labor').map((product) => (
+                                <CommandItem
+                                  key={product.id}
+                                  value={`${product.name} ${product.sku || ""} ${product.category}`}
+                                  onSelect={() => {
+                                    handleProductSelect(item.id, product);
+                                    setProductSearch(prev => ({ ...prev, [item.id]: "" }));
+                                  }}
+                                >
+                                  <Check
+                                    className={cn(
+                                      "mr-2 h-4 w-4",
+                                      item.productId === product.id ? "opacity-100" : "opacity-0"
+                                    )}
+                                  />
+                                  <div className="flex flex-col">
+                                    <span>{product.name}</span>
+                                    <span className="text-xs text-muted-foreground">
+                                      {product.category} • ${product.price.toFixed(2)} / {product.unit}
+                                    </span>
+                                  </div>
+                                </CommandItem>
+                              ))}
+                            </CommandGroup>
+                          )}
+                        </CommandList>
+                      </Command>
+                    </PopoverContent>
+                  </Popover>
+                </div>
+              )}
 
               <div className="space-y-2">
                 <div className="flex items-center gap-2">
