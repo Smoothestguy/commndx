@@ -28,6 +28,7 @@ interface Generate1099DialogProps {
   personnelData: {
     first_name: string;
     last_name: string;
+    ssn_full?: string | null;
     ssn_last_four?: string | null;
     address?: string | null;
     city?: string | null;
