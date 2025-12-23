@@ -143,19 +143,19 @@ serve(async (req) => {
     const qbLineItems = [];
 
     for (const item of lineItems) {
-      // Calculate effective unit price for display purposes
-      // But use the exact item.total from CommandX to avoid rounding discrepancies
+      // Use full precision for UnitPrice so that Amount = UnitPrice × Qty exactly
+      // This ensures QuickBooks validation passes and totals match CommandX
       const effectiveUnitPrice = item.quantity !== 0 
-        ? Math.round((item.total / item.quantity) * 100) / 100 
+        ? item.total / item.quantity  // No rounding - keep full precision
         : item.unit_price;
       
       qbLineItems.push({
         DetailType: 'SalesItemLineDetail',
-        Amount: item.total,  // Use exact total from CommandX
+        Amount: item.total,  // Exact total from CommandX
         Description: item.description,
         SalesItemLineDetail: {
           Qty: item.quantity,
-          UnitPrice: effectiveUnitPrice,
+          UnitPrice: effectiveUnitPrice,  // Full precision ensures Amount = UnitPrice × Qty
         },
       });
     }
