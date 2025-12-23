@@ -2125,6 +2125,7 @@ export type Database = {
           is_taxable: boolean | null
           job_order_id: string
           markup: number
+          product_name: string | null
           quantity: number
           total: number
           unit_price: number
@@ -2137,6 +2138,7 @@ export type Database = {
           is_taxable?: boolean | null
           job_order_id: string
           markup: number
+          product_name?: string | null
           quantity: number
           total: number
           unit_price: number
@@ -2149,6 +2151,7 @@ export type Database = {
           is_taxable?: boolean | null
           job_order_id?: string
           markup?: number
+          product_name?: string | null
           quantity?: number
           total?: number
           unit_price?: number
