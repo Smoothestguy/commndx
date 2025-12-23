@@ -1884,6 +1884,7 @@ export type Database = {
           invoice_id: string
           jo_line_item_id: string | null
           markup: number
+          product_name: string | null
           quantity: number
           total: number
           unit_price: number
@@ -1895,6 +1896,7 @@ export type Database = {
           invoice_id: string
           jo_line_item_id?: string | null
           markup?: number
+          product_name?: string | null
           quantity: number
           total: number
           unit_price: number
@@ -1906,6 +1908,7 @@ export type Database = {
           invoice_id?: string
           jo_line_item_id?: string | null
           markup?: number
+          product_name?: string | null
           quantity?: number
           total?: number
           unit_price?: number

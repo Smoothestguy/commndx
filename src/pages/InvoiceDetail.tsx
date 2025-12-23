@@ -6,6 +6,7 @@ import { StatusBadge } from "@/components/shared/StatusBadge";
 import { ArrowLeft, Send, Download, CheckCircle, Trash2, DollarSign } from "lucide-react";
 import { toast } from "@/hooks/use-toast";
 import { useInvoice, useMarkInvoicePaid, useDeleteInvoice } from "@/integrations/supabase/hooks/useInvoices";
+import { useCompanySettings } from "@/integrations/supabase/hooks/useCompanySettings";
 import { Skeleton } from "@/components/ui/skeleton";
 import { format } from "date-fns";
 import { supabase } from "@/integrations/supabase/client";
@@ -33,6 +34,7 @@ const InvoiceDetail = () => {
   const navigate = useNavigate();
   const isMobile = useIsMobile();
   const { data: invoice, isLoading, error, refetch } = useInvoice(id || "");
+  const { data: companySettings } = useCompanySettings();
   const markPaid = useMarkInvoicePaid();
   const deleteInvoice = useDeleteInvoice();
   const [showSendConfirm, setShowSendConfirm] = useState(false);
@@ -90,7 +92,20 @@ const InvoiceDetail = () => {
 
   const handleDownloadPDF = () => {
     if (invoice) {
-      generateInvoicePDF(invoice);
+      // Convert company settings to CompanyInfo format
+      const companyInfo = companySettings ? {
+        company_name: companySettings.company_name || "Your Company",
+        address: companySettings.address || "",
+        city: companySettings.city || "",
+        state: companySettings.state || "",
+        zip: companySettings.zip || "",
+        phone: companySettings.phone || "",
+        email: companySettings.email || "",
+        website: companySettings.website || "",
+        logo_url: companySettings.logo_url || null,
+      } : undefined;
+      
+      generateInvoicePDF(invoice, companyInfo);
     }
   };
 

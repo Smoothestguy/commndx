@@ -4,6 +4,7 @@ import { toast } from "sonner";
 
 export interface JobOrderLineItem {
   id?: string;
+  product_name?: string;
   description: string;
   quantity: number;
   unit_price: number;
