@@ -13,6 +13,7 @@ export interface InvoiceLineItem {
   unit_price: number;
   markup: number;
   total: number;
+  display_order?: number;
 }
 
 export interface InvoicePayment {
@@ -83,7 +84,8 @@ export const useInvoice = (id: string) => {
       const { data: lineItems, error: lineItemsError } = await supabase
         .from("invoice_line_items")
         .select("*")
-        .eq("invoice_id", id);
+        .eq("invoice_id", id)
+        .order("display_order", { ascending: true, nullsFirst: false });
 
       if (lineItemsError) throw lineItemsError;
 
@@ -154,7 +156,7 @@ export const useAddInvoice = () => {
 
       // Insert line items
       if (invoice.line_items.length > 0) {
-        const lineItemsToInsert = invoice.line_items.map((item) => ({
+        const lineItemsToInsert = invoice.line_items.map((item, index) => ({
           invoice_id: newInvoice.id,
           jo_line_item_id: item.jo_line_item_id || null,
           product_id: item.product_id || null,
@@ -164,6 +166,7 @@ export const useAddInvoice = () => {
           unit_price: item.unit_price,
           markup: item.markup,
           total: item.total,
+          display_order: item.display_order ?? index,
         }));
 
         const { error: lineItemsError } = await supabase
@@ -272,15 +275,17 @@ export const useUpdateInvoice = () => {
         await supabase.from("invoice_line_items").delete().eq("invoice_id", id);
 
         if (invoice.line_items.length > 0) {
-          const lineItemsToInsert = invoice.line_items.map((item) => ({
+          const lineItemsToInsert = invoice.line_items.map((item, index) => ({
             invoice_id: id,
             jo_line_item_id: item.jo_line_item_id || null,
+            product_id: item.product_id || null,
             product_name: item.product_name || null,
             description: item.description,
             quantity: item.quantity,
             unit_price: item.unit_price,
             markup: item.markup,
             total: item.total,
+            display_order: item.display_order ?? index,
           }));
 
           const { error: lineItemsError } = await supabase
