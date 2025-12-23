@@ -1,3 +1,4 @@
+// PDF Generator for W-9 forms - v2
 import { PDFDocument, StandardFonts } from "pdf-lib";
 
 export interface W9PDFFormData {
