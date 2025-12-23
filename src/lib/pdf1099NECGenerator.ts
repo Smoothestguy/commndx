@@ -1,3 +1,4 @@
+// PDF Generator for 1099-NEC forms - v2
 import { PDFDocument, StandardFonts } from "pdf-lib";
 
 export interface Form1099NECData {
