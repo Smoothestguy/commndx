@@ -234,16 +234,14 @@ serve(async (req) => {
     // Build line items for QuickBooks
     const qbLineItems = [];
     for (const item of invoice.line_items) {
-      // Calculate effective unit price (includes markup if using margin pricing)
-      // For margin pricing: effectiveUnitPrice = unit_price / (1 - markup/100)
-      // For markup pricing: effectiveUnitPrice = unit_price * (1 + markup/100)
-      // Since total = qty * effectivePrice, we derive it from the stored total
-      const effectiveUnitPrice = item.quantity > 0 
-        ? Number((item.total / item.quantity).toFixed(2))
-        : item.unit_price;
-      
-      // QuickBooks requires Amount = Qty * UnitPrice exactly
-      const qbAmount = Number((effectiveUnitPrice * item.quantity).toFixed(2));
+      // QuickBooks requires Amount = Qty * UnitPrice.
+      // Our stored totals may include markup/margin logic, so we derive UnitPrice from total/qty.
+      // Use higher precision on UnitPrice to avoid rounding mismatches.
+      const qty = Number(item.quantity) || 0;
+      const total = Number(item.total) || 0;
+
+      const effectiveUnitPrice = qty > 0 ? Number((total / qty).toFixed(5)) : Number(item.unit_price) || 0;
+      const qbAmount = Number((effectiveUnitPrice * qty).toFixed(2));
       
       // Get QB Item ID - first try by product_id, then fallback to name lookup
       let qbItemId = item.product_id ? qbItemMap.get(item.product_id) : null;
@@ -264,7 +262,7 @@ serve(async (req) => {
         Amount: qbAmount,
         Description: qbDescription,
         SalesItemLineDetail: {
-          Qty: item.quantity,
+          Qty: qty,
           UnitPrice: effectiveUnitPrice,
         },
       };
