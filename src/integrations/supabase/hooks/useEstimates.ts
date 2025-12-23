@@ -426,10 +426,10 @@ export const useConvertEstimateToInvoice = () => {
 
       if (estimateError) throw estimateError;
 
-      // Join with products table to get product names
+      // Join with products table to get product names and descriptions
       const { data: lineItems, error: lineItemsError } = await supabase
         .from("estimate_line_items")
-        .select("*, products:product_id(name)")
+        .select("*, products:product_id(name, description)")
         .eq("estimate_id", estimateId);
 
       if (lineItemsError) throw lineItemsError;
@@ -480,16 +480,31 @@ export const useConvertEstimateToInvoice = () => {
 
       if (invoiceError) throw invoiceError;
 
-      // Create invoice line items with product name from estimate or joined products table
-      const invoiceLineItems = lineItems.map((item: any) => ({
-        invoice_id: invoice.id,
-        product_name: item.product_name || item.products?.name || null,
-        description: item.description,
-        quantity: item.quantity,
-        unit_price: item.unit_price,
-        markup: item.markup,
-        total: item.total,
-      }));
+      // Create invoice line items with separated product name and description
+      const invoiceLineItems = lineItems.map((item: any) => {
+        const productName = item.product_name || item.products?.name || null;
+        
+        // Clean description: if it starts with the product name (old data), strip it
+        let cleanDescription = item.description || "";
+        if (productName && cleanDescription.startsWith(productName)) {
+          // Remove product name prefix and common separators
+          cleanDescription = cleanDescription.slice(productName.length).replace(/^[\s\-:]+/, "").trim();
+          // If nothing left, use product description or empty
+          if (!cleanDescription) {
+            cleanDescription = item.products?.description || "";
+          }
+        }
+        
+        return {
+          invoice_id: invoice.id,
+          product_name: productName,
+          description: cleanDescription,
+          quantity: item.quantity,
+          unit_price: item.unit_price,
+          markup: item.markup,
+          total: item.total,
+        };
+      });
 
       const { error: lineItemsInsertError } = await supabase
         .from("invoice_line_items")
