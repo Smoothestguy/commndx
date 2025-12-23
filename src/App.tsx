@@ -118,6 +118,7 @@ import ApplicationFormTemplates from "./pages/ApplicationFormTemplates";
 import ApplicationFormBuilder from "./pages/ApplicationFormBuilder";
 import PersonnelOnboarding from "./pages/PersonnelOnboarding";
 import OnboardingComplete from "./pages/OnboardingComplete";
+import AdminNotifications from "./pages/AdminNotifications";
 import SessionHistory from "./pages/SessionHistory";
 import AiDevAssistant from "./pages/admin/AiDevAssistant";
 const queryClient = new QueryClient();
@@ -349,6 +350,7 @@ const App = () => {
                       element={<QuickBooksSettings />}
                     />
                     <Route path="/messages" element={<Messages />} />
+                    <Route path="/notifications" element={<AdminNotifications />} />
                     <Route
                       path="/admin/contractor-submissions"
                       element={<ContractorSubmissions />}

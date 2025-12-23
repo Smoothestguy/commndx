@@ -143,7 +143,7 @@ export function useOnboardingToken(token: string | undefined) {
                 notification_type: "onboarding_started",
                 title: `Onboarding Started: ${personnelPreview.first_name} ${personnelPreview.last_name}`,
                 message: `${personnelPreview.first_name} ${personnelPreview.last_name} has opened their onboarding link and started the process.`,
-                link_url: `/staffing/personnel/${tokenData.personnel_id}`,
+                link_url: `/personnel/${tokenData.personnel_id}`,
                 related_id: tokenData.personnel_id,
                 metadata: {
                   personnel_name: `${personnelPreview.first_name} ${personnelPreview.last_name}`,
@@ -319,7 +319,7 @@ export function useCompleteOnboarding() {
             notification_type: "onboarding_complete",
             title: `Onboarding Complete: ${formData.first_name} ${formData.last_name}`,
             message: `${formData.first_name} ${formData.last_name} has completed all onboarding documentation.`,
-            link_url: `/staffing/personnel/${personnelId}`,
+            link_url: `/personnel/${personnelId}`,
             related_id: personnelId,
             metadata: {
               personnel_name: `${formData.first_name} ${formData.last_name}`,
