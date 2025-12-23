@@ -153,26 +153,28 @@ export function DevActivityDashboard({ dateRange, targetUserId }: DevActivityDas
       <DevActivityStats activities={activities} />
 
       {/* Actions & Filters */}
-      <div className="flex flex-col sm:flex-row gap-4">
-        <div className="flex gap-2">
-          <Button onClick={() => setShowUpload(true)}>
+      <div className="flex flex-col gap-3 sm:gap-4">
+        <div className="flex flex-wrap gap-2">
+          <Button onClick={() => setShowUpload(true)} size="sm" className="flex-1 sm:flex-none">
             <Upload className="h-4 w-4 mr-2" />
-            Upload Screenshot
+            <span className="sm:hidden">Upload</span>
+            <span className="hidden sm:inline">Upload Screenshot</span>
           </Button>
-          <Button variant="outline" onClick={() => setShowManualForm(true)}>
+          <Button variant="outline" size="sm" onClick={() => setShowManualForm(true)} className="flex-1 sm:flex-none">
             <Plus className="h-4 w-4 mr-2" />
-            Add Manual
+            <span className="sm:hidden">Add</span>
+            <span className="hidden sm:inline">Add Manual</span>
           </Button>
           {!isSelectionMode && filteredActivities.length > 0 && (
-            <Button variant="outline" onClick={() => setIsSelectionMode(true)}>
+            <Button variant="outline" size="sm" onClick={() => setIsSelectionMode(true)} className="flex-1 sm:flex-none">
               <CheckSquare className="h-4 w-4 mr-2" />
               Select
             </Button>
           )}
         </div>
 
-        <div className="flex-1 flex gap-2 flex-wrap">
-          <div className="relative flex-1 min-w-[200px]">
+        <div className="flex flex-col sm:flex-row gap-2">
+          <div className="relative flex-1">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
             <Input
               placeholder="Search activities..."
@@ -181,71 +183,75 @@ export function DevActivityDashboard({ dateRange, targetUserId }: DevActivityDas
               className="pl-9"
             />
           </div>
-          <Select value={typeFilter} onValueChange={setTypeFilter}>
-            <SelectTrigger className="w-[150px]">
-              <SelectValue placeholder="All types" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">All types</SelectItem>
-              {ACTIVITY_TYPES.map((type) => (
-                <SelectItem key={type.value} value={type.value}>
-                  {type.label}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-          <Select value={projectFilter} onValueChange={setProjectFilter}>
-            <SelectTrigger className="w-[150px]">
-              <SelectValue placeholder="All projects" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">All projects</SelectItem>
-              <SelectItem value="none">No project</SelectItem>
-              {uniqueProjects.map((project) => (
-                <SelectItem key={project} value={project!}>
-                  {project}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
+          <div className="flex gap-2">
+            <Select value={typeFilter} onValueChange={setTypeFilter}>
+              <SelectTrigger className="flex-1 sm:w-[130px]">
+                <SelectValue placeholder="All types" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All types</SelectItem>
+                {ACTIVITY_TYPES.map((type) => (
+                  <SelectItem key={type.value} value={type.value}>
+                    {type.label}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            <Select value={projectFilter} onValueChange={setProjectFilter}>
+              <SelectTrigger className="flex-1 sm:w-[130px]">
+                <SelectValue placeholder="All projects" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All projects</SelectItem>
+                <SelectItem value="none">No project</SelectItem>
+                {uniqueProjects.map((project) => (
+                  <SelectItem key={project} value={project!}>
+                    {project}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
         </div>
       </div>
 
       {/* Bulk Action Bar */}
       {isSelectionMode && (
-        <div className="flex items-center gap-4 p-3 bg-muted/50 border rounded-lg">
+        <div className="flex flex-col sm:flex-row sm:items-center gap-3 p-3 bg-muted/50 border rounded-lg">
           <div className="flex items-center gap-2">
             <Checkbox
               checked={allSelected}
               onCheckedChange={(checked) => (checked ? selectAll() : deselectAll())}
             />
             <span className="text-sm font-medium">
-              {selectedIds.size} of {filteredActivities.length} selected
+              {selectedIds.size}/{filteredActivities.length}
             </span>
           </div>
           <div className="flex-1" />
-          <div className="flex gap-2">
+          <div className="flex flex-wrap gap-2">
             <Button
               size="sm"
               variant="outline"
               onClick={() => setShowBulkEditModal(true)}
               disabled={selectedIds.size === 0}
+              className="flex-1 sm:flex-none"
             >
-              <Edit className="h-4 w-4 mr-2" />
-              Bulk Edit
+              <Edit className="h-4 w-4 sm:mr-2" />
+              <span className="hidden sm:inline">Bulk Edit</span>
             </Button>
             <Button
               size="sm"
               variant="destructive"
               onClick={() => setShowBulkDeleteDialog(true)}
               disabled={selectedIds.size === 0}
+              className="flex-1 sm:flex-none"
             >
-              <Trash2 className="h-4 w-4 mr-2" />
-              Delete Selected
+              <Trash2 className="h-4 w-4 sm:mr-2" />
+              <span className="hidden sm:inline">Delete</span>
             </Button>
             <Button size="sm" variant="ghost" onClick={exitSelectionMode}>
-              <X className="h-4 w-4 mr-2" />
-              Cancel
+              <X className="h-4 w-4 sm:mr-2" />
+              <span className="hidden sm:inline">Cancel</span>
             </Button>
           </div>
         </div>
