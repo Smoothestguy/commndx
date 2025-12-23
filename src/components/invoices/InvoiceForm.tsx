@@ -306,6 +306,7 @@ export function InvoiceForm({ onSubmit, initialData, jobOrderId }: InvoiceFormPr
       total,
       due_date: values.dueDate,
       line_items: lineItems.map(({ id, ...item }) => ({
+        product_id: item.productId || null,
         product_name: item.productName || null,
         description: item.description,
         quantity: item.quantity,
