@@ -1,9 +1,10 @@
 import { useState } from "react";
-import { FileText, Download, Trash2, Loader2, Eye, X } from "lucide-react";
+import { FileText, Download, Trash2, Loader2, Eye, DownloadCloud } from "lucide-react";
 import { format } from "date-fns";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { toast } from "@/hooks/use-toast";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -42,6 +43,7 @@ export function PersonnelDocumentsList({
   const getDocumentUrl = useGetPersonnelDocumentUrl();
   
   const [downloadingId, setDownloadingId] = useState<string | null>(null);
+  const [downloadingAll, setDownloadingAll] = useState(false);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [documentToDelete, setDocumentToDelete] = useState<PersonnelDocument | null>(null);
   
@@ -50,15 +52,79 @@ export function PersonnelDocumentsList({
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
   const [previewLoading, setPreviewLoading] = useState(false);
 
+  const forceDownload = async (url: string, fileName: string) => {
+    try {
+      const response = await fetch(url);
+      const blob = await response.blob();
+      const blobUrl = window.URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      link.href = blobUrl;
+      link.download = fileName;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      window.URL.revokeObjectURL(blobUrl);
+    } catch (err) {
+      throw new Error("Failed to download file");
+    }
+  };
+
   const handleDownload = async (document: PersonnelDocument) => {
     setDownloadingId(document.id);
     try {
       const url = await getDocumentUrl(document.file_path);
       if (url) {
-        window.open(url, "_blank");
+        await forceDownload(url, document.file_name);
+        toast({
+          title: "Download complete",
+          description: `${document.file_name} has been downloaded.`,
+        });
       }
+    } catch (err) {
+      toast({
+        title: "Download failed",
+        description: "Failed to download the file. Please try again.",
+        variant: "destructive",
+      });
     } finally {
       setDownloadingId(null);
+    }
+  };
+
+  const handleDownloadAll = async () => {
+    if (!documents || documents.length === 0) return;
+    
+    setDownloadingAll(true);
+    let successCount = 0;
+    let failCount = 0;
+    
+    for (const doc of documents) {
+      try {
+        const url = await getDocumentUrl(doc.file_path);
+        if (url) {
+          await forceDownload(url, doc.file_name);
+          successCount++;
+          // Small delay between downloads to prevent browser issues
+          await new Promise(resolve => setTimeout(resolve, 500));
+        }
+      } catch (err) {
+        failCount++;
+      }
+    }
+    
+    setDownloadingAll(false);
+    
+    if (failCount === 0) {
+      toast({
+        title: "All downloads complete",
+        description: `Successfully downloaded ${successCount} document(s).`,
+      });
+    } else {
+      toast({
+        title: "Downloads completed with errors",
+        description: `Downloaded ${successCount} file(s), ${failCount} failed.`,
+        variant: "destructive",
+      });
     }
   };
 
@@ -140,14 +206,50 @@ export function PersonnelDocumentsList({
     );
   }
 
+  // Group documents by type for better organization
+  const groupedDocuments = documents.reduce((acc, doc) => {
+    const type = doc.document_type || "other";
+    if (!acc[type]) {
+      acc[type] = [];
+    }
+    acc[type].push(doc);
+    return acc;
+  }, {} as Record<string, PersonnelDocument[]>);
+
+  // Priority order for document types
+  const typeOrder = ["government_id", "ssn_card", "work_authorization", "profile_photo", "other"];
+  const sortedTypes = Object.keys(groupedDocuments).sort(
+    (a, b) => typeOrder.indexOf(a) - typeOrder.indexOf(b)
+  );
+
   return (
     <>
       <Card>
-        <CardHeader>
+        <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-4">
           <CardTitle className="text-lg flex items-center gap-2">
             <FileText className="h-5 w-5" />
             Uploaded Documents ({documents.length})
           </CardTitle>
+          {documents.length > 0 && (
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={handleDownloadAll}
+              disabled={downloadingAll}
+            >
+              {downloadingAll ? (
+                <>
+                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                  Downloading...
+                </>
+              ) : (
+                <>
+                  <DownloadCloud className="h-4 w-4 mr-2" />
+                  Download All
+                </>
+              )}
+            </Button>
+          )}
         </CardHeader>
         <CardContent>
           <div className="space-y-3">
