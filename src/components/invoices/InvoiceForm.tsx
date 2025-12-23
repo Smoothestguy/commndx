@@ -51,6 +51,7 @@ const formSchema = z.object({
 interface LineItem {
   id: string;
   productId?: string;
+  productName?: string;
   description: string;
   quantity: number;
   unitPrice: number;
@@ -75,7 +76,7 @@ export function InvoiceForm({ onSubmit, initialData, jobOrderId }: InvoiceFormPr
   const [selectedCustomerId, setSelectedCustomerId] = useState<string | undefined>();
   const { data: jobOrderWithLineItems } = useJobOrder(selectedJobOrderId || "");
   const [lineItems, setLineItems] = useState<LineItem[]>([
-    { id: "1", description: "", quantity: 1, unitPrice: 0, margin: 0, total: 0, isTaxable: true },
+    { id: "1", productName: "", description: "", quantity: 1, unitPrice: 0, margin: 0, total: 0, isTaxable: true },
   ]);
   const [selectedJobOrder, setSelectedJobOrder] = useState<any>(null);
   const [selectedCustomer, setSelectedCustomer] = useState<any>(null);
@@ -149,6 +150,7 @@ export function InvoiceForm({ onSubmit, initialData, jobOrderId }: InvoiceFormPr
       setSelectedJobOrder(jobOrderWithLineItems);
       const copiedItems = jobOrderWithLineItems.line_items.map((item: any, index: number) => ({
         id: `${Date.now()}-${index}`,
+        productName: item.product_name || "",
         description: item.description,
         quantity: item.quantity,
         unitPrice: item.unit_price,
@@ -176,7 +178,7 @@ export function InvoiceForm({ onSubmit, initialData, jobOrderId }: InvoiceFormPr
       setSelectedJobOrder(null);
       form.setValue("jobOrderId", "");
       // Reset line items to empty when switching to customer mode
-      setLineItems([{ id: "1", description: "", quantity: 1, unitPrice: 0, margin: 0, total: 0, isTaxable: true }]);
+      setLineItems([{ id: "1", productName: "", description: "", quantity: 1, unitPrice: 0, margin: 0, total: 0, isTaxable: true }]);
     }
   };
 
@@ -205,6 +207,7 @@ export function InvoiceForm({ onSubmit, initialData, jobOrderId }: InvoiceFormPr
     if (jobOrderWithLineItems?.line_items?.length > 0) {
       const copiedItems = jobOrderWithLineItems.line_items.map((item: any, index: number) => ({
         id: `${Date.now()}-${index}`,
+        productName: item.product_name || "",
         description: item.description,
         quantity: item.quantity,
         unitPrice: item.unit_price,
@@ -219,7 +222,7 @@ export function InvoiceForm({ onSubmit, initialData, jobOrderId }: InvoiceFormPr
   const addLineItem = () => {
     setLineItems([
       ...lineItems,
-      { id: Date.now().toString(), productId: undefined, description: "", quantity: 1, unitPrice: 0, margin: 0, total: 0, isTaxable: true },
+      { id: Date.now().toString(), productId: undefined, productName: "", description: "", quantity: 1, unitPrice: 0, margin: 0, total: 0, isTaxable: true },
     ]);
   };
 
@@ -234,6 +237,7 @@ export function InvoiceForm({ onSubmit, initialData, jobOrderId }: InvoiceFormPr
           return {
             ...item,
             productId: product.id,
+            productName: product.name,
             description: product.description || product.name,
             unitPrice: product.cost,
             margin: product.markup,
@@ -302,6 +306,7 @@ export function InvoiceForm({ onSubmit, initialData, jobOrderId }: InvoiceFormPr
       total,
       due_date: values.dueDate,
       line_items: lineItems.map(({ id, ...item }) => ({
+        product_name: item.productName || null,
         description: item.description,
         quantity: item.quantity,
         unit_price: item.unitPrice,

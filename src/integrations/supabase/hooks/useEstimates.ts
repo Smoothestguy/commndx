@@ -476,8 +476,9 @@ export const useConvertEstimateToInvoice = () => {
       if (invoiceError) throw invoiceError;
 
       // Create invoice line items
-      const invoiceLineItems = lineItems.map((item) => ({
+      const invoiceLineItems = lineItems.map((item: any) => ({
         invoice_id: invoice.id,
+        product_name: item.product_name || null,
         description: item.description,
         quantity: item.quantity,
         unit_price: item.unit_price,
