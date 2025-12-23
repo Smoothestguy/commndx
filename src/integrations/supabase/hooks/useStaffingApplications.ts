@@ -373,27 +373,9 @@ export const useSubmitApplication = () => {
       }
       console.log("[Application] Existing applicant result:", existingApplicant);
 
-      // If applicant exists, check if they already applied to this posting
-      if (existingApplicant) {
-        console.log("[Application] Checking for duplicate application for applicant:", existingApplicant.id);
-        const { data: existingApplication, error: appCheckError } = await supabase
-          .from("applications")
-          .select("id")
-          .eq("applicant_id", existingApplicant.id)
-          .eq("job_posting_id", posting_id)
-          .maybeSingle();
-
-        if (appCheckError) {
-          console.error("[Application] Error checking duplicate application:", appCheckError);
-          throw appCheckError;
-        }
-
-        if (existingApplication) {
-          console.log("[Application] Duplicate application found:", existingApplication.id);
-          throw new Error("DUPLICATE_APPLICATION");
-        }
-        console.log("[Application] No duplicate application found");
-      }
+      // Allow repeat applications - existing personnel/applicants can apply to new positions
+      // or re-apply to the same position (creates a new application each time)
+      console.log("[Application] Allowing application regardless of existing applications");
 
       let applicantId: string;
 

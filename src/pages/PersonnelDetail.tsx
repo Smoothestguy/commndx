@@ -1,7 +1,7 @@
 import { useParams } from "react-router-dom";
 import { DetailPageLayout } from "@/components/layout/DetailPageLayout";
 import { SEO } from "@/components/SEO";
-import { usePersonnelById, useResendOnboardingEmail } from "@/integrations/supabase/hooks/usePersonnel";
+import { usePersonnelById, useResendOnboardingEmail, useUpdatePersonnelRating } from "@/integrations/supabase/hooks/usePersonnel";
 import { usePersonnelInvitationCheck } from "@/integrations/supabase/hooks/usePortal";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -9,7 +9,7 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { ScrollArea, ScrollBar } from "@/components/ui/scroll-area";
-import { Mail, Phone, MapPin, Calendar, DollarSign, AlertTriangle, IdCard, MessageSquare, Edit, Flag, FileCheck, Shield, Award, AlertCircle, LucideIcon, Clock, Check, Send, Link2, Building2, FileText, Landmark } from "lucide-react";
+import { Mail, Phone, MapPin, Calendar, DollarSign, AlertTriangle, IdCard, MessageSquare, Edit, Flag, FileCheck, Shield, Award, AlertCircle, LucideIcon, Clock, Check, Send, Link2, Building2, FileText, Landmark, Star } from "lucide-react";
 import { DirectDepositView } from "@/components/personnel/DirectDepositView";
 import { AgreementSignatureView } from "@/components/personnel/AgreementSignatureView";
 import { cn } from "@/lib/utils";
@@ -27,6 +27,7 @@ import { Generate1099Dialog } from "@/components/personnel/Generate1099Dialog";
 import { usePersonnelW9Form } from "@/integrations/supabase/hooks/useW9Forms";
 import { PersonnelVendorMergeDialog } from "@/components/merge/PersonnelVendorMergeDialog";
 import { PersonnelDocumentsList } from "@/components/personnel/PersonnelDocumentsList";
+import { StarRating } from "@/components/ui/star-rating";
 
 interface ComplianceIssue {
   type: string;
@@ -43,6 +44,7 @@ const PersonnelDetail = () => {
   const { data: personnel, isLoading } = usePersonnelById(id);
   const { data: existingInvitation } = usePersonnelInvitationCheck(id);
   const resendOnboardingEmail = useResendOnboardingEmail();
+  const updateRating = useUpdatePersonnelRating();
   const { data: w9Form } = usePersonnelW9Form(id);
   const [badgeDialogOpen, setBadgeDialogOpen] = useState(false);
   const [editDialogOpen, setEditDialogOpen] = useState(false);
@@ -278,6 +280,16 @@ const PersonnelDetail = () => {
                     {personnel.first_name} {personnel.last_name}
                   </h2>
                   <p className="text-muted-foreground">{personnel.personnel_number}</p>
+                  <div className="flex items-center gap-2 mt-1">
+                    <StarRating
+                      value={personnel.rating || 0}
+                      onChange={(rating) => updateRating.mutate({ id: personnel.id, rating })}
+                      size="md"
+                    />
+                    <span className="text-sm text-muted-foreground">
+                      {personnel.rating ? `${personnel.rating}/5` : "Not rated"}
+                    </span>
+                  </div>
                 </div>
 
                 <div className="flex flex-wrap gap-2">
