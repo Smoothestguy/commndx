@@ -19,7 +19,7 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import { CalendarIcon } from "lucide-react";
 import { format } from "date-fns";
 import { cn } from "@/lib/utils";
-import { useQuickBooksConfig, useQuickBooksNextNumber } from "@/integrations/supabase/hooks/useQuickBooks";
+import { useQuickBooksConfig } from "@/integrations/supabase/hooks/useQuickBooks";
 import { Badge } from "@/components/ui/badge";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "@/components/ui/command";
@@ -27,6 +27,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import { PendingAttachmentsUpload, PendingFile } from "@/components/shared/PendingAttachmentsUpload";
 import { cleanupPendingAttachments } from "@/utils/attachmentUtils";
 import { toast } from "sonner";
+import { getNextInvoiceNumber } from "@/utils/invoiceNumberGenerator";
 
 const formSchema = z.object({
   number: z.string().min(1, "Invoice number is required"),
@@ -93,12 +94,14 @@ export function InvoiceForm({ onSubmit, initialData, jobOrderId }: InvoiceFormPr
   // QuickBooks integration
   const { data: qbConfig } = useQuickBooksConfig();
   const isQBConnected = qbConfig?.is_connected ?? false;
-  const { data: qbNextNumber, isLoading: qbNumberLoading } = useQuickBooksNextNumber('invoice', isQBConnected);
+  
+  // State for invoice number loading
+  const [invoiceNumberLoading, setInvoiceNumberLoading] = useState(false);
 
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
     defaultValues: {
-      number: initialData?.number || `INV-${Date.now()}`,
+      number: initialData?.number || "",
       invoiceType: jobOrderId ? "job_order" : "job_order",
       jobOrderId: jobOrderId || initialData?.jobOrderId || "",
       customerId: initialData?.customerId || "",
@@ -109,12 +112,25 @@ export function InvoiceForm({ onSubmit, initialData, jobOrderId }: InvoiceFormPr
     },
   });
 
-  // Set QuickBooks number when available
+  // Fetch invoice number on mount (if not editing)
   useEffect(() => {
-    if (qbNextNumber && !initialData?.number) {
-      form.setValue("number", qbNextNumber);
-    }
-  }, [qbNextNumber, initialData?.number]);
+    if (initialData?.number) return; // Don't fetch if editing existing invoice
+    
+    const fetchNumber = async () => {
+      setInvoiceNumberLoading(true);
+      try {
+        const result = await getNextInvoiceNumber();
+        form.setValue("number", result.number);
+      } catch (error) {
+        console.error("Failed to fetch invoice number:", error);
+        toast.error("Failed to generate invoice number");
+      } finally {
+        setInvoiceNumberLoading(false);
+      }
+    };
+    
+    fetchNumber();
+  }, [initialData?.number]);
 
   useEffect(() => {
     if (jobOrderId && jobOrders.length > 0) {
@@ -329,7 +345,7 @@ export function InvoiceForm({ onSubmit, initialData, jobOrderId }: InvoiceFormPr
               <Label htmlFor="number">Invoice Number</Label>
               {isQBConnected && (
                 <Badge variant="outline" className="text-xs">
-                  {qbNumberLoading ? (
+                  {invoiceNumberLoading ? (
                     <Loader2 className="h-3 w-3 animate-spin mr-1" />
                   ) : null}
                   QuickBooks
