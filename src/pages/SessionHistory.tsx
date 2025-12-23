@@ -1,6 +1,7 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Navigate } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
+import { useUserRole } from "@/hooks/useUserRole";
 import { SEO } from "@/components/SEO";
 import { DetailPageLayout } from "@/components/layout/DetailPageLayout";
 import { SessionHistoryStats } from "@/components/session/SessionHistoryStats";
@@ -9,22 +10,78 @@ import { SessionActivityTimeline } from "@/components/session/SessionActivityTim
 import { DevActivityDashboard } from "@/components/session/DevActivityDashboard";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { DatePickerWithRange } from "@/components/ui/date-range-picker";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { startOfMonth, endOfMonth } from "date-fns";
 import { DateRange } from "react-day-picker";
+import { supabase } from "@/integrations/supabase/client";
+import { useQuery } from "@tanstack/react-query";
 
 const TARGET_USER_EMAIL = "chris.guevara97@gmail.com";
+const TARGET_USER_ID = "a]"; // Will be fetched dynamically
 
 export default function SessionHistory() {
   const { user } = useAuth();
+  const { isAdmin, isManager, loading: roleLoading } = useUserRole();
   const [selectedSessionId, setSelectedSessionId] = useState<string | null>(null);
   const [dateRange, setDateRange] = useState<DateRange | undefined>({
     from: startOfMonth(new Date()),
     to: endOfMonth(new Date()),
   });
+  const [targetUserId, setTargetUserId] = useState<string | null>(null);
 
-  if (user?.email !== TARGET_USER_EMAIL) {
+  // Fetch users who have session data (for admin selector)
+  const { data: sessionUsers } = useQuery({
+    queryKey: ["session-users"],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("user_work_sessions")
+        .select("user_id")
+        .order("session_start", { ascending: false });
+      
+      if (error) throw error;
+      
+      // Get unique user IDs
+      const uniqueUserIds = [...new Set(data.map(s => s.user_id))];
+      
+      // Fetch profiles for these users
+      const { data: profiles, error: profileError } = await supabase
+        .from("profiles")
+        .select("id, email, first_name, last_name")
+        .in("id", uniqueUserIds);
+      
+      if (profileError) throw profileError;
+      return profiles || [];
+    },
+    enabled: isAdmin || isManager,
+  });
+
+  // Set default target user when data loads
+  useEffect(() => {
+    if (user && !targetUserId) {
+      // Default to current user if they're Chris, or first available user for admins
+      if (user.email === TARGET_USER_EMAIL) {
+        setTargetUserId(user.id);
+      } else if ((isAdmin || isManager) && sessionUsers && sessionUsers.length > 0) {
+        // Find Chris's ID or default to first user
+        const chrisProfile = sessionUsers.find(p => p.email === TARGET_USER_EMAIL);
+        setTargetUserId(chrisProfile?.id || sessionUsers[0].id);
+      }
+    }
+  }, [user, isAdmin, isManager, sessionUsers, targetUserId]);
+
+  // Allow access if user is Chris OR has admin/manager role
+  const hasAccess = user?.email === TARGET_USER_EMAIL || isAdmin || isManager;
+
+  if (roleLoading) {
+    return null; // Or loading spinner
+  }
+
+  if (!hasAccess) {
     return <Navigate to="/" replace />;
   }
+
+  const canSelectUser = isAdmin || isManager;
+  const effectiveUserId = targetUserId || user?.id || null;
 
   return (
     <>
@@ -39,7 +96,26 @@ export default function SessionHistory() {
         backPath="/settings"
       >
         <div className="space-y-6">
-          <div className="flex justify-end">
+          <div className="flex flex-wrap gap-4 justify-between items-center">
+            {canSelectUser && sessionUsers && sessionUsers.length > 0 && (
+              <div className="flex items-center gap-2">
+                <span className="text-sm text-muted-foreground">Viewing:</span>
+                <Select value={targetUserId || ""} onValueChange={setTargetUserId}>
+                  <SelectTrigger className="w-[250px]">
+                    <SelectValue placeholder="Select user" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {sessionUsers.map((profile) => (
+                      <SelectItem key={profile.id} value={profile.id}>
+                        {profile.first_name && profile.last_name 
+                          ? `${profile.first_name} ${profile.last_name}` 
+                          : profile.email}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            )}
             <DatePickerWithRange date={dateRange} setDate={setDateRange} />
           </div>
 
@@ -51,12 +127,13 @@ export default function SessionHistory() {
             </TabsList>
 
             <TabsContent value="sessions">
-              <SessionHistoryStats dateRange={dateRange} />
+              <SessionHistoryStats dateRange={dateRange} targetUserId={effectiveUserId} />
               <div className="mt-4">
                 <SessionHistoryTable
                   dateRange={dateRange}
                   onSelectSession={setSelectedSessionId}
                   selectedSessionId={selectedSessionId}
+                  targetUserId={effectiveUserId}
                 />
               </div>
             </TabsContent>
@@ -65,11 +142,12 @@ export default function SessionHistory() {
               <SessionActivityTimeline
                 dateRange={dateRange}
                 sessionId={selectedSessionId}
+                targetUserId={effectiveUserId}
               />
             </TabsContent>
 
             <TabsContent value="dev-activities">
-              <DevActivityDashboard dateRange={dateRange} />
+              <DevActivityDashboard dateRange={dateRange} targetUserId={effectiveUserId} />
             </TabsContent>
           </Tabs>
         </div>
