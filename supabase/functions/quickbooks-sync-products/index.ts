@@ -82,7 +82,9 @@ serve(async (req) => {
   }
 
   try {
-    const { action, productId, products } = await req.json();
+    // Parse body once to avoid "Body already consumed" error
+    const body = await req.json();
+    const { action, productId, products, resolution, newPrice } = body;
     const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
     const { accessToken, realmId } = await getValidToken(supabase);
 
@@ -385,8 +387,7 @@ serve(async (req) => {
     }
 
     if (action === 'resolve-conflict') {
-      // Resolve a price conflict
-      const { resolution, newPrice } = await req.json();
+      // Resolve a price conflict - resolution and newPrice come from the body parsed above
       
       const { data: mapping, error: mappingError } = await supabase
         .from('quickbooks_product_mappings')
