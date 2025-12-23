@@ -149,22 +149,39 @@ export function InvoiceForm({ onSubmit, initialData, jobOrderId }: InvoiceFormPr
   useEffect(() => {
     if (invoiceType === "job_order" && jobOrderWithLineItems?.line_items?.length > 0) {
       setSelectedJobOrder(jobOrderWithLineItems);
-      const copiedItems = jobOrderWithLineItems.line_items.map((item: any, index: number) => ({
-        id: `${Date.now()}-${index}`,
-        productId: item.product_id || undefined,
-        productName: item.product_name || "",
-        description: item.description,
-        quantity: item.quantity,
-        unitPrice: item.unit_price,
-        margin: item.markup,
-        total: item.total,
-        isTaxable: item.is_taxable ?? true,
-        displayOrder: index,
-      }));
+      const copiedItems = jobOrderWithLineItems.line_items.map((item: any, index: number) => {
+        // Try to infer product from description if product_id is missing
+        let productId = item.product_id;
+        let productName = item.product_name || "";
+        
+        if (!productId && item.description && products.length > 0) {
+          // Try exact match by description
+          const matchedProduct = products.find(
+            (p) => p.name.toLowerCase().trim() === item.description.toLowerCase().trim()
+          );
+          if (matchedProduct) {
+            productId = matchedProduct.id;
+            productName = matchedProduct.name;
+          }
+        }
+        
+        return {
+          id: `${Date.now()}-${index}`,
+          productId: productId || undefined,
+          productName,
+          description: item.description,
+          quantity: item.quantity,
+          unitPrice: item.unit_price,
+          margin: item.markup,
+          total: item.total,
+          isTaxable: item.is_taxable ?? true,
+          displayOrder: index,
+        };
+      });
       setLineItems(copiedItems);
       form.setValue("taxRate", jobOrderWithLineItems.tax_rate);
     }
-  }, [jobOrderWithLineItems, invoiceType]);
+  }, [jobOrderWithLineItems, invoiceType, products]);
 
   const handleInvoiceTypeChange = (value: "job_order" | "customer") => {
     setInvoiceType(value);
@@ -208,18 +225,35 @@ export function InvoiceForm({ onSubmit, initialData, jobOrderId }: InvoiceFormPr
 
   const copyFromJobOrder = () => {
     if (jobOrderWithLineItems?.line_items?.length > 0) {
-      const copiedItems = jobOrderWithLineItems.line_items.map((item: any, index: number) => ({
-        id: `${Date.now()}-${index}`,
-        productId: item.product_id || undefined,
-        productName: item.product_name || "",
-        description: item.description,
-        quantity: item.quantity,
-        unitPrice: item.unit_price,
-        margin: item.markup,
-        total: item.total,
-        isTaxable: item.is_taxable ?? true,
-        displayOrder: index,
-      }));
+      const copiedItems = jobOrderWithLineItems.line_items.map((item: any, index: number) => {
+        // Try to infer product from description if product_id is missing
+        let productId = item.product_id;
+        let productName = item.product_name || "";
+        
+        if (!productId && item.description && products.length > 0) {
+          // Try exact match by description
+          const matchedProduct = products.find(
+            (p) => p.name.toLowerCase().trim() === item.description.toLowerCase().trim()
+          );
+          if (matchedProduct) {
+            productId = matchedProduct.id;
+            productName = matchedProduct.name;
+          }
+        }
+        
+        return {
+          id: `${Date.now()}-${index}`,
+          productId: productId || undefined,
+          productName,
+          description: item.description,
+          quantity: item.quantity,
+          unitPrice: item.unit_price,
+          margin: item.markup,
+          total: item.total,
+          isTaxable: item.is_taxable ?? true,
+          displayOrder: index,
+        };
+      });
       setLineItems(copiedItems);
     }
   };
@@ -677,7 +711,7 @@ export function InvoiceForm({ onSubmit, initialData, jobOrderId }: InvoiceFormPr
                         className="w-full justify-between font-normal"
                       >
                         {item.productId
-                          ? products.find((p) => p.id === item.productId)?.name || "Select product..."
+                          ? products.find((p) => p.id === item.productId)?.name || item.productName || "Select product..."
                           : "Search products..."}
                         <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
                       </Button>
