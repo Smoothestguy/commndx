@@ -38,6 +38,7 @@ import { Product as FullProduct } from "@/integrations/supabase/hooks/useProduct
 interface LineItem {
   id: string;
   product_id?: string;
+  product_name?: string;
   description: string;
   quantity: string;
   unit_price: string;
@@ -122,9 +123,9 @@ export function SortableLineItem({
   };
 
   // Get display name for collapsed view
-  const productName = item.product_id 
+  const productName = item.product_name || (item.product_id 
     ? products?.find(p => p.id === item.product_id)?.name 
-    : null;
+    : null);
   const displayDescription = productName || item.description || "No description";
   const truncatedDescription = displayDescription.length > 50 
     ? displayDescription.substring(0, 50) + "..." 
@@ -381,11 +382,26 @@ export function SortableLineItem({
             </div>
 
             <div className="grid gap-3 sm:grid-cols-2">
+              {/* Product Name (read-only, displayed when a product is selected) */}
+              {item.product_name && (
+                <div className="space-y-2 sm:col-span-2">
+                  <Label>Product Name</Label>
+                  <div className="flex items-center gap-2">
+                    <span className="font-semibold text-foreground">{item.product_name}</span>
+                    {item.product_id && (
+                      <Badge variant="secondary" className="text-xs">
+                        {products?.find(p => p.id === item.product_id)?.unit}
+                      </Badge>
+                    )}
+                  </div>
+                </div>
+              )}
+
               {/* Description Textarea */}
               <div className="space-y-2 sm:col-span-2">
                 <div className="flex items-center gap-2">
-                  <Label>Description *</Label>
-                  {item.product_id && (
+                  <Label>Description {!item.product_name && '*'}</Label>
+                  {item.product_id && !item.product_name && (
                     <Badge variant="secondary" className="text-xs">
                       {products?.find(p => p.id === item.product_id)?.unit}
                     </Badge>

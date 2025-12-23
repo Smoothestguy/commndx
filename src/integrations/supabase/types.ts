@@ -1400,6 +1400,7 @@ export type Database = {
           markup: number
           pricing_type: string | null
           product_id: string | null
+          product_name: string | null
           quantity: number
           sort_order: number
           total: number
@@ -1414,6 +1415,7 @@ export type Database = {
           markup: number
           pricing_type?: string | null
           product_id?: string | null
+          product_name?: string | null
           quantity: number
           sort_order?: number
           total: number
@@ -1428,6 +1430,7 @@ export type Database = {
           markup?: number
           pricing_type?: string | null
           product_id?: string | null
+          product_name?: string | null
           quantity?: number
           sort_order?: number
           total?: number
