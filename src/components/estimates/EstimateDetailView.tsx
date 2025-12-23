@@ -72,9 +72,11 @@ export function EstimateDetailView({ estimateId }: EstimateDetailViewProps) {
   const customer = customers?.find((c) => c.id === estimate?.customer_id);
   const customerAddress = customer?.address || null;
 
-  const getProductName = (productId?: string | null) => {
-    if (!productId) return null;
-    return products?.find((p) => p.id === productId)?.name || null;
+  const getProductName = (item: { product_id?: string | null; product_name?: string | null }) => {
+    // Prefer stored product_name, fallback to lookup from products table
+    if (item.product_name) return item.product_name;
+    if (!item.product_id) return null;
+    return products?.find((p) => p.id === item.product_id)?.name || null;
   };
 
   const handleStatusChange = async (status: "draft" | "pending" | "approved" | "sent") => {
@@ -238,7 +240,7 @@ export function EstimateDetailView({ estimateId }: EstimateDetailViewProps) {
                     lineItems: estimate.line_items.map((item) => ({
                       id: item.id,
                       description: item.description,
-                      productName: getProductName(item.product_id) || undefined,
+                      productName: getProductName(item as any) || undefined,
                       quantity: item.quantity,
                       unitPrice: item.unit_price,
                       markup: item.markup,
@@ -354,7 +356,7 @@ export function EstimateDetailView({ estimateId }: EstimateDetailViewProps) {
                         lineItems: estimate.line_items.map((item) => ({
                           id: item.id,
                           description: item.description,
-                          productName: getProductName(item.product_id) || undefined,
+                          productName: getProductName(item as any) || undefined,
                           quantity: item.quantity,
                           unitPrice: item.unit_price,
                           markup: item.markup,
@@ -546,18 +548,25 @@ export function EstimateDetailView({ estimateId }: EstimateDetailViewProps) {
               {isMobile ? (
                 // Mobile: Card-based layout
                 <div className="space-y-3">
-                  {estimate.line_items.map((item) => {
-                    const productName = getProductName(item.product_id);
+                {estimate.line_items.map((item) => {
+                    const productName = getProductName(item as any);
                     return (
                       <Card key={item.id} className="p-4">
                         <div className="flex justify-between items-start mb-2">
                           <div className="flex flex-col">
-                            <span className="font-medium text-sm">
-                              {productName || item.description}
-                            </span>
-                            {item.description && productName && item.description !== productName && (
-                              <span className="text-xs text-muted-foreground/60">
+                            {productName && (
+                              <span className="font-semibold text-sm text-foreground">
+                                {productName}
+                              </span>
+                            )}
+                            {item.description && (
+                              <span className={productName ? "text-xs text-muted-foreground mt-0.5" : "font-medium text-sm"}>
                                 {item.description}
+                              </span>
+                            )}
+                            {!productName && !item.description && (
+                              <span className="font-medium text-sm text-muted-foreground">
+                                No description
                               </span>
                             )}
                           </div>
@@ -584,6 +593,7 @@ export function EstimateDetailView({ estimateId }: EstimateDetailViewProps) {
                 <Table>
                   <TableHeader>
                     <TableRow>
+                      <TableHead>Product</TableHead>
                       <TableHead>Description</TableHead>
                       <TableHead className="text-right">Qty</TableHead>
                       <TableHead className="text-right">Unit Price</TableHead>
@@ -592,20 +602,18 @@ export function EstimateDetailView({ estimateId }: EstimateDetailViewProps) {
                   </TableHeader>
                   <TableBody>
                     {estimate.line_items.map((item) => {
-                      const productName = getProductName(item.product_id);
+                      const productName = getProductName(item as any);
                       return (
                         <TableRow key={item.id}>
                           <TableCell>
-                            <div>
-                              <span className="font-medium">
-                                {productName || item.description}
-                              </span>
-                              {item.description && productName && item.description !== productName && (
-                                <p className="text-xs text-muted-foreground/60 mt-0.5">
-                                  {item.description}
-                                </p>
-                              )}
-                            </div>
+                            <span className="font-medium">
+                              {productName || "-"}
+                            </span>
+                          </TableCell>
+                          <TableCell>
+                            <span className="text-muted-foreground">
+                              {item.description || "-"}
+                            </span>
                           </TableCell>
                           <TableCell className="text-right">{item.quantity}</TableCell>
                           <TableCell className="text-right">

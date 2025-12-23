@@ -70,6 +70,7 @@ const estimateSchema = z.object({
 interface LineItem {
   id: string;
   product_id?: string;
+  product_name?: string;
   description: string;
   quantity: string;
   unit_price: string;
@@ -147,6 +148,7 @@ const EditEstimate = () => {
       const formLineItems = estimate.line_items.map((item) => ({
         id: item.id,
         product_id: item.product_id,
+        product_name: (item as any).product_name || undefined,
         description: item.description,
         quantity: item.quantity.toString(),
         unit_price: item.unit_price.toString(),
@@ -437,7 +439,8 @@ const EditEstimate = () => {
       newLineItems[index] = {
         ...newLineItems[index],
         product_id: productId,
-        description: product.description || product.name,
+        product_name: product.name,
+        description: product.description || "",
         unit_price: unitPrice,
         margin: margin,
         is_taxable: product.is_taxable ?? true,
@@ -563,6 +566,7 @@ const EditEstimate = () => {
       },
       lineItems: lineItems.map((item) => ({
         product_id: item.product_id,
+        product_name: item.product_name,
         description: item.description,
         quantity: parseFloat(item.quantity),
         unit_price: parseFloat(item.unit_price),

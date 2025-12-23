@@ -6,6 +6,7 @@ import { getNextInvoiceNumber } from "@/utils/invoiceNumberGenerator";
 export interface EstimateLineItem {
   id?: string;
   product_id?: string;
+  product_name?: string;
   description: string;
   quantity: number;
   unit_price: number;
@@ -383,7 +384,7 @@ export const useConvertEstimateToJobOrder = () => {
       const jobOrderLineItems = lineItems.map((item: any) => ({
         job_order_id: jobOrder.id,
         product_id: item.product_id || null,
-        product_name: item.products?.name || null,
+        product_name: item.product_name || item.products?.name || null,
         description: item.description,
         quantity: item.quantity,
         unit_price: item.unit_price,
@@ -479,10 +480,10 @@ export const useConvertEstimateToInvoice = () => {
 
       if (invoiceError) throw invoiceError;
 
-      // Create invoice line items with product name from joined products table
+      // Create invoice line items with product name from estimate or joined products table
       const invoiceLineItems = lineItems.map((item: any) => ({
         invoice_id: invoice.id,
-        product_name: item.products?.name || null,
+        product_name: item.product_name || item.products?.name || null,
         description: item.description,
         quantity: item.quantity,
         unit_price: item.unit_price,
