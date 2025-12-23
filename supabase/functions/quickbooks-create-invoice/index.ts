@@ -136,7 +136,7 @@ serve(async (req) => {
     // Find or create QuickBooks customer
     const customerResponse = await supabase.functions.invoke('quickbooks-sync-customers', {
       body: { 
-        action: 'findOrCreate',
+        action: 'find-or-create',
         customerId: invoice.customer_id
       }
     });
