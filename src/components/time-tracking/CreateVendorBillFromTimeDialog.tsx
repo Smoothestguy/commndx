@@ -35,6 +35,7 @@ import { useVendors } from "@/integrations/supabase/hooks/useVendors";
 import { useExpenseCategories } from "@/integrations/supabase/hooks/useExpenseCategories";
 import { useAddVendorBill } from "@/integrations/supabase/hooks/useVendorBills";
 import { useCompanySettings } from "@/integrations/supabase/hooks/useCompanySettings";
+import { useQuickBooksConfig } from "@/integrations/supabase/hooks/useQuickBooks";
 import { TimeEntryWithDetails } from "@/integrations/supabase/hooks/useTimeEntries";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
@@ -77,6 +78,7 @@ export function CreateVendorBillFromTimeDialog({
   const { data: categories = [] } = useExpenseCategories();
   const { data: companySettings } = useCompanySettings();
   const addBill = useAddVendorBill();
+  const { data: qbConfig } = useQuickBooksConfig();
 
   const overtimeMultiplier = companySettings?.overtime_multiplier ?? 1.5;
   const weeklyOvertimeThreshold = companySettings?.weekly_overtime_threshold ?? 40;
@@ -304,6 +306,18 @@ export function CreateVendorBillFromTimeDialog({
         if (result?.id) {
           createdBillIds.push(result.id);
 
+          // Auto-sync to QuickBooks if connected
+          if (qbConfig?.is_connected) {
+            try {
+              await supabase.functions.invoke('quickbooks-sync-vendor-bill', {
+                body: { billId: result.id }
+              });
+            } catch (qbError) {
+              console.error("QuickBooks sync failed for bill:", result.id, qbError);
+              // Don't fail the whole operation, bill is still created
+            }
+          }
+
           // Update time entries with vendor_bill_id
           const { error: updateError } = await supabase
             .from('time_entries')
@@ -345,7 +359,8 @@ export function CreateVendorBillFromTimeDialog({
         }
       }
 
-      toast.success(`Created ${createdBillIds.length} vendor bill${createdBillIds.length > 1 ? 's' : ''}`);
+      const syncMessage = qbConfig?.is_connected ? ' and synced to QuickBooks' : '';
+      toast.success(`Created ${createdBillIds.length} vendor bill${createdBillIds.length > 1 ? 's' : ''}${syncMessage}`);
       onOpenChange(false);
       onSuccess?.();
       
