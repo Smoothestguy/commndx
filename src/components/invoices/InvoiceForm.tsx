@@ -342,8 +342,16 @@ export function InvoiceForm({ onSubmit, initialData, jobOrderId }: InvoiceFormPr
     return <div>Loading...</div>;
   }
 
+  const onFormSubmit = form.handleSubmit(
+    handleSubmit,
+    (errors) => {
+      console.log("Form validation errors:", errors);
+      toast.error("Please fill in all required fields");
+    }
+  );
+
   return (
-    <form onSubmit={form.handleSubmit(handleSubmit)} className="space-y-4 pb-24">
+    <form onSubmit={onFormSubmit} className="space-y-4 pb-24">
       {/* Invoice Type Info */}
       <Card className="p-4">
         <div className="flex items-center gap-2 text-sm text-muted-foreground">
@@ -548,6 +556,9 @@ export function InvoiceForm({ onSubmit, initialData, jobOrderId }: InvoiceFormPr
                 />
               </PopoverContent>
             </Popover>
+            {form.formState.errors.dueDate && (
+              <p className="text-destructive text-sm mt-1">{form.formState.errors.dueDate.message}</p>
+            )}
           </div>
 
           <div>
