@@ -185,11 +185,13 @@ export function VendorBillTable({ bills }: VendorBillTableProps) {
   const [deleteId, setDeleteId] = useState<string | null>(null);
   const [bulkDeleteOpen, setBulkDeleteOpen] = useState(false);
   const [paymentBillId, setPaymentBillId] = useState<string | null>(null);
+  const [isBulkSyncing, setIsBulkSyncing] = useState(false);
   
   const isMobile = useIsMobile();
   const navigate = useNavigate();
   const { data: qbConfig } = useQuickBooksConfig();
   const deleteBill = useDeleteVendorBill();
+  const syncToQB = useSyncVendorBillToQB();
 
   const allSelected = bills.length > 0 && selectedIds.size === bills.length;
   const someSelected = selectedIds.size > 0 && selectedIds.size < bills.length;
@@ -220,6 +222,42 @@ export function VendorBillTable({ bills }: VendorBillTableProps) {
     setBulkDeleteOpen(false);
   };
 
+  const handleBulkSync = async () => {
+    if (!qbConfig?.is_connected) return;
+    
+    setIsBulkSyncing(true);
+    let successCount = 0;
+    let errorCount = 0;
+    
+    // Get selected bills that can be synced (not draft)
+    const billsToSync = bills.filter(b => 
+      selectedIds.has(b.id) && 
+      b.status !== 'draft'
+    );
+    
+    for (const bill of billsToSync) {
+      try {
+        await syncToQB.mutateAsync(bill.id);
+        successCount++;
+      } catch (error) {
+        console.error("Failed to sync bill:", bill.id, error);
+        errorCount++;
+      }
+    }
+    
+    setIsBulkSyncing(false);
+    
+    if (successCount > 0 && errorCount === 0) {
+      toast.success(`Successfully synced ${successCount} bill${successCount > 1 ? 's' : ''} to QuickBooks`);
+    } else if (successCount > 0 && errorCount > 0) {
+      toast.warning(`Synced ${successCount} bill${successCount > 1 ? 's' : ''}, ${errorCount} failed`);
+    } else if (errorCount > 0) {
+      toast.error(`Failed to sync ${errorCount} bill${errorCount > 1 ? 's' : ''}`);
+    }
+    
+    setSelectedIds(new Set());
+  };
+
   const paymentBill = bills.find(b => b.id === paymentBillId);
 
   return (
@@ -235,6 +273,21 @@ export function VendorBillTable({ bills }: VendorBillTableProps) {
             <Trash2 className="h-4 w-4 mr-1" />
             Delete Selected
           </Button>
+          {qbConfig?.is_connected && (
+            <Button 
+              variant="secondary" 
+              size="sm"
+              onClick={handleBulkSync}
+              disabled={isBulkSyncing}
+            >
+              {isBulkSyncing ? (
+                <Loader2 className="h-4 w-4 mr-1 animate-spin" />
+              ) : (
+                <RefreshCw className="h-4 w-4 mr-1" />
+              )}
+              {isBulkSyncing ? "Syncing..." : "Sync to QuickBooks"}
+            </Button>
+          )}
           <Button 
             variant="ghost" 
             size="sm"
