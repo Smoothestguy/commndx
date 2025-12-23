@@ -15,6 +15,7 @@ interface CompanyInfo {
 interface PersonnelInfo {
   first_name: string;
   last_name: string;
+  ssn_full?: string | null;
   ssn_last_four?: string | null;
   address?: string | null;
   city?: string | null;
@@ -66,6 +67,7 @@ export async function downloadForm1099(options: Generate1099Options): Promise<vo
           city: w9Form.city || personnel.city,
           state: w9Form.state || personnel.state,
           zip: w9Form.zip || personnel.zip,
+          ssn_full: personnel.ssn_full,
           ssn_last_four: personnel.ssn_last_four,
         },
         payments: {

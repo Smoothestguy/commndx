@@ -46,6 +46,7 @@ interface Generate1099Data {
     city?: string | null;
     state?: string | null;
     zip?: string | null;
+    ssn_full?: string | null;
     ssn_last_four?: string | null;
   };
   payments: {
@@ -269,54 +270,95 @@ async function generate1099PDF(
     return amount.toFixed(2);
   };
 
-  // Format SSN for display (masked)
-  const formatSSN = (lastFour?: string | null): string => {
-    if (!lastFour) return "";
-    return `***-**-${lastFour}`;
+  // Format SSN for display - use full SSN if available, otherwise mask with last 4
+  const formatSSN = (ssnFull?: string | null, lastFour?: string | null): string => {
+    if (ssnFull) {
+      const digits = ssnFull.replace(/\D/g, "");
+      if (digits.length === 9) {
+        return `${digits.substring(0, 3)}-${digits.substring(3, 5)}-${digits.substring(5, 9)}`;
+      }
+      return ssnFull;
+    }
+    if (lastFour) {
+      return `***-**-${lastFour}`;
+    }
+    return "";
   };
 
-  // Common 1099-NEC field mappings
-  const fieldMappings: Record<string, string | undefined> = {
-    // Payer info
-    "f1_1": formData.company.legal_name || formData.company.company_name,
-    "f1_2": formData.company.address || undefined,
-    "f1_3": `${formData.company.city || ""}, ${formData.company.state || ""} ${formData.company.zip || ""}`.trim(),
-    "f1_4": formData.company.phone || undefined,
-    // Payer TIN
-    "f1_5": formData.company.tax_id || undefined,
-    // Recipient TIN
-    "f1_6": formatSSN(formData.recipient.ssn_last_four),
-    // Recipient name
-    "f1_7": formData.recipient.name,
-    // Recipient address
-    "f1_8": formData.recipient.address || undefined,
-    "f1_9": `${formData.recipient.city || ""}, ${formData.recipient.state || ""} ${formData.recipient.zip || ""}`.trim(),
-    // Account number
-    "f1_10": formData.accountNumber || undefined,
+  // Build payer info
+  const payerName = formData.company.legal_name || formData.company.company_name;
+  const payerAddress = formData.company.address || "";
+  const payerCityStateZip = `${formData.company.city || ""}, ${formData.company.state || ""} ${formData.company.zip || ""}`.trim();
+  const payerTIN = formData.company.tax_id || "";
+  
+  // Build recipient info
+  const recipientName = formData.recipient.name;
+  const recipientAddress = formData.recipient.address || "";
+  const recipientCityStateZip = `${formData.recipient.city || ""}, ${formData.recipient.state || ""} ${formData.recipient.zip || ""}`.trim();
+  const recipientTIN = formatSSN(formData.recipient.ssn_full, formData.recipient.ssn_last_four);
+  
+  // Payment amounts
+  const nonemployeeComp = formatAmount(formData.payments.nonemployeeCompensation);
+  const federalWithheld = formatAmount(formData.payments.federalTaxWithheld);
+  const stateTaxWithheld = formatAmount(formData.payments.stateTaxWithheld);
+  const stateIncome = formatAmount(formData.payments.stateIncome);
+  const taxYear = formData.taxYear.toString();
+
+  console.log("Filling 1099 with data:", {
+    payerName, recipientName, recipientTIN, nonemployeeComp, taxYear
+  });
+
+  // 1099-NEC has multiple copies - fill all of them based on the actual PDF field structure
+  // Field names from the logs: CopyA, Copy1, CopyB, Copy2
+  const copies = [
+    { prefix: "topmostSubform[0].CopyA[0]", yearField: "PgHeader[0].CalendarYear[0].f1_1[0]", leftCol: "LeftCol[0]", rightCol: "RightCol[0]", fPrefix: "f1_" },
+    { prefix: "topmostSubform[0].Copy1[0]", yearField: "PgHeader[0].CalendarYear[0].f2_1[0]", leftCol: "LeftCol[0]", rightCol: "RightCol[0]", fPrefix: "f2_" },
+    { prefix: "topmostSubform[0].CopyB[0]", yearField: "PgHeader[0].CalendarYear[0].f2_1[0]", leftCol: "LeftCol[0]", rightCol: "RightCol[0]", fPrefix: "f2_" },
+    { prefix: "topmostSubform[0].Copy2[0]", yearField: "PgHeader[0].CalendarYear[0].f2_1[0]", leftCol: "LeftCol[0]", rightCol: "RightCol[0]", fPrefix: "f2_" },
+  ];
+
+  for (const copy of copies) {
+    // Based on actual logged field names:
+    // f1_2 = Payer name, f1_3 = Payer address, f1_4 = Payer city/state/zip
+    // f1_5 = Payer TIN, f1_6 = Recipient TIN, f1_7 = Recipient name
+    // f1_8 = Recipient address + city/state/zip combined
+    // f1_9 = Nonemployee compensation (Box 1)
+    const fieldMappings: Record<string, string> = {};
+    
+    // Calendar year
+    fieldMappings[`${copy.prefix}.${copy.yearField}`] = taxYear;
+    
+    // Left column - Payer and Recipient info
+    fieldMappings[`${copy.prefix}.${copy.leftCol}.${copy.fPrefix}2[0]`] = payerName;
+    fieldMappings[`${copy.prefix}.${copy.leftCol}.${copy.fPrefix}3[0]`] = payerAddress;
+    fieldMappings[`${copy.prefix}.${copy.leftCol}.${copy.fPrefix}4[0]`] = payerCityStateZip;
+    fieldMappings[`${copy.prefix}.${copy.leftCol}.${copy.fPrefix}5[0]`] = payerTIN;
+    fieldMappings[`${copy.prefix}.${copy.leftCol}.${copy.fPrefix}6[0]`] = recipientTIN;
+    fieldMappings[`${copy.prefix}.${copy.leftCol}.${copy.fPrefix}7[0]`] = recipientName;
+    fieldMappings[`${copy.prefix}.${copy.leftCol}.${copy.fPrefix}8[0]`] = `${recipientAddress}\n${recipientCityStateZip}`;
+    
+    // Right column - Payment amounts
     // Box 1 - Nonemployee compensation
-    "f1_11": formatAmount(formData.payments.nonemployeeCompensation),
+    fieldMappings[`${copy.prefix}.${copy.rightCol}.${copy.fPrefix}9[0]`] = nonemployeeComp;
     // Box 4 - Federal income tax withheld
-    "f1_14": formatAmount(formData.payments.federalTaxWithheld),
-    // Box 5 - State tax withheld
-    "f1_15": formatAmount(formData.payments.stateTaxWithheld),
-    // Box 6 - State/Payer's state no.
-    "f1_16": formData.company.state || undefined,
-    // Box 7 - State income
-    "f1_17": formatAmount(formData.payments.stateIncome),
-    // Alternative field name patterns
-    "topmostSubform[0].CopyA[0].f1_1[0]": formData.company.legal_name || formData.company.company_name,
-    "topmostSubform[0].CopyA[0].f1_7[0]": formData.recipient.name,
-    "topmostSubform[0].CopyA[0].f1_11[0]": formatAmount(formData.payments.nonemployeeCompensation),
-  };
+    fieldMappings[`${copy.prefix}.${copy.rightCol}.${copy.fPrefix}10[0]`] = federalWithheld;
+    // Box 5 - State tax withheld (in Box5_ReadOrder)
+    fieldMappings[`${copy.prefix}.${copy.rightCol}.Box5_ReadOrder[0].${copy.fPrefix}12[0]`] = stateTaxWithheld;
+    // Box 6 - State/Payer's state no (in Box6_ReadOrder)
+    fieldMappings[`${copy.prefix}.${copy.rightCol}.Box6_ReadOrder[0].${copy.fPrefix}14[0]`] = formData.company.state || "";
+    // Box 7 - State income (in Box7_ReadOrder)
+    fieldMappings[`${copy.prefix}.${copy.rightCol}.Box7_ReadOrder[0].${copy.fPrefix}16[0]`] = stateIncome;
 
-  // Fill each field if it exists
-  for (const [fieldName, value] of Object.entries(fieldMappings)) {
-    if (value) {
-      try {
-        const field = form.getTextField(fieldName);
-        field.setText(value);
-      } catch (e) {
-        // Field doesn't exist, skip
+    // Fill each field
+    for (const [fieldName, value] of Object.entries(fieldMappings)) {
+      if (value) {
+        try {
+          const field = form.getTextField(fieldName);
+          field.setText(value);
+          console.log(`Filled ${fieldName} = ${value.substring(0, 30)}...`);
+        } catch (e) {
+          // Field doesn't exist, try without the nested structure
+        }
       }
     }
   }
