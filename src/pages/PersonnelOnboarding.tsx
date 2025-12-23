@@ -21,6 +21,7 @@ import { CategoryDocumentUpload } from "@/components/personnel/registration/Cate
 import { DirectDepositForm } from "@/components/personnel/onboarding/DirectDepositForm";
 import { W9TaxForm } from "@/components/personnel/onboarding/W9TaxForm";
 import { ContractorAgreementForm } from "@/components/personnel/onboarding/ContractorAgreementForm";
+import { InvalidLinkScreen } from "@/components/personnel/onboarding/InvalidLinkScreen";
 import {
   useOnboardingToken,
   useCompleteOnboarding,
@@ -43,7 +44,6 @@ import {
   Loader2,
   Info,
   AlertTriangle,
-  Clock,
   CreditCard,
   FileText,
   FileSignature,
@@ -353,37 +353,13 @@ const PersonnelOnboarding = () => {
     );
   }
 
-  // Invalid/expired/used token
+  // Invalid/expired/used token - use dedicated screen with request new link
   if (!validationResult?.isValid) {
     return (
-      <div className="min-h-screen bg-background flex items-center justify-center p-4">
-        <SEO title="Invalid Link" description="This onboarding link is invalid" />
-        <Card className="max-w-md w-full">
-          <CardContent className="pt-6 text-center">
-            <div className="rounded-full bg-warning/10 p-4 w-fit mx-auto mb-4">
-              {validationResult?.isExpired ? (
-                <Clock className="h-12 w-12 text-warning" />
-              ) : (
-                <AlertTriangle className="h-12 w-12 text-warning" />
-              )}
-            </div>
-            <h2 className="text-xl font-bold mb-2">
-              {validationResult?.isExpired
-                ? "Link Expired"
-                : validationResult?.isUsed
-                  ? "Link Already Used"
-                  : "Invalid Link"}
-            </h2>
-            <p className="text-muted-foreground mb-6">
-              {validationResult?.isExpired
-                ? "This onboarding link has expired. Please contact your supervisor to request a new link."
-                : validationResult?.isUsed
-                  ? "This onboarding link has already been used. If you need to make changes, please contact your supervisor."
-                  : "This onboarding link is not valid. Please check your email for the correct link or contact your supervisor."}
-            </p>
-          </CardContent>
-        </Card>
-      </div>
+      <InvalidLinkScreen 
+        isExpired={validationResult?.isExpired} 
+        isUsed={validationResult?.isUsed} 
+      />
     );
   }
 
