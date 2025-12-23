@@ -136,13 +136,18 @@ export function CreateJobOrderDialog({
         start_date: startDate,
         completion_date: completionDate || undefined,
       },
-      lineItems: validLineItems.map(item => ({
-        description: item.description,
-        quantity: item.quantity,
-        unit_price: item.unit_price,
-        markup: item.markup,
-        total: item.total,
-      })),
+      lineItems: validLineItems.map(item => {
+        const product = products?.find(p => p.id === item.product_id);
+        return {
+          description: item.description,
+          quantity: item.quantity,
+          unit_price: item.unit_price,
+          markup: item.markup,
+          total: item.total,
+          product_id: item.product_id,
+          product_name: product?.name,
+        };
+      }),
     });
 
     onClose();
