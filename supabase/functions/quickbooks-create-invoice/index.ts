@@ -75,102 +75,133 @@ async function qbRequest(method: string, endpoint: string, accessToken: string, 
 }
 
 serve(async (req) => {
-  if (req.method === 'OPTIONS') {
+  // Handle CORS
+  if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
   }
 
   try {
     const { invoiceId } = await req.json();
-    const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
+    console.log("Creating QuickBooks invoice for:", invoiceId);
+
+    // Create Supabase client with service role
+    const supabase = createClient(SUPABASE_URL!, SUPABASE_SERVICE_ROLE_KEY!);
+
+    // Get valid token
     const { accessToken, realmId } = await getValidToken(supabase);
 
-    console.log(`Creating QuickBooks invoice for invoice ID: ${invoiceId}`);
-
-    // Get the invoice with line items
+    // Fetch invoice with line items
     const { data: invoice, error: invoiceError } = await supabase
-      .from('invoices')
-      .select('*')
-      .eq('id', invoiceId)
+      .from("invoices")
+      .select(`
+        *,
+        line_items:invoice_line_items(*)
+      `)
+      .eq("id", invoiceId)
       .single();
 
-    if (invoiceError) throw invoiceError;
-
-    // Get line items
-    const { data: lineItems, error: lineItemsError } = await supabase
-      .from('invoice_line_items')
-      .select('*')
-      .eq('invoice_id', invoiceId);
-
-    if (lineItemsError) throw lineItemsError;
+    if (invoiceError || !invoice) {
+      console.error("Invoice fetch error:", invoiceError);
+      throw new Error("Invoice not found");
+    }
 
     // Check if already synced
     const { data: existingMapping } = await supabase
-      .from('quickbooks_invoice_mappings')
-      .select('*')
-      .eq('invoice_id', invoiceId)
-      .single();
+      .from("quickbooks_invoice_mappings")
+      .select("quickbooks_invoice_id")
+      .eq("invoice_id", invoiceId)
+      .maybeSingle();
 
-    if (existingMapping) {
-      return new Response(JSON.stringify({ 
-        success: true, 
-        message: 'Invoice already synced',
-        quickbooksInvoiceId: existingMapping.quickbooks_invoice_id,
-      }), {
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-      });
+    if (existingMapping?.quickbooks_invoice_id) {
+      console.log("Invoice already synced:", existingMapping.quickbooks_invoice_id);
+      return new Response(
+        JSON.stringify({ 
+          success: true, 
+          quickbooksInvoiceId: existingMapping.quickbooks_invoice_id,
+          message: "Already synced" 
+        }),
+        { headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
     }
 
-    // Get or create QB customer
-    const customerResponse = await fetch(`${SUPABASE_URL}/functions/v1/quickbooks-sync-customers`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${SUPABASE_SERVICE_ROLE_KEY}`,
-      },
-      body: JSON.stringify({ 
-        action: 'find-or-create', 
-        customerId: invoice.customer_id 
-      }),
+    // Find or create QuickBooks customer
+    const customerResponse = await supabase.functions.invoke('quickbooks-sync-customers', {
+      body: { 
+        action: 'findOrCreate',
+        customerId: invoice.customer_id
+      }
     });
 
-    if (!customerResponse.ok) {
-      throw new Error('Failed to get/create QuickBooks customer');
+    if (customerResponse.error) {
+      throw new Error(`Customer sync failed: ${customerResponse.error.message}`);
     }
 
-    const { quickbooksCustomerId } = await customerResponse.json();
+    const qbCustomerId = customerResponse.data?.quickbooksCustomerId;
+    if (!qbCustomerId) {
+      throw new Error("Could not get QuickBooks customer ID");
+    }
 
-    // Build QB invoice line items
+    console.log("Using QB customer:", qbCustomerId);
+
+    // Get product mappings for line items that have product_id
+    const productIds = invoice.line_items
+      .filter((item: any) => item.product_id)
+      .map((item: any) => item.product_id);
+
+    let qbItemMap = new Map<string, string>();
+    if (productIds.length > 0) {
+      const { data: productMappings } = await supabase
+        .from("quickbooks_product_mappings")
+        .select("product_id, quickbooks_item_id")
+        .in("product_id", productIds);
+
+      if (productMappings) {
+        qbItemMap = new Map(
+          productMappings.map((m: any) => [m.product_id, m.quickbooks_item_id])
+        );
+      }
+      console.log("Found QB product mappings:", qbItemMap.size);
+    }
+
+    // Build line items for QuickBooks
     const qbLineItems = [];
-
-    for (const item of lineItems) {
-      // Use full precision for UnitPrice so that Amount = UnitPrice × Qty exactly
-      // This ensures QuickBooks validation passes and totals match CommandX
-      const effectiveUnitPrice = item.quantity !== 0 
-        ? item.total / item.quantity  // No rounding - keep full precision
-        : item.unit_price;
+    for (const item of invoice.line_items) {
+      // Calculate effective unit price (includes markup)
+      const effectiveUnitPrice = item.unit_price * (1 + item.markup / 100);
       
-      // Build description with product name prefix if available
+      // Get QB Item ID if product is mapped
+      const qbItemId = item.product_id ? qbItemMap.get(item.product_id) : null;
+      
+      // Build description with product name if available
       const qbDescription = item.product_name 
         ? `${item.product_name} - ${item.description}`
         : item.description;
-      
-      qbLineItems.push({
-        DetailType: 'SalesItemLineDetail',
-        Amount: item.total,  // Exact total from CommandX
+
+      const lineItem: any = {
+        DetailType: "SalesItemLineDetail",
+        Amount: item.total,
         Description: qbDescription,
         SalesItemLineDetail: {
           Qty: item.quantity,
-          UnitPrice: effectiveUnitPrice,  // Full precision ensures Amount = UnitPrice × Qty
+          UnitPrice: effectiveUnitPrice,
         },
-      });
+      };
+
+      // Add ItemRef if we have a mapped product
+      if (qbItemId) {
+        lineItem.SalesItemLineDetail.ItemRef = { value: qbItemId };
+        console.log(`Line item "${item.product_name}" mapped to QB Item: ${qbItemId}`);
+      }
+
+      qbLineItems.push(lineItem);
     }
 
-    // Add tax as a separate line item so QuickBooks includes it in the total
+    // Add tax line if applicable
     if (invoice.tax_amount > 0) {
       qbLineItems.push({
-        DetailType: 'SalesItemLineDetail',
+        DetailType: "SalesItemLineDetail",
         Amount: invoice.tax_amount,
-        Description: 'Sales Tax',
+        Description: `Tax (${invoice.tax_rate}%)`,
         SalesItemLineDetail: {
           Qty: 1,
           UnitPrice: invoice.tax_amount,
@@ -178,65 +209,49 @@ serve(async (req) => {
       });
     }
 
-    // Create QB invoice
+    // Create QuickBooks invoice
     const qbInvoice = {
-      CustomerRef: { value: quickbooksCustomerId },
-      Line: qbLineItems,
-      DueDate: invoice.due_date,
+      CustomerRef: { value: qbCustomerId },
       DocNumber: invoice.number,
-      PrivateNote: `CommandX Invoice: ${invoice.number}`,
+      TxnDate: invoice.created_at.split("T")[0],
+      DueDate: invoice.due_date,
+      Line: qbLineItems,
+      PrivateNote: invoice.project_name ? `Project: ${invoice.project_name}` : undefined,
     };
 
-    console.log('Creating invoice in QuickBooks:', JSON.stringify(qbInvoice, null, 2));
+    console.log("Creating QB invoice:", JSON.stringify(qbInvoice, null, 2));
 
-    const result = await qbRequest('POST', '/invoice?minorversion=65', accessToken, realmId, qbInvoice);
+    const qbResponse = await qbRequest("POST", "invoice", accessToken, realmId, qbInvoice);
+    const qbInvoiceId = qbResponse.Invoice.Id;
 
-    // Create mapping
-    await supabase
-      .from('quickbooks_invoice_mappings')
-      .insert({
-        invoice_id: invoiceId,
-        quickbooks_invoice_id: result.Invoice.Id,
-        quickbooks_doc_number: result.Invoice.DocNumber,
-        sync_status: 'synced',
-        synced_at: new Date().toISOString(),
-      });
+    console.log("Created QB invoice:", qbInvoiceId);
 
-    // Log the sync
-    await supabase.from('quickbooks_sync_log').insert({
-      entity_type: 'invoice',
+    // Save mapping
+    await supabase.from("quickbooks_invoice_mappings").insert({
+      invoice_id: invoiceId,
+      quickbooks_invoice_id: qbInvoiceId,
+    });
+
+    // Log sync
+    await supabase.from("quickbooks_sync_logs").insert({
+      entity_type: "invoice",
       entity_id: invoiceId,
-      quickbooks_id: result.Invoice.Id,
-      action: 'create',
-      status: 'success',
-      details: { doc_number: result.Invoice.DocNumber },
+      action: "create",
+      status: "success",
+      details: { quickbooks_invoice_id: qbInvoiceId },
     });
 
-    console.log(`Invoice created in QuickBooks with ID: ${result.Invoice.Id}`);
-
-    return new Response(JSON.stringify({ 
-      success: true, 
-      quickbooksInvoiceId: result.Invoice.Id,
-      quickbooksDocNumber: result.Invoice.DocNumber,
-    }), {
-      headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-    });
+    return new Response(
+      JSON.stringify({ success: true, quickbooksInvoiceId: qbInvoiceId }),
+      { headers: { ...corsHeaders, "Content-Type": "application/json" } }
+    );
   } catch (error: unknown) {
-    console.error('QuickBooks invoice creation error:', error);
-    const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+    console.error("QuickBooks invoice sync error:", error);
+    const errorMessage = error instanceof Error ? error.message : "Unknown error";
     
-    // Log the error
-    const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
-    await supabase.from('quickbooks_sync_log').insert({
-      entity_type: 'invoice',
-      action: 'create',
-      status: 'failed',
-      error_message: errorMessage,
-    });
-
-    return new Response(JSON.stringify({ error: errorMessage }), {
-      status: 500,
-      headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-    });
+    return new Response(
+      JSON.stringify({ success: false, error: errorMessage }),
+      { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+    );
   }
 });

@@ -6,6 +6,7 @@ export interface InvoiceLineItem {
   id: string;
   invoice_id: string;
   jo_line_item_id?: string;
+  product_id?: string;
   product_name?: string;
   description: string;
   quantity: number;
@@ -156,6 +157,7 @@ export const useAddInvoice = () => {
         const lineItemsToInsert = invoice.line_items.map((item) => ({
           invoice_id: newInvoice.id,
           jo_line_item_id: item.jo_line_item_id || null,
+          product_id: item.product_id || null,
           product_name: item.product_name || null,
           description: item.description,
           quantity: item.quantity,
