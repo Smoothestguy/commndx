@@ -291,13 +291,14 @@ serve(async (req) => {
       });
     }
 
-    // Create QuickBooks invoice
+    // Create QuickBooks invoice with tax calculation disabled
     const qbInvoice = {
       CustomerRef: { value: qbCustomerId },
       DocNumber: invoice.number,
       TxnDate: invoice.created_at.split("T")[0],
       DueDate: invoice.due_date,
       Line: qbLineItems,
+      GlobalTaxCalculation: "TaxExcluded", // Disable QB automatic tax - we handle tax manually
       PrivateNote: invoice.project_name ? `Project: ${invoice.project_name}` : undefined,
     };
 
