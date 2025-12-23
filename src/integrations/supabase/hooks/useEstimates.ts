@@ -302,9 +302,10 @@ export const useConvertEstimateToJobOrder = () => {
 
       if (estimateError) throw estimateError;
 
+      // Join with products table to get product names
       const { data: lineItems, error: lineItemsError } = await supabase
         .from("estimate_line_items")
-        .select("*")
+        .select("*, products:product_id(name)")
         .eq("estimate_id", estimateId);
 
       if (lineItemsError) throw lineItemsError;
@@ -378,9 +379,10 @@ export const useConvertEstimateToJobOrder = () => {
 
       if (jobOrderError) throw jobOrderError;
 
-      // Create job order line items (preserve is_taxable from estimate)
-      const jobOrderLineItems = lineItems.map((item) => ({
+      // Create job order line items (preserve is_taxable and product_name from estimate)
+      const jobOrderLineItems = lineItems.map((item: any) => ({
         job_order_id: jobOrder.id,
+        product_name: item.products?.name || null,
         description: item.description,
         quantity: item.quantity,
         unit_price: item.unit_price,
@@ -422,9 +424,10 @@ export const useConvertEstimateToInvoice = () => {
 
       if (estimateError) throw estimateError;
 
+      // Join with products table to get product names
       const { data: lineItems, error: lineItemsError } = await supabase
         .from("estimate_line_items")
-        .select("*")
+        .select("*, products:product_id(name)")
         .eq("estimate_id", estimateId);
 
       if (lineItemsError) throw lineItemsError;
@@ -475,10 +478,10 @@ export const useConvertEstimateToInvoice = () => {
 
       if (invoiceError) throw invoiceError;
 
-      // Create invoice line items
+      // Create invoice line items with product name from joined products table
       const invoiceLineItems = lineItems.map((item: any) => ({
         invoice_id: invoice.id,
-        product_name: item.product_name || null,
+        product_name: item.products?.name || null,
         description: item.description,
         quantity: item.quantity,
         unit_price: item.unit_price,
