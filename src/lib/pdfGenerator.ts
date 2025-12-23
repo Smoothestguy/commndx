@@ -17,9 +17,24 @@ export interface W9PDFFormData {
   signatureDate?: string;
 }
 
+function safeSetTextField(
+  form: ReturnType<typeof PDFDocument.prototype.getForm>,
+  fieldName: string,
+  value: string
+): void {
+  try {
+    const field = form.getTextField(fieldName);
+    field.setText(value);
+  } catch (error) {
+    console.warn("Could not fill field " + fieldName + ":", error);
+  }
+}
+
 export async function generateW9PDF(formData: W9PDFFormData): Promise<Blob> {
   const templateUrl = "/forms/w9-fillable.pdf";
-  const existingPdfBytes = await fetch(templateUrl).then((res) => res.arrayBuffer());
+  const existingPdfBytes = await fetch(templateUrl).then(function(res) {
+    return res.arrayBuffer();
+  });
   const pdfDoc = await PDFDocument.load(existingPdfBytes, { ignoreEncryption: true });
   const form = pdfDoc.getForm();
 
@@ -39,7 +54,7 @@ export async function generateW9PDF(formData: W9PDFFormData): Promise<Blob> {
     partnership: 3,
     trust_estate: 4,
     llc: 5,
-    other: 6,
+    other: 6
   };
 
   const normalizedClassification = formData.taxClassification.toLowerCase().replace(/[\s-]/g, "_");
@@ -47,9 +62,10 @@ export async function generateW9PDF(formData: W9PDFFormData): Promise<Blob> {
 
   if (checkboxIndex !== undefined) {
     try {
-      form.getCheckBox(`topmostSubform[0].Page1[0].Boxes3a-b_ReadOrder[0].c1_1[${checkboxIndex}]`).check();
-    } catch (e) {
-      console.warn("Could not check tax classification:", e);
+      const checkboxName = "topmostSubform[0].Page1[0].Boxes3a-b_ReadOrder[0].c1_1[" + checkboxIndex + "]";
+      form.getCheckBox(checkboxName).check();
+    } catch (error) {
+      console.warn("Could not check tax classification:", error);
     }
   }
 
@@ -82,7 +98,7 @@ export async function generateW9PDF(formData: W9PDFFormData): Promise<Blob> {
     safeSetTextField(form, "topmostSubform[0].Page1[0].f1_09[0]", formData.accountNumbers);
   }
 
-  // TIN (SSN or EIN) - fill each digit field separately
+  // TIN (SSN or EIN) - fill each field separately
   const tinClean = formData.tin.replace(/\D/g, "");
   if (formData.tinType === "ssn" && tinClean.length === 9) {
     // SSN fields: f1_11 (3 digits), f1_12 (2 digits), f1_13 (4 digits)
@@ -101,17 +117,19 @@ export async function generateW9PDF(formData: W9PDFFormData): Promise<Blob> {
       const pages = pdfDoc.getPages();
       const firstPage = pages[0];
       const base64Data = formData.signatureData.split(",")[1];
-      const imageBytes = Uint8Array.from(atob(base64Data), (c) => c.charCodeAt(0));
+      const imageBytes = Uint8Array.from(atob(base64Data), function(c) {
+        return c.charCodeAt(0);
+      });
       const signatureImage = await pdfDoc.embedPng(imageBytes);
       const signatureDims = signatureImage.scale(0.3);
       firstPage.drawImage(signatureImage, {
         x: 75,
         y: 195,
         width: Math.min(signatureDims.width, 150),
-        height: Math.min(signatureDims.height, 40),
+        height: Math.min(signatureDims.height, 40)
       });
-    } catch (e) {
-      console.warn("Could not embed signature:", e);
+    } catch (error) {
+      console.warn("Could not embed signature:", error);
     }
   }
 
@@ -123,25 +141,12 @@ export async function generateW9PDF(formData: W9PDFFormData): Promise<Blob> {
   return new Blob([new Uint8Array(pdfBytes)], { type: "application/pdf" });
 }
 
-function safeSetTextField(
-  form: ReturnType<PDFDocument["getForm"]>,
-  fieldName: string,
-  value: string
-): void {
-  try {
-    const field = form.getTextField(fieldName);
-    field.setText(value);
-  } catch (e) {
-    console.warn(`Could not fill field ${fieldName}:`, e);
-  }
-}
-
 export async function downloadW9PDF(formData: W9PDFFormData, fileName?: string): Promise<void> {
   const blob = await generateW9PDF(formData);
   const url = URL.createObjectURL(blob);
   const link = document.createElement("a");
   link.href = url;
-  link.download = fileName || `W-9_${formData.name.replace(/\s+/g, "_")}.pdf`;
+  link.download = fileName || "W-9_" + formData.name.replace(/\s+/g, "_") + ".pdf";
   document.body.appendChild(link);
   link.click();
   document.body.removeChild(link);
