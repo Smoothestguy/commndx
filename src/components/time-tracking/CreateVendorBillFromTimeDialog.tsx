@@ -11,6 +11,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
 import { Loader2, FileText, AlertTriangle, Edit, User } from "lucide-react";
 import { format, nextFriday, startOfWeek, endOfWeek } from "date-fns";
 import { formatCurrency } from "@/lib/utils";
@@ -73,6 +74,7 @@ export function CreateVendorBillFromTimeDialog({
   const [selectedPersonnel, setSelectedPersonnel] = useState<Set<string>>(new Set());
   const [vendorOverrides, setVendorOverrides] = useState<Record<string, string>>({});
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [customNote, setCustomNote] = useState("");
 
   const { data: vendors = [] } = useVendors();
   const { data: categories = [] } = useExpenseCategories();
@@ -296,7 +298,9 @@ export function CreateVendorBillFromTimeDialog({
             tax_amount: 0,
             total: summary.totalCost,
             status: "open",
-            notes: `Labor bill for ${projectInfo?.name || 'project'} - ${summary.personnelName} - ${format(new Date(billDate), "MMM d, yyyy")}`,
+            notes: customNote 
+              ? `${customNote}\n\nLabor bill for ${projectInfo?.name || 'project'} - ${summary.personnelName} - ${format(new Date(billDate), "MMM d, yyyy")}`
+              : `Labor bill for ${projectInfo?.name || 'project'} - ${summary.personnelName} - ${format(new Date(billDate), "MMM d, yyyy")}`,
             purchase_order_id: null,
             purchase_order_number: null,
           },
@@ -387,6 +391,7 @@ export function CreateVendorBillFromTimeDialog({
     setSelectedPersonnel(new Set());
     setCategoryId("");
     setVendorOverrides({});
+    setCustomNote("");
     onOpenChange(false);
   };
 
@@ -480,6 +485,19 @@ export function CreateVendorBillFromTimeDialog({
                 ))}
               </SelectContent>
             </Select>
+          </div>
+
+          {/* Custom Note */}
+          <div>
+            <Label htmlFor="customNote">Note (applies to all bills)</Label>
+            <Textarea
+              id="customNote"
+              value={customNote}
+              onChange={(e) => setCustomNote(e.target.value)}
+              placeholder="Enter a note that will be added to each personnel's bill..."
+              className="mt-1.5"
+              rows={3}
+            />
           </div>
 
           {/* Personnel Selection - Individual Bills */}
