@@ -379,9 +379,10 @@ export const useConvertEstimateToJobOrder = () => {
 
       if (jobOrderError) throw jobOrderError;
 
-      // Create job order line items (preserve is_taxable and product_name from estimate)
+      // Create job order line items (preserve is_taxable, product_id, and product_name from estimate)
       const jobOrderLineItems = lineItems.map((item: any) => ({
         job_order_id: jobOrder.id,
+        product_id: item.product_id || null,
         product_name: item.products?.name || null,
         description: item.description,
         quantity: item.quantity,
