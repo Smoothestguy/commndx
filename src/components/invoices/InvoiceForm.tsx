@@ -58,6 +58,7 @@ interface LineItem {
   margin: number;
   total: number;
   isTaxable: boolean;
+  displayOrder?: number;
 }
 
 interface InvoiceFormProps {
@@ -150,6 +151,7 @@ export function InvoiceForm({ onSubmit, initialData, jobOrderId }: InvoiceFormPr
       setSelectedJobOrder(jobOrderWithLineItems);
       const copiedItems = jobOrderWithLineItems.line_items.map((item: any, index: number) => ({
         id: `${Date.now()}-${index}`,
+        productId: item.product_id || undefined,
         productName: item.product_name || "",
         description: item.description,
         quantity: item.quantity,
@@ -157,6 +159,7 @@ export function InvoiceForm({ onSubmit, initialData, jobOrderId }: InvoiceFormPr
         margin: item.markup,
         total: item.total,
         isTaxable: item.is_taxable ?? true,
+        displayOrder: index,
       }));
       setLineItems(copiedItems);
       form.setValue("taxRate", jobOrderWithLineItems.tax_rate);
@@ -207,6 +210,7 @@ export function InvoiceForm({ onSubmit, initialData, jobOrderId }: InvoiceFormPr
     if (jobOrderWithLineItems?.line_items?.length > 0) {
       const copiedItems = jobOrderWithLineItems.line_items.map((item: any, index: number) => ({
         id: `${Date.now()}-${index}`,
+        productId: item.product_id || undefined,
         productName: item.product_name || "",
         description: item.description,
         quantity: item.quantity,
@@ -214,6 +218,7 @@ export function InvoiceForm({ onSubmit, initialData, jobOrderId }: InvoiceFormPr
         margin: item.markup,
         total: item.total,
         isTaxable: item.is_taxable ?? true,
+        displayOrder: index,
       }));
       setLineItems(copiedItems);
     }
@@ -305,7 +310,7 @@ export function InvoiceForm({ onSubmit, initialData, jobOrderId }: InvoiceFormPr
       tax_amount: taxAmount,
       total,
       due_date: values.dueDate,
-      line_items: lineItems.map(({ id, ...item }) => ({
+      line_items: lineItems.map(({ id, ...item }, index) => ({
         product_id: item.productId || null,
         product_name: item.productName || null,
         description: item.description,
@@ -313,6 +318,7 @@ export function InvoiceForm({ onSubmit, initialData, jobOrderId }: InvoiceFormPr
         unit_price: item.unitPrice,
         markup: item.margin,
         total: item.total,
+        display_order: index,
       })),
     };
 

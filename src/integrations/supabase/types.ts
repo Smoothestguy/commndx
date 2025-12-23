@@ -1880,6 +1880,7 @@ export type Database = {
         Row: {
           created_at: string
           description: string
+          display_order: number | null
           id: string
           invoice_id: string
           jo_line_item_id: string | null
@@ -1893,6 +1894,7 @@ export type Database = {
         Insert: {
           created_at?: string
           description: string
+          display_order?: number | null
           id?: string
           invoice_id: string
           jo_line_item_id?: string | null
@@ -1906,6 +1908,7 @@ export type Database = {
         Update: {
           created_at?: string
           description?: string
+          display_order?: number | null
           id?: string
           invoice_id?: string
           jo_line_item_id?: string | null
@@ -2135,6 +2138,7 @@ export type Database = {
           is_taxable: boolean | null
           job_order_id: string
           markup: number
+          product_id: string | null
           product_name: string | null
           quantity: number
           total: number
@@ -2148,6 +2152,7 @@ export type Database = {
           is_taxable?: boolean | null
           job_order_id: string
           markup: number
+          product_id?: string | null
           product_name?: string | null
           quantity: number
           total: number
@@ -2161,6 +2166,7 @@ export type Database = {
           is_taxable?: boolean | null
           job_order_id?: string
           markup?: number
+          product_id?: string | null
           product_name?: string | null
           quantity?: number
           total?: number
@@ -2172,6 +2178,13 @@ export type Database = {
             columns: ["job_order_id"]
             isOneToOne: false
             referencedRelation: "job_orders"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "job_order_line_items_product_id_fkey"
+            columns: ["product_id"]
+            isOneToOne: false
+            referencedRelation: "products"
             referencedColumns: ["id"]
           },
         ]

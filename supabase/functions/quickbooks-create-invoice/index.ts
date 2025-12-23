@@ -90,7 +90,7 @@ serve(async (req) => {
     // Get valid token
     const { accessToken, realmId } = await getValidToken(supabase);
 
-    // Fetch invoice with line items
+    // Fetch invoice with line items (ordered by display_order)
     const { data: invoice, error: invoiceError } = await supabase
       .from("invoices")
       .select(`
@@ -103,6 +103,15 @@ serve(async (req) => {
     if (invoiceError || !invoice) {
       console.error("Invoice fetch error:", invoiceError);
       throw new Error("Invoice not found");
+    }
+    
+    // Sort line items by display_order
+    if (invoice.line_items) {
+      invoice.line_items.sort((a: any, b: any) => {
+        const orderA = a.display_order ?? 999;
+        const orderB = b.display_order ?? 999;
+        return orderA - orderB;
+      });
     }
 
     // Check if already synced
@@ -160,7 +169,47 @@ serve(async (req) => {
           productMappings.map((m: any) => [m.product_id, m.quickbooks_item_id])
         );
       }
-      console.log("Found QB product mappings:", qbItemMap.size);
+      console.log("Found QB product mappings by product_id:", qbItemMap.size);
+    }
+
+    // Fallback: For line items without product_id, try to look up by product_name
+    const productNamesWithoutId = invoice.line_items
+      .filter((item: any) => !item.product_id && item.product_name)
+      .map((item: any) => item.product_name);
+
+    let qbItemByNameMap = new Map<string, string>();
+    if (productNamesWithoutId.length > 0) {
+      // First get the product IDs by name
+      const { data: productsByName } = await supabase
+        .from("products")
+        .select("id, name")
+        .in("name", productNamesWithoutId);
+
+      if (productsByName && productsByName.length > 0) {
+        const foundProductIds = productsByName.map((p: any) => p.id);
+        
+        // Get QB mappings for these products
+        const { data: productMappingsByName } = await supabase
+          .from("quickbooks_product_mappings")
+          .select("product_id, quickbooks_item_id")
+          .in("product_id", foundProductIds);
+
+        if (productMappingsByName) {
+          // Create a map from product_id to qb_item_id
+          const idToQbMap = new Map(
+            productMappingsByName.map((m: any) => [m.product_id, m.quickbooks_item_id])
+          );
+          
+          // Create a map from product_name to qb_item_id
+          for (const product of productsByName) {
+            const qbId = idToQbMap.get(product.id);
+            if (qbId) {
+              qbItemByNameMap.set(product.name, qbId);
+            }
+          }
+        }
+        console.log("Found QB product mappings by name:", qbItemByNameMap.size);
+      }
     }
 
     // Build line items for QuickBooks
@@ -169,13 +218,19 @@ serve(async (req) => {
       // Calculate effective unit price (includes markup)
       const effectiveUnitPrice = item.unit_price * (1 + item.markup / 100);
       
-      // Get QB Item ID if product is mapped
-      const qbItemId = item.product_id ? qbItemMap.get(item.product_id) : null;
+      // Get QB Item ID - first try by product_id, then fallback to name lookup
+      let qbItemId = item.product_id ? qbItemMap.get(item.product_id) : null;
+      if (!qbItemId && item.product_name) {
+        qbItemId = qbItemByNameMap.get(item.product_name);
+      }
       
-      // Build description with product name if available
-      const qbDescription = item.product_name 
-        ? `${item.product_name} - ${item.description}`
-        : item.description;
+      // Build description - only include product name in description if NOT using ItemRef
+      // When using ItemRef, QuickBooks shows the product name in Product/service column
+      const qbDescription = qbItemId 
+        ? item.description  // Just the description since product name shows in Product/service
+        : (item.product_name 
+            ? `${item.product_name} - ${item.description}`
+            : item.description);
 
       const lineItem: any = {
         DetailType: "SalesItemLineDetail",
@@ -190,7 +245,9 @@ serve(async (req) => {
       // Add ItemRef if we have a mapped product
       if (qbItemId) {
         lineItem.SalesItemLineDetail.ItemRef = { value: qbItemId };
-        console.log(`Line item "${item.product_name}" mapped to QB Item: ${qbItemId}`);
+        console.log(`Line item "${item.product_name || item.description}" mapped to QB Item: ${qbItemId}`);
+      } else {
+        console.log(`Line item "${item.product_name || item.description}" has no QB mapping`);
       }
 
       qbLineItems.push(lineItem);
