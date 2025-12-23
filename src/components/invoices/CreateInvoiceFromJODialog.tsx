@@ -25,7 +25,8 @@ import { format } from "date-fns";
 import { AlertTriangle, Receipt } from "lucide-react";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { Card } from "@/components/ui/card";
-import { supabase } from "@/integrations/supabase/client";
+import { getNextInvoiceNumber } from "@/utils/invoiceNumberGenerator";
+import { toast } from "sonner";
 
 interface CreateInvoiceFromJODialogProps {
   open: boolean;
@@ -71,64 +72,21 @@ export function CreateInvoiceFromJODialog({
   const [invoiceNumber, setInvoiceNumber] = useState<string>("");
   const [isLoadingNumber, setIsLoadingNumber] = useState(false);
 
-  // Fetch the next invoice number from QuickBooks or generate locally
+  // Fetch the next invoice number for preview
   useEffect(() => {
     if (!open) return;
 
     const fetchInvoiceNumber = async () => {
       setIsLoadingNumber(true);
       try {
-        // Check if QuickBooks is connected
-        const { data: qbConfig } = await supabase
-          .from("quickbooks_config")
-          .select("is_connected")
-          .eq("is_connected", true)
-          .maybeSingle();
-
-        if (qbConfig?.is_connected) {
-          // Use QuickBooks sequence
-          const { data: qbData, error: qbError } = await supabase.functions.invoke(
-            'quickbooks-get-next-number',
-            { body: { type: 'invoice' } }
-          );
-
-          if (!qbError && qbData?.nextNumber) {
-            setInvoiceNumber(qbData.nextNumber);
-          } else {
-            console.error('Error fetching QB number:', qbError);
-            // Fallback to local
-            await generateLocalNumber();
-          }
-        } else {
-          // Fallback to local sequence (INV-YYXXXXX)
-          await generateLocalNumber();
-        }
+        const result = await getNextInvoiceNumber();
+        setInvoiceNumber(result.number);
       } catch (error) {
         console.error('Error fetching invoice number:', error);
-        await generateLocalNumber();
+        toast.error('Failed to generate invoice number');
       } finally {
         setIsLoadingNumber(false);
       }
-    };
-
-    const generateLocalNumber = async () => {
-      const { data: latestInvoice } = await supabase
-        .from("invoices")
-        .select("number")
-        .order("created_at", { ascending: false })
-        .limit(1)
-        .maybeSingle();
-
-      let nextNumber = 1;
-      if (latestInvoice?.number) {
-        const match = latestInvoice.number.match(/INV-\d{2}(\d+)/);
-        if (match) {
-          nextNumber = parseInt(match[1]) + 1;
-        }
-      }
-
-      const year = new Date().getFullYear().toString().slice(-2);
-      setInvoiceNumber(`INV-${year}${String(nextNumber).padStart(5, "0")}`);
     };
 
     fetchInvoiceNumber();
@@ -192,23 +150,31 @@ export function CreateInvoiceFromJODialog({
     ? false 
     : total > jobOrder.remaining_amount + 0.01;
 
+  const [isSubmitting, setIsSubmitting] = useState(false);
+
   const handleSubmit = async () => {
     if (!hasValidItems || hasExceededQuantity || exceedsBalance) return;
 
-    const invoiceLineItems = lineItems
-      .filter((item) => item.quantityToInvoice > 0)
-      .map((item) => ({
-        jo_line_item_id: item.id,
-        description: item.description,
-        quantity: item.quantityToInvoice,
-        unit_price: item.unitPrice,
-        markup: item.markup,
-        total: calculateLineTotal(item),
-      })) as any[];
-
+    setIsSubmitting(true);
+    
     try {
+      // Re-fetch a fresh invoice number at submit time to avoid stale numbers
+      const freshNumberResult = await getNextInvoiceNumber();
+      const freshInvoiceNumber = freshNumberResult.number;
+
+      const invoiceLineItems = lineItems
+        .filter((item) => item.quantityToInvoice > 0)
+        .map((item) => ({
+          jo_line_item_id: item.id,
+          description: item.description,
+          quantity: item.quantityToInvoice,
+          unit_price: item.unitPrice,
+          markup: item.markup,
+          total: calculateLineTotal(item),
+        })) as any[];
+
       const result = await addInvoice.mutateAsync({
-        number: invoiceNumber,
+        number: freshInvoiceNumber,
         job_order_id: jobOrder.id,
         job_order_number: jobOrder.number,
         customer_id: jobOrder.customer_id,
@@ -227,6 +193,9 @@ export function CreateInvoiceFromJODialog({
       navigate(`/invoices/${result.id}`);
     } catch (error) {
       console.error("Error creating invoice:", error);
+      toast.error("Failed to create invoice");
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
@@ -388,9 +357,9 @@ export function CreateInvoiceFromJODialog({
           </Button>
           <Button
             onClick={handleSubmit}
-            disabled={!hasValidItems || hasExceededQuantity || exceedsBalance || addInvoice.isPending || isLoadingNumber || !invoiceNumber}
+            disabled={!hasValidItems || hasExceededQuantity || exceedsBalance || addInvoice.isPending || isLoadingNumber || !invoiceNumber || isSubmitting}
           >
-            {isLoadingNumber ? "Loading..." : addInvoice.isPending ? "Creating..." : "Create Invoice"}
+            {isLoadingNumber ? "Loading..." : isSubmitting ? "Creating..." : "Create Invoice"}
           </Button>
         </DialogFooter>
       </DialogContent>
