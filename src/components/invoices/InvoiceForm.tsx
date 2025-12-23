@@ -277,7 +277,7 @@ export function InvoiceForm({ onSubmit, initialData, jobOrderId }: InvoiceFormPr
             ...item,
             productId: product.id,
             productName: product.name,
-            description: product.description || product.name,
+            description: product.description || "",
             unitPrice: product.cost,
             margin: product.markup,
             total,
