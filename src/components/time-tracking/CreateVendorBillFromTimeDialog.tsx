@@ -313,9 +313,14 @@ export function CreateVendorBillFromTimeDialog({
           // Auto-sync to QuickBooks if connected
           if (qbConfig?.is_connected) {
             try {
-              await supabase.functions.invoke('quickbooks-sync-vendor-bill', {
+              const syncResult = await supabase.functions.invoke('quickbooks-create-bill', {
                 body: { billId: result.id }
               });
+              if (syncResult.error) {
+                console.error("QuickBooks sync failed for bill:", result.id, syncResult.error);
+              } else {
+                console.log("QuickBooks sync successful for bill:", result.id);
+              }
             } catch (qbError) {
               console.error("QuickBooks sync failed for bill:", result.id, qbError);
               // Don't fail the whole operation, bill is still created
