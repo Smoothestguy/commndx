@@ -199,13 +199,18 @@ export const ImportWorkOrderDialog = ({
 
     const { subtotal, taxRate, taxAmount, total } = calculateTotals();
 
-    const lineItems = extractedItems.map((item) => ({
-      description: item.description,
-      quantity: item.quantity,
-      unit_price: item.unitPrice,
-      markup: 0,
-      total: item.total,
-    }));
+    const lineItems = extractedItems.map((item) => {
+      const product = products?.find(p => p.id === item.matchedProductId);
+      return {
+        description: item.description,
+        quantity: item.quantity,
+        unit_price: item.unitPrice,
+        markup: 0,
+        total: item.total,
+        product_id: item.matchedProductId || undefined,
+        product_name: product?.name,
+      };
+    });
 
     try {
       const result = await addJobOrder.mutateAsync({
