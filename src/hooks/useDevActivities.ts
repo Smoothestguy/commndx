@@ -37,19 +37,20 @@ export interface DevActivityInput {
   session_id?: string;
 }
 
-export function useDevActivities(dateRange?: DateRange) {
+export function useDevActivities(dateRange?: DateRange, targetUserId?: string | null) {
   const { user } = useAuth();
   const queryClient = useQueryClient();
+  const userId = targetUserId || user?.id;
 
   const { data: activities, isLoading, error } = useQuery({
-    queryKey: ["dev-activities", user?.id, dateRange?.from, dateRange?.to],
+    queryKey: ["dev-activities", userId, dateRange?.from, dateRange?.to],
     queryFn: async () => {
-      if (!user) return [];
+      if (!userId) return [];
 
       let query = supabase
         .from("dev_activities")
         .select("*")
-        .eq("user_id", user.id)
+        .eq("user_id", userId)
         .order("activity_date", { ascending: false })
         .order("created_at", { ascending: false });
 
@@ -64,7 +65,7 @@ export function useDevActivities(dateRange?: DateRange) {
       if (error) throw error;
       return data as DevActivity[];
     },
-    enabled: !!user,
+    enabled: !!userId,
   });
 
   const createActivity = useMutation({

@@ -24,6 +24,7 @@ interface SessionHistoryTableProps {
   dateRange?: DateRange;
   onSelectSession: (sessionId: string | null) => void;
   selectedSessionId: string | null;
+  targetUserId?: string | null;
 }
 
 interface Session {
@@ -40,19 +41,21 @@ export function SessionHistoryTable({
   dateRange,
   onSelectSession,
   selectedSessionId,
+  targetUserId,
 }: SessionHistoryTableProps) {
   const { user } = useAuth();
   const { toast } = useToast();
+  const userId = targetUserId || user?.id;
 
   const { data: sessions, isLoading } = useQuery({
-    queryKey: ["session-history", user?.id, dateRange?.from, dateRange?.to],
+    queryKey: ["session-history", userId, dateRange?.from, dateRange?.to],
     queryFn: async () => {
-      if (!user) return [];
+      if (!userId) return [];
 
       let query = supabase
         .from("user_work_sessions")
         .select("*")
-        .eq("user_id", user.id)
+        .eq("user_id", userId)
         .order("session_start", { ascending: false });
 
       if (dateRange?.from) {
@@ -67,7 +70,7 @@ export function SessionHistoryTable({
       if (error) throw error;
       return data as Session[];
     },
-    enabled: !!user,
+    enabled: !!userId,
   });
 
   const formatDuration = (seconds: number): string => {

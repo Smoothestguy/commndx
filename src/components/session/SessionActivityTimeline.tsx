@@ -20,6 +20,7 @@ import {
 interface SessionActivityTimelineProps {
   dateRange?: DateRange;
   sessionId?: string | null;
+  targetUserId?: string | null;
 }
 
 interface ActivityLog {
@@ -34,24 +35,26 @@ interface ActivityLog {
 export function SessionActivityTimeline({
   dateRange,
   sessionId,
+  targetUserId,
 }: SessionActivityTimelineProps) {
   const { user } = useAuth();
+  const userId = targetUserId || user?.id;
 
   const { data: activities, isLoading } = useQuery({
     queryKey: [
       "session-activity",
-      user?.id,
+      userId,
       sessionId,
       dateRange?.from,
       dateRange?.to,
     ],
     queryFn: async () => {
-      if (!user) return [];
+      if (!userId) return [];
 
       let query = supabase
         .from("session_activity_log")
         .select("*")
-        .eq("user_id", user.id)
+        .eq("user_id", userId)
         .order("created_at", { ascending: false })
         .limit(100);
 
@@ -68,7 +71,7 @@ export function SessionActivityTimeline({
       if (error) throw error;
       return data as ActivityLog[];
     },
-    enabled: !!user,
+    enabled: !!userId,
   });
 
   const getActivityIcon = (type: string) => {

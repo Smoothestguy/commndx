@@ -35,10 +35,11 @@ import { getActivityTypeConfig, formatDuration, ACTIVITY_TYPES } from "./devActi
 
 interface DevActivityDashboardProps {
   dateRange?: DateRange;
+  targetUserId?: string | null;
 }
 
-export function DevActivityDashboard({ dateRange }: DevActivityDashboardProps) {
-  const { activities, isLoading, deleteActivity, bulkUpdateActivities, bulkDeleteActivities, projectNames } = useDevActivities(dateRange);
+export function DevActivityDashboard({ dateRange, targetUserId }: DevActivityDashboardProps) {
+  const { activities, isLoading, deleteActivity, bulkUpdateActivities, bulkDeleteActivities, projectNames } = useDevActivities(dateRange, targetUserId);
   const [showUpload, setShowUpload] = useState(false);
   const [showManualForm, setShowManualForm] = useState(false);
   const [editActivity, setEditActivity] = useState<DevActivity | null>(null);

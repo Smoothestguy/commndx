@@ -16,6 +16,7 @@ import {
 
 interface SessionHistoryStatsProps {
   dateRange?: DateRange;
+  targetUserId?: string | null;
 }
 
 interface SessionData {
@@ -25,18 +26,19 @@ interface SessionData {
   total_idle_seconds: number | null;
 }
 
-export function SessionHistoryStats({ dateRange }: SessionHistoryStatsProps) {
+export function SessionHistoryStats({ dateRange, targetUserId }: SessionHistoryStatsProps) {
   const { user } = useAuth();
+  const userId = targetUserId || user?.id;
 
   const { data: stats, isLoading } = useQuery({
-    queryKey: ["session-stats", user?.id, dateRange?.from, dateRange?.to],
+    queryKey: ["session-stats", userId, dateRange?.from, dateRange?.to],
     queryFn: async () => {
-      if (!user) return null;
+      if (!userId) return null;
 
       let query = supabase
         .from("user_work_sessions")
         .select("session_start, session_end, is_active, total_idle_seconds")
-        .eq("user_id", user.id);
+        .eq("user_id", userId);
 
       if (dateRange?.from) {
         query = query.gte("session_start", dateRange.from.toISOString());
@@ -74,7 +76,7 @@ export function SessionHistoryStats({ dateRange }: SessionHistoryStatsProps) {
         avgEarningsPerSession,
       };
     },
-    enabled: !!user,
+    enabled: !!userId,
   });
 
   if (isLoading) {
