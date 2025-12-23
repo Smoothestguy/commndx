@@ -264,6 +264,7 @@ serve(async (req) => {
         SalesItemLineDetail: {
           Qty: qty,
           UnitPrice: effectiveUnitPrice,
+          TaxCodeRef: { value: "NON" }, // Mark as non-taxable
         },
       };
 
@@ -287,6 +288,7 @@ serve(async (req) => {
         SalesItemLineDetail: {
           Qty: 1,
           UnitPrice: invoice.tax_amount,
+          TaxCodeRef: { value: "NON" }, // Mark as non-taxable
         },
       });
     }
