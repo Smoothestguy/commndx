@@ -40,74 +40,41 @@ export function ProjectCard({
 
   return (
     <div
-      className={`glass rounded-xl p-3 sm:p-4 transition-all duration-300 hover:border-primary/30 hover:shadow-lg hover:shadow-primary/5 cursor-pointer group animate-fade-in border-l-4 ${statusColorMap[project.status]} min-w-0 overflow-hidden`}
+      className={`glass rounded-xl p-2.5 sm:p-4 transition-all duration-300 hover:border-primary/30 hover:shadow-lg hover:shadow-primary/5 cursor-pointer group animate-fade-in border-l-4 ${statusColorMap[project.status]} min-w-0 overflow-hidden`}
       style={{ animationDelay: `${index * 50}ms` }}
       onClick={onClick}
     >
       {/* Header: Name & Badges */}
-      <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-2 mb-3 min-w-0">
-        <h3 className="font-heading text-base sm:text-lg font-semibold text-foreground group-hover:text-primary transition-colors truncate min-w-0">
+      <div className="flex items-start justify-between gap-2 mb-2 min-w-0">
+        <h3 className="font-heading text-sm sm:text-lg font-semibold text-foreground group-hover:text-primary transition-colors line-clamp-1 min-w-0 flex-1">
           {project.name}
         </h3>
-        <div className="flex items-center gap-1.5 sm:gap-2 flex-wrap flex-shrink-0">
-          <Badge variant={stage.variant} className={`text-[10px] sm:text-xs ${stage.className}`}>
+        <div className="flex items-center gap-1 flex-shrink-0">
+          <Badge variant={stage.variant} className={`text-[9px] sm:text-xs px-1.5 py-0 sm:px-2 sm:py-0.5 ${stage.className}`}>
             {stage.label}
           </Badge>
-          <StatusBadge status={project.status} />
+          <StatusBadge status={project.status} className="text-[9px] sm:text-xs" />
         </div>
       </div>
 
-      {/* Customer Info */}
-      <div className="flex items-center gap-2 mb-2 text-xs sm:text-sm text-muted-foreground min-w-0">
-        <User className="h-3.5 w-3.5 sm:h-4 sm:w-4 flex-shrink-0" />
-        <span className="truncate">{customerName}</span>
-      </div>
-
-      {/* Date Range */}
-      <div className="flex items-center gap-2 mb-3 sm:mb-4 text-xs sm:text-sm text-muted-foreground min-w-0">
-        <Calendar className="h-3.5 w-3.5 sm:h-4 sm:w-4 flex-shrink-0" />
-        <span className="truncate">
-          <span className="hidden sm:inline">{format(new Date(project.start_date), "MMM dd, yyyy")}</span>
-          <span className="sm:hidden">{format(new Date(project.start_date), "MMM dd")}</span>
-          {project.end_date && (
-            <>
-              {" → "}
-              <span className="hidden sm:inline">{format(new Date(project.end_date), "MMM dd, yyyy")}</span>
-              <span className="sm:hidden">{format(new Date(project.end_date), "MMM dd")}</span>
-            </>
-          )}
-        </span>
-      </div>
-
-      {/* Actions */}
-      <div className="flex items-center justify-between pt-2 sm:pt-3 border-t border-border/50">
-        <div className="flex gap-1 sm:gap-2">
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={(e) => {
-              e.stopPropagation();
-              onEdit();
-            }}
-            className="h-7 sm:h-8 px-2 sm:px-3"
-          >
-            <Edit className="h-3 w-3 sm:h-3.5 sm:w-3.5" />
-            <span className="hidden xs:inline ml-1 sm:ml-1.5">Edit</span>
-          </Button>
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={(e) => {
-              e.stopPropagation();
-              onDelete();
-            }}
-            className="h-7 sm:h-8 px-2 sm:px-3 text-destructive hover:text-destructive"
-          >
-            <Trash2 className="h-3 w-3 sm:h-3.5 sm:w-3.5" />
-            <span className="hidden xs:inline ml-1 sm:ml-1.5">Delete</span>
-          </Button>
+      {/* Customer & Date - Compact Row */}
+      <div className="flex items-center justify-between gap-2 text-[11px] sm:text-sm text-muted-foreground min-w-0">
+        <div className="flex items-center gap-1.5 min-w-0 flex-1">
+          <User className="h-3 w-3 sm:h-4 sm:w-4 flex-shrink-0" />
+          <span className="truncate">{customerName}</span>
         </div>
-        <ChevronRight className="h-4 w-4 text-muted-foreground group-hover:text-primary transition-colors flex-shrink-0" />
+        <div className="flex items-center gap-1.5 flex-shrink-0">
+          <Calendar className="h-3 w-3 sm:h-4 sm:w-4" />
+          <span>{format(new Date(project.start_date), "MMM dd")}</span>
+        </div>
+      </div>
+
+      {/* Chevron indicator - subtle */}
+      <div className="flex items-center justify-end mt-2 pt-2 border-t border-border/30">
+        <div className="flex items-center gap-1 text-[10px] text-muted-foreground group-hover:text-primary transition-colors">
+          <span className="hidden sm:inline">View details</span>
+          <ChevronRight className="h-3.5 w-3.5" />
+        </div>
       </div>
     </div>
   );

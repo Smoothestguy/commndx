@@ -1,11 +1,13 @@
 import { FolderKanban, CheckCircle2, Clock, PauseCircle } from "lucide-react";
 import { Project } from "@/integrations/supabase/hooks/useProjects";
+import { useIsMobile } from "@/hooks/use-mobile";
 
 interface ProjectStatsProps {
   projects: Project[];
 }
 
 export function ProjectStats({ projects }: ProjectStatsProps) {
+  const isMobile = useIsMobile();
   const totalProjects = projects.length;
   const activeProjects = projects.filter(p => p.status === "active").length;
   const completedProjects = projects.filter(p => p.status === "completed").length;
@@ -18,6 +20,7 @@ export function ProjectStats({ projects }: ProjectStatsProps) {
       icon: FolderKanban,
       color: "text-primary",
       bgColor: "bg-primary/10",
+      showOnMobile: true,
     },
     {
       title: "Active",
@@ -25,6 +28,7 @@ export function ProjectStats({ projects }: ProjectStatsProps) {
       icon: Clock,
       color: "text-success",
       bgColor: "bg-success/10",
+      showOnMobile: true,
     },
     {
       title: "Completed",
@@ -32,6 +36,7 @@ export function ProjectStats({ projects }: ProjectStatsProps) {
       icon: CheckCircle2,
       color: "text-primary",
       bgColor: "bg-primary/10",
+      showOnMobile: false,
     },
     {
       title: "On Hold",
@@ -39,28 +44,31 @@ export function ProjectStats({ projects }: ProjectStatsProps) {
       icon: PauseCircle,
       color: "text-warning",
       bgColor: "bg-warning/10",
+      showOnMobile: false,
     },
   ];
 
+  const displayStats = isMobile ? stats.filter(s => s.showOnMobile) : stats;
+
   return (
-    <div className="grid grid-cols-2 gap-2 sm:gap-4 mb-6 overflow-hidden">
-      {stats.map((stat, index) => {
+    <div className={`grid gap-2 sm:gap-4 mb-4 sm:mb-6 overflow-hidden ${isMobile ? 'grid-cols-2' : 'grid-cols-2 sm:grid-cols-4'}`}>
+      {displayStats.map((stat, index) => {
         const Icon = stat.icon;
         return (
           <div
             key={stat.title}
-            className="glass rounded-lg p-2.5 sm:p-4 transition-all duration-300 hover:border-primary/30 hover:shadow-lg hover:shadow-primary/5 animate-fade-in min-w-0"
+            className="glass rounded-lg p-2 sm:p-4 transition-all duration-300 hover:border-primary/30 hover:shadow-lg hover:shadow-primary/5 animate-fade-in min-w-0"
             style={{ animationDelay: `${index * 75}ms` }}
           >
             <div className="flex items-center justify-between gap-2">
               <div className="min-w-0">
-                <p className="text-[10px] sm:text-xs text-muted-foreground mb-0.5 sm:mb-1">{stat.title}</p>
-                <p className="font-heading text-xl sm:text-3xl font-bold text-foreground">
+                <p className="text-[10px] sm:text-xs text-muted-foreground mb-0.5">{stat.title}</p>
+                <p className="font-heading text-lg sm:text-3xl font-bold text-foreground">
                   {stat.value}
                 </p>
               </div>
-              <div className={`flex h-8 w-8 sm:h-10 sm:w-10 items-center justify-center rounded-lg ${stat.bgColor} transition-all duration-300 flex-shrink-0`}>
-                <Icon className={`h-4 w-4 sm:h-5 sm:w-5 ${stat.color}`} />
+              <div className={`flex h-7 w-7 sm:h-10 sm:w-10 items-center justify-center rounded-lg ${stat.bgColor} transition-all duration-300 flex-shrink-0`}>
+                <Icon className={`h-3.5 w-3.5 sm:h-5 sm:w-5 ${stat.color}`} />
               </div>
             </div>
           </div>

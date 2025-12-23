@@ -13,6 +13,7 @@ import { ProjectStats } from "@/components/projects/ProjectStats";
 import { ProjectFilters } from "@/components/projects/ProjectFilters";
 import { ProjectEmptyState } from "@/components/projects/ProjectEmptyState";
 import { ProjectFormDialog, initialProjectFormData, type ProjectFormData } from "@/components/projects/ProjectFormDialog";
+import { FloatingActionButton } from "@/components/shared/FloatingActionButton";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { useProjects, useAddProject, useUpdateProject, useDeleteProject, Project, ProjectStage } from "@/integrations/supabase/hooks/useProjects";
 import { useCustomers } from "@/integrations/supabase/hooks/useCustomers";
@@ -245,12 +246,14 @@ const Projects = () => {
       />
       <PageLayout
       title="Projects"
-      description="Manage customer projects and track their status"
+      description={isMobile ? undefined : "Manage customer projects and track their status"}
       actions={
-        <Button variant="glow" onClick={openNewDialog}>
-          <Plus className="h-4 w-4" />
-          Add Project
-        </Button>
+        !isMobile ? (
+          <Button variant="glow" onClick={openNewDialog}>
+            <Plus className="h-4 w-4" />
+            Add Project
+          </Button>
+        ) : undefined
       }
     >
       <PullToRefreshWrapper onRefresh={refetch} isRefreshing={isFetching}>
@@ -346,6 +349,12 @@ const Projects = () => {
         customers={customers}
         editingProject={editingProject}
         isSubmitting={addProject.isPending || updateProject.isPending}
+      />
+
+      {/* Mobile FAB */}
+      <FloatingActionButton
+        onClick={openNewDialog}
+        icon={<Plus className="h-5 w-5" />}
       />
     </PageLayout>
     </>
