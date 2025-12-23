@@ -56,6 +56,7 @@ interface LineItem {
   unitPrice: number;
   margin: number;
   total: number;
+  isTaxable: boolean;
 }
 
 interface InvoiceFormProps {
@@ -74,7 +75,7 @@ export function InvoiceForm({ onSubmit, initialData, jobOrderId }: InvoiceFormPr
   const [selectedCustomerId, setSelectedCustomerId] = useState<string | undefined>();
   const { data: jobOrderWithLineItems } = useJobOrder(selectedJobOrderId || "");
   const [lineItems, setLineItems] = useState<LineItem[]>([
-    { id: "1", description: "", quantity: 1, unitPrice: 0, margin: 0, total: 0 },
+    { id: "1", description: "", quantity: 1, unitPrice: 0, margin: 0, total: 0, isTaxable: true },
   ]);
   const [selectedJobOrder, setSelectedJobOrder] = useState<any>(null);
   const [selectedCustomer, setSelectedCustomer] = useState<any>(null);
@@ -153,6 +154,7 @@ export function InvoiceForm({ onSubmit, initialData, jobOrderId }: InvoiceFormPr
         unitPrice: item.unit_price,
         margin: item.markup,
         total: item.total,
+        isTaxable: item.is_taxable ?? true,
       }));
       setLineItems(copiedItems);
       form.setValue("taxRate", jobOrderWithLineItems.tax_rate);
@@ -174,7 +176,7 @@ export function InvoiceForm({ onSubmit, initialData, jobOrderId }: InvoiceFormPr
       setSelectedJobOrder(null);
       form.setValue("jobOrderId", "");
       // Reset line items to empty when switching to customer mode
-      setLineItems([{ id: "1", description: "", quantity: 1, unitPrice: 0, margin: 0, total: 0 }]);
+      setLineItems([{ id: "1", description: "", quantity: 1, unitPrice: 0, margin: 0, total: 0, isTaxable: true }]);
     }
   };
 
@@ -208,6 +210,7 @@ export function InvoiceForm({ onSubmit, initialData, jobOrderId }: InvoiceFormPr
         unitPrice: item.unit_price,
         margin: item.markup,
         total: item.total,
+        isTaxable: item.is_taxable ?? true,
       }));
       setLineItems(copiedItems);
     }
@@ -216,7 +219,7 @@ export function InvoiceForm({ onSubmit, initialData, jobOrderId }: InvoiceFormPr
   const addLineItem = () => {
     setLineItems([
       ...lineItems,
-      { id: Date.now().toString(), productId: undefined, description: "", quantity: 1, unitPrice: 0, margin: 0, total: 0 },
+      { id: Date.now().toString(), productId: undefined, description: "", quantity: 1, unitPrice: 0, margin: 0, total: 0, isTaxable: true },
     ]);
   };
 
@@ -235,6 +238,7 @@ export function InvoiceForm({ onSubmit, initialData, jobOrderId }: InvoiceFormPr
             unitPrice: product.cost,
             margin: product.markup,
             total,
+            isTaxable: true, // Default new products to taxable
           };
         }
         return item;
@@ -273,11 +277,16 @@ export function InvoiceForm({ onSubmit, initialData, jobOrderId }: InvoiceFormPr
 
   const subtotal = lineItems.reduce((sum, item) => sum + item.total, 0);
   const taxRate = form.watch("taxRate") || 0;
-  const taxAmount = subtotal * (taxRate / 100);
-  const total = subtotal + taxAmount;
+  // Only apply tax to taxable line items
+  const taxableSubtotal = lineItems
+    .filter((item) => item.isTaxable)
+    .reduce((sum, item) => sum + item.total, 0);
+  const taxAmount = Math.round(taxableSubtotal * (taxRate / 100) * 100) / 100;
+  const total = Math.round((subtotal + taxAmount) * 100) / 100;
 
   const remainingBalance = selectedJobOrder ? selectedJobOrder.remaining_amount : 0;
-  const exceedsBalance = invoiceType === "job_order" && total > remainingBalance;
+  // Add small tolerance for rounding differences
+  const exceedsBalance = invoiceType === "job_order" && total > remainingBalance + 0.01;
 
   const handleSubmit = (values: z.infer<typeof formSchema>) => {
     if (invoiceType === "job_order" && exceedsBalance) {
