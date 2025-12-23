@@ -557,7 +557,45 @@ export const useApproveApplication = () => {
 
       if (fetchError) throw fetchError;
 
+      // Prevent double-approval
+      if (application.status === 'approved') {
+        throw new Error('Application is already approved');
+      }
+
       const applicant = application.applicants as Applicant;
+
+      // Check if personnel already exists with same email (prevent duplicates)
+      const { data: existingPersonnel } = await supabase
+        .from("personnel")
+        .select("id")
+        .eq("email", applicant.email)
+        .maybeSingle();
+
+      if (existingPersonnel) {
+        // Personnel already exists - just update application status and link
+        const { error: appUpdateError } = await supabase
+          .from("applications")
+          .update({ status: 'approved', notes })
+          .eq("id", applicationId);
+
+        if (appUpdateError) throw appUpdateError;
+
+        // Update applicant status
+        const { error: applicantUpdateError } = await supabase
+          .from("applicants")
+          .update({ status: 'approved' })
+          .eq("id", application.applicant_id);
+
+        if (applicantUpdateError) throw applicantUpdateError;
+
+        // Update existing personnel with applicant_id if not set
+        await supabase
+          .from("personnel")
+          .update({ applicant_id: applicant.id } as any)
+          .eq("id", existingPersonnel.id);
+
+        return existingPersonnel;
+      }
 
       // Update application status
       const { error: appUpdateError } = await supabase
@@ -575,7 +613,7 @@ export const useApproveApplication = () => {
 
       if (applicantUpdateError) throw applicantUpdateError;
 
-      // Create personnel record
+      // Create personnel record (only if none exists with this email)
       const { data: personnel, error: personnelError } = await supabase
         .from("personnel")
         .insert({
