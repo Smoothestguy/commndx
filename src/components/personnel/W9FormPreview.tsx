@@ -1,11 +1,9 @@
-import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { Download, Loader2 } from "lucide-react";
+import { Download } from "lucide-react";
 import { format } from "date-fns";
 import { W9Form } from "@/integrations/supabase/hooks/useW9Forms";
 import { downloadFormW9 } from "@/lib/generateW9";
-import { toast } from "sonner";
 
 interface W9FormPreviewProps {
   w9Form: W9Form;
@@ -14,23 +12,12 @@ interface W9FormPreviewProps {
 }
 
 export function W9FormPreview({ w9Form, ssnLastFour, ssnFull }: W9FormPreviewProps) {
-  const [isDownloading, setIsDownloading] = useState(false);
-
-  const handleDownload = async () => {
-    setIsDownloading(true);
-    try {
-      await downloadFormW9({
-        w9Form,
-        ssnLastFour: ssnLastFour || undefined,
-        ssnFull: ssnFull || undefined,
-      });
-      toast.success("W-9 PDF downloaded successfully");
-    } catch (error) {
-      console.error("Error downloading W-9:", error);
-      toast.error("Failed to download W-9 PDF");
-    } finally {
-      setIsDownloading(false);
-    }
+  const handleDownload = () => {
+    downloadFormW9({
+      w9Form,
+      ssnLastFour: ssnLastFour || undefined,
+      ssnFull: ssnFull || undefined,
+    });
   };
 
   const formatSSN = () => {
@@ -88,12 +75,8 @@ export function W9FormPreview({ w9Form, ssnLastFour, ssnFull }: W9FormPreviewPro
   return (
     <div className="w-full">
       <div className="flex justify-end mb-4">
-        <Button onClick={handleDownload} size="sm" disabled={isDownloading}>
-          {isDownloading ? (
-            <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-          ) : (
-            <Download className="h-4 w-4 mr-2" />
-          )}
+        <Button onClick={handleDownload} size="sm">
+          <Download className="h-4 w-4 mr-2" />
           Download PDF
         </Button>
       </div>

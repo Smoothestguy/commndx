@@ -16,8 +16,7 @@ import { Separator } from "@/components/ui/separator";
 import { W9Form } from "@/integrations/supabase/hooks/useW9Forms";
 import { supabase } from "@/integrations/supabase/client";
 import { downloadForm1099, Generate1099Options } from "@/lib/generate1099";
-import { FileText, Download, AlertCircle, DollarSign, Loader2 } from "lucide-react";
-import { toast } from "sonner";
+import { FileText, Download, AlertCircle, DollarSign } from "lucide-react";
 
 interface Generate1099DialogProps {
   open: boolean;
@@ -53,7 +52,6 @@ export function Generate1099Dialog({
   const currentYear = new Date().getFullYear();
   const [taxYear, setTaxYear] = useState(currentYear - 1);
   const [isLoading, setIsLoading] = useState(false);
-  const [isGenerating, setIsGenerating] = useState(false);
   const [companyInfo, setCompanyInfo] = useState<any>(null);
   const [paymentSummary, setPaymentSummary] = useState<PaymentSummary | null>(null);
 
@@ -113,32 +111,23 @@ export function Generate1099Dialog({
     }
   };
 
-  const handleGenerate = async () => {
+  const handleGenerate = () => {
     if (!w9Form || !companyInfo || !paymentSummary) return;
 
-    setIsGenerating(true);
-    try {
-      const options: Generate1099Options = {
-        taxYear,
-        w9Form,
-        personnel: personnelData,
-        company: companyInfo,
-        payments: {
-          totalNonemployeeCompensation: paymentSummary.totalPayments,
-          federalTaxWithheld: 0, // This would come from actual withholding records
-          stateTaxWithheld: 0,
-          stateIncome: paymentSummary.totalPayments,
-        },
-      };
+    const options: Generate1099Options = {
+      taxYear,
+      w9Form,
+      personnel: personnelData,
+      company: companyInfo,
+      payments: {
+        totalNonemployeeCompensation: paymentSummary.totalPayments,
+        federalTaxWithheld: 0, // This would come from actual withholding records
+        stateTaxWithheld: 0,
+        stateIncome: paymentSummary.totalPayments,
+      },
+    };
 
-      await downloadForm1099(options);
-      toast.success("1099-NEC PDF downloaded successfully");
-    } catch (error) {
-      console.error("Error generating 1099:", error);
-      toast.error("Failed to generate 1099-NEC PDF");
-    } finally {
-      setIsGenerating(false);
-    }
+    downloadForm1099(options);
   };
 
   const formatCurrency = (amount: number) => {
@@ -254,14 +243,10 @@ export function Generate1099Dialog({
           </Button>
           <Button 
             onClick={handleGenerate}
-            disabled={!w9Form || isLoading || isGenerating}
+            disabled={!w9Form || isLoading}
             className="gap-2"
           >
-            {isGenerating ? (
-              <Loader2 className="h-4 w-4 animate-spin" />
-            ) : (
-              <Download className="h-4 w-4" />
-            )}
+            <Download className="h-4 w-4" />
             Download 1099-NEC
           </Button>
         </DialogFooter>
