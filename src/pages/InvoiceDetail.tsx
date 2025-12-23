@@ -283,7 +283,7 @@ const InvoiceDetail = () => {
           <table className="w-full">
             <thead>
               <tr className="border-b border-border">
-                <th className="text-left py-3 text-sm font-medium text-muted-foreground">Description</th>
+                <th className="text-left py-3 text-sm font-medium text-muted-foreground">Item</th>
                 <th className="text-right py-3 text-sm font-medium text-muted-foreground">Qty</th>
                 <th className="text-right py-3 text-sm font-medium text-muted-foreground">Unit Price</th>
                 <th className="text-right py-3 text-sm font-medium text-muted-foreground">Amount</th>
@@ -292,7 +292,14 @@ const InvoiceDetail = () => {
             <tbody>
               {invoice.line_items.map((item) => (
                 <tr key={item.id} className="border-b border-border/50">
-                  <td className="py-4">{item.description}</td>
+                  <td className="py-4">
+                    {item.product_name && (
+                      <div className="font-medium">{item.product_name}</div>
+                    )}
+                    <div className={item.product_name ? "text-sm text-muted-foreground" : ""}>
+                      {item.description}
+                    </div>
+                  </td>
                   <td className="py-4 text-right">{item.quantity}</td>
                   <td className="py-4 text-right">{formatCurrency(Number(item.unit_price))}</td>
                   <td className="py-4 text-right font-medium">{formatCurrency(Number(item.total))}</td>

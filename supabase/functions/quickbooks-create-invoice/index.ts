@@ -149,10 +149,15 @@ serve(async (req) => {
         ? item.total / item.quantity  // No rounding - keep full precision
         : item.unit_price;
       
+      // Build description with product name prefix if available
+      const qbDescription = item.product_name 
+        ? `${item.product_name} - ${item.description}`
+        : item.description;
+      
       qbLineItems.push({
         DetailType: 'SalesItemLineDetail',
         Amount: item.total,  // Exact total from CommandX
-        Description: item.description,
+        Description: qbDescription,
         SalesItemLineDetail: {
           Qty: item.quantity,
           UnitPrice: effectiveUnitPrice,  // Full precision ensures Amount = UnitPrice × Qty
