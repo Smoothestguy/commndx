@@ -1,9 +1,11 @@
+import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { Download } from "lucide-react";
+import { Download, Loader2 } from "lucide-react";
 import { format } from "date-fns";
 import { W9Form } from "@/integrations/supabase/hooks/useW9Forms";
 import { downloadFormW9 } from "@/lib/generateW9";
+import { toast } from "sonner";
 
 interface W9FormPreviewProps {
   w9Form: W9Form;
@@ -12,12 +14,23 @@ interface W9FormPreviewProps {
 }
 
 export function W9FormPreview({ w9Form, ssnLastFour, ssnFull }: W9FormPreviewProps) {
-  const handleDownload = () => {
-    downloadFormW9({
-      w9Form,
-      ssnLastFour: ssnLastFour || undefined,
-      ssnFull: ssnFull || undefined,
-    });
+  const [isDownloading, setIsDownloading] = useState(false);
+
+  const handleDownload = async () => {
+    setIsDownloading(true);
+    try {
+      await downloadFormW9({
+        w9Form,
+        ssnLastFour: ssnLastFour || undefined,
+        ssnFull: ssnFull || undefined,
+      });
+      toast.success("W-9 downloaded successfully");
+    } catch (error) {
+      console.error("Error downloading W-9:", error);
+      toast.error("Failed to download W-9. Please try again.");
+    } finally {
+      setIsDownloading(false);
+    }
   };
 
   const formatSSN = () => {
@@ -75,9 +88,13 @@ export function W9FormPreview({ w9Form, ssnLastFour, ssnFull }: W9FormPreviewPro
   return (
     <div className="w-full">
       <div className="flex justify-end mb-4">
-        <Button onClick={handleDownload} size="sm">
-          <Download className="h-4 w-4 mr-2" />
-          Download PDF
+        <Button onClick={handleDownload} size="sm" disabled={isDownloading}>
+          {isDownloading ? (
+            <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+          ) : (
+            <Download className="h-4 w-4 mr-2" />
+          )}
+          {isDownloading ? "Generating..." : "Download PDF"}
         </Button>
       </div>
 
@@ -356,24 +373,22 @@ export function W9FormPreview({ w9Form, ssnLastFour, ssnFull }: W9FormPreviewPro
             <div className="mt-6 border-t border-black pt-4">
               <div className="flex flex-col md:flex-row gap-4">
                 <div className="flex-1">
-                  <div className="text-[10px] mb-1 font-bold">Sign Here</div>
+                  <div className="text-[10px] font-bold mb-1">Sign Here</div>
                   <div className="border-b border-black min-h-[40px] flex items-end pb-1">
-                    {w9Form.signature_data ? (
+                    {w9Form.signature_data && (
                       <img 
                         src={w9Form.signature_data} 
                         alt="Signature" 
-                        className="max-h-[35px] object-contain"
+                        className="max-h-[35px] max-w-[200px] object-contain"
                       />
-                    ) : (
-                      <span className="text-gray-400 italic text-[10px]">No signature on file</span>
                     )}
                   </div>
                   <div className="text-[9px] mt-1">Signature of U.S. person</div>
                 </div>
-                <div className="w-32">
-                  <div className="text-[10px] mb-1 font-bold">Date</div>
-                  <div className="border-b border-black min-h-[40px] flex items-end pb-1 px-1">
-                    {w9Form.signature_date ? format(new Date(w9Form.signature_date), "MM/dd/yyyy") : ""}
+                <div className="md:w-1/4">
+                  <div className="text-[10px] font-bold mb-1">Date</div>
+                  <div className="border-b border-black min-h-[40px] flex items-end pb-1 px-2">
+                    {w9Form.signature_date && format(new Date(w9Form.signature_date), "MM/dd/yyyy")}
                   </div>
                 </div>
               </div>
@@ -381,9 +396,9 @@ export function W9FormPreview({ w9Form, ssnLastFour, ssnFull }: W9FormPreviewPro
           </div>
 
           {/* Footer */}
-          <div className="mt-4 text-[8px] text-gray-600">
-            <p>Cat. No. 10231X</p>
-            <p className="mt-1">Form <strong>W-9</strong> (Rev. 3-2024)</p>
+          <div className="mt-4 text-[9px] text-gray-600 flex justify-between">
+            <span>Cat. No. 10231X</span>
+            <span>Form W-9 (Rev. 3-2024)</span>
           </div>
         </div>
       </ScrollArea>
