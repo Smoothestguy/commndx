@@ -1,7 +1,15 @@
 import { Button } from "@/components/ui/button";
-import { X } from "lucide-react";
+import { X, Filter } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { ProjectStage } from "@/integrations/supabase/hooks/useProjects";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 
 interface ProjectFiltersProps {
   filterStatus: string;
@@ -31,7 +39,7 @@ export function ProjectFilters({
   search,
 }: ProjectFiltersProps) {
   const statusOptions = [
-    { value: "all", label: "All Status" },
+    { value: "all", label: "All" },
     { value: "active", label: "Active" },
     { value: "completed", label: "Completed" },
     { value: "on-hold", label: "On Hold" },
@@ -46,72 +54,92 @@ export function ProjectFilters({
     { value: "canceled", label: "Canceled" },
   ];
 
-  return (
-    <div className="mb-4 space-y-2">
-      {/* Stage Filter Pills */}
-      <div className="flex items-center gap-2 overflow-x-auto pb-1 scrollbar-hide">
-        {stageOptions.map((option) => (
-          <Button
-            key={option.value}
-            variant={filterStage === option.value ? "default" : "outline"}
-            size="sm"
-            onClick={() => setFilterStage(option.value)}
-            className={`flex-shrink-0 ${
-              filterStage === option.value
-                ? "bg-primary text-primary-foreground"
-                : "bg-secondary hover:bg-secondary/80"
-            }`}
-          >
-            {option.label}
-          </Button>
-        ))}
-      </div>
+  const hasActiveFilters = filterStatus !== "all" || filterStage !== "all" || search;
 
-      {/* Status Filter Pills */}
-      <div className="flex items-center gap-2 overflow-x-auto pb-1 scrollbar-hide">
-        {statusOptions.map((option) => (
-          <Button
-            key={option.value}
-            variant={filterStatus === option.value ? "default" : "outline"}
-            size="sm"
-            onClick={() => setFilterStatus(option.value)}
-            className={`flex-shrink-0 ${
-              filterStatus === option.value
-                ? "bg-primary text-primary-foreground"
-                : "bg-secondary hover:bg-secondary/80"
-            }`}
-          >
-            {option.label}
-          </Button>
-        ))}
+  return (
+    <div className="space-y-2">
+      {/* Compact Filter Row */}
+      <div className="flex items-center gap-2">
+        {/* Stage Pills - Scrollable */}
+        <div className="flex-1 flex items-center gap-1.5 overflow-x-auto pb-1 scrollbar-hide">
+          {stageOptions.map((option) => (
+            <Button
+              key={option.value}
+              variant={filterStage === option.value ? "default" : "outline"}
+              size="sm"
+              onClick={() => setFilterStage(option.value)}
+              className={`flex-shrink-0 h-7 px-2.5 text-xs ${
+                filterStage === option.value
+                  ? "bg-primary text-primary-foreground"
+                  : "bg-secondary/50 hover:bg-secondary"
+              }`}
+            >
+              {option.label}
+            </Button>
+          ))}
+        </div>
+
+        {/* Status Dropdown */}
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <Button 
+              variant="outline" 
+              size="sm" 
+              className="h-7 px-2.5 flex-shrink-0 bg-background"
+            >
+              <Filter className="h-3.5 w-3.5 mr-1.5" />
+              <span className="text-xs">
+                {filterStatus === "all" ? "Status" : statusOptions.find(s => s.value === filterStatus)?.label}
+              </span>
+              {filterStatus !== "all" && (
+                <Badge variant="secondary" className="ml-1.5 h-4 w-4 p-0 flex items-center justify-center text-[10px]">
+                  1
+                </Badge>
+              )}
+            </Button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="end" className="bg-popover">
+            <DropdownMenuLabel className="text-xs">Filter by Status</DropdownMenuLabel>
+            <DropdownMenuSeparator />
+            {statusOptions.map((option) => (
+              <DropdownMenuItem
+                key={option.value}
+                onClick={() => setFilterStatus(option.value)}
+                className={filterStatus === option.value ? "bg-accent" : ""}
+              >
+                {option.label}
+              </DropdownMenuItem>
+            ))}
+          </DropdownMenuContent>
+        </DropdownMenu>
       </div>
 
       {/* Active Filters Display */}
-      {activeFiltersCount > 0 && (
-        <div className="flex items-center gap-2 mt-3 flex-wrap">
+      {hasActiveFilters && (
+        <div className="flex items-center gap-1.5 flex-wrap">
           {search && (
-            <Badge variant="secondary" className="gap-1">
-              Search: {search}
+            <Badge variant="secondary" className="text-[10px] h-5 gap-1">
+              "{search}"
             </Badge>
           )}
           {filterStage !== "all" && (
-            <Badge variant="secondary" className="gap-1">
-              Stage: {stageLabels[filterStage as ProjectStage] || filterStage}
+            <Badge variant="secondary" className="text-[10px] h-5 gap-1">
+              {stageLabels[filterStage as ProjectStage] || filterStage}
             </Badge>
           )}
           {filterStatus !== "all" && (
-            <Badge variant="secondary" className="gap-1 capitalize">
-              Status: {filterStatus}
+            <Badge variant="secondary" className="text-[10px] h-5 gap-1 capitalize">
+              {filterStatus}
             </Badge>
           )}
           <Button
             variant="ghost"
             size="sm"
             onClick={onClearFilters}
-            className="h-6 px-2 text-xs text-muted-foreground hover:text-foreground"
+            className="h-5 px-1.5 text-[10px] text-muted-foreground hover:text-foreground"
           >
-            <X className="h-3 w-3 mr-1" />
-            Clear all
+            <X className="h-3 w-3 mr-0.5" />
+            Clear
           </Button>
         </div>
       )}
