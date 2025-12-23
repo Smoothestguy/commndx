@@ -46,7 +46,7 @@ async function getValidToken(supabase: any) {
   return { accessToken: config.access_token, realmId: config.realm_id };
 }
 
-// QuickBooks API helper
+// QuickBooks API helper with defensive parsing
 async function qbRequest(method: string, endpoint: string, accessToken: string, realmId: string, body?: any) {
   const url = `https://quickbooks.api.intuit.com/v3/company/${realmId}${endpoint}`;
   
@@ -54,8 +54,10 @@ async function qbRequest(method: string, endpoint: string, accessToken: string, 
     method,
     headers: {
       'Accept': 'application/json',
+      'Accept-Encoding': 'identity', // Prevent gzip encoding issues
       'Content-Type': 'application/json',
       'Authorization': `Bearer ${accessToken}`,
+      'User-Agent': 'LovableCloud/1.0',
     },
   };
 
@@ -65,13 +67,30 @@ async function qbRequest(method: string, endpoint: string, accessToken: string, 
 
   const response = await fetch(url, options);
   
+  // Log response metadata for debugging
+  console.log(`QB API ${method} ${endpoint} - Status: ${response.status}, Content-Type: ${response.headers.get('content-type')}, Content-Encoding: ${response.headers.get('content-encoding')}`);
+  
+  // Use defensive text-first parsing
+  let responseText: string;
+  try {
+    responseText = await response.text();
+  } catch (textError) {
+    console.error('Failed to read response body:', textError);
+    throw new Error(`QuickBooks API response read error: ${textError}`);
+  }
+  
   if (!response.ok) {
-    const errorText = await response.text();
-    console.error(`QuickBooks API error: ${errorText}`);
-    throw new Error(`QuickBooks API error: ${response.status}`);
+    console.error(`QuickBooks API error response: ${responseText}`);
+    throw new Error(`QuickBooks API error: ${response.status} - ${responseText.substring(0, 200)}`);
   }
 
-  return response.json();
+  // Parse JSON from text
+  try {
+    return JSON.parse(responseText);
+  } catch (parseError) {
+    console.error('Failed to parse QB response as JSON. Raw text:', responseText.substring(0, 500));
+    throw new Error(`QuickBooks API returned invalid JSON: ${parseError}`);
+  }
 }
 
 serve(async (req) => {
