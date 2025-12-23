@@ -248,6 +248,38 @@ export const useUpdatePersonnel = () => {
   });
 };
 
+export const useUpdatePersonnelRating = () => {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async ({
+      id,
+      rating,
+    }: {
+      id: string;
+      rating: number;
+    }) => {
+      const { data, error } = await supabase
+        .from("personnel")
+        .update({ rating })
+        .eq("id", id)
+        .select()
+        .single();
+
+      if (error) throw error;
+      return data;
+    },
+    onSuccess: (_, variables) => {
+      queryClient.invalidateQueries({ queryKey: ["personnel"] });
+      queryClient.invalidateQueries({ queryKey: ["personnel", variables.id] });
+      toast.success("Rating updated");
+    },
+    onError: (error: Error) => {
+      toast.error(`Failed to update rating: ${error.message}`);
+    },
+  });
+};
+
 export const useDeletePersonnel = () => {
   const queryClient = useQueryClient();
 
