@@ -491,11 +491,30 @@ export const useConvertEstimateToInvoice = () => {
 
       if (lineItemsInsertError) throw lineItemsInsertError;
 
+      // Sync to QuickBooks if connected
+      try {
+        const qbConnected = await isQuickBooksConnected();
+        if (qbConnected) {
+          console.log("QuickBooks connected - syncing invoice from estimate:", invoice.id);
+          const { error: qbError } = await supabase.functions.invoke("quickbooks-create-invoice", {
+            body: { invoiceId: invoice.id },
+          });
+          if (qbError) {
+            console.error("QuickBooks sync error:", qbError);
+            toast.warning("Invoice created, but QuickBooks sync failed");
+          }
+        }
+      } catch (qbError) {
+        console.error("QuickBooks sync error (non-blocking):", qbError);
+        toast.warning("Invoice created, but QuickBooks sync failed");
+      }
+
       return invoice;
     },
     onSuccess: (invoice) => {
       queryClient.invalidateQueries({ queryKey: ["estimates"] });
       queryClient.invalidateQueries({ queryKey: ["invoices"] });
+      queryClient.invalidateQueries({ queryKey: ["quickbooks-sync-logs"] });
       toast.success(`Invoice ${invoice.number} created successfully`);
     },
     onError: (error: Error) => {
