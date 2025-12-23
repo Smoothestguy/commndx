@@ -364,6 +364,11 @@ export function ProjectTimeEntriesTable({
     setShowDeleteDialog(false);
   };
 
+  // Check if any selected entries can be approved/rejected
+  const selectedEntryList = entries.filter(e => selectedIds.has(e.id));
+  const hasApprovableEntries = selectedEntryList.some(e => e.status !== 'approved');
+  const hasRejectableEntries = selectedEntryList.some(e => e.status !== 'rejected');
+
   if (projectGroups.length === 0) {
     return (
       <div className="text-center py-12">
@@ -382,35 +387,35 @@ export function ProjectTimeEntriesTable({
             {selectedIds.size} selected
           </span>
           <div className="flex items-center gap-2 flex-wrap">
-            {onStatusChange && (
-              <>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => {
-                    onStatusChange(Array.from(selectedIds), 'approved');
-                    setSelectedIds(new Set());
-                  }}
-                  disabled={isUpdatingStatus}
-                  className="text-green-600 border-green-600/30 hover:bg-green-600/10"
-                >
-                  <Check className="h-4 w-4 mr-1" />
-                  Approve
-                </Button>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => {
-                    onStatusChange(Array.from(selectedIds), 'rejected');
-                    setSelectedIds(new Set());
-                  }}
-                  disabled={isUpdatingStatus}
-                  className="text-red-600 border-red-600/30 hover:bg-red-600/10"
-                >
-                  <X className="h-4 w-4 mr-1" />
-                  Reject
-                </Button>
-              </>
+            {onStatusChange && hasApprovableEntries && (
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => {
+                  onStatusChange(Array.from(selectedIds), 'approved');
+                  setSelectedIds(new Set());
+                }}
+                disabled={isUpdatingStatus}
+                className="text-green-600 border-green-600/30 hover:bg-green-600/10"
+              >
+                <Check className="h-4 w-4 mr-1" />
+                Approve
+              </Button>
+            )}
+            {onStatusChange && hasRejectableEntries && (
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => {
+                  onStatusChange(Array.from(selectedIds), 'rejected');
+                  setSelectedIds(new Set());
+                }}
+                disabled={isUpdatingStatus}
+                className="text-red-600 border-red-600/30 hover:bg-red-600/10"
+              >
+                <X className="h-4 w-4 mr-1" />
+                Reject
+              </Button>
             )}
             {onCreateVendorBill && (
               <Button
