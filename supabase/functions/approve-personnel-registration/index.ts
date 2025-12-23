@@ -308,7 +308,7 @@ Deno.serve(async (req) => {
             notification_type: "application_approved",
             title: `Application Approved: ${registration.first_name} ${registration.last_name}`,
             message: `Registration for ${registration.first_name} ${registration.last_name} has been approved. Personnel record created.`,
-            link_url: `/staffing/personnel/${personnel.id}`,
+            link_url: `/personnel/${personnel.id}`,
             related_id: personnel.id,
             metadata: {
               personnel_name: `${registration.first_name} ${registration.last_name}`,
