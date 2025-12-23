@@ -85,14 +85,14 @@ export async function generateW9PDF(formData: W9PDFFormData): Promise<Blob> {
   // TIN (SSN or EIN) - fill each digit field separately
   const tinClean = formData.tin.replace(/\D/g, "");
   if (formData.tinType === "ssn" && tinClean.length === 9) {
-    // SSN fields: f1_10 (3 digits), f1_11 (2 digits), f1_12 (4 digits)
-    safeSetTextField(form, "topmostSubform[0].Page1[0].f1_10[0]", tinClean.substring(0, 3));
-    safeSetTextField(form, "topmostSubform[0].Page1[0].f1_11[0]", tinClean.substring(3, 5));
-    safeSetTextField(form, "topmostSubform[0].Page1[0].f1_12[0]", tinClean.substring(5, 9));
+    // SSN fields: f1_11 (3 digits), f1_12 (2 digits), f1_13 (4 digits)
+    safeSetTextField(form, "topmostSubform[0].Page1[0].f1_11[0]", tinClean.substring(0, 3));
+    safeSetTextField(form, "topmostSubform[0].Page1[0].f1_12[0]", tinClean.substring(3, 5));
+    safeSetTextField(form, "topmostSubform[0].Page1[0].f1_13[0]", tinClean.substring(5, 9));
   } else if (formData.tinType === "ein" && tinClean.length >= 9) {
-    // EIN fields: f1_13 (2 digits), f1_14 (7 digits)
-    safeSetTextField(form, "topmostSubform[0].Page1[0].f1_13[0]", tinClean.substring(0, 2));
-    safeSetTextField(form, "topmostSubform[0].Page1[0].f1_14[0]", tinClean.substring(2, 9));
+    // EIN fields: f1_14 (2 digits), f1_15 (7 digits)
+    safeSetTextField(form, "topmostSubform[0].Page1[0].f1_14[0]", tinClean.substring(0, 2));
+    safeSetTextField(form, "topmostSubform[0].Page1[0].f1_15[0]", tinClean.substring(2, 9));
   }
 
   // Embed signature if provided
@@ -105,8 +105,8 @@ export async function generateW9PDF(formData: W9PDFFormData): Promise<Blob> {
       const signatureImage = await pdfDoc.embedPng(imageBytes);
       const signatureDims = signatureImage.scale(0.3);
       firstPage.drawImage(signatureImage, {
-        x: 50,
-        y: 100,
+        x: 75,
+        y: 195,
         width: Math.min(signatureDims.width, 150),
         height: Math.min(signatureDims.height, 40),
       });
