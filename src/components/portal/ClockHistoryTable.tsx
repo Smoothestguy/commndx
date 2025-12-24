@@ -19,7 +19,10 @@ export function ClockHistoryTable({ personnelId }: ClockHistoryTableProps) {
   const { data: history, isLoading } = useClockHistory(personnelId, 14);
 
   const formatDate = (dateString: string) => {
-    const date = new Date(dateString);
+    // Handle date-only strings (YYYY-MM-DD) to avoid timezone shifts
+    const date = dateString.includes('T') 
+      ? new Date(dateString)
+      : new Date(dateString + 'T12:00:00'); // Parse as noon local time
     return date.toLocaleDateString("en-US", {
       weekday: "short",
       month: "short",
@@ -86,7 +89,7 @@ export function ClockHistoryTable({ personnelId }: ClockHistoryTableProps) {
                 {completedEntries.map((entry) => (
                   <TableRow key={entry.id}>
                     <TableCell className="font-medium whitespace-nowrap">
-                      {formatDate(entry.clock_in_at)}
+                      {formatDate(entry.entry_date)}
                     </TableCell>
                     <TableCell className="max-w-[150px] truncate">
                       {entry.project?.name || "Unknown"}
