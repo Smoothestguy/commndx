@@ -48,6 +48,7 @@ export function ClockStatusCard({
   const activeProject = activeEntry?.project;
   const requiresLocation = activeProject?.require_clock_location ?? false;
   const isLocationDenied = permissionState === "denied";
+  const hasAlreadyTakenLunch = (activeEntry?.lunch_duration_minutes || 0) > 0 || !!activeEntry?.lunch_end_at;
 
   // Update elapsed time every second
   useEffect(() => {
@@ -296,26 +297,28 @@ export function ClockStatusCard({
               )}
 
               <div className="flex gap-2">
-                <Button
-                  onClick={handleStartLunch}
-                  disabled={isActioning}
-                  variant="outline"
-                  className="flex-1"
-                >
-                  {isActioning ? (
-                    <Loader2 className="h-4 w-4 animate-spin" />
-                  ) : (
-                    <>
-                      <Coffee className="mr-2 h-4 w-4" />
-                      Lunch
-                    </>
-                  )}
-                </Button>
+                {!hasAlreadyTakenLunch && (
+                  <Button
+                    onClick={handleStartLunch}
+                    disabled={isActioning}
+                    variant="outline"
+                    className="flex-1"
+                  >
+                    {isActioning ? (
+                      <Loader2 className="h-4 w-4 animate-spin" />
+                    ) : (
+                      <>
+                        <Coffee className="mr-2 h-4 w-4" />
+                        Lunch
+                      </>
+                    )}
+                  </Button>
+                )}
                 <Button
                   onClick={handleClockOut}
                   disabled={isActioning}
                   variant="destructive"
-                  className="flex-1"
+                  className={hasAlreadyTakenLunch ? "w-full" : "flex-1"}
                 >
                   {isActioning ? (
                     <Loader2 className="h-4 w-4 animate-spin" />
