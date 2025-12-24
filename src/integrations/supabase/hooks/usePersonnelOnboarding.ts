@@ -8,6 +8,8 @@ import type {
   ImmigrationStatus 
 } from "./usePersonnelRegistrations";
 
+// ==================== TYPES ====================
+
 export interface OnboardingTokenData {
   id: string;
   token: string;
@@ -372,6 +374,124 @@ export function useCompleteOnboarding() {
     onError: (error: Error) => {
       console.error("[Onboarding] Completion failed:", error);
       toast.error(`Failed to complete onboarding: ${error.message}`);
+    },
+  });
+}
+
+// ==================== REVOKE ONBOARDING TOKEN ====================
+
+/**
+ * Hook to revoke an active onboarding token
+ */
+export function useRevokeOnboardingToken() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async ({
+      personnelId,
+      reason,
+    }: {
+      personnelId: string;
+      reason?: string;
+    }) => {
+      console.log("[Onboarding] Revoking token for personnel:", personnelId);
+
+      // Get current user
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) throw new Error("Not authenticated");
+
+      // Find active tokens for this personnel
+      const { data: tokens, error: fetchError } = await supabase
+        .from("personnel_onboarding_tokens")
+        .select("id")
+        .eq("personnel_id", personnelId)
+        .is("used_at", null)
+        .is("revoked_at", null);
+
+      if (fetchError) throw fetchError;
+
+      if (!tokens || tokens.length === 0) {
+        throw new Error("No active onboarding tokens found");
+      }
+
+      // Revoke all active tokens
+      const { error: revokeError } = await supabase
+        .from("personnel_onboarding_tokens")
+        .update({
+          revoked_at: new Date().toISOString(),
+          revoked_by: user.id,
+          revoke_reason: reason || null,
+        })
+        .eq("personnel_id", personnelId)
+        .is("used_at", null)
+        .is("revoked_at", null);
+
+      if (revokeError) throw revokeError;
+
+      // Update personnel onboarding status
+      const { error: personnelError } = await supabase
+        .from("personnel")
+        .update({
+          onboarding_status: "revoked",
+          updated_at: new Date().toISOString(),
+        })
+        .eq("id", personnelId);
+
+      if (personnelError) throw personnelError;
+
+      return { success: true, revokedCount: tokens.length };
+    },
+    onSuccess: (_, variables) => {
+      queryClient.invalidateQueries({ queryKey: ["personnel", variables.personnelId] });
+      queryClient.invalidateQueries({ queryKey: ["personnel"] });
+      toast.success("Onboarding link revoked successfully");
+    },
+    onError: (error: Error) => {
+      console.error("[Onboarding] Revoke failed:", error);
+      toast.error(`Failed to revoke onboarding link: ${error.message}`);
+    },
+  });
+}
+
+// ==================== REVERSE REGISTRATION APPROVAL ====================
+
+/**
+ * Hook to reverse a registration approval
+ */
+export function useReverseRegistrationApproval() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async ({
+      registrationId,
+      reason,
+    }: {
+      registrationId: string;
+      reason?: string;
+    }) => {
+      console.log("[Registration] Reversing approval:", registrationId);
+
+      const { data, error } = await supabase.functions.invoke(
+        "reverse-personnel-approval",
+        {
+          body: { registrationId, reason },
+        }
+      );
+
+      if (error) throw error;
+      if (data?.error) throw new Error(data.error);
+
+      return data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["personnel-registrations"] });
+      queryClient.invalidateQueries({ queryKey: ["personnel"] });
+      queryClient.invalidateQueries({ queryKey: ["pending-registrations-count"] });
+      toast.success("Registration approval reversed successfully");
+    },
+    onError: (error: Error) => {
+      console.error("[Registration] Reverse failed:", error);
+      toast.error(`Failed to reverse approval: ${error.message}`);
     },
   });
 }

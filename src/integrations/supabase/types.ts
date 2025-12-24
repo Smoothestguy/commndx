@@ -3035,6 +3035,9 @@ export type Database = {
           expires_at: string
           id: string
           personnel_id: string
+          revoke_reason: string | null
+          revoked_at: string | null
+          revoked_by: string | null
           token: string
           used_at: string | null
         }
@@ -3043,6 +3046,9 @@ export type Database = {
           expires_at?: string
           id?: string
           personnel_id: string
+          revoke_reason?: string | null
+          revoked_at?: string | null
+          revoked_by?: string | null
           token?: string
           used_at?: string | null
         }
@@ -3051,6 +3057,9 @@ export type Database = {
           expires_at?: string
           id?: string
           personnel_id?: string
+          revoke_reason?: string | null
+          revoked_at?: string | null
+          revoked_by?: string | null
           token?: string
           used_at?: string | null
         }
@@ -3308,6 +3317,9 @@ export type Database = {
           personnel_id: string | null
           phone: string | null
           rejection_reason: string | null
+          reverse_reason: string | null
+          reversed_at: string | null
+          reversed_by: string | null
           reviewed_at: string | null
           reviewed_by: string | null
           ssn_full: string | null
@@ -3335,6 +3347,9 @@ export type Database = {
           personnel_id?: string | null
           phone?: string | null
           rejection_reason?: string | null
+          reverse_reason?: string | null
+          reversed_at?: string | null
+          reversed_by?: string | null
           reviewed_at?: string | null
           reviewed_by?: string | null
           ssn_full?: string | null
@@ -3362,6 +3377,9 @@ export type Database = {
           personnel_id?: string | null
           phone?: string | null
           rejection_reason?: string | null
+          reverse_reason?: string | null
+          reversed_at?: string | null
+          reversed_by?: string | null
           reviewed_at?: string | null
           reviewed_by?: string | null
           ssn_full?: string | null

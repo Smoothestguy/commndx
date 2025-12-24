@@ -155,3 +155,6 @@ verify_jwt = false
 
 [functions.send-vendor-onboarding-email]
 verify_jwt = false
+
+[functions.reverse-personnel-approval]
+verify_jwt = false

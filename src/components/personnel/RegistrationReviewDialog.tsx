@@ -29,6 +29,7 @@ import {
   useRejectRegistration,
   type PersonnelRegistration,
 } from "@/integrations/supabase/hooks/usePersonnelRegistrations";
+import { useReverseRegistrationApproval } from "@/integrations/supabase/hooks/usePersonnelOnboarding";
 import { supabase } from "@/integrations/supabase/client";
 import {
   User,
@@ -41,9 +42,11 @@ import {
   Loader2,
   ExternalLink,
   ArrowRight,
+  RotateCcw,
 } from "lucide-react";
 import { format } from "date-fns";
 import { ApprovalTypeSelectionDialog, type RecordType } from "./ApprovalTypeSelectionDialog";
+import { ReverseApprovalDialog } from "./ReverseApprovalDialog";
 
 const WORK_AUTH_TYPES: Record<string, string> = {
   citizen: "U.S. Citizen",
@@ -88,9 +91,11 @@ export const RegistrationReviewDialog = ({
 }: RegistrationReviewDialogProps) => {
   const approveRegistration = useApproveRegistration();
   const rejectRegistration = useRejectRegistration();
+  const reverseApproval = useReverseRegistrationApproval();
 
   const [showRejectDialog, setShowRejectDialog] = useState(false);
   const [showTypeSelectionDialog, setShowTypeSelectionDialog] = useState(false);
+  const [showReverseDialog, setShowReverseDialog] = useState(false);
   const [rejectionReason, setRejectionReason] = useState("");
 
   if (!registration) return null;
@@ -128,8 +133,16 @@ export const RegistrationReviewDialog = ({
     }
   };
 
+  const handleReverseApproval = async (reason: string) => {
+    await reverseApproval.mutateAsync({
+      registrationId: registration.id,
+      reason,
+    });
+    setShowReverseDialog(false);
+    onOpenChange(false);
+  };
   const isProcessing =
-    approveRegistration.isPending || rejectRegistration.isPending;
+    approveRegistration.isPending || rejectRegistration.isPending || reverseApproval.isPending;
 
   const isPending = registration.status === "pending";
   const isApproved = registration.status === "approved";
@@ -162,20 +175,34 @@ export const RegistrationReviewDialog = ({
 
           <ScrollArea className="max-h-[60vh] pr-4">
             <div className="space-y-6">
-              {/* Approved: Show link to personnel record */}
-              {isApproved && registration.personnel_id && (
+              {/* Approved: Show link to personnel record and reverse option */}
+              {isApproved && (
                 <div className="bg-green-500/10 border border-green-500/30 rounded-lg p-4">
-                  <div className="flex items-center justify-between">
+                  <div className="flex items-center justify-between flex-wrap gap-2">
                     <div className="flex items-center gap-2 text-green-700 dark:text-green-400">
                       <CheckCircle className="h-5 w-5" />
-                      <span className="font-medium">Personnel record created</span>
+                      <span className="font-medium">Record created</span>
                     </div>
-                    <Link to={`/personnel/${registration.personnel_id}`}>
-                      <Button variant="outline" size="sm" className="gap-2">
-                        View Personnel
-                        <ArrowRight className="h-4 w-4" />
+                    <div className="flex items-center gap-2">
+                      {registration.personnel_id && (
+                        <Link to={`/personnel/${registration.personnel_id}`}>
+                          <Button variant="outline" size="sm" className="gap-2">
+                            View Personnel
+                            <ArrowRight className="h-4 w-4" />
+                          </Button>
+                        </Link>
+                      )}
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => setShowReverseDialog(true)}
+                        disabled={isProcessing}
+                        className="gap-2 text-amber-600 hover:text-amber-700 hover:bg-amber-50 dark:hover:bg-amber-950/20"
+                      >
+                        <RotateCcw className="h-4 w-4" />
+                        Reverse
                       </Button>
-                    </Link>
+                    </div>
                   </div>
                 </div>
               )}
@@ -467,6 +494,16 @@ export const RegistrationReviewDialog = ({
         onConfirm={handleApproveWithType}
         isLoading={approveRegistration.isPending}
         applicantName={`${registration.first_name} ${registration.last_name}`}
+      />
+
+      {/* Reverse Approval Dialog */}
+      <ReverseApprovalDialog
+        open={showReverseDialog}
+        onOpenChange={setShowReverseDialog}
+        onConfirm={handleReverseApproval}
+        registrantName={`${registration.first_name} ${registration.last_name}`}
+        hasPersonnelRecord={!!registration.personnel_id}
+        isLoading={reverseApproval.isPending}
       />
     </>
   );
