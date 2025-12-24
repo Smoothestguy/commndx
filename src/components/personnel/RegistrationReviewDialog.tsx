@@ -43,6 +43,7 @@ import {
   ArrowRight,
 } from "lucide-react";
 import { format } from "date-fns";
+import { ApprovalTypeSelectionDialog, type RecordType } from "./ApprovalTypeSelectionDialog";
 
 const WORK_AUTH_TYPES: Record<string, string> = {
   citizen: "U.S. Citizen",
@@ -89,12 +90,21 @@ export const RegistrationReviewDialog = ({
   const rejectRegistration = useRejectRegistration();
 
   const [showRejectDialog, setShowRejectDialog] = useState(false);
+  const [showTypeSelectionDialog, setShowTypeSelectionDialog] = useState(false);
   const [rejectionReason, setRejectionReason] = useState("");
 
   if (!registration) return null;
 
-  const handleApprove = async () => {
-    await approveRegistration.mutateAsync(registration.id);
+  const handleApproveClick = () => {
+    setShowTypeSelectionDialog(true);
+  };
+
+  const handleApproveWithType = async (recordType: RecordType) => {
+    await approveRegistration.mutateAsync({
+      registrationId: registration.id,
+      recordType,
+    });
+    setShowTypeSelectionDialog(false);
     onOpenChange(false);
   };
 
@@ -395,13 +405,13 @@ export const RegistrationReviewDialog = ({
                   <XCircle className="h-4 w-4 mr-2" />
                   Reject
                 </Button>
-                <Button onClick={handleApprove} disabled={isProcessing}>
+                <Button onClick={handleApproveClick} disabled={isProcessing}>
                   {approveRegistration.isPending ? (
                     <Loader2 className="h-4 w-4 mr-2 animate-spin" />
                   ) : (
                     <CheckCircle className="h-4 w-4 mr-2" />
                   )}
-                  Approve & Create Personnel
+                  Approve
                 </Button>
               </>
             ) : (
@@ -449,6 +459,15 @@ export const RegistrationReviewDialog = ({
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      {/* Record Type Selection Dialog */}
+      <ApprovalTypeSelectionDialog
+        open={showTypeSelectionDialog}
+        onOpenChange={setShowTypeSelectionDialog}
+        onConfirm={handleApproveWithType}
+        isLoading={approveRegistration.isPending}
+        applicantName={`${registration.first_name} ${registration.last_name}`}
+      />
     </>
   );
 };

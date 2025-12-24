@@ -29,6 +29,7 @@ import { PersonnelVendorMergeDialog } from "@/components/merge/PersonnelVendorMe
 import { PersonnelDocumentsList } from "@/components/personnel/PersonnelDocumentsList";
 import { StarRating } from "@/components/ui/star-rating";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { ConvertRecordTypeDialog } from "@/components/personnel/ConvertRecordTypeDialog";
 
 interface ComplianceIssue {
   type: string;
@@ -55,6 +56,7 @@ const PersonnelDetail = () => {
   const [defaultEditTab, setDefaultEditTab] = useState("personal");
   const [vendorMergeOpen, setVendorMergeOpen] = useState(false);
   const [receiptPreviewUrl, setReceiptPreviewUrl] = useState<string | null>(null);
+  const [convertDialogOpen, setConvertDialogOpen] = useState(false);
 
   const handleResendOnboardingEmail = () => {
     if (!personnel) return;
@@ -368,6 +370,14 @@ const PersonnelDetail = () => {
                   >
                     <Link2 className="mr-2 h-4 w-4" />
                     {personnel.vendor_id ? "Change Vendor" : "Link to Vendor"}
+                  </Button>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setConvertDialogOpen(true)}
+                  >
+                    <Building2 className="mr-2 h-4 w-4" />
+                    Create Additional Record
                   </Button>
                 </div>
               </div>
@@ -894,6 +904,23 @@ const PersonnelDetail = () => {
         personnelEmail={personnel.email}
         personnelPhone={personnel.phone}
         currentVendorId={personnel.vendor_id}
+      />
+
+      <ConvertRecordTypeDialog
+        open={convertDialogOpen}
+        onOpenChange={setConvertDialogOpen}
+        personnel={{
+          id: personnel.id,
+          first_name: personnel.first_name,
+          last_name: personnel.last_name,
+          email: personnel.email,
+          phone: personnel.phone,
+          address: personnel.address,
+          city: personnel.city,
+          state: personnel.state,
+          zip: personnel.zip,
+          linked_vendor_id: personnel.linked_vendor_id,
+        }}
       />
 
       {/* Receipt Preview Dialog */}

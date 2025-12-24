@@ -180,25 +180,35 @@ export function useSubmitRegistration() {
   });
 }
 
+export type RecordType = 'personnel' | 'vendor' | 'customer' | 'personnel_vendor';
+
 export function useApproveRegistration() {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: async (registrationId: string) => {
+    mutationFn: async ({ 
+      registrationId, 
+      recordType = 'personnel' 
+    }: { 
+      registrationId: string; 
+      recordType?: RecordType;
+    }) => {
       const { data, error } = await supabase.functions.invoke(
         "approve-personnel-registration",
         {
-          body: { registrationId, action: "approve" },
+          body: { registrationId, action: "approve", recordType },
         }
       );
 
       if (error) throw error;
       return data;
     },
-    onSuccess: () => {
+    onSuccess: (data) => {
       queryClient.invalidateQueries({ queryKey: ["personnel-registrations"] });
       queryClient.invalidateQueries({ queryKey: ["personnel-registrations-count"] });
       queryClient.invalidateQueries({ queryKey: ["personnel"] });
+      queryClient.invalidateQueries({ queryKey: ["vendors"] });
+      queryClient.invalidateQueries({ queryKey: ["customers"] });
       toast.success("Registration approved successfully!");
     },
     onError: (error: Error) => {
