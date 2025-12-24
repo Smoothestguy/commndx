@@ -332,6 +332,35 @@ export function useCompleteOnboarding() {
         console.error("[Onboarding] Failed to send completion notification:", notifError);
       }
 
+      // Trigger auto-sync to QuickBooks if enabled
+      try {
+        // Check if auto-sync is enabled
+        const { data: autoSyncSetting } = await supabase
+          .from("integration_settings")
+          .select("setting_value")
+          .eq("setting_key", "auto_sync_personnel_to_qb")
+          .maybeSingle();
+
+        const isAutoSyncEnabled = (autoSyncSetting?.setting_value as { enabled?: boolean })?.enabled;
+
+        if (isAutoSyncEnabled) {
+          console.log("[Onboarding] Auto-sync to QuickBooks enabled, triggering sync");
+          supabase.functions.invoke("sync-personnel-to-quickbooks", {
+            body: { personnel_id: personnelId },
+          }).then((result) => {
+            if (result.error) {
+              console.error("[Onboarding] Auto-sync to QuickBooks failed:", result.error);
+            } else {
+              console.log("[Onboarding] Auto-sync to QuickBooks completed:", result.data);
+            }
+          }).catch((syncError) => {
+            console.error("[Onboarding] Auto-sync to QuickBooks error:", syncError);
+          });
+        }
+      } catch (autoSyncError) {
+        console.error("[Onboarding] Error checking auto-sync setting:", autoSyncError);
+      }
+
       return { success: true };
     },
     onSuccess: (_, variables) => {
