@@ -710,6 +710,60 @@ export const useApproveApplicationWithType = () => {
         }
       }
 
+      // QuickBooks sync - sync as vendor for personnel/vendor types, customer for customer type
+      try {
+        const { data: qbConfig } = await supabase
+          .from('quickbooks_config')
+          .select('is_connected')
+          .eq('is_connected', true)
+          .maybeSingle();
+
+        if (qbConfig?.is_connected) {
+          if (recordType === 'customer' && createdCustomer) {
+            // Sync as QuickBooks Customer
+            console.log('[Approve] Syncing customer to QuickBooks:', createdCustomer.id);
+            await supabase.functions.invoke('quickbooks-sync-customers', {
+              body: { action: 'sync-single', customerId: createdCustomer.id }
+            });
+          } else if (createdVendor) {
+            // Vendor or Personnel+Vendor → sync vendor to QuickBooks
+            console.log('[Approve] Syncing vendor to QuickBooks:', createdVendor.id);
+            await supabase.functions.invoke('quickbooks-sync-vendors', {
+              body: { action: 'sync-single', vendorId: createdVendor.id }
+            });
+          } else if (recordType === 'personnel' && createdPersonnel) {
+            // Personnel only - create a linked vendor record and sync it
+            const { data: personnelVendor, error: pvError } = await supabase
+              .from("vendors")
+              .insert({
+                name: `${applicant.first_name} ${applicant.last_name}`,
+                email: applicant.email,
+                phone: applicant.phone || null,
+                vendor_type: 'personnel',
+                status: 'active',
+              })
+              .select()
+              .single();
+
+            if (!pvError && personnelVendor) {
+              // Link personnel to this vendor
+              await supabase
+                .from("personnel")
+                .update({ linked_vendor_id: personnelVendor.id } as any)
+                .eq("id", createdPersonnel.id);
+
+              console.log('[Approve] Syncing personnel vendor to QuickBooks:', personnelVendor.id);
+              await supabase.functions.invoke('quickbooks-sync-vendors', {
+                body: { action: 'sync-single', vendorId: personnelVendor.id }
+              });
+            }
+          }
+        }
+      } catch (qbError) {
+        console.error('[Approve] QuickBooks sync error (non-fatal):', qbError);
+        // Don't throw - approval succeeded, QB sync is secondary
+      }
+
       return { personnel: createdPersonnel, vendor: createdVendor, customer: createdCustomer, recordType };
     },
     onSuccess: () => {
