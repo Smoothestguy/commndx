@@ -16,6 +16,8 @@ import { ProjectPreviewDialog } from "@/components/admin/ProjectPreviewDialog";
 import { UserActivityHistory } from "@/components/admin/UserActivityHistory";
 import { useUserActivityLogs } from "@/integrations/supabase/hooks/useUserActivityLogs";
 import { formatCurrency } from "@/lib/utils";
+import { useAllOpenClockEntries } from "@/integrations/supabase/hooks/useTimeClock";
+import { InlineClockControls } from "@/components/portal/InlineClockControls";
 import { getLastCompletedPayPeriod, calculatePayPeriodTotals } from "@/lib/payPeriodUtils";
 interface TimeEntry {
   id: string;
@@ -37,6 +39,8 @@ interface Assignment {
     zip?: string;
     start_date?: string;
     end_date?: string;
+    time_clock_enabled?: boolean;
+    require_clock_location?: boolean;
     customer?: {
       name: string;
       company?: string;
@@ -60,6 +64,11 @@ export default function PersonnelPortalPreview() {
   const navigate = useNavigate();
   
   const { data: personnel, isLoading: personnelLoading } = usePersonnel();
+  
+  // Fetch all open clock entries for this personnel
+  const { data: openClockEntries } = useAllOpenClockEntries(selectedPersonnelId || undefined);
+  const hasOtherOpenEntry = (projectId: string) => 
+    openClockEntries?.some(e => e.project_id !== projectId) ?? false;
 
   // Fetch time entries for selected personnel
   const { data: timeEntries, isLoading: timeLoading } = useQuery({
@@ -98,6 +107,8 @@ export default function PersonnelPortalPreview() {
             zip, 
             start_date, 
             end_date,
+            time_clock_enabled,
+            require_clock_location,
             customer:customers(name, company)
           )
         `)
@@ -447,10 +458,12 @@ export default function PersonnelPortalPreview() {
                       {displayedProjects?.map((assignment) => (
                         <div 
                           key={assignment.id} 
-                          className="p-3 rounded-lg border cursor-pointer hover:bg-secondary/50 transition-colors group"
-                          onClick={() => setSelectedProject(assignment)}
+                          className="p-3 rounded-lg border hover:bg-secondary/50 transition-colors group"
                         >
-                          <div className="flex justify-between items-start">
+                          <div 
+                            className="flex justify-between items-start cursor-pointer"
+                            onClick={() => setSelectedProject(assignment)}
+                          >
                             <div>
                               <p className="font-medium text-primary group-hover:underline">
                                 {assignment.projects?.name || "Unknown Project"}
@@ -463,6 +476,19 @@ export default function PersonnelPortalPreview() {
                               {assignment.projects?.status || "unknown"}
                             </span>
                           </div>
+                          
+                          {/* Clock In/Out controls for clock-enabled projects */}
+                          {assignment.projects?.time_clock_enabled && (
+                            <InlineClockControls
+                              project={{
+                                id: assignment.projects.id,
+                                name: assignment.projects.name,
+                                require_clock_location: assignment.projects.require_clock_location,
+                              }}
+                              personnelId={selectedPersonnelId}
+                              hasOtherOpenEntry={hasOtherOpenEntry(assignment.projects.id)}
+                            />
+                          )}
                         </div>
                       ))}
                     </div>
