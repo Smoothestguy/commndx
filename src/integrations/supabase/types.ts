@@ -5254,7 +5254,11 @@ export type Database = {
           invoiced_at: string | null
           is_holiday: boolean | null
           is_locked: boolean | null
+          is_on_lunch: boolean | null
           job_order_id: string | null
+          lunch_duration_minutes: number | null
+          lunch_end_at: string | null
+          lunch_start_at: string | null
           overtime_hours: number | null
           personnel_id: string | null
           project_id: string
@@ -5285,7 +5289,11 @@ export type Database = {
           invoiced_at?: string | null
           is_holiday?: boolean | null
           is_locked?: boolean | null
+          is_on_lunch?: boolean | null
           job_order_id?: string | null
+          lunch_duration_minutes?: number | null
+          lunch_end_at?: string | null
+          lunch_start_at?: string | null
           overtime_hours?: number | null
           personnel_id?: string | null
           project_id: string
@@ -5316,7 +5324,11 @@ export type Database = {
           invoiced_at?: string | null
           is_holiday?: boolean | null
           is_locked?: boolean | null
+          is_on_lunch?: boolean | null
           job_order_id?: string | null
+          lunch_duration_minutes?: number | null
+          lunch_end_at?: string | null
+          lunch_start_at?: string | null
           overtime_hours?: number | null
           personnel_id?: string | null
           project_id?: string

@@ -17,6 +17,10 @@ export interface ClockEntry {
   clock_out_accuracy: number | null;
   entry_source: string;
   hours: number | null;
+  lunch_start_at: string | null;
+  lunch_end_at: string | null;
+  lunch_duration_minutes: number | null;
+  is_on_lunch: boolean;
   project?: {
     id: string;
     name: string;
@@ -47,7 +51,11 @@ export function useOpenClockEntry(personnelId: string | undefined, projectId: st
           clock_out_lng,
           clock_out_accuracy,
           entry_source,
-          hours
+          hours,
+          lunch_start_at,
+          lunch_end_at,
+          lunch_duration_minutes,
+          is_on_lunch
         `)
         .eq("personnel_id", personnelId)
         .eq("project_id", projectId)
@@ -83,6 +91,10 @@ export function useAllOpenClockEntries(personnelId: string | undefined) {
           clock_in_accuracy,
           entry_source,
           hours,
+          lunch_start_at,
+          lunch_end_at,
+          lunch_duration_minutes,
+          is_on_lunch,
           project:projects(id, name, time_clock_enabled, require_clock_location)
         `)
         .eq("personnel_id", personnelId)
@@ -130,6 +142,44 @@ export function useClockEnabledProjects(personnelId: string | undefined) {
   });
 }
 
+// Get clock history for a personnel
+export function useClockHistory(personnelId: string | undefined, days: number = 14) {
+  return useQuery({
+    queryKey: ["clock-history", personnelId, days],
+    queryFn: async () => {
+      if (!personnelId) return [];
+
+      const startDate = new Date();
+      startDate.setDate(startDate.getDate() - days);
+
+      const { data, error } = await supabase
+        .from("time_entries")
+        .select(`
+          id,
+          project_id,
+          personnel_id,
+          entry_date,
+          clock_in_at,
+          clock_out_at,
+          hours,
+          lunch_start_at,
+          lunch_end_at,
+          lunch_duration_minutes,
+          is_on_lunch,
+          project:projects(id, name)
+        `)
+        .eq("personnel_id", personnelId)
+        .eq("entry_source", "clock")
+        .gte("entry_date", startDate.toISOString().split("T")[0])
+        .order("clock_in_at", { ascending: false });
+
+      if (error) throw error;
+      return data;
+    },
+    enabled: !!personnelId,
+  });
+}
+
 // Clock in mutation
 export function useClockIn() {
   const queryClient = useQueryClient();
@@ -161,6 +211,8 @@ export function useClockIn() {
           hours: 0,
           regular_hours: 0,
           overtime_hours: 0,
+          is_on_lunch: false,
+          lunch_duration_minutes: 0,
         } as any])
         .select()
         .single();
@@ -172,6 +224,7 @@ export function useClockIn() {
       queryClient.invalidateQueries({ queryKey: ["open-clock-entry", variables.personnelId, variables.projectId] });
       queryClient.invalidateQueries({ queryKey: ["all-open-clock-entries", variables.personnelId] });
       queryClient.invalidateQueries({ queryKey: ["personnel-time-entries", variables.personnelId] });
+      queryClient.invalidateQueries({ queryKey: ["clock-history", variables.personnelId] });
       toast.success("Clocked in successfully");
     },
     onError: (error: Error) => {
@@ -194,19 +247,23 @@ export function useClockOut() {
       personnelId,
       projectId,
       clockInAt,
+      lunchDurationMinutes,
       geoData,
     }: {
       entryId: string;
       personnelId: string;
       projectId: string;
       clockInAt: string;
+      lunchDurationMinutes?: number;
       geoData: GeoData;
     }) => {
       const now = new Date();
       const clockIn = new Date(clockInAt);
       
-      // Calculate hours worked
-      const hoursWorked = (now.getTime() - clockIn.getTime()) / (1000 * 60 * 60);
+      // Calculate hours worked (subtract lunch duration)
+      const totalMinutes = (now.getTime() - clockIn.getTime()) / (1000 * 60);
+      const workMinutes = totalMinutes - (lunchDurationMinutes || 0);
+      const hoursWorked = workMinutes / 60;
       const roundedHours = Math.round(hoursWorked * 100) / 100; // Round to 2 decimal places
 
       const { data, error } = await supabase
@@ -218,6 +275,7 @@ export function useClockOut() {
           clock_out_accuracy: geoData.accuracy,
           hours: roundedHours,
           regular_hours: roundedHours, // Overtime will be calculated at weekly level
+          is_on_lunch: false,
         })
         .eq("id", entryId)
         .select()
@@ -230,10 +288,98 @@ export function useClockOut() {
       queryClient.invalidateQueries({ queryKey: ["open-clock-entry", variables.personnelId, variables.projectId] });
       queryClient.invalidateQueries({ queryKey: ["all-open-clock-entries", variables.personnelId] });
       queryClient.invalidateQueries({ queryKey: ["personnel-time-entries", variables.personnelId] });
+      queryClient.invalidateQueries({ queryKey: ["clock-history", variables.personnelId] });
       toast.success("Clocked out successfully");
     },
     onError: (error: Error) => {
       toast.error("Failed to clock out: " + error.message);
+    },
+  });
+}
+
+// Start lunch mutation
+export function useStartLunch() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async ({
+      entryId,
+      personnelId,
+      projectId,
+    }: {
+      entryId: string;
+      personnelId: string;
+      projectId: string;
+    }) => {
+      const now = new Date();
+
+      const { data, error } = await supabase
+        .from("time_entries")
+        .update({
+          lunch_start_at: now.toISOString(),
+          is_on_lunch: true,
+        })
+        .eq("id", entryId)
+        .select()
+        .single();
+
+      if (error) throw error;
+      return data;
+    },
+    onSuccess: (_, variables) => {
+      queryClient.invalidateQueries({ queryKey: ["open-clock-entry", variables.personnelId, variables.projectId] });
+      queryClient.invalidateQueries({ queryKey: ["all-open-clock-entries", variables.personnelId] });
+      toast.success("Lunch break started");
+    },
+    onError: (error: Error) => {
+      toast.error("Failed to start lunch: " + error.message);
+    },
+  });
+}
+
+// End lunch mutation
+export function useEndLunch() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async ({
+      entryId,
+      personnelId,
+      projectId,
+      lunchStartAt,
+    }: {
+      entryId: string;
+      personnelId: string;
+      projectId: string;
+      lunchStartAt: string;
+    }) => {
+      const now = new Date();
+      const lunchStart = new Date(lunchStartAt);
+      
+      // Calculate lunch duration in minutes
+      const lunchMinutes = Math.round((now.getTime() - lunchStart.getTime()) / (1000 * 60));
+
+      const { data, error } = await supabase
+        .from("time_entries")
+        .update({
+          lunch_end_at: now.toISOString(),
+          lunch_duration_minutes: lunchMinutes,
+          is_on_lunch: false,
+        })
+        .eq("id", entryId)
+        .select()
+        .single();
+
+      if (error) throw error;
+      return data;
+    },
+    onSuccess: (_, variables) => {
+      queryClient.invalidateQueries({ queryKey: ["open-clock-entry", variables.personnelId, variables.projectId] });
+      queryClient.invalidateQueries({ queryKey: ["all-open-clock-entries", variables.personnelId] });
+      toast.success("Lunch break ended - back to work!");
+    },
+    onError: (error: Error) => {
+      toast.error("Failed to end lunch: " + error.message);
     },
   });
 }
@@ -255,4 +401,13 @@ export function formatDateTime24h(dateString: string): string {
     month: "short",
     day: "numeric",
   }) + " at " + formatTime24h(dateString);
+}
+
+// Helper to format duration in hours and minutes
+export function formatDuration(minutes: number): string {
+  const hours = Math.floor(minutes / 60);
+  const mins = Math.round(minutes % 60);
+  if (hours === 0) return `${mins}m`;
+  if (mins === 0) return `${hours}h`;
+  return `${hours}h ${mins}m`;
 }
