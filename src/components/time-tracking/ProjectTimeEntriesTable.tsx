@@ -1,5 +1,5 @@
 import { useState, useMemo } from "react";
-import { format } from "date-fns";
+import { format, parseISO } from "date-fns";
 import { 
   ChevronDown, 
   ChevronRight, 
@@ -629,7 +629,7 @@ export function ProjectTimeEntriesTable({
                                   <div className="flex items-center gap-3 pl-16">
                                     <div className="flex flex-col">
                                       <span className="font-medium">
-                                        {format(new Date(entry.entry_date), "EEE, MMM d")}
+                                        {format(parseISO(entry.entry_date), "EEE, MMM d")}
                                       </span>
                                       {entry.description && (
                                         <span className="text-sm text-muted-foreground truncate max-w-[300px]">
