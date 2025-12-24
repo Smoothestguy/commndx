@@ -4,13 +4,14 @@ import { SEO } from "@/components/SEO";
 import { usePersonnelById, useResendOnboardingEmail, useUpdatePersonnelRating } from "@/integrations/supabase/hooks/usePersonnel";
 import { usePersonnelInvitationCheck, usePersonnelReimbursements, useUpdateReimbursementStatus } from "@/integrations/supabase/hooks/usePortal";
 import { useRevokeOnboardingToken } from "@/integrations/supabase/hooks/usePersonnelOnboarding";
+import { useApplicationByPersonnelId, useReverseApprovalWithReason } from "@/integrations/supabase/hooks/useStaffingApplications";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { ScrollArea, ScrollBar } from "@/components/ui/scroll-area";
-import { Mail, Phone, MapPin, Calendar, DollarSign, AlertTriangle, IdCard, MessageSquare, Edit, Flag, FileCheck, Shield, Award, AlertCircle, LucideIcon, Clock, Check, Send, Link2, Building2, FileText, Landmark, Star, Receipt, Eye, CheckCircle, XCircle, Banknote, ExternalLink, Download, Ban } from "lucide-react";
+import { Mail, Phone, MapPin, Calendar, DollarSign, AlertTriangle, IdCard, MessageSquare, Edit, Flag, FileCheck, Shield, Award, AlertCircle, LucideIcon, Clock, Check, Send, Link2, Building2, FileText, Landmark, Star, Receipt, Eye, CheckCircle, XCircle, Banknote, ExternalLink, Download, Ban, Undo2 } from "lucide-react";
 import { ImageLightbox } from "@/components/ui/image-lightbox";
 import { DirectDepositView } from "@/components/personnel/DirectDepositView";
 import { AgreementSignatureView } from "@/components/personnel/AgreementSignatureView";
@@ -33,6 +34,8 @@ import { StarRating } from "@/components/ui/star-rating";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { ConvertRecordTypeDialog } from "@/components/personnel/ConvertRecordTypeDialog";
 import { RevokeOnboardingDialog } from "@/components/personnel/RevokeOnboardingDialog";
+import { ReverseApprovalDialog } from "@/components/personnel/ReverseApprovalDialog";
+import { toast } from "sonner";
 
 interface ComplianceIssue {
   type: string;
@@ -63,6 +66,9 @@ const PersonnelDetail = () => {
   const [receiptPreviewUrl, setReceiptPreviewUrl] = useState<string | null>(null);
   const [convertDialogOpen, setConvertDialogOpen] = useState(false);
   const [revokeOnboardingOpen, setRevokeOnboardingOpen] = useState(false);
+  const [reverseApprovalOpen, setReverseApprovalOpen] = useState(false);
+  const { data: linkedApplication } = useApplicationByPersonnelId(id);
+  const reverseApproval = useReverseApprovalWithReason();
   const [reimbursementAction, setReimbursementAction] = useState<{
     id: string;
     type: "approve" | "reject" | "paid";
@@ -428,6 +434,17 @@ const PersonnelDetail = () => {
                     <Building2 className="mr-2 h-4 w-4" />
                     Create Additional Record
                   </Button>
+                  {linkedApplication?.status === 'approved' && (
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => setReverseApprovalOpen(true)}
+                      className="text-amber-600 hover:text-amber-700"
+                    >
+                      <Undo2 className="mr-2 h-4 w-4" />
+                      Reverse Approval
+                    </Button>
+                  )}
                 </div>
               </div>
             </div>
@@ -1097,6 +1114,30 @@ const PersonnelDetail = () => {
         personnelName={`${personnel.first_name} ${personnel.last_name}`}
         isLoading={revokeOnboardingToken.isPending}
       />
+
+      {/* Reverse Approval Dialog */}
+      {linkedApplication && (
+        <ReverseApprovalDialog
+          open={reverseApprovalOpen}
+          onOpenChange={setReverseApprovalOpen}
+          onConfirm={async (reason) => {
+            try {
+              await reverseApproval.mutateAsync({
+                applicationId: linkedApplication.id,
+                reason,
+              });
+              setReverseApprovalOpen(false);
+              toast.success("Approval reversed successfully");
+            } catch (error) {
+              toast.error("Failed to reverse approval");
+            }
+          }}
+          registrantName={`${personnel.first_name} ${personnel.last_name}`}
+          hasPersonnelRecord={true}
+          hasVendorRecord={!!personnel.linked_vendor_id || !!personnel.vendor_id}
+          isLoading={reverseApproval.isPending}
+        />
+      )}
     </DetailPageLayout>
   );
 };

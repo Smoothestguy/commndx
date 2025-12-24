@@ -1208,3 +1208,34 @@ export const useReverseApprovalWithReason = () => {
     },
   });
 };
+
+// Get application linked to a personnel record
+export const useApplicationByPersonnelId = (personnelId: string | undefined) => {
+  return useQuery({
+    queryKey: ["application-by-personnel", personnelId],
+    queryFn: async () => {
+      if (!personnelId) return null;
+      
+      // Get personnel's applicant_id
+      const { data: personnel } = await supabase
+        .from("personnel")
+        .select("applicant_id")
+        .eq("id", personnelId)
+        .single();
+      
+      if (!personnel?.applicant_id) return null;
+      
+      // Get the application for this applicant
+      const { data: application } = await supabase
+        .from("applications")
+        .select("id, status, applicants(*)")
+        .eq("applicant_id", personnel.applicant_id)
+        .order("created_at", { ascending: false })
+        .limit(1)
+        .maybeSingle();
+      
+      return application;
+    },
+    enabled: !!personnelId,
+  });
+};
