@@ -5,6 +5,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Checkbox } from "@/components/ui/checkbox";
+import { Switch } from "@/components/ui/switch";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Separator } from "@/components/ui/separator";
 import { Project, ProjectStage } from "@/integrations/supabase/hooks/useProjects";
@@ -37,6 +38,8 @@ interface ProjectFormData {
   poc_phone: string;
   poc_email: string;
   use_customer_address: boolean;
+  time_clock_enabled: boolean;
+  require_clock_location: boolean;
 }
 
 interface ProjectFormDialogProps {
@@ -320,6 +323,39 @@ export const ProjectFormDialog = ({
 
             <Separator />
 
+            {/* Time Clock Settings */}
+            <div className="space-y-4">
+              <h4 className="text-sm font-medium text-muted-foreground">Time Clock Settings</h4>
+              
+              <div className="flex items-center justify-between">
+                <div className="space-y-0.5">
+                  <Label htmlFor="time_clock_enabled">Enable Clock In/Out</Label>
+                  <p className="text-xs text-muted-foreground">Personnel can clock in/out from their portal</p>
+                </div>
+                <Switch
+                  id="time_clock_enabled"
+                  checked={formData.time_clock_enabled}
+                  onCheckedChange={(checked) => setFormData({ ...formData, time_clock_enabled: checked })}
+                />
+              </div>
+
+              {formData.time_clock_enabled && (
+                <div className="flex items-center justify-between">
+                  <div className="space-y-0.5">
+                    <Label htmlFor="require_clock_location">Require Location</Label>
+                    <p className="text-xs text-muted-foreground">Location must be captured when clocking in/out</p>
+                  </div>
+                  <Switch
+                    id="require_clock_location"
+                    checked={formData.require_clock_location}
+                    onCheckedChange={(checked) => setFormData({ ...formData, require_clock_location: checked })}
+                  />
+                </div>
+              )}
+            </div>
+
+            <Separator />
+
             {/* Description */}
             <div className="space-y-4">
               <h4 className="text-sm font-medium text-muted-foreground">Description</h4>
@@ -368,6 +404,8 @@ export const initialProjectFormData: ProjectFormData = {
   poc_phone: "",
   poc_email: "",
   use_customer_address: false,
+  time_clock_enabled: false,
+  require_clock_location: true,
 };
 
 export type { ProjectFormData };

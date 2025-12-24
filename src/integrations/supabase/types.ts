@@ -4177,10 +4177,12 @@ export type Database = {
           poc_email: string | null
           poc_name: string | null
           poc_phone: string | null
+          require_clock_location: boolean | null
           stage: Database["public"]["Enums"]["project_stage"]
           start_date: string
           state: string | null
           status: Database["public"]["Enums"]["project_status"]
+          time_clock_enabled: boolean | null
           total_cost: number
           updated_at: string
           zip: string | null
@@ -4198,10 +4200,12 @@ export type Database = {
           poc_email?: string | null
           poc_name?: string | null
           poc_phone?: string | null
+          require_clock_location?: boolean | null
           stage?: Database["public"]["Enums"]["project_stage"]
           start_date: string
           state?: string | null
           status?: Database["public"]["Enums"]["project_status"]
+          time_clock_enabled?: boolean | null
           total_cost?: number
           updated_at?: string
           zip?: string | null
@@ -4219,10 +4223,12 @@ export type Database = {
           poc_email?: string | null
           poc_name?: string | null
           poc_phone?: string | null
+          require_clock_location?: boolean | null
           stage?: Database["public"]["Enums"]["project_stage"]
           start_date?: string
           state?: string | null
           status?: Database["public"]["Enums"]["project_status"]
+          time_clock_enabled?: boolean | null
           total_cost?: number
           updated_at?: string
           zip?: string | null
@@ -5230,9 +5236,18 @@ export type Database = {
       time_entries: {
         Row: {
           billable: boolean | null
+          clock_in_accuracy: number | null
+          clock_in_at: string | null
+          clock_in_lat: number | null
+          clock_in_lng: number | null
+          clock_out_accuracy: number | null
+          clock_out_at: string | null
+          clock_out_lat: number | null
+          clock_out_lng: number | null
           created_at: string
           description: string | null
           entry_date: string
+          entry_source: string | null
           hours: number
           id: string
           invoice_id: string | null
@@ -5252,9 +5267,18 @@ export type Database = {
         }
         Insert: {
           billable?: boolean | null
+          clock_in_accuracy?: number | null
+          clock_in_at?: string | null
+          clock_in_lat?: number | null
+          clock_in_lng?: number | null
+          clock_out_accuracy?: number | null
+          clock_out_at?: string | null
+          clock_out_lat?: number | null
+          clock_out_lng?: number | null
           created_at?: string
           description?: string | null
           entry_date: string
+          entry_source?: string | null
           hours: number
           id?: string
           invoice_id?: string | null
@@ -5274,9 +5298,18 @@ export type Database = {
         }
         Update: {
           billable?: boolean | null
+          clock_in_accuracy?: number | null
+          clock_in_at?: string | null
+          clock_in_lat?: number | null
+          clock_in_lng?: number | null
+          clock_out_accuracy?: number | null
+          clock_out_at?: string | null
+          clock_out_lat?: number | null
+          clock_out_lng?: number | null
           created_at?: string
           description?: string | null
           entry_date?: string
+          entry_source?: string | null
           hours?: number
           id?: string
           invoice_id?: string | null
