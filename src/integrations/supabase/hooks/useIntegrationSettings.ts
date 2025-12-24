@@ -18,15 +18,24 @@ export function useIntegrationSetting(settingKey: string) {
   return useQuery({
     queryKey: ["integration-setting", settingKey],
     queryFn: async () => {
-      const { data, error } = await supabase
-        .from("integration_settings")
-        .select("*")
-        .eq("setting_key", settingKey)
-        .maybeSingle();
+      try {
+        const { data, error } = await supabase
+          .from("integration_settings")
+          .select("*")
+          .eq("setting_key", settingKey)
+          .maybeSingle();
 
-      if (error) throw error;
-      return data as IntegrationSetting | null;
+        if (error) {
+          console.error("Error fetching integration setting:", error);
+          return null;
+        }
+        return data as IntegrationSetting | null;
+      } catch (err) {
+        console.error("Exception fetching integration setting:", err);
+        return null;
+      }
     },
+    retry: false,
   });
 }
 
