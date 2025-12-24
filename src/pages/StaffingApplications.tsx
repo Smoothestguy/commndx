@@ -51,7 +51,7 @@ import {
   useCreateJobPosting,
   useUpdateJobPosting,
   useUpdateTaskOrder,
-  useApproveApplication,
+  useApproveApplicationWithType,
   useRejectApplication,
   useRevokeApproval,
   Application,
@@ -66,6 +66,7 @@ import {
   exportApplicationsToExcel,
   exportApplicationsToPDF,
 } from "@/utils/applicationExportUtils";
+import { ApprovalTypeSelectionDialog, RecordType } from "@/components/personnel/ApprovalTypeSelectionDialog";
 
 const EXPERIENCE_OPTIONS = [
   { key: "all", label: "All Experience" },
@@ -112,6 +113,10 @@ export default function StaffingApplications() {
   const [editingTaskOrder, setEditingTaskOrder] = useState<TaskOrder | null>(null);
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   
+  // Approval type selection dialog state
+  const [appToApprove, setAppToApprove] = useState<Application | null>(null);
+  const [showTypeSelectionDialog, setShowTypeSelectionDialog] = useState(false);
+  
   // New task order form state
   const [newTaskOrder, setNewTaskOrder] = useState({
     project_id: "",
@@ -143,9 +148,42 @@ export default function StaffingApplications() {
   const createJobPosting = useCreateJobPosting();
   const updateJobPosting = useUpdateJobPosting();
   const updateTaskOrder = useUpdateTaskOrder();
-  const approveApplication = useApproveApplication();
+  const approveApplicationWithType = useApproveApplicationWithType();
   const rejectApplication = useRejectApplication();
   const revokeApproval = useRevokeApproval();
+
+  // Handle approve click - opens type selection dialog
+  const handleApproveClick = (app: Application) => {
+    setAppToApprove(app);
+    setShowTypeSelectionDialog(true);
+  };
+
+  // Handle type selection confirmation
+  const handleApproveWithType = async (recordType: RecordType) => {
+    if (!appToApprove) return;
+    
+    try {
+      const result = await approveApplicationWithType.mutateAsync({
+        applicationId: appToApprove.id,
+        recordType,
+        notes: "",
+      });
+      
+      const typeLabels: Record<RecordType, string> = {
+        personnel: "Personnel",
+        vendor: "Vendor",
+        customer: "Customer",
+        personnel_vendor: "Personnel + Vendor",
+      };
+      
+      toast.success(`Application approved! Created as ${typeLabels[recordType]}.`);
+    } catch (error) {
+      toast.error("Failed to approve application");
+    } finally {
+      setShowTypeSelectionDialog(false);
+      setAppToApprove(null);
+    }
+  };
 
   // Filter applications by search and experience
   const filteredApplications = useMemo(() => {
@@ -530,16 +568,7 @@ export default function StaffingApplications() {
           setSelectedApp(app);
           setShowDetailDialog(true);
         }}
-        onApprove={(app) => {
-          approveApplication.mutateAsync({
-            applicationId: app.id,
-            notes: "",
-          }).then(() => {
-            toast.success("Application approved! Applicant added to Personnel.");
-          }).catch(() => {
-            toast.error("Failed to approve application");
-          });
-        }}
+        onApprove={handleApproveClick}
         onReject={(app) => {
           rejectApplication.mutateAsync({
             applicationId: app.id,
@@ -559,6 +588,18 @@ export default function StaffingApplications() {
             toast.error("Failed to revoke approval");
           });
         }}
+      />
+
+      {/* Approval Type Selection Dialog */}
+      <ApprovalTypeSelectionDialog
+        open={showTypeSelectionDialog}
+        onOpenChange={(open) => {
+          setShowTypeSelectionDialog(open);
+          if (!open) setAppToApprove(null);
+        }}
+        onConfirm={handleApproveWithType}
+        isLoading={approveApplicationWithType.isPending}
+        applicantName={appToApprove ? `${appToApprove.applicants?.first_name || ''} ${appToApprove.applicants?.last_name || ''}` : ''}
       />
 
       {/* Application Detail Dialog */}

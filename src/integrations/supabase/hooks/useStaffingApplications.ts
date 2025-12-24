@@ -540,6 +540,189 @@ export const useSubmitApplication = () => {
 
 // ============ APPROVE/REJECT ============
 
+export type ApprovalRecordType = "personnel" | "vendor" | "customer" | "personnel_vendor";
+
+export const useApproveApplicationWithType = () => {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async ({ 
+      applicationId, 
+      recordType,
+      notes 
+    }: { 
+      applicationId: string; 
+      recordType: ApprovalRecordType;
+      notes?: string;
+    }) => {
+      // Get the application with applicant data
+      const { data: application, error: fetchError } = await supabase
+        .from("applications")
+        .select(`
+          *,
+          applicants (*)
+        `)
+        .eq("id", applicationId)
+        .single();
+
+      if (fetchError) throw fetchError;
+
+      // Prevent double-approval
+      if (application.status === 'approved') {
+        throw new Error('Application is already approved');
+      }
+
+      const applicant = application.applicants as Applicant;
+
+      // Update application status
+      const { error: appUpdateError } = await supabase
+        .from("applications")
+        .update({ status: 'approved', notes })
+        .eq("id", applicationId);
+
+      if (appUpdateError) throw appUpdateError;
+
+      // Update applicant status
+      const { error: applicantUpdateError } = await supabase
+        .from("applicants")
+        .update({ status: 'approved' })
+        .eq("id", application.applicant_id);
+
+      if (applicantUpdateError) throw applicantUpdateError;
+
+      let createdPersonnel = null;
+      let createdVendor = null;
+      let createdCustomer = null;
+
+      // Create records based on record type
+      if (recordType === "personnel" || recordType === "personnel_vendor") {
+        // Check if personnel already exists with same email
+        const { data: existingPersonnel } = await supabase
+          .from("personnel")
+          .select("id")
+          .eq("email", applicant.email)
+          .maybeSingle();
+
+        if (existingPersonnel) {
+          // Update existing personnel with applicant_id if not set
+          await supabase
+            .from("personnel")
+            .update({ applicant_id: applicant.id } as any)
+            .eq("id", existingPersonnel.id);
+          createdPersonnel = existingPersonnel;
+        } else {
+          // Create personnel record
+          const { data: personnel, error: personnelError } = await supabase
+            .from("personnel")
+            .insert({
+              first_name: applicant.first_name,
+              last_name: applicant.last_name,
+              email: applicant.email,
+              phone: applicant.phone,
+              applicant_id: applicant.id,
+              status: 'active' as const,
+            } as any)
+            .select()
+            .single();
+
+          if (personnelError) throw personnelError;
+          createdPersonnel = personnel;
+
+          // Send onboarding email
+          try {
+            await supabase.functions.invoke("send-personnel-onboarding-email", {
+              body: {
+                personnelId: personnel.id,
+                email: applicant.email,
+                firstName: applicant.first_name,
+                lastName: applicant.last_name,
+              },
+            });
+          } catch (emailErr) {
+            console.error("[Approve] Error sending onboarding email:", emailErr);
+          }
+        }
+      }
+
+      if (recordType === "vendor" || recordType === "personnel_vendor") {
+        // Check if vendor already exists
+        const { data: existingVendor } = await supabase
+          .from("vendors")
+          .select("id")
+          .eq("email", applicant.email)
+          .maybeSingle();
+
+        if (!existingVendor) {
+          const { data: vendor, error: vendorError } = await supabase
+            .from("vendors")
+            .insert({
+              name: `${applicant.first_name} ${applicant.last_name}`,
+              email: applicant.email,
+              phone: applicant.phone || null,
+              company: null,
+              specialty: null,
+              status: 'active' as const,
+              rating: 0,
+            })
+            .select()
+            .single();
+
+          if (vendorError) throw vendorError;
+          createdVendor = vendor;
+
+          // Link personnel to vendor if both were created
+          if (createdPersonnel && createdVendor) {
+            await supabase
+              .from("personnel")
+              .update({ vendor_id: createdVendor.id } as any)
+              .eq("id", createdPersonnel.id);
+          }
+        } else {
+          createdVendor = existingVendor;
+        }
+      }
+
+      if (recordType === "customer") {
+        // Check if customer already exists
+        const { data: existingCustomer } = await supabase
+          .from("customers")
+          .select("id")
+          .eq("email", applicant.email)
+          .maybeSingle();
+
+        if (!existingCustomer) {
+          const { data: customer, error: customerError } = await supabase
+            .from("customers")
+            .insert({
+              name: `${applicant.first_name} ${applicant.last_name}`,
+              email: applicant.email,
+              phone: applicant.phone || null,
+              company: null,
+              address: applicant.address || null,
+            })
+            .select()
+            .single();
+
+          if (customerError) throw customerError;
+          createdCustomer = customer;
+        } else {
+          createdCustomer = existingCustomer;
+        }
+      }
+
+      return { personnel: createdPersonnel, vendor: createdVendor, customer: createdCustomer, recordType };
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["applications"] });
+      queryClient.invalidateQueries({ queryKey: ["applicants"] });
+      queryClient.invalidateQueries({ queryKey: ["personnel"] });
+      queryClient.invalidateQueries({ queryKey: ["vendors"] });
+      queryClient.invalidateQueries({ queryKey: ["customers"] });
+    },
+  });
+};
+
+// Keep the original hook for backwards compatibility
 export const useApproveApplication = () => {
   const queryClient = useQueryClient();
 
