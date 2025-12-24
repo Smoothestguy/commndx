@@ -8,7 +8,7 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { History, Clock } from "lucide-react";
-import { useClockHistory, formatTime24h, formatDuration } from "@/integrations/supabase/hooks/useTimeClock";
+import { useClockHistory, formatTime24h, formatDuration, formatHoursDetailed } from "@/integrations/supabase/hooks/useTimeClock";
 import { Skeleton } from "@/components/ui/skeleton";
 
 interface ClockHistoryTableProps {
@@ -29,7 +29,7 @@ export function ClockHistoryTable({ personnelId }: ClockHistoryTableProps) {
 
   const formatHours = (hours: number | null) => {
     if (hours === null || hours === undefined) return "-";
-    return hours.toFixed(2);
+    return formatHoursDetailed(hours);
   };
 
   if (isLoading) {

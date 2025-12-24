@@ -265,11 +265,13 @@ export function useClockOut() {
       const now = new Date();
       const clockIn = new Date(clockInAt);
       
-      // Calculate hours worked (subtract lunch duration)
-      const totalMinutes = (now.getTime() - clockIn.getTime()) / (1000 * 60);
-      const workMinutes = totalMinutes - (lunchDurationMinutes || 0);
-      const hoursWorked = workMinutes / 60;
-      const roundedHours = Math.round(hoursWorked * 100) / 100; // Round to 2 decimal places
+      // Calculate hours worked with high precision (subtract lunch duration)
+      const totalMs = now.getTime() - clockIn.getTime();
+      const lunchMs = (lunchDurationMinutes || 0) * 60 * 1000;
+      const workMs = totalMs - lunchMs;
+      const hoursWorked = workMs / (1000 * 60 * 60);
+      // Round to 4 decimal places for sub-second precision
+      const preciseHours = Math.round(hoursWorked * 10000) / 10000;
 
       const { data, error } = await supabase
         .from("time_entries")
@@ -278,8 +280,8 @@ export function useClockOut() {
           clock_out_lat: geoData.lat,
           clock_out_lng: geoData.lng,
           clock_out_accuracy: geoData.accuracy,
-          hours: roundedHours,
-          regular_hours: roundedHours, // Overtime will be calculated at weekly level
+          hours: preciseHours,
+          regular_hours: preciseHours, // Overtime will be calculated at weekly level
           is_on_lunch: false,
         })
         .eq("id", entryId)
@@ -389,12 +391,13 @@ export function useEndLunch() {
   });
 }
 
-// Helper to format time in 24h format
+// Helper to format time in 24h format with seconds
 export function formatTime24h(dateString: string): string {
   const date = new Date(dateString);
   return date.toLocaleTimeString("en-US", {
     hour: "2-digit",
     minute: "2-digit",
+    second: "2-digit",
     hour12: false,
   });
 }
@@ -408,11 +411,30 @@ export function formatDateTime24h(dateString: string): string {
   }) + " at " + formatTime24h(dateString);
 }
 
-// Helper to format duration in hours and minutes
+// Helper to format duration in hours, minutes, and seconds
 export function formatDuration(minutes: number): string {
-  const hours = Math.floor(minutes / 60);
-  const mins = Math.round(minutes % 60);
-  if (hours === 0) return `${mins}m`;
-  if (mins === 0) return `${hours}h`;
-  return `${hours}h ${mins}m`;
+  const totalSeconds = Math.round(minutes * 60);
+  const hours = Math.floor(totalSeconds / 3600);
+  const mins = Math.floor((totalSeconds % 3600) / 60);
+  const secs = totalSeconds % 60;
+  
+  if (hours === 0 && mins === 0) return `${secs}s`;
+  if (hours === 0) return secs > 0 ? `${mins}m ${secs}s` : `${mins}m`;
+  if (mins === 0 && secs === 0) return `${hours}h`;
+  if (secs === 0) return `${hours}h ${mins}m`;
+  return `${hours}h ${mins}m ${secs}s`;
+}
+
+// Helper to format hours (decimal) to hours, minutes, seconds
+export function formatHoursDetailed(hours: number): string {
+  const totalSeconds = Math.round(hours * 3600);
+  const h = Math.floor(totalSeconds / 3600);
+  const m = Math.floor((totalSeconds % 3600) / 60);
+  const s = totalSeconds % 60;
+  
+  if (h === 0 && m === 0) return `${s}s`;
+  if (h === 0) return s > 0 ? `${m}m ${s}s` : `${m}m`;
+  if (m === 0 && s === 0) return `${h}h`;
+  if (s === 0) return `${h}h ${m}m`;
+  return `${h}h ${m}m ${s}s`;
 }
