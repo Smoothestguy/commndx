@@ -3,13 +3,14 @@ import { DetailPageLayout } from "@/components/layout/DetailPageLayout";
 import { SEO } from "@/components/SEO";
 import { usePersonnelById, useResendOnboardingEmail, useUpdatePersonnelRating } from "@/integrations/supabase/hooks/usePersonnel";
 import { usePersonnelInvitationCheck, usePersonnelReimbursements, useUpdateReimbursementStatus } from "@/integrations/supabase/hooks/usePortal";
+import { useRevokeOnboardingToken } from "@/integrations/supabase/hooks/usePersonnelOnboarding";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { ScrollArea, ScrollBar } from "@/components/ui/scroll-area";
-import { Mail, Phone, MapPin, Calendar, DollarSign, AlertTriangle, IdCard, MessageSquare, Edit, Flag, FileCheck, Shield, Award, AlertCircle, LucideIcon, Clock, Check, Send, Link2, Building2, FileText, Landmark, Star, Receipt, Eye, CheckCircle, XCircle, Banknote, ExternalLink, Download } from "lucide-react";
+import { Mail, Phone, MapPin, Calendar, DollarSign, AlertTriangle, IdCard, MessageSquare, Edit, Flag, FileCheck, Shield, Award, AlertCircle, LucideIcon, Clock, Check, Send, Link2, Building2, FileText, Landmark, Star, Receipt, Eye, CheckCircle, XCircle, Banknote, ExternalLink, Download, Ban } from "lucide-react";
 import { ImageLightbox } from "@/components/ui/image-lightbox";
 import { DirectDepositView } from "@/components/personnel/DirectDepositView";
 import { AgreementSignatureView } from "@/components/personnel/AgreementSignatureView";
@@ -31,6 +32,7 @@ import { PersonnelDocumentsList } from "@/components/personnel/PersonnelDocument
 import { StarRating } from "@/components/ui/star-rating";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { ConvertRecordTypeDialog } from "@/components/personnel/ConvertRecordTypeDialog";
+import { RevokeOnboardingDialog } from "@/components/personnel/RevokeOnboardingDialog";
 
 interface ComplianceIssue {
   type: string;
@@ -47,6 +49,7 @@ const PersonnelDetail = () => {
   const { data: personnel, isLoading } = usePersonnelById(id);
   const { data: existingInvitation } = usePersonnelInvitationCheck(id);
   const resendOnboardingEmail = useResendOnboardingEmail();
+  const revokeOnboardingToken = useRevokeOnboardingToken();
   const updateRating = useUpdatePersonnelRating();
   const { data: w9Form } = usePersonnelW9Form(id);
   const { data: personnelReimbursements } = usePersonnelReimbursements(id);
@@ -59,6 +62,7 @@ const PersonnelDetail = () => {
   const [vendorMergeOpen, setVendorMergeOpen] = useState(false);
   const [receiptPreviewUrl, setReceiptPreviewUrl] = useState<string | null>(null);
   const [convertDialogOpen, setConvertDialogOpen] = useState(false);
+  const [revokeOnboardingOpen, setRevokeOnboardingOpen] = useState(false);
   const [reimbursementAction, setReimbursementAction] = useState<{
     id: string;
     type: "approve" | "reject" | "paid";
@@ -377,16 +381,28 @@ const PersonnelDetail = () => {
                     <MessageSquare className="mr-2 h-4 w-4" />
                     Send SMS
                   </Button>
-                  {personnel.onboarding_status !== "completed" && (
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={handleResendOnboardingEmail}
-                      disabled={resendOnboardingEmail.isPending}
-                    >
-                      <Send className="mr-2 h-4 w-4" />
-                      {resendOnboardingEmail.isPending ? "Sending..." : "Resend Onboarding Email"}
-                    </Button>
+                  {personnel.onboarding_status !== "completed" && personnel.onboarding_status !== "revoked" && (
+                    <>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={handleResendOnboardingEmail}
+                        disabled={resendOnboardingEmail.isPending}
+                      >
+                        <Send className="mr-2 h-4 w-4" />
+                        {resendOnboardingEmail.isPending ? "Sending..." : "Resend Onboarding Email"}
+                      </Button>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => setRevokeOnboardingOpen(true)}
+                        disabled={revokeOnboardingToken.isPending}
+                        className="text-destructive hover:text-destructive"
+                      >
+                        <Ban className="mr-2 h-4 w-4" />
+                        Revoke Onboarding
+                      </Button>
+                    </>
                   )}
                   <InviteToPortalDialog
                     personnelId={personnel.id}
@@ -1066,6 +1082,21 @@ const PersonnelDetail = () => {
           </div>
         </DialogContent>
       </Dialog>
+
+      {/* Revoke Onboarding Dialog */}
+      <RevokeOnboardingDialog
+        open={revokeOnboardingOpen}
+        onOpenChange={setRevokeOnboardingOpen}
+        onConfirm={async (reason) => {
+          await revokeOnboardingToken.mutateAsync({
+            personnelId: personnel.id,
+            reason,
+          });
+          setRevokeOnboardingOpen(false);
+        }}
+        personnelName={`${personnel.first_name} ${personnel.last_name}`}
+        isLoading={revokeOnboardingToken.isPending}
+      />
     </DetailPageLayout>
   );
 };
