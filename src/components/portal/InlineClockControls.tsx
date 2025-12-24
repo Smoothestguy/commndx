@@ -192,11 +192,6 @@ export function InlineClockControls({ project, personnelId, hasOtherOpenEntry }:
       <LocationPermissionDialog
         open={showLocationDialog}
         onOpenChange={setShowLocationDialog}
-        permissionState={permissionState}
-        onRequestLocation={handleLocationDialogRequest}
-        isRequesting={isRequesting}
-        hasLocation={hasLocation}
-        error={geoData.error}
       />
     </>
   );
