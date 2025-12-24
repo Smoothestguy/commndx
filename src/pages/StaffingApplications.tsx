@@ -54,6 +54,7 @@ import {
   useApproveApplicationWithType,
   useRejectApplication,
   useRevokeApproval,
+  useReverseApprovalWithReason,
   Application,
   TaskOrder,
 } from "@/integrations/supabase/hooks/useStaffingApplications";
@@ -67,6 +68,7 @@ import {
   exportApplicationsToPDF,
 } from "@/utils/applicationExportUtils";
 import { ApprovalTypeSelectionDialog, RecordType } from "@/components/personnel/ApprovalTypeSelectionDialog";
+import { ReverseApprovalDialog } from "@/components/personnel/ReverseApprovalDialog";
 
 const EXPERIENCE_OPTIONS = [
   { key: "all", label: "All Experience" },
@@ -117,6 +119,10 @@ export default function StaffingApplications() {
   const [appToApprove, setAppToApprove] = useState<Application | null>(null);
   const [showTypeSelectionDialog, setShowTypeSelectionDialog] = useState(false);
   
+  // Reverse approval dialog state
+  const [appToReverse, setAppToReverse] = useState<Application | null>(null);
+  const [showReverseDialog, setShowReverseDialog] = useState(false);
+  
   // New task order form state
   const [newTaskOrder, setNewTaskOrder] = useState({
     project_id: "",
@@ -151,6 +157,7 @@ export default function StaffingApplications() {
   const approveApplicationWithType = useApproveApplicationWithType();
   const rejectApplication = useRejectApplication();
   const revokeApproval = useRevokeApproval();
+  const reverseApproval = useReverseApprovalWithReason();
 
   // Handle approve click - opens type selection dialog
   const handleApproveClick = (app: Application) => {
@@ -588,6 +595,10 @@ export default function StaffingApplications() {
             toast.error("Failed to revoke approval");
           });
         }}
+        onReverseApproval={(app) => {
+          setAppToReverse(app);
+          setShowReverseDialog(true);
+        }}
       />
 
       {/* Approval Type Selection Dialog */}
@@ -600,6 +611,34 @@ export default function StaffingApplications() {
         onConfirm={handleApproveWithType}
         isLoading={approveApplicationWithType.isPending}
         applicantName={appToApprove ? `${appToApprove.applicants?.first_name || ''} ${appToApprove.applicants?.last_name || ''}` : ''}
+      />
+
+      {/* Reverse Approval Dialog */}
+      <ReverseApprovalDialog
+        open={showReverseDialog}
+        onOpenChange={(open) => {
+          setShowReverseDialog(open);
+          if (!open) setAppToReverse(null);
+        }}
+        onConfirm={async (reason) => {
+          if (!appToReverse) return;
+          try {
+            await reverseApproval.mutateAsync({
+              applicationId: appToReverse.id,
+              reason,
+            });
+            toast.success("Approval reversed. Application is now back to submitted status.");
+            setShowReverseDialog(false);
+            setAppToReverse(null);
+          } catch (error) {
+            toast.error("Failed to reverse approval");
+          }
+        }}
+        registrantName={appToReverse ? `${appToReverse.applicants?.first_name || ''} ${appToReverse.applicants?.last_name || ''}` : ''}
+        hasPersonnelRecord={true}
+        hasVendorRecord={true}
+        hasCustomerRecord={false}
+        isLoading={reverseApproval.isPending}
       />
 
       {/* Application Detail Dialog */}

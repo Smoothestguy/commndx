@@ -710,6 +710,50 @@ export const useApproveApplicationWithType = () => {
         }
       }
 
+      // For personnel-only type, always create a linked vendor for QuickBooks sync
+      if (recordType === 'personnel' && createdPersonnel && !createdVendor) {
+        console.log('[Approve] Personnel-only type, creating linked vendor for QB sync');
+        const { data: existingVendorByEmail } = await supabase
+          .from("vendors")
+          .select()
+          .eq("email", applicant.email)
+          .maybeSingle();
+
+        if (!existingVendorByEmail) {
+          const { data: personnelVendor, error: pvError } = await supabase
+            .from("vendors")
+            .insert({
+              name: `${applicant.first_name} ${applicant.last_name}`,
+              email: applicant.email,
+              phone: applicant.phone || null,
+              vendor_type: 'personnel',
+              status: 'active',
+            })
+            .select()
+            .single();
+
+          if (!pvError && personnelVendor) {
+            // Link personnel to this vendor
+            await supabase
+              .from("personnel")
+              .update({ vendor_id: personnelVendor.id } as any)
+              .eq("id", createdPersonnel.id);
+            
+            createdVendor = personnelVendor;
+            console.log('[Approve] Created linked vendor for personnel:', personnelVendor.id);
+          }
+        } else {
+          // Link to existing vendor
+          await supabase
+            .from("personnel")
+            .update({ vendor_id: existingVendorByEmail.id } as any)
+            .eq("id", createdPersonnel.id);
+          
+          createdVendor = existingVendorByEmail;
+          console.log('[Approve] Linked personnel to existing vendor:', existingVendorByEmail.id);
+        }
+      }
+
       // QuickBooks sync - sync as vendor for personnel/vendor types, customer for customer type
       try {
         const { data: qbConfig } = await supabase
@@ -726,37 +770,11 @@ export const useApproveApplicationWithType = () => {
               body: { action: 'sync-single', customerId: createdCustomer.id }
             });
           } else if (createdVendor) {
-            // Vendor or Personnel+Vendor → sync vendor to QuickBooks
+            // Personnel, Vendor, or Personnel+Vendor → all have createdVendor set now
             console.log('[Approve] Syncing vendor to QuickBooks:', createdVendor.id);
             await supabase.functions.invoke('quickbooks-sync-vendors', {
               body: { action: 'sync-single', vendorId: createdVendor.id }
             });
-          } else if (recordType === 'personnel' && createdPersonnel) {
-            // Personnel only - create a linked vendor record and sync it
-            const { data: personnelVendor, error: pvError } = await supabase
-              .from("vendors")
-              .insert({
-                name: `${applicant.first_name} ${applicant.last_name}`,
-                email: applicant.email,
-                phone: applicant.phone || null,
-                vendor_type: 'personnel',
-                status: 'active',
-              })
-              .select()
-              .single();
-
-            if (!pvError && personnelVendor) {
-              // Link personnel to this vendor
-              await supabase
-                .from("personnel")
-                .update({ linked_vendor_id: personnelVendor.id } as any)
-                .eq("id", createdPersonnel.id);
-
-              console.log('[Approve] Syncing personnel vendor to QuickBooks:', personnelVendor.id);
-              await supabase.functions.invoke('quickbooks-sync-vendors', {
-                body: { action: 'sync-single', vendorId: personnelVendor.id }
-              });
-            }
           }
         }
       } catch (qbError) {
@@ -1090,6 +1108,103 @@ export const useRevokeApproval = () => {
       queryClient.invalidateQueries({ queryKey: ["applications"] });
       queryClient.invalidateQueries({ queryKey: ["applicants"] });
       queryClient.invalidateQueries({ queryKey: ["personnel"] });
+    },
+  });
+};
+
+// ============ REVERSE APPROVAL (sets back to submitted, marks records inactive) ============
+
+export const useReverseApprovalWithReason = () => {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async ({ applicationId, reason }: { applicationId: string; reason: string }) => {
+      // 1. Get the application with applicant data
+      const { data: application, error: fetchError } = await supabase
+        .from("applications")
+        .select("*, applicants (*)")
+        .eq("id", applicationId)
+        .single();
+
+      if (fetchError) throw fetchError;
+      if (!application) throw new Error("Application not found");
+
+      const applicant = application.applicants;
+      if (!applicant) throw new Error("Applicant not found");
+
+      // 2. Update application status back to submitted with reversal note
+      const existingNotes = application.notes || "";
+      const reversalNote = `[REVERSED ${new Date().toISOString()}] Reason: ${reason}`;
+      const newNotes = existingNotes ? `${existingNotes}\n\n${reversalNote}` : reversalNote;
+
+      const { error: appUpdateError } = await supabase
+        .from("applications")
+        .update({ 
+          status: 'submitted',
+          notes: newNotes
+        })
+        .eq("id", applicationId);
+
+      if (appUpdateError) throw appUpdateError;
+
+      // 3. Update applicant status back to new (so they can be re-reviewed)
+      await supabase
+        .from("applicants")
+        .update({ status: 'new' })
+        .eq("id", applicant.id);
+
+      // 4. Mark linked personnel as inactive (if exists)
+      const { data: personnel } = await supabase
+        .from("personnel")
+        .select("id")
+        .eq("applicant_id", applicant.id)
+        .maybeSingle();
+
+      if (personnel) {
+        await supabase
+          .from("personnel")
+          .update({ status: 'inactive' })
+          .eq("id", personnel.id);
+      }
+
+      // 5. Mark linked vendor as inactive (by email match)
+      const { data: vendor } = await supabase
+        .from("vendors")
+        .select("id")
+        .eq("email", applicant.email)
+        .maybeSingle();
+
+      if (vendor) {
+        await supabase
+          .from("vendors")
+          .update({ status: 'inactive' })
+          .eq("id", vendor.id);
+      }
+
+      // 6. Add note to customer record (if exists) - customers don't have status field
+      const { data: customer } = await supabase
+        .from("customers")
+        .select("id, notes")
+        .eq("email", applicant.email)
+        .maybeSingle();
+
+      if (customer) {
+        const customerNotes = customer.notes || "";
+        const customerReversalNote = `[APPROVAL REVERSED ${new Date().toISOString()}] ${reason}`;
+        await supabase
+          .from("customers")
+          .update({ notes: customerNotes ? `${customerNotes}\n\n${customerReversalNote}` : customerReversalNote })
+          .eq("id", customer.id);
+      }
+
+      return { application, reason };
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["applications"] });
+      queryClient.invalidateQueries({ queryKey: ["applicants"] });
+      queryClient.invalidateQueries({ queryKey: ["personnel"] });
+      queryClient.invalidateQueries({ queryKey: ["vendors"] });
+      queryClient.invalidateQueries({ queryKey: ["customers"] });
     },
   });
 };
