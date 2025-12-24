@@ -12,6 +12,8 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 import { ScrollArea } from "@/components/ui/scroll-area";
+import { Switch } from "@/components/ui/switch";
+import { Label } from "@/components/ui/label";
 import {
   useQuickBooksConfig,
   useQuickBooksConnect,
@@ -26,6 +28,10 @@ import {
   useQuickBooksSyncLogs,
   useQuickBooksConflicts,
 } from "@/integrations/supabase/hooks/useQuickBooks";
+import {
+  useAutoSyncPersonnelToQB,
+  useToggleAutoSyncPersonnelToQB,
+} from "@/integrations/supabase/hooks/useIntegrationSettings";
 import { ProductConflictDialog } from "@/components/quickbooks/ProductConflictDialog";
 import { QuickBooksSyncBadge } from "@/components/quickbooks/QuickBooksSyncBadge";
 import {
@@ -42,6 +48,7 @@ import {
   Clock,
   ExternalLink,
   Truck,
+  UserCheck,
 } from "lucide-react";
 import { format } from "date-fns";
 import { toast } from "sonner";
@@ -77,6 +84,18 @@ const QuickBooksSettings = () => {
   const exportVendors = useExportVendorsToQB((processed, total) => {
     setVendorExportProgress({ processed, total });
   });
+
+  // Auto-sync personnel setting
+  const { isEnabled: autoSyncEnabled, isLoading: autoSyncLoading } = useAutoSyncPersonnelToQB();
+  const toggleAutoSync = useToggleAutoSyncPersonnelToQB();
+
+  const handleAutoSyncToggle = (checked: boolean) => {
+    toggleAutoSync.mutate(checked, {
+      onSuccess: () => {
+        toast.success(checked ? "Auto-sync enabled" : "Auto-sync disabled");
+      },
+    });
+  };
 
   const handleImportVendors = () => {
     setVendorImportProgress({ processed: 0, total: 0 });
@@ -404,6 +423,35 @@ const QuickBooksSettings = () => {
                       )}
                     </div>
                   )}
+                </CardContent>
+              </Card>
+
+              {/* Personnel Auto-Sync */}
+              <Card>
+                <CardHeader className="p-4 sm:p-6">
+                  <CardTitle className="flex items-center gap-2 text-base sm:text-lg">
+                    <UserCheck className="h-4 w-4 sm:h-5 sm:w-5 shrink-0" />
+                    Personnel Auto-Sync
+                  </CardTitle>
+                  <CardDescription className="text-xs sm:text-sm">
+                    Automatically sync personnel to QuickBooks as vendors when they complete onboarding
+                  </CardDescription>
+                </CardHeader>
+                <CardContent className="p-4 sm:p-6 pt-0 sm:pt-0">
+                  <div className="flex items-center justify-between gap-4">
+                    <Label htmlFor="auto-sync-personnel" className="text-sm flex-1">
+                      Auto-sync on completion
+                    </Label>
+                    <Switch
+                      id="auto-sync-personnel"
+                      checked={autoSyncEnabled}
+                      onCheckedChange={handleAutoSyncToggle}
+                      disabled={autoSyncLoading || toggleAutoSync.isPending}
+                    />
+                  </div>
+                  <p className="text-xs text-muted-foreground mt-2">
+                    When enabled, newly onboarded personnel will be automatically created as vendors in QuickBooks.
+                  </p>
                 </CardContent>
               </Card>
             </div>
