@@ -2,14 +2,14 @@ import { useParams } from "react-router-dom";
 import { DetailPageLayout } from "@/components/layout/DetailPageLayout";
 import { SEO } from "@/components/SEO";
 import { usePersonnelById, useResendOnboardingEmail, useUpdatePersonnelRating } from "@/integrations/supabase/hooks/usePersonnel";
-import { usePersonnelInvitationCheck } from "@/integrations/supabase/hooks/usePortal";
+import { usePersonnelInvitationCheck, usePersonnelReimbursements } from "@/integrations/supabase/hooks/usePortal";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { ScrollArea, ScrollBar } from "@/components/ui/scroll-area";
-import { Mail, Phone, MapPin, Calendar, DollarSign, AlertTriangle, IdCard, MessageSquare, Edit, Flag, FileCheck, Shield, Award, AlertCircle, LucideIcon, Clock, Check, Send, Link2, Building2, FileText, Landmark, Star } from "lucide-react";
+import { Mail, Phone, MapPin, Calendar, DollarSign, AlertTriangle, IdCard, MessageSquare, Edit, Flag, FileCheck, Shield, Award, AlertCircle, LucideIcon, Clock, Check, Send, Link2, Building2, FileText, Landmark, Star, Receipt, Eye } from "lucide-react";
 import { DirectDepositView } from "@/components/personnel/DirectDepositView";
 import { AgreementSignatureView } from "@/components/personnel/AgreementSignatureView";
 import { cn } from "@/lib/utils";
@@ -28,6 +28,7 @@ import { usePersonnelW9Form } from "@/integrations/supabase/hooks/useW9Forms";
 import { PersonnelVendorMergeDialog } from "@/components/merge/PersonnelVendorMergeDialog";
 import { PersonnelDocumentsList } from "@/components/personnel/PersonnelDocumentsList";
 import { StarRating } from "@/components/ui/star-rating";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 
 interface ComplianceIssue {
   type: string;
@@ -46,12 +47,14 @@ const PersonnelDetail = () => {
   const resendOnboardingEmail = useResendOnboardingEmail();
   const updateRating = useUpdatePersonnelRating();
   const { data: w9Form } = usePersonnelW9Form(id);
+  const { data: personnelReimbursements } = usePersonnelReimbursements(id);
   const [badgeDialogOpen, setBadgeDialogOpen] = useState(false);
   const [editDialogOpen, setEditDialogOpen] = useState(false);
   const [smsDialogOpen, setSmsDialogOpen] = useState(false);
   const [generate1099Open, setGenerate1099Open] = useState(false);
   const [defaultEditTab, setDefaultEditTab] = useState("personal");
   const [vendorMergeOpen, setVendorMergeOpen] = useState(false);
+  const [receiptPreviewUrl, setReceiptPreviewUrl] = useState<string | null>(null);
 
   const handleResendOnboardingEmail = () => {
     if (!personnel) return;
@@ -436,6 +439,7 @@ const PersonnelDetail = () => {
               <TabsTrigger value="messages" className="px-3 py-1.5">Messages</TabsTrigger>
               <TabsTrigger value="banking" className="px-3 py-1.5">Banking</TabsTrigger>
               <TabsTrigger value="tax" className="px-3 py-1.5">Tax Info</TabsTrigger>
+              <TabsTrigger value="reimbursements" className="px-3 py-1.5">Reimbursements</TabsTrigger>
             </TabsList>
             <ScrollBar orientation="horizontal" className="invisible" />
           </ScrollArea>
@@ -752,6 +756,92 @@ const PersonnelDetail = () => {
               </Card>
             )}
           </TabsContent>
+
+          <TabsContent value="reimbursements" className="space-y-4">
+            <Card>
+              <CardHeader>
+                <CardTitle>Reimbursement Requests</CardTitle>
+              </CardHeader>
+              <CardContent>
+                {!personnelReimbursements || personnelReimbursements.length === 0 ? (
+                  <div className="text-center py-8 text-muted-foreground">
+                    <Receipt className="h-12 w-12 mx-auto mb-4 opacity-50" />
+                    <p>No reimbursement requests submitted</p>
+                  </div>
+                ) : (
+                  <>
+                    <div className="grid grid-cols-3 gap-4 mb-6">
+                      <div className="text-center p-3 bg-yellow-500/10 rounded-lg">
+                        <div className="text-2xl font-bold text-yellow-600 dark:text-yellow-400">
+                          ${personnelReimbursements.filter(r => r.status === "pending").reduce((sum, r) => sum + r.amount, 0).toFixed(2)}
+                        </div>
+                        <div className="text-sm text-muted-foreground">Pending</div>
+                      </div>
+                      <div className="text-center p-3 bg-green-500/10 rounded-lg">
+                        <div className="text-2xl font-bold text-green-600 dark:text-green-400">
+                          ${personnelReimbursements.filter(r => r.status === "approved").reduce((sum, r) => sum + r.amount, 0).toFixed(2)}
+                        </div>
+                        <div className="text-sm text-muted-foreground">Approved</div>
+                      </div>
+                      <div className="text-center p-3 bg-blue-500/10 rounded-lg">
+                        <div className="text-2xl font-bold text-blue-600 dark:text-blue-400">
+                          ${personnelReimbursements.filter(r => r.status === "paid").reduce((sum, r) => sum + r.amount, 0).toFixed(2)}
+                        </div>
+                        <div className="text-sm text-muted-foreground">Paid</div>
+                      </div>
+                    </div>
+                    <Table>
+                      <TableHeader>
+                        <TableRow>
+                          <TableHead>Description</TableHead>
+                          <TableHead>Category</TableHead>
+                          <TableHead>Project</TableHead>
+                          <TableHead>Amount</TableHead>
+                          <TableHead>Status</TableHead>
+                          <TableHead>Submitted</TableHead>
+                          <TableHead>Receipt</TableHead>
+                        </TableRow>
+                      </TableHeader>
+                      <TableBody>
+                        {personnelReimbursements.map((reimbursement) => (
+                          <TableRow key={reimbursement.id}>
+                            <TableCell className="max-w-[200px] truncate">{reimbursement.description}</TableCell>
+                            <TableCell>{reimbursement.category}</TableCell>
+                            <TableCell>{reimbursement.project?.name || "—"}</TableCell>
+                            <TableCell className="font-medium">${reimbursement.amount.toFixed(2)}</TableCell>
+                            <TableCell>
+                              <Badge className={cn(
+                                reimbursement.status === "pending" && "bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-400",
+                                reimbursement.status === "approved" && "bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400",
+                                reimbursement.status === "rejected" && "bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-400",
+                                reimbursement.status === "paid" && "bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-400"
+                              )}>
+                                {reimbursement.status}
+                              </Badge>
+                            </TableCell>
+                            <TableCell>{format(new Date(reimbursement.submitted_at), "MMM d, yyyy")}</TableCell>
+                            <TableCell>
+                              {reimbursement.receipt_url ? (
+                                <button
+                                  onClick={() => setReceiptPreviewUrl(reimbursement.receipt_url)}
+                                  className="text-primary hover:underline flex items-center gap-1"
+                                >
+                                  <Eye className="h-4 w-4" />
+                                  View
+                                </button>
+                              ) : (
+                                <span className="text-muted-foreground text-sm">None</span>
+                              )}
+                            </TableCell>
+                          </TableRow>
+                        ))}
+                      </TableBody>
+                    </Table>
+                  </>
+                )}
+              </CardContent>
+            </Card>
+          </TabsContent>
         </Tabs>
       </div>
 
@@ -805,6 +895,20 @@ const PersonnelDetail = () => {
         personnelPhone={personnel.phone}
         currentVendorId={personnel.vendor_id}
       />
+
+      {/* Receipt Preview Dialog */}
+      <Dialog open={!!receiptPreviewUrl} onOpenChange={() => setReceiptPreviewUrl(null)}>
+        <DialogContent className="max-w-3xl">
+          <DialogHeader>
+            <DialogTitle>Receipt Preview</DialogTitle>
+          </DialogHeader>
+          {receiptPreviewUrl && (
+            <div className="flex items-center justify-center max-h-[70vh] overflow-auto">
+              <img src={receiptPreviewUrl} alt="Receipt" className="max-w-full h-auto" />
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
     </DetailPageLayout>
   );
 };

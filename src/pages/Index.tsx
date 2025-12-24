@@ -11,6 +11,7 @@ import {
   useEstimates,
   Estimate,
 } from "@/integrations/supabase/hooks/useEstimates";
+import { useAllReimbursements } from "@/integrations/supabase/hooks/usePortal";
 import {
   useInvoices,
   Invoice,
@@ -30,6 +31,7 @@ import {
   FolderKanban,
   UserPlus,
   MapPin,
+  Receipt,
 } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { useMemo } from "react";
@@ -106,6 +108,7 @@ const Dashboard = () => {
     isFetching: isFetchingAssignments,
   } = useAllProjectAssignments();
   const { data: profiles, isLoading: profilesLoading } = useProfiles();
+  const { data: reimbursements, isLoading: reimbursementsLoading } = useAllReimbursements();
 
   const handleRefresh = async () => {
     await Promise.all([
@@ -189,6 +192,13 @@ const Dashboard = () => {
     return { assignedStaff, totalStaff, availableStaff };
   }, [assignments, profiles]);
 
+  // Pending reimbursements stats
+  const pendingReimbursements = useMemo(() => {
+    const pending = reimbursements?.filter(r => r.status === "pending") ?? [];
+    const total = pending.reduce((sum, r) => sum + r.amount, 0);
+    return { count: pending.length, total };
+  }, [reimbursements]);
+
   // Project analytics data
   const projectsByStatus = useMemo(() => {
     if (!projects) return [];
@@ -240,7 +250,8 @@ const Dashboard = () => {
     customersLoading ||
     projectsLoading ||
     assignmentsLoading ||
-    profilesLoading;
+    profilesLoading ||
+    reimbursementsLoading;
 
   // Properly typed column definitions with snake_case keys matching Supabase data
   const estimateColumns: Column<Estimate>[] = useMemo(
@@ -400,6 +411,19 @@ const Dashboard = () => {
               changeType={stats.pendingEstimates > 0 ? "neutral" : "positive"}
               icon={FileText}
               href="/estimates"
+              compact={isMobile}
+            />
+            <StatCard
+              title="Pending Reimbursements"
+              value={isLoading ? "..." : pendingReimbursements.count}
+              change={
+                pendingReimbursements.count > 0
+                  ? formatCurrency(pendingReimbursements.total)
+                  : "No pending"
+              }
+              changeType={pendingReimbursements.count > 0 ? "neutral" : "positive"}
+              icon={Receipt}
+              href="/reimbursements"
               compact={isMobile}
             />
           </div>
