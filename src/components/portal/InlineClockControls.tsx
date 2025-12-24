@@ -1,8 +1,10 @@
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
-import { Clock, MapPin, Loader2 } from "lucide-react";
+import { Clock, MapPin, Loader2, AlertTriangle } from "lucide-react";
 import { useClockIn, useClockOut, useOpenClockEntry, formatTime24h } from "@/integrations/supabase/hooks/useTimeClock";
+import { useGeolocation } from "@/hooks/useGeolocation";
 import { toast } from "sonner";
+import { LocationPermissionDialog } from "./LocationPermissionDialog";
 
 interface InlineClockControlsProps {
   project: {
@@ -16,10 +18,16 @@ interface InlineClockControlsProps {
 
 export function InlineClockControls({ project, personnelId, hasOtherOpenEntry }: InlineClockControlsProps) {
   const [isGettingLocation, setIsGettingLocation] = useState(false);
+  const [showLocationDialog, setShowLocationDialog] = useState(false);
   
   const { data: openEntry, isLoading } = useOpenClockEntry(personnelId, project.id);
   const clockIn = useClockIn();
   const clockOut = useClockOut();
+  const { geoData, isRequesting, permissionState, requestLocation, hasLocation } = useGeolocation(false);
+
+  const requiresLocation = project.require_clock_location !== false;
+  const isLocationDenied = permissionState === "denied";
+  const isLocationPrompt = permissionState === "prompt" || permissionState === null;
 
   const getLocation = (): Promise<{
     lat: number | null;
@@ -58,12 +66,19 @@ export function InlineClockControls({ project, personnelId, hasOtherOpenEntry }:
       return;
     }
 
+    // If location is required and denied, show the assistance dialog
+    if (requiresLocation && isLocationDenied) {
+      setShowLocationDialog(true);
+      return;
+    }
+
     setIsGettingLocation(true);
-    const geoData = await getLocation();
+    const locationData = await getLocation();
     
-    if (project.require_clock_location !== false && !geoData.lat) {
-      toast.error("Location required. Please enable location services.");
+    if (requiresLocation && !locationData.lat) {
       setIsGettingLocation(false);
+      // Show dialog for assistance
+      setShowLocationDialog(true);
       return;
     }
     
@@ -72,7 +87,7 @@ export function InlineClockControls({ project, personnelId, hasOtherOpenEntry }:
     clockIn.mutate({
       personnelId,
       projectId: project.id,
-      geoData,
+      geoData: locationData,
     });
   };
 
@@ -80,7 +95,7 @@ export function InlineClockControls({ project, personnelId, hasOtherOpenEntry }:
     if (!openEntry) return;
 
     setIsGettingLocation(true);
-    const geoData = await getLocation();
+    const locationData = await getLocation();
     setIsGettingLocation(false);
 
     clockOut.mutate({
@@ -88,8 +103,12 @@ export function InlineClockControls({ project, personnelId, hasOtherOpenEntry }:
       personnelId,
       projectId: project.id,
       clockInAt: openEntry.clock_in_at!,
-      geoData,
+      geoData: locationData,
     });
+  };
+
+  const handleLocationDialogRequest = () => {
+    requestLocation();
   };
 
   const isPending = clockIn.isPending || clockOut.isPending || isGettingLocation;
@@ -104,53 +123,81 @@ export function InlineClockControls({ project, personnelId, hasOtherOpenEntry }:
   }
 
   return (
-    <div className="mt-2 p-2 bg-secondary/30 rounded">
-      <div className="flex items-center justify-between gap-2">
-        <div className="flex items-center gap-2 text-sm">
-          <Clock className="h-3.5 w-3.5 text-muted-foreground" />
+    <>
+      <div className="mt-2 p-2 bg-secondary/30 rounded">
+        <div className="flex items-center justify-between gap-2">
+          <div className="flex items-center gap-2 text-sm">
+            <Clock className="h-3.5 w-3.5 text-muted-foreground" />
+            {openEntry ? (
+              <span className="text-green-600 dark:text-green-400 font-medium">
+                Clocked in at {formatTime24h(openEntry.clock_in_at!)}
+              </span>
+            ) : (
+              <span className="text-muted-foreground">Not clocked in</span>
+            )}
+          </div>
+          
           {openEntry ? (
-            <span className="text-green-600 dark:text-green-400 font-medium">
-              Clocked in at {formatTime24h(openEntry.clock_in_at!)}
-            </span>
+            <Button
+              size="sm"
+              variant="destructive"
+              onClick={(e) => {
+                e.stopPropagation();
+                handleClockOut();
+              }}
+              disabled={isPending}
+              className="h-7 text-xs"
+            >
+              {isPending ? <Loader2 className="h-3 w-3 animate-spin" /> : "Clock Out"}
+            </Button>
           ) : (
-            <span className="text-muted-foreground">Not clocked in</span>
+            <Button
+              size="sm"
+              onClick={(e) => {
+                e.stopPropagation();
+                handleClockIn();
+              }}
+              disabled={isPending || hasOtherOpenEntry}
+              className="h-7 text-xs"
+            >
+              {isPending ? <Loader2 className="h-3 w-3 animate-spin" /> : "Clock In"}
+            </Button>
           )}
         </div>
         
-        {openEntry ? (
-          <Button
-            size="sm"
-            variant="destructive"
-            onClick={(e) => {
-              e.stopPropagation();
-              handleClockOut();
-            }}
-            disabled={isPending}
-            className="h-7 text-xs"
-          >
-            {isPending ? <Loader2 className="h-3 w-3 animate-spin" /> : "Clock Out"}
-          </Button>
-        ) : (
-          <Button
-            size="sm"
-            onClick={(e) => {
-              e.stopPropagation();
-              handleClockIn();
-            }}
-            disabled={isPending || hasOtherOpenEntry}
-            className="h-7 text-xs"
-          >
-            {isPending ? <Loader2 className="h-3 w-3 animate-spin" /> : "Clock In"}
-          </Button>
+        {requiresLocation && (
+          <div className="flex items-center justify-between mt-1">
+            <div className="flex items-center gap-1 text-xs text-muted-foreground">
+              <MapPin className="h-3 w-3" />
+              {openEntry?.clock_in_lat ? "Location captured" : "Location required"}
+            </div>
+            
+            {/* Show warning and enable button if location is denied */}
+            {!openEntry && isLocationDenied && (
+              <button
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setShowLocationDialog(true);
+                }}
+                className="flex items-center gap-1 text-xs text-destructive hover:underline"
+              >
+                <AlertTriangle className="h-3 w-3" />
+                Enable Location
+              </button>
+            )}
+          </div>
         )}
       </div>
-      
-      {project.require_clock_location !== false && (
-        <div className="flex items-center gap-1 mt-1 text-xs text-muted-foreground">
-          <MapPin className="h-3 w-3" />
-          {openEntry?.clock_in_lat ? "Location captured" : "Location required"}
-        </div>
-      )}
-    </div>
+
+      <LocationPermissionDialog
+        open={showLocationDialog}
+        onOpenChange={setShowLocationDialog}
+        permissionState={permissionState}
+        onRequestLocation={handleLocationDialogRequest}
+        isRequesting={isRequesting}
+        hasLocation={hasLocation}
+        error={geoData.error}
+      />
+    </>
   );
 }
