@@ -54,6 +54,7 @@ const vendorsNavigation = [
 
 const staffingNavigation = [
   { name: "Time Tracking", href: "/time-tracking", icon: Clock },
+  { name: "Reimbursements", href: "/reimbursements", icon: Receipt, requiresManager: true },
   { name: "Project Assignments", href: "/project-assignments", icon: UserCog, requiresManager: true },
   { name: "Badge Templates", href: "/badge-templates", icon: IdCard, requiresManager: true },
 ];
