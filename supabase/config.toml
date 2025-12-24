@@ -152,3 +152,6 @@ verify_jwt = false
 
 [functions.sync-personnel-to-quickbooks]
 verify_jwt = false
+
+[functions.send-vendor-onboarding-email]
+verify_jwt = false

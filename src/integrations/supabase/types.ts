@@ -6134,13 +6134,102 @@ export type Database = {
           },
         ]
       }
+      vendor_onboarding_documents: {
+        Row: {
+          created_at: string | null
+          document_type: string
+          expiry_date: string | null
+          file_name: string
+          file_path: string
+          file_size: number | null
+          file_type: string | null
+          id: string
+          uploaded_at: string | null
+          vendor_id: string
+        }
+        Insert: {
+          created_at?: string | null
+          document_type: string
+          expiry_date?: string | null
+          file_name: string
+          file_path: string
+          file_size?: number | null
+          file_type?: string | null
+          id?: string
+          uploaded_at?: string | null
+          vendor_id: string
+        }
+        Update: {
+          created_at?: string | null
+          document_type?: string
+          expiry_date?: string | null
+          file_name?: string
+          file_path?: string
+          file_size?: number | null
+          file_type?: string | null
+          id?: string
+          uploaded_at?: string | null
+          vendor_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "vendor_onboarding_documents_vendor_id_fkey"
+            columns: ["vendor_id"]
+            isOneToOne: false
+            referencedRelation: "vendors"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      vendor_onboarding_tokens: {
+        Row: {
+          created_at: string | null
+          expires_at: string
+          id: string
+          token: string
+          used_at: string | null
+          vendor_id: string
+        }
+        Insert: {
+          created_at?: string | null
+          expires_at?: string
+          id?: string
+          token?: string
+          used_at?: string | null
+          vendor_id: string
+        }
+        Update: {
+          created_at?: string | null
+          expires_at?: string
+          id?: string
+          token?: string
+          used_at?: string | null
+          vendor_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "vendor_onboarding_tokens_vendor_id_fkey"
+            columns: ["vendor_id"]
+            isOneToOne: false
+            referencedRelation: "vendors"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       vendors: {
         Row: {
           account_number: string | null
           address: string | null
+          bank_account_number: string | null
+          bank_account_type: string | null
+          bank_name: string | null
+          bank_routing_number: string | null
           billing_rate: number | null
+          business_type: string | null
           city: string | null
           company: string | null
+          contact_name: string | null
+          contact_title: string | null
           created_at: string
           default_expense_category_id: string | null
           email: string
@@ -6154,6 +6243,8 @@ export type Database = {
           merged_into_id: string | null
           name: string
           notes: string | null
+          onboarding_completed_at: string | null
+          onboarding_status: string | null
           opening_balance: number | null
           payment_terms: string | null
           phone: string | null
@@ -6165,16 +6256,29 @@ export type Database = {
           track_1099: boolean | null
           updated_at: string
           user_id: string | null
+          vendor_agreement_signature: string | null
+          vendor_agreement_signed_at: string | null
           vendor_type: Database["public"]["Enums"]["vendor_type"]
           w9_on_file: boolean | null
+          w9_signature: string | null
+          w9_signed_at: string | null
+          website: string | null
+          years_in_business: number | null
           zip: string | null
         }
         Insert: {
           account_number?: string | null
           address?: string | null
+          bank_account_number?: string | null
+          bank_account_type?: string | null
+          bank_name?: string | null
+          bank_routing_number?: string | null
           billing_rate?: number | null
+          business_type?: string | null
           city?: string | null
           company?: string | null
+          contact_name?: string | null
+          contact_title?: string | null
           created_at?: string
           default_expense_category_id?: string | null
           email: string
@@ -6188,6 +6292,8 @@ export type Database = {
           merged_into_id?: string | null
           name: string
           notes?: string | null
+          onboarding_completed_at?: string | null
+          onboarding_status?: string | null
           opening_balance?: number | null
           payment_terms?: string | null
           phone?: string | null
@@ -6199,16 +6305,29 @@ export type Database = {
           track_1099?: boolean | null
           updated_at?: string
           user_id?: string | null
+          vendor_agreement_signature?: string | null
+          vendor_agreement_signed_at?: string | null
           vendor_type?: Database["public"]["Enums"]["vendor_type"]
           w9_on_file?: boolean | null
+          w9_signature?: string | null
+          w9_signed_at?: string | null
+          website?: string | null
+          years_in_business?: number | null
           zip?: string | null
         }
         Update: {
           account_number?: string | null
           address?: string | null
+          bank_account_number?: string | null
+          bank_account_type?: string | null
+          bank_name?: string | null
+          bank_routing_number?: string | null
           billing_rate?: number | null
+          business_type?: string | null
           city?: string | null
           company?: string | null
+          contact_name?: string | null
+          contact_title?: string | null
           created_at?: string
           default_expense_category_id?: string | null
           email?: string
@@ -6222,6 +6341,8 @@ export type Database = {
           merged_into_id?: string | null
           name?: string
           notes?: string | null
+          onboarding_completed_at?: string | null
+          onboarding_status?: string | null
           opening_balance?: number | null
           payment_terms?: string | null
           phone?: string | null
@@ -6233,8 +6354,14 @@ export type Database = {
           track_1099?: boolean | null
           updated_at?: string
           user_id?: string | null
+          vendor_agreement_signature?: string | null
+          vendor_agreement_signed_at?: string | null
           vendor_type?: Database["public"]["Enums"]["vendor_type"]
           w9_on_file?: boolean | null
+          w9_signature?: string | null
+          w9_signed_at?: string | null
+          website?: string | null
+          years_in_business?: number | null
           zip?: string | null
         }
         Relationships: [
@@ -6491,6 +6618,38 @@ export type Database = {
             }
             Returns: Json
           }
+      complete_vendor_onboarding: {
+        Args: {
+          p_address?: string
+          p_bank_account_number?: string
+          p_bank_account_type?: string
+          p_bank_name?: string
+          p_bank_routing_number?: string
+          p_billing_rate?: number
+          p_business_type?: string
+          p_city?: string
+          p_company?: string
+          p_contact_name?: string
+          p_contact_title?: string
+          p_email?: string
+          p_license_number?: string
+          p_name: string
+          p_payment_terms?: string
+          p_phone?: string
+          p_specialty?: string
+          p_state?: string
+          p_tax_id?: string
+          p_token: string
+          p_track_1099?: boolean
+          p_vendor_agreement_signature?: string
+          p_vendor_id: string
+          p_w9_signature?: string
+          p_website?: string
+          p_years_in_business?: number
+          p_zip?: string
+        }
+        Returns: Json
+      }
       create_personnel_vendor: {
         Args: { p_personnel_id: string }
         Returns: string
