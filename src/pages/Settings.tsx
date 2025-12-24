@@ -113,7 +113,7 @@ export default function Settings() {
             </Link>
 
             {/* Session History - only for target user */}
-            {user?.email === "chris.guevara97@gmail.com" && (
+            {(user?.email === "chris.guevara97@gmail.com" || role === "admin" || role === "manager") && (
               <Link to="/session-history">
                 <div className="flex items-center justify-between p-4 rounded-lg border hover:bg-muted/50 transition-colors cursor-pointer mt-3">
                   <div className="flex items-center gap-3">
