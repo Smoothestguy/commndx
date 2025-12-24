@@ -42,7 +42,7 @@ import { useUserRole } from "@/hooks/useUserRole";
 
 const Personnel = () => {
   const [search, setSearch] = useState("");
-  const [status, setStatus] = useState("all");
+  const [status, setStatus] = useState("active");
   const [everifyStatus, setEverifyStatus] = useState("all");
   const [vendorId, setVendorId] = useState("all");
   const [addDialogOpen, setAddDialogOpen] = useState(false);
