@@ -177,3 +177,23 @@ export function useDeleteNotification() {
     },
   });
 }
+
+export function useBulkDeleteNotifications() {
+  const queryClient = useQueryClient();
+  const { user } = useAuth();
+
+  return useMutation({
+    mutationFn: async (notificationIds: string[]) => {
+      const { error } = await supabase
+        .from("admin_notifications")
+        .delete()
+        .in("id", notificationIds);
+
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["admin-notifications", user?.id] });
+      queryClient.invalidateQueries({ queryKey: ["admin-notifications-unread-count", user?.id] });
+    },
+  });
+}
