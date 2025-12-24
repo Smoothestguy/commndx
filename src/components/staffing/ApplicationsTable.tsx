@@ -3,7 +3,7 @@ import { format } from "date-fns";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { Eye, CheckCircle, XCircle, User, Trash2 } from "lucide-react";
+import { Eye, CheckCircle, XCircle, User, Trash2, Undo2 } from "lucide-react";
 import { EnhancedDataTable, EnhancedColumn } from "@/components/shared/EnhancedDataTable";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { MobileApplicationCard } from "./MobileApplicationCard";
@@ -60,6 +60,7 @@ interface ApplicationsTableProps {
   onApprove: (app: Application) => void;
   onReject: (app: Application) => void;
   onRevokeApproval?: (app: Application) => void;
+  onReverseApproval?: (app: Application) => void;
   selectable?: boolean;
   selectedIds?: Set<string>;
   onSelectionChange?: (ids: Set<string>) => void;
@@ -72,6 +73,7 @@ export function ApplicationsTable({
   onApprove,
   onReject,
   onRevokeApproval,
+  onReverseApproval,
   selectable = false,
   selectedIds,
   onSelectionChange,
@@ -222,6 +224,20 @@ export function ApplicationsTable({
                 <XCircle className="h-4 w-4" />
               </Button>
             </>
+          )}
+          {app.status === "approved" && onReverseApproval && (
+            <Button
+              variant="ghost"
+              size="icon"
+              className="text-amber-600 hover:text-amber-700 hover:bg-amber-50"
+              onClick={(e) => {
+                e.stopPropagation();
+                onReverseApproval(app);
+              }}
+              title="Reverse Approval"
+            >
+              <Undo2 className="h-4 w-4" />
+            </Button>
           )}
           {onRevokeApproval && (
             <Button
