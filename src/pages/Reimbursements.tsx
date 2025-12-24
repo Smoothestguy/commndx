@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { useAllReimbursements, useUpdateReimbursementStatus } from "@/integrations/supabase/hooks/usePortal";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -23,6 +24,7 @@ const statusColors: Record<string, string> = {
 };
 
 export default function Reimbursements() {
+  const navigate = useNavigate();
   const [statusFilter, setStatusFilter] = useState<StatusFilter>("all");
   const [page, setPage] = useState(1);
   const [rowsPerPage, setRowsPerPage] = useState(10);
@@ -166,7 +168,12 @@ export default function Reimbursements() {
                   {paginatedData.map((reimbursement) => (
                     <TableRow key={reimbursement.id}>
                       <TableCell className="font-medium">
-                        {(reimbursement as any).personnel?.first_name} {(reimbursement as any).personnel?.last_name}
+                        <button
+                          onClick={() => navigate(`/personnel/${reimbursement.personnel_id}`)}
+                          className="hover:underline text-primary text-left"
+                        >
+                          {(reimbursement as any).personnel?.first_name} {(reimbursement as any).personnel?.last_name}
+                        </button>
                       </TableCell>
                       <TableCell className="max-w-[200px] truncate">
                         {reimbursement.description}
