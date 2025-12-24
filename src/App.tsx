@@ -72,6 +72,7 @@ import PortalReimbursements from "./pages/portal/PortalReimbursements";
 import PortalNotifications from "./pages/portal/PortalNotifications";
 import PortalSettings from "./pages/portal/PortalSettings";
 import PortalTaxForms from "./pages/portal/PortalTaxForms";
+import PortalTimeClock from "./pages/portal/PortalTimeClock";
 import PortalLogin from "./pages/portal/PortalLogin";
 import AcceptPortalInvitation from "./pages/portal/AcceptPortalInvitation";
 import { PortalProtectedRoute } from "./components/portal/PortalProtectedRoute";
@@ -185,6 +186,14 @@ const App = () => {
                     element={
                       <PortalProtectedRoute>
                         <PortalDashboard />
+                      </PortalProtectedRoute>
+                    }
+                  />
+                  <Route
+                    path="/portal/time-clock"
+                    element={
+                      <PortalProtectedRoute>
+                        <PortalTimeClock />
                       </PortalProtectedRoute>
                     }
                   />

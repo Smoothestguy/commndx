@@ -10,7 +10,8 @@ import {
   LogOut,
   Menu,
   FileText,
-  FolderOpen
+  FolderOpen,
+  Timer
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/contexts/AuthContext";
@@ -21,6 +22,7 @@ import { PersonnelAvatar } from "@/components/personnel/PersonnelAvatar";
 
 const navItems = [
   { href: "/portal", label: "Dashboard", icon: Home },
+  { href: "/portal/time-clock", label: "Time Clock", icon: Timer },
   { href: "/portal/hours", label: "My Hours", icon: Clock },
   { href: "/portal/projects", label: "My Projects", icon: Briefcase },
   { href: "/portal/documents", label: "My Documents", icon: FolderOpen },
