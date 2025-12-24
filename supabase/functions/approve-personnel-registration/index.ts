@@ -312,6 +312,41 @@ Deno.serve(async (req) => {
         vendorId = vendor.id;
         console.log(`Vendor created: ${vendorId}`);
 
+        // Sync vendor to QuickBooks if connected
+        try {
+          const { data: qbConfig } = await serviceClient
+            .from("quickbooks_config")
+            .select("is_connected")
+            .maybeSingle();
+
+          if (qbConfig?.is_connected) {
+            console.log(`QuickBooks connected, syncing vendor ${vendorId}`);
+            const qbSyncResponse = await fetch(
+              `${supabaseUrl}/functions/v1/quickbooks-sync-vendors`,
+              {
+                method: "POST",
+                headers: {
+                  "Content-Type": "application/json",
+                  Authorization: `Bearer ${supabaseServiceKey}`,
+                },
+                body: JSON.stringify({
+                  action: "sync-single",
+                  vendorId: vendorId,
+                }),
+              }
+            );
+
+            if (qbSyncResponse.ok) {
+              console.log(`Vendor ${vendorId} synced to QuickBooks`);
+            } else {
+              const qbError = await qbSyncResponse.text();
+              console.error(`Failed to sync vendor to QuickBooks: ${qbError}`);
+            }
+          }
+        } catch (qbError) {
+          console.error("QuickBooks sync error (non-fatal):", qbError);
+        }
+
         // If we also created personnel, link them
         if (personnelId && recordType === 'personnel_vendor') {
           const { error: linkError } = await serviceClient
