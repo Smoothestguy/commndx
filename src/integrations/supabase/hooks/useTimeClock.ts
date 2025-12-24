@@ -194,6 +194,10 @@ export function useClockIn() {
       personnelId: string;
       geoData: GeoData;
     }) => {
+      // Get the authenticated user's ID for RLS
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) throw new Error("Not authenticated");
+
       // Create a new time entry with clock-in data
       const now = new Date();
       const { data, error } = await supabase
@@ -201,6 +205,7 @@ export function useClockIn() {
         .insert([{
           project_id: projectId,
           personnel_id: personnelId,
+          user_id: user.id,
           entry_date: now.toISOString().split("T")[0],
           clock_in_at: now.toISOString(),
           clock_in_lat: geoData.lat,
