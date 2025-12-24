@@ -2,14 +2,15 @@ import { useParams } from "react-router-dom";
 import { DetailPageLayout } from "@/components/layout/DetailPageLayout";
 import { SEO } from "@/components/SEO";
 import { usePersonnelById, useResendOnboardingEmail, useUpdatePersonnelRating } from "@/integrations/supabase/hooks/usePersonnel";
-import { usePersonnelInvitationCheck, usePersonnelReimbursements } from "@/integrations/supabase/hooks/usePortal";
+import { usePersonnelInvitationCheck, usePersonnelReimbursements, useUpdateReimbursementStatus } from "@/integrations/supabase/hooks/usePortal";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { ScrollArea, ScrollBar } from "@/components/ui/scroll-area";
-import { Mail, Phone, MapPin, Calendar, DollarSign, AlertTriangle, IdCard, MessageSquare, Edit, Flag, FileCheck, Shield, Award, AlertCircle, LucideIcon, Clock, Check, Send, Link2, Building2, FileText, Landmark, Star, Receipt, Eye } from "lucide-react";
+import { Mail, Phone, MapPin, Calendar, DollarSign, AlertTriangle, IdCard, MessageSquare, Edit, Flag, FileCheck, Shield, Award, AlertCircle, LucideIcon, Clock, Check, Send, Link2, Building2, FileText, Landmark, Star, Receipt, Eye, CheckCircle, XCircle, Banknote, ExternalLink } from "lucide-react";
+import { ImageLightbox } from "@/components/ui/image-lightbox";
 import { DirectDepositView } from "@/components/personnel/DirectDepositView";
 import { AgreementSignatureView } from "@/components/personnel/AgreementSignatureView";
 import { cn } from "@/lib/utils";
@@ -49,6 +50,7 @@ const PersonnelDetail = () => {
   const updateRating = useUpdatePersonnelRating();
   const { data: w9Form } = usePersonnelW9Form(id);
   const { data: personnelReimbursements } = usePersonnelReimbursements(id);
+  const updateReimbursementStatus = useUpdateReimbursementStatus();
   const [badgeDialogOpen, setBadgeDialogOpen] = useState(false);
   const [editDialogOpen, setEditDialogOpen] = useState(false);
   const [smsDialogOpen, setSmsDialogOpen] = useState(false);
@@ -57,6 +59,37 @@ const PersonnelDetail = () => {
   const [vendorMergeOpen, setVendorMergeOpen] = useState(false);
   const [receiptPreviewUrl, setReceiptPreviewUrl] = useState<string | null>(null);
   const [convertDialogOpen, setConvertDialogOpen] = useState(false);
+  const [reimbursementAction, setReimbursementAction] = useState<{
+    id: string;
+    type: "approve" | "reject" | "paid";
+  } | null>(null);
+  const [actionNotes, setActionNotes] = useState("");
+
+  const handleReimbursementAction = () => {
+    if (!reimbursementAction) return;
+    
+    const statusMap = {
+      approve: "approved",
+      reject: "rejected",
+      paid: "paid",
+    } as const;
+    
+    updateReimbursementStatus.mutate({
+      id: reimbursementAction.id,
+      status: statusMap[reimbursementAction.type],
+      notes: actionNotes || undefined,
+    }, {
+      onSuccess: () => {
+        setReimbursementAction(null);
+        setActionNotes("");
+      }
+    });
+  };
+
+  const isImageReceipt = (url: string) => {
+    const lower = url.toLowerCase();
+    return lower.includes('.jpg') || lower.includes('.jpeg') || lower.includes('.png') || lower.includes('.gif') || lower.includes('.webp');
+  };
 
   const handleResendOnboardingEmail = () => {
     if (!personnel) return;
@@ -810,6 +843,7 @@ const PersonnelDetail = () => {
                           <TableHead>Status</TableHead>
                           <TableHead>Submitted</TableHead>
                           <TableHead>Receipt</TableHead>
+                          <TableHead>Actions</TableHead>
                         </TableRow>
                       </TableHeader>
                       <TableBody>
@@ -832,16 +866,62 @@ const PersonnelDetail = () => {
                             <TableCell>{format(new Date(reimbursement.submitted_at), "MMM d, yyyy")}</TableCell>
                             <TableCell>
                               {reimbursement.receipt_url ? (
-                                <button
-                                  onClick={() => setReceiptPreviewUrl(reimbursement.receipt_url)}
-                                  className="text-primary hover:underline flex items-center gap-1"
-                                >
-                                  <Eye className="h-4 w-4" />
-                                  View
-                                </button>
+                                isImageReceipt(reimbursement.receipt_url) ? (
+                                  <button
+                                    onClick={() => setReceiptPreviewUrl(reimbursement.receipt_url)}
+                                    className="text-primary hover:underline flex items-center gap-1"
+                                  >
+                                    <Eye className="h-4 w-4" />
+                                    View
+                                  </button>
+                                ) : (
+                                  <a
+                                    href={reimbursement.receipt_url}
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    className="text-primary hover:underline flex items-center gap-1"
+                                  >
+                                    <ExternalLink className="h-4 w-4" />
+                                    Open
+                                  </a>
+                                )
                               ) : (
                                 <span className="text-muted-foreground text-sm">None</span>
                               )}
+                            </TableCell>
+                            <TableCell>
+                              <div className="flex items-center gap-1">
+                                {reimbursement.status === "pending" && (
+                                  <>
+                                    <Button
+                                      size="icon"
+                                      variant="ghost"
+                                      className="h-8 w-8 text-green-600 hover:text-green-700 hover:bg-green-100"
+                                      onClick={() => setReimbursementAction({ id: reimbursement.id, type: "approve" })}
+                                    >
+                                      <CheckCircle className="h-4 w-4" />
+                                    </Button>
+                                    <Button
+                                      size="icon"
+                                      variant="ghost"
+                                      className="h-8 w-8 text-red-600 hover:text-red-700 hover:bg-red-100"
+                                      onClick={() => setReimbursementAction({ id: reimbursement.id, type: "reject" })}
+                                    >
+                                      <XCircle className="h-4 w-4" />
+                                    </Button>
+                                  </>
+                                )}
+                                {reimbursement.status === "approved" && (
+                                  <Button
+                                    size="icon"
+                                    variant="ghost"
+                                    className="h-8 w-8 text-blue-600 hover:text-blue-700 hover:bg-blue-100"
+                                    onClick={() => setReimbursementAction({ id: reimbursement.id, type: "paid" })}
+                                  >
+                                    <Banknote className="h-4 w-4" />
+                                  </Button>
+                                )}
+                              </div>
                             </TableCell>
                           </TableRow>
                         ))}
@@ -923,17 +1003,55 @@ const PersonnelDetail = () => {
         }}
       />
 
-      {/* Receipt Preview Dialog */}
-      <Dialog open={!!receiptPreviewUrl} onOpenChange={() => setReceiptPreviewUrl(null)}>
-        <DialogContent className="max-w-3xl">
+      {/* Receipt Preview Lightbox */}
+      <ImageLightbox
+        imageUrl={receiptPreviewUrl}
+        onClose={() => setReceiptPreviewUrl(null)}
+        alt="Receipt"
+      />
+
+      {/* Reimbursement Action Dialog */}
+      <Dialog open={!!reimbursementAction} onOpenChange={(open) => !open && setReimbursementAction(null)}>
+        <DialogContent>
           <DialogHeader>
-            <DialogTitle>Receipt Preview</DialogTitle>
+            <DialogTitle>
+              {reimbursementAction?.type === "approve" && "Approve Reimbursement"}
+              {reimbursementAction?.type === "reject" && "Reject Reimbursement"}
+              {reimbursementAction?.type === "paid" && "Mark as Paid"}
+            </DialogTitle>
           </DialogHeader>
-          {receiptPreviewUrl && (
-            <div className="flex items-center justify-center max-h-[70vh] overflow-auto">
-              <img src={receiptPreviewUrl} alt="Receipt" className="max-w-full h-auto" />
+          <div className="space-y-4">
+            <p className="text-sm text-muted-foreground">
+              {reimbursementAction?.type === "approve" && "Are you sure you want to approve this reimbursement request?"}
+              {reimbursementAction?.type === "reject" && "Are you sure you want to reject this reimbursement request?"}
+              {reimbursementAction?.type === "paid" && "Mark this reimbursement as paid?"}
+            </p>
+            <div>
+              <label className="text-sm font-medium">Notes (optional)</label>
+              <textarea
+                className="w-full mt-1 p-2 border rounded-md text-sm min-h-[80px] bg-background"
+                placeholder="Add any notes..."
+                value={actionNotes}
+                onChange={(e) => setActionNotes(e.target.value)}
+              />
             </div>
-          )}
+            <div className="flex justify-end gap-2">
+              <Button variant="outline" onClick={() => setReimbursementAction(null)}>
+                Cancel
+              </Button>
+              <Button
+                onClick={handleReimbursementAction}
+                disabled={updateReimbursementStatus.isPending}
+                className={cn(
+                  reimbursementAction?.type === "approve" && "bg-green-600 hover:bg-green-700",
+                  reimbursementAction?.type === "reject" && "bg-red-600 hover:bg-red-700",
+                  reimbursementAction?.type === "paid" && "bg-blue-600 hover:bg-blue-700"
+                )}
+              >
+                {updateReimbursementStatus.isPending ? "Processing..." : "Confirm"}
+              </Button>
+            </div>
+          </div>
         </DialogContent>
       </Dialog>
     </DetailPageLayout>
