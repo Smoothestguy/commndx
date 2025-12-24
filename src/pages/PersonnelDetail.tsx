@@ -9,7 +9,7 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { ScrollArea, ScrollBar } from "@/components/ui/scroll-area";
-import { Mail, Phone, MapPin, Calendar, DollarSign, AlertTriangle, IdCard, MessageSquare, Edit, Flag, FileCheck, Shield, Award, AlertCircle, LucideIcon, Clock, Check, Send, Link2, Building2, FileText, Landmark, Star, Receipt, Eye, CheckCircle, XCircle, Banknote, ExternalLink } from "lucide-react";
+import { Mail, Phone, MapPin, Calendar, DollarSign, AlertTriangle, IdCard, MessageSquare, Edit, Flag, FileCheck, Shield, Award, AlertCircle, LucideIcon, Clock, Check, Send, Link2, Building2, FileText, Landmark, Star, Receipt, Eye, CheckCircle, XCircle, Banknote, ExternalLink, Download } from "lucide-react";
 import { ImageLightbox } from "@/components/ui/image-lightbox";
 import { DirectDepositView } from "@/components/personnel/DirectDepositView";
 import { AgreementSignatureView } from "@/components/personnel/AgreementSignatureView";
@@ -866,25 +866,37 @@ const PersonnelDetail = () => {
                             <TableCell>{format(new Date(reimbursement.submitted_at), "MMM d, yyyy")}</TableCell>
                             <TableCell>
                               {reimbursement.receipt_url ? (
-                                isImageReceipt(reimbursement.receipt_url) ? (
-                                  <button
-                                    onClick={() => setReceiptPreviewUrl(reimbursement.receipt_url)}
-                                    className="text-primary hover:underline flex items-center gap-1"
-                                  >
-                                    <Eye className="h-4 w-4" />
-                                    View
-                                  </button>
-                                ) : (
+                                <div className="flex items-center gap-2">
+                                  {isImageReceipt(reimbursement.receipt_url) ? (
+                                    <button
+                                      onClick={() => setReceiptPreviewUrl(reimbursement.receipt_url)}
+                                      className="text-primary hover:underline flex items-center gap-1"
+                                    >
+                                      <Eye className="h-4 w-4" />
+                                      View
+                                    </button>
+                                  ) : (
+                                    <a
+                                      href={reimbursement.receipt_url}
+                                      target="_blank"
+                                      rel="noopener noreferrer"
+                                      className="text-primary hover:underline flex items-center gap-1"
+                                    >
+                                      <ExternalLink className="h-4 w-4" />
+                                      Open
+                                    </a>
+                                  )}
                                   <a
                                     href={reimbursement.receipt_url}
+                                    download
                                     target="_blank"
                                     rel="noopener noreferrer"
-                                    className="text-primary hover:underline flex items-center gap-1"
+                                    className="text-muted-foreground hover:text-foreground flex items-center gap-1"
+                                    title="Download receipt"
                                   >
-                                    <ExternalLink className="h-4 w-4" />
-                                    Open
+                                    <Download className="h-4 w-4" />
                                   </a>
-                                )
+                                </div>
                               ) : (
                                 <span className="text-muted-foreground text-sm">None</span>
                               )}
