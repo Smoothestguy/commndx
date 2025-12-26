@@ -485,6 +485,50 @@ export const useAddInvoicePayment = () => {
   });
 };
 
+export const useUpdateInvoicePayment = () => {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async ({
+      paymentId,
+      invoiceId,
+      updates,
+    }: {
+      paymentId: string;
+      invoiceId: string;
+      updates: {
+        payment_date?: string;
+        amount?: number;
+        payment_method?: string;
+        reference_number?: string | null;
+        notes?: string | null;
+      };
+    }) => {
+      const { error } = await supabase
+        .from("invoice_payments")
+        .update(updates)
+        .eq("id", paymentId);
+
+      if (error) throw error;
+    },
+    onSuccess: (_, { invoiceId }) => {
+      queryClient.invalidateQueries({ queryKey: ["invoices"] });
+      queryClient.invalidateQueries({ queryKey: ["invoices", invoiceId] });
+      toast({
+        title: "Success",
+        description: "Payment updated successfully",
+      });
+    },
+    onError: (error) => {
+      toast({
+        title: "Error",
+        description: `Failed to update payment: ${error.message}`,
+        variant: "destructive",
+      });
+    },
+  });
+};
+
 export const useDeleteInvoicePayment = () => {
   const queryClient = useQueryClient();
 
