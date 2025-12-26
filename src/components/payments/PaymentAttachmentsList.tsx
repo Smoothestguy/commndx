@@ -1,4 +1,5 @@
-import { Download, Trash2, FileText, Image, File } from "lucide-react";
+import { useState } from "react";
+import { Download, Trash2, FileText, Image, File, Eye } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
@@ -13,6 +14,11 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
+import {
+  Dialog,
+  DialogContent,
+} from "@/components/ui/dialog";
+import { ImageLightbox } from "@/components/ui/image-lightbox";
 import { PaymentAttachment } from "@/integrations/supabase/hooks/usePaymentAttachments";
 
 interface PaymentAttachmentsListProps {
@@ -44,6 +50,37 @@ export function PaymentAttachmentsList({
   onDelete,
   isDeleting,
 }: PaymentAttachmentsListProps) {
+  const [previewUrl, setPreviewUrl] = useState<string | null>(null);
+  const [previewType, setPreviewType] = useState<'image' | 'pdf' | null>(null);
+
+  const handlePreview = async (attachment: PaymentAttachment) => {
+    try {
+      const { data, error } = await supabase.storage
+        .from("document-attachments")
+        .createSignedUrl(attachment.file_path, 300);
+
+      if (error) throw error;
+
+      if (attachment.file_type.startsWith("image/")) {
+        setPreviewType('image');
+        setPreviewUrl(data.signedUrl);
+      } else if (attachment.file_type === "application/pdf") {
+        setPreviewType('pdf');
+        setPreviewUrl(data.signedUrl);
+      } else {
+        window.open(data.signedUrl, "_blank");
+      }
+    } catch (error) {
+      console.error("Preview error:", error);
+      toast.error("Failed to preview file");
+    }
+  };
+
+  const closePreview = () => {
+    setPreviewUrl(null);
+    setPreviewType(null);
+  };
+
   const handleDownload = async (attachment: PaymentAttachment) => {
     try {
       const { data, error } = await supabase.storage
@@ -68,62 +105,97 @@ export function PaymentAttachmentsList({
   }
 
   return (
-    <div className="space-y-2">
-      {attachments.map((attachment) => (
-        <div
-          key={attachment.id}
-          className="flex items-center justify-between p-2 rounded-md border border-border bg-muted/30"
-        >
-          <div className="flex items-center gap-2 min-w-0 flex-1">
-            {getFileIcon(attachment.file_type)}
-            <div className="min-w-0 flex-1">
-              <p className="text-sm font-medium truncate">{attachment.file_name}</p>
-              <p className="text-xs text-muted-foreground">
-                {formatFileSize(attachment.file_size)}
-              </p>
+    <>
+      <div className="space-y-2">
+        {attachments.map((attachment) => (
+          <div
+            key={attachment.id}
+            className="flex items-center justify-between p-2 rounded-md border border-border bg-muted/30"
+          >
+            <div 
+              className="flex items-center gap-2 min-w-0 flex-1 cursor-pointer hover:text-primary transition-colors"
+              onClick={() => handlePreview(attachment)}
+            >
+              {getFileIcon(attachment.file_type)}
+              <div className="min-w-0 flex-1">
+                <p className="text-sm font-medium truncate">{attachment.file_name}</p>
+                <p className="text-xs text-muted-foreground">
+                  {formatFileSize(attachment.file_size)}
+                </p>
+              </div>
+            </div>
+            <div className="flex items-center gap-1">
+              <Button
+                variant="ghost"
+                size="icon"
+                className="h-8 w-8"
+                onClick={() => handlePreview(attachment)}
+                title="Preview"
+              >
+                <Eye className="h-4 w-4" />
+              </Button>
+              <Button
+                variant="ghost"
+                size="icon"
+                className="h-8 w-8"
+                onClick={() => handleDownload(attachment)}
+                title="Download"
+              >
+                <Download className="h-4 w-4" />
+              </Button>
+              <AlertDialog>
+                <AlertDialogTrigger asChild>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="h-8 w-8 text-muted-foreground hover:text-destructive"
+                    disabled={isDeleting}
+                  >
+                    <Trash2 className="h-4 w-4" />
+                  </Button>
+                </AlertDialogTrigger>
+                <AlertDialogContent>
+                  <AlertDialogHeader>
+                    <AlertDialogTitle>Delete Attachment?</AlertDialogTitle>
+                    <AlertDialogDescription>
+                      This will permanently delete "{attachment.file_name}". This action cannot be undone.
+                    </AlertDialogDescription>
+                  </AlertDialogHeader>
+                  <AlertDialogFooter>
+                    <AlertDialogCancel>Cancel</AlertDialogCancel>
+                    <AlertDialogAction
+                      onClick={() => onDelete(attachment.id, attachment.file_path)}
+                      className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                    >
+                      Delete
+                    </AlertDialogAction>
+                  </AlertDialogFooter>
+                </AlertDialogContent>
+              </AlertDialog>
             </div>
           </div>
-          <div className="flex items-center gap-1">
-            <Button
-              variant="ghost"
-              size="icon"
-              className="h-8 w-8"
-              onClick={() => handleDownload(attachment)}
-            >
-              <Download className="h-4 w-4" />
-            </Button>
-            <AlertDialog>
-              <AlertDialogTrigger asChild>
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  className="h-8 w-8 text-muted-foreground hover:text-destructive"
-                  disabled={isDeleting}
-                >
-                  <Trash2 className="h-4 w-4" />
-                </Button>
-              </AlertDialogTrigger>
-              <AlertDialogContent>
-                <AlertDialogHeader>
-                  <AlertDialogTitle>Delete Attachment?</AlertDialogTitle>
-                  <AlertDialogDescription>
-                    This will permanently delete "{attachment.file_name}". This action cannot be undone.
-                  </AlertDialogDescription>
-                </AlertDialogHeader>
-                <AlertDialogFooter>
-                  <AlertDialogCancel>Cancel</AlertDialogCancel>
-                  <AlertDialogAction
-                    onClick={() => onDelete(attachment.id, attachment.file_path)}
-                    className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
-                  >
-                    Delete
-                  </AlertDialogAction>
-                </AlertDialogFooter>
-              </AlertDialogContent>
-            </AlertDialog>
-          </div>
-        </div>
-      ))}
-    </div>
+        ))}
+      </div>
+
+      {/* Image Preview Lightbox */}
+      <ImageLightbox 
+        imageUrl={previewType === 'image' ? previewUrl : null} 
+        onClose={closePreview}
+        alt="Attachment preview"
+      />
+
+      {/* PDF Preview Dialog */}
+      <Dialog open={previewType === 'pdf' && !!previewUrl} onOpenChange={closePreview}>
+        <DialogContent className="max-w-[90vw] max-h-[90vh] p-0 overflow-hidden">
+          {previewUrl && (
+            <iframe 
+              src={previewUrl} 
+              className="w-full h-[85vh] border-0" 
+              title="PDF Preview"
+            />
+          )}
+        </DialogContent>
+      </Dialog>
+    </>
   );
 }
