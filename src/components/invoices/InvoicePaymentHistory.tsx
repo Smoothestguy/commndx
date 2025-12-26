@@ -1,5 +1,5 @@
-import { format } from "date-fns";
 import { Trash2 } from "lucide-react";
+import { formatLocalDate } from "@/lib/dateUtils";
 import { Button } from "@/components/ui/button";
 import { useDeleteInvoicePayment, InvoicePayment } from "@/integrations/supabase/hooks/useInvoices";
 import { formatCurrency } from "@/lib/utils";
@@ -51,7 +51,7 @@ export function InvoicePaymentHistory({ payments, invoiceId }: InvoicePaymentHis
           {payments.map((payment) => (
             <tr key={payment.id} className="border-b border-border/50">
               <td className="py-2">
-                {format(new Date(payment.payment_date), "MMM d, yyyy")}
+                {formatLocalDate(payment.payment_date)}
               </td>
               <td className="py-2">{payment.payment_method}</td>
               <td className="py-2 text-muted-foreground">

@@ -1,5 +1,5 @@
-import { format } from "date-fns";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { formatLocalDate } from "@/lib/dateUtils";
 import { Button } from "@/components/ui/button";
 import { Trash2 } from "lucide-react";
 import { VendorBillPayment, useDeleteVendorBillPayment } from "@/integrations/supabase/hooks/useVendorBills";
@@ -35,7 +35,7 @@ export function VendorBillPaymentHistory({ payments, billId }: VendorBillPayment
       <TableBody>
         {payments.map((payment) => (
           <TableRow key={payment.id}>
-            <TableCell>{format(new Date(payment.payment_date), "MMM d, yyyy")}</TableCell>
+            <TableCell>{formatLocalDate(payment.payment_date)}</TableCell>
             <TableCell>{payment.payment_method}</TableCell>
             <TableCell>{payment.reference_number || "-"}</TableCell>
             <TableCell className="font-medium">
