@@ -4,7 +4,7 @@ import { DollarSign, User } from "lucide-react";
 import { usePersonnelPaymentsByProject } from "@/integrations/supabase/hooks/usePersonnelPayments";
 import { EnhancedDataTable, EnhancedColumn } from "@/components/shared/EnhancedDataTable";
 import { formatCurrency } from "@/lib/utils";
-import { format } from "date-fns";
+import { formatLocalDate } from "@/lib/dateUtils";
 import { useMemo } from "react";
 import { Badge } from "@/components/ui/badge";
 
@@ -82,7 +82,7 @@ export function ProjectLaborExpensesList({ projectId }: ProjectLaborExpensesList
       header: "Date",
       sortable: true,
       getValue: (item) => item.payment?.payment_date || "",
-      render: (item) => item.payment?.payment_date ? format(new Date(item.payment.payment_date), "MMM dd, yyyy") : "-",
+      render: (item) => item.payment?.payment_date ? formatLocalDate(item.payment.payment_date, "MMM dd, yyyy") : "-",
     },
     {
       key: "payment_type",

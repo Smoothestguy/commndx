@@ -5,6 +5,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { SubcontractorPortalLayout } from "@/components/subcontractor-portal/SubcontractorPortalLayout";
 import { useNavigate, useParams } from "react-router-dom";
 import { formatCurrency } from "@/lib/utils";
+import { formatLocalDate } from "@/lib/dateUtils";
 import { ArrowLeft, Loader2 } from "lucide-react";
 import { useSubcontractorBill } from "@/integrations/supabase/hooks/useSubcontractorPortal";
 
@@ -95,7 +96,7 @@ export default function SubcontractorBillDetail() {
               <CardContent className="pt-6">
                 <p className="text-sm text-muted-foreground">Due Date</p>
                 <p className="text-2xl font-bold">
-                  {new Date(bill.due_date).toLocaleDateString()}
+                  {formatLocalDate(bill.due_date)}
                 </p>
               </CardContent>
             </Card>
@@ -144,7 +145,7 @@ export default function SubcontractorBillDetail() {
                       <div key={payment.id} className="flex justify-between items-start border-b pb-2 last:border-0">
                         <div>
                           <p className="font-medium text-sm">
-                            {new Date(payment.payment_date).toLocaleDateString()}
+                            {formatLocalDate(payment.payment_date)}
                           </p>
                           <p className="text-xs text-muted-foreground">
                             {payment.payment_method}
