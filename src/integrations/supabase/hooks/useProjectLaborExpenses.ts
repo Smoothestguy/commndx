@@ -77,11 +77,13 @@ export function useWeeklyPersonnelSummary(projectId: string | undefined, weekSta
       if (!projectId || !weekStart || !weekEnd) return [];
       
       // Get time entries for this project and week
+      // Include hourly_rate from the entry itself (snapshotted rate)
       const { data: entries, error } = await supabase
         .from('time_entries')
         .select(`
           personnel_id,
           hours,
+          hourly_rate,
           personnel:personnel_id (
             id,
             first_name,
@@ -96,7 +98,8 @@ export function useWeeklyPersonnelSummary(projectId: string | undefined, weekSta
       if (error) throw error;
       
       // Group by personnel and calculate totals
-      const personnelMap = new Map<string, PersonnelWeeklySummary>();
+      // Use the snapshotted hourly_rate from time_entries, fallback to personnel.hourly_rate
+      const personnelMap = new Map<string, PersonnelWeeklySummary & { rateSource: 'entry' | 'personnel' }>();
       
       for (const entry of entries || []) {
         if (!entry.personnel_id || !entry.personnel) continue;
@@ -104,8 +107,16 @@ export function useWeeklyPersonnelSummary(projectId: string | undefined, weekSta
         const personnel = entry.personnel as any;
         const existing = personnelMap.get(entry.personnel_id);
         
+        // Use entry's hourly_rate if available (snapshotted), otherwise use personnel's current rate
+        const entryRate = (entry as any).hourly_rate ?? personnel.hourly_rate ?? 0;
+        
         if (existing) {
           existing.total_hours += entry.hours || 0;
+          // If this entry has a snapshotted rate, prefer it
+          if ((entry as any).hourly_rate !== null && existing.rateSource !== 'entry') {
+            existing.hourly_rate = entryRate;
+            existing.rateSource = 'entry';
+          }
         } else {
           personnelMap.set(entry.personnel_id, {
             personnel_id: entry.personnel_id,
@@ -113,22 +124,30 @@ export function useWeeklyPersonnelSummary(projectId: string | undefined, weekSta
             total_hours: entry.hours || 0,
             regular_hours: 0,
             overtime_hours: 0,
-            hourly_rate: personnel.hourly_rate || 0,
+            hourly_rate: entryRate,
             regular_amount: 0,
             overtime_amount: 0,
             total_amount: 0,
+            rateSource: (entry as any).hourly_rate !== null ? 'entry' : 'personnel',
           });
         }
       }
       
       // Calculate overtime for each person (40hr weekly threshold)
       const summaries: PersonnelWeeklySummary[] = [];
-      for (const summary of personnelMap.values()) {
-        const { regularHours, overtimeHours } = calculateSingleEmployeeOvertime(summary.total_hours, 40);
-        summary.regular_hours = regularHours;
-        summary.overtime_hours = overtimeHours;
-        summary.regular_amount = regularHours * summary.hourly_rate;
-        summary.overtime_amount = overtimeHours * summary.hourly_rate * 1.5;
+      for (const data of personnelMap.values()) {
+        const { regularHours, overtimeHours } = calculateSingleEmployeeOvertime(data.total_hours, 40);
+        const summary: PersonnelWeeklySummary = {
+          personnel_id: data.personnel_id,
+          personnel_name: data.personnel_name,
+          total_hours: data.total_hours,
+          regular_hours: regularHours,
+          overtime_hours: overtimeHours,
+          hourly_rate: data.hourly_rate,
+          regular_amount: regularHours * data.hourly_rate,
+          overtime_amount: overtimeHours * data.hourly_rate * 1.5,
+          total_amount: 0,
+        };
         summary.total_amount = summary.regular_amount + summary.overtime_amount;
         summaries.push(summary);
       }

@@ -81,6 +81,33 @@ export function useCloseWeek() {
       
       const { data: user } = await supabase.auth.getUser();
       
+      // First, snapshot hourly rates for any entries missing them
+      // Get entries without hourly_rate and their personnel's current rates
+      const { data: entriesWithoutRate, error: fetchError } = await supabase
+        .from('time_entries')
+        .select(`
+          id,
+          personnel_id,
+          personnel:personnel_id (hourly_rate)
+        `)
+        .eq('project_id', projectId)
+        .gte('entry_date', format(weekStart, 'yyyy-MM-dd'))
+        .lte('entry_date', format(weekEnd, 'yyyy-MM-dd'))
+        .is('hourly_rate', null);
+      
+      if (fetchError) throw fetchError;
+      
+      // Update each entry with its personnel's current rate
+      if (entriesWithoutRate && entriesWithoutRate.length > 0) {
+        for (const entry of entriesWithoutRate) {
+          const personnelRate = (entry.personnel as any)?.hourly_rate ?? 0;
+          await supabase
+            .from('time_entries')
+            .update({ hourly_rate: personnelRate })
+            .eq('id', entry.id);
+        }
+      }
+      
       // Create closeout record
       const { data: closeout, error: closeoutError } = await supabase
         .from('time_week_closeouts')
