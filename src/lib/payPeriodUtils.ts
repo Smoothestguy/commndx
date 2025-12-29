@@ -161,11 +161,12 @@ export function getDailyBreakdownForPeriod(
 /**
  * Calculate totals for a pay period from time entries
  * Uses 40-hour weekly threshold: first 40 hours = regular, anything over = overtime
+ * Uses each entry's snapshotted hourly_rate when available, falls back to provided rate
  */
 export function calculatePayPeriodTotals(
-  entries: { entry_date: string; regular_hours: number | null; overtime_hours: number | null }[],
+  entries: { entry_date: string; regular_hours: number | null; overtime_hours: number | null; hourly_rate?: number | null; hours?: number | null }[],
   payPeriod: PayPeriod,
-  hourlyRate: number = 0,
+  fallbackHourlyRate: number = 0,
   overtimeMultiplier: number = 1.5,
   weeklyOvertimeThreshold: number = 40
 ) {
@@ -179,31 +180,69 @@ export function calculatePayPeriodTotals(
   const regularHours = Math.min(totalHours, weeklyOvertimeThreshold);
   const overtimeHours = Math.max(0, totalHours - weeklyOvertimeThreshold);
   
-  const regularPay = regularHours * hourlyRate;
-  const overtimePay = overtimeHours * hourlyRate * overtimeMultiplier;
+  // Get entries for this pay period
+  const periodEntries = entries.filter((entry) => {
+    const entryDate = parseISO(entry.entry_date);
+    const weekStart = startOfWeek(entryDate, { weekStartsOn: 1 });
+    return format(weekStart, "yyyy-MM-dd") === format(payPeriod.weekStart, "yyyy-MM-dd");
+  });
+  
+  // Calculate pay using each entry's snapshotted hourly_rate (fallback to provided rate if missing)
+  // We need to distribute the weekly OT threshold across entries chronologically
+  let hoursAccumulated = 0;
+  let regularPay = 0;
+  let overtimePay = 0;
+  
+  // Sort entries by date to apply OT threshold correctly
+  const sortedEntries = [...periodEntries].sort((a, b) => a.entry_date.localeCompare(b.entry_date));
+  
+  sortedEntries.forEach((entry) => {
+    const entryRate = entry.hourly_rate ?? fallbackHourlyRate;
+    const entryTotalHours = (entry.regular_hours || 0) + (entry.overtime_hours || 0);
+    
+    let entryRegular = 0;
+    let entryOvertime = 0;
+    
+    if (hoursAccumulated >= weeklyOvertimeThreshold) {
+      // Already past threshold, all hours are overtime
+      entryOvertime = entryTotalHours;
+    } else if (hoursAccumulated + entryTotalHours > weeklyOvertimeThreshold) {
+      // This entry crosses the threshold
+      entryRegular = weeklyOvertimeThreshold - hoursAccumulated;
+      entryOvertime = entryTotalHours - entryRegular;
+    } else {
+      // Still under threshold
+      entryRegular = entryTotalHours;
+    }
+    
+    hoursAccumulated += entryTotalHours;
+    regularPay += entryRegular * entryRate;
+    overtimePay += entryOvertime * entryRate * overtimeMultiplier;
+  });
+  
   const totalPay = regularPay + overtimePay;
   
   // Update daily breakdown to reflect correct overtime distribution
   // Overtime only kicks in after 40 weekly hours, so we need to recalculate
-  let hoursAccumulated = 0;
+  let dailyHoursAccumulated = 0;
   const updatedDailyBreakdown = dailyBreakdown.map((day) => {
     const dayTotalHours = day.totalHours;
     let dayRegular = 0;
     let dayOvertime = 0;
     
-    if (hoursAccumulated >= weeklyOvertimeThreshold) {
+    if (dailyHoursAccumulated >= weeklyOvertimeThreshold) {
       // Already past threshold, all hours are overtime
       dayOvertime = dayTotalHours;
-    } else if (hoursAccumulated + dayTotalHours > weeklyOvertimeThreshold) {
+    } else if (dailyHoursAccumulated + dayTotalHours > weeklyOvertimeThreshold) {
       // This day crosses the threshold
-      dayRegular = weeklyOvertimeThreshold - hoursAccumulated;
+      dayRegular = weeklyOvertimeThreshold - dailyHoursAccumulated;
       dayOvertime = dayTotalHours - dayRegular;
     } else {
       // Still under threshold
       dayRegular = dayTotalHours;
     }
     
-    hoursAccumulated += dayTotalHours;
+    dailyHoursAccumulated += dayTotalHours;
     
     return {
       ...day,

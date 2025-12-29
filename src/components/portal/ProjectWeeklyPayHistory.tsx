@@ -17,6 +17,8 @@ interface TimeEntry {
   entry_date: string;
   regular_hours: number | null;
   overtime_hours: number | null;
+  hourly_rate?: number | null;
+  hours?: number | null;
 }
 
 interface ProjectWeeklyPayHistoryProps {
@@ -177,16 +179,12 @@ export function ProjectWeeklyPayHistory({
                         <TableHead className="text-right">Regular</TableHead>
                         <TableHead className="text-right">OT</TableHead>
                         <TableHead className="text-right">Total</TableHead>
-                        {hourlyRate !== null && hourlyRate > 0 && (
-                          <TableHead className="text-right">Pay</TableHead>
-                        )}
                       </TableRow>
                     </TableHeader>
                     <TableBody>
                       {periodTotals.dailyBreakdown.map((day) => {
-                        const dayPay = hourlyRate 
-                          ? (day.regularHours * hourlyRate) + (day.overtimeHours * hourlyRate * overtimeMultiplier)
-                          : 0;
+                        // Note: daily pay is now calculated in the totals using snapshotted rates
+                        // For display, we show the hours breakdown only (pay is in the period totals)
                         const hasHours = day.totalHours > 0;
                         return (
                           <TableRow 
@@ -206,11 +204,6 @@ export function ProjectWeeklyPayHistory({
                             <TableCell className="text-right font-medium">
                               {hasHours ? `${day.totalHours.toFixed(1)}h` : "-"}
                             </TableCell>
-                            {hourlyRate !== null && hourlyRate > 0 && (
-                              <TableCell className="text-right font-medium text-primary">
-                                {hasHours ? formatCurrency(dayPay) : "-"}
-                              </TableCell>
-                            )}
                           </TableRow>
                         );
                       })}
