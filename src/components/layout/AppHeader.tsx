@@ -76,16 +76,13 @@ export function AppHeader() {
         <ThemeToggleSimple />
 
         <DropdownMenu>
-          <DropdownMenuTrigger className="flex items-center gap-2 hover:opacity-80 transition-opacity outline-none">
+          <DropdownMenuTrigger className="flex items-center gap-1 hover:opacity-80 transition-opacity outline-none">
             <Avatar className="h-8 w-8 bg-sidebar-accent">
               <AvatarImage src={userPhotoUrl || undefined} alt="User avatar" />
               <AvatarFallback className="bg-primary text-primary-foreground text-xs font-medium">
                 {userInitials}
               </AvatarFallback>
             </Avatar>
-            <span className="hidden sm:inline text-header-foreground text-sm max-w-[150px] truncate">
-              {user?.email}
-            </span>
             <ChevronDown className="h-4 w-4 text-sidebar-muted" />
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end" className="w-56">
