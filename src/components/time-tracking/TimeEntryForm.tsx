@@ -2,7 +2,7 @@ import { useState, useEffect } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
-import { Clock, AlertCircle } from "lucide-react";
+import { Clock, AlertCircle, HelpCircle } from "lucide-react";
 import {
   Dialog,
   DialogContent,
@@ -16,6 +16,7 @@ import {
   FormItem,
   FormLabel,
   FormMessage,
+  FormDescription,
 } from "@/components/ui/form";
 import {
   Select,
@@ -25,6 +26,13 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Input } from "@/components/ui/input";
+import { TimeDecimalInput } from "@/components/ui/time-decimal-input";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
 import { Textarea } from "@/components/ui/textarea";
 import { Switch } from "@/components/ui/switch";
 import { Button } from "@/components/ui/button";
@@ -213,13 +221,33 @@ export function TimeEntryForm({
               name="hours"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Hours</FormLabel>
+                  <div className="flex items-center gap-2">
+                    <FormLabel>Hours</FormLabel>
+                    <TooltipProvider>
+                      <Tooltip>
+                        <TooltipTrigger asChild>
+                          <HelpCircle className="h-3.5 w-3.5 text-muted-foreground cursor-help" />
+                        </TooltipTrigger>
+                        <TooltipContent side="right" className="max-w-[280px]">
+                          <p className="text-xs font-medium mb-1">Time Format Examples:</p>
+                          <ul className="text-xs space-y-0.5">
+                            <li>• 8:20 or 820 → 8.33 hrs</li>
+                            <li>• 7:15 or 715 → 7.25 hrs</li>
+                            <li>• 4:30 or 430 → 4.50 hrs</li>
+                            <li>• 8 → 8.00 hrs</li>
+                            <li>• 8.5 → 8.50 hrs</li>
+                          </ul>
+                        </TooltipContent>
+                      </Tooltip>
+                    </TooltipProvider>
+                  </div>
                   <FormControl>
-                    <Input
-                      type="number"
-                      step="0.25"
-                      placeholder="e.g., 1.5, 2.25"
-                      {...field}
+                    <TimeDecimalInput
+                      value={field.value || 0}
+                      onValueChange={field.onChange}
+                      showIcon={true}
+                      showPreview={true}
+                      placeholder="e.g., 8:20 or 8.33"
                     />
                   </FormControl>
                   <FormMessage />
