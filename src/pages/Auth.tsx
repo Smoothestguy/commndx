@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
+import { useTheme } from "next-themes";
 import { useAuth } from "@/contexts/AuthContext";
 import { SEO } from "@/components/SEO";
 import { Button } from "@/components/ui/button";
@@ -10,14 +11,18 @@ import { ParticleBackground } from "@/components/ui/particle-background";
 import { Loader2 } from "lucide-react";
 import { toast } from "sonner";
 import logo from "@/assets/logo.png";
+import logoDark from "@/assets/logo-dark.png";
 import { GoogleIcon } from "@/components/icons/GoogleIcon";
 
 
 const Auth = () => {
   const navigate = useNavigate();
+  const { theme, resolvedTheme } = useTheme();
   const { user, signIn, signInWithGoogle, loading: authLoading } = useAuth();
   const [isLoading, setIsLoading] = useState(false);
   const [isOAuthLoading, setIsOAuthLoading] = useState(false);
+  
+  const currentTheme = resolvedTheme || theme;
 
   // Login form state
   const [loginEmail, setLoginEmail] = useState("");
@@ -85,7 +90,7 @@ const Auth = () => {
         <CardHeader className="text-center">
           <div className="flex justify-center mb-4">
             <img 
-              src={logo} 
+              src={currentTheme === "light" ? logoDark : logo} 
               alt="Fairfield"
               className="h-12 sm:h-14 md:h-16 lg:h-20 w-auto max-w-[250px] sm:max-w-[280px] md:max-w-[300px] object-contain" 
             />
