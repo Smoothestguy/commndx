@@ -38,20 +38,16 @@ export function AppHeader() {
   const showNotificationBell = isAdmin || isManager;
 
   return (
-    <header className="h-14 bg-header sticky top-0 z-50 flex items-center justify-between px-2 sm:px-4 border-b border-sidebar-border max-w-full overflow-x-hidden">
-      {/* Left side: Sidebar Toggle + Mobile menu */}
-      <div className="flex items-center gap-2">
-        {/* Desktop sidebar toggle */}
-        <SidebarTrigger className="hidden md:flex h-8 w-8" />
+    <header className="h-14 bg-header sticky top-0 z-50 flex items-center justify-end gap-2 px-2 sm:px-4 border-b border-sidebar-border max-w-full overflow-x-hidden">
+      {/* Desktop sidebar toggle - left side with auto margin */}
+      <SidebarTrigger className="hidden md:flex h-8 w-8 mr-auto" />
 
+      {/* All icons grouped together */}
+      <div className="flex items-center gap-1.5 sm:gap-3 min-w-0">
         {/* Mobile menu trigger */}
         <div className="md:hidden">
           <MobileNav />
         </div>
-      </div>
-
-      {/* Right side: AI Assistant + Notifications + Theme toggle + User menu */}
-      <div className="flex items-center gap-1.5 sm:gap-3 min-w-0 flex-shrink-0">
         <Button
           variant="ghost"
           size="icon"
