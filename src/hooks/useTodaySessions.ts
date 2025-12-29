@@ -8,8 +8,6 @@ import {
   getStartOfToday,
 } from "@/utils/sessionTime";
 
-const TARGET_USER_EMAIL = "chris.guevara97@gmail.com";
-
 interface TodaySession {
   session_start: string;
   session_end: string | null;
@@ -20,19 +18,65 @@ interface TodaySession {
 /**
  * Hook to fetch and compute today's total session time and earnings.
  * Updates every second to reflect current active session.
+ * Access is granted to admins, managers, or users with user_management permission.
  */
 export function useTodaySessions() {
   const { user } = useAuth();
-  const isTargetUser = user?.email === TARGET_USER_EMAIL;
 
+  const [hasAccess, setHasAccess] = useState(false);
+  const [accessChecked, setAccessChecked] = useState(false);
   const [todaySessions, setTodaySessions] = useState<TodaySession[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [, setTick] = useState(0);
 
+  // Check if user has access (admin, manager, or user_management permission)
+  useEffect(() => {
+    if (!user) {
+      setHasAccess(false);
+      setAccessChecked(true);
+      setIsLoading(false);
+      return;
+    }
+
+    const checkAccess = async () => {
+      try {
+        // Check if user is admin or manager
+        const { data: roleData } = await supabase
+          .from("user_roles")
+          .select("role")
+          .eq("user_id", user.id)
+          .single();
+
+        if (roleData?.role === "admin" || roleData?.role === "manager") {
+          setHasAccess(true);
+          setAccessChecked(true);
+          return;
+        }
+
+        // Check if user has user_management permission
+        const { data: permData } = await supabase
+          .from("user_permissions")
+          .select("can_view")
+          .eq("user_id", user.id)
+          .eq("module", "user_management")
+          .single();
+
+        setHasAccess(permData?.can_view === true);
+        setAccessChecked(true);
+      } catch (e) {
+        console.error("Error checking access:", e);
+        setHasAccess(false);
+        setAccessChecked(true);
+      }
+    };
+
+    checkAccess();
+  }, [user]);
+
   // Fetch today's sessions
   useEffect(() => {
-    if (!isTargetUser || !user) {
-      setIsLoading(false);
+    if (!accessChecked || !hasAccess || !user) {
+      if (accessChecked) setIsLoading(false);
       return;
     }
 
@@ -60,18 +104,18 @@ export function useTodaySessions() {
     // Refresh sessions every 30 seconds to catch any new data
     const interval = setInterval(fetchTodaySessions, 30000);
     return () => clearInterval(interval);
-  }, [isTargetUser, user]);
+  }, [accessChecked, hasAccess, user]);
 
   // Tick every second to update computed values for active sessions
   useEffect(() => {
-    if (!isTargetUser) return;
+    if (!hasAccess) return;
 
     const interval = setInterval(() => {
       setTick((t) => t + 1);
     }, 1000);
 
     return () => clearInterval(interval);
-  }, [isTargetUser]);
+  }, [hasAccess]);
 
   const now = new Date();
   const todayActiveSeconds = sumActiveSeconds(todaySessions, now);
@@ -81,7 +125,7 @@ export function useTodaySessions() {
   const hasActiveSession = todaySessions.some((s) => s.is_active);
 
   return {
-    isTargetUser,
+    isTargetUser: hasAccess,
     isLoading,
     todayActiveSeconds,
     todayIdleSeconds,

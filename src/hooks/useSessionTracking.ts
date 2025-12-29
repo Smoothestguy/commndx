@@ -2,7 +2,6 @@ import { useState, useEffect, useCallback, useRef } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 
-const TARGET_USER_EMAIL = "chris.guevara97@gmail.com";
 const HOURLY_RATE = 23; // $23/hour
 const STORAGE_KEY = "session_tracking_state";
 const IDLE_TIMEOUT_MS = 5 * 60 * 1000; // 5 minutes of inactivity = idle
@@ -18,8 +17,9 @@ interface StoredState {
 
 export function useSessionTracking() {
   const { user } = useAuth();
-  const isTargetUser = user?.email === TARGET_USER_EMAIL;
 
+  const [hasAccess, setHasAccess] = useState(false);
+  const [accessChecked, setAccessChecked] = useState(false);
   const [sessionId, setSessionId] = useState<string | null>(null);
   const [idleSeconds, setIdleSeconds] = useState(0);
   const [isClockedIn, setIsClockedIn] = useState(false);
@@ -34,6 +34,50 @@ export function useSessionTracking() {
   const syncIntervalRef = useRef<NodeJS.Timeout | null>(null);
   const displayIntervalRef = useRef<NodeJS.Timeout | null>(null);
   const idleStartTimeRef = useRef<number | null>(null);
+
+  // Check if user has access (admin, manager, or user_management permission)
+  useEffect(() => {
+    if (!user) {
+      setHasAccess(false);
+      setAccessChecked(true);
+      setIsLoading(false);
+      return;
+    }
+
+    const checkAccess = async () => {
+      try {
+        // Check if user is admin or manager
+        const { data: roleData } = await supabase
+          .from("user_roles")
+          .select("role")
+          .eq("user_id", user.id)
+          .single();
+
+        if (roleData?.role === "admin" || roleData?.role === "manager") {
+          setHasAccess(true);
+          setAccessChecked(true);
+          return;
+        }
+
+        // Check if user has user_management permission
+        const { data: permData } = await supabase
+          .from("user_permissions")
+          .select("can_view")
+          .eq("user_id", user.id)
+          .eq("module", "user_management")
+          .single();
+
+        setHasAccess(permData?.can_view === true);
+        setAccessChecked(true);
+      } catch (e) {
+        console.error("Error checking access:", e);
+        setHasAccess(false);
+        setAccessChecked(true);
+      }
+    };
+
+    checkAccess();
+  }, [user]);
 
   // Computed active seconds based on elapsed time - session_start timestamp
   const getElapsedSeconds = useCallback(() => {
@@ -100,7 +144,7 @@ export function useSessionTracking() {
 
   // Handle visibility change
   useEffect(() => {
-    if (!isTargetUser || !isClockedIn) return;
+    if (!hasAccess || !isClockedIn) return;
 
     const handleVisibilityChange = () => {
       if (document.hidden) {
@@ -150,11 +194,11 @@ export function useSessionTracking() {
     return () => {
       document.removeEventListener("visibilitychange", handleVisibilityChange);
     };
-  }, [isTargetUser, isClockedIn, sessionId, user, resetIdleTimer]);
+  }, [hasAccess, isClockedIn, sessionId, user, resetIdleTimer]);
 
   // Activity event listeners
   useEffect(() => {
-    if (!isTargetUser || !isClockedIn) return;
+    if (!hasAccess || !isClockedIn) return;
 
     const events = ["mousedown", "mousemove", "keydown", "scroll", "touchstart", "click", "wheel"];
     
@@ -182,11 +226,11 @@ export function useSessionTracking() {
         clearTimeout(idleTimeoutRef.current);
       }
     };
-  }, [isTargetUser, isClockedIn, resetIdleTimer]);
+  }, [hasAccess, isClockedIn, resetIdleTimer]);
 
   // Display update interval - just triggers re-render for timestamp-based display
   useEffect(() => {
-    if (!isTargetUser || !isClockedIn) {
+    if (!hasAccess || !isClockedIn) {
       if (displayIntervalRef.current) {
         clearInterval(displayIntervalRef.current);
         displayIntervalRef.current = null;
@@ -203,12 +247,12 @@ export function useSessionTracking() {
         clearInterval(displayIntervalRef.current);
       }
     };
-  }, [isTargetUser, isClockedIn]);
+  }, [hasAccess, isClockedIn]);
 
   // Load state: First try database for active session, fallback to localStorage
   useEffect(() => {
-    if (!isTargetUser || !user) {
-      setIsLoading(false);
+    if (!accessChecked || !hasAccess || !user) {
+      if (accessChecked) setIsLoading(false);
       return;
     }
 
@@ -276,11 +320,11 @@ export function useSessionTracking() {
     };
 
     loadSession();
-  }, [isTargetUser, user]);
+  }, [accessChecked, hasAccess, user]);
 
   // Save state to localStorage whenever it changes
   useEffect(() => {
-    if (!isTargetUser || !isClockedIn) return;
+    if (!hasAccess || !isClockedIn) return;
 
     const state: StoredState = {
       sessionId,
@@ -290,11 +334,11 @@ export function useSessionTracking() {
       wasIdleAtLastSync: isIdleRef.current,
     };
     localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
-  }, [isTargetUser, sessionId, idleSeconds, isClockedIn]);
+  }, [hasAccess, sessionId, idleSeconds, isClockedIn]);
 
   // Sync to database periodically
   useEffect(() => {
-    if (!isTargetUser || !isClockedIn || !sessionId) {
+    if (!hasAccess || !isClockedIn || !sessionId) {
       if (syncIntervalRef.current) {
         clearInterval(syncIntervalRef.current);
         syncIntervalRef.current = null;
@@ -334,11 +378,11 @@ export function useSessionTracking() {
         clearInterval(syncIntervalRef.current);
       }
     };
-  }, [isTargetUser, isClockedIn, sessionId, idleSeconds, getElapsedSeconds]);
+  }, [hasAccess, isClockedIn, sessionId, idleSeconds, getElapsedSeconds]);
 
   // Handle page unload
   useEffect(() => {
-    if (!isTargetUser || !isClockedIn || !sessionId) return;
+    if (!hasAccess || !isClockedIn || !sessionId) return;
 
     const handleBeforeUnload = () => {
       let currentIdleSeconds = idleSeconds;
@@ -360,7 +404,7 @@ export function useSessionTracking() {
     return () => {
       window.removeEventListener("beforeunload", handleBeforeUnload);
     };
-  }, [isTargetUser, isClockedIn, sessionId, idleSeconds]);
+  }, [hasAccess, isClockedIn, sessionId, idleSeconds]);
 
   // Log activity helper
   const logActivity = useCallback(
@@ -370,7 +414,7 @@ export function useSessionTracking() {
       actionName?: string,
       metadata?: object
     ) => {
-      if (!isTargetUser || !sessionId || !user) return;
+      if (!hasAccess || !sessionId || !user) return;
 
       try {
         await supabase.from("session_activity_log").insert([{
@@ -385,13 +429,13 @@ export function useSessionTracking() {
         console.error("Error logging activity:", e);
       }
     },
-    [isTargetUser, sessionId, user]
+    [hasAccess, sessionId, user]
   );
 
   // Clock in - checks for existing active session first
   const clockIn = useCallback(
     async (type: "auto" | "manual" = "manual") => {
-      if (!isTargetUser || !user || isClockedIn) return;
+      if (!hasAccess || !user || isClockedIn) return;
 
       try {
         // Check if there's already an active session
@@ -452,12 +496,12 @@ export function useSessionTracking() {
         console.error("Error clocking in:", e);
       }
     },
-    [isTargetUser, user, isClockedIn]
+    [hasAccess, user, isClockedIn]
   );
 
   // Clock out
   const clockOut = useCallback(async () => {
-    if (!isTargetUser || !sessionId || !user) return;
+    if (!hasAccess || !sessionId || !user) return;
 
     try {
       // Commit any ongoing idle time
@@ -502,7 +546,7 @@ export function useSessionTracking() {
     } catch (e) {
       console.error("Error clocking out:", e);
     }
-  }, [isTargetUser, sessionId, user, idleSeconds, getElapsedSeconds]);
+  }, [hasAccess, sessionId, user, idleSeconds, getElapsedSeconds]);
 
   // Format time helper
   const formatTime = useCallback((seconds: number): string => {
@@ -538,7 +582,7 @@ export function useSessionTracking() {
   const currentEarnings = calculateEarnings(activeSeconds);
 
   return {
-    isTargetUser,
+    isTargetUser: hasAccess,
     isLoading,
     isClockedIn,
     isIdle,

@@ -13,6 +13,7 @@ import { Loader2, Cloud, ChevronRight, Clock } from "lucide-react";
 import { useTheme } from "next-themes";
 import { Switch } from "@/components/ui/switch";
 import { useUserRole } from "@/hooks/useUserRole";
+import { usePermissionCheck } from "@/hooks/usePermissionCheck";
 import { Badge } from "@/components/ui/badge";
 import { CompanySettingsForm } from "@/components/settings/CompanySettingsForm";
 import { useQuickBooksConfig } from "@/integrations/supabase/hooks/useQuickBooks";
@@ -22,6 +23,7 @@ export default function Settings() {
   const { toast } = useToast();
   const { theme, setTheme } = useTheme();
   const { role, loading: roleLoading } = useUserRole();
+  const { canView: hasUserMgmtPermission } = usePermissionCheck("user_management");
   const { data: qbConfig } = useQuickBooksConfig();
   const [isChangingPassword, setIsChangingPassword] = useState(false);
   const [newPassword, setNewPassword] = useState("");
@@ -112,8 +114,8 @@ export default function Settings() {
               </div>
             </Link>
 
-            {/* Session History - only for target user */}
-            {(user?.email === "chris.guevara97@gmail.com" || role === "admin" || role === "manager") && (
+            {/* Session History - for users with user management access */}
+            {(role === "admin" || role === "manager" || hasUserMgmtPermission) && (
               <Link to="/session-history">
                 <div className="flex items-center justify-between p-4 rounded-lg border hover:bg-muted/50 transition-colors cursor-pointer mt-3">
                   <div className="flex items-center gap-3">
