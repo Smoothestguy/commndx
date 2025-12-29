@@ -68,7 +68,7 @@ export function AppHeader() {
           )}
         </Button>
 
-        {/* Session Timer - only visible for chris.guevara97@gmail.com */}
+        {/* Session Timer - visible for users with user management access */}
         <SessionTimer />
 
         {showNotificationBell && <AdminNotificationBell />}

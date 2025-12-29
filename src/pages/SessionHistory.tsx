@@ -2,6 +2,7 @@ import { useState, useEffect } from "react";
 import { Navigate } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
 import { useUserRole } from "@/hooks/useUserRole";
+import { usePermissionCheck } from "@/hooks/usePermissionCheck";
 import { SEO } from "@/components/SEO";
 import { DetailPageLayout } from "@/components/layout/DetailPageLayout";
 import { SessionHistoryStats } from "@/components/session/SessionHistoryStats";
@@ -16,12 +17,10 @@ import { DateRange } from "react-day-picker";
 import { supabase } from "@/integrations/supabase/client";
 import { useQuery } from "@tanstack/react-query";
 
-const TARGET_USER_EMAIL = "chris.guevara97@gmail.com";
-const TARGET_USER_ID = "a]"; // Will be fetched dynamically
-
 export default function SessionHistory() {
   const { user } = useAuth();
   const { isAdmin, isManager, loading: roleLoading } = useUserRole();
+  const { canView: hasUserMgmtPermission, loading: permLoading } = usePermissionCheck("user_management");
   const [selectedSessionId, setSelectedSessionId] = useState<string | null>(null);
   const [dateRange, setDateRange] = useState<DateRange | undefined>({
     from: startOfMonth(new Date()),
@@ -58,21 +57,20 @@ export default function SessionHistory() {
   // Set default target user when data loads
   useEffect(() => {
     if (user && !targetUserId) {
-      // Default to current user if they're Chris, or first available user for admins
-      if (user.email === TARGET_USER_EMAIL) {
+      // Default to current user, or first available user for admins/managers
+      if ((isAdmin || isManager) && sessionUsers && sessionUsers.length > 0) {
+        // Default to first user with sessions
+        setTargetUserId(sessionUsers[0].id);
+      } else {
         setTargetUserId(user.id);
-      } else if ((isAdmin || isManager) && sessionUsers && sessionUsers.length > 0) {
-        // Find Chris's ID or default to first user
-        const chrisProfile = sessionUsers.find(p => p.email === TARGET_USER_EMAIL);
-        setTargetUserId(chrisProfile?.id || sessionUsers[0].id);
       }
     }
   }, [user, isAdmin, isManager, sessionUsers, targetUserId]);
 
-  // Allow access if user is Chris OR has admin/manager role
-  const hasAccess = user?.email === TARGET_USER_EMAIL || isAdmin || isManager;
+  // Allow access if user has admin/manager role OR user_management permission
+  const hasAccess = isAdmin || isManager || hasUserMgmtPermission;
 
-  if (roleLoading) {
+  if (roleLoading || permLoading) {
     return null; // Or loading spinner
   }
 
