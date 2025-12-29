@@ -752,15 +752,15 @@ export function WeeklyTimesheet({
                     return (
                       <div 
                         key={key} 
-                        className={`p-2 rounded-lg ${
+                        className={`p-3 rounded-lg ${
                           entry.is_locked || isWeekClosed 
                             ? "bg-muted/50 opacity-75" 
                             : "bg-muted/30"
                         }`}
                       >
                         <div
-                          className={`flex items-center justify-between ${
-                            entry.is_locked || isWeekClosed ? "cursor-not-allowed" : "cursor-pointer"
+                          className={`flex items-center justify-between min-h-[44px] ${
+                            entry.is_locked || isWeekClosed ? "cursor-not-allowed" : "cursor-pointer active:bg-muted/50"
                           }`}
                           onClick={() => handleCellClick(row, day)}
                         >
@@ -785,7 +785,7 @@ export function WeeklyTimesheet({
                                   <Button
                                     variant="ghost"
                                     size="sm"
-                                    className="h-5 px-1 text-xs"
+                                    className="h-7 px-2 text-xs"
                                     onClick={(e) => {
                                       e.stopPropagation();
                                       handleEditRate(row);

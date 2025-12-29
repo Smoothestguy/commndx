@@ -19,12 +19,19 @@ import {
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Badge } from "@/components/ui/badge";
+import { Card } from "@/components/ui/card";
 import { StatusBadge } from "@/components/shared/StatusBadge";
 import { ComplianceBadge } from "@/components/personnel/ComplianceBadge";
 import { PersonnelAvatar } from "@/components/personnel/PersonnelAvatar";
 import { TimeEntryWithDetails } from "@/integrations/supabase/hooks/useTimeEntries";
 import { useCompanySettings } from "@/integrations/supabase/hooks/useCompanySettings";
 import { useWeekCloseouts } from "@/integrations/supabase/hooks/useWeekCloseouts";
+import { useIsMobile } from "@/hooks/use-mobile";
+import {
+  Collapsible,
+  CollapsibleContent,
+  CollapsibleTrigger,
+} from "@/components/ui/collapsible";
 import {
   Table,
   TableBody,
@@ -130,6 +137,7 @@ export function ProjectTimeEntriesTable({
   const [expandedProjects, setExpandedProjects] = useState<Set<string>>(new Set());
   const [expandedPersonnel, setExpandedPersonnel] = useState<Set<string>>(new Set());
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
+  const isMobile = useIsMobile();
 
   const { data: companySettings } = useCompanySettings();
   const { data: weekCloseouts = [] } = useWeekCloseouts(weekStart);
@@ -378,6 +386,319 @@ export function ProjectTimeEntriesTable({
     );
   }
 
+  // Mobile Bulk Actions Bar Component
+  const MobileBulkActions = () => {
+    if (selectedIds.size === 0) return null;
+    
+    return (
+      <div className="glass rounded-lg border border-border/50 p-3 mb-4 space-y-3">
+        <div className="flex items-center justify-between">
+          <span className="text-sm font-medium">
+            {selectedIds.size} selected
+          </span>
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() => setSelectedIds(new Set())}
+            className="h-8 px-2"
+          >
+            <X className="h-4 w-4" />
+          </Button>
+        </div>
+        <div className="grid grid-cols-2 gap-2">
+          {onStatusChange && hasApprovableEntries && (
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => {
+                onStatusChange(Array.from(selectedIds), 'approved');
+                setSelectedIds(new Set());
+              }}
+              disabled={isUpdatingStatus}
+              className="text-green-600 border-green-600/30 hover:bg-green-600/10 h-11"
+            >
+              <Check className="h-4 w-4 mr-1" />
+              Approve
+            </Button>
+          )}
+          {onStatusChange && hasRejectableEntries && (
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => {
+                onStatusChange(Array.from(selectedIds), 'rejected');
+                setSelectedIds(new Set());
+              }}
+              disabled={isUpdatingStatus}
+              className="text-red-600 border-red-600/30 hover:bg-red-600/10 h-11"
+            >
+              <X className="h-4 w-4 mr-1" />
+              Reject
+            </Button>
+          )}
+          {onCreateVendorBill && (
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => {
+                const selectedEntryList = entries.filter(e => selectedIds.has(e.id));
+                onCreateVendorBill(selectedEntryList);
+              }}
+              className="text-blue-600 border-blue-600/30 hover:bg-blue-600/10 h-11"
+            >
+              <FileText className="h-4 w-4 mr-1" />
+              Bill
+            </Button>
+          )}
+          {onCreateCustomerInvoice && (
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => {
+                const selectedEntryList = entries.filter(e => selectedIds.has(e.id));
+                onCreateCustomerInvoice(selectedEntryList);
+              }}
+              className="text-green-600 border-green-600/30 hover:bg-green-600/10 h-11"
+            >
+              <Receipt className="h-4 w-4 mr-1" />
+              Invoice
+            </Button>
+          )}
+          {onBulkDelete && (
+            <Button
+              variant="destructive"
+              size="sm"
+              onClick={() => setShowDeleteDialog(true)}
+              disabled={isDeleting}
+              className="h-11 col-span-2"
+            >
+              <Trash2 className="h-4 w-4 mr-1" />
+              Delete Selected
+            </Button>
+          )}
+        </div>
+      </div>
+    );
+  };
+
+  // Mobile Card-based View
+  if (isMobile) {
+    return (
+      <>
+        <MobileBulkActions />
+        
+        <div className="space-y-3">
+          {projectGroups.map((project) => (
+            <Collapsible
+              key={project.projectId}
+              open={expandedProjects.has(project.projectId)}
+              onOpenChange={() => toggleProject(project.projectId)}
+            >
+              {/* Project Card */}
+              <Card className="glass overflow-hidden">
+                <CollapsibleTrigger asChild>
+                  <div className="p-4 flex items-start gap-3 cursor-pointer active:bg-muted/50 transition-colors">
+                    {onBulkDelete && (
+                      <div onClick={(e) => e.stopPropagation()} className="pt-0.5">
+                        <Checkbox
+                          checked={isProjectSelected(project)}
+                          ref={(el) => {
+                            if (el) {
+                              (el as HTMLButtonElement & { indeterminate: boolean }).indeterminate = isProjectIndeterminate(project);
+                            }
+                          }}
+                          onCheckedChange={(checked) => handleSelectProject(project, !!checked)}
+                          className="h-5 w-5"
+                        />
+                      </div>
+                    )}
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-2 mb-1">
+                        {expandedProjects.has(project.projectId) ? (
+                          <FolderOpen className="h-5 w-5 text-primary shrink-0" />
+                        ) : (
+                          <Folder className="h-5 w-5 text-muted-foreground shrink-0" />
+                        )}
+                        <span className="font-semibold truncate">{project.projectName}</span>
+                        {project.isLocked && (
+                          <Lock className="h-4 w-4 text-orange-500 shrink-0" />
+                        )}
+                      </div>
+                      <p className="text-sm text-muted-foreground truncate mb-2">
+                        {project.customerName}
+                      </p>
+                      <div className="flex items-center gap-4 text-sm">
+                        <div className="flex items-center gap-1">
+                          <Clock className="h-4 w-4 text-muted-foreground" />
+                          <span className="font-medium">{project.totalHours.toFixed(1)}h</span>
+                        </div>
+                        <div className="flex items-center gap-1">
+                          <DollarSign className="h-4 w-4 text-muted-foreground" />
+                          <span className="font-medium">${project.totalCost.toFixed(2)}</span>
+                        </div>
+                        <Badge variant="secondary" className="text-xs">
+                          {project.personnelGroups.length} personnel
+                        </Badge>
+                      </div>
+                    </div>
+                    <div className="shrink-0 pt-1">
+                      {expandedProjects.has(project.projectId) ? (
+                        <ChevronDown className="h-5 w-5 text-muted-foreground" />
+                      ) : (
+                        <ChevronRight className="h-5 w-5 text-muted-foreground" />
+                      )}
+                    </div>
+                  </div>
+                </CollapsibleTrigger>
+                
+                <CollapsibleContent>
+                  <div className="border-t border-border/50">
+                    {project.personnelGroups.map((personnel) => {
+                      const personnelKey = `${project.projectId}-${personnel.personnelId}`;
+                      return (
+                        <Collapsible
+                          key={personnelKey}
+                          open={expandedPersonnel.has(personnelKey)}
+                          onOpenChange={() => togglePersonnel(personnelKey)}
+                        >
+                          {/* Personnel Row */}
+                          <CollapsibleTrigger asChild>
+                            <div className="p-3 pl-6 flex items-start gap-3 cursor-pointer active:bg-muted/30 transition-colors bg-muted/20 border-b border-border/30">
+                              {onBulkDelete && (
+                                <div onClick={(e) => e.stopPropagation()} className="pt-0.5">
+                                  <Checkbox
+                                    checked={isPersonnelSelected(personnel)}
+                                    ref={(el) => {
+                                      if (el) {
+                                        (el as HTMLButtonElement & { indeterminate: boolean }).indeterminate = isPersonnelIndeterminate(personnel);
+                                      }
+                                    }}
+                                    onCheckedChange={(checked) => handleSelectPersonnel(personnel, !!checked)}
+                                    className="h-5 w-5"
+                                  />
+                                </div>
+                              )}
+                              <PersonnelAvatar
+                                photoUrl={personnel.personnelData?.photo_url}
+                                firstName={personnel.personnelData?.first_name || ""}
+                                lastName={personnel.personnelData?.last_name || ""}
+                                size="sm"
+                              />
+                              <div className="flex-1 min-w-0">
+                                <div className="flex items-center gap-2 mb-1">
+                                  <span className="font-medium truncate">{personnel.personnelName}</span>
+                                  <ComplianceBadge personnel={getComplianceData(personnel.personnelData)} compact />
+                                </div>
+                                <div className="flex items-center gap-3 text-sm">
+                                  <span className="font-medium">{personnel.totalHours.toFixed(1)}h</span>
+                                  {personnel.overtimeHours > 0 && (
+                                    <span className="text-orange-500 text-xs">+{personnel.overtimeHours.toFixed(1)}h OT</span>
+                                  )}
+                                  <span className="text-muted-foreground">${personnel.totalCost.toFixed(2)}</span>
+                                </div>
+                              </div>
+                              <div className="shrink-0 pt-1">
+                                <Badge variant="outline" className="text-xs mr-2">
+                                  {personnel.dailyEntries.length}d
+                                </Badge>
+                                {expandedPersonnel.has(personnelKey) ? (
+                                  <ChevronDown className="h-4 w-4 text-muted-foreground inline" />
+                                ) : (
+                                  <ChevronRight className="h-4 w-4 text-muted-foreground inline" />
+                                )}
+                              </div>
+                            </div>
+                          </CollapsibleTrigger>
+                          
+                          <CollapsibleContent>
+                            {/* Daily Entries */}
+                            {personnel.dailyEntries.map((daily) =>
+                              daily.entries.map((entry) => (
+                                <div
+                                  key={entry.id}
+                                  className="p-3 pl-10 flex items-start gap-3 bg-background border-b border-border/20 last:border-b-0"
+                                >
+                                  {onBulkDelete && (
+                                    <Checkbox
+                                      checked={selectedIds.has(entry.id)}
+                                      onCheckedChange={(checked) => handleSelectEntry(entry.id, !!checked)}
+                                      className="h-5 w-5 mt-0.5"
+                                    />
+                                  )}
+                                  <div className="flex-1 min-w-0">
+                                    <div className="flex items-center gap-2 mb-1">
+                                      <span className="font-medium text-sm">
+                                        {format(parseISO(entry.entry_date), "EEE, MMM d")}
+                                      </span>
+                                      {entry.is_holiday && (
+                                        <Badge variant="outline" className="text-xs bg-purple-500/10 text-purple-500 border-purple-500/20">
+                                          Holiday
+                                        </Badge>
+                                      )}
+                                      <StatusBadge status={getStatus(entry)} />
+                                    </div>
+                                    {entry.description && (
+                                      <p className="text-sm text-muted-foreground line-clamp-2 mb-1">
+                                        {entry.description}
+                                      </p>
+                                    )}
+                                    <div className="flex items-center gap-3 text-sm">
+                                      <span className="font-medium">{Number(entry.hours).toFixed(1)}h</span>
+                                      <span className="text-muted-foreground">
+                                        ${(Number(entry.hours) * getHourlyRate(entry)).toFixed(2)}
+                                      </span>
+                                    </div>
+                                  </div>
+                                  <Button
+                                    variant="ghost"
+                                    size="icon"
+                                    className="h-11 w-11 shrink-0"
+                                    onClick={() => onEdit(entry)}
+                                    disabled={project.isLocked}
+                                  >
+                                    <Pencil className="h-4 w-4" />
+                                  </Button>
+                                </div>
+                              ))
+                            )}
+                          </CollapsibleContent>
+                        </Collapsible>
+                      );
+                    })}
+                  </div>
+                </CollapsibleContent>
+              </Card>
+            </Collapsible>
+          ))}
+        </div>
+
+        {/* Delete Confirmation Dialog */}
+        <AlertDialog open={showDeleteDialog} onOpenChange={setShowDeleteDialog}>
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle>Delete Time Entries</AlertDialogTitle>
+              <AlertDialogDescription>
+                Are you sure you want to delete {selectedIds.size} time{" "}
+                {selectedIds.size === 1 ? "entry" : "entries"}? This action cannot
+                be undone.
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel>Cancel</AlertDialogCancel>
+              <AlertDialogAction
+                onClick={handleConfirmDelete}
+                className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              >
+                Delete
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
+      </>
+    );
+  }
+
+  // Desktop Table View
   return (
     <>
       {/* Bulk Actions Bar */}
