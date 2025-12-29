@@ -14,6 +14,8 @@ import { ProjectAssignmentsSection } from "@/components/time-tracking/ProjectAss
 import { PersonnelAssignmentDialog } from "@/components/time-tracking/PersonnelAssignmentDialog";
 import { CreateVendorBillFromTimeDialog } from "@/components/time-tracking/CreateVendorBillFromTimeDialog";
 import { CreateCustomerInvoiceFromTimeDialog } from "@/components/time-tracking/CreateCustomerInvoiceFromTimeDialog";
+import { MobileActionBar } from "@/components/layout/MobileActionBar";
+import { useIsMobile } from "@/hooks/use-mobile";
 import {
   useAllTimeEntries,
   useTimeEntries,
@@ -44,6 +46,7 @@ export default function TimeTracking() {
   const [weeklyViewWeek, setWeeklyViewWeek] = useState(() => new Date());
 
   const { isAdmin, isManager, loading: roleLoading } = useUserRole();
+  const isMobile = useIsMobile();
   const canManageTeam = isAdmin || isManager;
   const showAllEntries = isAdmin || isManager;
 
@@ -137,59 +140,61 @@ export default function TimeTracking() {
       />
 
       <div className="w-full max-w-full overflow-hidden space-y-6">
-        {/* Header Actions */}
-        <div className="flex flex-wrap gap-2 sm:justify-end">
-          {canManageTeam && (
-            <>
-              <Button
-                variant="outline"
-                className="flex-1 min-w-[calc(50%-0.25rem)] sm:flex-none sm:min-w-0 h-11 sm:h-10"
-                onClick={() => generatePayroll.mutate(undefined)}
-                disabled={generatePayroll.isPending}
-              >
-                {generatePayroll.isPending ? (
-                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                ) : (
-                  <DollarSign className="h-4 w-4 mr-2" />
-                )}
-                <span className="text-sm whitespace-nowrap">Generate Payroll</span>
-              </Button>
-              <Button
-                variant="outline"
-                className="flex-1 min-w-[calc(50%-0.25rem)] sm:flex-none sm:min-w-0 h-11 sm:h-10"
-                onClick={() => setAssignmentDialogOpen(true)}
-              >
-                <Users className="h-4 w-4 mr-2" />
-                <span className="text-sm whitespace-nowrap">Manage Personnel</span>
-              </Button>
-              <Button
-                variant="secondary"
-                className="flex-1 min-w-[calc(50%-0.25rem)] sm:flex-none sm:min-w-0 h-11 sm:h-10"
-                onClick={() => navigate("/team-timesheet")}
-              >
-                <Users className="h-4 w-4 mr-2" />
-                <span className="text-sm whitespace-nowrap">Log Team Time</span>
-              </Button>
-            </>
-          )}
-          <Button
-            className="flex-1 min-w-[calc(50%-0.25rem)] sm:flex-none sm:min-w-0 h-11 sm:h-10"
-            onClick={() => setFormOpen(true)}
-          >
-            <Plus className="h-4 w-4 mr-2" />
-            <span className="whitespace-nowrap">Log Time</span>
-          </Button>
-        </div>
+        {/* Header Actions - Hidden on mobile, shown on tablet+ */}
+        {!isMobile && (
+          <div className="flex flex-wrap gap-2 sm:justify-end">
+            {canManageTeam && (
+              <>
+                <Button
+                  variant="outline"
+                  className="flex-1 min-w-[calc(50%-0.25rem)] sm:flex-none sm:min-w-0 h-11 sm:h-10"
+                  onClick={() => generatePayroll.mutate(undefined)}
+                  disabled={generatePayroll.isPending}
+                >
+                  {generatePayroll.isPending ? (
+                    <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                  ) : (
+                    <DollarSign className="h-4 w-4 mr-2" />
+                  )}
+                  <span className="text-sm whitespace-nowrap">Generate Payroll</span>
+                </Button>
+                <Button
+                  variant="outline"
+                  className="flex-1 min-w-[calc(50%-0.25rem)] sm:flex-none sm:min-w-0 h-11 sm:h-10"
+                  onClick={() => setAssignmentDialogOpen(true)}
+                >
+                  <Users className="h-4 w-4 mr-2" />
+                  <span className="text-sm whitespace-nowrap">Manage Personnel</span>
+                </Button>
+                <Button
+                  variant="secondary"
+                  className="flex-1 min-w-[calc(50%-0.25rem)] sm:flex-none sm:min-w-0 h-11 sm:h-10"
+                  onClick={() => navigate("/team-timesheet")}
+                >
+                  <Users className="h-4 w-4 mr-2" />
+                  <span className="text-sm whitespace-nowrap">Log Team Time</span>
+                </Button>
+              </>
+            )}
+            <Button
+              className="flex-1 min-w-[calc(50%-0.25rem)] sm:flex-none sm:min-w-0 h-11 sm:h-10"
+              onClick={() => setFormOpen(true)}
+            >
+              <Plus className="h-4 w-4 mr-2" />
+              <span className="whitespace-nowrap">Log Time</span>
+            </Button>
+          </div>
+        )}
 
         {/* Stats */}
         <TimeTrackingStats entries={entries} />
 
         {/* Tabs */}
         <Tabs defaultValue="entries" className="w-full">
-          <TabsList className="grid w-full grid-cols-3 lg:w-[400px]">
-            <TabsTrigger value="entries">Time Entries</TabsTrigger>
-            <TabsTrigger value="weekly">Weekly View</TabsTrigger>
-            <TabsTrigger value="assignments">My Assignments</TabsTrigger>
+          <TabsList className="grid w-full grid-cols-3 lg:w-[400px] h-auto overflow-x-auto">
+            <TabsTrigger value="entries" className="text-xs sm:text-sm py-2.5 sm:py-1.5">Time Entries</TabsTrigger>
+            <TabsTrigger value="weekly" className="text-xs sm:text-sm py-2.5 sm:py-1.5">Weekly View</TabsTrigger>
+            <TabsTrigger value="assignments" className="text-xs sm:text-sm py-2.5 sm:py-1.5">My Assignments</TabsTrigger>
           </TabsList>
 
           <TabsContent value="entries" className="space-y-4 mt-4">
@@ -280,6 +285,37 @@ export default function TimeTracking() {
             onSuccess={() => setSelectedEntriesForInvoice([])}
           />
         )}
+
+        {/* Mobile Action Bar */}
+        <MobileActionBar
+          primaryActions={[
+            {
+              label: "Log Time",
+              icon: <Plus className="h-4 w-4" />,
+              onClick: () => setFormOpen(true),
+              variant: "default",
+            },
+            ...(canManageTeam ? [{
+              label: "Team Time",
+              icon: <Users className="h-4 w-4" />,
+              onClick: () => navigate("/team-timesheet"),
+              variant: "outline" as const,
+            }] : []),
+          ]}
+          secondaryActions={canManageTeam ? [
+            {
+              label: "Generate Payroll",
+              icon: generatePayroll.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <DollarSign className="h-4 w-4" />,
+              onClick: () => generatePayroll.mutate(undefined),
+              loading: generatePayroll.isPending,
+            },
+            {
+              label: "Manage Personnel",
+              icon: <Users className="h-4 w-4" />,
+              onClick: () => setAssignmentDialogOpen(true),
+            },
+          ] : []}
+        />
       </div>
     </PageLayout>
   );

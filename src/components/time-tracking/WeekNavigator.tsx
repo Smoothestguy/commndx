@@ -13,30 +13,30 @@ export function WeekNavigator({ currentWeek, onWeekChange, showLabels = true }: 
   const weekEnd = endOfWeek(currentWeek, { weekStartsOn: 1 });
 
   return (
-    <div className="flex items-center gap-2">
+    <div className="flex items-center gap-1 sm:gap-2">
       <Button
         type="button"
         variant="outline"
-        size={showLabels ? "sm" : "icon"}
+        size="icon"
         onClick={() => onWeekChange(subWeeks(currentWeek, 1))}
-        className="gap-1"
+        className="h-9 w-9 sm:h-10 sm:w-auto sm:px-3"
       >
         <ChevronLeft className="h-4 w-4" />
-        {showLabels && <span className="hidden sm:inline">Previous Week</span>}
+        {showLabels && <span className="hidden sm:inline ml-1">Previous</span>}
       </Button>
       
-      <div className="text-sm font-medium min-w-[160px] text-center px-2">
+      <div className="text-xs sm:text-sm font-medium min-w-[120px] sm:min-w-[160px] text-center px-1 sm:px-2">
         {format(weekStart, "MMM d")} - {format(weekEnd, "MMM d, yyyy")}
       </div>
 
       <Button
         type="button"
         variant="outline"
-        size={showLabels ? "sm" : "icon"}
+        size="icon"
         onClick={() => onWeekChange(addWeeks(currentWeek, 1))}
-        className="gap-1"
+        className="h-9 w-9 sm:h-10 sm:w-auto sm:px-3"
       >
-        {showLabels && <span className="hidden sm:inline">Next Week</span>}
+        {showLabels && <span className="hidden sm:inline mr-1">Next</span>}
         <ChevronRight className="h-4 w-4" />
       </Button>
 
@@ -44,6 +44,7 @@ export function WeekNavigator({ currentWeek, onWeekChange, showLabels = true }: 
         type="button"
         variant="ghost"
         size="sm"
+        className="h-9 sm:h-10 text-xs sm:text-sm px-2 sm:px-3"
         onClick={() => onWeekChange(new Date())}
       >
         Today
