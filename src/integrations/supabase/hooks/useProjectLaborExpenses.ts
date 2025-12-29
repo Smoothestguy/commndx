@@ -4,6 +4,51 @@ import { format, startOfWeek, endOfWeek } from "date-fns";
 import { toast } from "sonner";
 import { calculateSingleEmployeeOvertime } from "@/lib/overtimeUtils";
 
+// Hook to calculate labor costs directly from time entries for a project
+export function useProjectTimeEntryCosts(projectId: string | undefined) {
+  return useQuery({
+    queryKey: ['project-time-entry-costs', projectId],
+    queryFn: async () => {
+      if (!projectId) return { totalLaborCost: 0, totalHours: 0, regularHours: 0, overtimeHours: 0 };
+      
+      // Get all time entries for this project with personnel hourly rate
+      const { data: entries, error } = await supabase
+        .from('time_entries')
+        .select(`
+          hours,
+          regular_hours,
+          overtime_hours,
+          hourly_rate,
+          personnel:personnel_id (hourly_rate)
+        `)
+        .eq('project_id', projectId);
+      
+      if (error) throw error;
+      
+      let totalLaborCost = 0;
+      let totalHours = 0;
+      let regularHours = 0;
+      let overtimeHours = 0;
+      
+      for (const entry of entries || []) {
+        // Use snapshotted rate from entry, fallback to personnel's current rate
+        const rate = entry.hourly_rate || (entry.personnel as any)?.hourly_rate || 0;
+        const regHrs = entry.regular_hours || entry.hours || 0;
+        const otHrs = entry.overtime_hours || 0;
+        
+        regularHours += regHrs;
+        overtimeHours += otHrs;
+        totalHours += regHrs + otHrs;
+        
+        // Regular pay + Overtime at 1.5x rate
+        totalLaborCost += (regHrs * rate) + (otHrs * rate * 1.5);
+      }
+      
+      return { totalLaborCost, totalHours, regularHours, overtimeHours };
+    },
+    enabled: !!projectId,
+  });
+}
 export interface ProjectLaborExpense {
   id: string;
   project_id: string;
