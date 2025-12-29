@@ -23,6 +23,7 @@ import {
 } from "@/integrations/supabase/hooks/useVendorBills";
 import { useQuickBooksConfig, useSyncVendorBillToQB } from "@/integrations/supabase/hooks/useQuickBooks";
 import { format } from "date-fns";
+import { parseLocalDate } from "@/lib/dateUtils";
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "@/components/ui/command";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Check, ChevronsUpDown } from "lucide-react";
@@ -172,7 +173,7 @@ export function VendorBillForm({ bill, isEditing = false }: VendorBillFormProps)
       return;
     }
 
-    if (new Date(dueDate) < new Date(billDate)) {
+    if (parseLocalDate(dueDate) < parseLocalDate(billDate)) {
       toast.error("Due date cannot be before bill date");
       return;
     }

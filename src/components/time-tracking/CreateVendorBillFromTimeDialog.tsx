@@ -14,6 +14,7 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Loader2, FileText, AlertTriangle, Edit, User } from "lucide-react";
 import { format, nextFriday, startOfWeek, endOfWeek } from "date-fns";
+import { parseLocalDate } from "@/lib/dateUtils";
 import { formatCurrency } from "@/lib/utils";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Badge } from "@/components/ui/badge";
@@ -310,8 +311,8 @@ export function CreateVendorBillFromTimeDialog({
             total: summary.totalCost,
             status: "open",
             notes: customNote 
-              ? `${customNote}\n\nLabor bill for ${projectInfo?.name || 'project'} - ${summary.personnelName} - ${format(new Date(billDate), "MMM d, yyyy")}`
-              : `Labor bill for ${projectInfo?.name || 'project'} - ${summary.personnelName} - ${format(new Date(billDate), "MMM d, yyyy")}`,
+              ? `${customNote}\n\nLabor bill for ${projectInfo?.name || 'project'} - ${summary.personnelName} - ${format(parseLocalDate(billDate), "MMM d, yyyy")}`
+              : `Labor bill for ${projectInfo?.name || 'project'} - ${summary.personnelName} - ${format(parseLocalDate(billDate), "MMM d, yyyy")}`,
             purchase_order_id: null,
             purchase_order_number: null,
           },
@@ -350,8 +351,8 @@ export function CreateVendorBillFromTimeDialog({
 
           // Create project_labor_expenses record to track labor costs for job costing
           if (projectId) {
-            const weekStart = startOfWeek(new Date(billDate), { weekStartsOn: 1 });
-            const weekEnd = endOfWeek(new Date(billDate), { weekStartsOn: 1 });
+            const weekStart = startOfWeek(parseLocalDate(billDate), { weekStartsOn: 1 });
+            const weekEnd = endOfWeek(parseLocalDate(billDate), { weekStartsOn: 1 });
             
             const { error: expenseError } = await supabase
               .from('project_labor_expenses')

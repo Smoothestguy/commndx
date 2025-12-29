@@ -8,6 +8,7 @@ import { formatCurrency } from "@/lib/utils";
 import { ArrowLeft, Loader2 } from "lucide-react";
 import { useVendorBill } from "@/integrations/supabase/hooks/useVendorPortal";
 import { format } from "date-fns";
+import { formatLocalDate } from "@/lib/dateUtils";
 
 export default function VendorBillDetail() {
   const { id } = useParams<{ id: string }>();
@@ -76,7 +77,7 @@ export default function VendorBillDetail() {
               </CardHeader>
               <CardContent>
                 <p className="text-lg font-medium">
-                  {format(new Date(bill.bill_date), "MMM d, yyyy")}
+                  {formatLocalDate(bill.bill_date, "MMM d, yyyy")}
                 </p>
               </CardContent>
             </Card>
@@ -86,7 +87,7 @@ export default function VendorBillDetail() {
               </CardHeader>
               <CardContent>
                 <p className="text-lg font-medium">
-                  {format(new Date(bill.due_date), "MMM d, yyyy")}
+                  {formatLocalDate(bill.due_date, "MMM d, yyyy")}
                 </p>
               </CardContent>
             </Card>

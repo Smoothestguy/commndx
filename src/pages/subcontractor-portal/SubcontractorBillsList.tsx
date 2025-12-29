@@ -9,6 +9,7 @@ import { useNavigate } from "react-router-dom";
 import { useMemo, useState } from "react";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { formatCurrency } from "@/lib/utils";
+import { formatLocalDate } from "@/lib/dateUtils";
 import { FileText, Search } from "lucide-react";
 import {
   useSubcontractorBills,
@@ -41,7 +42,7 @@ export default function SubcontractorBillsList() {
       {
         key: "bill_date",
         header: "Date",
-        render: (bill) => new Date(bill.bill_date).toLocaleDateString(),
+        render: (bill) => formatLocalDate(bill.bill_date, "MMM d, yyyy"),
       },
       {
         key: "status",
