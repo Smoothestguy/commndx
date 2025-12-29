@@ -181,26 +181,34 @@ export default function TeamTimesheet() {
     return DAYS.reduce((sum, day) => sum + (parseFloat(days[day]) || 0), 0);
   };
 
-  const calculatePersonnelCost = (days: Record<DayKey, string>, hourlyRate: number) => {
-    return calculatePersonnelTotal(days) * hourlyRate;
-  };
+  const OVERTIME_THRESHOLD = 40;
+  const OVERTIME_MULTIPLIER = 1.5;
 
-  // Get selected personnel with their data
+  // Get selected personnel with their data including overtime calculations
   const selectedPersonnelData = useMemo(() => {
     return Array.from(weeklyHours.entries())
       .filter(([_, data]) => data.selected)
       .map(([personnelId, data]) => {
         const assignment = assignedPersonnel.find((a) => a.personnel?.id === personnelId);
         const person = assignment?.personnel;
-        return person ? {
+        if (!person) return null;
+        
+        const total = calculatePersonnelTotal(data.days);
+        const regularHours = Math.min(total, OVERTIME_THRESHOLD);
+        const overtimeHours = Math.max(0, total - OVERTIME_THRESHOLD);
+        const cost = (regularHours * data.hourlyRate) + (overtimeHours * data.hourlyRate * OVERTIME_MULTIPLIER);
+        
+        return {
           id: personnelId,
           firstName: person.first_name,
           lastName: person.last_name,
           hourlyRate: data.hourlyRate,
           days: data.days,
-          total: calculatePersonnelTotal(data.days),
-          cost: calculatePersonnelCost(data.days, data.hourlyRate)
-        } : null;
+          total,
+          regularHours,
+          overtimeHours,
+          cost
+        };
       })
       .filter(Boolean) as Array<{
         id: string;
@@ -209,12 +217,16 @@ export default function TeamTimesheet() {
         hourlyRate: number;
         days: Record<DayKey, string>;
         total: number;
+        regularHours: number;
+        overtimeHours: number;
         cost: number;
       }>;
   }, [weeklyHours, assignedPersonnel]);
 
   // Calculate grand totals
   const grandTotalHours = selectedPersonnelData.reduce((sum, p) => sum + p.total, 0);
+  const grandTotalRegular = selectedPersonnelData.reduce((sum, p) => sum + p.regularHours, 0);
+  const grandTotalOvertime = selectedPersonnelData.reduce((sum, p) => sum + p.overtimeHours, 0);
   const grandTotalCost = selectedPersonnelData.reduce((sum, p) => sum + p.cost, 0);
 
   // Check if there's any hours entered
@@ -481,7 +493,9 @@ export default function TeamTimesheet() {
                           <div className="text-muted-foreground font-normal text-xs">{format(date, "M/d")}</div>
                         </th>
                       ))}
-                      <th className="text-center p-3 font-medium text-sm min-w-[80px]">Total</th>
+                      <th className="text-center p-3 font-medium text-sm min-w-[60px]">Total</th>
+                      <th className="text-center p-3 font-medium text-sm min-w-[50px]">Reg</th>
+                      <th className="text-center p-3 font-medium text-sm min-w-[50px]">OT</th>
                       <th className="text-center p-3 font-medium text-sm min-w-[100px]">Cost</th>
                     </tr>
                   </thead>
@@ -508,6 +522,12 @@ export default function TeamTimesheet() {
                         <td className="p-3 text-center text-sm font-medium">
                           {person.total > 0 ? `${person.total.toFixed(1)}h` : "-"}
                         </td>
+                        <td className="p-3 text-center text-sm">
+                          {person.regularHours > 0 ? `${person.regularHours.toFixed(1)}h` : "-"}
+                        </td>
+                        <td className="p-3 text-center text-sm font-medium text-orange-500">
+                          {person.overtimeHours > 0 ? `+${person.overtimeHours.toFixed(1)}h` : "-"}
+                        </td>
                         <td className="p-3 text-center text-sm font-medium text-primary">
                           {person.cost > 0 ? `$${person.cost.toFixed(2)}` : "-"}
                         </td>
@@ -530,6 +550,12 @@ export default function TeamTimesheet() {
                       })}
                       <td className="p-3 text-center text-sm">
                         {grandTotalHours > 0 ? `${grandTotalHours.toFixed(1)}h` : "-"}
+                      </td>
+                      <td className="p-3 text-center text-sm">
+                        {grandTotalRegular > 0 ? `${grandTotalRegular.toFixed(1)}h` : "-"}
+                      </td>
+                      <td className="p-3 text-center text-sm font-medium text-orange-500">
+                        {grandTotalOvertime > 0 ? `+${grandTotalOvertime.toFixed(1)}h` : "-"}
                       </td>
                       <td className="p-3 text-center text-sm text-primary">
                         {grandTotalCost > 0 ? `$${grandTotalCost.toFixed(2)}` : "-"}
