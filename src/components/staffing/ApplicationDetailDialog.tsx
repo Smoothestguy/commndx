@@ -1,6 +1,6 @@
 import { useState, useMemo } from "react";
 import { format } from "date-fns";
-import { Pencil, User, Save, X, AlertCircle, RefreshCw, Trash2 } from "lucide-react";
+import { Pencil, User, Save, X, AlertCircle, RefreshCw, Trash2, ShieldCheck, Upload, Calendar } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
@@ -41,6 +41,7 @@ import {
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { RequestMissingInfoDialog } from "./RequestMissingInfoDialog";
+import { useUserRole } from "@/hooks/useUserRole";
 
 const statusColors: Record<string, string> = {
   submitted: "bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-300",
@@ -71,6 +72,10 @@ export function ApplicationDetailDialog({
   const [enlargedImage, setEnlargedImage] = useState<string | null>(null);
   const [requestInfoDialogOpen, setRequestInfoDialogOpen] = useState(false);
   const [isResending, setIsResending] = useState(false);
+  const [adminBypassMode, setAdminBypassMode] = useState(false);
+  const [bypassPhotoUrl, setBypassPhotoUrl] = useState<string>("");
+  const [bypassDob, setBypassDob] = useState<string>("");
+  const [isSavingBypass, setIsSavingBypass] = useState(false);
   const [editForm, setEditForm] = useState({
     first_name: "",
     last_name: "",
@@ -78,6 +83,8 @@ export function ApplicationDetailDialog({
     phone: "",
     home_zip: "",
   });
+
+  const { isAdmin } = useUserRole();
 
   const formTemplateId = application?.job_postings?.form_template_id;
   const { data: formTemplate } = useApplicationFormTemplate(
@@ -302,6 +309,95 @@ export function ApplicationDetailDialog({
       setIsResending(false);
     }
   };
+
+  // Handle photo file upload for admin bypass
+  const handleBypassPhotoUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    const reader = new FileReader();
+    reader.onloadend = () => {
+      setBypassPhotoUrl(reader.result as string);
+    };
+    reader.readAsDataURL(file);
+  };
+
+  // Save admin bypass and approve
+  const handleAdminBypassApprove = async () => {
+    if (!application) return;
+
+    setIsSavingBypass(true);
+    try {
+      // Get missing fields to know what to update
+      const missingFields = (application.missing_fields || []) as string[];
+      
+      // Update applicant photo_url if photo was missing and provided
+      if (missingFields.includes("Profile Photo") && bypassPhotoUrl) {
+        await updateApplicant.mutateAsync({
+          id: application.applicants.id,
+          photo_url: bypassPhotoUrl,
+        });
+      }
+
+      // Update application answers for DOB if it was missing and provided
+      if (missingFields.includes("Date Of Birth") && bypassDob) {
+        const currentAnswers = (application.answers || {}) as Record<string, unknown>;
+        // Find the DOB field ID from the form template
+        const dobField = formTemplate?.fields?.find(
+          (f: FormField) => f.label.toLowerCase().includes("date of birth") || f.label.toLowerCase().includes("dob")
+        );
+        
+        if (dobField) {
+          const updatedAnswers = {
+            ...currentAnswers,
+            [dobField.id]: bypassDob,
+          };
+          
+          await updateApplication.mutateAsync({
+            id: application.id,
+            answers: updatedAnswers,
+          });
+        }
+      }
+
+      // Add note about admin bypass
+      const bypassNote = `[Admin Bypass] Missing info entered manually by admin on ${format(new Date(), "MMM d, yyyy")}`;
+      const updatedNotes = actionNotes ? `${actionNotes}\n\n${bypassNote}` : bypassNote;
+
+      // Change status to submitted then approve
+      await updateApplication.mutateAsync({
+        id: application.id,
+        status: "submitted",
+        notes: updatedNotes,
+        missing_fields: null,
+      });
+
+      // Now approve the application
+      await approveApplication.mutateAsync({
+        applicationId: application.id,
+        notes: updatedNotes,
+      });
+
+      toast.success("Application approved via admin bypass");
+      setAdminBypassMode(false);
+      onOpenChange(false);
+    } catch (error: any) {
+      console.error("Error during admin bypass:", error);
+      toast.error(error.message || "Failed to complete admin bypass");
+    } finally {
+      setIsSavingBypass(false);
+    }
+  };
+
+  // Get missing fields info for display
+  const missingFieldsInfo = useMemo(() => {
+    const fields = (application?.missing_fields || []) as string[];
+    return {
+      hasPhoto: fields.includes("Profile Photo"),
+      hasDob: fields.includes("Date Of Birth"),
+      fields,
+    };
+  }, [application?.missing_fields]);
 
   if (!application) return null;
 
@@ -607,29 +703,133 @@ export function ApplicationDetailDialog({
                   </div>
                 )}
                 {application.status === "needs_info" && (
-                  <div className="flex flex-wrap gap-2 w-full justify-end">
-                    <Button
-                      variant="outline"
-                      onClick={handleResendEmail}
-                      disabled={isResending}
-                      className="flex-1 sm:flex-none"
-                    >
-                      <RefreshCw
-                        className={`h-4 w-4 sm:mr-1 ${
-                          isResending ? "animate-spin" : ""
-                        }`}
-                      />
-                      <span className="hidden sm:inline">{isResending ? "Sending..." : "Resend Email"}</span>
-                      <span className="sm:hidden">{isResending ? "..." : "Resend"}</span>
-                    </Button>
-                    <Button
-                      variant="outline"
-                      onClick={() => onOpenChange(false)}
-                      className="flex-1 sm:flex-none"
-                    >
-                      <span className="hidden md:inline">Close (Awaiting Applicant Update)</span>
-                      <span className="md:hidden">Close</span>
-                    </Button>
+                  <div className="flex flex-col gap-3 w-full">
+                    {/* Admin Bypass Mode */}
+                    {isAdmin && adminBypassMode && (
+                      <div className="bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800 rounded-lg p-4 space-y-4">
+                        <div className="flex items-center gap-2 text-amber-800 dark:text-amber-200">
+                          <ShieldCheck className="h-4 w-4" />
+                          <span className="font-medium text-sm">Admin Bypass - Enter Missing Info</span>
+                        </div>
+                        
+                        <div className="space-y-3">
+                          {missingFieldsInfo.hasPhoto && (
+                            <div className="space-y-2">
+                              <Label className="text-sm">Profile Photo</Label>
+                              <div className="flex items-center gap-3">
+                                {bypassPhotoUrl ? (
+                                  <img 
+                                    src={bypassPhotoUrl} 
+                                    alt="Uploaded photo" 
+                                    className="h-16 w-16 rounded-full object-cover border"
+                                  />
+                                ) : (
+                                  <div className="h-16 w-16 rounded-full bg-muted flex items-center justify-center border">
+                                    <User className="h-6 w-6 text-muted-foreground" />
+                                  </div>
+                                )}
+                                <label className="cursor-pointer">
+                                  <input
+                                    type="file"
+                                    accept="image/*"
+                                    className="hidden"
+                                    onChange={handleBypassPhotoUpload}
+                                  />
+                                  <div className="flex items-center gap-2 px-3 py-2 border rounded-md hover:bg-muted transition-colors text-sm">
+                                    <Upload className="h-4 w-4" />
+                                    Upload Photo
+                                  </div>
+                                </label>
+                              </div>
+                            </div>
+                          )}
+                          
+                          {missingFieldsInfo.hasDob && (
+                            <div className="space-y-2">
+                              <Label className="text-sm">Date of Birth</Label>
+                              <div className="flex items-center gap-2">
+                                <Calendar className="h-4 w-4 text-muted-foreground" />
+                                <Input
+                                  type="date"
+                                  value={bypassDob}
+                                  onChange={(e) => setBypassDob(e.target.value)}
+                                  className="max-w-[200px]"
+                                />
+                              </div>
+                            </div>
+                          )}
+                        </div>
+                        
+                        <div className="flex flex-wrap gap-2 pt-2">
+                          <Button
+                            variant="outline"
+                            onClick={() => {
+                              setAdminBypassMode(false);
+                              setBypassPhotoUrl("");
+                              setBypassDob("");
+                            }}
+                            className="flex-1 sm:flex-none"
+                          >
+                            Cancel
+                          </Button>
+                          <Button
+                            variant="destructive"
+                            onClick={handleReject}
+                            disabled={rejectApplication.isPending}
+                            className="flex-1 sm:flex-none"
+                          >
+                            Reject
+                          </Button>
+                          <Button
+                            onClick={handleAdminBypassApprove}
+                            disabled={isSavingBypass || approveApplication.isPending}
+                            className="flex-1 sm:flex-none"
+                          >
+                            <ShieldCheck className="h-4 w-4 mr-1" />
+                            {isSavingBypass ? "Processing..." : "Approve (Bypass)"}
+                          </Button>
+                        </div>
+                      </div>
+                    )}
+                    
+                    {/* Normal needs_info buttons */}
+                    {!adminBypassMode && (
+                      <div className="flex flex-wrap gap-2 w-full justify-end">
+                        {isAdmin && (
+                          <Button
+                            variant="outline"
+                            onClick={() => setAdminBypassMode(true)}
+                            className="flex-1 sm:flex-none border-amber-500 text-amber-700 dark:text-amber-400 hover:bg-amber-50 dark:hover:bg-amber-950/30"
+                          >
+                            <ShieldCheck className="h-4 w-4 sm:mr-1" />
+                            <span className="hidden sm:inline">Admin Bypass</span>
+                            <span className="sm:hidden">Bypass</span>
+                          </Button>
+                        )}
+                        <Button
+                          variant="outline"
+                          onClick={handleResendEmail}
+                          disabled={isResending}
+                          className="flex-1 sm:flex-none"
+                        >
+                          <RefreshCw
+                            className={`h-4 w-4 sm:mr-1 ${
+                              isResending ? "animate-spin" : ""
+                            }`}
+                          />
+                          <span className="hidden sm:inline">{isResending ? "Sending..." : "Resend Email"}</span>
+                          <span className="sm:hidden">{isResending ? "..." : "Resend"}</span>
+                        </Button>
+                        <Button
+                          variant="outline"
+                          onClick={() => onOpenChange(false)}
+                          className="flex-1 sm:flex-none"
+                        >
+                          <span className="hidden md:inline">Close (Awaiting Applicant Update)</span>
+                          <span className="md:hidden">Close</span>
+                        </Button>
+                      </div>
+                    )}
                   </div>
                 )}
                 {!showRevokeConfirm && (
