@@ -1,6 +1,7 @@
 import { useProfile } from "@/integrations/supabase/hooks/useProfile";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Sparkles } from "lucide-react";
+import { useDailyQuote } from "@/hooks/useDailyQuote";
 
 const getGreeting = (): string => {
   const hour = new Date().getHours();
@@ -11,20 +12,11 @@ const getGreeting = (): string => {
   return "Good night";
 };
 
-const getContextMessage = (): string => {
-  const hour = new Date().getHours();
-  
-  if (hour >= 5 && hour < 12) return "Ready to start a productive day?";
-  if (hour >= 12 && hour < 17) return "Hope your day is going great!";
-  if (hour >= 17 && hour < 21) return "Wrapping up for the day?";
-  return "Working late? Here's your overview.";
-};
-
 export const WelcomeBanner = () => {
   const { data: profile, isLoading } = useProfile();
+  const quote = useDailyQuote(profile?.id);
 
   const greeting = getGreeting();
-  const contextMessage = getContextMessage();
   
   const getDisplayName = () => {
     if (profile?.first_name && profile?.last_name) {
@@ -71,8 +63,9 @@ export const WelcomeBanner = () => {
           <h2 className="text-lg sm:text-2xl font-heading font-bold text-primary-foreground mb-0.5 sm:mb-1">
             {getDisplayName()}
           </h2>
-          <p className="text-xs sm:text-sm text-primary-foreground/70">
-            {contextMessage}
+          <p className="text-xs sm:text-sm text-primary-foreground/70 italic leading-relaxed">
+            "{quote.text}"
+            {quote.author && <span className="not-italic text-primary-foreground/50"> — {quote.author}</span>}
           </p>
         </div>
         
