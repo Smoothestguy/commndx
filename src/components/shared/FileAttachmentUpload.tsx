@@ -149,6 +149,34 @@ export const FileAttachmentUpload = ({
     setDragOver(false);
   };
 
+  const handlePaste = async (e: React.ClipboardEvent) => {
+    const items = e.clipboardData?.items;
+    if (!items) return;
+
+    const imageFiles: File[] = [];
+    
+    for (let i = 0; i < items.length; i++) {
+      const item = items[i];
+      if (item.type.startsWith('image/')) {
+        const file = item.getAsFile();
+        if (file) {
+          const timestamp = Date.now();
+          const extension = item.type.split('/')[1] || 'png';
+          const namedFile = new File([file], `pasted-image-${timestamp}.${extension}`, {
+            type: file.type,
+          });
+          imageFiles.push(namedFile);
+        }
+      }
+    }
+
+    if (imageFiles.length > 0) {
+      const dataTransfer = new DataTransfer();
+      imageFiles.forEach(file => dataTransfer.items.add(file));
+      handleFileChange(dataTransfer.files);
+    }
+  };
+
   return (
     <Card>
       <CardHeader>
@@ -168,6 +196,8 @@ export const FileAttachmentUpload = ({
           onDrop={handleDrop}
           onDragOver={handleDragOver}
           onDragLeave={handleDragLeave}
+          onPaste={handlePaste}
+          tabIndex={0}
         >
           <Input
             ref={fileInputRef}
@@ -189,10 +219,10 @@ export const FileAttachmentUpload = ({
             )}
             <div>
               <p className="text-sm font-medium">
-                {uploading ? "Uploading..." : "Click to upload or drag and drop"}
+                {uploading ? "Uploading..." : "Click to upload, drag and drop, or paste"}
               </p>
               <p className="text-xs text-muted-foreground mt-1">
-                PDF, images, or Word documents (max 10MB)
+                PDF, images, or Word docs (max 10MB) · Cmd+V to paste
               </p>
             </div>
           </label>
