@@ -16,7 +16,7 @@ import { useUserRole } from "@/hooks/useUserRole";
 import { usePermissionCheck } from "@/hooks/usePermissionCheck";
 import { useUserPermissions, useUpdateUserPermissions, MODULES, type ModuleKey } from "@/integrations/supabase/hooks/useUserPermissions";
 import { useSensitivePermissions, useUpdateSensitivePermissions, SENSITIVE_PERMISSIONS, type SensitivePermissionKey } from "@/integrations/supabase/hooks/useSensitivePermissions";
-import { Navigate } from "react-router-dom";
+import { Navigate, Link } from "react-router-dom";
 
 interface Profile {
   id: string;
@@ -395,7 +395,10 @@ export default function PermissionsManagement() {
                   <AlertTitle>Role-Based Access</AlertTitle>
                   <AlertDescription>
                     This user has full access to all modules because they are a <span className="font-semibold">{selectedUserRole}</span>. 
-                    These permissions are granted by their role and cannot be modified here.
+                    These permissions are granted automatically by their role. To modify their access, change their role in{" "}
+                    <Link to="/user-management" className="font-medium text-primary hover:underline">
+                      User Management
+                    </Link>.
                   </AlertDescription>
                 </Alert>
               )}
