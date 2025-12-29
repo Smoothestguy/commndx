@@ -13,6 +13,7 @@ export interface TimeEntry {
   hours: number;
   regular_hours?: number | null;
   overtime_hours?: number | null;
+  hourly_rate?: number | null;
   is_holiday?: boolean | null;
   description?: string | null;
   billable: boolean;

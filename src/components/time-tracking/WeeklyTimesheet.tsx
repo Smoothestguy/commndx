@@ -66,6 +66,7 @@ interface WeeklyTimesheetProps {
 }
 
 interface TimeEntryWithRelations extends TimeEntry {
+  hourly_rate?: number | null;
   personnel?: {
     id: string;
     first_name: string;
@@ -181,7 +182,7 @@ export function WeeklyTimesheet({
           personnelName: entry.personnel
             ? `${entry.personnel.first_name} ${entry.personnel.last_name}`
             : undefined,
-          personnelRate: entry.personnel?.hourly_rate ?? null,
+          personnelRate: entry.hourly_rate ?? entry.personnel?.hourly_rate ?? null,
           personnelPhotoUrl: entry.personnel?.photo_url ?? null,
           isPersonnelEntry,
         });
