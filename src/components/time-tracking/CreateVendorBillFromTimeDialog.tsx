@@ -159,6 +159,17 @@ export function CreateVendorBillFromTimeDialog({
     }
   }, [open, personnelSummaries.length, contractLaborCategory?.id]);
 
+  // Auto-adjust due date when bill date changes
+  useEffect(() => {
+    const billDateObj = new Date(billDate + "T12:00:00"); // Parse as local
+    const dayOfWeek = billDateObj.getDay(); // 0 = Sunday, 5 = Friday
+    const daysUntilFriday = (5 - dayOfWeek + 7) % 7;
+    const daysToAdd = daysUntilFriday === 0 ? 0 : daysUntilFriday;
+    const newDueDate = new Date(billDateObj);
+    newDueDate.setDate(billDateObj.getDate() + daysToAdd);
+    setDueDate(format(newDueDate, "yyyy-MM-dd"));
+  }, [billDate]);
+
   const selectedSummaries = useMemo(() =>
     personnelSummaries.filter(p => selectedPersonnel.has(p.personnelId)),
     [personnelSummaries, selectedPersonnel]
