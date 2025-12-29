@@ -138,12 +138,12 @@ export default function TimeTracking() {
 
       <div className="w-full max-w-full overflow-hidden space-y-6">
         {/* Header Actions */}
-        <div className="grid grid-cols-2 gap-2 sm:flex sm:justify-end sm:gap-2">
+        <div className="flex flex-wrap gap-2 sm:justify-end">
           {canManageTeam && (
             <>
               <Button
                 variant="outline"
-                className="w-full sm:w-auto"
+                className="flex-1 min-w-[calc(50%-0.25rem)] sm:flex-none sm:min-w-0 h-11 sm:h-10"
                 onClick={() => generatePayroll.mutate(undefined)}
                 disabled={generatePayroll.isPending}
               >
@@ -152,36 +152,32 @@ export default function TimeTracking() {
                 ) : (
                   <DollarSign className="h-4 w-4 mr-2" />
                 )}
-                <span className="truncate">Generate Payroll</span>
+                <span className="text-sm whitespace-nowrap">Generate Payroll</span>
               </Button>
               <Button
                 variant="outline"
-                className="w-full sm:w-auto"
+                className="flex-1 min-w-[calc(50%-0.25rem)] sm:flex-none sm:min-w-0 h-11 sm:h-10"
                 onClick={() => setAssignmentDialogOpen(true)}
               >
                 <Users className="h-4 w-4 mr-2" />
-                <span className="truncate">Manage Personnel</span>
+                <span className="text-sm whitespace-nowrap">Manage Personnel</span>
               </Button>
               <Button
                 variant="secondary"
-                className="w-full sm:w-auto"
+                className="flex-1 min-w-[calc(50%-0.25rem)] sm:flex-none sm:min-w-0 h-11 sm:h-10"
                 onClick={() => navigate("/team-timesheet")}
               >
                 <Users className="h-4 w-4 mr-2" />
-                <span className="truncate">Log Team Time</span>
+                <span className="text-sm whitespace-nowrap">Log Team Time</span>
               </Button>
             </>
           )}
           <Button
-            className={
-              canManageTeam
-                ? "col-span-2 sm:col-span-1 w-full sm:w-auto"
-                : "col-span-2 w-full sm:w-auto"
-            }
+            className="flex-1 min-w-[calc(50%-0.25rem)] sm:flex-none sm:min-w-0 h-11 sm:h-10"
             onClick={() => setFormOpen(true)}
           >
             <Plus className="h-4 w-4 mr-2" />
-            Log Time
+            <span className="whitespace-nowrap">Log Time</span>
           </Button>
         </div>
 
