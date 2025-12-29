@@ -3,6 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { PageLayout } from "@/components/layout/PageLayout";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { TimeDecimalInput } from "@/components/ui/time-decimal-input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useProjects } from "@/integrations/supabase/hooks/useProjects";
@@ -460,15 +461,11 @@ export default function TeamTimesheet() {
               <div className="grid grid-cols-7 gap-2 max-w-2xl">
                 {DAYS.map((day, index) => (
                   <div key={day} className="text-center">
-                    <Input
-                      type="number"
-                      step="0.5"
-                      min="0"
-                      max="24"
-                      value={templateHours[day]}
-                      onChange={(e) => setTemplateHours(prev => ({ ...prev, [day]: e.target.value }))}
+                    <TimeDecimalInput
+                      value={parseFloat(templateHours[day]) || 0}
+                      onValueChange={(v) => setTemplateHours(prev => ({ ...prev, [day]: v > 0 ? v.toString() : "" }))}
                       className="h-10 text-center"
-                      placeholder="0"
+                      compact={true}
                     />
                     <span className="text-xs text-muted-foreground mt-1 block">{DAY_LABELS[index]}</span>
                   </div>
@@ -507,15 +504,11 @@ export default function TeamTimesheet() {
                         </td>
                         {DAYS.map((day) => (
                           <td key={day} className="p-2">
-                            <Input
-                              type="number"
-                              step="0.5"
-                              min="0"
-                              max="24"
-                              value={person.days[day]}
-                              onChange={(e) => updateDayHours(person.id, day, e.target.value)}
+                            <TimeDecimalInput
+                              value={parseFloat(person.days[day]) || 0}
+                              onValueChange={(v) => updateDayHours(person.id, day, v > 0 ? v.toString() : "")}
                               className="h-10 text-center text-sm"
-                              placeholder="0"
+                              compact={true}
                             />
                           </td>
                         ))}
