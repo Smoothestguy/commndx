@@ -30,11 +30,11 @@ export function PageLayout({
       {/* Main Content */}
       <main
         className={cn(
-          "flex-1 min-h-[calc(100vh-3.5rem)] p-4 lg:p-6",
+          "flex-1 min-h-[calc(100vh-3.5rem)] p-4 lg:p-6 overflow-x-hidden",
           isMobile && "pb-24"
         )}
       >
-        <div ref={swipeRef} className="max-w-[1600px] mx-auto">
+        <div ref={swipeRef} className="max-w-[1600px] mx-auto w-full">
           {/* Page Header */}
           <header className="mb-6 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
             <div>
