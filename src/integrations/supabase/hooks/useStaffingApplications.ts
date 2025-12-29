@@ -994,6 +994,7 @@ export const useUpdateApplicant = () => {
       email,
       phone,
       home_zip,
+      photo_url,
     }: {
       id: string;
       first_name?: string;
@@ -1001,6 +1002,7 @@ export const useUpdateApplicant = () => {
       email?: string;
       phone?: string;
       home_zip?: string;
+      photo_url?: string;
     }) => {
       const updates: Record<string, unknown> = {};
       if (first_name !== undefined) updates.first_name = first_name;
@@ -1008,6 +1010,7 @@ export const useUpdateApplicant = () => {
       if (email !== undefined) updates.email = email;
       if (phone !== undefined) updates.phone = phone || null;
       if (home_zip !== undefined) updates.home_zip = home_zip || null;
+      if (photo_url !== undefined) updates.photo_url = photo_url;
 
       const { data, error } = await supabase
         .from("applicants")
@@ -1036,14 +1039,20 @@ export const useUpdateApplication = () => {
       id,
       notes,
       answers,
+      status,
+      missing_fields,
     }: {
       id: string;
       notes?: string;
       answers?: Record<string, unknown>;
+      status?: string;
+      missing_fields?: string[] | null;
     }) => {
       const updates: Record<string, unknown> = {};
       if (notes !== undefined) updates.notes = notes;
       if (answers !== undefined) updates.answers = answers;
+      if (status !== undefined) updates.status = status;
+      if (missing_fields !== undefined) updates.missing_fields = missing_fields;
 
       const { data, error } = await supabase
         .from("applications")
