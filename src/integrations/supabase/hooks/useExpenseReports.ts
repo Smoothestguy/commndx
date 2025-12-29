@@ -1,10 +1,15 @@
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "../client";
 
+// Labor-related expense category names
+const LABOR_CATEGORY_NAMES = ['Direct Labor', 'Contract Labor', 'Admin Labor'];
+
 export interface ExpensesByProject {
   project_id: string;
   project_name: string;
   vendor_total: number;
+  vendor_labor_total: number;
+  vendor_other_total: number;
   personnel_total: number;
   total: number;
 }
@@ -51,6 +56,9 @@ export const useExpensesByProject = (projectId: string | undefined) => {
       // Group by category
       const byCategory: Record<string, { name: string; vendor: number; personnel: number }> = {};
 
+      let vendorLaborTotal = 0;
+      let vendorOtherTotal = 0;
+
       vendorItems.forEach((item: any) => {
         const catId = item.category_id || "uncategorized";
         const catName = item.expense_categories?.name || "Uncategorized";
@@ -58,6 +66,13 @@ export const useExpensesByProject = (projectId: string | undefined) => {
           byCategory[catId] = { name: catName, vendor: 0, personnel: 0 };
         }
         byCategory[catId].vendor += Number(item.total);
+
+        // Separate labor vs other vendor expenses
+        if (LABOR_CATEGORY_NAMES.includes(catName)) {
+          vendorLaborTotal += Number(item.total);
+        } else {
+          vendorOtherTotal += Number(item.total);
+        }
       });
 
       personnelItems.forEach((item: any) => {
@@ -74,6 +89,8 @@ export const useExpensesByProject = (projectId: string | undefined) => {
 
       return {
         vendor_total: vendorTotal,
+        vendor_labor_total: vendorLaborTotal,
+        vendor_other_total: vendorOtherTotal,
         personnel_total: personnelTotal,
         total: vendorTotal + personnelTotal,
         by_category: Object.entries(byCategory).map(([id, data]) => ({
