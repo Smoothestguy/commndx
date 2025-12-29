@@ -10,6 +10,7 @@ import { useChangeOrdersByProject } from "@/integrations/supabase/hooks/useChang
 import { useTMTicketsByProject } from "@/integrations/supabase/hooks/useTMTickets";
 import { usePurchaseOrders } from "@/integrations/supabase/hooks/usePurchaseOrders";
 import { useVendorBills } from "@/integrations/supabase/hooks/useVendorBills";
+import { useExpensesByProject } from "@/integrations/supabase/hooks/useExpenseReports";
 import { PageLayout } from "@/components/layout/PageLayout";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -51,6 +52,7 @@ const ProjectDetail = () => {
   const { data: tmTickets } = useTMTicketsByProject(id);
   const { data: allPurchaseOrders } = usePurchaseOrders();
   const { data: projectVendorBills } = useVendorBills({ project_id: id });
+  const { data: projectExpenses } = useExpensesByProject(id);
 
   const addMilestone = useAddMilestone();
   const updateMilestone = useUpdateMilestone();
@@ -144,6 +146,13 @@ const ProjectDetail = () => {
     const grossProfit = totalContractValue - totalPOValue;
     const grossMargin = totalContractValue > 0 ? (grossProfit / totalContractValue) * 100 : 0;
 
+    // Net profit calculations - labor costs and other expenses from project expenses
+    const totalLaborCost = projectExpenses?.personnel_total || 0;
+    const totalOtherExpenses = projectExpenses?.vendor_total || 0;
+    const totalAllCosts = totalPOValue + totalLaborCost + totalOtherExpenses;
+    const netProfit = totalContractValue - totalAllCosts;
+    const netMargin = totalContractValue > 0 ? (netProfit / totalContractValue) * 100 : 0;
+
     return {
       originalContractValue,
       changeOrdersTotal,
@@ -156,8 +165,12 @@ const ProjectDetail = () => {
       totalPaid,
       grossProfit,
       grossMargin,
+      totalLaborCost,
+      totalOtherExpenses,
+      netProfit,
+      netMargin,
     };
-  }, [projectJobOrders, changeOrders, tmTickets, projectPurchaseOrders, projectInvoices, projectVendorBills]);
+  }, [projectJobOrders, changeOrders, tmTickets, projectPurchaseOrders, projectInvoices, projectVendorBills, projectExpenses]);
 
   // Calculate overall project completion
   const overallCompletion = useMemo(() => {
