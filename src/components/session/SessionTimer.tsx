@@ -64,16 +64,16 @@ export function SessionTimer() {
   const formattedTodayIdleTime = formatTimeHMS(todayIdleSeconds);
 
   return (
-    <div className="flex items-center gap-1 sm:gap-2">
+    <div className="flex items-center gap-0.5 sm:gap-2">
       <Tooltip>
         <TooltipTrigger asChild>
-          <div className="flex items-center gap-1 sm:gap-1.5 px-1.5 sm:px-2 py-1 rounded-md bg-sidebar-accent/50">
+          <div className="flex items-center gap-0.5 sm:gap-1.5 px-1 sm:px-2 py-0.5 sm:py-1 rounded-md bg-sidebar-accent/50">
             {isIdle ? (
-              <Pause className="h-3 w-3 sm:h-4 sm:w-4 text-amber-500" />
+              <Pause className="h-3 w-3 text-amber-500" />
             ) : (
-              <Clock className="h-3 w-3 sm:h-4 sm:w-4 text-green-500 animate-pulse" />
+              <Clock className="h-3 w-3 text-green-500 animate-pulse" />
             )}
-            <span className="font-mono text-xs sm:text-sm text-header-foreground">
+            <span className="font-mono text-[10px] sm:text-sm text-header-foreground">
               {formattedTodayTime}
             </span>
             {isIdle && (
@@ -122,7 +122,7 @@ export function SessionTimer() {
             variant="ghost"
             size="sm"
             onClick={clockOut}
-            className="h-8 w-8 p-0 text-header-foreground hover:bg-sidebar-accent hover:text-destructive"
+            className="hidden sm:flex h-8 w-8 p-0 text-header-foreground hover:bg-sidebar-accent hover:text-destructive"
           >
             <Square className="h-4 w-4" />
           </Button>

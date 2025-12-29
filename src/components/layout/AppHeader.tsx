@@ -43,7 +43,7 @@ export function AppHeader() {
       <SidebarTrigger className="hidden md:flex h-8 w-8 mr-auto" />
 
       {/* All icons grouped together */}
-      <div className="flex items-center gap-1.5 sm:gap-3 min-w-0">
+      <div className="flex items-center gap-1 sm:gap-3 min-w-0">
         {/* Mobile menu trigger */}
         <div className="md:hidden">
           <MobileNav />
@@ -52,10 +52,10 @@ export function AppHeader() {
           variant="ghost"
           size="icon"
           onClick={toggleOpen}
-          className="relative h-8 w-8 text-header-foreground hover:bg-sidebar-accent"
+          className="relative h-7 w-7 sm:h-8 sm:w-8 text-header-foreground hover:bg-sidebar-accent"
           title="AI Assistant"
         >
-          <MessageCircle className="h-5 w-5" />
+          <MessageCircle className="h-4 w-4 sm:h-5 sm:w-5" />
           {messages.length === 0 && !isOpen && (
             <span className="absolute -top-0.5 -right-0.5 flex h-2.5 w-2.5">
               <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-primary opacity-75"></span>
@@ -73,13 +73,13 @@ export function AppHeader() {
 
         <DropdownMenu>
           <DropdownMenuTrigger className="flex items-center gap-1 hover:opacity-80 transition-opacity outline-none">
-            <Avatar className="h-8 w-8 bg-sidebar-accent">
+            <Avatar className="h-7 w-7 sm:h-8 sm:w-8 bg-sidebar-accent">
               <AvatarImage src={userPhotoUrl || undefined} alt="User avatar" />
               <AvatarFallback className="bg-primary text-primary-foreground text-xs font-medium">
                 {userInitials}
               </AvatarFallback>
             </Avatar>
-            <ChevronDown className="h-4 w-4 text-sidebar-muted" />
+            <ChevronDown className="h-4 w-4 text-sidebar-muted hidden sm:block" />
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end" className="w-56">
             <div className="px-2 py-1.5 text-sm text-muted-foreground truncate">
