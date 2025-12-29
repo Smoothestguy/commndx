@@ -116,18 +116,18 @@ export function TimeTrackingStats({ entries }: TimeTrackingStatsProps) {
   ];
 
   return (
-    <div className="w-full max-w-full overflow-hidden grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-2 sm:gap-4">
+    <div className="w-full max-w-full overflow-hidden grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-2 sm:gap-3">
       {stats.map((stat) => {
         const Icon = stat.icon;
         return (
-          <Card key={stat.label} className="p-2 sm:p-4">
+          <Card key={stat.label} className="p-3 sm:p-4 min-w-[140px]">
             <div className="flex items-center gap-2 sm:gap-3">
-              <div className={`p-1.5 sm:p-2 rounded-lg bg-muted/50 ${stat.color}`}>
+              <div className={`p-2 sm:p-2.5 rounded-lg bg-muted/50 ${stat.color} flex-shrink-0`}>
                 <Icon className="h-4 w-4 sm:h-5 sm:w-5" />
               </div>
               <div className="min-w-0 flex-1">
-                <p className="text-xs text-muted-foreground truncate">{stat.label}</p>
-                <p className="text-lg sm:text-xl font-bold truncate">{stat.value}</p>
+                <p className="text-[10px] sm:text-xs text-muted-foreground whitespace-nowrap">{stat.label}</p>
+                <p className="text-base sm:text-lg lg:text-xl font-bold leading-tight">{stat.value}</p>
               </div>
             </div>
           </Card>
