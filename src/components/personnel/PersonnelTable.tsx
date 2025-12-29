@@ -30,6 +30,7 @@ import {
   Trash2,
   Building2,
   XSquare,
+  RefreshCw,
 } from "lucide-react";
 import { useVendors } from "@/integrations/supabase/hooks/useVendors";
 import {
@@ -37,6 +38,7 @@ import {
   useToggleDoNotHire,
   useHardDeletePersonnel,
 } from "@/integrations/supabase/hooks/usePersonnel";
+import { useQuickBooksConfig, useSyncPersonnelToQB } from "@/integrations/supabase/hooks/useQuickBooks";
 import { ComplianceBadge } from "./ComplianceBadge";
 import { toast } from "sonner";
 import type { Database } from "@/integrations/supabase/types";
@@ -79,14 +81,17 @@ export function PersonnelTable({
   const navigate = useNavigate();
   const isMobile = useIsMobile();
   const { data: vendors } = useVendors();
+  const { data: qbConfig } = useQuickBooksConfig();
   const deletePersonnel = useDeletePersonnel();
   const toggleDoNotHire = useToggleDoNotHire();
   const hardDeletePersonnel = useHardDeletePersonnel();
+  const syncPersonnelToQB = useSyncPersonnelToQB();
 
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [personToDelete, setPersonToDelete] = useState<Personnel | null>(null);
   const [hardDeleteDialogOpen, setHardDeleteDialogOpen] = useState(false);
   const [personToHardDelete, setPersonToHardDelete] = useState<Personnel | null>(null);
+  const [syncingId, setSyncingId] = useState<string | null>(null);
 
   const getVendor = (vendorId: string | null) => {
     if (!vendorId) return null;
@@ -387,6 +392,26 @@ export function PersonnelTable({
               <Printer className="mr-2 h-4 w-4" />
               Print Badge
             </DropdownMenuItem>
+            {qbConfig?.is_connected && (
+              <DropdownMenuItem
+                onClick={async (e) => {
+                  e.stopPropagation();
+                  setSyncingId(person.id);
+                  try {
+                    await syncPersonnelToQB.mutateAsync(person.id);
+                    toast.success(`${person.first_name} ${person.last_name} synced to QuickBooks`);
+                  } catch {
+                    // Error handled in hook
+                  } finally {
+                    setSyncingId(null);
+                  }
+                }}
+                disabled={syncingId === person.id}
+              >
+                <RefreshCw className={`mr-2 h-4 w-4 ${syncingId === person.id ? 'animate-spin' : ''}`} />
+                {syncingId === person.id ? "Syncing..." : "Sync to QuickBooks"}
+              </DropdownMenuItem>
+            )}
             <DropdownMenuSeparator />
             <DropdownMenuItem
               onClick={() => handleToggleDNH(person)}

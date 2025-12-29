@@ -398,6 +398,30 @@ export const useSyncSingleVendor = () => {
   });
 };
 
+// Personnel sync to QuickBooks
+export const useSyncPersonnelToQB = () => {
+  const queryClient = useQueryClient();
+  
+  return useMutation({
+    mutationFn: async (personnelId: string) => {
+      const { data, error } = await supabase.functions.invoke('sync-personnel-to-quickbooks', {
+        body: { personnel_id: personnelId },
+      });
+      
+      if (error) throw error;
+      if (data?.error) throw new Error(data.error);
+      return data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['quickbooks-vendor-mappings'] });
+      queryClient.invalidateQueries({ queryKey: ['personnel'] });
+    },
+    onError: (error: Error) => {
+      toast.error(`Failed to sync personnel: ${error.message}`);
+    },
+  });
+};
+
 // Customer sync
 export const useImportCustomersFromQB = () => {
   const queryClient = useQueryClient();
