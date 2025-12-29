@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { User, Mail, Calendar, Loader2, Shield, Trash2 } from "lucide-react";
+import { User, Mail, Calendar, Loader2, Shield, Trash2, MoreVertical } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -15,8 +15,16 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import type { Database } from "@/integrations/supabase/types";
 import { format } from "date-fns";
+import { useIsMobile } from "@/hooks/use-mobile";
+import { cn } from "@/lib/utils";
 
 type AppRole = Database["public"]["Enums"]["app_role"];
 
@@ -41,6 +49,8 @@ interface UserCardProps {
 export function UserCard({ user, onRoleChange, onDelete, isUpdating, isDeleting, index }: UserCardProps) {
   const [isChangingRole, setIsChangingRole] = useState(false);
   const [permissionsOpen, setPermissionsOpen] = useState(false);
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const isMobile = useIsMobile();
 
   const handleRoleChange = async (newRole: AppRole) => {
     setIsChangingRole(true);
@@ -82,25 +92,61 @@ export function UserCard({ user, onRoleChange, onDelete, isUpdating, isDeleting,
   return (
     <>
       <div
-        className={`glass rounded-xl p-6 border-l-4 ${getRoleBorderColor(user.role)} hover:shadow-lg hover:shadow-primary/20 transition-all duration-300`}
+        className={cn(
+          "glass rounded-xl border-l-4 hover:shadow-lg hover:shadow-primary/20 transition-all duration-300",
+          getRoleBorderColor(user.role),
+          isMobile ? "p-4" : "p-6"
+        )}
         style={{ animationDelay: `${index * 50}ms` }}
       >
-        <div className="flex items-start gap-4">
+        <div className="flex items-start gap-3 md:gap-4">
           {/* Avatar */}
           <div className="flex-shrink-0">
-            <div className="w-12 h-12 rounded-full bg-primary/10 flex items-center justify-center">
-              <span className="text-lg font-semibold text-primary">{getInitials()}</span>
+            <div className={cn(
+              "rounded-full bg-primary/10 flex items-center justify-center",
+              isMobile ? "w-10 h-10" : "w-12 h-12"
+            )}>
+              <span className={cn("font-semibold text-primary", isMobile ? "text-base" : "text-lg")}>
+                {getInitials()}
+              </span>
             </div>
           </div>
 
           {/* User Info */}
-          <div className="flex-1 min-w-0 space-y-3">
+          <div className="flex-1 min-w-0 space-y-2 md:space-y-3">
             {/* Name and Role Badge */}
-            <div className="flex items-center justify-between gap-3">
-              <h3 className="font-semibold text-lg truncate">{getDisplayName()}</h3>
-              <Badge variant={getRoleBadgeVariant(user.role)} className="capitalize flex-shrink-0">
-                {user.role || "No role"}
-              </Badge>
+            <div className="flex items-center justify-between gap-2">
+              <h3 className={cn("font-semibold truncate", isMobile ? "text-base" : "text-lg")}>
+                {getDisplayName()}
+              </h3>
+              <div className="flex items-center gap-2">
+                <Badge variant={getRoleBadgeVariant(user.role)} className="capitalize flex-shrink-0 text-xs">
+                  {user.role || "No role"}
+                </Badge>
+                {/* Mobile: Dropdown for actions */}
+                {isMobile && (
+                  <DropdownMenu>
+                    <DropdownMenuTrigger asChild>
+                      <Button variant="ghost" size="icon" className="h-8 w-8 shrink-0">
+                        <MoreVertical className="h-4 w-4" />
+                      </Button>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent align="end" className="bg-popover">
+                      <DropdownMenuItem onClick={() => setPermissionsOpen(true)}>
+                        <Shield className="h-4 w-4 mr-2" />
+                        Edit Permissions
+                      </DropdownMenuItem>
+                      <DropdownMenuItem 
+                        onClick={() => setDeleteDialogOpen(true)}
+                        className="text-destructive focus:text-destructive"
+                      >
+                        <Trash2 className="h-4 w-4 mr-2" />
+                        Remove User
+                      </DropdownMenuItem>
+                    </DropdownMenuContent>
+                  </DropdownMenu>
+                )}
+              </div>
             </div>
 
             {/* Email */}
@@ -122,7 +168,7 @@ export function UserCard({ user, onRoleChange, onDelete, isUpdating, isDeleting,
                 onValueChange={handleRoleChange}
                 disabled={isUpdating || isChangingRole || isDeleting}
               >
-                <SelectTrigger className="w-full">
+                <SelectTrigger className="w-full min-h-[44px]">
                   {(isUpdating || isChangingRole) ? (
                     <div className="flex items-center gap-2">
                       <Loader2 className="h-4 w-4 animate-spin" />
@@ -132,7 +178,7 @@ export function UserCard({ user, onRoleChange, onDelete, isUpdating, isDeleting,
                     <SelectValue placeholder="Change role" />
                   )}
                 </SelectTrigger>
-                <SelectContent>
+                <SelectContent className="bg-popover">
                   <SelectItem value="admin">
                     <div className="flex items-center gap-2">
                       <User className="h-4 w-4 text-cyan-500" />
@@ -145,7 +191,6 @@ export function UserCard({ user, onRoleChange, onDelete, isUpdating, isDeleting,
                       <span>Manager</span>
                     </div>
                   </SelectItem>
-                  {/* Personnel role option - v2 */}
                   <SelectItem value="personnel">
                     <div className="flex items-center gap-2">
                       <User className="h-4 w-4 text-orange-500" />
@@ -161,64 +206,92 @@ export function UserCard({ user, onRoleChange, onDelete, isUpdating, isDeleting,
                 </SelectContent>
               </Select>
 
-              {/* Edit Permissions Button */}
-              <Button
-                variant="outline"
-                size="sm"
-                className="w-full"
-                onClick={() => setPermissionsOpen(true)}
-                disabled={isDeleting}
-              >
-                <Shield className="h-4 w-4 mr-2" />
-                Edit Permissions
-              </Button>
-
-              {/* Remove User Button */}
-              <AlertDialog>
-                <AlertDialogTrigger asChild>
+              {/* Desktop: Show full buttons */}
+              {!isMobile && (
+                <>
                   <Button
                     variant="outline"
                     size="sm"
-                    className="w-full text-destructive hover:text-destructive hover:bg-destructive/10 border-destructive/30"
+                    className="w-full"
+                    onClick={() => setPermissionsOpen(true)}
                     disabled={isDeleting}
                   >
-                    {isDeleting ? (
-                      <>
-                        <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                        Removing...
-                      </>
-                    ) : (
-                      <>
-                        <Trash2 className="h-4 w-4 mr-2" />
-                        Remove User
-                      </>
-                    )}
+                    <Shield className="h-4 w-4 mr-2" />
+                    Edit Permissions
                   </Button>
-                </AlertDialogTrigger>
-                <AlertDialogContent>
-                  <AlertDialogHeader>
-                    <AlertDialogTitle>Remove User</AlertDialogTitle>
-                    <AlertDialogDescription>
-                      Are you sure you want to remove <strong>{getDisplayName()}</strong> ({user.email})? 
-                      This action cannot be undone. The user will lose access to the system and all their 
-                      role assignments will be deleted.
-                    </AlertDialogDescription>
-                  </AlertDialogHeader>
-                  <AlertDialogFooter>
-                    <AlertDialogCancel>Cancel</AlertDialogCancel>
-                    <AlertDialogAction
-                      onClick={() => onDelete(user.id)}
-                      className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
-                    >
-                      Remove User
-                    </AlertDialogAction>
-                  </AlertDialogFooter>
-                </AlertDialogContent>
-              </AlertDialog>
+
+                  <AlertDialog>
+                    <AlertDialogTrigger asChild>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        className="w-full text-destructive hover:text-destructive hover:bg-destructive/10 border-destructive/30"
+                        disabled={isDeleting}
+                      >
+                        {isDeleting ? (
+                          <>
+                            <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                            Removing...
+                          </>
+                        ) : (
+                          <>
+                            <Trash2 className="h-4 w-4 mr-2" />
+                            Remove User
+                          </>
+                        )}
+                      </Button>
+                    </AlertDialogTrigger>
+                    <AlertDialogContent>
+                      <AlertDialogHeader>
+                        <AlertDialogTitle>Remove User</AlertDialogTitle>
+                        <AlertDialogDescription>
+                          Are you sure you want to remove <strong>{getDisplayName()}</strong> ({user.email})? 
+                          This action cannot be undone. The user will lose access to the system and all their 
+                          role assignments will be deleted.
+                        </AlertDialogDescription>
+                      </AlertDialogHeader>
+                      <AlertDialogFooter>
+                        <AlertDialogCancel>Cancel</AlertDialogCancel>
+                        <AlertDialogAction
+                          onClick={() => onDelete(user.id)}
+                          className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                        >
+                          Remove User
+                        </AlertDialogAction>
+                      </AlertDialogFooter>
+                    </AlertDialogContent>
+                  </AlertDialog>
+                </>
+              )}
             </div>
           </div>
         </div>
       </div>
+
+      {/* Mobile Delete Dialog */}
+      <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Remove User</AlertDialogTitle>
+            <AlertDialogDescription>
+              Are you sure you want to remove <strong>{getDisplayName()}</strong> ({user.email})? 
+              This action cannot be undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={() => {
+                onDelete(user.id);
+                setDeleteDialogOpen(false);
+              }}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              Remove User
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
 
       <UserPermissionsDialog
         open={permissionsOpen}

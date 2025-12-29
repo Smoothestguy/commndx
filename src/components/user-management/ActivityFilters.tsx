@@ -6,6 +6,8 @@ import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
+import { useIsMobile } from "@/hooks/use-mobile";
+import { cn } from "@/lib/utils";
 
 interface ActivityFiltersProps {
   emailFilter: string;
@@ -35,6 +37,7 @@ export function ActivityFilters({
   hasActiveFilters,
 }: ActivityFiltersProps) {
   const [isOpen, setIsOpen] = useState(false);
+  const isMobile = useIsMobile();
 
   const actionOptions = [
     { value: "all", label: "All Actions" },
@@ -58,11 +61,14 @@ export function ActivityFilters({
   const activeFiltersCount = getActiveFiltersCount();
 
   return (
-    <div className="space-y-4 mb-6 pb-6 border-b">
+    <div className="space-y-3 md:space-y-4 mb-4 md:mb-6 pb-4 md:pb-6 border-b">
       <Collapsible open={isOpen} onOpenChange={setIsOpen}>
-        <div className="flex items-center justify-between">
+        <div className="flex items-center justify-between gap-2">
           <CollapsibleTrigger asChild>
-            <Button variant="outline" className="gap-2">
+            <Button 
+              variant="outline" 
+              className={cn("gap-2 min-h-[44px]", isMobile && "flex-1")}
+            >
               <Filter className="h-4 w-4" />
               Filters
               {activeFiltersCount > 0 && (
@@ -74,15 +80,20 @@ export function ActivityFilters({
           </CollapsibleTrigger>
 
           {hasActiveFilters && (
-            <Button variant="ghost" size="sm" onClick={onClear} className="gap-2">
+            <Button 
+              variant="ghost" 
+              size="sm" 
+              onClick={onClear} 
+              className="gap-2 min-h-[44px]"
+            >
               <X className="h-4 w-4" />
-              Clear All
+              <span className={isMobile ? "sr-only" : ""}>Clear All</span>
             </Button>
           )}
         </div>
 
         <CollapsibleContent>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4 p-4 rounded-lg bg-muted/50">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-3 md:gap-4 mt-3 md:mt-4 p-3 md:p-4 rounded-lg bg-muted/50">
             {/* Email Filter */}
             <div className="space-y-2">
               <Label htmlFor="email-filter">Search Email</Label>
@@ -92,6 +103,7 @@ export function ActivityFilters({
                 placeholder="Filter by email..."
                 value={emailFilter}
                 onChange={(e) => onEmailFilterChange(e.target.value)}
+                className="min-h-[44px]"
               />
             </div>
 
@@ -99,10 +111,10 @@ export function ActivityFilters({
             <div className="space-y-2">
               <Label htmlFor="action-filter">Action Type</Label>
               <Select value={actionFilter} onValueChange={onActionFilterChange}>
-                <SelectTrigger id="action-filter">
+                <SelectTrigger id="action-filter" className="min-h-[44px]">
                   <SelectValue />
                 </SelectTrigger>
-                <SelectContent>
+                <SelectContent className="bg-popover">
                   {actionOptions.map((option) => (
                     <SelectItem key={option.value} value={option.value}>
                       {option.label}
@@ -120,6 +132,7 @@ export function ActivityFilters({
                 type="date"
                 value={dateFromFilter}
                 onChange={(e) => onDateFromFilterChange(e.target.value)}
+                className="min-h-[44px]"
               />
             </div>
 
@@ -131,12 +144,13 @@ export function ActivityFilters({
                 type="date"
                 value={dateToFilter}
                 onChange={(e) => onDateToFilterChange(e.target.value)}
+                className="min-h-[44px]"
               />
             </div>
 
             {/* Apply Button */}
             <div className="md:col-span-2 flex justify-end">
-              <Button onClick={onApply} className="w-full md:w-auto">
+              <Button onClick={onApply} className={cn("min-h-[44px]", isMobile && "w-full")}>
                 Apply Filters
               </Button>
             </div>
@@ -148,8 +162,8 @@ export function ActivityFilters({
       {hasActiveFilters && (
         <div className="flex flex-wrap gap-2">
           {emailFilter && (
-            <Badge variant="secondary" className="gap-2">
-              Email: {emailFilter}
+            <Badge variant="secondary" className="gap-1.5 py-1">
+              Email: {emailFilter.length > 15 ? emailFilter.slice(0, 15) + '...' : emailFilter}
               <X
                 className="h-3 w-3 cursor-pointer"
                 onClick={() => onEmailFilterChange("")}
@@ -157,7 +171,7 @@ export function ActivityFilters({
             </Badge>
           )}
           {actionFilter !== "all" && (
-            <Badge variant="secondary" className="gap-2">
+            <Badge variant="secondary" className="gap-1.5 py-1">
               Action: {actionOptions.find((o) => o.value === actionFilter)?.label}
               <X
                 className="h-3 w-3 cursor-pointer"
@@ -166,7 +180,7 @@ export function ActivityFilters({
             </Badge>
           )}
           {dateFromFilter && (
-            <Badge variant="secondary" className="gap-2">
+            <Badge variant="secondary" className="gap-1.5 py-1">
               From: {dateFromFilter}
               <X
                 className="h-3 w-3 cursor-pointer"
@@ -175,7 +189,7 @@ export function ActivityFilters({
             </Badge>
           )}
           {dateToFilter && (
-            <Badge variant="secondary" className="gap-2">
+            <Badge variant="secondary" className="gap-1.5 py-1">
               To: {dateToFilter}
               <X
                 className="h-3 w-3 cursor-pointer"

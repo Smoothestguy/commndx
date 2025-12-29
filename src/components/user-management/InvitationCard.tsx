@@ -1,6 +1,8 @@
 import { Mail, Clock, Calendar, Send, X, Loader2 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { useIsMobile } from "@/hooks/use-mobile";
+import { cn } from "@/lib/utils";
 import type { Database } from "@/integrations/supabase/types";
 import { format } from "date-fns";
 
@@ -31,6 +33,8 @@ export function InvitationCard({
   isProcessing,
   index,
 }: InvitationCardProps) {
+  const isMobile = useIsMobile();
+
   const getTimeUntilExpiry = (expiresAt: string) => {
     const now = new Date();
     const expiry = new Date(expiresAt);
@@ -60,24 +64,30 @@ export function InvitationCard({
 
   return (
     <div
-      className={`glass rounded-xl p-6 border-l-4 ${getStatusBorderColor()} hover:shadow-lg hover:shadow-primary/20 transition-all duration-300`}
+      className={cn(
+        "glass rounded-xl border-l-4 hover:shadow-lg hover:shadow-primary/20 transition-all duration-300",
+        getStatusBorderColor(),
+        isMobile ? "p-4" : "p-6"
+      )}
       style={{ animationDelay: `${index * 50}ms` }}
     >
-      <div className="space-y-4">
+      <div className="space-y-3 md:space-y-4">
         {/* Email and Role */}
-        <div className="flex items-center justify-between gap-3">
+        <div className="flex items-center justify-between gap-2">
           <div className="flex items-center gap-2 min-w-0 flex-1">
-            <Mail className="h-5 w-5 text-primary flex-shrink-0" />
-            <span className="font-semibold truncate">{invitation.email}</span>
+            <Mail className={cn("text-primary flex-shrink-0", isMobile ? "h-4 w-4" : "h-5 w-5")} />
+            <span className={cn("font-semibold truncate", isMobile ? "text-sm" : "text-base")}>
+              {invitation.email}
+            </span>
           </div>
-          <Badge variant={getRoleBadgeVariant(invitation.role)} className="capitalize flex-shrink-0">
+          <Badge variant={getRoleBadgeVariant(invitation.role)} className="capitalize flex-shrink-0 text-xs">
             {invitation.role}
           </Badge>
         </div>
 
         {/* Expiry Info */}
         <div className="flex items-center gap-2 text-sm">
-          <Clock className={`h-4 w-4 ${expiryInfo.color} flex-shrink-0`} />
+          <Clock className={cn("h-4 w-4 flex-shrink-0", expiryInfo.color)} />
           <span className={expiryInfo.color}>{expiryInfo.text}</span>
         </div>
 
@@ -88,12 +98,12 @@ export function InvitationCard({
         </div>
 
         {/* Action Buttons */}
-        <div className="grid grid-cols-2 gap-3 pt-2">
+        <div className="grid grid-cols-2 gap-2 md:gap-3 pt-2">
           <Button
             variant="outline"
             onClick={() => onResend(invitation)}
             disabled={isProcessing}
-            className="w-full"
+            className="w-full min-h-[44px]"
           >
             {isProcessing ? (
               <Loader2 className="h-4 w-4 animate-spin" />
@@ -108,7 +118,7 @@ export function InvitationCard({
             variant="ghost"
             onClick={() => onCancel(invitation)}
             disabled={isProcessing}
-            className="w-full"
+            className="w-full min-h-[44px]"
           >
             <X className="mr-2 h-4 w-4" />
             Cancel
