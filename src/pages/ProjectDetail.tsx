@@ -93,10 +93,11 @@ const ProjectDetail = () => {
     const changeOrderIds = (changeOrders || []).map((co) => co.id);
     
     return invoices?.filter((i) => 
+      i.project_id === id ||
       (i.job_order_id && jobOrderIds.includes(i.job_order_id)) ||
       (i.change_order_id && changeOrderIds.includes(i.change_order_id))
     ) || [];
-  }, [invoices, projectJobOrders, changeOrders]);
+  }, [invoices, projectJobOrders, changeOrders, id]);
 
   // Calculate totals
   const totals = useMemo(() => {

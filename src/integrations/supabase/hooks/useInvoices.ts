@@ -35,6 +35,7 @@ export interface Invoice {
   job_order_number?: string;
   estimate_id?: string;
   change_order_id?: string;
+  project_id?: string;
   customer_id: string;
   customer_name: string;
   project_name?: string;
@@ -139,6 +140,7 @@ export const useAddInvoice = () => {
           job_order_id: invoice.job_order_id,
           job_order_number: invoice.job_order_number,
           estimate_id: invoice.estimate_id,
+          project_id: invoice.project_id,
           customer_id: invoice.customer_id,
           customer_name: invoice.customer_name,
           project_name: invoice.project_name,
