@@ -12,7 +12,8 @@ import {
   AlertTriangle 
 } from "lucide-react";
 import { formatCurrency } from "@/lib/utils";
-import { format, isPast, isToday } from "date-fns";
+import { isPast, isToday } from "date-fns";
+import { formatLocalDate, parseLocalDate } from "@/lib/dateUtils";
 import { useVendorBills, VendorBill } from "@/integrations/supabase/hooks/useVendorBills";
 import {
   DropdownMenu,
@@ -36,11 +37,11 @@ export function ProjectVendorBillsList({ projectId, onAddNew }: ProjectVendorBil
   const totalPaid = vendorBills?.reduce((sum, bill) => sum + (bill.paid_amount || 0), 0) || 0;
   const totalRemaining = totalAmount - totalPaid;
   const overdueBills = vendorBills?.filter(bill => 
-    bill.status !== 'paid' && bill.due_date && isPast(new Date(bill.due_date)) && !isToday(new Date(bill.due_date))
+    bill.status !== 'paid' && bill.due_date && isPast(parseLocalDate(bill.due_date)) && !isToday(parseLocalDate(bill.due_date))
   ).length || 0;
 
   const isOverdue = (bill: VendorBill) => {
-    return bill.status !== 'paid' && bill.due_date && isPast(new Date(bill.due_date)) && !isToday(new Date(bill.due_date));
+    return bill.status !== 'paid' && bill.due_date && isPast(parseLocalDate(bill.due_date)) && !isToday(parseLocalDate(bill.due_date));
   };
 
   return (
@@ -121,7 +122,7 @@ export function ProjectVendorBillsList({ projectId, onAddNew }: ProjectVendorBil
                   </div>
                   
                   <div className="text-right text-sm text-muted-foreground min-w-[80px]">
-                    <div>Due: {bill.due_date ? format(new Date(bill.due_date), 'MMM d') : 'N/A'}</div>
+                    <div>Due: {bill.due_date ? formatLocalDate(bill.due_date, 'MMM d') : 'N/A'}</div>
                   </div>
 
                   <DropdownMenu>
