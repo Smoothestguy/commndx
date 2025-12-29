@@ -5,7 +5,7 @@ import { MoreHorizontal, Eye, Edit, Trash2, DollarSign, RefreshCw, CheckCircle2,
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { VendorBill } from "@/integrations/supabase/hooks/useVendorBills";
 import { useQuickBooksConfig, useQuickBooksBillMapping, useSyncVendorBillToQB } from "@/integrations/supabase/hooks/useQuickBooks";
-import { format } from "date-fns";
+import { formatLocalDate, parseLocalDate } from "@/lib/dateUtils";
 import { toast } from "sonner";
 import { useState } from "react";
 
@@ -34,7 +34,7 @@ const statusLabels: Record<string, string> = {
 };
 
 export function VendorBillCard({ bill, onView, onEdit, onDelete, onRecordPayment }: VendorBillCardProps) {
-  const isOverdue = new Date(bill.due_date) < new Date() && bill.status !== "paid" && bill.status !== "void";
+  const isOverdue = parseLocalDate(bill.due_date) < new Date() && bill.status !== "paid" && bill.status !== "void";
   const { data: qbConfig } = useQuickBooksConfig();
   const { data: billMapping, refetch: refetchMapping } = useQuickBooksBillMapping(bill.id);
   const syncToQB = useSyncVendorBillToQB();
@@ -150,12 +150,12 @@ export function VendorBillCard({ bill, onView, onEdit, onDelete, onRecordPayment
         <div className="grid grid-cols-2 gap-4 text-sm">
           <div>
             <p className="text-muted-foreground">Bill Date</p>
-            <p className="font-medium">{format(new Date(bill.bill_date), "MMM d, yyyy")}</p>
+            <p className="font-medium">{formatLocalDate(bill.bill_date, "MMM d, yyyy")}</p>
           </div>
           <div>
             <p className="text-muted-foreground">Due Date</p>
             <p className={`font-medium ${isOverdue ? "text-destructive" : ""}`}>
-              {format(new Date(bill.due_date), "MMM d, yyyy")}
+              {formatLocalDate(bill.due_date, "MMM d, yyyy")}
             </p>
           </div>
           <div>

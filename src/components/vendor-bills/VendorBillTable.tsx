@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { format } from "date-fns";
+import { formatLocalDate, parseLocalDate } from "@/lib/dateUtils";
 import { Eye, MoreHorizontal, Edit, Trash2, DollarSign, RefreshCw, CheckCircle2, AlertCircle, Loader2 } from "lucide-react";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Button } from "@/components/ui/button";
@@ -54,7 +54,7 @@ function BillRow({
   const syncToQB = useSyncVendorBillToQB();
   const [isSyncing, setIsSyncing] = useState(false);
 
-  const isOverdue = new Date(bill.due_date) < new Date() && bill.status !== "paid" && bill.status !== "void";
+  const isOverdue = parseLocalDate(bill.due_date) < new Date() && bill.status !== "paid" && bill.status !== "void";
   const isSynced = billMapping?.sync_status === 'synced';
   const hasSyncError = billMapping?.sync_status === 'error';
   const canSync = qbConfig?.is_connected && bill.status !== 'draft' && !isSynced;
@@ -106,9 +106,9 @@ function BillRow({
           {isOverdue && <Badge variant="destructive" className="text-xs">Overdue</Badge>}
         </div>
       </TableCell>
-      <TableCell>{format(new Date(bill.bill_date), "MMM d, yyyy")}</TableCell>
+      <TableCell>{formatLocalDate(bill.bill_date, "MMM d, yyyy")}</TableCell>
       <TableCell className={isOverdue ? "text-destructive font-medium" : ""}>
-        {format(new Date(bill.due_date), "MMM d, yyyy")}
+        {formatLocalDate(bill.due_date, "MMM d, yyyy")}
       </TableCell>
       <TableCell className="text-right font-medium">{formatCurrency(Number(bill.total))}</TableCell>
       <TableCell className="text-right font-medium text-orange-600 dark:text-orange-400">

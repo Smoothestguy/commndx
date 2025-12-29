@@ -10,7 +10,7 @@ import { useIsMobile } from "@/hooks/use-mobile";
 import { formatCurrency } from "@/lib/utils";
 import { SearchInput } from "@/components/ui/search-input";
 import { FileText } from "lucide-react";
-import { format } from "date-fns";
+import { formatLocalDate } from "@/lib/dateUtils";
 import {
   useVendorBills,
   VendorBill,
@@ -55,7 +55,7 @@ export default function VendorBillsList() {
         key: "bill_date",
         header: "Bill Date",
         render: (bill) => (
-          <span>{format(new Date(bill.bill_date), "MMM d, yyyy")}</span>
+          <span>{formatLocalDate(bill.bill_date, "MMM d, yyyy")}</span>
         ),
       },
       {
@@ -64,7 +64,7 @@ export default function VendorBillsList() {
         render: (bill) => (
           <span>
             {bill.submitted_at
-              ? format(new Date(bill.submitted_at), "MMM d, yyyy")
+              ? formatLocalDate(bill.submitted_at, "MMM d, yyyy")
               : "—"}
           </span>
         ),
@@ -129,7 +129,7 @@ export default function VendorBillsList() {
                   </div>
                   <div className="flex justify-between items-center text-sm">
                     <span className="text-muted-foreground">
-                      {format(new Date(bill.bill_date), "MMM d, yyyy")}
+                      {formatLocalDate(bill.bill_date, "MMM d, yyyy")}
                     </span>
                     <span className="text-primary font-semibold">
                       {formatCurrency(bill.total)}

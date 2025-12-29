@@ -7,7 +7,7 @@ import { Separator } from "@/components/ui/separator";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { ArrowLeft, Edit, Trash2, DollarSign, Calendar, Building2 } from "lucide-react";
-import { format } from "date-fns";
+import { formatLocalDate } from "@/lib/dateUtils";
 import { useState } from "react";
 import { useVendorBill, useDeleteVendorBill } from "@/integrations/supabase/hooks/useVendorBills";
 import { VendorBillPaymentDialog } from "@/components/vendor-bills/VendorBillPaymentDialog";
@@ -111,14 +111,14 @@ export default function VendorBillDetail() {
                 <p className="text-sm text-muted-foreground">Bill Date</p>
                 <p className="font-medium flex items-center gap-1">
                   <Calendar className="h-4 w-4" />
-                  {format(new Date(bill.bill_date), "MMM dd, yyyy")}
+                  {formatLocalDate(bill.bill_date, "MMM dd, yyyy")}
                 </p>
               </div>
               <div>
                 <p className="text-sm text-muted-foreground">Due Date</p>
                 <p className="font-medium flex items-center gap-1">
                   <Calendar className="h-4 w-4" />
-                  {format(new Date(bill.due_date), "MMM dd, yyyy")}
+                  {formatLocalDate(bill.due_date, "MMM dd, yyyy")}
                 </p>
               </div>
             </div>

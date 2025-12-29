@@ -11,7 +11,7 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { useVendorBillsByPurchaseOrder, VendorBill } from "@/integrations/supabase/hooks/useVendorBills";
-import { format } from "date-fns";
+import { formatLocalDate } from "@/lib/dateUtils";
 import { Receipt, ExternalLink } from "lucide-react";
 
 interface RelatedVendorBillsProps {
@@ -87,7 +87,7 @@ export function RelatedVendorBills({ purchaseOrderId }: RelatedVendorBillsProps)
             {bills.map((bill) => (
               <TableRow key={bill.id} className="border-border/30">
                 <TableCell className="font-medium">{bill.number}</TableCell>
-                <TableCell>{format(new Date(bill.bill_date), "MMM d, yyyy")}</TableCell>
+                <TableCell>{formatLocalDate(bill.bill_date, "MMM d, yyyy")}</TableCell>
                 <TableCell>
                   <StatusBadge status={bill.status} />
                 </TableCell>
