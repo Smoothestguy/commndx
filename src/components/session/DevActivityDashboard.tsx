@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { format } from "date-fns";
+import { parseLocalDate } from "@/lib/dateUtils";
 import { Plus, Upload, Search, Edit, Trash2, ChevronDown, ChevronUp, CheckSquare, Square, X } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -288,7 +289,7 @@ export function DevActivityDashboard({ dateRange, targetUserId }: DevActivityDas
                   <div key={date}>
                     <div className="sticky top-0 bg-background py-2 z-10">
                       <Badge variant="secondary" className="text-xs">
-                        {format(new Date(date), "EEEE, MMMM d, yyyy")}
+                        {format(parseLocalDate(date), "EEEE, MMMM d, yyyy")}
                       </Badge>
                     </div>
                     <div className="space-y-3 mt-2">
