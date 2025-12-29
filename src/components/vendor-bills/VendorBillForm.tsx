@@ -111,6 +111,19 @@ export function VendorBillForm({ bill, isEditing = false }: VendorBillFormProps)
     }
   }, [bill, isEditing, vendors]);
 
+  // Auto-adjust due date when bill date changes (only for new bills)
+  useEffect(() => {
+    if (!isEditing) {
+      const billDateObj = new Date(billDate + "T12:00:00"); // Parse as local
+      const dayOfWeek = billDateObj.getDay(); // 0 = Sunday, 5 = Friday
+      const daysUntilFriday = (5 - dayOfWeek + 7) % 7;
+      const daysToAdd = daysUntilFriday === 0 ? 0 : daysUntilFriday;
+      const newDueDate = new Date(billDateObj);
+      newDueDate.setDate(billDateObj.getDate() + daysToAdd);
+      setDueDate(format(newDueDate, "yyyy-MM-dd"));
+    }
+  }, [billDate, isEditing]);
+
   // Tax rate defaults to 0 for vendor bills (no auto-load from company settings)
 
   const updateLineItem = (id: string, field: keyof LineItem, value: any) => {
