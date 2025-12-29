@@ -5,7 +5,6 @@ import { useCompanySettings } from "@/integrations/supabase/hooks/useCompanySett
 import { formatCurrency } from "@/lib/utils";
 import { calculateWeeklyOvertimeByEmployee, calculateLaborCost } from "@/lib/overtimeUtils";
 import { useMemo } from "react";
-import { useIsMobile } from "@/hooks/use-mobile";
 
 interface TimeTrackingStatsProps {
   entries: TimeEntryWithDetails[];
@@ -13,7 +12,6 @@ interface TimeTrackingStatsProps {
 
 export function TimeTrackingStats({ entries }: TimeTrackingStatsProps) {
   const { data: companySettings } = useCompanySettings();
-  const isMobile = useIsMobile();
   
   const overtimeMultiplier = companySettings?.overtime_multiplier ?? 1.5;
   const holidayMultiplier = companySettings?.holiday_multiplier ?? 1.5;
@@ -84,61 +82,52 @@ export function TimeTrackingStats({ entries }: TimeTrackingStatsProps) {
       value: totalHours.toFixed(2),
       icon: Clock,
       color: "text-primary",
-      showOnMobile: true,
     },
     {
       label: "Regular Hours",
       value: regularHours.toFixed(2),
       icon: Clock,
       color: "text-blue-500",
-      showOnMobile: true,
     },
     {
       label: "Overtime Hours",
       value: overtimeHours.toFixed(2),
       icon: AlertCircle,
       color: "text-orange-500",
-      showOnMobile: false,
     },
     {
       label: "Holiday Hours",
       value: holidayHours.toFixed(2),
       icon: Gift,
       color: "text-purple-500",
-      showOnMobile: false,
     },
     {
       label: "Total Cost",
       value: formatCurrency(totalCost),
       icon: DollarSign,
       color: "text-success",
-      showOnMobile: true,
     },
     {
       label: "Uninvoiced",
       value: uninvoicedHours.toFixed(2),
       icon: FileText,
       color: "text-warning",
-      showOnMobile: false,
     },
   ];
 
-  // Show only key stats on mobile to prevent overflow
-  const displayStats = isMobile ? stats.filter(s => s.showOnMobile) : stats;
-
   return (
-    <div className="w-full max-w-full overflow-hidden grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-2 sm:gap-3">
-      {displayStats.map((stat) => {
+    <div className="w-full grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3">
+      {stats.map((stat) => {
         const Icon = stat.icon;
         return (
-          <Card key={stat.label} className="glass p-3 sm:p-4">
-            <div className="flex items-center gap-2 sm:gap-3">
-              <div className={`p-2 sm:p-2.5 rounded-lg bg-muted/50 ${stat.color} flex-shrink-0`}>
+          <Card key={stat.label} className="p-3 sm:p-4">
+            <div className="flex flex-col sm:flex-row sm:items-center gap-2">
+              <div className={`p-2 rounded-lg bg-muted/50 ${stat.color} self-start`}>
                 <Icon className="h-4 w-4 sm:h-5 sm:w-5" />
               </div>
               <div className="min-w-0 flex-1">
-                <p className="text-[10px] sm:text-xs text-muted-foreground whitespace-nowrap">{stat.label}</p>
-                <p className="text-base sm:text-lg lg:text-xl font-bold leading-tight">{stat.value}</p>
+                <p className="text-xs text-muted-foreground truncate">{stat.label}</p>
+                <p className="text-lg sm:text-xl font-bold truncate">{stat.value}</p>
               </div>
             </div>
           </Card>
