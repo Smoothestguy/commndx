@@ -102,6 +102,9 @@ export const PersonnelForm = ({ personnel, onSuccess, onCancel, defaultVendorId,
   });
 
   const onSubmit = async (data: PersonnelFormData) => {
+    // Sync hourly_rate with pay_rate so time tracking uses the correct rate
+    const payRate = data.pay_rate || 0;
+    
     const formData = {
       ...data,
       photo_url: photoUrl,
@@ -112,8 +115,10 @@ export const PersonnelForm = ({ personnel, onSuccess, onCancel, defaultVendorId,
       work_auth_expiry: data.work_auth_expiry || null,
       i9_completed_at: data.i9_completed_at || null,
       // Ensure pay_rate and bill_rate are included
-      pay_rate: data.pay_rate || 0,
+      pay_rate: payRate,
       bill_rate: data.bill_rate || 0,
+      // Keep hourly_rate in sync with pay_rate for time tracking calculations
+      hourly_rate: payRate,
     };
 
     if (personnel) {
