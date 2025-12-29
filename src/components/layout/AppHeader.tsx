@@ -1,39 +1,17 @@
-import { useNavigate } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
 import { useAIAssistant } from "@/contexts/AIAssistantContext";
 import { MobileNav } from "./MobileNav";
-import { ThemeToggleSimple } from "@/components/ThemeToggle";
 import { SidebarTrigger } from "@/components/ui/sidebar";
 import { Button } from "@/components/ui/button";
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { ChevronDown, Settings, LogOut, MessageCircle } from "lucide-react";
+import { MessageCircle } from "lucide-react";
 import { AdminNotificationBell } from "@/components/notifications/AdminNotificationBell";
 import { useUserRole } from "@/hooks/useUserRole";
-import { useCurrentPersonnel } from "@/integrations/supabase/hooks/usePortal";
 import { SessionTimer } from "@/components/session/SessionTimer";
 
 export function AppHeader() {
-  const navigate = useNavigate();
-  const { signOut, user } = useAuth();
+  const { signOut } = useAuth();
   const { isOpen, toggleOpen, messages } = useAIAssistant();
   const { isAdmin, isManager } = useUserRole();
-  const { data: personnel } = useCurrentPersonnel();
-
-  // Use personnel photo if available, otherwise use email initials
-  const userInitials = personnel
-    ? `${personnel.first_name?.[0] || ""}${personnel.last_name?.[0] || ""}`.toUpperCase()
-    : user?.email
-    ? user.email.substring(0, 2).toUpperCase()
-    : "U";
-  
-  const userPhotoUrl = personnel?.photo_url;
 
   const showNotificationBell = isAdmin || isManager;
 
@@ -68,38 +46,6 @@ export function AppHeader() {
         <SessionTimer />
 
         {showNotificationBell && <AdminNotificationBell />}
-
-        <ThemeToggleSimple />
-
-        <DropdownMenu>
-          <DropdownMenuTrigger className="flex items-center gap-1 hover:opacity-80 transition-opacity outline-none">
-            <Avatar className="h-7 w-7 sm:h-8 sm:w-8 bg-sidebar-accent">
-              <AvatarImage src={userPhotoUrl || undefined} alt="User avatar" />
-              <AvatarFallback className="bg-primary text-primary-foreground text-xs font-medium">
-                {userInitials}
-              </AvatarFallback>
-            </Avatar>
-            <ChevronDown className="h-4 w-4 text-sidebar-muted hidden sm:block" />
-          </DropdownMenuTrigger>
-          <DropdownMenuContent align="end" className="w-56">
-            <div className="px-2 py-1.5 text-sm text-muted-foreground truncate">
-              {user?.email}
-            </div>
-            <DropdownMenuSeparator />
-            <DropdownMenuItem onClick={() => navigate("/settings")}>
-              <Settings className="mr-2 h-4 w-4" />
-              Settings
-            </DropdownMenuItem>
-            <DropdownMenuSeparator />
-            <DropdownMenuItem
-              onClick={signOut}
-              className="text-destructive focus:text-destructive"
-            >
-              <LogOut className="mr-2 h-4 w-4" />
-              Sign Out
-            </DropdownMenuItem>
-          </DropdownMenuContent>
-        </DropdownMenu>
       </div>
     </header>
   );
