@@ -46,7 +46,7 @@ function NotificationItem({
   return (
     <div
       className={cn(
-        "p-3 hover:bg-muted/50 transition-colors cursor-pointer group",
+        "p-2.5 hover:bg-muted/50 transition-colors cursor-pointer group",
         !notification.is_read && "bg-primary/5"
       )}
       onClick={() => {
@@ -58,51 +58,51 @@ function NotificationItem({
         }
       }}
     >
-      <div className="flex items-start gap-3">
-        <span className="text-lg">{getNotificationIcon(notification.notification_type)}</span>
+      <div className="flex items-start gap-2">
+        <span className="text-base flex-shrink-0">{getNotificationIcon(notification.notification_type)}</span>
         <div className="flex-1 min-w-0">
-          <div className="flex items-center gap-2">
+          <div className="flex items-start gap-2">
             <p className={cn(
-              "text-sm truncate",
+              "text-sm break-words",
               !notification.is_read && "font-medium"
             )}>
               {notification.title}
             </p>
             {!notification.is_read && (
-              <span className="h-2 w-2 rounded-full bg-primary flex-shrink-0" />
+              <span className="h-2 w-2 rounded-full bg-primary flex-shrink-0 mt-1.5" />
             )}
           </div>
-          <p className="text-xs text-muted-foreground line-clamp-2 mt-0.5">
+          <p className="text-xs text-muted-foreground line-clamp-2 break-words mt-0.5">
             {notification.message}
           </p>
           <p className="text-xs text-muted-foreground mt-1">
             {formatDistanceToNow(new Date(notification.created_at), { addSuffix: true })}
           </p>
         </div>
-        <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+        <div className="flex items-center gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity flex-shrink-0">
           {!notification.is_read && (
             <Button
               variant="ghost"
               size="icon"
-              className="h-7 w-7"
+              className="h-6 w-6"
               onClick={(e) => {
                 e.stopPropagation();
                 onMarkRead(notification.id);
               }}
             >
-              <Check className="h-3.5 w-3.5" />
+              <Check className="h-3 w-3" />
             </Button>
           )}
           <Button
             variant="ghost"
             size="icon"
-            className="h-7 w-7 text-destructive hover:text-destructive"
+            className="h-6 w-6 text-destructive hover:text-destructive"
             onClick={(e) => {
               e.stopPropagation();
               onDelete(notification.id);
             }}
           >
-            <Trash2 className="h-3.5 w-3.5" />
+            <Trash2 className="h-3 w-3" />
           </Button>
         </div>
       </div>
@@ -135,7 +135,7 @@ export function AdminNotificationBell() {
           <span className="sr-only">Notifications</span>
         </Button>
       </PopoverTrigger>
-      <PopoverContent className="w-80 p-0" align="end">
+      <PopoverContent className="w-96 p-0" align="end">
         <div className="flex items-center justify-between p-3 border-b">
           <h4 className="font-semibold text-sm">Notifications</h4>
           {unreadCount > 0 && (
