@@ -2072,6 +2072,7 @@ export type Database = {
           number: string
           paid_amount: number
           paid_date: string | null
+          project_id: string | null
           project_name: string | null
           remaining_amount: number
           status: Database["public"]["Enums"]["invoice_status"]
@@ -2094,6 +2095,7 @@ export type Database = {
           number: string
           paid_amount?: number
           paid_date?: string | null
+          project_id?: string | null
           project_name?: string | null
           remaining_amount?: number
           status?: Database["public"]["Enums"]["invoice_status"]
@@ -2116,6 +2118,7 @@ export type Database = {
           number?: string
           paid_amount?: number
           paid_date?: string | null
+          project_id?: string | null
           project_name?: string | null
           remaining_amount?: number
           status?: Database["public"]["Enums"]["invoice_status"]
@@ -2152,6 +2155,13 @@ export type Database = {
             columns: ["job_order_id"]
             isOneToOne: false
             referencedRelation: "job_orders"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "invoices_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "projects"
             referencedColumns: ["id"]
           },
         ]
