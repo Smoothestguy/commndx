@@ -10,7 +10,14 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
-import { Loader2, Mail, Plus, X, Send, Clock, RefreshCw, XCircle, CheckCircle2, AlertCircle, Download, User, Eye, EyeOff, Link, Trash2 } from "lucide-react";
+import { Loader2, Mail, Plus, X, Send, Clock, RefreshCw, XCircle, CheckCircle2, AlertCircle, Download, User, Eye, EyeOff, Link, Trash2, MoreVertical } from "lucide-react";
+import { MobileActionBar, ActionButton } from "@/components/layout/MobileActionBar";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
@@ -742,20 +749,30 @@ export default function UserManagement() {
       />
       <PageLayout
       title="User Management"
-      description="Manage users and their roles"
+      description={isMobile ? undefined : "Manage users and their roles"}
     >
       <div className="space-y-6">
         {/* Stats Section */}
         <UserStats users={users} />
 
         <Tabs defaultValue="users" className="w-full">
-          <TabsList className={isMobile ? "flex w-full overflow-x-auto" : "grid w-full max-w-2xl grid-cols-4"}>
-            <TabsTrigger value="users">Users</TabsTrigger>
-            <TabsTrigger value="invitations">
+          <TabsList className={cn(
+            isMobile 
+              ? "flex w-full overflow-x-auto gap-1 -mx-4 px-4 pb-2 scrollbar-hide justify-start bg-transparent h-auto" 
+              : "grid w-full max-w-2xl grid-cols-4"
+          )}>
+            <TabsTrigger value="users" className={cn(isMobile && "min-h-[44px] px-4 shrink-0")}>
+              Users
+            </TabsTrigger>
+            <TabsTrigger value="invitations" className={cn(isMobile && "min-h-[44px] px-4 shrink-0")}>
               Invitations {invitations.length > 0 && `(${invitations.length})`}
             </TabsTrigger>
-            <TabsTrigger value="activity">Activity</TabsTrigger>
-            <TabsTrigger value="notifications">Notifications</TabsTrigger>
+            <TabsTrigger value="activity" className={cn(isMobile && "min-h-[44px] px-4 shrink-0")}>
+              Activity
+            </TabsTrigger>
+            <TabsTrigger value="notifications" className={cn(isMobile && "min-h-[44px] px-4 shrink-0")}>
+              {isMobile ? "Notifs" : "Notifications"}
+            </TabsTrigger>
           </TabsList>
 
           <TabsContent value="users" className="mt-6">
@@ -767,13 +784,15 @@ export default function UserManagement() {
                     View and manage user roles. Admins have full access, managers can manage most resources, and users have limited access.
                   </CardDescription>
                 </div>
-            <Dialog open={inviteDialogOpen} onOpenChange={setInviteDialogOpen}>
-              <DialogTrigger asChild>
-                <Button>
-                  <Plus className="mr-2 h-4 w-4" />
-                  Invite User
-                </Button>
-              </DialogTrigger>
+            {/* Hide invite button on mobile - shown in MobileActionBar */}
+            {!isMobile && (
+              <Dialog open={inviteDialogOpen} onOpenChange={setInviteDialogOpen}>
+                <DialogTrigger asChild>
+                  <Button>
+                    <Plus className="mr-2 h-4 w-4" />
+                    Invite User
+                  </Button>
+                </DialogTrigger>
               <DialogContent className="max-w-md max-h-[90vh] overflow-y-auto">
                 <DialogHeader>
                   <DialogTitle>Invite New User</DialogTitle>
@@ -1002,6 +1021,162 @@ export default function UserManagement() {
                 </form>
               </DialogContent>
             </Dialog>
+            )}
+            {/* Mobile-only Dialog (outside the conditional) */}
+            {isMobile && (
+              <Dialog open={inviteDialogOpen} onOpenChange={setInviteDialogOpen}>
+                <DialogContent className="max-w-md max-h-[90vh] overflow-y-auto">
+                  <DialogHeader>
+                    <DialogTitle>Invite New User</DialogTitle>
+                    <DialogDescription>
+                      {createManually 
+                        ? "Create a user account directly with credentials."
+                        : "Send an invitation email to a new user with a pre-assigned role."}
+                    </DialogDescription>
+                  </DialogHeader>
+                  <form onSubmit={handleSendInvitation} className="space-y-4">
+                    <div>
+                      <Label htmlFor="invite-email-mobile">Email Address</Label>
+                      <div className="relative mt-1.5">
+                        <Mail className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                        <Input
+                          id="invite-email-mobile"
+                          type="email"
+                          value={inviteEmail}
+                          onChange={(e) => setInviteEmail(e.target.value)}
+                          placeholder="user@example.com"
+                          className="pl-9 min-h-[44px]"
+                          required
+                        />
+                      </div>
+                    </div>
+                    
+                    <div>
+                      <Label htmlFor="invite-role-mobile">Role</Label>
+                      <Select value={inviteRole} onValueChange={(value) => setInviteRole(value as AppRole)}>
+                        <SelectTrigger id="invite-role-mobile" className="mt-1.5 min-h-[44px]">
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent className="bg-popover">
+                          <SelectItem value="admin">Admin</SelectItem>
+                          <SelectItem value="manager">Manager</SelectItem>
+                          <SelectItem value="user">User</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+
+                    {/* Manual Creation Toggle */}
+                    <div className="flex items-center justify-between rounded-lg border p-3">
+                      <div className="space-y-0.5">
+                        <Label htmlFor="create-manually-mobile" className="font-medium">
+                          Create credentials manually
+                        </Label>
+                        <p className="text-xs text-muted-foreground">
+                          Skip email invite and set password directly
+                        </p>
+                      </div>
+                      <Switch
+                        id="create-manually-mobile"
+                        checked={createManually}
+                        onCheckedChange={setCreateManually}
+                      />
+                    </div>
+
+                    {/* Manual Credential Fields */}
+                    {createManually && (
+                      <div className="space-y-4 rounded-lg border p-4 bg-muted/30">
+                        <div className="grid grid-cols-1 gap-4">
+                          <div>
+                            <Label htmlFor="manual-first-name-mobile">First Name</Label>
+                            <Input
+                              id="manual-first-name-mobile"
+                              type="text"
+                              value={manualFirstName}
+                              onChange={(e) => setManualFirstName(e.target.value)}
+                              placeholder="John"
+                              className="mt-1.5 min-h-[44px]"
+                            />
+                          </div>
+                          <div>
+                            <Label htmlFor="manual-last-name-mobile">Last Name</Label>
+                            <Input
+                              id="manual-last-name-mobile"
+                              type="text"
+                              value={manualLastName}
+                              onChange={(e) => setManualLastName(e.target.value)}
+                              placeholder="Doe"
+                              className="mt-1.5 min-h-[44px]"
+                            />
+                          </div>
+                        </div>
+                        <div>
+                          <Label htmlFor="manual-password-mobile">Password</Label>
+                          <div className="relative mt-1.5">
+                            <Input
+                              id="manual-password-mobile"
+                              type={showPassword ? "text" : "password"}
+                              value={manualPassword}
+                              onChange={(e) => setManualPassword(e.target.value)}
+                              placeholder="••••••••"
+                              required={createManually}
+                              minLength={6}
+                              className="min-h-[44px]"
+                            />
+                            <Button
+                              type="button"
+                              variant="ghost"
+                              size="icon"
+                              className="absolute right-0 top-0 h-full px-3 hover:bg-transparent"
+                              onClick={() => setShowPassword(!showPassword)}
+                            >
+                              {showPassword ? (
+                                <EyeOff className="h-4 w-4 text-muted-foreground" />
+                              ) : (
+                                <Eye className="h-4 w-4 text-muted-foreground" />
+                              )}
+                            </Button>
+                          </div>
+                        </div>
+                        <div>
+                          <Label htmlFor="manual-confirm-password-mobile">Confirm Password</Label>
+                          <Input
+                            id="manual-confirm-password-mobile"
+                            type={showPassword ? "text" : "password"}
+                            value={manualConfirmPassword}
+                            onChange={(e) => setManualConfirmPassword(e.target.value)}
+                            placeholder="••••••••"
+                            required={createManually}
+                            minLength={6}
+                            className="mt-1.5 min-h-[44px]"
+                          />
+                          {manualPassword && manualConfirmPassword && manualPassword !== manualConfirmPassword && (
+                            <p className="text-xs text-destructive mt-1">Passwords do not match</p>
+                          )}
+                        </div>
+                      </div>
+                    )}
+
+                    <div className="flex flex-col gap-2 pt-4">
+                      <Button type="submit" disabled={isSendingInvite || (createManually && manualPassword !== manualConfirmPassword)} className="min-h-[44px]">
+                        {isSendingInvite && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                        {createManually ? "Create User" : "Send Invitation"}
+                      </Button>
+                      <Button type="button" variant="outline" className="min-h-[44px]" onClick={() => {
+                        setInviteDialogOpen(false);
+                        setCreateManually(false);
+                        setManualPassword("");
+                        setManualConfirmPassword("");
+                        setManualFirstName("");
+                        setManualLastName("");
+                        setSelectedPersonnelId(null);
+                      }}>
+                        Cancel
+                      </Button>
+                    </div>
+                  </form>
+                </DialogContent>
+              </Dialog>
+            )}
           </CardHeader>
         <CardContent>
           <div className="space-y-4">
@@ -1432,6 +1607,17 @@ export default function UserManagement() {
           </TabsContent>
         </Tabs>
       </div>
+
+      {/* Mobile Action Bar */}
+      <MobileActionBar
+        primaryActions={[
+          {
+            label: "Invite User",
+            icon: <Plus className="h-4 w-4" />,
+            onClick: () => setInviteDialogOpen(true),
+          },
+        ]}
+      />
     </PageLayout>
     </>
   );
