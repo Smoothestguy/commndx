@@ -20,58 +20,16 @@ interface TodaySession {
  * Updates every second to reflect current active session.
  * Access is granted to admins, managers, or users with user_management permission.
  */
-export function useTodaySessions() {
+export function useTodaySessions(externalHasAccess?: boolean, externalAccessChecked?: boolean) {
   const { user } = useAuth();
 
-  const [hasAccess, setHasAccess] = useState(false);
-  const [accessChecked, setAccessChecked] = useState(false);
+  // Use external access state if provided, otherwise default to false
+  const hasAccess = externalHasAccess ?? false;
+  const accessChecked = externalAccessChecked ?? true;
+
   const [todaySessions, setTodaySessions] = useState<TodaySession[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [, setTick] = useState(0);
-
-  // Check if user has access (admin, manager, or user_management permission)
-  useEffect(() => {
-    if (!user) {
-      setHasAccess(false);
-      setAccessChecked(true);
-      setIsLoading(false);
-      return;
-    }
-
-    const checkAccess = async () => {
-      try {
-        // Check if user is admin or manager
-        const { data: roleData } = await supabase
-          .from("user_roles")
-          .select("role")
-          .eq("user_id", user.id)
-          .single();
-
-        if (roleData?.role === "admin" || roleData?.role === "manager") {
-          setHasAccess(true);
-          setAccessChecked(true);
-          return;
-        }
-
-        // Check if user has user_management permission
-        const { data: permData } = await supabase
-          .from("user_permissions")
-          .select("can_view")
-          .eq("user_id", user.id)
-          .eq("module", "user_management")
-          .single();
-
-        setHasAccess(permData?.can_view === true);
-        setAccessChecked(true);
-      } catch (e) {
-        console.error("Error checking access:", e);
-        setHasAccess(false);
-        setAccessChecked(true);
-      }
-    };
-
-    checkAccess();
-  }, [user]);
 
   // Fetch today's sessions
   useEffect(() => {

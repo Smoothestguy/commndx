@@ -1,3 +1,4 @@
+import { useSessionAccess } from "@/hooks/useSessionAccess";
 import { useSessionTracking } from "@/hooks/useSessionTracking";
 import { useTodaySessions } from "@/hooks/useTodaySessions";
 import { Button } from "@/components/ui/button";
@@ -11,26 +12,28 @@ import { Clock, Play, Square, Pause, DollarSign } from "lucide-react";
 import { formatTimeHMS, formatSessionCurrency } from "@/utils/sessionTime";
 
 export function SessionTimer() {
+  // Check access once at the top level
+  const { hasAccess, isChecking } = useSessionAccess();
+
+  // Pass the access state to child hooks to avoid duplicate checks
   const {
-    isTargetUser,
     isLoading,
     isClockedIn,
     isIdle,
-    formattedIdleTime,
     hourlyRate,
     clockIn,
     clockOut,
-  } = useSessionTracking();
+  } = useSessionTracking(hasAccess, !isChecking);
 
   const {
     todayActiveSeconds,
     todayIdleSeconds,
     todayEarnings,
     sessionCount,
-  } = useTodaySessions();
+  } = useTodaySessions(hasAccess, !isChecking);
 
-  // Only render for the target user
-  if (!isTargetUser || isLoading) {
+  // Only render for users with access
+  if (isChecking || !hasAccess || isLoading) {
     return null;
   }
 
