@@ -15,11 +15,13 @@ interface StoredState {
   wasIdleAtLastSync: boolean;
 }
 
-export function useSessionTracking() {
+export function useSessionTracking(externalHasAccess?: boolean, externalAccessChecked?: boolean) {
   const { user } = useAuth();
 
-  const [hasAccess, setHasAccess] = useState(false);
-  const [accessChecked, setAccessChecked] = useState(false);
+  // Use external access state if provided, otherwise default to false
+  const hasAccess = externalHasAccess ?? false;
+  const accessChecked = externalAccessChecked ?? true;
+
   const [sessionId, setSessionId] = useState<string | null>(null);
   const [idleSeconds, setIdleSeconds] = useState(0);
   const [isClockedIn, setIsClockedIn] = useState(false);
@@ -34,50 +36,6 @@ export function useSessionTracking() {
   const syncIntervalRef = useRef<NodeJS.Timeout | null>(null);
   const displayIntervalRef = useRef<NodeJS.Timeout | null>(null);
   const idleStartTimeRef = useRef<number | null>(null);
-
-  // Check if user has access (admin, manager, or user_management permission)
-  useEffect(() => {
-    if (!user) {
-      setHasAccess(false);
-      setAccessChecked(true);
-      setIsLoading(false);
-      return;
-    }
-
-    const checkAccess = async () => {
-      try {
-        // Check if user is admin or manager
-        const { data: roleData } = await supabase
-          .from("user_roles")
-          .select("role")
-          .eq("user_id", user.id)
-          .single();
-
-        if (roleData?.role === "admin" || roleData?.role === "manager") {
-          setHasAccess(true);
-          setAccessChecked(true);
-          return;
-        }
-
-        // Check if user has user_management permission
-        const { data: permData } = await supabase
-          .from("user_permissions")
-          .select("can_view")
-          .eq("user_id", user.id)
-          .eq("module", "user_management")
-          .single();
-
-        setHasAccess(permData?.can_view === true);
-        setAccessChecked(true);
-      } catch (e) {
-        console.error("Error checking access:", e);
-        setHasAccess(false);
-        setAccessChecked(true);
-      }
-    };
-
-    checkAccess();
-  }, [user]);
 
   // Computed active seconds based on elapsed time - session_start timestamp
   const getElapsedSeconds = useCallback(() => {
