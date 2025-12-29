@@ -122,7 +122,7 @@ export function SessionTimer() {
             variant="ghost"
             size="sm"
             onClick={clockOut}
-            className="hidden sm:flex h-8 w-8 p-0 text-header-foreground hover:bg-sidebar-accent hover:text-destructive"
+            className="flex h-8 w-8 p-0 text-header-foreground hover:bg-sidebar-accent hover:text-destructive"
           >
             <Square className="h-4 w-4" />
           </Button>
