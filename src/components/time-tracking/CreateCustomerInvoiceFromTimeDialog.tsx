@@ -29,6 +29,7 @@ import { TimeEntryWithDetails } from "@/integrations/supabase/hooks/useTimeEntri
 import { useAddInvoice } from "@/integrations/supabase/hooks/useInvoices";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
+import { getNextInvoiceNumber } from "@/utils/invoiceNumberGenerator";
 
 interface RateBracketSummary {
   rateBracketId: string;
@@ -325,6 +326,10 @@ export function CreateCustomerInvoiceFromTimeDialog({
     setIsSubmitting(true);
 
     try {
+      // Get fresh invoice number from QuickBooks (or local fallback)
+      const { number: invoiceNumber, source } = await getNextInvoiceNumber();
+      console.log(`Generated invoice number ${invoiceNumber} from ${source}`);
+
       const lineItems: Array<{
         description: string;
         quantity: number;
@@ -365,7 +370,7 @@ export function CreateCustomerInvoiceFromTimeDialog({
       const entryIdsToUpdate = selectedSummaries.flatMap(s => s.entryIds);
 
       const result = await addInvoice.mutateAsync({
-        number: '',
+        number: invoiceNumber,
         customer_id: customerId,
         customer_name: customerName,
         project_name: projectInfo?.name || null,
