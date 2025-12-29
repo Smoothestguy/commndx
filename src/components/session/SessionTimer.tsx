@@ -64,22 +64,22 @@ export function SessionTimer() {
   const formattedTodayIdleTime = formatTimeHMS(todayIdleSeconds);
 
   return (
-    <div className="flex items-center gap-2">
+    <div className="flex items-center gap-1 sm:gap-2">
       <Tooltip>
         <TooltipTrigger asChild>
-          <div className="flex items-center gap-1.5 px-2 py-1 rounded-md bg-sidebar-accent/50">
+          <div className="flex items-center gap-1 sm:gap-1.5 px-1.5 sm:px-2 py-1 rounded-md bg-sidebar-accent/50">
             {isIdle ? (
-              <Pause className="h-4 w-4 text-amber-500" />
+              <Pause className="h-3 w-3 sm:h-4 sm:w-4 text-amber-500" />
             ) : (
-              <Clock className="h-4 w-4 text-green-500 animate-pulse" />
+              <Clock className="h-3 w-3 sm:h-4 sm:w-4 text-green-500 animate-pulse" />
             )}
-            <span className="font-mono text-sm text-header-foreground">
+            <span className="font-mono text-xs sm:text-sm text-header-foreground">
               {formattedTodayTime}
             </span>
             {isIdle && (
               <Badge
                 variant="outline"
-                className="text-[10px] px-1 py-0 h-4 text-amber-500 border-amber-500/50"
+                className="text-[10px] px-1 py-0 h-4 text-amber-500 border-amber-500/50 hidden sm:inline-flex"
               >
                 IDLE
               </Badge>
@@ -101,7 +101,7 @@ export function SessionTimer() {
 
       <Tooltip>
         <TooltipTrigger asChild>
-          <div className="flex items-center gap-1.5 px-2 py-1 rounded-md bg-green-500/10 border border-green-500/20">
+          <div className="hidden sm:flex items-center gap-1.5 px-2 py-1 rounded-md bg-green-500/10 border border-green-500/20">
             <DollarSign className="h-4 w-4 text-green-500" />
             <span className="font-mono text-sm text-green-600 dark:text-green-400 font-medium">
               {formattedTodayEarnings}

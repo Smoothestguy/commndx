@@ -631,28 +631,28 @@ const Dashboard = () => {
                 {recentInvoices.map((invoice) => (
                   <Card
                     key={invoice.id}
-                    className="glass p-4 cursor-pointer hover:bg-secondary/50 transition-colors"
+                    className="glass p-3 sm:p-4 cursor-pointer hover:bg-secondary/50 transition-colors"
                     onClick={() => navigate(`/invoices/${invoice.id}`)}
                   >
-                    <div className="flex justify-between items-start mb-2">
-                      <div>
-                        <span className="font-medium text-foreground">
+                    <div className="flex justify-between items-start gap-2 mb-2 min-w-0">
+                      <div className="min-w-0 flex-1">
+                        <span className="font-medium text-foreground text-sm sm:text-base">
                           {invoice.number}
                         </span>
-                        <p className="text-sm text-muted-foreground">
+                        <p className="text-xs sm:text-sm text-muted-foreground truncate">
                           {invoice.customer_name}
                         </p>
                       </div>
                       <StatusBadge status={invoice.status} />
                     </div>
-                    <div className="flex justify-between items-center text-sm">
+                    <div className="flex justify-between items-center text-xs sm:text-sm gap-2">
                       <span className="text-muted-foreground">
                         Due:{" "}
                         {invoice.due_date
                           ? new Date(invoice.due_date).toLocaleDateString()
                           : "—"}
                       </span>
-                      <span className="text-primary font-semibold">
+                      <span className="text-primary font-semibold flex-shrink-0">
                         {formatCurrency(invoice.total)}
                       </span>
                     </div>
@@ -674,21 +674,21 @@ const Dashboard = () => {
               <h3 className="font-heading text-base sm:text-lg font-semibold text-foreground">
                 Recent Assignments
               </h3>
-              <div className="flex items-center gap-2">
+              <div className="flex items-center gap-1 sm:gap-2 flex-shrink-0">
                 <Button
                   variant="outline"
                   size="sm"
                   onClick={() => navigate("/project-assignments")}
-                  className="text-xs sm:text-sm min-h-[44px]"
+                  className="text-xs min-h-[44px] px-2 sm:px-3"
                 >
-                  <UserPlus className="h-4 w-4 mr-1" />
-                  Assign Staff
+                  <UserPlus className="h-4 w-4" />
+                  <span className="hidden sm:inline ml-1">Assign Staff</span>
                 </Button>
                 <Button
                   variant="ghost"
                   size="sm"
                   onClick={() => navigate("/project-assignments")}
-                  className="text-xs sm:text-sm min-h-[44px]"
+                  className="text-xs min-h-[44px] px-2 sm:px-3"
                 >
                   View all
                 </Button>
@@ -707,24 +707,24 @@ const Dashboard = () => {
                 {recentAssignments.map((assignment) => (
                   <Card
                     key={assignment.id}
-                    className="glass p-4 hover:bg-secondary/50 transition-colors"
+                    className="glass p-3 sm:p-4 hover:bg-secondary/50 transition-colors"
                   >
-                    <div className="flex justify-between items-start">
-                      <div className="flex items-center gap-3">
-                        <div className="h-9 w-9 rounded-full bg-primary/10 flex items-center justify-center">
-                          <UserPlus className="h-4 w-4 text-primary" />
+                    <div className="flex justify-between items-start gap-2 min-w-0">
+                      <div className="flex items-center gap-2 sm:gap-3 min-w-0 flex-1">
+                        <div className="h-8 w-8 sm:h-9 sm:w-9 rounded-full bg-primary/10 flex items-center justify-center flex-shrink-0">
+                          <UserPlus className="h-3 w-3 sm:h-4 sm:w-4 text-primary" />
                         </div>
-                        <div>
-                          <p className="font-medium text-foreground">
+                        <div className="min-w-0 flex-1">
+                          <p className="font-medium text-foreground text-sm sm:text-base truncate">
                             {assignment.profiles?.first_name} {assignment.profiles?.last_name}
                           </p>
-                          <p className="text-sm text-muted-foreground">
+                          <p className="text-xs sm:text-sm text-muted-foreground truncate">
                             {assignment.profiles?.email}
                           </p>
                         </div>
                       </div>
-                      <div className="text-right">
-                        <p className="text-sm font-medium text-foreground">
+                      <div className="text-right flex-shrink-0 max-w-[35%] sm:max-w-[40%]">
+                        <p className="text-xs sm:text-sm font-medium text-foreground truncate">
                           {assignment.projects?.name}
                         </p>
                         <p className="text-xs text-muted-foreground">

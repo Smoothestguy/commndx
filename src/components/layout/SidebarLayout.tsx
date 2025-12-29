@@ -17,7 +17,7 @@ interface SidebarLayoutProps {
 export function SidebarLayout({ children }: SidebarLayoutProps) {
   return (
     <SidebarProvider>
-      <div className="min-h-screen flex w-full bg-background">
+      <div className="min-h-screen flex w-full bg-background overflow-x-hidden max-w-full">
         <AppSidebar />
         <SidebarInset className="flex flex-col flex-1">
           {children ?? <Outlet />}
