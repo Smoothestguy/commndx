@@ -34,6 +34,7 @@ export interface Invoice {
   job_order_id?: string;
   job_order_number?: string;
   estimate_id?: string;
+  change_order_id?: string;
   customer_id: string;
   customer_name: string;
   project_name?: string;

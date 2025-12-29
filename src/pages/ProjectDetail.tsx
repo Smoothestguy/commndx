@@ -90,8 +90,13 @@ const ProjectDetail = () => {
 
   const projectInvoices = useMemo(() => {
     const jobOrderIds = projectJobOrders.map((j) => j.id);
-    return invoices?.filter((i) => i.job_order_id && jobOrderIds.includes(i.job_order_id)) || [];
-  }, [invoices, projectJobOrders]);
+    const changeOrderIds = (changeOrders || []).map((co) => co.id);
+    
+    return invoices?.filter((i) => 
+      (i.job_order_id && jobOrderIds.includes(i.job_order_id)) ||
+      (i.change_order_id && changeOrderIds.includes(i.change_order_id))
+    ) || [];
+  }, [invoices, projectJobOrders, changeOrders]);
 
   // Calculate totals
   const totals = useMemo(() => {
