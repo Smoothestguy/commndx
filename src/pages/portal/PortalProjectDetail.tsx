@@ -57,11 +57,57 @@ export default function PortalProjectDetail() {
     };
   }, [projectTimeEntries]);
 
-  // Calculate pay
-  const hourlyRate = personnel?.hourly_rate || 0;
+  // Calculate pay using each entry's snapshotted hourly_rate (fallback to personnel rate if missing)
+  const fallbackRate = personnel?.hourly_rate || 0;
   const overtimeMultiplier = 1.5;
-  const totalRegularPay = totalRegularHours * hourlyRate;
-  const totalOvertimePay = totalOvertimeHours * hourlyRate * overtimeMultiplier;
+  
+  // Group entries by week and calculate pay respecting 40-hour OT threshold per week
+  const weeklyData = useMemo(() => {
+    const weekMap = new Map<string, typeof projectTimeEntries>();
+    
+    projectTimeEntries.forEach(entry => {
+      const entryDate = parseISO(entry.entry_date);
+      const weekStart = startOfWeek(entryDate, { weekStartsOn: 1 }).toISOString();
+      const weekEntries = weekMap.get(weekStart) || [];
+      weekEntries.push(entry);
+      weekMap.set(weekStart, weekEntries);
+    });
+    
+    let totalRegularPay = 0;
+    let totalOvertimePay = 0;
+    
+    weekMap.forEach((weekEntries) => {
+      // Sort entries by date within the week
+      const sorted = [...weekEntries].sort((a, b) => a.entry_date.localeCompare(b.entry_date));
+      let hoursAccumulated = 0;
+      
+      sorted.forEach((entry) => {
+        const entryRate = entry.hourly_rate ?? fallbackRate;
+        const entryTotalHours = (entry.regular_hours || 0) + (entry.overtime_hours || 0);
+        
+        let entryRegular = 0;
+        let entryOvertime = 0;
+        
+        if (hoursAccumulated >= 40) {
+          entryOvertime = entryTotalHours;
+        } else if (hoursAccumulated + entryTotalHours > 40) {
+          entryRegular = 40 - hoursAccumulated;
+          entryOvertime = entryTotalHours - entryRegular;
+        } else {
+          entryRegular = entryTotalHours;
+        }
+        
+        hoursAccumulated += entryTotalHours;
+        totalRegularPay += entryRegular * entryRate;
+        totalOvertimePay += entryOvertime * entryRate * overtimeMultiplier;
+      });
+    });
+    
+    return { totalRegularPay, totalOvertimePay };
+  }, [projectTimeEntries, fallbackRate, overtimeMultiplier]);
+  
+  const totalRegularPay = weeklyData.totalRegularPay;
+  const totalOvertimePay = weeklyData.totalOvertimePay;
   const totalPay = totalRegularPay + totalOvertimePay;
 
   const isLoading = assignmentsLoading || timeLoading;
@@ -279,7 +325,7 @@ export default function PortalProjectDetail() {
                 <div className="text-2xl font-bold text-amber-600">{totalOvertimeHours.toFixed(1)}</div>
                 <div className="text-sm text-muted-foreground">Overtime</div>
               </div>
-              {hourlyRate > 0 && (
+              {fallbackRate > 0 && (
                 <div className="text-center p-4 rounded-lg bg-primary/10">
                   <div className="text-2xl font-bold text-primary">{formatCurrency(totalPay)}</div>
                   <div className="text-sm text-muted-foreground">Total Pay</div>
@@ -288,7 +334,7 @@ export default function PortalProjectDetail() {
             </div>
 
             {/* Pay breakdown formula */}
-            {hourlyRate > 0 && (
+            {fallbackRate > 0 && (
               <div className="mt-4 p-3 rounded-lg bg-muted/30 border">
                 <div className="flex items-center gap-2 justify-center text-sm">
                   <DollarSign className="h-4 w-4 text-muted-foreground" />
