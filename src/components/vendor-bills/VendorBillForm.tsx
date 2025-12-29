@@ -159,6 +159,11 @@ export function VendorBillForm({ bill, isEditing = false }: VendorBillFormProps)
       return;
     }
 
+    if (new Date(dueDate) < new Date(billDate)) {
+      toast.error("Due date cannot be before bill date");
+      return;
+    }
+
     const billData = {
       vendor_id: selectedVendor.id,
       vendor_name: selectedVendor.name,
