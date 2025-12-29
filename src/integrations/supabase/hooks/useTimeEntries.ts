@@ -502,6 +502,7 @@ export interface PersonnelTimeEntryInsert {
   overtime_hours?: number;
   is_holiday?: boolean;
   description?: string | null;
+  hourly_rate?: number; // Snapshot rate at entry time
 }
 
 export const useBulkAddPersonnelTimeEntries = () => {
@@ -521,6 +522,8 @@ export const useBulkAddPersonnelTimeEntries = () => {
           billable: true,
           regular_hours: entry.hours,
           overtime_hours: 0,
+          // Include hourly_rate if provided
+          ...(entry.hourly_rate !== undefined && { hourly_rate: entry.hourly_rate }),
         }));
 
       if (validEntries.length === 0) {

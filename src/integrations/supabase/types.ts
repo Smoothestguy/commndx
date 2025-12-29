@@ -5266,6 +5266,7 @@ export type Database = {
           description: string | null
           entry_date: string
           entry_source: string | null
+          hourly_rate: number | null
           hours: number
           id: string
           invoice_id: string | null
@@ -5301,6 +5302,7 @@ export type Database = {
           description?: string | null
           entry_date: string
           entry_source?: string | null
+          hourly_rate?: number | null
           hours: number
           id?: string
           invoice_id?: string | null
@@ -5336,6 +5338,7 @@ export type Database = {
           description?: string | null
           entry_date?: string
           entry_source?: string | null
+          hourly_rate?: number | null
           hours?: number
           id?: string
           invoice_id?: string | null

@@ -236,6 +236,7 @@ export default function TeamTimesheet() {
       regular_hours: number;
       overtime_hours: number;
       description: string | null;
+      hourly_rate: number; // Snapshot rate at entry time
     }> = [];
 
     // Create entries for each personnel/day combination
@@ -274,6 +275,7 @@ export default function TeamTimesheet() {
             regular_hours: regularHours,
             overtime_hours: overtimeHours,
             description: null,
+            hourly_rate: person.hourlyRate, // Snapshot the current rate
           });
         }
       }
