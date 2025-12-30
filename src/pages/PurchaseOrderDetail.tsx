@@ -81,7 +81,9 @@ const PurchaseOrderDetail = () => {
   const canClose = purchaseOrder && !purchaseOrder.is_closed && (isAdmin || isManager);
   const canReopen = purchaseOrder && purchaseOrder.is_closed && isAdmin;
   const canEdit = purchaseOrder && !purchaseOrder.is_closed && (isAdmin || isManager);
-  const canDelete = purchaseOrder && (purchaseOrder.status === 'draft' || purchaseOrder.status === 'pending_approval') && (isAdmin || isManager);
+  const canDelete = purchaseOrder && (
+    (purchaseOrder.status === 'draft' || purchaseOrder.status === 'pending_approval') || isAdmin
+  ) && (isAdmin || isManager);
   const canDuplicate = !!purchaseOrder;
 
   const billedAmount = Number(purchaseOrder?.billed_amount || 0);
