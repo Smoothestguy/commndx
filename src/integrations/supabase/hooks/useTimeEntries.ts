@@ -481,6 +481,7 @@ export const useAllTimeEntries = (
       return data as TimeEntryWithDetails[];
     },
     enabled: options?.enabled ?? true,
+    staleTime: 0, // Always fetch fresh data to ensure rate changes reflect immediately
   });
 };
 
