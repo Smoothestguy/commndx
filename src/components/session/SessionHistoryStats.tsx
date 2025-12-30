@@ -11,7 +11,6 @@ import {
   calculateEarningsFromSeconds,
   formatDuration,
   formatSessionCurrency,
-  HOURLY_RATE,
 } from "@/utils/sessionTime";
 
 interface SessionHistoryStatsProps {
@@ -35,6 +34,7 @@ export function SessionHistoryStats({ dateRange, targetUserId }: SessionHistoryS
     queryFn: async () => {
       if (!userId) return null;
 
+      // Fetch sessions
       let query = supabase
         .from("user_work_sessions")
         .select("session_start, session_end, is_active, total_idle_seconds")
@@ -48,8 +48,16 @@ export function SessionHistoryStats({ dateRange, targetUserId }: SessionHistoryS
       }
 
       const { data, error } = await query;
-
       if (error) throw error;
+
+      // Fetch hourly rate from personnel table
+      const { data: personnelData } = await supabase
+        .from("personnel")
+        .select("hourly_rate")
+        .eq("user_id", userId)
+        .maybeSingle();
+
+      const hourlyRate = personnelData?.hourly_rate ? Number(personnelData.hourly_rate) : 0;
 
       const sessions: SessionData[] = data || [];
       const now = new Date();
@@ -63,8 +71,8 @@ export function SessionHistoryStats({ dateRange, targetUserId }: SessionHistoryS
       const avgActivePerSession =
         sessionCount > 0 ? Math.round(totalActiveSecs / sessionCount) : 0;
 
-      // Calculate earnings using shared utility
-      const totalEarnings = calculateEarningsFromSeconds(totalActiveSecs);
+      // Calculate earnings using shared utility with actual rate
+      const totalEarnings = calculateEarningsFromSeconds(totalActiveSecs, hourlyRate);
       const avgEarningsPerSession = sessionCount > 0 ? totalEarnings / sessionCount : 0;
 
       return {
@@ -74,6 +82,7 @@ export function SessionHistoryStats({ dateRange, targetUserId }: SessionHistoryS
         avgActivePerSession,
         totalEarnings,
         avgEarningsPerSession,
+        hourlyRate,
       };
     },
     enabled: !!userId,
@@ -167,7 +176,7 @@ export function SessionHistoryStats({ dateRange, targetUserId }: SessionHistoryS
             {formatSessionCurrency(stats?.totalEarnings || 0)}
           </div>
           <p className="text-[10px] sm:text-xs text-muted-foreground hidden sm:block">
-            at ${HOURLY_RATE}/hour
+            {stats?.hourlyRate ? `at $${stats.hourlyRate}/hour` : "No rate set"}
           </p>
         </CardContent>
       </Card>
