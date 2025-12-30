@@ -929,10 +929,10 @@ export default function PublicApplicationForm() {
                         className="mt-0.5"
                       />
                       <div className="space-y-2">
-                        <Label htmlFor="sms-consent" className="text-sm leading-relaxed cursor-pointer">
+                      <Label htmlFor="sms-consent" className="text-sm leading-relaxed cursor-pointer">
                           I agree to receive SMS notifications about my contractor status, 
                           assignment updates, and payment information. Message frequency: up to 
-                          3 messages per week. Msg & data rates may apply. Reply STOP to cancel. *
+                          3 messages per week. Msg & data rates may apply. *
                         </Label>
                         <div className="flex gap-3 text-xs">
                           {formSettings.privacyPolicyUrl && (
