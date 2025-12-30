@@ -140,9 +140,12 @@ export const CreateProjectInvoiceDialog = ({
       .map(item => item.id);
 
     // Create line items from selected items
+    // Note: These are summary line items (one per JO/CO/TM), not product-level items.
+    // For proper QuickBooks Item mapping, use CreateInvoiceFromJODialog which passes product_id.
     const lineItems = selectedItemsData.map((item, index) => {
       if (item.type === 'job_order') {
         return {
+          product_id: null, // Summary line - no specific product
           product_name: `Job Order ${item.number}`,
           description: 'Remaining balance',
           quantity: 1,
@@ -154,6 +157,7 @@ export const CreateProjectInvoiceDialog = ({
       } else if (item.type === 'change_order') {
         const amount = item.change_type === 'deductive' ? -item.total : item.total;
         return {
+          product_id: null, // Summary line - no specific product
           product_name: `Change Order ${item.number}`,
           description: item.reason,
           quantity: 1,
@@ -165,6 +169,7 @@ export const CreateProjectInvoiceDialog = ({
       } else {
         const amount = item.change_type === 'deductive' ? -item.total : item.total;
         return {
+          product_id: null, // Summary line - no specific product
           product_name: `T&M Ticket ${item.ticket_number}`,
           description: item.description || 'Time & Materials',
           quantity: 1,
