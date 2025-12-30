@@ -90,11 +90,19 @@ export default function PortalTaxForms() {
       llc_tax_classification: value === "llc" ? prev.llc_tax_classification : "",
       // Clear other classification if not Other
       other_classification: value === "other" ? prev.other_classification : "",
+      // Clear business name if not LLC (only LLC allows both personal and business name)
+      business_name: value === "llc" ? prev.business_name : "",
       // Reset foreign partners checkbox
       has_foreign_partners: false,
       // Auto-select TIN type for corporations/partnerships
       tin_type: ["c_corporation", "s_corporation", "partnership"].includes(value) ? "ein" : prev.tin_type
     }));
+  };
+
+  // Business name field state - only enabled for LLC
+  const businessNameFieldState = {
+    enabled: formData.federal_tax_classification === "llc",
+    blocked: formData.federal_tax_classification !== "llc" && formData.federal_tax_classification !== ""
   };
 
   // Auto-select EIN for corporations/partnerships when classification changes
@@ -509,7 +517,14 @@ export default function PortalTaxForms() {
                   <span className="font-bold text-sm w-4 flex-shrink-0">1</span>
                   <div className="flex-1">
                     <Label htmlFor="name_on_return" className="text-xs text-muted-foreground">
-                      Name of entity/individual. An entry is required. <span className="text-[10px]">(For a sole proprietor or disregarded entity, enter the owner's name on line 1, and enter the business/disregarded entity's name on line 2.)</span>
+                      {formData.federal_tax_classification === "llc" 
+                        ? "Name of LLC member/owner. An entry is required."
+                        : formData.federal_tax_classification === "individual"
+                          ? "Your name (as shown on your income tax return). An entry is required."
+                          : ["c_corporation", "s_corporation", "partnership", "trust_estate", "other"].includes(formData.federal_tax_classification)
+                            ? "Name of entity. An entry is required."
+                            : <>Name of entity/individual. An entry is required. <span className="text-[10px]">(For a sole proprietor or disregarded entity, enter the owner's name on line 1, and enter the business/disregarded entity's name on line 2.)</span></>
+                      }
                     </Label>
                     <Input
                       id="name_on_return"
@@ -522,20 +537,47 @@ export default function PortalTaxForms() {
                 </div>
               </div>
 
-              {/* Line 2 - Business Name */}
-              <div className="border-b border-foreground/20 p-3">
+              {/* Line 2 - Business Name (Only available for LLC) */}
+              <div className={cn(
+                "border-b border-foreground/20 p-3 transition-all duration-300 relative",
+                businessNameFieldState.blocked && "opacity-50 bg-muted/30"
+              )}>
+                {/* Blocked overlay indicator */}
+                {businessNameFieldState.blocked && (
+                  <div className="absolute top-2 right-2">
+                    <Badge variant="outline" className="text-xs bg-muted text-muted-foreground border-muted">
+                      N/A
+                    </Badge>
+                  </div>
+                )}
                 <div className="flex items-start gap-2">
                   <span className="font-bold text-sm w-4 flex-shrink-0">2</span>
                   <div className="flex-1">
-                    <Label htmlFor="business_name" className="text-xs text-muted-foreground">
-                      Business name/disregarded entity name, if different from above
+                    <Label htmlFor="business_name" className={cn(
+                      "text-xs transition-colors duration-300",
+                      businessNameFieldState.blocked ? "text-muted-foreground" : "text-muted-foreground"
+                    )}>
+                      {formData.federal_tax_classification === "llc"
+                        ? "Business name of LLC (required)"
+                        : "Business name/disregarded entity name, if different from above"}
                     </Label>
                     <Input
                       id="business_name"
                       value={formData.business_name}
                       onChange={(e) => setFormData({ ...formData, business_name: e.target.value })}
-                      className="mt-1 border-foreground/30 bg-muted/30"
+                      disabled={businessNameFieldState.blocked}
+                      className={cn(
+                        "mt-1 transition-all duration-300",
+                        businessNameFieldState.blocked 
+                          ? "border-muted bg-muted/50 cursor-not-allowed" 
+                          : "border-foreground/30 bg-muted/30"
+                      )}
                     />
+                    {businessNameFieldState.blocked && (
+                      <p className="text-xs text-muted-foreground mt-1">
+                        Business name only applicable for LLC classification
+                      </p>
+                    )}
                   </div>
                 </div>
               </div>
