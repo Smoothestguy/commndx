@@ -36,6 +36,7 @@ interface CreateInvoiceFromJODialogProps {
 
 interface LineItemQuantity {
   id: string;
+  productId?: string;
   productName?: string;
   description: string;
   originalQuantity: number;
@@ -58,6 +59,7 @@ export function CreateInvoiceFromJODialog({
 
   const initialLineItems: LineItemQuantity[] = jobOrder.line_items.map((item) => ({
     id: item.id || "",
+    productId: item.product_id || undefined,
     productName: item.product_name || undefined,
     description: item.description,
     originalQuantity: Number(item.quantity),
@@ -168,6 +170,7 @@ export function CreateInvoiceFromJODialog({
         .filter((item) => item.quantityToInvoice > 0)
         .map((item) => ({
           jo_line_item_id: item.id,
+          product_id: item.productId || null,
           product_name: item.productName || null,
           description: item.description,
           quantity: item.quantityToInvoice,
