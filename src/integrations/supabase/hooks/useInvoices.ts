@@ -351,31 +351,40 @@ export const useDeleteInvoice = () => {
 
       const { data: invoice, error: fetchError } = await supabase
         .from("invoices")
-        .select("total, job_order_id")
+        .select("total, job_order_id, deleted_at")
         .eq("id", id)
         .single();
 
       if (fetchError) throw fetchError;
 
+      // Skip if already deleted (prevents double-restore of job order balance)
+      if (invoice.deleted_at) {
+        throw new Error("Invoice has already been deleted");
+      }
+
       // Restore job order balance
       if (invoice.job_order_id) {
         const { data: jobOrder, error: jobFetchError } = await supabase
           .from("job_orders")
-          .select("invoiced_amount, remaining_amount")
+          .select("invoiced_amount, remaining_amount, total")
           .eq("id", invoice.job_order_id)
           .single();
 
-        if (jobFetchError) throw jobFetchError;
+        if (!jobFetchError && jobOrder) {
+          // Use Math.max/min to prevent negative values or exceeding total
+          const newInvoicedAmount = Math.max(0, jobOrder.invoiced_amount - invoice.total);
+          const newRemainingAmount = Math.min(jobOrder.total, jobOrder.remaining_amount + invoice.total);
 
-        const { error: updateError } = await supabase
-          .from("job_orders")
-          .update({
-            invoiced_amount: jobOrder.invoiced_amount - invoice.total,
-            remaining_amount: jobOrder.remaining_amount + invoice.total,
-          })
-          .eq("id", invoice.job_order_id);
+          const { error: updateError } = await supabase
+            .from("job_orders")
+            .update({
+              invoiced_amount: newInvoicedAmount,
+              remaining_amount: newRemainingAmount,
+            })
+            .eq("id", invoice.job_order_id);
 
-        if (updateError) throw updateError;
+          if (updateError) throw updateError;
+        }
       }
 
       // Soft delete instead of hard delete
