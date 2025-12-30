@@ -16,12 +16,22 @@ import { Badge } from "@/components/ui/badge";
 import { Calendar } from "@/components/ui/calendar";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { CalendarIcon, FileText, ClipboardList, Receipt, Loader2 } from "lucide-react";
+import { CalendarIcon, FileText, ClipboardList, Receipt, Loader2, List, FileStack } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useProjectBillableItems, BillableItem } from "@/integrations/supabase/hooks/useProjectBillableItems";
 import { useAddProjectInvoice } from "@/integrations/supabase/hooks/useProjectInvoice";
+import { useJobOrder } from "@/integrations/supabase/hooks/useJobOrders";
+import { useSelectedBillableItemsTotals } from "@/components/invoices/BillableItemsSelector";
 import { getNextInvoiceNumber } from "@/utils/invoiceNumberGenerator";
 import { toast } from "@/hooks/use-toast";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
 
 interface CreateProjectInvoiceDialogProps {
   open: boolean;
@@ -50,6 +60,7 @@ export const CreateProjectInvoiceDialog = ({
   const [taxRate, setTaxRate] = useState(8.25);
   const [isLoadingNumber, setIsLoadingNumber] = useState(false);
   const [numberSource, setNumberSource] = useState<'quickbooks' | 'local'>('local');
+  const [jobOrderBillingMode, setJobOrderBillingMode] = useState<"summary" | "detailed">("detailed");
 
   // Generate invoice number on open - use QuickBooks if connected
   useEffect(() => {
@@ -104,18 +115,29 @@ export const CreateProjectInvoiceDialog = ({
     return allItems.filter(item => selectedItems.has(item.id));
   }, [allItems, selectedItems]);
 
-  const totals = useMemo(() => {
-    const subtotal = selectedItemsData.reduce((sum, item) => {
-      if (item.type === 'job_order') {
-        return sum + item.remaining_amount;
-      }
-      const amount = item.change_type === 'deductive' ? -item.total : item.total;
-      return sum + amount;
-    }, 0);
-    const taxAmount = subtotal * (taxRate / 100);
-    const total = subtotal + taxAmount;
-    return { subtotal, taxAmount, total };
-  }, [selectedItemsData, taxRate]);
+  // Get the first selected Job Order ID for detailed line items fetching
+  const selectedJobOrderId = useMemo(() => {
+    const selectedJO = selectedItemsData.find(item => item.type === 'job_order');
+    return selectedJO?.id || null;
+  }, [selectedItemsData]);
+
+  // Fetch JO line items when in detailed mode
+  const { data: jobOrderWithLineItems } = useJobOrder(selectedJobOrderId || '');
+
+  // Use the shared hook for line items and totals calculation
+  const billableItemsTotals = useSelectedBillableItemsTotals(
+    projectId,
+    Array.from(selectedItems),
+    taxRate,
+    jobOrderBillingMode,
+    jobOrderWithLineItems
+  );
+
+  const totals = {
+    subtotal: billableItemsTotals.subtotal,
+    taxAmount: billableItemsTotals.taxAmount,
+    total: billableItemsTotals.total,
+  };
 
   const handleSubmit = async () => {
     if (selectedItems.size === 0) {
@@ -127,59 +149,11 @@ export const CreateProjectInvoiceDialog = ({
       return;
     }
 
-    const jobOrderIds = selectedItemsData
-      .filter(item => item.type === 'job_order')
-      .map(item => item.id);
-
-    const changeOrderIds = selectedItemsData
-      .filter(item => item.type === 'change_order')
-      .map(item => item.id);
-    
-    const tmTicketIds = selectedItemsData
-      .filter(item => item.type === 'tm_ticket')
-      .map(item => item.id);
-
-    // Create line items from selected items
-    // Note: These are summary line items (one per JO/CO/TM), not product-level items.
-    // For proper QuickBooks Item mapping, use CreateInvoiceFromJODialog which passes product_id.
-    const lineItems = selectedItemsData.map((item, index) => {
-      if (item.type === 'job_order') {
-        return {
-          product_id: null, // Summary line - no specific product
-          product_name: `Job Order ${item.number}`,
-          description: 'Remaining balance',
-          quantity: 1,
-          unit_price: item.remaining_amount,
-          markup: 0,
-          total: item.remaining_amount,
-          display_order: index,
-        };
-      } else if (item.type === 'change_order') {
-        const amount = item.change_type === 'deductive' ? -item.total : item.total;
-        return {
-          product_id: null, // Summary line - no specific product
-          product_name: `Change Order ${item.number}`,
-          description: item.reason,
-          quantity: 1,
-          unit_price: amount,
-          markup: 0,
-          total: amount,
-          display_order: index,
-        };
-      } else {
-        const amount = item.change_type === 'deductive' ? -item.total : item.total;
-        return {
-          product_id: null, // Summary line - no specific product
-          product_name: `T&M Ticket ${item.ticket_number}`,
-          description: item.description || 'Time & Materials',
-          quantity: 1,
-          unit_price: amount,
-          markup: 0,
-          total: amount,
-          display_order: index,
-        };
-      }
-    });
+    // Use the line items and IDs from the shared hook
+    const lineItems = billableItemsTotals.lineItems.map((item, index) => ({
+      ...item,
+      display_order: index,
+    }));
 
     try {
       await addInvoice.mutateAsync({
@@ -195,9 +169,9 @@ export const CreateProjectInvoiceDialog = ({
         total: totals.total,
         due_date: format(dueDate, "yyyy-MM-dd"),
         line_items: lineItems,
-        job_order_ids: jobOrderIds,
-        change_order_ids: changeOrderIds,
-        tm_ticket_ids: tmTicketIds,
+        job_order_ids: billableItemsTotals.jobOrderIds,
+        change_order_ids: billableItemsTotals.changeOrderIds,
+        tm_ticket_ids: billableItemsTotals.tmTicketIds,
       });
 
       onOpenChange(false);
@@ -240,11 +214,38 @@ export const CreateProjectInvoiceDialog = ({
           <div className="space-y-3">
             <div className="flex items-center justify-between">
               <Label className="text-base font-medium">Select Items to Invoice</Label>
-              {allItems.length > 0 && (
-                <Button variant="ghost" size="sm" onClick={selectAll}>
-                  {selectedItems.size === allItems.length ? "Deselect All" : "Select All"}
-                </Button>
-              )}
+              <div className="flex items-center gap-2">
+                {/* Job Order Billing Mode Toggle */}
+                {billableItems?.jobOrders && billableItems.jobOrders.length > 0 && (
+                  <div className="flex items-center border rounded-md overflow-hidden">
+                    <Button
+                      type="button"
+                      variant={jobOrderBillingMode === "detailed" ? "default" : "ghost"}
+                      size="sm"
+                      className="rounded-none h-8 px-3"
+                      onClick={() => setJobOrderBillingMode("detailed")}
+                    >
+                      <List className="h-3.5 w-3.5 mr-1" />
+                      Detailed
+                    </Button>
+                    <Button
+                      type="button"
+                      variant={jobOrderBillingMode === "summary" ? "default" : "ghost"}
+                      size="sm"
+                      className="rounded-none h-8 px-3"
+                      onClick={() => setJobOrderBillingMode("summary")}
+                    >
+                      <FileStack className="h-3.5 w-3.5 mr-1" />
+                      Summary
+                    </Button>
+                  </div>
+                )}
+                {allItems.length > 0 && (
+                  <Button variant="ghost" size="sm" onClick={selectAll}>
+                    {selectedItems.size === allItems.length ? "Deselect All" : "Select All"}
+                  </Button>
+                )}
+              </div>
             </div>
 
             {isLoading ? (
@@ -269,6 +270,7 @@ export const CreateProjectInvoiceDialog = ({
                     <Checkbox 
                       checked={selectedItems.has(jo.id)} 
                       onCheckedChange={() => toggleItem(jo.id)}
+                      onClick={(e) => e.stopPropagation()}
                     />
                     <ClipboardList className="h-4 w-4 text-muted-foreground flex-shrink-0" />
                     <div className="flex-1 min-w-0">
@@ -296,6 +298,7 @@ export const CreateProjectInvoiceDialog = ({
                     <Checkbox 
                       checked={selectedItems.has(co.id)} 
                       onCheckedChange={() => toggleItem(co.id)}
+                      onClick={(e) => e.stopPropagation()}
                     />
                     <FileText className="h-4 w-4 text-muted-foreground flex-shrink-0" />
                     <div className="flex-1 min-w-0">
@@ -328,6 +331,7 @@ export const CreateProjectInvoiceDialog = ({
                     <Checkbox 
                       checked={selectedItems.has(tm.id)} 
                       onCheckedChange={() => toggleItem(tm.id)}
+                      onClick={(e) => e.stopPropagation()}
                     />
                     <Receipt className="h-4 w-4 text-muted-foreground flex-shrink-0" />
                     <div className="flex-1 min-w-0">
@@ -353,11 +357,47 @@ export const CreateProjectInvoiceDialog = ({
             )}
           </div>
 
+          {/* Invoice Line Items Preview */}
+          {selectedItems.size > 0 && billableItemsTotals.lineItems.length > 0 && (
+            <div className="space-y-3">
+              <Label className="text-base font-medium">Invoice Line Items Preview</Label>
+              <div className="border rounded-lg overflow-hidden">
+                <Table>
+                  <TableHeader>
+                    <TableRow className="bg-muted/50">
+                      <TableHead className="w-[40%]">Description</TableHead>
+                      <TableHead className="text-right">Qty</TableHead>
+                      <TableHead className="text-right">Unit Price</TableHead>
+                      <TableHead className="text-right">Total</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {billableItemsTotals.lineItems.map((item, index) => (
+                      <TableRow key={index}>
+                        <TableCell>
+                          <div>
+                            <span className="font-medium">{item.product_name}</span>
+                            {item.description && item.description !== item.product_name && (
+                              <p className="text-sm text-muted-foreground">{item.description}</p>
+                            )}
+                          </div>
+                        </TableCell>
+                        <TableCell className="text-right">{item.quantity}</TableCell>
+                        <TableCell className="text-right">{formatCurrency(item.unit_price)}</TableCell>
+                        <TableCell className="text-right">{formatCurrency(item.total)}</TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              </div>
+            </div>
+          )}
+
           {/* Totals */}
           {selectedItems.size > 0 && (
             <div className="space-y-2 p-4 bg-muted/50 rounded-lg">
               <div className="flex justify-between text-sm">
-                <span>Subtotal ({selectedItems.size} items)</span>
+                <span>Subtotal ({billableItemsTotals.lineItems.length} line items)</span>
                 <span>{formatCurrency(totals.subtotal)}</span>
               </div>
               <div className="flex justify-between text-sm">
