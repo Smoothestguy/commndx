@@ -158,3 +158,6 @@ verify_jwt = false
 
 [functions.reverse-personnel-approval]
 verify_jwt = false
+
+[functions.quickbooks-import-invoices]
+verify_jwt = false

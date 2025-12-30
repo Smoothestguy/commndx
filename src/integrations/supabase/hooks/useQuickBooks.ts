@@ -680,3 +680,29 @@ export const useQuickBooksPOMapping = (purchaseOrderId: string | undefined) => {
     enabled: !!purchaseOrderId,
   });
 };
+
+// Import invoices from QuickBooks
+export const useImportInvoicesFromQB = () => {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async () => {
+      const { data, error } = await supabase.functions.invoke('quickbooks-import-invoices', {
+        body: { action: 'import' },
+      });
+
+      if (error) throw error;
+      if (data.error) throw new Error(data.error);
+      return data;
+    },
+    onSuccess: (data) => {
+      queryClient.invalidateQueries({ queryKey: ["invoices"] });
+      queryClient.invalidateQueries({ queryKey: ["quickbooks-sync-logs"] });
+      const message = `Imported ${data.imported} invoices, updated ${data.updated}${data.skipped > 0 ? `, skipped ${data.skipped}` : ''}`;
+      toast.success(message);
+    },
+    onError: (error: Error) => {
+      toast.error(`Import failed: ${error.message}`);
+    },
+  });
+};
