@@ -12,6 +12,7 @@ import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { CheckCircle, AlertCircle, Clock, XCircle } from "lucide-react";
+import { cn } from "@/lib/utils";
 import { format } from "date-fns";
 
 const US_STATES = [
@@ -57,6 +58,53 @@ export default function PortalTaxForms() {
     formData.federal_tax_classification === "partnership" ||
     formData.federal_tax_classification === "trust_estate" ||
     (formData.federal_tax_classification === "llc" && formData.llc_tax_classification?.toUpperCase() === "P");
+
+  // Conditional field states based on tax classification
+  const selectedClassification = formData.federal_tax_classification;
+
+  // LLC dropdown visibility/enabled state
+  const llcFieldState = {
+    enabled: selectedClassification === "llc",
+    required: selectedClassification === "llc"
+  };
+
+  // Other description field visibility/enabled state
+  const otherFieldState = {
+    enabled: selectedClassification === "other",
+    required: selectedClassification === "other"
+  };
+
+  // TIN type requirements based on classification
+  const tinRequirements = {
+    einRequired: ["c_corporation", "s_corporation", "partnership"].includes(selectedClassification),
+    ssnPreferred: selectedClassification === "individual",
+    eitherAllowed: ["trust_estate", "llc", "other", ""].includes(selectedClassification)
+  };
+
+  // Handle classification change with dependent field clearing
+  const handleClassificationChange = (value: string) => {
+    setFormData(prev => ({
+      ...prev,
+      federal_tax_classification: value,
+      // Clear LLC classification if not LLC
+      llc_tax_classification: value === "llc" ? prev.llc_tax_classification : "",
+      // Clear other classification if not Other
+      other_classification: value === "other" ? prev.other_classification : "",
+      // Reset foreign partners checkbox
+      has_foreign_partners: false,
+      // Auto-select TIN type for corporations/partnerships
+      tin_type: ["c_corporation", "s_corporation", "partnership"].includes(value) ? "ein" : prev.tin_type
+    }));
+  };
+
+  // Auto-select EIN for corporations/partnerships when classification changes
+  useEffect(() => {
+    if (["c_corporation", "s_corporation", "partnership"].includes(formData.federal_tax_classification)) {
+      if (formData.tin_type !== "ein") {
+        setFormData(prev => ({ ...prev, tin_type: "ein" }));
+      }
+    }
+  }, [formData.federal_tax_classification]);
 
   // Pre-populate form when personnel data is loaded (for new W-9)
   useEffect(() => {
@@ -502,7 +550,7 @@ export default function PortalTaxForms() {
                     </Label>
                     <RadioGroup
                       value={formData.federal_tax_classification}
-                      onValueChange={(value) => setFormData({ ...formData, federal_tax_classification: value, has_foreign_partners: false })}
+                      onValueChange={handleClassificationChange}
                       className="space-y-2"
                     >
                       <div className="flex flex-wrap gap-x-4 gap-y-2">
@@ -530,34 +578,85 @@ export default function PortalTaxForms() {
                         </div>
                       </div>
                       
+                      {/* LLC Option with always-visible classification field */}
                       <div className="flex flex-wrap items-center gap-x-4 gap-y-2">
                         <div className="flex items-center space-x-2">
                           <RadioGroupItem value="llc" id="llc" />
                           <Label htmlFor="llc" className="text-sm font-normal cursor-pointer">
                             LLC. Enter the tax classification (C=C corporation, S=S corporation, P=Partnership) ▶
                           </Label>
-                          {formData.federal_tax_classification === "llc" && (
-                            <Input
-                              value={formData.llc_tax_classification}
-                              onChange={(e) => setFormData({ ...formData, llc_tax_classification: e.target.value.toUpperCase(), has_foreign_partners: false })}
-                              className="w-12 h-7 text-center border-foreground/30 font-mono"
-                              maxLength={1}
-                              placeholder="C/S/P"
-                            />
-                          )}
                         </div>
                       </div>
 
+                      {/* LLC Classification - Always visible, conditionally enabled */}
+                      <div className={cn(
+                        "ml-6 flex items-center gap-2 p-2 border rounded-md transition-all duration-300",
+                        llcFieldState.enabled 
+                          ? "border-primary bg-primary/5" 
+                          : "opacity-50 bg-muted/30 border-muted"
+                      )}>
+                        <Label className={cn(
+                          "text-sm transition-colors duration-300",
+                          !llcFieldState.enabled && "text-muted-foreground"
+                        )}>
+                          LLC Tax Classification:
+                        </Label>
+                        <select
+                          value={formData.llc_tax_classification}
+                          onChange={(e) => setFormData({ ...formData, llc_tax_classification: e.target.value, has_foreign_partners: false })}
+                          disabled={!llcFieldState.enabled}
+                          required={llcFieldState.required}
+                          className={cn(
+                            "h-8 px-2 rounded-md border text-sm transition-all duration-300",
+                            llcFieldState.enabled 
+                              ? "border-foreground/30 bg-background cursor-pointer" 
+                              : "border-muted bg-muted/50 cursor-not-allowed text-muted-foreground"
+                          )}
+                        >
+                          <option value="">Select C, S, or P</option>
+                          <option value="C">C - C Corporation</option>
+                          <option value="S">S - S Corporation</option>
+                          <option value="P">P - Partnership</option>
+                        </select>
+                        {llcFieldState.required && !formData.llc_tax_classification && (
+                          <span className="text-xs text-destructive">Required</span>
+                        )}
+                      </div>
+
+                      {/* Other Option */}
                       <div className="flex items-center space-x-2">
                         <RadioGroupItem value="other" id="other" />
                         <Label htmlFor="other" className="text-sm font-normal cursor-pointer">Other (see instructions) ▶</Label>
-                        {formData.federal_tax_classification === "other" && (
-                          <Input
-                            value={formData.other_classification}
-                            onChange={(e) => setFormData({ ...formData, other_classification: e.target.value })}
-                            className="w-48 h-7 border-foreground/30"
-                            placeholder="Specify"
-                          />
+                      </div>
+
+                      {/* Other Classification - Always visible, conditionally enabled */}
+                      <div className={cn(
+                        "ml-6 flex items-center gap-2 p-2 border rounded-md transition-all duration-300",
+                        otherFieldState.enabled 
+                          ? "border-primary bg-primary/5" 
+                          : "opacity-50 bg-muted/30 border-muted"
+                      )}>
+                        <Label className={cn(
+                          "text-sm transition-colors duration-300",
+                          !otherFieldState.enabled && "text-muted-foreground"
+                        )}>
+                          Specify Entity Type:
+                        </Label>
+                        <Input
+                          value={formData.other_classification}
+                          onChange={(e) => setFormData({ ...formData, other_classification: e.target.value })}
+                          disabled={!otherFieldState.enabled}
+                          required={otherFieldState.required}
+                          placeholder="Enter entity type description"
+                          className={cn(
+                            "w-48 h-8 transition-all duration-300",
+                            otherFieldState.enabled 
+                              ? "border-foreground/30" 
+                              : "border-muted bg-muted/50 cursor-not-allowed"
+                          )}
+                        />
+                        {otherFieldState.required && !formData.other_classification && (
+                          <span className="text-xs text-destructive">Required</span>
                         )}
                       </div>
                     </RadioGroup>
@@ -719,8 +818,32 @@ export default function PortalTaxForms() {
                   TIN, later.
                 </p>
 
+                {/* TIN Requirement Notice */}
+                {tinRequirements.einRequired && (
+                  <div className="mb-4 p-3 bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800 rounded-md transition-all duration-300">
+                    <p className="text-sm text-amber-800 dark:text-amber-200 flex items-center gap-2">
+                      <AlertCircle className="h-4 w-4 flex-shrink-0" />
+                      <span><strong>Note:</strong> Corporations and partnerships must use an Employer Identification Number (EIN).</span>
+                    </p>
+                  </div>
+                )}
+
+                {tinRequirements.ssnPreferred && (
+                  <div className="mb-4 p-3 bg-blue-50 dark:bg-blue-950/30 border border-blue-200 dark:border-blue-800 rounded-md transition-all duration-300">
+                    <p className="text-sm text-blue-800 dark:text-blue-200 flex items-center gap-2">
+                      <AlertCircle className="h-4 w-4 flex-shrink-0" />
+                      <span><strong>Tip:</strong> Individuals/sole proprietors typically use their Social Security Number (SSN), but may also use an EIN if they have one.</span>
+                    </p>
+                  </div>
+                )}
+
                 <div className="flex flex-col md:flex-row gap-6">
-                  <div className="flex-1 border border-foreground/30 rounded-md p-4">
+                  {/* SSN Section */}
+                  <div className={cn(
+                    "flex-1 border rounded-md p-4 transition-all duration-300",
+                    tinRequirements.ssnPreferred && "border-primary ring-2 ring-primary/20",
+                    tinRequirements.einRequired && "opacity-50 border-muted"
+                  )}>
                     <div className="flex items-center gap-2 mb-3">
                       <input
                         type="radio"
@@ -728,11 +851,26 @@ export default function PortalTaxForms() {
                         name="tin_type"
                         checked={formData.tin_type === "ssn"}
                         onChange={() => setFormData({ ...formData, tin_type: "ssn" })}
-                        className="h-4 w-4"
+                        disabled={tinRequirements.einRequired}
+                        className={cn("h-4 w-4", tinRequirements.einRequired && "cursor-not-allowed")}
                       />
-                      <Label htmlFor="tin_ssn" className="font-semibold cursor-pointer">Social security number</Label>
+                      <Label htmlFor="tin_ssn" className={cn(
+                        "font-semibold transition-colors duration-300",
+                        tinRequirements.einRequired ? "cursor-not-allowed text-muted-foreground" : "cursor-pointer"
+                      )}>
+                        Social security number
+                      </Label>
+                      {tinRequirements.ssnPreferred && (
+                        <Badge variant="secondary" className="text-xs">Recommended</Badge>
+                      )}
+                      {tinRequirements.einRequired && (
+                        <Badge variant="outline" className="text-xs text-muted-foreground">Not available</Badge>
+                      )}
                     </div>
-                    <div className="flex items-center gap-1 font-mono text-lg">
+                    <div className={cn(
+                      "flex items-center gap-1 font-mono text-lg transition-opacity duration-300",
+                      tinRequirements.einRequired && "opacity-50"
+                    )}>
                       <div className="w-10 h-8 border border-foreground/40 rounded flex items-center justify-center bg-muted/50">
                         X
                       </div>
@@ -763,9 +901,14 @@ export default function PortalTaxForms() {
                         {personnel?.ssn_last_four?.[3] || "X"}
                       </div>
                     </div>
-                    {formData.tin_type === "ssn" && (
+                    {formData.tin_type === "ssn" && !tinRequirements.einRequired && (
                       <p className="text-xs text-muted-foreground mt-2">
                         Your SSN on file will be used. Contact your administrator to update.
+                      </p>
+                    )}
+                    {tinRequirements.einRequired && (
+                      <p className="text-xs text-amber-600 dark:text-amber-400 mt-2">
+                        SSN cannot be used for corporations or partnerships.
                       </p>
                     )}
                   </div>
@@ -774,7 +917,11 @@ export default function PortalTaxForms() {
                     or
                   </div>
 
-                  <div className="flex-1 border border-foreground/30 rounded-md p-4">
+                  {/* EIN Section */}
+                  <div className={cn(
+                    "flex-1 border rounded-md p-4 transition-all duration-300",
+                    tinRequirements.einRequired && "border-primary ring-2 ring-primary/20"
+                  )}>
                     <div className="flex items-center gap-2 mb-3">
                       <input
                         type="radio"
@@ -784,7 +931,12 @@ export default function PortalTaxForms() {
                         onChange={() => setFormData({ ...formData, tin_type: "ein" })}
                         className="h-4 w-4"
                       />
-                      <Label htmlFor="tin_ein" className="font-semibold cursor-pointer">Employer identification number</Label>
+                      <Label htmlFor="tin_ein" className="font-semibold cursor-pointer">
+                        Employer identification number
+                      </Label>
+                      {tinRequirements.einRequired && (
+                        <Badge variant="secondary" className="text-xs">Required</Badge>
+                      )}
                     </div>
                     {formData.tin_type === "ein" ? (
                       <div className="flex items-center gap-1">
@@ -798,6 +950,7 @@ export default function PortalTaxForms() {
                           className="w-14 h-8 text-center font-mono border-foreground/40"
                           maxLength={2}
                           placeholder="XX"
+                          required={tinRequirements.einRequired}
                         />
                         <span className="font-mono">-</span>
                         <Input
@@ -810,6 +963,7 @@ export default function PortalTaxForms() {
                           className="w-28 h-8 text-center font-mono border-foreground/40"
                           maxLength={7}
                           placeholder="XXXXXXX"
+                          required={tinRequirements.einRequired}
                         />
                       </div>
                     ) : (
@@ -843,6 +997,11 @@ export default function PortalTaxForms() {
                           
                         </div>
                       </div>
+                    )}
+                    {tinRequirements.einRequired && formData.tin_type === "ein" && formData.ein.length < 9 && (
+                      <p className="text-xs text-destructive mt-2">
+                        EIN is required for this entity type. Please enter a valid 9-digit EIN.
+                      </p>
                     )}
                   </div>
                 </div>
@@ -958,7 +1117,18 @@ export default function PortalTaxForms() {
               <div className="p-4 flex gap-3">
                 <Button
                   type="submit"
-                  disabled={submitW9.isPending || !formData.signature_data || !formData.federal_tax_classification}
+                  disabled={
+                    submitW9.isPending || 
+                    !formData.signature_data || 
+                    !formData.federal_tax_classification ||
+                    // LLC requires classification selection
+                    (formData.federal_tax_classification === "llc" && !formData.llc_tax_classification) ||
+                    // Other requires description
+                    (formData.federal_tax_classification === "other" && !formData.other_classification) ||
+                    // Corporations/partnerships require valid EIN
+                    (["c_corporation", "s_corporation", "partnership"].includes(formData.federal_tax_classification) && 
+                      (formData.tin_type !== "ein" || formData.ein.length < 9))
+                  }
                   className="min-w-32"
                 >
                   {submitW9.isPending ? "Submitting..." : "Submit W-9 Form"}
