@@ -74,47 +74,86 @@ export default function TeamTimesheet() {
     return DAYS.map((_, index) => addDays(selectedWeek, index));
   }, [selectedWeek]);
 
-  // Reset when project OR week changes
+  // Track previous project/week to detect actual changes
+  const [prevProject, setPrevProject] = useState("");
+  const [prevWeek, setPrevWeek] = useState<Date | null>(null);
+
+  // Full reset when project changes
   useEffect(() => {
-    if (selectedProject) {
+    if (selectedProject !== prevProject) {
+      setWeeklyHours(new Map());
+      setInitialized(false);
+      setPrevProject(selectedProject);
+    }
+  }, [selectedProject, prevProject]);
+
+  // Reset initialized flag when week changes (but preserve structure for re-fetch)
+  useEffect(() => {
+    if (prevWeek && selectedWeek.getTime() !== prevWeek.getTime()) {
       setInitialized(false);
     }
-  }, [selectedProject, selectedWeek]);
+    setPrevWeek(selectedWeek);
+  }, [selectedWeek, prevWeek]);
 
-  // Initialize personnel hours map with existing data
+  // Merge personnel into hours map - preserves existing entered hours
   useEffect(() => {
-    if (assignedPersonnel.length > 0 && !initialized && !loadingEntries) {
-      const newHoursMap = new Map<string, PersonnelWeeklyHours>();
-      
-      assignedPersonnel.forEach((assignment) => {
-        if (assignment.personnel) {
-          const personnelId = assignment.personnel.id;
-          
-          // Find existing entries for this personnel
-          const personnelEntries = existingEntries.filter(
-            e => e.personnel_id === personnelId
-          );
-          
-          // Build days object with existing hours pre-filled
-          const days: Record<DayKey, string> = { mon: "", tue: "", wed: "", thu: "", fri: "", sat: "", sun: "" };
-          
-          personnelEntries.forEach(entry => {
-            const dayIndex = getDayIndexFromDate(entry.entry_date);
-            if (dayIndex >= 0 && dayIndex < DAYS.length) {
-              days[DAYS[dayIndex]] = entry.hours.toString();
+    if (assignedPersonnel.length > 0 && !loadingEntries) {
+      setWeeklyHours(prevMap => {
+        const newMap = new Map(prevMap);
+        
+        assignedPersonnel.forEach((assignment) => {
+          if (assignment.personnel) {
+            const personnelId = assignment.personnel.id;
+            
+            // Only add if not already in the map (preserves user-entered hours)
+            if (!newMap.has(personnelId)) {
+              // Find existing entries for this personnel
+              const personnelEntries = existingEntries.filter(
+                e => e.personnel_id === personnelId
+              );
+              
+              // Build days object with existing hours pre-filled
+              const days: Record<DayKey, string> = { mon: "", tue: "", wed: "", thu: "", fri: "", sat: "", sun: "" };
+              
+              personnelEntries.forEach(entry => {
+                const dayIndex = getDayIndexFromDate(entry.entry_date);
+                if (dayIndex >= 0 && dayIndex < DAYS.length) {
+                  days[DAYS[dayIndex]] = entry.hours.toString();
+                }
+              });
+              
+              newMap.set(personnelId, {
+                personnelId,
+                selected: true, // Auto-select newly assigned personnel
+                hourlyRate: assignment.personnel.hourly_rate || 0,
+                days,
+              });
+            } else if (!initialized) {
+              // If re-initializing for a new week, update existing entries from DB
+              const personnelEntries = existingEntries.filter(
+                e => e.personnel_id === personnelId
+              );
+              
+              const days: Record<DayKey, string> = { mon: "", tue: "", wed: "", thu: "", fri: "", sat: "", sun: "" };
+              personnelEntries.forEach(entry => {
+                const dayIndex = getDayIndexFromDate(entry.entry_date);
+                if (dayIndex >= 0 && dayIndex < DAYS.length) {
+                  days[DAYS[dayIndex]] = entry.hours.toString();
+                }
+              });
+              
+              const existing = newMap.get(personnelId)!;
+              newMap.set(personnelId, {
+                ...existing,
+                days,
+              });
             }
-          });
-          
-          newHoursMap.set(personnelId, {
-            personnelId,
-            selected: true,
-            hourlyRate: assignment.personnel.hourly_rate || 0,
-            days,
-          });
-        }
+          }
+        });
+        
+        return newMap;
       });
       
-      setWeeklyHours(newHoursMap);
       setInitialized(true);
     }
   }, [assignedPersonnel, existingEntries, initialized, loadingEntries]);
