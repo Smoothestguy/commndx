@@ -840,10 +840,20 @@ export default function PortalTaxForms() {
                 <div className="flex flex-col md:flex-row gap-6">
                   {/* SSN Section */}
                   <div className={cn(
-                    "flex-1 border rounded-md p-4 transition-all duration-300",
-                    tinRequirements.ssnPreferred && "border-primary ring-2 ring-primary/20",
-                    tinRequirements.einRequired && "opacity-50 border-muted"
+                    "flex-1 border rounded-md p-4 transition-all duration-300 relative",
+                    tinRequirements.ssnPreferred && "border-primary ring-2 ring-primary/20 bg-primary/5",
+                    tinRequirements.einRequired && "opacity-50 bg-muted/30 border-muted cursor-not-allowed",
+                    !tinRequirements.ssnPreferred && !tinRequirements.einRequired && "border-foreground/20"
                   )}>
+                    {/* Blocked overlay indicator */}
+                    {tinRequirements.einRequired && (
+                      <div className="absolute top-2 right-2">
+                        <Badge variant="outline" className="text-xs bg-muted text-muted-foreground border-muted">
+                          N/A
+                        </Badge>
+                      </div>
+                    )}
+                    
                     <div className="flex items-center gap-2 mb-3">
                       <input
                         type="radio"
@@ -863,13 +873,10 @@ export default function PortalTaxForms() {
                       {tinRequirements.ssnPreferred && (
                         <Badge variant="secondary" className="text-xs">Recommended</Badge>
                       )}
-                      {tinRequirements.einRequired && (
-                        <Badge variant="outline" className="text-xs text-muted-foreground">Not available</Badge>
-                      )}
                     </div>
                     <div className={cn(
                       "flex items-center gap-1 font-mono text-lg transition-opacity duration-300",
-                      tinRequirements.einRequired && "opacity-50"
+                      tinRequirements.einRequired && "opacity-30 pointer-events-none"
                     )}>
                       <div className="w-10 h-8 border border-foreground/40 rounded flex items-center justify-center bg-muted/50">
                         X
@@ -901,16 +908,16 @@ export default function PortalTaxForms() {
                         {personnel?.ssn_last_four?.[3] || "X"}
                       </div>
                     </div>
-                    {formData.tin_type === "ssn" && !tinRequirements.einRequired && (
-                      <p className="text-xs text-muted-foreground mt-2">
-                        Your SSN on file will be used. Contact your administrator to update.
-                      </p>
-                    )}
-                    {tinRequirements.einRequired && (
-                      <p className="text-xs text-amber-600 dark:text-amber-400 mt-2">
-                        SSN cannot be used for corporations or partnerships.
-                      </p>
-                    )}
+                    <p className={cn(
+                      "text-xs mt-2",
+                      tinRequirements.einRequired ? "text-muted-foreground" : "text-muted-foreground"
+                    )}>
+                      {tinRequirements.einRequired 
+                        ? "SSN not applicable for this classification"
+                        : formData.tin_type === "ssn" 
+                          ? "Your SSN on file will be used. Contact your administrator to update."
+                          : "Select if using your Social Security Number"}
+                    </p>
                   </div>
 
                   <div className="text-center self-center font-bold text-muted-foreground">
@@ -920,7 +927,8 @@ export default function PortalTaxForms() {
                   {/* EIN Section */}
                   <div className={cn(
                     "flex-1 border rounded-md p-4 transition-all duration-300",
-                    tinRequirements.einRequired && "border-primary ring-2 ring-primary/20"
+                    tinRequirements.einRequired && "border-primary ring-2 ring-primary/20 bg-primary/5",
+                    !tinRequirements.einRequired && "border-foreground/20"
                   )}>
                     <div className="flex items-center gap-2 mb-3">
                       <input
