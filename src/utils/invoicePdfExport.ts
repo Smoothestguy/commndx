@@ -172,15 +172,36 @@ export const generateInvoicePDF = async (
     // Row number
     doc.text((index + 1).toString(), colNum, rowY);
     
-    // Product/Service name
-    const productName = (item as any).product_name || "-";
+    // Product/Service name - parse from description if not set
+    let productName = (item as any).product_name;
+    let displayDescription = item.description;
+
+    if (!productName && item.description) {
+      // Parse patterns like "Job Order JO-XXXX: description" or "Change Order CO-X: description"
+      const joMatch = item.description.match(/^(Job Order JO-\d+):\s*(.*)$/i);
+      const coMatch = item.description.match(/^(Change Order CO-\d+):\s*(.*)$/i);
+      const tmMatch = item.description.match(/^(T&M Ticket TM-\d+):\s*(.*)$/i);
+      
+      if (joMatch) {
+        productName = joMatch[1];
+        displayDescription = joMatch[2] || 'Remaining balance';
+      } else if (coMatch) {
+        productName = coMatch[1];
+        displayDescription = coMatch[2] || '';
+      } else if (tmMatch) {
+        productName = tmMatch[1];
+        displayDescription = tmMatch[2] || 'Time & Materials';
+      }
+    }
+    
+    productName = productName || "-";
     const productMaxWidth = 40;
     const productLines = doc.splitTextToSize(productName, productMaxWidth);
     doc.text(productLines[0] || "-", colProduct, rowY);
     
     // Description (truncated if too long)
     const descMaxWidth = colQty - colDescription - 5;
-    const descLines = doc.splitTextToSize(item.description, descMaxWidth);
+    const descLines = doc.splitTextToSize(displayDescription, descMaxWidth);
     doc.text(descLines[0] || "", colDescription, rowY);
     if (descLines.length > 1) {
       doc.setFontSize(7);
