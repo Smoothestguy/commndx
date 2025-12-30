@@ -233,7 +233,7 @@ export function TimeEntriesDataTable({
         const overtime = Number(item.overtime_hours || 0);
         return (
           <div className="flex items-center gap-1.5">
-            <span>{Number(item.hours).toFixed(1)}h</span>
+            <span>{Number(item.hours).toFixed(2)}h</span>
             {overtime > 0 && (
               <Badge variant="outline" className="text-xs bg-orange-500/10 text-orange-500 border-orange-500/20">
                 +{overtime.toFixed(1)} OT
@@ -410,7 +410,7 @@ export function TimeEntriesDataTable({
                   </div>
                   <div className="bg-muted/30 rounded-lg p-2">
                     <p className="text-xs text-muted-foreground">Hours</p>
-                    <p className="font-medium text-sm">{Number(entry.hours).toFixed(1)}h</p>
+                    <p className="font-medium text-sm">{Number(entry.hours).toFixed(2)}h</p>
                   </div>
                   <div className="bg-muted/30 rounded-lg p-2">
                     <p className="text-xs text-muted-foreground">Cost</p>

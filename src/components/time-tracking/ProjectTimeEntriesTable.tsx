@@ -644,7 +644,7 @@ export function ProjectTimeEntriesTable({
                                       </p>
                                     )}
                                     <div className="flex items-center gap-3 text-sm">
-                                      <span className="font-medium">{Number(entry.hours).toFixed(1)}h</span>
+                                      <span className="font-medium">{Number(entry.hours).toFixed(2)}h</span>
                                       <span className="text-muted-foreground">
                                         ${(Number(entry.hours) * getHourlyRate(entry)).toFixed(2)}
                                       </span>
@@ -968,7 +968,7 @@ export function ProjectTimeEntriesTable({
                                 </TableCell>
                                 <TableCell></TableCell>
                                 <TableCell className="text-right">
-                                  {Number(entry.hours).toFixed(1)}h
+                                  {Number(entry.hours).toFixed(2)}h
                                 </TableCell>
                                 <TableCell className="text-right text-muted-foreground">
                                   ${(Number(entry.hours) * getHourlyRate(entry)).toFixed(2)}

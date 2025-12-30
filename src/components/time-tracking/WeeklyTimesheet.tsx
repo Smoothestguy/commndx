@@ -801,7 +801,7 @@ export function WeeklyTimesheet({
                           </div>
                           <div className="flex items-center gap-2">
                             <span className="font-semibold">
-                              {Number(entry.hours).toFixed(1)}h
+                              {Number(entry.hours).toFixed(2)}h
                             </span>
                             {entry.is_locked || isWeekClosed ? (
                               <Lock className="h-4 w-4 text-muted-foreground" />

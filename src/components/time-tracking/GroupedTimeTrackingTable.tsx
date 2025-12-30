@@ -564,7 +564,7 @@ export function GroupedTimeTrackingTable({
                               {format(new Date(entry.entry_date), "MMM dd")}
                             </span>
                             <div className="flex items-center gap-2">
-                              <span className="text-sm">{Number(entry.hours).toFixed(1)}h</span>
+                              <span className="text-sm">{Number(entry.hours).toFixed(2)}h</span>
                               <span className="text-sm text-muted-foreground">${entryCost.toFixed(0)}</span>
                             </div>
                           </div>
