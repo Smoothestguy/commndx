@@ -29,6 +29,8 @@ interface AddProjectInvoiceParams {
   job_order_ids: string[];
   change_order_ids: string[];
   tm_ticket_ids: string[];
+  notes?: string;
+  customer_po?: string;
 }
 
 export const useAddProjectInvoice = () => {
@@ -41,6 +43,8 @@ export const useAddProjectInvoice = () => {
         job_order_ids,
         change_order_ids,
         tm_ticket_ids,
+        notes,
+        customer_po,
         ...invoiceData
       } = params;
 
@@ -59,6 +63,8 @@ export const useAddProjectInvoice = () => {
           change_order_id: firstChangeOrderId,
           tm_ticket_id: firstTMTicketId,
           remaining_amount: invoiceData.total,
+          notes: notes || null,
+          customer_po: customer_po || null,
         })
         .select()
         .single();
