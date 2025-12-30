@@ -431,6 +431,50 @@ export const useMarkInvoicePaid = () => {
   });
 };
 
+// Helper function to update invoice paid amounts
+const updateInvoicePaidAmounts = async (invoiceId: string) => {
+  // Get the invoice total
+  const { data: invoice, error: invoiceError } = await supabase
+    .from("invoices")
+    .select("total")
+    .eq("id", invoiceId)
+    .single();
+
+  if (invoiceError) throw invoiceError;
+
+  // Get all payments for this invoice
+  const { data: payments, error: paymentsError } = await supabase
+    .from("invoice_payments")
+    .select("amount")
+    .eq("invoice_id", invoiceId);
+
+  if (paymentsError) throw paymentsError;
+
+  const totalPaidAmount = payments?.reduce((sum, p) => sum + Number(p.amount), 0) || 0;
+  const remainingAmount = Number(invoice.total) - totalPaidAmount;
+
+  // Determine the new status
+  let newStatus: "draft" | "sent" | "partially_paid" | "paid" | "overdue" = "sent";
+  if (totalPaidAmount >= Number(invoice.total)) {
+    newStatus = "paid";
+  } else if (totalPaidAmount > 0) {
+    newStatus = "partially_paid";
+  }
+
+  // Update the invoice
+  const { error: updateError } = await supabase
+    .from("invoices")
+    .update({
+      paid_amount: totalPaidAmount,
+      remaining_amount: remainingAmount,
+      status: newStatus,
+      paid_date: newStatus === "paid" ? new Date().toISOString().split("T")[0] : null,
+    })
+    .eq("id", invoiceId);
+
+  if (updateError) throw updateError;
+};
+
 // New payment hooks
 export const useAddInvoicePayment = () => {
   const queryClient = useQueryClient();
@@ -451,6 +495,9 @@ export const useAddInvoicePayment = () => {
         .single();
 
       if (error) throw error;
+
+      // Update invoice paid amounts
+      await updateInvoicePaidAmounts(payment.invoice_id);
 
       // Auto-sync to QuickBooks if connected
       try {
@@ -473,6 +520,7 @@ export const useAddInvoicePayment = () => {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["invoices"] });
       queryClient.invalidateQueries({ queryKey: ["quickbooks-sync-logs"] });
+      queryClient.invalidateQueries({ queryKey: ["projects"] });
       toast({
         title: "Success",
         description: "Payment recorded successfully",
@@ -513,10 +561,14 @@ export const useUpdateInvoicePayment = () => {
         .eq("id", paymentId);
 
       if (error) throw error;
+
+      // Update invoice paid amounts
+      await updateInvoicePaidAmounts(invoiceId);
     },
     onSuccess: (_, { invoiceId }) => {
       queryClient.invalidateQueries({ queryKey: ["invoices"] });
       queryClient.invalidateQueries({ queryKey: ["invoices", invoiceId] });
+      queryClient.invalidateQueries({ queryKey: ["projects"] });
       toast({
         title: "Success",
         description: "Payment updated successfully",
@@ -543,9 +595,13 @@ export const useDeleteInvoicePayment = () => {
         .eq("id", paymentId);
 
       if (error) throw error;
+
+      // Update invoice paid amounts
+      await updateInvoicePaidAmounts(invoiceId);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["invoices"] });
+      queryClient.invalidateQueries({ queryKey: ["projects"] });
       toast({
         title: "Success",
         description: "Payment deleted successfully",
