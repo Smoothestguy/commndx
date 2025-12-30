@@ -2120,6 +2120,7 @@ export type Database = {
           subtotal: number
           tax_amount: number
           tax_rate: number
+          tm_ticket_id: string | null
           total: number
           updated_at: string
         }
@@ -2145,6 +2146,7 @@ export type Database = {
           subtotal: number
           tax_amount: number
           tax_rate: number
+          tm_ticket_id?: string | null
           total: number
           updated_at?: string
         }
@@ -2170,6 +2172,7 @@ export type Database = {
           subtotal?: number
           tax_amount?: number
           tax_rate?: number
+          tm_ticket_id?: string | null
           total?: number
           updated_at?: string
         }
@@ -2207,6 +2210,13 @@ export type Database = {
             columns: ["project_id"]
             isOneToOne: false
             referencedRelation: "projects"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "invoices_tm_ticket_id_fkey"
+            columns: ["tm_ticket_id"]
+            isOneToOne: false
+            referencedRelation: "tm_tickets"
             referencedColumns: ["id"]
           },
         ]

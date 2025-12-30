@@ -38,6 +38,7 @@ import { ProjectRateBracketsSection } from "@/components/project-hub/ProjectRate
 import { ProjectActivityTimeline } from "@/components/project-hub/ProjectActivityTimeline";
 import { AddTMTicketDialog } from "@/components/tm-tickets/AddTMTicketDialog";
 import { CreateJobOrderDialog } from "@/components/job-orders/CreateJobOrderDialog";
+import { CreateProjectInvoiceDialog } from "@/components/invoices/CreateProjectInvoiceDialog";
 
 const ProjectDetail = () => {
   const { id } = useParams<{ id: string }>();
@@ -71,6 +72,7 @@ const ProjectDetail = () => {
   });
   const [isTMTicketDialogOpen, setIsTMTicketDialogOpen] = useState(false);
   const [isJobOrderDialogOpen, setIsJobOrderDialogOpen] = useState(false);
+  const [isCreateInvoiceDialogOpen, setIsCreateInvoiceDialogOpen] = useState(false);
 
   const project = projects?.find((p) => p.id === id);
   const customer = customers?.find((c) => c.id === project?.customer_id);
@@ -671,12 +673,18 @@ const ProjectDetail = () => {
       </div>
 
       {/* Invoices */}
-      <div className="space-y-4">
-        <div className="flex items-center gap-2">
-          <Receipt className="h-5 w-5 text-primary" />
-          <h3 className="font-heading text-lg font-semibold">
-            Invoices ({projectInvoices.length})
-          </h3>
+      <div className="space-y-4 mb-8">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <Receipt className="h-5 w-5 text-primary" />
+            <h3 className="font-heading text-lg font-semibold">
+              Invoices ({projectInvoices.length})
+            </h3>
+          </div>
+          <Button size="sm" onClick={() => setIsCreateInvoiceDialogOpen(true)}>
+            <Plus className="h-4 w-4 mr-1" />
+            Create Invoice
+          </Button>
         </div>
         {projectInvoices.length === 0 ? (
           <Card className="glass border-border">
@@ -856,6 +864,18 @@ const ProjectDetail = () => {
         <CreateJobOrderDialog
           isOpen={isJobOrderDialogOpen}
           onClose={() => setIsJobOrderDialogOpen(false)}
+          projectId={project.id}
+          projectName={project.name}
+          customerId={customer.id}
+          customerName={customer.name}
+        />
+      )}
+
+      {/* Create Project Invoice Dialog */}
+      {project && customer && (
+        <CreateProjectInvoiceDialog
+          open={isCreateInvoiceDialogOpen}
+          onOpenChange={setIsCreateInvoiceDialogOpen}
           projectId={project.id}
           projectName={project.name}
           customerId={customer.id}
