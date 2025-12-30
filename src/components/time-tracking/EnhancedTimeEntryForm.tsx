@@ -26,6 +26,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Input } from "@/components/ui/input";
+import { TimeDecimalInput } from "@/components/ui/time-decimal-input";
 import { Textarea } from "@/components/ui/textarea";
 import { Switch } from "@/components/ui/switch";
 import { Button } from "@/components/ui/button";
@@ -871,11 +872,12 @@ export function EnhancedTimeEntryForm({
                     <FormItem>
                       <FormLabel>Hours</FormLabel>
                       <FormControl>
-                        <Input
-                          type="number"
-                          step="0.25"
-                          placeholder="e.g., 1.5, 2.25"
-                          {...field}
+                        <TimeDecimalInput
+                          value={field.value || 0}
+                          onValueChange={field.onChange}
+                          showIcon={true}
+                          showPreview={true}
+                          placeholder="e.g., 8:20 or 8.33"
                         />
                       </FormControl>
                       <FormMessage />
