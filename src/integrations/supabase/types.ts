@@ -2103,6 +2103,7 @@ export type Database = {
           created_at: string
           customer_id: string
           customer_name: string
+          customer_po: string | null
           deleted_at: string | null
           deleted_by: string | null
           due_date: string
@@ -2110,6 +2111,7 @@ export type Database = {
           id: string
           job_order_id: string | null
           job_order_number: string | null
+          notes: string | null
           number: string
           paid_amount: number
           paid_date: string | null
@@ -2129,6 +2131,7 @@ export type Database = {
           created_at?: string
           customer_id: string
           customer_name: string
+          customer_po?: string | null
           deleted_at?: string | null
           deleted_by?: string | null
           due_date: string
@@ -2136,6 +2139,7 @@ export type Database = {
           id?: string
           job_order_id?: string | null
           job_order_number?: string | null
+          notes?: string | null
           number: string
           paid_amount?: number
           paid_date?: string | null
@@ -2155,6 +2159,7 @@ export type Database = {
           created_at?: string
           customer_id?: string
           customer_name?: string
+          customer_po?: string | null
           deleted_at?: string | null
           deleted_by?: string | null
           due_date?: string
@@ -2162,6 +2167,7 @@ export type Database = {
           id?: string
           job_order_id?: string | null
           job_order_number?: string | null
+          notes?: string | null
           number?: string
           paid_amount?: number
           paid_date?: string | null

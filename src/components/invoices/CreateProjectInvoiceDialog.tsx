@@ -16,7 +16,9 @@ import { Badge } from "@/components/ui/badge";
 import { Calendar } from "@/components/ui/calendar";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { CalendarIcon, FileText, ClipboardList, Receipt, Loader2, List, FileStack } from "lucide-react";
+import { Textarea } from "@/components/ui/textarea";
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
+import { CalendarIcon, FileText, ClipboardList, Receipt, Loader2, List, FileStack, ChevronDown, Settings2 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useProjectBillableItems, BillableItem } from "@/integrations/supabase/hooks/useProjectBillableItems";
 import { useAddProjectInvoice } from "@/integrations/supabase/hooks/useProjectInvoice";
@@ -24,6 +26,9 @@ import { useJobOrder } from "@/integrations/supabase/hooks/useJobOrders";
 import { useSelectedBillableItemsTotals } from "@/components/invoices/BillableItemsSelector";
 import { getNextInvoiceNumber } from "@/utils/invoiceNumberGenerator";
 import { toast } from "@/hooks/use-toast";
+import { PendingAttachmentsUpload, PendingFile } from "@/components/shared/PendingAttachmentsUpload";
+import { finalizeAttachments, cleanupPendingAttachments } from "@/utils/attachmentUtils";
+import { useAuth } from "@/contexts/AuthContext";
 import {
   Table,
   TableBody,
@@ -32,6 +37,15 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+
+const PAYMENT_TERMS = [
+  { value: "due_on_receipt", label: "Due on Receipt", days: 0 },
+  { value: "net_15", label: "Net 15", days: 15 },
+  { value: "net_30", label: "Net 30", days: 30 },
+  { value: "net_45", label: "Net 45", days: 45 },
+  { value: "net_60", label: "Net 60", days: 60 },
+  { value: "custom", label: "Custom Date", days: null },
+];
 
 interface CreateProjectInvoiceDialogProps {
   open: boolean;
@@ -52,6 +66,7 @@ export const CreateProjectInvoiceDialog = ({
 }: CreateProjectInvoiceDialogProps) => {
   const { data: billableItems, isLoading } = useProjectBillableItems(projectId);
   const addInvoice = useAddProjectInvoice();
+  const { user } = useAuth();
 
   const [selectedItems, setSelectedItems] = useState<Set<string>>(new Set());
   const [invoiceNumber, setInvoiceNumber] = useState("");
@@ -61,8 +76,23 @@ export const CreateProjectInvoiceDialog = ({
   const [isLoadingNumber, setIsLoadingNumber] = useState(false);
   const [numberSource, setNumberSource] = useState<'quickbooks' | 'local'>('local');
   const [jobOrderBillingMode, setJobOrderBillingMode] = useState<"summary" | "detailed">("detailed");
+  
+  // Additional options state
+  const [paymentTerms, setPaymentTerms] = useState("net_30");
+  const [customerPo, setCustomerPo] = useState("");
+  const [notes, setNotes] = useState("");
+  const [pendingAttachments, setPendingAttachments] = useState<PendingFile[]>([]);
+  const [additionalOptionsOpen, setAdditionalOptionsOpen] = useState(false);
 
-  // Generate invoice number on open - use QuickBooks if connected
+  // Update due date when payment terms change
+  useEffect(() => {
+    const term = PAYMENT_TERMS.find(t => t.value === paymentTerms);
+    if (term && term.days !== null) {
+      setDueDate(addDays(new Date(), term.days));
+    }
+  }, [paymentTerms]);
+
+  // Generate invoice number and reset state on open
   useEffect(() => {
     if (open) {
       const fetchInvoiceNumber = async () => {
@@ -81,6 +111,17 @@ export const CreateProjectInvoiceDialog = ({
       };
       fetchInvoiceNumber();
       setSelectedItems(new Set());
+      setPaymentTerms("net_30");
+      setCustomerPo("");
+      setNotes("");
+      setPendingAttachments([]);
+      setAdditionalOptionsOpen(false);
+    } else {
+      // Cleanup pending attachments when dialog closes
+      if (pendingAttachments.length > 0) {
+        cleanupPendingAttachments(pendingAttachments);
+        setPendingAttachments([]);
+      }
     }
   }, [open]);
 
@@ -156,7 +197,7 @@ export const CreateProjectInvoiceDialog = ({
     }));
 
     try {
-      await addInvoice.mutateAsync({
+      const result = await addInvoice.mutateAsync({
         number: invoiceNumber,
         project_id: projectId,
         project_name: projectName,
@@ -172,7 +213,15 @@ export const CreateProjectInvoiceDialog = ({
         job_order_ids: billableItemsTotals.jobOrderIds,
         change_order_ids: billableItemsTotals.changeOrderIds,
         tm_ticket_ids: billableItemsTotals.tmTicketIds,
+        notes: notes || undefined,
+        customer_po: customerPo || undefined,
       });
+
+      // Finalize attachments if any
+      if (pendingAttachments.length > 0 && result?.id && user?.id) {
+        await finalizeAttachments(pendingAttachments, result.id, 'invoice', user.id);
+        setPendingAttachments([]);
+      }
 
       onOpenChange(false);
     } catch (error) {
@@ -437,6 +486,21 @@ export const CreateProjectInvoiceDialog = ({
               </div>
             </div>
             <div className="space-y-2">
+              <Label>Payment Terms</Label>
+              <Select value={paymentTerms} onValueChange={setPaymentTerms}>
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {PAYMENT_TERMS.map((term) => (
+                    <SelectItem key={term.value} value={term.value}>
+                      {term.label}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-2">
               <Label>Due Date</Label>
               <Popover>
                 <PopoverTrigger asChild>
@@ -446,6 +510,7 @@ export const CreateProjectInvoiceDialog = ({
                       "w-full justify-start text-left font-normal",
                       !dueDate && "text-muted-foreground"
                     )}
+                    disabled={paymentTerms !== "custom"}
                   >
                     <CalendarIcon className="mr-2 h-4 w-4" />
                     {dueDate ? format(dueDate, "PPP") : "Pick a date"}
@@ -482,7 +547,48 @@ export const CreateProjectInvoiceDialog = ({
                 </SelectContent>
               </Select>
             </div>
+            <div className="space-y-2">
+              <Label>Customer PO #</Label>
+              <Input
+                placeholder="Optional"
+                value={customerPo}
+                onChange={(e) => setCustomerPo(e.target.value)}
+              />
+            </div>
           </div>
+
+          {/* Additional Options */}
+          <Collapsible open={additionalOptionsOpen} onOpenChange={setAdditionalOptionsOpen}>
+            <CollapsibleTrigger asChild>
+              <Button variant="ghost" size="sm" className="w-full justify-between">
+                <span className="flex items-center gap-2">
+                  <Settings2 className="h-4 w-4" />
+                  Additional Options
+                </span>
+                <ChevronDown className={cn("h-4 w-4 transition-transform", additionalOptionsOpen && "rotate-180")} />
+              </Button>
+            </CollapsibleTrigger>
+            <CollapsibleContent className="space-y-4 pt-4">
+              <div className="space-y-2">
+                <Label>Notes / Memo</Label>
+                <Textarea
+                  placeholder="Add notes that will appear on the invoice..."
+                  value={notes}
+                  onChange={(e) => setNotes(e.target.value)}
+                  rows={3}
+                />
+              </div>
+              <div className="space-y-2">
+                <Label>Attachments</Label>
+                <PendingAttachmentsUpload
+                  entityType="invoice"
+                  pendingFiles={pendingAttachments}
+                  onFilesChange={setPendingAttachments}
+                  compact
+                />
+              </div>
+            </CollapsibleContent>
+          </Collapsible>
         </div>
 
         <DialogFooter>
