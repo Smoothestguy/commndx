@@ -649,6 +649,42 @@ export function InvoiceForm({ onSubmit, initialData, jobOrderId }: InvoiceFormPr
         </Card>
       )}
 
+      {/* Project Details - show when job order with project info is selected */}
+      {invoiceType === "job_order" && selectedJobOrder && (selectedJobOrder.project_description || selectedJobOrder.project_address || selectedJobOrder.project_poc_name) && (
+        <Card className="p-4 bg-muted/50">
+          <h4 className="font-medium mb-3 text-sm">Project Details</h4>
+          <div className="space-y-2">
+            {selectedJobOrder.project_description && (
+              <div className="text-sm">
+                <span className="text-muted-foreground">Scope: </span>
+                <span>{selectedJobOrder.project_description}</span>
+              </div>
+            )}
+            {selectedJobOrder.project_address && (
+              <div className="text-sm">
+                <span className="text-muted-foreground">Jobsite: </span>
+                <span>
+                  {selectedJobOrder.project_address}
+                  {selectedJobOrder.project_city && `, ${selectedJobOrder.project_city}`}
+                  {selectedJobOrder.project_state && `, ${selectedJobOrder.project_state}`}
+                  {selectedJobOrder.project_zip && ` ${selectedJobOrder.project_zip}`}
+                </span>
+              </div>
+            )}
+            {selectedJobOrder.project_poc_name && (
+              <div className="text-sm">
+                <span className="text-muted-foreground">Contact: </span>
+                <span>
+                  {selectedJobOrder.project_poc_name}
+                  {selectedJobOrder.project_poc_phone && ` • ${selectedJobOrder.project_poc_phone}`}
+                  {selectedJobOrder.project_poc_email && ` • ${selectedJobOrder.project_poc_email}`}
+                </span>
+              </div>
+            )}
+          </div>
+        </Card>
+      )}
+
 
       {exceedsBalance && (
         <Alert variant="destructive">

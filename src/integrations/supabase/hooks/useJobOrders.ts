@@ -38,6 +38,15 @@ export interface JobOrder {
 
 export interface JobOrderWithLineItems extends JobOrder {
   line_items: JobOrderLineItem[];
+  // Project details
+  project_description?: string | null;
+  project_address?: string | null;
+  project_city?: string | null;
+  project_state?: string | null;
+  project_zip?: string | null;
+  project_poc_name?: string | null;
+  project_poc_phone?: string | null;
+  project_poc_email?: string | null;
 }
 
 export const useJobOrders = () => {
@@ -59,9 +68,22 @@ export const useJobOrder = (id: string) => {
   return useQuery({
     queryKey: ["job_orders", id],
     queryFn: async () => {
+      // Fetch job order with project details
       const { data: jobOrder, error: jobOrderError } = await supabase
         .from("job_orders")
-        .select("*")
+        .select(`
+          *,
+          projects (
+            description,
+            address,
+            city,
+            state,
+            zip,
+            poc_name,
+            poc_phone,
+            poc_email
+          )
+        `)
         .eq("id", id)
         .single();
 
@@ -74,11 +96,23 @@ export const useJobOrder = (id: string) => {
 
       if (lineItemsError) throw lineItemsError;
 
+      // Flatten project data into the job order object
+      const project = jobOrder.projects as any;
+      
       return {
         ...jobOrder,
         line_items: lineItems,
+        project_description: project?.description || null,
+        project_address: project?.address || null,
+        project_city: project?.city || null,
+        project_state: project?.state || null,
+        project_zip: project?.zip || null,
+        project_poc_name: project?.poc_name || null,
+        project_poc_phone: project?.poc_phone || null,
+        project_poc_email: project?.poc_email || null,
       } as JobOrderWithLineItems;
     },
+    enabled: !!id,
   });
 };
 
