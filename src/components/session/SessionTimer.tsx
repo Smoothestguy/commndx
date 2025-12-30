@@ -1,6 +1,7 @@
 import { useSessionAccess } from "@/hooks/useSessionAccess";
 import { useSessionTracking } from "@/hooks/useSessionTracking";
 import { useTodaySessions } from "@/hooks/useTodaySessions";
+import { useUserDisplayPreferences } from "@/hooks/useUserDisplayPreferences";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import {
@@ -31,6 +32,8 @@ export function SessionTimer() {
     todayEarnings,
     sessionCount,
   } = useTodaySessions(hasAccess, !isChecking);
+
+  const { showSessionEarnings } = useUserDisplayPreferences();
 
   // Only render for users with access
   if (isChecking || !hasAccess || isLoading) {
@@ -99,22 +102,24 @@ export function SessionTimer() {
         </TooltipContent>
       </Tooltip>
 
-      <Tooltip>
-        <TooltipTrigger asChild>
-          <div className="hidden sm:flex items-center gap-1.5 px-2 py-1 rounded-md bg-green-500/10 border border-green-500/20">
-            <DollarSign className="h-4 w-4 text-green-500" />
-            <span className="font-mono text-sm text-green-600 dark:text-green-400 font-medium">
-              {formattedTodayEarnings}
-            </span>
-          </div>
-        </TooltipTrigger>
-        <TooltipContent>
-          <div className="text-xs space-y-1">
-            <p>Today's earnings</p>
-            <p className="text-muted-foreground">Rate: ${hourlyRate}/hour</p>
-          </div>
-        </TooltipContent>
-      </Tooltip>
+      {showSessionEarnings && (
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <div className="hidden sm:flex items-center gap-1.5 px-2 py-1 rounded-md bg-green-500/10 border border-green-500/20">
+              <DollarSign className="h-4 w-4 text-green-500" />
+              <span className="font-mono text-sm text-green-600 dark:text-green-400 font-medium">
+                {formattedTodayEarnings}
+              </span>
+            </div>
+          </TooltipTrigger>
+          <TooltipContent>
+            <div className="text-xs space-y-1">
+              <p>Today's earnings</p>
+              <p className="text-muted-foreground">Rate: ${hourlyRate}/hour</p>
+            </div>
+          </TooltipContent>
+        </Tooltip>
+      )}
 
       <Tooltip>
         <TooltipTrigger asChild>

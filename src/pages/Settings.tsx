@@ -17,6 +17,8 @@ import { usePermissionCheck } from "@/hooks/usePermissionCheck";
 import { Badge } from "@/components/ui/badge";
 import { CompanySettingsForm } from "@/components/settings/CompanySettingsForm";
 import { useQuickBooksConfig } from "@/integrations/supabase/hooks/useQuickBooks";
+import { useUserDisplayPreferences } from "@/hooks/useUserDisplayPreferences";
+import { useSessionAccess } from "@/hooks/useSessionAccess";
 
 export default function Settings() {
   const { user, signOut } = useAuth();
@@ -25,6 +27,8 @@ export default function Settings() {
   const { role, loading: roleLoading } = useUserRole();
   const { canView: hasUserMgmtPermission } = usePermissionCheck("user_management");
   const { data: qbConfig } = useQuickBooksConfig();
+  const { hasAccess: hasSessionAccess } = useSessionAccess();
+  const { showSessionEarnings, updateShowSessionEarnings, isUpdating: isUpdatingPrefs } = useUserDisplayPreferences();
   const [isChangingPassword, setIsChangingPassword] = useState(false);
   const [newPassword, setNewPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
@@ -211,7 +215,7 @@ export default function Settings() {
             <CardTitle>Preferences</CardTitle>
             <CardDescription>Customize your experience</CardDescription>
           </CardHeader>
-          <CardContent>
+          <CardContent className="space-y-4">
             <div className="flex items-center justify-between">
               <div className="space-y-0.5">
                 <Label>Dark Mode</Label>
@@ -224,6 +228,22 @@ export default function Settings() {
                 onCheckedChange={(checked) => setTheme(checked ? "dark" : "light")}
               />
             </div>
+            
+            {hasSessionAccess && (
+              <div className="flex items-center justify-between">
+                <div className="space-y-0.5">
+                  <Label>Show Session Earnings</Label>
+                  <p className="text-sm text-muted-foreground">
+                    Display earnings in the session timer
+                  </p>
+                </div>
+                <Switch
+                  checked={showSessionEarnings}
+                  onCheckedChange={updateShowSessionEarnings}
+                  disabled={isUpdatingPrefs}
+                />
+              </div>
+            )}
           </CardContent>
         </Card>
 
