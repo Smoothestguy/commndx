@@ -15,6 +15,9 @@ import { InvoiceEmptyState } from "@/components/invoices/InvoiceEmptyState";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { useQuickBooksConfig } from "@/integrations/supabase/hooks/useQuickBooks";
 import { Invoice } from "@/integrations/supabase/hooks/useInvoices";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { InvoiceFilters } from "@/components/invoices/InvoiceFilters";
+import { InvoiceBalanceView } from "@/components/invoices/InvoiceBalanceView";
 
 const Invoices = () => {
   const navigate = useNavigate();
@@ -24,7 +27,8 @@ const Invoices = () => {
   const { data: qbConfig } = useQuickBooksConfig();
   
   const [search, setSearch] = useState("");
-  const [statusFilter, setStatusFilter] = useState("all");
+  const [statusFilter, setStatusFilter] = useState<"all" | "draft" | "sent" | "partially_paid" | "paid" | "overdue">("all");
+  const [activeTab, setActiveTab] = useState("all-invoices");
 
   const filteredInvoices = useMemo(() => {
     return allInvoices.filter((i) => {
@@ -227,68 +231,94 @@ const Invoices = () => {
                 />
               </div>
             </div>
-          </div>
-
-          {/* Stats */}
-          <div className="grid gap-4 sm:grid-cols-4 mb-6">
-            <div className="glass rounded-lg p-4">
-              <p className="text-sm text-muted-foreground">Total Revenue</p>
-              <p className="text-2xl font-heading font-bold text-success">
-                ${totalRevenue.toLocaleString()}
-              </p>
-            </div>
-            <div className="glass rounded-lg p-4">
-              <p className="text-sm text-muted-foreground">Pending</p>
-              <p className="text-2xl font-heading font-bold text-warning">
-                ${pendingAmount.toLocaleString()}
-              </p>
-            </div>
-            <div className="glass rounded-lg p-4">
-              <p className="text-sm text-muted-foreground">Paid</p>
-              <p className="text-2xl font-heading font-bold text-foreground">
-                {allInvoices.filter((i) => i.status === "paid").length}
-              </p>
-            </div>
-            <div className="glass rounded-lg p-4">
-              <p className="text-sm text-muted-foreground">Overdue</p>
-              <p className="text-2xl font-heading font-bold text-destructive">
-                {allInvoices.filter((i) => i.status === "overdue").length}
-              </p>
-            </div>
-          </div>
-
-          {/* Empty State */}
-          {filteredInvoices.length === 0 && (
-            <InvoiceEmptyState 
-              onAddInvoice={() => navigate("/invoices/new")} 
-              isFiltered={hasActiveFilters}
+            
+            {/* Status Filters */}
+            <InvoiceFilters
+              statusFilter={statusFilter}
+              onStatusFilterChange={setStatusFilter}
             />
-          )}
+          </div>
 
-          {/* Invoices - Responsive Layout */}
-          {filteredInvoices.length > 0 && (
-            <>
-              {isMobile ? (
-                <div className="grid gap-4">
-                  {filteredInvoices.map((invoice, index) => (
-                    <InvoiceCard
-                      key={invoice.id}
-                      invoice={invoice}
-                      onView={(id) => navigate(`/invoices/${id}`)}
-                      index={index}
-                    />
-                  ))}
+          {/* Tabs Navigation */}
+          <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
+            <TabsList className="bg-secondary/50 p-1">
+              <TabsTrigger value="all-invoices" className="data-[state=active]:bg-background">
+                All Invoices
+              </TabsTrigger>
+              <TabsTrigger value="payments-balance" className="data-[state=active]:bg-background">
+                Payments & Balance
+              </TabsTrigger>
+            </TabsList>
+
+            {/* All Invoices Tab */}
+            <TabsContent value="all-invoices" className="space-y-6">
+              {/* Stats */}
+              <div className="grid gap-4 sm:grid-cols-4">
+                <div className="glass rounded-lg p-4">
+                  <p className="text-sm text-muted-foreground">Total Revenue</p>
+                  <p className="text-2xl font-heading font-bold text-success">
+                    ${totalRevenue.toLocaleString()}
+                  </p>
                 </div>
-              ) : (
-                <EnhancedDataTable
-                  tableId="invoices"
-                  data={filteredInvoices}
-                  columns={columns}
-                  onRowClick={(item) => navigate(`/invoices/${item.id}`)}
+                <div className="glass rounded-lg p-4">
+                  <p className="text-sm text-muted-foreground">Pending</p>
+                  <p className="text-2xl font-heading font-bold text-warning">
+                    ${pendingAmount.toLocaleString()}
+                  </p>
+                </div>
+                <div className="glass rounded-lg p-4">
+                  <p className="text-sm text-muted-foreground">Paid</p>
+                  <p className="text-2xl font-heading font-bold text-foreground">
+                    {allInvoices.filter((i) => i.status === "paid").length}
+                  </p>
+                </div>
+                <div className="glass rounded-lg p-4">
+                  <p className="text-sm text-muted-foreground">Overdue</p>
+                  <p className="text-2xl font-heading font-bold text-destructive">
+                    {allInvoices.filter((i) => i.status === "overdue").length}
+                  </p>
+                </div>
+              </div>
+
+              {/* Empty State */}
+              {filteredInvoices.length === 0 && (
+                <InvoiceEmptyState 
+                  onAddInvoice={() => navigate("/invoices/new")} 
+                  isFiltered={hasActiveFilters}
                 />
               )}
-            </>
-          )}
+
+              {/* Invoices - Responsive Layout */}
+              {filteredInvoices.length > 0 && (
+                <>
+                  {isMobile ? (
+                    <div className="grid gap-4">
+                      {filteredInvoices.map((invoice, index) => (
+                        <InvoiceCard
+                          key={invoice.id}
+                          invoice={invoice}
+                          onView={(id) => navigate(`/invoices/${id}`)}
+                          index={index}
+                        />
+                      ))}
+                    </div>
+                  ) : (
+                    <EnhancedDataTable
+                      tableId="invoices"
+                      data={filteredInvoices}
+                      columns={columns}
+                      onRowClick={(item) => navigate(`/invoices/${item.id}`)}
+                    />
+                  )}
+                </>
+              )}
+            </TabsContent>
+
+            {/* Payments & Balance Tab */}
+            <TabsContent value="payments-balance">
+              <InvoiceBalanceView invoices={filteredInvoices} />
+            </TabsContent>
+          </Tabs>
         </PullToRefreshWrapper>
       </PageLayout>
     </>
