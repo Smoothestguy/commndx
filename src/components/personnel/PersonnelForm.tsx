@@ -38,6 +38,7 @@ const personnelSchema = z.object({
   everify_case_number: z.string().optional(),
   notes: z.string().optional(),
   vendor_id: z.string().optional(),
+  portal_required: z.boolean().optional(),
 });
 
 type PersonnelFormData = z.infer<typeof personnelSchema>;
@@ -98,6 +99,7 @@ export const PersonnelForm = ({ personnel, onSuccess, onCancel, defaultVendorId,
       everify_case_number: personnel?.everify_case_number || "",
       notes: personnel?.notes || "",
       vendor_id: (personnel as any)?.vendor_id || defaultVendorId || "",
+      portal_required: (personnel as any)?.portal_required ?? true,
     },
   });
 
@@ -331,6 +333,22 @@ export const PersonnelForm = ({ personnel, onSuccess, onCancel, defaultVendorId,
                     <SelectItem value="do_not_hire">Do Not Hire</SelectItem>
                   </SelectContent>
                 </Select>
+              </div>
+
+              <div className="flex items-center justify-between rounded-lg border p-4">
+                <div className="space-y-0.5">
+                  <Label htmlFor="portal_required" className="text-base">Requires Portal Access</Label>
+                  <p className="text-sm text-muted-foreground">
+                    Disable for temporary or day workers who don't need to log into the portal
+                  </p>
+                </div>
+                <input
+                  type="checkbox"
+                  id="portal_required"
+                  checked={watch("portal_required") ?? true}
+                  onChange={(e) => setValue("portal_required", e.target.checked)}
+                  className="h-5 w-5 rounded border-gray-300"
+                />
               </div>
 
               <div className="grid grid-cols-2 gap-4">
