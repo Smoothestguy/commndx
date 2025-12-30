@@ -2571,6 +2571,7 @@ export type Database = {
           personnel_number: string
           phone: string | null
           photo_url: string | null
+          portal_required: boolean | null
           rating: number | null
           ssn_full: string | null
           ssn_last_four: string | null
@@ -2637,6 +2638,7 @@ export type Database = {
           personnel_number: string
           phone?: string | null
           photo_url?: string | null
+          portal_required?: boolean | null
           rating?: number | null
           ssn_full?: string | null
           ssn_last_four?: string | null
@@ -2703,6 +2705,7 @@ export type Database = {
           personnel_number?: string
           phone?: string | null
           photo_url?: string | null
+          portal_required?: boolean | null
           rating?: number | null
           ssn_full?: string | null
           ssn_last_four?: string | null

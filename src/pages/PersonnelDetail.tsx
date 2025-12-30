@@ -11,7 +11,7 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { ScrollArea, ScrollBar } from "@/components/ui/scroll-area";
-import { Mail, Phone, MapPin, Calendar, DollarSign, AlertTriangle, IdCard, MessageSquare, Edit, Flag, FileCheck, Shield, Award, AlertCircle, LucideIcon, Clock, Check, Send, Link2, Building2, FileText, Landmark, Star, Receipt, Eye, CheckCircle, XCircle, Banknote, ExternalLink, Download, Ban, Undo2 } from "lucide-react";
+import { Mail, Phone, MapPin, Calendar, DollarSign, AlertTriangle, IdCard, MessageSquare, Edit, Flag, FileCheck, Shield, Award, AlertCircle, LucideIcon, Clock, Check, Send, Link2, Building2, FileText, Landmark, Star, Receipt, Eye, CheckCircle, XCircle, Banknote, ExternalLink, Download, Ban, Undo2, UserX } from "lucide-react";
 import { ImageLightbox } from "@/components/ui/image-lightbox";
 import { DirectDepositView } from "@/components/personnel/DirectDepositView";
 import { AgreementSignatureView } from "@/components/personnel/AgreementSignatureView";
@@ -367,6 +367,12 @@ const PersonnelDetail = () => {
                       Linked to Vendor
                     </Badge>
                   )}
+                  {(personnel as any).portal_required === false && (
+                    <Badge variant="secondary" className="gap-1">
+                      <UserX className="h-3 w-3" />
+                      Temporary Worker
+                    </Badge>
+                  )}
                 </div>
 
                 <div className="flex flex-wrap gap-2">
@@ -410,14 +416,21 @@ const PersonnelDetail = () => {
                       </Button>
                     </>
                   )}
-                  <InviteToPortalDialog
-                    personnelId={personnel.id}
-                    personnelName={`${personnel.first_name} ${personnel.last_name}`}
-                    personnelEmail={personnel.email}
-                    hasExistingInvitation={!!existingInvitation}
-                    existingInvitationDate={existingInvitation?.created_at}
-                    isLinked={!!personnel.user_id}
-                  />
+                  {(personnel as any).portal_required === false ? (
+                    <Badge variant="outline" className="gap-1 h-8 px-3">
+                      <UserX className="h-3 w-3" />
+                      Portal Not Required
+                    </Badge>
+                  ) : (
+                    <InviteToPortalDialog
+                      personnelId={personnel.id}
+                      personnelName={`${personnel.first_name} ${personnel.last_name}`}
+                      personnelEmail={personnel.email}
+                      hasExistingInvitation={!!existingInvitation}
+                      existingInvitationDate={existingInvitation?.created_at}
+                      isLinked={!!personnel.user_id}
+                    />
+                  )}
                   <Button
                     variant="outline"
                     size="sm"
