@@ -507,7 +507,7 @@ export function InvoiceForm({ onSubmit, onSubmitMultiItem, initialData, jobOrder
                             setJobOrderSearch("");
                             // Clear customer selection when job order is selected
                             setSelectedCustomer(null);
-                            setSelectedCustomerId(null);
+                            setSelectedCustomerId(undefined);
                           }}
                         >
                           <Check
@@ -582,7 +582,7 @@ export function InvoiceForm({ onSubmit, onSubmitMultiItem, initialData, jobOrder
                             setCustomerComboboxOpen(false);
                             setCustomerSearch("");
                             // Clear job order selection when customer is selected directly
-                            setSelectedJobOrderId(null);
+                            setSelectedJobOrderId(undefined);
                             setSelectedJobOrder(null);
                             form.setValue("jobOrderId", "");
                           }}
@@ -739,7 +739,39 @@ export function InvoiceForm({ onSubmit, onSubmitMultiItem, initialData, jobOrder
         />
       )}
 
-
+      {/* Invoice Line Items Preview - show in multi-item mode */}
+      {useMultiItemMode && selectedBillableItems.length > 0 && billableItemsTotals.lineItems.length > 0 && (
+        <Card className="p-4">
+          <Label className="text-base font-medium mb-3 block">Invoice Line Items Preview</Label>
+          <div className="border rounded-lg overflow-hidden">
+            <table className="w-full text-sm">
+              <thead className="bg-muted/50">
+                <tr>
+                  <th className="text-left p-3 font-medium">Description</th>
+                  <th className="text-right p-3 font-medium w-24">Qty</th>
+                  <th className="text-right p-3 font-medium w-28">Unit Price</th>
+                  <th className="text-right p-3 font-medium w-28">Amount</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y">
+                {billableItemsTotals.lineItems.map((item, idx) => (
+                  <tr key={idx} className="hover:bg-muted/30">
+                    <td className="p-3">
+                      <div className="font-medium">{item.product_name}</div>
+                      {item.description && (
+                        <div className="text-muted-foreground text-xs">{item.description}</div>
+                      )}
+                    </td>
+                    <td className="p-3 text-right">{item.quantity}</td>
+                    <td className="p-3 text-right">${item.unit_price.toFixed(2)}</td>
+                    <td className="p-3 text-right font-medium">${item.total.toFixed(2)}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </Card>
+      )}
       {exceedsBalance && (
         <Alert variant="destructive">
           <AlertDescription>
