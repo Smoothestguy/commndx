@@ -24,6 +24,7 @@ interface AddProjectInvoiceParams {
   total: number;
   due_date: string;
   line_items: ProjectInvoiceLineItem[];
+  job_order_ids: string[];
   change_order_ids: string[];
   tm_ticket_ids: string[];
 }
@@ -35,13 +36,15 @@ export const useAddProjectInvoice = () => {
     mutationFn: async (params: AddProjectInvoiceParams) => {
       const {
         line_items,
+        job_order_ids,
         change_order_ids,
         tm_ticket_ids,
         ...invoiceData
       } = params;
 
       // For multiple items, we'll create one invoice with all line items
-      // and link to the first change order if any (for backwards compatibility)
+      // and link to the first of each type for backwards compatibility
+      const firstJobOrderId = job_order_ids.length > 0 ? job_order_ids[0] : null;
       const firstChangeOrderId = change_order_ids.length > 0 ? change_order_ids[0] : null;
       const firstTMTicketId = tm_ticket_ids.length > 0 ? tm_ticket_ids[0] : null;
 
@@ -50,6 +53,7 @@ export const useAddProjectInvoice = () => {
         .from("invoices")
         .insert({
           ...invoiceData,
+          job_order_id: firstJobOrderId,
           change_order_id: firstChangeOrderId,
           tm_ticket_id: firstTMTicketId,
           remaining_amount: invoiceData.total,
@@ -110,6 +114,7 @@ export const useAddProjectInvoice = () => {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["invoices"] });
+      queryClient.invalidateQueries({ queryKey: ["job-orders"] });
       queryClient.invalidateQueries({ queryKey: ["tm-tickets"] });
       queryClient.invalidateQueries({ queryKey: ["change-orders"] });
       queryClient.invalidateQueries({ queryKey: ["project-billable-items"] });
