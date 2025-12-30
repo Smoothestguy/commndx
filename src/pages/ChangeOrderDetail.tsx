@@ -48,6 +48,7 @@ import { useState } from "react";
 import {
   useChangeOrder,
   useDeleteChangeOrder,
+  useHardDeleteChangeOrder,
   useUpdateChangeOrderStatus,
   ChangeOrderStatus,
 } from "@/integrations/supabase/hooks/useChangeOrders";
@@ -72,10 +73,12 @@ export default function ChangeOrderDetail() {
   const navigate = useNavigate();
   const { data: changeOrder, isLoading } = useChangeOrder(id);
   const deleteChangeOrder = useDeleteChangeOrder();
+  const hardDeleteChangeOrder = useHardDeleteChangeOrder();
   const updateStatus = useUpdateChangeOrderStatus();
   const { isAdmin, isManager } = useUserRole();
 
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
+  const [showHardDeleteDialog, setShowHardDeleteDialog] = useState(false);
   const [showAddToPODialog, setShowAddToPODialog] = useState(false);
   const [showConvertToPODialog, setShowConvertToPODialog] = useState(false);
 
@@ -101,6 +104,12 @@ export default function ChangeOrderDetail() {
   const handleDelete = async () => {
     if (!id || !changeOrder) return;
     await deleteChangeOrder.mutateAsync(id);
+    navigate(`/projects/${changeOrder.project_id}`);
+  };
+
+  const handleHardDelete = async () => {
+    if (!id || !changeOrder) return;
+    await hardDeleteChangeOrder.mutateAsync(id);
     navigate(`/projects/${changeOrder.project_id}`);
   };
 
@@ -185,8 +194,13 @@ export default function ChangeOrderDetail() {
             <FileText className="mr-2 h-4 w-4" />Print
           </DropdownMenuItem>
           {canDelete && (
-            <DropdownMenuItem onClick={() => setShowDeleteDialog(true)} className="text-destructive">
-              <Trash2 className="mr-2 h-4 w-4" />Delete
+            <DropdownMenuItem onClick={() => setShowDeleteDialog(true)}>
+              <Trash2 className="mr-2 h-4 w-4" />Move to Trash
+            </DropdownMenuItem>
+          )}
+          {isAdmin && changeOrder?.status === "draft" && (
+            <DropdownMenuItem onClick={() => setShowHardDeleteDialog(true)} className="text-destructive">
+              <Trash2 className="mr-2 h-4 w-4" />Delete Permanently
             </DropdownMenuItem>
           )}
         </DropdownMenuContent>
@@ -290,12 +304,31 @@ export default function ChangeOrderDetail() {
       <AlertDialog open={showDeleteDialog} onOpenChange={setShowDeleteDialog}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Delete Change Order</AlertDialogTitle>
-            <AlertDialogDescription>Are you sure? This cannot be undone.</AlertDialogDescription>
+            <AlertDialogTitle>Move to Trash?</AlertDialogTitle>
+            <AlertDialogDescription>
+              This change order will be moved to trash. You can restore it later from the Trash page.
+            </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel>Cancel</AlertDialogCancel>
-            <AlertDialogAction onClick={handleDelete} className="bg-destructive text-destructive-foreground">Delete</AlertDialogAction>
+            <AlertDialogAction onClick={handleDelete}>Move to Trash</AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      <AlertDialog open={showHardDeleteDialog} onOpenChange={setShowHardDeleteDialog}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Permanently Delete?</AlertDialogTitle>
+            <AlertDialogDescription>
+              This action CANNOT be undone. This will permanently delete this change order and all its line items.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction onClick={handleHardDelete} className="bg-destructive text-destructive-foreground">
+              Delete Forever
+            </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
