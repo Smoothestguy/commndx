@@ -8,7 +8,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Card } from "@/components/ui/card";
-import { Trash2, Plus, Copy, Loader2, Check, ChevronsUpDown, Receipt } from "lucide-react";
+import { Trash2, Plus, Copy, Loader2, Check, ChevronsUpDown, Receipt, Package, FileText } from "lucide-react";
 import { useState, useEffect } from "react";
 import { useJobOrders, useJobOrder } from "@/integrations/supabase/hooks/useJobOrders";
 import { useCustomers } from "@/integrations/supabase/hooks/useCustomers";
@@ -683,6 +683,71 @@ export function InvoiceForm({ onSubmit, initialData, jobOrderId }: InvoiceFormPr
             )}
           </div>
         </Card>
+      )}
+
+      {/* Related Items - Purchase Orders and Change Orders */}
+      {invoiceType === "job_order" && selectedJobOrder && (
+        (selectedJobOrder.purchase_orders?.length > 0 || selectedJobOrder.change_orders?.length > 0) && (
+          <Card className="p-4 bg-muted/50">
+            <h4 className="font-medium mb-3 text-sm">Related Items</h4>
+            <div className="space-y-4">
+              {/* Purchase Orders */}
+              {selectedJobOrder.purchase_orders?.length > 0 && (
+                <div className="space-y-2">
+                  <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                    <Package className="h-4 w-4" />
+                    <span>Purchase Orders ({selectedJobOrder.purchase_orders.length})</span>
+                  </div>
+                  <div className="space-y-1 pl-6">
+                    {selectedJobOrder.purchase_orders.map((po: any) => (
+                      <div key={po.id} className="flex items-center justify-between text-sm">
+                        <span>
+                          {po.number} - {po.vendor_name}
+                        </span>
+                        <div className="flex items-center gap-2">
+                          <span className="font-medium">${po.total.toFixed(2)}</span>
+                          <Badge variant="outline" className="text-xs capitalize">
+                            {po.status}
+                          </Badge>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* Change Orders */}
+              {selectedJobOrder.change_orders?.length > 0 && (
+                <div className="space-y-2">
+                  <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                    <FileText className="h-4 w-4" />
+                    <span>Change Orders ({selectedJobOrder.change_orders.length})</span>
+                  </div>
+                  <div className="space-y-1 pl-6">
+                    {selectedJobOrder.change_orders.map((co: any) => (
+                      <div key={co.id} className="flex items-center justify-between text-sm">
+                        <span>
+                          {co.number} - {co.reason}
+                        </span>
+                        <div className="flex items-center gap-2">
+                          <span className={cn(
+                            "font-medium",
+                            co.change_type === "deductive" ? "text-destructive" : "text-primary"
+                          )}>
+                            {co.change_type === "deductive" ? "-" : "+"}${Math.abs(co.total).toFixed(2)}
+                          </span>
+                          <Badge variant="outline" className="text-xs capitalize">
+                            {co.status}
+                          </Badge>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </div>
+          </Card>
+        )
       )}
 
 

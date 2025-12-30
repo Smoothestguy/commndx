@@ -36,6 +36,23 @@ export interface JobOrder {
   updated_at: string;
 }
 
+export interface RelatedPurchaseOrder {
+  id: string;
+  number: string;
+  vendor_name: string;
+  total: number;
+  status: string;
+}
+
+export interface RelatedChangeOrder {
+  id: string;
+  number: string;
+  reason: string;
+  total: number;
+  status: string;
+  change_type: string;
+}
+
 export interface JobOrderWithLineItems extends JobOrder {
   line_items: JobOrderLineItem[];
   // Project details
@@ -47,6 +64,9 @@ export interface JobOrderWithLineItems extends JobOrder {
   project_poc_name?: string | null;
   project_poc_phone?: string | null;
   project_poc_email?: string | null;
+  // Related items
+  purchase_orders?: RelatedPurchaseOrder[];
+  change_orders?: RelatedChangeOrder[];
 }
 
 export const useJobOrders = () => {
@@ -89,12 +109,31 @@ export const useJobOrder = (id: string) => {
 
       if (jobOrderError) throw jobOrderError;
 
+      // Fetch line items
       const { data: lineItems, error: lineItemsError } = await supabase
         .from("job_order_line_items")
         .select("*")
         .eq("job_order_id", id);
 
       if (lineItemsError) throw lineItemsError;
+
+      // Fetch related purchase orders
+      const { data: purchaseOrders, error: poError } = await supabase
+        .from("purchase_orders")
+        .select("id, number, vendor_name, total, status")
+        .eq("job_order_id", id)
+        .is("deleted_at", null);
+
+      if (poError) throw poError;
+
+      // Fetch related change orders (by job_order_id or project_id)
+      const { data: changeOrders, error: coError } = await supabase
+        .from("change_orders")
+        .select("id, number, reason, total, status, change_type")
+        .or(`job_order_id.eq.${id},project_id.eq.${jobOrder.project_id}`)
+        .is("deleted_at", null);
+
+      if (coError) throw coError;
 
       // Flatten project data into the job order object
       const project = jobOrder.projects as any;
@@ -110,6 +149,8 @@ export const useJobOrder = (id: string) => {
         project_poc_name: project?.poc_name || null,
         project_poc_phone: project?.poc_phone || null,
         project_poc_email: project?.poc_email || null,
+        purchase_orders: purchaseOrders as RelatedPurchaseOrder[],
+        change_orders: changeOrders as RelatedChangeOrder[],
       } as JobOrderWithLineItems;
     },
     enabled: !!id,
