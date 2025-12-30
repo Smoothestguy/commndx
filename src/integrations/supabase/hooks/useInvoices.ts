@@ -346,7 +346,7 @@ export const useDeleteInvoice = () => {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: async (id: string) => {
+    mutationFn: async (id: string): Promise<{ qbVoided: boolean; qbError?: string }> => {
       const { data: { user } } = await supabase.auth.getUser();
 
       const { data: invoice, error: fetchError } = await supabase
@@ -360,6 +360,31 @@ export const useDeleteInvoice = () => {
       // Skip if already deleted (prevents double-restore of job order balance)
       if (invoice.deleted_at) {
         throw new Error("Invoice has already been deleted");
+      }
+
+      // Try to void in QuickBooks first (if synced)
+      let qbVoided = false;
+      let qbError: string | undefined;
+      
+      try {
+        const { data: voidResult, error: voidError } = await supabase.functions.invoke(
+          'quickbooks-void-invoice',
+          { body: { invoiceId: id } }
+        );
+        
+        if (voidError) {
+          console.warn("QuickBooks void error:", voidError);
+          qbError = voidError.message || "Failed to void in QuickBooks";
+        } else if (voidResult?.voided) {
+          qbVoided = true;
+          console.log("Invoice voided in QuickBooks");
+        } else if (voidResult?.error) {
+          qbError = voidResult.error;
+          console.warn("QuickBooks void returned error:", qbError);
+        }
+      } catch (err) {
+        console.warn("QuickBooks void exception:", err);
+        qbError = err instanceof Error ? err.message : "Unknown QuickBooks error";
       }
 
       // Restore job order balance
@@ -397,15 +422,31 @@ export const useDeleteInvoice = () => {
         .eq("id", id);
         
       if (error) throw error;
+
+      return { qbVoided, qbError };
     },
-    onSuccess: () => {
+    onSuccess: (result) => {
       queryClient.invalidateQueries({ queryKey: ["invoices"] });
       queryClient.invalidateQueries({ queryKey: ["job_orders"] });
       queryClient.invalidateQueries({ queryKey: ["deleted_items"] });
-      toast({
-        title: "Success",
-        description: "Invoice moved to trash",
-      });
+      
+      if (result.qbVoided) {
+        toast({
+          title: "Success",
+          description: "Invoice voided in QuickBooks and moved to trash",
+        });
+      } else if (result.qbError) {
+        toast({
+          title: "Invoice Deleted",
+          description: `Invoice moved to trash. Note: ${result.qbError}`,
+          variant: "default",
+        });
+      } else {
+        toast({
+          title: "Success",
+          description: "Invoice moved to trash",
+        });
+      }
     },
     onError: (error) => {
       toast({
