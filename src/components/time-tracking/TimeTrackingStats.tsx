@@ -40,11 +40,11 @@ export function TimeTrackingStats({ entries }: TimeTrackingStatsProps) {
     
     entries.forEach((entry) => {
       const key = entry.personnel_id || entry.user_id || "unknown";
-      // Check personnel rate first, then profiles, then entry's stored rate, then 0
-      const rate = entry.personnel?.hourly_rate 
-        ?? entry.profiles?.hourly_rate 
-        ?? (entry as any).hourly_rate 
-        ?? 0;
+      // Use || to fall back when rate is 0 (not just null/undefined)
+      const rate = entry.hourly_rate 
+        || entry.personnel?.hourly_rate 
+        || entry.profiles?.hourly_rate 
+        || 0;
       const hours = Number(entry.hours);
       
       const existing = employeeData.get(key);
