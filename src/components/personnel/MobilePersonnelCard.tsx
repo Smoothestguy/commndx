@@ -33,6 +33,7 @@ import {
   Edit,
   Printer,
   Trash2,
+  UserX,
 } from "lucide-react";
 import { useVendors } from "@/integrations/supabase/hooks/useVendors";
 import {
@@ -242,6 +243,12 @@ export const MobilePersonnelCard = ({
               <div className="flex flex-wrap gap-1">
                 {getStatusBadge()}
                 {getEVerifyBadge()}
+                {personnel.portal_required === false && (
+                  <Badge variant="outline" className="gap-1 text-xs">
+                    <UserX className="h-3 w-3" />
+                    Temp
+                  </Badge>
+                )}
               </div>
 
               <div className="space-y-1 text-xs text-muted-foreground">

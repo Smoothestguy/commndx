@@ -31,6 +31,7 @@ import {
   Building2,
   XSquare,
   RefreshCw,
+  UserX,
 } from "lucide-react";
 import { useVendors } from "@/integrations/supabase/hooks/useVendors";
 import {
@@ -249,6 +250,12 @@ export function PersonnelTable({
             {person.first_name} {person.last_name}
           </Link>
           <ComplianceBadge personnel={person} compact />
+          {(person as any).portal_required === false && (
+            <Badge variant="outline" className="gap-1 text-xs">
+              <UserX className="h-3 w-3" />
+              Temp
+            </Badge>
+          )}
         </div>
       ),
     },

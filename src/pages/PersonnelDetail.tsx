@@ -1,7 +1,7 @@
 import { useParams } from "react-router-dom";
 import { DetailPageLayout } from "@/components/layout/DetailPageLayout";
 import { SEO } from "@/components/SEO";
-import { usePersonnelById, useResendOnboardingEmail, useUpdatePersonnelRating } from "@/integrations/supabase/hooks/usePersonnel";
+import { usePersonnelById, useResendOnboardingEmail, useUpdatePersonnelRating, useUpdatePersonnel } from "@/integrations/supabase/hooks/usePersonnel";
 import { usePersonnelInvitationCheck, usePersonnelReimbursements, useUpdateReimbursementStatus } from "@/integrations/supabase/hooks/usePortal";
 import { useRevokeOnboardingToken } from "@/integrations/supabase/hooks/usePersonnelOnboarding";
 import { useApplicationByPersonnelId, useReverseApprovalWithReason } from "@/integrations/supabase/hooks/useStaffingApplications";
@@ -11,7 +11,7 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { ScrollArea, ScrollBar } from "@/components/ui/scroll-area";
-import { Mail, Phone, MapPin, Calendar, DollarSign, AlertTriangle, IdCard, MessageSquare, Edit, Flag, FileCheck, Shield, Award, AlertCircle, LucideIcon, Clock, Check, Send, Link2, Building2, FileText, Landmark, Star, Receipt, Eye, CheckCircle, XCircle, Banknote, ExternalLink, Download, Ban, Undo2, UserX } from "lucide-react";
+import { Mail, Phone, MapPin, Calendar, DollarSign, AlertTriangle, IdCard, MessageSquare, Edit, Flag, FileCheck, Shield, Award, AlertCircle, LucideIcon, Clock, Check, Send, Link2, Building2, FileText, Landmark, Star, Receipt, Eye, CheckCircle, XCircle, Banknote, ExternalLink, Download, Ban, Undo2, UserX, UserCheck, Loader2 } from "lucide-react";
 import { ImageLightbox } from "@/components/ui/image-lightbox";
 import { DirectDepositView } from "@/components/personnel/DirectDepositView";
 import { AgreementSignatureView } from "@/components/personnel/AgreementSignatureView";
@@ -54,6 +54,7 @@ const PersonnelDetail = () => {
   const resendOnboardingEmail = useResendOnboardingEmail();
   const revokeOnboardingToken = useRevokeOnboardingToken();
   const updateRating = useUpdatePersonnelRating();
+  const updatePersonnel = useUpdatePersonnel();
   const { data: w9Form } = usePersonnelW9Form(id);
   const { data: personnelReimbursements } = usePersonnelReimbursements(id);
   const updateReimbursementStatus = useUpdateReimbursementStatus();
@@ -416,12 +417,28 @@ const PersonnelDetail = () => {
                       </Button>
                     </>
                   )}
-                  {(personnel as any).portal_required === false ? (
-                    <Badge variant="outline" className="gap-1 h-8 px-3">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => {
+                      updatePersonnel.mutate({
+                        id: personnel.id,
+                        updates: { portal_required: (personnel as any).portal_required === false ? true : false },
+                      });
+                    }}
+                    disabled={updatePersonnel.isPending}
+                    className="gap-1"
+                  >
+                    {updatePersonnel.isPending ? (
+                      <Loader2 className="h-3 w-3 animate-spin" />
+                    ) : (personnel as any).portal_required === false ? (
+                      <UserCheck className="h-3 w-3" />
+                    ) : (
                       <UserX className="h-3 w-3" />
-                      Portal Not Required
-                    </Badge>
-                  ) : (
+                    )}
+                    {(personnel as any).portal_required === false ? "Require Portal" : "Mark as Temporary"}
+                  </Button>
+                  {(personnel as any).portal_required !== false && (
                     <InviteToPortalDialog
                       personnelId={personnel.id}
                       personnelName={`${personnel.first_name} ${personnel.last_name}`}
