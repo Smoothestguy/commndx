@@ -62,6 +62,7 @@ import BadgeTemplateEditor from "./pages/BadgeTemplateEditor";
 import QuickBooksSettings from "./pages/QuickBooksSettings";
 import Messages from "./pages/Messages";
 import PrivacyPolicy from "./pages/legal/PrivacyPolicy";
+import TermsOfService from "./pages/legal/TermsOfService";
 import EULA from "./pages/legal/EULA";
 import NotFound from "./pages/NotFound";
 import PortalDashboard from "./pages/portal/PortalDashboard";
@@ -162,6 +163,7 @@ const App = () => {
                     element={<PersonnelInviteRegister />}
                   />
                   <Route path="/legal/privacy" element={<PrivacyPolicy />} />
+                  <Route path="/legal/terms" element={<TermsOfService />} />
                   <Route path="/legal/eula" element={<EULA />} />
                   {/* Public Application Form */}
                   <Route path="/apply/:token" element={<PublicApplicationForm />} />
