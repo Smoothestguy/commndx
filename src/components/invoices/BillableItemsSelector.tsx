@@ -71,7 +71,7 @@ export const BillableItemsSelector = ({
         <div className="flex items-center justify-between">
           <Label className="text-base font-medium">Select Items to Invoice</Label>
           {allItems.length > 0 && (
-            <Button variant="ghost" size="sm" onClick={selectAll}>
+            <Button type="button" variant="ghost" size="sm" onClick={selectAll}>
               {selectedItems.length === allItems.length ? "Deselect All" : "Select All"}
             </Button>
           )}
@@ -99,6 +99,7 @@ export const BillableItemsSelector = ({
               >
                 <Checkbox 
                   checked={selectedItems.includes(jo.id)} 
+                  onClick={(e) => e.stopPropagation()}
                   onCheckedChange={() => toggleItem(jo.id)}
                 />
                 <ClipboardList className="h-4 w-4 text-muted-foreground flex-shrink-0" />
@@ -127,6 +128,7 @@ export const BillableItemsSelector = ({
               >
                 <Checkbox 
                   checked={selectedItems.includes(co.id)} 
+                  onClick={(e) => e.stopPropagation()}
                   onCheckedChange={() => toggleItem(co.id)}
                 />
                 <FileText className="h-4 w-4 text-muted-foreground flex-shrink-0" />
@@ -160,6 +162,7 @@ export const BillableItemsSelector = ({
               >
                 <Checkbox 
                   checked={selectedItems.includes(tm.id)} 
+                  onClick={(e) => e.stopPropagation()}
                   onCheckedChange={() => toggleItem(tm.id)}
                 />
                 <Receipt className="h-4 w-4 text-muted-foreground flex-shrink-0" />
