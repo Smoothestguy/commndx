@@ -1,6 +1,6 @@
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
-import { DollarSign, TrendingUp, TrendingDown, FileText, Receipt, Truck, Users, Minus } from "lucide-react";
+import { DollarSign, TrendingUp, TrendingDown, FileText, Receipt, Truck, Users, Minus, Package } from "lucide-react";
 import { formatCurrency } from "@/lib/utils";
 
 interface FinancialData {
@@ -77,30 +77,36 @@ export function ProjectFinancialSummary({ data }: ProjectFinancialSummaryProps) 
         </div>
 
         {/* Cost Breakdown */}
-        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4 pt-4 border-t border-border">
-          <div className="space-y-1">
+        <div className="grid gap-4 sm:grid-cols-2 pt-4 border-t border-border">
+          <div className="space-y-3">
             <p className="text-sm text-muted-foreground flex items-center gap-1">
-              <Truck className="h-3 w-3" /> Vendor PO Costs
+              <Truck className="h-3 w-3" /> Total Project Costs
             </p>
-            <p className="text-2xl font-bold">{formatCurrency(data.totalPOValue)}</p>
-          </div>
-          <div className="space-y-1">
-            <p className="text-sm text-muted-foreground flex items-center gap-1">
-              <Users className="h-3 w-3" /> Labor Costs
-            </p>
-            <p className="text-2xl font-bold">{formatCurrency(data.totalLaborCost)}</p>
-          </div>
-          <div className="space-y-1">
-            <p className="text-sm text-muted-foreground flex items-center gap-1">
-              <Minus className="h-3 w-3" /> Other Expenses
-            </p>
-            <p className="text-2xl font-bold">{formatCurrency(data.totalOtherExpenses)}</p>
-          </div>
-          <div className="space-y-1">
-            <p className="text-sm text-muted-foreground font-medium">Total Costs</p>
-            <p className="text-2xl font-bold text-orange-500">
+            <p className="text-2xl font-bold">
               {formatCurrency(data.totalPOValue + data.totalLaborCost + data.totalOtherExpenses)}
             </p>
+            
+            {/* Itemized breakdown */}
+            <div className="pl-4 border-l-2 border-muted space-y-2 mt-2">
+              <div className="flex justify-between items-center text-sm">
+                <span className="text-muted-foreground flex items-center gap-1">
+                  <Package className="h-3 w-3" /> Vendor PO Costs
+                </span>
+                <span className="font-medium">{formatCurrency(data.totalPOValue)}</span>
+              </div>
+              <div className="flex justify-between items-center text-sm">
+                <span className="text-muted-foreground flex items-center gap-1">
+                  <Users className="h-3 w-3" /> Labor Costs
+                </span>
+                <span className="font-medium">{formatCurrency(data.totalLaborCost)}</span>
+              </div>
+              <div className="flex justify-between items-center text-sm">
+                <span className="text-muted-foreground flex items-center gap-1">
+                  <Minus className="h-3 w-3" /> Other Expenses
+                </span>
+                <span className="font-medium">{formatCurrency(data.totalOtherExpenses)}</span>
+              </div>
+            </div>
           </div>
         </div>
 
