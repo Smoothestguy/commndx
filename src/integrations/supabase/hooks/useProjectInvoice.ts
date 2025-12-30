@@ -104,6 +104,35 @@ export const useAddProjectInvoice = () => {
         }
       }
 
+      // Update change order amounts (partial invoicing support)
+      for (const changeOrderId of change_order_ids) {
+        const { data: changeOrder, error: coFetchError } = await supabase
+          .from("change_orders")
+          .select("invoiced_amount, remaining_amount, total")
+          .eq("id", changeOrderId)
+          .single();
+
+        if (coFetchError) {
+          console.error("Failed to fetch change order:", coFetchError);
+          continue;
+        }
+
+        // Invoice the full remaining amount for now
+        const amountInvoiced = changeOrder.remaining_amount;
+
+        const { error: coUpdateError } = await supabase
+          .from("change_orders")
+          .update({
+            invoiced_amount: changeOrder.invoiced_amount + amountInvoiced,
+            remaining_amount: 0,
+          })
+          .eq("id", changeOrderId);
+
+        if (coUpdateError) {
+          console.error("Failed to update change order amounts:", coUpdateError);
+        }
+      }
+
       // Auto-sync to QuickBooks if connected
       try {
         const { data: qbConfig } = await supabase

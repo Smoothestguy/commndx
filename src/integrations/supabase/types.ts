@@ -886,11 +886,13 @@ export type Database = {
           file_size: number | null
           file_type: string | null
           id: string
+          invoiced_amount: number
           job_order_id: string | null
           number: string
           project_id: string
           purchase_order_id: string | null
           reason: string
+          remaining_amount: number
           status: Database["public"]["Enums"]["change_order_status"]
           subtotal: number
           tax_amount: number
@@ -916,11 +918,13 @@ export type Database = {
           file_size?: number | null
           file_type?: string | null
           id?: string
+          invoiced_amount?: number
           job_order_id?: string | null
           number: string
           project_id: string
           purchase_order_id?: string | null
           reason: string
+          remaining_amount: number
           status?: Database["public"]["Enums"]["change_order_status"]
           subtotal?: number
           tax_amount?: number
@@ -946,11 +950,13 @@ export type Database = {
           file_size?: number | null
           file_type?: string | null
           id?: string
+          invoiced_amount?: number
           job_order_id?: string | null
           number?: string
           project_id?: string
           purchase_order_id?: string | null
           reason?: string
+          remaining_amount?: number
           status?: Database["public"]["Enums"]["change_order_status"]
           subtotal?: number
           tax_amount?: number
