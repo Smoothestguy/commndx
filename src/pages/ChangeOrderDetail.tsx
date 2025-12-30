@@ -80,7 +80,8 @@ export default function ChangeOrderDetail() {
   const [showConvertToPODialog, setShowConvertToPODialog] = useState(false);
 
   const canEdit = changeOrder?.status === "draft" && (isAdmin || isManager);
-  const canDelete = changeOrder?.status === "draft" && (isAdmin || isManager);
+  // Admins can delete any CO; managers only draft
+  const canDelete = isAdmin || (changeOrder?.status === "draft" && isManager);
   const canSubmitForApproval = changeOrder?.status === "draft" && (isAdmin || isManager);
   const canApprove = changeOrder?.status === "pending_approval" && isAdmin; // Admin only
   const canCreateInvoice = changeOrder?.status === "approved" && (isAdmin || isManager);
@@ -179,6 +180,9 @@ export default function ChangeOrderDetail() {
               <FileText className="mr-2 h-4 w-4" />Revise
             </DropdownMenuItem>
           )}
+          <DropdownMenuItem onClick={() => window.print()}>
+            <FileText className="mr-2 h-4 w-4" />Print
+          </DropdownMenuItem>
           {canDelete && (
             <DropdownMenuItem onClick={() => setShowDeleteDialog(true)} className="text-destructive">
               <Trash2 className="mr-2 h-4 w-4" />Delete

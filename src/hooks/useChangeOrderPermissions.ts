@@ -36,12 +36,12 @@ export function useChangeOrderPermissions(changeOrder?: ChangeOrderWithLineItems
   const loading = roleLoading || permLoading || sensitiveLoading;
 
   return useMemo(() => {
-    // Admins always have full access
+    // Admins always have full access - can delete any CO regardless of status
     if (isAdmin) {
       return {
         canView: true,
         canEdit: true,
-        canDelete: true,
+        canDelete: true, // Admin bypass: can delete any status
         canApprove: true,
         canSubmitForApproval: true,
         canConvertToPO: true,
@@ -56,12 +56,13 @@ export function useChangeOrderPermissions(changeOrder?: ChangeOrderWithLineItems
       };
     }
 
-    // Managers have elevated access
+    // Managers have elevated access but can only delete drafts
     if (isManager) {
+      const isDraft = changeOrder?.status === 'draft';
       return {
         canView: true,
         canEdit: true,
-        canDelete: true,
+        canDelete: isDraft, // Managers can only delete drafts
         canApprove: true,
         canSubmitForApproval: true,
         canConvertToPO: true,
