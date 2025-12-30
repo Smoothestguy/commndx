@@ -240,6 +240,9 @@ export const useUpdatePersonnel = () => {
       queryClient.invalidateQueries({ queryKey: ["personnel-project-assignments"] });
       queryClient.invalidateQueries({ queryKey: ["personnel-by-project"] });
       queryClient.invalidateQueries({ queryKey: ["personnel-by-vendor"] });
+      // Invalidate time entries so rate changes reflect in time tracking stats
+      queryClient.invalidateQueries({ queryKey: ["all-time-entries"] });
+      queryClient.invalidateQueries({ queryKey: ["time-entries"] });
       toast.success("Personnel updated successfully");
     },
     onError: (error: Error) => {
