@@ -18,6 +18,8 @@ export interface BillableChangeOrder {
   reason: string;
   description: string | null;
   total: number;
+  invoiced_amount: number;
+  remaining_amount: number;
   status: string;
   change_type: 'additive' | 'deductive';
   created_at: string;
@@ -68,7 +70,7 @@ export const useProjectBillableItems = (projectId: string | undefined) => {
         type: 'job_order' as const,
       }));
 
-      // Fetch approved change orders that are not yet linked to an invoice
+      // Fetch approved change orders with remaining uninvoiced amounts
       const { data: changeOrders, error: coError } = await supabase
         .from("change_orders")
         .select(`
@@ -77,34 +79,25 @@ export const useProjectBillableItems = (projectId: string | undefined) => {
           reason,
           description,
           total,
+          invoiced_amount,
+          remaining_amount,
           status,
           change_type,
           created_at
         `)
         .eq("project_id", projectId)
         .eq("status", "approved")
+        .gt("remaining_amount", 0)
         .is("deleted_at", null)
         .order("created_at", { ascending: false });
 
       if (coError) throw coError;
 
-      // Check which change orders already have invoices
-      const { data: invoicedCOs } = await supabase
-        .from("invoices")
-        .select("change_order_id")
-        .eq("project_id", projectId)
-        .not("change_order_id", "is", null)
-        .is("deleted_at", null);
-
-      const invoicedCOIds = new Set((invoicedCOs || []).map(i => i.change_order_id));
-      
-      const uninvoicedChangeOrders: BillableChangeOrder[] = (changeOrders || [])
-        .filter(co => !invoicedCOIds.has(co.id))
-        .map(co => ({
-          ...co,
-          change_type: co.change_type as 'additive' | 'deductive',
-          type: 'change_order' as const,
-        }));
+      const billableChangeOrders: BillableChangeOrder[] = (changeOrders || []).map(co => ({
+        ...co,
+        change_type: co.change_type as 'additive' | 'deductive',
+        type: 'change_order' as const,
+      }));
 
       // Fetch approved/signed T&M tickets that are not yet invoiced
       const { data: tmTickets, error: tmError } = await supabase
@@ -144,7 +137,7 @@ export const useProjectBillableItems = (projectId: string | undefined) => {
 
       return {
         jobOrders: billableJobOrders,
-        changeOrders: uninvoicedChangeOrders,
+        changeOrders: billableChangeOrders,
         tmTickets: uninvoicedTMTickets,
       };
     },

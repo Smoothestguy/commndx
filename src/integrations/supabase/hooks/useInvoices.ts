@@ -351,7 +351,7 @@ export const useDeleteInvoice = () => {
 
       const { data: invoice, error: fetchError } = await supabase
         .from("invoices")
-        .select("total, job_order_id, deleted_at")
+        .select("total, job_order_id, change_order_id, deleted_at")
         .eq("id", id)
         .single();
 
@@ -409,6 +409,33 @@ export const useDeleteInvoice = () => {
             .eq("id", invoice.job_order_id);
 
           if (updateError) throw updateError;
+        }
+      }
+
+      // Restore change order balance
+      if (invoice.change_order_id) {
+        const { data: changeOrder, error: coFetchError } = await supabase
+          .from("change_orders")
+          .select("invoiced_amount, remaining_amount, total")
+          .eq("id", invoice.change_order_id)
+          .single();
+
+        if (!coFetchError && changeOrder) {
+          // Use Math.max/min to prevent negative values or exceeding total
+          const newInvoicedAmount = Math.max(0, changeOrder.invoiced_amount - invoice.total);
+          const newRemainingAmount = Math.min(changeOrder.total, changeOrder.remaining_amount + invoice.total);
+
+          const { error: coUpdateError } = await supabase
+            .from("change_orders")
+            .update({
+              invoiced_amount: newInvoicedAmount,
+              remaining_amount: newRemainingAmount,
+            })
+            .eq("id", invoice.change_order_id);
+
+          if (coUpdateError) {
+            console.error("Failed to restore change order balance:", coUpdateError);
+          }
         }
       }
 
