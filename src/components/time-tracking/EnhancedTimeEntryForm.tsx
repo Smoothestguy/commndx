@@ -50,7 +50,6 @@ import {
   useUpdateTimeEntry,
   useBulkAddTimeEntries,
   useBulkAddPersonnelTimeEntries,
-  calculateOvertimeHours,
   TimeEntry,
   TimeEntryInsert,
   PersonnelTimeEntryInsert,
@@ -126,7 +125,7 @@ export function EnhancedTimeEntryForm({
   const bulkAddTimeEntries = useBulkAddTimeEntries();
   const bulkAddPersonnelTimeEntries = useBulkAddPersonnelTimeEntries();
 
-  const overtimeThreshold = companySettings?.overtime_threshold ?? 8;
+  const weeklyOvertimeThreshold = companySettings?.weekly_overtime_threshold ?? 40;
 
   const overtimeMultiplier = companySettings?.overtime_multiplier ?? 1.5;
   const holidayMultiplier = companySettings?.holiday_multiplier ?? 1.5;
@@ -897,33 +896,22 @@ export function EnhancedTimeEntryForm({
                   )}
                 />
 
-                {/* Overtime Preview */}
+                {/* Hours display - no overtime preview (OT calculated weekly at 40h threshold) */}
                 {watchedHours > 0 && (
                   <div className="rounded-lg border p-3 bg-muted/30 space-y-2">
                     <div className="flex items-center gap-2 text-sm font-medium">
                       <Clock className="h-4 w-4" />
-                      Hours Breakdown
+                      Hours Entry
                     </div>
-                    {(() => {
-                      const { regularHours, overtimeHours } = calculateOvertimeHours(watchedHours, overtimeThreshold);
-                      return (
-                        <div className="grid grid-cols-2 gap-2 text-sm">
-                          <div className="flex items-center justify-between">
-                            <span className="text-muted-foreground">Regular:</span>
-                            <span className="font-medium">{regularHours.toFixed(2)}h</span>
-                          </div>
-                          {overtimeHours > 0 && (
-                            <div className="flex items-center justify-between">
-                              <span className="text-orange-500 flex items-center gap-1">
-                                <AlertTriangle className="h-3 w-3" />
-                                Overtime:
-                              </span>
-                              <span className="font-medium text-orange-500">+{overtimeHours.toFixed(2)}h</span>
-                            </div>
-                          )}
-                        </div>
-                      );
-                    })()}
+                    <div className="text-sm">
+                      <div className="flex items-center justify-between">
+                        <span className="text-muted-foreground">Hours:</span>
+                        <span className="font-medium">{watchedHours.toFixed(2)}h</span>
+                      </div>
+                      <p className="text-xs text-muted-foreground mt-1">
+                        Overtime is calculated weekly when total exceeds {weeklyOvertimeThreshold}h
+                      </p>
+                    </div>
                   </div>
                 )}
 
