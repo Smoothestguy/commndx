@@ -119,6 +119,7 @@ export const useInvoicesByJobOrder = (jobOrderId: string) => {
         .from("invoices")
         .select("*")
         .eq("job_order_id", jobOrderId)
+        .is("deleted_at", null)
         .order("created_at", { ascending: false });
 
       if (error) throw error;
