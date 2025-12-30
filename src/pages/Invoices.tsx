@@ -5,7 +5,7 @@ import { PageLayout } from "@/components/layout/PageLayout";
 import { EnhancedDataTable, EnhancedColumn } from "@/components/shared/EnhancedDataTable";
 import { StatusBadge } from "@/components/shared/StatusBadge";
 import { Button } from "@/components/ui/button";
-import { Plus, Eye, Receipt, Clock, CheckCircle } from "lucide-react";
+import { Plus, Eye, Receipt, Clock, CheckCircle, DollarSign, Wallet, TrendingUp, AlertCircle } from "lucide-react";
 import { SearchInput } from "@/components/ui/search-input";
 import { useInvoices } from "@/integrations/supabase/hooks/useInvoices";
 import { useCustomers } from "@/integrations/supabase/hooks/useCustomers";
@@ -15,9 +15,9 @@ import { InvoiceEmptyState } from "@/components/invoices/InvoiceEmptyState";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { useQuickBooksConfig } from "@/integrations/supabase/hooks/useQuickBooks";
 import { Invoice } from "@/integrations/supabase/hooks/useInvoices";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { InvoiceFilters } from "@/components/invoices/InvoiceFilters";
-import { InvoiceBalanceView } from "@/components/invoices/InvoiceBalanceView";
+import { InvoiceStatCard } from "@/components/invoices/InvoiceStatCard";
+
+type CardFilter = "all" | "paid" | "outstanding" | "overdue" | "partial" | "pending";
 
 const Invoices = () => {
   const navigate = useNavigate();
@@ -27,29 +27,65 @@ const Invoices = () => {
   const { data: qbConfig } = useQuickBooksConfig();
   
   const [search, setSearch] = useState("");
-  const [statusFilter, setStatusFilter] = useState<"all" | "draft" | "sent" | "partially_paid" | "paid" | "overdue">("all");
-  const [activeTab, setActiveTab] = useState("all-invoices");
+  const [activeFilter, setActiveFilter] = useState<CardFilter>("all");
 
-  const filteredInvoices = useMemo(() => {
-    return allInvoices.filter((i) => {
-      const matchesSearch = 
-        i.number.toLowerCase().includes(search.toLowerCase()) ||
-        i.customer_name.toLowerCase().includes(search.toLowerCase());
-      const matchesStatus = statusFilter === "all" || i.status === statusFilter;
+  // Calculate stats
+  const stats = useMemo(() => {
+    if (!allInvoices) return { total: 0, received: 0, outstanding: 0, overdue: 0, partial: 0, pending: 0 };
+    
+    return allInvoices.reduce((acc, inv) => {
+      acc.total += inv.total || 0;
+      acc.received += inv.paid_amount || 0;
+      acc.outstanding += inv.remaining_amount || 0;
       
-      return matchesSearch && matchesStatus;
-    });
-  }, [allInvoices, search, statusFilter]);
+      if (inv.status === "overdue") acc.overdue++;
+      if (inv.status === "partially_paid") acc.partial++;
+      if (inv.status === "sent" || inv.status === "draft") acc.pending++;
+      
+      return acc;
+    }, { total: 0, received: 0, outstanding: 0, overdue: 0, partial: 0, pending: 0 });
+  }, [allInvoices]);
 
-  const hasActiveFilters = statusFilter !== "all" || !!search;
+  // Filter invoices based on active card filter
+  const filteredInvoices = useMemo(() => {
+    if (!allInvoices) return [];
+    
+    let filtered = allInvoices;
 
-  const totalRevenue = allInvoices
-    .filter((i) => i.status === "paid")
-    .reduce((sum, i) => sum + i.total, 0);
+    // Apply card filter
+    switch (activeFilter) {
+      case "paid":
+        filtered = filtered.filter(inv => inv.status === "paid");
+        break;
+      case "outstanding":
+        filtered = filtered.filter(inv => (inv.remaining_amount || 0) > 0);
+        break;
+      case "overdue":
+        filtered = filtered.filter(inv => inv.status === "overdue");
+        break;
+      case "partial":
+        filtered = filtered.filter(inv => inv.status === "partially_paid");
+        break;
+      case "pending":
+        filtered = filtered.filter(inv => inv.status === "sent" || inv.status === "draft");
+        break;
+      default:
+        break;
+    }
 
-  const pendingAmount = allInvoices
-    .filter((i) => i.status === "sent" || i.status === "overdue")
-    .reduce((sum, i) => sum + i.total, 0);
+    // Apply search filter
+    if (search) {
+      const query = search.toLowerCase();
+      filtered = filtered.filter(inv =>
+        inv.number?.toLowerCase().includes(query) ||
+        inv.customer_name?.toLowerCase().includes(query)
+      );
+    }
+
+    return filtered;
+  }, [allInvoices, activeFilter, search]);
+
+  const hasActiveFilters = activeFilter !== "all" || !!search;
 
   const columns: EnhancedColumn<Invoice>[] = [
     {
@@ -115,6 +151,30 @@ const Invoices = () => {
         </span>
       ),
     },
+    {
+      key: "paid_amount",
+      header: "Paid",
+      sortable: true,
+      filterable: false,
+      getValue: (item) => item.paid_amount || 0,
+      render: (item) => (
+        <span className="text-green-600 dark:text-green-400">
+          ${(item.paid_amount || 0).toLocaleString(undefined, { minimumFractionDigits: 2 })}
+        </span>
+      ),
+    },
+    {
+      key: "remaining_amount",
+      header: "Balance",
+      sortable: true,
+      filterable: false,
+      getValue: (item) => item.remaining_amount || 0,
+      render: (item) => (
+        <span className={item.remaining_amount > 0 ? "text-amber-600 dark:text-amber-400" : "text-muted-foreground"}>
+          ${(item.remaining_amount || 0).toLocaleString(undefined, { minimumFractionDigits: 2 })}
+        </span>
+      ),
+    },
     { 
       key: "due_date", 
       header: "Due Date",
@@ -122,14 +182,6 @@ const Invoices = () => {
       filterable: false,
       getValue: (item) => item.due_date,
       render: (item) => new Date(item.due_date).toLocaleDateString(),
-    },
-    {
-      key: "paid_date",
-      header: "Paid Date",
-      sortable: true,
-      filterable: false,
-      getValue: (item) => item.paid_date || "",
-      render: (item) => item.paid_date ? new Date(item.paid_date).toLocaleDateString() : "-",
     },
     {
       key: "actions",
@@ -219,106 +271,99 @@ const Invoices = () => {
             </div>
           )}
 
-          {/* Search & Filter Controls */}
-          <div className="mb-6 space-y-4">
-            <div className="flex flex-col sm:flex-row gap-3">
-              <div className="flex-1 max-w-md">
-                <SearchInput
-                  placeholder="Search invoices..."
-                  value={search}
-                  onChange={setSearch}
-                  className="bg-secondary border-border"
-                />
-              </div>
+          {/* Search */}
+          <div className="mb-6">
+            <div className="max-w-md">
+              <SearchInput
+                placeholder="Search invoices..."
+                value={search}
+                onChange={setSearch}
+                className="bg-secondary border-border"
+              />
             </div>
-            
-            {/* Status Filters */}
-            <InvoiceFilters
-              statusFilter={statusFilter}
-              onStatusFilterChange={setStatusFilter}
+          </div>
+
+          {/* Clickable Stat Card Filters */}
+          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4 mb-6">
+            <InvoiceStatCard
+              label="Total Invoiced"
+              value={`$${stats.total.toLocaleString(undefined, { minimumFractionDigits: 2 })}`}
+              icon={DollarSign}
+              isActive={activeFilter === "all"}
+              onClick={() => setActiveFilter("all")}
+            />
+            <InvoiceStatCard
+              label="Payment Received"
+              value={`$${stats.received.toLocaleString(undefined, { minimumFractionDigits: 2 })}`}
+              icon={Wallet}
+              variant="success"
+              isActive={activeFilter === "paid"}
+              onClick={() => setActiveFilter("paid")}
+            />
+            <InvoiceStatCard
+              label="Outstanding Balance"
+              value={`$${stats.outstanding.toLocaleString(undefined, { minimumFractionDigits: 2 })}`}
+              icon={TrendingUp}
+              variant="warning"
+              isActive={activeFilter === "outstanding"}
+              onClick={() => setActiveFilter("outstanding")}
+            />
+            <InvoiceStatCard
+              label="Pending"
+              value={stats.pending.toString()}
+              icon={Clock}
+              isActive={activeFilter === "pending"}
+              onClick={() => setActiveFilter("pending")}
+            />
+            <InvoiceStatCard
+              label="Partial Payments"
+              value={stats.partial.toString()}
+              icon={CheckCircle}
+              isActive={activeFilter === "partial"}
+              onClick={() => setActiveFilter("partial")}
+            />
+            <InvoiceStatCard
+              label="Overdue"
+              value={stats.overdue.toString()}
+              icon={AlertCircle}
+              variant="danger"
+              isActive={activeFilter === "overdue"}
+              onClick={() => setActiveFilter("overdue")}
             />
           </div>
 
-          {/* Tabs Navigation */}
-          <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
-            <TabsList className="bg-secondary/50 p-1">
-              <TabsTrigger value="all-invoices" className="data-[state=active]:bg-background">
-                All Invoices
-              </TabsTrigger>
-              <TabsTrigger value="payments-balance" className="data-[state=active]:bg-background">
-                Payments & Balance
-              </TabsTrigger>
-            </TabsList>
+          {/* Empty State */}
+          {filteredInvoices.length === 0 && (
+            <InvoiceEmptyState 
+              onAddInvoice={() => navigate("/invoices/new")} 
+              isFiltered={hasActiveFilters}
+            />
+          )}
 
-            {/* All Invoices Tab */}
-            <TabsContent value="all-invoices" className="space-y-6">
-              {/* Stats */}
-              <div className="grid gap-4 sm:grid-cols-4">
-                <div className="glass rounded-lg p-4">
-                  <p className="text-sm text-muted-foreground">Total Revenue</p>
-                  <p className="text-2xl font-heading font-bold text-success">
-                    ${totalRevenue.toLocaleString()}
-                  </p>
+          {/* Invoices - Responsive Layout */}
+          {filteredInvoices.length > 0 && (
+            <>
+              {isMobile ? (
+                <div className="grid gap-4">
+                  {filteredInvoices.map((invoice, index) => (
+                    <InvoiceCard
+                      key={invoice.id}
+                      invoice={invoice}
+                      onView={(id) => navigate(`/invoices/${id}`)}
+                      index={index}
+                    />
+                  ))}
                 </div>
-                <div className="glass rounded-lg p-4">
-                  <p className="text-sm text-muted-foreground">Pending</p>
-                  <p className="text-2xl font-heading font-bold text-warning">
-                    ${pendingAmount.toLocaleString()}
-                  </p>
-                </div>
-                <div className="glass rounded-lg p-4">
-                  <p className="text-sm text-muted-foreground">Paid</p>
-                  <p className="text-2xl font-heading font-bold text-foreground">
-                    {allInvoices.filter((i) => i.status === "paid").length}
-                  </p>
-                </div>
-                <div className="glass rounded-lg p-4">
-                  <p className="text-sm text-muted-foreground">Overdue</p>
-                  <p className="text-2xl font-heading font-bold text-destructive">
-                    {allInvoices.filter((i) => i.status === "overdue").length}
-                  </p>
-                </div>
-              </div>
-
-              {/* Empty State */}
-              {filteredInvoices.length === 0 && (
-                <InvoiceEmptyState 
-                  onAddInvoice={() => navigate("/invoices/new")} 
-                  isFiltered={hasActiveFilters}
+              ) : (
+                <EnhancedDataTable
+                  tableId="invoices"
+                  data={filteredInvoices}
+                  columns={columns}
+                  onRowClick={(item) => navigate(`/invoices/${item.id}`)}
                 />
               )}
-
-              {/* Invoices - Responsive Layout */}
-              {filteredInvoices.length > 0 && (
-                <>
-                  {isMobile ? (
-                    <div className="grid gap-4">
-                      {filteredInvoices.map((invoice, index) => (
-                        <InvoiceCard
-                          key={invoice.id}
-                          invoice={invoice}
-                          onView={(id) => navigate(`/invoices/${id}`)}
-                          index={index}
-                        />
-                      ))}
-                    </div>
-                  ) : (
-                    <EnhancedDataTable
-                      tableId="invoices"
-                      data={filteredInvoices}
-                      columns={columns}
-                      onRowClick={(item) => navigate(`/invoices/${item.id}`)}
-                    />
-                  )}
-                </>
-              )}
-            </TabsContent>
-
-            {/* Payments & Balance Tab */}
-            <TabsContent value="payments-balance">
-              <InvoiceBalanceView invoices={filteredInvoices} />
-            </TabsContent>
-          </Tabs>
+            </>
+          )}
         </PullToRefreshWrapper>
       </PageLayout>
     </>
