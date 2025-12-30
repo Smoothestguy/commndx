@@ -59,18 +59,19 @@ export function useChangeOrderPermissions(changeOrder?: ChangeOrderWithLineItems
     // Managers have elevated access but can only delete drafts
     if (isManager) {
       const isDraft = changeOrder?.status === 'draft';
+      const isEditable = changeOrder?.status !== 'approved' && changeOrder?.status !== 'invoiced';
       return {
         canView: true,
-        canEdit: true,
+        canEdit: isEditable,
         canDelete: isDraft, // Managers can only delete drafts
         canApprove: true,
-        canSubmitForApproval: true,
+        canSubmitForApproval: isEditable,
         canConvertToPO: true,
         canCreateInvoice: true,
         canViewCosts: sensitivePerms?.can_view_cost_rates ?? true,
         canViewMargins: sensitivePerms?.can_view_margins ?? true,
-        canEditLineItems: true,
-        canEditPricing: true,
+        canEditLineItems: isEditable,
+        canEditPricing: isEditable,
         canEditStatus: true,
         accessLevel: 'full_admin' as AccessLevel,
         loading,
@@ -79,12 +80,13 @@ export function useChangeOrderPermissions(changeOrder?: ChangeOrderWithLineItems
 
     // Status-based restrictions for regular users
     const isDraft = changeOrder?.status === 'draft';
-    const isPendingApproval = changeOrder?.status === 'pending_approval';
     const isApproved = changeOrder?.status === 'approved';
+    const isInvoiced = changeOrder?.status === 'invoiced';
+    const isEditable = !isApproved && !isInvoiced;
 
     // Determine access level
     let accessLevel: AccessLevel = 'read_only';
-    if (canEdit && isDraft) {
+    if (canEdit && isEditable) {
       accessLevel = 'edit';
     } else if (canView && !canEdit) {
       accessLevel = 'read_only';
@@ -92,16 +94,16 @@ export function useChangeOrderPermissions(changeOrder?: ChangeOrderWithLineItems
 
     return {
       canView,
-      canEdit: canEdit && isDraft, // Can only edit draft change orders
+      canEdit: canEdit && isEditable, // Can edit unless approved/invoiced
       canDelete: canDelete && isDraft, // Can only delete drafts
       canApprove: false, // Only admins/managers can approve
-      canSubmitForApproval: canEdit && isDraft,
+      canSubmitForApproval: canEdit && isEditable,
       canConvertToPO: canAdd && isApproved,
       canCreateInvoice: canAdd && isApproved,
       canViewCosts: sensitivePerms?.can_view_cost_rates ?? false,
       canViewMargins: sensitivePerms?.can_view_margins ?? false,
-      canEditLineItems: canEdit && isDraft,
-      canEditPricing: canEdit && isDraft,
+      canEditLineItems: canEdit && isEditable,
+      canEditPricing: canEdit && isEditable,
       canEditStatus: false, // Only admins/managers can change status
       accessLevel,
       loading,

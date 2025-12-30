@@ -79,10 +79,11 @@ export default function ChangeOrderDetail() {
   const [showAddToPODialog, setShowAddToPODialog] = useState(false);
   const [showConvertToPODialog, setShowConvertToPODialog] = useState(false);
 
-  const canEdit = changeOrder?.status === "draft" && (isAdmin || isManager);
+  const isEditable = changeOrder?.status !== "approved" && changeOrder?.status !== "invoiced";
+  const canEdit = isEditable && (isAdmin || isManager);
   // Admins can delete any CO; managers only draft
   const canDelete = isAdmin || (changeOrder?.status === "draft" && isManager);
-  const canSubmitForApproval = changeOrder?.status === "draft" && (isAdmin || isManager);
+  const canSubmitForApproval = isEditable && (isAdmin || isManager);
   const canApprove = changeOrder?.status === "pending_approval" && isAdmin; // Admin only
   const canCreateInvoice = changeOrder?.status === "approved" && (isAdmin || isManager);
   const canAddToPO = changeOrder?.status === "approved" && (isAdmin || isManager);

@@ -52,7 +52,7 @@ export function ChangeOrderCard({ changeOrder, onDelete }: ChangeOrderCardProps)
               <Eye className="mr-2 h-4 w-4" />
               View Details
             </DropdownMenuItem>
-            {changeOrder.status === "draft" && (
+            {changeOrder.status !== "approved" && changeOrder.status !== "invoiced" && (
               <DropdownMenuItem onClick={() => navigate(`/change-orders/${changeOrder.id}/edit`)}>
                 <Edit className="mr-2 h-4 w-4" />
                 Edit
