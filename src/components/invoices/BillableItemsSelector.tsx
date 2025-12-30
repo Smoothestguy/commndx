@@ -203,10 +203,31 @@ const EMPTY_RESULT = {
   selectedCount: 0,
 };
 
+interface JobOrderLineItem {
+  id?: string;
+  product_id?: string;
+  product_name?: string;
+  description: string;
+  quantity: number;
+  unit_price: number;
+  markup: number;
+  total: number;
+  invoiced_quantity?: number;
+  is_taxable?: boolean;
+}
+
+interface JobOrderWithLineItems {
+  id: string;
+  number: string;
+  line_items?: JobOrderLineItem[];
+}
+
 export const useSelectedBillableItemsTotals = (
   projectId: string | undefined,
   selectedItems: string[],
-  taxRate: number
+  taxRate: number,
+  jobOrderBillingMode: "summary" | "detailed" = "detailed",
+  jobOrderWithLineItems?: JobOrderWithLineItems | null
 ) => {
   const { data: billableItems } = useProjectBillableItems(projectId);
 
@@ -220,34 +241,57 @@ export const useSelectedBillableItemsTotals = (
     ];
 
     const selectedItemsData = allItems.filter(item => selectedItems.includes(item.id));
+    
+    // Separate JOs from other items
+    const selectedJobOrders = selectedItemsData.filter(item => item.type === 'job_order');
+    const selectedOtherItems = selectedItemsData.filter(item => item.type !== 'job_order');
 
-    const subtotal = selectedItemsData.reduce((sum, item) => {
-      if (item.type === 'job_order') {
-        return sum + item.remaining_amount;
-      }
-      const amount = item.change_type === 'deductive' ? -item.total : item.total;
-      return sum + amount;
-    }, 0);
-
-    const taxAmount = subtotal * (taxRate / 100);
-    const total = subtotal + taxAmount;
-
-    // Create line items from selected items
-    const lineItems = selectedItemsData.map((item, index) => {
-      if (item.type === 'job_order') {
-        return {
+    // Build line items based on billing mode
+    let lineItems: any[] = [];
+    let displayOrderCounter = 0;
+    
+    // Handle Job Orders based on billing mode
+    for (const jo of selectedJobOrders) {
+      if (jobOrderBillingMode === 'detailed' && 
+          jobOrderWithLineItems && 
+          jobOrderWithLineItems.id === jo.id && 
+          jobOrderWithLineItems.line_items && 
+          jobOrderWithLineItems.line_items.length > 0) {
+        // Use detailed line items from the job order
+        for (const lineItem of jobOrderWithLineItems.line_items) {
+          lineItems.push({
+            product_id: lineItem.product_id,
+            product_name: lineItem.product_name || lineItem.description,
+            description: lineItem.description,
+            quantity: lineItem.quantity,
+            unit_price: lineItem.unit_price,
+            markup: lineItem.markup,
+            total: lineItem.total,
+            is_taxable: lineItem.is_taxable ?? true,
+            display_order: displayOrderCounter++,
+          });
+        }
+      } else {
+        // Summary mode: single line per JO
+        lineItems.push({
           product_id: null,
-          product_name: `Job Order ${item.number}`,
+          product_name: `Job Order ${jo.number}`,
           description: 'Remaining balance',
           quantity: 1,
-          unit_price: item.remaining_amount,
+          unit_price: jo.remaining_amount,
           markup: 0,
-          total: item.remaining_amount,
-          display_order: index,
-        };
-      } else if (item.type === 'change_order') {
+          total: jo.remaining_amount,
+          is_taxable: true,
+          display_order: displayOrderCounter++,
+        });
+      }
+    }
+
+    // Handle Change Orders and T&M Tickets (always summary)
+    for (const item of selectedOtherItems) {
+      if (item.type === 'change_order') {
         const amount = item.change_type === 'deductive' ? -item.total : item.total;
-        return {
+        lineItems.push({
           product_id: null,
           product_name: `Change Order ${item.number}`,
           description: item.reason,
@@ -255,11 +299,12 @@ export const useSelectedBillableItemsTotals = (
           unit_price: amount,
           markup: 0,
           total: amount,
-          display_order: index,
-        };
-      } else {
+          is_taxable: true,
+          display_order: displayOrderCounter++,
+        });
+      } else if (item.type === 'tm_ticket') {
         const amount = item.change_type === 'deductive' ? -item.total : item.total;
-        return {
+        lineItems.push({
           product_id: null,
           product_name: `T&M Ticket ${item.ticket_number}`,
           description: item.description || 'Time & Materials',
@@ -267,10 +312,21 @@ export const useSelectedBillableItemsTotals = (
           unit_price: amount,
           markup: 0,
           total: amount,
-          display_order: index,
-        };
+          is_taxable: true,
+          display_order: displayOrderCounter++,
+        });
       }
-    });
+    }
+
+    // Calculate subtotal from line items
+    const subtotal = lineItems.reduce((sum, item) => sum + item.total, 0);
+    
+    // Calculate tax only on taxable items
+    const taxableSubtotal = lineItems
+      .filter(item => item.is_taxable !== false)
+      .reduce((sum, item) => sum + item.total, 0);
+    const taxAmount = Math.round(taxableSubtotal * (taxRate / 100) * 100) / 100;
+    const total = Math.round((subtotal + taxAmount) * 100) / 100;
 
     // Extract IDs by type for submission
     const jobOrderIds = selectedItemsData
@@ -295,5 +351,5 @@ export const useSelectedBillableItemsTotals = (
       tmTicketIds,
       selectedCount: selectedItemsData.length,
     };
-  }, [billableItems, selectedItems, taxRate]);
+  }, [billableItems, selectedItems, taxRate, jobOrderBillingMode, jobOrderWithLineItems]);
 };
