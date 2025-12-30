@@ -143,7 +143,8 @@ export function EnhancedTimeEntryForm({
   });
 
   // Watch hours for overtime preview
-  const watchedHours = form.watch("hours");
+  const watchedHoursRaw = form.watch("hours");
+  const watchedHours = Number(watchedHoursRaw) || 0;
   const watchedIsHoliday = form.watch("is_holiday");
 
   // Get current project ID based on entry type
