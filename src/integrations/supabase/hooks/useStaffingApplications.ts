@@ -338,6 +338,8 @@ export const useSubmitApplication = () => {
       geo,
       clientSubmittedAt,
       userAgent,
+      smsConsent,
+      smsConsentPhone,
     }: {
       posting_id: string;
       applicant: {
@@ -355,6 +357,8 @@ export const useSubmitApplication = () => {
       geo?: GeoSubmissionData;
       clientSubmittedAt?: string;
       userAgent?: string;
+      smsConsent?: boolean;
+      smsConsentPhone?: string;
     }) => {
       console.log("[Application] Starting submission for posting:", posting_id);
       console.log("[Application] Applicant data:", applicantData);
@@ -464,6 +468,9 @@ export const useSubmitApplication = () => {
           geo_captured_at: geo?.capturedAt || null,
           geo_error: geo?.error || null,
           user_agent: userAgent || null,
+          sms_consent: smsConsent || false,
+          sms_consent_phone: smsConsent ? smsConsentPhone : null,
+          sms_consent_at: smsConsent ? new Date().toISOString() : null,
         } as any)
         .select()
         .single();
@@ -473,6 +480,24 @@ export const useSubmitApplication = () => {
         throw appError;
       }
       console.log("[Application] Application created successfully:", application.id);
+
+      // Send SMS confirmation if consent was given
+      if (smsConsent && smsConsentPhone) {
+        try {
+          console.log("[Application] Sending SMS confirmation to:", smsConsentPhone);
+          await supabase.functions.invoke("send-application-sms-confirmation", {
+            body: {
+              applicationId: application.id,
+              phone: smsConsentPhone,
+              firstName: applicantData.first_name,
+            },
+          });
+          console.log("[Application] SMS confirmation sent successfully");
+        } catch (smsError) {
+          // Non-critical error - log but don't fail the submission
+          console.error("[Application] Error sending SMS confirmation (non-critical):", smsError);
+        }
+      }
 
       // Auto-geocode applicant if they have address info but no coordinates
       try {

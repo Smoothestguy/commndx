@@ -117,6 +117,8 @@ export interface FormSettings {
   // New settings for photo and location requirements
   requireProfilePhoto?: boolean;
   requireLocation?: boolean;
+  // SMS consent requirement
+  requireSmsConsent?: boolean;
 }
 
 export interface ApplicationFormTemplate {

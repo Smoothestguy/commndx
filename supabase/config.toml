@@ -161,3 +161,6 @@ verify_jwt = false
 
 [functions.quickbooks-import-invoices]
 verify_jwt = false
+
+[functions.send-application-sms-confirmation]
+verify_jwt = false
