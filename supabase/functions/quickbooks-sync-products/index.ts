@@ -48,8 +48,8 @@ async function getValidToken(supabase: any) {
   return { accessToken: config.access_token, realmId: config.realm_id };
 }
 
-// QuickBooks API helper
-async function qbRequest(method: string, endpoint: string, accessToken: string, realmId: string, body?: any) {
+// QuickBooks API helper - returns { data, error } format for better error handling
+async function qbRequest(method: string, endpoint: string, accessToken: string, realmId: string, body?: any): Promise<any> {
   const url = `https://quickbooks.api.intuit.com/v3/company/${realmId}${endpoint}`;
   
   const options: RequestInit = {
@@ -70,10 +70,24 @@ async function qbRequest(method: string, endpoint: string, accessToken: string, 
   if (!response.ok) {
     const errorText = await response.text();
     console.error(`QuickBooks API error: ${errorText}`);
-    throw new Error(`QuickBooks API error: ${response.status}`);
+    throw new Error(`QuickBooks API error: ${response.status} - ${errorText}`);
   }
 
   return response.json();
+}
+
+// Helper to find existing QB item by name
+async function findQBItemByName(name: string, accessToken: string, realmId: string): Promise<any | null> {
+  try {
+    // Escape single quotes for QuickBooks query
+    const escapedName = name.replace(/'/g, "\\'");
+    const query = `SELECT * FROM Item WHERE Name = '${escapedName}'`;
+    const result = await qbRequest('GET', `/query?query=${encodeURIComponent(query)}&minorversion=65`, accessToken, realmId);
+    return result.QueryResponse?.Item?.[0] || null;
+  } catch (error) {
+    console.error(`Error querying QB item by name "${name}":`, error);
+    return null;
+  }
 }
 
 serve(async (req) => {
@@ -267,18 +281,65 @@ serve(async (req) => {
             updated++;
           } else {
             // Create new QB item
-            const result = await qbRequest('POST', '/item?minorversion=65', accessToken, realmId, qbItem);
-            
-            await supabase
-              .from('quickbooks_product_mappings')
-              .insert({
-                product_id: product.id,
-                quickbooks_item_id: result.Item.Id,
-                sync_status: 'synced',
-                sync_direction: 'to_qb',
-                last_synced_at: new Date().toISOString(),
-              });
-            exported++;
+            try {
+              const result = await qbRequest('POST', '/item?minorversion=65', accessToken, realmId, qbItem);
+              
+              await supabase
+                .from('quickbooks_product_mappings')
+                .insert({
+                  product_id: product.id,
+                  quickbooks_item_id: result.Item.Id,
+                  sync_status: 'synced',
+                  sync_direction: 'to_qb',
+                  last_synced_at: new Date().toISOString(),
+                });
+              exported++;
+            } catch (createError: unknown) {
+              const errorMessage = createError instanceof Error ? createError.message : '';
+              
+              // Check if it's a "Duplicate Name Exists" error (error code 6240)
+              if (errorMessage.includes('6240') || errorMessage.toLowerCase().includes('name supplied already exists')) {
+                console.log(`Product "${product.name}" already exists in QuickBooks, finding existing item...`);
+                
+                // Find the existing item by name
+                const existingItem = await findQBItemByName(product.name, accessToken, realmId);
+                
+                if (existingItem) {
+                  console.log(`Found existing QB item: ${existingItem.Id} for product "${product.name}"`);
+                  
+                  // Create mapping with existing QB item
+                  await supabase
+                    .from('quickbooks_product_mappings')
+                    .insert({
+                      product_id: product.id,
+                      quickbooks_item_id: existingItem.Id,
+                      sync_status: 'synced',
+                      sync_direction: 'to_qb',
+                      last_synced_at: new Date().toISOString(),
+                    });
+                  
+                  // Update the existing QB item with current data
+                  try {
+                    await qbRequest('POST', '/item?minorversion=65', accessToken, realmId, {
+                      ...qbItem,
+                      Id: existingItem.Id,
+                      SyncToken: existingItem.SyncToken,
+                      sparse: true,
+                    });
+                    console.log(`Updated existing QB item ${existingItem.Id} with current data`);
+                  } catch (updateErr) {
+                    console.warn(`Could not update existing QB item: ${updateErr}`);
+                  }
+                  
+                  updated++;
+                  continue;
+                }
+              }
+              
+              // If not a duplicate error or couldn't recover, log original error
+              console.error(`Error exporting product ${product.name}:`, createError);
+              errors.push(`${product.name}: ${errorMessage}`);
+            }
           }
         } catch (error: unknown) {
           console.error(`Error exporting product ${product.name}:`, error);
@@ -361,17 +422,63 @@ serve(async (req) => {
           .eq('id', mapping.id);
       } else {
         // Create new
-        const result = await qbRequest('POST', '/item?minorversion=65', accessToken, realmId, qbItem);
-        
-        await supabase
-          .from('quickbooks_product_mappings')
-          .insert({
-            product_id: product.id,
-            quickbooks_item_id: result.Item.Id,
-            sync_status: 'synced',
-            sync_direction: 'to_qb',
-            last_synced_at: new Date().toISOString(),
-          });
+        try {
+          const result = await qbRequest('POST', '/item?minorversion=65', accessToken, realmId, qbItem);
+          
+          await supabase
+            .from('quickbooks_product_mappings')
+            .insert({
+              product_id: product.id,
+              quickbooks_item_id: result.Item.Id,
+              sync_status: 'synced',
+              sync_direction: 'to_qb',
+              last_synced_at: new Date().toISOString(),
+            });
+        } catch (createError: unknown) {
+          const errorMessage = createError instanceof Error ? createError.message : '';
+          
+          // Check if it's a "Duplicate Name Exists" error
+          if (errorMessage.includes('6240') || errorMessage.toLowerCase().includes('name supplied already exists')) {
+            console.log(`Product "${product.name}" already exists in QuickBooks, finding existing item...`);
+            
+            // Find the existing item by name
+            const existingItem = await findQBItemByName(product.name, accessToken, realmId);
+            
+            if (existingItem) {
+              console.log(`Found existing QB item: ${existingItem.Id} for product "${product.name}"`);
+              
+              // Create mapping with existing QB item
+              await supabase
+                .from('quickbooks_product_mappings')
+                .insert({
+                  product_id: product.id,
+                  quickbooks_item_id: existingItem.Id,
+                  sync_status: 'synced',
+                  sync_direction: 'to_qb',
+                  last_synced_at: new Date().toISOString(),
+                });
+              
+              // Update the existing QB item with current data
+              try {
+                await qbRequest('POST', '/item?minorversion=65', accessToken, realmId, {
+                  ...qbItem,
+                  Id: existingItem.Id,
+                  SyncToken: existingItem.SyncToken,
+                  sparse: true,
+                });
+                console.log(`Updated existing QB item ${existingItem.Id} with current data`);
+              } catch (updateErr) {
+                console.warn(`Could not update existing QB item: ${updateErr}`);
+              }
+            } else {
+              // Couldn't find existing item, rethrow
+              throw createError;
+            }
+          } else {
+            // Not a duplicate error, rethrow
+            throw createError;
+          }
+        }
       }
 
       await supabase.from('quickbooks_sync_log').insert({
