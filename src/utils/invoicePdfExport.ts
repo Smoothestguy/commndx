@@ -1,5 +1,6 @@
 import jsPDF from "jspdf";
 import { InvoiceWithLineItems } from "@/integrations/supabase/hooks/useInvoices";
+import { supabase } from "@/integrations/supabase/client";
 import {
   PDF_COLORS,
   PDF_FONTS,
@@ -11,6 +12,57 @@ import {
   getDefaultCompanyInfo,
   CompanyInfo,
 } from "./pdfHelpers";
+
+// Fetch order numbers and info for the invoice
+async function fetchOrderInfo(invoice: InvoiceWithLineItems) {
+  const orderInfo = {
+    jobOrderNumber: null as string | null,
+    changeOrderNumber: null as string | null,
+    changeOrderReason: null as string | null,
+    tmTicketNumber: null as string | null,
+  };
+
+  // Cast to access additional fields that may exist on the invoice
+  const invoiceData = invoice as InvoiceWithLineItems & { 
+    tm_ticket_id?: string | null;
+    change_order_id?: string | null;
+  };
+
+  // First check if job_order_number is already on the invoice
+  if (invoice.job_order_number) {
+    orderInfo.jobOrderNumber = invoice.job_order_number;
+  } else if (invoice.job_order_id) {
+    const { data } = await supabase
+      .from("job_orders")
+      .select("number")
+      .eq("id", invoice.job_order_id)
+      .single();
+    if (data) orderInfo.jobOrderNumber = data.number;
+  }
+
+  if (invoiceData.change_order_id) {
+    const { data } = await supabase
+      .from("change_orders")
+      .select("number, reason")
+      .eq("id", invoiceData.change_order_id)
+      .single();
+    if (data) {
+      orderInfo.changeOrderNumber = data.number;
+      orderInfo.changeOrderReason = data.reason;
+    }
+  }
+
+  if (invoiceData.tm_ticket_id) {
+    const { data } = await supabase
+      .from("tm_tickets")
+      .select("ticket_number")
+      .eq("id", invoiceData.tm_ticket_id)
+      .single();
+    if (data) orderInfo.tmTicketNumber = data.ticket_number;
+  }
+
+  return orderInfo;
+}
 
 export const generateInvoicePDF = async (
   invoice: InvoiceWithLineItems,
@@ -160,6 +212,9 @@ export const generateInvoicePDF = async (
   setColor(doc, PDF_COLORS.black);
   doc.setFont("helvetica", "normal");
   
+  // Fetch order info for product name assignment
+  const orderInfo = await fetchOrderInfo(invoice);
+
   invoice.line_items.forEach((item, index) => {
     // Check for page break
     if (yPos > 250) {
@@ -172,25 +227,19 @@ export const generateInvoicePDF = async (
     // Row number
     doc.text((index + 1).toString(), colNum, rowY);
     
-    // Product/Service name - parse from description if not set
+    // Product/Service name - use product_name or derive from order info
     let productName = (item as any).product_name;
     let displayDescription = item.description;
 
-    if (!productName && item.description) {
-      // Parse patterns like "Job Order JO-XXXX: description" or "Change Order CO-X: description"
-      const joMatch = item.description.match(/^(Job Order JO-\d+):\s*(.*)$/i);
-      const coMatch = item.description.match(/^(Change Order CO-\d+):\s*(.*)$/i);
-      const tmMatch = item.description.match(/^(T&M Ticket TM-\d+):\s*(.*)$/i);
-      
-      if (joMatch) {
-        productName = joMatch[1];
-        displayDescription = joMatch[2] || 'Remaining balance';
-      } else if (coMatch) {
-        productName = coMatch[1];
-        displayDescription = coMatch[2] || '';
-      } else if (tmMatch) {
-        productName = tmMatch[1];
-        displayDescription = tmMatch[2] || 'Time & Materials';
+    if (!productName) {
+      // Try to identify the source of this line item
+      if (orderInfo.changeOrderNumber && orderInfo.changeOrderReason && 
+          item.description.trim().toLowerCase() === orderInfo.changeOrderReason.trim().toLowerCase()) {
+        productName = `Change Order ${orderInfo.changeOrderNumber}`;
+      } else if (orderInfo.tmTicketNumber) {
+        productName = `T&M Ticket ${orderInfo.tmTicketNumber}`;
+      } else if (orderInfo.jobOrderNumber) {
+        productName = `Job Order ${orderInfo.jobOrderNumber}`;
       }
     }
     
