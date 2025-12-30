@@ -11,6 +11,7 @@ import {
 import { useNavigate } from "react-router-dom";
 import { ChangeOrder, ChangeOrderStatus } from "@/integrations/supabase/hooks/useChangeOrders";
 import { format } from "date-fns";
+import { useUserRole } from "@/hooks/useUserRole";
 
 interface ChangeOrderCardProps {
   changeOrder: ChangeOrder & { project?: { id: string; name: string } };
@@ -28,6 +29,7 @@ const statusConfig: Record<ChangeOrderStatus, { label: string; variant: "default
 
 export function ChangeOrderCard({ changeOrder, onDelete, onHardDelete }: ChangeOrderCardProps) {
   const navigate = useNavigate();
+  const { isAdmin } = useUserRole();
   const status = statusConfig[changeOrder.status];
 
   return (
@@ -53,7 +55,7 @@ export function ChangeOrderCard({ changeOrder, onDelete, onHardDelete }: ChangeO
               <Eye className="mr-2 h-4 w-4" />
               View Details
             </DropdownMenuItem>
-            {changeOrder.status !== "approved" && changeOrder.status !== "invoiced" && (
+            {(isAdmin || (changeOrder.status !== "approved" && changeOrder.status !== "invoiced")) && (
               <DropdownMenuItem onClick={() => navigate(`/change-orders/${changeOrder.id}/edit`)}>
                 <Edit className="mr-2 h-4 w-4" />
                 Edit
