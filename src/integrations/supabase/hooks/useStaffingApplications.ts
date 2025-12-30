@@ -340,6 +340,7 @@ export const useSubmitApplication = () => {
       userAgent,
       smsConsent,
       smsConsentPhone,
+      smsConsentTextVersion,
     }: {
       posting_id: string;
       applicant: {
@@ -359,6 +360,7 @@ export const useSubmitApplication = () => {
       userAgent?: string;
       smsConsent?: boolean;
       smsConsentPhone?: string;
+      smsConsentTextVersion?: string;
     }) => {
       console.log("[Application] Starting submission for posting:", posting_id);
       console.log("[Application] Applicant data:", applicantData);
@@ -471,6 +473,8 @@ export const useSubmitApplication = () => {
           sms_consent: smsConsent || false,
           sms_consent_phone: smsConsent ? smsConsentPhone : null,
           sms_consent_at: smsConsent ? new Date().toISOString() : null,
+          sms_consent_method: smsConsent ? 'web_form' : null,
+          sms_consent_text_version: smsConsent ? (smsConsentTextVersion || 'v1.0') : null,
         } as any)
         .select()
         .single();
