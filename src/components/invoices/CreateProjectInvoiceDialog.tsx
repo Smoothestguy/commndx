@@ -143,7 +143,8 @@ export const CreateProjectInvoiceDialog = ({
     const lineItems = selectedItemsData.map((item, index) => {
       if (item.type === 'job_order') {
         return {
-          description: `Job Order ${item.number}: Remaining balance`,
+          product_name: `Job Order ${item.number}`,
+          description: 'Remaining balance',
           quantity: 1,
           unit_price: item.remaining_amount,
           markup: 0,
@@ -153,7 +154,8 @@ export const CreateProjectInvoiceDialog = ({
       } else if (item.type === 'change_order') {
         const amount = item.change_type === 'deductive' ? -item.total : item.total;
         return {
-          description: `Change Order ${item.number}: ${item.reason}`,
+          product_name: `Change Order ${item.number}`,
+          description: item.reason,
           quantity: 1,
           unit_price: amount,
           markup: 0,
@@ -163,7 +165,8 @@ export const CreateProjectInvoiceDialog = ({
       } else {
         const amount = item.change_type === 'deductive' ? -item.total : item.total;
         return {
-          description: `T&M Ticket ${item.ticket_number}: ${item.description || 'Time & Materials'}`,
+          product_name: `T&M Ticket ${item.ticket_number}`,
+          description: item.description || 'Time & Materials',
           quantity: 1,
           unit_price: amount,
           markup: 0,

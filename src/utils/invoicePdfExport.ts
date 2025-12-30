@@ -134,9 +134,9 @@ export const generateInvoicePDF = async (
   // Table header with columns: #, Product/Service, Description, Qty, Rate, Amount
   const colNum = PDF_MARGIN + 5;
   const colProduct = PDF_MARGIN + 15;
-  const colDescription = PDF_MARGIN + 65;
-  const colQty = pageWidth - 75;
-  const colRate = pageWidth - 50;
+  const colDescription = PDF_MARGIN + 60;
+  const colQty = pageWidth - 85;
+  const colRate = pageWidth - 60;
   const colAmount = pageWidth - PDF_MARGIN - 5;
 
   // Header background
@@ -151,7 +151,7 @@ export const generateInvoicePDF = async (
   doc.text("Product/Service", colProduct, yPos + 7);
   doc.text("Description", colDescription, yPos + 7);
   doc.text("Qty", colQty, yPos + 7);
-  doc.text("Rate", colRate, yPos + 7);
+  doc.text("Rate", colRate + 15, yPos + 7, { align: "right" });
   doc.text("Amount", colAmount, yPos + 7, { align: "right" });
 
   yPos += 14;
@@ -174,12 +174,12 @@ export const generateInvoicePDF = async (
     
     // Product/Service name
     const productName = (item as any).product_name || "-";
-    const productMaxWidth = 45;
+    const productMaxWidth = 40;
     const productLines = doc.splitTextToSize(productName, productMaxWidth);
     doc.text(productLines[0] || "-", colProduct, rowY);
     
     // Description (truncated if too long)
-    const descMaxWidth = colQty - colDescription - 10;
+    const descMaxWidth = colQty - colDescription - 5;
     const descLines = doc.splitTextToSize(item.description, descMaxWidth);
     doc.text(descLines[0] || "", colDescription, rowY);
     if (descLines.length > 1) {
@@ -191,8 +191,8 @@ export const generateInvoicePDF = async (
     // Quantity
     doc.text(item.quantity.toString(), colQty, rowY);
     
-    // Rate (unit price)
-    doc.text(formatCurrencyForPDF(item.unit_price), colRate, rowY);
+    // Rate (unit price) - right aligned
+    doc.text(formatCurrencyForPDF(item.unit_price), colRate + 15, rowY, { align: "right" });
     
     // Amount
     doc.text(formatCurrencyForPDF(item.total), colAmount, rowY, { align: "right" });
