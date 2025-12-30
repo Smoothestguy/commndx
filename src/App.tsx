@@ -124,6 +124,7 @@ import OnboardingComplete from "./pages/OnboardingComplete";
 import AdminNotifications from "./pages/AdminNotifications";
 import SessionHistory from "./pages/SessionHistory";
 import AiDevAssistant from "./pages/admin/AiDevAssistant";
+import Trash from "./pages/admin/Trash";
 const queryClient = new QueryClient();
 
 const App = () => {
@@ -383,6 +384,10 @@ const App = () => {
                     <Route
                       path="/admin/audit-logs"
                       element={<AuditLogs />}
+                    />
+                    <Route
+                      path="/admin/trash"
+                      element={<Trash />}
                     />
                     <Route
                       path="/staffing/applications"

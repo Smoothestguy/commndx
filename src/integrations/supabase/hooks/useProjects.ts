@@ -113,13 +113,23 @@ export const useDeleteProject = () => {
 
   return useMutation({
     mutationFn: async (id: string) => {
-      const { error } = await supabase.from("projects").delete().eq("id", id);
+      const { data: { user } } = await supabase.auth.getUser();
+      
+      // Soft delete instead of hard delete
+      const { error } = await supabase
+        .from("projects")
+        .update({
+          deleted_at: new Date().toISOString(),
+          deleted_by: user?.id,
+        })
+        .eq("id", id);
 
       if (error) throw error;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["projects"] });
-      toast.success("Project deleted successfully");
+      queryClient.invalidateQueries({ queryKey: ["deleted_items"] });
+      toast.success("Project moved to trash");
     },
     onError: (error: Error) => {
       toast.error(`Failed to delete project: ${error.message}`);

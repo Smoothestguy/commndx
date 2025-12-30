@@ -29,6 +29,7 @@ import {
   IdCard,
   Link2,
   Send,
+  Trash2,
 } from "lucide-react";
 
 const navigation = [
@@ -222,6 +223,20 @@ export function Sidebar() {
                 >
                   <Shield className="h-4 w-4 flex-shrink-0" />
                   <span className="truncate">User Management</span>
+                </Link>
+              )}
+              {isAdmin && (
+                <Link
+                  to="/admin/trash"
+                  className={cn(
+                    "group flex items-center gap-3 rounded-md px-3 py-2 text-sm font-medium transition-all duration-150",
+                    location.pathname === "/admin/trash"
+                      ? "bg-primary/15 text-primary border-l-4 border-primary -ml-0.5 pl-2.5"
+                      : "text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"
+                  )}
+                >
+                  <Trash2 className="h-4 w-4 flex-shrink-0" />
+                  <span className="truncate">Trash</span>
                 </Link>
               )}
               <Link

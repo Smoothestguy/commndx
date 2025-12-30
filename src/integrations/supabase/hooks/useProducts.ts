@@ -89,13 +89,23 @@ export const useDeleteProduct = () => {
 
   return useMutation({
     mutationFn: async (id: string) => {
-      const { error } = await supabase.from("products").delete().eq("id", id);
+      const { data: { user } } = await supabase.auth.getUser();
+      
+      // Soft delete instead of hard delete
+      const { error } = await supabase
+        .from("products")
+        .update({
+          deleted_at: new Date().toISOString(),
+          deleted_by: user?.id,
+        })
+        .eq("id", id);
 
       if (error) throw error;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["products"] });
-      toast.success("Item deleted successfully");
+      queryClient.invalidateQueries({ queryKey: ["deleted_items"] });
+      toast.success("Item moved to trash");
     },
     onError: (error: Error) => {
       toast.error(`Failed to delete item: ${error.message}`);

@@ -156,6 +156,8 @@ export const useDeleteCustomer = () => {
 
   return useMutation({
     mutationFn: async (id: string) => {
+      const { data: { user } } = await supabase.auth.getUser();
+      
       // Fetch current data for logging
       const { data: before } = await supabase
         .from("customers")
@@ -163,7 +165,14 @@ export const useDeleteCustomer = () => {
         .eq("id", id)
         .single();
 
-      const { error } = await supabase.from("customers").delete().eq("id", id);
+      // Soft delete instead of hard delete
+      const { error } = await supabase
+        .from("customers")
+        .update({
+          deleted_at: new Date().toISOString(),
+          deleted_by: user?.id,
+        })
+        .eq("id", id);
 
       if (error) throw error;
 
@@ -178,7 +187,8 @@ export const useDeleteCustomer = () => {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["customers"] });
-      toast.success("Customer deleted successfully");
+      queryClient.invalidateQueries({ queryKey: ["deleted_items"] });
+      toast.success("Customer moved to trash");
     },
     onError: (error: Error) => {
       toast.error(`Failed to delete customer: ${error.message}`);

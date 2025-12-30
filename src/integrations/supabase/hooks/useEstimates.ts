@@ -255,27 +255,30 @@ export const useDeleteEstimate = () => {
 
   return useMutation({
     mutationFn: async (id: string) => {
+      const { data: { user } } = await supabase.auth.getUser();
+      
       // First, unlink any job orders that reference this estimate
       await supabase
         .from("job_orders")
         .update({ estimate_id: null })
         .eq("estimate_id", id);
       
-      // Then delete estimate line items
-      await supabase
-        .from("estimate_line_items")
-        .delete()
-        .eq("estimate_id", id);
-      
-      // Finally delete the estimate
-      const { error } = await supabase.from("estimates").delete().eq("id", id);
+      // Soft delete instead of hard delete
+      const { error } = await supabase
+        .from("estimates")
+        .update({
+          deleted_at: new Date().toISOString(),
+          deleted_by: user?.id,
+        })
+        .eq("id", id);
 
       if (error) throw error;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["estimates"] });
       queryClient.invalidateQueries({ queryKey: ["job_orders"] });
-      toast.success("Estimate deleted successfully");
+      queryClient.invalidateQueries({ queryKey: ["deleted_items"] });
+      toast.success("Estimate moved to trash");
     },
     onError: (error: Error) => {
       toast.error(`Failed to delete estimate: ${error.message}`);

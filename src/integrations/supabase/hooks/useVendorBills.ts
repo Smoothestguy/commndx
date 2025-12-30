@@ -340,9 +340,15 @@ export const useDeleteVendorBill = () => {
 
   return useMutation({
     mutationFn: async (id: string) => {
+      const { data: { user } } = await supabase.auth.getUser();
+      
+      // Soft delete instead of hard delete
       const { error } = await supabase
         .from("vendor_bills")
-        .delete()
+        .update({
+          deleted_at: new Date().toISOString(),
+          deleted_by: user?.id,
+        })
         .eq("id", id);
 
       if (error) throw error;
@@ -351,7 +357,8 @@ export const useDeleteVendorBill = () => {
       queryClient.invalidateQueries({ queryKey: ["vendor-bills"] });
       queryClient.invalidateQueries({ queryKey: ["vendor-bills-by-po"] });
       queryClient.invalidateQueries({ queryKey: ["purchase_orders"] });
-      toast.success("Vendor bill deleted successfully");
+      queryClient.invalidateQueries({ queryKey: ["deleted_items"] });
+      toast.success("Vendor bill moved to trash");
     },
     onError: (error: Error) => {
       toast.error(`Failed to delete vendor bill: ${error.message}`);

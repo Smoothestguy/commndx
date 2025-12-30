@@ -878,6 +878,8 @@ export type Database = {
           created_by: string | null
           customer_id: string
           customer_name: string
+          deleted_at: string | null
+          deleted_by: string | null
           description: string | null
           file_name: string | null
           file_path: string | null
@@ -906,6 +908,8 @@ export type Database = {
           created_by?: string | null
           customer_id: string
           customer_name: string
+          deleted_at?: string | null
+          deleted_by?: string | null
           description?: string | null
           file_name?: string | null
           file_path?: string | null
@@ -934,6 +938,8 @@ export type Database = {
           created_by?: string | null
           customer_id?: string
           customer_name?: string
+          deleted_at?: string | null
+          deleted_by?: string | null
           description?: string | null
           file_name?: string | null
           file_path?: string | null
@@ -1142,6 +1148,8 @@ export type Database = {
           company: string | null
           created_at: string
           customer_type: Database["public"]["Enums"]["customer_type"] | null
+          deleted_at: string | null
+          deleted_by: string | null
           email: string
           id: string
           jobsite_address: string | null
@@ -1160,6 +1168,8 @@ export type Database = {
           company?: string | null
           created_at?: string
           customer_type?: Database["public"]["Enums"]["customer_type"] | null
+          deleted_at?: string | null
+          deleted_by?: string | null
           email: string
           id?: string
           jobsite_address?: string | null
@@ -1178,6 +1188,8 @@ export type Database = {
           company?: string | null
           created_at?: string
           customer_type?: Database["public"]["Enums"]["customer_type"] | null
+          deleted_at?: string | null
+          deleted_by?: string | null
           email?: string
           id?: string
           jobsite_address?: string | null
@@ -1533,6 +1545,8 @@ export type Database = {
           customer_id: string
           customer_name: string
           default_pricing_type: string | null
+          deleted_at: string | null
+          deleted_by: string | null
           id: string
           jobsite_address: string | null
           notes: string | null
@@ -1558,6 +1572,8 @@ export type Database = {
           customer_id: string
           customer_name: string
           default_pricing_type?: string | null
+          deleted_at?: string | null
+          deleted_by?: string | null
           id?: string
           jobsite_address?: string | null
           notes?: string | null
@@ -1583,6 +1599,8 @@ export type Database = {
           customer_id?: string
           customer_name?: string
           default_pricing_type?: string | null
+          deleted_at?: string | null
+          deleted_by?: string | null
           id?: string
           jobsite_address?: string | null
           notes?: string | null
@@ -2085,6 +2103,8 @@ export type Database = {
           created_at: string
           customer_id: string
           customer_name: string
+          deleted_at: string | null
+          deleted_by: string | null
           due_date: string
           estimate_id: string | null
           id: string
@@ -2108,6 +2128,8 @@ export type Database = {
           created_at?: string
           customer_id: string
           customer_name: string
+          deleted_at?: string | null
+          deleted_by?: string | null
           due_date: string
           estimate_id?: string | null
           id?: string
@@ -2131,6 +2153,8 @@ export type Database = {
           created_at?: string
           customer_id?: string
           customer_name?: string
+          deleted_at?: string | null
+          deleted_by?: string | null
           due_date?: string
           estimate_id?: string | null
           id?: string
@@ -2253,6 +2277,8 @@ export type Database = {
           created_at: string
           customer_id: string
           customer_name: string
+          deleted_at: string | null
+          deleted_by: string | null
           estimate_id: string | null
           id: string
           invoiced_amount: number
@@ -2273,6 +2299,8 @@ export type Database = {
           created_at?: string
           customer_id: string
           customer_name: string
+          deleted_at?: string | null
+          deleted_by?: string | null
           estimate_id?: string | null
           id?: string
           invoiced_amount?: number
@@ -2293,6 +2321,8 @@ export type Database = {
           created_at?: string
           customer_id?: string
           customer_name?: string
+          deleted_at?: string | null
+          deleted_by?: string | null
           estimate_id?: string | null
           id?: string
           invoiced_amount?: number
@@ -2559,6 +2589,8 @@ export type Database = {
           city: string | null
           created_at: string | null
           date_of_birth: string | null
+          deleted_at: string | null
+          deleted_by: string | null
           direct_deposit_signature: string | null
           direct_deposit_signed_at: string | null
           email: string
@@ -2626,6 +2658,8 @@ export type Database = {
           city?: string | null
           created_at?: string | null
           date_of_birth?: string | null
+          deleted_at?: string | null
+          deleted_by?: string | null
           direct_deposit_signature?: string | null
           direct_deposit_signed_at?: string | null
           email: string
@@ -2693,6 +2727,8 @@ export type Database = {
           city?: string | null
           created_at?: string | null
           date_of_birth?: string | null
+          deleted_at?: string | null
+          deleted_by?: string | null
           direct_deposit_signature?: string | null
           direct_deposit_signed_at?: string | null
           email?: string
@@ -3833,6 +3869,8 @@ export type Database = {
           category: string
           cost: number
           created_at: string
+          deleted_at: string | null
+          deleted_by: string | null
           description: string | null
           id: string
           is_taxable: boolean | null
@@ -3848,6 +3886,8 @@ export type Database = {
           category: string
           cost: number
           created_at?: string
+          deleted_at?: string | null
+          deleted_by?: string | null
           description?: string | null
           id?: string
           is_taxable?: boolean | null
@@ -3863,6 +3903,8 @@ export type Database = {
           category?: string
           cost?: number
           created_at?: string
+          deleted_at?: string | null
+          deleted_by?: string | null
           description?: string | null
           id?: string
           is_taxable?: boolean | null
@@ -4228,6 +4270,8 @@ export type Database = {
           created_at: string
           customer_id: string
           customer_po: string | null
+          deleted_at: string | null
+          deleted_by: string | null
           description: string | null
           end_date: string | null
           id: string
@@ -4251,6 +4295,8 @@ export type Database = {
           created_at?: string
           customer_id: string
           customer_po?: string | null
+          deleted_at?: string | null
+          deleted_by?: string | null
           description?: string | null
           end_date?: string | null
           id?: string
@@ -4274,6 +4320,8 @@ export type Database = {
           created_at?: string
           customer_id?: string
           customer_po?: string | null
+          deleted_at?: string | null
+          deleted_by?: string | null
           description?: string | null
           end_date?: string | null
           id?: string
@@ -4311,6 +4359,8 @@ export type Database = {
           created_at: string
           customer_id: string
           customer_name: string
+          deleted_at: string | null
+          deleted_by: string | null
           due_date: string
           id: string
           is_closed: boolean | null
@@ -4343,6 +4393,8 @@ export type Database = {
           created_at?: string
           customer_id: string
           customer_name: string
+          deleted_at?: string | null
+          deleted_by?: string | null
           due_date: string
           id?: string
           is_closed?: boolean | null
@@ -4375,6 +4427,8 @@ export type Database = {
           created_at?: string
           customer_id?: string
           customer_name?: string
+          deleted_at?: string | null
+          deleted_by?: string | null
           due_date?: string
           id?: string
           is_closed?: boolean | null
@@ -6060,6 +6114,8 @@ export type Database = {
         Row: {
           bill_date: string
           created_at: string
+          deleted_at: string | null
+          deleted_by: string | null
           due_date: string
           id: string
           notes: string | null
@@ -6082,6 +6138,8 @@ export type Database = {
         Insert: {
           bill_date: string
           created_at?: string
+          deleted_at?: string | null
+          deleted_by?: string | null
           due_date: string
           id?: string
           notes?: string | null
@@ -6104,6 +6162,8 @@ export type Database = {
         Update: {
           bill_date?: string
           created_at?: string
+          deleted_at?: string | null
+          deleted_by?: string | null
           due_date?: string
           id?: string
           notes?: string | null
@@ -6323,6 +6383,8 @@ export type Database = {
           contact_title: string | null
           created_at: string
           default_expense_category_id: string | null
+          deleted_at: string | null
+          deleted_by: string | null
           email: string
           id: string
           insurance_expiry: string | null
@@ -6372,6 +6434,8 @@ export type Database = {
           contact_title?: string | null
           created_at?: string
           default_expense_category_id?: string | null
+          deleted_at?: string | null
+          deleted_by?: string | null
           email: string
           id?: string
           insurance_expiry?: string | null
@@ -6421,6 +6485,8 @@ export type Database = {
           contact_title?: string | null
           created_at?: string
           default_expense_category_id?: string | null
+          deleted_at?: string | null
+          deleted_by?: string | null
           email?: string
           id?: string
           insurance_expiry?: string | null
