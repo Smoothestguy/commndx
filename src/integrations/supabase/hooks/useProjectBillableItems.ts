@@ -1,6 +1,17 @@
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 
+export interface BillableJobOrder {
+  id: string;
+  number: string;
+  total: number;
+  invoiced_amount: number;
+  remaining_amount: number;
+  status: string;
+  created_at: string;
+  type: 'job_order';
+}
+
 export interface BillableChangeOrder {
   id: string;
   number: string;
@@ -24,13 +35,38 @@ export interface BillableTMTicket {
   type: 'tm_ticket';
 }
 
-export type BillableItem = BillableChangeOrder | BillableTMTicket;
+export type BillableItem = BillableJobOrder | BillableChangeOrder | BillableTMTicket;
 
 export const useProjectBillableItems = (projectId: string | undefined) => {
   return useQuery({
     queryKey: ["project-billable-items", projectId],
     queryFn: async () => {
-      if (!projectId) return { changeOrders: [], tmTickets: [] };
+      if (!projectId) return { jobOrders: [], changeOrders: [], tmTickets: [] };
+
+      // Fetch job orders with remaining uninvoiced amounts
+      const { data: jobOrders, error: joError } = await supabase
+        .from("job_orders")
+        .select(`
+          id,
+          number,
+          total,
+          invoiced_amount,
+          remaining_amount,
+          status,
+          created_at
+        `)
+        .eq("project_id", projectId)
+        .in("status", ["active", "in-progress"])
+        .gt("remaining_amount", 0)
+        .is("deleted_at", null)
+        .order("created_at", { ascending: false });
+
+      if (joError) throw joError;
+
+      const billableJobOrders: BillableJobOrder[] = (jobOrders || []).map(jo => ({
+        ...jo,
+        type: 'job_order' as const,
+      }));
 
       // Fetch approved change orders that are not yet linked to an invoice
       const { data: changeOrders, error: coError } = await supabase
@@ -107,6 +143,7 @@ export const useProjectBillableItems = (projectId: string | undefined) => {
         }));
 
       return {
+        jobOrders: billableJobOrders,
         changeOrders: uninvoicedChangeOrders,
         tmTickets: uninvoicedTMTickets,
       };

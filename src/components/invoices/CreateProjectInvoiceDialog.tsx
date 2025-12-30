@@ -16,11 +16,11 @@ import { Badge } from "@/components/ui/badge";
 import { Calendar } from "@/components/ui/calendar";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { CalendarIcon, FileText, ClipboardList, Loader2 } from "lucide-react";
+import { CalendarIcon, FileText, ClipboardList, Receipt, Loader2 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useProjectBillableItems, BillableItem } from "@/integrations/supabase/hooks/useProjectBillableItems";
 import { useAddProjectInvoice } from "@/integrations/supabase/hooks/useProjectInvoice";
-import { supabase } from "@/integrations/supabase/client";
+import { getNextInvoiceNumber } from "@/utils/invoiceNumberGenerator";
 import { toast } from "@/hooks/use-toast";
 
 interface CreateProjectInvoiceDialogProps {
@@ -48,31 +48,27 @@ export const CreateProjectInvoiceDialog = ({
   const [dueDate, setDueDate] = useState<Date>(addDays(new Date(), 30));
   const [status, setStatus] = useState<"draft" | "sent">("draft");
   const [taxRate, setTaxRate] = useState(8.25);
+  const [isLoadingNumber, setIsLoadingNumber] = useState(false);
+  const [numberSource, setNumberSource] = useState<'quickbooks' | 'local'>('local');
 
-  // Generate invoice number on open
+  // Generate invoice number on open - use QuickBooks if connected
   useEffect(() => {
     if (open) {
-      const generateInvoiceNumber = async () => {
-        const { data } = await supabase
-          .from("invoices")
-          .select("number")
-          .order("created_at", { ascending: false })
-          .limit(1);
-
-        if (data && data.length > 0) {
-          const lastNumber = data[0].number;
-          const match = lastNumber.match(/INV-(\d+)/);
-          if (match) {
-            const nextNum = parseInt(match[1]) + 1;
-            setInvoiceNumber(`INV-${nextNum.toString().padStart(4, "0")}`);
-          } else {
-            setInvoiceNumber(`INV-${Date.now().toString().slice(-6)}`);
-          }
-        } else {
-          setInvoiceNumber("INV-0001");
+      const fetchInvoiceNumber = async () => {
+        setIsLoadingNumber(true);
+        try {
+          const { number, source } = await getNextInvoiceNumber();
+          setInvoiceNumber(number);
+          setNumberSource(source);
+        } catch (error) {
+          console.error('Failed to get invoice number:', error);
+          setInvoiceNumber(`INV-${Date.now().toString().slice(-6)}`);
+          setNumberSource('local');
+        } finally {
+          setIsLoadingNumber(false);
         }
       };
-      generateInvoiceNumber();
+      fetchInvoiceNumber();
       setSelectedItems(new Set());
     }
   }, [open]);
@@ -80,6 +76,7 @@ export const CreateProjectInvoiceDialog = ({
   const allItems = useMemo(() => {
     if (!billableItems) return [];
     return [
+      ...billableItems.jobOrders,
       ...billableItems.changeOrders,
       ...billableItems.tmTickets,
     ];
@@ -109,6 +106,9 @@ export const CreateProjectInvoiceDialog = ({
 
   const totals = useMemo(() => {
     const subtotal = selectedItemsData.reduce((sum, item) => {
+      if (item.type === 'job_order') {
+        return sum + item.remaining_amount;
+      }
       const amount = item.change_type === 'deductive' ? -item.total : item.total;
       return sum + amount;
     }, 0);
@@ -127,6 +127,10 @@ export const CreateProjectInvoiceDialog = ({
       return;
     }
 
+    const jobOrderIds = selectedItemsData
+      .filter(item => item.type === 'job_order')
+      .map(item => item.id);
+
     const changeOrderIds = selectedItemsData
       .filter(item => item.type === 'change_order')
       .map(item => item.id);
@@ -137,21 +141,36 @@ export const CreateProjectInvoiceDialog = ({
 
     // Create line items from selected items
     const lineItems = selectedItemsData.map((item, index) => {
-      const isChangeOrder = item.type === 'change_order';
-      const description = isChangeOrder 
-        ? `Change Order ${(item as any).number}: ${(item as any).reason}`
-        : `T&M Ticket ${(item as any).ticket_number}: ${item.description || 'Time & Materials'}`;
-      
-      const amount = item.change_type === 'deductive' ? -item.total : item.total;
-      
-      return {
-        description,
-        quantity: 1,
-        unit_price: amount,
-        markup: 0,
-        total: amount,
-        display_order: index,
-      };
+      if (item.type === 'job_order') {
+        return {
+          description: `Job Order ${item.number}: Remaining balance`,
+          quantity: 1,
+          unit_price: item.remaining_amount,
+          markup: 0,
+          total: item.remaining_amount,
+          display_order: index,
+        };
+      } else if (item.type === 'change_order') {
+        const amount = item.change_type === 'deductive' ? -item.total : item.total;
+        return {
+          description: `Change Order ${item.number}: ${item.reason}`,
+          quantity: 1,
+          unit_price: amount,
+          markup: 0,
+          total: amount,
+          display_order: index,
+        };
+      } else {
+        const amount = item.change_type === 'deductive' ? -item.total : item.total;
+        return {
+          description: `T&M Ticket ${item.ticket_number}: ${item.description || 'Time & Materials'}`,
+          quantity: 1,
+          unit_price: amount,
+          markup: 0,
+          total: amount,
+          display_order: index,
+        };
+      }
     });
 
     try {
@@ -168,6 +187,7 @@ export const CreateProjectInvoiceDialog = ({
         total: totals.total,
         due_date: format(dueDate, "yyyy-MM-dd"),
         line_items: lineItems,
+        job_order_ids: jobOrderIds,
         change_order_ids: changeOrderIds,
         tm_ticket_ids: tmTicketIds,
       });
@@ -229,6 +249,33 @@ export const CreateProjectInvoiceDialog = ({
               </div>
             ) : (
               <div className="space-y-2 max-h-60 overflow-y-auto border rounded-lg p-2">
+                {billableItems?.jobOrders.map((jo) => (
+                  <div
+                    key={jo.id}
+                    className={cn(
+                      "flex items-center gap-3 p-3 rounded-lg border cursor-pointer transition-colors",
+                      selectedItems.has(jo.id) ? "bg-primary/10 border-primary" : "hover:bg-muted/50"
+                    )}
+                    onClick={() => toggleItem(jo.id)}
+                  >
+                    <Checkbox 
+                      checked={selectedItems.has(jo.id)} 
+                      onCheckedChange={() => toggleItem(jo.id)}
+                    />
+                    <ClipboardList className="h-4 w-4 text-muted-foreground flex-shrink-0" />
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-2">
+                        <span className="font-medium">{jo.number}</span>
+                        <Badge variant="outline" className="text-xs">Job Order</Badge>
+                      </div>
+                      <p className="text-sm text-muted-foreground truncate">Remaining balance</p>
+                    </div>
+                    <span className="font-medium text-green-600">
+                      +{formatCurrency(jo.remaining_amount)}
+                    </span>
+                  </div>
+                ))}
+
                 {billableItems?.changeOrders.map((co) => (
                   <div
                     key={co.id}
@@ -274,7 +321,7 @@ export const CreateProjectInvoiceDialog = ({
                       checked={selectedItems.has(tm.id)} 
                       onCheckedChange={() => toggleItem(tm.id)}
                     />
-                    <ClipboardList className="h-4 w-4 text-muted-foreground flex-shrink-0" />
+                    <Receipt className="h-4 w-4 text-muted-foreground flex-shrink-0" />
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center gap-2">
                         <span className="font-medium">{tm.ticket_number}</span>
@@ -320,11 +367,26 @@ export const CreateProjectInvoiceDialog = ({
           <div className="grid grid-cols-2 gap-4">
             <div className="space-y-2">
               <Label htmlFor="invoiceNumber">Invoice Number</Label>
-              <Input
-                id="invoiceNumber"
-                value={invoiceNumber}
-                onChange={(e) => setInvoiceNumber(e.target.value)}
-              />
+              <div className="flex gap-2 items-center">
+                {isLoadingNumber ? (
+                  <div className="flex items-center gap-2 h-10 px-3 border rounded-md bg-muted/50 flex-1">
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                    <span className="text-sm text-muted-foreground">Loading...</span>
+                  </div>
+                ) : (
+                  <Input
+                    id="invoiceNumber"
+                    value={invoiceNumber}
+                    onChange={(e) => setInvoiceNumber(e.target.value)}
+                    className="flex-1"
+                  />
+                )}
+                {numberSource === 'quickbooks' && !isLoadingNumber && (
+                  <Badge variant="secondary" className="text-xs whitespace-nowrap">
+                    QuickBooks
+                  </Badge>
+                )}
+              </div>
             </div>
             <div className="space-y-2">
               <Label>Due Date</Label>
