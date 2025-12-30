@@ -87,6 +87,9 @@ verify_jwt = false
 [functions.quickbooks-void-invoice]
 verify_jwt = false
 
+[functions.quickbooks-delete-invoice]
+verify_jwt = false
+
 [functions.send-sms]
 verify_jwt = false
 

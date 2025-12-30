@@ -9,6 +9,8 @@ interface ProjectInvoiceLineItem {
   markup: number;
   total: number;
   display_order: number;
+  product_name?: string | null;
+  product_id?: string | null;
 }
 
 interface AddProjectInvoiceParams {
@@ -73,6 +75,8 @@ export const useAddProjectInvoice = () => {
           markup: item.markup,
           total: item.total,
           display_order: item.display_order,
+          product_name: item.product_name ?? null,
+          product_id: item.product_id ?? null,
         }));
 
         const { error: lineItemsError } = await supabase

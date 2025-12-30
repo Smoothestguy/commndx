@@ -151,15 +151,54 @@ export const usePermanentlyDelete = () => {
   return useMutation({
     mutationFn: async ({ entityType, id }: { entityType: TrashEntityType; id: string }) => {
       const table = TABLE_MAP[entityType];
+      let qbWarning: string | null = null;
 
+      // For invoices, attempt to delete from QuickBooks first
+      if (entityType === "invoice") {
+        try {
+          const { data, error } = await supabase.functions.invoke("quickbooks-delete-invoice", {
+            body: { invoiceId: id },
+          });
+
+          if (error) {
+            console.error("QuickBooks delete failed:", error);
+            qbWarning = `Could not delete from QuickBooks: ${error.message}`;
+          } else if (data && !data.success && data.error) {
+            console.warn("QuickBooks delete warning:", data.error);
+            qbWarning = data.error;
+          } else if (data?.deleted) {
+            console.log("Invoice deleted from QuickBooks successfully");
+          }
+        } catch (qbError: any) {
+          console.error("QuickBooks delete error:", qbError);
+          qbWarning = `QuickBooks sync error: ${qbError.message || "Unknown error"}`;
+        }
+
+        // Also clean up the local QuickBooks mapping
+        try {
+          await supabase
+            .from("quickbooks_invoice_mappings")
+            .delete()
+            .eq("invoice_id", id);
+        } catch (mappingError) {
+          console.error("Failed to clean up QB mapping:", mappingError);
+        }
+      }
+
+      // Proceed with local permanent delete regardless of QB result
       const { error } = await supabase.from(table as any).delete().eq("id", id);
 
       if (error) throw error;
-      return { entityType, id };
+      return { entityType, id, qbWarning };
     },
-    onSuccess: ({ entityType }) => {
+    onSuccess: ({ entityType, qbWarning }) => {
       queryClient.invalidateQueries({ queryKey: ["deleted_items"] });
-      toast.success(`${getEntityLabel(entityType)} permanently deleted`);
+      
+      if (qbWarning) {
+        toast.warning(`${getEntityLabel(entityType)} permanently deleted locally, but: ${qbWarning}`);
+      } else {
+        toast.success(`${getEntityLabel(entityType)} permanently deleted`);
+      }
     },
     onError: (error: Error) => {
       toast.error(`Failed to permanently delete: ${error.message}`);
