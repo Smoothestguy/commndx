@@ -3,7 +3,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { ParticleBackground } from "@/components/ui/particle-background";
-import { ShieldX, LogOut, Mail } from "lucide-react";
+import { ShieldX, LogOut, ArrowLeft } from "lucide-react";
 import { SEO } from "@/components/SEO";
 
 const Unauthorized = () => {
@@ -12,6 +12,10 @@ const Unauthorized = () => {
 
   const handleSignOut = async () => {
     await signOut();
+    navigate("/auth");
+  };
+
+  const handleReturnToLogin = () => {
     navigate("/auth");
   };
 
@@ -53,23 +57,28 @@ const Unauthorized = () => {
               This application is invite-only. If you believe you should have access, 
               please contact an administrator.
             </p>
-            {user?.email && (
-              <p className="text-sm flex items-center justify-center gap-2">
-                <Mail className="h-4 w-4" />
-                Signed in as: <span className="font-medium text-foreground">{user.email}</span>
-              </p>
-            )}
           </div>
 
           <div className="space-y-3">
-            <Button 
-              onClick={handleSignOut} 
-              variant="outline" 
-              className="w-full"
-            >
-              <LogOut className="mr-2 h-4 w-4" />
-              Sign Out
-            </Button>
+            {user ? (
+              <Button 
+                onClick={handleSignOut} 
+                variant="outline" 
+                className="w-full"
+              >
+                <LogOut className="mr-2 h-4 w-4" />
+                Sign Out
+              </Button>
+            ) : (
+              <Button 
+                onClick={handleReturnToLogin} 
+                variant="outline" 
+                className="w-full"
+              >
+                <ArrowLeft className="mr-2 h-4 w-4" />
+                Return to Login
+              </Button>
+            )}
           </div>
         </CardContent>
       </Card>
