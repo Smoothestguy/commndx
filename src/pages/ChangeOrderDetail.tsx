@@ -83,7 +83,7 @@ export default function ChangeOrderDetail() {
   const [showConvertToPODialog, setShowConvertToPODialog] = useState(false);
 
   const isEditable = changeOrder?.status !== "approved" && changeOrder?.status !== "invoiced";
-  const canEdit = isEditable && (isAdmin || isManager);
+  const canEdit = isAdmin || (isEditable && isManager); // Admins can edit any status
   // Admins can delete any CO; managers only draft
   const canDelete = isAdmin || (changeOrder?.status === "draft" && isManager);
   const canSubmitForApproval = isEditable && (isAdmin || isManager);
