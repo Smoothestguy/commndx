@@ -2,6 +2,7 @@ import { SEO } from "@/components/SEO";
 import { PageLayout } from "@/components/layout/PageLayout";
 import { StatCard } from "@/components/dashboard/StatCard";
 import { RecentActivity } from "@/components/dashboard/RecentActivity";
+import { RecentlyDeleted } from "@/components/dashboard/RecentlyDeleted";
 import { WelcomeBanner } from "@/components/dashboard/WelcomeBanner";
 import { DataTable, Column } from "@/components/shared/DataTable";
 import { StatusBadge } from "@/components/shared/StatusBadge";
@@ -597,9 +598,10 @@ const Dashboard = () => {
               )}
             </div>
 
-            {/* Recent Activity */}
-            <div className="lg:col-span-1 order-last lg:order-none">
+            {/* Recent Activity & Recently Deleted */}
+            <div className="lg:col-span-1 order-last lg:order-none space-y-4 sm:space-y-6">
               <RecentActivity />
+              <RecentlyDeleted />
             </div>
           </div>
 
