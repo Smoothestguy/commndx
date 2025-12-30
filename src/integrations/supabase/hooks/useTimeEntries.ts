@@ -99,6 +99,43 @@ export function useExistingDailyHours(date: string, excludeEntryId?: string) {
   });
 }
 
+// Get existing weekly hours for overtime calculation (40-hour threshold)
+export function useExistingWeeklyHours(date: string, excludeEntryId?: string) {
+  return useQuery({
+    queryKey: ["time-entries", "weekly-total", date, excludeEntryId],
+    queryFn: async () => {
+      if (!date) return 0;
+      
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) throw new Error("Not authenticated");
+
+      // Calculate week boundaries (Monday to Sunday)
+      const entryDate = new Date(date + 'T00:00:00');
+      const weekStart = startOfWeek(entryDate, { weekStartsOn: 1 });
+      const weekEnd = endOfWeek(entryDate, { weekStartsOn: 1 });
+      const startDateStr = format(weekStart, 'yyyy-MM-dd');
+      const endDateStr = format(weekEnd, 'yyyy-MM-dd');
+
+      let query = supabase
+        .from("time_entries")
+        .select("hours")
+        .eq("user_id", user.id)
+        .gte("entry_date", startDateStr)
+        .lte("entry_date", endDateStr);
+      
+      if (excludeEntryId) {
+        query = query.neq("id", excludeEntryId);
+      }
+
+      const { data, error } = await query;
+      if (error) throw error;
+      
+      return data?.reduce((sum, e) => sum + Number(e.hours), 0) || 0;
+    },
+    enabled: !!date,
+  });
+}
+
 // Get assigned projects for current user
 export function useAssignedProjects() {
   const { data: assignments = [] } = useMyProjectAssignments();

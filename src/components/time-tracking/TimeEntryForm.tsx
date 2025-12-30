@@ -36,7 +36,7 @@ import {
 import { Textarea } from "@/components/ui/textarea";
 import { Switch } from "@/components/ui/switch";
 import { Button } from "@/components/ui/button";
-import { useAssignedProjects, useExistingDailyHours } from "@/integrations/supabase/hooks/useTimeEntries";
+import { useAssignedProjects, useExistingWeeklyHours } from "@/integrations/supabase/hooks/useTimeEntries";
 import {
   TimeEntry,
   useAddTimeEntry,
@@ -90,27 +90,29 @@ export function TimeEntryForm({
   });
 
   const entryDate = form.watch("entry_date");
-  const { data: existingDailyHours = 0 } = useExistingDailyHours(
+  const { data: existingWeeklyHours = 0 } = useExistingWeeklyHours(
     entryDate,
     entry?.id
   );
 
-  const overtimeThreshold = companySettings?.overtime_threshold ?? 8;
+  const weeklyOvertimeThreshold = companySettings?.weekly_overtime_threshold ?? 40;
 
-  // Calculate overtime when hours change
+  // Calculate overtime based on weekly threshold (40 hours)
   useEffect(() => {
     const hours = Number(form.watch("hours")) || 0;
-    const totalHours = existingDailyHours + hours;
+    const totalWeeklyHours = existingWeeklyHours + hours;
     
-    if (totalHours <= overtimeThreshold) {
+    if (totalWeeklyHours <= weeklyOvertimeThreshold) {
+      // All hours are regular - haven't exceeded weekly threshold
       setRegularHours(hours);
       setOvertimeHours(0);
     } else {
-      const remainingRegular = Math.max(0, overtimeThreshold - existingDailyHours);
+      // Some hours are overtime
+      const remainingRegular = Math.max(0, weeklyOvertimeThreshold - existingWeeklyHours);
       setRegularHours(Math.min(hours, remainingRegular));
       setOvertimeHours(Math.max(0, hours - remainingRegular));
     }
-  }, [form.watch("hours"), existingDailyHours, overtimeThreshold]);
+  }, [form.watch("hours"), existingWeeklyHours, weeklyOvertimeThreshold]);
 
   // Update form when entry changes
   useEffect(() => {
@@ -252,17 +254,22 @@ export function TimeEntryForm({
                   </FormControl>
                   <FormMessage />
                   {(regularHours > 0 || overtimeHours > 0) && (
-                    <div className="flex gap-4 text-sm text-muted-foreground bg-muted/50 rounded-lg p-3 mt-2">
-                      <div className="flex items-center gap-2">
-                        <Clock className="h-4 w-4 text-primary" />
-                        <span>Regular: <strong>{regularHours.toFixed(2)}h</strong></span>
+                    <div className="space-y-2 mt-2">
+                      <div className="text-xs text-muted-foreground">
+                        Weekly Hours: {(existingWeeklyHours + regularHours + overtimeHours).toFixed(1)}h / {weeklyOvertimeThreshold}h
                       </div>
-                      {overtimeHours > 0 && (
+                      <div className="flex gap-4 text-sm text-muted-foreground bg-muted/50 rounded-lg p-3">
                         <div className="flex items-center gap-2">
-                          <AlertCircle className="h-4 w-4 text-orange-500" />
-                          <span>Overtime: <strong>{overtimeHours.toFixed(2)}h</strong></span>
+                          <Clock className="h-4 w-4 text-primary" />
+                          <span>Regular: <strong>{regularHours.toFixed(2)}h</strong></span>
                         </div>
-                      )}
+                        {overtimeHours > 0 && (
+                          <div className="flex items-center gap-2">
+                            <AlertCircle className="h-4 w-4 text-orange-500" />
+                            <span>Overtime: <strong>{overtimeHours.toFixed(2)}h</strong></span>
+                          </div>
+                        )}
+                      </div>
                     </div>
                   )}
                 </FormItem>
