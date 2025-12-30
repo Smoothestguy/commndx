@@ -335,18 +335,28 @@ export function useUpdateChangeOrder() {
   });
 }
 
-// Delete change order
+// Delete change order (soft delete)
 export function useDeleteChangeOrder() {
   const queryClient = useQueryClient();
 
   return useMutation({
     mutationFn: async (id: string) => {
-      const { error } = await supabase.from("change_orders").delete().eq("id", id);
+      const { data: { user } } = await supabase.auth.getUser();
+      
+      const { error } = await supabase
+        .from("change_orders")
+        .update({
+          deleted_at: new Date().toISOString(),
+          deleted_by: user?.id,
+        })
+        .eq("id", id);
+        
       if (error) throw error;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["change_orders"] });
-      toast.success("Change order deleted successfully");
+      queryClient.invalidateQueries({ queryKey: ["deleted_items"] });
+      toast.success("Change order moved to trash");
     },
     onError: (error) => {
       toast.error("Failed to delete change order: " + error.message);

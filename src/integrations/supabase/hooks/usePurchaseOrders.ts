@@ -63,6 +63,7 @@ export const usePurchaseOrders = () => {
       const { data, error } = await supabase
         .from("purchase_orders")
         .select("*")
+        .is("deleted_at", null)
         .order("created_at", { ascending: false });
 
       if (error) throw error;
@@ -328,13 +329,23 @@ export const useDeletePurchaseOrder = () => {
 
   return useMutation({
     mutationFn: async (id: string) => {
-      const { error } = await supabase.from("purchase_orders").delete().eq("id", id);
+      const { data: { user } } = await supabase.auth.getUser();
+      
+      // Soft delete instead of hard delete
+      const { error } = await supabase
+        .from("purchase_orders")
+        .update({
+          deleted_at: new Date().toISOString(),
+          deleted_by: user?.id,
+        })
+        .eq("id", id);
 
       if (error) throw error;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["purchase_orders"] });
-      toast.success("Purchase order deleted successfully");
+      queryClient.invalidateQueries({ queryKey: ["deleted_items"] });
+      toast.success("Purchase order moved to trash");
     },
     onError: (error: Error) => {
       toast.error(`Failed to delete purchase order: ${error.message}`);

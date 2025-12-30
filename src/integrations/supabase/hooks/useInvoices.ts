@@ -345,6 +345,8 @@ export const useDeleteInvoice = () => {
 
   return useMutation({
     mutationFn: async (id: string) => {
+      const { data: { user } } = await supabase.auth.getUser();
+
       const { data: invoice, error: fetchError } = await supabase
         .from("invoices")
         .select("total, job_order_id")
@@ -374,19 +376,24 @@ export const useDeleteInvoice = () => {
         if (updateError) throw updateError;
       }
 
-      // Delete line items (payments will cascade delete)
-      await supabase.from("invoice_line_items").delete().eq("invoice_id", id);
-
-      // Delete invoice
-      const { error } = await supabase.from("invoices").delete().eq("id", id);
+      // Soft delete instead of hard delete
+      const { error } = await supabase
+        .from("invoices")
+        .update({
+          deleted_at: new Date().toISOString(),
+          deleted_by: user?.id,
+        })
+        .eq("id", id);
+        
       if (error) throw error;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["invoices"] });
       queryClient.invalidateQueries({ queryKey: ["job_orders"] });
+      queryClient.invalidateQueries({ queryKey: ["deleted_items"] });
       toast({
         title: "Success",
-        description: "Invoice deleted successfully",
+        description: "Invoice moved to trash",
       });
     },
     onError: (error) => {
