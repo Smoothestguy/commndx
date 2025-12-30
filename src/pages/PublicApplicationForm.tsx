@@ -312,6 +312,7 @@ export default function PublicApplicationForm() {
         userAgent: navigator.userAgent,
         smsConsent: smsConsent,
         smsConsentPhone: smsConsent ? data.phone : undefined,
+        smsConsentTextVersion: smsConsent ? 'v1.0' : undefined,
       });
       console.log("[Form] Application submitted successfully");
       toast.success("Thank you for applying! We appreciate your interest and will review your application soon.");
@@ -914,9 +915,9 @@ export default function PublicApplicationForm() {
                   </div>
                 )}
 
-                {/* SMS Consent Checkbox */}
+                {/* SMS Consent Checkbox - TCPA Compliant */}
                 {formSettings.requireSmsConsent && (
-                  <div className="space-y-2 pt-4 border-t">
+                  <div className="space-y-3 pt-4 border-t">
                     <div className="flex items-start space-x-3">
                       <Checkbox
                         id="sms-consent"
@@ -925,13 +926,36 @@ export default function PublicApplicationForm() {
                           setSmsConsent(checked === true);
                           if (checked) setSmsConsentError(null);
                         }}
-                        className="mt-1"
+                        className="mt-0.5"
                       />
-                      <div className="space-y-1">
-                        <Label htmlFor="sms-consent" className="text-sm font-medium leading-relaxed cursor-pointer">
-                          I consent to receive SMS notifications from Fairfield at the phone number provided. 
-                          Message and data rates may apply. Reply STOP to opt out. *
+                      <div className="space-y-2">
+                        <Label htmlFor="sms-consent" className="text-sm leading-relaxed cursor-pointer">
+                          I agree to receive SMS notifications about my contractor status, 
+                          assignment updates, and payment information. Message frequency: up to 
+                          3 messages per week. Msg & data rates may apply. Reply STOP to cancel. *
                         </Label>
+                        <div className="flex gap-3 text-xs">
+                          {formSettings.privacyPolicyUrl && (
+                            <a 
+                              href={formSettings.privacyPolicyUrl} 
+                              target="_blank" 
+                              rel="noopener noreferrer"
+                              className="text-primary hover:underline"
+                            >
+                              Privacy Policy
+                            </a>
+                          )}
+                          {formSettings.termsOfServiceUrl && (
+                            <a 
+                              href={formSettings.termsOfServiceUrl} 
+                              target="_blank" 
+                              rel="noopener noreferrer"
+                              className="text-primary hover:underline"
+                            >
+                              Terms of Service
+                            </a>
+                          )}
+                        </div>
                         {smsConsentError && (
                           <p className="text-sm font-medium text-destructive">{smsConsentError}</p>
                         )}

@@ -17,6 +17,9 @@ export interface FormSettings {
   requireProfilePhoto?: boolean;
   requireLocation?: boolean;
   requireSmsConsent?: boolean;
+  smsConsentTextVersion?: string;
+  privacyPolicyUrl?: string;
+  termsOfServiceUrl?: string;
 }
 
 interface FormSettingsPanelProps {
@@ -162,7 +165,7 @@ export function FormSettingsPanel({
             SMS Notifications
           </CardTitle>
           <CardDescription>
-            Configure SMS consent requirements and notifications
+            Configure TCPA-compliant SMS consent requirements
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
@@ -180,16 +183,50 @@ export function FormSettingsPanel({
           </div>
 
           {settings.requireSmsConsent && (
-            <div className="p-3 bg-muted/50 rounded-lg border">
-              <div className="flex items-center gap-2 text-sm font-medium">
-                <Shield className="h-4 w-4 text-primary" />
-                Consent Language
+            <>
+              <div className="p-3 bg-muted/50 rounded-lg border">
+                <div className="flex items-center gap-2 text-sm font-medium">
+                  <Shield className="h-4 w-4 text-primary" />
+                  TCPA-Compliant Consent Language (v1.0)
+                </div>
+                <p className="text-xs text-muted-foreground mt-2 leading-relaxed">
+                  "I agree to receive SMS notifications about my contractor status, 
+                  assignment updates, and payment information. Message frequency: up to 
+                  3 messages per week. Msg & data rates may apply. Reply STOP to cancel."
+                </p>
               </div>
-              <p className="text-xs text-muted-foreground mt-1">
-                "I consent to receive SMS notifications from Fairfield at the phone number provided. 
-                Message and data rates may apply. Reply STOP to opt out."
-              </p>
-            </div>
+
+              <div>
+                <Label>Privacy Policy URL</Label>
+                <Input
+                  value={settings.privacyPolicyUrl || ""}
+                  onChange={(e) => updateSetting("privacyPolicyUrl", e.target.value)}
+                  placeholder="https://yoursite.com/privacy"
+                />
+                <p className="text-xs text-muted-foreground mt-1">
+                  Link to your privacy policy (displayed with consent)
+                </p>
+              </div>
+
+              <div>
+                <Label>Terms of Service URL</Label>
+                <Input
+                  value={settings.termsOfServiceUrl || ""}
+                  onChange={(e) => updateSetting("termsOfServiceUrl", e.target.value)}
+                  placeholder="https://yoursite.com/terms"
+                />
+                <p className="text-xs text-muted-foreground mt-1">
+                  Link to your terms of service (displayed with consent)
+                </p>
+              </div>
+
+              <div className="p-3 bg-blue-50 dark:bg-blue-950/30 rounded-lg border border-blue-200 dark:border-blue-800">
+                <p className="text-xs text-blue-700 dark:text-blue-300">
+                  <strong>Compliance:</strong> IP address, timestamp, and consent version 
+                  are automatically recorded for TCPA compliance.
+                </p>
+              </div>
+            </>
           )}
         </CardContent>
       </Card>
