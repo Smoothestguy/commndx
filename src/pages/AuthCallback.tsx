@@ -112,6 +112,9 @@ const AuthCallback = () => {
 
         // If no personnel link, no vendor link, and no role - unauthorized
         if (!userRole) {
+          // Sign out the unauthorized user to prevent lingering sessions
+          await supabase.auth.signOut();
+          toast.error("Access denied. Your account is not authorized.");
           navigate("/unauthorized");
           return;
         }
@@ -122,6 +125,8 @@ const AuthCallback = () => {
       } catch (err) {
         console.error("Auth callback exception:", err);
         setError("An unexpected error occurred");
+        // Sign out on error to prevent partial auth state
+        await supabase.auth.signOut();
         toast.error("Authentication failed. Please try again.");
         setTimeout(() => navigate("/auth"), 2000);
       }
