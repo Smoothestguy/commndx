@@ -11,8 +11,8 @@ import { useProjectBillableItems, BillableItem } from "@/integrations/supabase/h
 
 interface BillableItemsSelectorProps {
   projectId: string | undefined;
-  selectedItems: Set<string>;
-  onSelectionChange: (newSelection: Set<string>) => void;
+  selectedItems: string[];
+  onSelectionChange: (newSelection: string[]) => void;
   preSelectedJobOrderId?: string;
 }
 
@@ -34,25 +34,23 @@ export const BillableItemsSelector = ({
   }, [billableItems]);
 
   const toggleItem = (itemId: string) => {
-    const newSelected = new Set(selectedItems);
-    if (newSelected.has(itemId)) {
-      newSelected.delete(itemId);
+    if (selectedItems.includes(itemId)) {
+      onSelectionChange(selectedItems.filter(id => id !== itemId));
     } else {
-      newSelected.add(itemId);
+      onSelectionChange([...selectedItems, itemId]);
     }
-    onSelectionChange(newSelected);
   };
 
   const selectAll = () => {
-    if (selectedItems.size === allItems.length) {
+    if (selectedItems.length === allItems.length) {
       // Keep at least the pre-selected job order if one exists
       if (preSelectedJobOrderId) {
-        onSelectionChange(new Set([preSelectedJobOrderId]));
+        onSelectionChange([preSelectedJobOrderId]);
       } else {
-        onSelectionChange(new Set());
+        onSelectionChange([]);
       }
     } else {
-      onSelectionChange(new Set(allItems.map(item => item.id)));
+      onSelectionChange(allItems.map(item => item.id));
     }
   };
 
@@ -74,7 +72,7 @@ export const BillableItemsSelector = ({
           <Label className="text-base font-medium">Select Items to Invoice</Label>
           {allItems.length > 0 && (
             <Button variant="ghost" size="sm" onClick={selectAll}>
-              {selectedItems.size === allItems.length ? "Deselect All" : "Select All"}
+              {selectedItems.length === allItems.length ? "Deselect All" : "Select All"}
             </Button>
           )}
         </div>
@@ -95,12 +93,12 @@ export const BillableItemsSelector = ({
                 key={jo.id}
                 className={cn(
                   "flex items-center gap-3 p-3 rounded-lg border cursor-pointer transition-colors",
-                  selectedItems.has(jo.id) ? "bg-primary/10 border-primary" : "hover:bg-muted/50"
+                  selectedItems.includes(jo.id) ? "bg-primary/10 border-primary" : "hover:bg-muted/50"
                 )}
                 onClick={() => toggleItem(jo.id)}
               >
                 <Checkbox 
-                  checked={selectedItems.has(jo.id)} 
+                  checked={selectedItems.includes(jo.id)} 
                   onCheckedChange={() => toggleItem(jo.id)}
                 />
                 <ClipboardList className="h-4 w-4 text-muted-foreground flex-shrink-0" />
@@ -123,12 +121,12 @@ export const BillableItemsSelector = ({
                 key={co.id}
                 className={cn(
                   "flex items-center gap-3 p-3 rounded-lg border cursor-pointer transition-colors",
-                  selectedItems.has(co.id) ? "bg-primary/10 border-primary" : "hover:bg-muted/50"
+                  selectedItems.includes(co.id) ? "bg-primary/10 border-primary" : "hover:bg-muted/50"
                 )}
                 onClick={() => toggleItem(co.id)}
               >
                 <Checkbox 
-                  checked={selectedItems.has(co.id)} 
+                  checked={selectedItems.includes(co.id)} 
                   onCheckedChange={() => toggleItem(co.id)}
                 />
                 <FileText className="h-4 w-4 text-muted-foreground flex-shrink-0" />
@@ -156,12 +154,12 @@ export const BillableItemsSelector = ({
                 key={tm.id}
                 className={cn(
                   "flex items-center gap-3 p-3 rounded-lg border cursor-pointer transition-colors",
-                  selectedItems.has(tm.id) ? "bg-primary/10 border-primary" : "hover:bg-muted/50"
+                  selectedItems.includes(tm.id) ? "bg-primary/10 border-primary" : "hover:bg-muted/50"
                 )}
                 onClick={() => toggleItem(tm.id)}
               >
                 <Checkbox 
-                  checked={selectedItems.has(tm.id)} 
+                  checked={selectedItems.includes(tm.id)} 
                   onCheckedChange={() => toggleItem(tm.id)}
                 />
                 <Receipt className="h-4 w-4 text-muted-foreground flex-shrink-0" />
@@ -204,16 +202,13 @@ const EMPTY_RESULT = {
 
 export const useSelectedBillableItemsTotals = (
   projectId: string | undefined,
-  selectedItems: Set<string>,
+  selectedItems: string[],
   taxRate: number
 ) => {
   const { data: billableItems } = useProjectBillableItems(projectId);
 
-  // Convert Set to array for stable dependency
-  const selectedItemsArray = useMemo(() => Array.from(selectedItems), [selectedItems]);
-
   return useMemo(() => {
-    if (!billableItems || selectedItemsArray.length === 0) return EMPTY_RESULT;
+    if (!billableItems || selectedItems.length === 0) return EMPTY_RESULT;
 
     const allItems = [
       ...billableItems.jobOrders,
@@ -221,7 +216,7 @@ export const useSelectedBillableItemsTotals = (
       ...billableItems.tmTickets,
     ];
 
-    const selectedItemsData = allItems.filter(item => selectedItemsArray.includes(item.id));
+    const selectedItemsData = allItems.filter(item => selectedItems.includes(item.id));
 
     const subtotal = selectedItemsData.reduce((sum, item) => {
       if (item.type === 'job_order') {
@@ -297,5 +292,5 @@ export const useSelectedBillableItemsTotals = (
       tmTicketIds,
       selectedCount: selectedItemsData.length,
     };
-  }, [billableItems, selectedItemsArray, taxRate]);
+  }, [billableItems, selectedItems, taxRate]);
 };
