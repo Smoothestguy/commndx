@@ -101,8 +101,8 @@ export function InvoiceForm({ onSubmit, onSubmitMultiItem, initialData, jobOrder
   const { data: qbConfig } = useQuickBooksConfig();
   const isQBConnected = qbConfig?.is_connected ?? false;
 
-  // Multi-item selection state
-  const [selectedBillableItems, setSelectedBillableItems] = useState<Set<string>>(new Set());
+  // Multi-item selection state - use array instead of Set for stable state
+  const [selectedBillableItems, setSelectedBillableItems] = useState<string[]>([]);
   const [useMultiItemMode, setUseMultiItemMode] = useState(false);
   
   // State for invoice number loading
@@ -217,7 +217,7 @@ export function InvoiceForm({ onSubmit, onSubmitMultiItem, initialData, jobOrder
     if (jobOrder) {
       form.setValue("taxRate", jobOrder.tax_rate);
       // Auto-select this job order in billable items and enable multi-item mode
-      setSelectedBillableItems(new Set([value]));
+      setSelectedBillableItems([value]);
       setUseMultiItemMode(true);
     }
   };
@@ -345,9 +345,9 @@ export function InvoiceForm({ onSubmit, onSubmitMultiItem, initialData, jobOrder
   );
 
   // Determine which totals to use based on mode
-  const effectiveSubtotal = useMultiItemMode && selectedBillableItems.size > 0 ? billableItemsTotals.subtotal : subtotal;
-  const effectiveTaxAmount = useMultiItemMode && selectedBillableItems.size > 0 ? billableItemsTotals.taxAmount : taxAmount;
-  const effectiveTotal = useMultiItemMode && selectedBillableItems.size > 0 ? billableItemsTotals.total : total;
+  const effectiveSubtotal = useMultiItemMode && selectedBillableItems.length > 0 ? billableItemsTotals.subtotal : subtotal;
+  const effectiveTaxAmount = useMultiItemMode && selectedBillableItems.length > 0 ? billableItemsTotals.taxAmount : taxAmount;
+  const effectiveTotal = useMultiItemMode && selectedBillableItems.length > 0 ? billableItemsTotals.total : total;
 
   const remainingBalance = selectedJobOrder ? selectedJobOrder.remaining_amount : 0;
   // Add small tolerance for rounding differences - only check in non-multi-item mode
@@ -359,7 +359,7 @@ export function InvoiceForm({ onSubmit, onSubmitMultiItem, initialData, jobOrder
     }
 
     // Multi-item mode: use billable items for line items and submit via onSubmitMultiItem
-    if (invoiceType === "job_order" && useMultiItemMode && selectedBillableItems.size > 0 && onSubmitMultiItem) {
+    if (invoiceType === "job_order" && useMultiItemMode && selectedBillableItems.length > 0 && onSubmitMultiItem) {
       onSubmitMultiItem({
         number: values.number,
         project_id: selectedJobOrder?.project_id,
@@ -749,7 +749,7 @@ export function InvoiceForm({ onSubmit, onSubmitMultiItem, initialData, jobOrder
       )}
 
       {/* Line Items Section - hidden when using multi-item mode */}
-      {!(useMultiItemMode && selectedBillableItems.size > 0) && (
+      {!(useMultiItemMode && selectedBillableItems.length > 0) && (
         <div className="space-y-4">
           <div className="space-y-3">
             <Label className="text-lg font-semibold">Line Items</Label>
@@ -990,7 +990,7 @@ export function InvoiceForm({ onSubmit, onSubmitMultiItem, initialData, jobOrder
         <div className="space-y-2">
           <div className="flex justify-between">
             <span>
-              Subtotal{useMultiItemMode && selectedBillableItems.size > 0 ? ` (${billableItemsTotals.selectedCount} items)` : ''}:
+              Subtotal{useMultiItemMode && selectedBillableItems.length > 0 ? ` (${billableItemsTotals.selectedCount} items)` : ''}:
             </span>
             <span className="font-semibold">${effectiveSubtotal.toFixed(2)}</span>
           </div>
