@@ -27,6 +27,7 @@ import {
   useExportVendorsToQB,
   useQuickBooksSyncLogs,
   useQuickBooksConflicts,
+  useImportInvoicesFromQB,
 } from "@/integrations/supabase/hooks/useQuickBooks";
 import {
   useAutoSyncPersonnelToQB,
@@ -49,6 +50,7 @@ import {
   ExternalLink,
   Truck,
   UserCheck,
+  Receipt,
 } from "lucide-react";
 import { format } from "date-fns";
 import { toast } from "sonner";
@@ -84,6 +86,9 @@ const QuickBooksSettings = () => {
   const exportVendors = useExportVendorsToQB((processed, total) => {
     setVendorExportProgress({ processed, total });
   });
+
+  // Invoice import
+  const importInvoices = useImportInvoicesFromQB();
 
   // Auto-sync personnel setting
   const { isEnabled: autoSyncEnabled, isLoading: autoSyncLoading } = useAutoSyncPersonnelToQB();
@@ -176,7 +181,8 @@ const QuickBooksSettings = () => {
     importCustomers.isPending ||
     exportCustomers.isPending ||
     importVendors.isPending ||
-    exportVendors.isPending;
+    exportVendors.isPending ||
+    importInvoices.isPending;
 
   return (
     <PageLayout
@@ -451,6 +457,42 @@ const QuickBooksSettings = () => {
                   </div>
                   <p className="text-xs text-muted-foreground mt-2">
                     When enabled, newly onboarded personnel will be automatically created as vendors in QuickBooks.
+                  </p>
+                </CardContent>
+              </Card>
+
+              {/* Invoices Import */}
+              <Card>
+                <CardHeader className="p-4 sm:p-6">
+                  <CardTitle className="flex items-center gap-2 text-base sm:text-lg">
+                    <Receipt className="h-4 w-4 sm:h-5 sm:w-5 shrink-0" />
+                    Invoices Import
+                  </CardTitle>
+                  <CardDescription className="text-xs sm:text-sm">
+                    Import existing invoices from QuickBooks into CommandX
+                  </CardDescription>
+                </CardHeader>
+                <CardContent className="p-4 sm:p-6 pt-0 sm:pt-0 space-y-3 sm:space-y-4">
+                  <Button
+                    variant="outline"
+                    className="w-full min-h-[44px]"
+                    onClick={() => importInvoices.mutate()}
+                    disabled={isSyncing}
+                  >
+                    {importInvoices.isPending ? (
+                      <>
+                        <RefreshCw className="h-4 w-4 mr-2 animate-spin shrink-0" />
+                        Importing...
+                      </>
+                    ) : (
+                      <>
+                        <Download className="h-4 w-4 mr-2 shrink-0" />
+                        Import Invoices from QB
+                      </>
+                    )}
+                  </Button>
+                  <p className="text-xs text-muted-foreground">
+                    Imports all invoices from QuickBooks. Customers must be synced first for invoices to be imported.
                   </p>
                 </CardContent>
               </Card>

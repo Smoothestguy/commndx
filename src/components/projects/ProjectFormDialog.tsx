@@ -387,13 +387,20 @@ export const ProjectFormDialog = ({
   );
 };
 
+// Helper to get today's date in YYYY-MM-DD format (local timezone safe)
+function getTodayDateString(): string {
+  const today = new Date();
+  const year = today.getFullYear();
+  const month = String(today.getMonth() + 1).padStart(2, '0');
+  const day = String(today.getDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
+}
+
 export const initialProjectFormData: ProjectFormData = {
   name: "",
   customer_id: "",
   status: "active",
   stage: "quote",
-  start_date: "",
-  end_date: "",
   description: "",
   address: "",
   city: "",
@@ -403,9 +410,11 @@ export const initialProjectFormData: ProjectFormData = {
   poc_name: "",
   poc_phone: "",
   poc_email: "",
+  start_date: getTodayDateString(),
+  end_date: "",
   use_customer_address: false,
   time_clock_enabled: false,
-  require_clock_location: true,
+  require_clock_location: false,
 };
 
 export type { ProjectFormData };
