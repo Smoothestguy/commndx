@@ -192,7 +192,7 @@ export function FormSettingsPanel({
                 <p className="text-xs text-muted-foreground mt-2 leading-relaxed">
                   "I agree to receive SMS notifications about my contractor status, 
                   assignment updates, and payment information. Message frequency: up to 
-                  3 messages per week. Msg & data rates may apply. Reply STOP to cancel."
+                  3 messages per week. Msg & data rates may apply."
                 </p>
               </div>
 
