@@ -3,7 +3,7 @@
  * Used across SessionHistoryTable, SessionHistoryStats, and useSessionTracking.
  */
 
-export const HOURLY_RATE = 23; // $23/hour
+export const DEFAULT_HOURLY_RATE = 0; // Default when no rate found
 
 interface Session {
   session_start: string;
@@ -58,8 +58,11 @@ export function sumIdleSeconds(sessions: Session[]): number {
 /**
  * Calculate earnings from seconds.
  */
-export function calculateEarningsFromSeconds(seconds: number): number {
-  return (seconds / 3600) * HOURLY_RATE;
+export function calculateEarningsFromSeconds(
+  seconds: number,
+  hourlyRate: number = DEFAULT_HOURLY_RATE
+): number {
+  return (seconds / 3600) * hourlyRate;
 }
 
 /**

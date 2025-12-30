@@ -1,8 +1,8 @@
 import { useState, useEffect, useCallback, useRef } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
+import { DEFAULT_HOURLY_RATE } from "@/utils/sessionTime";
 
-const HOURLY_RATE = 23; // $23/hour
 const STORAGE_KEY = "session_tracking_state";
 const IDLE_TIMEOUT_MS = 5 * 60 * 1000; // 5 minutes of inactivity = idle
 const SYNC_INTERVAL_MS = 30 * 1000; // Sync to DB every 30 seconds
@@ -27,6 +27,7 @@ export function useSessionTracking(externalHasAccess?: boolean, externalAccessCh
   const [isClockedIn, setIsClockedIn] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   const [isIdle, setIsIdle] = useState(false);
+  const [hourlyRate, setHourlyRate] = useState<number>(DEFAULT_HOURLY_RATE);
 
   // Refs for timestamp-based tracking
   const clockedInAtRef = useRef<number | null>(null);
@@ -208,6 +209,7 @@ export function useSessionTracking(externalHasAccess?: boolean, externalAccessCh
   }, [hasAccess, isClockedIn]);
 
   // Load state: First try database for active session, fallback to localStorage
+  // Also fetch the user's hourly rate from personnel table
   useEffect(() => {
     if (!accessChecked || !hasAccess || !user) {
       if (accessChecked) setIsLoading(false);
@@ -216,6 +218,17 @@ export function useSessionTracking(externalHasAccess?: boolean, externalAccessCh
 
     const loadSession = async () => {
       try {
+        // Fetch hourly rate from personnel table
+        const { data: personnelData } = await supabase
+          .from("personnel")
+          .select("hourly_rate")
+          .eq("user_id", user.id)
+          .maybeSingle();
+
+        if (personnelData?.hourly_rate) {
+          setHourlyRate(Number(personnelData.hourly_rate));
+        }
+
         // Query for the most recent active session
         const { data: activeSessions, error } = await supabase
           .from("user_work_sessions")
@@ -518,8 +531,8 @@ export function useSessionTracking(externalHasAccess?: boolean, externalAccessCh
 
   // Calculate earnings from active seconds
   const calculateEarnings = useCallback((seconds: number): number => {
-    return (seconds / 3600) * HOURLY_RATE;
-  }, []);
+    return (seconds / 3600) * hourlyRate;
+  }, [hourlyRate]);
 
   // Format currency
   const formatCurrency = useCallback((amount: number): string => {
@@ -552,7 +565,7 @@ export function useSessionTracking(externalHasAccess?: boolean, externalAccessCh
     clockIn,
     clockOut,
     logActivity,
-    hourlyRate: HOURLY_RATE,
+    hourlyRate,
     currentEarnings,
     formattedEarnings: formatCurrency(currentEarnings),
     calculateEarnings,

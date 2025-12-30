@@ -19,7 +19,7 @@ import { Download, Eye, Clock, DollarSign } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { useIsMobile } from "@/hooks/use-mobile";
 
-const HOURLY_RATE = 23; // $23/hour
+
 
 interface SessionHistoryTableProps {
   dateRange?: DateRange;
@@ -48,6 +48,21 @@ export function SessionHistoryTable({
   const { toast } = useToast();
   const isMobile = useIsMobile();
   const userId = targetUserId || user?.id;
+
+  // Fetch hourly rate for the user
+  const { data: hourlyRate = 0 } = useQuery({
+    queryKey: ["personnel-rate", userId],
+    queryFn: async () => {
+      if (!userId) return 0;
+      const { data } = await supabase
+        .from("personnel")
+        .select("hourly_rate")
+        .eq("user_id", userId)
+        .maybeSingle();
+      return data?.hourly_rate ? Number(data.hourly_rate) : 0;
+    },
+    enabled: !!userId,
+  });
 
   const { data: sessions, isLoading } = useQuery({
     queryKey: ["session-history", userId, dateRange?.from, dateRange?.to],
@@ -100,7 +115,7 @@ export function SessionHistoryTable({
   };
 
   const calculateEarnings = (seconds: number): number => {
-    return (seconds / 3600) * HOURLY_RATE;
+    return (seconds / 3600) * hourlyRate;
   };
 
   const formatCurrency = (amount: number): string => {

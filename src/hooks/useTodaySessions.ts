@@ -6,6 +6,7 @@ import {
   sumIdleSeconds,
   calculateEarningsFromSeconds,
   getStartOfToday,
+  DEFAULT_HOURLY_RATE,
 } from "@/utils/sessionTime";
 
 interface TodaySession {
@@ -30,6 +31,26 @@ export function useTodaySessions(externalHasAccess?: boolean, externalAccessChec
   const [todaySessions, setTodaySessions] = useState<TodaySession[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [, setTick] = useState(0);
+  const [hourlyRate, setHourlyRate] = useState<number>(DEFAULT_HOURLY_RATE);
+
+  // Fetch hourly rate from personnel table
+  useEffect(() => {
+    if (!user) return;
+
+    const fetchRate = async () => {
+      const { data } = await supabase
+        .from("personnel")
+        .select("hourly_rate")
+        .eq("user_id", user.id)
+        .maybeSingle();
+
+      if (data?.hourly_rate) {
+        setHourlyRate(Number(data.hourly_rate));
+      }
+    };
+
+    fetchRate();
+  }, [user]);
 
   // Fetch today's sessions
   useEffect(() => {
@@ -78,7 +99,7 @@ export function useTodaySessions(externalHasAccess?: boolean, externalAccessChec
   const now = new Date();
   const todayActiveSeconds = sumActiveSeconds(todaySessions, now);
   const todayIdleSeconds = sumIdleSeconds(todaySessions);
-  const todayEarnings = calculateEarningsFromSeconds(todayActiveSeconds);
+  const todayEarnings = calculateEarningsFromSeconds(todayActiveSeconds, hourlyRate);
   const sessionCount = todaySessions.length;
   const hasActiveSession = todaySessions.some((s) => s.is_active);
 
@@ -91,5 +112,6 @@ export function useTodaySessions(externalHasAccess?: boolean, externalAccessChec
     sessionCount,
     hasActiveSession,
     todaySessions,
+    hourlyRate,
   };
 }
