@@ -10,9 +10,11 @@ import { ChangeOrderFilters } from "@/components/change-orders/ChangeOrderFilter
 import {
   useChangeOrders,
   useDeleteChangeOrder,
+  useHardDeleteChangeOrder,
   ChangeOrderStatus,
 } from "@/integrations/supabase/hooks/useChangeOrders";
 import { useProjects } from "@/integrations/supabase/hooks/useProjects";
+import { useUserRole } from "@/hooks/useUserRole";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -29,11 +31,14 @@ export default function ChangeOrders() {
   const { data: changeOrders, isLoading } = useChangeOrders();
   const { data: projects } = useProjects();
   const deleteChangeOrder = useDeleteChangeOrder();
+  const hardDeleteChangeOrder = useHardDeleteChangeOrder();
+  const { isAdmin } = useUserRole();
 
   const [searchTerm, setSearchTerm] = useState("");
   const [statusFilter, setStatusFilter] = useState<ChangeOrderStatus | "all">("all");
   const [projectFilter, setProjectFilter] = useState<string>("all");
   const [deleteId, setDeleteId] = useState<string | null>(null);
+  const [hardDeleteId, setHardDeleteId] = useState<string | null>(null);
 
   const filteredChangeOrders = changeOrders?.filter((co) => {
     const matchesSearch =
@@ -49,6 +54,13 @@ export default function ChangeOrders() {
     if (deleteId) {
       await deleteChangeOrder.mutateAsync(deleteId);
       setDeleteId(null);
+    }
+  };
+
+  const handleHardDelete = async () => {
+    if (hardDeleteId) {
+      await hardDeleteChangeOrder.mutateAsync(hardDeleteId);
+      setHardDeleteId(null);
     }
   };
 
@@ -91,6 +103,7 @@ export default function ChangeOrders() {
                 key={co.id}
                 changeOrder={co}
                 onDelete={(id) => setDeleteId(id)}
+                onHardDelete={isAdmin ? (id) => setHardDeleteId(id) : undefined}
               />
             ))}
           </div>
@@ -102,15 +115,32 @@ export default function ChangeOrders() {
       <AlertDialog open={!!deleteId} onOpenChange={() => setDeleteId(null)}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Delete Change Order</AlertDialogTitle>
+            <AlertDialogTitle>Move to Trash?</AlertDialogTitle>
             <AlertDialogDescription>
-              Are you sure you want to delete this change order? This action cannot be undone.
+              This change order will be moved to trash. You can restore it later from the Trash page.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel>Cancel</AlertDialogCancel>
-            <AlertDialogAction onClick={handleDelete} className="bg-destructive text-destructive-foreground">
-              Delete
+            <AlertDialogAction onClick={handleDelete}>
+              Move to Trash
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      <AlertDialog open={!!hardDeleteId} onOpenChange={() => setHardDeleteId(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Permanently Delete?</AlertDialogTitle>
+            <AlertDialogDescription>
+              This action CANNOT be undone. This will permanently delete this change order and all its line items.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction onClick={handleHardDelete} className="bg-destructive text-destructive-foreground">
+              Delete Forever
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

@@ -15,6 +15,7 @@ import { format } from "date-fns";
 interface ChangeOrderCardProps {
   changeOrder: ChangeOrder & { project?: { id: string; name: string } };
   onDelete?: (id: string) => void;
+  onHardDelete?: (id: string) => void;
 }
 
 const statusConfig: Record<ChangeOrderStatus, { label: string; variant: "default" | "secondary" | "destructive" | "outline" }> = {
@@ -25,7 +26,7 @@ const statusConfig: Record<ChangeOrderStatus, { label: string; variant: "default
   invoiced: { label: "Invoiced", variant: "default" },
 };
 
-export function ChangeOrderCard({ changeOrder, onDelete }: ChangeOrderCardProps) {
+export function ChangeOrderCard({ changeOrder, onDelete, onHardDelete }: ChangeOrderCardProps) {
   const navigate = useNavigate();
   const status = statusConfig[changeOrder.status];
 
@@ -59,12 +60,18 @@ export function ChangeOrderCard({ changeOrder, onDelete }: ChangeOrderCardProps)
               </DropdownMenuItem>
             )}
             {changeOrder.status === "draft" && onDelete && (
+              <DropdownMenuItem onClick={() => onDelete(changeOrder.id)}>
+                <Trash2 className="mr-2 h-4 w-4" />
+                Move to Trash
+              </DropdownMenuItem>
+            )}
+            {changeOrder.status === "draft" && onHardDelete && (
               <DropdownMenuItem
-                onClick={() => onDelete(changeOrder.id)}
+                onClick={() => onHardDelete(changeOrder.id)}
                 className="text-destructive"
               >
                 <Trash2 className="mr-2 h-4 w-4" />
-                Delete
+                Delete Permanently
               </DropdownMenuItem>
             )}
           </DropdownMenuContent>

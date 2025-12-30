@@ -364,6 +364,46 @@ export function useDeleteChangeOrder() {
   });
 }
 
+// Hard delete change order (permanent)
+export function useHardDeleteChangeOrder() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async (id: string) => {
+      // Delete related line items first
+      const { error: lineItemsError } = await supabase
+        .from("change_order_line_items")
+        .delete()
+        .eq("change_order_id", id);
+      
+      if (lineItemsError) throw lineItemsError;
+
+      // Delete related vendor bill links
+      const { error: vendorBillsError } = await supabase
+        .from("change_order_vendor_bills")
+        .delete()
+        .eq("change_order_id", id);
+      
+      if (vendorBillsError) throw vendorBillsError;
+
+      // Permanently delete change order
+      const { error } = await supabase
+        .from("change_orders")
+        .delete()
+        .eq("id", id);
+        
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["change_orders"] });
+      toast.success("Change order permanently deleted");
+    },
+    onError: (error) => {
+      toast.error("Failed to permanently delete: " + error.message);
+    },
+  });
+}
+
 // Approve/Reject change order
 export function useUpdateChangeOrderStatus() {
   const queryClient = useQueryClient();
