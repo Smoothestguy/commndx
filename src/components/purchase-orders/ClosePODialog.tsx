@@ -55,7 +55,7 @@ export function ClosePODialog({
                 Warning: This PO still has ${remainingAmount.toFixed(2)} unbilled.
               </p>
             )}
-            <p>This action cannot be undone.</p>
+            <p className="text-muted-foreground text-sm">An administrator can reopen this PO if needed.</p>
           </AlertDialogDescription>
         </AlertDialogHeader>
         <AlertDialogFooter>

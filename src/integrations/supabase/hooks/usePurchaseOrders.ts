@@ -291,6 +291,38 @@ export const useClosePurchaseOrder = () => {
   });
 };
 
+export const useReopenPurchaseOrder = () => {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async (id: string) => {
+      const { data: { user } } = await supabase.auth.getUser();
+      
+      const { data, error } = await supabase
+        .from("purchase_orders")
+        .update({
+          is_closed: false,
+          status: "in-progress",
+          reopened_at: new Date().toISOString(),
+          reopened_by: user?.id,
+        })
+        .eq("id", id)
+        .select()
+        .single();
+
+      if (error) throw error;
+      return data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["purchase_orders"] });
+      toast.success("Purchase order reopened successfully");
+    },
+    onError: (error: Error) => {
+      toast.error(`Failed to reopen purchase order: ${error.message}`);
+    },
+  });
+};
+
 export const useDeletePurchaseOrder = () => {
   const queryClient = useQueryClient();
 
