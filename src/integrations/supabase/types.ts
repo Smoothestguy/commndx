@@ -3423,6 +3423,8 @@ export type Database = {
           city: string
           created_at: string | null
           document_url: string | null
+          edit_allowed: boolean | null
+          edit_allowed_until: string | null
           ein: string | null
           exempt_payee_code: string | null
           fatca_exemption_code: string | null
@@ -3455,6 +3457,8 @@ export type Database = {
           city: string
           created_at?: string | null
           document_url?: string | null
+          edit_allowed?: boolean | null
+          edit_allowed_until?: string | null
           ein?: string | null
           exempt_payee_code?: string | null
           fatca_exemption_code?: string | null
@@ -3487,6 +3491,8 @@ export type Database = {
           city?: string
           created_at?: string | null
           document_url?: string | null
+          edit_allowed?: boolean | null
+          edit_allowed_until?: string | null
           ein?: string | null
           exempt_payee_code?: string | null
           fatca_exemption_code?: string | null

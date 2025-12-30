@@ -11,7 +11,7 @@ import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
-import { CheckCircle, AlertCircle, Clock, XCircle } from "lucide-react";
+import { CheckCircle, AlertCircle, Clock, XCircle, Lock } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { format } from "date-fns";
 
@@ -453,14 +453,36 @@ export default function PortalTaxForms() {
           </Card>
 
           <div className="flex items-center gap-4">
-            <Button onClick={() => setIsEditing(true)} variant="outline">
-              Edit W-9 Form
-            </Button>
-            {w9Form.status === "verified" && (
-              <p className="text-sm text-muted-foreground">
-                Note: Editing will require re-verification by an administrator.
-              </p>
-            )}
+            {(() => {
+              // Determine if editing is allowed
+              const canEdit = 
+                w9Form.status === "rejected" || // Rejected - can always edit
+                w9Form.status === "pending" || // Not yet submitted - can edit
+                (w9Form.edit_allowed && 
+                 (!w9Form.edit_allowed_until || new Date(w9Form.edit_allowed_until) > new Date()));
+              
+              if (canEdit) {
+                return (
+                  <>
+                    <Button onClick={() => setIsEditing(true)} variant="outline">
+                      Edit W-9 Form
+                    </Button>
+                    {w9Form.status === "verified" && (
+                      <p className="text-sm text-muted-foreground">
+                        Note: Editing will require re-verification by an administrator.
+                      </p>
+                    )}
+                  </>
+                );
+              } else {
+                return (
+                  <div className="flex items-center gap-2 text-muted-foreground">
+                    <Lock className="h-4 w-4" />
+                    <span className="text-sm">Editing locked. Contact administrator to request changes.</span>
+                  </div>
+                );
+              }
+            })()}
           </div>
         </div>
       </PortalLayout>
