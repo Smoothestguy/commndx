@@ -4320,6 +4320,8 @@ export type Database = {
           number: string
           project_id: string
           project_name: string
+          reopened_at: string | null
+          reopened_by: string | null
           status: Database["public"]["Enums"]["purchase_order_status"]
           submitted_by: string | null
           submitted_for_approval_at: string | null
@@ -4350,6 +4352,8 @@ export type Database = {
           number: string
           project_id: string
           project_name: string
+          reopened_at?: string | null
+          reopened_by?: string | null
           status?: Database["public"]["Enums"]["purchase_order_status"]
           submitted_by?: string | null
           submitted_for_approval_at?: string | null
@@ -4380,6 +4384,8 @@ export type Database = {
           number?: string
           project_id?: string
           project_name?: string
+          reopened_at?: string | null
+          reopened_by?: string | null
           status?: Database["public"]["Enums"]["purchase_order_status"]
           submitted_by?: string | null
           submitted_for_approval_at?: string | null

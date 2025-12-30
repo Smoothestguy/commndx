@@ -28,19 +28,20 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import { usePurchaseOrder, useUpdatePurchaseOrder, useDeletePurchaseOrder } from "@/integrations/supabase/hooks/usePurchaseOrders";
+import { usePurchaseOrder, useUpdatePurchaseOrder, useDeletePurchaseOrder, useReopenPurchaseOrder } from "@/integrations/supabase/hooks/usePurchaseOrders";
 import { usePOAddendums } from "@/integrations/supabase/hooks/usePOAddendums";
 import { useVendors } from "@/integrations/supabase/hooks/useVendors";
 import { useProjects } from "@/integrations/supabase/hooks/useProjects";
 import { useUserRole } from "@/hooks/useUserRole";
 import { useIsMobile } from "@/hooks/use-mobile";
-import { ArrowLeft, ShoppingCart, Truck, Building, Send, CheckCircle, CheckCheck, XCircle, Loader2, MoreVertical, Receipt, Lock, Pencil, Printer, Download, Copy, Trash2 } from "lucide-react";
+import { ArrowLeft, ShoppingCart, Truck, Building, Send, CheckCircle, CheckCheck, XCircle, Loader2, MoreVertical, Receipt, Lock, LockOpen, Pencil, Printer, Download, Copy, Trash2 } from "lucide-react";
 import { format } from "date-fns";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { useState } from "react";
 import { CreateBillFromPODialog } from "@/components/purchase-orders/CreateBillFromPODialog";
 import { ClosePODialog } from "@/components/purchase-orders/ClosePODialog";
+import { ReopenPODialog } from "@/components/purchase-orders/ReopenPODialog";
 import { POBillingSummary } from "@/components/purchase-orders/POBillingSummary";
 import { RelatedVendorBills } from "@/components/purchase-orders/RelatedVendorBills";
 import { POAddendums } from "@/components/purchase-orders/POAddendums";
@@ -57,6 +58,7 @@ const PurchaseOrderDetail = () => {
   const [isApproving, setIsApproving] = useState(false);
   const [showCreateBillDialog, setShowCreateBillDialog] = useState(false);
   const [showCloseDialog, setShowCloseDialog] = useState(false);
+  const [showReopenDialog, setShowReopenDialog] = useState(false);
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
   const [showRestoreDialog, setShowRestoreDialog] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
@@ -77,6 +79,7 @@ const PurchaseOrderDetail = () => {
   const canComplete = purchaseOrder?.status === 'in-progress';
   const canCreateBill = purchaseOrder && !purchaseOrder.is_closed;
   const canClose = purchaseOrder && !purchaseOrder.is_closed && (isAdmin || isManager);
+  const canReopen = purchaseOrder && purchaseOrder.is_closed && isAdmin;
   const canEdit = purchaseOrder && !purchaseOrder.is_closed && (isAdmin || isManager);
   const canDelete = purchaseOrder && (purchaseOrder.status === 'draft' || purchaseOrder.status === 'pending_approval') && (isAdmin || isManager);
   const canDuplicate = !!purchaseOrder;
@@ -425,15 +428,28 @@ const PurchaseOrderDetail = () => {
 
       {/* Closed PO Warning */}
       {purchaseOrder.is_closed && (
-        <div className="mb-6 bg-warning/10 border border-warning/20 rounded-lg p-4 flex items-center gap-3">
-          <Lock className="h-5 w-5 text-warning" />
-          <div>
-            <p className="font-medium text-warning">This Purchase Order is Closed</p>
-            <p className="text-sm text-muted-foreground">
-              No new vendor bills can be created against this PO.
-              {purchaseOrder.closed_at && ` Closed on ${format(new Date(purchaseOrder.closed_at), "MMM d, yyyy")}`}
-            </p>
+        <div className="mb-6 bg-warning/10 border border-warning/20 rounded-lg p-4 flex items-center justify-between gap-3">
+          <div className="flex items-center gap-3">
+            <Lock className="h-5 w-5 text-warning" />
+            <div>
+              <p className="font-medium text-warning">This Purchase Order is Closed</p>
+              <p className="text-sm text-muted-foreground">
+                No new vendor bills can be created against this PO.
+                {purchaseOrder.closed_at && ` Closed on ${format(new Date(purchaseOrder.closed_at), "MMM d, yyyy")}`}
+              </p>
+            </div>
           </div>
+          {canReopen && (
+            <Button 
+              variant="outline" 
+              size="sm"
+              onClick={() => setShowReopenDialog(true)}
+              className="shrink-0"
+            >
+              <LockOpen className="h-4 w-4 mr-2" />
+              Reopen
+            </Button>
+          )}
         </div>
       )}
 
@@ -691,6 +707,12 @@ const PurchaseOrderDetail = () => {
         purchaseOrderId={purchaseOrder.id}
         purchaseOrderNumber={purchaseOrder.number}
         remainingAmount={remainingAmount}
+      />
+      <ReopenPODialog
+        open={showReopenDialog}
+        onOpenChange={setShowReopenDialog}
+        purchaseOrderId={purchaseOrder.id}
+        purchaseOrderNumber={purchaseOrder.number}
       />
       <RestoreLineItemsDialog
         open={showRestoreDialog}
