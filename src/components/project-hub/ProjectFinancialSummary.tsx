@@ -83,7 +83,7 @@ export function ProjectFinancialSummary({ data }: ProjectFinancialSummaryProps) 
               <Truck className="h-3 w-3" /> Vendor PO Costs
             </p>
             <p className="text-2xl font-bold">
-              {formatCurrency(data.totalPOValue)}
+              {formatCurrency(data.totalPOValue + data.totalLaborCost + data.totalOtherExpenses)}
             </p>
             
             {/* Itemized breakdown */}
@@ -113,19 +113,13 @@ export function ProjectFinancialSummary({ data }: ProjectFinancialSummaryProps) 
         </div>
 
         {/* Net Profit Analysis */}
-        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4 pt-4 border-t border-border">
+        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 pt-4 border-t border-border">
           <div className="space-y-1">
             <p className="text-sm text-muted-foreground">Gross Profit</p>
             <p className={`text-2xl font-bold ${data.grossProfit >= 0 ? 'text-green-500' : 'text-red-500'}`}>
               {formatCurrency(data.grossProfit)}
             </p>
             <p className="text-xs text-muted-foreground">Before labor & expenses</p>
-          </div>
-          <div className="space-y-1">
-            <p className="text-sm text-muted-foreground">Gross Margin</p>
-            <p className={`text-2xl font-bold ${data.grossMargin >= 0 ? 'text-green-500' : 'text-red-500'}`}>
-              {data.grossMargin.toFixed(1)}%
-            </p>
           </div>
           <div className="space-y-1 p-3 bg-primary/10 rounded-lg">
             <p className="text-sm text-muted-foreground font-medium">Net Profit</p>
