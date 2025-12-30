@@ -31,6 +31,8 @@ export interface W9Form {
   verified_by: string | null;
   verified_at: string | null;
   rejection_reason: string | null;
+  edit_allowed: boolean;
+  edit_allowed_until: string | null;
   created_at: string;
   updated_at: string;
 }
@@ -115,12 +117,14 @@ export const useSubmitW9Form = () => {
         .maybeSingle();
 
       if (existing) {
-        // Update existing W-9
+        // Update existing W-9 - reset edit permissions
         const { data, error } = await supabase
           .from("personnel_w9_forms")
           .update({
             ...formData,
             status: "completed",
+            edit_allowed: false,
+            edit_allowed_until: null,
           })
           .eq("personnel_id", formData.personnel_id)
           .select()
@@ -135,6 +139,8 @@ export const useSubmitW9Form = () => {
           .insert({
             ...formData,
             status: "completed",
+            edit_allowed: false,
+            edit_allowed_until: null,
           })
           .select()
           .single();
@@ -199,6 +205,47 @@ export const useVerifyW9Form = () => {
     },
     onError: (error: Error) => {
       toast.error(`Failed to update W-9 status: ${error.message}`);
+    },
+  });
+};
+
+// Request edit permission for W-9 form (admin use)
+export const useRequestW9Edit = () => {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async ({
+      w9Id,
+      personnelId,
+      daysValid = 7,
+    }: {
+      w9Id: string;
+      personnelId: string;
+      daysValid?: number;
+    }) => {
+      const expiresAt = new Date();
+      expiresAt.setDate(expiresAt.getDate() + daysValid);
+
+      const { data, error } = await supabase
+        .from("personnel_w9_forms")
+        .update({
+          edit_allowed: true,
+          edit_allowed_until: expiresAt.toISOString(),
+        })
+        .eq("id", w9Id)
+        .select()
+        .single();
+
+      if (error) throw error;
+      return { data, personnelId };
+    },
+    onSuccess: ({ personnelId }) => {
+      queryClient.invalidateQueries({ queryKey: ["w9-form", personnelId] });
+      queryClient.invalidateQueries({ queryKey: ["my-w9-form", personnelId] });
+      toast.success("Edit permission granted - personnel can now modify their W-9");
+    },
+    onError: (error: Error) => {
+      toast.error(`Failed to grant edit permission: ${error.message}`);
     },
   });
 };

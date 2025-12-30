@@ -17,6 +17,7 @@ import {
 import { 
   usePersonnelW9Form, 
   useVerifyW9Form,
+  useRequestW9Edit,
   W9Form 
 } from "@/integrations/supabase/hooks/useW9Forms";
 import { format } from "date-fns";
@@ -28,7 +29,8 @@ import {
   AlertCircle,
   ShieldCheck,
   ShieldX,
-  Download
+  Download,
+  Pencil
 } from "lucide-react";
 import { downloadFormW9 } from "@/lib/generateW9";
 import { toast } from "sonner";
@@ -42,8 +44,23 @@ interface W9FormViewProps {
 export function W9FormView({ personnelId, personnelSsnLastFour, personnelSsnFull }: W9FormViewProps) {
   const { data: w9Form, isLoading } = usePersonnelW9Form(personnelId);
   const verifyW9 = useVerifyW9Form();
+  const requestW9Edit = useRequestW9Edit();
   const [rejectDialogOpen, setRejectDialogOpen] = useState(false);
   const [rejectionReason, setRejectionReason] = useState("");
+
+  const handleRequestEdit = async () => {
+    if (!w9Form) return;
+    await requestW9Edit.mutateAsync({
+      w9Id: w9Form.id,
+      personnelId,
+      daysValid: 7,
+    });
+  };
+
+  // Check if edit permission is currently active
+  const editPermissionActive = w9Form?.edit_allowed && 
+    w9Form.edit_allowed_until && 
+    new Date(w9Form.edit_allowed_until) > new Date();
 
   const getStatusBadge = (status: string) => {
     switch (status) {
@@ -196,6 +213,36 @@ export function W9FormView({ personnelId, personnelSsnLastFour, personnelSsnFull
                     Reject
                   </Button>
                 </div>
+              </AlertDescription>
+            </Alert>
+          )}
+
+          {/* Request Edit Button for Verified W-9s */}
+          {w9Form.status === "verified" && !editPermissionActive && (
+            <div className="flex items-center gap-3">
+              <Button 
+                variant="outline"
+                size="sm"
+                onClick={handleRequestEdit}
+                disabled={requestW9Edit.isPending}
+                className="gap-1"
+              >
+                <Pencil className="h-4 w-4" />
+                Request Edit
+              </Button>
+              <span className="text-sm text-muted-foreground">
+                Allow personnel to modify their W-9
+              </span>
+            </div>
+          )}
+
+          {/* Show if edit is currently allowed */}
+          {editPermissionActive && (
+            <Alert>
+              <Pencil className="h-4 w-4" />
+              <AlertTitle>Edit Permission Granted</AlertTitle>
+              <AlertDescription>
+                Personnel can edit their W-9 until {format(new Date(w9Form.edit_allowed_until!), "MMM d, yyyy 'at' h:mm a")}
               </AlertDescription>
             </Alert>
           )}
