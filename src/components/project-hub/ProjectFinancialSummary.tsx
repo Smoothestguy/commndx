@@ -80,20 +80,14 @@ export function ProjectFinancialSummary({ data }: ProjectFinancialSummaryProps) 
         <div className="grid gap-4 sm:grid-cols-2 pt-4 border-t border-border">
           <div className="space-y-3">
             <p className="text-sm text-muted-foreground flex items-center gap-1">
-              <Truck className="h-3 w-3" /> Total Project Costs
+              <Truck className="h-3 w-3" /> Vendor PO Costs
             </p>
             <p className="text-2xl font-bold">
-              {formatCurrency(data.totalPOValue + data.totalLaborCost + data.totalOtherExpenses)}
+              {formatCurrency(data.totalPOValue)}
             </p>
             
             {/* Itemized breakdown */}
             <div className="pl-4 border-l-2 border-muted space-y-2 mt-2">
-              <div className="flex justify-between items-center text-sm">
-                <span className="text-muted-foreground flex items-center gap-1">
-                  <Package className="h-3 w-3" /> Vendor PO Costs
-                </span>
-                <span className="font-medium">{formatCurrency(data.totalPOValue)}</span>
-              </div>
               <div className="flex justify-between items-center text-sm">
                 <span className="text-muted-foreground flex items-center gap-1">
                   <Users className="h-3 w-3" /> Labor Costs
@@ -107,6 +101,14 @@ export function ProjectFinancialSummary({ data }: ProjectFinancialSummaryProps) 
                 <span className="font-medium">{formatCurrency(data.totalOtherExpenses)}</span>
               </div>
             </div>
+          </div>
+          
+          {/* Total Costs - Separate highlighted card */}
+          <div className="space-y-1 p-3 bg-primary/10 rounded-lg">
+            <p className="text-sm text-muted-foreground font-medium">Total Costs</p>
+            <p className="text-2xl font-bold text-orange-500">
+              {formatCurrency(data.totalPOValue + data.totalLaborCost + data.totalOtherExpenses)}
+            </p>
           </div>
         </div>
 
