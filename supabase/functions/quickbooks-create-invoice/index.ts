@@ -178,6 +178,7 @@ serve(async (req) => {
 
     let qbItemMap = new Map<string, string>();
     if (productIds.length > 0) {
+      // First check existing mappings
       const { data: productMappings } = await supabase
         .from("quickbooks_product_mappings")
         .select("product_id, quickbooks_item_id")
@@ -188,7 +189,35 @@ serve(async (req) => {
           productMappings.map((m: any) => [m.product_id, m.quickbooks_item_id])
         );
       }
-      console.log("Found QB product mappings by product_id:", qbItemMap.size);
+      console.log("Found existing QB product mappings:", qbItemMap.size, "of", productIds.length);
+
+      // Auto-sync unmapped products to QuickBooks
+      const unmappedProductIds = productIds.filter((id: string) => !qbItemMap.has(id));
+      if (unmappedProductIds.length > 0) {
+        console.log("Auto-syncing", unmappedProductIds.length, "unmapped products to QuickBooks...");
+        
+        for (const productId of unmappedProductIds) {
+          try {
+            const syncResponse = await supabase.functions.invoke('quickbooks-sync-products', {
+              body: { 
+                action: 'sync-single',
+                productId: productId
+              }
+            });
+
+            if (syncResponse.error) {
+              console.warn(`Failed to sync product ${productId}:`, syncResponse.error);
+            } else if (syncResponse.data?.quickbooksItemId) {
+              console.log(`Successfully synced product ${productId} to QB item ${syncResponse.data.quickbooksItemId}`);
+              qbItemMap.set(productId, syncResponse.data.quickbooksItemId);
+            }
+          } catch (syncError) {
+            console.warn(`Error syncing product ${productId}:`, syncError);
+          }
+        }
+        
+        console.log("After auto-sync, have QB mappings:", qbItemMap.size);
+      }
     }
 
     // Fallback: For line items without product_id, try to look up by product_name
