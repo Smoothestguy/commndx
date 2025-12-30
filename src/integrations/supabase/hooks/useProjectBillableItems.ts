@@ -56,7 +56,7 @@ export const useProjectBillableItems = (projectId: string | undefined) => {
           created_at
         `)
         .eq("project_id", projectId)
-        .in("status", ["active", "in-progress"])
+        .in("status", ["active", "in-progress", "completed"])
         .gt("remaining_amount", 0)
         .is("deleted_at", null)
         .order("created_at", { ascending: false });

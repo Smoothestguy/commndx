@@ -105,6 +105,9 @@ export function InvoiceForm({ onSubmit, onSubmitMultiItem, initialData, jobOrder
   const [selectedBillableItems, setSelectedBillableItems] = useState<string[]>([]);
   const [useMultiItemMode, setUseMultiItemMode] = useState(false);
   
+  // Job Order billing mode: "summary" shows single line, "detailed" shows all JO line items
+  const [jobOrderBillingMode, setJobOrderBillingMode] = useState<"summary" | "detailed">("detailed");
+  
   // State for invoice number loading
   const [invoiceNumberLoading, setInvoiceNumberLoading] = useState(false);
 
@@ -341,7 +344,9 @@ export function InvoiceForm({ onSubmit, onSubmitMultiItem, initialData, jobOrder
   const billableItemsTotals = useSelectedBillableItemsTotals(
     selectedJobOrder?.project_id,
     selectedBillableItems,
-    taxRate
+    taxRate,
+    jobOrderBillingMode,
+    jobOrderWithLineItems
   );
 
   // Determine which totals to use based on mode
@@ -731,12 +736,48 @@ export function InvoiceForm({ onSubmit, onSubmitMultiItem, initialData, jobOrder
 
       {/* Billable Items Selection - replaces Related Items section */}
       {invoiceType === "job_order" && selectedJobOrder && (
-        <BillableItemsSelector
-          projectId={selectedJobOrder?.project_id}
-          selectedItems={selectedBillableItems}
-          onSelectionChange={setSelectedBillableItems}
-          preSelectedJobOrderId={selectedJobOrderId}
-        />
+        <>
+          <BillableItemsSelector
+            projectId={selectedJobOrder?.project_id}
+            selectedItems={selectedBillableItems}
+            onSelectionChange={setSelectedBillableItems}
+            preSelectedJobOrderId={selectedJobOrderId}
+          />
+          
+          {/* Job Order Billing Mode Toggle */}
+          {selectedBillableItems.length > 0 && billableItemsTotals.jobOrderIds.length > 0 && (
+            <Card className="p-4">
+              <div className="flex items-center justify-between">
+                <div>
+                  <Label className="text-base font-medium">Job Order Line Items</Label>
+                  <p className="text-sm text-muted-foreground">
+                    {jobOrderBillingMode === "detailed" 
+                      ? "Showing all individual line items from the job order" 
+                      : "Showing summary (remaining balance only)"}
+                  </p>
+                </div>
+                <div className="flex gap-2">
+                  <Button
+                    type="button"
+                    size="sm"
+                    variant={jobOrderBillingMode === "detailed" ? "default" : "outline"}
+                    onClick={() => setJobOrderBillingMode("detailed")}
+                  >
+                    Detailed
+                  </Button>
+                  <Button
+                    type="button"
+                    size="sm"
+                    variant={jobOrderBillingMode === "summary" ? "default" : "outline"}
+                    onClick={() => setJobOrderBillingMode("summary")}
+                  >
+                    Summary
+                  </Button>
+                </div>
+              </div>
+            </Card>
+          )}
+        </>
       )}
 
       {/* Invoice Line Items Preview - show in multi-item mode */}
