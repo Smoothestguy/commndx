@@ -9,7 +9,7 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Card } from "@/components/ui/card";
 import { Trash2, Plus, Copy, Loader2, Check, ChevronsUpDown, Receipt, Package, FileText } from "lucide-react";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { useJobOrders, useJobOrder } from "@/integrations/supabase/hooks/useJobOrders";
 import { useCustomers } from "@/integrations/supabase/hooks/useCustomers";
 import { useProducts, Product } from "@/integrations/supabase/hooks/useProducts";
@@ -28,6 +28,8 @@ import { PendingAttachmentsUpload, PendingFile } from "@/components/shared/Pendi
 import { cleanupPendingAttachments } from "@/utils/attachmentUtils";
 import { toast } from "sonner";
 import { getNextInvoiceNumber } from "@/utils/invoiceNumberGenerator";
+import { BillableItemsSelector, useSelectedBillableItemsTotals } from "./BillableItemsSelector";
+import { useProjectBillableItems } from "@/integrations/supabase/hooks/useProjectBillableItems";
 
 const formSchema = z.object({
   number: z.string().min(1, "Invoice number is required"),
@@ -63,11 +65,12 @@ interface LineItem {
 
 interface InvoiceFormProps {
   onSubmit: (data: any, pendingAttachments?: PendingFile[]) => void;
+  onSubmitMultiItem?: (data: any, pendingAttachments?: PendingFile[]) => void;
   initialData?: any;
   jobOrderId?: string;
 }
 
-export function InvoiceForm({ onSubmit, initialData, jobOrderId }: InvoiceFormProps) {
+export function InvoiceForm({ onSubmit, onSubmitMultiItem, initialData, jobOrderId }: InvoiceFormProps) {
   const { user } = useAuth();
   const { data: jobOrders = [], isLoading: jobOrdersLoading } = useJobOrders();
   const { data: customers = [], isLoading: customersLoading } = useCustomers();
@@ -97,6 +100,10 @@ export function InvoiceForm({ onSubmit, initialData, jobOrderId }: InvoiceFormPr
   // QuickBooks integration
   const { data: qbConfig } = useQuickBooksConfig();
   const isQBConnected = qbConfig?.is_connected ?? false;
+
+  // Multi-item selection state
+  const [selectedBillableItems, setSelectedBillableItems] = useState<Set<string>>(new Set());
+  const [useMultiItemMode, setUseMultiItemMode] = useState(false);
   
   // State for invoice number loading
   const [invoiceNumberLoading, setInvoiceNumberLoading] = useState(false);
@@ -209,6 +216,9 @@ export function InvoiceForm({ onSubmit, initialData, jobOrderId }: InvoiceFormPr
     setSelectedJobOrder(jobOrder);
     if (jobOrder) {
       form.setValue("taxRate", jobOrder.tax_rate);
+      // Auto-select this job order in billable items and enable multi-item mode
+      setSelectedBillableItems(new Set([value]));
+      setUseMultiItemMode(true);
     }
   };
 
@@ -327,12 +337,46 @@ export function InvoiceForm({ onSubmit, initialData, jobOrderId }: InvoiceFormPr
   const taxAmount = Math.round(taxableSubtotal * (taxRate / 100) * 100) / 100;
   const total = Math.round((subtotal + taxAmount) * 100) / 100;
 
+  // Get billable items totals for multi-item mode
+  const billableItemsTotals = useSelectedBillableItemsTotals(
+    selectedJobOrder?.project_id,
+    selectedBillableItems,
+    taxRate
+  );
+
+  // Determine which totals to use based on mode
+  const effectiveSubtotal = useMultiItemMode && selectedBillableItems.size > 0 ? billableItemsTotals.subtotal : subtotal;
+  const effectiveTaxAmount = useMultiItemMode && selectedBillableItems.size > 0 ? billableItemsTotals.taxAmount : taxAmount;
+  const effectiveTotal = useMultiItemMode && selectedBillableItems.size > 0 ? billableItemsTotals.total : total;
+
   const remainingBalance = selectedJobOrder ? selectedJobOrder.remaining_amount : 0;
-  // Add small tolerance for rounding differences
-  const exceedsBalance = invoiceType === "job_order" && total > remainingBalance + 0.01;
+  // Add small tolerance for rounding differences - only check in non-multi-item mode
+  const exceedsBalance = invoiceType === "job_order" && !useMultiItemMode && total > remainingBalance + 0.01;
 
   const handleSubmit = (values: z.infer<typeof formSchema>) => {
-    if (invoiceType === "job_order" && exceedsBalance) {
+    if (invoiceType === "job_order" && !useMultiItemMode && exceedsBalance) {
+      return;
+    }
+
+    // Multi-item mode: use billable items for line items and submit via onSubmitMultiItem
+    if (invoiceType === "job_order" && useMultiItemMode && selectedBillableItems.size > 0 && onSubmitMultiItem) {
+      onSubmitMultiItem({
+        number: values.number,
+        project_id: selectedJobOrder?.project_id,
+        project_name: selectedJobOrder?.project_name,
+        customer_id: selectedJobOrder?.customer_id,
+        customer_name: selectedJobOrder?.customer_name,
+        status: values.status,
+        subtotal: billableItemsTotals.subtotal,
+        tax_rate: taxRate,
+        tax_amount: billableItemsTotals.taxAmount,
+        total: billableItemsTotals.total,
+        due_date: values.dueDate,
+        line_items: billableItemsTotals.lineItems,
+        job_order_ids: billableItemsTotals.jobOrderIds,
+        change_order_ids: billableItemsTotals.changeOrderIds,
+        tm_ticket_ids: billableItemsTotals.tmTicketIds,
+      }, pendingAttachments);
       return;
     }
 
@@ -685,69 +729,14 @@ export function InvoiceForm({ onSubmit, initialData, jobOrderId }: InvoiceFormPr
         </Card>
       )}
 
-      {/* Related Items - Purchase Orders and Change Orders */}
+      {/* Billable Items Selection - replaces Related Items section */}
       {invoiceType === "job_order" && selectedJobOrder && (
-        (selectedJobOrder.purchase_orders?.length > 0 || selectedJobOrder.change_orders?.length > 0) && (
-          <Card className="p-4 bg-muted/50">
-            <h4 className="font-medium mb-3 text-sm">Related Items</h4>
-            <div className="space-y-4">
-              {/* Purchase Orders */}
-              {selectedJobOrder.purchase_orders?.length > 0 && (
-                <div className="space-y-2">
-                  <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                    <Package className="h-4 w-4" />
-                    <span>Purchase Orders ({selectedJobOrder.purchase_orders.length})</span>
-                  </div>
-                  <div className="space-y-1 pl-6">
-                    {selectedJobOrder.purchase_orders.map((po: any) => (
-                      <div key={po.id} className="flex items-center justify-between text-sm">
-                        <span>
-                          {po.number} - {po.vendor_name}
-                        </span>
-                        <div className="flex items-center gap-2">
-                          <span className="font-medium">${po.total.toFixed(2)}</span>
-                          <Badge variant="outline" className="text-xs capitalize">
-                            {po.status}
-                          </Badge>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              )}
-
-              {/* Change Orders */}
-              {selectedJobOrder.change_orders?.length > 0 && (
-                <div className="space-y-2">
-                  <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                    <FileText className="h-4 w-4" />
-                    <span>Change Orders ({selectedJobOrder.change_orders.length})</span>
-                  </div>
-                  <div className="space-y-1 pl-6">
-                    {selectedJobOrder.change_orders.map((co: any) => (
-                      <div key={co.id} className="flex items-center justify-between text-sm">
-                        <span>
-                          {co.number} - {co.reason}
-                        </span>
-                        <div className="flex items-center gap-2">
-                          <span className={cn(
-                            "font-medium",
-                            co.change_type === "deductive" ? "text-destructive" : "text-primary"
-                          )}>
-                            {co.change_type === "deductive" ? "-" : "+"}${Math.abs(co.total).toFixed(2)}
-                          </span>
-                          <Badge variant="outline" className="text-xs capitalize">
-                            {co.status}
-                          </Badge>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              )}
-            </div>
-          </Card>
-        )
+        <BillableItemsSelector
+          projectId={selectedJobOrder?.project_id}
+          selectedItems={selectedBillableItems}
+          onSelectionChange={setSelectedBillableItems}
+          preSelectedJobOrderId={selectedJobOrderId}
+        />
       )}
 
 
@@ -759,246 +748,251 @@ export function InvoiceForm({ onSubmit, initialData, jobOrderId }: InvoiceFormPr
         </Alert>
       )}
 
-      <div className="space-y-4">
-        <div className="space-y-3">
-          <Label className="text-lg font-semibold">Line Items</Label>
-          {invoiceType === "job_order" && selectedJobOrder && (
-            <Button type="button" variant="outline" size="sm" className="w-full sm:w-auto" onClick={copyFromJobOrder}>
-              <Copy className="w-4 h-4 mr-2" />
-              Copy from Job Order
-            </Button>
-          )}
-        </div>
-
-        {lineItems.map((item, index) => (
-          <Card key={item.id} className="p-4">
-            <div className="flex items-center justify-between mb-3">
-              <span className="text-sm font-medium">Item {index + 1}</span>
-              <Button
-                type="button"
-                variant="ghost"
-                size="sm"
-                onClick={() => removeLineItem(item.id)}
-                disabled={lineItems.length === 1}
-              >
-                <Trash2 className="h-4 w-4 text-destructive" />
+      {/* Line Items Section - hidden when using multi-item mode */}
+      {!(useMultiItemMode && selectedBillableItems.size > 0) && (
+        <div className="space-y-4">
+          <div className="space-y-3">
+            <Label className="text-lg font-semibold">Line Items</Label>
+            {invoiceType === "job_order" && selectedJobOrder && (
+              <Button type="button" variant="outline" size="sm" className="w-full sm:w-auto" onClick={copyFromJobOrder}>
+                <Copy className="w-4 h-4 mr-2" />
+                Copy from Job Order
               </Button>
-            </div>
-            
-            <div className="space-y-3">
-              {/* Show Product Name prominently if it exists (from job order) */}
-              {item.productName && !item.productId && (
-                <div className="space-y-2">
-                  <Label>Product</Label>
-                  <div className="h-10 flex items-center px-3 bg-muted rounded-md font-medium border">
-                    {item.productName}
-                  </div>
-                </div>
-              )}
+            )}
+          </div>
 
-              {/* Product Selection - only show if no product name exists yet */}
-              {(!item.productName || item.productId) && (
-                <div className="space-y-2">
-                  <Label>Product (Optional)</Label>
-                  <Popover
-                    open={productComboboxOpen[item.id] || false}
-                    onOpenChange={(open) =>
-                      setProductComboboxOpen((prev) => ({ ...prev, [item.id]: open }))
-                    }
-                  >
-                    <PopoverTrigger asChild>
-                      <Button
-                        variant="outline"
-                        role="combobox"
-                        aria-expanded={productComboboxOpen[item.id] || false}
-                        className="w-full justify-between font-normal"
-                      >
-                        {item.productId
-                          ? products.find((p) => p.id === item.productId)?.name || item.productName || "Select product..."
-                          : "Search products..."}
-                        <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
-                      </Button>
-                    </PopoverTrigger>
-                    <PopoverContent className="w-[--radix-popover-trigger-width] p-0 z-50 bg-popover" align="start">
-                      <Command>
-                        <CommandInput 
-                          placeholder="Search by name, SKU, or category..." 
-                          value={productSearch[item.id] || ""}
-                          onValueChange={(v) => setProductSearch(prev => ({ ...prev, [item.id]: v }))}
-                        />
-                        <CommandList>
-                          <CommandEmpty>No products found.</CommandEmpty>
-                          {getProductsByType('product').length > 0 && (
-                            <CommandGroup heading="Products">
-                              {getProductsByType('product').map((product) => (
-                                <CommandItem
-                                  key={product.id}
-                                  value={`${product.name} ${product.sku || ""} ${product.category}`}
-                                  onSelect={() => {
-                                    handleProductSelect(item.id, product);
-                                    setProductSearch(prev => ({ ...prev, [item.id]: "" }));
-                                  }}
-                                >
-                                  <Check
-                                    className={cn(
-                                      "mr-2 h-4 w-4",
-                                      item.productId === product.id ? "opacity-100" : "opacity-0"
-                                    )}
-                                  />
-                                  <div className="flex flex-col">
-                                    <span>{product.name}</span>
-                                    <span className="text-xs text-muted-foreground">
-                                      {product.category} • ${product.price.toFixed(2)} / {product.unit}
-                                    </span>
-                                  </div>
-                                </CommandItem>
-                              ))}
-                            </CommandGroup>
-                          )}
-                          {getProductsByType('service').length > 0 && (
-                            <CommandGroup heading="Services">
-                              {getProductsByType('service').map((product) => (
-                                <CommandItem
-                                  key={product.id}
-                                  value={`${product.name} ${product.sku || ""} ${product.category}`}
-                                  onSelect={() => {
-                                    handleProductSelect(item.id, product);
-                                    setProductSearch(prev => ({ ...prev, [item.id]: "" }));
-                                  }}
-                                >
-                                  <Check
-                                    className={cn(
-                                      "mr-2 h-4 w-4",
-                                      item.productId === product.id ? "opacity-100" : "opacity-0"
-                                    )}
-                                  />
-                                  <div className="flex flex-col">
-                                    <span>{product.name}</span>
-                                    <span className="text-xs text-muted-foreground">
-                                      {product.category} • ${product.price.toFixed(2)} / {product.unit}
-                                    </span>
-                                  </div>
-                                </CommandItem>
-                              ))}
-                            </CommandGroup>
-                          )}
-                          {getProductsByType('labor').length > 0 && (
-                            <CommandGroup heading="Labor">
-                              {getProductsByType('labor').map((product) => (
-                                <CommandItem
-                                  key={product.id}
-                                  value={`${product.name} ${product.sku || ""} ${product.category}`}
-                                  onSelect={() => {
-                                    handleProductSelect(item.id, product);
-                                    setProductSearch(prev => ({ ...prev, [item.id]: "" }));
-                                  }}
-                                >
-                                  <Check
-                                    className={cn(
-                                      "mr-2 h-4 w-4",
-                                      item.productId === product.id ? "opacity-100" : "opacity-0"
-                                    )}
-                                  />
-                                  <div className="flex flex-col">
-                                    <span>{product.name}</span>
-                                    <span className="text-xs text-muted-foreground">
-                                      {product.category} • ${product.price.toFixed(2)} / {product.unit}
-                                    </span>
-                                  </div>
-                                </CommandItem>
-                              ))}
-                            </CommandGroup>
-                          )}
-                        </CommandList>
-                      </Command>
-                    </PopoverContent>
-                  </Popover>
-                </div>
-              )}
-
-              <div className="space-y-2">
-                <div className="flex items-center gap-2">
-                  <Label>Description</Label>
-                  {item.productId && (
-                    <Badge variant="outline" className="text-xs">
-                      {products.find((p) => p.id === item.productId)?.unit}
-                    </Badge>
-                  )}
-                </div>
-                <Textarea
-                  value={item.description}
-                  onChange={(e) => {
-                    updateLineItem(item.id, "description", e.target.value);
-                    e.target.style.height = 'auto';
-                    e.target.style.height = e.target.scrollHeight + 'px';
-                  }}
-                  placeholder="Item description"
-                  className="min-h-[80px] resize-none overflow-hidden"
-                  ref={(el) => {
-                    if (el) {
-                      el.style.height = 'auto';
-                      el.style.height = el.scrollHeight + 'px';
-                    }
-                  }}
-                />
+          {lineItems.map((item, index) => (
+            <Card key={item.id} className="p-4">
+              <div className="flex items-center justify-between mb-3">
+                <span className="text-sm font-medium">Item {index + 1}</span>
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => removeLineItem(item.id)}
+                  disabled={lineItems.length === 1}
+                >
+                  <Trash2 className="h-4 w-4 text-destructive" />
+                </Button>
               </div>
               
-              <div className="grid grid-cols-2 gap-3">
+              <div className="space-y-3">
+                {/* Show Product Name prominently if it exists (from job order) */}
+                {item.productName && !item.productId && (
+                  <div className="space-y-2">
+                    <Label>Product</Label>
+                    <div className="h-10 flex items-center px-3 bg-muted rounded-md font-medium border">
+                      {item.productName}
+                    </div>
+                  </div>
+                )}
+
+                {/* Product Selection - only show if no product name exists yet */}
+                {(!item.productName || item.productId) && (
+                  <div className="space-y-2">
+                    <Label>Product (Optional)</Label>
+                    <Popover
+                      open={productComboboxOpen[item.id] || false}
+                      onOpenChange={(open) =>
+                        setProductComboboxOpen((prev) => ({ ...prev, [item.id]: open }))
+                      }
+                    >
+                      <PopoverTrigger asChild>
+                        <Button
+                          variant="outline"
+                          role="combobox"
+                          aria-expanded={productComboboxOpen[item.id] || false}
+                          className="w-full justify-between font-normal"
+                        >
+                          {item.productId
+                            ? products.find((p) => p.id === item.productId)?.name || item.productName || "Select product..."
+                            : "Search products..."}
+                          <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                        </Button>
+                      </PopoverTrigger>
+                      <PopoverContent className="w-[--radix-popover-trigger-width] p-0 z-50 bg-popover" align="start">
+                        <Command>
+                          <CommandInput 
+                            placeholder="Search by name, SKU, or category..." 
+                            value={productSearch[item.id] || ""}
+                            onValueChange={(v) => setProductSearch(prev => ({ ...prev, [item.id]: v }))}
+                          />
+                          <CommandList>
+                            <CommandEmpty>No products found.</CommandEmpty>
+                            {getProductsByType('product').length > 0 && (
+                              <CommandGroup heading="Products">
+                                {getProductsByType('product').map((product) => (
+                                  <CommandItem
+                                    key={product.id}
+                                    value={`${product.name} ${product.sku || ""} ${product.category}`}
+                                    onSelect={() => {
+                                      handleProductSelect(item.id, product);
+                                      setProductSearch(prev => ({ ...prev, [item.id]: "" }));
+                                    }}
+                                  >
+                                    <Check
+                                      className={cn(
+                                        "mr-2 h-4 w-4",
+                                        item.productId === product.id ? "opacity-100" : "opacity-0"
+                                      )}
+                                    />
+                                    <div className="flex flex-col">
+                                      <span>{product.name}</span>
+                                      <span className="text-xs text-muted-foreground">
+                                        {product.category} • ${product.price.toFixed(2)} / {product.unit}
+                                      </span>
+                                    </div>
+                                  </CommandItem>
+                                ))}
+                              </CommandGroup>
+                            )}
+                            {getProductsByType('service').length > 0 && (
+                              <CommandGroup heading="Services">
+                                {getProductsByType('service').map((product) => (
+                                  <CommandItem
+                                    key={product.id}
+                                    value={`${product.name} ${product.sku || ""} ${product.category}`}
+                                    onSelect={() => {
+                                      handleProductSelect(item.id, product);
+                                      setProductSearch(prev => ({ ...prev, [item.id]: "" }));
+                                    }}
+                                  >
+                                    <Check
+                                      className={cn(
+                                        "mr-2 h-4 w-4",
+                                        item.productId === product.id ? "opacity-100" : "opacity-0"
+                                      )}
+                                    />
+                                    <div className="flex flex-col">
+                                      <span>{product.name}</span>
+                                      <span className="text-xs text-muted-foreground">
+                                        {product.category} • ${product.price.toFixed(2)} / {product.unit}
+                                      </span>
+                                    </div>
+                                  </CommandItem>
+                                ))}
+                              </CommandGroup>
+                            )}
+                            {getProductsByType('labor').length > 0 && (
+                              <CommandGroup heading="Labor">
+                                {getProductsByType('labor').map((product) => (
+                                  <CommandItem
+                                    key={product.id}
+                                    value={`${product.name} ${product.sku || ""} ${product.category}`}
+                                    onSelect={() => {
+                                      handleProductSelect(item.id, product);
+                                      setProductSearch(prev => ({ ...prev, [item.id]: "" }));
+                                    }}
+                                  >
+                                    <Check
+                                      className={cn(
+                                        "mr-2 h-4 w-4",
+                                        item.productId === product.id ? "opacity-100" : "opacity-0"
+                                      )}
+                                    />
+                                    <div className="flex flex-col">
+                                      <span>{product.name}</span>
+                                      <span className="text-xs text-muted-foreground">
+                                        {product.category} • ${product.price.toFixed(2)} / {product.unit}
+                                      </span>
+                                    </div>
+                                  </CommandItem>
+                                ))}
+                              </CommandGroup>
+                            )}
+                          </CommandList>
+                        </Command>
+                      </PopoverContent>
+                    </Popover>
+                  </div>
+                )}
+
                 <div className="space-y-2">
-                  <Label>Quantity</Label>
-                  <Input
-                    type="number"
-                    value={item.quantity}
-                    onChange={(e) => updateLineItem(item.id, "quantity", parseFloat(e.target.value) || 0)}
+                  <div className="flex items-center gap-2">
+                    <Label>Description</Label>
+                    {item.productId && (
+                      <Badge variant="outline" className="text-xs">
+                        {products.find((p) => p.id === item.productId)?.unit}
+                      </Badge>
+                    )}
+                  </div>
+                  <Textarea
+                    value={item.description}
+                    onChange={(e) => {
+                      updateLineItem(item.id, "description", e.target.value);
+                      e.target.style.height = 'auto';
+                      e.target.style.height = e.target.scrollHeight + 'px';
+                    }}
+                    placeholder="Item description"
+                    className="min-h-[80px] resize-none overflow-hidden"
+                    ref={(el) => {
+                      if (el) {
+                        el.style.height = 'auto';
+                        el.style.height = el.scrollHeight + 'px';
+                      }
+                    }}
                   />
                 </div>
-                <div className="space-y-2">
-                  <Label>Unit Price</Label>
-                  <div className="relative">
-                    <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground">$</span>
-                    <CalculatorInput
-                      value={item.unitPrice}
-                      onValueChange={(value) => updateLineItem(item.id, "unitPrice", value)}
-                      className="pl-7"
-                      showCalculatorIcon={false}
+                
+                <div className="grid grid-cols-2 gap-3">
+                  <div className="space-y-2">
+                    <Label>Quantity</Label>
+                    <Input
+                      type="number"
+                      value={item.quantity}
+                      onChange={(e) => updateLineItem(item.id, "quantity", parseFloat(e.target.value) || 0)}
                     />
                   </div>
+                  <div className="space-y-2">
+                    <Label>Unit Price</Label>
+                    <div className="relative">
+                      <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground">$</span>
+                      <CalculatorInput
+                        value={item.unitPrice}
+                        onValueChange={(value) => updateLineItem(item.id, "unitPrice", value)}
+                        className="pl-7"
+                        showCalculatorIcon={false}
+                      />
+                    </div>
+                  </div>
                 </div>
-              </div>
-              
-              <div className="grid grid-cols-2 gap-3">
-                <div className="space-y-2">
-                  <Label>Margin %</Label>
-                  <Input
-                    type="number"
-                    step="0.01"
-                    max="99.99"
-                    value={item.margin}
-                    onChange={(e) => updateLineItem(item.id, "margin", parseFloat(e.target.value) || 0)}
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label>Total</Label>
-                  <div className="h-10 flex items-center px-3 bg-muted rounded-md font-semibold">
-                    ${item.total.toFixed(2)}
+                
+                <div className="grid grid-cols-2 gap-3">
+                  <div className="space-y-2">
+                    <Label>Margin %</Label>
+                    <Input
+                      type="number"
+                      step="0.01"
+                      max="99.99"
+                      value={item.margin}
+                      onChange={(e) => updateLineItem(item.id, "margin", parseFloat(e.target.value) || 0)}
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label>Total</Label>
+                    <div className="h-10 flex items-center px-3 bg-muted rounded-md font-semibold">
+                      ${item.total.toFixed(2)}
+                    </div>
                   </div>
                 </div>
               </div>
-            </div>
-          </Card>
-        ))}
-        
-        <Button type="button" variant="outline" className="w-full" onClick={addLineItem}>
-          <Plus className="w-4 h-4 mr-2" />
-          Add Item
-        </Button>
-      </div>
+            </Card>
+          ))}
+          
+          <Button type="button" variant="outline" className="w-full" onClick={addLineItem}>
+            <Plus className="w-4 h-4 mr-2" />
+            Add Item
+          </Button>
+        </div>
+      )}
 
       <Card className="p-4">
         <div className="space-y-2">
           <div className="flex justify-between">
-            <span>Subtotal:</span>
-            <span className="font-semibold">${subtotal.toFixed(2)}</span>
+            <span>
+              Subtotal{useMultiItemMode && selectedBillableItems.size > 0 ? ` (${billableItemsTotals.selectedCount} items)` : ''}:
+            </span>
+            <span className="font-semibold">${effectiveSubtotal.toFixed(2)}</span>
           </div>
           <div className="flex justify-between items-center gap-4">
             <div className="flex items-center gap-2">
@@ -1012,11 +1006,11 @@ export function InvoiceForm({ onSubmit, initialData, jobOrderId }: InvoiceFormPr
               />
               <span>%</span>
             </div>
-            <span className="font-semibold">${taxAmount.toFixed(2)}</span>
+            <span className="font-semibold">${effectiveTaxAmount.toFixed(2)}</span>
           </div>
           <div className="flex justify-between text-lg font-bold border-t pt-2">
             <span>Total:</span>
-            <span>${total.toFixed(2)}</span>
+            <span>${effectiveTotal.toFixed(2)}</span>
           </div>
         </div>
       </Card>
