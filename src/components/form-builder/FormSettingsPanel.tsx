@@ -4,7 +4,7 @@ import { Switch } from "@/components/ui/switch";
 import { Textarea } from "@/components/ui/textarea";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
-import { AlertCircle, ExternalLink, Lock, Shield, Bell, MapPin } from "lucide-react";
+import { AlertCircle, ExternalLink, Lock, Shield, Bell, MapPin, MessageSquare } from "lucide-react";
 
 export interface FormSettings {
   redirectUrl?: string;
@@ -16,6 +16,7 @@ export interface FormSettings {
   showErrorSummary?: boolean;
   requireProfilePhoto?: boolean;
   requireLocation?: boolean;
+  requireSmsConsent?: boolean;
 }
 
 interface FormSettingsPanelProps {
@@ -150,6 +151,46 @@ export function FormSettingsPanel({
               Limit submissions to prevent spam (optional)
             </p>
           </div>
+        </CardContent>
+      </Card>
+
+      {/* SMS Notifications */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <MessageSquare className="h-5 w-5" />
+            SMS Notifications
+          </CardTitle>
+          <CardDescription>
+            Configure SMS consent requirements and notifications
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <div className="flex items-center justify-between">
+            <div className="space-y-0.5">
+              <Label>Require SMS Consent</Label>
+              <p className="text-xs text-muted-foreground">
+                Applicants must consent to SMS notifications to submit
+              </p>
+            </div>
+            <Switch
+              checked={settings.requireSmsConsent || false}
+              onCheckedChange={(checked) => updateSetting("requireSmsConsent", checked)}
+            />
+          </div>
+
+          {settings.requireSmsConsent && (
+            <div className="p-3 bg-muted/50 rounded-lg border">
+              <div className="flex items-center gap-2 text-sm font-medium">
+                <Shield className="h-4 w-4 text-primary" />
+                Consent Language
+              </div>
+              <p className="text-xs text-muted-foreground mt-1">
+                "I consent to receive SMS notifications from Fairfield at the phone number provided. 
+                Message and data rates may apply. Reply STOP to opt out."
+              </p>
+            </div>
+          )}
         </CardContent>
       </Card>
 

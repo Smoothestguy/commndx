@@ -99,6 +99,8 @@ export default function PublicApplicationForm() {
   const [coreFields, setCoreFields] = useState<CoreFieldsConfig>(DEFAULT_CORE_FIELDS);
   const [formSettings, setFormSettings] = useState<FormSettings>({});
   const [photoError, setPhotoError] = useState<string | null>(null);
+  const [smsConsent, setSmsConsent] = useState(false);
+  const [smsConsentError, setSmsConsentError] = useState<string | null>(null);
 
   const { data: posting, isLoading, error } = useJobPostingByToken(token || "");
   const submitApplication = useSubmitApplication();
@@ -262,6 +264,7 @@ export default function PublicApplicationForm() {
 
     // Clear previous errors
     setPhotoError(null);
+    setSmsConsentError(null);
 
     // Validate required profile photo
     const requiresPhoto = coreFields.profilePicture && (formSettings.requireProfilePhoto !== false);
@@ -277,12 +280,20 @@ export default function PublicApplicationForm() {
       return;
     }
 
+    // Validate SMS consent if required
+    if (formSettings.requireSmsConsent && !smsConsent) {
+      setSmsConsentError("You must consent to SMS notifications to complete this application");
+      toast.error("You must consent to SMS notifications to complete this application");
+      return;
+    }
+
     // Validate custom fields
     if (!validateCustomFields()) return;
 
     console.log("[Form] Submitting application with data:", data);
     console.log("[Form] Custom answers:", customAnswers);
     console.log("[Form] Geo data:", geoData);
+    console.log("[Form] SMS consent:", smsConsent);
 
     try {
       await submitApplication.mutateAsync({
@@ -299,6 +310,8 @@ export default function PublicApplicationForm() {
         geo: geoData,
         clientSubmittedAt: new Date().toISOString(),
         userAgent: navigator.userAgent,
+        smsConsent: smsConsent,
+        smsConsentPhone: smsConsent ? data.phone : undefined,
       });
       console.log("[Form] Application submitted successfully");
       toast.success("Thank you for applying! We appreciate your interest and will review your application soon.");
@@ -897,6 +910,32 @@ export default function PublicApplicationForm() {
                     <h3 className="font-medium text-sm text-muted-foreground">Additional Questions</h3>
                     <div className="space-y-4">
                       {renderFieldsWithLayout(customFields, customLayout, renderCustomField)}
+                    </div>
+                  </div>
+                )}
+
+                {/* SMS Consent Checkbox */}
+                {formSettings.requireSmsConsent && (
+                  <div className="space-y-2 pt-4 border-t">
+                    <div className="flex items-start space-x-3">
+                      <Checkbox
+                        id="sms-consent"
+                        checked={smsConsent}
+                        onCheckedChange={(checked) => {
+                          setSmsConsent(checked === true);
+                          if (checked) setSmsConsentError(null);
+                        }}
+                        className="mt-1"
+                      />
+                      <div className="space-y-1">
+                        <Label htmlFor="sms-consent" className="text-sm font-medium leading-relaxed cursor-pointer">
+                          I consent to receive SMS notifications from Fairfield at the phone number provided. 
+                          Message and data rates may apply. Reply STOP to opt out. *
+                        </Label>
+                        {smsConsentError && (
+                          <p className="text-sm font-medium text-destructive">{smsConsentError}</p>
+                        )}
+                      </div>
                     </div>
                   </div>
                 )}

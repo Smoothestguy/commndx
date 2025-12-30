@@ -363,6 +363,10 @@ export type Database = {
           job_posting_id: string
           missing_fields: Json | null
           notes: string | null
+          sms_confirmation_sent_at: string | null
+          sms_consent: boolean | null
+          sms_consent_at: string | null
+          sms_consent_phone: string | null
           status: Database["public"]["Enums"]["application_status"]
           submitted_at: string | null
           submitted_by_user_id: string | null
@@ -388,6 +392,10 @@ export type Database = {
           job_posting_id: string
           missing_fields?: Json | null
           notes?: string | null
+          sms_confirmation_sent_at?: string | null
+          sms_consent?: boolean | null
+          sms_consent_at?: string | null
+          sms_consent_phone?: string | null
           status?: Database["public"]["Enums"]["application_status"]
           submitted_at?: string | null
           submitted_by_user_id?: string | null
@@ -413,6 +421,10 @@ export type Database = {
           job_posting_id?: string
           missing_fields?: Json | null
           notes?: string | null
+          sms_confirmation_sent_at?: string | null
+          sms_consent?: boolean | null
+          sms_consent_at?: string | null
+          sms_consent_phone?: string | null
           status?: Database["public"]["Enums"]["application_status"]
           submitted_at?: string | null
           submitted_by_user_id?: string | null
