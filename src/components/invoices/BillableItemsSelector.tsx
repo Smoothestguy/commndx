@@ -191,6 +191,17 @@ export const BillableItemsSelector = ({
   );
 };
 
+const EMPTY_RESULT = { 
+  subtotal: 0, 
+  taxAmount: 0, 
+  total: 0, 
+  lineItems: [] as any[],
+  jobOrderIds: [] as string[],
+  changeOrderIds: [] as string[],
+  tmTicketIds: [] as string[],
+  selectedCount: 0,
+};
+
 export const useSelectedBillableItemsTotals = (
   projectId: string | undefined,
   selectedItems: Set<string>,
@@ -198,8 +209,11 @@ export const useSelectedBillableItemsTotals = (
 ) => {
   const { data: billableItems } = useProjectBillableItems(projectId);
 
+  // Convert Set to array for stable dependency
+  const selectedItemsArray = useMemo(() => Array.from(selectedItems), [selectedItems]);
+
   return useMemo(() => {
-    if (!billableItems) return { subtotal: 0, taxAmount: 0, total: 0, lineItems: [] };
+    if (!billableItems || selectedItemsArray.length === 0) return EMPTY_RESULT;
 
     const allItems = [
       ...billableItems.jobOrders,
@@ -207,7 +221,7 @@ export const useSelectedBillableItemsTotals = (
       ...billableItems.tmTickets,
     ];
 
-    const selectedItemsData = allItems.filter(item => selectedItems.has(item.id));
+    const selectedItemsData = allItems.filter(item => selectedItemsArray.includes(item.id));
 
     const subtotal = selectedItemsData.reduce((sum, item) => {
       if (item.type === 'job_order') {
@@ -283,5 +297,5 @@ export const useSelectedBillableItemsTotals = (
       tmTicketIds,
       selectedCount: selectedItemsData.length,
     };
-  }, [billableItems, selectedItems, taxRate]);
+  }, [billableItems, selectedItemsArray, taxRate]);
 };
