@@ -108,7 +108,8 @@ export function useChangeOrder(id: string | undefined) {
           *,
           project:projects(id, name),
           purchase_order:purchase_orders(id, number),
-          job_order:job_orders(id, number)
+          job_order:job_orders!change_orders_job_order_id_fkey(id, number),
+          source_job_order:job_orders!change_orders_source_job_order_id_fkey(id, number)
         `)
         .eq("id", id)
         .is("deleted_at", null)

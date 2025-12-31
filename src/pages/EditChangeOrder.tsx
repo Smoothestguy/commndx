@@ -9,7 +9,7 @@ import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 
 export default function EditChangeOrder() {
   const { id } = useParams<{ id: string }>();
-  const { data: changeOrder, isLoading } = useChangeOrder(id);
+  const { data: changeOrder, isLoading, error, isError } = useChangeOrder(id);
   const permissions = useChangeOrderPermissions(changeOrder);
 
   const backPath = changeOrder ? `/projects/${changeOrder.project_id}` : "/projects";
@@ -19,6 +19,18 @@ export default function EditChangeOrder() {
       <DetailPageLayout title="Edit Change Order" backPath="/projects">
         <div className="flex items-center justify-center py-12">
           <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+        </div>
+      </DetailPageLayout>
+    );
+  }
+
+  if (isError) {
+    return (
+      <DetailPageLayout title="Error Loading Change Order" backPath="/projects">
+        <div className="text-center py-12">
+          <ShieldAlert className="h-12 w-12 text-destructive mx-auto mb-4" />
+          <p className="text-muted-foreground">Failed to load change order. Please try again.</p>
+          <p className="text-sm text-muted-foreground mt-2">{(error as Error)?.message}</p>
         </div>
       </DetailPageLayout>
     );
