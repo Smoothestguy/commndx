@@ -260,6 +260,8 @@ const Estimates = () => {
                   data={filteredEstimates}
                   columns={columns}
                   onRowClick={handleRowClick}
+                  defaultSortKey="number"
+                  defaultSortDirection="desc"
                 />
               )}
             </>
