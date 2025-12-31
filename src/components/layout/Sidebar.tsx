@@ -64,7 +64,7 @@ const staffingNavigation = [
 export function Sidebar() {
   const location = useLocation();
   const { signOut, user } = useAuth();
-  const { isAdmin, isManager } = useUserRole();
+  const { isAdmin, isManager, isAccounting } = useUserRole();
 
   // Collapsible state
   const [vendorsOpen, setVendorsOpen] = useState(false);
@@ -240,7 +240,7 @@ export function Sidebar() {
                   <span className="truncate">Trash</span>
                 </Link>
               )}
-              {(isAdmin || isManager) && (
+              {(isAdmin || isManager || isAccounting) && (
                 <Link
                   to="/document-center"
                   className={cn(
