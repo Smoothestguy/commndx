@@ -32,6 +32,7 @@ import {
   FileImage,
   File,
   AlertTriangle,
+  Loader2,
 } from "lucide-react";
 import { format } from "date-fns";
 import { usePermissionCheck } from "@/hooks/usePermissionCheck";
@@ -45,6 +46,8 @@ import {
 } from "@/integrations/supabase/hooks/useAllSystemDocuments";
 import { DocumentFilters } from "@/components/documents/DocumentFilters";
 import { DocumentPreviewDialog } from "@/components/documents/DocumentPreviewDialog";
+import { getDocumentUrl, downloadDocument } from "@/utils/documentUrlUtils";
+import { toast } from "sonner";
 
 export default function DocumentCenter() {
   const { canView, canDelete, loading: permLoading } = usePermissionCheck("document_center");
@@ -56,6 +59,9 @@ export default function DocumentCenter() {
   const [sourceType, setSourceType] = useState<DocumentSourceType | "all">("all");
   const [relatedEntity, setRelatedEntity] = useState("");
   const [previewDoc, setPreviewDoc] = useState<SystemDocument | null>(null);
+  const [previewUrl, setPreviewUrl] = useState<string | null>(null);
+  const [isLoadingUrl, setIsLoadingUrl] = useState(false);
+  const [downloadingId, setDownloadingId] = useState<string | null>(null);
   const [deleteDoc, setDeleteDoc] = useState<SystemDocument | null>(null);
 
   // Filter documents
@@ -105,21 +111,34 @@ export default function DocumentCenter() {
   }, [documents]);
 
   // Handlers
-  const handleDownload = async (doc: SystemDocument) => {
+  const handlePreview = async (doc: SystemDocument) => {
+    setPreviewDoc(doc);
+    setPreviewUrl(null);
+    setIsLoadingUrl(true);
+    
     try {
-      const response = await fetch(doc.file_path);
-      const blob = await response.blob();
-      const url = window.URL.createObjectURL(blob);
-      const a = document.createElement("a");
-      a.href = url;
-      a.download = doc.file_name;
-      document.body.appendChild(a);
-      a.click();
-      window.URL.revokeObjectURL(url);
-      document.body.removeChild(a);
+      const url = await getDocumentUrl(doc.file_path, doc.source_type);
+      setPreviewUrl(url);
     } catch (error) {
-      // Fallback to opening in new tab
-      window.open(doc.file_path, "_blank");
+      console.error("Error getting preview URL:", error);
+      toast.error("Failed to load document preview");
+    } finally {
+      setIsLoadingUrl(false);
+    }
+  };
+
+  const handleDownload = async (doc: SystemDocument) => {
+    setDownloadingId(doc.id);
+    try {
+      const success = await downloadDocument(doc.file_path, doc.source_type, doc.file_name);
+      if (!success) {
+        toast.error("Failed to download document");
+      }
+    } catch (error) {
+      console.error("Download error:", error);
+      toast.error("Failed to download document");
+    } finally {
+      setDownloadingId(null);
     }
   };
 
@@ -314,7 +333,7 @@ export default function DocumentCenter() {
                               <Button
                                 variant="ghost"
                                 size="icon"
-                                onClick={() => setPreviewDoc(doc)}
+                                onClick={() => handlePreview(doc)}
                                 title="Preview"
                               >
                                 <Eye className="h-4 w-4" />
@@ -324,8 +343,13 @@ export default function DocumentCenter() {
                                 size="icon"
                                 onClick={() => handleDownload(doc)}
                                 title="Download"
+                                disabled={downloadingId === doc.id}
                               >
-                                <Download className="h-4 w-4" />
+                                {downloadingId === doc.id ? (
+                                  <Loader2 className="h-4 w-4 animate-spin" />
+                                ) : (
+                                  <Download className="h-4 w-4" />
+                                )}
                               </Button>
                               {canDelete && (
                                 <Button
@@ -354,9 +378,16 @@ export default function DocumentCenter() {
       {/* Preview Dialog */}
       <DocumentPreviewDialog
         open={!!previewDoc}
-        onOpenChange={(open) => !open && setPreviewDoc(null)}
+        onOpenChange={(open) => {
+          if (!open) {
+            setPreviewDoc(null);
+            setPreviewUrl(null);
+          }
+        }}
         document={previewDoc}
         onDownload={handleDownload}
+        previewUrl={previewUrl}
+        isLoadingUrl={isLoadingUrl}
       />
 
       {/* Delete Confirmation */}
