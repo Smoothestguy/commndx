@@ -42,6 +42,7 @@ import {
   Link as LinkIcon,
   Package,
   Truck,
+  AlertTriangle,
 } from "lucide-react";
 import { format } from "date-fns";
 import { useState } from "react";
@@ -249,6 +250,21 @@ export default function ChangeOrderDetail() {
             </CardContent>
           </Card>
         </div>
+
+        {/* Scope Reference Section for Deductive COs */}
+        {changeOrder.change_type === 'deductive' && changeOrder.scope_reference && (
+          <Card className="border-destructive/50 bg-destructive/5">
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2 text-destructive">
+                <AlertTriangle className="h-5 w-5" />
+                Scope Reduction Reference
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <p className="whitespace-pre-wrap">{changeOrder.scope_reference}</p>
+            </CardContent>
+          </Card>
+        )}
 
         <Card>
           <CardHeader><CardTitle>Line Items</CardTitle></CardHeader>

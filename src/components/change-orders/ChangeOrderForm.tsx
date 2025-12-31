@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
+import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { CalculatorInput } from "@/components/ui/calculator-input";
@@ -44,7 +45,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import { Plus, Trash2, Save, X, ArrowRightLeft, Check, ChevronsUpDown, Lock, RotateCcw } from "lucide-react";
+import { Plus, Trash2, Save, X, ArrowRightLeft, Check, ChevronsUpDown, Lock, RotateCcw, AlertTriangle } from "lucide-react";
 import {
   Tooltip,
   TooltipContent,
@@ -81,6 +82,7 @@ interface LineItem {
   is_taxable: boolean;
   sort_order: number;
   calculation_mode: 'forward' | 'reverse';
+  original_scope_description?: string | null;
 }
 
 interface ChangeOrderFormProps {
@@ -128,12 +130,16 @@ export function ChangeOrderForm({
   const [description, setDescription] = useState(initialData?.description || "");
   const [taxRate, setTaxRate] = useState(initialData?.tax_rate || companySettings?.default_tax_rate || 0);
   const [changeType, setChangeType] = useState<ChangeType>(initialData?.change_type || "additive");
+  const [scopeReference, setScopeReference] = useState(initialData?.scope_reference || "");
+  const [sourceEstimateId, setSourceEstimateId] = useState(initialData?.source_estimate_id || "");
+  const [sourceJobOrderId, setSourceJobOrderId] = useState(initialData?.source_job_order_id || "");
   const [lineItems, setLineItems] = useState<LineItem[]>(
     initialData?.line_items?.map((item) => ({
       ...item,
       id: item.id,
       vendor_cost: item.vendor_cost || 0,
       calculation_mode: 'forward' as const,
+      original_scope_description: item.original_scope_description || "",
     })) || []
   );
 
@@ -165,6 +171,9 @@ export function ChangeOrderForm({
     description: string;
     taxRate: number;
     changeType: ChangeType;
+    scopeReference: string;
+    sourceEstimateId: string;
+    sourceJobOrderId: string;
     lineItems: string;
   } | null>(null);
 
@@ -183,6 +192,9 @@ export function ChangeOrderForm({
         description: initialData.description || "",
         taxRate: initialData.tax_rate || 0,
         changeType: initialData.change_type || "additive",
+        scopeReference: initialData.scope_reference || "",
+        sourceEstimateId: initialData.source_estimate_id || "",
+        sourceJobOrderId: initialData.source_job_order_id || "",
         lineItems: JSON.stringify(initialData.line_items?.map(item => ({
           product_id: item.product_id,
           description: item.description,
@@ -192,6 +204,7 @@ export function ChangeOrderForm({
           markup: item.markup,
           total: item.total,
           is_taxable: item.is_taxable,
+          original_scope_description: item.original_scope_description || "",
         })) || []),
       };
     }
@@ -403,6 +416,24 @@ export function ChangeOrderForm({
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
+    // Validation for deductive change orders
+    if (changeType === 'deductive') {
+      if (!scopeReference.trim()) {
+        toast.error("Scope reference is required for deductive change orders");
+        return;
+      }
+      if (lineItems.length === 0) {
+        toast.error("At least one line item is required for deductive change orders");
+        return;
+      }
+    }
+
+    // Reason is always required
+    if (!reason.trim()) {
+      toast.error("Reason for change order is required");
+      return;
+    }
+
     const data = {
       project_id: projectId,
       customer_id: customerId,
@@ -415,10 +446,14 @@ export function ChangeOrderForm({
       description: description || undefined,
       tax_rate: taxRate,
       change_type: changeType,
+      scope_reference: changeType === 'deductive' ? scopeReference : null,
+      source_estimate_id: changeType === 'deductive' && sourceEstimateId ? sourceEstimateId : undefined,
+      source_job_order_id: changeType === 'deductive' && sourceJobOrderId ? sourceJobOrderId : undefined,
       line_items: lineItems.map(({ id, calculation_mode, ...item }, index) => ({
         ...item,
         vendor_cost: item.vendor_cost || 0,
         sort_order: index,
+        original_scope_description: item.original_scope_description || null,
       })),
     };
 
@@ -788,6 +823,34 @@ export function ChangeOrderForm({
           </div>
         </CardContent>
       </Card>
+
+      {/* Scope Reduction Details - Required for Deductive COs */}
+      {changeType === 'deductive' && (
+        <Card className="border-destructive/50 bg-destructive/5">
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2 text-destructive">
+              <AlertTriangle className="h-5 w-5" />
+              Scope Reduction Details (Required)
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div className="space-y-2">
+              <Label htmlFor="scopeReference">Reference Original Scope *</Label>
+              <Textarea
+                id="scopeReference"
+                value={scopeReference}
+                onChange={(e) => setScopeReference(e.target.value)}
+                placeholder="Describe the original scope items being removed (e.g., 'Remove 200 LF of copper flashing per RFI #12 - Owner directed change')"
+                required
+                rows={3}
+              />
+              <p className="text-xs text-muted-foreground">
+                This reference is required for audit purposes and will appear on PDFs and exports.
+              </p>
+            </div>
+          </CardContent>
+        </Card>
+      )}
 
       <Card>
         <CardHeader className="flex flex-row items-center justify-between">

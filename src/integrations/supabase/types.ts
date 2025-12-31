@@ -781,6 +781,7 @@ export type Database = {
           id: string
           is_taxable: boolean | null
           markup: number
+          original_scope_description: string | null
           product_id: string | null
           quantity: number
           sort_order: number | null
@@ -795,6 +796,7 @@ export type Database = {
           id?: string
           is_taxable?: boolean | null
           markup?: number
+          original_scope_description?: string | null
           product_id?: string | null
           quantity?: number
           sort_order?: number | null
@@ -809,6 +811,7 @@ export type Database = {
           id?: string
           is_taxable?: boolean | null
           markup?: number
+          original_scope_description?: string | null
           product_id?: string | null
           quantity?: number
           sort_order?: number | null
@@ -893,6 +896,9 @@ export type Database = {
           purchase_order_id: string | null
           reason: string
           remaining_amount: number
+          scope_reference: string | null
+          source_estimate_id: string | null
+          source_job_order_id: string | null
           status: Database["public"]["Enums"]["change_order_status"]
           subtotal: number
           tax_amount: number
@@ -925,6 +931,9 @@ export type Database = {
           purchase_order_id?: string | null
           reason: string
           remaining_amount: number
+          scope_reference?: string | null
+          source_estimate_id?: string | null
+          source_job_order_id?: string | null
           status?: Database["public"]["Enums"]["change_order_status"]
           subtotal?: number
           tax_amount?: number
@@ -957,6 +966,9 @@ export type Database = {
           purchase_order_id?: string | null
           reason?: string
           remaining_amount?: number
+          scope_reference?: string | null
+          source_estimate_id?: string | null
+          source_job_order_id?: string | null
           status?: Database["public"]["Enums"]["change_order_status"]
           subtotal?: number
           tax_amount?: number
@@ -993,6 +1005,20 @@ export type Database = {
             columns: ["purchase_order_id"]
             isOneToOne: false
             referencedRelation: "purchase_orders"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "change_orders_source_estimate_id_fkey"
+            columns: ["source_estimate_id"]
+            isOneToOne: false
+            referencedRelation: "estimates"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "change_orders_source_job_order_id_fkey"
+            columns: ["source_job_order_id"]
+            isOneToOne: false
+            referencedRelation: "job_orders"
             referencedColumns: ["id"]
           },
           {

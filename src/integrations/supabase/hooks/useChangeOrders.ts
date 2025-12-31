@@ -18,6 +18,7 @@ export interface ChangeOrderLineItem {
   is_taxable: boolean;
   sort_order: number;
   created_at: string;
+  original_scope_description: string | null;
 }
 
 export interface ChangeOrder {
@@ -47,6 +48,12 @@ export interface ChangeOrder {
   approved_at: string | null;
   created_at: string;
   updated_at: string;
+  // Audit trail fields for deductive change orders
+  scope_reference: string | null;
+  source_estimate_id: string | null;
+  source_job_order_id: string | null;
+  invoiced_amount: number;
+  remaining_amount: number;
 }
 
 export interface ChangeOrderWithLineItems extends ChangeOrder {
@@ -181,6 +188,9 @@ export function useAddChangeOrder() {
       vendor_name?: string;
       tax_rate: number;
       change_type?: ChangeType;
+      scope_reference?: string | null;
+      source_estimate_id?: string;
+      source_job_order_id?: string;
       line_items: Omit<ChangeOrderLineItem, "id" | "change_order_id" | "created_at">[];
     }) => {
       const { line_items, ...changeOrderData } = data;
@@ -199,7 +209,11 @@ export function useAddChangeOrder() {
         subtotal,
         tax_amount: taxAmount,
         total,
+        remaining_amount: total, // Set remaining_amount equal to total for new COs
         change_type: changeOrderData.change_type || 'additive',
+        scope_reference: changeOrderData.scope_reference || null,
+        source_estimate_id: changeOrderData.source_estimate_id || null,
+        source_job_order_id: changeOrderData.source_job_order_id || null,
       };
 
       const { data: changeOrder, error } = await supabase
@@ -226,6 +240,7 @@ export function useAddChangeOrder() {
               product_id: item.product_id,
               change_order_id: (changeOrder as { id: string }).id,
               sort_order: index,
+              original_scope_description: item.original_scope_description || null,
             })) as never
           );
 
@@ -262,6 +277,10 @@ export function useUpdateChangeOrder() {
       vendor_name?: string | null;
       status?: ChangeOrderStatus;
       tax_rate?: number;
+      change_type?: ChangeType;
+      scope_reference?: string | null;
+      source_estimate_id?: string | null;
+      source_job_order_id?: string | null;
       line_items?: Omit<ChangeOrderLineItem, "id" | "change_order_id" | "created_at">[];
     }) => {
       const { id, line_items, ...updateData } = data;
@@ -307,6 +326,7 @@ export function useUpdateChangeOrder() {
                 product_id: item.product_id,
                 change_order_id: id,
                 sort_order: index,
+                original_scope_description: item.original_scope_description || null,
               })) as never
             );
 

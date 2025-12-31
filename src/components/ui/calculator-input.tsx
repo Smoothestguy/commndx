@@ -14,10 +14,11 @@ interface CalculatorInputProps extends Omit<React.InputHTMLAttributes<HTMLInputE
   onValueChange: (value: number) => void;
   decimalPlaces?: number;
   showCalculatorIcon?: boolean;
+  allowNegative?: boolean;
 }
 
 const CalculatorInput = React.forwardRef<HTMLInputElement, CalculatorInputProps>(
-  ({ className, value, onValueChange, decimalPlaces = 2, showCalculatorIcon = true, ...props }, ref) => {
+  ({ className, value, onValueChange, decimalPlaces = 2, showCalculatorIcon = true, allowNegative = false, ...props }, ref) => {
     const [displayValue, setDisplayValue] = React.useState<string>(() => {
       const num = typeof value === 'number' ? value : parseFloat(value as string);
       return isNaN(num) || num === 0 ? '' : num.toString();
@@ -46,7 +47,9 @@ const CalculatorInput = React.forwardRef<HTMLInputElement, CalculatorInputProps>
       if (!isExpression(newValue)) {
         const num = parseFloat(newValue);
         if (!isNaN(num)) {
-          onValueChange(num);
+          // Only allow negative values if allowNegative is true
+          const finalValue = (!allowNegative && num < 0) ? Math.abs(num) : num;
+          onValueChange(finalValue);
         } else if (newValue === '' || newValue === '-') {
           // Allow typing empty or starting a negative number
         }
@@ -68,7 +71,9 @@ const CalculatorInput = React.forwardRef<HTMLInputElement, CalculatorInputProps>
         const result = evaluateExpression(trimmed);
         
         if (result.success && result.result !== undefined) {
-          const formatted = result.result.toFixed(decimalPlaces);
+          // Only allow negative values if allowNegative is true
+          const finalValue = (!allowNegative && result.result < 0) ? Math.abs(result.result) : result.result;
+          const formatted = finalValue.toFixed(decimalPlaces);
           setDisplayValue(formatted);
           onValueChange(parseFloat(formatted));
           setError(null);
@@ -80,7 +85,9 @@ const CalculatorInput = React.forwardRef<HTMLInputElement, CalculatorInputProps>
         // Just a plain number - format it
         const num = parseFloat(trimmed);
         if (!isNaN(num)) {
-          const formatted = num.toFixed(decimalPlaces);
+          // Only allow negative values if allowNegative is true
+          const finalValue = (!allowNegative && num < 0) ? Math.abs(num) : num;
+          const formatted = finalValue.toFixed(decimalPlaces);
           setDisplayValue(formatted);
           onValueChange(parseFloat(formatted));
           setError(null);
