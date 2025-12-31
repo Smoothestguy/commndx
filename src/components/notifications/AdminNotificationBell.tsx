@@ -27,6 +27,14 @@ function getNotificationIcon(type: string) {
       return "📝";
     case "personnel_registration":
       return "👤";
+    case "missed_clock_in":
+      return "⏰";
+    case "auto_clock_out":
+      return "📍";
+    case "clock_block_cleared":
+      return "✅";
+    case "geofence_violation":
+      return "🚨";
     default:
       return "🔔";
   }

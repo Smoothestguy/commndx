@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Clock, Coffee, LogOut, Play, Loader2, MapPin } from "lucide-react";
+import { Clock, Coffee, LogOut, Play, Loader2, MapPin, AlertTriangle, Radio } from "lucide-react";
 import {
   ClockEntry,
   useClockOut,
@@ -11,6 +11,8 @@ import {
   formatDuration,
 } from "@/integrations/supabase/hooks/useTimeClock";
 import { useGeolocation } from "@/hooks/useGeolocation";
+import { useLocationMonitor } from "@/hooks/useLocationMonitor";
+import { useProjectGeofence } from "@/integrations/supabase/hooks/useProjectGeofence";
 import { LocationPermissionDialog } from "./LocationPermissionDialog";
 import { ClockInModal } from "./ClockInModal";
 
@@ -43,12 +45,35 @@ export function ClockStatusCard({
   const endLunch = useEndLunch();
   const { requestLocation, permissionState } = useGeolocation(false);
 
+  // Get project geofence data for location monitoring
+  const { data: projectGeofence } = useProjectGeofence(activeEntry?.project_id);
+
+  // Location monitoring hook - tracks location while clocked in
+  const { isMonitoring, lastLocation } = useLocationMonitor(
+    activeEntry ? {
+      id: activeEntry.id,
+      project_id: activeEntry.project_id,
+      is_on_lunch: activeEntry.is_on_lunch ?? false,
+      clock_blocked_until: (activeEntry as any).clock_blocked_until ?? null,
+    } : null,
+    projectGeofence ? {
+      require_clock_location: projectGeofence.require_clock_location,
+      site_lat: projectGeofence.site_lat,
+      site_lng: projectGeofence.site_lng,
+      geofence_radius_miles: projectGeofence.geofence_radius_miles,
+    } : null
+  );
+
   const isClockedIn = !!activeEntry;
   const isOnLunch = activeEntry?.is_on_lunch ?? false;
   const activeProject = activeEntry?.project;
   const requiresLocation = activeProject?.require_clock_location ?? false;
   const isLocationDenied = permissionState === "denied";
   const hasAlreadyTakenLunch = (activeEntry?.lunch_duration_minutes || 0) > 0 || !!activeEntry?.lunch_end_at;
+  
+  // Check if clock-in is blocked (auto-clocked-out user)
+  const clockBlockedUntil = (activeEntry as any)?.clock_blocked_until;
+  const isBlocked = clockBlockedUntil && new Date(clockBlockedUntil) > new Date();
 
   // Update elapsed time every second
   useEffect(() => {
@@ -293,6 +318,12 @@ export function ClockStatusCard({
                 <div className="flex items-center gap-1 text-xs text-muted-foreground">
                   <MapPin className="h-3 w-3" />
                   Location captured at clock in/out
+                  {isMonitoring && (
+                    <span className="ml-2 flex items-center gap-1 text-green-600">
+                      <Radio className="h-3 w-3 animate-pulse" />
+                      Tracking active
+                    </span>
+                  )}
                 </div>
               )}
 
