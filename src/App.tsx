@@ -60,6 +60,7 @@ import PersonnelInviteRegister from "./pages/PersonnelInviteRegister";
 import BadgeTemplates from "./pages/BadgeTemplates";
 import BadgeTemplateEditor from "./pages/BadgeTemplateEditor";
 import QuickBooksSettings from "./pages/QuickBooksSettings";
+import ExpenseCategories from "./pages/ExpenseCategories";
 import Messages from "./pages/Messages";
 import PrivacyPolicy from "./pages/legal/PrivacyPolicy";
 import TermsOfService from "./pages/legal/TermsOfService";
@@ -362,6 +363,10 @@ const App = () => {
                     <Route
                       path="/settings/quickbooks"
                       element={<QuickBooksSettings />}
+                    />
+                    <Route
+                      path="/settings/expense-categories"
+                      element={<ExpenseCategories />}
                     />
                     <Route path="/messages" element={<Messages />} />
                     <Route path="/notifications" element={<AdminNotifications />} />

@@ -14,6 +14,11 @@ export interface ExpenseCategory {
   updated_at: string;
 }
 
+export interface ExpenseCategoryWithMapping extends ExpenseCategory {
+  quickbooks_account_id: string | null;
+  sync_status: string | null;
+}
+
 export const useExpenseCategories = (type?: ExpenseCategoryType) => {
   return useQuery({
     queryKey: ["expense-categories", type],
@@ -31,6 +36,43 @@ export const useExpenseCategories = (type?: ExpenseCategoryType) => {
       const { data, error } = await query;
       if (error) throw error;
       return data as ExpenseCategory[];
+    },
+  });
+};
+
+export const useExpenseCategoriesWithMapping = () => {
+  return useQuery({
+    queryKey: ["expense-categories-with-mapping"],
+    queryFn: async () => {
+      // Fetch categories
+      const { data: categories, error: catError } = await supabase
+        .from("expense_categories")
+        .select("*")
+        .eq("is_active", true)
+        .order("name");
+
+      if (catError) throw catError;
+
+      // Fetch mappings
+      const { data: mappings, error: mapError } = await supabase
+        .from("quickbooks_account_mappings")
+        .select("expense_category_id, quickbooks_account_id, sync_status");
+
+      if (mapError) throw mapError;
+
+      // Combine
+      const mappingMap = new Map(
+        mappings?.map((m) => [m.expense_category_id, m]) || []
+      );
+
+      return (categories || []).map((cat) => {
+        const mapping = mappingMap.get(cat.id);
+        return {
+          ...cat,
+          quickbooks_account_id: mapping?.quickbooks_account_id || null,
+          sync_status: mapping?.sync_status || null,
+        } as ExpenseCategoryWithMapping;
+      });
     },
   });
 };
