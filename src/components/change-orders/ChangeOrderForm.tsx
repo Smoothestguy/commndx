@@ -522,7 +522,7 @@ export function ChangeOrderForm({
                     role="combobox"
                     className={cn("w-full justify-between", !customerId && "text-muted-foreground")}
                   >
-                    {selectedCustomer?.name || "Search customers..."}
+                    {selectedCustomer?.company || selectedCustomer?.name || "Search customers..."}
                     <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
                   </Button>
                 </PopoverTrigger>
@@ -535,16 +535,21 @@ export function ChangeOrderForm({
                         {filteredCustomers.map((customer) => (
                           <CommandItem
                             key={customer.id}
-                            value={customer.name}
+                            value={`${customer.name} ${customer.company || ''}`}
                             onSelect={() => {
                               setCustomerId(customer.id);
-                              setCustomerName(customer.name);
+                              setCustomerName(customer.company || customer.name);
                               setCustomerOpen(false);
                               setCustomerSearch("");
                             }}
                           >
                             <Check className={cn("mr-2 h-4 w-4", customerId === customer.id ? "opacity-100" : "opacity-0")} />
-                            {customer.name}
+                            <div className="flex flex-col">
+                              <span>{customer.company || customer.name}</span>
+                              {customer.company && customer.name && customer.company !== customer.name && (
+                                <span className="text-xs text-muted-foreground">{customer.name}</span>
+                              )}
+                            </div>
                           </CommandItem>
                         ))}
                       </CommandGroup>

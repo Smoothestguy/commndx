@@ -76,8 +76,20 @@ const Customers = () => {
   const noProjects = total - withProjects;
 
   const columns: EnhancedColumn<Customer>[] = [
-    { key: "name", header: "Contact Name", sortable: true, filterable: true },
-    { key: "company", header: "Company", sortable: true, filterable: true },
+    { 
+      key: "company", 
+      header: "Company / Name", 
+      sortable: true, 
+      filterable: true,
+      render: (item: Customer) => (
+        <div className="flex flex-col">
+          <span className="font-medium">{item.company || item.name}</span>
+          {item.company && item.name && item.company !== item.name && (
+            <span className="text-xs text-muted-foreground">{item.name}</span>
+          )}
+        </div>
+      ),
+    },
     { key: "email", header: "Email", sortable: true, filterable: true },
     { key: "phone", header: "Phone", sortable: true, filterable: true },
     {

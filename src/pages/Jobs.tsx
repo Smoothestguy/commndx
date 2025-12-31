@@ -6,6 +6,7 @@ import { ProjectStats } from "@/components/projects/ProjectStats";
 import { ProjectEmptyState } from "@/components/projects/ProjectEmptyState";
 import { useProjects } from "@/integrations/supabase/hooks/useProjects";
 import { Skeleton } from "@/components/ui/skeleton";
+import { getCustomerDisplayName } from "@/utils/customerDisplayName";
 
 export default function Jobs() {
   const navigate = useNavigate();
@@ -30,7 +31,7 @@ export default function Jobs() {
                   <ProjectCard 
                     key={project.id} 
                     project={project}
-                    customerName={customer?.name || 'Unknown'}
+                    customerName={getCustomerDisplayName(customer)}
                     onEdit={() => navigate(`/projects/${project.id}`)}
                     onDelete={() => {}}
                     onClick={() => navigate(`/projects/${project.id}`)}
