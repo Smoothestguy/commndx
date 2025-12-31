@@ -13,6 +13,7 @@ import { Project, ProjectStage } from "@/integrations/supabase/hooks/useProjects
 interface Customer {
   id: string;
   name: string;
+  company?: string | null;
   address?: string | null;
   city?: string | null;
   state?: string | null;
@@ -119,7 +120,10 @@ export const ProjectFormDialog = ({
                     <SelectContent>
                       {customers?.map((customer) => (
                         <SelectItem key={customer.id} value={customer.id}>
-                          {customer.name}
+                          {customer.company || customer.name}
+                          {customer.company && customer.name && customer.company !== customer.name && (
+                            <span className="text-muted-foreground ml-1">({customer.name})</span>
+                          )}
                         </SelectItem>
                       ))}
                     </SelectContent>

@@ -1,7 +1,8 @@
-import { Building2, Mail, Phone, FolderOpen, Edit, Trash2 } from "lucide-react";
+import { Building2, Mail, Phone, FolderOpen, Edit, Trash2, User } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Customer } from "@/integrations/supabase/hooks/useCustomers";
+import { getCustomerDisplayName, getCustomerSecondaryName } from "@/utils/customerDisplayName";
 
 interface CustomerCardProps {
   customer: Customer;
@@ -18,6 +19,9 @@ export const CustomerCard = ({
   onDelete,
   index,
 }: CustomerCardProps) => {
+  const displayName = getCustomerDisplayName(customer);
+  const contactName = getCustomerSecondaryName(customer);
+
   return (
     <div
       className="glass rounded-xl p-4 hover:shadow-lg transition-all duration-300 animate-fade-in border-l-4 border-l-primary/50"
@@ -27,7 +31,7 @@ export const CustomerCard = ({
         <div className="flex-1">
           <div className="flex items-center gap-2 mb-1">
             <h3 className="font-heading font-semibold text-lg text-foreground">
-              {customer.name}
+              {displayName}
             </h3>
             {customer.tax_exempt && (
               <Badge variant="secondary" className="text-xs">
@@ -35,10 +39,10 @@ export const CustomerCard = ({
               </Badge>
             )}
           </div>
-          {customer.company && (
+          {contactName && (
             <div className="flex items-center gap-2 text-sm text-muted-foreground mb-2">
-              <Building2 className="h-4 w-4" />
-              <span>{customer.company}</span>
+              <User className="h-4 w-4" />
+              <span>{contactName}</span>
             </div>
           )}
         </div>

@@ -671,7 +671,10 @@ const EditEstimate = () => {
                   <SelectContent>
                     {customers?.map((customer) => (
                       <SelectItem key={customer.id} value={customer.id}>
-                        {customer.name} - {customer.company}
+                        {customer.company || customer.name}
+                        {customer.company && customer.name && customer.company !== customer.name && (
+                          <span className="text-muted-foreground ml-1">({customer.name})</span>
+                        )}
                       </SelectItem>
                     ))}
                   </SelectContent>

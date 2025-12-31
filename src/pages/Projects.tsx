@@ -20,6 +20,7 @@ import { useCustomers } from "@/integrations/supabase/hooks/useCustomers";
 import { format } from "date-fns";
 import { Badge } from "@/components/ui/badge";
 import { stageConfig } from "@/components/projects/ProjectCard";
+import { getCustomerDisplayName } from "@/utils/customerDisplayName";
 
 const Projects = () => {
   const navigate = useNavigate();
@@ -44,7 +45,7 @@ const Projects = () => {
       // Search filter
       const searchMatch =
         p.name.toLowerCase().includes(search.toLowerCase()) ||
-        customers?.find(c => c.id === p.customer_id)?.name.toLowerCase().includes(search.toLowerCase());
+        getCustomerDisplayName(customers?.find(c => c.id === p.customer_id)).toLowerCase().includes(search.toLowerCase());
       
       // Status filter
       const statusMatch = filterStatus === "all" || p.status === filterStatus;
@@ -85,7 +86,7 @@ const Projects = () => {
       header: "Customer",
       sortable: true,
       filterable: true,
-      getValue: (item) => customers?.find(c => c.id === item.customer_id)?.name || "Unknown",
+      getValue: (item) => getCustomerDisplayName(customers?.find(c => c.id === item.customer_id)),
       render: (item) => {
         const customer = customers?.find(c => c.id === item.customer_id);
         return customer ? (
@@ -94,7 +95,7 @@ const Projects = () => {
             className="text-primary hover:underline"
             onClick={(e) => e.stopPropagation()}
           >
-            {customer.name}
+            {getCustomerDisplayName(customer)}
           </Link>
         ) : (
           <span className="text-muted-foreground">Unknown</span>
@@ -320,7 +321,7 @@ const Projects = () => {
               <ProjectCard
                 key={project.id}
                 project={project}
-                customerName={customers?.find(c => c.id === project.customer_id)?.name || "Unknown"}
+                customerName={getCustomerDisplayName(customers?.find(c => c.id === project.customer_id))}
                 onEdit={() => handleEdit(project)}
                 onDelete={() => handleDelete(project.id)}
                 onClick={() => navigate(`/projects/${project.id}`)}

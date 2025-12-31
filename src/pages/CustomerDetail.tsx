@@ -20,6 +20,7 @@ import {
   Activity,
   Loader2,
   ExternalLink,
+  User,
 } from "lucide-react";
 import { useCustomers, useUpdateCustomer, Customer } from "@/integrations/supabase/hooks/useCustomers";
 import { useProjects } from "@/integrations/supabase/hooks/useProjects";
@@ -38,6 +39,7 @@ import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Switch } from "@/components/ui/switch";
+import { getCustomerDisplayName, getCustomerSecondaryName } from "@/utils/customerDisplayName";
 
 const statusColors: Record<string, string> = {
   draft: "bg-muted text-muted-foreground",
@@ -142,8 +144,8 @@ export default function CustomerDetail() {
   return (
     <>
       <SEO 
-        title={`${customer.name} - Customer Details`}
-        description={`View details for ${customer.name}`}
+        title={`${getCustomerDisplayName(customer)} - Customer Details`}
+        description={`View details for ${getCustomerDisplayName(customer)}`}
       />
       <PageLayout
         title=""
@@ -166,16 +168,16 @@ export default function CustomerDetail() {
             <div className="flex flex-col md:flex-row md:items-start md:justify-between gap-4">
               <div className="space-y-3">
                 <div className="flex items-center gap-3">
-                  <h1 className="text-2xl font-heading font-bold">{customer.name}</h1>
+                  <h1 className="text-2xl font-heading font-bold">{getCustomerDisplayName(customer)}</h1>
                   {customer.tax_exempt && (
                     <Badge variant="secondary">Tax Exempt</Badge>
                   )}
                 </div>
                 
-                {customer.company && (
+                {getCustomerSecondaryName(customer) && (
                   <div className="flex items-center gap-2 text-muted-foreground">
-                    <Building2 className="h-4 w-4" />
-                    <span>{customer.company}</span>
+                    <User className="h-4 w-4" />
+                    <span>{getCustomerSecondaryName(customer)}</span>
                   </div>
                 )}
                 

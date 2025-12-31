@@ -560,7 +560,7 @@ export function InvoiceForm({ onSubmit, onSubmitMultiItem, initialData, jobOrder
                   {selectedCustomerId && !selectedJobOrderId
                     ? (() => {
                         const customer = customers?.find((c: any) => c.id === selectedCustomerId);
-                        return customer ? customer.name : "Search customer...";
+                        return customer ? (customer.company || customer.name) : "Search customer...";
                       })()
                     : selectedJobOrderId 
                       ? "Customer from Job Order"
@@ -599,10 +599,10 @@ export function InvoiceForm({ onSubmit, onSubmitMultiItem, initialData, jobOrder
                             )}
                           />
                           <div className="flex flex-col">
-                            <span className="font-medium">{customer.name}</span>
-                            {customer.company && (
+                            <span className="font-medium">{customer.company || customer.name}</span>
+                            {customer.company && customer.name && customer.company !== customer.name && (
                               <span className="text-xs text-muted-foreground">
-                                {customer.company}
+                                {customer.name}
                               </span>
                             )}
                           </div>

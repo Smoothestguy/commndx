@@ -482,7 +482,7 @@ export const EstimateForm = ({ initialData }: EstimateFormProps) => {
         estimate: {
           number: estimateNumber,
           customer_id: selectedCustomerId,
-          customer_name: customer.name,
+          customer_name: customer.company || customer.name,
           project_id: selectedProjectId || null,
           project_name: project?.name || null,
           status,
@@ -503,7 +503,7 @@ export const EstimateForm = ({ initialData }: EstimateFormProps) => {
         estimate: {
           number: estimateNumber,
           customer_id: selectedCustomerId,
-          customer_name: customer.name,
+          customer_name: customer.company || customer.name,
           project_id: selectedProjectId || undefined,
           project_name: project?.name || undefined,
           status,
@@ -607,7 +607,10 @@ export const EstimateForm = ({ initialData }: EstimateFormProps) => {
                       className="w-full justify-between bg-secondary border-border"
                     >
                       {selectedCustomerId
-                        ? customers?.find((c) => c.id === selectedCustomerId)?.name
+                        ? (() => {
+                            const c = customers?.find((c) => c.id === selectedCustomerId);
+                            return c?.company || c?.name || "Search customer...";
+                          })()
                         : "Search customer..."}
                       <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
                     </Button>
@@ -643,9 +646,9 @@ export const EstimateForm = ({ initialData }: EstimateFormProps) => {
                                 )}
                               />
                               <div className="flex flex-col">
-                                <span>{customer.name}</span>
-                                {customer.company && (
-                                  <span className="text-xs text-muted-foreground">{customer.company}</span>
+                                <span>{customer.company || customer.name}</span>
+                                {customer.company && customer.name && customer.company !== customer.name && (
+                                  <span className="text-xs text-muted-foreground">{customer.name}</span>
                                 )}
                               </div>
                             </CommandItem>
