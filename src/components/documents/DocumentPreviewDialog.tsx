@@ -1,6 +1,6 @@
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
-import { Download, ExternalLink } from "lucide-react";
+import { Download, ExternalLink, Loader2 } from "lucide-react";
 import type { SystemDocument } from "@/integrations/supabase/hooks/useAllSystemDocuments";
 import { DOCUMENT_SOURCE_LABELS } from "@/integrations/supabase/hooks/useAllSystemDocuments";
 import { format } from "date-fns";
@@ -10,6 +10,8 @@ interface DocumentPreviewDialogProps {
   onOpenChange: (open: boolean) => void;
   document: SystemDocument | null;
   onDownload: (doc: SystemDocument) => void;
+  previewUrl?: string | null;
+  isLoadingUrl?: boolean;
 }
 
 export function DocumentPreviewDialog({
@@ -17,6 +19,8 @@ export function DocumentPreviewDialog({
   onOpenChange,
   document,
   onDownload,
+  previewUrl,
+  isLoadingUrl,
 }: DocumentPreviewDialogProps) {
   if (!document) return null;
 
@@ -25,6 +29,9 @@ export function DocumentPreviewDialog({
   const isPdf = document.file_type === "pdf" || 
     document.file_type === "application/pdf" ||
     document.file_path?.toLowerCase().endsWith(".pdf");
+
+  // Use previewUrl if provided, otherwise fall back to file_path
+  const displayUrl = previewUrl || document.file_path;
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -37,6 +44,7 @@ export function DocumentPreviewDialog({
                 variant="outline"
                 size="sm"
                 onClick={() => onDownload(document)}
+                disabled={isLoadingUrl}
               >
                 <Download className="h-4 w-4 mr-1" />
                 Download
@@ -44,7 +52,8 @@ export function DocumentPreviewDialog({
               <Button
                 variant="outline"
                 size="sm"
-                onClick={() => window.open(document.file_path, "_blank")}
+                onClick={() => displayUrl && window.open(displayUrl, "_blank")}
+                disabled={isLoadingUrl || !displayUrl}
               >
                 <ExternalLink className="h-4 w-4 mr-1" />
                 Open
@@ -69,15 +78,20 @@ export function DocumentPreviewDialog({
 
           {/* Preview content */}
           <div className="border rounded-lg overflow-hidden bg-muted/50 min-h-[300px] flex items-center justify-center">
-            {isImage ? (
+            {isLoadingUrl ? (
+              <div className="text-center p-8 text-muted-foreground">
+                <Loader2 className="h-8 w-8 animate-spin mx-auto mb-4" />
+                <p>Loading preview...</p>
+              </div>
+            ) : isImage && displayUrl ? (
               <img
-                src={document.file_path}
+                src={displayUrl}
                 alt={document.file_name}
                 className="max-w-full max-h-[60vh] object-contain"
               />
-            ) : isPdf ? (
+            ) : isPdf && displayUrl ? (
               <iframe
-                src={document.file_path}
+                src={displayUrl}
                 className="w-full h-[60vh]"
                 title={document.file_name}
               />
