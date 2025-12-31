@@ -405,6 +405,7 @@ export const EstimateForm = ({ initialData }: EstimateFormProps) => {
 
   const validateForm = () => {
     const newErrors: Record<string, string> = {};
+    const itemsWithErrors = new Set<string>();
 
     try {
       estimateSchema.parse({
@@ -433,10 +434,16 @@ export const EstimateForm = ({ initialData }: EstimateFormProps) => {
         if (error instanceof z.ZodError) {
           error.errors.forEach((err) => {
             newErrors[`line_${index}_${err.path[0]}`] = err.message;
+            itemsWithErrors.add(item.id);
           });
         }
       }
     });
+
+    // Auto-expand line items with errors
+    if (itemsWithErrors.size > 0) {
+      setExpandedItems(prev => new Set([...prev, ...itemsWithErrors]));
+    }
 
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
@@ -446,6 +453,7 @@ export const EstimateForm = ({ initialData }: EstimateFormProps) => {
     e.preventDefault();
 
     if (!validateForm()) {
+      toast.error("Please fix the validation errors before saving");
       return;
     }
 

@@ -131,6 +131,9 @@ export function SortableLineItem({
     ? displayDescription.substring(0, 50) + "..." 
     : displayDescription;
 
+  // Check if this line item has any errors
+  const hasErrors = Object.keys(errors).some(key => key.startsWith(`line_${index}_`));
+
   return (
     <>
     <Collapsible open={isExpanded} onOpenChange={onToggleExpand}>
@@ -170,6 +173,13 @@ export function SortableLineItem({
           {/* Description (truncated) - only shown when collapsed */}
           {!isExpanded && (
             <>
+              {/* Error indicator badge */}
+              {hasErrors && (
+                <Badge variant="destructive" className="text-xs shrink-0">
+                  Error
+                </Badge>
+              )}
+
               <span className="text-sm text-muted-foreground truncate flex-1 min-w-0">
                 {truncatedDescription}
               </span>
