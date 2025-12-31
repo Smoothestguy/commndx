@@ -6,9 +6,9 @@ import { EnhancedDataTable, EnhancedColumn } from "@/components/shared/EnhancedD
 import { StatusBadge } from "@/components/shared/StatusBadge";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Plus, Eye, FileText, Loader2, Edit } from "lucide-react";
+import { Plus, Eye, FileText, Loader2, Edit, XCircle, SquarePen, EyeOff, EyeIcon } from "lucide-react";
 import { SearchInput } from "@/components/ui/search-input";
-import { useEstimates, Estimate } from "@/integrations/supabase/hooks/useEstimates";
+import { useEstimates, useBulkUpdateEstimates, Estimate } from "@/integrations/supabase/hooks/useEstimates";
 import { useCustomers } from "@/integrations/supabase/hooks/useCustomers";
 import { useProjects } from "@/integrations/supabase/hooks/useProjects";
 import { PullToRefreshWrapper } from "@/components/shared/PullToRefreshWrapper";
@@ -16,16 +16,22 @@ import { useIsMobile } from "@/hooks/use-mobile";
 import { EstimateCard } from "@/components/estimates/EstimateCard";
 import { EstimateStats } from "@/components/estimates/EstimateStats";
 import { EstimateEmptyState } from "@/components/estimates/EstimateEmptyState";
+import { EstimateBulkEditModal } from "@/components/estimates/EstimateBulkEditModal";
 
 const Estimates = () => {
   const navigate = useNavigate();
-  const { data: estimates, isLoading, error, refetch, isFetching } = useEstimates();
+  const [showClosed, setShowClosed] = useState(false);
+  const { data: estimates, isLoading, error, refetch, isFetching } = useEstimates({ includeClosed: showClosed });
   const { data: customers } = useCustomers();
   const { data: projects } = useProjects();
   const isMobile = useIsMobile();
   
   const [search, setSearch] = useState("");
   const [selectedStatus, setSelectedStatus] = useState("all");
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+  const [bulkEditModalOpen, setBulkEditModalOpen] = useState(false);
+
+  const bulkUpdate = useBulkUpdateEstimates();
 
   // Count drafts
   const draftCount = estimates?.filter(e => e.status === "draft").length || 0;
@@ -176,6 +182,25 @@ const Estimates = () => {
     navigate(`/estimates/${item.id}`);
   };
 
+  const handleBulkClose = () => {
+    bulkUpdate.mutate(
+      { ids: Array.from(selectedIds), updates: { status: 'closed' } },
+      { onSuccess: () => setSelectedIds(new Set()) }
+    );
+  };
+
+  const handleBulkEdit = (updates: { status?: "draft" | "pending" | "approved" | "sent" | "closed" }) => {
+    bulkUpdate.mutate(
+      { ids: Array.from(selectedIds), updates },
+      { 
+        onSuccess: () => {
+          setSelectedIds(new Set());
+          setBulkEditModalOpen(false);
+        }
+      }
+    );
+  };
+
   return (
     <>
       <SEO 
@@ -194,6 +219,40 @@ const Estimates = () => {
         }
       >
         <PullToRefreshWrapper onRefresh={refetch} isRefreshing={isFetching}>
+          {/* Bulk Actions Toolbar */}
+          {selectedIds.size > 0 && (
+            <div className="flex flex-wrap items-center gap-2 p-3 mb-4 bg-muted rounded-lg border border-border">
+              <span className="text-sm font-medium">
+                {selectedIds.size} estimate{selectedIds.size !== 1 ? 's' : ''} selected
+              </span>
+              <div className="flex-1" />
+              <Button 
+                variant="outline" 
+                size="sm" 
+                onClick={() => setBulkEditModalOpen(true)}
+              >
+                <SquarePen className="h-4 w-4 mr-1" />
+                Bulk Edit
+              </Button>
+              <Button 
+                variant="destructive" 
+                size="sm" 
+                onClick={handleBulkClose}
+                disabled={bulkUpdate.isPending}
+              >
+                <XCircle className="h-4 w-4 mr-1" />
+                Close Selected
+              </Button>
+              <Button 
+                variant="ghost" 
+                size="sm" 
+                onClick={() => setSelectedIds(new Set())}
+              >
+                Clear
+              </Button>
+            </div>
+          )}
+
           {/* Search & Filter Controls */}
           <div className="mb-6 space-y-4">
             <div className="flex flex-col sm:flex-row gap-3">
@@ -216,6 +275,24 @@ const Estimates = () => {
                   My Drafts ({draftCount})
                 </Button>
               )}
+              <Button
+                variant={showClosed ? "default" : "outline"}
+                size="sm"
+                onClick={() => setShowClosed(!showClosed)}
+                className="whitespace-nowrap"
+              >
+                {showClosed ? (
+                  <>
+                    <EyeOff className="h-4 w-4 mr-1" />
+                    Hide Closed
+                  </>
+                ) : (
+                  <>
+                    <EyeIcon className="h-4 w-4 mr-1" />
+                    Show Closed
+                  </>
+                )}
+              </Button>
             </div>
           </div>
 
@@ -262,11 +339,24 @@ const Estimates = () => {
                   onRowClick={handleRowClick}
                   defaultSortKey="number"
                   defaultSortDirection="desc"
+                  selectable={true}
+                  selectedIds={selectedIds}
+                  onSelectionChange={setSelectedIds}
                 />
               )}
             </>
           )}
         </PullToRefreshWrapper>
+
+        {/* Bulk Edit Modal */}
+        <EstimateBulkEditModal
+          open={bulkEditModalOpen}
+          onOpenChange={setBulkEditModalOpen}
+          selectedCount={selectedIds.size}
+          onApply={handleBulkEdit}
+          onClose={handleBulkClose}
+          isLoading={bulkUpdate.isPending}
+        />
       </PageLayout>
     </>
   );

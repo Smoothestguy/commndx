@@ -97,7 +97,7 @@ const EditEstimate = () => {
   const [taxRate, setTaxRate] = useState<string>("8.25");
   const [validUntil, setValidUntil] = useState<string>("");
   const [notes, setNotes] = useState<string>("");
-  const [status, setStatus] = useState<"draft" | "pending" | "sent" | "approved">("draft");
+  const [status, setStatus] = useState<"draft" | "pending" | "sent" | "approved" | "closed">("draft");
   const [defaultPricingType, setDefaultPricingType] = useState<'markup' | 'margin'>('margin');
   const [defaultMarginPercent, setDefaultMarginPercent] = useState<string>("30");
   const [lineItems, setLineItems] = useState<LineItem[]>([]);

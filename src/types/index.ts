@@ -59,7 +59,7 @@ export interface Estimate {
   customerName: string;
   projectId?: string;
   projectName?: string;
-  status: "draft" | "pending" | "approved" | "sent";
+  status: "draft" | "pending" | "approved" | "sent" | "closed";
   lineItems: EstimateLineItem[];
   subtotal: number;
   taxRate: number;

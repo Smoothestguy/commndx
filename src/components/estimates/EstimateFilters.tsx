@@ -1,7 +1,7 @@
 import { X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
-type EstimateStatus = "draft" | "pending" | "approved" | "sent";
+type EstimateStatus = "draft" | "pending" | "approved" | "sent" | "closed";
 
 interface EstimateFiltersProps {
   selectedStatus: EstimateStatus | "";
@@ -14,6 +14,7 @@ const statuses: { value: EstimateStatus | ""; label: string }[] = [
   { value: "pending", label: "Pending" },
   { value: "approved", label: "Approved" },
   { value: "sent", label: "Sent" },
+  { value: "closed", label: "Closed" },
 ];
 
 export function EstimateFilters({

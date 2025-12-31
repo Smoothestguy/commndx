@@ -23,7 +23,7 @@ export interface Estimate {
   customer_name: string;
   project_id?: string;
   project_name?: string;
-  status: "draft" | "pending" | "approved" | "sent";
+  status: "draft" | "pending" | "approved" | "sent" | "closed";
   subtotal: number;
   tax_rate: number;
   tax_amount: number;
@@ -70,17 +70,52 @@ async function isQuickBooksConnected(): Promise<boolean> {
   return data?.is_connected === true;
 }
 
-export const useEstimates = () => {
+export const useEstimates = (options?: { includeClosed?: boolean }) => {
   return useQuery({
-    queryKey: ["estimates"],
+    queryKey: ["estimates", options?.includeClosed],
     queryFn: async () => {
-      const { data, error } = await supabase
+      let query = supabase
         .from("estimates")
         .select("*")
+        .is("deleted_at", null)
         .order("created_at", { ascending: false });
 
+      // Exclude closed estimates by default
+      if (!options?.includeClosed) {
+        query = query.neq("status", "closed");
+      }
+
+      const { data, error } = await query;
       if (error) throw error;
       return data as Estimate[];
+    },
+  });
+};
+
+export const useBulkUpdateEstimates = () => {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async (params: {
+      ids: string[];
+      updates: Partial<Pick<Estimate, 'status'>>;
+    }) => {
+      const { ids, updates } = params;
+      
+      const { error } = await supabase
+        .from("estimates")
+        .update(updates)
+        .in("id", ids);
+
+      if (error) throw error;
+      return { count: ids.length };
+    },
+    onSuccess: ({ count }) => {
+      queryClient.invalidateQueries({ queryKey: ["estimates"] });
+      toast.success(`${count} estimate(s) updated successfully`);
+    },
+    onError: (error: Error) => {
+      toast.error(`Failed to update estimates: ${error.message}`);
     },
   });
 };
