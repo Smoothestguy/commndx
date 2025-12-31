@@ -9,13 +9,15 @@ import {
   usePersonnelByProject, 
   useBulkAssignPersonnelToProject,
   useRemovePersonnelFromProject,
-  useUpdateAssignmentRateBracket
+  useUpdateAssignmentRateBracket,
+  useResendAssignmentSMS
 } from "@/integrations/supabase/hooks/usePersonnelProjectAssignments";
 import { useActiveProjectRateBrackets } from "@/integrations/supabase/hooks/useProjectRateBrackets";
-import { Users, UserPlus, X, Briefcase, Pencil, Check, AlertCircle } from "lucide-react";
+import { Users, UserPlus, X, Briefcase, Pencil, Check, AlertCircle, MessageSquare } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { formatCurrency } from "@/lib/utils";
 import { Alert, AlertDescription } from "@/components/ui/alert";
+import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 
 interface PersonnelAssignmentDialogProps {
   open: boolean;
@@ -43,6 +45,7 @@ export function PersonnelAssignmentDialog({
   const assignMutation = useBulkAssignPersonnelToProject();
   const removeMutation = useRemovePersonnelFromProject();
   const updateRateBracketMutation = useUpdateAssignmentRateBracket();
+  const resendSMSMutation = useResendAssignmentSMS();
 
   // Set project from prop when dialog opens
   useEffect(() => {
@@ -268,14 +271,35 @@ export function PersonnelAssignmentDialog({
                               </button>
                             )}
                           </div>
-                          <button
-                            type="button"
-                            onClick={() => handleRemove(assignment.id)}
-                            disabled={removeMutation.isPending}
-                            className="hover:bg-destructive/20 rounded p-1"
-                          >
-                            <X className="h-4 w-4" />
-                          </button>
+                          <div className="flex items-center gap-1">
+                            <Tooltip>
+                              <TooltipTrigger asChild>
+                                <button
+                                  type="button"
+                                  onClick={() => resendSMSMutation.mutate({
+                                    personnelId: person.id,
+                                    projectId: selectedProject,
+                                    assignmentId: assignment.id
+                                  })}
+                                  disabled={resendSMSMutation.isPending}
+                                  className="hover:bg-primary/20 rounded p-1 text-muted-foreground hover:text-primary"
+                                >
+                                  <MessageSquare className="h-4 w-4" />
+                                </button>
+                              </TooltipTrigger>
+                              <TooltipContent>
+                                <p>Resend assignment SMS</p>
+                              </TooltipContent>
+                            </Tooltip>
+                            <button
+                              type="button"
+                              onClick={() => handleRemove(assignment.id)}
+                              disabled={removeMutation.isPending}
+                              className="hover:bg-destructive/20 rounded p-1"
+                            >
+                              <X className="h-4 w-4" />
+                            </button>
+                          </div>
                         </div>
                       );
                     })}
