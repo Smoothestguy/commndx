@@ -319,6 +319,18 @@ export const MODULES = [
       can_delete: "N/A"
     }
   },
+  { 
+    key: "document_center", 
+    label: "Document Center", 
+    category: "Admin",
+    description: "View and manage all system documents and receipts",
+    permissions: {
+      can_view: "View all documents across the system",
+      can_add: "N/A (documents added via their source modules)",
+      can_edit: "Edit document metadata",
+      can_delete: "Delete documents"
+    }
+  },
 ] as const;
 
 export type ModuleKey = typeof MODULES[number]["key"];
