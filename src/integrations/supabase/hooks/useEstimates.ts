@@ -590,3 +590,44 @@ export const useImportEstimatesFromQuickBooks = () => {
     },
   });
 };
+
+// Check if estimate is synced to QuickBooks
+export const useEstimateQuickBooksStatus = (estimateId: string) => {
+  return useQuery({
+    queryKey: ["estimate-qb-status", estimateId],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("quickbooks_estimate_mappings")
+        .select("quickbooks_estimate_id, sync_status, last_synced_at")
+        .eq("estimate_id", estimateId)
+        .maybeSingle();
+
+      if (error) throw error;
+      return data;
+    },
+    enabled: !!estimateId,
+  });
+};
+
+// Manually sync estimate to QuickBooks
+export const useSyncEstimateToQuickBooks = () => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (estimateId: string) => {
+      const { data, error } = await supabase.functions.invoke(
+        "quickbooks-create-estimate",
+        { body: { estimateId } }
+      );
+      if (error) throw error;
+      if (data?.error) throw new Error(data.error);
+      return data;
+    },
+    onSuccess: (data, estimateId) => {
+      queryClient.invalidateQueries({ queryKey: ["estimate-qb-status", estimateId] });
+      toast.success(data.message || "Estimate synced to QuickBooks!");
+    },
+    onError: (error: Error) => {
+      toast.error(error.message || "Failed to sync estimate to QuickBooks");
+    },
+  });
+};
