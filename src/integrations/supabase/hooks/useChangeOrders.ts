@@ -195,21 +195,24 @@ export function useAddChangeOrder() {
     }) => {
       const { line_items, ...changeOrderData } = data;
 
-      // Calculate totals
-      const subtotal = line_items.reduce((sum, item) => sum + item.total, 0);
+      // Calculate totals - allow negative values for deductive COs
+      const subtotal = line_items.reduce((sum, item) => sum + (item.total || 0), 0);
       const taxableAmount = line_items
         .filter((item) => item.is_taxable)
-        .reduce((sum, item) => sum + item.total, 0);
-      const taxAmount = taxableAmount * (changeOrderData.tax_rate / 100);
+        .reduce((sum, item) => sum + (item.total || 0), 0);
+      const taxAmount = taxableAmount * ((changeOrderData.tax_rate || 0) / 100);
       const total = subtotal + taxAmount;
 
       // Insert change order with calculated totals
+      // Explicitly ensure remaining_amount is never null/undefined
+      const calculatedRemaining = total || 0;
+      
       const insertData = {
         ...changeOrderData,
-        subtotal,
-        tax_amount: taxAmount,
-        total,
-        remaining_amount: total, // Set remaining_amount equal to total for new COs
+        subtotal: subtotal || 0,
+        tax_amount: taxAmount || 0,
+        total: total || 0,
+        remaining_amount: calculatedRemaining,
         change_type: changeOrderData.change_type || 'additive',
         scope_reference: changeOrderData.scope_reference || null,
         source_estimate_id: changeOrderData.source_estimate_id || null,
