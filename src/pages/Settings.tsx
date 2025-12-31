@@ -9,7 +9,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
-import { Loader2, Cloud, ChevronRight, Clock } from "lucide-react";
+import { Loader2, Cloud, ChevronRight, Clock, Tag } from "lucide-react";
 import { useTheme } from "next-themes";
 import { Switch } from "@/components/ui/switch";
 import { useUserRole } from "@/hooks/useUserRole";
@@ -115,6 +115,24 @@ export default function Settings() {
                   </Badge>
                   <ChevronRight className="h-4 w-4 text-muted-foreground" />
                 </div>
+              </div>
+            </Link>
+
+            {/* Expense Categories */}
+            <Link to="/settings/expense-categories">
+              <div className="flex items-center justify-between p-4 rounded-lg border hover:bg-muted/50 transition-colors cursor-pointer mt-3">
+                <div className="flex items-center gap-3">
+                  <div className="p-2 rounded-lg bg-primary/10">
+                    <Tag className="h-5 w-5 text-primary" />
+                  </div>
+                  <div>
+                    <p className="font-medium">Expense Categories</p>
+                    <p className="text-sm text-muted-foreground">
+                      Manage expense categories and QuickBooks mappings
+                    </p>
+                  </div>
+                </div>
+                <ChevronRight className="h-4 w-4 text-muted-foreground" />
               </div>
             </Link>
 
