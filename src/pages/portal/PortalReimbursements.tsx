@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { PortalLayout } from "@/components/portal/PortalLayout";
 import { useCurrentPersonnel, usePersonnelReimbursements, usePersonnelAssignments, useAddReimbursement } from "@/integrations/supabase/hooks/usePortal";
+import { useExpenseCategories } from "@/integrations/supabase/hooks/useExpenseCategories";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -16,14 +17,6 @@ import { toast } from "sonner";
 import { format, parseISO } from "date-fns";
 import { ReceiptUpload } from "@/components/portal/ReceiptUpload";
 
-const CATEGORIES = [
-  { value: "materials", label: "Materials" },
-  { value: "travel", label: "Travel" },
-  { value: "tools", label: "Tools" },
-  { value: "meals", label: "Meals" },
-  { value: "other", label: "Other" },
-];
-
 const STATUS_COLORS: Record<string, "default" | "secondary" | "destructive" | "outline"> = {
   pending: "secondary",
   approved: "default",
@@ -35,6 +28,7 @@ export default function PortalReimbursements() {
   const { data: personnel } = useCurrentPersonnel();
   const { data: reimbursements, isLoading } = usePersonnelReimbursements(personnel?.id);
   const { data: assignments } = usePersonnelAssignments(personnel?.id);
+  const { data: expenseCategories, isLoading: categoriesLoading } = useExpenseCategories('both');
   const addReimbursement = useAddReimbursement();
   
   const [dialogOpen, setDialogOpen] = useState(false);
@@ -42,7 +36,8 @@ export default function PortalReimbursements() {
   const [formData, setFormData] = useState({
     amount: "",
     description: "",
-    category: "materials",
+    category: "",
+    category_id: "",
     project_id: "",
     receipt_url: "",
   });
@@ -62,7 +57,7 @@ export default function PortalReimbursements() {
       notes: null,
     });
 
-    setFormData({ amount: "", description: "", category: "materials", project_id: "", receipt_url: "" });
+    setFormData({ amount: "", description: "", category: "", category_id: "", project_id: "", receipt_url: "" });
     setDialogOpen(false);
   };
 
@@ -126,18 +121,31 @@ export default function PortalReimbursements() {
                 <div className="space-y-2">
                   <Label htmlFor="category">Category</Label>
                   <Select
-                    value={formData.category}
-                    onValueChange={(value) => setFormData({ ...formData, category: value })}
+                    value={formData.category_id}
+                    onValueChange={(value) => {
+                      const selectedCategory = expenseCategories?.find(c => c.id === value);
+                      setFormData({ 
+                        ...formData, 
+                        category_id: value,
+                        category: selectedCategory?.name || ""
+                      });
+                    }}
                   >
                     <SelectTrigger>
-                      <SelectValue />
+                      <SelectValue placeholder="Select a category" />
                     </SelectTrigger>
                     <SelectContent>
-                      {CATEGORIES.map((cat) => (
-                        <SelectItem key={cat.value} value={cat.value}>
-                          {cat.label}
-                        </SelectItem>
-                      ))}
+                      {categoriesLoading ? (
+                        <SelectItem value="loading" disabled>Loading categories...</SelectItem>
+                      ) : expenseCategories && expenseCategories.length > 0 ? (
+                        expenseCategories.map((cat) => (
+                          <SelectItem key={cat.id} value={cat.id}>
+                            {cat.name}
+                          </SelectItem>
+                        ))
+                      ) : (
+                        <SelectItem value="other">Other</SelectItem>
+                      )}
                     </SelectContent>
                   </Select>
                 </div>
