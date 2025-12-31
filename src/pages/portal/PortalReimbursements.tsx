@@ -10,7 +10,9 @@ import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, Di
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Receipt, Plus, DollarSign, Image } from "lucide-react";
+import { Receipt, Plus, DollarSign, Image, Download, Eye } from "lucide-react";
+import { downloadReceipt, getReceiptFilename } from "@/utils/receiptDownload";
+import { toast } from "sonner";
 import { format, parseISO } from "date-fns";
 import { ReceiptUpload } from "@/components/portal/ReceiptUpload";
 
@@ -36,6 +38,7 @@ export default function PortalReimbursements() {
   const addReimbursement = useAddReimbursement();
   
   const [dialogOpen, setDialogOpen] = useState(false);
+  const [previewUrl, setPreviewUrl] = useState<string | null>(null);
   const [formData, setFormData] = useState({
     amount: "",
     description: "",
@@ -225,29 +228,55 @@ export default function PortalReimbursements() {
             {reimbursements.map((reimbursement) => (
               <Card key={reimbursement.id}>
                 <CardContent className="p-4">
-                  <div className="flex items-start justify-between gap-4">
+                    <div className="flex items-start justify-between gap-4">
                     <div className="flex items-start gap-3 flex-1">
                       {reimbursement.receipt_url ? (
-                        <a 
-                          href={reimbursement.receipt_url} 
-                          target="_blank" 
-                          rel="noopener noreferrer"
-                          className="flex-shrink-0"
-                        >
-                          <div className="w-12 h-12 rounded-lg overflow-hidden border bg-muted hover:opacity-80 transition-opacity">
-                            {reimbursement.receipt_url.endsWith('.pdf') ? (
-                              <div className="w-full h-full flex items-center justify-center">
-                                <Image className="h-5 w-5 text-muted-foreground" />
-                              </div>
-                            ) : (
-                              <img
-                                src={reimbursement.receipt_url}
-                                alt="Receipt"
-                                className="w-full h-full object-cover"
-                              />
-                            )}
+                        <div className="flex-shrink-0">
+                          <button
+                            onClick={() => setPreviewUrl(reimbursement.receipt_url)}
+                            className="block"
+                          >
+                            <div className="w-12 h-12 rounded-lg overflow-hidden border bg-muted hover:opacity-80 transition-opacity">
+                              {reimbursement.receipt_url.endsWith('.pdf') ? (
+                                <div className="w-full h-full flex items-center justify-center">
+                                  <Image className="h-5 w-5 text-muted-foreground" />
+                                </div>
+                              ) : (
+                                <img
+                                  src={reimbursement.receipt_url}
+                                  alt="Receipt"
+                                  className="w-full h-full object-cover"
+                                />
+                              )}
+                            </div>
+                          </button>
+                          <div className="flex gap-1 mt-1 justify-center">
+                            <button
+                              onClick={() => setPreviewUrl(reimbursement.receipt_url)}
+                              className="text-xs text-primary hover:underline"
+                              title="Preview"
+                            >
+                              <Eye className="h-3 w-3" />
+                            </button>
+                            <button
+                              onClick={async () => {
+                                const filename = getReceiptFilename(
+                                  reimbursement.description,
+                                  reimbursement.submitted_at,
+                                  reimbursement.receipt_url!
+                                );
+                                const result = await downloadReceipt(reimbursement.receipt_url!, filename);
+                                if (!result.success) {
+                                  toast.error(result.error || "Receipt file unavailable");
+                                }
+                              }}
+                              className="text-xs text-muted-foreground hover:text-foreground"
+                              title="Download"
+                            >
+                              <Download className="h-3 w-3" />
+                            </button>
                           </div>
-                        </a>
+                        </div>
                       ) : (
                         <div className="p-2 rounded-lg bg-muted flex-shrink-0">
                           <Receipt className="h-5 w-5 text-muted-foreground" />
@@ -299,6 +328,28 @@ export default function PortalReimbursements() {
             </CardContent>
           </Card>
         )}
+
+        {/* Receipt Preview Dialog */}
+        <Dialog open={!!previewUrl} onOpenChange={() => setPreviewUrl(null)}>
+          <DialogContent className="max-w-3xl max-h-[90vh]">
+            <DialogHeader>
+              <DialogTitle>Receipt Preview</DialogTitle>
+            </DialogHeader>
+            {previewUrl && (
+              <div className="flex items-center justify-center max-h-[70vh] overflow-auto">
+                {previewUrl.toLowerCase().endsWith('.pdf') ? (
+                  <iframe
+                    src={previewUrl}
+                    className="w-full h-[70vh] border-0"
+                    title="Receipt PDF"
+                  />
+                ) : (
+                  <img src={previewUrl} alt="Receipt" className="max-w-full h-auto" />
+                )}
+              </div>
+            )}
+          </DialogContent>
+        </Dialog>
       </div>
     </PortalLayout>
   );
