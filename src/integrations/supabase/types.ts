@@ -1030,6 +1030,73 @@ export type Database = {
           },
         ]
       }
+      clock_alerts: {
+        Row: {
+          alert_date: string
+          alert_type: string
+          created_at: string | null
+          id: string
+          metadata: Json | null
+          notes: string | null
+          personnel_id: string | null
+          project_id: string | null
+          resolved_at: string | null
+          resolved_by: string | null
+          sent_at: string | null
+          time_entry_id: string | null
+        }
+        Insert: {
+          alert_date: string
+          alert_type: string
+          created_at?: string | null
+          id?: string
+          metadata?: Json | null
+          notes?: string | null
+          personnel_id?: string | null
+          project_id?: string | null
+          resolved_at?: string | null
+          resolved_by?: string | null
+          sent_at?: string | null
+          time_entry_id?: string | null
+        }
+        Update: {
+          alert_date?: string
+          alert_type?: string
+          created_at?: string | null
+          id?: string
+          metadata?: Json | null
+          notes?: string | null
+          personnel_id?: string | null
+          project_id?: string | null
+          resolved_at?: string | null
+          resolved_by?: string | null
+          sent_at?: string | null
+          time_entry_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "clock_alerts_personnel_id_fkey"
+            columns: ["personnel_id"]
+            isOneToOne: false
+            referencedRelation: "personnel"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "clock_alerts_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "projects"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "clock_alerts_time_entry_id_fkey"
+            columns: ["time_entry_id"]
+            isOneToOne: false
+            referencedRelation: "time_entries"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       company_settings: {
         Row: {
           address: string | null
@@ -3519,6 +3586,60 @@ export type Database = {
           },
         ]
       }
+      personnel_schedules: {
+        Row: {
+          created_at: string | null
+          created_by: string | null
+          id: string
+          notes: string | null
+          personnel_id: string
+          project_id: string
+          scheduled_date: string
+          scheduled_end_time: string | null
+          scheduled_start_time: string
+          updated_at: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          created_by?: string | null
+          id?: string
+          notes?: string | null
+          personnel_id: string
+          project_id: string
+          scheduled_date: string
+          scheduled_end_time?: string | null
+          scheduled_start_time: string
+          updated_at?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          created_by?: string | null
+          id?: string
+          notes?: string | null
+          personnel_id?: string
+          project_id?: string
+          scheduled_date?: string
+          scheduled_end_time?: string | null
+          scheduled_start_time?: string
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "personnel_schedules_personnel_id_fkey"
+            columns: ["personnel_id"]
+            isOneToOne: false
+            referencedRelation: "personnel"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "personnel_schedules_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "projects"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       personnel_w9_forms: {
         Row: {
           account_numbers: string | null
@@ -4322,12 +4443,16 @@ export type Database = {
           deleted_by: string | null
           description: string | null
           end_date: string | null
+          geofence_radius_miles: number | null
           id: string
           name: string
           poc_email: string | null
           poc_name: string | null
           poc_phone: string | null
           require_clock_location: boolean | null
+          site_geocoded_at: string | null
+          site_lat: number | null
+          site_lng: number | null
           stage: Database["public"]["Enums"]["project_stage"]
           start_date: string
           state: string | null
@@ -4347,12 +4472,16 @@ export type Database = {
           deleted_by?: string | null
           description?: string | null
           end_date?: string | null
+          geofence_radius_miles?: number | null
           id?: string
           name: string
           poc_email?: string | null
           poc_name?: string | null
           poc_phone?: string | null
           require_clock_location?: boolean | null
+          site_geocoded_at?: string | null
+          site_lat?: number | null
+          site_lng?: number | null
           stage?: Database["public"]["Enums"]["project_stage"]
           start_date: string
           state?: string | null
@@ -4372,12 +4501,16 @@ export type Database = {
           deleted_by?: string | null
           description?: string | null
           end_date?: string | null
+          geofence_radius_miles?: number | null
           id?: string
           name?: string
           poc_email?: string | null
           poc_name?: string | null
           poc_phone?: string | null
           require_clock_location?: boolean | null
+          site_geocoded_at?: string | null
+          site_lat?: number | null
+          site_lng?: number | null
           stage?: Database["public"]["Enums"]["project_stage"]
           start_date?: string
           state?: string | null
@@ -5458,7 +5591,10 @@ export type Database = {
       }
       time_entries: {
         Row: {
+          auto_clock_out_reason: string | null
+          auto_clocked_out: boolean | null
           billable: boolean | null
+          clock_blocked_until: string | null
           clock_in_accuracy: number | null
           clock_in_at: string | null
           clock_in_lat: number | null
@@ -5480,6 +5616,9 @@ export type Database = {
           is_locked: boolean | null
           is_on_lunch: boolean | null
           job_order_id: string | null
+          last_location_check_at: string | null
+          last_location_lat: number | null
+          last_location_lng: number | null
           lunch_duration_minutes: number | null
           lunch_end_at: string | null
           lunch_start_at: string | null
@@ -5494,7 +5633,10 @@ export type Database = {
           week_closeout_id: string | null
         }
         Insert: {
+          auto_clock_out_reason?: string | null
+          auto_clocked_out?: boolean | null
           billable?: boolean | null
+          clock_blocked_until?: string | null
           clock_in_accuracy?: number | null
           clock_in_at?: string | null
           clock_in_lat?: number | null
@@ -5516,6 +5658,9 @@ export type Database = {
           is_locked?: boolean | null
           is_on_lunch?: boolean | null
           job_order_id?: string | null
+          last_location_check_at?: string | null
+          last_location_lat?: number | null
+          last_location_lng?: number | null
           lunch_duration_minutes?: number | null
           lunch_end_at?: string | null
           lunch_start_at?: string | null
@@ -5530,7 +5675,10 @@ export type Database = {
           week_closeout_id?: string | null
         }
         Update: {
+          auto_clock_out_reason?: string | null
+          auto_clocked_out?: boolean | null
           billable?: boolean | null
+          clock_blocked_until?: string | null
           clock_in_accuracy?: number | null
           clock_in_at?: string | null
           clock_in_lat?: number | null
@@ -5552,6 +5700,9 @@ export type Database = {
           is_locked?: boolean | null
           is_on_lunch?: boolean | null
           job_order_id?: string | null
+          last_location_check_at?: string | null
+          last_location_lat?: number | null
+          last_location_lng?: number | null
           lunch_duration_minutes?: number | null
           lunch_end_at?: string | null
           lunch_start_at?: string | null
