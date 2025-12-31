@@ -30,6 +30,7 @@ import {
   Link2,
   Send,
   Trash2,
+  FolderSearch,
 } from "lucide-react";
 
 const navigation = [
@@ -74,7 +75,7 @@ export function Sidebar() {
   useEffect(() => {
     const vendorsRoutes = vendorsNavigation.map((item) => item.href);
     const staffingRoutes = staffingNavigation.map((item) => item.href);
-    const accountRoutes = ["/user-management", "/settings"];
+    const accountRoutes = ["/user-management", "/settings", "/document-center"];
 
     if (vendorsRoutes.some((r) => location.pathname === r || location.pathname.startsWith(r))) setVendorsOpen(true);
     if (staffingRoutes.some((r) => location.pathname === r)) setStaffingOpen(true);
@@ -237,6 +238,20 @@ export function Sidebar() {
                 >
                   <Trash2 className="h-4 w-4 flex-shrink-0" />
                   <span className="truncate">Trash</span>
+                </Link>
+              )}
+              {(isAdmin || isManager) && (
+                <Link
+                  to="/document-center"
+                  className={cn(
+                    "group flex items-center gap-3 rounded-md px-3 py-2 text-sm font-medium transition-all duration-150",
+                    location.pathname === "/document-center"
+                      ? "bg-primary/15 text-primary border-l-4 border-primary -ml-0.5 pl-2.5"
+                      : "text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"
+                  )}
+                >
+                  <FolderSearch className="h-4 w-4 flex-shrink-0" />
+                  <span className="truncate">Document Center</span>
                 </Link>
               )}
               <Link

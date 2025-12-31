@@ -126,6 +126,7 @@ import AdminNotifications from "./pages/AdminNotifications";
 import SessionHistory from "./pages/SessionHistory";
 import AiDevAssistant from "./pages/admin/AiDevAssistant";
 import Trash from "./pages/admin/Trash";
+import DocumentCenter from "./pages/DocumentCenter";
 const queryClient = new QueryClient();
 
 const App = () => {
@@ -358,6 +359,7 @@ const App = () => {
                       element={<BadgeTemplateEditor />}
                     />
                     <Route path="/settings" element={<Settings />} />
+                    <Route path="/document-center" element={<DocumentCenter />} />
                     <Route path="/user-management" element={<UserManagement />} />
                     <Route path="/permissions" element={<PermissionsManagement />} />
                     <Route
