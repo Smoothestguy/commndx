@@ -7048,7 +7048,7 @@ export type Database = {
         | "government"
         | "non_profit"
         | "other"
-      estimate_status: "draft" | "pending" | "approved" | "sent"
+      estimate_status: "draft" | "pending" | "approved" | "sent" | "closed"
       everify_status:
         | "pending"
         | "verified"
@@ -7298,7 +7298,7 @@ export const Constants = {
         "non_profit",
         "other",
       ],
-      estimate_status: ["draft", "pending", "approved", "sent"],
+      estimate_status: ["draft", "pending", "approved", "sent", "closed"],
       everify_status: [
         "pending",
         "verified",

@@ -128,7 +128,7 @@ export const EstimateForm = ({ initialData }: EstimateFormProps) => {
   const [validUntil, setValidUntil] = useState<string>(initialData?.valid_until || "");
   const [notes, setNotes] = useState<string>(initialData?.notes || "");
   const [jobsiteAddress, setJobsiteAddress] = useState<string>(initialData?.jobsite_address || "");
-  const [status, setStatus] = useState<"draft" | "pending" | "sent" | "approved">(initialData?.status || "draft");
+  const [status, setStatus] = useState<"draft" | "pending" | "sent" | "approved" | "closed">(initialData?.status || "draft");
   const [defaultPricingType, setDefaultPricingType] = useState<'markup' | 'margin'>(initialData?.default_pricing_type || 'margin');
   const [defaultMarginPercent, setDefaultMarginPercent] = useState<string>("30");
   const [estimateNumber, setEstimateNumber] = useState<string>(initialData?.number || "");

@@ -37,7 +37,7 @@ interface EstimatePreviewDialogProps {
   notes?: string;
   lineItems: LineItem[];
   taxRate: number;
-  status?: "draft" | "pending" | "approved" | "sent";
+  status?: "draft" | "pending" | "approved" | "sent" | "closed";
   salesRepName?: string | null;
 }
 
