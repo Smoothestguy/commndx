@@ -37,13 +37,15 @@ import {
   useDeleteEstimate,
   useConvertEstimateToJobOrder,
   useConvertEstimateToInvoice,
+  useEstimateQuickBooksStatus,
+  useSyncEstimateToQuickBooks,
 } from "@/integrations/supabase/hooks/useEstimates";
 import { useCompanySettings } from "@/integrations/supabase/hooks/useCompanySettings";
 import { useCustomers } from "@/integrations/supabase/hooks/useCustomers";
 import { ConvertToJobOrderDialog } from "./ConvertToJobOrderDialog";
 import { EstimateAttachments } from "./EstimateAttachments";
 import { EstimateVersionHistory } from "./EstimateVersionHistory";
-import { Download, Edit, Trash2, Briefcase, MoreVertical, Loader2, Send, Copy, CheckCircle, FileText, Eye } from "lucide-react";
+import { Download, Edit, Trash2, Briefcase, MoreVertical, Loader2, Send, Copy, CheckCircle, FileText, Eye, RefreshCw } from "lucide-react";
 import { generateEstimatePDF } from "@/utils/estimatePdfExport";
 import { format } from "date-fns";
 import { toast } from "sonner";
@@ -63,6 +65,8 @@ export function EstimateDetailView({ estimateId }: EstimateDetailViewProps) {
   const deleteEstimate = useDeleteEstimate();
   const convertToJobOrder = useConvertEstimateToJobOrder();
   const convertToInvoice = useConvertEstimateToInvoice();
+  const { data: qbStatus, isLoading: qbStatusLoading } = useEstimateQuickBooksStatus(estimateId);
+  const syncToQuickBooks = useSyncEstimateToQuickBooks();
   const [isSending, setIsSending] = useState(false);
   const { data: products } = useProducts();
   const { data: companySettings } = useCompanySettings();
@@ -269,6 +273,21 @@ export function EstimateDetailView({ estimateId }: EstimateDetailViewProps) {
 
               <Button
                 variant="outline"
+                onClick={() => syncToQuickBooks.mutate(estimateId)}
+                disabled={syncToQuickBooks.isPending}
+              >
+                {syncToQuickBooks.isPending ? (
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                ) : qbStatus?.quickbooks_estimate_id ? (
+                  <CheckCircle className="mr-2 h-4 w-4 text-green-600" />
+                ) : (
+                  <RefreshCw className="mr-2 h-4 w-4" />
+                )}
+                {qbStatus?.quickbooks_estimate_id ? "QB Synced" : "Sync to QB"}
+              </Button>
+
+              <Button
+                variant="outline"
                 onClick={() => navigate(`/estimates/${estimateId}/edit`)}
               >
                 <Edit className="mr-2 h-4 w-4" />
@@ -384,6 +403,19 @@ export function EstimateDetailView({ estimateId }: EstimateDetailViewProps) {
                   <DropdownMenuItem onClick={() => navigate(`/estimates/${estimateId}/edit`)}>
                     <Edit className="mr-2 h-4 w-4" />
                     Edit Estimate
+                  </DropdownMenuItem>
+                  <DropdownMenuItem 
+                    onClick={() => syncToQuickBooks.mutate(estimateId)}
+                    disabled={syncToQuickBooks.isPending}
+                  >
+                    {syncToQuickBooks.isPending ? (
+                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    ) : qbStatus?.quickbooks_estimate_id ? (
+                      <CheckCircle className="mr-2 h-4 w-4 text-green-600" />
+                    ) : (
+                      <RefreshCw className="mr-2 h-4 w-4" />
+                    )}
+                    {qbStatus?.quickbooks_estimate_id ? "QB Synced" : "Sync to QuickBooks"}
                   </DropdownMenuItem>
                   {canConvertToJobOrder && (
                     <ConvertToJobOrderDialog
