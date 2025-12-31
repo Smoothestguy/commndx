@@ -176,3 +176,9 @@ verify_jwt = false
 
 [functions.quickbooks-import-estimates]
 verify_jwt = false
+
+[functions.quickbooks-update-estimate]
+verify_jwt = false
+
+[functions.quickbooks-void-estimate]
+verify_jwt = false

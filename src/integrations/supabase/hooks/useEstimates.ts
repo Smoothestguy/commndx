@@ -272,11 +272,34 @@ export const useUpdateEstimate = () => {
         if (lineItemsError) throw lineItemsError;
       }
 
+      // Auto-sync to QuickBooks if connected and estimate is synced
+      try {
+        const qbConnected = await isQuickBooksConnected();
+        if (qbConnected) {
+          // Check if estimate was previously synced
+          const { data: mapping } = await supabase
+            .from("quickbooks_estimate_mappings")
+            .select("quickbooks_estimate_id, sync_status")
+            .eq("estimate_id", data.id)
+            .maybeSingle();
+
+          if (mapping && mapping.sync_status !== "voided") {
+            console.log("QuickBooks connected - updating estimate:", data.id);
+            await supabase.functions.invoke("quickbooks-update-estimate", {
+              body: { estimateId: data.id },
+            });
+          }
+        }
+      } catch (qbError) {
+        console.error("QuickBooks update sync error (non-blocking):", qbError);
+      }
+
       return estimateData;
     },
     onSuccess: (data) => {
       queryClient.invalidateQueries({ queryKey: ["estimates"] });
       queryClient.invalidateQueries({ queryKey: ["estimates", data.id] });
+      queryClient.invalidateQueries({ queryKey: ["estimate-qb-status", data.id] });
       toast.success("Estimate updated successfully");
     },
     onError: (error: Error) => {
@@ -291,6 +314,19 @@ export const useDeleteEstimate = () => {
   return useMutation({
     mutationFn: async (id: string) => {
       const { data: { user } } = await supabase.auth.getUser();
+      
+      // Auto-void in QuickBooks if connected
+      try {
+        const qbConnected = await isQuickBooksConnected();
+        if (qbConnected) {
+          console.log("QuickBooks connected - voiding estimate:", id);
+          await supabase.functions.invoke("quickbooks-void-estimate", {
+            body: { estimateId: id },
+          });
+        }
+      } catch (qbError) {
+        console.error("QuickBooks void error (non-blocking):", qbError);
+      }
       
       // First, unlink any job orders that reference this estimate
       await supabase
