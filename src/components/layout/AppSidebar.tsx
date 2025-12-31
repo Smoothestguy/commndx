@@ -47,6 +47,7 @@ import {
   Eye,
   ScrollText,
   ClipboardList,
+  FolderSearch,
 } from "lucide-react";
 import logo from "@/assets/logo.png";
 
@@ -99,7 +100,7 @@ const staffingNavigation = [
 export function AppSidebar() {
   const location = useLocation();
   const { signOut } = useAuth();
-  const { isAdmin, isManager } = useUserRole();
+  const { isAdmin, isManager, isAccounting } = useUserRole();
   const { state } = useSidebar();
   const isCollapsed = state === "collapsed";
 
@@ -107,6 +108,7 @@ export function AppSidebar() {
   const userMgmtPerms = usePermissionCheck('user_management');
   const permsMgmtPerms = usePermissionCheck('permissions_management');
   const auditLogsPerms = usePermissionCheck('audit_logs');
+  const documentCenterPerms = usePermissionCheck('document_center');
 
   // Collapsible state for sections
   const [vendorsOpen, setVendorsOpen] = useState(false);
@@ -117,7 +119,7 @@ export function AppSidebar() {
   useEffect(() => {
     const vendorsRoutes = vendorsNavigation.map((item) => item.href);
     const staffingRoutes = staffingNavigation.map((item) => item.href);
-    const accountRoutes = ["/user-management", "/settings", "/permissions", "/admin/preview"];
+    const accountRoutes = ["/user-management", "/settings", "/permissions", "/admin/preview", "/document-center"];
 
     if (
       vendorsRoutes.some(
@@ -363,6 +365,23 @@ export function AppSidebar() {
                       </SidebarMenuButton>
                     </SidebarMenuItem>
                   )}
+                  
+                  {/* Document Center - show if admin/manager/accounting OR has permission */}
+                  {(isAdmin || isManager || isAccounting || documentCenterPerms.canView) && (
+                    <SidebarMenuItem>
+                      <SidebarMenuButton
+                        asChild
+                        isActive={location.pathname === "/document-center"}
+                        tooltip="Document Center"
+                      >
+                        <Link to="/document-center">
+                          <FolderSearch className="h-4 w-4" />
+                          <span>Document Center</span>
+                        </Link>
+                      </SidebarMenuButton>
+                    </SidebarMenuItem>
+                  )}
+                  
                   <SidebarMenuItem>
                     <SidebarMenuButton
                       asChild
