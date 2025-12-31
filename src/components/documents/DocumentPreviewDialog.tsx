@@ -1,9 +1,11 @@
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
-import { Download, ExternalLink, Loader2 } from "lucide-react";
+import { Download, ExternalLink, Loader2, Navigation } from "lucide-react";
+import { useNavigate } from "react-router-dom";
 import type { SystemDocument } from "@/integrations/supabase/hooks/useAllSystemDocuments";
 import { DOCUMENT_SOURCE_LABELS } from "@/integrations/supabase/hooks/useAllSystemDocuments";
 import { format } from "date-fns";
+import { getSourceEntityRoute, getSourceEntityLabel } from "@/utils/documentSourceRoutes";
 
 interface DocumentPreviewDialogProps {
   open: boolean;
@@ -22,6 +24,8 @@ export function DocumentPreviewDialog({
   previewUrl,
   isLoadingUrl,
 }: DocumentPreviewDialogProps) {
+  const navigate = useNavigate();
+
   if (!document) return null;
 
   const isImage = document.file_type?.match(/^(jpg|jpeg|png|gif|webp|bmp|svg)$/i) ||
@@ -33,13 +37,34 @@ export function DocumentPreviewDialog({
   // Use previewUrl if provided, otherwise fall back to file_path
   const displayUrl = previewUrl || document.file_path;
 
+  // Get navigation route for source entity
+  const sourceRoute = getSourceEntityRoute(document.source_type, document.related_entity_id);
+  const sourceLabel = getSourceEntityLabel(document.source_type);
+
+  const handleGoToSource = () => {
+    if (sourceRoute) {
+      onOpenChange(false);
+      navigate(sourceRoute);
+    }
+  };
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-4xl max-h-[90vh] overflow-hidden flex flex-col">
         <DialogHeader>
           <DialogTitle className="flex items-center justify-between pr-8">
             <span className="truncate">{document.file_name}</span>
-            <div className="flex gap-2 ml-4">
+            <div className="flex gap-2 ml-4 flex-shrink-0">
+              {sourceRoute && (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={handleGoToSource}
+                >
+                  <Navigation className="h-4 w-4 mr-1" />
+                  Go to {sourceLabel}
+                </Button>
+              )}
               <Button
                 variant="outline"
                 size="sm"

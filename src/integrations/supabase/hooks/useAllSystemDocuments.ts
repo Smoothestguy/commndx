@@ -56,7 +56,7 @@ export function useAllSystemDocuments() {
         supabase
           .from("reimbursements")
           .select(`
-            id, receipt_url, description, submitted_at, personnel_id,
+            id, receipt_url, description, submitted_at, personnel_id, project_id,
             personnel:personnel_id(first_name, last_name),
             project:project_id(name)
           `)
@@ -66,7 +66,7 @@ export function useAllSystemDocuments() {
         supabase
           .from("invoice_attachments")
           .select(`
-            id, file_name, file_path, file_type, file_size, created_at, uploaded_by,
+            id, invoice_id, file_name, file_path, file_type, file_size, created_at, uploaded_by,
             invoice:invoice_id(number, customer_name)
           `),
 
@@ -74,7 +74,7 @@ export function useAllSystemDocuments() {
         supabase
           .from("estimate_attachments")
           .select(`
-            id, file_name, file_path, file_type, file_size, created_at, uploaded_by,
+            id, estimate_id, file_name, file_path, file_type, file_size, created_at, uploaded_by,
             estimate:estimate_id(number, customer_name)
           `),
 
@@ -82,7 +82,7 @@ export function useAllSystemDocuments() {
         supabase
           .from("vendor_bill_attachments")
           .select(`
-            id, file_name, file_path, file_type, file_size, created_at, uploaded_by,
+            id, bill_id, file_name, file_path, file_type, file_size, created_at, uploaded_by,
             vendor_bill:bill_id(number, vendor_name)
           `),
 
@@ -90,7 +90,7 @@ export function useAllSystemDocuments() {
         supabase
           .from("vendor_documents")
           .select(`
-            id, document_type, document_name, document_url, expiry_date, uploaded_at,
+            id, vendor_id, document_type, document_name, document_url, expiry_date, uploaded_at,
             vendor:vendor_id(name, company)
           `),
 
@@ -98,7 +98,7 @@ export function useAllSystemDocuments() {
         supabase
           .from("personnel_documents")
           .select(`
-            id, document_type, file_name, file_path, file_type, file_size, uploaded_at,
+            id, personnel_id, document_type, file_name, file_path, file_type, file_size, uploaded_at,
             personnel:personnel_id(first_name, last_name)
           `),
 
@@ -106,7 +106,7 @@ export function useAllSystemDocuments() {
         supabase
           .from("project_documents")
           .select(`
-            id, file_name, file_path, file_type, file_size, created_at, uploaded_by,
+            id, project_id, file_name, file_path, file_type, file_size, created_at, uploaded_by,
             project:project_id(name)
           `),
 
@@ -114,24 +114,24 @@ export function useAllSystemDocuments() {
         supabase
           .from("po_addendum_attachments")
           .select(`
-            id, file_name, file_path, file_type, file_size, created_at, uploaded_by,
-            addendum:addendum_id(number, purchase_order:purchase_order_id(number))
+            id, addendum_id, file_name, file_path, file_type, file_size, created_at, uploaded_by,
+            addendum:addendum_id(number, purchase_order_id, purchase_order:purchase_order_id(number))
           `),
 
         // Invoice payment attachments
         supabase
           .from("invoice_payment_attachments")
           .select(`
-            id, file_name, file_path, file_type, file_size, created_at, uploaded_by,
-            payment:payment_id(invoice:invoice_id(number))
+            id, payment_id, file_name, file_path, file_type, file_size, created_at, uploaded_by,
+            payment:payment_id(invoice_id, invoice:invoice_id(number))
           `),
 
         // Vendor bill payment attachments
         supabase
           .from("vendor_bill_payment_attachments")
           .select(`
-            id, file_name, file_path, file_type, file_size, created_at, uploaded_by,
-            payment:payment_id(vendor_bill:bill_id(number))
+            id, payment_id, file_name, file_path, file_type, file_size, created_at, uploaded_by,
+            payment:payment_id(bill_id, vendor_bill:bill_id(number))
           `),
       ]);
 
@@ -151,7 +151,7 @@ export function useAllSystemDocuments() {
             uploaded_by: r.personnel_id,
             uploader_name: personnel ? `${personnel.first_name} ${personnel.last_name}` : null,
             related_entity_type: "project",
-            related_entity_id: null,
+            related_entity_id: r.project_id || null,
             related_entity_name: project?.name || null,
           });
         }
@@ -172,7 +172,7 @@ export function useAllSystemDocuments() {
             uploaded_by: a.uploaded_by,
             uploader_name: null,
             related_entity_type: "invoice",
-            related_entity_id: null,
+            related_entity_id: a.invoice_id,
             related_entity_name: invoice ? `${invoice.number} - ${invoice.customer_name}` : null,
           });
         }
@@ -193,7 +193,7 @@ export function useAllSystemDocuments() {
             uploaded_by: a.uploaded_by,
             uploader_name: null,
             related_entity_type: "estimate",
-            related_entity_id: null,
+            related_entity_id: a.estimate_id,
             related_entity_name: estimate ? `${estimate.number} - ${estimate.customer_name}` : null,
           });
         }
@@ -214,7 +214,7 @@ export function useAllSystemDocuments() {
             uploaded_by: a.uploaded_by,
             uploader_name: null,
             related_entity_type: "vendor_bill",
-            related_entity_id: null,
+            related_entity_id: a.bill_id,
             related_entity_name: bill ? `${bill.number} - ${bill.vendor_name}` : null,
           });
         }
@@ -235,7 +235,7 @@ export function useAllSystemDocuments() {
             uploaded_by: null,
             uploader_name: null,
             related_entity_type: "vendor",
-            related_entity_id: null,
+            related_entity_id: d.vendor_id,
             related_entity_name: vendor?.company || vendor?.name || null,
             expiry_date: d.expiry_date,
             document_type: d.document_type,
@@ -258,7 +258,7 @@ export function useAllSystemDocuments() {
             uploaded_by: null,
             uploader_name: personnel ? `${personnel.first_name} ${personnel.last_name}` : null,
             related_entity_type: "personnel",
-            related_entity_id: null,
+            related_entity_id: d.personnel_id,
             related_entity_name: personnel ? `${personnel.first_name} ${personnel.last_name}` : null,
             document_type: d.document_type,
           });
@@ -280,7 +280,7 @@ export function useAllSystemDocuments() {
             uploaded_by: d.uploaded_by,
             uploader_name: null,
             related_entity_type: "project",
-            related_entity_id: null,
+            related_entity_id: d.project_id,
             related_entity_name: project?.name || null,
           });
         }
@@ -289,7 +289,7 @@ export function useAllSystemDocuments() {
       // Process PO addendum attachments
       if (poAddendumAttachmentsResult.data) {
         for (const a of poAddendumAttachmentsResult.data) {
-          const addendum = a.addendum as { number: string; purchase_order: { number: string } | null } | null;
+          const addendum = a.addendum as { number: string; purchase_order_id: string; purchase_order: { number: string } | null } | null;
           documents.push({
             id: a.id,
             source_type: "po_addendum_attachment",
@@ -301,7 +301,7 @@ export function useAllSystemDocuments() {
             uploaded_by: a.uploaded_by,
             uploader_name: null,
             related_entity_type: "po_addendum",
-            related_entity_id: null,
+            related_entity_id: addendum?.purchase_order_id || null,
             related_entity_name: addendum?.purchase_order ? `PO ${addendum.purchase_order.number} - ${addendum.number}` : null,
           });
         }
@@ -310,7 +310,7 @@ export function useAllSystemDocuments() {
       // Process invoice payment attachments
       if (invoicePaymentAttachmentsResult.data) {
         for (const a of invoicePaymentAttachmentsResult.data) {
-          const payment = a.payment as { invoice: { number: string } | null } | null;
+          const payment = a.payment as { invoice_id: string; invoice: { number: string } | null } | null;
           documents.push({
             id: a.id,
             source_type: "invoice_payment_attachment",
@@ -322,7 +322,7 @@ export function useAllSystemDocuments() {
             uploaded_by: a.uploaded_by,
             uploader_name: null,
             related_entity_type: "invoice_payment",
-            related_entity_id: null,
+            related_entity_id: payment?.invoice_id || null,
             related_entity_name: payment?.invoice ? `Invoice ${payment.invoice.number} Payment` : null,
           });
         }
@@ -331,7 +331,7 @@ export function useAllSystemDocuments() {
       // Process vendor bill payment attachments
       if (vendorBillPaymentAttachmentsResult.data) {
         for (const a of vendorBillPaymentAttachmentsResult.data) {
-          const payment = a.payment as { vendor_bill: { number: string } | null } | null;
+          const payment = a.payment as { bill_id: string; vendor_bill: { number: string } | null } | null;
           documents.push({
             id: a.id,
             source_type: "vendor_bill_payment_attachment",
@@ -343,7 +343,7 @@ export function useAllSystemDocuments() {
             uploaded_by: a.uploaded_by,
             uploader_name: null,
             related_entity_type: "vendor_bill_payment",
-            related_entity_id: null,
+            related_entity_id: payment?.bill_id || null,
             related_entity_name: payment?.vendor_bill ? `Bill ${payment.vendor_bill.number} Payment` : null,
           });
         }

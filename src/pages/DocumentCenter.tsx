@@ -297,7 +297,11 @@ export default function DocumentCenter() {
                     {filteredDocuments.map((doc) => {
                       const DocIcon = getDocIcon(doc);
                       return (
-                        <TableRow key={`${doc.source_type}-${doc.id}`}>
+                        <TableRow 
+                          key={`${doc.source_type}-${doc.id}`}
+                          className="cursor-pointer hover:bg-muted/50 transition-colors"
+                          onClick={() => handlePreview(doc)}
+                        >
                           <TableCell>
                             <div className="flex items-center gap-3">
                               <DocIcon className="h-5 w-5 text-muted-foreground flex-shrink-0" />
@@ -329,7 +333,10 @@ export default function DocumentCenter() {
                             </span>
                           </TableCell>
                           <TableCell className="text-right">
-                            <div className="flex items-center justify-end gap-1">
+                            <div 
+                              className="flex items-center justify-end gap-1"
+                              onClick={(e) => e.stopPropagation()}
+                            >
                               <Button
                                 variant="ghost"
                                 size="icon"
