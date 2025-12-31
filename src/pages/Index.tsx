@@ -155,9 +155,16 @@ const Dashboard = () => {
     };
   }, [estimates, paidInvoices, products, customers]);
 
-  const recentEstimates = useMemo(
-    () => estimates?.slice(0, 5) ?? [],
-    [estimates]
+  const recentEstimates = useMemo(() => {
+    if (!estimates) return [];
+    return [...estimates]
+      .sort((a, b) => {
+        const numA = parseInt(String(a.number).replace(/\D/g, '')) || 0;
+        const numB = parseInt(String(b.number).replace(/\D/g, '')) || 0;
+        return numB - numA;
+      })
+      .slice(0, 5);
+  }, [estimates]
   );
 
   const recentInvoices = useMemo(() => invoices?.slice(0, 5) ?? [], [invoices]);
