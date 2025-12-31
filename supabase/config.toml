@@ -173,3 +173,6 @@ verify_jwt = false
 
 [functions.quickbooks-sync-accounts]
 verify_jwt = false
+
+[functions.quickbooks-import-estimates]
+verify_jwt = false

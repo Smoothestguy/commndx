@@ -546,3 +546,47 @@ export const useConvertEstimateToInvoice = () => {
     },
   });
 };
+
+// Hook for importing estimates from QuickBooks
+export const useImportEstimatesFromQuickBooks = () => {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async () => {
+      const { data, error } = await supabase.functions.invoke("quickbooks-import-estimates");
+
+      if (error) {
+        throw new Error(error.message || "Failed to import estimates");
+      }
+
+      if (data?.error) {
+        throw new Error(data.error);
+      }
+
+      return data as {
+        success: boolean;
+        totalInQuickBooks: number;
+        imported: number;
+        skipped: number;
+        errors: string[];
+        unmappedCustomers: string[];
+      };
+    },
+    onSuccess: (result) => {
+      queryClient.invalidateQueries({ queryKey: ["estimates"] });
+      
+      if (result.imported > 0) {
+        toast.success(`Successfully imported ${result.imported} estimates from QuickBooks`);
+      } else if (result.skipped > 0 && result.imported === 0) {
+        toast.info(`All ${result.skipped} estimates already exist in Command X`);
+      }
+
+      if (result.unmappedCustomers.length > 0) {
+        toast.warning(`${result.unmappedCustomers.length} estimates skipped due to unmapped customers`);
+      }
+    },
+    onError: (error: Error) => {
+      toast.error(`Failed to import estimates: ${error.message}`);
+    },
+  });
+};

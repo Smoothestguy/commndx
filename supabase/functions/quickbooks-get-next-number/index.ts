@@ -166,48 +166,86 @@ serve(async (req) => {
       );
     }
 
-    console.log(`Getting next QuickBooks ${type} number`);
+    console.log(`Getting next ${type} number (checking both QuickBooks and local DB)`);
 
     const { accessToken, realmId } = await getValidToken(supabase);
 
     let nextNumber: string;
+    let qbDocNumbers: string[] = [];
+    let localDocNumbers: string[] = [];
 
     if (type === "invoice") {
-      // Query the last 100 invoices to find the highest number
+      // Query QuickBooks
       const query = "SELECT DocNumber FROM Invoice ORDERBY MetaData.CreateTime DESC MAXRESULTS 100";
       const result = await qbQuery(query, accessToken, realmId);
+      qbDocNumbers = result.QueryResponse?.Invoice?.map((inv: any) => inv.DocNumber) || [];
       
-      const docNumbers = result.QueryResponse?.Invoice?.map((inv: any) => inv.DocNumber) || [];
-      console.log(`Found ${docNumbers.length} invoices in QuickBooks`);
+      // Query local database
+      const { data: localInvoices } = await supabase
+        .from("invoices")
+        .select("number")
+        .order("created_at", { ascending: false })
+        .limit(200);
+      localDocNumbers = localInvoices?.map((inv: any) => inv.number) || [];
       
-      nextNumber = extractNextNumber(docNumbers, "INV-");
+      console.log(`Found ${qbDocNumbers.length} invoices in QB, ${localDocNumbers.length} in local DB`);
+      
+      const allNumbers = [...qbDocNumbers, ...localDocNumbers];
+      nextNumber = extractNextNumber(allNumbers, "INV-");
     } else if (type === "estimate") {
-      // Query the last 100 estimates to find the highest number
+      // Query QuickBooks
       const query = "SELECT DocNumber FROM Estimate ORDERBY MetaData.CreateTime DESC MAXRESULTS 100";
       const result = await qbQuery(query, accessToken, realmId);
+      qbDocNumbers = result.QueryResponse?.Estimate?.map((est: any) => est.DocNumber) || [];
       
-      const docNumbers = result.QueryResponse?.Estimate?.map((est: any) => est.DocNumber) || [];
-      console.log(`Found ${docNumbers.length} estimates in QuickBooks`);
+      // Query local database
+      const { data: localEstimates } = await supabase
+        .from("estimates")
+        .select("number")
+        .order("created_at", { ascending: false })
+        .limit(200);
+      localDocNumbers = localEstimates?.map((est: any) => est.number) || [];
       
-      nextNumber = extractNextNumber(docNumbers, "EST-");
+      console.log(`Found ${qbDocNumbers.length} estimates in QB, ${localDocNumbers.length} in local DB`);
+      
+      const allNumbers = [...qbDocNumbers, ...localDocNumbers];
+      nextNumber = extractNextNumber(allNumbers, "EST-");
     } else if (type === "purchase_order") {
-      // Query the last 100 purchase orders to find the highest number
+      // Query QuickBooks
       const query = "SELECT DocNumber FROM PurchaseOrder ORDERBY MetaData.CreateTime DESC MAXRESULTS 100";
       const result = await qbQuery(query, accessToken, realmId);
+      qbDocNumbers = result.QueryResponse?.PurchaseOrder?.map((po: any) => po.DocNumber) || [];
       
-      const docNumbers = result.QueryResponse?.PurchaseOrder?.map((po: any) => po.DocNumber) || [];
-      console.log(`Found ${docNumbers.length} purchase orders in QuickBooks`);
+      // Query local database
+      const { data: localPOs } = await supabase
+        .from("purchase_orders")
+        .select("number")
+        .order("created_at", { ascending: false })
+        .limit(200);
+      localDocNumbers = localPOs?.map((po: any) => po.number) || [];
       
-      nextNumber = extractNextNumber(docNumbers, "PO-");
+      console.log(`Found ${qbDocNumbers.length} POs in QB, ${localDocNumbers.length} in local DB`);
+      
+      const allNumbers = [...qbDocNumbers, ...localDocNumbers];
+      nextNumber = extractNextNumber(allNumbers, "PO-");
     } else {
-      // vendor_bill - Query the last 100 bills to find the highest number
+      // vendor_bill
       const query = "SELECT DocNumber FROM Bill ORDERBY MetaData.CreateTime DESC MAXRESULTS 100";
       const result = await qbQuery(query, accessToken, realmId);
+      qbDocNumbers = result.QueryResponse?.Bill?.map((bill: any) => bill.DocNumber) || [];
       
-      const docNumbers = result.QueryResponse?.Bill?.map((bill: any) => bill.DocNumber) || [];
-      console.log(`Found ${docNumbers.length} bills in QuickBooks`);
+      // Query local database
+      const { data: localBills } = await supabase
+        .from("vendor_bills")
+        .select("number")
+        .order("created_at", { ascending: false })
+        .limit(200);
+      localDocNumbers = localBills?.map((bill: any) => bill.number) || [];
       
-      nextNumber = extractNextNumber(docNumbers, "BILL-");
+      console.log(`Found ${qbDocNumbers.length} bills in QB, ${localDocNumbers.length} in local DB`);
+      
+      const allNumbers = [...qbDocNumbers, ...localDocNumbers];
+      nextNumber = extractNextNumber(allNumbers, "BILL-");
     }
 
     console.log(`Next ${type} number: ${nextNumber}`);

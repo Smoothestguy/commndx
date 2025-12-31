@@ -1,8 +1,8 @@
 import { supabase } from "@/integrations/supabase/client";
 
 /**
- * Generates the next estimate number using the appropriate source:
- * - If QuickBooks is connected, fetches from QuickBooks API
+ * Generates the next estimate number using bidirectional sync:
+ * - If QuickBooks is connected, fetches from QuickBooks API which now checks BOTH systems
  * - Otherwise, uses the database function generate_estimate_number()
  * 
  * Also checks for collisions with both active and soft-deleted records.
@@ -19,14 +19,14 @@ export async function getNextEstimateNumber(): Promise<{ number: string; source:
     .maybeSingle();
 
   if (qbConfig?.is_connected) {
-    // Use QuickBooks sequence
+    // Use QuickBooks sequence - now checks BOTH QB and local DB
     const { data: qbData, error: qbError } = await supabase.functions.invoke(
       'quickbooks-get-next-number',
       { body: { type: 'estimate' } }
     );
 
     if (!qbError && qbData?.nextNumber) {
-      // Check for collision with existing estimates (including soft-deleted)
+      // Still verify uniqueness in local DB (in case of race conditions)
       const suggestedNumber = qbData.nextNumber;
       const uniqueNumber = await ensureUniqueNumber(suggestedNumber);
       return { number: uniqueNumber, source: 'quickbooks' };
