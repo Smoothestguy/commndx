@@ -185,3 +185,12 @@ verify_jwt = false
 
 [functions.quickbooks-webhook]
 verify_jwt = false
+
+[functions.update-clock-location]
+verify_jwt = false
+
+[functions.check-missed-clock-ins]
+verify_jwt = false
+
+[functions.clear-clock-block]
+verify_jwt = false

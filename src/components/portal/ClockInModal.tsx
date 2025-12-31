@@ -1,4 +1,4 @@
-import { useState, useCallback } from "react";
+import { useState, useCallback, useMemo } from "react";
 import {
   Dialog,
   DialogContent,
@@ -10,11 +10,14 @@ import {
 import { Button } from "@/components/ui/button";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Label } from "@/components/ui/label";
-import { MapPin, Clock, Loader2 } from "lucide-react";
+import { Alert, AlertDescription } from "@/components/ui/alert";
+import { MapPin, Clock, Loader2, AlertTriangle, Navigation } from "lucide-react";
 import { useClockIn } from "@/integrations/supabase/hooks/useTimeClock";
 import { useGeolocation } from "@/hooks/useGeolocation";
+import { useProjectGeofence } from "@/integrations/supabase/hooks/useProjectGeofence";
 import { LocationPermissionDialog } from "./LocationPermissionDialog";
 import { toast } from "sonner";
+import { isWithinGeofence, formatDistance, isValidCoordinates } from "@/utils/geoDistance";
 
 interface Project {
   id: string;
@@ -39,19 +42,31 @@ export function ClockInModal({
   const [selectedProjectId, setSelectedProjectId] = useState<string>("");
   const [isClocking, setIsClocking] = useState(false);
   const [showLocationHelp, setShowLocationHelp] = useState(false);
+  const [geofenceError, setGeofenceError] = useState<string | null>(null);
+  const [distanceFromSite, setDistanceFromSite] = useState<number | null>(null);
 
   const clockIn = useClockIn();
-  const { requestLocation, permissionState } = useGeolocation(false);
+  const { requestLocation, permissionState, geoData } = useGeolocation(false);
+  const { data: projectGeofence, isLoading: loadingGeofence } = useProjectGeofence(selectedProjectId);
 
   const selectedProject = projects.find((p) => p.id === selectedProjectId);
   const requiresLocation = selectedProject?.require_clock_location ?? false;
   const isLocationDenied = permissionState === "denied";
+
+  // Check if project has valid geofence coordinates
+  const hasGeofenceCoordinates = useMemo(() => {
+    if (!projectGeofence) return false;
+    return isValidCoordinates(projectGeofence.site_lat, projectGeofence.site_lng);
+  }, [projectGeofence]);
 
   const handleClockIn = useCallback(async () => {
     if (!selectedProjectId) {
       toast.error("Please select a project");
       return;
     }
+
+    setGeofenceError(null);
+    setDistanceFromSite(null);
 
     // Check if location is required but denied
     if (requiresLocation && isLocationDenied) {
@@ -84,6 +99,35 @@ export function ClockInModal({
           return;
         }
         geoData = locationResult;
+
+        // Check geofence if project has coordinates
+        if (hasGeofenceCoordinates && projectGeofence) {
+          const radiusMiles = projectGeofence.geofence_radius_miles || 0.25;
+          const withinGeofence = isWithinGeofence(
+            geoData.lat!,
+            geoData.lng!,
+            projectGeofence.site_lat!,
+            projectGeofence.site_lng!,
+            radiusMiles
+          );
+
+          if (!withinGeofence) {
+            // Calculate and show distance
+            const { calculateDistanceMiles } = await import("@/utils/geoDistance");
+            const distance = calculateDistanceMiles(
+              geoData.lat!,
+              geoData.lng!,
+              projectGeofence.site_lat!,
+              projectGeofence.site_lng!
+            );
+            setDistanceFromSite(distance);
+            setGeofenceError(
+              `You must be within ${formatDistance(radiusMiles)} of the job site to clock in. You are currently ${formatDistance(distance)} away.`
+            );
+            setIsClocking(false);
+            return;
+          }
+        }
       }
 
       await clockIn.mutateAsync({
@@ -94,16 +138,28 @@ export function ClockInModal({
 
       onOpenChange(false);
       setSelectedProjectId("");
+      setGeofenceError(null);
+      setDistanceFromSite(null);
     } catch (error) {
       // Error handled by mutation
     } finally {
       setIsClocking(false);
     }
-  }, [selectedProjectId, personnelId, requiresLocation, isLocationDenied, requestLocation, clockIn, onOpenChange]);
+  }, [selectedProjectId, personnelId, requiresLocation, isLocationDenied, requestLocation, clockIn, onOpenChange, hasGeofenceCoordinates, projectGeofence]);
+
+  // Reset state when modal closes
+  const handleOpenChange = useCallback((open: boolean) => {
+    if (!open) {
+      setSelectedProjectId("");
+      setGeofenceError(null);
+      setDistanceFromSite(null);
+    }
+    onOpenChange(open);
+  }, [onOpenChange]);
 
   return (
     <>
-      <Dialog open={open} onOpenChange={onOpenChange}>
+      <Dialog open={open} onOpenChange={handleOpenChange}>
         <DialogContent className="sm:max-w-md">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
@@ -115,7 +171,7 @@ export function ClockInModal({
             </DialogDescription>
           </DialogHeader>
 
-          <div className="py-4">
+          <div className="py-4 space-y-4">
             {projects.length === 0 ? (
               <p className="text-muted-foreground text-center py-4">
                 No clock-enabled projects available
@@ -123,7 +179,11 @@ export function ClockInModal({
             ) : (
               <RadioGroup
                 value={selectedProjectId}
-                onValueChange={setSelectedProjectId}
+                onValueChange={(value) => {
+                  setSelectedProjectId(value);
+                  setGeofenceError(null);
+                  setDistanceFromSite(null);
+                }}
                 className="space-y-3"
               >
                 {projects.map((project) => (
@@ -152,24 +212,43 @@ export function ClockInModal({
                 ))}
               </RadioGroup>
             )}
+
+            {/* Geofence warning when project requires location but has no coordinates */}
+            {selectedProjectId && requiresLocation && !loadingGeofence && !hasGeofenceCoordinates && (
+              <Alert className="border-amber-500/50 bg-amber-500/10">
+                <Navigation className="h-4 w-4 text-amber-600" />
+                <AlertDescription className="text-amber-700">
+                  This project requires location but has no job site coordinates configured. 
+                  Location will be captured but geofence verification is disabled.
+                </AlertDescription>
+              </Alert>
+            )}
+
+            {/* Geofence error when user is outside the radius */}
+            {geofenceError && (
+              <Alert variant="destructive">
+                <AlertTriangle className="h-4 w-4" />
+                <AlertDescription>{geofenceError}</AlertDescription>
+              </Alert>
+            )}
           </div>
 
           <DialogFooter className="gap-2 sm:gap-0">
             <Button
               variant="outline"
-              onClick={() => onOpenChange(false)}
+              onClick={() => handleOpenChange(false)}
               disabled={isClocking}
             >
               Cancel
             </Button>
             <Button
               onClick={handleClockIn}
-              disabled={!selectedProjectId || isClocking || projects.length === 0}
+              disabled={!selectedProjectId || isClocking || projects.length === 0 || loadingGeofence}
             >
               {isClocking ? (
                 <>
                   <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                  Clocking In...
+                  {requiresLocation ? "Verifying Location..." : "Clocking In..."}
                 </>
               ) : (
                 "Start Working"
