@@ -36,6 +36,7 @@ import { ConvertRecordTypeDialog } from "@/components/personnel/ConvertRecordTyp
 import { RevokeOnboardingDialog } from "@/components/personnel/RevokeOnboardingDialog";
 import { ReverseApprovalDialog } from "@/components/personnel/ReverseApprovalDialog";
 import { toast } from "sonner";
+import { downloadReceipt, getReceiptFilename } from "@/utils/receiptDownload";
 
 interface ComplianceIssue {
   type: string;
@@ -949,16 +950,23 @@ const PersonnelDetail = () => {
                                       Open
                                     </a>
                                   )}
-                                  <a
-                                    href={reimbursement.receipt_url}
-                                    download
-                                    target="_blank"
-                                    rel="noopener noreferrer"
+                                  <button
+                                    onClick={async () => {
+                                      const filename = getReceiptFilename(
+                                        reimbursement.description,
+                                        reimbursement.submitted_at,
+                                        reimbursement.receipt_url!
+                                      );
+                                      const result = await downloadReceipt(reimbursement.receipt_url!, filename);
+                                      if (!result.success) {
+                                        toast.error(result.error || "Receipt file unavailable");
+                                      }
+                                    }}
                                     className="text-muted-foreground hover:text-foreground flex items-center gap-1"
                                     title="Download receipt"
                                   >
                                     <Download className="h-4 w-4" />
-                                  </a>
+                                  </button>
                                 </div>
                               ) : (
                                 <span className="text-muted-foreground text-sm">None</span>

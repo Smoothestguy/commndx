@@ -9,7 +9,8 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
 import { Textarea } from "@/components/ui/textarea";
 import { format } from "date-fns";
-import { Check, X, DollarSign, Eye, Receipt, Loader2 } from "lucide-react";
+import { Check, X, DollarSign, Eye, Receipt, Loader2, Download } from "lucide-react";
+import { downloadReceipt, getReceiptFilename } from "@/utils/receiptDownload";
 import { toast } from "sonner";
 import { TablePagination } from "@/components/shared/TablePagination";
 import type { Reimbursement } from "@/types/portal";
@@ -189,13 +190,34 @@ export default function Reimbursements() {
                       </TableCell>
                       <TableCell>
                         {reimbursement.receipt_url ? (
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            onClick={() => setPreviewUrl(reimbursement.receipt_url)}
-                          >
-                            <Eye className="h-4 w-4" />
-                          </Button>
+                          <div className="flex items-center gap-1">
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => setPreviewUrl(reimbursement.receipt_url)}
+                              title="Preview receipt"
+                            >
+                              <Eye className="h-4 w-4" />
+                            </Button>
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={async () => {
+                                const filename = getReceiptFilename(
+                                  reimbursement.description,
+                                  reimbursement.submitted_at,
+                                  reimbursement.receipt_url!
+                                );
+                                const result = await downloadReceipt(reimbursement.receipt_url!, filename);
+                                if (!result.success) {
+                                  toast.error(result.error || "Receipt file unavailable");
+                                }
+                              }}
+                              title="Download receipt"
+                            >
+                              <Download className="h-4 w-4" />
+                            </Button>
+                          </div>
                         ) : (
                           <span className="text-muted-foreground text-sm">None</span>
                         )}
@@ -300,13 +322,23 @@ export default function Reimbursements() {
 
       {/* Receipt Preview Dialog */}
       <Dialog open={!!previewUrl} onOpenChange={() => setPreviewUrl(null)}>
-        <DialogContent className="max-w-3xl">
+        <DialogContent className="max-w-3xl max-h-[90vh]">
           <DialogHeader>
             <DialogTitle>Receipt Preview</DialogTitle>
           </DialogHeader>
           {previewUrl && (
-            <div className="flex items-center justify-center max-h-[70vh] overflow-auto">
-              <img src={previewUrl} alt="Receipt" className="max-w-full h-auto" />
+            <div className="flex flex-col gap-4">
+              <div className="flex items-center justify-center max-h-[70vh] overflow-auto">
+                {previewUrl.toLowerCase().endsWith('.pdf') ? (
+                  <iframe
+                    src={previewUrl}
+                    className="w-full h-[70vh] border-0"
+                    title="Receipt PDF"
+                  />
+                ) : (
+                  <img src={previewUrl} alt="Receipt" className="max-w-full h-auto" />
+                )}
+              </div>
             </div>
           )}
         </DialogContent>
