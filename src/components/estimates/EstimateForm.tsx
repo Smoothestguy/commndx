@@ -42,7 +42,7 @@ import { useProjectsByCustomer } from "@/integrations/supabase/hooks/useProjects
 import { useProducts } from "@/integrations/supabase/hooks/useProducts";
 import { useAddEstimate, useUpdateEstimate, EstimateWithLineItems } from "@/integrations/supabase/hooks/useEstimates";
 import { useCompanySettings } from "@/integrations/supabase/hooks/useCompanySettings";
-import { useQuickBooksConfig, useQuickBooksNextNumber } from "@/integrations/supabase/hooks/useQuickBooks";
+import { useQuickBooksConfig } from "@/integrations/supabase/hooks/useQuickBooks";
 import { useUnsavedChangesWarning } from "@/hooks/useUnsavedChangesWarning";
 import { Badge } from "@/components/ui/badge";
 import { z } from "zod";
@@ -52,6 +52,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { PendingAttachmentsUpload, PendingFile } from "@/components/shared/PendingAttachmentsUpload";
 import { finalizeAttachments, cleanupPendingAttachments } from "@/utils/attachmentUtils";
 import { toast } from "sonner";
+import { getNextEstimateNumber } from "@/utils/estimateNumberGenerator";
 import { InlineProductDialog } from "@/components/products/InlineProductDialog";
 import { ImportDocumentDialog } from "./ImportDocumentDialog";
 import { ExtractedItem } from "@/components/job-orders/ExtractedItemsTable";
@@ -114,10 +115,9 @@ export const EstimateForm = ({ initialData }: EstimateFormProps) => {
     fetchUserProfile();
   }, [user?.id]);
 
-  // QuickBooks integration
+  // QuickBooks integration - used to show badge on estimate number
   const { data: qbConfig } = useQuickBooksConfig();
   const isQBConnected = qbConfig?.is_connected ?? false;
-  const { data: qbNextNumber, isLoading: qbNumberLoading } = useQuickBooksNextNumber('estimate', isQBConnected);
 
   // Pending attachments state (for new estimates)
   const [pendingAttachments, setPendingAttachments] = useState<PendingFile[]>([]);
@@ -132,6 +132,7 @@ export const EstimateForm = ({ initialData }: EstimateFormProps) => {
   const [defaultPricingType, setDefaultPricingType] = useState<'markup' | 'margin'>(initialData?.default_pricing_type || 'margin');
   const [defaultMarginPercent, setDefaultMarginPercent] = useState<string>("30");
   const [estimateNumber, setEstimateNumber] = useState<string>(initialData?.number || "");
+  const [isNumberLoading, setIsNumberLoading] = useState(!initialData);
   const [isInitialized, setIsInitialized] = useState(!!initialData);
 
   // Combobox open states
@@ -245,24 +246,28 @@ export const EstimateForm = ({ initialData }: EstimateFormProps) => {
     return products?.filter((p) => p.item_type === type) || [];
   };
 
-  // Generate estimate number
-  const generateEstimateNumber = () => {
-    const date = new Date();
-    const year = date.getFullYear();
-    const random = Math.floor(Math.random() * 1000).toString().padStart(3, "0");
-    return `EST-${year}-${random}`;
-  };
-
-  // Set QuickBooks number when available (only for new estimates)
+  // Fetch estimate number (only for new estimates)
   useEffect(() => {
-    if (!initialData) {
-      if (qbNextNumber) {
-        setEstimateNumber(qbNextNumber);
-      } else if (!estimateNumber) {
-        setEstimateNumber(generateEstimateNumber());
-      }
+    if (!initialData && !estimateNumber) {
+      const fetchEstimateNumber = async () => {
+        setIsNumberLoading(true);
+        try {
+          const { number } = await getNextEstimateNumber();
+          setEstimateNumber(number);
+        } catch (error) {
+          console.error('Failed to generate estimate number:', error);
+          // Fallback to basic format if all else fails
+          const date = new Date();
+          const fallback = `EST-${date.getFullYear()}-${Date.now().toString().slice(-6)}`;
+          setEstimateNumber(fallback);
+          toast.error('Failed to generate estimate number, using fallback');
+        } finally {
+          setIsNumberLoading(false);
+        }
+      };
+      fetchEstimateNumber();
     }
-  }, [qbNextNumber, initialData]);
+  }, [initialData]);
 
   const calculateLineItemTotal = (quantity: string, unitPrice: string, percentage: string, pricingType: 'markup' | 'margin') => {
     const qty = parseFloat(quantity) || 0;
@@ -724,19 +729,22 @@ export const EstimateForm = ({ initialData }: EstimateFormProps) => {
                   <Label htmlFor="estimateNumber">Estimate Number</Label>
                   {isQBConnected && (
                     <Badge variant="outline" className="text-xs">
-                      {qbNumberLoading ? (
-                        <Loader2 className="h-3 w-3 animate-spin mr-1" />
-                      ) : null}
                       QuickBooks
                     </Badge>
                   )}
                 </div>
-                <Input
-                  id="estimateNumber"
-                  value={estimateNumber}
-                  onChange={(e) => setEstimateNumber(e.target.value)}
-                  className="bg-secondary border-border"
-                />
+                <div className="relative">
+                  <Input
+                    id="estimateNumber"
+                    value={estimateNumber}
+                    onChange={(e) => setEstimateNumber(e.target.value)}
+                    className="bg-secondary border-border"
+                    disabled={isNumberLoading}
+                  />
+                  {isNumberLoading && (
+                    <Loader2 className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 animate-spin text-muted-foreground" />
+                  )}
+                </div>
               </div>
 
               <div className="space-y-2">
