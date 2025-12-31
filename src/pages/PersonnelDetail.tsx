@@ -1,4 +1,4 @@
-import { useParams } from "react-router-dom";
+import { useParams, useSearchParams } from "react-router-dom";
 import { DetailPageLayout } from "@/components/layout/DetailPageLayout";
 import { SEO } from "@/components/SEO";
 import { usePersonnelById, useResendOnboardingEmail, useUpdatePersonnelRating, useUpdatePersonnel } from "@/integrations/supabase/hooks/usePersonnel";
@@ -50,6 +50,8 @@ interface ComplianceIssue {
 
 const PersonnelDetail = () => {
   const { id } = useParams<{ id: string }>();
+  const [searchParams] = useSearchParams();
+  const defaultTab = searchParams.get("tab") || "overview";
   const { data: personnel, isLoading } = usePersonnelById(id);
   const { data: existingInvitation } = usePersonnelInvitationCheck(id);
   const resendOnboardingEmail = useResendOnboardingEmail();
@@ -533,7 +535,7 @@ const PersonnelDetail = () => {
           </Card>
         )}
 
-        <Tabs defaultValue="personal" className="w-full">
+        <Tabs defaultValue={defaultTab} className="w-full">
           <ScrollArea className="w-full whitespace-nowrap">
             <TabsList className="inline-flex w-max min-w-full h-auto gap-1 p-1">
               <TabsTrigger value="personal" className="px-3 py-1.5">Personal</TabsTrigger>
