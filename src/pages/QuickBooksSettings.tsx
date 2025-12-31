@@ -30,6 +30,7 @@ import {
   useImportInvoicesFromQB,
   useImportAccountsFromQB,
 } from "@/integrations/supabase/hooks/useQuickBooks";
+import { useImportEstimatesFromQuickBooks } from "@/integrations/supabase/hooks/useEstimates";
 import {
   useAutoSyncPersonnelToQB,
   useToggleAutoSyncPersonnelToQB,
@@ -53,6 +54,7 @@ import {
   UserCheck,
   Receipt,
   FolderOpen,
+  FileText,
 } from "lucide-react";
 import { format } from "date-fns";
 import { toast } from "sonner";
@@ -91,6 +93,9 @@ const QuickBooksSettings = () => {
 
   // Invoice import
   const importInvoices = useImportInvoicesFromQB();
+
+  // Estimate import from QuickBooks
+  const importEstimates = useImportEstimatesFromQuickBooks();
 
   // Expense categories/accounts import
   const importAccounts = useImportAccountsFromQB();
@@ -188,6 +193,7 @@ const QuickBooksSettings = () => {
     importVendors.isPending ||
     exportVendors.isPending ||
     importInvoices.isPending ||
+    importEstimates.isPending ||
     importAccounts.isPending;
 
   return (
@@ -499,6 +505,42 @@ const QuickBooksSettings = () => {
                   </Button>
                   <p className="text-xs text-muted-foreground">
                     Imports all invoices from QuickBooks. Customers must be synced first for invoices to be imported.
+                  </p>
+                </CardContent>
+              </Card>
+
+              {/* Estimates Import */}
+              <Card>
+                <CardHeader className="p-4 sm:p-6">
+                  <CardTitle className="flex items-center gap-2 text-base sm:text-lg">
+                    <FileText className="h-4 w-4 sm:h-5 sm:w-5 shrink-0" />
+                    Estimates Import
+                  </CardTitle>
+                  <CardDescription className="text-xs sm:text-sm">
+                    Import existing estimates from QuickBooks into CommandX
+                  </CardDescription>
+                </CardHeader>
+                <CardContent className="p-4 sm:p-6 pt-0 sm:pt-0 space-y-3 sm:space-y-4">
+                  <Button
+                    variant="outline"
+                    className="w-full min-h-[44px]"
+                    onClick={() => importEstimates.mutate()}
+                    disabled={isSyncing}
+                  >
+                    {importEstimates.isPending ? (
+                      <>
+                        <RefreshCw className="h-4 w-4 mr-2 animate-spin shrink-0" />
+                        Importing...
+                      </>
+                    ) : (
+                      <>
+                        <Download className="h-4 w-4 mr-2 shrink-0" />
+                        Import Estimates from QB
+                      </>
+                    )}
+                  </Button>
+                  <p className="text-xs text-muted-foreground">
+                    Imports estimates from QuickBooks with consistent numbering. Customers must be synced first.
                   </p>
                 </CardContent>
               </Card>
