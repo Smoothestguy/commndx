@@ -72,7 +72,7 @@ const statusConfig: Record<
 export default function ChangeOrderDetail() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
-  const { data: changeOrder, isLoading } = useChangeOrder(id);
+  const { data: changeOrder, isLoading, error, isError } = useChangeOrder(id);
   const deleteChangeOrder = useDeleteChangeOrder();
   const hardDeleteChangeOrder = useHardDeleteChangeOrder();
   const updateStatus = useUpdateChangeOrderStatus();
@@ -121,6 +121,18 @@ export default function ChangeOrderDetail() {
       <DetailPageLayout title="Change Order" backPath="/projects">
         <div className="flex items-center justify-center py-12">
           <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+        </div>
+      </DetailPageLayout>
+    );
+  }
+
+  if (isError) {
+    return (
+      <DetailPageLayout title="Error Loading Change Order" backPath="/projects">
+        <div className="text-center py-12">
+          <AlertTriangle className="h-12 w-12 text-destructive mx-auto mb-4" />
+          <p className="text-muted-foreground">Failed to load change order. Please try again.</p>
+          <p className="text-sm text-muted-foreground mt-2">{(error as Error)?.message}</p>
         </div>
       </DetailPageLayout>
     );
