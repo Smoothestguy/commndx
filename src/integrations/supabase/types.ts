@@ -7004,7 +7004,13 @@ export type Database = {
         | "note"
         | "site_visit"
         | "follow_up"
-      app_role: "admin" | "manager" | "user" | "personnel" | "vendor"
+      app_role:
+        | "admin"
+        | "manager"
+        | "user"
+        | "personnel"
+        | "vendor"
+        | "accounting"
       applicant_status: "new" | "approved" | "rejected" | "inactive"
       application_status:
         | "submitted"
@@ -7248,7 +7254,14 @@ export const Constants = {
         "site_visit",
         "follow_up",
       ],
-      app_role: ["admin", "manager", "user", "personnel", "vendor"],
+      app_role: [
+        "admin",
+        "manager",
+        "user",
+        "personnel",
+        "vendor",
+        "accounting",
+      ],
       applicant_status: ["new", "approved", "rejected", "inactive"],
       application_status: [
         "submitted",

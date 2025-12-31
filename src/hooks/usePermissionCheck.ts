@@ -9,13 +9,23 @@ export interface PermissionCheckResult {
   loading: boolean;
 }
 
+// Financial modules that the accounting role has full access to
+const ACCOUNTING_MODULES: ModuleKey[] = [
+  'document_center',
+  'invoices',
+  'estimates',
+  'purchase_orders',
+  'change_orders',
+];
+
 /**
  * Hook to check if the current user has permissions for a specific module.
  * Admins and managers always have full access.
+ * Accounting role has full access to financial modules only.
  * Regular users check against their user_permissions entries.
  */
 export function usePermissionCheck(module: ModuleKey): PermissionCheckResult {
-  const { isAdmin, isManager, loading: roleLoading } = useUserRole();
+  const { isAdmin, isManager, isAccounting, loading: roleLoading } = useUserRole();
   const { data: permissions, isLoading: permLoading } = useMyPermissions();
 
   // While loading, return safe defaults (no access)
@@ -51,6 +61,17 @@ export function usePermissionCheck(module: ModuleKey): PermissionCheckResult {
     };
   }
 
+  // Accounting role has full access to financial modules only
+  if (isAccounting && ACCOUNTING_MODULES.includes(module)) {
+    return {
+      canView: true,
+      canAdd: true,
+      canEdit: true,
+      canDelete: true,
+      loading: false,
+    };
+  }
+
   // Check granular permissions for regular users
   const modulePermission = permissions?.find(p => p.module === module);
 
@@ -65,17 +86,17 @@ export function usePermissionCheck(module: ModuleKey): PermissionCheckResult {
 
 /**
  * Hook to check if the user has access to any admin-level feature.
- * Returns true for admins/managers OR users with specific admin module permissions.
+ * Returns true for admins/managers/accounting OR users with specific admin module permissions.
  */
 export function useHasAdminAccess(): { hasAccess: boolean; loading: boolean } {
-  const { isAdmin, isManager, loading: roleLoading } = useUserRole();
+  const { isAdmin, isManager, isAccounting, loading: roleLoading } = useUserRole();
   const { data: permissions, isLoading: permLoading } = useMyPermissions();
 
   if (roleLoading || permLoading) {
     return { hasAccess: false, loading: true };
   }
 
-  if (isAdmin || isManager) {
+  if (isAdmin || isManager || isAccounting) {
     return { hasAccess: true, loading: false };
   }
 

@@ -85,6 +85,7 @@ export function useUserRole() {
     isAdmin: role === "admin",
     isManager: role === "manager",
     isUser: role === "user",
+    isAccounting: role === "accounting",
     isPersonnel, // Now checks personnel table directly, not user_roles
     isVendor, // Now checks vendors table directly, not user_roles
   };
