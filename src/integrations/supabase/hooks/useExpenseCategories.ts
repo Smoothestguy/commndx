@@ -147,3 +147,94 @@ export const useDeleteExpenseCategory = () => {
     },
   });
 };
+
+// QuickBooks account for linking
+export interface QuickBooksAccount {
+  id: string;
+  name: string;
+  type: string;
+  subType: string | null;
+  isMapped: boolean;
+}
+
+// Fetch available QuickBooks accounts for manual linking
+export const useQuickBooksAccounts = () => {
+  return useQuery({
+    queryKey: ["quickbooks-accounts"],
+    queryFn: async () => {
+      const { data, error } = await supabase.functions.invoke('quickbooks-sync-accounts', {
+        body: { action: 'list' },
+      });
+      if (error) throw error;
+      if (!data.success) throw new Error(data.error || 'Failed to fetch accounts');
+      return data.accounts as QuickBooksAccount[];
+    },
+  });
+};
+
+// Link a category to a QuickBooks account
+export const useLinkCategoryToQuickBooks = () => {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async ({ 
+      categoryId, 
+      qbAccountId, 
+      qbAccountName, 
+      qbAccountType,
+      qbAccountSubType 
+    }: { 
+      categoryId: string; 
+      qbAccountId: string; 
+      qbAccountName: string; 
+      qbAccountType: string;
+      qbAccountSubType?: string | null;
+    }) => {
+      const { error } = await supabase
+        .from('quickbooks_account_mappings')
+        .insert({
+          expense_category_id: categoryId,
+          quickbooks_account_id: qbAccountId,
+          quickbooks_account_name: qbAccountName,
+          quickbooks_account_type: qbAccountType,
+          quickbooks_account_subtype: qbAccountSubType || null,
+          sync_status: 'synced',
+          last_synced_at: new Date().toISOString(),
+        });
+
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["expense-categories-with-mapping"] });
+      queryClient.invalidateQueries({ queryKey: ["quickbooks-accounts"] });
+      toast.success("Category linked to QuickBooks");
+    },
+    onError: (error: Error) => {
+      toast.error(`Failed to link category: ${error.message}`);
+    },
+  });
+};
+
+// Unlink a category from QuickBooks
+export const useUnlinkCategoryFromQuickBooks = () => {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async (categoryId: string) => {
+      const { error } = await supabase
+        .from('quickbooks_account_mappings')
+        .delete()
+        .eq('expense_category_id', categoryId);
+
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["expense-categories-with-mapping"] });
+      queryClient.invalidateQueries({ queryKey: ["quickbooks-accounts"] });
+      toast.success("Category unlinked from QuickBooks");
+    },
+    onError: (error: Error) => {
+      toast.error(`Failed to unlink category: ${error.message}`);
+    },
+  });
+};

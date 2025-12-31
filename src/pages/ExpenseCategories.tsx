@@ -46,7 +46,9 @@ import {
   Trash2, 
   Cloud, 
   Loader2,
-  ArrowLeft 
+  ArrowLeft,
+  Link2,
+  Unlink,
 } from "lucide-react";
 import { Link } from "react-router-dom";
 import {
@@ -54,7 +56,11 @@ import {
   useAddExpenseCategory,
   useUpdateExpenseCategory,
   useDeleteExpenseCategory,
+  useQuickBooksAccounts,
+  useLinkCategoryToQuickBooks,
+  useUnlinkCategoryFromQuickBooks,
   ExpenseCategoryType,
+  ExpenseCategoryWithMapping,
 } from "@/integrations/supabase/hooks/useExpenseCategories";
 
 interface CategoryFormData {
@@ -75,13 +81,19 @@ const ExpenseCategories = () => {
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
-  const [selectedCategory, setSelectedCategory] = useState<any>(null);
+  const [isLinkDialogOpen, setIsLinkDialogOpen] = useState(false);
+  const [isUnlinkDialogOpen, setIsUnlinkDialogOpen] = useState(false);
+  const [selectedCategory, setSelectedCategory] = useState<ExpenseCategoryWithMapping | null>(null);
+  const [selectedQbAccountId, setSelectedQbAccountId] = useState<string>("");
   const [formData, setFormData] = useState<CategoryFormData>(defaultFormData);
 
   const { data: categories, isLoading } = useExpenseCategoriesWithMapping();
+  const { data: qbAccounts, isLoading: isLoadingQbAccounts } = useQuickBooksAccounts();
   const addCategory = useAddExpenseCategory();
   const updateCategory = useUpdateExpenseCategory();
   const deleteCategory = useDeleteExpenseCategory();
+  const linkCategory = useLinkCategoryToQuickBooks();
+  const unlinkCategory = useUnlinkCategoryFromQuickBooks();
 
   const filteredCategories = categories?.filter((cat) => {
     const matchesSearch = cat.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
@@ -105,9 +117,44 @@ const ExpenseCategories = () => {
     setIsEditDialogOpen(true);
   };
 
-  const handleDelete = (category: any) => {
+  const handleDelete = (category: ExpenseCategoryWithMapping) => {
     setSelectedCategory(category);
     setIsDeleteDialogOpen(true);
+  };
+
+  const handleLink = (category: ExpenseCategoryWithMapping) => {
+    setSelectedCategory(category);
+    setSelectedQbAccountId("");
+    setIsLinkDialogOpen(true);
+  };
+
+  const handleUnlink = (category: ExpenseCategoryWithMapping) => {
+    setSelectedCategory(category);
+    setIsUnlinkDialogOpen(true);
+  };
+
+  const handleLinkSubmit = async () => {
+    if (!selectedCategory || !selectedQbAccountId) return;
+    const qbAccount = qbAccounts?.find(a => a.id === selectedQbAccountId);
+    if (!qbAccount) return;
+    
+    await linkCategory.mutateAsync({
+      categoryId: selectedCategory.id,
+      qbAccountId: qbAccount.id,
+      qbAccountName: qbAccount.name,
+      qbAccountType: qbAccount.type,
+      qbAccountSubType: qbAccount.subType,
+    });
+    setIsLinkDialogOpen(false);
+    setSelectedCategory(null);
+    setSelectedQbAccountId("");
+  };
+
+  const handleUnlinkConfirm = async () => {
+    if (!selectedCategory) return;
+    await unlinkCategory.mutateAsync(selectedCategory.id);
+    setIsUnlinkDialogOpen(false);
+    setSelectedCategory(null);
   };
 
   const handleAddSubmit = async () => {
@@ -240,7 +287,26 @@ const ExpenseCategories = () => {
                           )}
                         </TableCell>
                         <TableCell className="text-right">
-                          <div className="flex items-center justify-end gap-2">
+                          <div className="flex items-center justify-end gap-1">
+                            {category.quickbooks_account_id ? (
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                onClick={() => handleUnlink(category)}
+                                title="Unlink from QuickBooks"
+                              >
+                                <Unlink className="h-4 w-4" />
+                              </Button>
+                            ) : (
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                onClick={() => handleLink(category)}
+                                title="Link to QuickBooks"
+                              >
+                                <Link2 className="h-4 w-4" />
+                              </Button>
+                            )}
                             <Button
                               variant="ghost"
                               size="icon"
@@ -407,6 +473,79 @@ const ExpenseCategories = () => {
             >
               {deleteCategory.isPending && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
               Delete
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {/* Link to QuickBooks Dialog */}
+      <Dialog open={isLinkDialogOpen} onOpenChange={setIsLinkDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Link to QuickBooks Account</DialogTitle>
+            <DialogDescription>
+              Select a QuickBooks account to link with "{selectedCategory?.name}"
+            </DialogDescription>
+          </DialogHeader>
+          <div className="py-4">
+            <Label htmlFor="qb-account">QuickBooks Account</Label>
+            <Select value={selectedQbAccountId} onValueChange={setSelectedQbAccountId}>
+              <SelectTrigger className="mt-2">
+                <SelectValue placeholder="Select an account..." />
+              </SelectTrigger>
+              <SelectContent>
+                {isLoadingQbAccounts ? (
+                  <div className="flex items-center justify-center py-4">
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                  </div>
+                ) : (
+                  qbAccounts
+                    ?.filter(acc => !acc.isMapped)
+                    .map((acc) => (
+                      <SelectItem key={acc.id} value={acc.id}>
+                        {acc.name} ({acc.type})
+                      </SelectItem>
+                    ))
+                )}
+              </SelectContent>
+            </Select>
+            {qbAccounts && qbAccounts.filter(a => !a.isMapped).length === 0 && (
+              <p className="text-sm text-muted-foreground mt-2">
+                All QuickBooks accounts are already linked.
+              </p>
+            )}
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setIsLinkDialogOpen(false)}>
+              Cancel
+            </Button>
+            <Button 
+              onClick={handleLinkSubmit} 
+              disabled={!selectedQbAccountId || linkCategory.isPending}
+            >
+              {linkCategory.isPending && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
+              Link Account
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Unlink Confirmation */}
+      <AlertDialog open={isUnlinkDialogOpen} onOpenChange={setIsUnlinkDialogOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Unlink from QuickBooks</AlertDialogTitle>
+            <AlertDialogDescription>
+              Are you sure you want to unlink "{selectedCategory?.name}" from QuickBooks? The category will no longer sync with QuickBooks.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={handleUnlinkConfirm}
+            >
+              {unlinkCategory.isPending && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
+              Unlink
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

@@ -99,6 +99,39 @@ serve(async (req) => {
     const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
     const { accessToken, realmId } = await getValidToken(supabase);
 
+    // List action - return available QB accounts for manual linking
+    if (action === 'list') {
+      console.log('Fetching QuickBooks expense accounts for manual linking...');
+      
+      // Query QuickBooks for expense-type accounts
+      const query = "SELECT * FROM Account WHERE AccountType IN ('Expense', 'Cost of Goods Sold', 'Other Expense') AND Active = true MAXRESULTS 500";
+      const result = await qbRequest('GET', `/query?query=${encodeURIComponent(query)}&minorversion=65`, accessToken, realmId);
+      
+      const qbAccounts = result.QueryResponse?.Account || [];
+      
+      // Get existing mappings to mark which accounts are already linked
+      const { data: mappings } = await supabase
+        .from('quickbooks_account_mappings')
+        .select('quickbooks_account_id');
+      
+      const mappedIds = new Set(mappings?.map(m => m.quickbooks_account_id) || []);
+      
+      // Return accounts with mapped flag
+      const accounts = qbAccounts.map((acc: any) => ({
+        id: acc.Id,
+        name: acc.Name,
+        type: acc.AccountType,
+        subType: acc.AccountSubType || null,
+        isMapped: mappedIds.has(acc.Id)
+      }));
+      
+      console.log(`Found ${accounts.length} QB accounts, ${mappedIds.size} already mapped`);
+      
+      return new Response(JSON.stringify({ success: true, accounts }), {
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+    }
+
     if (action === 'import') {
       console.log('Importing expense accounts from QuickBooks...');
       
