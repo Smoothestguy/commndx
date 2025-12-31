@@ -78,6 +78,7 @@ export function useChangeOrders(filters?: { projectId?: string; status?: ChangeO
       let query = supabase
         .from("change_orders")
         .select("*, project:projects(id, name)")
+        .is("deleted_at", null)
         .order("created_at", { ascending: false });
 
       if (filters?.projectId) {
@@ -110,9 +111,15 @@ export function useChangeOrder(id: string | undefined) {
           job_order:job_orders(id, number)
         `)
         .eq("id", id)
-        .single();
+        .is("deleted_at", null)
+        .maybeSingle();
 
-      if (error) throw error;
+      if (error) {
+        console.error('Error fetching change order:', error);
+        throw error;
+      }
+
+      if (!changeOrder) return null;
 
       const { data: lineItems, error: lineItemsError } = await supabase
         .from("change_order_line_items")
@@ -142,6 +149,7 @@ export function useChangeOrdersByProject(projectId: string | undefined) {
         .from("change_orders")
         .select("*")
         .eq("project_id", projectId)
+        .is("deleted_at", null)
         .order("number", { ascending: true });
 
       if (error) throw error;
@@ -162,6 +170,7 @@ export function useChangeOrdersByPurchaseOrder(purchaseOrderId: string | undefin
         .from("change_orders")
         .select("*")
         .eq("purchase_order_id", purchaseOrderId)
+        .is("deleted_at", null)
         .order("number", { ascending: true });
 
       if (error) throw error;
