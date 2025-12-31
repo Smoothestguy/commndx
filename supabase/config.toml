@@ -170,3 +170,6 @@ verify_jwt = false
 
 [functions.send-application-sms-confirmation]
 verify_jwt = false
+
+[functions.quickbooks-sync-accounts]
+verify_jwt = false

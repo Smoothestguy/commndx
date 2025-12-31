@@ -4545,6 +4545,53 @@ export type Database = {
           },
         ]
       }
+      quickbooks_account_mappings: {
+        Row: {
+          created_at: string | null
+          expense_category_id: string
+          id: string
+          last_synced_at: string | null
+          quickbooks_account_id: string
+          quickbooks_account_name: string | null
+          quickbooks_account_subtype: string | null
+          quickbooks_account_type: string | null
+          sync_status: string
+          updated_at: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          expense_category_id: string
+          id?: string
+          last_synced_at?: string | null
+          quickbooks_account_id: string
+          quickbooks_account_name?: string | null
+          quickbooks_account_subtype?: string | null
+          quickbooks_account_type?: string | null
+          sync_status?: string
+          updated_at?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          expense_category_id?: string
+          id?: string
+          last_synced_at?: string | null
+          quickbooks_account_id?: string
+          quickbooks_account_name?: string | null
+          quickbooks_account_subtype?: string | null
+          quickbooks_account_type?: string | null
+          sync_status?: string
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "quickbooks_account_mappings_expense_category_id_fkey"
+            columns: ["expense_category_id"]
+            isOneToOne: false
+            referencedRelation: "expense_categories"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       quickbooks_bill_mappings: {
         Row: {
           bill_id: string
@@ -4959,6 +5006,7 @@ export type Database = {
         Row: {
           amount: number
           category: string
+          category_id: string | null
           created_at: string | null
           description: string
           id: string
@@ -4977,6 +5025,7 @@ export type Database = {
         Insert: {
           amount: number
           category?: string
+          category_id?: string | null
           created_at?: string | null
           description: string
           id?: string
@@ -4995,6 +5044,7 @@ export type Database = {
         Update: {
           amount?: number
           category?: string
+          category_id?: string | null
           created_at?: string | null
           description?: string
           id?: string
@@ -5011,6 +5061,13 @@ export type Database = {
           updated_at?: string | null
         }
         Relationships: [
+          {
+            foreignKeyName: "reimbursements_category_id_fkey"
+            columns: ["category_id"]
+            isOneToOne: false
+            referencedRelation: "expense_categories"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "reimbursements_payment_id_fkey"
             columns: ["payment_id"]

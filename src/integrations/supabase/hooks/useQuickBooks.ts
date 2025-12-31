@@ -706,3 +706,29 @@ export const useImportInvoicesFromQB = () => {
     },
   });
 };
+
+// Import expense categories/accounts from QuickBooks
+export const useImportAccountsFromQB = () => {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async () => {
+      const { data, error } = await supabase.functions.invoke('quickbooks-sync-accounts', {
+        body: { action: 'import' },
+      });
+
+      if (error) throw error;
+      if (data.error) throw new Error(data.error);
+      return data;
+    },
+    onSuccess: (data) => {
+      queryClient.invalidateQueries({ queryKey: ["expense-categories"] });
+      queryClient.invalidateQueries({ queryKey: ["quickbooks-sync-logs"] });
+      const message = `Imported ${data.imported} categories, updated ${data.updated}${data.skipped > 0 ? `, skipped ${data.skipped}` : ''}`;
+      toast.success(message);
+    },
+    onError: (error: Error) => {
+      toast.error(`Import failed: ${error.message}`);
+    },
+  });
+};
