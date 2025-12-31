@@ -6,15 +6,22 @@ import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
-import { ArrowLeft, Edit, Trash2, DollarSign, Calendar, Building2 } from "lucide-react";
+import { ArrowLeft, Edit, Trash2, DollarSign, Calendar, Building2, FileText, ChevronDown } from "lucide-react";
 import { formatLocalDate } from "@/lib/dateUtils";
 import { useState } from "react";
 import { useVendorBill, useDeleteVendorBill } from "@/integrations/supabase/hooks/useVendorBills";
+import { usePersonnelForVendor } from "@/integrations/supabase/hooks/useVendorPersonnelData";
 import { VendorBillPaymentDialog } from "@/components/vendor-bills/VendorBillPaymentDialog";
 import { VendorBillPaymentHistory } from "@/components/vendor-bills/VendorBillPaymentHistory";
 import { VendorBillAttachments } from "@/components/vendor-bills/VendorBillAttachments";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { AlertTriangle } from "lucide-react";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 
 export default function VendorBillDetail() {
   const { id } = useParams();
@@ -24,6 +31,7 @@ export default function VendorBillDetail() {
 
   const { data: bill, isLoading } = useVendorBill(id);
   const deleteBill = useDeleteVendorBill();
+  const { data: linkedPersonnel } = usePersonnelForVendor(bill?.vendor_id);
 
   const handleDelete = () => {
     if (id) {
@@ -70,7 +78,38 @@ export default function VendorBillDetail() {
             <ArrowLeft className="h-4 w-4 mr-2" />
             Back to Bills
           </Button>
-          <div className="flex gap-2">
+          <div className="flex gap-2 flex-wrap">
+            {linkedPersonnel && linkedPersonnel.length > 0 && (
+              linkedPersonnel.length === 1 ? (
+                <Button 
+                  variant="outline" 
+                  onClick={() => navigate(`/personnel/${linkedPersonnel[0].id}?tab=documents`)}
+                >
+                  <FileText className="h-4 w-4 mr-2" />
+                  Personnel Docs
+                </Button>
+              ) : (
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <Button variant="outline">
+                      <FileText className="h-4 w-4 mr-2" />
+                      Personnel Docs
+                      <ChevronDown className="h-4 w-4 ml-1" />
+                    </Button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent>
+                    {linkedPersonnel.map((person) => (
+                      <DropdownMenuItem 
+                        key={person.id}
+                        onClick={() => navigate(`/personnel/${person.id}?tab=documents`)}
+                      >
+                        {person.first_name} {person.last_name}
+                      </DropdownMenuItem>
+                    ))}
+                  </DropdownMenuContent>
+                </DropdownMenu>
+              )
+            )}
             {bill.status !== "paid" && (
               <Button onClick={() => setPaymentOpen(true)}>
                 <DollarSign className="h-4 w-4 mr-2" />
