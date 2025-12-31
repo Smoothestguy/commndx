@@ -168,6 +168,22 @@ export function useAssignPersonnelToProject() {
         .single();
 
       if (error) throw error;
+      
+      // Send SMS notification for the assignment
+      try {
+        await supabase.functions.invoke('send-assignment-sms', {
+          body: {
+            personnelId: data.personnel_id,
+            projectId: data.project_id,
+            assignmentId: data.id
+          }
+        });
+        console.log(`Assignment SMS sent for personnel ${data.personnel_id}`);
+      } catch (smsError) {
+        console.error(`Failed to send assignment SMS:`, smsError);
+        // Don't fail the assignment if SMS fails
+      }
+      
       return data;
     },
     onSuccess: () => {
@@ -215,6 +231,24 @@ export function useBulkAssignPersonnelToProject() {
         .select();
 
       if (error) throw error;
+      
+      // Send SMS notifications for each assignment
+      for (const assignment of data) {
+        try {
+          await supabase.functions.invoke('send-assignment-sms', {
+            body: {
+              personnelId: assignment.personnel_id,
+              projectId: assignment.project_id,
+              assignmentId: assignment.id
+            }
+          });
+          console.log(`Assignment SMS sent for personnel ${assignment.personnel_id}`);
+        } catch (smsError) {
+          console.error(`Failed to send assignment SMS for personnel ${assignment.personnel_id}:`, smsError);
+          // Don't fail the assignment if SMS fails
+        }
+      }
+      
       return data;
     },
     onSuccess: (data) => {
@@ -423,6 +457,48 @@ export function useBulkRemovePersonnelFromProject() {
     },
     onError: () => {
       toast.error("Failed to remove personnel from projects");
+    },
+  });
+}
+
+// Resend assignment SMS notification
+export function useResendAssignmentSMS() {
+  return useMutation({
+    mutationFn: async ({
+      personnelId,
+      projectId,
+      assignmentId,
+      scheduledDate,
+      scheduledStartTime
+    }: {
+      personnelId: string;
+      projectId: string;
+      assignmentId?: string;
+      scheduledDate?: string;
+      scheduledStartTime?: string;
+    }) => {
+      const { data, error } = await supabase.functions.invoke('send-assignment-sms', {
+        body: {
+          personnelId,
+          projectId,
+          assignmentId,
+          scheduledDate,
+          scheduledStartTime
+        }
+      });
+
+      if (error) throw error;
+      return data;
+    },
+    onSuccess: (data) => {
+      if (data?.skipped) {
+        toast.info(data.reason || "SMS was already sent");
+      } else {
+        toast.success("Assignment SMS sent successfully");
+      }
+    },
+    onError: (error: Error) => {
+      toast.error(`Failed to send SMS: ${error.message}`);
     },
   });
 }
