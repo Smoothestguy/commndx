@@ -274,7 +274,10 @@ export const useUpdateEstimate = () => {
 
       // Auto-sync to QuickBooks if connected and estimate is synced
       try {
+        console.log("[QB Sync] Checking QuickBooks connection for estimate update:", data.id);
         const qbConnected = await isQuickBooksConnected();
+        console.log("[QB Sync] QuickBooks connected:", qbConnected);
+        
         if (qbConnected) {
           // Check if estimate was previously synced
           const { data: mapping } = await supabase
@@ -283,15 +286,32 @@ export const useUpdateEstimate = () => {
             .eq("estimate_id", data.id)
             .maybeSingle();
 
+          console.log("[QB Sync] Estimate mapping found:", mapping);
+
           if (mapping && mapping.sync_status !== "voided") {
-            console.log("QuickBooks connected - updating estimate:", data.id);
-            await supabase.functions.invoke("quickbooks-update-estimate", {
+            console.log("[QB Sync] Invoking quickbooks-update-estimate for:", data.id);
+            const { data: syncResult, error: syncError } = await supabase.functions.invoke("quickbooks-update-estimate", {
               body: { estimateId: data.id },
             });
+            
+            if (syncError) {
+              console.error("[QB Sync] Edge function error:", syncError);
+            } else {
+              console.log("[QB Sync] Sync result:", syncResult);
+              if (syncResult?.success) {
+                console.log("[QB Sync] Estimate successfully synced to QuickBooks");
+              } else if (syncResult?.error) {
+                console.error("[QB Sync] Sync failed:", syncResult.error);
+              }
+            }
+          } else if (!mapping) {
+            console.log("[QB Sync] No existing mapping - estimate not yet synced to QuickBooks");
+          } else {
+            console.log("[QB Sync] Estimate is voided in QuickBooks, skipping update");
           }
         }
       } catch (qbError) {
-        console.error("QuickBooks update sync error (non-blocking):", qbError);
+        console.error("[QB Sync] QuickBooks update sync error (non-blocking):", qbError);
       }
 
       return estimateData;
