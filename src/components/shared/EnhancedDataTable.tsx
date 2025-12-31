@@ -51,6 +51,8 @@ interface EnhancedDataTableProps<T> {
   selectedIds?: Set<string>;
   onSelectionChange?: (ids: Set<string>) => void;
   compact?: boolean;
+  defaultSortKey?: string;
+  defaultSortDirection?: 'asc' | 'desc';
 }
 
 interface SortableHeaderProps {
@@ -107,6 +109,8 @@ export function EnhancedDataTable<T extends { id: string | number }>({
   selectedIds = new Set(),
   onSelectionChange,
   compact = true,
+  defaultSortKey,
+  defaultSortDirection = 'desc',
 }: EnhancedDataTableProps<T>) {
   const defaultColumnKeys = columns.map(col => String(col.key));
   
@@ -119,6 +123,8 @@ export function EnhancedDataTable<T extends { id: string | number }>({
   } = useTablePreferences({
     tableId,
     defaultColumns: defaultColumnKeys,
+    defaultSortKey,
+    defaultSortDirection,
   });
 
   const sensors = useSensors(
