@@ -930,7 +930,7 @@ export type Database = {
           project_id: string
           purchase_order_id?: string | null
           reason: string
-          remaining_amount: number
+          remaining_amount?: number
           scope_reference?: string | null
           source_estimate_id?: string | null
           source_job_order_id?: string | null
