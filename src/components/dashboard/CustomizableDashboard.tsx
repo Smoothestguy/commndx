@@ -303,9 +303,17 @@ export function CustomizableDashboard({
   };
 
   // Calculate which cells are occupied by widgets (0-indexed)
+  // Only mark cells as occupied if the widget will actually render
   const getOccupiedCells = useMemo(() => {
     const occupied = new Set<string>();
     for (const lw of draftLayout.widgets) {
+      // Check if widget will actually render
+      const widget = draftWidgets.find((w) => w.id === lw.widgetId);
+      const registryEntry = widget ? WIDGET_REGISTRY[widget.id] : null;
+      
+      // Skip if widget won't render (no registry entry or not visible)
+      if (!widget || !widget.visible || !registryEntry) continue;
+      
       for (let r = lw.position.row; r < lw.position.row + lw.size.height; r++) {
         for (
           let c = lw.position.col;
@@ -317,7 +325,7 @@ export function CustomizableDashboard({
       }
     }
     return occupied;
-  }, [draftLayout.widgets]);
+  }, [draftLayout.widgets, draftWidgets]);
 
   // Calculate the max row needed (0-indexed)
   const maxRow = useMemo(() => {
