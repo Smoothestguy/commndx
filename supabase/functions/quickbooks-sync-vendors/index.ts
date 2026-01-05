@@ -11,9 +11,63 @@ const QUICKBOOKS_CLIENT_ID = Deno.env.get('QUICKBOOKS_CLIENT_ID');
 const QUICKBOOKS_CLIENT_SECRET = Deno.env.get('QUICKBOOKS_CLIENT_SECRET');
 const SUPABASE_URL = Deno.env.get('SUPABASE_URL')!;
 const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
+const SUPABASE_ANON_KEY = Deno.env.get('SUPABASE_ANON_KEY')!;
 
 const QB_API_BASE = 'https://quickbooks.api.intuit.com/v3/company';
 const BATCH_SIZE = 100;
+
+// Authentication helper - validates user and checks admin/manager role
+async function authenticateRequest(req: Request): Promise<{ userId: string; error?: never } | { userId?: never; error: Response }> {
+  const authHeader = req.headers.get("Authorization");
+  if (!authHeader) {
+    console.error("No authorization header provided");
+    return {
+      error: new Response(JSON.stringify({ error: "Unauthorized" }), {
+        status: 401,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      })
+    };
+  }
+
+  const supabaseClient = createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
+    global: { headers: { Authorization: authHeader } }
+  });
+
+  const { data: { user }, error: userError } = await supabaseClient.auth.getUser();
+  if (userError || !user) {
+    console.error("User authentication failed:", userError);
+    return {
+      error: new Response(JSON.stringify({ error: "Unauthorized" }), {
+        status: 401,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      })
+    };
+  }
+
+  // Check user role - only admin and manager can use QuickBooks functions
+  const { data: roleData, error: roleError } = await supabaseClient
+    .from("user_roles")
+    .select("role")
+    .eq("user_id", user.id)
+    .single();
+
+  if (roleError) {
+    console.error("Error fetching user role:", roleError);
+  }
+
+  if (!roleData || !['admin', 'manager'].includes(roleData.role)) {
+    console.error("User does not have admin/manager role:", user.id);
+    return {
+      error: new Response(JSON.stringify({ error: "Insufficient permissions. Only admins and managers can access QuickBooks functions." }), {
+        status: 403,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      })
+    };
+  }
+
+  console.log(`Authenticated user ${user.id} with role ${roleData.role}`);
+  return { userId: user.id };
+}
 
 async function getValidToken(supabase: any) {
   const { data: config, error } = await supabase
@@ -91,11 +145,17 @@ serve(async (req) => {
   }
 
   try {
+    // Authenticate the request
+    const authResult = await authenticateRequest(req);
+    if (authResult.error) {
+      return authResult.error;
+    }
+
     const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
     const { action, vendorId, startPosition = 0 } = await req.json();
 
     console.log('=== QuickBooks Vendor Sync ===');
-    console.log('Action:', action, 'StartPosition:', startPosition);
+    console.log('Action:', action, 'StartPosition:', startPosition, 'by user:', authResult.userId);
 
     const { accessToken, realmId } = await getValidToken(supabase);
 
