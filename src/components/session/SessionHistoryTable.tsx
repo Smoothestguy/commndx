@@ -26,6 +26,7 @@ interface SessionHistoryTableProps {
   onSelectSession: (sessionId: string | null) => void;
   selectedSessionId: string | null;
   targetUserId?: string | null;
+  isTargetAdmin?: boolean;
 }
 
 interface Session {
@@ -43,6 +44,7 @@ export function SessionHistoryTable({
   onSelectSession,
   selectedSessionId,
   targetUserId,
+  isTargetAdmin,
 }: SessionHistoryTableProps) {
   const { user } = useAuth();
   const { toast } = useToast();
@@ -140,7 +142,7 @@ export function SessionHistoryTable({
           format(new Date(s.session_start), "HH:mm:ss"),
           s.session_end ? format(new Date(s.session_end), "HH:mm:ss") : "Active",
           formatDuration(activeSeconds),
-          formatDuration(s.total_idle_seconds || 0),
+          isTargetAdmin ? "N/A" : formatDuration(s.total_idle_seconds || 0),
           formatCurrency(calculateEarnings(activeSeconds)),
           s.clock_in_type,
         ].join(",");
@@ -287,7 +289,7 @@ export function SessionHistoryTable({
                         {formatDuration(activeSeconds)}
                       </TableCell>
                       <TableCell className="font-mono text-muted-foreground">
-                        {formatDuration(session.total_idle_seconds || 0)}
+                        {isTargetAdmin ? "N/A" : formatDuration(session.total_idle_seconds || 0)}
                       </TableCell>
                       <TableCell className="font-mono text-green-600 dark:text-green-400 font-medium">
                         {formatCurrency(calculateEarnings(activeSeconds))}

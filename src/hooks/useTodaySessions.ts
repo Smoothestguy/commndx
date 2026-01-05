@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
+import { useUserRole } from "@/hooks/useUserRole";
 import {
   sumActiveSeconds,
   sumIdleSeconds,
@@ -23,6 +24,7 @@ interface TodaySession {
  */
 export function useTodaySessions(externalHasAccess?: boolean, externalAccessChecked?: boolean) {
   const { user } = useAuth();
+  const { isAdmin } = useUserRole();
 
   // Use external access state if provided, otherwise default to false
   const hasAccess = externalHasAccess ?? false;
@@ -98,7 +100,8 @@ export function useTodaySessions(externalHasAccess?: boolean, externalAccessChec
 
   const now = new Date();
   const todayActiveSeconds = sumActiveSeconds(todaySessions, now);
-  const todayIdleSeconds = sumIdleSeconds(todaySessions);
+  // For admins, idle time is always 0 (their work extends beyond the app)
+  const todayIdleSeconds = isAdmin ? 0 : sumIdleSeconds(todaySessions);
   const todayEarnings = calculateEarningsFromSeconds(todayActiveSeconds, hourlyRate);
   const sessionCount = todaySessions.length;
   const hasActiveSession = todaySessions.some((s) => s.is_active);
@@ -113,5 +116,6 @@ export function useTodaySessions(externalHasAccess?: boolean, externalAccessChec
     hasActiveSession,
     todaySessions,
     hourlyRate,
+    isAdmin, // Expose admin status for UI components
   };
 }
