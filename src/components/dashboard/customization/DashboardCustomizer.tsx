@@ -1,7 +1,7 @@
 import { useState, ReactNode } from "react";
 import {
   DndContext,
-  closestCenter,
+  pointerWithin,
   KeyboardSensor,
   PointerSensor,
   useSensor,
@@ -10,19 +10,19 @@ import {
   DragOverlay,
   DragStartEvent,
 } from "@dnd-kit/core";
-import {
-  arrayMove,
-  SortableContext,
-  sortableKeyboardCoordinates,
-  rectSortingStrategy,
-} from "@dnd-kit/sortable";
+import { sortableKeyboardCoordinates } from "@dnd-kit/sortable";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Plus, Palette, LayoutGrid, Circle } from "lucide-react";
 import { WidgetLibrary } from "./WidgetLibrary";
 import { DashboardThemeEditor } from "./DashboardThemeEditor";
 import { ResetConfirmDialog } from "./ResetConfirmDialog";
-import { DashboardLayout, DashboardWidget, DashboardTheme, LayoutWidget } from "../widgets/types";
+import {
+  DashboardLayout,
+  DashboardWidget,
+  DashboardTheme,
+  LayoutWidget,
+} from "../widgets/types";
 import { WIDGET_REGISTRY } from "../widgets/registry";
 import { cn } from "@/lib/utils";
 
@@ -77,15 +77,36 @@ export function DashboardCustomizer({
     const { active, over } = event;
     setActiveId(null);
 
-    if (over && active.id !== over.id) {
-      const oldIndex = layout.widgets.findIndex((w) => w.widgetId === active.id);
-      const newIndex = layout.widgets.findIndex((w) => w.widgetId === over.id);
+    if (!over) return;
 
-      if (oldIndex !== -1 && newIndex !== -1) {
-        const newWidgets = arrayMove(layout.widgets, oldIndex, newIndex);
-        onLayoutChange({ ...layout, widgets: newWidgets });
-      }
-    }
+    // Get the drop zone data (row, col) from the droppable (0-indexed)
+    const dropData = over.data.current as
+      | { row?: number; col?: number }
+      | undefined;
+    if (!dropData || dropData.row === undefined || dropData.col === undefined)
+      return;
+
+    const widgetId = active.id as string;
+    const widgetIndex = layout.widgets.findIndex(
+      (w) => w.widgetId === widgetId
+    );
+    if (widgetIndex === -1) return;
+
+    const widget = layout.widgets[widgetIndex];
+    const newRow = dropData.row;
+    const newCol = dropData.col;
+
+    // Check bounds - ensure widget fits in 4-column grid (0-indexed: cols 0-3)
+    if (newCol + widget.size.width > 4) return;
+
+    // Update widget position (0-indexed)
+    const updatedWidgets = layout.widgets.map((w) =>
+      w.widgetId === widgetId
+        ? { ...w, position: { row: newRow, col: newCol } }
+        : w
+    );
+
+    onLayoutChange({ ...layout, widgets: updatedWidgets });
   };
 
   const handleAddWidget = (widgetId: string) => {
@@ -103,7 +124,10 @@ export function DashboardCustomizer({
     onWidgetsChange([...widgets, newWidget]);
 
     // Add to layout
-    const maxRow = layout.widgets.reduce((max, w) => Math.max(max, w.position.row + w.size.height), 0);
+    const maxRow = layout.widgets.reduce(
+      (max, w) => Math.max(max, w.position.row + w.size.height),
+      0
+    );
     const newLayoutWidget: LayoutWidget = {
       widgetId,
       position: { row: maxRow, col: 0 },
@@ -127,8 +151,6 @@ export function DashboardCustomizer({
     onReset();
     setShowResetDialog(false);
   };
-
-  const widgetIds = layout.widgets.map((w) => w.widgetId);
 
   if (!isEditMode) {
     return <>{children}</>;
@@ -177,21 +199,19 @@ export function DashboardCustomizer({
       {/* Main Content with Drag Context */}
       <DndContext
         sensors={sensors}
-        collisionDetection={closestCenter}
+        collisionDetection={pointerWithin}
         onDragStart={handleDragStart}
         onDragEnd={handleDragEnd}
       >
-        <SortableContext items={widgetIds} strategy={rectSortingStrategy}>
-          <div
-            className={cn(
-              "transition-all duration-200",
-              showWidgetLibrary && "mr-80",
-              showThemeEditor && "ml-80"
-            )}
-          >
-            {children}
-          </div>
-        </SortableContext>
+        <div
+          className={cn(
+            "transition-all duration-200",
+            showWidgetLibrary && "mr-80",
+            showThemeEditor && "ml-80"
+          )}
+        >
+          {children}
+        </div>
 
         <DragOverlay>
           {activeId && (

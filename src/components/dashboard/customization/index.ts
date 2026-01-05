@@ -6,3 +6,4 @@ export { DraggableWidget } from "./DraggableWidget";
 export { ResetConfirmDialog } from "./ResetConfirmDialog";
 export { UnsavedChangesDialog } from "./UnsavedChangesDialog";
 export { WidgetResizer } from "./WidgetResizer";
+export { GridDropZone } from "./GridDropZone";

@@ -5,6 +5,7 @@ import {
   DraggableWidget,
 } from "./customization";
 import { UnsavedChangesDialog } from "./customization/UnsavedChangesDialog";
+import { GridDropZone } from "./customization/GridDropZone";
 import {
   WidgetContainer,
   StatWidget,
@@ -253,7 +254,15 @@ export function CustomizableDashboard({
     // Welcome banner renders without container
     if (widget.type === "welcome") {
       return (
-        <DraggableWidget key={widget.id} id={widget.id} isEditMode={isEditMode}>
+        <DraggableWidget
+          key={widget.id}
+          id={widget.id}
+          isEditMode={isEditMode}
+          row={layoutWidget.position.row}
+          col={layoutWidget.position.col}
+          rowSpan={layoutWidget.size.height}
+          colSpan={layoutWidget.size.width}
+        >
           <div
             className={cn(
               isEditMode && "ring-2 ring-primary/20 ring-dashed rounded-lg"
@@ -266,7 +275,15 @@ export function CustomizableDashboard({
     }
 
     return (
-      <DraggableWidget key={widget.id} id={widget.id} isEditMode={isEditMode}>
+      <DraggableWidget
+        key={widget.id}
+        id={widget.id}
+        isEditMode={isEditMode}
+        row={layoutWidget.position.row}
+        col={layoutWidget.position.col}
+        rowSpan={layoutWidget.size.height}
+        colSpan={layoutWidget.size.width}
+      >
         <WidgetContainer
           title={widget.title}
           icon={<Icon className="h-4 w-4" />}
@@ -284,25 +301,47 @@ export function CustomizableDashboard({
     );
   };
 
-  // Calculate grid spans for widgets
-  const getGridSpanClass = (size: { width: number; height: number }) => {
-    const colSpan =
-      {
-        1: "col-span-1",
-        2: "col-span-2 sm:col-span-1 lg:col-span-2",
-        3: "col-span-2 lg:col-span-3",
-        4: "col-span-2 lg:col-span-4",
-      }[size.width] || "col-span-1";
+  // Calculate which cells are occupied by widgets (0-indexed)
+  const getOccupiedCells = useMemo(() => {
+    const occupied = new Set<string>();
+    for (const lw of draftLayout.widgets) {
+      for (let r = lw.position.row; r < lw.position.row + lw.size.height; r++) {
+        for (
+          let c = lw.position.col;
+          c < lw.position.col + lw.size.width;
+          c++
+        ) {
+          occupied.add(`${r}-${c}`);
+        }
+      }
+    }
+    return occupied;
+  }, [draftLayout.widgets]);
 
-    const rowSpan =
-      {
-        1: "",
-        2: "row-span-2",
-        3: "row-span-3",
-      }[size.height] || "";
+  // Calculate the max row needed (0-indexed)
+  const maxRow = useMemo(() => {
+    let max = 0;
+    for (const lw of draftLayout.widgets) {
+      max = Math.max(max, lw.position.row + lw.size.height);
+    }
+    // Add extra rows for dropping in edit mode
+    return isEditMode ? max + 2 : max;
+  }, [draftLayout.widgets, isEditMode]);
 
-    return cn(colSpan, rowSpan);
-  };
+  // Generate drop zones for empty cells (0-indexed positions, 1-indexed CSS Grid)
+  const dropZones = useMemo(() => {
+    if (!isEditMode) return [];
+    const zones: { id: string; row: number; col: number }[] = [];
+    for (let row = 0; row < maxRow; row++) {
+      for (let col = 0; col < 4; col++) {
+        if (!getOccupiedCells.has(`${row}-${col}`)) {
+          // Store 0-indexed position but pass 1-indexed to CSS Grid
+          zones.push({ id: `drop-${row}-${col}`, row, col });
+        }
+      }
+    }
+    return zones;
+  }, [isEditMode, maxRow, getOccupiedCells]);
 
   // Show default dashboard content if not customizable or loading
   if (!canCustomize || configLoading) {
@@ -339,23 +378,31 @@ export function CustomizableDashboard({
         hasUnsavedChanges={hasUnsavedChanges}
       >
         <div
-          className={cn("grid grid-cols-2 lg:grid-cols-4", {
+          className={cn("grid grid-cols-4", {
             "gap-2": draftTheme.spacing === "compact",
             "gap-4": draftTheme.spacing === "normal" || !draftTheme.spacing,
             "gap-6": draftTheme.spacing === "relaxed",
           })}
           style={{
             fontFamily: getFontFamily(draftTheme.fontFamily),
+            gridAutoRows: "minmax(100px, auto)",
           }}
         >
-          {draftLayout.widgets.map((layoutWidget) => (
-            <div
-              key={layoutWidget.widgetId}
-              className={getGridSpanClass(layoutWidget.size)}
-            >
-              {renderWidget(layoutWidget)}
-            </div>
+          {/* Drop zones for empty cells in edit mode */}
+          {dropZones.map((zone) => (
+            <GridDropZone
+              key={zone.id}
+              id={zone.id}
+              row={zone.row}
+              col={zone.col}
+              isEditMode={isEditMode}
+            />
           ))}
+
+          {/* Render widgets at their grid positions */}
+          {draftLayout.widgets.map((layoutWidget) =>
+            renderWidget(layoutWidget)
+          )}
         </div>
       </DashboardCustomizer>
 
