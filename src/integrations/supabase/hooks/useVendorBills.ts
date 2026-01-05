@@ -320,6 +320,29 @@ export const useUpdateVendorBill = () => {
         if (lineError) throw lineError;
       }
 
+      // Auto-sync to QuickBooks if connected and bill was previously synced
+      try {
+        const qbConnected = await isQuickBooksConnected();
+        if (qbConnected) {
+          // Check if bill was previously synced
+          const { data: mapping } = await supabase
+            .from("quickbooks_bill_mappings")
+            .select("quickbooks_bill_id, sync_status")
+            .eq("bill_id", id)
+            .maybeSingle();
+
+          if (mapping && mapping.sync_status !== "voided" && mapping.quickbooks_bill_id) {
+            console.log("QuickBooks connected - updating bill:", id);
+            await supabase.functions.invoke("quickbooks-update-bill", {
+              body: { billId: id },
+            });
+          }
+        }
+      } catch (qbError) {
+        console.error("QuickBooks update sync error (non-blocking):", qbError);
+        // Don't throw - QB sync failure shouldn't prevent bill update
+      }
+
       return id;
     },
     onSuccess: (id) => {
@@ -327,6 +350,9 @@ export const useUpdateVendorBill = () => {
       queryClient.invalidateQueries({ queryKey: ["vendor-bill", id] });
       queryClient.invalidateQueries({ queryKey: ["vendor-bills-by-po"] });
       queryClient.invalidateQueries({ queryKey: ["purchase_orders"] });
+      queryClient.invalidateQueries({ queryKey: ["quickbooks-sync-logs"] });
+      queryClient.invalidateQueries({ queryKey: ["quickbooks-bill-mappings"] });
+      queryClient.invalidateQueries({ queryKey: ["quickbooks-bill-mapping", id] });
       toast.success("Vendor bill updated successfully");
     },
     onError: (error: Error) => {
@@ -341,6 +367,20 @@ export const useDeleteVendorBill = () => {
   return useMutation({
     mutationFn: async (id: string) => {
       const { data: { user } } = await supabase.auth.getUser();
+      
+      // Void/delete in QuickBooks first (non-blocking)
+      try {
+        const qbConnected = await isQuickBooksConnected();
+        if (qbConnected) {
+          console.log("QuickBooks connected - voiding vendor bill:", id);
+          await supabase.functions.invoke("quickbooks-void-bill", {
+            body: { billId: id },
+          });
+        }
+      } catch (qbError) {
+        console.error("QuickBooks void error (non-blocking):", qbError);
+        // Don't throw - QB sync failure shouldn't prevent deletion
+      }
       
       // Soft delete instead of hard delete
       const { error } = await supabase
@@ -358,6 +398,8 @@ export const useDeleteVendorBill = () => {
       queryClient.invalidateQueries({ queryKey: ["vendor-bills-by-po"] });
       queryClient.invalidateQueries({ queryKey: ["purchase_orders"] });
       queryClient.invalidateQueries({ queryKey: ["deleted_items"] });
+      queryClient.invalidateQueries({ queryKey: ["quickbooks-sync-logs"] });
+      queryClient.invalidateQueries({ queryKey: ["quickbooks-bill-mappings"] });
       toast.success("Vendor bill moved to trash");
     },
     onError: (error: Error) => {

@@ -208,47 +208,48 @@ export function VendorBillForm({ bill, isEditing = false }: VendorBillFormProps)
       let savedBillId: string;
       
       if (isEditing && bill) {
+        // For edits, the hook now auto-syncs to QuickBooks
         await updateBill.mutateAsync({
           id: bill.id,
           bill: { ...billData, paid_amount: bill.paid_amount },
           lineItems: lineItemsData,
         });
         savedBillId = bill.id;
+        // Toast is handled by the mutation, QB sync happens automatically in hook
       } else {
         const result = await addBill.mutateAsync({
           bill: billData,
           lineItems: lineItemsData,
         });
         savedBillId = result.id;
-      }
 
-      // Finalize pending attachments for new bills
-      if (!isEditing && pendingAttachments.length > 0 && user) {
-        const attachResult = await finalizeAttachments(
-          pendingAttachments,
-          savedBillId,
-          "vendor_bill",
-          user.id
-        );
-        if (!attachResult.success) {
-          toast.warning("Bill saved but some attachments failed to upload");
+        // Finalize pending attachments for new bills
+        if (pendingAttachments.length > 0 && user) {
+          const attachResult = await finalizeAttachments(
+            pendingAttachments,
+            savedBillId,
+            "vendor_bill",
+            user.id
+          );
+          if (!attachResult.success) {
+            toast.warning("Bill saved but some attachments failed to upload");
+          }
         }
-      }
 
-      // Sync to QuickBooks if connected and not a draft
-      if (qbConfig?.is_connected && status !== 'draft') {
-        setIsSyncing(true);
-        try {
-          await syncToQB.mutateAsync(savedBillId);
-          toast.success("Bill saved and synced to QuickBooks");
-        } catch (qbError) {
-          console.error('QuickBooks sync error:', qbError);
-          toast.warning("Bill saved locally, but QuickBooks sync failed. You can sync later.");
-        } finally {
-          setIsSyncing(false);
+        // Sync to QuickBooks AFTER attachments are finalized (for new bills only)
+        // This ensures attachments are in the database when QB sync runs
+        if (qbConfig?.is_connected && status !== 'draft') {
+          setIsSyncing(true);
+          try {
+            await syncToQB.mutateAsync(savedBillId);
+            toast.success("Bill created and synced to QuickBooks");
+          } catch (qbError) {
+            console.error('QuickBooks sync error:', qbError);
+            toast.warning("Bill created locally, but QuickBooks sync failed. You can sync later.");
+          } finally {
+            setIsSyncing(false);
+          }
         }
-      } else {
-        toast.success(isEditing ? "Bill updated" : "Bill created");
       }
 
       navigate("/vendor-bills");
