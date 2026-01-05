@@ -152,6 +152,17 @@ export function CustomizableDashboard({ children }: CustomizableDashboardProps) 
     setIsEditMode(false);
   };
 
+  // Map font family keys to actual CSS font stacks
+  const getFontFamily = (fontKey?: string): string | undefined => {
+    const fontMap: Record<string, string> = {
+      inter: '"Inter", ui-sans-serif, system-ui, sans-serif',
+      roboto: '"Roboto", ui-sans-serif, system-ui, sans-serif',
+      poppins: '"Poppins", ui-sans-serif, system-ui, sans-serif',
+      montserrat: '"Montserrat", ui-sans-serif, system-ui, sans-serif',
+    };
+    return fontKey ? fontMap[fontKey] : undefined;
+  };
+
   const renderWidget = (layoutWidget: LayoutWidget) => {
     const widget = draftWidgets.find((w) => w.id === layoutWidget.widgetId);
     if (!widget || !widget.visible) return null;
@@ -164,7 +175,7 @@ export function CustomizableDashboard({ children }: CustomizableDashboardProps) 
     const widgetContent = () => {
       switch (widget.type) {
         case "welcome":
-          return <WelcomeBanner />;
+          return <WelcomeBanner theme={draftTheme} />;
         case "stat":
           return <StatWidget widget={widget} theme={draftTheme} isEditMode={isEditMode} />;
         case "chart":
@@ -270,7 +281,7 @@ export function CustomizableDashboard({ children }: CustomizableDashboardProps) 
             }
           )}
           style={{
-            fontFamily: draftTheme.fontFamily,
+            fontFamily: getFontFamily(draftTheme.fontFamily),
           }}
         >
           {draftLayout.widgets.map((layoutWidget) => (
