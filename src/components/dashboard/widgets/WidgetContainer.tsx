@@ -78,10 +78,13 @@ export function WidgetContainer({
             <Button
               variant="ghost"
               size="icon"
-              className="h-6 w-6 hover:bg-destructive/10 hover:text-destructive"
-              onClick={onRemove}
+              className="h-7 w-7 bg-background/80 shadow-sm hover:bg-destructive hover:text-destructive-foreground"
+              onClick={(e) => {
+                e.stopPropagation();
+                onRemove();
+              }}
             >
-              <X className="h-3 w-3" />
+              <X className="h-4 w-4" />
             </Button>
           )}
         </div>

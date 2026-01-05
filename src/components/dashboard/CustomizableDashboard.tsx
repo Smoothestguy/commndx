@@ -261,7 +261,14 @@ export function CustomizableDashboard({ children }: CustomizableDashboardProps) 
         hasUnsavedChanges={hasUnsavedChanges}
       >
         <div
-          className="grid gap-4 grid-cols-2 lg:grid-cols-4"
+          className={cn(
+            "grid grid-cols-2 lg:grid-cols-4",
+            {
+              "gap-2": draftTheme.spacing === "compact",
+              "gap-4": draftTheme.spacing === "normal" || !draftTheme.spacing,
+              "gap-6": draftTheme.spacing === "relaxed",
+            }
+          )}
           style={{
             fontFamily: draftTheme.fontFamily,
           }}
