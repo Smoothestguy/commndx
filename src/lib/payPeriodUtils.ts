@@ -24,6 +24,7 @@ export interface DailyBreakdown {
   dayName: string;
   regularHours: number;
   overtimeHours: number;
+  holidayHours: number;
   totalHours: number;
 }
 
@@ -117,7 +118,7 @@ export function getAllPayPeriodsFromEntries(
  * Get daily breakdown for a specific pay period from time entries
  */
 export function getDailyBreakdownForPeriod(
-  entries: { entry_date: string; regular_hours: number | null; overtime_hours: number | null }[],
+  entries: { entry_date: string; regular_hours: number | null; overtime_hours: number | null; is_holiday?: boolean }[],
   payPeriod: PayPeriod
 ): DailyBreakdown[] {
   // Get all days in the pay period (Mon-Sun)
@@ -127,7 +128,7 @@ export function getDailyBreakdownForPeriod(
   });
   
   // Create a map of entry dates to hours
-  const entryMap = new Map<string, { regular: number; overtime: number }>();
+  const entryMap = new Map<string, { regular: number; overtime: number; holiday: number }>();
   entries.forEach((entry) => {
     const entryDate = parseISO(entry.entry_date);
     const weekStart = startOfWeek(entryDate, { weekStartsOn: 1 });
@@ -135,10 +136,12 @@ export function getDailyBreakdownForPeriod(
     // Only include entries from this pay period
     if (format(weekStart, "yyyy-MM-dd") === format(payPeriod.weekStart, "yyyy-MM-dd")) {
       const dateKey = entry.entry_date;
-      const existing = entryMap.get(dateKey) || { regular: 0, overtime: 0 };
+      const existing = entryMap.get(dateKey) || { regular: 0, overtime: 0, holiday: 0 };
+      const entryHours = (entry.regular_hours || 0) + (entry.overtime_hours || 0);
       entryMap.set(dateKey, {
         regular: existing.regular + (entry.regular_hours || 0),
-        overtime: existing.overtime + (entry.overtime_hours || 0)
+        overtime: existing.overtime + (entry.overtime_hours || 0),
+        holiday: existing.holiday + (entry.is_holiday ? entryHours : 0)
       });
     }
   });
@@ -146,13 +149,14 @@ export function getDailyBreakdownForPeriod(
   // Build daily breakdown for each day of the week
   return daysInPeriod.map((date) => {
     const dateKey = format(date, "yyyy-MM-dd");
-    const hours = entryMap.get(dateKey) || { regular: 0, overtime: 0 };
+    const hours = entryMap.get(dateKey) || { regular: 0, overtime: 0, holiday: 0 };
     
     return {
       date,
       dayName: format(date, "EEE"),
       regularHours: hours.regular,
       overtimeHours: hours.overtime,
+      holidayHours: hours.holiday,
       totalHours: hours.regular + hours.overtime
     };
   });
@@ -164,16 +168,18 @@ export function getDailyBreakdownForPeriod(
  * Uses each entry's snapshotted hourly_rate when available, falls back to provided rate
  */
 export function calculatePayPeriodTotals(
-  entries: { entry_date: string; regular_hours: number | null; overtime_hours: number | null; hourly_rate?: number | null; hours?: number | null }[],
+  entries: { entry_date: string; regular_hours: number | null; overtime_hours: number | null; hourly_rate?: number | null; hours?: number | null; is_holiday?: boolean }[],
   payPeriod: PayPeriod,
   fallbackHourlyRate: number = 0,
   overtimeMultiplier: number = 1.5,
-  weeklyOvertimeThreshold: number = 40
+  weeklyOvertimeThreshold: number = 40,
+  holidayMultiplier: number = 2.0
 ) {
   const dailyBreakdown = getDailyBreakdownForPeriod(entries, payPeriod);
   
   // Calculate total hours worked in the week (ignore stored regular/overtime split)
   const totalHours = dailyBreakdown.reduce((sum, d) => sum + d.totalHours, 0);
+  const holidayHours = dailyBreakdown.reduce((sum, d) => sum + d.holidayHours, 0);
   const daysWorked = dailyBreakdown.filter(d => d.totalHours > 0).length;
   
   // Apply 40-hour weekly threshold for single employee
@@ -192,6 +198,7 @@ export function calculatePayPeriodTotals(
   let hoursAccumulated = 0;
   let regularPay = 0;
   let overtimePay = 0;
+  let holidayPay = 0;
   
   // Sort entries by date to apply OT threshold correctly
   const sortedEntries = [...periodEntries].sort((a, b) => a.entry_date.localeCompare(b.entry_date));
@@ -199,6 +206,7 @@ export function calculatePayPeriodTotals(
   sortedEntries.forEach((entry) => {
     const entryRate = entry.hourly_rate ?? fallbackHourlyRate;
     const entryTotalHours = (entry.regular_hours || 0) + (entry.overtime_hours || 0);
+    const isHoliday = entry.is_holiday === true;
     
     let entryRegular = 0;
     let entryOvertime = 0;
@@ -216,11 +224,18 @@ export function calculatePayPeriodTotals(
     }
     
     hoursAccumulated += entryTotalHours;
-    regularPay += entryRegular * entryRate;
-    overtimePay += entryOvertime * entryRate * overtimeMultiplier;
+    
+    if (isHoliday) {
+      // Holiday pay: hours × rate × holidayMultiplier (OT still applies on top if applicable)
+      holidayPay += entryRegular * entryRate * holidayMultiplier;
+      holidayPay += entryOvertime * entryRate * Math.max(overtimeMultiplier, holidayMultiplier);
+    } else {
+      regularPay += entryRegular * entryRate;
+      overtimePay += entryOvertime * entryRate * overtimeMultiplier;
+    }
   });
   
-  const totalPay = regularPay + overtimePay;
+  const totalPay = regularPay + overtimePay + holidayPay;
   
   // Update daily breakdown to reflect correct overtime distribution
   // Overtime only kicks in after 40 weekly hours, so we need to recalculate
@@ -254,10 +269,12 @@ export function calculatePayPeriodTotals(
   return {
     regularHours,
     overtimeHours,
+    holidayHours,
     totalHours,
     daysWorked,
     regularPay,
     overtimePay,
+    holidayPay,
     totalPay,
     dailyBreakdown: updatedDailyBreakdown
   };

@@ -77,9 +77,11 @@ export interface PersonnelWeeklySummary {
   total_hours: number;
   regular_hours: number;
   overtime_hours: number;
+  holiday_hours: number;
   hourly_rate: number;
   regular_amount: number;
   overtime_amount: number;
+  holiday_amount: number;
   total_amount: number;
 }
 
@@ -112,23 +114,24 @@ export function useProjectLaborExpenses(projectId: string | undefined, weekStart
   });
 }
 
-export function useWeeklyPersonnelSummary(projectId: string | undefined, weekStartDate: Date | undefined) {
+export function useWeeklyPersonnelSummary(projectId: string | undefined, weekStartDate: Date | undefined, holidayMultiplier: number = 2.0) {
   const weekStart = weekStartDate ? startOfWeek(weekStartDate, { weekStartsOn: 1 }) : null;
   const weekEnd = weekStart ? endOfWeek(weekStartDate!, { weekStartsOn: 1 }) : null;
   
   return useQuery({
-    queryKey: ['weekly-personnel-summary', projectId, weekStart ? format(weekStart, 'yyyy-MM-dd') : null],
+    queryKey: ['weekly-personnel-summary', projectId, weekStart ? format(weekStart, 'yyyy-MM-dd') : null, holidayMultiplier],
     queryFn: async (): Promise<PersonnelWeeklySummary[]> => {
       if (!projectId || !weekStart || !weekEnd) return [];
       
       // Get time entries for this project and week
-      // Include hourly_rate from the entry itself (snapshotted rate)
+      // Include hourly_rate and is_holiday from the entry itself
       const { data: entries, error } = await supabase
         .from('time_entries')
         .select(`
           personnel_id,
           hours,
           hourly_rate,
+          is_holiday,
           personnel:personnel_id (
             id,
             first_name,
@@ -151,12 +154,17 @@ export function useWeeklyPersonnelSummary(projectId: string | undefined, weekSta
         
         const personnel = entry.personnel as any;
         const existing = personnelMap.get(entry.personnel_id);
+        const isHoliday = (entry as any).is_holiday === true;
+        const entryHours = entry.hours || 0;
         
         // Use entry's hourly_rate if available (snapshotted), otherwise use personnel's current rate
         const entryRate = (entry as any).hourly_rate ?? personnel.hourly_rate ?? 0;
         
         if (existing) {
-          existing.total_hours += entry.hours || 0;
+          existing.total_hours += entryHours;
+          if (isHoliday) {
+            existing.holiday_hours += entryHours;
+          }
           // If this entry has a snapshotted rate, prefer it
           if ((entry as any).hourly_rate !== null && existing.rateSource !== 'entry') {
             existing.hourly_rate = entryRate;
@@ -166,12 +174,14 @@ export function useWeeklyPersonnelSummary(projectId: string | undefined, weekSta
           personnelMap.set(entry.personnel_id, {
             personnel_id: entry.personnel_id,
             personnel_name: `${personnel.first_name} ${personnel.last_name}`,
-            total_hours: entry.hours || 0,
+            total_hours: entryHours,
             regular_hours: 0,
             overtime_hours: 0,
+            holiday_hours: isHoliday ? entryHours : 0,
             hourly_rate: entryRate,
             regular_amount: 0,
             overtime_amount: 0,
+            holiday_amount: 0,
             total_amount: 0,
             rateSource: (entry as any).hourly_rate !== null ? 'entry' : 'personnel',
           });
@@ -188,12 +198,14 @@ export function useWeeklyPersonnelSummary(projectId: string | undefined, weekSta
           total_hours: data.total_hours,
           regular_hours: regularHours,
           overtime_hours: overtimeHours,
+          holiday_hours: data.holiday_hours,
           hourly_rate: data.hourly_rate,
           regular_amount: regularHours * data.hourly_rate,
           overtime_amount: overtimeHours * data.hourly_rate * 1.5,
+          holiday_amount: data.holiday_hours * data.hourly_rate * (holidayMultiplier - 1), // Bonus portion only
           total_amount: 0,
         };
-        summary.total_amount = summary.regular_amount + summary.overtime_amount;
+        summary.total_amount = summary.regular_amount + summary.overtime_amount + summary.holiday_amount;
         summaries.push(summary);
       }
       
