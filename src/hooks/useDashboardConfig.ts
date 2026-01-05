@@ -90,12 +90,48 @@ export function useDashboardConfig() {
         if (error) throw error;
       }
     },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["dashboard-config", user?.id] });
+    onMutate: async (updates) => {
+      // Cancel any outgoing refetches
+      await queryClient.cancelQueries({ queryKey: ["dashboard-config", user?.id] });
+      
+      // Snapshot the previous value
+      const previousConfig = queryClient.getQueryData<DashboardConfiguration | null>(["dashboard-config", user?.id]);
+      
+      // Optimistically update the cache
+      queryClient.setQueryData<DashboardConfiguration | null>(["dashboard-config", user?.id], (old) => {
+        if (!old) {
+          // If no existing config, create one with defaults merged with updates
+          return {
+            id: 'temp',
+            user_id: user?.id || '',
+            layout: updates.layout ?? DEFAULT_LAYOUT,
+            widgets: updates.widgets ?? DEFAULT_WIDGETS,
+            theme: updates.theme ?? DEFAULT_THEME,
+            created_at: new Date().toISOString(),
+            updated_at: new Date().toISOString(),
+          };
+        }
+        return {
+          ...old,
+          ...updates,
+          updated_at: new Date().toISOString(),
+        };
+      });
+      
+      // Return context with the previous value
+      return { previousConfig };
     },
-    onError: (error) => {
+    onError: (error, _updates, context) => {
+      // Roll back on error
+      if (context?.previousConfig !== undefined) {
+        queryClient.setQueryData(["dashboard-config", user?.id], context.previousConfig);
+      }
       console.error("Error updating dashboard config:", error);
       toast.error("Failed to save dashboard configuration");
+    },
+    onSettled: () => {
+      // Refetch after error or success to ensure consistency
+      queryClient.invalidateQueries({ queryKey: ["dashboard-config", user?.id] });
     },
   });
 
