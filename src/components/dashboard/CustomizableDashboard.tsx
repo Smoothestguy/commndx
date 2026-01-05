@@ -23,6 +23,7 @@ import {
 import { useDashboardConfig } from "@/hooks/useDashboardConfig";
 import { useUserRole } from "@/hooks/useUserRole";
 import { WelcomeBanner } from "./WelcomeBanner";
+import { DashboardLoadingSkeleton } from "./DashboardLoadingSkeleton";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
 
@@ -343,9 +344,14 @@ export function CustomizableDashboard({
     return zones;
   }, [isEditMode, maxRow, getOccupiedCells]);
 
-  // Show default dashboard content if not customizable or loading
-  if (!canCustomize || configLoading) {
+  // Show default dashboard content if not customizable
+  if (!canCustomize) {
     return <>{children}</>;
+  }
+
+  // Show loading skeleton while config loads for customizable users
+  if (configLoading) {
+    return <DashboardLoadingSkeleton />;
   }
 
   return (
