@@ -1,6 +1,5 @@
 import { Button } from "@/components/ui/button";
-import { Settings, Check, RotateCcw } from "lucide-react";
-import { cn } from "@/lib/utils";
+import { Settings, Check, RotateCcw, Save, Undo2 } from "lucide-react";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -12,27 +11,57 @@ import {
 interface EditModeToggleProps {
   isEditMode: boolean;
   onToggle: () => void;
+  onSave?: () => void;
+  onRevert?: () => void;
   onReset?: () => void;
   hasCustomConfig?: boolean;
+  hasUnsavedChanges?: boolean;
+  isSaving?: boolean;
 }
 
 export function EditModeToggle({
   isEditMode,
   onToggle,
+  onSave,
+  onRevert,
   onReset,
   hasCustomConfig,
+  hasUnsavedChanges,
+  isSaving,
 }: EditModeToggleProps) {
   if (isEditMode) {
     return (
-      <Button
-        onClick={onToggle}
-        variant="default"
-        size="sm"
-        className="gap-2"
-      >
-        <Check className="h-4 w-4" />
-        Done Editing
-      </Button>
+      <div className="flex items-center gap-2">
+        <Button
+          onClick={onRevert}
+          variant="outline"
+          size="sm"
+          className="gap-2"
+          disabled={!hasUnsavedChanges || isSaving}
+        >
+          <Undo2 className="h-4 w-4" />
+          Revert
+        </Button>
+        <Button
+          onClick={onSave}
+          variant="default"
+          size="sm"
+          className="gap-2"
+          disabled={!hasUnsavedChanges || isSaving}
+        >
+          <Save className="h-4 w-4" />
+          {isSaving ? "Saving..." : "Save"}
+        </Button>
+        <Button
+          onClick={onToggle}
+          variant="ghost"
+          size="sm"
+          className="gap-2"
+        >
+          <Check className="h-4 w-4" />
+          Done
+        </Button>
+      </div>
     );
   }
 

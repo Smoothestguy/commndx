@@ -17,7 +17,8 @@ import {
   rectSortingStrategy,
 } from "@dnd-kit/sortable";
 import { Button } from "@/components/ui/button";
-import { Plus, Palette, LayoutGrid } from "lucide-react";
+import { Badge } from "@/components/ui/badge";
+import { Plus, Palette, LayoutGrid, Circle } from "lucide-react";
 import { WidgetLibrary } from "./WidgetLibrary";
 import { DashboardThemeEditor } from "./DashboardThemeEditor";
 import { ResetConfirmDialog } from "./ResetConfirmDialog";
@@ -35,6 +36,7 @@ interface DashboardCustomizerProps {
   onThemeChange: (theme: DashboardTheme) => void;
   onReset: () => void;
   isResetting?: boolean;
+  hasUnsavedChanges?: boolean;
   children: ReactNode;
 }
 
@@ -48,6 +50,7 @@ export function DashboardCustomizer({
   onThemeChange,
   onReset,
   isResetting,
+  hasUnsavedChanges,
   children,
 }: DashboardCustomizerProps) {
   const [showWidgetLibrary, setShowWidgetLibrary] = useState(false);
@@ -138,9 +141,16 @@ export function DashboardCustomizer({
         <div className="flex items-center gap-2">
           <LayoutGrid className="h-4 w-4 text-primary" />
           <span className="text-sm font-medium">Edit Mode</span>
-          <span className="text-xs text-muted-foreground">
-            Drag widgets to rearrange
-          </span>
+          {hasUnsavedChanges ? (
+            <Badge variant="secondary" className="text-xs gap-1">
+              <Circle className="h-2 w-2 fill-orange-500 text-orange-500" />
+              Unsaved changes
+            </Badge>
+          ) : (
+            <span className="text-xs text-muted-foreground">
+              Drag widgets to rearrange
+            </span>
+          )}
         </div>
         <div className="flex items-center gap-2">
           <Button
