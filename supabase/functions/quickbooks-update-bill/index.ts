@@ -110,6 +110,119 @@ async function qbRequest(
   }
 }
 
+// Get or create vendor in QuickBooks
+async function getOrCreateQBVendor(supabase: any, vendorId: string, accessToken: string, realmId: string): Promise<string> {
+  // Check if vendor already mapped
+  const { data: mapping } = await supabase
+    .from('quickbooks_vendor_mappings')
+    .select('quickbooks_vendor_id')
+    .eq('vendor_id', vendorId)
+    .single();
+
+  if (mapping) {
+    console.log(`Found existing vendor mapping: ${mapping.quickbooks_vendor_id}`);
+    return mapping.quickbooks_vendor_id;
+  }
+
+  // Get vendor details
+  const { data: vendor, error: vendorError } = await supabase
+    .from('vendors')
+    .select('*')
+    .eq('id', vendorId)
+    .single();
+
+  if (vendorError || !vendor) {
+    throw new Error(`Vendor not found: ${vendorId}`);
+  }
+
+  // First, search for existing vendor in QuickBooks by name
+  console.log(`Searching QuickBooks for existing vendor: ${vendor.name}`);
+  
+  try {
+    const searchQuery = encodeURIComponent(`SELECT * FROM Vendor WHERE DisplayName = '${vendor.name.replace(/'/g, "\\'")}'`);
+    const searchResult = await qbRequest('GET', `/query?query=${searchQuery}&minorversion=65`, accessToken, realmId);
+    
+    if (searchResult.QueryResponse?.Vendor?.length > 0) {
+      const existingVendor = searchResult.QueryResponse.Vendor[0];
+      console.log(`Found existing QuickBooks vendor: ${existingVendor.DisplayName} (ID: ${existingVendor.Id})`);
+      
+      // Create mapping for existing vendor
+      await supabase.from('quickbooks_vendor_mappings').insert({
+        vendor_id: vendorId,
+        quickbooks_vendor_id: existingVendor.Id,
+        sync_status: 'synced',
+        last_synced_at: new Date().toISOString(),
+        sync_direction: 'export',
+      });
+      
+      return existingVendor.Id;
+    }
+  } catch (e) {
+    console.log(`Error searching for vendor, will try to create: ${e}`);
+  }
+
+  console.log(`Creating new vendor in QuickBooks: ${vendor.name}`);
+
+  // Create vendor in QuickBooks
+  const qbVendor = {
+    DisplayName: vendor.name,
+    CompanyName: vendor.company || vendor.name,
+    PrimaryEmailAddr: vendor.email ? { Address: vendor.email } : undefined,
+    PrimaryPhone: vendor.phone ? { FreeFormNumber: vendor.phone } : undefined,
+    BillAddr: vendor.address ? {
+      Line1: vendor.address,
+    } : undefined,
+    Active: vendor.status === 'active',
+  };
+
+  try {
+    const result = await qbRequest('POST', '/vendor?minorversion=65', accessToken, realmId, qbVendor);
+    const qbVendorId = result.Vendor.Id;
+
+    // Create mapping
+    await supabase.from('quickbooks_vendor_mappings').insert({
+      vendor_id: vendorId,
+      quickbooks_vendor_id: qbVendorId,
+      sync_status: 'synced',
+      last_synced_at: new Date().toISOString(),
+      sync_direction: 'export',
+    });
+
+    console.log(`Created vendor in QuickBooks with ID: ${qbVendorId}`);
+    return qbVendorId;
+  } catch (createError: any) {
+    // Handle duplicate name error - try to find by partial match
+    if (createError.message?.includes('Duplicate Name Exists')) {
+      console.log(`Duplicate name error, searching with LIKE query...`);
+      
+      const likeQuery = encodeURIComponent(`SELECT * FROM Vendor WHERE DisplayName LIKE '%${vendor.name.replace(/'/g, "\\'")}%' MAXRESULTS 10`);
+      const likeResult = await qbRequest('GET', `/query?query=${likeQuery}&minorversion=65`, accessToken, realmId);
+      
+      if (likeResult.QueryResponse?.Vendor?.length > 0) {
+        // Find best match (exact or closest)
+        const exactMatch = likeResult.QueryResponse.Vendor.find(
+          (v: any) => v.DisplayName.toLowerCase() === vendor.name.toLowerCase()
+        );
+        const matchedVendor = exactMatch || likeResult.QueryResponse.Vendor[0];
+        
+        console.log(`Found matching vendor after duplicate error: ${matchedVendor.DisplayName} (ID: ${matchedVendor.Id})`);
+        
+        await supabase.from('quickbooks_vendor_mappings').insert({
+          vendor_id: vendorId,
+          quickbooks_vendor_id: matchedVendor.Id,
+          sync_status: 'synced',
+          last_synced_at: new Date().toISOString(),
+          sync_direction: 'export',
+        });
+        
+        return matchedVendor.Id;
+      }
+    }
+    
+    throw createError;
+  }
+}
+
 // Valid account types for expense accounts
 const VALID_EXPENSE_ACCOUNT_TYPES = ['Expense', 'Cost of Goods Sold', 'Other Current Liability'];
 
@@ -271,18 +384,8 @@ serve(async (req) => {
     const syncToken = qbBillData.Bill.SyncToken;
     console.log("Got SyncToken:", syncToken);
 
-    // Get or create vendor in QuickBooks
-    const { data: vendorMapping } = await supabase
-      .from("quickbooks_vendor_mappings")
-      .select("quickbooks_vendor_id")
-      .eq("vendor_id", bill.vendor_id)
-      .single();
-
-    if (!vendorMapping) {
-      throw new Error("Vendor not synced to QuickBooks. Please sync the vendor first.");
-    }
-
-    const qbVendorId = vendorMapping.quickbooks_vendor_id;
+    // Get or create vendor in QuickBooks (auto-sync if not mapped)
+    const qbVendorId = await getOrCreateQBVendor(supabase, bill.vendor_id, accessToken, realmId);
 
     // Build a map of category IDs to category names
     const categoryMap: Map<string, string> = new Map();
