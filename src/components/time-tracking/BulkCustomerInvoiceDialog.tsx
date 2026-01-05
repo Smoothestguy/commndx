@@ -63,6 +63,7 @@ interface PersonnelWeekBreakdown {
   personnelId: string;
   personnelName: string;
   hours: number;
+  selected: boolean;
 }
 
 interface WeekGroup {
@@ -221,7 +222,7 @@ export function BulkCustomerInvoiceDialog({
 
       let personBreakdown = weekGroup.personnelBreakdown.find(p => p.personnelId === personnelId);
       if (!personBreakdown) {
-        personBreakdown = { personnelId, personnelName, hours: 0 };
+        personBreakdown = { personnelId, personnelName, hours: 0, selected: true };
         weekGroup.personnelBreakdown.push(personBreakdown);
       }
       personBreakdown.hours += Number(entry.hours);
@@ -246,7 +247,20 @@ export function BulkCustomerInvoiceDialog({
     projectWeekGroups.forEach(project => {
       project.weeks.forEach(week => {
         if (week.selected) {
-          week.entries.forEach(e => selectedEntryIds.add(e.id));
+          // Build set of selected personnel IDs for this week
+          const selectedPersonnelIds = new Set(
+            week.personnelBreakdown
+              .filter(p => p.selected)
+              .map(p => p.personnelId)
+          );
+          
+          // Only include entries for selected personnel
+          week.entries.forEach(e => {
+            const personnelId = e.personnel_id || e.user_id || "unknown";
+            if (selectedPersonnelIds.has(personnelId)) {
+              selectedEntryIds.add(e.id);
+            }
+          });
         }
       });
     });
@@ -541,11 +555,49 @@ export function BulkCustomerInvoiceDialog({
       if (project.projectId !== projectId) return project;
       return {
         ...project,
-        weeks: project.weeks.map(week => 
-          week.weekKey === weekKey ? { ...week, selected: !week.selected } : week
-        ),
+        weeks: project.weeks.map(week => {
+          if (week.weekKey !== weekKey) return week;
+          const newSelected = !week.selected;
+          return {
+            ...week,
+            selected: newSelected,
+            // Also update all personnel selection
+            personnelBreakdown: week.personnelBreakdown.map(p => ({
+              ...p,
+              selected: newSelected,
+            })),
+          };
+        }),
       };
     }));
+  };
+
+  const togglePersonnelSelection = (projectId: string, weekKey: string, personnelId: string) => {
+    setProjectWeekGroups(prev => prev.map(project => {
+      if (project.projectId !== projectId) return project;
+      return {
+        ...project,
+        weeks: project.weeks.map(week => {
+          if (week.weekKey !== weekKey) return week;
+          const newPersonnelBreakdown = week.personnelBreakdown.map(person => {
+            if (person.personnelId !== personnelId) return person;
+            return { ...person, selected: !person.selected };
+          });
+          // Check if any personnel are selected to determine week selection
+          const anySelected = newPersonnelBreakdown.some(p => p.selected);
+          return {
+            ...week,
+            selected: anySelected,
+            personnelBreakdown: newPersonnelBreakdown,
+          };
+        }),
+      };
+    }));
+  };
+
+  const isWeekIndeterminate = (week: ProjectWeekGroup['weeks'][0]) => {
+    const selectedCount = week.personnelBreakdown.filter(p => p.selected).length;
+    return selectedCount > 0 && selectedCount < week.personnelBreakdown.length;
   };
 
   const toggleProjectExpanded = (projectId: string) => {
@@ -863,8 +915,9 @@ export function BulkCustomerInvoiceDialog({
                                 >
                                   <div className="flex items-center gap-3">
                                     <Checkbox
-                                      checked={week.selected}
+                                      checked={week.selected && week.personnelBreakdown.every(p => p.selected)}
                                       onCheckedChange={() => toggleWeekSelection(project.projectId, week.weekKey)}
+                                      className={isWeekIndeterminate(week) ? "data-[state=unchecked]:bg-primary/30" : ""}
                                     />
                                     <button
                                       type="button"
@@ -880,17 +933,29 @@ export function BulkCustomerInvoiceDialog({
                                       <span className="text-sm font-medium">{week.label}</span>
                                     </button>
                                     <span className="text-sm text-muted-foreground">
-                                      {week.totalHours.toFixed(1)}h
+                                      {week.personnelBreakdown.filter(p => p.selected).reduce((sum, p) => sum + p.hours, 0).toFixed(1)}h
                                     </span>
                                   </div>
 
                                   {expandedWeeks.has(weekExpandKey) && (
                                     <div className="mt-2 ml-8 space-y-1">
                                       {week.personnelBreakdown.map(person => (
-                                        <div key={person.personnelId} className="flex items-center gap-2 text-sm text-muted-foreground">
-                                          <Users className="h-3 w-3" />
-                                          <span>{person.personnelName}</span>
-                                          <span className="ml-auto">{person.hours.toFixed(1)}h</span>
+                                        <div 
+                                          key={person.personnelId} 
+                                          className={cn(
+                                            "flex items-center gap-2 text-sm p-1.5 rounded cursor-pointer hover:bg-muted/50 transition-colors",
+                                            !person.selected && "opacity-50"
+                                          )}
+                                          onClick={() => togglePersonnelSelection(project.projectId, week.weekKey, person.personnelId)}
+                                        >
+                                          <Checkbox
+                                            checked={person.selected}
+                                            onCheckedChange={() => togglePersonnelSelection(project.projectId, week.weekKey, person.personnelId)}
+                                            onClick={(e) => e.stopPropagation()}
+                                          />
+                                          <Users className="h-3 w-3 text-muted-foreground" />
+                                          <span className={cn(!person.selected && "line-through")}>{person.personnelName}</span>
+                                          <span className="ml-auto text-muted-foreground">{person.hours.toFixed(1)}h</span>
                                         </div>
                                       ))}
                                     </div>
