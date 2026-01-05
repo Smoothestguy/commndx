@@ -385,7 +385,9 @@ export const useUpdateTimeEntry = () => {
       return data;
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["time-entries"] });
+      queryClient.invalidateQueries({ queryKey: ["time-entries"], refetchType: "all" });
+      queryClient.invalidateQueries({ queryKey: ["all-time-entries"], refetchType: "all" });
+      queryClient.invalidateQueries({ queryKey: ["admin-time-entries"], refetchType: "all" });
       toast.success("Time entry updated successfully");
     },
     onError: () => {
