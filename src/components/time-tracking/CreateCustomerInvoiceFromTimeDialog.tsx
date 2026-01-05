@@ -94,18 +94,40 @@ export function CreateCustomerInvoiceFromTimeDialog({
   const alreadyInvoicedEntries = selectedEntries.filter(e => e.invoice_id);
   const hasAlreadyInvoiced = alreadyInvoicedEntries.length > 0;
 
-  // Calculate date range for invoice description
-  const dateRange = useMemo(() => {
-    const dates = selectedEntries.filter(e => !e.invoice_id).map(e => new Date(e.entry_date));
+  // Calculate week labels for invoice description - shows actual selected weeks, not expanded range
+  const weekLabels = useMemo(() => {
+    const dates = selectedEntries.filter(e => !e.invoice_id).map(e => new Date(e.entry_date + 'T12:00:00'));
     if (dates.length === 0) return null;
-    const minDate = new Date(Math.min(...dates.map(d => d.getTime())));
-    const maxDate = new Date(Math.max(...dates.map(d => d.getTime())));
-    const weekStart = startOfWeek(minDate, { weekStartsOn: 1 });
-    const weekEnd = endOfWeek(maxDate, { weekStartsOn: 1 });
-    return {
-      start: format(weekStart, "MMM d"),
-      end: format(weekEnd, "MMM d, yyyy"),
-    };
+    
+    // Get unique weeks (keyed by week start date)
+    const weekMap = new Map<string, { start: Date; end: Date }>();
+    dates.forEach(date => {
+      const weekStart = startOfWeek(date, { weekStartsOn: 1 });
+      const weekEnd = endOfWeek(date, { weekStartsOn: 1 });
+      const key = format(weekStart, "yyyy-MM-dd");
+      if (!weekMap.has(key)) {
+        weekMap.set(key, { start: weekStart, end: weekEnd });
+      }
+    });
+    
+    // Sort weeks chronologically
+    const sortedWeeks = Array.from(weekMap.values())
+      .sort((a, b) => a.start.getTime() - b.start.getTime());
+    
+    if (sortedWeeks.length === 1) {
+      // Single week: "Week of Dec 22 – Dec 28, 2025"
+      return `Week of ${format(sortedWeeks[0].start, "MMM d")} – ${format(sortedWeeks[0].end, "MMM d, yyyy")}`;
+    } else if (sortedWeeks.length === 2) {
+      // Two weeks: "Weeks of Dec 22-28 & Dec 29 - Jan 4, 2026"
+      const w1 = `${format(sortedWeeks[0].start, "MMM d")}-${format(sortedWeeks[0].end, "d")}`;
+      const w2 = `${format(sortedWeeks[1].start, "MMM d")} – ${format(sortedWeeks[1].end, "MMM d, yyyy")}`;
+      return `Weeks of ${w1} & ${w2}`;
+    } else {
+      // Multiple weeks: "Dec 22, 2025 – Jan 11, 2026 (3 weeks)"
+      const first = sortedWeeks[0];
+      const last = sortedWeeks[sortedWeeks.length - 1];
+      return `${format(first.start, "MMM d, yyyy")} – ${format(last.end, "MMM d, yyyy")} (${sortedWeeks.length} weeks)`;
+    }
   }, [selectedEntries]);
 
   // Fetch personnel rate bracket assignments for this project
@@ -267,9 +289,8 @@ export function CreateCustomerInvoiceFromTimeDialog({
 
   // Generate line item descriptions when summaries change
   useEffect(() => {
-    if (open && rateBracketSummaries.length > 0 && dateRange) {
+    if (open && rateBracketSummaries.length > 0 && weekLabels) {
       const descriptions: LineItemDescription[] = [];
-      const weekDescription = `Week of ${dateRange.start} – ${dateRange.end}`;
       
       rateBracketSummaries.forEach((summary) => {
         // Regular time line item
@@ -278,7 +299,7 @@ export function CreateCustomerInvoiceFromTimeDialog({
             bracketId: summary.rateBracketId,
             type: 'regular',
             productName: `${summary.rateBracketName} - Regular Time`,
-            description: `${summary.rateBracketName} - Regular Time, ${weekDescription}\n${summary.regularHours.toFixed(1)} hours @ $${summary.billRate.toFixed(2)}/hr`,
+            description: `${summary.rateBracketName} - Regular Time, ${weekLabels}\n${summary.regularHours.toFixed(1)} hours @ $${summary.billRate.toFixed(2)}/hr`,
             selected: true,
             hours: summary.regularHours,
             rate: summary.billRate,
@@ -293,7 +314,7 @@ export function CreateCustomerInvoiceFromTimeDialog({
             bracketId: summary.rateBracketId,
             type: 'overtime',
             productName: `${summary.rateBracketName} - Overtime`,
-            description: `${summary.rateBracketName} - Overtime, ${weekDescription}\n${summary.overtimeHours.toFixed(1)} hours @ $${otRate.toFixed(2)}/hr (${summary.overtimeMultiplier}x rate)`,
+            description: `${summary.rateBracketName} - Overtime, ${weekLabels}\n${summary.overtimeHours.toFixed(1)} hours @ $${otRate.toFixed(2)}/hr (${summary.overtimeMultiplier}x rate)`,
             selected: true,
             hours: summary.overtimeHours,
             rate: otRate,
@@ -304,7 +325,7 @@ export function CreateCustomerInvoiceFromTimeDialog({
       
       setLineItemDescriptions(descriptions);
     }
-  }, [open, rateBracketSummaries, dateRange]);
+  }, [open, rateBracketSummaries, weekLabels]);
 
   // Update a line item's description
   const updateLineItemDescription = (bracketId: string, type: 'regular' | 'overtime', newDescription: string) => {
