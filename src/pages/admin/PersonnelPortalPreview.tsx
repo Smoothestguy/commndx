@@ -77,12 +77,12 @@ export default function PersonnelPortalPreview() {
       if (!selectedPersonnelId) return [];
       const { data, error } = await supabase
         .from("time_entries")
-        .select("id, entry_date, regular_hours, overtime_hours, project_id")
+        .select("id, entry_date, regular_hours, overtime_hours, project_id, is_holiday, hourly_rate")
         .eq("personnel_id", selectedPersonnelId)
         .order("entry_date", { ascending: false });
       
       if (error) throw error;
-      return (data || []) as (TimeEntry & { project_id: string })[];
+      return (data || []) as (TimeEntry & { project_id: string; is_holiday?: boolean; hourly_rate?: number })[];
     },
     enabled: !!selectedPersonnelId,
   });

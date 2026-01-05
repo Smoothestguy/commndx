@@ -14,7 +14,7 @@ export function TimeTrackingStats({ entries }: TimeTrackingStatsProps) {
   const { data: companySettings } = useCompanySettings();
   
   const overtimeMultiplier = companySettings?.overtime_multiplier ?? 1.5;
-  const holidayMultiplier = companySettings?.holiday_multiplier ?? 1.5;
+  const holidayMultiplier = companySettings?.holiday_multiplier ?? 2.0;
   const weeklyOvertimeThreshold = companySettings?.weekly_overtime_threshold ?? 40;
 
   // Calculate overtime PER EMPLOYEE using 40-hour weekly threshold
@@ -36,7 +36,7 @@ export function TimeTrackingStats({ entries }: TimeTrackingStatsProps) {
   // Calculate total cost per employee and sum up
   const totalCost = useMemo(() => {
     // Group entries by employee to calculate cost correctly
-    const employeeData = new Map<string, { hours: number; rate: number }>();
+    const employeeData = new Map<string, { hours: number; holidayHours: number; rate: number }>();
     
     entries.forEach((entry) => {
       const key = entry.personnel_id || entry.user_id || "unknown";
@@ -46,33 +46,35 @@ export function TimeTrackingStats({ entries }: TimeTrackingStatsProps) {
         || entry.profiles?.hourly_rate 
         || 0;
       const hours = Number(entry.hours);
+      const isHoliday = entry.is_holiday === true;
       
       const existing = employeeData.get(key);
       if (existing) {
         employeeData.set(key, { 
-          hours: existing.hours + hours, 
+          hours: existing.hours + hours,
+          holidayHours: existing.holidayHours + (isHoliday ? hours : 0),
           rate: rate || existing.rate // Use first non-zero rate found
         });
       } else {
-        employeeData.set(key, { hours, rate });
+        employeeData.set(key, { hours, holidayHours: isHoliday ? hours : 0, rate });
       }
     });
     
     let cost = 0;
-    employeeData.forEach(({ hours, rate }) => {
-      const empRegular = Math.min(hours, weeklyOvertimeThreshold);
-      const empOvertime = Math.max(0, hours - weeklyOvertimeThreshold);
+    employeeData.forEach(({ hours, holidayHours, rate }) => {
+      // Holiday hours are paid at full holiday rate, separated from regular/OT calculation
+      const nonHolidayHours = hours - holidayHours;
+      const empRegular = Math.min(nonHolidayHours, weeklyOvertimeThreshold);
+      const empOvertime = Math.max(0, nonHolidayHours - weeklyOvertimeThreshold);
+      
+      // Non-holiday cost
       cost += calculateLaborCost(empRegular, empOvertime, rate, overtimeMultiplier);
+      // Holiday cost at full multiplier (not as bonus)
+      cost += holidayHours * rate * holidayMultiplier;
     });
     
-    // Add holiday bonus
-    const avgRate = entries.length > 0
-      ? entries.reduce((sum, e) => sum + (e.personnel?.hourly_rate || e.profiles?.hourly_rate || 0), 0) / entries.length
-      : 0;
-    cost += holidayHours * avgRate * (holidayMultiplier - 1);
-    
     return cost;
-  }, [entries, weeklyOvertimeThreshold, overtimeMultiplier, holidayMultiplier, holidayHours]);
+  }, [entries, weeklyOvertimeThreshold, overtimeMultiplier, holidayMultiplier]);
   
   const uninvoicedHours = entries
     .filter((entry) => entry.status !== "invoiced")
