@@ -1,10 +1,13 @@
 import { useState, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
-import { startOfWeek, endOfWeek, isWithinInterval, parseISO } from "date-fns";
+import { startOfWeek, endOfWeek, isWithinInterval, parseISO, addWeeks } from "date-fns";
 import { PageLayout } from "@/components/layout/PageLayout";
 import { Button } from "@/components/ui/button";
-import { Plus, Users, DollarSign, Loader2 } from "lucide-react";
+import { Plus, Users, DollarSign, Loader2, Calendar } from "lucide-react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Switch } from "@/components/ui/switch";
+import { Label } from "@/components/ui/label";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { TimeTrackingStats } from "@/components/time-tracking/TimeTrackingStats";
 import { ProjectTimeEntriesTable } from "@/components/time-tracking/ProjectTimeEntriesTable";
 import { EnhancedTimeEntryForm } from "@/components/time-tracking/EnhancedTimeEntryForm";
@@ -49,6 +52,8 @@ export default function TimeTracking() {
     TimeEntryWithDetails[]
   >([]);
   const [weeklyViewWeek, setWeeklyViewWeek] = useState(() => new Date());
+  const [showMultipleWeeks, setShowMultipleWeeks] = useState(false);
+  const [weeksToShow, setWeeksToShow] = useState(2);
 
   const { isAdmin, isManager, loading: roleLoading } = useUserRole();
   const isMobile = useIsMobile();
@@ -89,14 +94,24 @@ export default function TimeTracking() {
   const isLoading =
     roleLoading || (showAllEntries ? allEntriesLoading : userEntriesLoading);
 
-  // Filter entries by selected week
+  // Filter entries by selected week (or multiple weeks)
   const filteredEntries = useMemo(() => {
+    if (showMultipleWeeks) {
+      // Multi-week mode: show entries from current week backwards
+      const rangeEnd = endOfWeek(weeklyViewWeek, { weekStartsOn: 1 });
+      const rangeStart = startOfWeek(addWeeks(weeklyViewWeek, -(weeksToShow - 1)), { weekStartsOn: 1 });
+      return entries.filter(entry => {
+        const entryDate = parseISO(entry.entry_date);
+        return isWithinInterval(entryDate, { start: rangeStart, end: rangeEnd });
+      });
+    }
+    // Single week mode
     const weekEnd = endOfWeek(weeklyViewWeek, { weekStartsOn: 1 });
     return entries.filter(entry => {
       const entryDate = parseISO(entry.entry_date);
       return isWithinInterval(entryDate, { start: weekStart, end: weekEnd });
     });
-  }, [entries, weekStart, weeklyViewWeek]);
+  }, [entries, weekStart, weeklyViewWeek, showMultipleWeeks, weeksToShow]);
 
   const handleEdit = (entry: TimeEntryWithDetails) => {
     setSelectedEntry(entry);
@@ -210,12 +225,37 @@ export default function TimeTracking() {
           </TabsList>
 
           <TabsContent value="entries" className="space-y-4 mt-4">
-            {/* Week Navigator */}
-            <div className="flex justify-center">
+            {/* Week Navigator with Multi-Week Toggle */}
+            <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
               <WeekNavigator
                 currentWeek={weeklyViewWeek}
                 onWeekChange={setWeeklyViewWeek}
               />
+              
+              {/* Multi-week toggle for bulk selection */}
+              <div className="flex items-center gap-2 px-3 py-2 rounded-lg border bg-muted/30">
+                <Calendar className="h-4 w-4 text-muted-foreground" />
+                <Switch
+                  id="multi-week"
+                  checked={showMultipleWeeks}
+                  onCheckedChange={setShowMultipleWeeks}
+                />
+                <Label htmlFor="multi-week" className="text-sm cursor-pointer">
+                  Multi-week
+                </Label>
+                {showMultipleWeeks && (
+                  <Select value={String(weeksToShow)} onValueChange={v => setWeeksToShow(Number(v))}>
+                    <SelectTrigger className="w-20 h-8">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="2">2 wks</SelectItem>
+                      <SelectItem value="3">3 wks</SelectItem>
+                      <SelectItem value="4">4 wks</SelectItem>
+                    </SelectContent>
+                  </Select>
+                )}
+              </div>
             </div>
 
             {/* Project Time Entries Table - Hierarchical View */}
