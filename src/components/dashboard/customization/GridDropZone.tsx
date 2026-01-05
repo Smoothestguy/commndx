@@ -1,4 +1,5 @@
 import { useDroppable } from "@dnd-kit/core";
+import { Plus } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 interface GridDropZoneProps {
@@ -21,16 +22,25 @@ export function GridDropZone({ id, row, col, isEditMode }: GridDropZoneProps) {
       ref={setNodeRef}
       className={cn(
         "border-2 border-dashed rounded-lg transition-all duration-200",
-        "min-h-[100px]",
+        "min-h-[120px] flex items-center justify-center",
+        "group",
         isOver
           ? "border-primary bg-primary/10"
-          : "border-muted-foreground/20 hover:border-muted-foreground/40"
+          : "border-muted-foreground/30 hover:border-muted-foreground/50 bg-muted/5"
       )}
       style={{
         // Convert to 1-indexed for CSS Grid
         gridRowStart: row + 1,
         gridColumnStart: col + 1,
       }}
-    />
+    >
+      <div className={cn(
+        "text-muted-foreground/40 transition-opacity",
+        "opacity-0 group-hover:opacity-100",
+        isOver && "opacity-100 text-primary"
+      )}>
+        <Plus className="h-6 w-6" />
+      </div>
+    </div>
   );
 }
