@@ -23,7 +23,7 @@ export function AppHeader() {
       </div>
       
       {/* Desktop sidebar toggle - left side with auto margin */}
-      <SidebarTrigger className="hidden md:flex h-8 w-8 mr-auto" />
+      <SidebarTrigger className="hidden md:flex h-8 w-8 mr-auto text-header-foreground hover:bg-sidebar-accent" />
 
       {/* Right side icons grouped together */}
       <div className="flex items-center gap-1 sm:gap-3 min-w-0">
