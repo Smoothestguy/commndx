@@ -14,6 +14,7 @@ import { ProjectAssignmentsSection } from "@/components/time-tracking/ProjectAss
 import { PersonnelAssignmentDialog } from "@/components/time-tracking/PersonnelAssignmentDialog";
 import { CreateVendorBillFromTimeDialog } from "@/components/time-tracking/CreateVendorBillFromTimeDialog";
 import { CreateCustomerInvoiceFromTimeDialog } from "@/components/time-tracking/CreateCustomerInvoiceFromTimeDialog";
+import { BulkCustomerInvoiceDialog } from "@/components/time-tracking/BulkCustomerInvoiceDialog";
 import { MobileActionBar } from "@/components/layout/MobileActionBar";
 import { useIsMobile } from "@/hooks/use-mobile";
 import {
@@ -41,6 +42,10 @@ export default function TimeTracking() {
     TimeEntryWithDetails[]
   >([]);
   const [selectedEntriesForInvoice, setSelectedEntriesForInvoice] = useState<
+    TimeEntryWithDetails[]
+  >([]);
+  const [bulkInvoiceDialogOpen, setBulkInvoiceDialogOpen] = useState(false);
+  const [selectedEntriesForBulkInvoice, setSelectedEntriesForBulkInvoice] = useState<
     TimeEntryWithDetails[]
   >([]);
   const [weeklyViewWeek, setWeeklyViewWeek] = useState(() => new Date());
@@ -113,6 +118,13 @@ export default function TimeTracking() {
   ) => {
     setSelectedEntriesForInvoice(selectedEntries);
     setCustomerInvoiceDialogOpen(true);
+  };
+
+  const handleBulkCreateInvoices = (
+    selectedEntries: TimeEntryWithDetails[]
+  ) => {
+    setSelectedEntriesForBulkInvoice(selectedEntries);
+    setBulkInvoiceDialogOpen(true);
   };
 
   if (isLoading) {
@@ -225,6 +237,9 @@ export default function TimeTracking() {
               onCreateCustomerInvoice={
                 canManageTeam ? handleCreateCustomerInvoice : undefined
               }
+              onBulkCreateInvoices={
+                canManageTeam ? handleBulkCreateInvoices : undefined
+              }
               isDeleting={bulkDelete.isPending}
               isUpdatingStatus={updateStatus.isPending}
             />
@@ -283,6 +298,16 @@ export default function TimeTracking() {
             onOpenChange={setCustomerInvoiceDialogOpen}
             selectedEntries={selectedEntriesForInvoice}
             onSuccess={() => setSelectedEntriesForInvoice([])}
+          />
+        )}
+
+        {/* Bulk Create Customer Invoices Dialog */}
+        {canManageTeam && (
+          <BulkCustomerInvoiceDialog
+            open={bulkInvoiceDialogOpen}
+            onOpenChange={setBulkInvoiceDialogOpen}
+            selectedEntries={selectedEntriesForBulkInvoice}
+            onSuccess={() => setSelectedEntriesForBulkInvoice([])}
           />
         )}
 
