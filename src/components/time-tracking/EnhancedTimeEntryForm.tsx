@@ -193,20 +193,40 @@ export function EnhancedTimeEntryForm({
     return { total, regular, overtime };
   }, [weeklyHours]);
 
-  // Calculate per-personnel totals
+  // Calculate per-personnel totals with holiday multiplier
   const getPersonnelTotals = (personnelId: string) => {
     let total = 0;
+    let cost = 0;
     const person = assignedPersonnel.find(a => a.personnel?.id === personnelId)?.personnel;
     const hourlyRate = person?.hourly_rate || 0;
     
     weekDays.forEach(day => {
       const dateKey = format(day, "yyyy-MM-dd");
       const hours = parseFloat(personnelHours[`${personnelId}_${dateKey}`]) || 0;
+      const isHoliday = holidayDays[dateKey] === true;
+      
       total += hours;
+      // Apply holiday multiplier (2x) if day is marked as holiday
+      cost += hours * hourlyRate * (isHoliday ? holidayMultiplier : 1);
     });
     
-    return { total, cost: total * hourlyRate };
+    return { total, cost };
   };
+
+  // Calculate estimated cost for daily mode with holiday multiplier
+  const estimatedDailyCost = useMemo(() => {
+    if (watchedHours <= 0 || selectedPersonnel.size === 0) return 0;
+    
+    let total = 0;
+    selectedPersonnel.forEach(personnelId => {
+      const person = assignedPersonnel.find(a => a.personnel?.id === personnelId)?.personnel;
+      const rate = person?.hourly_rate || 0;
+      const multiplier = watchedIsHoliday ? holidayMultiplier : 1;
+      total += watchedHours * rate * multiplier;
+    });
+    
+    return total;
+  }, [watchedHours, watchedIsHoliday, selectedPersonnel, assignedPersonnel, holidayMultiplier]);
 
   // Calculate grand totals for all selected personnel
   const grandTotals = useMemo(() => {
@@ -899,18 +919,34 @@ export function EnhancedTimeEntryForm({
                   )}
                 />
 
-                {/* Hours display - no overtime preview (OT calculated weekly at 40h threshold) */}
+                {/* Hours display with live cost preview */}
                 {watchedHours > 0 && (
                   <div className="rounded-lg border p-3 bg-muted/30 space-y-2">
                     <div className="flex items-center gap-2 text-sm font-medium">
                       <Clock className="h-4 w-4" />
                       Hours Entry
                     </div>
-                    <div className="text-sm">
+                    <div className="text-sm space-y-1">
                       <div className="flex items-center justify-between">
                         <span className="text-muted-foreground">Hours:</span>
                         <span className="font-medium">{watchedHours.toFixed(2)}h</span>
                       </div>
+                      
+                      {/* Show cost preview if personnel selected */}
+                      {selectedPersonnel.size > 0 && estimatedDailyCost > 0 && (
+                        <div className="flex items-center justify-between">
+                          <span className="text-muted-foreground flex items-center gap-1">
+                            Estimated Cost:
+                            {watchedIsHoliday && (
+                              <Badge variant="outline" className="text-purple-600 border-purple-300 text-xs">
+                                Holiday 2x
+                              </Badge>
+                            )}
+                          </span>
+                          <span className="font-medium text-primary">${estimatedDailyCost.toFixed(2)}</span>
+                        </div>
+                      )}
+                      
                       <p className="text-xs text-muted-foreground mt-1">
                         Overtime is calculated weekly when total exceeds {weeklyOvertimeThreshold}h
                       </p>
