@@ -78,6 +78,12 @@ verify_jwt = false
 [functions.quickbooks-create-bill]
 verify_jwt = false
 
+[functions.quickbooks-update-bill]
+verify_jwt = false
+
+[functions.quickbooks-void-bill]
+verify_jwt = false
+
 [functions.quickbooks-create-estimate]
 verify_jwt = false
 

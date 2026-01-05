@@ -239,7 +239,7 @@ export function BulkPaymentDialog({
           notes: config.use_custom ? config.custom_notes : globalNotes || null,
         };
       })
-      .filter((p): p is BulkPaymentItem => p !== null);
+      .filter((p): p is NonNullable<typeof p> => p !== null);
 
     const result = await bulkPayment.mutateAsync(payments);
     setResults(result);
