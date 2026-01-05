@@ -3,6 +3,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { DollarSign, FolderOpen, Users, FileText, Clock, AlertCircle, Receipt, Briefcase } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { DashboardWidget, DashboardTheme } from "./types";
+import { StatCard } from "../StatCard";
 
 interface StatWidgetProps {
   widget: DashboardWidget;
@@ -25,6 +26,18 @@ const STAT_ICONS: Record<string, typeof DollarSign> = {
   today: Clock,
   open_count: Receipt,
   total_count: Briefcase,
+};
+
+// Map widget IDs to navigation routes
+const STAT_HREF_MAP: Record<string, string> = {
+  "stat-revenue": "/invoices",
+  "stat-active-projects": "/projects",
+  "stat-pending-invoices": "/invoices",
+  "stat-overdue-invoices": "/invoices",
+  "stat-open-estimates": "/estimates",
+  "stat-total-customers": "/customers",
+  "stat-hours-today": "/time-tracking",
+  "stat-staff-on-site": "/project-assignments",
 };
 
 export function StatWidget({ widget, theme, isEditMode }: StatWidgetProps) {
@@ -134,6 +147,8 @@ export function StatWidget({ widget, theme, isEditMode }: StatWidgetProps) {
     large: "text-3xl",
   }[theme?.fontSize ?? "medium"];
 
+  const href = STAT_HREF_MAP[widget.id];
+
   if (isLoading) {
     return (
       <div className="animate-pulse">
@@ -143,6 +158,20 @@ export function StatWidget({ widget, theme, isEditMode }: StatWidgetProps) {
     );
   }
 
+  // In view mode, render the full StatCard with navigation
+  if (!isEditMode) {
+    return (
+      <StatCard
+        title={widget.title}
+        value={statData?.value ?? "N/A"}
+        icon={Icon}
+        href={href}
+        changeType={statData?.changeType}
+      />
+    );
+  }
+
+  // In edit mode, render content without navigation (for drag/drop)
   return (
     <div className="flex items-center justify-between">
       <div>

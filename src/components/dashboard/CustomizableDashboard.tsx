@@ -275,6 +275,23 @@ export function CustomizableDashboard({
       );
     }
 
+    // Stat widgets render without container in view mode (StatCard is already a card)
+    if (widget.type === "stat" && !isEditMode) {
+      return (
+        <DraggableWidget
+          key={widget.id}
+          id={widget.id}
+          isEditMode={isEditMode}
+          row={layoutWidget.position.row}
+          col={layoutWidget.position.col}
+          rowSpan={layoutWidget.size.height}
+          colSpan={layoutWidget.size.width}
+        >
+          {widgetContent()}
+        </DraggableWidget>
+      );
+    }
+
     return (
       <DraggableWidget
         key={widget.id}
