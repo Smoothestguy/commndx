@@ -136,8 +136,18 @@ const Dashboard = () => {
     [invoices]
   );
 
+  // Filter paid invoices by current year for revenue calculation
+  const currentYear = new Date().getFullYear();
+  const currentYearPaidInvoices = useMemo(
+    () => paidInvoices.filter((inv) => {
+      const paidDate = inv.paid_date ? new Date(inv.paid_date) : new Date(inv.created_at);
+      return paidDate.getFullYear() === currentYear;
+    }),
+    [paidInvoices, currentYear]
+  );
+
   const stats = useMemo(() => {
-    const totalRevenue = paidInvoices.reduce(
+    const totalRevenue = currentYearPaidInvoices.reduce(
       (sum, inv) => sum + (inv.total ?? 0),
       0
     );
@@ -153,7 +163,7 @@ const Dashboard = () => {
       totalCustomers: customers?.length ?? 0,
       pendingEstimates,
     };
-  }, [estimates, paidInvoices, products, customers]);
+  }, [estimates, currentYearPaidInvoices, products, customers]);
 
   const recentEstimates = useMemo(() => {
     if (!estimates) return [];
@@ -360,11 +370,11 @@ const Dashboard = () => {
           {/* Stats Grid - Mobile optimized with compact cards */}
           <div className="grid gap-2 sm:gap-4 grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 mb-4 sm:mb-8">
             <StatCard
-              title="Total Revenue"
+              title={`${currentYear} Revenue`}
               value={isLoading ? "..." : formatCurrency(stats.totalRevenue)}
               change={
-                paidInvoices.length
-                  ? `${paidInvoices.length} paid invoices`
+                currentYearPaidInvoices.length
+                  ? `${currentYearPaidInvoices.length} paid invoices`
                   : "No paid invoices"
               }
               changeType="positive"
