@@ -155,7 +155,8 @@ export function GroupedTimeTrackingTable({
   };
 
   const getHourlyRate = (entry: TimeEntryWithDetails) => {
-    return entry.personnel?.hourly_rate || entry.profiles?.hourly_rate || 0;
+    // Prioritize snapshotted hourly_rate on entry, fall back to personnel/profile rate
+    return entry.hourly_rate || entry.personnel?.hourly_rate || entry.profiles?.hourly_rate || 0;
   };
 
   const getStatus = (entry: TimeEntryWithDetails): Status => {

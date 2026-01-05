@@ -38,6 +38,9 @@ export const useCompanySettings = () => {
       if (error) throw error;
       return data as CompanySettings;
     },
+    staleTime: 0,
+    refetchOnMount: "always",
+    refetchOnWindowFocus: true,
   });
 };
 
@@ -55,8 +58,11 @@ export const useUpdateCompanySettings = () => {
       if (error) throw error;
       return data;
     },
-    onSuccess: () => {
+    onSuccess: (data) => {
+      queryClient.setQueryData(["company-settings"], data);
       queryClient.invalidateQueries({ queryKey: ["company-settings"] });
+      queryClient.invalidateQueries({ queryKey: ["all-time-entries"], refetchType: "all" });
+      queryClient.invalidateQueries({ queryKey: ["time-entries"], refetchType: "all" });
       toast.success("Company settings updated successfully");
     },
     onError: (error: Error) => {
