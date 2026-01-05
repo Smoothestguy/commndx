@@ -285,7 +285,7 @@ export function useRemovePersonnelFromProject() {
   });
 }
 
-// Get all projects assigned to a specific personnel member
+// Get all projects assigned to a specific personnel member (includes rate bracket info)
 export function useProjectsForPersonnel(personnelId: string | undefined) {
   return useQuery({
     queryKey: ["personnel-project-assignments", "by-personnel", personnelId],
@@ -301,8 +301,15 @@ export function useProjectsForPersonnel(personnelId: string | undefined) {
           assigned_by,
           assigned_at,
           status,
+          rate_bracket_id,
           created_at,
           updated_at,
+          project_rate_brackets (
+            id,
+            name,
+            bill_rate,
+            overtime_multiplier
+          ),
           projects (
             id,
             name,
@@ -321,6 +328,7 @@ export function useProjectsForPersonnel(personnelId: string | undefined) {
 
       if (error) throw error;
       return data as (PersonnelProjectAssignment & { 
+        project_rate_brackets: RateBracketInfo | null;
         projects: {
           id: string;
           name: string;

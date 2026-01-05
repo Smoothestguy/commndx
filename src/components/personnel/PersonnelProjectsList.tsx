@@ -1,14 +1,211 @@
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { useState } from "react";
+import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
-import { FolderKanban, Calendar, Building2, ExternalLink } from "lucide-react";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { FolderKanban, Calendar, Building2, ExternalLink, Briefcase, DollarSign, AlertCircle, Save, Loader2 } from "lucide-react";
 import { Link } from "react-router-dom";
 import { format } from "date-fns";
-import { useProjectsForPersonnel } from "@/integrations/supabase/hooks/usePersonnelProjectAssignments";
+import { useProjectsForPersonnel, useUpdateAssignmentRateBracket } from "@/integrations/supabase/hooks/usePersonnelProjectAssignments";
+import { useActiveProjectRateBrackets } from "@/integrations/supabase/hooks/useProjectRateBrackets";
 
 interface PersonnelProjectsListProps {
   personnelId: string;
+}
+
+interface ProjectCardProps {
+  assignment: {
+    id: string;
+    project_id: string;
+    assigned_at: string;
+    rate_bracket_id: string | null;
+    project_rate_brackets: {
+      id: string;
+      name: string;
+      bill_rate: number;
+      overtime_multiplier: number;
+    } | null;
+    projects: {
+      id: string;
+      name: string;
+      status: string;
+      start_date: string | null;
+      end_date: string | null;
+      customers: { name: string; company: string | null } | null;
+    } | null;
+  };
+}
+
+function ProjectCard({ assignment }: ProjectCardProps) {
+  const [selectedRateBracketId, setSelectedRateBracketId] = useState<string | null>(
+    assignment.rate_bracket_id
+  );
+  const [hasChanges, setHasChanges] = useState(false);
+  
+  const { data: rateBrackets, isLoading: bracketsLoading } = useActiveProjectRateBrackets(
+    assignment.project_id
+  );
+  const updateRateBracket = useUpdateAssignmentRateBracket();
+
+  const getStatusVariant = (status: string) => {
+    switch (status) {
+      case "active":
+        return "default";
+      case "completed":
+        return "secondary";
+      case "on_hold":
+        return "outline";
+      default:
+        return "secondary";
+    }
+  };
+
+  const handleRateBracketChange = (value: string) => {
+    const newValue = value === "none" ? null : value;
+    setSelectedRateBracketId(newValue);
+    setHasChanges(newValue !== assignment.rate_bracket_id);
+  };
+
+  const handleSave = async () => {
+    await updateRateBracket.mutateAsync({
+      assignmentId: assignment.id,
+      rateBracketId: selectedRateBracketId,
+    });
+    setHasChanges(false);
+  };
+
+  const selectedBracket = rateBrackets?.find(b => b.id === selectedRateBracketId);
+  const currentBracket = assignment.project_rate_brackets;
+
+  return (
+    <Card>
+      <CardContent className="pt-6">
+        <div className="flex flex-col gap-4">
+          <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4">
+            <div className="space-y-2">
+              <div className="flex items-center gap-2">
+                <FolderKanban className="h-4 w-4 text-muted-foreground" />
+                <h4 className="font-semibold">{assignment.projects?.name || "Unknown Project"}</h4>
+                <Badge variant={getStatusVariant(assignment.projects?.status || "")}>
+                  {assignment.projects?.status || "Unknown"}
+                </Badge>
+              </div>
+
+              {assignment.projects?.customers && (
+                <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                  <Building2 className="h-4 w-4" />
+                  <span>
+                    {assignment.projects.customers.company || assignment.projects.customers.name}
+                  </span>
+                </div>
+              )}
+
+              <div className="flex flex-wrap gap-4 text-sm text-muted-foreground">
+                <div className="flex items-center gap-1">
+                  <Calendar className="h-4 w-4" />
+                  <span>Assigned: {format(new Date(assignment.assigned_at), "MMM d, yyyy")}</span>
+                </div>
+                {assignment.projects?.start_date && (
+                  <div className="flex items-center gap-1">
+                    <span>Started: {format(new Date(assignment.projects.start_date), "MMM d, yyyy")}</span>
+                  </div>
+                )}
+              </div>
+            </div>
+
+            <Button variant="outline" size="sm" asChild>
+              <Link to={`/projects/${assignment.project_id}`}>
+                <ExternalLink className="h-4 w-4 mr-2" />
+                View Project
+              </Link>
+            </Button>
+          </div>
+
+          {/* Role/Rate Bracket Section */}
+          <div className="flex flex-col sm:flex-row sm:items-center gap-3 pt-3 border-t">
+            <div className="flex items-center gap-2 text-sm font-medium">
+              <Briefcase className="h-4 w-4 text-muted-foreground" />
+              <span>Role:</span>
+            </div>
+            
+            {bracketsLoading ? (
+              <Skeleton className="h-9 w-48" />
+            ) : rateBrackets && rateBrackets.length > 0 ? (
+              <div className="flex items-center gap-2 flex-1">
+                <Select
+                  value={selectedRateBracketId || "none"}
+                  onValueChange={handleRateBracketChange}
+                >
+                  <SelectTrigger className="w-full sm:w-56">
+                    <SelectValue placeholder="Select role">
+                      {selectedBracket ? (
+                        <span className="flex items-center gap-2">
+                          {selectedBracket.name}
+                          <span className="text-muted-foreground">(${selectedBracket.bill_rate}/hr)</span>
+                        </span>
+                      ) : currentBracket ? (
+                        <span className="flex items-center gap-2">
+                          {currentBracket.name}
+                          <span className="text-muted-foreground">(${currentBracket.bill_rate}/hr)</span>
+                        </span>
+                      ) : (
+                        <span className="text-muted-foreground">No role assigned</span>
+                      )}
+                    </SelectValue>
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="none">
+                      <span className="text-muted-foreground">No role</span>
+                    </SelectItem>
+                    {rateBrackets.map((bracket) => (
+                      <SelectItem key={bracket.id} value={bracket.id}>
+                        <span className="flex items-center gap-2">
+                          {bracket.name}
+                          <span className="text-muted-foreground">(${bracket.bill_rate}/hr)</span>
+                        </span>
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+
+                {hasChanges && (
+                  <Button
+                    size="sm"
+                    onClick={handleSave}
+                    disabled={updateRateBracket.isPending}
+                  >
+                    {updateRateBracket.isPending ? (
+                      <Loader2 className="h-4 w-4 animate-spin mr-1" />
+                    ) : (
+                      <Save className="h-4 w-4 mr-1" />
+                    )}
+                    Save
+                  </Button>
+                )}
+              </div>
+            ) : (
+              <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                <AlertCircle className="h-4 w-4 text-amber-500" />
+                <span>No rate brackets configured for this project</span>
+                <Button variant="link" size="sm" className="h-auto p-0" asChild>
+                  <Link to={`/projects/${assignment.project_id}?tab=settings`}>
+                    Configure
+                  </Link>
+                </Button>
+              </div>
+            )}
+          </div>
+        </div>
+      </CardContent>
+    </Card>
+  );
 }
 
 export function PersonnelProjectsList({ personnelId }: PersonnelProjectsListProps) {
@@ -43,19 +240,6 @@ export function PersonnelProjectsList({ personnelId }: PersonnelProjectsListProp
     );
   }
 
-  const getStatusVariant = (status: string) => {
-    switch (status) {
-      case "active":
-        return "default";
-      case "completed":
-        return "secondary";
-      case "on_hold":
-        return "outline";
-      default:
-        return "secondary";
-    }
-  };
-
   return (
     <div className="space-y-4">
       <div className="flex items-center justify-between">
@@ -65,49 +249,7 @@ export function PersonnelProjectsList({ personnelId }: PersonnelProjectsListProp
       </div>
 
       {assignments.map((assignment) => (
-        <Card key={assignment.id}>
-          <CardContent className="pt-6">
-            <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4">
-              <div className="space-y-2">
-                <div className="flex items-center gap-2">
-                  <FolderKanban className="h-4 w-4 text-muted-foreground" />
-                  <h4 className="font-semibold">{assignment.projects?.name || "Unknown Project"}</h4>
-                  <Badge variant={getStatusVariant(assignment.projects?.status || "")}>
-                    {assignment.projects?.status || "Unknown"}
-                  </Badge>
-                </div>
-
-                {assignment.projects?.customers && (
-                  <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                    <Building2 className="h-4 w-4" />
-                    <span>
-                      {assignment.projects.customers.company || assignment.projects.customers.name}
-                    </span>
-                  </div>
-                )}
-
-                <div className="flex flex-wrap gap-4 text-sm text-muted-foreground">
-                  <div className="flex items-center gap-1">
-                    <Calendar className="h-4 w-4" />
-                    <span>Assigned: {format(new Date(assignment.assigned_at), "MMM d, yyyy")}</span>
-                  </div>
-                  {assignment.projects?.start_date && (
-                    <div className="flex items-center gap-1">
-                      <span>Started: {format(new Date(assignment.projects.start_date), "MMM d, yyyy")}</span>
-                    </div>
-                  )}
-                </div>
-              </div>
-
-              <Button variant="outline" size="sm" asChild>
-                <Link to={`/projects/${assignment.project_id}`}>
-                  <ExternalLink className="h-4 w-4 mr-2" />
-                  View Project
-                </Link>
-              </Button>
-            </div>
-          </CardContent>
-        </Card>
+        <ProjectCard key={assignment.id} assignment={assignment} />
       ))}
     </div>
   );

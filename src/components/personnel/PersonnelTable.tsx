@@ -32,6 +32,7 @@ import {
   XSquare,
   RefreshCw,
   UserX,
+  Briefcase,
 } from "lucide-react";
 import { useVendors } from "@/integrations/supabase/hooks/useVendors";
 import {
@@ -47,6 +48,7 @@ import { useIsMobile } from "@/hooks/use-mobile";
 import { MobilePersonnelCard } from "./MobilePersonnelCard";
 import { EnhancedDataTable, EnhancedColumn } from "@/components/shared/EnhancedDataTable";
 import { TablePagination } from "@/components/shared/TablePagination";
+import { PersonnelRolesDialog } from "./PersonnelRolesDialog";
 
 type Personnel = Database["public"]["Tables"]["personnel"]["Row"];
 
@@ -93,6 +95,7 @@ export function PersonnelTable({
   const [hardDeleteDialogOpen, setHardDeleteDialogOpen] = useState(false);
   const [personToHardDelete, setPersonToHardDelete] = useState<Personnel | null>(null);
   const [syncingId, setSyncingId] = useState<string | null>(null);
+  const [rolesDialogPerson, setRolesDialogPerson] = useState<Personnel | null>(null);
 
   const getVendor = (vendorId: string | null) => {
     if (!vendorId) return null;
@@ -399,6 +402,15 @@ export function PersonnelTable({
               <Printer className="mr-2 h-4 w-4" />
               Print Badge
             </DropdownMenuItem>
+            <DropdownMenuItem
+              onClick={(e) => {
+                e.stopPropagation();
+                setRolesDialogPerson(person);
+              }}
+            >
+              <Briefcase className="mr-2 h-4 w-4" />
+              Manage Roles
+            </DropdownMenuItem>
             {qbConfig?.is_connected && (
               <DropdownMenuItem
                 onClick={async (e) => {
@@ -595,6 +607,16 @@ export function PersonnelTable({
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      {/* Manage Roles Dialog */}
+      {rolesDialogPerson && (
+        <PersonnelRolesDialog
+          open={!!rolesDialogPerson}
+          onOpenChange={(open) => !open && setRolesDialogPerson(null)}
+          personnelId={rolesDialogPerson.id}
+          personnelName={`${rolesDialogPerson.first_name} ${rolesDialogPerson.last_name}`}
+        />
+      )}
     </div>
   );
 }
