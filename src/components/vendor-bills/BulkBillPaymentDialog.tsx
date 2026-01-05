@@ -97,7 +97,7 @@ export function BulkBillPaymentDialog({
   const [globalDate, setGlobalDate] = useState(
     format(new Date(), "yyyy-MM-dd")
   );
-  const [globalMethod, setGlobalMethod] = useState("Check");
+  const [globalMethod, setGlobalMethod] = useState("ACH");
   const [globalReference, setGlobalReference] = useState("");
   const [globalNotes, setGlobalNotes] = useState("");
   const [payFullAmount, setPayFullAmount] = useState(true);
@@ -516,21 +516,21 @@ export function BulkBillPaymentDialog({
               )}
             </div>
           </div>
+          <div className="mt-4 flex justify-end gap-2">
+            <Button variant="outline" onClick={handleClose}>
+              Cancel
+            </Button>
+            <Button
+              onClick={() => setStep("review")}
+              disabled={totals.validCount === 0}
+              variant="success"
+            >
+              <CheckCircle className="h-4 w-4 mr-2" />
+              Review & Record Payments
+            </Button>
+          </div>
         </div>
       </div>
-
-      <DialogFooter>
-        <Button variant="outline" onClick={handleClose}>
-          Cancel
-        </Button>
-        <Button
-          onClick={() => setStep("review")}
-          disabled={totals.validCount === 0}
-        >
-          Review Payments
-          <ChevronRight className="h-4 w-4 ml-1" />
-        </Button>
-      </DialogFooter>
     </>
   );
 
