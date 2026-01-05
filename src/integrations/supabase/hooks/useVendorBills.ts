@@ -26,6 +26,7 @@ export interface VendorBillPayment {
   reference_number: string | null;
   notes: string | null;
   created_at: string;
+  quickbooks_payment_id?: string | null;
 }
 
 export interface VendorBill {
@@ -57,6 +58,27 @@ export interface VendorBillFilters {
   project_id?: string;
   start_date?: string;
   end_date?: string;
+}
+
+// Bulk payment interfaces
+export interface BulkBillPaymentItem {
+  bill_id: string;
+  bill_number: string;
+  vendor_name: string;
+  remaining_amount: number;
+  payment_amount: number;
+  payment_date: string;
+  payment_method: string;
+  reference_number?: string | null;
+  notes?: string | null;
+}
+
+export interface BulkBillPaymentResult {
+  bill_id: string;
+  bill_number: string;
+  success: boolean;
+  error?: string;
+  payment_id?: string;
 }
 
 // Helper to check if QuickBooks is connected
@@ -453,6 +475,111 @@ export const useDeleteVendorBillPayment = () => {
     },
     onError: (error: Error) => {
       toast.error(`Failed to delete payment: ${error.message}`);
+    },
+  });
+};
+
+// Bulk payment hook for vendor bills
+export const useBulkAddVendorBillPayments = () => {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async (payments: BulkBillPaymentItem[]): Promise<BulkBillPaymentResult[]> => {
+      const results: BulkBillPaymentResult[] = [];
+
+      for (const payment of payments) {
+        try {
+          // Validate payment amount
+          if (payment.payment_amount <= 0) {
+            results.push({
+              bill_id: payment.bill_id,
+              bill_number: payment.bill_number,
+              success: false,
+              error: "Payment amount must be greater than 0",
+            });
+            continue;
+          }
+
+          if (payment.payment_amount > payment.remaining_amount) {
+            results.push({
+              bill_id: payment.bill_id,
+              bill_number: payment.bill_number,
+              success: false,
+              error: "Payment amount exceeds remaining balance",
+            });
+            continue;
+          }
+
+          // Insert payment
+          const { data: insertedPayment, error: paymentError } = await supabase
+            .from("vendor_bill_payments")
+            .insert([{
+              bill_id: payment.bill_id,
+              amount: payment.payment_amount,
+              payment_date: payment.payment_date,
+              payment_method: payment.payment_method,
+              reference_number: payment.reference_number || null,
+              notes: payment.notes || null,
+            }])
+            .select()
+            .single();
+
+          if (paymentError) {
+            results.push({
+              bill_id: payment.bill_id,
+              bill_number: payment.bill_number,
+              success: false,
+              error: paymentError.message,
+            });
+            continue;
+          }
+
+          // Try to sync to QuickBooks (non-blocking)
+          try {
+            const qbConnected = await isQuickBooksConnected();
+            if (qbConnected) {
+              await supabase.functions.invoke("quickbooks-receive-bill-payment", {
+                body: { paymentId: insertedPayment.id },
+              });
+            }
+          } catch (qbError) {
+            console.error("QuickBooks bill payment sync error (non-blocking):", qbError);
+            // Don't fail the payment if QB sync fails
+          }
+
+          results.push({
+            bill_id: payment.bill_id,
+            bill_number: payment.bill_number,
+            success: true,
+            payment_id: insertedPayment.id,
+          });
+        } catch (error) {
+          results.push({
+            bill_id: payment.bill_id,
+            bill_number: payment.bill_number,
+            success: false,
+            error: error instanceof Error ? error.message : "Unknown error",
+          });
+        }
+      }
+
+      return results;
+    },
+    onSuccess: (results) => {
+      const successCount = results.filter(r => r.success).length;
+      const failCount = results.filter(r => !r.success).length;
+
+      queryClient.invalidateQueries({ queryKey: ["vendor-bills"] });
+      queryClient.invalidateQueries({ queryKey: ["vendor-bill"] });
+      queryClient.invalidateQueries({ queryKey: ["quickbooks-sync-logs"] });
+
+      if (successCount > 0 && failCount === 0) {
+        toast.success(`Successfully recorded ${successCount} payment${successCount > 1 ? 's' : ''}`);
+      } else if (successCount > 0 && failCount > 0) {
+        toast.warning(`Recorded ${successCount} payment${successCount > 1 ? 's' : ''}, ${failCount} failed`);
+      } else if (failCount > 0) {
+        toast.error(`Failed to record ${failCount} payment${failCount > 1 ? 's' : ''}`);
+      }
     },
   });
 };

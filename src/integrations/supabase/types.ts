@@ -6334,6 +6334,7 @@ export type Database = {
           notes: string | null
           payment_date: string
           payment_method: string
+          quickbooks_payment_id: string | null
           reference_number: string | null
         }
         Insert: {
@@ -6344,6 +6345,7 @@ export type Database = {
           notes?: string | null
           payment_date: string
           payment_method?: string
+          quickbooks_payment_id?: string | null
           reference_number?: string | null
         }
         Update: {
@@ -6354,6 +6356,7 @@ export type Database = {
           notes?: string | null
           payment_date?: string
           payment_method?: string
+          quickbooks_payment_id?: string | null
           reference_number?: string | null
         }
         Relationships: [

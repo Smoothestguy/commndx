@@ -203,3 +203,6 @@ verify_jwt = false
 
 [functions.send-assignment-sms]
 verify_jwt = false
+
+[functions.quickbooks-receive-bill-payment]
+verify_jwt = false
