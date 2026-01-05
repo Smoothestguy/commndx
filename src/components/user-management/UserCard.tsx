@@ -65,6 +65,7 @@ export function UserCard({ user, onRoleChange, onDelete, isUpdating, isDeleting,
     if (role === "admin") return "border-l-cyan-500";
     if (role === "manager") return "border-l-purple-500";
     if (role === "personnel") return "border-l-orange-500";
+    if (role === "accounting") return "border-l-emerald-500";
     return "border-l-border";
   };
 
@@ -72,6 +73,7 @@ export function UserCard({ user, onRoleChange, onDelete, isUpdating, isDeleting,
     if (role === "admin") return "default";
     if (role === "manager") return "secondary";
     if (role === "personnel") return "outline";
+    if (role === "accounting") return "secondary";
     return "outline";
   };
 
@@ -195,6 +197,12 @@ export function UserCard({ user, onRoleChange, onDelete, isUpdating, isDeleting,
                     <div className="flex items-center gap-2">
                       <User className="h-4 w-4 text-orange-500" />
                       <span>Personnel (Staff)</span>
+                    </div>
+                  </SelectItem>
+                  <SelectItem value="accounting">
+                    <div className="flex items-center gap-2">
+                      <User className="h-4 w-4 text-emerald-500" />
+                      <span>Accounting</span>
                     </div>
                   </SelectItem>
                   <SelectItem value="user">

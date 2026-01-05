@@ -1,4 +1,4 @@
-import { Users, Shield, UserCog, User } from "lucide-react";
+import { Users, Shield, UserCog, User, Calculator } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { cn } from "@/lib/utils";
@@ -20,6 +20,7 @@ export function UserStats({ users }: UserStatsProps) {
   const totalUsers = users.length;
   const adminCount = users.filter((u) => u.role === "admin").length;
   const managerCount = users.filter((u) => u.role === "manager").length;
+  const accountingCount = users.filter((u) => u.role === "accounting").length;
   const userCount = users.filter((u) => u.role === "user").length;
 
   const stats = [
@@ -48,6 +49,14 @@ export function UserStats({ users }: UserStatsProps) {
       showOnMobile: false,
     },
     {
+      title: "Accounting",
+      value: accountingCount,
+      icon: Calculator,
+      color: "text-emerald-500",
+      bgColor: "bg-emerald-500/10",
+      showOnMobile: false,
+    },
+    {
       title: "Regular Users",
       value: userCount,
       icon: User,
@@ -63,7 +72,7 @@ export function UserStats({ users }: UserStatsProps) {
   return (
     <div className={cn(
       "grid gap-3 md:gap-4 mb-6",
-      isMobile ? "grid-cols-2" : "grid-cols-2 md:grid-cols-4"
+      isMobile ? "grid-cols-2" : "grid-cols-2 md:grid-cols-5"
     )}>
       {visibleStats.map((stat, index) => (
         <Card
