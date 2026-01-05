@@ -16,10 +16,10 @@ export interface DashboardConfiguration {
 }
 
 export function useDashboardConfig() {
-  const { user } = useAuth();
+  const { user, loading: authLoading } = useAuth();
   const queryClient = useQueryClient();
 
-  const { data: config, isLoading, error } = useQuery({
+  const { data: config, isLoading: queryLoading, error } = useQuery({
     queryKey: ["dashboard-config", user?.id],
     queryFn: async () => {
       if (!user?.id) return null;
@@ -51,6 +51,9 @@ export function useDashboardConfig() {
     staleTime: 5 * 60 * 1000, // Consider data fresh for 5 minutes
     gcTime: 30 * 60 * 1000,   // Keep in cache for 30 minutes
   });
+
+  // Consider loading if auth is initializing OR the query is fetching
+  const isLoading = authLoading || queryLoading;
 
   const updateConfigMutation = useMutation({
     mutationFn: async (updates: Partial<Pick<DashboardConfiguration, "layout" | "widgets" | "theme">>) => {
