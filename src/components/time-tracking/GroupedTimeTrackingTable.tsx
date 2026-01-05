@@ -126,7 +126,7 @@ export function GroupedTimeTrackingTable({
 
   const { data: companySettings } = useCompanySettings();
   const overtimeMultiplier = companySettings?.overtime_multiplier ?? 1.5;
-  const holidayMultiplier = companySettings?.holiday_multiplier ?? 1.5;
+  const holidayMultiplier = companySettings?.holiday_multiplier ?? 2.0;
   const weeklyOvertimeThreshold = companySettings?.weekly_overtime_threshold ?? 40;
 
   const handleSort = (key: SortKey) => {
@@ -221,19 +221,23 @@ export function GroupedTimeTrackingTable({
 
     // Calculate weekly overtime for each group (hours over threshold)
     groups.forEach((group) => {
-      // Calculate weekly overtime based on total hours vs threshold
-      group.regularHours = Math.min(group.totalHours, weeklyOvertimeThreshold);
-      group.overtimeHours = Math.max(0, group.totalHours - weeklyOvertimeThreshold);
-      
-      // Recalculate total cost with weekly overtime
       const hourlyRate = group.entries[0] ? getHourlyRate(group.entries[0]) : 0;
-      const regularCost = group.regularHours * hourlyRate;
-      const overtimeCost = group.overtimeHours * hourlyRate * overtimeMultiplier;
       
-      // Add holiday multiplier for holiday hours
-      const holidayBonus = group.holidayHours * hourlyRate * (holidayMultiplier - 1);
+      // Holiday hours are paid at full holiday rate, not included in regular/OT calculation
+      const nonHolidayHours = group.totalHours - group.holidayHours;
+      const nonHolidayRegular = Math.min(nonHolidayHours, weeklyOvertimeThreshold);
+      const nonHolidayOT = Math.max(0, nonHolidayHours - weeklyOvertimeThreshold);
       
-      group.totalCost = regularCost + overtimeCost + holidayBonus;
+      // Store the display values (including holiday in totals for summary)
+      group.regularHours = nonHolidayRegular;
+      group.overtimeHours = nonHolidayOT;
+      
+      // Calculate costs correctly: holiday hours at full multiplier, not as bonus
+      const regularCost = nonHolidayRegular * hourlyRate;
+      const overtimeCost = nonHolidayOT * hourlyRate * overtimeMultiplier;
+      const holidayCost = group.holidayHours * hourlyRate * holidayMultiplier;
+      
+      group.totalCost = regularCost + overtimeCost + holidayCost;
       
       // Sort entries within each group by date (newest first)
       group.entries.sort((a, b) => 
