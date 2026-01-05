@@ -11,19 +11,12 @@ import {
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
 import { Loader2, Receipt, AlertTriangle, Edit, Info } from "lucide-react";
 import { format, nextFriday, startOfWeek, endOfWeek } from "date-fns";
 import { formatCurrency } from "@/lib/utils";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Badge } from "@/components/ui/badge";
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
 import { useCompanySettings } from "@/integrations/supabase/hooks/useCompanySettings";
 import { TimeEntryWithDetails } from "@/integrations/supabase/hooks/useTimeEntries";
 import { useAddInvoice } from "@/integrations/supabase/hooks/useInvoices";
@@ -54,6 +47,17 @@ interface PersonnelRateBracketMap {
   } | null;
 }
 
+interface LineItemDescription {
+  bracketId: string;
+  type: 'regular' | 'overtime';
+  productName: string;
+  description: string;
+  selected: boolean;
+  hours: number;
+  rate: number;
+  total: number;
+}
+
 interface CreateCustomerInvoiceFromTimeDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
@@ -70,10 +74,10 @@ export function CreateCustomerInvoiceFromTimeDialog({
   const navigate = useNavigate();
   const [invoiceDate, setInvoiceDate] = useState(format(new Date(), "yyyy-MM-dd"));
   const [dueDate, setDueDate] = useState(format(nextFriday(new Date()), "yyyy-MM-dd"));
-  const [selectedBrackets, setSelectedBrackets] = useState<Set<string>>(new Set());
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [personnelRateBrackets, setPersonnelRateBrackets] = useState<PersonnelRateBracketMap>({});
   const [isLoading, setIsLoading] = useState(false);
+  const [lineItemDescriptions, setLineItemDescriptions] = useState<LineItemDescription[]>([]);
 
   const { data: companySettings } = useCompanySettings();
   const addInvoice = useAddInvoice();
@@ -261,21 +265,85 @@ export function CreateCustomerInvoiceFromTimeDialog({
     return Array.from(groups.values());
   }, [selectedEntries, personnelRateBrackets, weeklyOvertimeThreshold]);
 
-  // Initialize selected brackets when dialog opens
+  // Generate line item descriptions when summaries change
   useEffect(() => {
-    if (open && rateBracketSummaries.length > 0) {
-      setSelectedBrackets(new Set(rateBracketSummaries.map(b => b.rateBracketId)));
+    if (open && rateBracketSummaries.length > 0 && dateRange) {
+      const descriptions: LineItemDescription[] = [];
+      const weekDescription = `Week of ${dateRange.start} – ${dateRange.end}`;
+      
+      rateBracketSummaries.forEach((summary) => {
+        // Regular time line item
+        if (summary.regularHours > 0) {
+          descriptions.push({
+            bracketId: summary.rateBracketId,
+            type: 'regular',
+            productName: `${summary.rateBracketName} - Regular Time`,
+            description: `${summary.rateBracketName} - Regular Time, ${weekDescription}\n${summary.regularHours.toFixed(1)} hours @ $${summary.billRate.toFixed(2)}/hr`,
+            selected: true,
+            hours: summary.regularHours,
+            rate: summary.billRate,
+            total: summary.regularBillable,
+          });
+        }
+        
+        // Overtime line item
+        if (summary.overtimeHours > 0) {
+          const otRate = summary.billRate * summary.overtimeMultiplier;
+          descriptions.push({
+            bracketId: summary.rateBracketId,
+            type: 'overtime',
+            productName: `${summary.rateBracketName} - Overtime`,
+            description: `${summary.rateBracketName} - Overtime, ${weekDescription}\n${summary.overtimeHours.toFixed(1)} hours @ $${otRate.toFixed(2)}/hr (${summary.overtimeMultiplier}x rate)`,
+            selected: true,
+            hours: summary.overtimeHours,
+            rate: otRate,
+            total: summary.overtimeBillable,
+          });
+        }
+      });
+      
+      setLineItemDescriptions(descriptions);
     }
-  }, [open, rateBracketSummaries.length]);
+  }, [open, rateBracketSummaries, dateRange]);
 
-  const selectedSummaries = useMemo(() =>
-    rateBracketSummaries.filter(b => selectedBrackets.has(b.rateBracketId)),
-    [rateBracketSummaries, selectedBrackets]
+  // Update a line item's description
+  const updateLineItemDescription = (bracketId: string, type: 'regular' | 'overtime', newDescription: string) => {
+    setLineItemDescriptions(prev => 
+      prev.map(item => 
+        item.bracketId === bracketId && item.type === type 
+          ? { ...item, description: newDescription }
+          : item
+      )
+    );
+  };
+
+  // Toggle a line item's selection
+  const toggleLineItem = (bracketId: string, type: 'regular' | 'overtime') => {
+    setLineItemDescriptions(prev => 
+      prev.map(item => 
+        item.bracketId === bracketId && item.type === type 
+          ? { ...item, selected: !item.selected }
+          : item
+      )
+    );
+  };
+
+  // Toggle all line items
+  const toggleAllLineItems = () => {
+    const allSelected = lineItemDescriptions.every(item => item.selected);
+    setLineItemDescriptions(prev => 
+      prev.map(item => ({ ...item, selected: !allSelected }))
+    );
+  };
+
+  const selectedLineItems = useMemo(() => 
+    lineItemDescriptions.filter(item => item.selected),
+    [lineItemDescriptions]
   );
 
   const subtotal = useMemo(() =>
-    selectedSummaries.reduce((sum, b) => sum + b.totalBillable, 0),
-    [selectedSummaries]
+    selectedLineItems.reduce((sum, item) => sum + item.total, 0),
+    [selectedLineItems]
   );
 
   const taxRate = 0;
@@ -283,31 +351,13 @@ export function CreateCustomerInvoiceFromTimeDialog({
   const totalAmount = subtotal + taxAmount;
 
   const totalHours = useMemo(() =>
-    selectedSummaries.reduce((sum, b) => sum + b.totalHours, 0),
-    [selectedSummaries]
+    selectedLineItems.reduce((sum, item) => sum + item.hours, 0),
+    [selectedLineItems]
   );
 
-  const toggleBracket = (bracketId: string) => {
-    const newSelected = new Set(selectedBrackets);
-    if (newSelected.has(bracketId)) {
-      newSelected.delete(bracketId);
-    } else {
-      newSelected.add(bracketId);
-    }
-    setSelectedBrackets(newSelected);
-  };
-
-  const toggleAll = () => {
-    if (selectedBrackets.size === rateBracketSummaries.length) {
-      setSelectedBrackets(new Set());
-    } else {
-      setSelectedBrackets(new Set(rateBracketSummaries.map(b => b.rateBracketId)));
-    }
-  };
-
   const handleCreate = async () => {
-    if (!customerId || selectedSummaries.length === 0) {
-      toast.error("No customer assigned to this project or no roles selected");
+    if (!customerId || selectedLineItems.length === 0) {
+      toast.error("No customer assigned to this project or no line items selected");
       return;
     }
 
@@ -316,10 +366,10 @@ export function CreateCustomerInvoiceFromTimeDialog({
       return;
     }
 
-    // Validate that all selected brackets have bill rates
-    const missingBillRates = selectedSummaries.filter(s => !s.billRate || s.billRate <= 0);
-    if (missingBillRates.length > 0) {
-      toast.error(`Missing bill rate for: ${missingBillRates.map(s => s.rateBracketName).join(', ')}`);
+    // Validate that all selected items have rates
+    const missingRates = selectedLineItems.filter(item => !item.rate || item.rate <= 0);
+    if (missingRates.length > 0) {
+      toast.error(`Missing bill rate for: ${missingRates.map(item => item.productName).join(', ')}`);
       return;
     }
 
@@ -330,44 +380,21 @@ export function CreateCustomerInvoiceFromTimeDialog({
       const { number: invoiceNumber, source } = await getNextInvoiceNumber();
       console.log(`Generated invoice number ${invoiceNumber} from ${source}`);
 
-      const lineItems: Array<{
-        description: string;
-        quantity: number;
-        unit_price: number;
-        markup: number;
-        total: number;
-      }> = [];
+      // Build line items from editable descriptions
+      const lineItems = selectedLineItems.map(item => ({
+        product_name: item.productName,
+        description: item.description,
+        quantity: item.hours,
+        unit_price: item.rate,
+        markup: 0,
+        total: item.total,
+      }));
 
-      const weekDescription = dateRange ? `, Week of ${dateRange.start} – ${dateRange.end}` : '';
-
-      // Create separate line items for regular and overtime per role
-      selectedSummaries.forEach((summary) => {
-        // Regular time line item
-        if (summary.regularHours > 0) {
-          lineItems.push({
-            description: `${summary.rateBracketName} – Regular Time${weekDescription}`,
-            quantity: summary.regularHours,
-            unit_price: summary.billRate,
-            markup: 0,
-            total: summary.regularBillable,
-          });
-        }
-
-        // Overtime line item (only if there's overtime)
-        if (summary.overtimeHours > 0) {
-          const otRate = summary.billRate * summary.overtimeMultiplier;
-          lineItems.push({
-            description: `${summary.rateBracketName} – Overtime${weekDescription}`,
-            quantity: summary.overtimeHours,
-            unit_price: otRate,
-            markup: 0,
-            total: summary.overtimeBillable,
-          });
-        }
-      });
-
-      // Collect all entry IDs to update
-      const entryIdsToUpdate = selectedSummaries.flatMap(s => s.entryIds);
+      // Collect all entry IDs to update (from selected brackets)
+      const selectedBracketIds = new Set(selectedLineItems.map(item => item.bracketId));
+      const entryIdsToUpdate = rateBracketSummaries
+        .filter(s => selectedBracketIds.has(s.rateBracketId))
+        .flatMap(s => s.entryIds);
 
       const result = await addInvoice.mutateAsync({
         number: invoiceNumber,
@@ -418,7 +445,7 @@ export function CreateCustomerInvoiceFromTimeDialog({
   };
 
   const handleClose = () => {
-    setSelectedBrackets(new Set());
+    setLineItemDescriptions([]);
     onOpenChange(false);
   };
 
@@ -427,8 +454,8 @@ export function CreateCustomerInvoiceFromTimeDialog({
     navigate(`/invoices/${invoiceId}`);
   };
 
-  const hasValidEntries = rateBracketSummaries.length > 0;
-  const canCreateInvoice = hasValidEntries && selectedSummaries.length > 0 && customerId && personnelWithoutRateBrackets.length === 0;
+  const hasValidEntries = lineItemDescriptions.length > 0;
+  const canCreateInvoice = hasValidEntries && selectedLineItems.length > 0 && customerId && personnelWithoutRateBrackets.length === 0;
 
   return (
     <Dialog open={open} onOpenChange={handleClose}>
@@ -529,83 +556,73 @@ export function CreateCustomerInvoiceFromTimeDialog({
             </div>
           </div>
 
-          {/* Rate Bracket Selection */}
+          {/* Invoice Line Items Preview */}
           {isLoading ? (
             <div className="flex items-center justify-center p-8">
               <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
             </div>
-          ) : rateBracketSummaries.length > 0 ? (
+          ) : lineItemDescriptions.length > 0 ? (
             <div>
               <div className="flex items-center justify-between mb-2">
-                <Label>Select Roles to Invoice</Label>
-                <Button variant="ghost" size="sm" onClick={toggleAll}>
-                  {selectedBrackets.size === rateBracketSummaries.length ? 'Deselect All' : 'Select All'}
+                <Label>Invoice Line Items Preview</Label>
+                <Button variant="ghost" size="sm" onClick={toggleAllLineItems}>
+                  {lineItemDescriptions.every(item => item.selected) ? 'Deselect All' : 'Select All'}
                 </Button>
               </div>
 
-              <div className="border rounded-lg overflow-hidden">
-                <Table>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead className="w-12">
+              <div className="space-y-3">
+                {lineItemDescriptions.map((item) => {
+                  const hasMissingRate = !item.rate || item.rate <= 0;
+                  
+                  return (
+                    <div
+                      key={`${item.bracketId}-${item.type}`}
+                      className={`border rounded-lg p-3 transition-opacity ${!item.selected ? 'opacity-50' : ''} ${hasMissingRate ? 'border-destructive bg-destructive/5' : ''}`}
+                    >
+                      <div className="flex items-start gap-3">
                         <Checkbox
-                          checked={selectedBrackets.size === rateBracketSummaries.length && rateBracketSummaries.length > 0}
-                          onCheckedChange={toggleAll}
+                          checked={item.selected}
+                          onCheckedChange={() => toggleLineItem(item.bracketId, item.type)}
+                          className="mt-1"
                         />
-                      </TableHead>
-                      <TableHead>Role / Rate Bracket</TableHead>
-                      <TableHead className="text-right">Regular</TableHead>
-                      <TableHead className="text-right">Overtime</TableHead>
-                      <TableHead className="text-right">Amount</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {rateBracketSummaries.map((summary) => {
-                      const hasMissingRate = !summary.billRate || summary.billRate <= 0;
-                      
-                      return (
-                        <TableRow
-                          key={summary.rateBracketId}
-                          className={!selectedBrackets.has(summary.rateBracketId) ? 'opacity-50' : hasMissingRate ? 'bg-destructive/10' : ''}
-                        >
-                          <TableCell>
-                            <Checkbox
-                              checked={selectedBrackets.has(summary.rateBracketId)}
-                              onCheckedChange={() => toggleBracket(summary.rateBracketId)}
-                            />
-                          </TableCell>
-                          <TableCell className="font-medium">
+                        <div className="flex-1 space-y-2">
+                          <div className="flex items-center justify-between">
                             <div className="flex items-center gap-2">
-                              {summary.rateBracketName}
+                              <span className="font-medium">{item.productName}</span>
+                              {item.type === 'overtime' && (
+                                <Badge variant="outline" className="text-orange-600 border-orange-300">
+                                  Overtime
+                                </Badge>
+                              )}
                               {hasMissingRate && (
                                 <Badge variant="destructive" className="text-xs">
                                   No Bill Rate
                                 </Badge>
                               )}
                             </div>
-                          </TableCell>
-                          <TableCell className="text-right">
-                            {summary.regularHours.toFixed(1)}h
-                          </TableCell>
-                          <TableCell className="text-right">
-                            {summary.overtimeHours > 0 ? (
-                              <span className="text-orange-500">{summary.overtimeHours.toFixed(1)}h</span>
-                            ) : (
-                              <span className="text-muted-foreground">—</span>
-                            )}
-                          </TableCell>
-                          <TableCell className="text-right font-medium">
-                            {hasMissingRate ? (
-                              <span className="text-destructive">$0.00</span>
-                            ) : (
-                              formatCurrency(summary.totalBillable)
-                            )}
-                          </TableCell>
-                        </TableRow>
-                      );
-                    })}
-                  </TableBody>
-                </Table>
+                            <span className="font-medium text-right">
+                              {hasMissingRate ? (
+                                <span className="text-destructive">$0.00</span>
+                              ) : (
+                                formatCurrency(item.total)
+                              )}
+                            </span>
+                          </div>
+                          <Textarea
+                            value={item.description}
+                            onChange={(e) => updateLineItemDescription(item.bracketId, item.type, e.target.value)}
+                            placeholder="Enter line item description..."
+                            className="min-h-[80px] text-sm"
+                            disabled={!item.selected}
+                          />
+                          <div className="flex justify-between text-xs text-muted-foreground">
+                            <span>{item.hours.toFixed(1)} hours @ {formatCurrency(item.rate)}/hr</span>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })}
               </div>
             </div>
           ) : (
@@ -621,8 +638,8 @@ export function CreateCustomerInvoiceFromTimeDialog({
           {/* Invoice Summary */}
           <div className="p-4 bg-muted/50 rounded-lg space-y-2">
             <div className="flex justify-between text-sm">
-              <span className="text-muted-foreground">Selected Roles</span>
-              <span>{selectedSummaries.length} of {rateBracketSummaries.length}</span>
+              <span className="text-muted-foreground">Selected Line Items</span>
+              <span>{selectedLineItems.length} of {lineItemDescriptions.length}</span>
             </div>
             <div className="flex justify-between text-sm">
               <span className="text-muted-foreground">Total Hours</span>
