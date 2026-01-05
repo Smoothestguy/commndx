@@ -8,6 +8,60 @@ const corsHeaders = {
 
 const SUPABASE_URL = Deno.env.get('SUPABASE_URL')!;
 const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
+const SUPABASE_ANON_KEY = Deno.env.get('SUPABASE_ANON_KEY')!;
+
+// Authentication helper - validates user and checks admin/manager role
+async function authenticateRequest(req: Request): Promise<{ userId: string; error?: never } | { userId?: never; error: Response }> {
+  const authHeader = req.headers.get("Authorization");
+  if (!authHeader) {
+    console.error("No authorization header provided");
+    return {
+      error: new Response(JSON.stringify({ error: "Unauthorized" }), {
+        status: 401,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      })
+    };
+  }
+
+  const supabaseClient = createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
+    global: { headers: { Authorization: authHeader } }
+  });
+
+  const { data: { user }, error: userError } = await supabaseClient.auth.getUser();
+  if (userError || !user) {
+    console.error("User authentication failed:", userError);
+    return {
+      error: new Response(JSON.stringify({ error: "Unauthorized" }), {
+        status: 401,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      })
+    };
+  }
+
+  // Check user role - only admin and manager can use QuickBooks functions
+  const { data: roleData, error: roleError } = await supabaseClient
+    .from("user_roles")
+    .select("role")
+    .eq("user_id", user.id)
+    .single();
+
+  if (roleError) {
+    console.error("Error fetching user role:", roleError);
+  }
+
+  if (!roleData || !['admin', 'manager'].includes(roleData.role)) {
+    console.error("User does not have admin/manager role:", user.id);
+    return {
+      error: new Response(JSON.stringify({ error: "Insufficient permissions. Only admins and managers can access QuickBooks functions." }), {
+        status: 403,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      })
+    };
+  }
+
+  console.log(`Authenticated user ${user.id} with role ${roleData.role}`);
+  return { userId: user.id };
+}
 
 // Helper to get valid access token
 async function getValidToken(supabase: any) {
@@ -395,16 +449,22 @@ serve(async (req) => {
     return new Response(null, { headers: corsHeaders });
   }
 
-  const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
-
   try {
+    // Authenticate the request
+    const authResult = await authenticateRequest(req);
+    if (authResult.error) {
+      return authResult.error;
+    }
+
+    const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
+
     const { billId } = await req.json();
     
     if (!billId) {
       throw new Error('billId is required');
     }
 
-    console.log(`Creating QuickBooks bill for bill ID: ${billId}`);
+    console.log(`Creating QuickBooks bill for bill ID: ${billId}, by user: ${authResult.userId}`);
 
     const { accessToken, realmId } = await getValidToken(supabase);
 
@@ -627,9 +687,12 @@ serve(async (req) => {
       billId = body.billId;
     } catch {}
 
+    // Create service client for error logging
+    const serviceSupabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
+
     // Update mapping with error if it exists
     if (billId) {
-      await supabase
+      await serviceSupabase
         .from('quickbooks_bill_mappings')
         .upsert({
           bill_id: billId,
@@ -643,7 +706,7 @@ serve(async (req) => {
     }
 
     // Log the error
-    await supabase.from('quickbooks_sync_log').insert({
+    await serviceSupabase.from('quickbooks_sync_log').insert({
       entity_type: 'vendor_bill',
       entity_id: billId,
       action: 'create',
