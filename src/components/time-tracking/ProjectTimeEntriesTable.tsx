@@ -963,7 +963,7 @@ export function ProjectTimeEntriesTable({
                 {/* Project Row (Level 1) */}
                 <TableRow
                   key={project.projectId}
-                  className="bg-table-header hover:bg-table-header/80 cursor-pointer font-medium"
+                  className="bg-muted/50 hover:bg-muted/70 cursor-pointer font-medium"
                   onClick={() => toggleProject(project.projectId)}
                 >
                   {onBulkDelete && (
