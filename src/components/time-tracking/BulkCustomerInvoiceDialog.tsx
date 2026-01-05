@@ -141,6 +141,7 @@ export function BulkCustomerInvoiceDialog({
   const [step, setStep] = useState<Step>("weeks");
   const [invoiceDate, setInvoiceDate] = useState(format(new Date(), "yyyy-MM-dd"));
   const [dueDate, setDueDate] = useState(format(nextFriday(new Date()), "yyyy-MM-dd"));
+  const [invoiceNotes, setInvoiceNotes] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isLoadingBrackets, setIsLoadingBrackets] = useState(false);
   const [expandedProjects, setExpandedProjects] = useState<Set<string>>(new Set());
@@ -755,6 +756,7 @@ export function BulkCustomerInvoiceDialog({
           tax_amount: 0,
           total: subtotal,
           status: "draft",
+          notes: invoiceNotes || null,
           line_items: lineItems,
         });
 
@@ -820,6 +822,7 @@ export function BulkCustomerInvoiceDialog({
   const handleClose = () => {
     setStep("weeks");
     setResults([]);
+    setInvoiceNotes("");
     setExpandedProjects(new Set());
     setExpandedWeeks(new Set());
     setExpandedCustomers(new Set());
@@ -1160,6 +1163,22 @@ export function BulkCustomerInvoiceDialog({
                     </div>
                   </div>
                 ))}
+
+                {/* Notes Section */}
+                <div className="mt-4 p-4 rounded-lg border bg-muted/30">
+                  <Label htmlFor="invoice-notes" className="text-sm font-medium">Notes / Memo</Label>
+                  <Textarea
+                    id="invoice-notes"
+                    placeholder="Add notes that will appear on the invoice and sync to QuickBooks..."
+                    value={invoiceNotes}
+                    onChange={(e) => setInvoiceNotes(e.target.value)}
+                    rows={3}
+                    className="mt-2"
+                  />
+                  <p className="text-xs text-muted-foreground mt-1">
+                    This note will appear on all invoices created in this batch
+                  </p>
+                </div>
               </div>
             </ScrollArea>
           )}
