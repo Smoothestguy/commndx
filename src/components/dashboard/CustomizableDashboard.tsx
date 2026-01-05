@@ -1,5 +1,6 @@
-import { useState } from "react";
+import { useState, useMemo, useEffect } from "react";
 import { DashboardCustomizer, EditModeToggle, DraggableWidget } from "./customization";
+import { UnsavedChangesDialog } from "./customization/UnsavedChangesDialog";
 import {
   WidgetContainer,
   StatWidget,
@@ -12,8 +13,8 @@ import { DashboardWidget, DashboardLayout, DashboardTheme, LayoutWidget } from "
 import { useDashboardConfig } from "@/hooks/useDashboardConfig";
 import { useUserRole } from "@/hooks/useUserRole";
 import { WelcomeBanner } from "./WelcomeBanner";
-import { RecentActivity } from "./RecentActivity";
 import { cn } from "@/lib/utils";
+import { toast } from "sonner";
 
 interface CustomizableDashboardProps {
   children?: React.ReactNode;
@@ -25,7 +26,8 @@ export function CustomizableDashboard({ children }: CustomizableDashboardProps) 
     activeLayout,
     activeWidgets,
     activeTheme,
-    updateConfig,
+    updateConfigAsync,
+    isUpdating,
     resetToDefault,
     isResetting,
     hasCustomConfig,
@@ -34,28 +36,100 @@ export function CustomizableDashboard({ children }: CustomizableDashboardProps) 
 
   const [isEditMode, setIsEditMode] = useState(false);
   const [showResetConfirm, setShowResetConfirm] = useState(false);
+  const [showUnsavedDialog, setShowUnsavedDialog] = useState(false);
+
+  // Draft state for local editing
+  const [draftLayout, setDraftLayout] = useState<DashboardLayout>(activeLayout);
+  const [draftWidgets, setDraftWidgets] = useState<DashboardWidget[]>(activeWidgets);
+  const [draftTheme, setDraftTheme] = useState<DashboardTheme>(activeTheme);
 
   const canCustomize = isAdmin || isManager;
 
+  // Sync draft with saved when entering edit mode or when saved values change while not editing
+  useEffect(() => {
+    if (!isEditMode) {
+      setDraftLayout(activeLayout);
+      setDraftWidgets(activeWidgets);
+      setDraftTheme(activeTheme);
+    }
+  }, [isEditMode, activeLayout, activeWidgets, activeTheme]);
+
+  // Track unsaved changes
+  const hasUnsavedChanges = useMemo(() => {
+    if (!isEditMode) return false;
+    return (
+      JSON.stringify(draftLayout) !== JSON.stringify(activeLayout) ||
+      JSON.stringify(draftWidgets) !== JSON.stringify(activeWidgets) ||
+      JSON.stringify(draftTheme) !== JSON.stringify(activeTheme)
+    );
+  }, [isEditMode, draftLayout, draftWidgets, draftTheme, activeLayout, activeWidgets, activeTheme]);
+
+  // Draft change handlers - update local state only
   const handleLayoutChange = (layout: DashboardLayout) => {
-    updateConfig({ layout });
+    setDraftLayout(layout);
   };
 
   const handleWidgetsChange = (widgets: DashboardWidget[]) => {
-    updateConfig({ widgets });
+    setDraftWidgets(widgets);
   };
 
   const handleThemeChange = (theme: DashboardTheme) => {
-    updateConfig({ theme });
+    setDraftTheme(theme);
   };
 
   const handleRemoveWidget = (widgetId: string) => {
-    const newWidgets = activeWidgets.filter((w) => w.id !== widgetId);
+    const newWidgets = draftWidgets.filter((w) => w.id !== widgetId);
     const newLayout = {
-      ...activeLayout,
-      widgets: activeLayout.widgets.filter((w) => w.widgetId !== widgetId),
+      ...draftLayout,
+      widgets: draftLayout.widgets.filter((w) => w.widgetId !== widgetId),
     };
-    updateConfig({ widgets: newWidgets, layout: newLayout });
+    setDraftWidgets(newWidgets);
+    setDraftLayout(newLayout);
+  };
+
+  // Save changes to database
+  const handleSave = async () => {
+    try {
+      await updateConfigAsync({
+        layout: draftLayout,
+        widgets: draftWidgets,
+        theme: draftTheme,
+      });
+      toast.success("Dashboard saved");
+    } catch (error) {
+      // Error toast is handled in the hook
+    }
+  };
+
+  // Revert to saved state
+  const handleRevert = () => {
+    setDraftLayout(activeLayout);
+    setDraftWidgets(activeWidgets);
+    setDraftTheme(activeTheme);
+    toast.info("Changes reverted");
+  };
+
+  // Handle exit edit mode
+  const handleExitEditMode = () => {
+    if (hasUnsavedChanges) {
+      setShowUnsavedDialog(true);
+    } else {
+      setIsEditMode(false);
+    }
+  };
+
+  // Save and exit
+  const handleSaveAndExit = async () => {
+    await handleSave();
+    setShowUnsavedDialog(false);
+    setIsEditMode(false);
+  };
+
+  // Discard and exit
+  const handleDiscardAndExit = () => {
+    handleRevert();
+    setShowUnsavedDialog(false);
+    setIsEditMode(false);
   };
 
   const handleReset = () => {
@@ -65,7 +139,7 @@ export function CustomizableDashboard({ children }: CustomizableDashboardProps) 
   };
 
   const renderWidget = (layoutWidget: LayoutWidget) => {
-    const widget = activeWidgets.find((w) => w.id === layoutWidget.widgetId);
+    const widget = draftWidgets.find((w) => w.id === layoutWidget.widgetId);
     if (!widget || !widget.visible) return null;
 
     const registryEntry = WIDGET_REGISTRY[widget.id];
@@ -78,13 +152,13 @@ export function CustomizableDashboard({ children }: CustomizableDashboardProps) 
         case "welcome":
           return <WelcomeBanner />;
         case "stat":
-          return <StatWidget widget={widget} theme={activeTheme} isEditMode={isEditMode} />;
+          return <StatWidget widget={widget} theme={draftTheme} isEditMode={isEditMode} />;
         case "chart":
-          return <ChartWidget widget={widget} theme={activeTheme} isEditMode={isEditMode} />;
+          return <ChartWidget widget={widget} theme={draftTheme} isEditMode={isEditMode} />;
         case "activity":
-          return <ActivityWidget widget={widget} theme={activeTheme} isEditMode={isEditMode} />;
+          return <ActivityWidget widget={widget} theme={draftTheme} isEditMode={isEditMode} />;
         case "quick-actions":
-          return <QuickActionsWidget widget={widget} theme={activeTheme} isEditMode={isEditMode} />;
+          return <QuickActionsWidget widget={widget} theme={draftTheme} isEditMode={isEditMode} />;
         default:
           return (
             <div className="text-muted-foreground text-sm">
@@ -111,7 +185,7 @@ export function CustomizableDashboard({ children }: CustomizableDashboardProps) 
           title={widget.title}
           icon={<Icon className="h-4 w-4" />}
           isEditMode={isEditMode}
-          theme={activeTheme}
+          theme={draftTheme}
           onRemove={() => handleRemoveWidget(widget.id)}
         >
           {widgetContent()}
@@ -149,37 +223,51 @@ export function CustomizableDashboard({ children }: CustomizableDashboardProps) 
       <div className="flex justify-end mb-4">
         <EditModeToggle
           isEditMode={isEditMode}
-          onToggle={() => setIsEditMode(!isEditMode)}
+          onToggle={isEditMode ? handleExitEditMode : () => setIsEditMode(true)}
+          onSave={handleSave}
+          onRevert={handleRevert}
           onReset={() => setShowResetConfirm(true)}
           hasCustomConfig={hasCustomConfig}
+          hasUnsavedChanges={hasUnsavedChanges}
+          isSaving={isUpdating}
         />
       </div>
 
       {/* Customizable Dashboard Content */}
       <DashboardCustomizer
         isEditMode={isEditMode}
-        layout={activeLayout}
-        widgets={activeWidgets}
-        theme={activeTheme}
+        layout={draftLayout}
+        widgets={draftWidgets}
+        theme={draftTheme}
         onLayoutChange={handleLayoutChange}
         onWidgetsChange={handleWidgetsChange}
         onThemeChange={handleThemeChange}
         onReset={handleReset}
         isResetting={isResetting}
+        hasUnsavedChanges={hasUnsavedChanges}
       >
         <div
           className="grid gap-4 grid-cols-2 lg:grid-cols-4"
           style={{
-            fontFamily: activeTheme.fontFamily,
+            fontFamily: draftTheme.fontFamily,
           }}
         >
-          {activeLayout.widgets.map((layoutWidget) => (
+          {draftLayout.widgets.map((layoutWidget) => (
             <div key={layoutWidget.widgetId} className={getGridSpanClass(layoutWidget.size)}>
               {renderWidget(layoutWidget)}
             </div>
           ))}
         </div>
       </DashboardCustomizer>
+
+      {/* Unsaved Changes Dialog */}
+      <UnsavedChangesDialog
+        isOpen={showUnsavedDialog}
+        onClose={() => setShowUnsavedDialog(false)}
+        onSaveAndExit={handleSaveAndExit}
+        onDiscardAndExit={handleDiscardAndExit}
+        isSaving={isUpdating}
+      />
     </>
   );
 }
