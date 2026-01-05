@@ -1,5 +1,6 @@
 import { PortalLayout } from "@/components/portal/PortalLayout";
 import { useCurrentPersonnel, usePersonnelTimeEntries, usePersonnelAssignments, usePersonnelReimbursements, usePersonnelNotifications } from "@/integrations/supabase/hooks/usePortal";
+import { useCompanySettings } from "@/integrations/supabase/hooks/useCompanySettings";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Clock, Briefcase, Receipt, Bell, DollarSign, TrendingUp, Calendar } from "lucide-react";
 import { startOfWeek, endOfWeek, startOfMonth, endOfMonth, parseISO, isWithinInterval, format } from "date-fns";
@@ -17,8 +18,13 @@ export default function PortalDashboard() {
   const { data: assignments, isLoading: assignmentsLoading } = usePersonnelAssignments(personnel?.id);
   const { data: reimbursements, isLoading: reimbursementsLoading } = usePersonnelReimbursements(personnel?.id);
   const { data: notifications } = usePersonnelNotifications(personnel?.id);
+  const { data: companySettings } = useCompanySettings();
 
   const isLoading = personnelLoading || timeLoading || assignmentsLoading || reimbursementsLoading;
+  
+  const overtimeMultiplier = companySettings?.overtime_multiplier ?? 1.5;
+  const weeklyOvertimeThreshold = companySettings?.weekly_overtime_threshold ?? 40;
+  const holidayMultiplier = companySettings?.holiday_multiplier ?? 2.0;
 
   // Calculate hours this week
   const now = new Date();
@@ -47,8 +53,8 @@ export default function PortalDashboard() {
   const hourlyRate = personnel?.hourly_rate || 0;
   const lastPayPeriod = getLastCompletedPayPeriod();
   const lastPayPeriodTotals = timeEntries 
-    ? calculatePayPeriodTotals(timeEntries, lastPayPeriod, hourlyRate, 1.5)
-    : { regularHours: 0, overtimeHours: 0, totalHours: 0, regularPay: 0, overtimePay: 0, totalPay: 0, daysWorked: 0 };
+    ? calculatePayPeriodTotals(timeEntries, lastPayPeriod, hourlyRate, overtimeMultiplier, weeklyOvertimeThreshold, holidayMultiplier)
+    : { regularHours: 0, overtimeHours: 0, holidayHours: 0, totalHours: 0, regularPay: 0, overtimePay: 0, holidayPay: 0, totalPay: 0, daysWorked: 0 };
 
   const monthlyPay = monthlyHours * hourlyRate;
 

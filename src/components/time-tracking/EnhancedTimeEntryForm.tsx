@@ -129,7 +129,7 @@ export function EnhancedTimeEntryForm({
   const weeklyOvertimeThreshold = companySettings?.weekly_overtime_threshold ?? 40;
 
   const overtimeMultiplier = companySettings?.overtime_multiplier ?? 1.5;
-  const holidayMultiplier = companySettings?.holiday_multiplier ?? 1.5;
+  const holidayMultiplier = companySettings?.holiday_multiplier ?? 2.0;
 
   const form = useForm<z.infer<typeof dailyFormSchema>>({
     resolver: zodResolver(dailyFormSchema),
