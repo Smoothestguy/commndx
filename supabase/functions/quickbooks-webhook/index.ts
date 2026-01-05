@@ -124,7 +124,27 @@ async function fetchQBEstimate(estimateId: string, accessToken: string, realmId:
   return data.Estimate;
 }
 
-// Map QB status to local status
+// Fetch bill from QuickBooks
+async function fetchQBBill(billId: string, accessToken: string, realmId: string) {
+  const url = `https://quickbooks.api.intuit.com/v3/company/${realmId}/bill/${billId}`;
+  
+  const response = await fetch(url, {
+    headers: {
+      Authorization: `Bearer ${accessToken}`,
+      Accept: "application/json",
+    },
+  });
+
+  if (!response.ok) {
+    const errorText = await response.text();
+    throw new Error(`Failed to fetch QB bill: ${errorText}`);
+  }
+
+  const data = await response.json();
+  return data.Bill;
+}
+
+// Map QB estimate status to local status
 function mapQbStatusToLocal(txnStatus: string | undefined): string {
   switch (txnStatus) {
     case "Accepted":
@@ -137,6 +157,16 @@ function mapQbStatusToLocal(txnStatus: string | undefined): string {
     default:
       return "sent";
   }
+}
+
+// Map QB bill balance to local status
+function mapQbBillStatusToLocal(balance: number, totalAmt: number): string {
+  if (balance === 0 && totalAmt > 0) {
+    return "paid";
+  } else if (balance < totalAmt && balance > 0) {
+    return "partially_paid";
+  }
+  return "open";
 }
 
 // Process a single estimate update from QuickBooks
@@ -296,6 +326,178 @@ async function processEstimateUpdate(
   return { success: true, action: "updated", estimateId: mapping.estimate_id };
 }
 
+// Process a single bill update from QuickBooks
+async function processBillUpdate(
+  supabase: any,
+  qbBillId: string,
+  operation: string,
+  accessToken: string,
+  realmId: string
+) {
+  console.log(`[Webhook] Processing bill ${qbBillId}, operation: ${operation}`);
+
+  // Find the local mapping
+  const { data: mapping, error: mappingError } = await supabase
+    .from("quickbooks_bill_mappings")
+    .select("*, vendor_bills:bill_id(*)")
+    .eq("quickbooks_bill_id", qbBillId)
+    .maybeSingle();
+
+  if (mappingError) {
+    console.error("[Webhook] Error finding bill mapping:", mappingError);
+    return { success: false, error: mappingError.message };
+  }
+
+  if (!mapping) {
+    console.log("[Webhook] No local mapping found for QB bill:", qbBillId);
+    // This bill exists in QB but not in Command X - could trigger an import
+    return { success: true, skipped: true, reason: "No local mapping" };
+  }
+
+  if (operation === "Delete" || operation === "Void") {
+    // Mark the local mapping as voided
+    await supabase
+      .from("quickbooks_bill_mappings")
+      .update({
+        sync_status: "voided",
+        last_synced_at: new Date().toISOString(),
+      })
+      .eq("id", mapping.id);
+
+    console.log("[Webhook] Marked bill as voided:", mapping.bill_id);
+    return { success: true, action: "voided" };
+  }
+
+  // Fetch the full bill from QuickBooks
+  const qbBill = await fetchQBBill(qbBillId, accessToken, realmId);
+  console.log("[Webhook] Fetched QB bill:", qbBill.DocNumber);
+
+  // Get QB last updated time
+  const qbLastUpdated = new Date(qbBill.MetaData.LastUpdatedTime);
+  const localLastSynced = mapping.last_synced_at ? new Date(mapping.last_synced_at) : null;
+
+  // Check if QB is actually newer
+  if (localLastSynced && qbLastUpdated <= localLastSynced) {
+    console.log("[Webhook] QB bill is not newer than local, skipping");
+    return { success: true, skipped: true, reason: "Local is up to date" };
+  }
+
+  // Calculate totals from QB bill
+  const totalAmt = parseFloat(qbBill.TotalAmt || "0");
+  const balance = parseFloat(qbBill.Balance || "0");
+
+  // Update the local vendor bill
+  const billUpdate = {
+    notes: qbBill.PrivateNote || null,
+    bill_date: qbBill.TxnDate || mapping.vendor_bills?.bill_date,
+    due_date: qbBill.DueDate || mapping.vendor_bills?.due_date,
+    subtotal: totalAmt, // QB bills typically don't have separate tax
+    total: totalAmt,
+    remaining_amount: balance,
+    paid_amount: totalAmt - balance,
+    status: mapQbBillStatusToLocal(balance, totalAmt),
+    updated_at: new Date().toISOString(),
+  };
+
+  const { error: updateError } = await supabase
+    .from("vendor_bills")
+    .update(billUpdate)
+    .eq("id", mapping.bill_id);
+
+  if (updateError) {
+    console.error("[Webhook] Error updating vendor bill:", updateError);
+    return { success: false, error: updateError.message };
+  }
+
+  // Update line items - delete existing and insert new
+  await supabase
+    .from("vendor_bill_line_items")
+    .delete()
+    .eq("bill_id", mapping.bill_id);
+
+  if (qbBill.Line && qbBill.Line.length > 0) {
+    const lineItems = [];
+
+    for (const line of qbBill.Line) {
+      // Handle AccountBasedExpenseLineDetail (most common for bills)
+      if (line.DetailType === "AccountBasedExpenseLineDetail" && line.AccountBasedExpenseLineDetail) {
+        const detail = line.AccountBasedExpenseLineDetail;
+        
+        // Try to find matching expense category by account name
+        let categoryId = null;
+        if (detail.AccountRef?.name) {
+          const { data: category } = await supabase
+            .from("expense_categories")
+            .select("id")
+            .ilike("name", detail.AccountRef.name)
+            .maybeSingle();
+          
+          if (category) {
+            categoryId = category.id;
+          }
+        }
+
+        lineItems.push({
+          bill_id: mapping.bill_id,
+          description: line.Description || detail.AccountRef?.name || "Expense",
+          quantity: 1,
+          unit_cost: parseFloat(line.Amount || "0"),
+          total: parseFloat(line.Amount || "0"),
+          category_id: categoryId,
+        });
+      }
+      // Handle ItemBasedExpenseLineDetail (items/products)
+      else if (line.DetailType === "ItemBasedExpenseLineDetail" && line.ItemBasedExpenseLineDetail) {
+        const detail = line.ItemBasedExpenseLineDetail;
+        
+        lineItems.push({
+          bill_id: mapping.bill_id,
+          description: line.Description || detail.ItemRef?.name || "Item",
+          quantity: detail.Qty || 1,
+          unit_cost: parseFloat(detail.UnitPrice || line.Amount || "0"),
+          total: parseFloat(line.Amount || "0"),
+        });
+      }
+    }
+
+    if (lineItems.length > 0) {
+      const { error: lineError } = await supabase
+        .from("vendor_bill_line_items")
+        .insert(lineItems);
+
+      if (lineError) {
+        console.error("[Webhook] Error inserting bill line items:", lineError);
+      }
+    }
+  }
+
+  // Update the mapping
+  await supabase
+    .from("quickbooks_bill_mappings")
+    .update({
+      last_synced_at: new Date().toISOString(),
+      sync_status: "synced",
+      quickbooks_doc_number: qbBill.DocNumber,
+    })
+    .eq("id", mapping.id);
+
+  // Log the sync
+  await supabase.from("quickbooks_sync_log").insert({
+    entity_type: "vendor_bill",
+    entity_id: mapping.bill_id,
+    action: "webhook_update",
+    status: "success",
+    details: {
+      qb_bill_id: qbBillId,
+      qb_doc_number: qbBill.DocNumber,
+      operation,
+    },
+  });
+
+  console.log("[Webhook] Successfully updated vendor bill from QB:", mapping.bill_id);
+  return { success: true, action: "updated", billId: mapping.bill_id };
+}
+
 serve(async (req) => {
   // Handle CORS preflight
   if (req.method === "OPTIONS") {
@@ -349,7 +551,6 @@ serve(async (req) => {
       }
 
       for (const entity of notification.dataChangeEvent?.entities || []) {
-        // Currently only handle Estimates
         if (entity.name === "Estimate") {
           const result = await processEstimateUpdate(
             supabase,
@@ -358,7 +559,16 @@ serve(async (req) => {
             accessToken,
             realmId
           );
-          results.push({ entityId: entity.id, ...result });
+          results.push({ entityId: entity.id, entityType: "Estimate", ...result });
+        } else if (entity.name === "Bill") {
+          const result = await processBillUpdate(
+            supabase,
+            entity.id,
+            entity.operation,
+            accessToken,
+            realmId
+          );
+          results.push({ entityId: entity.id, entityType: "Bill", ...result });
         } else {
           console.log(`[Webhook] Skipping unsupported entity type: ${entity.name}`);
         }
