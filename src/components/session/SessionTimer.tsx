@@ -2,6 +2,7 @@ import { useSessionAccess } from "@/hooks/useSessionAccess";
 import { useSessionTracking } from "@/hooks/useSessionTracking";
 import { useTodaySessions } from "@/hooks/useTodaySessions";
 import { useUserDisplayPreferences } from "@/hooks/useUserDisplayPreferences";
+import { useUserRole } from "@/hooks/useUserRole";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import {
@@ -34,6 +35,7 @@ export function SessionTimer() {
   } = useTodaySessions(hasAccess, !isChecking);
 
   const { showSessionEarnings } = useUserDisplayPreferences();
+  const { isAdmin } = useUserRole();
 
   // Only render for users with access
   if (isChecking || !hasAccess || isLoading) {
@@ -71,7 +73,7 @@ export function SessionTimer() {
       <Tooltip>
         <TooltipTrigger asChild>
           <div className="flex items-center gap-0.5 sm:gap-1.5 px-1 sm:px-2 py-0.5 sm:py-1 rounded-md bg-sidebar-accent/50">
-            {isIdle ? (
+            {isIdle && !isAdmin ? (
               <Pause className="h-3 w-3 text-amber-500" />
             ) : (
               <Clock className="h-3 w-3 text-green-500 animate-pulse" />
@@ -79,7 +81,7 @@ export function SessionTimer() {
             <span className="font-mono text-[10px] sm:text-sm text-header-foreground">
               {formattedTodayTime}
             </span>
-            {isIdle && (
+            {isIdle && !isAdmin && (
               <Badge
                 variant="outline"
                 className="text-[10px] px-1 py-0 h-4 text-amber-500 border-amber-500/50 hidden sm:inline-flex"
@@ -93,9 +95,10 @@ export function SessionTimer() {
           <div className="text-xs space-y-1">
             <p className="font-medium">Today's Totals</p>
             <p>Active time: {formattedTodayTime}</p>
-            <p>Idle time: {formattedTodayIdleTime}</p>
+            {!isAdmin && <p>Idle time: {formattedTodayIdleTime}</p>}
+            {isAdmin && <p className="text-muted-foreground">Idle tracking disabled (admin)</p>}
             <p className="text-muted-foreground">{sessionCount} session{sessionCount !== 1 ? 's' : ''} today</p>
-            {isIdle && (
+            {isIdle && !isAdmin && (
               <p className="text-amber-500">Timer paused - you're idle</p>
             )}
           </div>

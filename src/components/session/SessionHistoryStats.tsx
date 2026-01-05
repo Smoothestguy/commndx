@@ -16,6 +16,7 @@ import {
 interface SessionHistoryStatsProps {
   dateRange?: DateRange;
   targetUserId?: string | null;
+  isTargetAdmin?: boolean;
 }
 
 interface SessionData {
@@ -25,7 +26,7 @@ interface SessionData {
   total_idle_seconds: number | null;
 }
 
-export function SessionHistoryStats({ dateRange, targetUserId }: SessionHistoryStatsProps) {
+export function SessionHistoryStats({ dateRange, targetUserId, isTargetAdmin }: SessionHistoryStatsProps) {
   const { user } = useAuth();
   const userId = targetUserId || user?.id;
 
@@ -130,10 +131,10 @@ export function SessionHistoryStats({ dateRange, targetUserId }: SessionHistoryS
         </CardHeader>
         <CardContent className="p-3 pt-0 sm:p-6 sm:pt-0">
           <div className="text-lg sm:text-2xl font-bold">
-            {formatDuration(stats?.totalIdleSecs || 0)}
+            {isTargetAdmin ? "N/A" : formatDuration(stats?.totalIdleSecs || 0)}
           </div>
           <p className="text-[10px] sm:text-xs text-muted-foreground hidden sm:block">
-            Time spent idle
+            {isTargetAdmin ? "Not tracked for admins" : "Time spent idle"}
           </p>
         </CardContent>
       </Card>

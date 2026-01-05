@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback, useRef } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
+import { useUserRole } from "@/hooks/useUserRole";
 import { DEFAULT_HOURLY_RATE } from "@/utils/sessionTime";
 
 const STORAGE_KEY = "session_tracking_state";
@@ -17,6 +18,7 @@ interface StoredState {
 
 export function useSessionTracking(externalHasAccess?: boolean, externalAccessChecked?: boolean) {
   const { user } = useAuth();
+  const { isAdmin } = useUserRole();
 
   // Use external access state if provided, otherwise default to false
   const hasAccess = externalHasAccess ?? false;
@@ -52,9 +54,9 @@ export function useSessionTracking(externalHasAccess?: boolean, externalAccessCh
   // Force re-render for display updates
   const [, setTick] = useState(0);
 
-  // Reset idle timer on activity
+  // Reset idle timer on activity - skip for admins (their work extends beyond the app)
   const resetIdleTimer = useCallback(() => {
-    if (!isClockedIn) return;
+    if (!isClockedIn || isAdmin) return;
 
     lastActivityTimeRef.current = Date.now();
 
@@ -99,11 +101,11 @@ export function useSessionTracking(externalHasAccess?: boolean, externalAccessCh
         }]).then(() => {});
       }
     }, IDLE_TIMEOUT_MS);
-  }, [isClockedIn, sessionId, user]);
+  }, [isClockedIn, sessionId, user, isAdmin]);
 
-  // Handle visibility change
+  // Handle visibility change - skip idle tracking for admins
   useEffect(() => {
-    if (!hasAccess || !isClockedIn) return;
+    if (!hasAccess || !isClockedIn || isAdmin) return;
 
     const handleVisibilityChange = () => {
       if (document.hidden) {
@@ -153,11 +155,11 @@ export function useSessionTracking(externalHasAccess?: boolean, externalAccessCh
     return () => {
       document.removeEventListener("visibilitychange", handleVisibilityChange);
     };
-  }, [hasAccess, isClockedIn, sessionId, user, resetIdleTimer]);
+  }, [hasAccess, isClockedIn, sessionId, user, resetIdleTimer, isAdmin]);
 
-  // Activity event listeners
+  // Activity event listeners - skip for admins
   useEffect(() => {
-    if (!hasAccess || !isClockedIn) return;
+    if (!hasAccess || !isClockedIn || isAdmin) return;
 
     const events = ["mousedown", "mousemove", "keydown", "scroll", "touchstart", "click", "wheel"];
     
@@ -185,7 +187,7 @@ export function useSessionTracking(externalHasAccess?: boolean, externalAccessCh
         clearTimeout(idleTimeoutRef.current);
       }
     };
-  }, [hasAccess, isClockedIn, resetIdleTimer]);
+  }, [hasAccess, isClockedIn, resetIdleTimer, isAdmin]);
 
   // Display update interval - just triggers re-render for timestamp-based display
   useEffect(() => {

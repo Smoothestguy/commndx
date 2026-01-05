@@ -28,7 +28,7 @@ export default function SessionHistory() {
   });
   const [targetUserId, setTargetUserId] = useState<string | null>(null);
 
-  // Fetch users who have session data (for admin selector)
+  // Fetch users who have session data (for admin selector) and their roles
   const { data: sessionUsers } = useQuery({
     queryKey: ["session-users"],
     queryFn: async () => {
@@ -49,7 +49,20 @@ export default function SessionHistory() {
         .in("id", uniqueUserIds);
       
       if (profileError) throw profileError;
-      return profiles || [];
+
+      // Fetch roles for these users
+      const { data: roles } = await supabase
+        .from("user_roles")
+        .select("user_id, role")
+        .in("user_id", uniqueUserIds);
+
+      // Map roles to user IDs
+      const roleMap = new Map(roles?.map(r => [r.user_id, r.role]) || []);
+
+      return (profiles || []).map(p => ({
+        ...p,
+        role: roleMap.get(p.id) || null
+      }));
     },
     enabled: isAdmin || isManager,
   });
@@ -80,6 +93,13 @@ export default function SessionHistory() {
 
   const canSelectUser = isAdmin || isManager;
   const effectiveUserId = targetUserId || user?.id || null;
+
+  // Determine if the target user is an admin (for idle time display)
+  const isTargetAdmin = (() => {
+    if (effectiveUserId === user?.id) return isAdmin;
+    const targetUser = sessionUsers?.find(u => u.id === effectiveUserId);
+    return targetUser?.role === 'admin';
+  })();
 
   return (
     <>
@@ -127,13 +147,14 @@ export default function SessionHistory() {
             </TabsList>
 
             <TabsContent value="sessions">
-              <SessionHistoryStats dateRange={dateRange} targetUserId={effectiveUserId} />
+              <SessionHistoryStats dateRange={dateRange} targetUserId={effectiveUserId} isTargetAdmin={isTargetAdmin} />
               <div className="mt-4">
                 <SessionHistoryTable
                   dateRange={dateRange}
                   onSelectSession={setSelectedSessionId}
                   selectedSessionId={selectedSessionId}
                   targetUserId={effectiveUserId}
+                  isTargetAdmin={isTargetAdmin}
                 />
               </div>
             </TabsContent>
