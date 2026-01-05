@@ -1,3 +1,4 @@
+import { useState } from "react";
 import { SEO } from "@/components/SEO";
 import { PageLayout } from "@/components/layout/PageLayout";
 import { StatCard } from "@/components/dashboard/StatCard";
@@ -50,6 +51,11 @@ import {
 } from "recharts";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { formatCurrency } from "@/lib/utils";
+import { useUserRole } from "@/hooks/useUserRole";
+import { EditModeToggle } from "@/components/dashboard/customization/EditModeToggle";
+import { DashboardCustomizer } from "@/components/dashboard/customization/DashboardCustomizer";
+import { useDashboardConfig } from "@/hooks/useDashboardConfig";
+import { ResetConfirmDialog } from "@/components/dashboard/customization/ResetConfirmDialog";
 
 // Type for project assignments with joined profile and project data
 interface ProjectAssignmentWithDetails {
@@ -71,6 +77,22 @@ interface ProjectAssignmentWithDetails {
 const Dashboard = () => {
   const navigate = useNavigate();
   const isMobile = useIsMobile();
+  const { isAdmin, isManager } = useUserRole();
+  
+  // Dashboard customization state
+  const [isEditMode, setIsEditMode] = useState(false);
+  const [showResetDialog, setShowResetDialog] = useState(false);
+  const {
+    activeLayout,
+    activeWidgets,
+    activeTheme,
+    updateConfig,
+    resetToDefault,
+    isResetting,
+    hasCustomConfig,
+  } = useDashboardConfig();
+  
+  const canCustomize = isAdmin || isManager;
 
   const {
     data: estimates,
@@ -339,6 +361,14 @@ const Dashboard = () => {
         description="Welcome back to Command X"
         actions={
           <div className="flex gap-2">
+            {canCustomize && !isMobile && (
+              <EditModeToggle
+                isEditMode={isEditMode}
+                onToggle={() => setIsEditMode(!isEditMode)}
+                onReset={() => setShowResetDialog(true)}
+                hasCustomConfig={hasCustomConfig}
+              />
+            )}
             <Button
               variant="outline"
               size="sm"
@@ -360,6 +390,21 @@ const Dashboard = () => {
           </div>
         }
       >
+        <DashboardCustomizer
+          isEditMode={isEditMode}
+          layout={activeLayout}
+          widgets={activeWidgets}
+          theme={activeTheme}
+          onLayoutChange={(layout) => updateConfig({ layout })}
+          onWidgetsChange={(widgets) => updateConfig({ widgets })}
+          onThemeChange={(theme) => updateConfig({ theme })}
+          onReset={() => {
+            resetToDefault();
+            setShowResetDialog(false);
+            setIsEditMode(false);
+          }}
+          isResetting={isResetting}
+        >
         <PullToRefreshWrapper
           onRefresh={handleRefresh}
           isRefreshing={isRefreshing}
@@ -759,6 +804,19 @@ const Dashboard = () => {
             )}
           </div>
         </PullToRefreshWrapper>
+        </DashboardCustomizer>
+        
+        {/* Reset Confirmation Dialog */}
+        <ResetConfirmDialog
+          isOpen={showResetDialog}
+          onClose={() => setShowResetDialog(false)}
+          onConfirm={() => {
+            resetToDefault();
+            setShowResetDialog(false);
+            setIsEditMode(false);
+          }}
+          isLoading={isResetting}
+        />
       </PageLayout>
     </>
   );

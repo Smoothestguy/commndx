@@ -1312,6 +1312,36 @@ export type Database = {
           },
         ]
       }
+      dashboard_configurations: {
+        Row: {
+          created_at: string
+          id: string
+          layout: Json
+          theme: Json
+          updated_at: string
+          user_id: string
+          widgets: Json
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          layout?: Json
+          theme?: Json
+          updated_at?: string
+          user_id: string
+          widgets?: Json
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          layout?: Json
+          theme?: Json
+          updated_at?: string
+          user_id?: string
+          widgets?: Json
+        }
+        Relationships: []
+      }
       dev_activities: {
         Row: {
           activity_date: string
