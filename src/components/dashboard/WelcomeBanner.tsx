@@ -2,6 +2,7 @@ import { useProfile } from "@/integrations/supabase/hooks/useProfile";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Sparkles } from "lucide-react";
 import { useDailyQuote } from "@/hooks/useDailyQuote";
+import { DashboardTheme } from "./widgets/types";
 
 const getGreeting = (): string => {
   const hour = new Date().getHours();
@@ -12,7 +13,11 @@ const getGreeting = (): string => {
   return "Good night";
 };
 
-export const WelcomeBanner = () => {
+interface WelcomeBannerProps {
+  theme?: DashboardTheme;
+}
+
+export const WelcomeBanner = ({ theme }: WelcomeBannerProps) => {
   const { data: profile, isLoading } = useProfile();
   const quote = useDailyQuote(profile?.id);
 
@@ -31,9 +36,26 @@ export const WelcomeBanner = () => {
     return "there";
   };
 
+  // Generate gradient style from theme accent color
+  const getGradientStyle = () => {
+    if (theme?.accentColor) {
+      return {
+        background: `linear-gradient(to right, ${theme.accentColor}e6, ${theme.accentColor}, ${theme.accentColor}cc)`,
+      };
+    }
+    return undefined;
+  };
+
+  const gradientStyle = getGradientStyle();
+  const baseClasses = "relative overflow-hidden rounded-xl p-4 sm:p-6 mb-4 sm:mb-6";
+  const defaultGradient = "bg-gradient-to-r from-primary/90 via-primary to-primary/80";
+
   if (isLoading) {
     return (
-      <div className="relative overflow-hidden rounded-xl bg-gradient-to-r from-primary/90 via-primary to-primary/80 p-4 sm:p-6 mb-4 sm:mb-6">
+      <div 
+        className={`${baseClasses} ${!gradientStyle ? defaultGradient : ''}`}
+        style={gradientStyle}
+      >
         <div className="relative z-10">
           <Skeleton className="h-6 sm:h-8 w-48 sm:w-64 bg-white/20 mb-2" />
           <Skeleton className="h-4 w-32 sm:w-48 bg-white/20" />
@@ -43,7 +65,10 @@ export const WelcomeBanner = () => {
   }
 
   return (
-    <div className="relative overflow-hidden rounded-xl bg-gradient-to-r from-primary/90 via-primary to-primary/80 p-4 sm:p-6 mb-4 sm:mb-6">
+    <div 
+      className={`${baseClasses} ${!gradientStyle ? defaultGradient : ''}`}
+      style={gradientStyle}
+    >
       {/* Background decorations */}
       <div className="absolute inset-0 overflow-hidden">
         <div className="absolute -right-8 -top-8 h-32 w-32 rounded-full bg-white/10 blur-2xl" />
