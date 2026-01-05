@@ -48,6 +48,7 @@ export interface Invoice {
   remaining_amount: number;
   due_date: string;
   paid_date?: string;
+  notes?: string;
   created_at: string;
 }
 
@@ -157,6 +158,7 @@ export const useAddInvoice = () => {
           tax_amount: invoice.tax_amount,
           total: invoice.total,
           due_date: invoice.due_date,
+          notes: invoice.notes,
           remaining_amount: invoice.total, // Initialize remaining to total
         })
         .select()

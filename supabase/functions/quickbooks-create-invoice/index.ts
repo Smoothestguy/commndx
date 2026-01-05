@@ -322,6 +322,12 @@ serve(async (req) => {
       });
     }
 
+    // Build PrivateNote combining custom notes and project reference
+    const privateNoteParts = [
+      invoice.notes,
+      invoice.project_name ? `Project: ${invoice.project_name}` : null,
+    ].filter(Boolean);
+
     // Create QuickBooks invoice with tax calculation disabled
     const qbInvoice = {
       CustomerRef: { value: qbCustomerId },
@@ -330,7 +336,7 @@ serve(async (req) => {
       DueDate: invoice.due_date,
       Line: qbLineItems,
       GlobalTaxCalculation: "TaxExcluded", // Disable QB automatic tax - we handle tax manually
-      PrivateNote: invoice.project_name ? `Project: ${invoice.project_name}` : undefined,
+      PrivateNote: privateNoteParts.length > 0 ? privateNoteParts.join("\n") : undefined,
     };
 
     console.log("Creating QB invoice:", JSON.stringify(qbInvoice, null, 2));
