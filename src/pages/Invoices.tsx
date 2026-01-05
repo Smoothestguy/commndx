@@ -2,10 +2,24 @@ import { useState, useMemo } from "react";
 import { useNavigate, Link } from "react-router-dom";
 import { SEO } from "@/components/SEO";
 import { PageLayout } from "@/components/layout/PageLayout";
-import { EnhancedDataTable, EnhancedColumn } from "@/components/shared/EnhancedDataTable";
+import {
+  EnhancedDataTable,
+  EnhancedColumn,
+} from "@/components/shared/EnhancedDataTable";
 import { StatusBadge } from "@/components/shared/StatusBadge";
 import { Button } from "@/components/ui/button";
-import { Plus, Eye, Receipt, Clock, CheckCircle, DollarSign, Wallet, TrendingUp, AlertCircle } from "lucide-react";
+import {
+  Plus,
+  Eye,
+  Receipt,
+  Clock,
+  CheckCircle,
+  DollarSign,
+  Wallet,
+  TrendingUp,
+  AlertCircle,
+  CreditCard,
+} from "lucide-react";
 import { SearchInput } from "@/components/ui/search-input";
 import { useInvoices } from "@/integrations/supabase/hooks/useInvoices";
 import { useCustomers } from "@/integrations/supabase/hooks/useCustomers";
@@ -16,58 +30,100 @@ import { useIsMobile } from "@/hooks/use-mobile";
 import { useQuickBooksConfig } from "@/integrations/supabase/hooks/useQuickBooks";
 import { Invoice } from "@/integrations/supabase/hooks/useInvoices";
 import { InvoiceStatCard } from "@/components/invoices/InvoiceStatCard";
+import { BulkPaymentDialog } from "@/components/invoices/BulkPaymentDialog";
 
-type CardFilter = "all" | "paid" | "outstanding" | "overdue" | "partial" | "pending";
+type CardFilter =
+  | "all"
+  | "paid"
+  | "outstanding"
+  | "overdue"
+  | "partial"
+  | "pending";
 
 const Invoices = () => {
   const navigate = useNavigate();
-  const { data: allInvoices = [], isLoading, error, refetch, isFetching } = useInvoices();
+  const {
+    data: allInvoices = [],
+    isLoading,
+    error,
+    refetch,
+    isFetching,
+  } = useInvoices();
   const { data: customers } = useCustomers();
   const isMobile = useIsMobile();
   const { data: qbConfig } = useQuickBooksConfig();
-  
+
   const [search, setSearch] = useState("");
   const [activeFilter, setActiveFilter] = useState<CardFilter>("all");
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+  const [bulkPaymentOpen, setBulkPaymentOpen] = useState(false);
+
+  // Count selected invoices with outstanding balance
+  const selectedWithBalance = useMemo(() => {
+    return allInvoices.filter(
+      (inv) => selectedIds.has(inv.id) && (inv.remaining_amount || 0) > 0
+    ).length;
+  }, [allInvoices, selectedIds]);
 
   // Calculate stats
   const stats = useMemo(() => {
-    if (!allInvoices) return { total: 0, received: 0, outstanding: 0, overdue: 0, partial: 0, pending: 0 };
-    
-    return allInvoices.reduce((acc, inv) => {
-      acc.total += inv.total || 0;
-      acc.received += inv.paid_amount || 0;
-      acc.outstanding += inv.remaining_amount || 0;
-      
-      if (inv.status === "overdue") acc.overdue++;
-      if (inv.status === "partially_paid") acc.partial++;
-      if (inv.status === "sent" || inv.status === "draft") acc.pending++;
-      
-      return acc;
-    }, { total: 0, received: 0, outstanding: 0, overdue: 0, partial: 0, pending: 0 });
+    if (!allInvoices)
+      return {
+        total: 0,
+        received: 0,
+        outstanding: 0,
+        overdue: 0,
+        partial: 0,
+        pending: 0,
+      };
+
+    return allInvoices.reduce(
+      (acc, inv) => {
+        acc.total += inv.total || 0;
+        acc.received += inv.paid_amount || 0;
+        acc.outstanding += inv.remaining_amount || 0;
+
+        if (inv.status === "overdue") acc.overdue++;
+        if (inv.status === "partially_paid") acc.partial++;
+        if (inv.status === "sent" || inv.status === "draft") acc.pending++;
+
+        return acc;
+      },
+      {
+        total: 0,
+        received: 0,
+        outstanding: 0,
+        overdue: 0,
+        partial: 0,
+        pending: 0,
+      }
+    );
   }, [allInvoices]);
 
   // Filter invoices based on active card filter
   const filteredInvoices = useMemo(() => {
     if (!allInvoices) return [];
-    
+
     let filtered = allInvoices;
 
     // Apply card filter
     switch (activeFilter) {
       case "paid":
-        filtered = filtered.filter(inv => inv.status === "paid");
+        filtered = filtered.filter((inv) => inv.status === "paid");
         break;
       case "outstanding":
-        filtered = filtered.filter(inv => (inv.remaining_amount || 0) > 0);
+        filtered = filtered.filter((inv) => (inv.remaining_amount || 0) > 0);
         break;
       case "overdue":
-        filtered = filtered.filter(inv => inv.status === "overdue");
+        filtered = filtered.filter((inv) => inv.status === "overdue");
         break;
       case "partial":
-        filtered = filtered.filter(inv => inv.status === "partially_paid");
+        filtered = filtered.filter((inv) => inv.status === "partially_paid");
         break;
       case "pending":
-        filtered = filtered.filter(inv => inv.status === "sent" || inv.status === "draft");
+        filtered = filtered.filter(
+          (inv) => inv.status === "sent" || inv.status === "draft"
+        );
         break;
       default:
         break;
@@ -76,9 +132,10 @@ const Invoices = () => {
     // Apply search filter
     if (search) {
       const query = search.toLowerCase();
-      filtered = filtered.filter(inv =>
-        inv.number?.toLowerCase().includes(query) ||
-        inv.customer_name?.toLowerCase().includes(query)
+      filtered = filtered.filter(
+        (inv) =>
+          inv.number?.toLowerCase().includes(query) ||
+          inv.customer_name?.toLowerCase().includes(query)
       );
     }
 
@@ -107,8 +164,8 @@ const Invoices = () => {
         </div>
       ),
     },
-    { 
-      key: "customer_name", 
+    {
+      key: "customer_name",
       header: "Customer",
       sortable: true,
       filterable: true,
@@ -123,13 +180,14 @@ const Invoices = () => {
         </Link>
       ),
     },
-    { 
-      key: "project_name", 
+    {
+      key: "project_name",
       header: "Project",
       sortable: true,
       filterable: true,
       getValue: (item) => item.project_name || "",
-      render: (item) => item.project_name || <span className="text-muted-foreground">-</span>,
+      render: (item) =>
+        item.project_name || <span className="text-muted-foreground">-</span>,
     },
     {
       key: "status",
@@ -159,7 +217,10 @@ const Invoices = () => {
       getValue: (item) => item.paid_amount || 0,
       render: (item) => (
         <span className="text-green-600 dark:text-green-400">
-          ${(item.paid_amount || 0).toLocaleString(undefined, { minimumFractionDigits: 2 })}
+          $
+          {(item.paid_amount || 0).toLocaleString(undefined, {
+            minimumFractionDigits: 2,
+          })}
         </span>
       ),
     },
@@ -170,13 +231,22 @@ const Invoices = () => {
       filterable: false,
       getValue: (item) => item.remaining_amount || 0,
       render: (item) => (
-        <span className={item.remaining_amount > 0 ? "text-amber-600 dark:text-amber-400" : "text-muted-foreground"}>
-          ${(item.remaining_amount || 0).toLocaleString(undefined, { minimumFractionDigits: 2 })}
+        <span
+          className={
+            item.remaining_amount > 0
+              ? "text-amber-600 dark:text-amber-400"
+              : "text-muted-foreground"
+          }
+        >
+          $
+          {(item.remaining_amount || 0).toLocaleString(undefined, {
+            minimumFractionDigits: 2,
+          })}
         </span>
       ),
     },
-    { 
-      key: "due_date", 
+    {
+      key: "due_date",
       header: "Due Date",
       sortable: true,
       filterable: false,
@@ -232,14 +302,16 @@ const Invoices = () => {
           </Button>
         }
       >
-        <div className="text-destructive">Error loading invoices: {error.message}</div>
+        <div className="text-destructive">
+          Error loading invoices: {error.message}
+        </div>
       </PageLayout>
     );
   }
 
   return (
     <>
-      <SEO 
+      <SEO
         title="Invoices"
         description="Generate and track customer invoices with Command X"
         keywords="invoices, billing, payments, invoice tracking, accounts receivable"
@@ -249,7 +321,10 @@ const Invoices = () => {
         description="Manage billing and track payments"
         actions={
           <div className="flex gap-2">
-            <Button variant="outline" onClick={() => navigate("/invoices/new-from-time")}>
+            <Button
+              variant="outline"
+              onClick={() => navigate("/invoices/new-from-time")}
+            >
               <Clock className="mr-2 h-4 w-4" />
               From Time
             </Button>
@@ -266,7 +341,10 @@ const Invoices = () => {
             <div className="mb-4 p-3 rounded-lg bg-green-500/10 border border-green-500/20">
               <div className="flex items-center gap-2 text-sm text-green-600">
                 <CheckCircle className="h-4 w-4" />
-                <span>Auto-sync enabled: New invoices will automatically sync to QuickBooks</span>
+                <span>
+                  Auto-sync enabled: New invoices will automatically sync to
+                  QuickBooks
+                </span>
               </div>
             </div>
           )}
@@ -287,14 +365,18 @@ const Invoices = () => {
           <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4 mb-6">
             <InvoiceStatCard
               label="Total Invoiced"
-              value={`$${stats.total.toLocaleString(undefined, { minimumFractionDigits: 2 })}`}
+              value={`$${stats.total.toLocaleString(undefined, {
+                minimumFractionDigits: 2,
+              })}`}
               icon={DollarSign}
               isActive={activeFilter === "all"}
               onClick={() => setActiveFilter("all")}
             />
             <InvoiceStatCard
               label="Payment Received"
-              value={`$${stats.received.toLocaleString(undefined, { minimumFractionDigits: 2 })}`}
+              value={`$${stats.received.toLocaleString(undefined, {
+                minimumFractionDigits: 2,
+              })}`}
               icon={Wallet}
               variant="success"
               isActive={activeFilter === "paid"}
@@ -302,7 +384,9 @@ const Invoices = () => {
             />
             <InvoiceStatCard
               label="Outstanding Balance"
-              value={`$${stats.outstanding.toLocaleString(undefined, { minimumFractionDigits: 2 })}`}
+              value={`$${stats.outstanding.toLocaleString(undefined, {
+                minimumFractionDigits: 2,
+              })}`}
               icon={TrendingUp}
               variant="warning"
               isActive={activeFilter === "outstanding"}
@@ -332,10 +416,45 @@ const Invoices = () => {
             />
           </div>
 
+          {/* Selection Actions Bar */}
+          {selectedIds.size > 0 && (
+            <div className="mb-4 p-3 rounded-lg bg-primary/5 border border-primary/20 flex items-center justify-between">
+              <div className="flex items-center gap-2 text-sm">
+                <CheckCircle className="h-4 w-4 text-primary" />
+                <span>
+                  {selectedIds.size} invoice(s) selected
+                  {selectedWithBalance > 0 && (
+                    <span className="text-muted-foreground ml-1">
+                      ({selectedWithBalance} with outstanding balance)
+                    </span>
+                  )}
+                </span>
+              </div>
+              <div className="flex items-center gap-2">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setSelectedIds(new Set())}
+                >
+                  Clear Selection
+                </Button>
+                <Button
+                  size="sm"
+                  onClick={() => setBulkPaymentOpen(true)}
+                  disabled={selectedWithBalance === 0}
+                  className="bg-green-600 hover:bg-green-700"
+                >
+                  <CreditCard className="h-4 w-4 mr-2" />
+                  Record Payments ({selectedWithBalance})
+                </Button>
+              </div>
+            </div>
+          )}
+
           {/* Empty State */}
           {filteredInvoices.length === 0 && (
-            <InvoiceEmptyState 
-              onAddInvoice={() => navigate("/invoices/new")} 
+            <InvoiceEmptyState
+              onAddInvoice={() => navigate("/invoices/new")}
               isFiltered={hasActiveFilters}
             />
           )}
@@ -360,12 +479,24 @@ const Invoices = () => {
                   data={filteredInvoices}
                   columns={columns}
                   onRowClick={(item) => navigate(`/invoices/${item.id}`)}
+                  selectable
+                  selectedIds={selectedIds}
+                  onSelectionChange={setSelectedIds}
                 />
               )}
             </>
           )}
         </PullToRefreshWrapper>
       </PageLayout>
+
+      {/* Bulk Payment Dialog */}
+      <BulkPaymentDialog
+        open={bulkPaymentOpen}
+        onOpenChange={setBulkPaymentOpen}
+        invoices={allInvoices}
+        selectedIds={selectedIds}
+        onClearSelection={() => setSelectedIds(new Set())}
+      />
     </>
   );
 };

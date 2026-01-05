@@ -60,11 +60,11 @@ export const useInvoices = () => {
   return useQuery({
     queryKey: ["invoices"],
     queryFn: async () => {
-    const { data, error } = await supabase
-      .from("invoices")
-      .select("*")
-      .is("deleted_at", null)
-      .order("created_at", { ascending: false });
+      const { data, error } = await supabase
+        .from("invoices")
+        .select("*")
+        .is("deleted_at", null)
+        .order("created_at", { ascending: false });
 
       if (error) throw error;
       return data as Invoice[];
@@ -133,7 +133,12 @@ export const useAddInvoice = () => {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: async (invoice: Omit<InvoiceWithLineItems, "id" | "created_at" | "paid_amount" | "remaining_amount" | "payments">) => {
+    mutationFn: async (
+      invoice: Omit<
+        InvoiceWithLineItems,
+        "id" | "created_at" | "paid_amount" | "remaining_amount" | "payments"
+      >
+    ) => {
       // Insert invoice
       const { data: newInvoice, error: invoiceError } = await supabase
         .from("invoices")
@@ -210,13 +215,13 @@ export const useAddInvoice = () => {
           .single();
 
         if (qbConfig?.is_connected) {
-          await supabase.functions.invoke('quickbooks-create-invoice', {
+          await supabase.functions.invoke("quickbooks-create-invoice", {
             body: { invoiceId: newInvoice.id },
           });
         }
       } catch (qbError) {
         // Log but don't fail the invoice creation
-        console.error('QuickBooks sync failed:', qbError);
+        console.error("QuickBooks sync failed:", qbError);
       }
 
       return newInvoice;
@@ -302,7 +307,11 @@ export const useUpdateInvoice = () => {
       }
 
       // Update job order balance if total changed
-      if (oldInvoice.job_order_id && invoice.total && invoice.total !== oldInvoice.total) {
+      if (
+        oldInvoice.job_order_id &&
+        invoice.total &&
+        invoice.total !== oldInvoice.total
+      ) {
         const { data: jobOrder, error: jobFetchError } = await supabase
           .from("job_orders")
           .select("invoiced_amount, remaining_amount")
@@ -346,8 +355,12 @@ export const useDeleteInvoice = () => {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: async (id: string): Promise<{ qbVoided: boolean; qbError?: string }> => {
-      const { data: { user } } = await supabase.auth.getUser();
+    mutationFn: async (
+      id: string
+    ): Promise<{ qbVoided: boolean; qbError?: string }> => {
+      const {
+        data: { user },
+      } = await supabase.auth.getUser();
 
       const { data: invoice, error: fetchError } = await supabase
         .from("invoices")
@@ -365,13 +378,13 @@ export const useDeleteInvoice = () => {
       // Try to void in QuickBooks first (if synced)
       let qbVoided = false;
       let qbError: string | undefined;
-      
+
       try {
-        const { data: voidResult, error: voidError } = await supabase.functions.invoke(
-          'quickbooks-void-invoice',
-          { body: { invoiceId: id } }
-        );
-        
+        const { data: voidResult, error: voidError } =
+          await supabase.functions.invoke("quickbooks-void-invoice", {
+            body: { invoiceId: id },
+          });
+
         if (voidError) {
           console.warn("QuickBooks void error:", voidError);
           qbError = voidError.message || "Failed to void in QuickBooks";
@@ -384,7 +397,8 @@ export const useDeleteInvoice = () => {
         }
       } catch (err) {
         console.warn("QuickBooks void exception:", err);
-        qbError = err instanceof Error ? err.message : "Unknown QuickBooks error";
+        qbError =
+          err instanceof Error ? err.message : "Unknown QuickBooks error";
       }
 
       // Restore job order balance
@@ -397,8 +411,14 @@ export const useDeleteInvoice = () => {
 
         if (!jobFetchError && jobOrder) {
           // Use Math.max/min to prevent negative values or exceeding total
-          const newInvoicedAmount = Math.max(0, jobOrder.invoiced_amount - invoice.total);
-          const newRemainingAmount = Math.min(jobOrder.total, jobOrder.remaining_amount + invoice.total);
+          const newInvoicedAmount = Math.max(
+            0,
+            jobOrder.invoiced_amount - invoice.total
+          );
+          const newRemainingAmount = Math.min(
+            jobOrder.total,
+            jobOrder.remaining_amount + invoice.total
+          );
 
           const { error: updateError } = await supabase
             .from("job_orders")
@@ -422,8 +442,14 @@ export const useDeleteInvoice = () => {
 
         if (!coFetchError && changeOrder) {
           // Use Math.max/min to prevent negative values or exceeding total
-          const newInvoicedAmount = Math.max(0, changeOrder.invoiced_amount - invoice.total);
-          const newRemainingAmount = Math.min(changeOrder.total, changeOrder.remaining_amount + invoice.total);
+          const newInvoicedAmount = Math.max(
+            0,
+            changeOrder.invoiced_amount - invoice.total
+          );
+          const newRemainingAmount = Math.min(
+            changeOrder.total,
+            changeOrder.remaining_amount + invoice.total
+          );
 
           const { error: coUpdateError } = await supabase
             .from("change_orders")
@@ -434,7 +460,10 @@ export const useDeleteInvoice = () => {
             .eq("id", invoice.change_order_id);
 
           if (coUpdateError) {
-            console.error("Failed to restore change order balance:", coUpdateError);
+            console.error(
+              "Failed to restore change order balance:",
+              coUpdateError
+            );
           }
         }
       }
@@ -447,7 +476,7 @@ export const useDeleteInvoice = () => {
           deleted_by: user?.id,
         })
         .eq("id", id);
-        
+
       if (error) throw error;
 
       return { qbVoided, qbError };
@@ -456,7 +485,7 @@ export const useDeleteInvoice = () => {
       queryClient.invalidateQueries({ queryKey: ["invoices"] });
       queryClient.invalidateQueries({ queryKey: ["job_orders"] });
       queryClient.invalidateQueries({ queryKey: ["deleted_items"] });
-      
+
       if (result.qbVoided) {
         toast({
           title: "Success",
@@ -536,11 +565,13 @@ const updateInvoicePaidAmounts = async (invoiceId: string) => {
 
   if (paymentsError) throw paymentsError;
 
-  const totalPaidAmount = payments?.reduce((sum, p) => sum + Number(p.amount), 0) || 0;
+  const totalPaidAmount =
+    payments?.reduce((sum, p) => sum + Number(p.amount), 0) || 0;
   const remainingAmount = Number(invoice.total) - totalPaidAmount;
 
   // Determine the new status
-  let newStatus: "draft" | "sent" | "partially_paid" | "paid" | "overdue" = "sent";
+  let newStatus: "draft" | "sent" | "partially_paid" | "paid" | "overdue" =
+    "sent";
   if (totalPaidAmount >= Number(invoice.total)) {
     newStatus = "paid";
   } else if (totalPaidAmount > 0) {
@@ -554,7 +585,8 @@ const updateInvoicePaidAmounts = async (invoiceId: string) => {
       paid_amount: totalPaidAmount,
       remaining_amount: remainingAmount,
       status: newStatus,
-      paid_date: newStatus === "paid" ? new Date().toISOString().split("T")[0] : null,
+      paid_date:
+        newStatus === "paid" ? new Date().toISOString().split("T")[0] : null,
     })
     .eq("id", invoiceId);
 
@@ -593,12 +625,12 @@ export const useAddInvoicePayment = () => {
           .single();
 
         if (qbConfig?.is_connected) {
-          await supabase.functions.invoke('quickbooks-receive-payment', {
+          await supabase.functions.invoke("quickbooks-receive-payment", {
             body: { paymentId: newPayment.id },
           });
         }
       } catch (qbError) {
-        console.error('QuickBooks payment sync failed:', qbError);
+        console.error("QuickBooks payment sync failed:", qbError);
       }
 
       return newPayment;
@@ -674,7 +706,13 @@ export const useDeleteInvoicePayment = () => {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: async ({ paymentId, invoiceId }: { paymentId: string; invoiceId: string }) => {
+    mutationFn: async ({
+      paymentId,
+      invoiceId,
+    }: {
+      paymentId: string;
+      invoiceId: string;
+    }) => {
       const { error } = await supabase
         .from("invoice_payments")
         .delete()
@@ -697,6 +735,162 @@ export const useDeleteInvoicePayment = () => {
       toast({
         title: "Error",
         description: `Failed to delete payment: ${error.message}`,
+        variant: "destructive",
+      });
+    },
+  });
+};
+
+// Bulk payment interface
+export interface BulkPaymentItem {
+  invoice_id: string;
+  invoice_number: string;
+  customer_name: string;
+  remaining_amount: number;
+  payment_amount: number;
+  payment_date: string;
+  payment_method: string;
+  reference_number?: string | null;
+  notes?: string | null;
+}
+
+export interface BulkPaymentResult {
+  invoice_id: string;
+  invoice_number: string;
+  success: boolean;
+  error?: string;
+  payment_id?: string;
+}
+
+// Bulk add invoice payments hook
+export const useBulkAddInvoicePayments = () => {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async (
+      payments: BulkPaymentItem[]
+    ): Promise<BulkPaymentResult[]> => {
+      const results: BulkPaymentResult[] = [];
+
+      // Check if QuickBooks is connected
+      let qbConnected = false;
+      try {
+        const { data: qbConfig } = await supabase
+          .from("quickbooks_config")
+          .select("is_connected")
+          .single();
+        qbConnected = qbConfig?.is_connected ?? false;
+      } catch {
+        // QB not configured
+      }
+
+      // Process each payment
+      for (const payment of payments) {
+        try {
+          // Validate payment amount
+          if (payment.payment_amount <= 0) {
+            results.push({
+              invoice_id: payment.invoice_id,
+              invoice_number: payment.invoice_number,
+              success: false,
+              error: "Payment amount must be greater than 0",
+            });
+            continue;
+          }
+
+          if (payment.payment_amount > payment.remaining_amount) {
+            results.push({
+              invoice_id: payment.invoice_id,
+              invoice_number: payment.invoice_number,
+              success: false,
+              error: "Payment amount exceeds remaining balance",
+            });
+            continue;
+          }
+
+          // Insert payment
+          const { data: newPayment, error } = await supabase
+            .from("invoice_payments")
+            .insert({
+              invoice_id: payment.invoice_id,
+              payment_date: payment.payment_date,
+              amount: payment.payment_amount,
+              payment_method: payment.payment_method,
+              reference_number: payment.reference_number,
+              notes: payment.notes,
+            })
+            .select()
+            .single();
+
+          if (error) throw error;
+
+          // Update invoice paid amounts
+          await updateInvoicePaidAmounts(payment.invoice_id);
+
+          // Sync to QuickBooks if connected
+          if (qbConnected && newPayment) {
+            try {
+              await supabase.functions.invoke("quickbooks-receive-payment", {
+                body: { paymentId: newPayment.id },
+              });
+            } catch (qbError) {
+              console.error(
+                "QuickBooks payment sync failed for:",
+                payment.invoice_number,
+                qbError
+              );
+            }
+          }
+
+          results.push({
+            invoice_id: payment.invoice_id,
+            invoice_number: payment.invoice_number,
+            success: true,
+            payment_id: newPayment?.id,
+          });
+        } catch (err: any) {
+          results.push({
+            invoice_id: payment.invoice_id,
+            invoice_number: payment.invoice_number,
+            success: false,
+            error: err.message || "Unknown error",
+          });
+        }
+      }
+
+      return results;
+    },
+    onSuccess: (results) => {
+      queryClient.invalidateQueries({ queryKey: ["invoices"] });
+      queryClient.invalidateQueries({ queryKey: ["quickbooks-sync-logs"] });
+      queryClient.invalidateQueries({ queryKey: ["projects"] });
+
+      const successCount = results.filter((r) => r.success).length;
+      const failCount = results.filter((r) => !r.success).length;
+
+      if (failCount === 0) {
+        toast({
+          title: "Success",
+          description: `${successCount} payment(s) recorded successfully`,
+        });
+      } else if (successCount === 0) {
+        toast({
+          title: "Error",
+          description: `All ${failCount} payment(s) failed`,
+          variant: "destructive",
+        });
+      } else {
+        toast({
+          title: "Partial Success",
+          description: `${successCount} payment(s) recorded, ${failCount} failed`,
+          variant: "destructive",
+        });
+      }
+    },
+    onError: (error) => {
+      toast({
+        title: "Error",
+        description: `Failed to record payments: ${error.message}`,
         variant: "destructive",
       });
     },
