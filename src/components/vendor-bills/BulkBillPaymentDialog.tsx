@@ -261,7 +261,7 @@ export function BulkBillPaymentDialog({
 
   const renderConfigureStep = () => (
     <>
-      <DialogHeader>
+      <DialogHeader className="flex-shrink-0">
         <DialogTitle className="flex items-center gap-2">
           <DollarSign className="h-5 w-5" />
           Bulk Bill Payment Recording
@@ -272,77 +272,78 @@ export function BulkBillPaymentDialog({
         </DialogDescription>
       </DialogHeader>
 
-      <div className="space-y-4 py-4">
-        {/* Global Settings */}
-        <div className="space-y-4 p-4 rounded-lg bg-muted/50">
-          <h4 className="font-medium text-sm">Default Payment Settings</h4>
+      {/* Scrollable body */}
+      <ScrollArea className="flex-1 min-h-0">
+        <div className="space-y-4 py-4 pr-4">
+          {/* Global Settings */}
+          <div className="space-y-4 p-4 rounded-lg bg-muted/50">
+            <h4 className="font-medium text-sm">Default Payment Settings</h4>
 
-          <div className="grid grid-cols-2 gap-4">
-            <div className="space-y-2">
-              <Label htmlFor="global_date">Payment Date</Label>
-              <Input
-                id="global_date"
-                type="date"
-                value={globalDate}
-                onChange={(e) => setGlobalDate(e.target.value)}
-              />
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label htmlFor="global_date">Payment Date</Label>
+                <Input
+                  id="global_date"
+                  type="date"
+                  value={globalDate}
+                  onChange={(e) => setGlobalDate(e.target.value)}
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="global_method">Payment Method</Label>
+                <Select value={globalMethod} onValueChange={setGlobalMethod}>
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {PAYMENT_METHODS.map((method) => (
+                      <SelectItem key={method} value={method}>
+                        {method}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
             </div>
-            <div className="space-y-2">
-              <Label htmlFor="global_method">Payment Method</Label>
-              <Select value={globalMethod} onValueChange={setGlobalMethod}>
-                <SelectTrigger>
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  {PAYMENT_METHODS.map((method) => (
-                    <SelectItem key={method} value={method}>
-                      {method}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label htmlFor="global_reference">Reference Number</Label>
+                <Input
+                  id="global_reference"
+                  placeholder="Check #, Confirmation #, etc."
+                  value={globalReference}
+                  onChange={(e) => setGlobalReference(e.target.value)}
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="global_notes">Notes</Label>
+                <Input
+                  id="global_notes"
+                  placeholder="Optional notes..."
+                  value={globalNotes}
+                  onChange={(e) => setGlobalNotes(e.target.value)}
+                />
+              </div>
+            </div>
+
+            <div className="flex items-center space-x-2">
+              <Checkbox
+                id="pay_full"
+                checked={payFullAmount}
+                onCheckedChange={(checked) => setPayFullAmount(!!checked)}
+              />
+              <Label htmlFor="pay_full" className="text-sm cursor-pointer">
+                Pay full remaining balance for all bills
+              </Label>
             </div>
           </div>
 
-          <div className="grid grid-cols-2 gap-4">
-            <div className="space-y-2">
-              <Label htmlFor="global_reference">Reference Number</Label>
-              <Input
-                id="global_reference"
-                placeholder="Check #, Confirmation #, etc."
-                value={globalReference}
-                onChange={(e) => setGlobalReference(e.target.value)}
-              />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="global_notes">Notes</Label>
-              <Input
-                id="global_notes"
-                placeholder="Optional notes..."
-                value={globalNotes}
-                onChange={(e) => setGlobalNotes(e.target.value)}
-              />
-            </div>
-          </div>
+          <Separator />
 
-          <div className="flex items-center space-x-2">
-            <Checkbox
-              id="pay_full"
-              checked={payFullAmount}
-              onCheckedChange={(checked) => setPayFullAmount(!!checked)}
-            />
-            <Label htmlFor="pay_full" className="text-sm cursor-pointer">
-              Pay full remaining balance for all bills
-            </Label>
-          </div>
-        </div>
-
-        <Separator />
-
-        {/* Bill List */}
-        <div className="space-y-2">
-          <h4 className="font-medium text-sm">Bills to Pay</h4>
-          <ScrollArea className="h-[280px] pr-4">
+          {/* Bill List */}
+          <div className="space-y-2">
+            <h4 className="font-medium text-sm">Bills to Pay</h4>
             <Accordion type="multiple" className="space-y-2">
               {selectedBills.map((bill) => {
                 const config = paymentConfigs.get(bill.id);
@@ -491,10 +492,12 @@ export function BulkBillPaymentDialog({
                 );
               })}
             </Accordion>
-          </ScrollArea>
+          </div>
         </div>
+      </ScrollArea>
 
-        {/* Summary */}
+      {/* Fixed footer */}
+      <div className="flex-shrink-0 border-t pt-4">
         <div className="p-4 rounded-lg bg-primary/5 border">
           <div className="flex justify-between items-center">
             <div>
@@ -545,7 +548,7 @@ export function BulkBillPaymentDialog({
 
     return (
       <>
-        <DialogHeader>
+        <DialogHeader className="flex-shrink-0">
           <DialogTitle className="flex items-center gap-2">
             <CheckCircle className="h-5 w-5 text-green-500" />
             Review Payments
@@ -556,8 +559,8 @@ export function BulkBillPaymentDialog({
           </DialogDescription>
         </DialogHeader>
 
-        <ScrollArea className="h-[400px] pr-4 py-4">
-          <div className="space-y-3">
+        <ScrollArea className="flex-1 min-h-0">
+          <div className="space-y-3 py-4 pr-4">
             {validPayments.map((bill) => {
               const config = paymentConfigs.get(bill.id);
               const amount = parseFloat(config?.payment_amount || "0");
@@ -608,39 +611,41 @@ export function BulkBillPaymentDialog({
           </div>
         </ScrollArea>
 
-        <div className="p-4 rounded-lg bg-green-500/10 border border-green-500/20">
-          <div className="flex justify-between items-center">
-            <div className="font-medium text-green-600">
-              Total to be recorded
-            </div>
-            <div className="text-2xl font-bold text-green-600">
-              {formatCurrency(totals.totalPayment)}
+        <div className="flex-shrink-0 border-t pt-4 space-y-4">
+          <div className="p-4 rounded-lg bg-green-500/10 border border-green-500/20">
+            <div className="flex justify-between items-center">
+              <div className="font-medium text-green-600">
+                Total to be recorded
+              </div>
+              <div className="text-2xl font-bold text-green-600">
+                {formatCurrency(totals.totalPayment)}
+              </div>
             </div>
           </div>
-        </div>
 
-        <DialogFooter className="gap-2">
-          <Button variant="outline" onClick={() => setStep("configure")}>
-            Back
-          </Button>
-          <Button
-            onClick={handleSubmit}
-            disabled={bulkPayment.isPending}
-            className="bg-green-600 hover:bg-green-700"
-          >
-            {bulkPayment.isPending ? (
-              <>
-                <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                Recording...
-              </>
-            ) : (
-              <>
-                <CheckCircle className="h-4 w-4 mr-2" />
-                Confirm & Record Payments
-              </>
-            )}
-          </Button>
-        </DialogFooter>
+          <DialogFooter className="gap-2">
+            <Button variant="outline" onClick={() => setStep("configure")}>
+              Back
+            </Button>
+            <Button
+              onClick={handleSubmit}
+              disabled={bulkPayment.isPending}
+              className="bg-green-600 hover:bg-green-700"
+            >
+              {bulkPayment.isPending ? (
+                <>
+                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                  Recording...
+                </>
+              ) : (
+                <>
+                  <CheckCircle className="h-4 w-4 mr-2" />
+                  Confirm & Record Payments
+                </>
+              )}
+            </Button>
+          </DialogFooter>
+        </div>
       </>
     );
   };
@@ -651,7 +656,7 @@ export function BulkBillPaymentDialog({
 
     return (
       <>
-        <DialogHeader>
+        <DialogHeader className="flex-shrink-0">
           <DialogTitle className="flex items-center gap-2">
             {failedResults.length === 0 ? (
               <CheckCircle className="h-5 w-5 text-green-500" />
@@ -668,8 +673,8 @@ export function BulkBillPaymentDialog({
           </DialogDescription>
         </DialogHeader>
 
-        <ScrollArea className="h-[350px] pr-4 py-4">
-          <div className="space-y-2">
+        <ScrollArea className="flex-1 min-h-0">
+          <div className="space-y-2 py-4 pr-4">
             {results.map((result) => (
               <div
                 key={result.bill_id}
@@ -702,9 +707,11 @@ export function BulkBillPaymentDialog({
           </div>
         </ScrollArea>
 
-        <DialogFooter>
-          <Button onClick={handleClose}>Close</Button>
-        </DialogFooter>
+        <div className="flex-shrink-0 border-t pt-4">
+          <DialogFooter>
+            <Button onClick={handleClose}>Close</Button>
+          </DialogFooter>
+        </div>
       </>
     );
   };
