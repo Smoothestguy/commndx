@@ -1,11 +1,11 @@
 import { useState, useMemo } from "react";
 import { format, parseISO } from "date-fns";
-import { 
-  ChevronDown, 
-  ChevronRight, 
-  Pencil, 
-  Trash2, 
-  FolderOpen, 
+import {
+  ChevronDown,
+  ChevronRight,
+  Pencil,
+  Trash2,
+  FolderOpen,
   Folder,
   Clock,
   DollarSign,
@@ -14,7 +14,7 @@ import {
   FileText,
   Receipt,
   Lock,
-  User
+  User,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -52,15 +52,15 @@ import {
 } from "@/components/ui/alert-dialog";
 import { cn } from "@/lib/utils";
 
-type Status = 
-  | "draft" 
-  | "pending" 
+type Status =
+  | "draft"
+  | "pending"
   | "pending_approval"
-  | "approved" 
-  | "sent" 
-  | "paid" 
-  | "overdue" 
-  | "active" 
+  | "approved"
+  | "sent"
+  | "paid"
+  | "overdue"
+  | "active"
   | "inactive"
   | "in-progress"
   | "on-hold"
@@ -134,24 +134,29 @@ export function ProjectTimeEntriesTable({
   isUpdatingStatus,
 }: ProjectTimeEntriesTableProps) {
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
-  const [expandedProjects, setExpandedProjects] = useState<Set<string>>(new Set());
-  const [expandedPersonnel, setExpandedPersonnel] = useState<Set<string>>(new Set());
+  const [expandedProjects, setExpandedProjects] = useState<Set<string>>(
+    new Set()
+  );
+  const [expandedPersonnel, setExpandedPersonnel] = useState<Set<string>>(
+    new Set()
+  );
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
   const isMobile = useIsMobile();
 
   const { data: companySettings } = useCompanySettings();
   const { data: weekCloseouts = [] } = useWeekCloseouts(weekStart);
-  
+
   const overtimeMultiplier = companySettings?.overtime_multiplier ?? 1.5;
-  const holidayMultiplier = companySettings?.holiday_multiplier ?? 1.5;
-  const weeklyOvertimeThreshold = companySettings?.weekly_overtime_threshold ?? 40;
+  const holidayMultiplier = companySettings?.holiday_multiplier ?? 2.0;
+  const weeklyOvertimeThreshold =
+    companySettings?.weekly_overtime_threshold ?? 40;
 
   // Create a map of closed projects
   const closedProjectIds = useMemo(() => {
     return new Set(
       weekCloseouts
-        .filter(wc => wc.status === 'closed')
-        .map(wc => wc.project_id)
+        .filter((wc) => wc.status === "closed")
+        .map((wc) => wc.project_id)
     );
   }, [weekCloseouts]);
 
@@ -168,7 +173,12 @@ export function ProjectTimeEntriesTable({
 
   const getHourlyRate = (entry: TimeEntryWithDetails) => {
     // Use || to fall back when rate is 0 (not just null/undefined)
-    return entry.hourly_rate || entry.personnel?.hourly_rate || entry.profiles?.hourly_rate || 0;
+    return (
+      entry.hourly_rate ||
+      entry.personnel?.hourly_rate ||
+      entry.profiles?.hourly_rate ||
+      0
+    );
   };
 
   const getStatus = (entry: TimeEntryWithDetails): Status => {
@@ -239,15 +249,27 @@ export function ProjectTimeEntriesTable({
 
       // Calculate costs and group by day for each personnel
       personnelMap.forEach((personnel) => {
-        // Calculate weekly overtime
-        personnel.regularHours = Math.min(personnel.totalHours, weeklyOvertimeThreshold);
-        personnel.overtimeHours = Math.max(0, personnel.totalHours - weeklyOvertimeThreshold);
+        // Calculate weekly overtime on non-holiday hours only
+        const nonHolidayHours = personnel.totalHours - personnel.holidayHours;
+        personnel.regularHours = Math.min(
+          nonHolidayHours,
+          weeklyOvertimeThreshold
+        );
+        personnel.overtimeHours = Math.max(
+          0,
+          nonHolidayHours - weeklyOvertimeThreshold
+        );
 
-        const hourlyRate = personnel.entries[0] ? getHourlyRate(personnel.entries[0]) : 0;
+        const hourlyRate = personnel.entries[0]
+          ? getHourlyRate(personnel.entries[0])
+          : 0;
         const regularCost = personnel.regularHours * hourlyRate;
-        const overtimeCost = personnel.overtimeHours * hourlyRate * overtimeMultiplier;
-        const holidayBonus = personnel.holidayHours * hourlyRate * (holidayMultiplier - 1);
-        personnel.totalCost = regularCost + overtimeCost + holidayBonus;
+        const overtimeCost =
+          personnel.overtimeHours * hourlyRate * overtimeMultiplier;
+        // Holiday hours get full multiplier (e.g., 2x), not added to regular/OT
+        const holidayCost =
+          personnel.holidayHours * hourlyRate * holidayMultiplier;
+        personnel.totalCost = regularCost + overtimeCost + holidayCost;
 
         // Group entries by date
         const dailyMap = new Map<string, DailyEntry>();
@@ -264,13 +286,20 @@ export function ProjectTimeEntriesTable({
           const daily = dailyMap.get(date)!;
           daily.entries.push(entry);
           daily.totalHours += Number(entry.hours);
-          
+
           const entryHourlyRate = getHourlyRate(entry);
-          const regular = Number(entry.regular_hours || entry.hours);
-          const overtime = Number(entry.overtime_hours || 0);
-          let cost = regular * entryHourlyRate + overtime * entryHourlyRate * overtimeMultiplier;
+          const entryHours = Number(entry.hours);
+          let cost;
           if (entry.is_holiday) {
-            cost *= holidayMultiplier;
+            // Holiday entries: full hours × rate × holiday multiplier
+            cost = entryHours * entryHourlyRate * holidayMultiplier;
+          } else {
+            // Non-holiday: regular calculation (OT handled at weekly level)
+            const regular = Number(entry.regular_hours || entry.hours);
+            const overtime = Number(entry.overtime_hours || 0);
+            cost =
+              regular * entryHourlyRate +
+              overtime * entryHourlyRate * overtimeMultiplier;
           }
           daily.totalCost += cost;
         });
@@ -291,7 +320,13 @@ export function ProjectTimeEntriesTable({
     return Array.from(projects.values()).sort((a, b) =>
       a.projectName.localeCompare(b.projectName)
     );
-  }, [entries, closedProjectIds, weeklyOvertimeThreshold, overtimeMultiplier, holidayMultiplier]);
+  }, [
+    entries,
+    closedProjectIds,
+    weeklyOvertimeThreshold,
+    overtimeMultiplier,
+    holidayMultiplier,
+  ]);
 
   const toggleProject = (projectId: string) => {
     const newExpanded = new Set(expandedProjects);
@@ -325,7 +360,10 @@ export function ProjectTimeEntriesTable({
     setSelectedIds(newSelection);
   };
 
-  const handleSelectPersonnel = (personnel: PersonnelGroup, checked: boolean) => {
+  const handleSelectPersonnel = (
+    personnel: PersonnelGroup,
+    checked: boolean
+  ) => {
     const newSelection = new Set(selectedIds);
     personnel.entries.forEach((entry) => {
       if (checked) {
@@ -348,20 +386,30 @@ export function ProjectTimeEntriesTable({
   };
 
   const isProjectSelected = (project: ProjectGroup) => {
-    return project.entries.length > 0 && project.entries.every((e) => selectedIds.has(e.id));
+    return (
+      project.entries.length > 0 &&
+      project.entries.every((e) => selectedIds.has(e.id))
+    );
   };
 
   const isProjectIndeterminate = (project: ProjectGroup) => {
-    const selectedCount = project.entries.filter((e) => selectedIds.has(e.id)).length;
+    const selectedCount = project.entries.filter((e) =>
+      selectedIds.has(e.id)
+    ).length;
     return selectedCount > 0 && selectedCount < project.entries.length;
   };
 
   const isPersonnelSelected = (personnel: PersonnelGroup) => {
-    return personnel.entries.length > 0 && personnel.entries.every((e) => selectedIds.has(e.id));
+    return (
+      personnel.entries.length > 0 &&
+      personnel.entries.every((e) => selectedIds.has(e.id))
+    );
   };
 
   const isPersonnelIndeterminate = (personnel: PersonnelGroup) => {
-    const selectedCount = personnel.entries.filter((e) => selectedIds.has(e.id)).length;
+    const selectedCount = personnel.entries.filter((e) =>
+      selectedIds.has(e.id)
+    ).length;
     return selectedCount > 0 && selectedCount < personnel.entries.length;
   };
 
@@ -374,9 +422,13 @@ export function ProjectTimeEntriesTable({
   };
 
   // Check if any selected entries can be approved/rejected
-  const selectedEntryList = entries.filter(e => selectedIds.has(e.id));
-  const hasApprovableEntries = selectedEntryList.some(e => e.status !== 'approved');
-  const hasRejectableEntries = selectedEntryList.some(e => e.status !== 'rejected');
+  const selectedEntryList = entries.filter((e) => selectedIds.has(e.id));
+  const hasApprovableEntries = selectedEntryList.some(
+    (e) => e.status !== "approved"
+  );
+  const hasRejectableEntries = selectedEntryList.some(
+    (e) => e.status !== "rejected"
+  );
 
   if (projectGroups.length === 0) {
     return (
@@ -390,7 +442,7 @@ export function ProjectTimeEntriesTable({
   // Mobile Bulk Actions Bar Component
   const MobileBulkActions = () => {
     if (selectedIds.size === 0) return null;
-    
+
     return (
       <div className="glass rounded-lg border border-border/50 p-3 mb-4 space-y-3">
         <div className="flex items-center justify-between">
@@ -412,7 +464,7 @@ export function ProjectTimeEntriesTable({
               variant="outline"
               size="sm"
               onClick={() => {
-                onStatusChange(Array.from(selectedIds), 'approved');
+                onStatusChange(Array.from(selectedIds), "approved");
                 setSelectedIds(new Set());
               }}
               disabled={isUpdatingStatus}
@@ -427,7 +479,7 @@ export function ProjectTimeEntriesTable({
               variant="outline"
               size="sm"
               onClick={() => {
-                onStatusChange(Array.from(selectedIds), 'rejected');
+                onStatusChange(Array.from(selectedIds), "rejected");
                 setSelectedIds(new Set());
               }}
               disabled={isUpdatingStatus}
@@ -442,7 +494,9 @@ export function ProjectTimeEntriesTable({
               variant="outline"
               size="sm"
               onClick={() => {
-                const selectedEntryList = entries.filter(e => selectedIds.has(e.id));
+                const selectedEntryList = entries.filter((e) =>
+                  selectedIds.has(e.id)
+                );
                 onCreateVendorBill(selectedEntryList);
               }}
               className="text-blue-600 border-blue-600/30 hover:bg-blue-600/10 h-11"
@@ -456,7 +510,9 @@ export function ProjectTimeEntriesTable({
               variant="outline"
               size="sm"
               onClick={() => {
-                const selectedEntryList = entries.filter(e => selectedIds.has(e.id));
+                const selectedEntryList = entries.filter((e) =>
+                  selectedIds.has(e.id)
+                );
                 onCreateCustomerInvoice(selectedEntryList);
               }}
               className="text-green-600 border-green-600/30 hover:bg-green-600/10 h-11"
@@ -487,7 +543,7 @@ export function ProjectTimeEntriesTable({
     return (
       <>
         <MobileBulkActions />
-        
+
         <div className="space-y-3">
           {projectGroups.map((project) => (
             <Collapsible
@@ -500,15 +556,24 @@ export function ProjectTimeEntriesTable({
                 <CollapsibleTrigger asChild>
                   <div className="p-4 flex items-start gap-3 cursor-pointer active:bg-muted/50 transition-colors">
                     {onBulkDelete && (
-                      <div onClick={(e) => e.stopPropagation()} className="pt-0.5">
+                      <div
+                        onClick={(e) => e.stopPropagation()}
+                        className="pt-0.5"
+                      >
                         <Checkbox
                           checked={isProjectSelected(project)}
                           ref={(el) => {
                             if (el) {
-                              (el as HTMLButtonElement & { indeterminate: boolean }).indeterminate = isProjectIndeterminate(project);
+                              (
+                                el as HTMLButtonElement & {
+                                  indeterminate: boolean;
+                                }
+                              ).indeterminate = isProjectIndeterminate(project);
                             }
                           }}
-                          onCheckedChange={(checked) => handleSelectProject(project, !!checked)}
+                          onCheckedChange={(checked) =>
+                            handleSelectProject(project, !!checked)
+                          }
                           className="h-5 w-5"
                         />
                       </div>
@@ -520,7 +585,9 @@ export function ProjectTimeEntriesTable({
                         ) : (
                           <Folder className="h-5 w-5 text-muted-foreground shrink-0" />
                         )}
-                        <span className="font-semibold truncate">{project.projectName}</span>
+                        <span className="font-semibold truncate">
+                          {project.projectName}
+                        </span>
                         {project.isLocked && (
                           <Lock className="h-4 w-4 text-orange-500 shrink-0" />
                         )}
@@ -531,11 +598,15 @@ export function ProjectTimeEntriesTable({
                       <div className="flex items-center gap-4 text-sm">
                         <div className="flex items-center gap-1">
                           <Clock className="h-4 w-4 text-muted-foreground" />
-                          <span className="font-medium">{project.totalHours.toFixed(1)}h</span>
+                          <span className="font-medium">
+                            {project.totalHours.toFixed(1)}h
+                          </span>
                         </div>
                         <div className="flex items-center gap-1">
                           <DollarSign className="h-4 w-4 text-muted-foreground" />
-                          <span className="font-medium">${project.totalCost.toFixed(2)}</span>
+                          <span className="font-medium">
+                            ${project.totalCost.toFixed(2)}
+                          </span>
                         </div>
                         <Badge variant="secondary" className="text-xs">
                           {project.personnelGroups.length} personnel
@@ -551,7 +622,7 @@ export function ProjectTimeEntriesTable({
                     </div>
                   </div>
                 </CollapsibleTrigger>
-                
+
                 <CollapsibleContent>
                   <div className="border-t border-border/50">
                     {project.personnelGroups.map((personnel) => {
@@ -566,40 +637,73 @@ export function ProjectTimeEntriesTable({
                           <CollapsibleTrigger asChild>
                             <div className="p-3 pl-6 flex items-start gap-3 cursor-pointer active:bg-muted/30 transition-colors bg-muted/20 border-b border-border/30">
                               {onBulkDelete && (
-                                <div onClick={(e) => e.stopPropagation()} className="pt-0.5">
+                                <div
+                                  onClick={(e) => e.stopPropagation()}
+                                  className="pt-0.5"
+                                >
                                   <Checkbox
                                     checked={isPersonnelSelected(personnel)}
                                     ref={(el) => {
                                       if (el) {
-                                        (el as HTMLButtonElement & { indeterminate: boolean }).indeterminate = isPersonnelIndeterminate(personnel);
+                                        (
+                                          el as HTMLButtonElement & {
+                                            indeterminate: boolean;
+                                          }
+                                        ).indeterminate =
+                                          isPersonnelIndeterminate(personnel);
                                       }
                                     }}
-                                    onCheckedChange={(checked) => handleSelectPersonnel(personnel, !!checked)}
+                                    onCheckedChange={(checked) =>
+                                      handleSelectPersonnel(
+                                        personnel,
+                                        !!checked
+                                      )
+                                    }
                                     className="h-5 w-5"
                                   />
                                 </div>
                               )}
                               <PersonnelAvatar
                                 photoUrl={personnel.personnelData?.photo_url}
-                                firstName={personnel.personnelData?.first_name || ""}
-                                lastName={personnel.personnelData?.last_name || ""}
+                                firstName={
+                                  personnel.personnelData?.first_name || ""
+                                }
+                                lastName={
+                                  personnel.personnelData?.last_name || ""
+                                }
                                 size="sm"
                               />
                               <div className="flex-1 min-w-0">
                                 <div className="flex items-center gap-2 mb-1">
-                                  <span className="font-medium truncate">{personnel.personnelName}</span>
-                                  <ComplianceBadge personnel={getComplianceData(personnel.personnelData)} compact />
+                                  <span className="font-medium truncate">
+                                    {personnel.personnelName}
+                                  </span>
+                                  <ComplianceBadge
+                                    personnel={getComplianceData(
+                                      personnel.personnelData
+                                    )}
+                                    compact
+                                  />
                                 </div>
                                 <div className="flex items-center gap-3 text-sm">
-                                  <span className="font-medium">{personnel.totalHours.toFixed(1)}h</span>
+                                  <span className="font-medium">
+                                    {personnel.totalHours.toFixed(1)}h
+                                  </span>
                                   {personnel.overtimeHours > 0 && (
-                                    <span className="text-orange-500 text-xs">+{personnel.overtimeHours.toFixed(1)}h OT</span>
+                                    <span className="text-orange-500 text-xs">
+                                      +{personnel.overtimeHours.toFixed(1)}h OT
+                                    </span>
                                   )}
-                                  <span className="text-muted-foreground">${personnel.totalCost.toFixed(2)}</span>
+                                  <span className="text-muted-foreground">
+                                    ${personnel.totalCost.toFixed(2)}
+                                  </span>
                                 </div>
                               </div>
                               <div className="shrink-0 pt-1">
-                                <Badge variant="outline" className="text-xs mr-2">
+                                <Badge
+                                  variant="outline"
+                                  className="text-xs mr-2"
+                                >
                                   {personnel.dailyEntries.length}d
                                 </Badge>
                                 {expandedPersonnel.has(personnelKey) ? (
@@ -610,7 +714,7 @@ export function ProjectTimeEntriesTable({
                               </div>
                             </div>
                           </CollapsibleTrigger>
-                          
+
                           <CollapsibleContent>
                             {/* Daily Entries */}
                             {personnel.dailyEntries.map((daily) =>
@@ -622,17 +726,25 @@ export function ProjectTimeEntriesTable({
                                   {onBulkDelete && (
                                     <Checkbox
                                       checked={selectedIds.has(entry.id)}
-                                      onCheckedChange={(checked) => handleSelectEntry(entry.id, !!checked)}
+                                      onCheckedChange={(checked) =>
+                                        handleSelectEntry(entry.id, !!checked)
+                                      }
                                       className="h-5 w-5 mt-0.5"
                                     />
                                   )}
                                   <div className="flex-1 min-w-0">
                                     <div className="flex items-center gap-2 mb-1">
                                       <span className="font-medium text-sm">
-                                        {format(parseISO(entry.entry_date), "EEE, MMM d")}
+                                        {format(
+                                          parseISO(entry.entry_date),
+                                          "EEE, MMM d"
+                                        )}
                                       </span>
                                       {entry.is_holiday && (
-                                        <Badge variant="outline" className="text-xs bg-purple-500/10 text-purple-500 border-purple-500/20">
+                                        <Badge
+                                          variant="outline"
+                                          className="text-xs bg-purple-500/10 text-purple-500 border-purple-500/20"
+                                        >
                                           Holiday
                                         </Badge>
                                       )}
@@ -644,9 +756,18 @@ export function ProjectTimeEntriesTable({
                                       </p>
                                     )}
                                     <div className="flex items-center gap-3 text-sm">
-                                      <span className="font-medium">{Number(entry.hours).toFixed(2)}h</span>
+                                      <span className="font-medium">
+                                        {Number(entry.hours).toFixed(2)}h
+                                      </span>
                                       <span className="text-muted-foreground">
-                                        ${(Number(entry.hours) * getHourlyRate(entry)).toFixed(2)}
+                                        $
+                                        {(
+                                          Number(entry.hours) *
+                                          getHourlyRate(entry) *
+                                          (entry.is_holiday
+                                            ? holidayMultiplier
+                                            : 1)
+                                        ).toFixed(2)}
                                       </span>
                                     </div>
                                   </div>
@@ -680,8 +801,8 @@ export function ProjectTimeEntriesTable({
               <AlertDialogTitle>Delete Time Entries</AlertDialogTitle>
               <AlertDialogDescription>
                 Are you sure you want to delete {selectedIds.size} time{" "}
-                {selectedIds.size === 1 ? "entry" : "entries"}? This action cannot
-                be undone.
+                {selectedIds.size === 1 ? "entry" : "entries"}? This action
+                cannot be undone.
               </AlertDialogDescription>
             </AlertDialogHeader>
             <AlertDialogFooter>
@@ -714,7 +835,7 @@ export function ProjectTimeEntriesTable({
                 variant="outline"
                 size="sm"
                 onClick={() => {
-                  onStatusChange(Array.from(selectedIds), 'approved');
+                  onStatusChange(Array.from(selectedIds), "approved");
                   setSelectedIds(new Set());
                 }}
                 disabled={isUpdatingStatus}
@@ -729,7 +850,7 @@ export function ProjectTimeEntriesTable({
                 variant="outline"
                 size="sm"
                 onClick={() => {
-                  onStatusChange(Array.from(selectedIds), 'rejected');
+                  onStatusChange(Array.from(selectedIds), "rejected");
                   setSelectedIds(new Set());
                 }}
                 disabled={isUpdatingStatus}
@@ -744,7 +865,9 @@ export function ProjectTimeEntriesTable({
                 variant="outline"
                 size="sm"
                 onClick={() => {
-                  const selectedEntryList = entries.filter(e => selectedIds.has(e.id));
+                  const selectedEntryList = entries.filter((e) =>
+                    selectedIds.has(e.id)
+                  );
                   onCreateVendorBill(selectedEntryList);
                 }}
                 className="text-blue-600 border-blue-600/30 hover:bg-blue-600/10"
@@ -758,7 +881,9 @@ export function ProjectTimeEntriesTable({
                 variant="outline"
                 size="sm"
                 onClick={() => {
-                  const selectedEntryList = entries.filter(e => selectedIds.has(e.id));
+                  const selectedEntryList = entries.filter((e) =>
+                    selectedIds.has(e.id)
+                  );
                   onCreateCustomerInvoice(selectedEntryList);
                 }}
                 className="text-green-600 border-green-600/30 hover:bg-green-600/10"
@@ -787,7 +912,9 @@ export function ProjectTimeEntriesTable({
           <TableHeader>
             <TableRow className="bg-muted/50">
               {onBulkDelete && <TableHead className="w-12"></TableHead>}
-              <TableHead className="min-w-[300px]">Project / Personnel / Entry</TableHead>
+              <TableHead className="min-w-[300px]">
+                Project / Personnel / Entry
+              </TableHead>
               <TableHead>Customer</TableHead>
               <TableHead className="text-right">Hours</TableHead>
               <TableHead className="text-right">Cost</TableHead>
@@ -810,10 +937,16 @@ export function ProjectTimeEntriesTable({
                         checked={isProjectSelected(project)}
                         ref={(el) => {
                           if (el) {
-                            (el as HTMLButtonElement & { indeterminate: boolean }).indeterminate = isProjectIndeterminate(project);
+                            (
+                              el as HTMLButtonElement & {
+                                indeterminate: boolean;
+                              }
+                            ).indeterminate = isProjectIndeterminate(project);
                           }
                         }}
-                        onCheckedChange={(checked) => handleSelectProject(project, !!checked)}
+                        onCheckedChange={(checked) =>
+                          handleSelectProject(project, !!checked)
+                        }
                         aria-label={`Select all entries for ${project.projectName}`}
                       />
                     </TableCell>
@@ -825,9 +958,14 @@ export function ProjectTimeEntriesTable({
                       ) : (
                         <Folder className="h-5 w-5 text-muted-foreground" />
                       )}
-                      <span className="font-semibold">{project.projectName}</span>
+                      <span className="font-semibold">
+                        {project.projectName}
+                      </span>
                       {project.isLocked && (
-                        <Badge variant="outline" className="bg-orange-500/10 text-orange-500 border-orange-500/20 gap-1 ml-2">
+                        <Badge
+                          variant="outline"
+                          className="bg-orange-500/10 text-orange-500 border-orange-500/20 gap-1 ml-2"
+                        >
                           <Lock className="h-3 w-3" />
                           Locked
                         </Badge>
@@ -837,7 +975,9 @@ export function ProjectTimeEntriesTable({
                       </Badge>
                     </div>
                   </TableCell>
-                  <TableCell className="text-muted-foreground">{project.customerName}</TableCell>
+                  <TableCell className="text-muted-foreground">
+                    {project.customerName}
+                  </TableCell>
                   <TableCell className="text-right font-medium">
                     <div className="flex items-center justify-end gap-1">
                       <Clock className="h-4 w-4 text-muted-foreground" />
@@ -846,8 +986,8 @@ export function ProjectTimeEntriesTable({
                   </TableCell>
                   <TableCell className="text-right font-medium">
                     <div className="flex items-center justify-end gap-1">
-                      <DollarSign className="h-4 w-4 text-muted-foreground" />
-                      ${project.totalCost.toFixed(2)}
+                      <DollarSign className="h-4 w-4 text-muted-foreground" />$
+                      {project.totalCost.toFixed(2)}
                     </div>
                   </TableCell>
                   <TableCell></TableCell>
@@ -879,10 +1019,17 @@ export function ProjectTimeEntriesTable({
                                 checked={isPersonnelSelected(personnel)}
                                 ref={(el) => {
                                   if (el) {
-                                    (el as HTMLButtonElement & { indeterminate: boolean }).indeterminate = isPersonnelIndeterminate(personnel);
+                                    (
+                                      el as HTMLButtonElement & {
+                                        indeterminate: boolean;
+                                      }
+                                    ).indeterminate =
+                                      isPersonnelIndeterminate(personnel);
                                   }
                                 }}
-                                onCheckedChange={(checked) => handleSelectPersonnel(personnel, !!checked)}
+                                onCheckedChange={(checked) =>
+                                  handleSelectPersonnel(personnel, !!checked)
+                                }
                                 aria-label={`Select all entries for ${personnel.personnelName}`}
                               />
                             </TableCell>
@@ -891,13 +1038,24 @@ export function ProjectTimeEntriesTable({
                             <div className="flex items-center gap-3 pl-8">
                               <PersonnelAvatar
                                 photoUrl={personnel.personnelData?.photo_url}
-                                firstName={personnel.personnelData?.first_name || ""}
-                                lastName={personnel.personnelData?.last_name || ""}
+                                firstName={
+                                  personnel.personnelData?.first_name || ""
+                                }
+                                lastName={
+                                  personnel.personnelData?.last_name || ""
+                                }
                                 size="sm"
                               />
                               <div className="flex items-center gap-2">
-                                <span className="font-medium">{personnel.personnelName}</span>
-                                <ComplianceBadge personnel={getComplianceData(personnel.personnelData)} compact />
+                                <span className="font-medium">
+                                  {personnel.personnelName}
+                                </span>
+                                <ComplianceBadge
+                                  personnel={getComplianceData(
+                                    personnel.personnelData
+                                  )}
+                                  compact
+                                />
                               </div>
                               <Badge variant="outline" className="ml-2">
                                 {personnel.dailyEntries.length} days
@@ -907,7 +1065,9 @@ export function ProjectTimeEntriesTable({
                           <TableCell></TableCell>
                           <TableCell className="text-right">
                             <div className="space-y-0.5">
-                              <div className="font-medium">{personnel.totalHours.toFixed(1)}h</div>
+                              <div className="font-medium">
+                                {personnel.totalHours.toFixed(1)}h
+                              </div>
                               {personnel.overtimeHours > 0 && (
                                 <div className="text-xs text-orange-500">
                                   +{personnel.overtimeHours.toFixed(1)}h OT
@@ -920,7 +1080,11 @@ export function ProjectTimeEntriesTable({
                           </TableCell>
                           <TableCell></TableCell>
                           <TableCell>
-                            <Button variant="ghost" size="icon" className="h-8 w-8">
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              className="h-8 w-8"
+                            >
                               {expandedPersonnel.has(personnelKey) ? (
                                 <ChevronDown className="h-4 w-4" />
                               ) : (
@@ -942,7 +1106,9 @@ export function ProjectTimeEntriesTable({
                                   <TableCell>
                                     <Checkbox
                                       checked={selectedIds.has(entry.id)}
-                                      onCheckedChange={(checked) => handleSelectEntry(entry.id, !!checked)}
+                                      onCheckedChange={(checked) =>
+                                        handleSelectEntry(entry.id, !!checked)
+                                      }
                                       aria-label={`Select entry`}
                                     />
                                   </TableCell>
@@ -951,7 +1117,10 @@ export function ProjectTimeEntriesTable({
                                   <div className="flex items-center gap-3 pl-16">
                                     <div className="flex flex-col">
                                       <span className="font-medium">
-                                        {format(parseISO(entry.entry_date), "EEE, MMM d")}
+                                        {format(
+                                          parseISO(entry.entry_date),
+                                          "EEE, MMM d"
+                                        )}
                                       </span>
                                       {entry.description && (
                                         <span className="text-sm text-muted-foreground truncate max-w-[300px]">
@@ -960,7 +1129,10 @@ export function ProjectTimeEntriesTable({
                                       )}
                                     </div>
                                     {entry.is_holiday && (
-                                      <Badge variant="outline" className="bg-purple-500/10 text-purple-500 border-purple-500/20">
+                                      <Badge
+                                        variant="outline"
+                                        className="bg-purple-500/10 text-purple-500 border-purple-500/20"
+                                      >
                                         Holiday
                                       </Badge>
                                     )}
@@ -971,7 +1143,12 @@ export function ProjectTimeEntriesTable({
                                   {Number(entry.hours).toFixed(2)}h
                                 </TableCell>
                                 <TableCell className="text-right text-muted-foreground">
-                                  ${(Number(entry.hours) * getHourlyRate(entry)).toFixed(2)}
+                                  $
+                                  {(
+                                    Number(entry.hours) *
+                                    getHourlyRate(entry) *
+                                    (entry.is_holiday ? holidayMultiplier : 1)
+                                  ).toFixed(2)}
                                 </TableCell>
                                 <TableCell className="text-center">
                                   <StatusBadge status={getStatus(entry)} />
