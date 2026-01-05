@@ -1,4 +1,4 @@
-import { useState, useMemo, useEffect } from "react";
+import { useState, useMemo, useEffect, useRef } from "react";
 import { DashboardCustomizer, EditModeToggle, DraggableWidget } from "./customization";
 import { UnsavedChangesDialog } from "./customization/UnsavedChangesDialog";
 import {
@@ -45,8 +45,22 @@ export function CustomizableDashboard({ children }: CustomizableDashboardProps) 
 
   const canCustomize = isAdmin || isManager;
 
+  // Track previous edit mode state to detect transitions
+  const prevIsEditModeRef = useRef(isEditMode);
+
   // Sync draft with saved when entering edit mode or when saved values change while not editing
   useEffect(() => {
+    const wasEditMode = prevIsEditModeRef.current;
+    prevIsEditModeRef.current = isEditMode;
+
+    // Sync when ENTERING edit mode (false → true) to get latest saved values
+    if (isEditMode && !wasEditMode) {
+      setDraftLayout(activeLayout);
+      setDraftWidgets(activeWidgets);
+      setDraftTheme(activeTheme);
+    }
+
+    // Also sync when NOT in edit mode (to keep draft in sync with saved for next edit session)
     if (!isEditMode) {
       setDraftLayout(activeLayout);
       setDraftWidgets(activeWidgets);
