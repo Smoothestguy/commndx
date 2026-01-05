@@ -19,18 +19,21 @@ interface TimeEntry {
   overtime_hours: number | null;
   hourly_rate?: number | null;
   hours?: number | null;
+  is_holiday?: boolean;
 }
 
 interface ProjectWeeklyPayHistoryProps {
   timeEntries: TimeEntry[];
   hourlyRate: number | null;
   overtimeMultiplier?: number;
+  holidayMultiplier?: number;
 }
 
 export function ProjectWeeklyPayHistory({ 
   timeEntries, 
   hourlyRate, 
-  overtimeMultiplier = 1.5 
+  overtimeMultiplier = 1.5,
+  holidayMultiplier = 2.0
 }: ProjectWeeklyPayHistoryProps) {
   const [selectedPeriodKey, setSelectedPeriodKey] = useState<string>("");
   const [expandedPeriods, setExpandedPeriods] = useState<Set<string>>(new Set());
@@ -50,8 +53,8 @@ export function ProjectWeeklyPayHistory({
   // Calculate totals for selected period
   const periodTotals = useMemo(() => {
     if (!selectedPeriod) return null;
-    return calculatePayPeriodTotals(timeEntries, selectedPeriod, hourlyRate || 0, overtimeMultiplier);
-  }, [timeEntries, selectedPeriod, hourlyRate, overtimeMultiplier]);
+    return calculatePayPeriodTotals(timeEntries, selectedPeriod, hourlyRate || 0, overtimeMultiplier, 40, holidayMultiplier);
+  }, [timeEntries, selectedPeriod, hourlyRate, overtimeMultiplier, holidayMultiplier]);
 
   const togglePeriodExpanded = (periodKey: string) => {
     const newExpanded = new Set(expandedPeriods);
@@ -121,7 +124,7 @@ export function ProjectWeeklyPayHistory({
             </div>
 
             {/* Weekly Summary */}
-            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 text-center mb-4">
+            <div className="grid grid-cols-2 sm:grid-cols-5 gap-3 text-center mb-4">
               <div className="p-2 bg-background rounded-lg">
                 <div className="text-lg font-bold">{periodTotals.daysWorked}</div>
                 <div className="text-xs text-muted-foreground">Days Worked</div>
@@ -134,6 +137,12 @@ export function ProjectWeeklyPayHistory({
                 <div className="text-lg font-bold text-amber-600">{periodTotals.overtimeHours.toFixed(1)}</div>
                 <div className="text-xs text-muted-foreground">OT Hours</div>
               </div>
+              {periodTotals.holidayHours > 0 && (
+                <div className="p-2 bg-background rounded-lg">
+                  <div className="text-lg font-bold text-purple-600">{periodTotals.holidayHours.toFixed(1)}</div>
+                  <div className="text-xs text-muted-foreground">HO Hours</div>
+                </div>
+              )}
               <div className="p-2 bg-background rounded-lg">
                 <div className="text-lg font-bold">{periodTotals.totalHours.toFixed(1)}</div>
                 <div className="text-xs text-muted-foreground">Total Hours</div>
@@ -142,12 +151,19 @@ export function ProjectWeeklyPayHistory({
 
             {/* Pay Breakdown */}
             {hourlyRate !== null && hourlyRate > 0 && (
-              <div className="flex items-center gap-2 justify-center text-sm bg-background p-3 rounded-lg mb-4">
+              <div className="flex flex-wrap items-center gap-2 justify-center text-sm bg-background p-3 rounded-lg mb-4">
                 <DollarSign className="h-4 w-4 text-muted-foreground" />
                 <span>{formatCurrency(periodTotals.regularPay)}</span>
                 <span className="text-muted-foreground">+</span>
                 <span className="text-amber-600">{formatCurrency(periodTotals.overtimePay)}</span>
                 <span className="text-xs text-muted-foreground">(1.5x)</span>
+                {periodTotals.holidayPay > 0 && (
+                  <>
+                    <span className="text-muted-foreground">+</span>
+                    <span className="text-purple-600">{formatCurrency(periodTotals.holidayPay)}</span>
+                    <span className="text-xs text-muted-foreground">(2x)</span>
+                  </>
+                )}
                 <span className="text-muted-foreground">=</span>
                 <span className="font-bold text-primary text-lg">{formatCurrency(periodTotals.totalPay)}</span>
               </div>
@@ -178,6 +194,7 @@ export function ProjectWeeklyPayHistory({
                         <TableHead className="w-[100px]">Date</TableHead>
                         <TableHead className="text-right">Regular</TableHead>
                         <TableHead className="text-right">OT</TableHead>
+                        <TableHead className="text-right">HO</TableHead>
                         <TableHead className="text-right">Total</TableHead>
                       </TableRow>
                     </TableHeader>
@@ -201,6 +218,9 @@ export function ProjectWeeklyPayHistory({
                             <TableCell className="text-right text-amber-600">
                               {day.overtimeHours > 0 ? `${day.overtimeHours.toFixed(1)}h` : "-"}
                             </TableCell>
+                            <TableCell className="text-right text-purple-600">
+                              {day.holidayHours > 0 ? `${day.holidayHours.toFixed(1)}h` : "-"}
+                            </TableCell>
                             <TableCell className="text-right font-medium">
                               {hasHours ? `${day.totalHours.toFixed(1)}h` : "-"}
                             </TableCell>
@@ -216,11 +236,11 @@ export function ProjectWeeklyPayHistory({
         )}
 
         {/* Past Pay Periods Summary List */}
-        {payPeriods.length > 1 && (
+          {payPeriods.length > 1 && (
           <div className="space-y-2">
             <h4 className="text-sm font-medium text-muted-foreground">Past Pay Periods</h4>
             {payPeriods.slice(1, 5).map((period) => {
-              const totals = calculatePayPeriodTotals(timeEntries, period, hourlyRate || 0, overtimeMultiplier);
+              const totals = calculatePayPeriodTotals(timeEntries, period, hourlyRate || 0, overtimeMultiplier, 40, holidayMultiplier);
               return (
                 <div 
                   key={format(period.weekStart, "yyyy-MM-dd")} 

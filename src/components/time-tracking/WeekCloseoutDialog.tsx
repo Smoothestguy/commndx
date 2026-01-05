@@ -15,6 +15,7 @@ import { format, startOfWeek, endOfWeek } from "date-fns";
 import { useWeeklyPersonnelSummary } from "@/integrations/supabase/hooks/useProjectLaborExpenses";
 import { useCloseWeek } from "@/integrations/supabase/hooks/useWeekCloseouts";
 import { useCreateLaborExpenses } from "@/integrations/supabase/hooks/useProjectLaborExpenses";
+import { useCompanySettings } from "@/integrations/supabase/hooks/useCompanySettings";
 import { formatCurrency } from "@/lib/utils";
 import {
   Table,
@@ -47,12 +48,16 @@ export function WeekCloseoutDialog({
   const weekStart = startOfWeek(currentWeek, { weekStartsOn: 1 });
   const weekEnd = endOfWeek(currentWeek, { weekStartsOn: 1 });
   
-  const { data: personnelSummaries = [], isLoading } = useWeeklyPersonnelSummary(projectId, currentWeek);
+  const { data: companySettings } = useCompanySettings();
+  const holidayMultiplier = companySettings?.holiday_multiplier ?? 2.0;
+  
+  const { data: personnelSummaries = [], isLoading } = useWeeklyPersonnelSummary(projectId, currentWeek, holidayMultiplier);
   const closeWeek = useCloseWeek();
   const createLaborExpenses = useCreateLaborExpenses();
   
   const totalRegularHours = personnelSummaries.reduce((sum, p) => sum + p.regular_hours, 0);
   const totalOvertimeHours = personnelSummaries.reduce((sum, p) => sum + p.overtime_hours, 0);
+  const totalHolidayHours = personnelSummaries.reduce((sum, p) => sum + p.holiday_hours, 0);
   const totalLaborCost = personnelSummaries.reduce((sum, p) => sum + p.total_amount, 0);
   
   const handleClose = async () => {
@@ -131,7 +136,8 @@ export function WeekCloseoutDialog({
                     <TableRow>
                       <TableHead>Personnel</TableHead>
                       <TableHead className="text-right">Regular</TableHead>
-                      <TableHead className="text-right">Overtime</TableHead>
+                      <TableHead className="text-right">OT</TableHead>
+                      <TableHead className="text-right">HO</TableHead>
                       <TableHead className="text-right">Rate</TableHead>
                       <TableHead className="text-right">Total</TableHead>
                     </TableRow>
@@ -141,8 +147,11 @@ export function WeekCloseoutDialog({
                       <TableRow key={summary.personnel_id}>
                         <TableCell className="font-medium">{summary.personnel_name}</TableCell>
                         <TableCell className="text-right">{summary.regular_hours}h</TableCell>
-                        <TableCell className="text-right">
+                        <TableCell className="text-right text-amber-600">
                           {summary.overtime_hours > 0 ? `${summary.overtime_hours}h` : '-'}
+                        </TableCell>
+                        <TableCell className="text-right text-purple-600">
+                          {summary.holiday_hours > 0 ? `${summary.holiday_hours}h` : '-'}
                         </TableCell>
                         <TableCell className="text-right">{formatCurrency(summary.hourly_rate)}/hr</TableCell>
                         <TableCell className="text-right font-medium">
@@ -153,8 +162,11 @@ export function WeekCloseoutDialog({
                     <TableRow className="bg-muted/50">
                       <TableCell className="font-bold">Total</TableCell>
                       <TableCell className="text-right font-bold">{totalRegularHours}h</TableCell>
-                      <TableCell className="text-right font-bold">
+                      <TableCell className="text-right font-bold text-amber-600">
                         {totalOvertimeHours > 0 ? `${totalOvertimeHours}h` : '-'}
+                      </TableCell>
+                      <TableCell className="text-right font-bold text-purple-600">
+                        {totalHolidayHours > 0 ? `${totalHolidayHours}h` : '-'}
                       </TableCell>
                       <TableCell></TableCell>
                       <TableCell className="text-right font-bold">

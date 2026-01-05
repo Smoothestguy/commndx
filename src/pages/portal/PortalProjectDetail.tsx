@@ -2,6 +2,7 @@ import { useParams, useNavigate } from "react-router-dom";
 import { useMemo } from "react";
 import { PortalLayout } from "@/components/portal/PortalLayout";
 import { useCurrentPersonnel, usePersonnelTimeEntries, usePersonnelAssignments } from "@/integrations/supabase/hooks/usePortal";
+import { useCompanySettings } from "@/integrations/supabase/hooks/useCompanySettings";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -17,6 +18,10 @@ export default function PortalProjectDetail() {
   const { data: personnel } = useCurrentPersonnel();
   const { data: assignments, isLoading: assignmentsLoading } = usePersonnelAssignments(personnel?.id);
   const { data: timeEntries, isLoading: timeLoading } = usePersonnelTimeEntries(personnel?.id);
+  const { data: companySettings } = useCompanySettings();
+
+  const overtimeMultiplier = companySettings?.overtime_multiplier ?? 1.5;
+  const holidayMultiplier = companySettings?.holiday_multiplier ?? 2.0;
 
   // Find the assignment for this project
   const assignment = assignments?.find(a => a.project?.id === id);
@@ -26,40 +31,46 @@ export default function PortalProjectDetail() {
   const projectTimeEntries = timeEntries?.filter(entry => entry.project_id === id) || [];
 
   // Calculate hours for this project using 40-hour weekly overtime threshold
-  const { totalRegularHours, totalOvertimeHours, totalHours } = useMemo(() => {
+  const { totalRegularHours, totalOvertimeHours, totalHolidayHours, totalHours } = useMemo(() => {
     // Group entries by week
-    const entriesByWeek = new Map<string, number>();
+    const entriesByWeek = new Map<string, { hours: number; holidayHours: number }>();
     
     projectTimeEntries.forEach(entry => {
       const entryDate = parseISO(entry.entry_date);
       const weekStart = startOfWeek(entryDate, { weekStartsOn: 1 }).toISOString();
       const entryHours = (entry.regular_hours || 0) + (entry.overtime_hours || 0);
-      entriesByWeek.set(weekStart, (entriesByWeek.get(weekStart) || 0) + entryHours);
+      const existing = entriesByWeek.get(weekStart) || { hours: 0, holidayHours: 0 };
+      entriesByWeek.set(weekStart, {
+        hours: existing.hours + entryHours,
+        holidayHours: existing.holidayHours + ((entry as any).is_holiday ? entryHours : 0)
+      });
     });
     
     // Calculate regular and overtime based on 40-hour weekly threshold
     let regular = 0;
     let overtime = 0;
+    let holiday = 0;
     
-    entriesByWeek.forEach((weekHours) => {
+    entriesByWeek.forEach(({ hours: weekHours, holidayHours }) => {
       if (weekHours <= 40) {
         regular += weekHours;
       } else {
         regular += 40;
         overtime += weekHours - 40;
       }
+      holiday += holidayHours;
     });
     
     return {
       totalRegularHours: regular,
       totalOvertimeHours: overtime,
+      totalHolidayHours: holiday,
       totalHours: regular + overtime
     };
   }, [projectTimeEntries]);
 
   // Calculate pay using each entry's snapshotted hourly_rate (fallback to personnel rate if missing)
   const fallbackRate = personnel?.hourly_rate || 0;
-  const overtimeMultiplier = 1.5;
   
   // Group entries by week and calculate pay respecting 40-hour OT threshold per week
   const weeklyData = useMemo(() => {
@@ -75,6 +86,7 @@ export default function PortalProjectDetail() {
     
     let totalRegularPay = 0;
     let totalOvertimePay = 0;
+    let totalHolidayPay = 0;
     
     weekMap.forEach((weekEntries) => {
       // Sort entries by date within the week
@@ -84,6 +96,7 @@ export default function PortalProjectDetail() {
       sorted.forEach((entry) => {
         const entryRate = entry.hourly_rate ?? fallbackRate;
         const entryTotalHours = (entry.regular_hours || 0) + (entry.overtime_hours || 0);
+        const isHoliday = (entry as any).is_holiday === true;
         
         let entryRegular = 0;
         let entryOvertime = 0;
@@ -98,17 +111,25 @@ export default function PortalProjectDetail() {
         }
         
         hoursAccumulated += entryTotalHours;
-        totalRegularPay += entryRegular * entryRate;
-        totalOvertimePay += entryOvertime * entryRate * overtimeMultiplier;
+        
+        if (isHoliday) {
+          // Holiday pay uses holiday multiplier
+          totalHolidayPay += entryRegular * entryRate * holidayMultiplier;
+          totalHolidayPay += entryOvertime * entryRate * Math.max(overtimeMultiplier, holidayMultiplier);
+        } else {
+          totalRegularPay += entryRegular * entryRate;
+          totalOvertimePay += entryOvertime * entryRate * overtimeMultiplier;
+        }
       });
     });
     
-    return { totalRegularPay, totalOvertimePay };
-  }, [projectTimeEntries, fallbackRate, overtimeMultiplier]);
+    return { totalRegularPay, totalOvertimePay, totalHolidayPay };
+  }, [projectTimeEntries, fallbackRate, overtimeMultiplier, holidayMultiplier]);
   
   const totalRegularPay = weeklyData.totalRegularPay;
   const totalOvertimePay = weeklyData.totalOvertimePay;
-  const totalPay = totalRegularPay + totalOvertimePay;
+  const totalHolidayPay = weeklyData.totalHolidayPay;
+  const totalPay = totalRegularPay + totalOvertimePay + totalHolidayPay;
 
   const isLoading = assignmentsLoading || timeLoading;
 
@@ -312,7 +333,7 @@ export default function PortalProjectDetail() {
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+            <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
               <div className="text-center p-4 rounded-lg bg-muted/50">
                 <div className="text-2xl font-bold">{totalHours.toFixed(1)}</div>
                 <div className="text-sm text-muted-foreground">Total Hours</div>
@@ -323,8 +344,14 @@ export default function PortalProjectDetail() {
               </div>
               <div className="text-center p-4 rounded-lg bg-muted/50">
                 <div className="text-2xl font-bold text-amber-600">{totalOvertimeHours.toFixed(1)}</div>
-                <div className="text-sm text-muted-foreground">Overtime</div>
+                <div className="text-sm text-muted-foreground">OT</div>
               </div>
+              {totalHolidayHours > 0 && (
+                <div className="text-center p-4 rounded-lg bg-muted/50">
+                  <div className="text-2xl font-bold text-purple-600">{totalHolidayHours.toFixed(1)}</div>
+                  <div className="text-sm text-muted-foreground">HO</div>
+                </div>
+              )}
               {fallbackRate > 0 && (
                 <div className="text-center p-4 rounded-lg bg-primary/10">
                   <div className="text-2xl font-bold text-primary">{formatCurrency(totalPay)}</div>
@@ -336,12 +363,19 @@ export default function PortalProjectDetail() {
             {/* Pay breakdown formula */}
             {fallbackRate > 0 && (
               <div className="mt-4 p-3 rounded-lg bg-muted/30 border">
-                <div className="flex items-center gap-2 justify-center text-sm">
+                <div className="flex flex-wrap items-center gap-2 justify-center text-sm">
                   <DollarSign className="h-4 w-4 text-muted-foreground" />
                   <span>{formatCurrency(totalRegularPay)}</span>
                   <span className="text-muted-foreground">+</span>
                   <span className="text-amber-600">{formatCurrency(totalOvertimePay)}</span>
                   <span className="text-xs text-muted-foreground">(1.5x)</span>
+                  {totalHolidayPay > 0 && (
+                    <>
+                      <span className="text-muted-foreground">+</span>
+                      <span className="text-purple-600">{formatCurrency(totalHolidayPay)}</span>
+                      <span className="text-xs text-muted-foreground">(2x)</span>
+                    </>
+                  )}
                   <span className="text-muted-foreground">=</span>
                   <span className="font-semibold text-primary">{formatCurrency(totalPay)}</span>
                 </div>
@@ -355,6 +389,7 @@ export default function PortalProjectDetail() {
           timeEntries={projectTimeEntries}
           hourlyRate={personnel?.hourly_rate || null}
           overtimeMultiplier={overtimeMultiplier}
+          holidayMultiplier={holidayMultiplier}
         />
       </div>
     </PortalLayout>
