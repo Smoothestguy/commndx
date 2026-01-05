@@ -206,3 +206,6 @@ verify_jwt = false
 
 [functions.quickbooks-receive-bill-payment]
 verify_jwt = false
+
+[functions.notify-late-clock-attempt]
+verify_jwt = false
