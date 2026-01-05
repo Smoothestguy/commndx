@@ -15,6 +15,7 @@ import {
   Receipt,
   Lock,
   User,
+  Users,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -108,6 +109,7 @@ interface ProjectTimeEntriesTableProps {
   onStatusChange?: (ids: string[], status: string) => void;
   onCreateVendorBill?: (entries: TimeEntryWithDetails[]) => void;
   onCreateCustomerInvoice?: (entries: TimeEntryWithDetails[]) => void;
+  onBulkCreateInvoices?: (entries: TimeEntryWithDetails[]) => void;
   isDeleting?: boolean;
   isUpdatingStatus?: boolean;
 }
@@ -130,6 +132,7 @@ export function ProjectTimeEntriesTable({
   onStatusChange,
   onCreateVendorBill,
   onCreateCustomerInvoice,
+  onBulkCreateInvoices,
   isDeleting,
   isUpdatingStatus,
 }: ProjectTimeEntriesTableProps) {
@@ -521,6 +524,22 @@ export function ProjectTimeEntriesTable({
               Invoice
             </Button>
           )}
+          {onBulkCreateInvoices && (
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => {
+                const selectedEntryList = entries.filter((e) =>
+                  selectedIds.has(e.id)
+                );
+                onBulkCreateInvoices(selectedEntryList);
+              }}
+              className="text-purple-600 border-purple-600/30 hover:bg-purple-600/10 h-11"
+            >
+              <Users className="h-4 w-4 mr-1" />
+              Bulk Invoice
+            </Button>
+          )}
           {onBulkDelete && (
             <Button
               variant="destructive"
@@ -890,6 +909,22 @@ export function ProjectTimeEntriesTable({
               >
                 <Receipt className="h-4 w-4 mr-1" />
                 Invoice Customer
+              </Button>
+            )}
+            {onBulkCreateInvoices && (
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => {
+                  const selectedEntryList = entries.filter((e) =>
+                    selectedIds.has(e.id)
+                  );
+                  onBulkCreateInvoices(selectedEntryList);
+                }}
+                className="text-purple-600 border-purple-600/30 hover:bg-purple-600/10"
+              >
+                <Users className="h-4 w-4 mr-1" />
+                Bulk Invoice
               </Button>
             )}
             {onBulkDelete && (
