@@ -137,6 +137,7 @@ export function WeeklyTimesheet({
   const bulkDeleteMutation = useBulkDeleteTimeEntries();
 
   const overtimeMultiplier = companySettings?.overtime_multiplier || 1.5;
+  const holidayMultiplier = companySettings?.holiday_multiplier || 2.0;
   const weeklyOvertimeThreshold =
     companySettings?.weekly_overtime_threshold ?? 40;
 
@@ -327,6 +328,18 @@ export function WeeklyTimesheet({
       .reduce((sum, e) => sum + Number(e.hours), 0);
   };
 
+  // Get holiday hours for a row
+  const getRowHolidayHours = (rowKey: string) => {
+    return entries
+      .filter((e) => {
+        const entryRowKey = e.personnel_id
+          ? `${e.project_id}-${e.personnel_id}`
+          : `${e.project_id}-self`;
+        return entryRowKey === rowKey && (e as any).is_holiday === true;
+      })
+      .reduce((sum, e) => sum + Number(e.hours), 0);
+  };
+
   // Calculate regular hours based on weekly 40-hour threshold
   const getRowRegularHours = (rowKey: string, personnelId: string | null) => {
     const totalPersonnelHours = getPersonnelTotalWeeklyHours(personnelId);
@@ -366,7 +379,24 @@ export function WeeklyTimesheet({
     if (!rate) return null;
     const regular = getRowRegularHours(rowKey, personnelId);
     const overtime = getRowOvertimeHours(rowKey, personnelId);
-    return regular * rate + overtime * rate * overtimeMultiplier;
+    const holiday = getRowHolidayHours(rowKey);
+    
+    // Holiday hours are paid at full holiday rate, separate from regular/OT
+    // Regular and OT are calculated on non-holiday hours
+    const nonHolidayHours = getRowTotal(rowKey) - holiday;
+    const adjustedRegular = Math.min(nonHolidayHours, regular);
+    const adjustedOvertime = Math.max(0, nonHolidayHours - adjustedRegular);
+    
+    return adjustedRegular * rate + adjustedOvertime * rate * overtimeMultiplier + holiday * rate * holidayMultiplier;
+  };
+
+  const getRowHolidayPay = (
+    rowKey: string,
+    rate: number | null
+  ) => {
+    if (!rate) return null;
+    const holiday = getRowHolidayHours(rowKey);
+    return holiday * rate * holidayMultiplier;
   };
 
   const getRowRegularPay = (
@@ -392,6 +422,13 @@ export function WeeklyTimesheet({
   // Calculate weekly totals based on per-personnel 40-hour threshold
   const weekTotal = entries.reduce((sum, e) => sum + Number(e.hours), 0);
 
+  // Calculate total holiday hours
+  const weekTotalHoliday = useMemo(() => {
+    return entries
+      .filter((e) => (e as any).is_holiday === true)
+      .reduce((sum, e) => sum + Number(e.hours), 0);
+  }, [entries]);
+
   const weekTotalRegular = useMemo(() => {
     // Get unique personnel IDs
     const personnelIds = [...new Set(entries.map((e) => e.personnel_id))];
@@ -399,31 +436,56 @@ export function WeeklyTimesheet({
 
     personnelIds.forEach((personnelId) => {
       const personnelTotal = getPersonnelTotalWeeklyHours(personnelId);
-      totalRegular += Math.min(personnelTotal, weeklyOvertimeThreshold);
+      // Subtract holiday hours from this personnel's total for regular/OT calculation
+      const personnelHoliday = entries
+        .filter((e) => e.personnel_id === personnelId && (e as any).is_holiday === true)
+        .reduce((sum, e) => sum + Number(e.hours), 0);
+      const nonHolidayTotal = personnelTotal - personnelHoliday;
+      totalRegular += Math.min(nonHolidayTotal, weeklyOvertimeThreshold);
     });
 
     return totalRegular;
   }, [entries, weeklyOvertimeThreshold]);
 
-  const weekTotalOvertime = weekTotal - weekTotalRegular;
+  const weekTotalOvertime = weekTotal - weekTotalRegular - weekTotalHoliday;
 
-  const { weekTotalPay, weekRegularPay, weekOvertimePay } = useMemo(() => {
+  const { weekTotalPay, weekRegularPay, weekOvertimePay, weekHolidayPay } = useMemo(() => {
     let totalPay = 0;
     let regularPay = 0;
     let overtimePay = 0;
+    let holidayPay = 0;
 
     rows.forEach((row) => {
       if (row.personnelRate) {
-        const regular = getRowRegularHours(row.rowKey, row.personnelId ?? null);
-        const overtime = getRowOvertimeHours(
-          row.rowKey,
-          row.personnelId ?? null
-        );
+        const rowHolidayHrs = getRowHolidayHours(row.rowKey);
+        const rowTotalHrs = getRowTotal(row.rowKey);
+        const nonHolidayHrs = rowTotalHrs - rowHolidayHrs;
+        
+        // Calculate regular/OT based on non-holiday hours
+        const personnelTotal = getPersonnelTotalWeeklyHours(row.personnelId ?? null);
+        const personnelHoliday = entries
+          .filter((e) => e.personnel_id === row.personnelId && (e as any).is_holiday === true)
+          .reduce((sum, e) => sum + Number(e.hours), 0);
+        const personnelNonHoliday = personnelTotal - personnelHoliday;
+        
+        const regularRatio = personnelNonHoliday <= weeklyOvertimeThreshold 
+          ? 1 
+          : weeklyOvertimeThreshold / personnelNonHoliday;
+        const overtimeRatio = personnelNonHoliday <= weeklyOvertimeThreshold 
+          ? 0 
+          : (personnelNonHoliday - weeklyOvertimeThreshold) / personnelNonHoliday;
+        
+        const regular = nonHolidayHrs * regularRatio;
+        const overtime = nonHolidayHrs * overtimeRatio;
+        
         const regPay = regular * row.personnelRate;
         const otPay = overtime * row.personnelRate * overtimeMultiplier;
+        const holPay = rowHolidayHrs * row.personnelRate * holidayMultiplier;
+        
         regularPay += regPay;
         overtimePay += otPay;
-        totalPay += regPay + otPay;
+        holidayPay += holPay;
+        totalPay += regPay + otPay + holPay;
       }
     });
 
@@ -431,8 +493,9 @@ export function WeeklyTimesheet({
       weekTotalPay: totalPay,
       weekRegularPay: regularPay,
       weekOvertimePay: overtimePay,
+      weekHolidayPay: holidayPay,
     };
-  }, [rows, entries, overtimeMultiplier, weeklyOvertimeThreshold]);
+  }, [rows, entries, overtimeMultiplier, holidayMultiplier, weeklyOvertimeThreshold]);
 
   const handleJumpToRecentEntries = () => {
     if (latestEntryDate && onWeekChange) {

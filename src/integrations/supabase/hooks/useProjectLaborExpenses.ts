@@ -5,11 +5,11 @@ import { toast } from "sonner";
 import { calculateSingleEmployeeOvertime } from "@/lib/overtimeUtils";
 
 // Hook to calculate labor costs directly from time entries for a project
-export function useProjectTimeEntryCosts(projectId: string | undefined) {
+export function useProjectTimeEntryCosts(projectId: string | undefined, overtimeMultiplier: number = 1.5, holidayMultiplier: number = 2.0) {
   return useQuery({
-    queryKey: ['project-time-entry-costs', projectId],
+    queryKey: ['project-time-entry-costs', projectId, overtimeMultiplier, holidayMultiplier],
     queryFn: async () => {
-      if (!projectId) return { totalLaborCost: 0, totalHours: 0, regularHours: 0, overtimeHours: 0 };
+      if (!projectId) return { totalLaborCost: 0, totalHours: 0, regularHours: 0, overtimeHours: 0, holidayHours: 0 };
       
       // Get all time entries for this project with personnel hourly rate
       const { data: entries, error } = await supabase
@@ -19,6 +19,7 @@ export function useProjectTimeEntryCosts(projectId: string | undefined) {
           regular_hours,
           overtime_hours,
           hourly_rate,
+          is_holiday,
           personnel:personnel_id (hourly_rate)
         `)
         .eq('project_id', projectId);
@@ -29,22 +30,33 @@ export function useProjectTimeEntryCosts(projectId: string | undefined) {
       let totalHours = 0;
       let regularHours = 0;
       let overtimeHours = 0;
+      let holidayHours = 0;
       
       for (const entry of entries || []) {
         // Use snapshotted rate from entry, fallback to personnel's current rate
         const rate = entry.hourly_rate || (entry.personnel as any)?.hourly_rate || 0;
-        const regHrs = entry.regular_hours || entry.hours || 0;
-        const otHrs = entry.overtime_hours || 0;
+        const entryHours = entry.hours || 0;
+        const isHoliday = (entry as any).is_holiday === true;
         
-        regularHours += regHrs;
-        overtimeHours += otHrs;
-        totalHours += regHrs + otHrs;
+        totalHours += entryHours;
         
-        // Regular pay + Overtime at 1.5x rate
-        totalLaborCost += (regHrs * rate) + (otHrs * rate * 1.5);
+        if (isHoliday) {
+          // Holiday hours are paid at full holiday multiplier (2x)
+          holidayHours += entryHours;
+          totalLaborCost += entryHours * rate * holidayMultiplier;
+        } else {
+          // Non-holiday: use regular/overtime split if available
+          const regHrs = entry.regular_hours || entryHours;
+          const otHrs = entry.overtime_hours || 0;
+          
+          regularHours += regHrs;
+          overtimeHours += otHrs;
+          
+          totalLaborCost += (regHrs * rate) + (otHrs * rate * overtimeMultiplier);
+        }
       }
       
-      return { totalLaborCost, totalHours, regularHours, overtimeHours };
+      return { totalLaborCost, totalHours, regularHours, overtimeHours, holidayHours };
     },
     enabled: !!projectId,
   });
@@ -189,9 +201,13 @@ export function useWeeklyPersonnelSummary(projectId: string | undefined, weekSta
       }
       
       // Calculate overtime for each person (40hr weekly threshold)
+      // Holiday hours are paid at full holiday multiplier, separate from regular/OT
       const summaries: PersonnelWeeklySummary[] = [];
       for (const data of personnelMap.values()) {
-        const { regularHours, overtimeHours } = calculateSingleEmployeeOvertime(data.total_hours, 40);
+        // Calculate regular/OT based on non-holiday hours only
+        const nonHolidayHours = data.total_hours - data.holiday_hours;
+        const { regularHours, overtimeHours } = calculateSingleEmployeeOvertime(nonHolidayHours, 40);
+        
         const summary: PersonnelWeeklySummary = {
           personnel_id: data.personnel_id,
           personnel_name: data.personnel_name,
@@ -202,7 +218,7 @@ export function useWeeklyPersonnelSummary(projectId: string | undefined, weekSta
           hourly_rate: data.hourly_rate,
           regular_amount: regularHours * data.hourly_rate,
           overtime_amount: overtimeHours * data.hourly_rate * 1.5,
-          holiday_amount: data.holiday_hours * data.hourly_rate * (holidayMultiplier - 1), // Bonus portion only
+          holiday_amount: data.holiday_hours * data.hourly_rate * holidayMultiplier, // Full holiday rate (2x)
           total_amount: 0,
         };
         summary.total_amount = summary.regular_amount + summary.overtime_amount + summary.holiday_amount;
