@@ -828,6 +828,7 @@ export default function UserManagement() {
                       <SelectContent>
                         <SelectItem value="admin">Admin</SelectItem>
                         <SelectItem value="manager">Manager</SelectItem>
+                        <SelectItem value="accounting">Accounting</SelectItem>
                         <SelectItem value="user">User</SelectItem>
                       </SelectContent>
                     </Select>
@@ -1060,6 +1061,7 @@ export default function UserManagement() {
                         <SelectContent className="bg-popover">
                           <SelectItem value="admin">Admin</SelectItem>
                           <SelectItem value="manager">Manager</SelectItem>
+                          <SelectItem value="accounting">Accounting</SelectItem>
                           <SelectItem value="user">User</SelectItem>
                         </SelectContent>
                       </Select>
@@ -1227,6 +1229,7 @@ export default function UserManagement() {
                         <SelectContent>
                           <SelectItem value="admin">Admin</SelectItem>
                           <SelectItem value="manager">Manager</SelectItem>
+                          <SelectItem value="accounting">Accounting</SelectItem>
                           <SelectItem value="user">User</SelectItem>
                         </SelectContent>
                       </Select>

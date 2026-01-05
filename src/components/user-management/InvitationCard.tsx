@@ -50,6 +50,7 @@ export function InvitationCard({
   const getRoleBadgeVariant = (role: AppRole) => {
     if (role === "admin") return "default";
     if (role === "manager") return "secondary";
+    if (role === "accounting") return "secondary";
     return "outline";
   };
 
