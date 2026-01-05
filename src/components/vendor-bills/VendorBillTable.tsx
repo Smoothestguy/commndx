@@ -11,6 +11,7 @@ import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, 
 import { VendorBill, useDeleteVendorBill } from "@/integrations/supabase/hooks/useVendorBills";
 import { useQuickBooksConfig, useQuickBooksBillMapping, useSyncVendorBillToQB } from "@/integrations/supabase/hooks/useQuickBooks";
 import { VendorBillPaymentDialog } from "./VendorBillPaymentDialog";
+import { BulkBillPaymentDialog } from "./BulkBillPaymentDialog";
 import { VendorBillCard } from "./VendorBillCard";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { toast } from "sonner";
@@ -184,6 +185,7 @@ export function VendorBillTable({ bills }: VendorBillTableProps) {
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [deleteId, setDeleteId] = useState<string | null>(null);
   const [bulkDeleteOpen, setBulkDeleteOpen] = useState(false);
+  const [bulkPaymentOpen, setBulkPaymentOpen] = useState(false);
   const [paymentBillId, setPaymentBillId] = useState<string | null>(null);
   const [isBulkSyncing, setIsBulkSyncing] = useState(false);
   
@@ -265,6 +267,14 @@ export function VendorBillTable({ bills }: VendorBillTableProps) {
       {selectedIds.size > 0 && (
         <div className="flex flex-wrap items-center gap-2 sm:gap-4 p-3 bg-muted rounded-lg mb-4">
           <span className="text-sm font-medium">{selectedIds.size} selected</span>
+          <Button 
+            variant="default" 
+            size="sm"
+            onClick={() => setBulkPaymentOpen(true)}
+          >
+            <DollarSign className="h-4 w-4 mr-1" />
+            Record Payments
+          </Button>
           <Button 
             variant="destructive" 
             size="sm"
@@ -409,6 +419,15 @@ export function VendorBillTable({ bills }: VendorBillTableProps) {
           remainingAmount={Number(paymentBill.remaining_amount)}
         />
       )}
+
+      {/* Bulk Payment Dialog */}
+      <BulkBillPaymentDialog
+        open={bulkPaymentOpen}
+        onOpenChange={setBulkPaymentOpen}
+        bills={bills}
+        selectedIds={selectedIds}
+        onClearSelection={() => setSelectedIds(new Set())}
+      />
     </>
   );
 }
