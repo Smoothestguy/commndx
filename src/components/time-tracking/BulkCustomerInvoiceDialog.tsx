@@ -308,7 +308,7 @@ export function BulkCustomerInvoiceDialog({
         customer.totalBillable = totalBillable;
 
         // Generate line items
-        const dateRange = getDateRange(customer.entries);
+        const weekLabels = getWeekLabels(customer.entries);
         const lineItems: LineItemDescription[] = [];
 
         bracketTotals.forEach(bt => {
@@ -317,7 +317,7 @@ export function BulkCustomerInvoiceDialog({
               bracketId: bt.bracketId,
               type: 'regular',
               productName: `${bt.bracketName} - Regular Time`,
-              description: `${bt.bracketName} - Regular Time, ${dateRange}\n${bt.regularHours.toFixed(1)} hours @ $${bt.billRate.toFixed(2)}/hr`,
+              description: `${bt.bracketName} - Regular Time, ${weekLabels}\n${bt.regularHours.toFixed(1)} hours @ $${bt.billRate.toFixed(2)}/hr`,
               selected: true,
               hours: bt.regularHours,
               rate: bt.billRate,
@@ -331,7 +331,7 @@ export function BulkCustomerInvoiceDialog({
               bracketId: bt.bracketId,
               type: 'overtime',
               productName: `${bt.bracketName} - Overtime`,
-              description: `${bt.bracketName} - Overtime, ${dateRange}\n${bt.overtimeHours.toFixed(1)} hours @ $${otRate.toFixed(2)}/hr (${bt.overtimeMultiplier}x rate)`,
+              description: `${bt.bracketName} - Overtime, ${weekLabels}\n${bt.overtimeHours.toFixed(1)} hours @ $${otRate.toFixed(2)}/hr (${bt.overtimeMultiplier}x rate)`,
               selected: true,
               hours: bt.overtimeHours,
               rate: otRate,
@@ -357,14 +357,40 @@ export function BulkCustomerInvoiceDialog({
     buildCustomerGroups();
   }, [open, validEntries, weeklyOvertimeThreshold]);
 
-  const getDateRange = (entries: TimeEntryWithDetails[]) => {
-    const dates = entries.map(e => new Date(e.entry_date));
+  const getWeekLabels = (entries: TimeEntryWithDetails[]) => {
+    // Parse dates at noon to avoid timezone issues
+    const dates = entries.map(e => new Date(e.entry_date + 'T12:00:00'));
     if (dates.length === 0) return "";
-    const minDate = new Date(Math.min(...dates.map(d => d.getTime())));
-    const maxDate = new Date(Math.max(...dates.map(d => d.getTime())));
-    const weekStart = startOfWeek(minDate, { weekStartsOn: 1 });
-    const weekEnd = endOfWeek(maxDate, { weekStartsOn: 1 });
-    return `Week of ${format(weekStart, "MMM d")} – ${format(weekEnd, "MMM d, yyyy")}`;
+    
+    // Get unique weeks (keyed by week start date)
+    const weekMap = new Map<string, { start: Date; end: Date }>();
+    dates.forEach(date => {
+      const weekStart = startOfWeek(date, { weekStartsOn: 1 });
+      const weekEnd = endOfWeek(date, { weekStartsOn: 1 });
+      const key = format(weekStart, "yyyy-MM-dd");
+      if (!weekMap.has(key)) {
+        weekMap.set(key, { start: weekStart, end: weekEnd });
+      }
+    });
+    
+    // Sort weeks chronologically
+    const sortedWeeks = Array.from(weekMap.values())
+      .sort((a, b) => a.start.getTime() - b.start.getTime());
+    
+    if (sortedWeeks.length === 1) {
+      // Single week: "Week of Dec 22 – Dec 28, 2025"
+      return `Week of ${format(sortedWeeks[0].start, "MMM d")} – ${format(sortedWeeks[0].end, "MMM d, yyyy")}`;
+    } else if (sortedWeeks.length === 2) {
+      // Two weeks: "Weeks of Dec 22-28 & Dec 29 - Jan 4, 2026"
+      const w1 = `${format(sortedWeeks[0].start, "MMM d")}-${format(sortedWeeks[0].end, "d")}`;
+      const w2 = `${format(sortedWeeks[1].start, "MMM d")} – ${format(sortedWeeks[1].end, "MMM d, yyyy")}`;
+      return `Weeks of ${w1} & ${w2}`;
+    } else {
+      // Multiple weeks: "Dec 22, 2025 – Jan 11, 2026 (3 weeks)"
+      const first = sortedWeeks[0];
+      const last = sortedWeeks[sortedWeeks.length - 1];
+      return `${format(first.start, "MMM d, yyyy")} – ${format(last.end, "MMM d, yyyy")} (${sortedWeeks.length} weeks)`;
+    }
   };
 
   const toggleCustomerSelection = (customerId: string) => {
