@@ -327,6 +327,16 @@ export function DevActivityDashboard({ dateRange, targetUserId }: DevActivityDas
                                     {activity.project_name && (
                                       <Badge variant="outline">{activity.project_name}</Badge>
                                     )}
+                                    {activity.activity_time && (
+                                      <span className="text-xs text-muted-foreground">
+                                        {(() => {
+                                          const [hours, minutes] = activity.activity_time.split(':').map(Number);
+                                          const period = hours >= 12 ? 'PM' : 'AM';
+                                          const hour12 = hours % 12 || 12;
+                                          return `${hour12}:${minutes.toString().padStart(2, '0')} ${period}`;
+                                        })()}
+                                      </span>
+                                    )}
                                     {activity.duration_minutes && (
                                       <span className="text-xs text-muted-foreground">
                                         {formatDuration(activity.duration_minutes)}
