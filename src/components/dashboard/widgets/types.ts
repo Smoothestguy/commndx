@@ -32,15 +32,15 @@ export interface DashboardWidget {
   visible: boolean;
 }
 
-export type WidgetType = 
-  | 'stat'
-  | 'chart'
-  | 'activity'
-  | 'quick-actions'
-  | 'table'
-  | 'welcome'
-  | 'assignments'
-  | 'reimbursements';
+export type WidgetType =
+  | "stat"
+  | "chart"
+  | "activity"
+  | "quick-actions"
+  | "table"
+  | "welcome"
+  | "assignments"
+  | "reimbursements";
 
 export interface WidgetConfig {
   dataSource?: string;
@@ -50,7 +50,7 @@ export interface WidgetConfig {
     compact?: boolean;
     showChange?: boolean;
     showIcon?: boolean;
-    chartType?: 'pie' | 'bar' | 'line';
+    chartType?: "pie" | "bar" | "line";
     limit?: number;
   };
 }
@@ -61,10 +61,10 @@ export interface DashboardTheme {
   cardBackground?: string;
   cardOpacity?: number;
   fontFamily?: string;
-  fontSize?: 'small' | 'medium' | 'large';
-  spacing?: 'compact' | 'normal' | 'relaxed';
+  fontSize?: "small" | "medium" | "large";
+  spacing?: "compact" | "normal" | "relaxed";
   accentColor?: string;
-  borderRadius?: 'none' | 'small' | 'medium' | 'large';
+  borderRadius?: "none" | "small" | "medium" | "large";
 }
 
 // Widget registry entry
@@ -73,7 +73,7 @@ export interface WidgetRegistryEntry {
   title: string;
   description: string;
   icon: LucideIcon;
-  category: 'stats' | 'charts' | 'lists' | 'actions' | 'other';
+  category: "stats" | "charts" | "lists" | "actions" | "other";
   defaultSize: WidgetSize;
   defaultConfig: WidgetConfig;
   minSize?: WidgetSize;
@@ -84,79 +84,115 @@ export interface WidgetRegistryEntry {
 export const DEFAULT_LAYOUT: DashboardLayout = {
   columns: 4,
   widgets: [
-    { widgetId: 'welcome', position: { row: 0, col: 0 }, size: { width: 4, height: 1 } },
-    { widgetId: 'revenue-stat', position: { row: 1, col: 0 }, size: { width: 1, height: 1 } },
-    { widgetId: 'projects-stat', position: { row: 1, col: 1 }, size: { width: 1, height: 1 } },
-    { widgetId: 'staffing-stat', position: { row: 1, col: 2 }, size: { width: 1, height: 1 } },
-    { widgetId: 'pending-invoices-stat', position: { row: 1, col: 3 }, size: { width: 1, height: 1 } },
-    { widgetId: 'projects-pie-chart', position: { row: 2, col: 0 }, size: { width: 2, height: 2 } },
-    { widgetId: 'recent-activity', position: { row: 2, col: 2 }, size: { width: 2, height: 2 } },
-    { widgetId: 'quick-actions', position: { row: 4, col: 0 }, size: { width: 2, height: 1 } },
-    { widgetId: 'assignments', position: { row: 4, col: 2 }, size: { width: 2, height: 1 } },
+    {
+      widgetId: "welcome",
+      position: { row: 0, col: 0 },
+      size: { width: 4, height: 1 },
+    },
+    {
+      widgetId: "revenue-stat",
+      position: { row: 1, col: 0 },
+      size: { width: 1, height: 1 },
+    },
+    {
+      widgetId: "projects-stat",
+      position: { row: 1, col: 1 },
+      size: { width: 1, height: 1 },
+    },
+    {
+      widgetId: "staffing-stat",
+      position: { row: 1, col: 2 },
+      size: { width: 1, height: 1 },
+    },
+    {
+      widgetId: "pending-invoices-stat",
+      position: { row: 1, col: 3 },
+      size: { width: 1, height: 1 },
+    },
+    {
+      widgetId: "projects-pie-chart",
+      position: { row: 2, col: 0 },
+      size: { width: 2, height: 2 },
+    },
+    {
+      widgetId: "recent-activity",
+      position: { row: 2, col: 2 },
+      size: { width: 2, height: 2 },
+    },
+    {
+      widgetId: "quick-actions",
+      position: { row: 4, col: 0 },
+      size: { width: 2, height: 1 },
+    },
+    {
+      widgetId: "assignments",
+      position: { row: 4, col: 2 },
+      size: { width: 2, height: 1 },
+    },
   ],
 };
 
 export const DEFAULT_WIDGETS: DashboardWidget[] = [
   {
-    id: 'welcome',
-    type: 'welcome',
-    title: 'Welcome',
+    id: "welcome",
+    type: "welcome",
+    title: "Welcome",
     config: {},
     visible: true,
   },
   {
-    id: 'revenue-stat',
-    type: 'stat',
-    title: 'Revenue',
-    config: { dataSource: 'invoices', metric: 'revenue' },
+    id: "revenue-stat",
+    type: "stat",
+    title: "Revenue",
+    config: { dataSource: "invoices", metric: "revenue" },
     visible: true,
   },
   {
-    id: 'projects-stat',
-    type: 'stat',
-    title: 'Active Projects',
-    config: { dataSource: 'projects', metric: 'active_count' },
+    id: "projects-stat",
+    type: "stat",
+    title: "Active Projects",
+    config: { dataSource: "projects", metric: "active_count" },
     visible: true,
   },
   {
-    id: 'staffing-stat',
-    type: 'stat',
-    title: 'Staff on Site',
-    config: { dataSource: 'personnel', metric: 'on_site' },
+    id: "staffing-stat",
+    type: "stat",
+    title: "Staff on Site",
+    config: { dataSource: "personnel", metric: "on_site" },
     visible: true,
   },
   {
-    id: 'pending-invoices-stat',
-    type: 'stat',
-    title: 'Pending Invoices',
-    config: { dataSource: 'invoices', metric: 'pending' },
+    id: "pending-invoices-stat",
+    type: "stat",
+    title: "Pending Invoices",
+    config: { dataSource: "invoices", metric: "pending" },
     visible: true,
   },
   {
-    id: 'projects-pie-chart',
-    type: 'chart',
-    title: 'Projects Overview',
-    config: { dataSource: 'projects', displayOptions: { chartType: 'pie' } },
+    id: "projects-pie-chart",
+    type: "chart",
+    title: "Projects by Status",
+    config: { dataSource: "projects", displayOptions: { chartType: "pie" } },
     visible: true,
   },
   {
-    id: 'recent-activity',
-    type: 'activity',
-    title: 'Recent Activity',
+    id: "recent-activity",
+    type: "activity",
+    title: "Recent Activity",
     config: { displayOptions: { limit: 10 } },
     visible: true,
   },
   {
-    id: 'quick-actions',
-    type: 'quick-actions',
-    title: 'Quick Actions',
+    id: "quick-actions",
+    type: "quick-actions",
+    title: "Quick Actions",
     config: {},
     visible: true,
   },
   {
-    id: 'assignments',
-    type: 'assignments',
-    title: 'My Assignments',
+    id: "assignments",
+    type: "assignments",
+    title: "My Assignments",
     config: {},
     visible: true,
   },
@@ -167,8 +203,8 @@ export const DEFAULT_THEME: DashboardTheme = {
   cardBackground: undefined,
   cardOpacity: 100,
   fontFamily: undefined,
-  fontSize: 'medium',
-  spacing: 'normal',
+  fontSize: "medium",
+  spacing: "normal",
   accentColor: undefined,
-  borderRadius: 'medium',
+  borderRadius: "medium",
 };

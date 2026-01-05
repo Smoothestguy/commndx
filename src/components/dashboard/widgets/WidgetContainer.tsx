@@ -3,7 +3,8 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { GripVertical, Settings, X } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { DashboardTheme } from "./types";
+import { DashboardTheme, WidgetSize } from "./types";
+import { WidgetResizer } from "../customization/WidgetResizer";
 
 interface WidgetContainerProps {
   title: string;
@@ -11,6 +12,10 @@ interface WidgetContainerProps {
   children: ReactNode;
   isEditMode?: boolean;
   theme?: DashboardTheme;
+  size?: WidgetSize;
+  minSize?: WidgetSize;
+  maxSize?: WidgetSize;
+  onResize?: (size: WidgetSize) => void;
   onConfigure?: () => void;
   onRemove?: () => void;
   className?: string;
@@ -24,6 +29,10 @@ export function WidgetContainer({
   children,
   isEditMode = false,
   theme,
+  size,
+  minSize,
+  maxSize,
+  onResize,
   onConfigure,
   onRemove,
   className,
@@ -74,6 +83,14 @@ export function WidgetContainer({
               <Settings className="h-3 w-3" />
             </Button>
           )}
+          {size && onResize && (
+            <WidgetResizer
+              currentSize={size}
+              minSize={minSize}
+              maxSize={maxSize}
+              onChange={onResize}
+            />
+          )}
           {onRemove && (
             <Button
               variant="ghost"
@@ -89,11 +106,16 @@ export function WidgetContainer({
           )}
         </div>
       )}
-      
-      <CardHeader className={cn("pb-2", isEditMode && "cursor-move", spacingClass)}>
+
+      <CardHeader
+        className={cn("pb-2", isEditMode && "cursor-move", spacingClass)}
+      >
         <div className="flex items-center gap-2">
           {isEditMode && (
-            <div {...dragHandleProps} className="cursor-grab active:cursor-grabbing">
+            <div
+              {...dragHandleProps}
+              className="cursor-grab active:cursor-grabbing"
+            >
               <GripVertical className="h-4 w-4 text-muted-foreground" />
             </div>
           )}
@@ -101,7 +123,7 @@ export function WidgetContainer({
           <CardTitle className={cn(fontSizeClass)}>{title}</CardTitle>
         </div>
       </CardHeader>
-      
+
       <CardContent className={cn(noPadding ? "p-0" : spacingClass, "pt-0")}>
         {children}
       </CardContent>

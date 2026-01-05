@@ -1,5 +1,9 @@
 import { useState, useMemo, useEffect, useRef } from "react";
-import { DashboardCustomizer, EditModeToggle, DraggableWidget } from "./customization";
+import {
+  DashboardCustomizer,
+  EditModeToggle,
+  DraggableWidget,
+} from "./customization";
 import { UnsavedChangesDialog } from "./customization/UnsavedChangesDialog";
 import {
   WidgetContainer,
@@ -9,7 +13,12 @@ import {
   QuickActionsWidget,
   WIDGET_REGISTRY,
 } from "./widgets";
-import { DashboardWidget, DashboardLayout, DashboardTheme, LayoutWidget } from "./widgets/types";
+import {
+  DashboardWidget,
+  DashboardLayout,
+  DashboardTheme,
+  LayoutWidget,
+} from "./widgets/types";
 import { useDashboardConfig } from "@/hooks/useDashboardConfig";
 import { useUserRole } from "@/hooks/useUserRole";
 import { WelcomeBanner } from "./WelcomeBanner";
@@ -20,7 +29,9 @@ interface CustomizableDashboardProps {
   children?: React.ReactNode;
 }
 
-export function CustomizableDashboard({ children }: CustomizableDashboardProps) {
+export function CustomizableDashboard({
+  children,
+}: CustomizableDashboardProps) {
   const { isAdmin, isManager } = useUserRole();
   const {
     activeLayout,
@@ -40,7 +51,8 @@ export function CustomizableDashboard({ children }: CustomizableDashboardProps) 
 
   // Draft state for local editing
   const [draftLayout, setDraftLayout] = useState<DashboardLayout>(activeLayout);
-  const [draftWidgets, setDraftWidgets] = useState<DashboardWidget[]>(activeWidgets);
+  const [draftWidgets, setDraftWidgets] =
+    useState<DashboardWidget[]>(activeWidgets);
   const [draftTheme, setDraftTheme] = useState<DashboardTheme>(activeTheme);
 
   const canCustomize = isAdmin || isManager;
@@ -76,7 +88,15 @@ export function CustomizableDashboard({ children }: CustomizableDashboardProps) 
       JSON.stringify(draftWidgets) !== JSON.stringify(activeWidgets) ||
       JSON.stringify(draftTheme) !== JSON.stringify(activeTheme)
     );
-  }, [isEditMode, draftLayout, draftWidgets, draftTheme, activeLayout, activeWidgets, activeTheme]);
+  }, [
+    isEditMode,
+    draftLayout,
+    draftWidgets,
+    draftTheme,
+    activeLayout,
+    activeWidgets,
+    activeTheme,
+  ]);
 
   // Draft change handlers - update local state only
   const handleLayoutChange = (layout: DashboardLayout) => {
@@ -163,6 +183,19 @@ export function CustomizableDashboard({ children }: CustomizableDashboardProps) 
     return fontKey ? fontMap[fontKey] : undefined;
   };
 
+  // Handle widget resize
+  const handleWidgetResize = (
+    widgetId: string,
+    newSize: { width: number; height: number }
+  ) => {
+    setDraftLayout((prev) => ({
+      ...prev,
+      widgets: prev.widgets.map((lw) =>
+        lw.widgetId === widgetId ? { ...lw, size: newSize } : lw
+      ),
+    }));
+  };
+
   const renderWidget = (layoutWidget: LayoutWidget) => {
     const widget = draftWidgets.find((w) => w.id === layoutWidget.widgetId);
     if (!widget || !widget.visible) return null;
@@ -177,13 +210,37 @@ export function CustomizableDashboard({ children }: CustomizableDashboardProps) 
         case "welcome":
           return <WelcomeBanner theme={draftTheme} />;
         case "stat":
-          return <StatWidget widget={widget} theme={draftTheme} isEditMode={isEditMode} />;
+          return (
+            <StatWidget
+              widget={widget}
+              theme={draftTheme}
+              isEditMode={isEditMode}
+            />
+          );
         case "chart":
-          return <ChartWidget widget={widget} theme={draftTheme} isEditMode={isEditMode} />;
+          return (
+            <ChartWidget
+              widget={widget}
+              theme={draftTheme}
+              isEditMode={isEditMode}
+            />
+          );
         case "activity":
-          return <ActivityWidget widget={widget} theme={draftTheme} isEditMode={isEditMode} />;
+          return (
+            <ActivityWidget
+              widget={widget}
+              theme={draftTheme}
+              isEditMode={isEditMode}
+            />
+          );
         case "quick-actions":
-          return <QuickActionsWidget widget={widget} theme={draftTheme} isEditMode={isEditMode} />;
+          return (
+            <QuickActionsWidget
+              widget={widget}
+              theme={draftTheme}
+              isEditMode={isEditMode}
+            />
+          );
         default:
           return (
             <div className="text-muted-foreground text-sm">
@@ -197,7 +254,11 @@ export function CustomizableDashboard({ children }: CustomizableDashboardProps) 
     if (widget.type === "welcome") {
       return (
         <DraggableWidget key={widget.id} id={widget.id} isEditMode={isEditMode}>
-          <div className={cn(isEditMode && "ring-2 ring-primary/20 ring-dashed rounded-lg")}>
+          <div
+            className={cn(
+              isEditMode && "ring-2 ring-primary/20 ring-dashed rounded-lg"
+            )}
+          >
             {widgetContent()}
           </div>
         </DraggableWidget>
@@ -211,6 +272,10 @@ export function CustomizableDashboard({ children }: CustomizableDashboardProps) 
           icon={<Icon className="h-4 w-4" />}
           isEditMode={isEditMode}
           theme={draftTheme}
+          size={layoutWidget.size}
+          minSize={registryEntry.minSize}
+          maxSize={registryEntry.maxSize}
+          onResize={(newSize) => handleWidgetResize(widget.id, newSize)}
           onRemove={() => handleRemoveWidget(widget.id)}
         >
           {widgetContent()}
@@ -221,18 +286,20 @@ export function CustomizableDashboard({ children }: CustomizableDashboardProps) 
 
   // Calculate grid spans for widgets
   const getGridSpanClass = (size: { width: number; height: number }) => {
-    const colSpan = {
-      1: "col-span-1",
-      2: "col-span-2 sm:col-span-1 lg:col-span-2",
-      3: "col-span-2 lg:col-span-3",
-      4: "col-span-2 lg:col-span-4",
-    }[size.width] || "col-span-1";
+    const colSpan =
+      {
+        1: "col-span-1",
+        2: "col-span-2 sm:col-span-1 lg:col-span-2",
+        3: "col-span-2 lg:col-span-3",
+        4: "col-span-2 lg:col-span-4",
+      }[size.width] || "col-span-1";
 
-    const rowSpan = {
-      1: "",
-      2: "row-span-2",
-      3: "row-span-3",
-    }[size.height] || "";
+    const rowSpan =
+      {
+        1: "",
+        2: "row-span-2",
+        3: "row-span-3",
+      }[size.height] || "";
 
     return cn(colSpan, rowSpan);
   };
@@ -272,20 +339,20 @@ export function CustomizableDashboard({ children }: CustomizableDashboardProps) 
         hasUnsavedChanges={hasUnsavedChanges}
       >
         <div
-          className={cn(
-            "grid grid-cols-2 lg:grid-cols-4",
-            {
-              "gap-2": draftTheme.spacing === "compact",
-              "gap-4": draftTheme.spacing === "normal" || !draftTheme.spacing,
-              "gap-6": draftTheme.spacing === "relaxed",
-            }
-          )}
+          className={cn("grid grid-cols-2 lg:grid-cols-4", {
+            "gap-2": draftTheme.spacing === "compact",
+            "gap-4": draftTheme.spacing === "normal" || !draftTheme.spacing,
+            "gap-6": draftTheme.spacing === "relaxed",
+          })}
           style={{
             fontFamily: getFontFamily(draftTheme.fontFamily),
           }}
         >
           {draftLayout.widgets.map((layoutWidget) => (
-            <div key={layoutWidget.widgetId} className={getGridSpanClass(layoutWidget.size)}>
+            <div
+              key={layoutWidget.widgetId}
+              className={getGridSpanClass(layoutWidget.size)}
+            >
               {renderWidget(layoutWidget)}
             </div>
           ))}
