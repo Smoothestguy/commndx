@@ -273,7 +273,7 @@ export function BulkBillPaymentDialog({
       </DialogHeader>
 
       {/* Scrollable body */}
-      <ScrollArea className="flex-1 min-h-0">
+      <ScrollArea className="flex-1 min-h-0 max-h-[calc(90vh-200px)]">
         <div className="space-y-4 py-4 pr-4">
           {/* Global Settings */}
           <div className="space-y-4 p-4 rounded-lg bg-muted/50">
@@ -559,7 +559,7 @@ export function BulkBillPaymentDialog({
           </DialogDescription>
         </DialogHeader>
 
-        <ScrollArea className="flex-1 min-h-0">
+        <ScrollArea className="flex-1 min-h-0 max-h-[calc(90vh-200px)]">
           <div className="space-y-3 py-4 pr-4">
             {validPayments.map((bill) => {
               const config = paymentConfigs.get(bill.id);
@@ -673,7 +673,7 @@ export function BulkBillPaymentDialog({
           </DialogDescription>
         </DialogHeader>
 
-        <ScrollArea className="flex-1 min-h-0">
+        <ScrollArea className="flex-1 min-h-0 max-h-[calc(90vh-200px)]">
           <div className="space-y-2 py-4 pr-4">
             {results.map((result) => (
               <div
