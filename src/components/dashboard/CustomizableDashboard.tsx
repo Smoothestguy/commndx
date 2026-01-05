@@ -51,21 +51,37 @@ export function CustomizableDashboard({
   const [showResetConfirm, setShowResetConfirm] = useState(false);
   const [showUnsavedDialog, setShowUnsavedDialog] = useState(false);
 
-  // Draft state for local editing
-  const [draftLayout, setDraftLayout] = useState<DashboardLayout>(activeLayout);
-  const [draftWidgets, setDraftWidgets] =
-    useState<DashboardWidget[]>(activeWidgets);
-  const [draftTheme, setDraftTheme] = useState<DashboardTheme>(activeTheme);
+  // Draft state for local editing - initialized to empty, will be synced after load
+  const [draftLayout, setDraftLayout] = useState<DashboardLayout | null>(null);
+  const [draftWidgets, setDraftWidgets] = useState<DashboardWidget[] | null>(
+    null
+  );
+  const [draftTheme, setDraftTheme] = useState<DashboardTheme | null>(null);
 
   const canCustomize = isAdmin || isManager;
 
   // Track previous edit mode state to detect transitions
   const prevIsEditModeRef = useRef(isEditMode);
 
-  // Sync draft with saved when entering edit mode or when saved values change while not editing
+  // Track if we've initialized the draft state after config loaded
+  const hasInitializedRef = useRef(false);
+
+  // Initialize draft state once config has loaded, and sync when not in edit mode
   useEffect(() => {
+    // Skip if still loading
+    if (configLoading) return;
+
     const wasEditMode = prevIsEditModeRef.current;
     prevIsEditModeRef.current = isEditMode;
+
+    // Initialize on first successful load
+    if (!hasInitializedRef.current) {
+      hasInitializedRef.current = true;
+      setDraftLayout(activeLayout);
+      setDraftWidgets(activeWidgets);
+      setDraftTheme(activeTheme);
+      return;
+    }
 
     // Sync when ENTERING edit mode (false → true) to get latest saved values
     if (isEditMode && !wasEditMode) {
@@ -80,7 +96,7 @@ export function CustomizableDashboard({
       setDraftWidgets(activeWidgets);
       setDraftTheme(activeTheme);
     }
-  }, [isEditMode, activeLayout, activeWidgets, activeTheme]);
+  }, [configLoading, isEditMode, activeLayout, activeWidgets, activeTheme]);
 
   // Track unsaved changes
   const hasUnsavedChanges = useMemo(() => {
@@ -114,6 +130,7 @@ export function CustomizableDashboard({
   };
 
   const handleRemoveWidget = (widgetId: string) => {
+    if (!draftWidgets || !draftLayout) return;
     const newWidgets = draftWidgets.filter((w) => w.id !== widgetId);
     const newLayout = {
       ...draftLayout,
@@ -125,6 +142,7 @@ export function CustomizableDashboard({
 
   // Save changes to database
   const handleSave = async () => {
+    if (!draftLayout || !draftWidgets || !draftTheme) return;
     try {
       await updateConfigAsync({
         layout: draftLayout,
@@ -190,12 +208,15 @@ export function CustomizableDashboard({
     widgetId: string,
     newSize: { width: number; height: number }
   ) => {
-    setDraftLayout((prev) => ({
-      ...prev,
-      widgets: prev.widgets.map((lw) =>
-        lw.widgetId === widgetId ? { ...lw, size: newSize } : lw
-      ),
-    }));
+    setDraftLayout((prev) => {
+      if (!prev) return prev;
+      return {
+        ...prev,
+        widgets: prev.widgets.map((lw) =>
+          lw.widgetId === widgetId ? { ...lw, size: newSize } : lw
+        ),
+      };
+    });
   };
 
   const renderWidget = (layoutWidget: LayoutWidget) => {
@@ -323,14 +344,15 @@ export function CustomizableDashboard({
   // Only mark cells as occupied if the widget will actually render
   const getOccupiedCells = useMemo(() => {
     const occupied = new Set<string>();
+    if (!draftLayout || !draftWidgets) return occupied;
     for (const lw of draftLayout.widgets) {
       // Check if widget will actually render
       const widget = draftWidgets.find((w) => w.id === lw.widgetId);
       const registryEntry = widget ? WIDGET_REGISTRY[widget.id] : null;
-      
+
       // Skip if widget won't render (no registry entry or not visible)
       if (!widget || !widget.visible || !registryEntry) continue;
-      
+
       for (let r = lw.position.row; r < lw.position.row + lw.size.height; r++) {
         for (
           let c = lw.position.col;
@@ -342,17 +364,18 @@ export function CustomizableDashboard({
       }
     }
     return occupied;
-  }, [draftLayout.widgets, draftWidgets]);
+  }, [draftLayout, draftWidgets]);
 
   // Calculate the max row needed (0-indexed)
   const maxRow = useMemo(() => {
+    if (!draftLayout) return 0;
     let max = 0;
     for (const lw of draftLayout.widgets) {
       max = Math.max(max, lw.position.row + lw.size.height);
     }
     // Add extra rows for dropping in edit mode
     return isEditMode ? max + 2 : max;
-  }, [draftLayout.widgets, isEditMode]);
+  }, [draftLayout, isEditMode]);
 
   // Generate drop zones for empty cells (0-indexed positions, 1-indexed CSS Grid)
   const dropZones = useMemo(() => {
@@ -374,8 +397,8 @@ export function CustomizableDashboard({
     return <>{children}</>;
   }
 
-  // Show loading skeleton while config loads for customizable users
-  if (configLoading) {
+  // Show loading skeleton while config loads or draft state hasn't been initialized
+  if (configLoading || !draftLayout || !draftWidgets || !draftTheme) {
     return <DashboardLoadingSkeleton />;
   }
 
