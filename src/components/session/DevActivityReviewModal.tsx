@@ -31,6 +31,7 @@ interface ExtractedActivity {
   activity_type: string;
   duration_minutes: number | null;
   activity_date: string;
+  activity_time: string | null;
   project_name: string | null;
   technologies: string[];
   confidence: string;
@@ -56,6 +57,14 @@ const DEFAULT_DURATIONS: Record<string, number> = {
   testing: 45,
   documentation: 30,
   other: 30,
+};
+
+// Format 24-hour time to 12-hour format
+const formatTime12Hour = (time: string): string => {
+  const [hours, minutes] = time.split(":").map(Number);
+  const period = hours >= 12 ? "PM" : "AM";
+  const hour12 = hours % 12 || 12;
+  return `${hour12}:${minutes.toString().padStart(2, "0")} ${period}`;
 };
 
 export function DevActivityReviewModal({
@@ -134,6 +143,7 @@ export function DevActivityReviewModal({
       description: a.description || undefined,
       duration_minutes: a.duration_minutes!, // We validated it's not null
       activity_date: a.activity_date,
+      activity_time: a.activity_time || undefined,
       project_name: a.project_name || undefined,
       technologies: a.technologies,
       extraction_confidence: a.confidence,
@@ -235,7 +245,8 @@ export function DevActivityReviewModal({
                         </Badge>
                         {getConfidenceBadge(activity.confidence)}
                         <span className="text-xs text-muted-foreground">
-                          {format(new Date(activity.activity_date), "MMM d, yyyy")}
+                          {format(new Date(activity.activity_date + "T00:00:00"), "MMM d, yyyy")}
+                          {activity.activity_time && ` at ${formatTime12Hour(activity.activity_time)}`}
                         </span>
                         {activity.selected && !hasDuration && (
                           <Badge variant="outline" className="text-amber-600 border-amber-400 text-xs">

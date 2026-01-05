@@ -36,6 +36,12 @@ For EACH activity found, return a JSON object with these exact fields:
   * Testing: 30-60 minutes
   NEVER return null for duration - always provide your best estimate!
 - activity_date: YYYY-MM-DD format (extract from screenshot or use today's date)
+- activity_time: HH:MM format in 24-hour time. CRITICAL: Extract the EXACT timestamp visible in the screenshot!
+  * If screenshot shows "8:53 AM" → return "08:53"
+  * If screenshot shows "10:46 AM" → return "10:46"  
+  * If screenshot shows "2:30 PM" → return "14:30"
+  * If screenshot shows "11:15 PM" → return "23:15"
+  * Return null ONLY if absolutely no time is visible
 - project_name: Project/client name if visible, or null
 - technologies: Array of technologies/languages used (e.g., ["React", "TypeScript", "Supabase"])
 - confidence: "high", "medium", or "low" based on how clear the information is
@@ -53,6 +59,7 @@ Example format:
       "activity_type": "feature_development",
       "duration_minutes": 90,
       "activity_date": "2024-01-15",
+      "activity_time": "08:53",
       "project_name": "MyApp",
       "technologies": ["React", "Supabase"],
       "confidence": "high"
@@ -186,6 +193,7 @@ serve(async (req) => {
           activity_type: activityType,
           duration_minutes: duration,
           activity_date: activity.activity_date || today,
+          activity_time: activity.activity_time || null,
           project_name: activity.project_name || null,
           technologies: Array.isArray(activity.technologies) ? activity.technologies : [],
           confidence: ['high', 'medium', 'low'].includes(activity.confidence) ? activity.confidence : 'medium',

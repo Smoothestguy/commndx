@@ -15,6 +15,7 @@ export interface DevActivity {
   description: string | null;
   duration_minutes: number | null;
   activity_date: string;
+  activity_time: string | null;
   project_name: string | null;
   technologies: string[];
   tags: string[];
@@ -29,6 +30,7 @@ export interface DevActivityInput {
   description?: string;
   duration_minutes?: number;
   activity_date: string;
+  activity_time?: string | null;
   project_name?: string;
   technologies?: string[];
   tags?: string[];
