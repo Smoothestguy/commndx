@@ -11,7 +11,7 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { ScrollArea, ScrollBar } from "@/components/ui/scroll-area";
-import { Mail, Phone, MapPin, Calendar, DollarSign, AlertTriangle, IdCard, MessageSquare, Edit, Flag, FileCheck, Shield, Award, AlertCircle, LucideIcon, Clock, Check, Send, Link2, Building2, FileText, Landmark, Star, Receipt, Eye, CheckCircle, XCircle, Banknote, ExternalLink, Download, Ban, Undo2, UserX, UserCheck, Loader2 } from "lucide-react";
+import { Mail, Phone, MapPin, Calendar, DollarSign, AlertTriangle, IdCard, MessageSquare, Edit, Flag, FileCheck, Shield, Award, AlertCircle, LucideIcon, Clock, Check, Send, Link2, Building2, FileText, Landmark, Star, Receipt, Eye, CheckCircle, XCircle, Banknote, ExternalLink, Download, Ban, Undo2, UserX, UserCheck, Loader2, Briefcase } from "lucide-react";
 import { ImageLightbox } from "@/components/ui/image-lightbox";
 import { DirectDepositView } from "@/components/personnel/DirectDepositView";
 import { AgreementSignatureView } from "@/components/personnel/AgreementSignatureView";
@@ -35,6 +35,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { ConvertRecordTypeDialog } from "@/components/personnel/ConvertRecordTypeDialog";
 import { RevokeOnboardingDialog } from "@/components/personnel/RevokeOnboardingDialog";
 import { ReverseApprovalDialog } from "@/components/personnel/ReverseApprovalDialog";
+import { PersonnelRolesDialog } from "@/components/personnel/PersonnelRolesDialog";
 import { toast } from "sonner";
 import { downloadReceipt, getReceiptFilename } from "@/utils/receiptDownload";
 
@@ -71,6 +72,7 @@ const PersonnelDetail = () => {
   const [convertDialogOpen, setConvertDialogOpen] = useState(false);
   const [revokeOnboardingOpen, setRevokeOnboardingOpen] = useState(false);
   const [reverseApprovalOpen, setReverseApprovalOpen] = useState(false);
+  const [rolesDialogOpen, setRolesDialogOpen] = useState(false);
   const { data: linkedApplication } = useApplicationByPersonnelId(id);
   const reverseApproval = useReverseApprovalWithReason();
   const [reimbursementAction, setReimbursementAction] = useState<{
@@ -387,6 +389,10 @@ const PersonnelDetail = () => {
                   <Button size="sm" onClick={() => setBadgeDialogOpen(true)}>
                     <IdCard className="mr-2 h-4 w-4" />
                     Generate Badge
+                  </Button>
+                  <Button variant="outline" size="sm" onClick={() => setRolesDialogOpen(true)}>
+                    <Briefcase className="mr-2 h-4 w-4" />
+                    Manage Roles
                   </Button>
                   <Button 
                     variant="outline" 
@@ -1178,6 +1184,13 @@ const PersonnelDetail = () => {
           isLoading={reverseApproval.isPending}
         />
       )}
+
+      <PersonnelRolesDialog
+        open={rolesDialogOpen}
+        onOpenChange={setRolesDialogOpen}
+        personnelId={personnel.id}
+        personnelName={`${personnel.first_name} ${personnel.last_name}`}
+      />
     </DetailPageLayout>
   );
 };
