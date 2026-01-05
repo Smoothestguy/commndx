@@ -1,4 +1,5 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
+import { useSearchParams } from "react-router-dom";
 import {
   Plus,
   Upload,
@@ -54,11 +55,21 @@ const Personnel = () => {
   const [currentPage, setCurrentPage] = useState(1);
   const [rowsPerPage, setRowsPerPage] = useState(10);
 
+  const [searchParams, setSearchParams] = useSearchParams();
   const { isAdmin, isManager } = useUserRole();
   const { data: pendingCount } = usePendingRegistrationsCount();
   const canManage = isAdmin || isManager;
 
   const registrationUrl = `${window.location.origin}/personnel/register`;
+
+  // Auto-open add dialog when action=add query param is present
+  useEffect(() => {
+    if (searchParams.get("action") === "add") {
+      setAddDialogOpen(true);
+      searchParams.delete("action");
+      setSearchParams(searchParams, { replace: true });
+    }
+  }, [searchParams, setSearchParams]);
 
   const handleCopyRegistrationLink = () => {
     navigator.clipboard.writeText(registrationUrl);

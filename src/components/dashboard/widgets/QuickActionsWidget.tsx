@@ -16,7 +16,7 @@ const QUICK_ACTIONS = [
   { label: "New Project", href: "/projects/new", icon: FolderOpen },
   { label: "New Customer", href: "/customers/new", icon: Briefcase },
   { label: "Log Time", href: "/time-tracking", icon: Clock },
-  { label: "Add Personnel", href: "/personnel/new", icon: Users },
+  { label: "Add Personnel", href: "/personnel?action=add", icon: Users },
 ];
 
 export function QuickActionsWidget({ widget, theme, isEditMode }: QuickActionsWidgetProps) {
