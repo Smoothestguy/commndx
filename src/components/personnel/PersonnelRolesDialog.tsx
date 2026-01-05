@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { Link } from "react-router-dom";
 import {
   Dialog,
   DialogContent,
@@ -78,7 +79,12 @@ function ProjectRoleRow({ assignment }: ProjectRoleRowProps) {
       <div className="flex-1 min-w-0">
         <div className="flex items-center gap-2">
           <FolderKanban className="h-4 w-4 text-muted-foreground shrink-0" />
-          <span className="font-medium truncate">{assignment.projects?.name || "Unknown Project"}</span>
+          <Link 
+            to={`/projects/${assignment.project_id}`}
+            className="font-medium truncate hover:underline hover:text-primary transition-colors"
+          >
+            {assignment.projects?.name || "Unknown Project"}
+          </Link>
           <Badge variant={assignment.projects?.status === "active" ? "default" : "secondary"} className="shrink-0">
             {assignment.projects?.status || "Unknown"}
           </Badge>
