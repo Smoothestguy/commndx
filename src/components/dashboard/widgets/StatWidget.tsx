@@ -30,14 +30,14 @@ const STAT_ICONS: Record<string, typeof DollarSign> = {
 
 // Map widget IDs to navigation routes
 const STAT_HREF_MAP: Record<string, string> = {
-  "stat-revenue": "/invoices",
-  "stat-active-projects": "/projects",
-  "stat-pending-invoices": "/invoices",
-  "stat-overdue-invoices": "/invoices",
-  "stat-open-estimates": "/estimates",
-  "stat-total-customers": "/customers",
-  "stat-hours-today": "/time-tracking",
-  "stat-staff-on-site": "/project-assignments",
+  "revenue-stat": "/invoices",
+  "projects-stat": "/projects",
+  "pending-invoices-stat": "/invoices",
+  "overdue-invoices-stat": "/invoices",
+  "estimates-stat": "/estimates",
+  "customers-stat": "/customers",
+  "hours-today-stat": "/time-tracking",
+  "staffing-stat": "/project-assignments",
 };
 
 export function StatWidget({ widget, theme, isEditMode }: StatWidgetProps) {
