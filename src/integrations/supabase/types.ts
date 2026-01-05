@@ -1315,6 +1315,7 @@ export type Database = {
       dev_activities: {
         Row: {
           activity_date: string
+          activity_time: string | null
           activity_type: string
           created_at: string
           description: string | null
@@ -1332,6 +1333,7 @@ export type Database = {
         }
         Insert: {
           activity_date?: string
+          activity_time?: string | null
           activity_type: string
           created_at?: string
           description?: string | null
@@ -1349,6 +1351,7 @@ export type Database = {
         }
         Update: {
           activity_date?: string
+          activity_time?: string | null
           activity_type?: string
           created_at?: string
           description?: string | null
