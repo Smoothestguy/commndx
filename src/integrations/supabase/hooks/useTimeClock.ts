@@ -189,14 +189,61 @@ export function useClockIn() {
       projectId,
       personnelId,
       geoData,
+      skipScheduleCheck,
     }: {
       projectId: string;
       personnelId: string;
       geoData: GeoData;
+      skipScheduleCheck?: boolean;
     }) => {
       // Get the authenticated user's ID for RLS
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) throw new Error("Not authenticated");
+
+      // Check schedule for late clock-in (unless explicitly skipped)
+      if (!skipScheduleCheck) {
+        const today = new Date().toISOString().split("T")[0];
+        const now = new Date();
+        
+        const { data: schedule } = await supabase
+          .from("personnel_schedules")
+          .select("scheduled_start_time")
+          .eq("personnel_id", personnelId)
+          .eq("project_id", projectId)
+          .eq("scheduled_date", today)
+          .maybeSingle();
+
+        if (schedule?.scheduled_start_time) {
+          const [hours, minutes] = schedule.scheduled_start_time.split(":").map(Number);
+          const scheduledTime = new Date(now);
+          scheduledTime.setHours(hours, minutes, 0, 0);
+          
+          const diffMs = now.getTime() - scheduledTime.getTime();
+          const minutesLate = diffMs / (1000 * 60);
+          
+          if (minutesLate > 10) {
+            // Notify supervisors about the late attempt
+            const attemptTime = now.toLocaleTimeString("en-US", { 
+              hour: "2-digit", 
+              minute: "2-digit",
+              hour12: true 
+            });
+            
+            // Fire and forget - don't block on this
+            supabase.functions.invoke("notify-late-clock-attempt", {
+              body: {
+                personnel_id: personnelId,
+                project_id: projectId,
+                scheduled_start_time: schedule.scheduled_start_time,
+                attempt_time: attemptTime,
+                minutes_late: minutesLate,
+              },
+            }).catch(err => console.error("Failed to notify late clock attempt:", err));
+            
+            throw new Error(`LATE_CLOCK_IN_BLOCKED:${Math.round(minutesLate)}:${schedule.scheduled_start_time}`);
+          }
+        }
+      }
 
       // Create a new time entry with clock-in data
       const now = new Date();
@@ -233,6 +280,10 @@ export function useClockIn() {
       toast.success("Clocked in successfully");
     },
     onError: (error: Error) => {
+      // Don't show toast for late block - it's handled by the UI
+      if (error.message.startsWith("LATE_CLOCK_IN_BLOCKED:")) {
+        return;
+      }
       if (error.message.includes("idx_one_open_clock_per_personnel_project")) {
         toast.error("You already have an open clock entry for this project");
       } else {

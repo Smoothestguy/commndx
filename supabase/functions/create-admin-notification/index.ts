@@ -17,6 +17,10 @@ interface CreateNotificationRequest {
     | "onboarding_email_sent"
     | "onboarding_started"
     | "onboarding_complete"
+    | "missed_clock_in"
+    | "auto_clock_out"
+    | "geofence_violation"
+    | "late_clock_in_attempt"
     | "general";
   title: string;
   message: string;
