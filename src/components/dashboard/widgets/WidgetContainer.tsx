@@ -68,6 +68,7 @@ export function WidgetContainer({
       )}
       style={{
         backgroundColor: theme?.cardBackground,
+        color: theme?.cardTextColor,
         opacity: theme?.cardOpacity ? theme.cardOpacity / 100 : 1,
       }}
     >
