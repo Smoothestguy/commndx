@@ -175,7 +175,8 @@ export function useAssignPersonnelToProject() {
           body: {
             personnelId: data.personnel_id,
             projectId: data.project_id,
-            assignmentId: data.id
+            assignmentId: data.id,
+            force: true
           }
         });
         console.log(`Assignment SMS sent for personnel ${data.personnel_id}`);
@@ -239,7 +240,8 @@ export function useBulkAssignPersonnelToProject() {
             body: {
               personnelId: assignment.personnel_id,
               projectId: assignment.project_id,
-              assignmentId: assignment.id
+              assignmentId: assignment.id,
+              force: true
             }
           });
           console.log(`Assignment SMS sent for personnel ${assignment.personnel_id}`);
@@ -491,7 +493,8 @@ export function useResendAssignmentSMS() {
           projectId,
           assignmentId,
           scheduledDate,
-          scheduledStartTime
+          scheduledStartTime,
+          force: true
         }
       });
 
