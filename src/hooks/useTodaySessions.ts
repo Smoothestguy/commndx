@@ -100,8 +100,7 @@ export function useTodaySessions(externalHasAccess?: boolean, externalAccessChec
 
   const now = new Date();
   const todayActiveSeconds = sumActiveSeconds(todaySessions, now);
-  // For admins, idle time is always 0 (their work extends beyond the app)
-  const todayIdleSeconds = isAdmin ? 0 : sumIdleSeconds(todaySessions);
+  const todayIdleSeconds = sumIdleSeconds(todaySessions);
   const todayEarnings = calculateEarningsFromSeconds(todayActiveSeconds, hourlyRate);
   const sessionCount = todaySessions.length;
   const hasActiveSession = todaySessions.some((s) => s.is_active);

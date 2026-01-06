@@ -54,9 +54,9 @@ export function useSessionTracking(externalHasAccess?: boolean, externalAccessCh
   // Force re-render for display updates
   const [, setTick] = useState(0);
 
-  // Reset idle timer on activity - skip for admins (their work extends beyond the app)
+  // Reset idle timer on activity
   const resetIdleTimer = useCallback(() => {
-    if (!isClockedIn || isAdmin) return;
+    if (!isClockedIn) return;
 
     lastActivityTimeRef.current = Date.now();
 
@@ -101,11 +101,11 @@ export function useSessionTracking(externalHasAccess?: boolean, externalAccessCh
         }]).then(() => {});
       }
     }, IDLE_TIMEOUT_MS);
-  }, [isClockedIn, sessionId, user, isAdmin]);
+  }, [isClockedIn, sessionId, user]);
 
-  // Handle visibility change - skip idle tracking for admins
+  // Handle visibility change
   useEffect(() => {
-    if (!hasAccess || !isClockedIn || isAdmin) return;
+    if (!hasAccess || !isClockedIn) return;
 
     const handleVisibilityChange = () => {
       if (document.hidden) {
@@ -155,11 +155,11 @@ export function useSessionTracking(externalHasAccess?: boolean, externalAccessCh
     return () => {
       document.removeEventListener("visibilitychange", handleVisibilityChange);
     };
-  }, [hasAccess, isClockedIn, sessionId, user, resetIdleTimer, isAdmin]);
+  }, [hasAccess, isClockedIn, sessionId, user, resetIdleTimer]);
 
-  // Activity event listeners - skip for admins
+  // Activity event listeners
   useEffect(() => {
-    if (!hasAccess || !isClockedIn || isAdmin) return;
+    if (!hasAccess || !isClockedIn) return;
 
     const events = ["mousedown", "mousemove", "keydown", "scroll", "touchstart", "click", "wheel"];
     
@@ -187,7 +187,7 @@ export function useSessionTracking(externalHasAccess?: boolean, externalAccessCh
         clearTimeout(idleTimeoutRef.current);
       }
     };
-  }, [hasAccess, isClockedIn, resetIdleTimer, isAdmin]);
+  }, [hasAccess, isClockedIn, resetIdleTimer]);
 
   // Display update interval - just triggers re-render for timestamp-based display
   useEffect(() => {

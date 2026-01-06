@@ -142,7 +142,7 @@ export function SessionHistoryTable({
           format(new Date(s.session_start), "HH:mm:ss"),
           s.session_end ? format(new Date(s.session_end), "HH:mm:ss") : "Active",
           formatDuration(activeSeconds),
-          isTargetAdmin ? "N/A" : formatDuration(s.total_idle_seconds || 0),
+          formatDuration(s.total_idle_seconds || 0),
           formatCurrency(calculateEarnings(activeSeconds)),
           s.clock_in_type,
         ].join(",");
@@ -289,7 +289,7 @@ export function SessionHistoryTable({
                         {formatDuration(activeSeconds)}
                       </TableCell>
                       <TableCell className="font-mono text-muted-foreground">
-                        {isTargetAdmin ? "N/A" : formatDuration(session.total_idle_seconds || 0)}
+                        {formatDuration(session.total_idle_seconds || 0)}
                       </TableCell>
                       <TableCell className="font-mono text-green-600 dark:text-green-400 font-medium">
                         {formatCurrency(calculateEarnings(activeSeconds))}
