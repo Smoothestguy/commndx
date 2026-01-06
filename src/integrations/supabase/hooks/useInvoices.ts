@@ -1,6 +1,8 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/hooks/use-toast";
+import { useAuditLog, computeChanges } from "@/hooks/useAuditLog";
+import type { Json } from "../types";
 
 export interface InvoiceLineItem {
   id: string;
@@ -132,6 +134,7 @@ export const useInvoicesByJobOrder = (jobOrderId: string) => {
 
 export const useAddInvoice = () => {
   const queryClient = useQueryClient();
+  const { logAction } = useAuditLog();
 
   return useMutation({
     mutationFn: async (
@@ -209,6 +212,21 @@ export const useAddInvoice = () => {
         if (updateError) throw updateError;
       }
 
+      // Log the action
+      await logAction({
+        actionType: "create",
+        resourceType: "invoice",
+        resourceId: newInvoice.id,
+        resourceNumber: newInvoice.number,
+        changesAfter: {
+          number: newInvoice.number,
+          customer_name: newInvoice.customer_name,
+          total: newInvoice.total,
+          status: newInvoice.status,
+          line_items_count: invoice.line_items.length,
+        } as unknown as Json,
+      });
+
       // Auto-sync to QuickBooks if connected
       try {
         const { data: qbConfig } = await supabase
@@ -249,6 +267,7 @@ export const useAddInvoice = () => {
 
 export const useUpdateInvoice = () => {
   const queryClient = useQueryClient();
+  const { logAction } = useAuditLog();
 
   return useMutation({
     mutationFn: async ({
@@ -260,14 +279,14 @@ export const useUpdateInvoice = () => {
     }) => {
       const { data: oldInvoice, error: fetchError } = await supabase
         .from("invoices")
-        .select("total, job_order_id")
+        .select("*")
         .eq("id", id)
         .single();
 
       if (fetchError) throw fetchError;
 
       // Update invoice
-      const { error: updateError } = await supabase
+      const { data: updatedInvoice, error: updateError } = await supabase
         .from("invoices")
         .update({
           status: invoice.status,
@@ -278,7 +297,9 @@ export const useUpdateInvoice = () => {
           due_date: invoice.due_date,
           paid_date: invoice.paid_date,
         })
-        .eq("id", id);
+        .eq("id", id)
+        .select()
+        .single();
 
       if (updateError) throw updateError;
 
@@ -308,6 +329,20 @@ export const useUpdateInvoice = () => {
         }
       }
 
+      // Log the action with changes
+      const { changesBefore, changesAfter } = computeChanges(
+        oldInvoice as Record<string, unknown>,
+        updatedInvoice as Record<string, unknown>
+      );
+      await logAction({
+        actionType: "update",
+        resourceType: "invoice",
+        resourceId: id,
+        resourceNumber: updatedInvoice.number,
+        changesBefore,
+        changesAfter,
+      });
+
       // Update job order balance if total changed
       if (
         oldInvoice.job_order_id &&
@@ -334,6 +369,8 @@ export const useUpdateInvoice = () => {
 
         if (jobUpdateError) throw jobUpdateError;
       }
+
+      return updatedInvoice;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["invoices"] });
@@ -355,6 +392,7 @@ export const useUpdateInvoice = () => {
 
 export const useDeleteInvoice = () => {
   const queryClient = useQueryClient();
+  const { logAction } = useAuditLog();
 
   return useMutation({
     mutationFn: async (
@@ -366,7 +404,7 @@ export const useDeleteInvoice = () => {
 
       const { data: invoice, error: fetchError } = await supabase
         .from("invoices")
-        .select("total, job_order_id, change_order_id, deleted_at")
+        .select("*")
         .eq("id", id)
         .single();
 
@@ -480,6 +518,15 @@ export const useDeleteInvoice = () => {
         .eq("id", id);
 
       if (error) throw error;
+
+      // Log the action
+      await logAction({
+        actionType: "delete",
+        resourceType: "invoice",
+        resourceId: id,
+        resourceNumber: invoice.number,
+        changesBefore: invoice as unknown as Json,
+      });
 
       return { qbVoided, qbError };
     },

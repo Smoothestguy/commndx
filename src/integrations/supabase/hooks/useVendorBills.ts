@@ -1,6 +1,8 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "../client";
 import { toast } from "sonner";
+import { useAuditLog, computeChanges } from "@/hooks/useAuditLog";
+import type { Json } from "../types";
 
 export type VendorBillStatus = "draft" | "open" | "paid" | "partially_paid" | "void";
 
@@ -224,6 +226,7 @@ export const useVendorBillsByPurchaseOrder = (purchaseOrderId: string | undefine
 
 export const useAddVendorBill = () => {
   const queryClient = useQueryClient();
+  const { logAction } = useAuditLog();
 
   return useMutation({
     mutationFn: async ({
@@ -269,9 +272,14 @@ export const useAddVendorBill = () => {
         if (lineError) throw lineError;
       }
 
-      // NOTE: QuickBooks sync is NOT triggered here anymore.
-      // Callers should sync AFTER attachments are finalized to ensure
-      // attachments are in the database before QuickBooks sync runs.
+      // Log the action
+      await logAction({
+        actionType: "create",
+        resourceType: "vendor_bill",
+        resourceId: newBill.id,
+        resourceNumber: newBill.number,
+        changesAfter: { number: newBill.number, vendor_name: newBill.vendor_name, total: newBill.total } as unknown as Json,
+      });
 
       return newBill;
     },

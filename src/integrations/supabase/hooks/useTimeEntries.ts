@@ -3,6 +3,8 @@ import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { startOfWeek, endOfWeek, format } from "date-fns";
 import { useMyProjectAssignments } from "./useProjectAssignments";
+import { useAuditLog, computeChanges } from "@/hooks/useAuditLog";
+import type { Json } from "../types";
 
 export interface TimeEntry {
   id: string;
@@ -328,6 +330,7 @@ export const usePersonnelTimeEntriesByWeek = (projectId: string, weekStartDate: 
 // Add or update a time entry (upsert to handle duplicates)
 export const useAddTimeEntry = () => {
   const queryClient = useQueryClient();
+  const { logAction } = useAuditLog();
 
   return useMutation({
     mutationFn: async (entry: TimeEntryInsert) => {
@@ -350,6 +353,19 @@ export const useAddTimeEntry = () => {
         .single();
 
       if (error) throw error;
+
+      // Log the action
+      await logAction({
+        actionType: "create",
+        resourceType: "time_entry",
+        resourceId: data.id,
+        changesAfter: {
+          entry_date: data.entry_date,
+          hours: data.hours,
+          project_id: data.project_id,
+        } as unknown as Json,
+      });
+
       return data;
     },
     onSuccess: () => {
@@ -365,9 +381,17 @@ export const useAddTimeEntry = () => {
 // Update an existing time entry
 export const useUpdateTimeEntry = () => {
   const queryClient = useQueryClient();
+  const { logAction } = useAuditLog();
 
   return useMutation({
     mutationFn: async ({ id, ...updates }: Partial<TimeEntry> & { id: string }) => {
+      // Fetch current data for comparison
+      const { data: before } = await supabase
+        .from("time_entries")
+        .select("*")
+        .eq("id", id)
+        .single();
+
       // Store full hours - overtime is calculated at weekly aggregation time
       if (updates.hours !== undefined) {
         updates.regular_hours = updates.hours;
@@ -382,6 +406,20 @@ export const useUpdateTimeEntry = () => {
         .single();
 
       if (error) throw error;
+
+      // Log the action with changes
+      const { changesBefore, changesAfter } = computeChanges(
+        before as Record<string, unknown>,
+        data as Record<string, unknown>
+      );
+      await logAction({
+        actionType: "update",
+        resourceType: "time_entry",
+        resourceId: id,
+        changesBefore,
+        changesAfter,
+      });
+
       return data;
     },
     onSuccess: () => {
@@ -399,15 +437,31 @@ export const useUpdateTimeEntry = () => {
 // Delete a time entry
 export const useDeleteTimeEntry = () => {
   const queryClient = useQueryClient();
+  const { logAction } = useAuditLog();
 
   return useMutation({
     mutationFn: async (id: string) => {
+      // Fetch current data for logging
+      const { data: before } = await supabase
+        .from("time_entries")
+        .select("*")
+        .eq("id", id)
+        .single();
+
       const { error } = await supabase
         .from("time_entries")
         .delete()
         .eq("id", id);
 
       if (error) throw error;
+
+      // Log the action
+      await logAction({
+        actionType: "delete",
+        resourceType: "time_entry",
+        resourceId: id,
+        changesBefore: before as unknown as Json,
+      });
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["time-entries"] });
