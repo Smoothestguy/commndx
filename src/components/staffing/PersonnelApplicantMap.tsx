@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useEffect, useRef, useState, useCallback } from 'react';
 import mapboxgl from 'mapbox-gl';
 import 'mapbox-gl/dist/mapbox-gl.css';
 import { supabase } from "@/integrations/supabase/client";
@@ -90,10 +90,13 @@ export function PersonnelApplicantMap({ mapboxToken, isAdmin = false }: Personne
   const [filter, setFilter] = useState<'all' | 'personnel' | 'applicants'>('all');
   const [backfillRunning, setBackfillRunning] = useState(false);
   const [counts, setCounts] = useState<RecordCounts>({ personnelTotal: 0, personnelGeocoded: 0, applicantsTotal: 0, applicantsGeocoded: 0 });
+  const [lastRefresh, setLastRefresh] = useState<Date>(new Date());
 
-  // Fetch data
-  const fetchData = async () => {
-    setLoading(true);
+  // Fetch data - isBackground param prevents loading spinner on auto-refresh
+  const fetchData = useCallback(async (isBackground = false) => {
+    if (!isBackground) {
+      setLoading(true);
+    }
     
     // Fetch personnel with locations
     const { data: personnelData } = await supabase
@@ -134,11 +137,20 @@ export function PersonnelApplicantMap({ mapboxToken, isAdmin = false }: Personne
     });
     
     setLoading(false);
-  };
+    setLastRefresh(new Date());
+  }, []);
 
+  // Initial fetch + auto-refresh every 10 minutes
   useEffect(() => {
     fetchData();
-  }, []);
+
+    const AUTO_REFRESH_INTERVAL = 600000; // 10 minutes in milliseconds
+    const intervalId = setInterval(() => {
+      fetchData(true); // Background refresh without loading spinner
+    }, AUTO_REFRESH_INTERVAL);
+
+    return () => clearInterval(intervalId);
+  }, [fetchData]);
 
   // Initialize map
   useEffect(() => {
@@ -383,14 +395,19 @@ export function PersonnelApplicantMap({ mapboxToken, isAdmin = false }: Personne
         
         {/* Legend */}
         <div className="absolute bottom-4 left-4 z-10 bg-background/95 backdrop-blur rounded-lg p-3 border shadow-sm">
-          <div className="flex items-center gap-4 text-sm">
-            <div className="flex items-center gap-2">
-              <div className="w-3 h-3 rounded-full bg-primary" />
-              <span>Personnel ({counts.personnelGeocoded}/{counts.personnelTotal})</span>
+          <div className="flex flex-col gap-2">
+            <div className="flex items-center gap-4 text-sm">
+              <div className="flex items-center gap-2">
+                <div className="w-3 h-3 rounded-full bg-primary" />
+                <span>Personnel ({counts.personnelGeocoded}/{counts.personnelTotal})</span>
+              </div>
+              <div className="flex items-center gap-2">
+                <div className="w-3 h-3 rounded-full bg-amber-500" />
+                <span>Applicants ({counts.applicantsGeocoded}/{counts.applicantsTotal})</span>
+              </div>
             </div>
-            <div className="flex items-center gap-2">
-              <div className="w-3 h-3 rounded-full bg-amber-500" />
-              <span>Applicants ({counts.applicantsGeocoded}/{counts.applicantsTotal})</span>
+            <div className="text-xs text-muted-foreground">
+              Last updated: {lastRefresh.toLocaleTimeString()}
             </div>
           </div>
         </div>
