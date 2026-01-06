@@ -124,6 +124,7 @@ import PersonnelOnboarding from "./pages/PersonnelOnboarding";
 import OnboardingComplete from "./pages/OnboardingComplete";
 import AdminNotifications from "./pages/AdminNotifications";
 import SessionHistory from "./pages/SessionHistory";
+import ActivityHistory from "./pages/ActivityHistory";
 import AiDevAssistant from "./pages/admin/AiDevAssistant";
 import Trash from "./pages/admin/Trash";
 import DocumentCenter from "./pages/DocumentCenter";
@@ -427,6 +428,10 @@ const App = () => {
                     <Route
                       path="/session-history"
                       element={<SessionHistory />}
+                    />
+                    <Route
+                      path="/activity-history"
+                      element={<ActivityHistory />}
                     />
                     <Route
                       path="/ai-dev"
