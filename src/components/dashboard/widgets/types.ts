@@ -65,6 +65,12 @@ export interface DashboardTheme {
   spacing?: "compact" | "normal" | "relaxed";
   accentColor?: string;
   borderRadius?: "none" | "small" | "medium" | "large";
+  // Background media
+  backgroundImage?: string;
+  backgroundVideo?: string;
+  backgroundSize?: "cover" | "contain" | "auto";
+  backgroundPosition?: "center" | "top" | "bottom";
+  backgroundOverlay?: number; // 0-100 opacity for dark overlay
 }
 
 // Widget registry entry
