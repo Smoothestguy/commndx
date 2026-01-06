@@ -201,7 +201,7 @@ export function useAssignPersonnelToProject() {
   });
 }
 
-// Bulk assign multiple personnel to a project with rate bracket
+// Bulk assign multiple personnel to a project with rate bracket and optional schedule
 export function useBulkAssignPersonnelToProject() {
   const queryClient = useQueryClient();
 
@@ -210,10 +210,16 @@ export function useBulkAssignPersonnelToProject() {
       personnelIds,
       projectId,
       rateBracketIds,
+      scheduledDate,
+      scheduledStartTime,
+      scheduledEndTime,
     }: {
       personnelIds: string[];
       projectId: string;
       rateBracketIds: Record<string, string>;
+      scheduledDate?: string;
+      scheduledStartTime?: string;
+      scheduledEndTime?: string;
     }) => {
       const { data: { user } } = await supabase.auth.getUser();
       
@@ -233,6 +239,48 @@ export function useBulkAssignPersonnelToProject() {
 
       if (error) throw error;
       
+      // Create schedule entries if schedule info was provided
+      if (scheduledDate && scheduledStartTime) {
+        for (const assignment of data) {
+          try {
+            // Check if schedule already exists
+            const { data: existingSchedule } = await supabase
+              .from("personnel_schedules")
+              .select("id")
+              .eq("personnel_id", assignment.personnel_id)
+              .eq("project_id", assignment.project_id)
+              .eq("scheduled_date", scheduledDate)
+              .maybeSingle();
+            
+            if (existingSchedule) {
+              // Update existing schedule
+              await supabase
+                .from("personnel_schedules")
+                .update({
+                  scheduled_start_time: scheduledStartTime,
+                  scheduled_end_time: scheduledEndTime || "17:00",
+                })
+                .eq("id", existingSchedule.id);
+            } else {
+              // Insert new schedule
+              const { data: userData } = await supabase.auth.getUser();
+              await supabase
+                .from("personnel_schedules")
+                .insert([{
+                  personnel_id: assignment.personnel_id,
+                  project_id: assignment.project_id,
+                  scheduled_date: scheduledDate,
+                  scheduled_start_time: scheduledStartTime,
+                  scheduled_end_time: scheduledEndTime || "17:00",
+                  created_by: userData?.user?.id || null,
+                }]);
+            }
+          } catch (scheduleError) {
+            console.error(`Failed to create schedule for personnel ${assignment.personnel_id}:`, scheduleError);
+          }
+        }
+      }
+      
       // Send SMS notifications for each assignment
       for (const assignment of data) {
         try {
@@ -241,6 +289,8 @@ export function useBulkAssignPersonnelToProject() {
               personnelId: assignment.personnel_id,
               projectId: assignment.project_id,
               assignmentId: assignment.id,
+              scheduledDate,
+              scheduledStartTime,
               force: true
             }
           });
@@ -256,6 +306,7 @@ export function useBulkAssignPersonnelToProject() {
     onSuccess: (data) => {
       queryClient.invalidateQueries({ queryKey: ["personnel-project-assignments"] });
       queryClient.invalidateQueries({ queryKey: ["project-rate-brackets"] });
+      queryClient.invalidateQueries({ queryKey: ["personnel-schedules"] });
       toast.success(`${data.length} personnel assigned to project`);
     },
     onError: () => {
