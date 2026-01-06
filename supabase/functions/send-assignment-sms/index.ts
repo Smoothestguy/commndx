@@ -11,6 +11,7 @@ interface AssignmentSMSRequest {
   assignmentId?: string;
   scheduledDate?: string;      // Optional: YYYY-MM-DD
   scheduledStartTime?: string; // Optional: HH:MM (24-hour format)
+  force?: boolean;             // Optional: bypass duplicate check for re-assignments
 }
 
 Deno.serve(async (req: Request) => {
@@ -25,9 +26,9 @@ Deno.serve(async (req: Request) => {
       Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? ""
     );
 
-    const { personnelId, projectId, assignmentId, scheduledDate, scheduledStartTime }: AssignmentSMSRequest = await req.json();
+    const { personnelId, projectId, assignmentId, scheduledDate, scheduledStartTime, force }: AssignmentSMSRequest = await req.json();
 
-    console.log(`Processing assignment SMS for personnel ${personnelId} on project ${projectId}`);
+    console.log(`Processing assignment SMS for personnel ${personnelId} on project ${projectId}${force ? ' (force mode)' : ''}`);
 
     // Validate required fields
     if (!personnelId || !projectId) {
@@ -37,22 +38,26 @@ Deno.serve(async (req: Request) => {
       });
     }
 
-    // Check if SMS was already sent for this assignment (prevent duplicates)
-    if (assignmentId) {
+    // Check if SMS was already sent recently for this assignment (prevent rapid duplicates)
+    // Only skip if an SMS was sent within the last 5 minutes, unless force is true
+    if (assignmentId && !force) {
+      const fiveMinutesAgo = new Date(Date.now() - 5 * 60 * 1000).toISOString();
+      
       const { data: existingMessage } = await supabaseAdmin
         .from("messages")
-        .select("id")
+        .select("id, created_at")
         .eq("recipient_id", personnelId)
         .eq("message_type", "assignment_notification")
         .contains("payload", { assignment_id: assignmentId })
+        .gte("created_at", fiveMinutesAgo)
         .single();
 
       if (existingMessage) {
-        console.log(`SMS already sent for assignment ${assignmentId}`);
+        console.log(`SMS already sent for assignment ${assignmentId} within the last 5 minutes`);
         return new Response(JSON.stringify({ 
           success: true, 
           skipped: true,
-          reason: "SMS already sent for this assignment" 
+          reason: "SMS already sent for this assignment within the last 5 minutes" 
         }), {
           status: 200,
           headers: { "Content-Type": "application/json", ...corsHeaders },
