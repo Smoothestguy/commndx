@@ -53,8 +53,19 @@ export function DashboardCustomizer({
   hasUnsavedChanges,
   children,
 }: DashboardCustomizerProps) {
-  const [showWidgetLibrary, setShowWidgetLibrary] = useState(false);
+const [showWidgetLibrary, setShowWidgetLibrary] = useState(false);
   const [showThemeEditor, setShowThemeEditor] = useState(false);
+
+  // Close one panel when opening the other
+  const handleOpenThemeEditor = () => {
+    setShowWidgetLibrary(false);
+    setShowThemeEditor(true);
+  };
+
+  const handleOpenWidgetLibrary = () => {
+    setShowThemeEditor(false);
+    setShowWidgetLibrary(true);
+  };
   const [showResetDialog, setShowResetDialog] = useState(false);
   const [activeId, setActiveId] = useState<string | null>(null);
 
@@ -178,7 +189,7 @@ export function DashboardCustomizer({
           <Button
             variant="outline"
             size="sm"
-            onClick={() => setShowThemeEditor(true)}
+            onClick={handleOpenThemeEditor}
             className="gap-2"
           >
             <Palette className="h-4 w-4" />
@@ -187,7 +198,7 @@ export function DashboardCustomizer({
           <Button
             variant="outline"
             size="sm"
-            onClick={() => setShowWidgetLibrary(true)}
+            onClick={handleOpenWidgetLibrary}
             className="gap-2"
           >
             <Plus className="h-4 w-4" />
@@ -206,8 +217,7 @@ export function DashboardCustomizer({
         <div
           className={cn(
             "transition-all duration-200",
-            showWidgetLibrary && "mr-80",
-            showThemeEditor && "ml-80"
+            (showWidgetLibrary || showThemeEditor) && "mr-80"
           )}
         >
           {children}
