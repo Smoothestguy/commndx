@@ -407,45 +407,10 @@ export function CustomizableDashboard({
     return <DashboardLoadingSkeleton />;
   }
 
-  const hasBackgroundMedia = draftTheme.backgroundVideo || draftTheme.backgroundImage;
+  // Background is now rendered via BackgroundMediaLayer in SidebarLayout
 
   return (
     <>
-      {/* Full-page Background Layer - fixed behind all content */}
-      {hasBackgroundMedia && (
-        <div className="fixed inset-0 z-0 pointer-events-none">
-          {draftTheme.backgroundVideo ? (
-            <video
-              autoPlay
-              loop
-              muted
-              playsInline
-              className="w-full h-full object-cover"
-              style={{ objectPosition: draftTheme.backgroundPosition || "center" }}
-              src={draftTheme.backgroundVideo}
-            />
-          ) : draftTheme.backgroundImage ? (
-            <div
-              className="w-full h-full"
-              style={{
-                backgroundImage: `url(${draftTheme.backgroundImage})`,
-                backgroundSize: draftTheme.backgroundSize || "cover",
-                backgroundPosition: draftTheme.backgroundPosition || "center",
-                backgroundRepeat: "no-repeat",
-              }}
-            />
-          ) : null}
-
-          {/* Dark Overlay for Readability */}
-          {draftTheme.backgroundOverlay && draftTheme.backgroundOverlay > 0 && (
-            <div
-              className="absolute inset-0 bg-black"
-              style={{ opacity: draftTheme.backgroundOverlay / 100 }}
-            />
-          )}
-        </div>
-      )}
-
       {/* Edit Mode Toggle in Actions Area */}
       <div className="flex justify-end mb-4 relative z-[1]">
         <EditModeToggle

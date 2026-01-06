@@ -14,6 +14,7 @@ import { toast } from "sonner";
 import { Upload, X, Image, Video, Loader2 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { DashboardTheme } from "../widgets/types";
+import { PageSelector } from "./PageSelector";
 
 interface BackgroundMediaUploadProps {
   theme: DashboardTheme;
@@ -290,6 +291,12 @@ export function BackgroundMediaUpload({
               {theme.backgroundOverlay ?? 0}% — helps text readability
             </p>
           </div>
+
+          {/* Page Selection */}
+          <PageSelector
+            selectedPages={theme.backgroundPages ?? ["dashboard"]}
+            onChange={(pages) => onChange({ backgroundPages: pages })}
+          />
         </>
       )}
     </div>

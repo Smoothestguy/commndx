@@ -2,6 +2,7 @@ import { ReactNode } from "react";
 import { Outlet } from "react-router-dom";
 import { AppSidebar } from "./AppSidebar";
 import { SidebarProvider, SidebarInset } from "@/components/ui/sidebar";
+import { BackgroundMediaLayer } from "./BackgroundMediaLayer";
 
 interface SidebarLayoutProps {
   children?: ReactNode;
@@ -18,12 +19,15 @@ export function SidebarLayout({ children }: SidebarLayoutProps) {
   return (
     <SidebarProvider>
       <div className="min-h-screen flex w-full bg-background overflow-x-hidden max-w-full">
+        {/* Global Background Media Layer */}
+        <BackgroundMediaLayer />
         <AppSidebar />
-        <SidebarInset className="flex flex-col flex-1">
+        <SidebarInset className="flex flex-col flex-1 relative z-[1]">
           {children ?? <Outlet />}
         </SidebarInset>
       </div>
     </SidebarProvider>
   );
 }
+
 

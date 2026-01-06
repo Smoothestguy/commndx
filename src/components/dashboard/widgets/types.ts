@@ -71,6 +71,7 @@ export interface DashboardTheme {
   backgroundSize?: "cover" | "contain" | "auto";
   backgroundPosition?: "center" | "top" | "bottom";
   backgroundOverlay?: number; // 0-100 opacity for dark overlay
+  backgroundPages?: string[]; // Array of page identifiers where background should appear
 }
 
 // Widget registry entry
