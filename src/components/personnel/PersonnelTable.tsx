@@ -20,6 +20,7 @@ import {
   AlertDialogFooter,
   AlertDialogHeader,
   AlertDialogTitle,
+  AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
 import {
   Eye,
@@ -209,17 +210,52 @@ export function PersonnelTable({
       sortable: false,
       filterable: false,
       render: (person: Personnel) => (
-        <Button
-          variant="ghost"
-          size="icon"
-          className="h-9 w-9"
-          onClick={(e) => {
-            e.stopPropagation();
-            navigate(`/personnel/${person.id}`);
-          }}
-        >
-          <Eye className="h-4 w-4" />
-        </Button>
+        <div className="flex items-center gap-1">
+          <Button
+            variant="ghost"
+            size="icon"
+            className="h-9 w-9"
+            onClick={(e) => {
+              e.stopPropagation();
+              navigate(`/personnel/${person.id}`);
+            }}
+          >
+            <Eye className="h-4 w-4" />
+          </Button>
+          <AlertDialog>
+            <AlertDialogTrigger asChild>
+              <Button
+                variant="ghost"
+                size="icon"
+                className="h-9 w-9 text-destructive hover:text-destructive hover:bg-destructive/10"
+                onClick={(e) => e.stopPropagation()}
+              >
+                <Trash2 className="h-4 w-4" />
+              </Button>
+            </AlertDialogTrigger>
+            <AlertDialogContent onClick={(e) => e.stopPropagation()}>
+              <AlertDialogHeader>
+                <AlertDialogTitle>Remove Personnel</AlertDialogTitle>
+                <AlertDialogDescription>
+                  Are you sure you want to deactivate {person.first_name} {person.last_name}? 
+                  This will set their status to inactive. Time entries and other data will be preserved.
+                </AlertDialogDescription>
+              </AlertDialogHeader>
+              <AlertDialogFooter>
+                <AlertDialogCancel>Cancel</AlertDialogCancel>
+                <AlertDialogAction
+                  onClick={() => {
+                    setPersonToDelete(person);
+                    handleDelete();
+                  }}
+                  className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                >
+                  Remove
+                </AlertDialogAction>
+              </AlertDialogFooter>
+            </AlertDialogContent>
+          </AlertDialog>
+        </div>
       ),
     },
     {
