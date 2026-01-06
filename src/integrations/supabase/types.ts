@@ -2560,6 +2560,7 @@ export type Database = {
           external_id: string | null
           id: string
           message_type: string
+          payload: Json | null
           recipient_id: string
           recipient_name: string
           recipient_phone: string
@@ -2576,6 +2577,7 @@ export type Database = {
           external_id?: string | null
           id?: string
           message_type?: string
+          payload?: Json | null
           recipient_id: string
           recipient_name: string
           recipient_phone: string
@@ -2592,6 +2594,7 @@ export type Database = {
           external_id?: string | null
           id?: string
           message_type?: string
+          payload?: Json | null
           recipient_id?: string
           recipient_name?: string
           recipient_phone?: string
