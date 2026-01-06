@@ -94,13 +94,6 @@ export default function SessionHistory() {
   const canSelectUser = isAdmin || isManager;
   const effectiveUserId = targetUserId || user?.id || null;
 
-  // Determine if the target user is an admin (for idle time display)
-  const isTargetAdmin = (() => {
-    if (effectiveUserId === user?.id) return isAdmin;
-    const targetUser = sessionUsers?.find(u => u.id === effectiveUserId);
-    return targetUser?.role === 'admin';
-  })();
-
   return (
     <>
       <SEO
@@ -147,14 +140,13 @@ export default function SessionHistory() {
             </TabsList>
 
             <TabsContent value="sessions">
-              <SessionHistoryStats dateRange={dateRange} targetUserId={effectiveUserId} isTargetAdmin={isTargetAdmin} />
+              <SessionHistoryStats dateRange={dateRange} targetUserId={effectiveUserId} />
               <div className="mt-4">
                 <SessionHistoryTable
                   dateRange={dateRange}
                   onSelectSession={setSelectedSessionId}
                   selectedSessionId={selectedSessionId}
                   targetUserId={effectiveUserId}
-                  isTargetAdmin={isTargetAdmin}
                 />
               </div>
             </TabsContent>
