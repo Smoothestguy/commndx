@@ -10,10 +10,21 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { FolderKanban, Calendar, Building2, ExternalLink, Briefcase, DollarSign, AlertCircle, Save, Loader2 } from "lucide-react";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
+import { FolderKanban, Calendar, Building2, ExternalLink, Briefcase, AlertCircle, Save, Loader2, UserMinus } from "lucide-react";
 import { Link } from "react-router-dom";
 import { format } from "date-fns";
-import { useProjectsForPersonnel, useUpdateAssignmentRateBracket } from "@/integrations/supabase/hooks/usePersonnelProjectAssignments";
+import { useProjectsForPersonnel, useUpdateAssignmentRateBracket, useRemovePersonnelFromProject } from "@/integrations/supabase/hooks/usePersonnelProjectAssignments";
 import { useActiveProjectRateBrackets } from "@/integrations/supabase/hooks/useProjectRateBrackets";
 
 interface PersonnelProjectsListProps {
@@ -53,6 +64,7 @@ function ProjectCard({ assignment }: ProjectCardProps) {
     assignment.project_id
   );
   const updateRateBracket = useUpdateAssignmentRateBracket();
+  const removeFromProject = useRemovePersonnelFromProject();
 
   const getStatusVariant = (status: string) => {
     switch (status) {
@@ -120,12 +132,50 @@ function ProjectCard({ assignment }: ProjectCardProps) {
               </div>
             </div>
 
-            <Button variant="outline" size="sm" asChild>
-              <Link to={`/projects/${assignment.project_id}`}>
-                <ExternalLink className="h-4 w-4 mr-2" />
-                View Project
-              </Link>
-            </Button>
+            <div className="flex gap-2">
+              <AlertDialog>
+                <AlertDialogTrigger asChild>
+                  <Button 
+                    variant="outline" 
+                    size="sm"
+                    className="text-destructive hover:text-destructive hover:bg-destructive/10"
+                    disabled={removeFromProject.isPending}
+                  >
+                    {removeFromProject.isPending ? (
+                      <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                    ) : (
+                      <UserMinus className="h-4 w-4 mr-2" />
+                    )}
+                    Remove
+                  </Button>
+                </AlertDialogTrigger>
+                <AlertDialogContent>
+                  <AlertDialogHeader>
+                    <AlertDialogTitle>Remove from Project</AlertDialogTitle>
+                    <AlertDialogDescription>
+                      Are you sure you want to remove this personnel from "{assignment.projects?.name}"? 
+                      They will no longer have access to this project. Any existing time entries will be preserved.
+                    </AlertDialogDescription>
+                  </AlertDialogHeader>
+                  <AlertDialogFooter>
+                    <AlertDialogCancel>Cancel</AlertDialogCancel>
+                    <AlertDialogAction
+                      onClick={() => removeFromProject.mutate(assignment.id)}
+                      className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                    >
+                      Remove
+                    </AlertDialogAction>
+                  </AlertDialogFooter>
+                </AlertDialogContent>
+              </AlertDialog>
+              
+              <Button variant="outline" size="sm" asChild>
+                <Link to={`/projects/${assignment.project_id}`}>
+                  <ExternalLink className="h-4 w-4 mr-2" />
+                  View Project
+                </Link>
+              </Button>
+            </div>
           </div>
 
           {/* Role/Rate Bracket Section */}
