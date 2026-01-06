@@ -1,6 +1,8 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "../client";
 import { toast } from "sonner";
+import { useAuditLog, computeChanges } from "@/hooks/useAuditLog";
+import type { Json } from "@/integrations/supabase/types";
 
 export type ProjectStage = "quote" | "task_order" | "active" | "complete" | "canceled";
 
@@ -61,6 +63,7 @@ export const useProjectsByCustomer = (customerId: string | null) => {
 
 export const useAddProject = () => {
   const queryClient = useQueryClient();
+  const { logAction } = useAuditLog();
 
   return useMutation({
     mutationFn: async (project: Omit<Project, "id" | "created_at" | "updated_at">) => {
@@ -71,6 +74,21 @@ export const useAddProject = () => {
         .single();
 
       if (error) throw error;
+
+      // Log audit action
+      await logAction({
+        actionType: "create",
+        resourceType: "project",
+        resourceId: data.id,
+        resourceNumber: data.name,
+        changesAfter: data as unknown as Json,
+        metadata: { 
+          customer_id: project.customer_id,
+          status: project.status,
+          stage: project.stage 
+        } as Json,
+      });
+
       return data;
     },
     onSuccess: () => {
@@ -85,9 +103,17 @@ export const useAddProject = () => {
 
 export const useUpdateProject = () => {
   const queryClient = useQueryClient();
+  const { logAction } = useAuditLog();
 
   return useMutation({
     mutationFn: async ({ id, ...updates }: Partial<Project> & { id: string }) => {
+      // Fetch original for audit
+      const { data: originalData } = await supabase
+        .from("projects")
+        .select("*")
+        .eq("id", id)
+        .single();
+
       const { data, error } = await supabase
         .from("projects")
         .update(updates)
@@ -96,6 +122,21 @@ export const useUpdateProject = () => {
         .single();
 
       if (error) throw error;
+
+      // Log audit action
+      const { changesBefore, changesAfter } = computeChanges(
+        originalData as Record<string, unknown>,
+        data as Record<string, unknown>
+      );
+      await logAction({
+        actionType: "update",
+        resourceType: "project",
+        resourceId: id,
+        resourceNumber: data.name,
+        changesBefore,
+        changesAfter,
+      });
+
       return data;
     },
     onSuccess: () => {
@@ -110,9 +151,17 @@ export const useUpdateProject = () => {
 
 export const useDeleteProject = () => {
   const queryClient = useQueryClient();
+  const { logAction } = useAuditLog();
 
   return useMutation({
     mutationFn: async (id: string) => {
+      // Fetch original for audit
+      const { data: originalData } = await supabase
+        .from("projects")
+        .select("*")
+        .eq("id", id)
+        .single();
+
       const { data: { user } } = await supabase.auth.getUser();
       
       // Soft delete instead of hard delete
@@ -125,6 +174,15 @@ export const useDeleteProject = () => {
         .eq("id", id);
 
       if (error) throw error;
+
+      // Log audit action
+      await logAction({
+        actionType: "delete",
+        resourceType: "project",
+        resourceId: id,
+        resourceNumber: originalData?.name,
+        changesBefore: originalData as unknown as Json,
+      });
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["projects"] });

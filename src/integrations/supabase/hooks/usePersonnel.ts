@@ -1,7 +1,8 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
-import type { Database } from "@/integrations/supabase/types";
+import type { Database, Json } from "@/integrations/supabase/types";
+import { useAuditLog, computeChanges } from "@/hooks/useAuditLog";
 
 type Personnel = Database["public"]["Tables"]["personnel"]["Row"];
 type PersonnelInsert = Database["public"]["Tables"]["personnel"]["Insert"];
@@ -167,6 +168,7 @@ export const usePersonnelById = (id: string | undefined) => {
 
 export const useAddPersonnel = () => {
   const queryClient = useQueryClient();
+  const { logAction } = useAuditLog();
 
   return useMutation({
     mutationFn: async (personnel: PersonnelInsert) => {
@@ -177,6 +179,21 @@ export const useAddPersonnel = () => {
         .single();
 
       if (error) throw error;
+
+      // Log audit action
+      await logAction({
+        actionType: "create",
+        resourceType: "personnel",
+        resourceId: data.id,
+        resourceNumber: data.personnel_number || `${data.first_name} ${data.last_name}`,
+        changesAfter: data as unknown as Json,
+        metadata: { 
+          first_name: personnel.first_name,
+          last_name: personnel.last_name,
+          email: personnel.email 
+        } as Json,
+      });
+
       return data;
     },
     onSuccess: () => {
@@ -215,6 +232,7 @@ export const useBulkAddPersonnel = () => {
 
 export const useUpdatePersonnel = () => {
   const queryClient = useQueryClient();
+  const { logAction } = useAuditLog();
 
   return useMutation({
     mutationFn: async ({
@@ -224,6 +242,13 @@ export const useUpdatePersonnel = () => {
       id: string;
       updates: PersonnelUpdate;
     }) => {
+      // Fetch original for audit
+      const { data: originalData } = await supabase
+        .from("personnel")
+        .select("*")
+        .eq("id", id)
+        .single();
+
       const { data, error } = await supabase
         .from("personnel")
         .update(updates)
@@ -232,6 +257,21 @@ export const useUpdatePersonnel = () => {
         .single();
 
       if (error) throw error;
+
+      // Log audit action
+      const { changesBefore, changesAfter } = computeChanges(
+        originalData as Record<string, unknown>,
+        data as Record<string, unknown>
+      );
+      await logAction({
+        actionType: "update",
+        resourceType: "personnel",
+        resourceId: id,
+        resourceNumber: data.personnel_number || `${data.first_name} ${data.last_name}`,
+        changesBefore,
+        changesAfter,
+      });
+
       return data;
     },
     onSuccess: (_, variables) => {
@@ -263,6 +303,7 @@ export const useUpdatePersonnel = () => {
 
 export const useUpdatePersonnelRating = () => {
   const queryClient = useQueryClient();
+  const { logAction } = useAuditLog();
 
   return useMutation({
     mutationFn: async ({
@@ -272,6 +313,13 @@ export const useUpdatePersonnelRating = () => {
       id: string;
       rating: number;
     }) => {
+      // Fetch original for audit
+      const { data: originalData } = await supabase
+        .from("personnel")
+        .select("*")
+        .eq("id", id)
+        .single();
+
       const { data, error } = await supabase
         .from("personnel")
         .update({ rating })
@@ -280,6 +328,18 @@ export const useUpdatePersonnelRating = () => {
         .single();
 
       if (error) throw error;
+
+      // Log audit action
+      await logAction({
+        actionType: "update",
+        resourceType: "personnel",
+        resourceId: id,
+        resourceNumber: data.personnel_number || `${data.first_name} ${data.last_name}`,
+        changesBefore: { rating: originalData?.rating } as Json,
+        changesAfter: { rating } as Json,
+        metadata: { field_updated: "rating" } as Json,
+      });
+
       return data;
     },
     onSuccess: (_, variables) => {
@@ -295,15 +355,33 @@ export const useUpdatePersonnelRating = () => {
 
 export const useDeletePersonnel = () => {
   const queryClient = useQueryClient();
+  const { logAction } = useAuditLog();
 
   return useMutation({
     mutationFn: async (id: string) => {
+      // Fetch original for audit
+      const { data: originalData } = await supabase
+        .from("personnel")
+        .select("*")
+        .eq("id", id)
+        .single();
+
       const { error } = await supabase
         .from("personnel")
         .update({ status: "inactive" })
         .eq("id", id);
 
       if (error) throw error;
+
+      // Log audit action
+      await logAction({
+        actionType: "delete",
+        resourceType: "personnel",
+        resourceId: id,
+        resourceNumber: originalData?.personnel_number || `${originalData?.first_name} ${originalData?.last_name}`,
+        changesBefore: originalData as unknown as Json,
+        metadata: { action: "deactivated" } as Json,
+      });
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["personnel"] });
@@ -321,6 +399,7 @@ export const useDeletePersonnel = () => {
 
 export const useToggleDoNotHire = () => {
   const queryClient = useQueryClient();
+  const { logAction } = useAuditLog();
 
   return useMutation({
     mutationFn: async ({
