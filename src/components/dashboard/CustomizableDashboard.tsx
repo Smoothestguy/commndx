@@ -431,22 +431,21 @@ export function CustomizableDashboard({
         isResetting={isResetting}
         hasUnsavedChanges={hasUnsavedChanges}
       >
-        <div className="relative min-h-[calc(100vh-200px)]">
-          {/* Background Layer */}
+        <div className="relative min-h-[calc(100vh-200px)] isolate">
+          {/* Background Layer - z-0 (base layer) */}
           {draftTheme.backgroundVideo ? (
             <video
               autoPlay
               loop
               muted
               playsInline
-              className="absolute inset-0 w-full h-full object-cover -z-10 rounded-lg"
+              className="absolute inset-0 w-full h-full object-cover z-0 rounded-lg"
               style={{ objectPosition: draftTheme.backgroundPosition || "center" }}
-            >
-              <source src={draftTheme.backgroundVideo} type="video/mp4" />
-            </video>
+              src={draftTheme.backgroundVideo}
+            />
           ) : draftTheme.backgroundImage ? (
             <div
-              className="absolute inset-0 -z-10 rounded-lg"
+              className="absolute inset-0 z-0 rounded-lg"
               style={{
                 backgroundImage: `url(${draftTheme.backgroundImage})`,
                 backgroundSize: draftTheme.backgroundSize || "cover",
@@ -456,19 +455,19 @@ export function CustomizableDashboard({
             />
           ) : null}
 
-          {/* Dark Overlay for Readability */}
+          {/* Dark Overlay for Readability - z-[1] (above background) */}
           {(draftTheme.backgroundImage || draftTheme.backgroundVideo) &&
             draftTheme.backgroundOverlay &&
             draftTheme.backgroundOverlay > 0 && (
               <div
-                className="absolute inset-0 bg-black -z-10 rounded-lg"
+                className="absolute inset-0 bg-black z-[1] rounded-lg"
                 style={{ opacity: draftTheme.backgroundOverlay / 100 }}
               />
             )}
 
-          {/* Dashboard Grid */}
+          {/* Dashboard Grid - z-[2] (above overlay) */}
           <div
-            className={cn("grid grid-cols-4 relative z-0", {
+            className={cn("grid grid-cols-4 relative z-[2]", {
               "gap-2": draftTheme.spacing === "compact",
               "gap-4": draftTheme.spacing === "normal" || !draftTheme.spacing,
               "gap-6": draftTheme.spacing === "relaxed",
