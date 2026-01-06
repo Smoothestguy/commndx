@@ -57,6 +57,8 @@ import {
 } from "@/integrations/supabase/hooks/useTimeEntries";
 import { usePersonnelByProject } from "@/integrations/supabase/hooks/usePersonnelProjectAssignments";
 import { useCompanySettings } from "@/integrations/supabase/hooks/useCompanySettings";
+import { useProjects } from "@/integrations/supabase/hooks/useProjects";
+import { useUserRole } from "@/hooks/useUserRole";
 import { format, addDays, startOfWeek } from "date-fns";
 import { cn } from "@/lib/utils";
 
@@ -119,8 +121,15 @@ export function EnhancedTimeEntryForm({
   // Holiday tracking for weekly mode
   const [holidayDays, setHolidayDays] = useState<HolidayDays>({});
 
-  const { data: projects = [] } = useAssignedProjects();
+  const { isAdmin, isManager } = useUserRole();
+  const { data: assignedProjects = [] } = useAssignedProjects();
+  const { data: allProjects = [] } = useProjects();
   const { data: companySettings } = useCompanySettings();
+  
+  // Use all projects for admin/manager, assigned projects for regular users
+  const projects = useMemo(() => {
+    return (isAdmin || isManager) ? allProjects : assignedProjects;
+  }, [isAdmin, isManager, allProjects, assignedProjects]);
   const addTimeEntry = useAddTimeEntry();
   const updateTimeEntry = useUpdateTimeEntry();
   const bulkAddTimeEntries = useBulkAddTimeEntries();
