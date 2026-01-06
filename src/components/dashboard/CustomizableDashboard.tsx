@@ -26,6 +26,7 @@ import { WelcomeBanner } from "./WelcomeBanner";
 import { DashboardLoadingSkeleton } from "./DashboardLoadingSkeleton";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
+import { DashboardDraftProvider } from "@/contexts/DashboardDraftContext";
 
 interface CustomizableDashboardProps {
   children?: React.ReactNode;
@@ -410,7 +411,7 @@ export function CustomizableDashboard({
   // Background is now rendered via BackgroundMediaLayer in SidebarLayout
 
   return (
-    <>
+    <DashboardDraftProvider draftTheme={draftTheme} isEditMode={isEditMode}>
       {/* Edit Mode Toggle in Actions Area */}
       <div className="flex justify-end mb-4 relative z-[1]">
         <EditModeToggle
@@ -478,6 +479,6 @@ export function CustomizableDashboard({
         onDiscardAndExit={handleDiscardAndExit}
         isSaving={isUpdating}
       />
-    </>
+    </DashboardDraftProvider>
   );
 }
