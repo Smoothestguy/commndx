@@ -17,6 +17,7 @@ import {
 } from "@/components/ui/accordion";
 import { DashboardTheme } from "../widgets/types";
 import { X } from "lucide-react";
+import { BackgroundMediaUpload } from "./BackgroundMediaUpload";
 
 interface DashboardThemeEditorProps {
   theme: DashboardTheme;
@@ -118,7 +119,15 @@ export function DashboardThemeEditor({
 
       {/* Theme Options */}
       <div className="flex-1 overflow-auto p-4">
-        <Accordion type="multiple" defaultValue={["colors", "typography", "layout"]}>
+        <Accordion type="multiple" defaultValue={["background", "colors", "typography", "layout"]}>
+          {/* Background */}
+          <AccordionItem value="background">
+            <AccordionTrigger>Background</AccordionTrigger>
+            <AccordionContent>
+              <BackgroundMediaUpload theme={theme} onChange={updateTheme} />
+            </AccordionContent>
+          </AccordionItem>
+
           {/* Colors */}
           <AccordionItem value="colors">
             <AccordionTrigger>Colors</AccordionTrigger>
