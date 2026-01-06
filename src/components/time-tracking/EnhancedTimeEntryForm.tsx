@@ -51,6 +51,7 @@ import {
   useUpdateTimeEntry,
   useBulkAddTimeEntries,
   useBulkAddPersonnelTimeEntries,
+  usePersonnelTimeEntriesByWeek,
   TimeEntry,
   TimeEntryInsert,
   PersonnelTimeEntryInsert,
@@ -166,6 +167,12 @@ export function EnhancedTimeEntryForm({
   // Fetch personnel assigned to current project
   const { data: assignedPersonnel = [], refetch: refetchPersonnel } = usePersonnelByProject(
     currentProjectId || undefined
+  );
+
+  // Fetch existing time entries for the selected project/week (for pre-populating)
+  const { data: existingWeeklyEntries = [] } = usePersonnelTimeEntriesByWeek(
+    weeklyProjectId,
+    currentWeek
   );
 
   // Personnel selection functions
@@ -306,12 +313,43 @@ export function EnhancedTimeEntryForm({
     }
   }, [open, entry]);
 
-  // Clear personnel selection when project changes
+  // Clear personnel selection when project changes (only for daily mode or fresh project selection)
   useEffect(() => {
+    // Don't clear if we're in weekly mode and have existing entries to load
+    if (entryType === "weekly" && existingWeeklyEntries.length > 0) {
+      return;
+    }
     setSelectedPersonnel(new Set());
     setPersonnelHours({});
     setDailyPersonnelHours({});
   }, [currentProjectId]);
+
+  // Pre-populate personnelHours and auto-select personnel with existing entries
+  useEffect(() => {
+    if (entryType === "weekly" && weeklyProjectId && existingWeeklyEntries.length > 0) {
+      const newPersonnelHours: PersonnelHours = {};
+      const personnelWithEntries = new Set<string>();
+      
+      existingWeeklyEntries.forEach(entry => {
+        if (entry.personnel_id) {
+          const key = `${entry.personnel_id}_${entry.entry_date}`;
+          newPersonnelHours[key] = String(entry.hours);
+          personnelWithEntries.add(entry.personnel_id);
+        }
+      });
+      
+      // Update personnel hours with existing data
+      setPersonnelHours(prev => ({
+        ...newPersonnelHours,
+        ...prev, // Keep any user changes made this session
+      }));
+      
+      // Auto-select personnel who have existing entries (if none selected yet)
+      if (selectedPersonnel.size === 0 && personnelWithEntries.size > 0) {
+        setSelectedPersonnel(personnelWithEntries);
+      }
+    }
+  }, [existingWeeklyEntries, entryType, weeklyProjectId]);
 
   // Apply template hours to all selected personnel
   const applyTemplateToAll = () => {
