@@ -240,6 +240,26 @@ export function useBulkAssignUserToProjects() {
           .select();
 
         if (error) throw error;
+
+        // Send SMS notifications for each assignment
+        for (const assignment of data || []) {
+          try {
+            const { error: smsError } = await supabase.functions.invoke('send-assignment-sms', {
+              body: {
+                personnelId: assignment.personnel_id,
+                projectId: assignment.project_id,
+                assignmentId: assignment.id,
+                force: true
+              }
+            });
+            if (smsError) {
+              console.error(`SMS failed for personnel ${assignment.personnel_id}:`, smsError);
+            }
+          } catch (err) {
+            console.error(`SMS invoke error for personnel ${assignment.personnel_id}:`, err);
+          }
+        }
+
         return { data, type: 'personnel' };
       } else {
         // No personnel record - fall back to project_assignments
