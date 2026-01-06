@@ -17,8 +17,7 @@ import {
   FileJson,
   FileType,
   Lock,
-  ChevronDown,
-  ChevronRight,
+  Folder,
 } from "lucide-react";
 import {
   DropdownMenu,
@@ -72,8 +71,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { TimeDecimalInput } from "@/components/ui/time-decimal-input";
-import { Check, Save, FolderPlus, List } from "lucide-react";
-import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
+import { Save } from "lucide-react";
 
 interface WeeklyTimesheetProps {
   currentWeek: Date;
@@ -124,14 +122,8 @@ export function WeeklyTimesheet({
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
   const [isExporting, setIsExporting] = useState(false);
   
-  // Quick Add Row state (legacy, keeping for backward compatibility)
-  const [showQuickAddRow, setShowQuickAddRow] = useState(false);
-  const [quickAddProjectId, setQuickAddProjectId] = useState("");
-  const [quickAddHours, setQuickAddHours] = useState<Record<string, number>>({});
-  const [isSavingQuickAdd, setIsSavingQuickAdd] = useState(false);
-  
-  // Folder-based project selection state
-  const [showProjectFolders, setShowProjectFolders] = useState(true);
+  // Project selector state - user selects a project first, then enters hours
+  const [selectedInputProjectId, setSelectedInputProjectId] = useState<string>("");
   
   const isMobile = useIsMobile();
 
@@ -322,49 +314,7 @@ export function WeeklyTimesheet({
     }
   };
 
-  // Quick Add Row handlers
-  const handleQuickAddSave = async () => {
-    if (!quickAddProjectId) {
-      toast.error("Please select a project");
-      return;
-    }
-
-    const entriesToAdd = Object.entries(quickAddHours)
-      .filter(([_, hours]) => hours > 0)
-      .map(([date, hours]) => ({
-        project_id: quickAddProjectId,
-        entry_date: date,
-        hours,
-        billable: true,
-      }));
-
-    if (entriesToAdd.length === 0) {
-      toast.error("Please enter hours for at least one day");
-      return;
-    }
-
-    setIsSavingQuickAdd(true);
-    try {
-      await bulkAddTimeEntries.mutateAsync(entriesToAdd);
-      toast.success(`Added ${entriesToAdd.length} time entries`);
-      setShowQuickAddRow(false);
-      setQuickAddProjectId("");
-      setQuickAddHours({});
-    } catch (error) {
-      console.error("Error adding time entries:", error);
-      toast.error("Failed to add time entries");
-    } finally {
-      setIsSavingQuickAdd(false);
-    }
-  };
-
-  const handleCancelQuickAdd = () => {
-    setShowQuickAddRow(false);
-    setQuickAddProjectId("");
-    setQuickAddHours({});
-  };
-
-  // Handler for saving hours from folder view
+  // Handler for saving hours from project selector view
   const handleFolderSave = async (projectId: string, hours: Record<string, number>) => {
     const entriesToAdd = Object.entries(hours)
       .filter(([_, h]) => h > 0)
@@ -753,7 +703,69 @@ export function WeeklyTimesheet({
     );
   }
 
-  if (rows.length === 0 && !showQuickAddRow) {
+  // Get the selected project for the input section
+  const selectedInputProject = useMemo(() => {
+    return allProjectsForFolders.find(p => p.id === selectedInputProjectId);
+  }, [allProjectsForFolders, selectedInputProjectId]);
+
+  // Render Project Selector UI (used in both mobile and desktop)
+  const renderProjectSelector = () => (
+    <Card className="overflow-hidden">
+      <div className="p-4 border-b bg-muted/30">
+        <div className="flex items-center gap-2 mb-3">
+          <Folder className="h-5 w-5 text-primary" />
+          <span className="font-medium">Select a Project</span>
+        </div>
+        <Select 
+          value={selectedInputProjectId} 
+          onValueChange={setSelectedInputProjectId}
+          disabled={isWeekClosed}
+        >
+          <SelectTrigger className="w-full bg-background">
+            <SelectValue placeholder="Choose a project to enter hours..." />
+          </SelectTrigger>
+          <SelectContent className="bg-popover">
+            {allProjectsForFolders.map((project) => {
+              const projectHours = getProjectExistingHours(project.id);
+              const totalHours = Object.values(projectHours).reduce((sum, h) => sum + h, 0);
+              return (
+                <SelectItem key={project.id} value={project.id}>
+                  <div className="flex items-center justify-between w-full gap-4">
+                    <span>{project.name}</span>
+                    {totalHours > 0 && (
+                      <Badge variant="secondary" className="ml-2">
+                        {totalHours.toFixed(1)}h
+                      </Badge>
+                    )}
+                  </div>
+                </SelectItem>
+              );
+            })}
+          </SelectContent>
+        </Select>
+      </div>
+      
+      {/* Show input grid only when project is selected */}
+      {selectedInputProject && (
+        <WeeklyProjectFolder
+          project={selectedInputProject}
+          weekDays={weekDays}
+          existingHours={getProjectExistingHours(selectedInputProject.id)}
+          onSave={handleFolderSave}
+          isWeekClosed={isWeekClosed}
+          defaultExpanded={true}
+        />
+      )}
+      
+      {!selectedInputProjectId && (
+        <div className="p-6 text-center text-muted-foreground">
+          <p className="text-sm">Select a project from the dropdown above to enter your hours for each day of the week.</p>
+        </div>
+      )}
+    </Card>
+  );
+
+  if (rows.length === 0) {
     return (
       <div className="space-y-4">
         {/* Jump to recent entries hint */}
@@ -775,33 +787,8 @@ export function WeeklyTimesheet({
           </Card>
         )}
 
-        {/* Folder-based project selection for empty state */}
-        {!isWeekClosed && allProjectsForFolders.length > 0 && (
-          <Card className="overflow-hidden">
-            <div className="p-4 border-b bg-muted/30">
-              <div className="flex items-center gap-2">
-                <FolderPlus className="h-5 w-5 text-primary" />
-                <span className="font-medium">Select a Project & Enter Hours</span>
-              </div>
-              <p className="text-sm text-muted-foreground mt-1">
-                Click on a project folder below to expand it and enter your hours for each day.
-              </p>
-            </div>
-            <div>
-              {allProjectsForFolders.map((project) => (
-                <WeeklyProjectFolder
-                  key={project.id}
-                  project={project}
-                  weekDays={weekDays}
-                  existingHours={getProjectExistingHours(project.id)}
-                  onSave={handleFolderSave}
-                  isWeekClosed={isWeekClosed}
-                  defaultExpanded={false}
-                />
-              ))}
-            </div>
-          </Card>
-        )}
+        {/* Project selector with dropdown */}
+        {!isWeekClosed && allProjectsForFolders.length > 0 && renderProjectSelector()}
 
         {!isWeekClosed && allProjectsForFolders.length === 0 && (
           <Card className="p-8 text-center">
@@ -818,98 +805,6 @@ export function WeeklyTimesheet({
             </div>
           </Card>
         )}
-      </div>
-    );
-  }
-  
-  // Show only Quick Add Row when no entries exist but quick add is active
-  if (rows.length === 0 && showQuickAddRow) {
-    return (
-      <div className="space-y-4">
-        <Card className="overflow-x-auto">
-          <table className="w-full">
-            <thead>
-              <tr className="border-b bg-muted/50">
-                <th className="p-3 text-left font-medium min-w-[200px]">
-                  Project
-                </th>
-                {weekDays.map((day) => (
-                  <th
-                    key={day.toISOString()}
-                    className="p-3 text-center font-medium min-w-[100px]"
-                  >
-                    <div className="text-xs text-muted-foreground">
-                      {format(day, "EEE")}
-                    </div>
-                    <div className="text-sm">{format(day, "MMM d")}</div>
-                  </th>
-                ))}
-                <th className="p-3 text-center font-medium min-w-[120px]">
-                  Actions
-                </th>
-              </tr>
-            </thead>
-            <tbody>
-              <tr className="border-b bg-primary/5">
-                <td className="p-3">
-                  <Select value={quickAddProjectId} onValueChange={setQuickAddProjectId}>
-                    <SelectTrigger className="w-full">
-                      <SelectValue placeholder="Select project" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {assignedProjects.map((project) => (
-                        <SelectItem key={project.id} value={project.id}>
-                          {project.name}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </td>
-                {weekDays.map((day) => {
-                  const dateString = format(day, "yyyy-MM-dd");
-                  return (
-                    <td key={dateString} className="p-2 text-center">
-                      <TimeDecimalInput
-                        value={quickAddHours[dateString] || 0}
-                        onValueChange={(val) =>
-                          setQuickAddHours((prev) => ({
-                            ...prev,
-                            [dateString]: val,
-                          }))
-                        }
-                        showPreview={false}
-                        compact
-                        className="w-full"
-                      />
-                    </td>
-                  );
-                })}
-                <td className="p-3 text-center">
-                  <div className="flex items-center justify-center gap-2">
-                    <Button
-                      size="sm"
-                      onClick={handleQuickAddSave}
-                      disabled={isSavingQuickAdd}
-                    >
-                      {isSavingQuickAdd ? (
-                        <Loader2 className="h-4 w-4 animate-spin" />
-                      ) : (
-                        <Save className="h-4 w-4" />
-                      )}
-                    </Button>
-                    <Button
-                      size="sm"
-                      variant="ghost"
-                      onClick={handleCancelQuickAdd}
-                    >
-                      <X className="h-4 w-4" />
-                    </Button>
-                  </div>
-                </td>
-              </tr>
-            </tbody>
-          </table>
-        </Card>
       </div>
     );
   }
@@ -1152,46 +1047,8 @@ export function WeeklyTimesheet({
           );
         })}
         
-        {/* Mobile: Folder-based Project Selection */}
-        {!isWeekClosed && allProjectsForFolders.length > 0 && (
-          <Card className="overflow-hidden">
-            <Collapsible open={showProjectFolders} onOpenChange={setShowProjectFolders}>
-              <CollapsibleTrigger asChild>
-                <div className="flex items-center justify-between p-3 cursor-pointer hover:bg-muted/30 transition-colors">
-                  <div className="flex items-center gap-2">
-                    <FolderPlus className="h-4 w-4 text-primary" />
-                    <span className="font-medium text-sm">Select Projects</span>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <span className="text-xs text-muted-foreground">
-                      {allProjectsForFolders.length}
-                    </span>
-                    {showProjectFolders ? (
-                      <ChevronDown className="h-4 w-4 text-muted-foreground" />
-                    ) : (
-                      <ChevronRight className="h-4 w-4 text-muted-foreground" />
-                    )}
-                  </div>
-                </div>
-              </CollapsibleTrigger>
-              <CollapsibleContent>
-                <div className="border-t">
-                  {allProjectsForFolders.map((project) => (
-                    <WeeklyProjectFolder
-                      key={project.id}
-                      project={project}
-                      weekDays={weekDays}
-                      existingHours={getProjectExistingHours(project.id)}
-                      onSave={handleFolderSave}
-                      isWeekClosed={isWeekClosed}
-                      defaultExpanded={entries.some((e) => e.project_id === project.id && !e.personnel_id)}
-                    />
-                  ))}
-                </div>
-              </CollapsibleContent>
-            </Collapsible>
-          </Card>
-        )}
+        {/* Mobile: Project Selector with Dropdown */}
+        {!isWeekClosed && allProjectsForFolders.length > 0 && renderProjectSelector()}
 
         <TimeEntryForm
           open={formOpen}
@@ -1217,52 +1074,8 @@ export function WeeklyTimesheet({
   // Desktop: Table view
   return (
     <div className="space-y-4">
-      {/* Folder-based Project Selection */}
-      {!isWeekClosed && allProjectsForFolders.length > 0 && (
-        <Card className="overflow-hidden">
-          <Collapsible open={showProjectFolders} onOpenChange={setShowProjectFolders}>
-            <CollapsibleTrigger asChild>
-              <div className="flex items-center justify-between p-4 cursor-pointer hover:bg-muted/30 transition-colors">
-                <div className="flex items-center gap-2">
-                  <FolderPlus className="h-5 w-5 text-primary" />
-                  <span className="font-medium">Select Projects & Enter Hours</span>
-                </div>
-                <div className="flex items-center gap-2">
-                  <span className="text-sm text-muted-foreground">
-                    {allProjectsForFolders.length} project{allProjectsForFolders.length !== 1 ? "s" : ""}
-                  </span>
-                  {showProjectFolders ? (
-                    <ChevronDown className="h-4 w-4 text-muted-foreground" />
-                  ) : (
-                    <ChevronRight className="h-4 w-4 text-muted-foreground" />
-                  )}
-                </div>
-              </div>
-            </CollapsibleTrigger>
-            <CollapsibleContent>
-              <div className="border-t">
-                {allProjectsForFolders.length === 0 ? (
-                  <div className="p-4 text-center text-muted-foreground">
-                    No projects available. Contact your administrator to be assigned to projects.
-                  </div>
-                ) : (
-                  allProjectsForFolders.map((project) => (
-                    <WeeklyProjectFolder
-                      key={project.id}
-                      project={project}
-                      weekDays={weekDays}
-                      existingHours={getProjectExistingHours(project.id)}
-                      onSave={handleFolderSave}
-                      isWeekClosed={isWeekClosed}
-                      defaultExpanded={entries.some((e) => e.project_id === project.id && !e.personnel_id)}
-                    />
-                  ))
-                )}
-              </div>
-            </CollapsibleContent>
-          </Collapsible>
-        </Card>
-      )}
+      {/* Project Selector with Dropdown */}
+      {!isWeekClosed && allProjectsForFolders.length > 0 && renderProjectSelector()}
       {/* Weekly Summary Card */}
       <Card className="p-4 bg-primary/5 border-primary/20">
         <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
@@ -1647,87 +1460,6 @@ export function WeeklyTimesheet({
                 </tr>
               );
             })}
-            
-            {/* Quick Add Row */}
-            {showQuickAddRow && !isWeekClosed && (
-              <tr className="border-b bg-primary/5">
-                {personnelRows.length > 0 && <td className="p-3"></td>}
-                <td className="p-3">
-                  <Select value={quickAddProjectId} onValueChange={setQuickAddProjectId}>
-                    <SelectTrigger className="w-full">
-                      <SelectValue placeholder="Select project" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {availableProjects.map((project) => (
-                        <SelectItem key={project.id} value={project.id}>
-                          {project.name}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </td>
-                {weekDays.map((day) => {
-                  const dateString = format(day, "yyyy-MM-dd");
-                  return (
-                    <td key={dateString} className="p-2 text-center">
-                      <TimeDecimalInput
-                        value={quickAddHours[dateString] || 0}
-                        onValueChange={(val) =>
-                          setQuickAddHours((prev) => ({
-                            ...prev,
-                            [dateString]: val,
-                          }))
-                        }
-                        showPreview={false}
-                        compact
-                        className="w-full"
-                      />
-                    </td>
-                  );
-                })}
-                <td className="p-3 text-center">
-                  <div className="flex items-center justify-center gap-2">
-                    <Button
-                      size="sm"
-                      onClick={handleQuickAddSave}
-                      disabled={isSavingQuickAdd}
-                    >
-                      {isSavingQuickAdd ? (
-                        <Loader2 className="h-4 w-4 animate-spin" />
-                      ) : (
-                        <Save className="h-4 w-4" />
-                      )}
-                    </Button>
-                    <Button
-                      size="sm"
-                      variant="ghost"
-                      onClick={handleCancelQuickAdd}
-                    >
-                      <X className="h-4 w-4" />
-                    </Button>
-                  </div>
-                </td>
-                <td className="p-3"></td>
-              </tr>
-            )}
-            
-            {/* Add Project Row Button */}
-            {!showQuickAddRow && !isWeekClosed && availableProjects.length > 0 && (
-              <tr className="border-b hover:bg-muted/30">
-                {personnelRows.length > 0 && <td className="p-3"></td>}
-                <td colSpan={weekDays.length + 3} className="p-3">
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    className="w-full text-muted-foreground hover:text-foreground"
-                    onClick={() => setShowQuickAddRow(true)}
-                  >
-                    <Plus className="h-4 w-4 mr-2" />
-                    Add Project Row
-                  </Button>
-                </td>
-              </tr>
-            )}
             
             <tr className="bg-muted/50 font-semibold">
               {personnelRows.length > 0 && <td className="p-3"></td>}
