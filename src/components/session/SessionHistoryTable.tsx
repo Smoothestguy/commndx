@@ -26,7 +26,6 @@ interface SessionHistoryTableProps {
   onSelectSession: (sessionId: string | null) => void;
   selectedSessionId: string | null;
   targetUserId?: string | null;
-  isTargetAdmin?: boolean;
 }
 
 interface Session {
@@ -44,7 +43,6 @@ export function SessionHistoryTable({
   onSelectSession,
   selectedSessionId,
   targetUserId,
-  isTargetAdmin,
 }: SessionHistoryTableProps) {
   const { user } = useAuth();
   const { toast } = useToast();
