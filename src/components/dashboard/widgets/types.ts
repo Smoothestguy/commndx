@@ -59,6 +59,7 @@ export interface WidgetConfig {
 export interface DashboardTheme {
   backgroundColor?: string;
   cardBackground?: string;
+  cardTextColor?: string;
   cardOpacity?: number;
   fontFamily?: string;
   fontSize?: "small" | "medium" | "large";
