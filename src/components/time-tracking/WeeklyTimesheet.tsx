@@ -229,13 +229,7 @@ export function WeeklyTimesheet({
     return Array.from(grouped.values()).sort((a, b) => a.projectName.localeCompare(b.projectName));
   }, [rows]);
 
-  // Auto-expand projects that have entries when data loads
-  useEffect(() => {
-    if (rowsByProject.length > 0 && expandedProjects.size === 0) {
-      // Auto-expand all projects with entries
-      setExpandedProjects(new Set(rowsByProject.map(p => p.projectId)));
-    }
-  }, [rowsByProject]);
+  // Projects start collapsed - user can expand as needed
 
   const toggleProjectExpanded = (projectId: string) => {
     setExpandedProjects((prev) => {
