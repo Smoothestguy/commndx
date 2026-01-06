@@ -48,6 +48,7 @@ import {
   ScrollText,
   ClipboardList,
   FolderSearch,
+  History,
 } from "lucide-react";
 import logo from "@/assets/logo.png";
 
@@ -382,6 +383,18 @@ export function AppSidebar() {
                     </SidebarMenuItem>
                   )}
                   
+                  <SidebarMenuItem>
+                    <SidebarMenuButton
+                      asChild
+                      isActive={location.pathname === "/activity-history"}
+                      tooltip="Activity History"
+                    >
+                      <Link to="/activity-history">
+                        <History className="h-4 w-4" />
+                        <span>Activity History</span>
+                      </Link>
+                    </SidebarMenuButton>
+                  </SidebarMenuItem>
                   <SidebarMenuItem>
                     <SidebarMenuButton
                       asChild
