@@ -697,16 +697,16 @@ export function WeeklyTimesheet({
     }).format(amount);
   };
 
+  // Get the selected project for the input section - must be before any early returns
+  const selectedInputProject = useMemo(() => {
+    return allProjectsForFolders.find(p => p.id === selectedInputProjectId);
+  }, [allProjectsForFolders, selectedInputProjectId]);
+
   if (isLoading) {
     return (
       <div className="text-center py-8 text-muted-foreground">Loading...</div>
     );
   }
-
-  // Get the selected project for the input section
-  const selectedInputProject = useMemo(() => {
-    return allProjectsForFolders.find(p => p.id === selectedInputProjectId);
-  }, [allProjectsForFolders, selectedInputProjectId]);
 
   // Render Project Selector UI (used in both mobile and desktop)
   const renderProjectSelector = () => (
