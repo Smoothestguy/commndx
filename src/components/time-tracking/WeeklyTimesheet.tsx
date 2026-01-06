@@ -42,6 +42,7 @@ import {
   useAssignedProjects,
   useBulkAddTimeEntries,
 } from "@/integrations/supabase/hooks/useTimeEntries";
+import { useProjects } from "@/integrations/supabase/hooks/useProjects";
 import { useCompanySettings } from "@/integrations/supabase/hooks/useCompanySettings";
 import { useWeekCloseout } from "@/integrations/supabase/hooks/useWeekCloseouts";
 import { format, addDays, startOfWeek } from "date-fns";
@@ -154,6 +155,7 @@ export function WeeklyTimesheet({
   const { data: companySettings } = useCompanySettings();
   const bulkDeleteMutation = useBulkDeleteTimeEntries();
   const { data: assignedProjects = [] } = useAssignedProjects();
+  const { data: allProjects = [] } = useProjects();
   const bulkAddTimeEntries = useBulkAddTimeEntries();
 
   const overtimeMultiplier = companySettings?.overtime_multiplier || 1.5;
@@ -357,13 +359,16 @@ export function WeeklyTimesheet({
 
   // Filter out projects that already have entries for the current week (to avoid duplicates)
   const availableProjects = useMemo(() => {
+    // For admin/manager, use all projects; for regular users, use assigned projects
+    const projectsList = (isAdmin || isManager) ? allProjects : assignedProjects;
+    
     const projectsWithEntries = new Set(
       entries
         .filter((e) => !e.personnel_id) // Only check self-entries
         .map((e) => e.project_id)
     );
-    return assignedProjects.filter((p) => !projectsWithEntries.has(p.id));
-  }, [assignedProjects, entries]);
+    return projectsList.filter((p) => !projectsWithEntries.has(p.id));
+  }, [isAdmin, isManager, allProjects, assignedProjects, entries]);
 
   const selectedEntriesCount = useMemo(() => {
     return entries.filter((entry) => {
