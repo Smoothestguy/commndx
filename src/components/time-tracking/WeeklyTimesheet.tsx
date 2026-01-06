@@ -1,4 +1,4 @@
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -27,6 +27,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { TimeEntryForm } from "./TimeEntryForm";
 import { WeeklyProjectFolder } from "./WeeklyProjectFolder";
+import { WeeklyProjectSection } from "./WeeklyProjectSection";
 import { toast } from "sonner";
 import {
   exportTimeEntriesToExcel,
@@ -125,6 +126,9 @@ export function WeeklyTimesheet({
   // Project selector state - user selects a project first, then enters hours
   const [selectedInputProjectId, setSelectedInputProjectId] = useState<string>("");
   
+  // Track which project folders are expanded
+  const [expandedProjects, setExpandedProjects] = useState<Set<string>>(new Set());
+  
   const isMobile = useIsMobile();
 
   // Get user role to determine if we should show all entries
@@ -219,6 +223,44 @@ export function WeeklyTimesheet({
       return a.personnelName.localeCompare(b.personnelName);
     });
   }, [entries]);
+
+  // Group rows by project for hierarchical display
+  const rowsByProject = useMemo(() => {
+    const grouped = new Map<string, { projectId: string; projectName: string; rows: RowData[] }>();
+    
+    rows.forEach((row) => {
+      if (!grouped.has(row.projectId)) {
+        grouped.set(row.projectId, {
+          projectId: row.projectId,
+          projectName: row.projectName,
+          rows: [],
+        });
+      }
+      grouped.get(row.projectId)!.rows.push(row);
+    });
+    
+    return Array.from(grouped.values()).sort((a, b) => a.projectName.localeCompare(b.projectName));
+  }, [rows]);
+
+  // Auto-expand projects that have entries when data loads
+  useEffect(() => {
+    if (rowsByProject.length > 0 && expandedProjects.size === 0) {
+      // Auto-expand all projects with entries
+      setExpandedProjects(new Set(rowsByProject.map(p => p.projectId)));
+    }
+  }, [rowsByProject]);
+
+  const toggleProjectExpanded = (projectId: string) => {
+    setExpandedProjects((prev) => {
+      const newSet = new Set(prev);
+      if (newSet.has(projectId)) {
+        newSet.delete(projectId);
+      } else {
+        newSet.add(projectId);
+      }
+      return newSet;
+    });
+  };
 
   // Create a map of entries by rowKey and date
   const entryMap = useMemo(() => {
@@ -1248,253 +1290,66 @@ export function WeeklyTimesheet({
         </Card>
       )}
 
-      <Card className="overflow-x-auto">
-        <table className="w-full">
-          <thead>
-            <tr className="border-b bg-muted/50">
-              {personnelRows.length > 0 && (
-                <th className="p-3 text-center font-medium w-12">
-                  <Checkbox
-                    checked={
-                      selectedRows.size === personnelRows.length &&
-                      personnelRows.length > 0
-                    }
-                    onCheckedChange={(checked) => {
-                      if (checked) {
-                        selectAllRows();
-                      } else {
-                        deselectAllRows();
-                      }
-                    }}
-                  />
-                </th>
-              )}
-              <th className="p-3 text-left font-medium min-w-[200px]">
-                Personnel / Project
-              </th>
-              {weekDays.map((day) => (
-                <th
-                  key={day.toISOString()}
-                  className="p-3 text-center font-medium min-w-[100px]"
-                >
-                  <div className="text-xs text-muted-foreground">
-                    {format(day, "EEE")}
+      {/* Project Sections - Each project is a collapsible folder */}
+      <div className="space-y-4">
+        {rowsByProject.map((projectGroup) => (
+          <WeeklyProjectSection
+            key={projectGroup.projectId}
+            projectId={projectGroup.projectId}
+            projectName={projectGroup.projectName}
+            rows={projectGroup.rows}
+            weekDays={weekDays}
+            entries={entries}
+            entryMap={entryMap}
+            isExpanded={expandedProjects.has(projectGroup.projectId)}
+            onToggleExpand={() => toggleProjectExpanded(projectGroup.projectId)}
+            isWeekClosed={isWeekClosed}
+            selectedRows={selectedRows}
+            onToggleRowSelection={toggleRowSelection}
+            onCellClick={handleCellClick}
+            onEditRate={handleEditRate}
+            getRowTotal={getRowTotal}
+            getRowRegularHours={getRowRegularHours}
+            getRowOvertimeHours={getRowOvertimeHours}
+            getRowRegularPay={getRowRegularPay}
+            getRowOvertimePay={getRowOvertimePay}
+            getRowPay={getRowPay}
+            overtimeMultiplier={overtimeMultiplier}
+            weeklyOvertimeThreshold={weeklyOvertimeThreshold}
+            formatCurrency={formatCurrency}
+            hasPersonnelRows={personnelRows.length > 0}
+          />
+        ))}
+
+        {/* Grand Totals Card */}
+        {rowsByProject.length > 1 && (
+          <Card className="p-4 bg-muted/30 border-muted">
+            <div className="flex items-center justify-between gap-4">
+              <div className="flex items-center gap-2">
+                <Clock className="h-5 w-5 text-primary" />
+                <span className="font-semibold text-lg">Grand Total ({rowsByProject.length} Projects)</span>
+              </div>
+              <div className="flex items-center gap-6">
+                {/* Hours Summary */}
+                <div className="flex items-center gap-2 text-sm">
+                  <span className="font-medium">{weekTotalRegular.toFixed(1)}h</span>
+                  <span className="text-muted-foreground">+</span>
+                  <span className="text-amber-600 font-medium">{weekTotalOvertime.toFixed(1)}h OT</span>
+                  <span className="text-muted-foreground">=</span>
+                  <span className="font-bold text-primary text-lg">{weekTotal.toFixed(1)}h</span>
+                </div>
+                {/* Pay Summary */}
+                {weekTotalPay > 0 && (
+                  <div className="flex items-center gap-2 text-sm">
+                    <DollarSign className="h-4 w-4 text-muted-foreground" />
+                    <span className="font-bold text-lg">{formatCurrency(weekTotalPay)}</span>
                   </div>
-                  <div className="text-sm">{format(day, "MMM d")}</div>
-                </th>
-              ))}
-              <th className="p-3 text-center font-medium min-w-[200px]">
-                Hours Breakdown
-              </th>
-              <th className="p-3 text-center font-medium min-w-[250px]">
-                Pay Breakdown
-              </th>
-            </tr>
-          </thead>
-          <tbody>
-            {rows.map((row) => {
-              const regularHrs = getRowRegularHours(
-                row.rowKey,
-                row.personnelId ?? null
-              );
-              const overtimeHrs = getRowOvertimeHours(
-                row.rowKey,
-                row.personnelId ?? null
-              );
-              const totalHrs = getRowTotal(row.rowKey);
-              const regularPay = getRowRegularPay(
-                row.rowKey,
-                row.personnelId ?? null,
-                row.personnelRate ?? null
-              );
-              const overtimePay = getRowOvertimePay(
-                row.rowKey,
-                row.personnelId ?? null,
-                row.personnelRate ?? null
-              );
-              const totalPay = getRowPay(
-                row.rowKey,
-                row.personnelId ?? null,
-                row.personnelRate ?? null
-              );
-              const isSelected = selectedRows.has(row.rowKey);
-              const canSelect = row.isPersonnelEntry && row.personnelId;
-
-              return (
-                <tr
-                  key={row.rowKey}
-                  className={`border-b hover:bg-muted/30 ${
-                    isSelected ? "bg-destructive/5" : ""
-                  }`}
-                >
-                  {personnelRows.length > 0 && (
-                    <td className="p-3 text-center">
-                      {canSelect ? (
-                        <Checkbox
-                          checked={isSelected}
-                          onCheckedChange={() => toggleRowSelection(row.rowKey)}
-                        />
-                      ) : null}
-                    </td>
-                  )}
-                  <td className="p-3">
-                    {row.personnelName ? (
-                      <>
-                        <div className="flex items-center gap-1.5">
-                          <PersonnelAvatar
-                            photoUrl={row.personnelPhotoUrl}
-                            firstName={row.personnelName?.split(" ")[0] || ""}
-                            lastName={row.personnelName?.split(" ")[1] || ""}
-                            size="xs"
-                          />
-                          <span className="font-medium">
-                            {row.personnelName}
-                          </span>
-                          {row.personnelId && (
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              className="h-5 px-1 text-xs ml-1"
-                              onClick={() => handleEditRate(row)}
-                            >
-                              <DollarSign className="h-3 w-3" />
-                              {row.personnelRate !== null
-                                ? `${row.personnelRate}/hr`
-                                : "Set rate"}
-                            </Button>
-                          )}
-                        </div>
-                        <div className="text-sm text-muted-foreground mt-0.5">
-                          {row.projectName}
-                        </div>
-                      </>
-                    ) : (
-                      <div className="font-medium">{row.projectName}</div>
-                    )}
-                  </td>
-                  {weekDays.map((day) => {
-                    const dateString = format(day, "yyyy-MM-dd");
-                    const key = `${row.rowKey}-${dateString}`;
-                    const entry = entryMap.get(key);
-
-                    return (
-                      <td key={dateString} className="p-2 text-center">
-                        <Button
-                          variant={entry ? "secondary" : "ghost"}
-                          size="sm"
-                          className={`w-full h-12 relative ${
-                            entry?.is_locked || isWeekClosed 
-                              ? "opacity-60 cursor-not-allowed bg-muted/50" 
-                              : ""
-                          }`}
-                          onClick={() => handleCellClick(row, day)}
-                          disabled={entry?.is_locked || isWeekClosed}
-                        >
-                          {entry ? (
-                            <div className="flex flex-col items-center gap-1">
-                              <div className="flex items-center gap-1">
-                                <span className="font-semibold">
-                                  {Number(entry.hours).toFixed(2)}h
-                                </span>
-                                {(entry.is_locked || isWeekClosed) && (
-                                  <Lock className="h-3 w-3 text-muted-foreground" />
-                                )}
-                              </div>
-                              {entry.billable ? (
-                                <Badge
-                                  variant="default"
-                                  className="h-4 text-[10px]"
-                                >
-                                  Bill
-                                </Badge>
-                              ) : (
-                                <Badge
-                                  variant="secondary"
-                                  className="h-4 text-[10px]"
-                                >
-                                  Non
-                                </Badge>
-                              )}
-                            </div>
-                          ) : (
-                            isWeekClosed ? (
-                              <Lock className="h-4 w-4 text-muted-foreground" />
-                            ) : (
-                              <Plus className="h-4 w-4 text-muted-foreground" />
-                            )
-                          )}
-                        </Button>
-                      </td>
-                    );
-                  })}
-                  <td className="p-3 text-center">
-                    <div className="flex items-center justify-center gap-1 text-sm">
-                      <span>{regularHrs.toFixed(2)}h</span>
-                      <span className="text-muted-foreground">+</span>
-                      <span className="text-amber-600">
-                        {overtimeHrs.toFixed(2)}h
-                      </span>
-                      <span className="text-muted-foreground">=</span>
-                      <span className="font-semibold">
-                        {totalHrs.toFixed(2)}h
-                      </span>
-                    </div>
-                  </td>
-                  <td className="p-3 text-center">
-                    {totalPay !== null ? (
-                      <div className="flex items-center justify-center gap-1 text-sm">
-                        <span>{formatCurrency(regularPay!)}</span>
-                        <span className="text-muted-foreground">+</span>
-                        <span className="text-amber-600">
-                          {formatCurrency(overtimePay!)}
-                        </span>
-                        <span className="text-muted-foreground">=</span>
-                        <span className="font-semibold">
-                          {formatCurrency(totalPay)}
-                        </span>
-                      </div>
-                    ) : (
-                      <span className="text-muted-foreground">-</span>
-                    )}
-                  </td>
-                </tr>
-              );
-            })}
-            
-            <tr className="bg-muted/50 font-semibold">
-              {personnelRows.length > 0 && <td className="p-3"></td>}
-              <td className="p-3">Daily Total</td>
-              {weekDays.map((day) => (
-                <td key={day.toISOString()} className="p-3 text-center">
-                  {getDayTotal(day).toFixed(2)}h
-                </td>
-              ))}
-              <td className="p-3 text-center">
-                <div className="flex items-center justify-center gap-1 text-sm">
-                  <span>{weekTotalRegular.toFixed(2)}h</span>
-                  <span className="text-muted-foreground font-normal">+</span>
-                  <span className="text-amber-600">
-                    {weekTotalOvertime.toFixed(2)}h
-                  </span>
-                  <span className="text-muted-foreground font-normal">=</span>
-                  <span>{weekTotal.toFixed(2)}h</span>
-                </div>
-              </td>
-              <td className="p-3 text-center">
-                <div className="flex items-center justify-center gap-1 text-sm">
-                  <span>{formatCurrency(weekRegularPay)}</span>
-                  <span className="text-muted-foreground font-normal">+</span>
-                  <span className="text-amber-600">
-                    {formatCurrency(weekOvertimePay)}
-                  </span>
-                  <span className="text-muted-foreground font-normal">=</span>
-                  <span>{formatCurrency(weekTotalPay)}</span>
-                </div>
-              </td>
-            </tr>
-          </tbody>
-        </table>
-      </Card>
+                )}
+              </div>
+            </div>
+          </Card>
+        )}
+      </div>
 
       <TimeEntryForm
         open={formOpen}
