@@ -200,6 +200,31 @@ export function ClockStatusCard({
       .padStart(2, "0")}:${secs.toString().padStart(2, "0")}`;
   };
 
+  // Empty state - no clock-enabled projects assigned
+  if (projects.length === 0) {
+    return (
+      <Card>
+        <CardHeader className="pb-3">
+          <CardTitle className="flex items-center gap-2 text-lg">
+            <Clock className="h-5 w-5" />
+            Time Clock
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="text-center py-6">
+            <AlertTriangle className="h-8 w-8 text-muted-foreground mx-auto mb-3" />
+            <p className="text-muted-foreground mb-2">
+              No clock-enabled projects assigned
+            </p>
+            <p className="text-sm text-muted-foreground">
+              Contact your supervisor to get assigned to a project.
+            </p>
+          </div>
+        </CardContent>
+      </Card>
+    );
+  }
+
   return (
     <>
       <Card className={`${isClockedIn ? (isOnLunch ? "border-amber-500/50 bg-amber-500/5" : "border-green-500/50 bg-green-500/5") : ""}`}>

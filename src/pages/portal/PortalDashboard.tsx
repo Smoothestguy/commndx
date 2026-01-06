@@ -113,11 +113,11 @@ export default function PortalDashboard() {
           </div>
         </div>
 
-        {/* Time Clock Card - Prominent at top */}
-        {clockProjects && clockProjects.length > 0 && personnel && (
+        {/* Time Clock Card - Always show for personnel */}
+        {personnel && (
           <ClockStatusCard
             personnelId={personnel.id}
-            projects={clockProjects}
+            projects={clockProjects || []}
             activeEntry={activeClockEntry}
           />
         )}
