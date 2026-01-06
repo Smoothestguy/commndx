@@ -215,11 +215,17 @@ export function useBulkAssignUserToProjects() {
   return useMutation({
     mutationFn: async ({ userId, projectIds }: { userId: string; projectIds: string[] }) => {
       // Check if user has a linked personnel record
-      const { data: personnel } = await supabase
+      const { data: personnel, error: personnelError } = await supabase
         .from("personnel")
         .select("id")
         .eq("user_id", userId)
         .maybeSingle();
+
+      if (personnelError) {
+        // If the current user doesn't have permission to read personnel, we should fail loudly.
+        // Otherwise we'll silently fall back to project_assignments and SMS won't ever send.
+        throw personnelError;
+      }
 
       if (personnel?.id) {
         // User has a personnel record - use personnel_project_assignments
@@ -241,57 +247,62 @@ export function useBulkAssignUserToProjects() {
 
         if (error) throw error;
 
-        // Send SMS notifications for each assignment
+        let smsFailed = 0;
         for (const assignment of data || []) {
-          try {
-            const { error: smsError } = await supabase.functions.invoke('send-assignment-sms', {
-              body: {
-                personnelId: assignment.personnel_id,
-                projectId: assignment.project_id,
-                assignmentId: assignment.id,
-                force: true
-              }
-            });
-            if (smsError) {
-              console.error(`SMS failed for personnel ${assignment.personnel_id}:`, smsError);
-            }
-          } catch (err) {
-            console.error(`SMS invoke error for personnel ${assignment.personnel_id}:`, err);
+          const { error: smsError } = await supabase.functions.invoke('send-assignment-sms', {
+            body: {
+              personnelId: assignment.personnel_id,
+              projectId: assignment.project_id,
+              assignmentId: assignment.id,
+              force: true,
+            },
+          });
+
+          if (smsError) {
+            smsFailed += 1;
+            console.error(`SMS failed for personnel ${assignment.personnel_id}:`, smsError);
           }
         }
 
-        return { data, type: 'personnel' };
-      } else {
-        // No personnel record - fall back to project_assignments
-        const assignments = projectIds.map(projectId => ({
-          project_id: projectId,
-          user_id: userId,
-          assigned_by: user?.id,
-          status: 'active' as const,
-          assigned_at: new Date().toISOString(),
-        }));
-
-        const { data, error } = await supabase
-          .from("project_assignments")
-          .upsert(assignments, { 
-            onConflict: 'project_id,user_id',
-            ignoreDuplicates: false 
-          })
-          .select();
-
-        if (error) throw error;
-        return { data, type: 'user' };
+        return { data, type: 'personnel' as const, smsFailed };
       }
+
+      // No personnel record - fall back to project_assignments
+      const assignments = projectIds.map(projectId => ({
+        project_id: projectId,
+        user_id: userId,
+        assigned_by: user?.id,
+        status: 'active' as const,
+        assigned_at: new Date().toISOString(),
+      }));
+
+      const { data, error } = await supabase
+        .from("project_assignments")
+        .upsert(assignments, { 
+          onConflict: 'project_id,user_id',
+          ignoreDuplicates: false 
+        })
+        .select();
+
+      if (error) throw error;
+      return { data, type: 'user' as const };
     },
-    onSuccess: (_, variables) => {
+    onSuccess: (result, variables) => {
       queryClient.invalidateQueries({ queryKey: ["project-assignments"] });
       queryClient.invalidateQueries({ queryKey: ["all-project-assignments"] });
       queryClient.invalidateQueries({ queryKey: ["personnel-project-assignments"] });
       queryClient.invalidateQueries({ queryKey: ["personnel-assignments"] });
-      toast.success(`User assigned to ${variables.projectIds.length} project(s)`);
+
+      if (result.type === 'personnel' && result.smsFailed) {
+        toast.warning(`Assigned to ${variables.projectIds.length} project(s), but ${result.smsFailed} SMS failed. Check Messages for details.`);
+      } else if (result.type === 'user') {
+        toast.warning(`Assigned to ${variables.projectIds.length} project(s). No SMS sent (user has no linked personnel/phone).`);
+      } else {
+        toast.success(`User assigned to ${variables.projectIds.length} project(s)`);
+      }
     },
-    onError: () => {
-      toast.error("Failed to assign user to projects");
+    onError: (error: any) => {
+      toast.error(error?.message ? `Failed to assign user: ${error.message}` : "Failed to assign user to projects");
     },
   });
 }

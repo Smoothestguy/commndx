@@ -47,8 +47,8 @@ Deno.serve(async (req: Request) => {
         .from("messages")
         .select("id, created_at")
         .eq("recipient_id", personnelId)
-        .eq("message_type", "assignment_notification")
-        .contains("payload", { assignment_id: assignmentId })
+        .eq("message_type", "sms")
+        .contains("payload", { assignment_id: assignmentId, notification_type: "assignment_notification" })
         .gte("created_at", fiveMinutesAgo)
         .single();
 
@@ -207,9 +207,10 @@ Deno.serve(async (req: Request) => {
         recipient_name: `${personnel.first_name} ${personnel.last_name}`,
         recipient_phone: personnel.phone,
         content: smsContent,
-        message_type: 'assignment_notification',
+        message_type: 'sms',
         status: 'pending',
         payload: {
+          notification_type: 'assignment_notification',
           project_id: projectId,
           project_name: project.name,
           assignment_id: assignmentId || null,
