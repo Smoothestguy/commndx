@@ -91,7 +91,7 @@ export function DashboardThemeEditor({
   };
 
   return (
-    <div className="fixed right-0 top-0 h-full w-80 bg-background border-l shadow-lg z-[200] flex flex-col">
+    <div className="fixed right-0 top-14 bottom-0 w-80 bg-background border-l shadow-lg z-[200] flex flex-col">
       {/* Header */}
       <div className="p-4 border-b flex items-center justify-between">
         <h3 className="font-semibold">Theme Settings</h3>
