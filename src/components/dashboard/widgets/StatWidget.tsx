@@ -167,6 +167,8 @@ export function StatWidget({ widget, theme, isEditMode }: StatWidgetProps) {
         icon={Icon}
         href={href}
         changeType={statData?.changeType}
+        backgroundColor={theme?.cardBackground}
+        textColor={theme?.cardTextColor}
       />
     );
   }
