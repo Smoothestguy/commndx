@@ -402,10 +402,47 @@ export function CustomizableDashboard({
     return <DashboardLoadingSkeleton />;
   }
 
+  const hasBackgroundMedia = draftTheme.backgroundVideo || draftTheme.backgroundImage;
+
   return (
     <>
+      {/* Full-page Background Layer - fixed behind all content */}
+      {hasBackgroundMedia && (
+        <div className="fixed inset-0 z-0 pointer-events-none">
+          {draftTheme.backgroundVideo ? (
+            <video
+              autoPlay
+              loop
+              muted
+              playsInline
+              className="w-full h-full object-cover"
+              style={{ objectPosition: draftTheme.backgroundPosition || "center" }}
+              src={draftTheme.backgroundVideo}
+            />
+          ) : draftTheme.backgroundImage ? (
+            <div
+              className="w-full h-full"
+              style={{
+                backgroundImage: `url(${draftTheme.backgroundImage})`,
+                backgroundSize: draftTheme.backgroundSize || "cover",
+                backgroundPosition: draftTheme.backgroundPosition || "center",
+                backgroundRepeat: "no-repeat",
+              }}
+            />
+          ) : null}
+
+          {/* Dark Overlay for Readability */}
+          {draftTheme.backgroundOverlay && draftTheme.backgroundOverlay > 0 && (
+            <div
+              className="absolute inset-0 bg-black"
+              style={{ opacity: draftTheme.backgroundOverlay / 100 }}
+            />
+          )}
+        </div>
+      )}
+
       {/* Edit Mode Toggle in Actions Area */}
-      <div className="flex justify-end mb-4">
+      <div className="flex justify-end mb-4 relative z-[1]">
         <EditModeToggle
           isEditMode={isEditMode}
           onToggle={isEditMode ? handleExitEditMode : () => setIsEditMode(true)}
@@ -431,43 +468,10 @@ export function CustomizableDashboard({
         isResetting={isResetting}
         hasUnsavedChanges={hasUnsavedChanges}
       >
-        <div className="relative min-h-[calc(100vh-200px)] isolate">
-          {/* Background Layer - z-0 (base layer) */}
-          {draftTheme.backgroundVideo ? (
-            <video
-              autoPlay
-              loop
-              muted
-              playsInline
-              className="absolute inset-0 w-full h-full object-cover z-0 rounded-lg"
-              style={{ objectPosition: draftTheme.backgroundPosition || "center" }}
-              src={draftTheme.backgroundVideo}
-            />
-          ) : draftTheme.backgroundImage ? (
-            <div
-              className="absolute inset-0 z-0 rounded-lg"
-              style={{
-                backgroundImage: `url(${draftTheme.backgroundImage})`,
-                backgroundSize: draftTheme.backgroundSize || "cover",
-                backgroundPosition: draftTheme.backgroundPosition || "center",
-                backgroundRepeat: "no-repeat",
-              }}
-            />
-          ) : null}
-
-          {/* Dark Overlay for Readability - z-[1] (above background) */}
-          {(draftTheme.backgroundImage || draftTheme.backgroundVideo) &&
-            draftTheme.backgroundOverlay &&
-            draftTheme.backgroundOverlay > 0 && (
-              <div
-                className="absolute inset-0 bg-black z-[1] rounded-lg"
-                style={{ opacity: draftTheme.backgroundOverlay / 100 }}
-              />
-            )}
-
-          {/* Dashboard Grid - z-[2] (above overlay) */}
+        <div className="relative min-h-[calc(100vh-200px)] z-[1]">
+          {/* Dashboard Grid */}
           <div
-            className={cn("grid grid-cols-4 relative z-[2]", {
+            className={cn("grid grid-cols-4 relative", {
               "gap-2": draftTheme.spacing === "compact",
               "gap-4": draftTheme.spacing === "normal" || !draftTheme.spacing,
               "gap-6": draftTheme.spacing === "relaxed",
