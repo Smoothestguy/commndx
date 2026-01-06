@@ -1,6 +1,8 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "../client";
 import { toast } from "sonner";
+import { useAuditLog, computeChanges } from "@/hooks/useAuditLog";
+import type { Json } from "@/integrations/supabase/types";
 
 export interface POLineItem {
   id?: string;
@@ -120,6 +122,7 @@ export const usePurchaseOrdersByVendor = (vendorId: string | undefined) => {
 
 export const useAddPurchaseOrder = () => {
   const queryClient = useQueryClient();
+  const { logAction } = useAuditLog();
 
   return useMutation({
     mutationFn: async (data: {
@@ -161,6 +164,21 @@ export const useAddPurchaseOrder = () => {
         // Don't throw - QB sync failure shouldn't prevent PO creation
       }
 
+      // Log audit action
+      await logAction({
+        actionType: "create",
+        resourceType: "purchase_order",
+        resourceId: poData.id,
+        resourceNumber: poData.number,
+        changesAfter: poData as unknown as Json,
+        metadata: { 
+          vendor_name: data.purchaseOrder.vendor_name,
+          vendor_id: data.purchaseOrder.vendor_id,
+          total: data.purchaseOrder.total,
+          line_items_count: data.lineItems.length 
+        } as Json,
+      });
+
       return poData;
     },
     onSuccess: () => {
@@ -175,6 +193,7 @@ export const useAddPurchaseOrder = () => {
 
 export const useUpdatePurchaseOrder = () => {
   const queryClient = useQueryClient();
+  const { logAction } = useAuditLog();
 
   return useMutation({
     mutationFn: async (data: {
@@ -182,6 +201,13 @@ export const useUpdatePurchaseOrder = () => {
       purchaseOrder: Partial<PurchaseOrder>;
       lineItems?: Omit<POLineItem, "created_at">[];
     }) => {
+      // Fetch original for audit
+      const { data: originalData } = await supabase
+        .from("purchase_orders")
+        .select("*")
+        .eq("id", data.id)
+        .single();
+
       // Update purchase order
       const { data: poData, error: poError } = await supabase
         .from("purchase_orders")
@@ -193,7 +219,6 @@ export const useUpdatePurchaseOrder = () => {
       if (poError) throw poError;
 
       // Only update line items if explicitly provided AND has items
-      // This prevents accidental deletion when lineItems is undefined or empty
       if (data.lineItems !== undefined) {
         if (data.lineItems.length === 0) {
           throw new Error("Cannot update with empty line items. Use restore function to add items or keep existing ones.");
@@ -217,6 +242,20 @@ export const useUpdatePurchaseOrder = () => {
 
         if (lineItemsError) throw lineItemsError;
       }
+
+      // Log audit action
+      const { changesBefore, changesAfter } = computeChanges(
+        originalData as Record<string, unknown>,
+        poData as Record<string, unknown>
+      );
+      await logAction({
+        actionType: "update",
+        resourceType: "purchase_order",
+        resourceId: data.id,
+        resourceNumber: poData.number,
+        changesBefore,
+        changesAfter,
+      });
 
       return poData;
     },
@@ -326,9 +365,17 @@ export const useReopenPurchaseOrder = () => {
 
 export const useDeletePurchaseOrder = () => {
   const queryClient = useQueryClient();
+  const { logAction } = useAuditLog();
 
   return useMutation({
     mutationFn: async (id: string) => {
+      // Fetch original for audit
+      const { data: originalData } = await supabase
+        .from("purchase_orders")
+        .select("*")
+        .eq("id", id)
+        .single();
+
       const { data: { user } } = await supabase.auth.getUser();
       
       // Soft delete instead of hard delete
@@ -341,6 +388,15 @@ export const useDeletePurchaseOrder = () => {
         .eq("id", id);
 
       if (error) throw error;
+
+      // Log audit action
+      await logAction({
+        actionType: "delete",
+        resourceType: "purchase_order",
+        resourceId: id,
+        resourceNumber: originalData?.number,
+        changesBefore: originalData as unknown as Json,
+      });
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["purchase_orders"] });

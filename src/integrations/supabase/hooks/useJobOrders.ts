@@ -1,6 +1,8 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "../client";
 import { toast } from "sonner";
+import { useAuditLog, computeChanges } from "@/hooks/useAuditLog";
+import type { Json } from "@/integrations/supabase/types";
 
 export interface JobOrderLineItem {
   id?: string;
@@ -159,6 +161,7 @@ export const useJobOrder = (id: string) => {
 
 export const useAddJobOrder = () => {
   const queryClient = useQueryClient();
+  const { logAction } = useAuditLog();
 
   return useMutation({
     mutationFn: async (data: {
@@ -186,6 +189,21 @@ export const useAddJobOrder = () => {
 
       if (lineItemsError) throw lineItemsError;
 
+      // Log audit action
+      await logAction({
+        actionType: "create",
+        resourceType: "job_order",
+        resourceId: jobOrderData.id,
+        resourceNumber: jobOrderData.number,
+        changesAfter: jobOrderData as unknown as Json,
+        metadata: { 
+          customer_name: data.jobOrder.customer_name,
+          project_name: data.jobOrder.project_name,
+          total: data.jobOrder.total,
+          line_items_count: data.lineItems.length 
+        } as Json,
+      });
+
       return jobOrderData;
     },
     onSuccess: () => {
@@ -200,6 +218,7 @@ export const useAddJobOrder = () => {
 
 export const useUpdateJobOrder = () => {
   const queryClient = useQueryClient();
+  const { logAction } = useAuditLog();
 
   return useMutation({
     mutationFn: async (data: {
@@ -207,6 +226,13 @@ export const useUpdateJobOrder = () => {
       jobOrder: Partial<JobOrder>;
       lineItems?: Omit<JobOrderLineItem, "created_at">[];
     }) => {
+      // Fetch original for audit
+      const { data: originalData } = await supabase
+        .from("job_orders")
+        .select("*")
+        .eq("id", data.id)
+        .single();
+
       // Update job order
       const { data: jobOrderData, error: jobOrderError } = await supabase
         .from("job_orders")
@@ -238,6 +264,20 @@ export const useUpdateJobOrder = () => {
         if (lineItemsError) throw lineItemsError;
       }
 
+      // Log audit action
+      const { changesBefore, changesAfter } = computeChanges(
+        originalData as Record<string, unknown>,
+        jobOrderData as Record<string, unknown>
+      );
+      await logAction({
+        actionType: "update",
+        resourceType: "job_order",
+        resourceId: data.id,
+        resourceNumber: jobOrderData.number,
+        changesBefore,
+        changesAfter,
+      });
+
       return jobOrderData;
     },
     onSuccess: () => {
@@ -252,9 +292,17 @@ export const useUpdateJobOrder = () => {
 
 export const useDeleteJobOrder = () => {
   const queryClient = useQueryClient();
+  const { logAction } = useAuditLog();
 
   return useMutation({
     mutationFn: async (id: string) => {
+      // Fetch original for audit
+      const { data: originalData } = await supabase
+        .from("job_orders")
+        .select("*")
+        .eq("id", id)
+        .single();
+
       const { data: { user } } = await supabase.auth.getUser();
       
       // Soft delete instead of hard delete
@@ -267,6 +315,15 @@ export const useDeleteJobOrder = () => {
         .eq("id", id);
 
       if (error) throw error;
+
+      // Log audit action
+      await logAction({
+        actionType: "delete",
+        resourceType: "job_order",
+        resourceId: id,
+        resourceNumber: originalData?.number,
+        changesBefore: originalData as unknown as Json,
+      });
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["job_orders"] });

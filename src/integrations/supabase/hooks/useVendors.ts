@@ -1,6 +1,8 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "../client";
 import { toast } from "sonner";
+import { useAuditLog, computeChanges } from "@/hooks/useAuditLog";
+import type { Json } from "@/integrations/supabase/types";
 
 export type VendorType = "contractor" | "personnel" | "supplier";
 
@@ -66,6 +68,7 @@ export const useVendors = () => {
 
 export const useAddVendor = () => {
   const queryClient = useQueryClient();
+  const { logAction } = useAuditLog();
 
   return useMutation({
     mutationFn: async (vendor: Omit<Vendor, "id" | "created_at" | "updated_at">) => {
@@ -91,6 +94,19 @@ export const useAddVendor = () => {
         // Don't throw - QB sync failure shouldn't prevent vendor creation
       }
 
+      // Log audit action
+      await logAction({
+        actionType: "create",
+        resourceType: "vendor",
+        resourceId: data.id,
+        resourceNumber: data.name,
+        changesAfter: data as unknown as Json,
+        metadata: { 
+          vendor_type: vendor.vendor_type,
+          email: vendor.email 
+        } as Json,
+      });
+
       return data;
     },
     onSuccess: () => {
@@ -105,9 +121,17 @@ export const useAddVendor = () => {
 
 export const useUpdateVendor = () => {
   const queryClient = useQueryClient();
+  const { logAction } = useAuditLog();
 
   return useMutation({
     mutationFn: async ({ id, ...updates }: Partial<Vendor> & { id: string }) => {
+      // Fetch original for audit
+      const { data: originalData } = await supabase
+        .from("vendors")
+        .select("*")
+        .eq("id", id)
+        .single();
+
       const { data, error } = await supabase
         .from("vendors")
         .update(updates)
@@ -130,6 +154,20 @@ export const useUpdateVendor = () => {
         console.error("QuickBooks sync error (non-blocking):", qbError);
       }
 
+      // Log audit action
+      const { changesBefore, changesAfter } = computeChanges(
+        originalData as Record<string, unknown>,
+        data as Record<string, unknown>
+      );
+      await logAction({
+        actionType: "update",
+        resourceType: "vendor",
+        resourceId: id,
+        resourceNumber: data.name,
+        changesBefore,
+        changesAfter,
+      });
+
       return data;
     },
     onSuccess: () => {
@@ -144,9 +182,17 @@ export const useUpdateVendor = () => {
 
 export const useDeleteVendor = () => {
   const queryClient = useQueryClient();
+  const { logAction } = useAuditLog();
 
   return useMutation({
     mutationFn: async (id: string) => {
+      // Fetch original for audit
+      const { data: originalData } = await supabase
+        .from("vendors")
+        .select("*")
+        .eq("id", id)
+        .single();
+
       const { data: { user } } = await supabase.auth.getUser();
       
       // Soft delete instead of hard delete
@@ -159,6 +205,15 @@ export const useDeleteVendor = () => {
         .eq("id", id);
 
       if (error) throw error;
+
+      // Log audit action
+      await logAction({
+        actionType: "delete",
+        resourceType: "vendor",
+        resourceId: id,
+        resourceNumber: originalData?.name,
+        changesBefore: originalData as unknown as Json,
+      });
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["vendors"] });
