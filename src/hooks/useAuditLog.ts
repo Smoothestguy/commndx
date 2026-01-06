@@ -1,6 +1,5 @@
 import { useCallback } from "react";
 import { supabase } from "@/integrations/supabase/client";
-import { useAuth } from "@/contexts/AuthContext";
 import type { Json } from "@/integrations/supabase/types";
 
 export type ActionType = 
@@ -29,8 +28,6 @@ interface AuditLogParams {
 }
 
 export const useAuditLog = () => {
-  const { user } = useAuth();
-
   const logAction = useCallback(async ({
     actionType,
     resourceType,
@@ -42,9 +39,12 @@ export const useAuditLog = () => {
     errorMessage,
     metadata = {}
   }: AuditLogParams) => {
-    if (!user?.email) return;
-
     try {
+      // Get user directly from Supabase to avoid context dependency issues
+      const { data: { user } } = await supabase.auth.getUser();
+      
+      if (!user?.email) return;
+
       const { error } = await supabase
         .from("audit_logs")
         .insert([{
@@ -69,7 +69,7 @@ export const useAuditLog = () => {
     } catch (err) {
       console.error("Error in audit logging:", err);
     }
-  }, [user]);
+  }, []);
 
   return { logAction };
 };
