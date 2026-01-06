@@ -30,7 +30,7 @@ export function PageLayout({
       {/* Main Content */}
       <main
         className={cn(
-          "flex-1 min-h-[calc(100vh-3.5rem)] p-4 lg:p-6 overflow-x-hidden",
+          "flex-1 min-h-[calc(100vh-3.5rem)] p-4 lg:p-6 overflow-x-hidden relative z-[1]",
           isMobile && "pb-24"
         )}
       >
