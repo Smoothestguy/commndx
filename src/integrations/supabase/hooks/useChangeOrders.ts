@@ -1,6 +1,8 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
+import { useAuditLog, computeChanges } from "@/hooks/useAuditLog";
+import type { Json } from "../types";
 
 export type ChangeOrderStatus = 'draft' | 'pending_approval' | 'approved' | 'rejected' | 'invoiced';
 export type ChangeType = 'additive' | 'deductive';
@@ -184,6 +186,7 @@ export function useChangeOrdersByPurchaseOrder(purchaseOrderId: string | undefin
 // Add change order
 export function useAddChangeOrder() {
   const queryClient = useQueryClient();
+  const { logAction } = useAuditLog();
 
   return useMutation({
     mutationFn: async (data: {
@@ -213,8 +216,6 @@ export function useAddChangeOrder() {
       const taxAmount = taxableAmount * ((changeOrderData.tax_rate || 0) / 100);
       const total = subtotal + taxAmount;
 
-      // Insert change order with calculated totals
-      // Explicitly ensure remaining_amount is never null/undefined
       const calculatedRemaining = total || 0;
       
       const insertData = {
@@ -259,6 +260,15 @@ export function useAddChangeOrder() {
 
         if (lineItemsError) throw lineItemsError;
       }
+
+      // Log the action
+      await logAction({
+        actionType: "create",
+        resourceType: "change_order",
+        resourceId: (changeOrder as { id: string; number: string }).id,
+        resourceNumber: (changeOrder as { number: string }).number,
+        changesAfter: { number: (changeOrder as { number: string }).number, total, customer_name: data.customer_name } as unknown as Json,
+      });
 
       return changeOrder as unknown as ChangeOrder;
     },

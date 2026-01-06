@@ -2,6 +2,8 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "../client";
 import { toast } from "sonner";
 import { getNextInvoiceNumber } from "@/utils/invoiceNumberGenerator";
+import { useAuditLog, computeChanges } from "@/hooks/useAuditLog";
+import type { Json } from "../types";
 
 export interface EstimateLineItem {
   id?: string;
@@ -174,6 +176,7 @@ export const useEstimate = (id: string) => {
 
 export const useAddEstimate = () => {
   const queryClient = useQueryClient();
+  const { logAction } = useAuditLog();
 
   return useMutation({
     mutationFn: async (data: {
@@ -205,6 +208,21 @@ export const useAddEstimate = () => {
 
       if (lineItemsError) throw lineItemsError;
 
+      // Log the action
+      await logAction({
+        actionType: "create",
+        resourceType: "estimate",
+        resourceId: estimateData.id,
+        resourceNumber: estimateData.number,
+        changesAfter: {
+          number: estimateData.number,
+          customer_name: estimateData.customer_name,
+          total: estimateData.total,
+          status: estimateData.status,
+          line_items_count: data.lineItems.length,
+        } as unknown as Json,
+      });
+
       // Auto-sync to QuickBooks if connected
       try {
         const qbConnected = await isQuickBooksConnected();
@@ -233,6 +251,7 @@ export const useAddEstimate = () => {
 
 export const useUpdateEstimate = () => {
   const queryClient = useQueryClient();
+  const { logAction } = useAuditLog();
 
   return useMutation({
     mutationFn: async (data: {
@@ -240,6 +259,13 @@ export const useUpdateEstimate = () => {
       estimate: Partial<Estimate>;
       lineItems?: Omit<EstimateLineItem, "created_at">[];
     }) => {
+      // Fetch current data for comparison
+      const { data: before } = await supabase
+        .from("estimates")
+        .select("*")
+        .eq("id", data.id)
+        .single();
+
       // Update estimate
       const { data: estimateData, error: estimateError } = await supabase
         .from("estimates")
@@ -271,6 +297,20 @@ export const useUpdateEstimate = () => {
 
         if (lineItemsError) throw lineItemsError;
       }
+
+      // Log the action with changes
+      const { changesBefore, changesAfter } = computeChanges(
+        before as Record<string, unknown>,
+        estimateData as Record<string, unknown>
+      );
+      await logAction({
+        actionType: "update",
+        resourceType: "estimate",
+        resourceId: data.id,
+        resourceNumber: estimateData.number,
+        changesBefore,
+        changesAfter,
+      });
 
       // Auto-sync to QuickBooks if connected and estimate is synced
       try {
@@ -330,11 +370,19 @@ export const useUpdateEstimate = () => {
 
 export const useDeleteEstimate = () => {
   const queryClient = useQueryClient();
+  const { logAction } = useAuditLog();
 
   return useMutation({
     mutationFn: async (id: string) => {
       const { data: { user } } = await supabase.auth.getUser();
       
+      // Fetch current data for logging
+      const { data: before } = await supabase
+        .from("estimates")
+        .select("*")
+        .eq("id", id)
+        .single();
+
       // Auto-void in QuickBooks if connected
       try {
         const qbConnected = await isQuickBooksConnected();
@@ -364,6 +412,15 @@ export const useDeleteEstimate = () => {
         .eq("id", id);
 
       if (error) throw error;
+
+      // Log the action
+      await logAction({
+        actionType: "delete",
+        resourceType: "estimate",
+        resourceId: id,
+        resourceNumber: before?.number,
+        changesBefore: before as unknown as Json,
+      });
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["estimates"] });
