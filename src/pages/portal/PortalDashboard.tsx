@@ -1,8 +1,10 @@
 import { PortalLayout } from "@/components/portal/PortalLayout";
 import { useCurrentPersonnel, usePersonnelTimeEntries, usePersonnelAssignments, usePersonnelReimbursements, usePersonnelNotifications } from "@/integrations/supabase/hooks/usePortal";
 import { useCompanySettings } from "@/integrations/supabase/hooks/useCompanySettings";
+import { useClockEnabledProjects, useAllOpenClockEntries } from "@/integrations/supabase/hooks/useTimeClock";
+import { ClockStatusCard } from "@/components/portal/ClockStatusCard";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Clock, Briefcase, Receipt, Bell, DollarSign, TrendingUp, Calendar } from "lucide-react";
+import { Clock, Briefcase, Receipt, Bell, TrendingUp, Calendar } from "lucide-react";
 import { startOfWeek, endOfWeek, startOfMonth, endOfMonth, parseISO, isWithinInterval, format } from "date-fns";
 import { Link, useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
@@ -19,8 +21,15 @@ export default function PortalDashboard() {
   const { data: reimbursements, isLoading: reimbursementsLoading } = usePersonnelReimbursements(personnel?.id);
   const { data: notifications } = usePersonnelNotifications(personnel?.id);
   const { data: companySettings } = useCompanySettings();
+  
+  // Time clock data
+  const { data: clockProjects, isLoading: clockProjectsLoading } = useClockEnabledProjects(personnel?.id);
+  const { data: openClockEntries, isLoading: clockEntriesLoading } = useAllOpenClockEntries(personnel?.id);
 
-  const isLoading = personnelLoading || timeLoading || assignmentsLoading || reimbursementsLoading;
+  const isLoading = personnelLoading || timeLoading || assignmentsLoading || reimbursementsLoading || clockProjectsLoading || clockEntriesLoading;
+  
+  // Get the active clock entry (if any)
+  const activeClockEntry = openClockEntries?.[0] || null;
   
   const overtimeMultiplier = companySettings?.overtime_multiplier ?? 1.5;
   const weeklyOvertimeThreshold = companySettings?.weekly_overtime_threshold ?? 40;
@@ -103,6 +112,15 @@ export default function PortalDashboard() {
             </p>
           </div>
         </div>
+
+        {/* Time Clock Card - Prominent at top */}
+        {clockProjects && clockProjects.length > 0 && personnel && (
+          <ClockStatusCard
+            personnelId={personnel.id}
+            projects={clockProjects}
+            activeEntry={activeClockEntry}
+          />
+        )}
 
         {/* Stats Grid */}
         <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
