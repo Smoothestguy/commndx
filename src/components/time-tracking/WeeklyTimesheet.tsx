@@ -39,6 +39,8 @@ import {
   TimeEntry,
   useAdminTimeEntriesByWeek,
   useBulkDeleteTimeEntries,
+  useAssignedProjects,
+  useBulkAddTimeEntries,
 } from "@/integrations/supabase/hooks/useTimeEntries";
 import { useCompanySettings } from "@/integrations/supabase/hooks/useCompanySettings";
 import { useWeekCloseout } from "@/integrations/supabase/hooks/useWeekCloseouts";
@@ -58,6 +60,15 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { TimeDecimalInput } from "@/components/ui/time-decimal-input";
+import { Check, Save } from "lucide-react";
 
 interface WeeklyTimesheetProps {
   currentWeek: Date;
@@ -107,6 +118,13 @@ export function WeeklyTimesheet({
   const [selectedRows, setSelectedRows] = useState<Set<string>>(new Set());
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
   const [isExporting, setIsExporting] = useState(false);
+  
+  // Quick Add Row state
+  const [showQuickAddRow, setShowQuickAddRow] = useState(false);
+  const [quickAddProjectId, setQuickAddProjectId] = useState("");
+  const [quickAddHours, setQuickAddHours] = useState<Record<string, number>>({});
+  const [isSavingQuickAdd, setIsSavingQuickAdd] = useState(false);
+  
   const isMobile = useIsMobile();
 
   // Get user role to determine if we should show all entries
@@ -135,6 +153,8 @@ export function WeeklyTimesheet({
   const isLoading = roleLoading || entriesLoading;
   const { data: companySettings } = useCompanySettings();
   const bulkDeleteMutation = useBulkDeleteTimeEntries();
+  const { data: assignedProjects = [] } = useAssignedProjects();
+  const bulkAddTimeEntries = useBulkAddTimeEntries();
 
   const overtimeMultiplier = companySettings?.overtime_multiplier || 1.5;
   const holidayMultiplier = companySettings?.holiday_multiplier || 2.0;
@@ -293,7 +313,58 @@ export function WeeklyTimesheet({
     }
   };
 
-  // Count entries for selected rows (for confirmation message)
+  // Quick Add Row handlers
+  const handleQuickAddSave = async () => {
+    if (!quickAddProjectId) {
+      toast.error("Please select a project");
+      return;
+    }
+
+    const entriesToAdd = Object.entries(quickAddHours)
+      .filter(([_, hours]) => hours > 0)
+      .map(([date, hours]) => ({
+        project_id: quickAddProjectId,
+        entry_date: date,
+        hours,
+        billable: true,
+      }));
+
+    if (entriesToAdd.length === 0) {
+      toast.error("Please enter hours for at least one day");
+      return;
+    }
+
+    setIsSavingQuickAdd(true);
+    try {
+      await bulkAddTimeEntries.mutateAsync(entriesToAdd);
+      toast.success(`Added ${entriesToAdd.length} time entries`);
+      setShowQuickAddRow(false);
+      setQuickAddProjectId("");
+      setQuickAddHours({});
+    } catch (error) {
+      console.error("Error adding time entries:", error);
+      toast.error("Failed to add time entries");
+    } finally {
+      setIsSavingQuickAdd(false);
+    }
+  };
+
+  const handleCancelQuickAdd = () => {
+    setShowQuickAddRow(false);
+    setQuickAddProjectId("");
+    setQuickAddHours({});
+  };
+
+  // Filter out projects that already have entries for the current week (to avoid duplicates)
+  const availableProjects = useMemo(() => {
+    const projectsWithEntries = new Set(
+      entries
+        .filter((e) => !e.personnel_id) // Only check self-entries
+        .map((e) => e.project_id)
+    );
+    return assignedProjects.filter((p) => !projectsWithEntries.has(p.id));
+  }, [assignedProjects, entries]);
+
   const selectedEntriesCount = useMemo(() => {
     return entries.filter((entry) => {
       const rowKey = entry.personnel_id
@@ -635,7 +706,7 @@ export function WeeklyTimesheet({
     );
   }
 
-  if (rows.length === 0) {
+  if (rows.length === 0 && !showQuickAddRow) {
     return (
       <Card className="p-8 text-center">
         <div className="flex flex-col items-center gap-4">
@@ -647,21 +718,123 @@ export function WeeklyTimesheet({
             <p className="text-sm text-muted-foreground">
               {hasEntriesInDifferentWeek
                 ? "You have entries in other weeks. Jump to your most recent entries or use the week navigator above."
-                : "Switch to the Time Entries tab to add your first entry, or navigate to a different week."}
+                : "Add a project row below to start entering hours, or use the week navigator above."}
             </p>
           </div>
-          {hasEntriesInDifferentWeek && onWeekChange && latestEntryDate && (
-            <Button
-              variant="default"
-              onClick={handleJumpToRecentEntries}
-              className="mt-2"
-            >
-              <CalendarSearch className="h-4 w-4 mr-2" />
-              Jump to Week of {format(new Date(latestEntryDate), "MMM d, yyyy")}
-            </Button>
-          )}
+          <div className="flex flex-wrap gap-2 justify-center">
+            {hasEntriesInDifferentWeek && onWeekChange && latestEntryDate && (
+              <Button
+                variant="outline"
+                onClick={handleJumpToRecentEntries}
+              >
+                <CalendarSearch className="h-4 w-4 mr-2" />
+                Jump to Week of {format(new Date(latestEntryDate), "MMM d, yyyy")}
+              </Button>
+            )}
+            {!isWeekClosed && assignedProjects.length > 0 && (
+              <Button
+                variant="default"
+                onClick={() => setShowQuickAddRow(true)}
+              >
+                <Plus className="h-4 w-4 mr-2" />
+                Add Project Row
+              </Button>
+            )}
+          </div>
         </div>
       </Card>
+    );
+  }
+  
+  // Show only Quick Add Row when no entries exist but quick add is active
+  if (rows.length === 0 && showQuickAddRow) {
+    return (
+      <div className="space-y-4">
+        <Card className="overflow-x-auto">
+          <table className="w-full">
+            <thead>
+              <tr className="border-b bg-muted/50">
+                <th className="p-3 text-left font-medium min-w-[200px]">
+                  Project
+                </th>
+                {weekDays.map((day) => (
+                  <th
+                    key={day.toISOString()}
+                    className="p-3 text-center font-medium min-w-[100px]"
+                  >
+                    <div className="text-xs text-muted-foreground">
+                      {format(day, "EEE")}
+                    </div>
+                    <div className="text-sm">{format(day, "MMM d")}</div>
+                  </th>
+                ))}
+                <th className="p-3 text-center font-medium min-w-[120px]">
+                  Actions
+                </th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr className="border-b bg-primary/5">
+                <td className="p-3">
+                  <Select value={quickAddProjectId} onValueChange={setQuickAddProjectId}>
+                    <SelectTrigger className="w-full">
+                      <SelectValue placeholder="Select project" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {assignedProjects.map((project) => (
+                        <SelectItem key={project.id} value={project.id}>
+                          {project.name}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </td>
+                {weekDays.map((day) => {
+                  const dateString = format(day, "yyyy-MM-dd");
+                  return (
+                    <td key={dateString} className="p-2 text-center">
+                      <TimeDecimalInput
+                        value={quickAddHours[dateString] || 0}
+                        onValueChange={(val) =>
+                          setQuickAddHours((prev) => ({
+                            ...prev,
+                            [dateString]: val,
+                          }))
+                        }
+                        showPreview={false}
+                        compact
+                        className="w-full"
+                      />
+                    </td>
+                  );
+                })}
+                <td className="p-3 text-center">
+                  <div className="flex items-center justify-center gap-2">
+                    <Button
+                      size="sm"
+                      onClick={handleQuickAddSave}
+                      disabled={isSavingQuickAdd}
+                    >
+                      {isSavingQuickAdd ? (
+                        <Loader2 className="h-4 w-4 animate-spin" />
+                      ) : (
+                        <Save className="h-4 w-4" />
+                      )}
+                    </Button>
+                    <Button
+                      size="sm"
+                      variant="ghost"
+                      onClick={handleCancelQuickAdd}
+                    >
+                      <X className="h-4 w-4" />
+                    </Button>
+                  </div>
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </Card>
+      </div>
     );
   }
 
@@ -902,6 +1075,18 @@ export function WeeklyTimesheet({
             </Card>
           );
         })}
+        
+        {/* Mobile Add Project Button */}
+        {!isWeekClosed && availableProjects.length > 0 && (
+          <Button
+            variant="outline"
+            className="w-full"
+            onClick={() => setFormOpen(true)}
+          >
+            <Plus className="h-4 w-4 mr-2" />
+            Add Time Entry
+          </Button>
+        )}
 
         <TimeEntryForm
           open={formOpen}
@@ -1311,6 +1496,88 @@ export function WeeklyTimesheet({
                 </tr>
               );
             })}
+            
+            {/* Quick Add Row */}
+            {showQuickAddRow && !isWeekClosed && (
+              <tr className="border-b bg-primary/5">
+                {personnelRows.length > 0 && <td className="p-3"></td>}
+                <td className="p-3">
+                  <Select value={quickAddProjectId} onValueChange={setQuickAddProjectId}>
+                    <SelectTrigger className="w-full">
+                      <SelectValue placeholder="Select project" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {availableProjects.map((project) => (
+                        <SelectItem key={project.id} value={project.id}>
+                          {project.name}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </td>
+                {weekDays.map((day) => {
+                  const dateString = format(day, "yyyy-MM-dd");
+                  return (
+                    <td key={dateString} className="p-2 text-center">
+                      <TimeDecimalInput
+                        value={quickAddHours[dateString] || 0}
+                        onValueChange={(val) =>
+                          setQuickAddHours((prev) => ({
+                            ...prev,
+                            [dateString]: val,
+                          }))
+                        }
+                        showPreview={false}
+                        compact
+                        className="w-full"
+                      />
+                    </td>
+                  );
+                })}
+                <td className="p-3 text-center">
+                  <div className="flex items-center justify-center gap-2">
+                    <Button
+                      size="sm"
+                      onClick={handleQuickAddSave}
+                      disabled={isSavingQuickAdd}
+                    >
+                      {isSavingQuickAdd ? (
+                        <Loader2 className="h-4 w-4 animate-spin" />
+                      ) : (
+                        <Save className="h-4 w-4" />
+                      )}
+                    </Button>
+                    <Button
+                      size="sm"
+                      variant="ghost"
+                      onClick={handleCancelQuickAdd}
+                    >
+                      <X className="h-4 w-4" />
+                    </Button>
+                  </div>
+                </td>
+                <td className="p-3"></td>
+              </tr>
+            )}
+            
+            {/* Add Project Row Button */}
+            {!showQuickAddRow && !isWeekClosed && availableProjects.length > 0 && (
+              <tr className="border-b hover:bg-muted/30">
+                {personnelRows.length > 0 && <td className="p-3"></td>}
+                <td colSpan={weekDays.length + 3} className="p-3">
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="w-full text-muted-foreground hover:text-foreground"
+                    onClick={() => setShowQuickAddRow(true)}
+                  >
+                    <Plus className="h-4 w-4 mr-2" />
+                    Add Project Row
+                  </Button>
+                </td>
+              </tr>
+            )}
+            
             <tr className="bg-muted/50 font-semibold">
               {personnelRows.length > 0 && <td className="p-3"></td>}
               <td className="p-3">Daily Total</td>
