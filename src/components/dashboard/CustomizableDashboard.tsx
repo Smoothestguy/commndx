@@ -26,7 +26,7 @@ import { WelcomeBanner } from "./WelcomeBanner";
 import { DashboardLoadingSkeleton } from "./DashboardLoadingSkeleton";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
-import { DashboardDraftProvider } from "@/contexts/DashboardDraftContext";
+import { useDashboardDraft } from "@/contexts/DashboardDraftContext";
 
 interface CustomizableDashboardProps {
   children?: React.ReactNode;
@@ -60,6 +60,7 @@ export function CustomizableDashboard({
   const [draftTheme, setDraftTheme] = useState<DashboardTheme | null>(null);
 
   const canCustomize = isAdmin || isManager;
+  const draftContext = useDashboardDraft();
 
   // Track previous edit mode state to detect transitions
   const prevIsEditModeRef = useRef(isEditMode);
@@ -98,6 +99,14 @@ export function CustomizableDashboard({
       setDraftTheme(activeTheme);
     }
   }, [configLoading, isEditMode, activeLayout, activeWidgets, activeTheme]);
+
+  // Sync draft state to context so BackgroundMediaLayer can access it
+  useEffect(() => {
+    if (draftContext) {
+      draftContext.setDraftTheme(draftTheme);
+      draftContext.setIsEditMode(isEditMode);
+    }
+  }, [draftTheme, isEditMode, draftContext]);
 
   // Track unsaved changes
   const hasUnsavedChanges = useMemo(() => {
@@ -411,7 +420,7 @@ export function CustomizableDashboard({
   // Background is now rendered via BackgroundMediaLayer in SidebarLayout
 
   return (
-    <DashboardDraftProvider draftTheme={draftTheme} isEditMode={isEditMode}>
+    <>
       {/* Edit Mode Toggle in Actions Area */}
       <div className="flex justify-end mb-4 relative z-[1]">
         <EditModeToggle
@@ -479,6 +488,6 @@ export function CustomizableDashboard({
         onDiscardAndExit={handleDiscardAndExit}
         isSaving={isUpdating}
       />
-    </DashboardDraftProvider>
+    </>
   );
 }
