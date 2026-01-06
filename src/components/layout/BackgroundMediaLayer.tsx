@@ -1,6 +1,7 @@
 import { useLocation } from "react-router-dom";
 import { useDashboardConfig } from "@/hooks/useDashboardConfig";
 import { useUserRole } from "@/hooks/useUserRole";
+import { useDashboardDraft } from "@/contexts/DashboardDraftContext";
 
 // Map route paths to page identifiers
 const ROUTE_TO_PAGE_MAP: Record<string, string> = {
@@ -35,7 +36,8 @@ function getPageIdFromPath(pathname: string): string | null {
 export function BackgroundMediaLayer() {
   const location = useLocation();
   const { isAdmin, isManager, loading: roleLoading } = useUserRole();
-  const { activeTheme, isLoading: configLoading } = useDashboardConfig();
+  const { activeTheme: savedTheme, isLoading: configLoading } = useDashboardConfig();
+  const draftContext = useDashboardDraft();
 
   // Don't render anything while loading
   if (roleLoading || configLoading) {
@@ -47,6 +49,11 @@ export function BackgroundMediaLayer() {
   if (!canCustomize) {
     return null;
   }
+
+  // Use draft theme when in edit mode, otherwise use saved theme
+  const activeTheme = (draftContext?.isEditMode && draftContext?.draftTheme)
+    ? draftContext.draftTheme
+    : savedTheme;
 
   const hasBackgroundMedia = activeTheme?.backgroundVideo || activeTheme?.backgroundImage;
   if (!hasBackgroundMedia) {
