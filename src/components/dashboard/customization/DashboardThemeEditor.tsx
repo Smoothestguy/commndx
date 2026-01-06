@@ -160,6 +160,36 @@ export function DashboardThemeEditor({
               </div>
 
               <div className="space-y-2">
+                <Label>Widget Background</Label>
+                <div className="flex gap-2">
+                  <Input
+                    type="color"
+                    value={theme.cardBackground || "#1a1a2e"}
+                    onChange={(e) => updateTheme({ cardBackground: e.target.value })}
+                    className="w-12 h-9 p-1 cursor-pointer"
+                  />
+                  <Input
+                    value={theme.cardBackground || ""}
+                    onChange={(e) => updateTheme({ cardBackground: e.target.value })}
+                    placeholder="e.g., #1a1a2e"
+                    className="flex-1"
+                  />
+                  {theme.cardBackground && (
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      onClick={() => updateTheme({ cardBackground: undefined })}
+                    >
+                      <X className="h-4 w-4" />
+                    </Button>
+                  )}
+                </div>
+                <p className="text-xs text-muted-foreground">
+                  Background color for all widget cards
+                </p>
+              </div>
+
+              <div className="space-y-2">
                 <Label>Card Opacity</Label>
                 <Slider
                   value={[theme.cardOpacity ?? 100]}
