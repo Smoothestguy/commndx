@@ -17,6 +17,8 @@ import {
   FileJson,
   FileType,
   Lock,
+  ChevronDown,
+  ChevronRight,
 } from "lucide-react";
 import {
   DropdownMenu,
@@ -25,6 +27,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { TimeEntryForm } from "./TimeEntryForm";
+import { WeeklyProjectFolder } from "./WeeklyProjectFolder";
 import { toast } from "sonner";
 import {
   exportTimeEntriesToExcel,
@@ -69,7 +72,8 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { TimeDecimalInput } from "@/components/ui/time-decimal-input";
-import { Check, Save } from "lucide-react";
+import { Check, Save, FolderPlus, List } from "lucide-react";
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 
 interface WeeklyTimesheetProps {
   currentWeek: Date;
@@ -120,11 +124,14 @@ export function WeeklyTimesheet({
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
   const [isExporting, setIsExporting] = useState(false);
   
-  // Quick Add Row state
+  // Quick Add Row state (legacy, keeping for backward compatibility)
   const [showQuickAddRow, setShowQuickAddRow] = useState(false);
   const [quickAddProjectId, setQuickAddProjectId] = useState("");
   const [quickAddHours, setQuickAddHours] = useState<Record<string, number>>({});
   const [isSavingQuickAdd, setIsSavingQuickAdd] = useState(false);
+  
+  // Folder-based project selection state
+  const [showProjectFolders, setShowProjectFolders] = useState(true);
   
   const isMobile = useIsMobile();
 
@@ -356,6 +363,41 @@ export function WeeklyTimesheet({
     setQuickAddProjectId("");
     setQuickAddHours({});
   };
+
+  // Handler for saving hours from folder view
+  const handleFolderSave = async (projectId: string, hours: Record<string, number>) => {
+    const entriesToAdd = Object.entries(hours)
+      .filter(([_, h]) => h > 0)
+      .map(([date, h]) => ({
+        project_id: projectId,
+        entry_date: date,
+        hours: h,
+        billable: true,
+      }));
+
+    if (entriesToAdd.length === 0) {
+      throw new Error("No hours to save");
+    }
+
+    await bulkAddTimeEntries.mutateAsync(entriesToAdd);
+  };
+
+  // Get existing hours for a project for the current week
+  const getProjectExistingHours = (projectId: string): Record<string, number> => {
+    const hours: Record<string, number> = {};
+    entries
+      .filter((e) => e.project_id === projectId && !e.personnel_id) // Only self-entries
+      .forEach((e) => {
+        hours[e.entry_date] = Number(e.hours);
+      });
+    return hours;
+  };
+
+  // Get all projects for folder view (including those with entries)
+  const allProjectsForFolders = useMemo(() => {
+    const projectsList = (isAdmin || isManager) ? allProjects : assignedProjects;
+    return projectsList;
+  }, [isAdmin, isManager, allProjects, assignedProjects]);
 
   // Filter out projects that already have entries for the current week (to avoid duplicates)
   const availableProjects = useMemo(() => {
@@ -713,41 +755,70 @@ export function WeeklyTimesheet({
 
   if (rows.length === 0 && !showQuickAddRow) {
     return (
-      <Card className="p-8 text-center">
-        <div className="flex flex-col items-center gap-4">
-          <div className="rounded-full bg-muted p-3">
-            <CalendarSearch className="h-8 w-8 text-muted-foreground" />
-          </div>
-          <div className="space-y-2">
-            <p className="text-lg font-medium">No time entries for this week</p>
-            <p className="text-sm text-muted-foreground">
-              {hasEntriesInDifferentWeek
-                ? "You have entries in other weeks. Jump to your most recent entries or use the week navigator above."
-                : "Add a project row below to start entering hours, or use the week navigator above."}
-            </p>
-          </div>
-          <div className="flex flex-wrap gap-2 justify-center">
-            {hasEntriesInDifferentWeek && onWeekChange && latestEntryDate && (
+      <div className="space-y-4">
+        {/* Jump to recent entries hint */}
+        {hasEntriesInDifferentWeek && onWeekChange && latestEntryDate && (
+          <Card className="p-4 bg-muted/30 border-muted">
+            <div className="flex items-center justify-between gap-4">
+              <p className="text-sm text-muted-foreground">
+                You have entries in other weeks. Jump to your most recent entries.
+              </p>
               <Button
                 variant="outline"
+                size="sm"
                 onClick={handleJumpToRecentEntries}
               >
                 <CalendarSearch className="h-4 w-4 mr-2" />
                 Jump to Week of {format(new Date(latestEntryDate), "MMM d, yyyy")}
               </Button>
-            )}
-            {!isWeekClosed && assignedProjects.length > 0 && (
-              <Button
-                variant="default"
-                onClick={() => setShowQuickAddRow(true)}
-              >
-                <Plus className="h-4 w-4 mr-2" />
-                Add Project Row
-              </Button>
-            )}
-          </div>
-        </div>
-      </Card>
+            </div>
+          </Card>
+        )}
+
+        {/* Folder-based project selection for empty state */}
+        {!isWeekClosed && allProjectsForFolders.length > 0 && (
+          <Card className="overflow-hidden">
+            <div className="p-4 border-b bg-muted/30">
+              <div className="flex items-center gap-2">
+                <FolderPlus className="h-5 w-5 text-primary" />
+                <span className="font-medium">Select a Project & Enter Hours</span>
+              </div>
+              <p className="text-sm text-muted-foreground mt-1">
+                Click on a project folder below to expand it and enter your hours for each day.
+              </p>
+            </div>
+            <div>
+              {allProjectsForFolders.map((project) => (
+                <WeeklyProjectFolder
+                  key={project.id}
+                  project={project}
+                  weekDays={weekDays}
+                  existingHours={getProjectExistingHours(project.id)}
+                  onSave={handleFolderSave}
+                  isWeekClosed={isWeekClosed}
+                  defaultExpanded={false}
+                />
+              ))}
+            </div>
+          </Card>
+        )}
+
+        {!isWeekClosed && allProjectsForFolders.length === 0 && (
+          <Card className="p-8 text-center">
+            <div className="flex flex-col items-center gap-4">
+              <div className="rounded-full bg-muted p-3">
+                <CalendarSearch className="h-8 w-8 text-muted-foreground" />
+              </div>
+              <div className="space-y-2">
+                <p className="text-lg font-medium">No projects available</p>
+                <p className="text-sm text-muted-foreground">
+                  Contact your administrator to be assigned to projects.
+                </p>
+              </div>
+            </div>
+          </Card>
+        )}
+      </div>
     );
   }
   
@@ -1081,16 +1152,45 @@ export function WeeklyTimesheet({
           );
         })}
         
-        {/* Mobile Add Project Button */}
-        {!isWeekClosed && availableProjects.length > 0 && (
-          <Button
-            variant="outline"
-            className="w-full"
-            onClick={() => setFormOpen(true)}
-          >
-            <Plus className="h-4 w-4 mr-2" />
-            Add Time Entry
-          </Button>
+        {/* Mobile: Folder-based Project Selection */}
+        {!isWeekClosed && allProjectsForFolders.length > 0 && (
+          <Card className="overflow-hidden">
+            <Collapsible open={showProjectFolders} onOpenChange={setShowProjectFolders}>
+              <CollapsibleTrigger asChild>
+                <div className="flex items-center justify-between p-3 cursor-pointer hover:bg-muted/30 transition-colors">
+                  <div className="flex items-center gap-2">
+                    <FolderPlus className="h-4 w-4 text-primary" />
+                    <span className="font-medium text-sm">Select Projects</span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <span className="text-xs text-muted-foreground">
+                      {allProjectsForFolders.length}
+                    </span>
+                    {showProjectFolders ? (
+                      <ChevronDown className="h-4 w-4 text-muted-foreground" />
+                    ) : (
+                      <ChevronRight className="h-4 w-4 text-muted-foreground" />
+                    )}
+                  </div>
+                </div>
+              </CollapsibleTrigger>
+              <CollapsibleContent>
+                <div className="border-t">
+                  {allProjectsForFolders.map((project) => (
+                    <WeeklyProjectFolder
+                      key={project.id}
+                      project={project}
+                      weekDays={weekDays}
+                      existingHours={getProjectExistingHours(project.id)}
+                      onSave={handleFolderSave}
+                      isWeekClosed={isWeekClosed}
+                      defaultExpanded={entries.some((e) => e.project_id === project.id && !e.personnel_id)}
+                    />
+                  ))}
+                </div>
+              </CollapsibleContent>
+            </Collapsible>
+          </Card>
         )}
 
         <TimeEntryForm
@@ -1117,6 +1217,52 @@ export function WeeklyTimesheet({
   // Desktop: Table view
   return (
     <div className="space-y-4">
+      {/* Folder-based Project Selection */}
+      {!isWeekClosed && allProjectsForFolders.length > 0 && (
+        <Card className="overflow-hidden">
+          <Collapsible open={showProjectFolders} onOpenChange={setShowProjectFolders}>
+            <CollapsibleTrigger asChild>
+              <div className="flex items-center justify-between p-4 cursor-pointer hover:bg-muted/30 transition-colors">
+                <div className="flex items-center gap-2">
+                  <FolderPlus className="h-5 w-5 text-primary" />
+                  <span className="font-medium">Select Projects & Enter Hours</span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <span className="text-sm text-muted-foreground">
+                    {allProjectsForFolders.length} project{allProjectsForFolders.length !== 1 ? "s" : ""}
+                  </span>
+                  {showProjectFolders ? (
+                    <ChevronDown className="h-4 w-4 text-muted-foreground" />
+                  ) : (
+                    <ChevronRight className="h-4 w-4 text-muted-foreground" />
+                  )}
+                </div>
+              </div>
+            </CollapsibleTrigger>
+            <CollapsibleContent>
+              <div className="border-t">
+                {allProjectsForFolders.length === 0 ? (
+                  <div className="p-4 text-center text-muted-foreground">
+                    No projects available. Contact your administrator to be assigned to projects.
+                  </div>
+                ) : (
+                  allProjectsForFolders.map((project) => (
+                    <WeeklyProjectFolder
+                      key={project.id}
+                      project={project}
+                      weekDays={weekDays}
+                      existingHours={getProjectExistingHours(project.id)}
+                      onSave={handleFolderSave}
+                      isWeekClosed={isWeekClosed}
+                      defaultExpanded={entries.some((e) => e.project_id === project.id && !e.personnel_id)}
+                    />
+                  ))
+                )}
+              </div>
+            </CollapsibleContent>
+          </Collapsible>
+        </Card>
+      )}
       {/* Weekly Summary Card */}
       <Card className="p-4 bg-primary/5 border-primary/20">
         <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
