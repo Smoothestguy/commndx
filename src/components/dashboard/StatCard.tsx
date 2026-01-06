@@ -10,6 +10,8 @@ interface StatCardProps {
   icon: LucideIcon;
   href?: string;
   compact?: boolean;
+  backgroundColor?: string;
+  textColor?: string;
 }
 
 export function StatCard({
@@ -20,6 +22,8 @@ export function StatCard({
   icon: Icon,
   href,
   compact = false,
+  backgroundColor,
+  textColor,
 }: StatCardProps) {
   const cardContent = compact ? (
     <>
@@ -63,13 +67,18 @@ export function StatCard({
     href && "cursor-pointer hover:border-primary/50"
   );
 
+  const cardStyle = {
+    backgroundColor,
+    color: textColor,
+  };
+
   if (href) {
     return (
-      <Link to={href} className={cardClasses}>
+      <Link to={href} className={cardClasses} style={cardStyle}>
         {cardContent}
       </Link>
     );
   }
 
-  return <div className={cardClasses}>{cardContent}</div>;
+  return <div className={cardClasses} style={cardStyle}>{cardContent}</div>;
 }
