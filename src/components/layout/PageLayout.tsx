@@ -35,8 +35,7 @@ export function PageLayout({
         )}
       >
         <div ref={swipeRef} className="max-w-[1600px] mx-auto w-full">
-          {/* Page Header */}
-          <header className="mb-6 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+          <header className="relative z-[2] mb-6 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
             <div>
               <h1 className="font-heading text-xl sm:text-2xl font-bold text-foreground">
                 {title}
