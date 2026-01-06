@@ -26,7 +26,6 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { TimeEntryForm } from "./TimeEntryForm";
-import { WeeklyProjectFolder } from "./WeeklyProjectFolder";
 import { WeeklyProjectSection } from "./WeeklyProjectSection";
 import { toast } from "sonner";
 import {
@@ -43,7 +42,6 @@ import {
   useAdminTimeEntriesByWeek,
   useBulkDeleteTimeEntries,
   useAssignedProjects,
-  useBulkAddTimeEntries,
 } from "@/integrations/supabase/hooks/useTimeEntries";
 import { useProjects } from "@/integrations/supabase/hooks/useProjects";
 import { useCompanySettings } from "@/integrations/supabase/hooks/useCompanySettings";
@@ -64,15 +62,6 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
-import { TimeDecimalInput } from "@/components/ui/time-decimal-input";
-import { Save } from "lucide-react";
 
 interface WeeklyTimesheetProps {
   currentWeek: Date;
@@ -123,8 +112,6 @@ export function WeeklyTimesheet({
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
   const [isExporting, setIsExporting] = useState(false);
   
-  // Project selector state - user selects a project first, then enters hours
-  const [selectedInputProjectId, setSelectedInputProjectId] = useState<string>("");
   
   // Track which project folders are expanded
   const [expandedProjects, setExpandedProjects] = useState<Set<string>>(new Set());
@@ -159,7 +146,7 @@ export function WeeklyTimesheet({
   const bulkDeleteMutation = useBulkDeleteTimeEntries();
   const { data: assignedProjects = [] } = useAssignedProjects();
   const { data: allProjects = [] } = useProjects();
-  const bulkAddTimeEntries = useBulkAddTimeEntries();
+  
 
   const overtimeMultiplier = companySettings?.overtime_multiplier || 1.5;
   const holidayMultiplier = companySettings?.holiday_multiplier || 2.0;
@@ -354,35 +341,6 @@ export function WeeklyTimesheet({
       setSelectedRows(new Set());
       setShowDeleteDialog(false);
     }
-  };
-
-  // Handler for saving hours from project selector view
-  const handleFolderSave = async (projectId: string, hours: Record<string, number>) => {
-    const entriesToAdd = Object.entries(hours)
-      .filter(([_, h]) => h > 0)
-      .map(([date, h]) => ({
-        project_id: projectId,
-        entry_date: date,
-        hours: h,
-        billable: true,
-      }));
-
-    if (entriesToAdd.length === 0) {
-      throw new Error("No hours to save");
-    }
-
-    await bulkAddTimeEntries.mutateAsync(entriesToAdd);
-  };
-
-  // Get existing hours for a project for the current week
-  const getProjectExistingHours = (projectId: string): Record<string, number> => {
-    const hours: Record<string, number> = {};
-    entries
-      .filter((e) => e.project_id === projectId && !e.personnel_id) // Only self-entries
-      .forEach((e) => {
-        hours[e.entry_date] = Number(e.hours);
-      });
-    return hours;
   };
 
   // Get all projects for folder view (including those with entries)
@@ -739,10 +697,6 @@ export function WeeklyTimesheet({
     }).format(amount);
   };
 
-  // Get the selected project for the input section - must be before any early returns
-  const selectedInputProject = useMemo(() => {
-    return allProjectsForFolders.find(p => p.id === selectedInputProjectId);
-  }, [allProjectsForFolders, selectedInputProjectId]);
 
   if (isLoading) {
     return (
@@ -750,62 +704,7 @@ export function WeeklyTimesheet({
     );
   }
 
-  // Render Project Selector UI (used in both mobile and desktop)
-  const renderProjectSelector = () => (
-    <Card className="overflow-hidden">
-      <div className="p-4 border-b bg-muted/30">
-        <div className="flex items-center gap-2 mb-3">
-          <Folder className="h-5 w-5 text-primary" />
-          <span className="font-medium">Select a Project</span>
-        </div>
-        <Select 
-          value={selectedInputProjectId} 
-          onValueChange={setSelectedInputProjectId}
-          disabled={isWeekClosed}
-        >
-          <SelectTrigger className="w-full bg-background">
-            <SelectValue placeholder="Choose a project to enter hours..." />
-          </SelectTrigger>
-          <SelectContent className="bg-popover">
-            {allProjectsForFolders.map((project) => {
-              const projectHours = getProjectExistingHours(project.id);
-              const totalHours = Object.values(projectHours).reduce((sum, h) => sum + h, 0);
-              return (
-                <SelectItem key={project.id} value={project.id}>
-                  <div className="flex items-center justify-between w-full gap-4">
-                    <span>{project.name}</span>
-                    {totalHours > 0 && (
-                      <Badge variant="secondary" className="ml-2">
-                        {totalHours.toFixed(1)}h
-                      </Badge>
-                    )}
-                  </div>
-                </SelectItem>
-              );
-            })}
-          </SelectContent>
-        </Select>
-      </div>
-      
-      {/* Show input grid only when project is selected */}
-      {selectedInputProject && (
-        <WeeklyProjectFolder
-          project={selectedInputProject}
-          weekDays={weekDays}
-          existingHours={getProjectExistingHours(selectedInputProject.id)}
-          onSave={handleFolderSave}
-          isWeekClosed={isWeekClosed}
-          defaultExpanded={true}
-        />
-      )}
-      
-      {!selectedInputProjectId && (
-        <div className="p-6 text-center text-muted-foreground">
-          <p className="text-sm">Select a project from the dropdown above to enter your hours for each day of the week.</p>
-        </div>
-      )}
-    </Card>
-  );
+
 
   if (rows.length === 0) {
     return (
@@ -829,8 +728,6 @@ export function WeeklyTimesheet({
           </Card>
         )}
 
-        {/* Project selector with dropdown */}
-        {!isWeekClosed && allProjectsForFolders.length > 0 && renderProjectSelector()}
 
         {!isWeekClosed && allProjectsForFolders.length === 0 && (
           <Card className="p-8 text-center">
@@ -1089,8 +986,6 @@ export function WeeklyTimesheet({
           );
         })}
         
-        {/* Mobile: Project Selector with Dropdown */}
-        {!isWeekClosed && allProjectsForFolders.length > 0 && renderProjectSelector()}
 
         <TimeEntryForm
           open={formOpen}
@@ -1116,8 +1011,6 @@ export function WeeklyTimesheet({
   // Desktop: Table view
   return (
     <div className="space-y-4">
-      {/* Project Selector with Dropdown */}
-      {!isWeekClosed && allProjectsForFolders.length > 0 && renderProjectSelector()}
       {/* Weekly Summary Card */}
       <Card className="p-4 bg-primary/5 border-primary/20">
         <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
