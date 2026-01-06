@@ -34,7 +34,7 @@ interface CustomizableDashboardProps {
 export function CustomizableDashboard({
   children,
 }: CustomizableDashboardProps) {
-  const { isAdmin, isManager } = useUserRole();
+  const { isAdmin, isManager, loading: roleLoading } = useUserRole();
   const {
     activeLayout,
     activeWidgets,
@@ -391,6 +391,11 @@ export function CustomizableDashboard({
     }
     return zones;
   }, [isEditMode, maxRow, getOccupiedCells]);
+
+  // While role is resolving, avoid flashing fallback dashboard content
+  if (roleLoading) {
+    return <DashboardLoadingSkeleton />;
+  }
 
   // Show default dashboard content if not customizable
   if (!canCustomize) {
