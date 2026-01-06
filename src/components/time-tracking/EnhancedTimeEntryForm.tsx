@@ -120,6 +120,8 @@ export function EnhancedTimeEntryForm({
   const [templateHours, setTemplateHours] = useState<WeeklyHours>({});
   // Holiday tracking for weekly mode
   const [holidayDays, setHolidayDays] = useState<HolidayDays>({});
+  // Daily mode: per-personnel hours
+  const [dailyPersonnelHours, setDailyPersonnelHours] = useState<Record<string, number>>({});
 
   const { isAdmin, isManager } = useUserRole();
   const { data: assignedProjects = [] } = useAssignedProjects();
@@ -222,20 +224,29 @@ export function EnhancedTimeEntryForm({
     return { total, cost };
   };
 
-  // Calculate estimated cost for daily mode with holiday multiplier
+  // Calculate estimated cost for daily mode with holiday multiplier (using individual hours)
   const estimatedDailyCost = useMemo(() => {
-    if (watchedHours <= 0 || selectedPersonnel.size === 0) return 0;
+    if (selectedPersonnel.size === 0) return 0;
     
     let total = 0;
     selectedPersonnel.forEach(personnelId => {
       const person = assignedPersonnel.find(a => a.personnel?.id === personnelId)?.personnel;
       const rate = person?.hourly_rate || 0;
+      const hours = dailyPersonnelHours[personnelId] || 0;
       const multiplier = watchedIsHoliday ? holidayMultiplier : 1;
-      total += watchedHours * rate * multiplier;
+      total += hours * rate * multiplier;
     });
     
     return total;
-  }, [watchedHours, watchedIsHoliday, selectedPersonnel, assignedPersonnel, holidayMultiplier]);
+  }, [dailyPersonnelHours, watchedIsHoliday, selectedPersonnel, assignedPersonnel, holidayMultiplier]);
+
+  // Calculate total hours for daily mode when personnel are selected
+  const dailyTotalHours = useMemo(() => {
+    if (selectedPersonnel.size === 0) return 0;
+    return Array.from(selectedPersonnel).reduce((sum, personnelId) => {
+      return sum + (dailyPersonnelHours[personnelId] || 0);
+    }, 0);
+  }, [selectedPersonnel, dailyPersonnelHours]);
 
   // Calculate grand totals for all selected personnel
   const grandTotals = useMemo(() => {
@@ -291,6 +302,7 @@ export function EnhancedTimeEntryForm({
       setPersonnelHours({});
       setTemplateHours({});
       setHolidayDays({});
+      setDailyPersonnelHours({});
     }
   }, [open, entry]);
 
@@ -298,6 +310,7 @@ export function EnhancedTimeEntryForm({
   useEffect(() => {
     setSelectedPersonnel(new Set());
     setPersonnelHours({});
+    setDailyPersonnelHours({});
   }, [currentProjectId]);
 
   // Apply template hours to all selected personnel
@@ -348,16 +361,23 @@ export function EnhancedTimeEntryForm({
         return;
       }
       
-      // If personnel are selected, create entries for each using personnel hook
+      // If personnel are selected, create entries for each using their individual hours
       if (selectedPersonnel.size > 0) {
-        const entries: PersonnelTimeEntryInsert[] = Array.from(selectedPersonnel).map(personnelId => ({
-          project_id,
-          entry_date,
-          hours,
-          personnel_id: personnelId,
-          description: description || undefined,
-          is_holiday,
-        }));
+        const entries: PersonnelTimeEntryInsert[] = Array.from(selectedPersonnel)
+          .filter(personnelId => (dailyPersonnelHours[personnelId] || 0) > 0)
+          .map(personnelId => ({
+            project_id,
+            entry_date,
+            hours: dailyPersonnelHours[personnelId] || 0,
+            personnel_id: personnelId,
+            description: description || undefined,
+            is_holiday,
+          }));
+        
+        if (entries.length === 0) {
+          return; // No hours entered for any personnel
+        }
+        
         await bulkAddPersonnelTimeEntries.mutateAsync(entries);
       } else {
         // No personnel selected, create single entry for current user
@@ -374,9 +394,27 @@ export function EnhancedTimeEntryForm({
       onOpenChange(false);
       form.reset();
       setSelectedPersonnel(new Set());
+      setDailyPersonnelHours({});
     } catch (error) {
       console.error("Failed to save time entry:", error);
     }
+  };
+
+  // Update daily personnel hour
+  const updateDailyPersonnelHour = (personnelId: string, value: number) => {
+    setDailyPersonnelHours(prev => ({
+      ...prev,
+      [personnelId]: value,
+    }));
+  };
+
+  // Apply same hours to all selected personnel in daily mode
+  const applyHoursToAllDaily = (hours: number) => {
+    const newHours: Record<string, number> = {};
+    selectedPersonnel.forEach(personnelId => {
+      newHours[personnelId] = hours;
+    });
+    setDailyPersonnelHours(newHours);
   };
 
   const handleWeeklySubmit = async () => {
@@ -564,6 +602,127 @@ export function EnhancedTimeEntryForm({
           <p className="text-xs text-muted-foreground">
             Leave empty to log time for yourself
           </p>
+        )}
+      </div>
+    );
+  };
+
+  // Daily Personnel Hours Section - Individual hours per person
+  const DailyPersonnelHoursSection = () => {
+    if (selectedPersonnel.size === 0) return null;
+
+    const selectedPersonnelList = assignedPersonnel.filter(
+      a => a.personnel && selectedPersonnel.has(a.personnel.id)
+    );
+
+    return (
+      <div className="space-y-3">
+        <div className="flex items-center justify-between">
+          <Label className="flex items-center gap-2">
+            <Clock className="h-4 w-4" />
+            Hours per Personnel
+          </Label>
+          <div className="flex items-center gap-2">
+            <Input
+              type="number"
+              step="0.25"
+              min="0"
+              max="24"
+              placeholder="Hours"
+              className="w-20 h-8 text-sm"
+              onChange={(e) => {
+                const val = parseFloat(e.target.value) || 0;
+                if (val > 0) applyHoursToAllDaily(val);
+              }}
+            />
+            <Button
+              type="button"
+              variant="secondary"
+              size="sm"
+              className="h-8 text-xs"
+              onClick={() => {
+                const firstValue = Object.values(dailyPersonnelHours)[0] || 0;
+                if (firstValue > 0) applyHoursToAllDaily(firstValue);
+              }}
+            >
+              Apply to All
+            </Button>
+          </div>
+        </div>
+
+        <div className="border rounded-lg divide-y">
+          {selectedPersonnelList.map((assignment) => {
+            const person = assignment.personnel!;
+            const hours = dailyPersonnelHours[person.id] || 0;
+            const cost = hours * (person.hourly_rate || 0) * (watchedIsHoliday ? holidayMultiplier : 1);
+            
+            return (
+              <div key={person.id} className="flex items-center justify-between p-3 gap-3">
+                <div className="flex items-center gap-2 flex-1 min-w-0">
+                  <PersonnelAvatar
+                    photoUrl={(person as any).photo_url}
+                    firstName={person.first_name}
+                    lastName={person.last_name}
+                    size="xs"
+                  />
+                  <div className="min-w-0">
+                    <span className="text-sm font-medium truncate block">
+                      {person.first_name} {person.last_name}
+                    </span>
+                    {person.hourly_rate && (
+                      <span className="text-xs text-muted-foreground">
+                        ${person.hourly_rate}/hr
+                      </span>
+                    )}
+                  </div>
+                </div>
+                <div className="flex items-center gap-3">
+                  <TimeDecimalInput
+                    value={hours}
+                    onValueChange={(val) => updateDailyPersonnelHour(person.id, val)}
+                    showIcon={false}
+                    showPreview={false}
+                    placeholder="0"
+                    className="w-20"
+                  />
+                  {cost > 0 && (
+                    <span className="text-sm font-medium text-primary w-20 text-right">
+                      ${cost.toFixed(2)}
+                    </span>
+                  )}
+                </div>
+              </div>
+            );
+          })}
+        </div>
+
+        {/* Totals */}
+        {dailyTotalHours > 0 && (
+          <div className="rounded-lg border p-3 bg-muted/30">
+            <div className="flex items-center justify-between text-sm">
+              <span className="text-muted-foreground flex items-center gap-2">
+                <Clock className="h-4 w-4" />
+                Total Hours:
+              </span>
+              <span className="font-medium">{dailyTotalHours.toFixed(2)}h</span>
+            </div>
+            {estimatedDailyCost > 0 && (
+              <div className="flex items-center justify-between text-sm mt-1">
+                <span className="text-muted-foreground flex items-center gap-1">
+                  Estimated Cost:
+                  {watchedIsHoliday && (
+                    <Badge variant="outline" className="text-purple-600 border-purple-300 text-xs">
+                      Holiday 2x
+                    </Badge>
+                  )}
+                </span>
+                <span className="font-medium text-primary">${estimatedDailyCost.toFixed(2)}</span>
+              </div>
+            )}
+            <p className="text-xs text-muted-foreground mt-2">
+              Overtime is calculated weekly when total exceeds {weeklyOvertimeThreshold}h
+            </p>
+          </div>
         )}
       </div>
     );
@@ -894,25 +1053,31 @@ export function EnhancedTimeEntryForm({
                 {/* Personnel Selection for Daily */}
                 {!entry && <PersonnelSelectionSection />}
 
-                <FormField
-                  control={form.control}
-                  name="hours"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Hours</FormLabel>
-                      <FormControl>
-                        <TimeDecimalInput
-                          value={field.value || 0}
-                          onValueChange={field.onChange}
-                          showIcon={true}
-                          showPreview={true}
-                          placeholder="e.g., 8:20 or 8.33"
-                        />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
+                {/* Individual Hours per Personnel (when personnel selected) */}
+                {!entry && selectedPersonnel.size > 0 && <DailyPersonnelHoursSection />}
+
+                {/* Single Hours Field (when no personnel selected or editing) */}
+                {(entry || selectedPersonnel.size === 0) && (
+                  <FormField
+                    control={form.control}
+                    name="hours"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Hours</FormLabel>
+                        <FormControl>
+                          <TimeDecimalInput
+                            value={field.value || 0}
+                            onValueChange={field.onChange}
+                            showIcon={true}
+                            showPreview={true}
+                            placeholder="e.g., 8:20 or 8.33"
+                          />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                )}
 
                 <FormField
                   control={form.control}
@@ -928,8 +1093,8 @@ export function EnhancedTimeEntryForm({
                   )}
                 />
 
-                {/* Hours display with live cost preview */}
-                {watchedHours > 0 && (
+                {/* Hours display with live cost preview - only show when no personnel selected */}
+                {watchedHours > 0 && selectedPersonnel.size === 0 && (
                   <div className="rounded-lg border p-3 bg-muted/30 space-y-2">
                     <div className="flex items-center gap-2 text-sm font-medium">
                       <Clock className="h-4 w-4" />
@@ -940,22 +1105,6 @@ export function EnhancedTimeEntryForm({
                         <span className="text-muted-foreground">Hours:</span>
                         <span className="font-medium">{watchedHours.toFixed(2)}h</span>
                       </div>
-                      
-                      {/* Show cost preview if personnel selected */}
-                      {selectedPersonnel.size > 0 && estimatedDailyCost > 0 && (
-                        <div className="flex items-center justify-between">
-                          <span className="text-muted-foreground flex items-center gap-1">
-                            Estimated Cost:
-                            {watchedIsHoliday && (
-                              <Badge variant="outline" className="text-purple-600 border-purple-300 text-xs">
-                                Holiday 2x
-                              </Badge>
-                            )}
-                          </span>
-                          <span className="font-medium text-primary">${estimatedDailyCost.toFixed(2)}</span>
-                        </div>
-                      )}
-                      
                       <p className="text-xs text-muted-foreground mt-1">
                         Overtime is calculated weekly when total exceeds {weeklyOvertimeThreshold}h
                       </p>
@@ -1010,7 +1159,12 @@ export function EnhancedTimeEntryForm({
                   <Button 
                     type="submit" 
                     className="flex-1" 
-                    disabled={addTimeEntry.isPending || bulkAddTimeEntries.isPending || bulkAddPersonnelTimeEntries.isPending}
+                    disabled={
+                      addTimeEntry.isPending || 
+                      bulkAddTimeEntries.isPending || 
+                      bulkAddPersonnelTimeEntries.isPending ||
+                      (selectedPersonnel.size > 0 && dailyTotalHours === 0)
+                    }
                   >
                     {entry ? "Update" : "Add"} Entry
                     {selectedPersonnel.size > 0 && ` (${selectedPersonnel.size})`}
