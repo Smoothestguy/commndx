@@ -2,6 +2,7 @@ import { useState, useMemo, useEffect } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
+import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useProjects } from "@/integrations/supabase/hooks/useProjects";
 import { usePersonnel } from "@/integrations/supabase/hooks/usePersonnel";
@@ -13,11 +14,12 @@ import {
   useResendAssignmentSMS
 } from "@/integrations/supabase/hooks/usePersonnelProjectAssignments";
 import { useActiveProjectRateBrackets } from "@/integrations/supabase/hooks/useProjectRateBrackets";
-import { Users, UserPlus, X, Briefcase, Pencil, Check, AlertCircle, MessageSquare } from "lucide-react";
+import { Users, UserPlus, X, Briefcase, Pencil, Check, AlertCircle, MessageSquare, Calendar, Clock } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { formatCurrency } from "@/lib/utils";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
+import { format, addDays } from "date-fns";
 
 interface PersonnelAssignmentDialogProps {
   open: boolean;
@@ -37,6 +39,11 @@ export function PersonnelAssignmentDialog({
   const [rateBracketSelections, setRateBracketSelections] = useState<Record<string, string>>({});
   const [editingAssignmentId, setEditingAssignmentId] = useState<string | null>(null);
   const [editingRateBracketId, setEditingRateBracketId] = useState<string>("");
+  
+  // Schedule fields
+  const [scheduleDate, setScheduleDate] = useState<string>("");
+  const [scheduleStartTime, setScheduleStartTime] = useState<string>("08:00");
+  const [scheduleEndTime, setScheduleEndTime] = useState<string>("17:00");
 
   const { data: projects = [] } = useProjects();
   const { data: allPersonnel = [] } = usePersonnel();
@@ -47,10 +54,16 @@ export function PersonnelAssignmentDialog({
   const updateRateBracketMutation = useUpdateAssignmentRateBracket();
   const resendSMSMutation = useResendAssignmentSMS();
 
-  // Set project from prop when dialog opens
+  // Set project from prop when dialog opens and reset schedule defaults
   useEffect(() => {
-    if (open && defaultProjectId) {
-      setSelectedProject(defaultProjectId);
+    if (open) {
+      if (defaultProjectId) {
+        setSelectedProject(defaultProjectId);
+      }
+      // Set default schedule date to tomorrow
+      setScheduleDate(format(addDays(new Date(), 1), "yyyy-MM-dd"));
+      setScheduleStartTime("08:00");
+      setScheduleEndTime("17:00");
     }
   }, [open, defaultProjectId]);
 
@@ -105,6 +118,9 @@ export function PersonnelAssignmentDialog({
       personnelIds: Array.from(selectedPersonnel),
       projectId: selectedProject,
       rateBracketIds: rateBracketSelections,
+      scheduledDate: scheduleDate || undefined,
+      scheduledStartTime: scheduleStartTime || undefined,
+      scheduledEndTime: scheduleEndTime || undefined,
     }, {
       onSuccess: () => {
         setSelectedPersonnel(new Set());
@@ -305,6 +321,47 @@ export function PersonnelAssignmentDialog({
                     })}
                   </div>
                 )}
+              </div>
+
+              {/* Schedule Fields */}
+              <div className="space-y-2 p-3 bg-muted/30 rounded-lg border">
+                <Label className="flex items-center gap-2 text-sm font-medium">
+                  <Calendar className="h-4 w-4" />
+                  First Day Schedule (Optional)
+                </Label>
+                <div className="grid grid-cols-3 gap-2">
+                  <div>
+                    <Label className="text-xs text-muted-foreground">Date</Label>
+                    <Input
+                      type="date"
+                      value={scheduleDate}
+                      onChange={(e) => setScheduleDate(e.target.value)}
+                      className="h-8 text-sm"
+                    />
+                  </div>
+                  <div>
+                    <Label className="text-xs text-muted-foreground">Start Time</Label>
+                    <Input
+                      type="time"
+                      value={scheduleStartTime}
+                      onChange={(e) => setScheduleStartTime(e.target.value)}
+                      className="h-8 text-sm"
+                    />
+                  </div>
+                  <div>
+                    <Label className="text-xs text-muted-foreground">End Time</Label>
+                    <Input
+                      type="time"
+                      value={scheduleEndTime}
+                      onChange={(e) => setScheduleEndTime(e.target.value)}
+                      className="h-8 text-sm"
+                    />
+                  </div>
+                </div>
+                <p className="text-xs text-muted-foreground flex items-center gap-1">
+                  <Clock className="h-3 w-3" />
+                  Personnel will be notified to arrive by the scheduled start time
+                </p>
               </div>
 
               {/* Add Personnel */}
