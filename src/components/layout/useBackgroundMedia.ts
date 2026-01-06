@@ -5,15 +5,14 @@ import { useUserRole } from "@/hooks/useUserRole";
 
 const ROUTE_TO_PAGE_MAP: Record<string, string> = {
   "/": "dashboard",
+  "/products": "products",
   "/customers": "customers",
-  "/estimates": "estimates",
-  "/invoices": "invoices",
   "/projects": "projects",
-  "/job-orders": "job-orders",
-  "/calendar": "calendar",
   "/personnel": "personnel",
-  "/time-clock": "time-clock",
-  "/reports": "reports",
+  "/estimates": "estimates",
+  "/purchase-orders": "purchase-orders",
+  "/invoices": "invoices",
+  "/messages": "messages",
   "/settings": "settings",
 };
 
