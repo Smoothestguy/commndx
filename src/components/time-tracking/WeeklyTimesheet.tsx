@@ -306,13 +306,27 @@ export function WeeklyTimesheet({
   );
 
   const toggleRowSelection = (rowKey: string) => {
-    const newSelected = new Set(selectedRows);
-    if (newSelected.has(rowKey)) {
-      newSelected.delete(rowKey);
-    } else {
-      newSelected.add(rowKey);
-    }
-    setSelectedRows(newSelected);
+    setSelectedRows((prev) => {
+      const newSet = new Set(prev);
+      if (newSet.has(rowKey)) {
+        newSet.delete(rowKey);
+      } else {
+        newSet.add(rowKey);
+      }
+      return newSet;
+    });
+  };
+
+  const selectProjectRows = (rowKeys: string[], selected: boolean) => {
+    setSelectedRows((prev) => {
+      const newSet = new Set(prev);
+      if (selected) {
+        rowKeys.forEach((key) => newSet.add(key));
+      } else {
+        rowKeys.forEach((key) => newSet.delete(key));
+      }
+      return newSet;
+    });
   };
 
   const selectAllRows = () => {
@@ -1174,6 +1188,7 @@ export function WeeklyTimesheet({
             isWeekClosed={isWeekClosed}
             selectedRows={selectedRows}
             onToggleRowSelection={toggleRowSelection}
+            onSelectProjectRows={selectProjectRows}
             onCellClick={handleCellClick}
             onEditRate={handleEditRate}
             getRowTotal={getRowTotal}
