@@ -35,6 +35,7 @@ import {
   exportTimeEntriesToCSV,
   type TimeEntryExportData,
 } from "@/utils/timeEntryExportUtils";
+import { ExportColumnsDialog } from "./ExportColumnsDialog";
 import { QuickRateEditDialog } from "./QuickRateEditDialog";
 import { PersonnelAvatar } from "@/components/personnel/PersonnelAvatar";
 import {
@@ -111,6 +112,9 @@ export function WeeklyTimesheet({
   const [selectedRows, setSelectedRows] = useState<Set<string>>(new Set());
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
   const [isExporting, setIsExporting] = useState(false);
+  const [exportDialogOpen, setExportDialogOpen] = useState(false);
+  const [pendingExportFormat, setPendingExportFormat] = useState<"excel" | "pdf" | "csv" | "json" | null>(null);
+  const [exportSelectedOnly, setExportSelectedOnly] = useState(false);
   
   
   // Track which project folders are expanded
@@ -565,44 +569,82 @@ export function WeeklyTimesheet({
     }
   };
 
-  const handleExport = async (
-    exportFormat: "excel" | "pdf" | "json" | "csv"
+  // Open the export column dialog
+  const handleOpenExportDialog = (
+    exportFormat: "excel" | "pdf" | "json" | "csv",
+    selectedOnly: boolean = false
   ) => {
-    if (entries.length === 0) {
+    if (selectedOnly) {
+      const selectedEntries = entries.filter((entry) => {
+        const rowKey = entry.personnel_id
+          ? `${entry.project_id}-${entry.personnel_id}`
+          : entry.project_id;
+        return selectedRows.has(rowKey);
+      });
+      if (selectedEntries.length === 0) {
+        toast.error("No time entries found for selected rows");
+        return;
+      }
+    } else if (entries.length === 0) {
       toast.error("No time entries to export for this week");
+      return;
+    }
+
+    setPendingExportFormat(exportFormat);
+    setExportSelectedOnly(selectedOnly);
+    setExportDialogOpen(true);
+  };
+
+  // Execute the export with selected columns
+  const handleExportWithColumns = async (visibleColumns: string[]) => {
+    if (!pendingExportFormat) return;
+
+    const entriesToExport = exportSelectedOnly
+      ? entries.filter((entry) => {
+          const rowKey = entry.personnel_id
+            ? `${entry.project_id}-${entry.personnel_id}`
+            : entry.project_id;
+          return selectedRows.has(rowKey);
+        })
+      : entries;
+
+    if (entriesToExport.length === 0) {
+      toast.error("No time entries to export");
       return;
     }
 
     setIsExporting(true);
     try {
       const exportData: TimeEntryExportData = {
-        entries: entries as any,
+        entries: entriesToExport as any,
         weekStart,
         weekEnd,
         overtimeMultiplier,
         weeklyOvertimeThreshold,
+        visibleColumns,
       };
 
       const weekLabel = `${format(weekStart, "MMM-d")}-to-${format(
         weekEnd,
         "MMM-d-yyyy"
       )}`;
+      const filenamePrefix = exportSelectedOnly ? "timesheet-selected" : "timesheet";
 
-      switch (exportFormat) {
+      switch (pendingExportFormat) {
         case "excel":
-          await exportTimeEntriesToExcel(exportData, `timesheet-${weekLabel}`);
+          await exportTimeEntriesToExcel(exportData, `${filenamePrefix}-${weekLabel}`);
           toast.success("Excel file downloaded successfully");
           break;
         case "pdf":
-          exportTimeEntriesToPDF(exportData, `timesheet-${weekLabel}`);
+          exportTimeEntriesToPDF(exportData, `${filenamePrefix}-${weekLabel}`);
           toast.success("PDF file downloaded successfully");
           break;
         case "csv":
-          exportTimeEntriesToCSV(exportData, `timesheet-${weekLabel}`);
+          exportTimeEntriesToCSV(exportData, `${filenamePrefix}-${weekLabel}`);
           toast.success("CSV file downloaded successfully");
           break;
         case "json":
-          exportTimeEntriesToJSON(exportData, `timesheet-${weekLabel}`);
+          exportTimeEntriesToJSON(exportData, `${filenamePrefix}-${weekLabel}`);
           toast.success("JSON file downloaded successfully");
           break;
       }
@@ -611,69 +653,8 @@ export function WeeklyTimesheet({
       toast.error("Failed to export time entries");
     } finally {
       setIsExporting(false);
-    }
-  };
-
-  const handleExportSelected = async (
-    exportFormat: "excel" | "pdf" | "json" | "csv"
-  ) => {
-    // Get entries for selected rows
-    const selectedEntries = entries.filter((entry) => {
-      const rowKey = entry.personnel_id
-        ? `${entry.project_id}-${entry.personnel_id}`
-        : entry.project_id;
-      return selectedRows.has(rowKey);
-    });
-
-    if (selectedEntries.length === 0) {
-      toast.error("No time entries found for selected rows");
-      return;
-    }
-
-    setIsExporting(true);
-    try {
-      const exportData: TimeEntryExportData = {
-        entries: selectedEntries as any,
-        weekStart,
-        weekEnd,
-        overtimeMultiplier,
-        weeklyOvertimeThreshold,
-      };
-
-      const weekLabel = `${format(weekStart, "MMM-d")}-to-${format(
-        weekEnd,
-        "MMM-d-yyyy"
-      )}`;
-
-      switch (exportFormat) {
-        case "excel":
-          await exportTimeEntriesToExcel(
-            exportData,
-            `timesheet-selected-${weekLabel}`
-          );
-          toast.success(`Exported ${selectedEntries.length} entries to Excel`);
-          break;
-        case "pdf":
-          exportTimeEntriesToPDF(exportData, `timesheet-selected-${weekLabel}`);
-          toast.success(`Exported ${selectedEntries.length} entries to PDF`);
-          break;
-        case "csv":
-          exportTimeEntriesToCSV(exportData, `timesheet-selected-${weekLabel}`);
-          toast.success(`Exported ${selectedEntries.length} entries to CSV`);
-          break;
-        case "json":
-          exportTimeEntriesToJSON(
-            exportData,
-            `timesheet-selected-${weekLabel}`
-          );
-          toast.success(`Exported ${selectedEntries.length} entries to JSON`);
-          break;
-      }
-    } catch (error) {
-      console.error("Export error:", error);
-      toast.error("Failed to export selected entries");
-    } finally {
-      setIsExporting(false);
+      setPendingExportFormat(null);
+      setExportSelectedOnly(false);
     }
   };
 
@@ -829,19 +810,19 @@ export function WeeklyTimesheet({
                 </Button>
               </DropdownMenuTrigger>
               <DropdownMenuContent align="center" className="w-48">
-                <DropdownMenuItem onClick={() => handleExport("excel")}>
+                <DropdownMenuItem onClick={() => handleOpenExportDialog("excel")}>
                   <FileSpreadsheet className="h-4 w-4 mr-2" />
                   Export to Excel (.xlsx)
                 </DropdownMenuItem>
-                <DropdownMenuItem onClick={() => handleExport("csv")}>
+                <DropdownMenuItem onClick={() => handleOpenExportDialog("csv")}>
                   <FileType className="h-4 w-4 mr-2" />
                   Export to CSV
                 </DropdownMenuItem>
-                <DropdownMenuItem onClick={() => handleExport("pdf")}>
+                <DropdownMenuItem onClick={() => handleOpenExportDialog("pdf")}>
                   <FileText className="h-4 w-4 mr-2" />
                   Export to PDF
                 </DropdownMenuItem>
-                <DropdownMenuItem onClick={() => handleExport("json")}>
+                <DropdownMenuItem onClick={() => handleOpenExportDialog("json")}>
                   <FileJson className="h-4 w-4 mr-2" />
                   Export to JSON
                 </DropdownMenuItem>
@@ -1084,19 +1065,19 @@ export function WeeklyTimesheet({
                 </Button>
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end">
-                <DropdownMenuItem onClick={() => handleExport("excel")}>
+                <DropdownMenuItem onClick={() => handleOpenExportDialog("excel")}>
                   <FileSpreadsheet className="h-4 w-4 mr-2" />
                   Export to Excel (.xlsx)
                 </DropdownMenuItem>
-                <DropdownMenuItem onClick={() => handleExport("csv")}>
+                <DropdownMenuItem onClick={() => handleOpenExportDialog("csv")}>
                   <FileType className="h-4 w-4 mr-2" />
                   Export to CSV
                 </DropdownMenuItem>
-                <DropdownMenuItem onClick={() => handleExport("pdf")}>
+                <DropdownMenuItem onClick={() => handleOpenExportDialog("pdf")}>
                   <FileText className="h-4 w-4 mr-2" />
                   Export to PDF
                 </DropdownMenuItem>
-                <DropdownMenuItem onClick={() => handleExport("json")}>
+                <DropdownMenuItem onClick={() => handleOpenExportDialog("json")}>
                   <FileJson className="h-4 w-4 mr-2" />
                   Export to JSON
                 </DropdownMenuItem>
@@ -1143,21 +1124,21 @@ export function WeeklyTimesheet({
                 </DropdownMenuTrigger>
                 <DropdownMenuContent align="end">
                   <DropdownMenuItem
-                    onClick={() => handleExportSelected("excel")}
+                    onClick={() => handleOpenExportDialog("excel", true)}
                   >
                     <FileSpreadsheet className="h-4 w-4 mr-2" />
                     Export to Excel (.xlsx)
                   </DropdownMenuItem>
-                  <DropdownMenuItem onClick={() => handleExportSelected("csv")}>
+                  <DropdownMenuItem onClick={() => handleOpenExportDialog("csv", true)}>
                     <FileType className="h-4 w-4 mr-2" />
                     Export to CSV
                   </DropdownMenuItem>
-                  <DropdownMenuItem onClick={() => handleExportSelected("pdf")}>
+                  <DropdownMenuItem onClick={() => handleOpenExportDialog("pdf", true)}>
                     <FileText className="h-4 w-4 mr-2" />
                     Export to PDF
                   </DropdownMenuItem>
                   <DropdownMenuItem
-                    onClick={() => handleExportSelected("json")}
+                    onClick={() => handleOpenExportDialog("json", true)}
                   >
                     <FileJson className="h-4 w-4 mr-2" />
                     Export to JSON
@@ -1278,6 +1259,14 @@ export function WeeklyTimesheet({
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      {/* Export Columns Dialog */}
+      <ExportColumnsDialog
+        open={exportDialogOpen}
+        onOpenChange={setExportDialogOpen}
+        exportFormat={pendingExportFormat}
+        onConfirm={handleExportWithColumns}
+      />
     </div>
   );
 }

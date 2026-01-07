@@ -11,7 +11,44 @@ export interface TimeEntryExportData {
   personnelFilter?: string;
   overtimeMultiplier?: number;
   weeklyOvertimeThreshold?: number;
+  visibleColumns?: string[];
 }
+
+// All available columns for export
+export const ALL_EXPORT_COLUMNS = [
+  "date",
+  "personnel",
+  "project",
+  "customer",
+  "hours",
+  "regularHours",
+  "overtimeHours",
+  "rate",
+  "regularPay",
+  "overtimePay",
+  "totalPay",
+  "billable",
+  "status",
+  "description",
+];
+
+// Column metadata for headers and widths
+const COLUMN_CONFIG: Record<string, { header: string; width: number; pdfWidth: number }> = {
+  date: { header: "Date", width: 12, pdfWidth: 25 },
+  personnel: { header: "Personnel", width: 25, pdfWidth: 45 },
+  project: { header: "Project", width: 30, pdfWidth: 55 },
+  customer: { header: "Customer", width: 25, pdfWidth: 35 },
+  hours: { header: "Hours", width: 10, pdfWidth: 18 },
+  regularHours: { header: "Regular Hrs", width: 12, pdfWidth: 20 },
+  overtimeHours: { header: "OT Hrs", width: 10, pdfWidth: 18 },
+  rate: { header: "Rate", width: 12, pdfWidth: 22 },
+  regularPay: { header: "Regular Pay", width: 14, pdfWidth: 25 },
+  overtimePay: { header: "OT Pay", width: 12, pdfWidth: 22 },
+  totalPay: { header: "Total Pay", width: 14, pdfWidth: 28 },
+  billable: { header: "Billable", width: 10, pdfWidth: 18 },
+  status: { header: "Status", width: 12, pdfWidth: 20 },
+  description: { header: "Description", width: 40, pdfWidth: 50 },
+};
 
 // Format currency consistently
 function formatCurrency(amount: number): string {
@@ -77,82 +114,105 @@ function calculateTotals(
   };
 }
 
+// Get row values for an entry based on selected columns
+function getEntryRowValues(
+  entry: TimeEntryWithDetails,
+  visibleColumns: string[],
+  overtimeMultiplier: number
+): Record<string, string> {
+  const rate = getHourlyRate(entry) || 0;
+  const regularHours = Number(entry.regular_hours) || Number(entry.hours);
+  const overtimeHours = Number(entry.overtime_hours) || 0;
+  const regularPay = regularHours * rate;
+  const overtimePay = overtimeHours * rate * overtimeMultiplier;
+
+  const allValues: Record<string, string> = {
+    date: format(new Date(entry.entry_date), "MMM d, yyyy"),
+    personnel: getPersonnelName(entry),
+    project: entry.projects?.name || "Unknown",
+    customer: entry.projects?.customers?.name || "-",
+    hours: Number(entry.hours).toFixed(2),
+    regularHours: regularHours.toFixed(2),
+    overtimeHours: overtimeHours.toFixed(2),
+    rate: rate ? formatCurrency(rate) : "-",
+    regularPay: rate ? formatCurrency(regularPay) : "-",
+    overtimePay: rate ? formatCurrency(overtimePay) : "-",
+    totalPay: rate ? formatCurrency(regularPay + overtimePay) : "-",
+    billable: entry.billable ? "Yes" : "No",
+    status:
+      (entry.status || "pending").charAt(0).toUpperCase() +
+      (entry.status || "pending").slice(1),
+    description: entry.description || "",
+  };
+
+  const result: Record<string, string> = {};
+  visibleColumns.forEach((col) => {
+    result[col] = allValues[col] || "";
+  });
+  return result;
+}
+
+// Get totals row values based on selected columns
+function getTotalsRowValues(
+  totals: ReturnType<typeof calculateTotals>,
+  visibleColumns: string[]
+): Record<string, string> {
+  const allValues: Record<string, string> = {
+    date: "TOTALS",
+    personnel: "",
+    project: "",
+    customer: "",
+    hours: totals.totalHours.toFixed(2),
+    regularHours: totals.totalRegularHours.toFixed(2),
+    overtimeHours: totals.totalOvertimeHours.toFixed(2),
+    rate: "",
+    regularPay: formatCurrency(totals.totalRegularPay),
+    overtimePay: formatCurrency(totals.totalOvertimePay),
+    totalPay: formatCurrency(totals.totalPay),
+    billable: "",
+    status: "",
+    description: "",
+  };
+
+  const result: Record<string, string> = {};
+  visibleColumns.forEach((col) => {
+    result[col] = allValues[col] || "";
+  });
+  return result;
+}
+
 // Export to CSV
 export function exportTimeEntriesToCSV(
   data: TimeEntryExportData,
   filename = "time-entries"
 ): void {
-  const { entries, overtimeMultiplier = 1.5 } = data;
+  const { 
+    entries, 
+    overtimeMultiplier = 1.5,
+    visibleColumns = ALL_EXPORT_COLUMNS 
+  } = data;
 
   if (entries.length === 0) {
     throw new Error("No time entries to export");
   }
 
-  // CSV headers
-  const headers = [
-    "Date",
-    "Personnel",
-    "Project",
-    "Customer",
-    "Hours",
-    "Regular Hrs",
-    "OT Hrs",
-    "Rate",
-    "Regular Pay",
-    "OT Pay",
-    "Total Pay",
-    "Billable",
-    "Status",
-    "Description",
-  ];
+  // Filter to only visible columns
+  const columns = visibleColumns.filter((col) => COLUMN_CONFIG[col]);
+  const headers = columns.map((col) => COLUMN_CONFIG[col].header);
 
   // Build CSV rows
   const rows = entries.map((entry) => {
-    const rate = getHourlyRate(entry) || 0;
-    const regularHours = Number(entry.regular_hours) || Number(entry.hours);
-    const overtimeHours = Number(entry.overtime_hours) || 0;
-    const regularPay = regularHours * rate;
-    const overtimePay = overtimeHours * rate * overtimeMultiplier;
-
-    return [
-      format(new Date(entry.entry_date), "yyyy-MM-dd"),
-      getPersonnelName(entry),
-      entry.projects?.name || "Unknown",
-      entry.projects?.customers?.name || "",
-      Number(entry.hours).toFixed(2),
-      regularHours.toFixed(2),
-      overtimeHours.toFixed(2),
-      rate.toFixed(2),
-      regularPay.toFixed(2),
-      overtimePay.toFixed(2),
-      (regularPay + overtimePay).toFixed(2),
-      entry.billable ? "Yes" : "No",
-      entry.status || "pending",
-      (entry.description || "").replace(/"/g, '""'), // Escape quotes
-    ]
-      .map((val) => `"${val}"`)
+    const values = getEntryRowValues(entry, columns, overtimeMultiplier);
+    return columns
+      .map((col) => `"${(values[col] || "").replace(/"/g, '""')}"`)
       .join(",");
   });
 
   // Add totals row
   const totals = calculateTotals(entries, overtimeMultiplier);
-  const totalsRow = [
-    "TOTALS",
-    "",
-    "",
-    "",
-    totals.totalHours.toFixed(2),
-    totals.totalRegularHours.toFixed(2),
-    totals.totalOvertimeHours.toFixed(2),
-    "",
-    totals.totalRegularPay.toFixed(2),
-    totals.totalOvertimePay.toFixed(2),
-    totals.totalPay.toFixed(2),
-    "",
-    "",
-    "",
-  ]
-    .map((val) => `"${val}"`)
+  const totalsValues = getTotalsRowValues(totals, columns);
+  const totalsRow = columns
+    .map((col) => `"${totalsValues[col] || ""}"`)
     .join(",");
 
   const csvContent = [headers.join(","), ...rows, totalsRow].join("\n");
@@ -172,7 +232,13 @@ export function exportTimeEntriesToJSON(
   data: TimeEntryExportData,
   filename = "time-entries"
 ): void {
-  const { entries, weekStart, weekEnd, overtimeMultiplier = 1.5 } = data;
+  const { 
+    entries, 
+    weekStart, 
+    weekEnd, 
+    overtimeMultiplier = 1.5,
+    visibleColumns = ALL_EXPORT_COLUMNS 
+  } = data;
 
   if (entries.length === 0) {
     throw new Error("No time entries to export");
@@ -180,49 +246,59 @@ export function exportTimeEntriesToJSON(
 
   const totals = calculateTotals(entries, overtimeMultiplier);
 
-  const exportData = {
-    exportDate: new Date().toISOString(),
-    dateRange:
-      weekStart && weekEnd
-        ? {
-            start: format(weekStart, "yyyy-MM-dd"),
-            end: format(weekEnd, "yyyy-MM-dd"),
-          }
-        : null,
-    summary: {
-      totalEntries: entries.length,
-      totalHours: totals.totalHours,
-      regularHours: totals.totalRegularHours,
-      overtimeHours: totals.totalOvertimeHours,
-      totalPay: totals.totalPay,
-      regularPay: totals.totalRegularPay,
-      overtimePay: totals.totalOvertimePay,
-      overtimeMultiplier,
-    },
-    entries: entries.map((entry) => ({
-      id: entry.id,
-      date: entry.entry_date,
-      personnel: {
+  // Build entry data based on visible columns
+  const mappedEntries = entries.map((entry) => {
+    const rate = getHourlyRate(entry);
+    const result: Record<string, any> = { id: entry.id };
+    
+    if (visibleColumns.includes("date")) result.date = entry.entry_date;
+    if (visibleColumns.includes("personnel")) {
+      result.personnel = {
         id: entry.personnel_id || entry.user_id,
         name: getPersonnelName(entry),
-        hourlyRate: getHourlyRate(entry),
-      },
-      project: {
+        ...(visibleColumns.includes("rate") && { hourlyRate: rate }),
+      };
+    }
+    if (visibleColumns.includes("project")) {
+      result.project = {
         id: entry.project_id,
         name: entry.projects?.name || "Unknown Project",
-        customer: entry.projects?.customers?.name || null,
-      },
-      hours: Number(entry.hours),
-      regularHours: Number(entry.regular_hours) || Number(entry.hours),
-      overtimeHours: Number(entry.overtime_hours) || 0,
-      isHoliday: entry.is_holiday || false,
-      billable: entry.billable,
-      status: entry.status || "pending",
-      description: entry.description || null,
-      createdAt: entry.created_at,
-      updatedAt: entry.updated_at,
-    })),
+        ...(visibleColumns.includes("customer") && { customer: entry.projects?.customers?.name || null }),
+      };
+    }
+    if (visibleColumns.includes("hours")) result.hours = Number(entry.hours);
+    if (visibleColumns.includes("regularHours")) result.regularHours = Number(entry.regular_hours) || Number(entry.hours);
+    if (visibleColumns.includes("overtimeHours")) result.overtimeHours = Number(entry.overtime_hours) || 0;
+    if (visibleColumns.includes("billable")) result.billable = entry.billable;
+    if (visibleColumns.includes("status")) result.status = entry.status || "pending";
+    if (visibleColumns.includes("description")) result.description = entry.description || null;
+    
+    return result;
+  });
+
+  const exportData: Record<string, any> = {
+    exportDate: new Date().toISOString(),
+    includedColumns: visibleColumns,
   };
+  
+  if (weekStart && weekEnd) {
+    exportData.dateRange = {
+      start: format(weekStart, "yyyy-MM-dd"),
+      end: format(weekEnd, "yyyy-MM-dd"),
+    };
+  }
+  
+  exportData.summary = {
+    totalEntries: entries.length,
+    ...(visibleColumns.includes("hours") && { totalHours: totals.totalHours }),
+    ...(visibleColumns.includes("regularHours") && { regularHours: totals.totalRegularHours }),
+    ...(visibleColumns.includes("overtimeHours") && { overtimeHours: totals.totalOvertimeHours }),
+    ...(visibleColumns.includes("totalPay") && { totalPay: totals.totalPay }),
+    ...(visibleColumns.includes("regularPay") && { regularPay: totals.totalRegularPay }),
+    ...(visibleColumns.includes("overtimePay") && { overtimePay: totals.totalOvertimePay }),
+  };
+  
+  exportData.entries = mappedEntries;
 
   const jsonContent = JSON.stringify(exportData, null, 2);
   const blob = new Blob([jsonContent], { type: "application/json" });
@@ -236,17 +312,22 @@ export function exportTimeEntriesToJSON(
   URL.revokeObjectURL(url);
 }
 
-// Export to Excel - defined first part
+// Export to Excel
 export async function exportTimeEntriesToExcel(
   data: TimeEntryExportData,
   filename = "time-entries"
 ): Promise<void> {
-  const { entries, weekStart, weekEnd, overtimeMultiplier = 1.5 } = data;
+  const { 
+    entries, 
+    overtimeMultiplier = 1.5,
+    visibleColumns = ALL_EXPORT_COLUMNS 
+  } = data;
 
   if (entries.length === 0) {
     throw new Error("No time entries to export");
   }
 
+  const columns = visibleColumns.filter((col) => COLUMN_CONFIG[col]);
   const totals = calculateTotals(entries, overtimeMultiplier);
   const workbook = new ExcelJS.Workbook();
   workbook.creator = "Command X Time Tracking";
@@ -256,23 +337,12 @@ export async function exportTimeEntriesToExcel(
     views: [{ state: "frozen", ySplit: 1 }],
   });
 
-  // Define columns
-  worksheet.columns = [
-    { header: "Date", key: "date", width: 12 },
-    { header: "Personnel", key: "personnel", width: 25 },
-    { header: "Project", key: "project", width: 30 },
-    { header: "Customer", key: "customer", width: 25 },
-    { header: "Hours", key: "hours", width: 10 },
-    { header: "Regular Hrs", key: "regularHours", width: 12 },
-    { header: "OT Hrs", key: "overtimeHours", width: 10 },
-    { header: "Rate", key: "rate", width: 12 },
-    { header: "Regular Pay", key: "regularPay", width: 14 },
-    { header: "OT Pay", key: "overtimePay", width: 12 },
-    { header: "Total Pay", key: "totalPay", width: 14 },
-    { header: "Billable", key: "billable", width: 10 },
-    { header: "Status", key: "status", width: 12 },
-    { header: "Description", key: "description", width: 40 },
-  ];
+  // Define columns dynamically
+  worksheet.columns = columns.map((col) => ({
+    header: COLUMN_CONFIG[col].header,
+    key: col,
+    width: COLUMN_CONFIG[col].width,
+  }));
 
   // Style header row
   const headerRow = worksheet.getRow(1);
@@ -287,30 +357,8 @@ export async function exportTimeEntriesToExcel(
 
   // Add data rows
   entries.forEach((entry, index) => {
-    const rate = getHourlyRate(entry) || 0;
-    const regularHours = Number(entry.regular_hours) || Number(entry.hours);
-    const overtimeHours = Number(entry.overtime_hours) || 0;
-    const regularPay = regularHours * rate;
-    const overtimePay = overtimeHours * rate * overtimeMultiplier;
-
-    const row = worksheet.addRow({
-      date: format(new Date(entry.entry_date), "MMM d, yyyy"),
-      personnel: getPersonnelName(entry),
-      project: entry.projects?.name || "Unknown",
-      customer: entry.projects?.customers?.name || "-",
-      hours: Number(entry.hours).toFixed(2),
-      regularHours: regularHours.toFixed(2),
-      overtimeHours: overtimeHours.toFixed(2),
-      rate: rate ? formatCurrency(rate) : "-",
-      regularPay: rate ? formatCurrency(regularPay) : "-",
-      overtimePay: rate ? formatCurrency(overtimePay) : "-",
-      totalPay: rate ? formatCurrency(regularPay + overtimePay) : "-",
-      billable: entry.billable ? "Yes" : "No",
-      status:
-        (entry.status || "pending").charAt(0).toUpperCase() +
-        (entry.status || "pending").slice(1),
-      description: entry.description || "",
-    });
+    const rowValues = getEntryRowValues(entry, columns, overtimeMultiplier);
+    const row = worksheet.addRow(rowValues);
 
     row.alignment = { vertical: "middle", wrapText: true };
     if (index % 2 === 0) {
@@ -323,22 +371,8 @@ export async function exportTimeEntriesToExcel(
   });
 
   // Add totals row
-  const totalsRow = worksheet.addRow({
-    date: "TOTALS",
-    personnel: "",
-    project: "",
-    customer: "",
-    hours: totals.totalHours.toFixed(2),
-    regularHours: totals.totalRegularHours.toFixed(2),
-    overtimeHours: totals.totalOvertimeHours.toFixed(2),
-    rate: "",
-    regularPay: formatCurrency(totals.totalRegularPay),
-    overtimePay: formatCurrency(totals.totalOvertimePay),
-    totalPay: formatCurrency(totals.totalPay),
-    billable: "",
-    status: "",
-    description: "",
-  });
+  const totalsValues = getTotalsRowValues(totals, columns);
+  const totalsRow = worksheet.addRow(totalsValues);
   totalsRow.font = { bold: true };
   totalsRow.fill = {
     type: "pattern",
@@ -378,12 +412,19 @@ export function exportTimeEntriesToPDF(
   data: TimeEntryExportData,
   filename = "time-entries"
 ): void {
-  const { entries, weekStart, weekEnd, overtimeMultiplier = 1.5 } = data;
+  const { 
+    entries, 
+    weekStart, 
+    weekEnd, 
+    overtimeMultiplier = 1.5,
+    visibleColumns = ALL_EXPORT_COLUMNS 
+  } = data;
 
   if (entries.length === 0) {
     throw new Error("No time entries to export");
   }
 
+  const columns = visibleColumns.filter((col) => COLUMN_CONFIG[col]);
   const totals = calculateTotals(entries, overtimeMultiplier);
   const doc = new jsPDF({ orientation: "landscape" });
 
@@ -431,22 +472,18 @@ export function exportTimeEntriesToPDF(
   doc.text(`Entries: ${entries.length}`, 180, 55);
 
   // Table headers
-  const headers = [
-    "Date",
-    "Personnel",
-    "Project",
-    "Hours",
-    "Reg Hrs",
-    "OT Hrs",
-    "Rate",
-    "Total Pay",
-    "Status",
-  ];
-  const colWidths = [25, 45, 55, 18, 20, 18, 22, 28, 20];
+  const headers = columns.map((col) => COLUMN_CONFIG[col].header);
+  const colWidths = columns.map((col) => COLUMN_CONFIG[col].pdfWidth);
+  
+  // Scale widths to fit page if needed
+  const totalWidth = colWidths.reduce((sum, w) => sum + w, 0);
+  const maxWidth = 265;
+  const scale = totalWidth > maxWidth ? maxWidth / totalWidth : 1;
+  const scaledWidths = colWidths.map((w) => w * scale);
 
   let y = 70;
   doc.setFillColor(59, 130, 246);
-  doc.rect(14, y - 6, 265, 10, "F");
+  doc.rect(14, y - 6, maxWidth, 10, "F");
   doc.setTextColor(255, 255, 255);
   doc.setFontSize(8);
   doc.setFont("helvetica", "bold");
@@ -454,7 +491,7 @@ export function exportTimeEntriesToPDF(
   let x = 14;
   headers.forEach((header, i) => {
     doc.text(header, x + 2, y);
-    x += colWidths[i];
+    x += scaledWidths[i];
   });
 
   // Data rows
@@ -470,37 +507,25 @@ export function exportTimeEntriesToPDF(
 
     if (rowIndex % 2 === 0) {
       doc.setFillColor(248, 250, 252);
-      doc.rect(14, y - 5, 265, 8, "F");
+      doc.rect(14, y - 5, maxWidth, 8, "F");
     }
 
-    const rate = getHourlyRate(entry) || 0;
-    const regularHours = Number(entry.regular_hours) || Number(entry.hours);
-    const overtimeHours = Number(entry.overtime_hours) || 0;
-    const totalPay =
-      regularHours * rate + overtimeHours * rate * overtimeMultiplier;
-
-    const values = [
-      format(new Date(entry.entry_date), "MMM d"),
-      getPersonnelName(entry),
-      entry.projects?.name || "Unknown",
-      Number(entry.hours).toFixed(2),
-      regularHours.toFixed(2),
-      overtimeHours.toFixed(2),
-      rate ? formatCurrency(rate) : "-",
-      rate ? formatCurrency(totalPay) : "-",
-      (entry.status || "pending").charAt(0).toUpperCase() +
-        (entry.status || "pending").slice(1),
-    ];
+    const rowValues = getEntryRowValues(entry, columns, overtimeMultiplier);
+    // Use shorter date format for PDF
+    if (rowValues.date) {
+      rowValues.date = format(new Date(entry.entry_date), "MMM d");
+    }
 
     x = 14;
-    values.forEach((value, i) => {
-      const maxChars = Math.floor(colWidths[i] / 2);
+    columns.forEach((col, i) => {
+      const value = rowValues[col] || "";
+      const maxChars = Math.floor(scaledWidths[i] / 2);
       const text =
         String(value).length > maxChars
           ? String(value).substring(0, maxChars - 1) + "…"
           : String(value);
       doc.text(text, x + 2, y);
-      x += colWidths[i];
+      x += scaledWidths[i];
     });
     y += 8;
   });
