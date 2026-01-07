@@ -25,6 +25,7 @@ interface BottomNavProps {
 }
 
 const PUBLIC_ROUTES = ["/auth", "/accept-invitation", "/approve-estimate", "/apply", "/onboard", "/contractor"];
+const PORTAL_ROUTES = ["/portal", "/vendor", "/subcontractor"];
 
 export function BottomNav({ onMoreClick }: BottomNavProps) {
   const [isExpanded, setIsExpanded] = useState(false);
@@ -40,6 +41,12 @@ export function BottomNav({ onMoreClick }: BottomNavProps) {
     location.pathname.startsWith(route)
   );
   if (isPublicRoute) return null;
+  
+  // Hide on portal routes (personnel, vendor, subcontractor portals have their own navigation)
+  const isPortalRoute = PORTAL_ROUTES.some(route => 
+    location.pathname.startsWith(route)
+  );
+  if (isPortalRoute) return null;
   
   // Hide if user is not authenticated
   if (!user) return null;
