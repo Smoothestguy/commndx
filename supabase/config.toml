@@ -209,3 +209,6 @@ verify_jwt = false
 
 [functions.notify-late-clock-attempt]
 verify_jwt = false
+
+[functions.check-stale-clocks]
+verify_jwt = false
