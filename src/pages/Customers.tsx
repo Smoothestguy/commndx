@@ -232,7 +232,7 @@ const Customers = () => {
 
         {/* QuickBooks Sync Section */}
         {qbConfig?.is_connected && (
-          <div className="mb-6 p-4 rounded-lg border bg-card">
+          <div className="mb-6 p-3 md:p-4 rounded-lg border bg-card">
             <div className="flex flex-wrap items-center justify-between gap-4">
               <div className="flex items-center gap-3">
                 <Cloud className="h-5 w-5 text-green-500" />
@@ -271,7 +271,7 @@ const Customers = () => {
         )}
 
         {/* Search */}
-        <div className="mb-6 max-w-md">
+        <div className="mb-6 w-full md:max-w-lg lg:max-w-md">
           <SearchInput
             placeholder="Search customers..."
             value={search}

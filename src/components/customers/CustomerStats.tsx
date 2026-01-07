@@ -14,8 +14,8 @@ export const CustomerStats = ({
   noProjects,
 }: CustomerStatsProps) => {
   return (
-    <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4 mb-6">
-      <div className="glass rounded-lg p-4 animate-fade-in">
+    <div className="grid gap-3 grid-cols-2 md:grid-cols-4 mb-6">
+      <div className="glass rounded-lg p-3 lg:p-4 animate-fade-in">
         <div className="flex items-center gap-3">
           <div className="p-2 rounded-lg bg-primary/10">
             <Users className="h-5 w-5 text-primary" />
@@ -27,7 +27,7 @@ export const CustomerStats = ({
         </div>
       </div>
 
-      <div className="glass rounded-lg p-4 animate-fade-in" style={{ animationDelay: "50ms" }}>
+      <div className="glass rounded-lg p-3 lg:p-4 animate-fade-in" style={{ animationDelay: "50ms" }}>
         <div className="flex items-center gap-3">
           <div className="p-2 rounded-lg bg-success/10">
             <FolderOpen className="h-5 w-5 text-success" />
@@ -39,7 +39,7 @@ export const CustomerStats = ({
         </div>
       </div>
 
-      <div className="glass rounded-lg p-4 animate-fade-in" style={{ animationDelay: "100ms" }}>
+      <div className="glass rounded-lg p-3 lg:p-4 animate-fade-in" style={{ animationDelay: "100ms" }}>
         <div className="flex items-center gap-3">
           <div className="p-2 rounded-lg bg-info/10">
             <TrendingUp className="h-5 w-5 text-info" />
@@ -51,7 +51,7 @@ export const CustomerStats = ({
         </div>
       </div>
 
-      <div className="glass rounded-lg p-4 animate-fade-in" style={{ animationDelay: "150ms" }}>
+      <div className="glass rounded-lg p-3 lg:p-4 animate-fade-in" style={{ animationDelay: "150ms" }}>
         <div className="flex items-center gap-3">
           <div className="p-2 rounded-lg bg-warning/10">
             <AlertCircle className="h-5 w-5 text-warning" />
