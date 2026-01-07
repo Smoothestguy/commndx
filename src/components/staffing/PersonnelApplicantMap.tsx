@@ -7,7 +7,7 @@ import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
-import { Users, UserCheck, MapPin, Loader2, RefreshCw, AlertCircle, ExternalLink } from "lucide-react";
+import { Users, UserCheck, MapPin, Loader2, RefreshCw, AlertCircle, ExternalLink, Activity, Clock, Coffee } from "lucide-react";
 import { toast } from "sonner";
 import { Link } from "react-router-dom";
 
@@ -49,7 +49,26 @@ interface ApplicantLocation {
   type: 'applicant';
 }
 
-type LocationData = PersonnelLocation | ApplicantLocation;
+interface ActiveClockLocation {
+  id: string;
+  personnel_id: string;
+  first_name: string;
+  last_name: string;
+  email: string;
+  phone: string | null;
+  photo_url: string | null;
+  project_id: string;
+  project_name: string;
+  clock_in_at: string;
+  current_lat: number;
+  current_lng: number;
+  last_location_check_at: string | null;
+  is_on_lunch: boolean;
+  type: 'active';
+}
+
+type LocationData = PersonnelLocation | ApplicantLocation | ActiveClockLocation;
+type FilterType = 'all' | 'personnel' | 'applicants' | 'active';
 
 interface PersonnelApplicantMapProps {
   mapboxToken: string;
@@ -85,14 +104,75 @@ export function PersonnelApplicantMap({ mapboxToken, isAdmin = false }: Personne
   
   const [personnel, setPersonnel] = useState<PersonnelLocation[]>([]);
   const [applicants, setApplicants] = useState<ApplicantLocation[]>([]);
+  const [activeClocks, setActiveClocks] = useState<ActiveClockLocation[]>([]);
   const [loading, setLoading] = useState(true);
   const [selectedPerson, setSelectedPerson] = useState<LocationData | null>(null);
-  const [filter, setFilter] = useState<'all' | 'personnel' | 'applicants'>('all');
+  const [filter, setFilter] = useState<FilterType>('all');
   const [backfillRunning, setBackfillRunning] = useState(false);
   const [counts, setCounts] = useState<RecordCounts>({ personnelTotal: 0, personnelGeocoded: 0, applicantsTotal: 0, applicantsGeocoded: 0 });
   const [lastRefresh, setLastRefresh] = useState<Date>(new Date());
 
-  // Fetch data - isBackground param prevents loading spinner on auto-refresh
+  // Fetch active clock data - faster refresh for real-time tracking
+  const fetchActiveClocks = useCallback(async () => {
+    const { data: activeClocksData, error } = await supabase
+      .from('time_entries')
+      .select(`
+        id,
+        personnel_id,
+        clock_in_at,
+        clock_in_lat,
+        clock_in_lng,
+        last_location_lat,
+        last_location_lng,
+        last_location_check_at,
+        is_on_lunch,
+        personnel!inner(id, first_name, last_name, email, phone, photo_url),
+        projects!inner(id, name)
+      `)
+      .is('clock_out_at', null)
+      .not('clock_in_at', 'is', null);
+
+    if (error) {
+      console.error('Error fetching active clocks:', error);
+      return;
+    }
+
+    if (activeClocksData) {
+      const mappedClocks: ActiveClockLocation[] = activeClocksData
+        .filter((entry: any) => {
+          // Must have either clock_in location or last_location
+          return (entry.clock_in_lat && entry.clock_in_lng) || 
+                 (entry.last_location_lat && entry.last_location_lng);
+        })
+        .map((entry: any) => {
+          // Prefer last_location if available, otherwise use clock_in location
+          const lat = entry.last_location_lat || entry.clock_in_lat;
+          const lng = entry.last_location_lng || entry.clock_in_lng;
+          
+          return {
+            id: entry.id,
+            personnel_id: entry.personnel_id,
+            first_name: entry.personnel.first_name,
+            last_name: entry.personnel.last_name,
+            email: entry.personnel.email,
+            phone: entry.personnel.phone,
+            photo_url: entry.personnel.photo_url,
+            project_id: entry.projects.id,
+            project_name: entry.projects.name,
+            clock_in_at: entry.clock_in_at,
+            current_lat: lat,
+            current_lng: lng,
+            last_location_check_at: entry.last_location_check_at,
+            is_on_lunch: entry.is_on_lunch || false,
+            type: 'active' as const,
+          };
+        });
+      
+      setActiveClocks(mappedClocks);
+    }
+  }, []);
+
+  // Fetch home address data - slower refresh
   const fetchData = useCallback(async (isBackground = false) => {
     if (!isBackground) {
       setLoading(true);
@@ -136,21 +216,33 @@ export function PersonnelApplicantMap({ mapboxToken, isAdmin = false }: Personne
       applicantsGeocoded: applicantsData?.length || 0,
     });
     
+    // Also fetch active clocks
+    await fetchActiveClocks();
+    
     setLoading(false);
     setLastRefresh(new Date());
-  }, []);
+  }, [fetchActiveClocks]);
 
-  // Initial fetch + auto-refresh every 10 minutes
+  // Initial fetch + auto-refresh
   useEffect(() => {
     fetchData();
 
-    const AUTO_REFRESH_INTERVAL = 600000; // 10 minutes in milliseconds
-    const intervalId = setInterval(() => {
-      fetchData(true); // Background refresh without loading spinner
-    }, AUTO_REFRESH_INTERVAL);
+    // Home address refresh every 10 minutes
+    const homeRefreshInterval = setInterval(() => {
+      fetchData(true);
+    }, 600000); // 10 minutes
 
-    return () => clearInterval(intervalId);
-  }, [fetchData]);
+    // Active clock refresh every 2 minutes for more real-time tracking
+    const activeRefreshInterval = setInterval(() => {
+      fetchActiveClocks();
+      setLastRefresh(new Date());
+    }, 120000); // 2 minutes
+
+    return () => {
+      clearInterval(homeRefreshInterval);
+      clearInterval(activeRefreshInterval);
+    };
+  }, [fetchData, fetchActiveClocks]);
 
   // Initialize map
   useEffect(() => {
@@ -186,6 +278,10 @@ export function PersonnelApplicantMap({ mapboxToken, isAdmin = false }: Personne
     markersRef.current = [];
 
     const filteredData: LocationData[] = [];
+    
+    if (filter === 'all' || filter === 'active') {
+      filteredData.push(...activeClocks);
+    }
     if (filter === 'all' || filter === 'personnel') {
       filteredData.push(...personnel);
     }
@@ -193,29 +289,53 @@ export function PersonnelApplicantMap({ mapboxToken, isAdmin = false }: Personne
       filteredData.push(...applicants);
     }
 
-    // Add markers
+    // Add markers - active clocks first so they render on top
     filteredData.forEach(person => {
       const el = document.createElement('div');
       el.className = 'marker-container';
-      el.innerHTML = `
-        <div class="w-8 h-8 rounded-full flex items-center justify-center shadow-lg cursor-pointer transition-transform hover:scale-110 ${
-          person.type === 'personnel' 
-            ? 'bg-primary text-primary-foreground' 
-            : 'bg-amber-500 text-white'
-        }">
-          <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-            <path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2"/>
-            <circle cx="12" cy="7" r="4"/>
-          </svg>
-        </div>
-      `;
+      
+      if (person.type === 'active') {
+        // Pulsing green marker for active clock locations
+        const isOnLunch = (person as ActiveClockLocation).is_on_lunch;
+        el.innerHTML = `
+          <div class="relative">
+            <div class="absolute inset-0 w-10 h-10 -ml-1 -mt-1 rounded-full ${isOnLunch ? 'bg-yellow-500/30' : 'bg-green-500/30'} animate-ping"></div>
+            <div class="relative w-8 h-8 rounded-full flex items-center justify-center shadow-lg cursor-pointer transition-transform hover:scale-110 ${isOnLunch ? 'bg-yellow-500' : 'bg-green-500'} text-white border-2 border-white">
+              <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="currentColor">
+                <circle cx="12" cy="12" r="5"/>
+              </svg>
+            </div>
+          </div>
+        `;
+      } else {
+        // Regular markers for home addresses
+        el.innerHTML = `
+          <div class="w-8 h-8 rounded-full flex items-center justify-center shadow-lg cursor-pointer transition-transform hover:scale-110 ${
+            person.type === 'personnel' 
+              ? 'bg-primary text-primary-foreground' 
+              : 'bg-amber-500 text-white'
+          }">
+            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2"/>
+              <circle cx="12" cy="7" r="4"/>
+            </svg>
+          </div>
+        `;
+      }
 
       el.addEventListener('click', () => {
         setSelectedPerson(person);
       });
 
+      const lat = person.type === 'active' 
+        ? (person as ActiveClockLocation).current_lat 
+        : (person as PersonnelLocation | ApplicantLocation).home_lat;
+      const lng = person.type === 'active' 
+        ? (person as ActiveClockLocation).current_lng 
+        : (person as PersonnelLocation | ApplicantLocation).home_lng;
+
       const marker = new mapboxgl.Marker(el)
-        .setLngLat([person.home_lng, person.home_lat])
+        .setLngLat([lng, lat])
         .addTo(map.current!);
 
       markersRef.current.push(marker);
@@ -225,11 +345,17 @@ export function PersonnelApplicantMap({ mapboxToken, isAdmin = false }: Personne
     if (filteredData.length > 0) {
       const bounds = new mapboxgl.LngLatBounds();
       filteredData.forEach(person => {
-        bounds.extend([person.home_lng, person.home_lat]);
+        const lat = person.type === 'active' 
+          ? (person as ActiveClockLocation).current_lat 
+          : (person as PersonnelLocation | ApplicantLocation).home_lat;
+        const lng = person.type === 'active' 
+          ? (person as ActiveClockLocation).current_lng 
+          : (person as PersonnelLocation | ApplicantLocation).home_lng;
+        bounds.extend([lng, lat]);
       });
       map.current.fitBounds(bounds, { padding: 50, maxZoom: 10 });
     }
-  }, [personnel, applicants, filter]);
+  }, [personnel, applicants, activeClocks, filter]);
 
   const handleRunBackfill = async () => {
     setBackfillRunning(true);
@@ -265,29 +391,244 @@ export function PersonnelApplicantMap({ mapboxToken, isAdmin = false }: Personne
   };
 
   const formatAddress = (person: LocationData): string | null => {
-    const parts: string[] = [];
+    if (person.type === 'active') return null;
     
-    if (person.address) parts.push(person.address);
+    const parts: string[] = [];
+    const p = person as PersonnelLocation | ApplicantLocation;
+    
+    if (p.address) parts.push(p.address);
     
     const cityState: string[] = [];
-    if (person.city) cityState.push(person.city);
-    if (person.state) cityState.push(person.state);
+    if (p.city) cityState.push(p.city);
+    if (p.state) cityState.push(p.state);
     if (cityState.length > 0) parts.push(cityState.join(', '));
     
-    const zip = person.type === 'applicant' ? person.home_zip : person.zip;
+    const zip = p.type === 'applicant' ? p.home_zip : p.zip;
     if (zip) parts.push(zip);
     
     return parts.length > 0 ? parts.join('\n') : null;
   };
 
-  const totalCount = filter === 'all' 
-    ? personnel.length + applicants.length
-    : filter === 'personnel' 
-      ? personnel.length 
-      : applicants.length;
+  const formatDuration = (clockInAt: string): string => {
+    const start = new Date(clockInAt);
+    const now = new Date();
+    const diffMs = now.getTime() - start.getTime();
+    const hours = Math.floor(diffMs / (1000 * 60 * 60));
+    const minutes = Math.floor((diffMs % (1000 * 60 * 60)) / (1000 * 60));
+    
+    if (hours > 0) {
+      return `${hours}h ${minutes}m`;
+    }
+    return `${minutes}m`;
+  };
 
-  const hasNoGeocodedData = !loading && personnel.length === 0 && applicants.length === 0;
+  const formatTimeAgo = (dateString: string | null): string => {
+    if (!dateString) return 'N/A';
+    const date = new Date(dateString);
+    const now = new Date();
+    const diffMs = now.getTime() - date.getTime();
+    const minutes = Math.floor(diffMs / (1000 * 60));
+    
+    if (minutes < 1) return 'Just now';
+    if (minutes === 1) return '1 min ago';
+    if (minutes < 60) return `${minutes} min ago`;
+    
+    const hours = Math.floor(minutes / 60);
+    if (hours === 1) return '1 hour ago';
+    return `${hours} hours ago`;
+  };
+
+  const totalCount = (() => {
+    switch (filter) {
+      case 'all':
+        return personnel.length + applicants.length + activeClocks.length;
+      case 'personnel':
+        return personnel.length;
+      case 'applicants':
+        return applicants.length;
+      case 'active':
+        return activeClocks.length;
+      default:
+        return 0;
+    }
+  })();
+
+  const hasNoGeocodedData = !loading && personnel.length === 0 && applicants.length === 0 && activeClocks.length === 0;
   const pendingGeocode = (counts.personnelTotal - counts.personnelGeocoded) + (counts.applicantsTotal - counts.applicantsGeocoded);
+
+  const renderSidebarContent = () => {
+    if (!selectedPerson) {
+      return (
+        <div className="text-center py-8 text-muted-foreground">
+          <MapPin className="h-12 w-12 mx-auto mb-2 opacity-50" />
+          <p>Click a marker on the map to view details</p>
+        </div>
+      );
+    }
+
+    if (selectedPerson.type === 'active') {
+      const active = selectedPerson as ActiveClockLocation;
+      return (
+        <div className="space-y-4">
+          <div className="flex items-center gap-3">
+            <Avatar className="h-16 w-16">
+              <AvatarImage src={active.photo_url || undefined} />
+              <AvatarFallback className="text-lg">
+                {getInitials(active.first_name, active.last_name)}
+              </AvatarFallback>
+            </Avatar>
+            <div>
+              <h3 className="font-semibold text-lg">
+                {active.first_name} {active.last_name}
+              </h3>
+              <div className="flex items-center gap-2 flex-wrap">
+                <Badge className="bg-green-500 hover:bg-green-600">
+                  <Activity className="h-3 w-3 mr-1" />
+                  Active
+                </Badge>
+                {active.is_on_lunch && (
+                  <Badge variant="secondary" className="bg-yellow-100 text-yellow-800">
+                    <Coffee className="h-3 w-3 mr-1" />
+                    On Lunch
+                  </Badge>
+                )}
+              </div>
+            </div>
+          </div>
+          
+          <div className="space-y-3 text-sm">
+            <div className="p-3 rounded-lg bg-green-50 dark:bg-green-950/30 border border-green-200 dark:border-green-800">
+              <div className="flex items-center gap-2 text-green-700 dark:text-green-300 font-medium mb-1">
+                <Clock className="h-4 w-4" />
+                Real-Time Location
+              </div>
+              <p className="text-xs text-green-600 dark:text-green-400">
+                Last GPS update: {formatTimeAgo(active.last_location_check_at)}
+              </p>
+            </div>
+
+            <div>
+              <span className="text-muted-foreground">Project:</span>
+              <p className="font-medium">{active.project_name}</p>
+            </div>
+            
+            <div>
+              <span className="text-muted-foreground">Clocked In:</span>
+              <p className="font-medium">
+                {new Date(active.clock_in_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                <span className="text-muted-foreground ml-2">({formatDuration(active.clock_in_at)})</span>
+              </p>
+            </div>
+
+            <div>
+              <span className="text-muted-foreground">Email:</span>
+              <p className="font-medium">{active.email}</p>
+            </div>
+            
+            {active.phone && (
+              <div>
+                <span className="text-muted-foreground">Phone:</span>
+                <p className="font-medium">{active.phone}</p>
+              </div>
+            )}
+            
+            <div>
+              <span className="text-muted-foreground">Current Coordinates:</span>
+              <p className="font-medium font-mono text-xs">
+                {active.current_lat.toFixed(6)}, {active.current_lng.toFixed(6)}
+              </p>
+            </div>
+
+            <div className="pt-2">
+              <Link to={`/personnel/${active.personnel_id}`}>
+                <Button variant="outline" size="sm" className="w-full gap-2">
+                  <ExternalLink className="h-4 w-4" />
+                  View Full Profile
+                </Button>
+              </Link>
+            </div>
+          </div>
+        </div>
+      );
+    }
+
+    // Personnel or Applicant
+    const person = selectedPerson as PersonnelLocation | ApplicantLocation;
+    return (
+      <div className="space-y-4">
+        <div className="flex items-center gap-3">
+          <Avatar className="h-16 w-16">
+            <AvatarImage src={person.photo_url || undefined} />
+            <AvatarFallback className="text-lg">
+              {getInitials(person.first_name, person.last_name)}
+            </AvatarFallback>
+          </Avatar>
+          <div>
+            <h3 className="font-semibold text-lg">
+              {person.first_name} {person.last_name}
+            </h3>
+            <div className="flex items-center gap-2">
+              <Badge variant={person.type === 'personnel' ? 'default' : 'secondary'}>
+                {person.type === 'personnel' ? 'Personnel' : 'Applicant'}
+              </Badge>
+              <Badge variant="outline">{person.status}</Badge>
+            </div>
+          </div>
+        </div>
+        
+        <div className="space-y-3 text-sm">
+          <div>
+            <span className="text-muted-foreground">Email:</span>
+            <p className="font-medium">{person.email}</p>
+          </div>
+          {person.phone && (
+            <div>
+              <span className="text-muted-foreground">Phone:</span>
+              <p className="font-medium">{person.phone}</p>
+            </div>
+          )}
+          
+          {formatAddress(person) && (
+            <div>
+              <span className="text-muted-foreground">Home Address:</span>
+              <p className="font-medium whitespace-pre-line">{formatAddress(person)}</p>
+            </div>
+          )}
+          
+          <div>
+            <span className="text-muted-foreground">Home Coordinates:</span>
+            <p className="font-medium font-mono text-xs">
+              {person.home_lat.toFixed(6)}, {person.home_lng.toFixed(6)}
+            </p>
+          </div>
+
+          {person.geocoded_at && (
+            <div>
+              <span className="text-muted-foreground">Geocoded:</span>
+              <p className="font-medium text-xs">
+                {new Date(person.geocoded_at).toLocaleDateString()} 
+                {person.geocode_source && ` (${person.geocode_source})`}
+              </p>
+            </div>
+          )}
+
+          <div className="pt-2">
+            <Link 
+              to={person.type === 'personnel' 
+                ? `/personnel/${person.id}` 
+                : `/staffing/applicants/${person.id}`
+              }
+            >
+              <Button variant="outline" size="sm" className="w-full gap-2">
+                <ExternalLink className="h-4 w-4" />
+                View Full Profile
+              </Button>
+            </Link>
+          </div>
+        </div>
+      </div>
+    );
+  };
 
   return (
     <div className="flex flex-col lg:flex-row gap-4 h-[calc(100vh-12rem)]">
@@ -350,11 +691,15 @@ export function PersonnelApplicantMap({ mapboxToken, isAdmin = false }: Personne
         
         {/* Filter controls */}
         <div className="absolute top-4 left-4 z-10">
-          <Tabs value={filter} onValueChange={(v) => setFilter(v as typeof filter)}>
+          <Tabs value={filter} onValueChange={(v) => setFilter(v as FilterType)}>
             <TabsList className="bg-background/95 backdrop-blur">
               <TabsTrigger value="all" className="gap-2">
                 <Users className="h-4 w-4" />
-                All ({personnel.length + applicants.length})
+                All ({personnel.length + applicants.length + activeClocks.length})
+              </TabsTrigger>
+              <TabsTrigger value="active" className="gap-2">
+                <Activity className="h-4 w-4" />
+                Active ({activeClocks.length})
               </TabsTrigger>
               <TabsTrigger value="personnel" className="gap-2">
                 <UserCheck className="h-4 w-4" />
@@ -396,7 +741,11 @@ export function PersonnelApplicantMap({ mapboxToken, isAdmin = false }: Personne
         {/* Legend */}
         <div className="absolute bottom-4 left-4 z-10 bg-background/95 backdrop-blur rounded-lg p-3 border shadow-sm">
           <div className="flex flex-col gap-2">
-            <div className="flex items-center gap-4 text-sm">
+            <div className="flex items-center gap-4 text-sm flex-wrap">
+              <div className="flex items-center gap-2">
+                <div className="w-3 h-3 rounded-full bg-green-500 ring-2 ring-green-500/30 animate-pulse" />
+                <span>Clocked In ({activeClocks.length})</span>
+              </div>
               <div className="flex items-center gap-2">
                 <div className="w-3 h-3 rounded-full bg-primary" />
                 <span>Personnel ({counts.personnelGeocoded}/{counts.personnelTotal})</span>
@@ -407,7 +756,7 @@ export function PersonnelApplicantMap({ mapboxToken, isAdmin = false }: Personne
               </div>
             </div>
             <div className="text-xs text-muted-foreground">
-              Last updated: {lastRefresh.toLocaleTimeString()}
+              Last updated: {lastRefresh.toLocaleTimeString()} • Active locations refresh every 2 min
             </div>
           </div>
         </div>
@@ -422,89 +771,7 @@ export function PersonnelApplicantMap({ mapboxToken, isAdmin = false }: Personne
           </CardTitle>
         </CardHeader>
         <CardContent className="overflow-auto max-h-[calc(100%-4rem)]">
-          {selectedPerson ? (
-            <div className="space-y-4">
-              <div className="flex items-center gap-3">
-                <Avatar className="h-16 w-16">
-                  <AvatarImage src={selectedPerson.photo_url || undefined} />
-                  <AvatarFallback className="text-lg">
-                    {getInitials(selectedPerson.first_name, selectedPerson.last_name)}
-                  </AvatarFallback>
-                </Avatar>
-                <div>
-                  <h3 className="font-semibold text-lg">
-                    {selectedPerson.first_name} {selectedPerson.last_name}
-                  </h3>
-                  <div className="flex items-center gap-2">
-                    <Badge variant={selectedPerson.type === 'personnel' ? 'default' : 'secondary'}>
-                      {selectedPerson.type === 'personnel' ? 'Personnel' : 'Applicant'}
-                    </Badge>
-                    <Badge variant="outline">{selectedPerson.status}</Badge>
-                  </div>
-                </div>
-              </div>
-              
-              <div className="space-y-3 text-sm">
-                <div>
-                  <span className="text-muted-foreground">Email:</span>
-                  <p className="font-medium">{selectedPerson.email}</p>
-                </div>
-                {selectedPerson.phone && (
-                  <div>
-                    <span className="text-muted-foreground">Phone:</span>
-                    <p className="font-medium">{selectedPerson.phone}</p>
-                  </div>
-                )}
-                
-                {/* Address */}
-                {formatAddress(selectedPerson) && (
-                  <div>
-                    <span className="text-muted-foreground">Address:</span>
-                    <p className="font-medium whitespace-pre-line">{formatAddress(selectedPerson)}</p>
-                  </div>
-                )}
-                
-                {/* Coordinates */}
-                <div>
-                  <span className="text-muted-foreground">Coordinates:</span>
-                  <p className="font-medium font-mono text-xs">
-                    {selectedPerson.home_lat.toFixed(6)}, {selectedPerson.home_lng.toFixed(6)}
-                  </p>
-                </div>
-
-                {/* Geocode metadata */}
-                {selectedPerson.geocoded_at && (
-                  <div>
-                    <span className="text-muted-foreground">Geocoded:</span>
-                    <p className="font-medium text-xs">
-                      {new Date(selectedPerson.geocoded_at).toLocaleDateString()} 
-                      {selectedPerson.geocode_source && ` (${selectedPerson.geocode_source})`}
-                    </p>
-                  </div>
-                )}
-
-                {/* Link to full profile */}
-                <div className="pt-2">
-                  <Link 
-                    to={selectedPerson.type === 'personnel' 
-                      ? `/personnel/${selectedPerson.id}` 
-                      : `/staffing/applicants/${selectedPerson.id}`
-                    }
-                  >
-                    <Button variant="outline" size="sm" className="w-full gap-2">
-                      <ExternalLink className="h-4 w-4" />
-                      View Full Profile
-                    </Button>
-                  </Link>
-                </div>
-              </div>
-            </div>
-          ) : (
-            <div className="text-center py-8 text-muted-foreground">
-              <MapPin className="h-12 w-12 mx-auto mb-2 opacity-50" />
-              <p>Click a marker on the map to view details</p>
-            </div>
-          )}
+          {renderSidebarContent()}
         </CardContent>
       </Card>
     </div>
