@@ -645,6 +645,34 @@ export function EnhancedTimeEntryForm({
     );
   };
 
+  // Apply to All Control - uses local state to allow typing before applying
+  const ApplyToAllControl = ({ onApply }: { onApply: (hours: number) => void }) => {
+    const [draftHours, setDraftHours] = useState<number>(0);
+    
+    return (
+      <div className="flex items-center gap-2">
+        <TimeDecimalInput
+          value={draftHours}
+          onValueChange={setDraftHours}
+          placeholder="Hours"
+          compact
+          className="w-20 h-8 text-sm"
+        />
+        <Button
+          type="button"
+          variant="secondary"
+          size="sm"
+          className="h-8 text-xs"
+          onClick={() => {
+            if (draftHours > 0) onApply(draftHours);
+          }}
+        >
+          Apply to All
+        </Button>
+      </div>
+    );
+  };
+
   // Daily Personnel Hours Section - Individual hours per person
   const DailyPersonnelHoursSection = () => {
     if (selectedPersonnel.size === 0) return null;
@@ -660,32 +688,7 @@ export function EnhancedTimeEntryForm({
             <Clock className="h-4 w-4" />
             Hours per Personnel
           </Label>
-          <div className="flex items-center gap-2">
-            <Input
-              type="number"
-              step="0.25"
-              min="0"
-              max="24"
-              placeholder="Hours"
-              className="w-20 h-8 text-sm"
-              onChange={(e) => {
-                const val = parseFloat(e.target.value) || 0;
-                if (val > 0) applyHoursToAllDaily(val);
-              }}
-            />
-            <Button
-              type="button"
-              variant="secondary"
-              size="sm"
-              className="h-8 text-xs"
-              onClick={() => {
-                const firstValue = Object.values(dailyPersonnelHours)[0] || 0;
-                if (firstValue > 0) applyHoursToAllDaily(firstValue);
-              }}
-            >
-              Apply to All
-            </Button>
-          </div>
+          <ApplyToAllControl onApply={applyHoursToAllDaily} />
         </div>
 
         <div className="border rounded-lg divide-y">
