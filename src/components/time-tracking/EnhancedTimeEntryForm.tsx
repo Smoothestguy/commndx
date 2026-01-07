@@ -2,6 +2,7 @@ import { useState, useEffect, useMemo } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
+import { toast } from "@/hooks/use-toast";
 import { Clock, AlertCircle, Calendar, CalendarDays, Users, UserPlus, UserCheck, Gift, AlertTriangle } from "lucide-react";
 import { PersonnelAvatar } from "@/components/personnel/PersonnelAvatar";
 import {
@@ -351,6 +352,13 @@ export function EnhancedTimeEntryForm({
     }
   }, [existingWeeklyEntries, entryType, weeklyProjectId]);
 
+  // Sync hidden hours field when personnel are selected (for schema validation)
+  useEffect(() => {
+    if (selectedPersonnel.size > 0 && dailyTotalHours > 0) {
+      form.setValue("hours", dailyTotalHours, { shouldValidate: true });
+    }
+  }, [selectedPersonnel.size, dailyTotalHours, form]);
+
   // Apply template hours to all selected personnel
   const applyTemplateToAll = () => {
     const newPersonnelHours: PersonnelHours = { ...personnelHours };
@@ -413,7 +421,8 @@ export function EnhancedTimeEntryForm({
           }));
         
         if (entries.length === 0) {
-          return; // No hours entered for any personnel
+          toast({ title: "Enter hours for at least one person before saving.", variant: "destructive" });
+          return;
         }
         
         await bulkAddPersonnelTimeEntries.mutateAsync(entries);
@@ -433,8 +442,9 @@ export function EnhancedTimeEntryForm({
       form.reset();
       setSelectedPersonnel(new Set());
       setDailyPersonnelHours({});
-    } catch (error) {
+    } catch (error: any) {
       console.error("Failed to save time entry:", error);
+      toast({ title: error?.message ?? "Failed to save time entry", variant: "destructive" });
     }
   };
 
