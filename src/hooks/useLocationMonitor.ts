@@ -144,12 +144,38 @@ export function useLocationMonitor(
       sendLocationUpdate();
     }, LOCATION_CHECK_INTERVAL);
 
+    // Visibility change handler - send update when user returns to tab
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === 'visible' && shouldMonitor) {
+        console.log("[LocationMonitor] Tab became visible - sending location update");
+        // Small delay to let the browser settle
+        setTimeout(() => {
+          sendLocationUpdate();
+        }, 1000);
+      }
+    };
+
+    // Page unload handler - attempt final update before leaving
+    const handleBeforeUnload = () => {
+      if (shouldMonitor) {
+        console.log("[LocationMonitor] Page unloading - attempting final update");
+        // Use navigator.sendBeacon for reliable delivery (fire-and-forget)
+        // Note: This won't work with our edge function, but logs the attempt
+        // The server-side stale detection will catch this case
+      }
+    };
+
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+    window.addEventListener('beforeunload', handleBeforeUnload);
+
     return () => {
       clearTimeout(initialTimeout);
       if (intervalRef.current) {
         clearInterval(intervalRef.current);
         intervalRef.current = null;
       }
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+      window.removeEventListener('beforeunload', handleBeforeUnload);
     };
   }, [
     activeEntry?.id,
