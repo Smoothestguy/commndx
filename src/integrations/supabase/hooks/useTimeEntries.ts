@@ -327,7 +327,7 @@ export const usePersonnelTimeEntriesByWeek = (projectId: string, weekStartDate: 
   });
 };
 
-// Add or update a time entry (upsert to handle duplicates)
+// Add a time entry (using insert instead of upsert due to partial index constraint)
 export const useAddTimeEntry = () => {
   const queryClient = useQueryClient();
   const { logAction } = useAuditLog();
@@ -337,18 +337,15 @@ export const useAddTimeEntry = () => {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) throw new Error("Not authenticated");
 
-      // Store full hours - overtime is calculated at weekly aggregation time
+      // Regular insert (no upsert - partial index doesn't work with onConflict)
       const { data, error } = await supabase
         .from("time_entries")
-        .upsert(
-          { 
-            ...entry, 
-            user_id: user.id,
-            regular_hours: entry.hours,
-            overtime_hours: 0,
-          },
-          { onConflict: 'user_id,project_id,entry_date' }
-        )
+        .insert({ 
+          ...entry, 
+          user_id: user.id,
+          regular_hours: entry.hours,
+          overtime_hours: 0,
+        })
         .select()
         .single();
 
@@ -372,8 +369,12 @@ export const useAddTimeEntry = () => {
       queryClient.invalidateQueries({ queryKey: ["time-entries"] });
       toast.success("Time entry saved successfully");
     },
-    onError: () => {
-      toast.error("Failed to save time entry");
+    onError: (error: any) => {
+      if (error?.code === '23505') {
+        toast.error("A time entry already exists for this date and project");
+      } else {
+        toast.error("Failed to save time entry");
+      }
     },
   });
 };
