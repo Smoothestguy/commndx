@@ -89,6 +89,26 @@ export const useAddProject = () => {
         } as Json,
       });
 
+      // Auto-geocode if address exists
+      if (project.address) {
+        try {
+          const fullAddress = [project.address, project.city, project.state, project.zip]
+            .filter(Boolean).join(", ");
+          const { data: geocodeResult } = await supabase.functions.invoke("geocode", {
+            body: { address: fullAddress },
+          });
+          if (geocodeResult?.ok && geocodeResult.lat && geocodeResult.lng) {
+            await supabase.from("projects").update({
+              site_lat: geocodeResult.lat,
+              site_lng: geocodeResult.lng,
+              site_geocoded_at: new Date().toISOString(),
+            }).eq("id", data.id);
+          }
+        } catch (e) {
+          console.error("Auto-geocode failed:", e);
+        }
+      }
+
       return data;
     },
     onSuccess: () => {
@@ -137,10 +157,43 @@ export const useUpdateProject = () => {
         changesAfter,
       });
 
+      // Auto-geocode if address changed
+      const addressChanged = 
+        updates.address !== undefined && updates.address !== originalData?.address ||
+        updates.city !== undefined && updates.city !== originalData?.city ||
+        updates.state !== undefined && updates.state !== originalData?.state ||
+        updates.zip !== undefined && updates.zip !== originalData?.zip;
+
+      if (addressChanged && (updates.address || data.address)) {
+        try {
+          const fullAddress = [
+            updates.address ?? data.address,
+            updates.city ?? data.city,
+            updates.state ?? data.state,
+            updates.zip ?? data.zip
+          ].filter(Boolean).join(", ");
+          
+          const { data: geocodeResult } = await supabase.functions.invoke("geocode", {
+            body: { address: fullAddress },
+          });
+          
+          if (geocodeResult?.ok && geocodeResult.lat && geocodeResult.lng) {
+            await supabase.from("projects").update({
+              site_lat: geocodeResult.lat,
+              site_lng: geocodeResult.lng,
+              site_geocoded_at: new Date().toISOString(),
+            }).eq("id", id);
+          }
+        } catch (e) {
+          console.error("Auto-geocode failed:", e);
+        }
+      }
+
       return data;
     },
-    onSuccess: () => {
+    onSuccess: (_, variables) => {
       queryClient.invalidateQueries({ queryKey: ["projects"] });
+      queryClient.invalidateQueries({ queryKey: ["project-geofence", variables.id] });
       toast.success("Project updated successfully");
     },
     onError: (error: Error) => {
