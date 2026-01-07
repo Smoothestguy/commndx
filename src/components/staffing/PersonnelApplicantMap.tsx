@@ -7,7 +7,7 @@ import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
-import { Users, UserCheck, MapPin, Loader2, RefreshCw, AlertCircle, ExternalLink, Activity, Clock, Coffee } from "lucide-react";
+import { Users, UserCheck, MapPin, Loader2, RefreshCw, AlertCircle, ExternalLink, Activity, Clock, Coffee, AlertTriangle } from "lucide-react";
 import { toast } from "sonner";
 import { Link } from "react-router-dom";
 
@@ -295,12 +295,31 @@ export function PersonnelApplicantMap({ mapboxToken, isAdmin = false }: Personne
       el.className = 'marker-container';
       
       if (person.type === 'active') {
-        // Pulsing green marker for active clock locations
-        const isOnLunch = (person as ActiveClockLocation).is_on_lunch;
+        const activeEntry = person as ActiveClockLocation;
+        const isOnLunch = activeEntry.is_on_lunch;
+        const staleness = getStalenessInfo(activeEntry.last_location_check_at);
+        
+        // Color based on staleness and lunch status
+        let bgColor = 'bg-green-500';
+        let pingColor = 'bg-green-500/30';
+        let showPing = true;
+        
+        if (isOnLunch) {
+          bgColor = 'bg-yellow-500';
+          pingColor = 'bg-yellow-500/30';
+        } else if (staleness.level === 'very-stale') {
+          bgColor = 'bg-gray-400';
+          pingColor = 'bg-gray-400/30';
+          showPing = false; // No pulse for very stale
+        } else if (staleness.level === 'stale') {
+          bgColor = 'bg-amber-500';
+          pingColor = 'bg-amber-500/30';
+        }
+        
         el.innerHTML = `
           <div class="relative">
-            <div class="absolute inset-0 w-10 h-10 -ml-1 -mt-1 rounded-full ${isOnLunch ? 'bg-yellow-500/30' : 'bg-green-500/30'} animate-ping"></div>
-            <div class="relative w-8 h-8 rounded-full flex items-center justify-center shadow-lg cursor-pointer transition-transform hover:scale-110 ${isOnLunch ? 'bg-yellow-500' : 'bg-green-500'} text-white border-2 border-white">
+            ${showPing ? `<div class="absolute inset-0 w-10 h-10 -ml-1 -mt-1 rounded-full ${pingColor} animate-ping"></div>` : ''}
+            <div class="relative w-8 h-8 rounded-full flex items-center justify-center shadow-lg cursor-pointer transition-transform hover:scale-110 ${bgColor} text-white border-2 border-white">
               <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="currentColor">
                 <circle cx="12" cy="12" r="5"/>
               </svg>
@@ -438,6 +457,19 @@ export function PersonnelApplicantMap({ mapboxToken, isAdmin = false }: Personne
     return `${hours} hours ago`;
   };
 
+  // Calculate staleness level for active clocks
+  const getStalenessInfo = (lastCheckAt: string | null): { level: 'fresh' | 'stale' | 'very-stale'; minutes: number } => {
+    if (!lastCheckAt) return { level: 'very-stale', minutes: 999 };
+    const date = new Date(lastCheckAt);
+    const now = new Date();
+    const diffMs = now.getTime() - date.getTime();
+    const minutes = Math.floor(diffMs / (1000 * 60));
+    
+    if (minutes <= 15) return { level: 'fresh', minutes };
+    if (minutes <= 60) return { level: 'stale', minutes };
+    return { level: 'very-stale', minutes };
+  };
+
   const totalCount = (() => {
     switch (filter) {
       case 'all':
@@ -468,6 +500,84 @@ export function PersonnelApplicantMap({ mapboxToken, isAdmin = false }: Personne
 
     if (selectedPerson.type === 'active') {
       const active = selectedPerson as ActiveClockLocation;
+      const staleness = getStalenessInfo(active.last_location_check_at);
+      
+      const getStatusBadge = () => {
+        if (active.is_on_lunch) {
+          return (
+            <Badge variant="secondary" className="bg-yellow-100 text-yellow-800">
+              <Coffee className="h-3 w-3 mr-1" />
+              On Lunch
+            </Badge>
+          );
+        }
+        if (staleness.level === 'very-stale') {
+          return (
+            <Badge variant="destructive" className="bg-gray-500 hover:bg-gray-600">
+              <AlertTriangle className="h-3 w-3 mr-1" />
+              Stale Location
+            </Badge>
+          );
+        }
+        if (staleness.level === 'stale') {
+          return (
+            <Badge className="bg-amber-500 hover:bg-amber-600">
+              <AlertTriangle className="h-3 w-3 mr-1" />
+              Location Aging
+            </Badge>
+          );
+        }
+        return (
+          <Badge className="bg-green-500 hover:bg-green-600">
+            <Activity className="h-3 w-3 mr-1" />
+            Active
+          </Badge>
+        );
+      };
+
+      const getLocationBox = () => {
+        if (staleness.level === 'very-stale') {
+          return (
+            <div className="p-3 rounded-lg bg-red-50 dark:bg-red-950/30 border border-red-200 dark:border-red-800">
+              <div className="flex items-center gap-2 text-red-700 dark:text-red-300 font-medium mb-1">
+                <AlertTriangle className="h-4 w-4" />
+                Stale Location Data
+              </div>
+              <p className="text-xs text-red-600 dark:text-red-400">
+                Last GPS update: {formatTimeAgo(active.last_location_check_at)}
+              </p>
+              <p className="text-xs text-red-600 dark:text-red-400 mt-1">
+                Location may be inaccurate. User may have left the site.
+              </p>
+            </div>
+          );
+        }
+        if (staleness.level === 'stale') {
+          return (
+            <div className="p-3 rounded-lg bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800">
+              <div className="flex items-center gap-2 text-amber-700 dark:text-amber-300 font-medium mb-1">
+                <Clock className="h-4 w-4" />
+                Location Aging
+              </div>
+              <p className="text-xs text-amber-600 dark:text-amber-400">
+                Last GPS update: {formatTimeAgo(active.last_location_check_at)}
+              </p>
+            </div>
+          );
+        }
+        return (
+          <div className="p-3 rounded-lg bg-green-50 dark:bg-green-950/30 border border-green-200 dark:border-green-800">
+            <div className="flex items-center gap-2 text-green-700 dark:text-green-300 font-medium mb-1">
+              <Clock className="h-4 w-4" />
+              Real-Time Location
+            </div>
+            <p className="text-xs text-green-600 dark:text-green-400">
+              Last GPS update: {formatTimeAgo(active.last_location_check_at)}
+            </p>
+          </div>
+        );
+      };
+
       return (
         <div className="space-y-4">
           <div className="flex items-center gap-3">
@@ -482,30 +592,13 @@ export function PersonnelApplicantMap({ mapboxToken, isAdmin = false }: Personne
                 {active.first_name} {active.last_name}
               </h3>
               <div className="flex items-center gap-2 flex-wrap">
-                <Badge className="bg-green-500 hover:bg-green-600">
-                  <Activity className="h-3 w-3 mr-1" />
-                  Active
-                </Badge>
-                {active.is_on_lunch && (
-                  <Badge variant="secondary" className="bg-yellow-100 text-yellow-800">
-                    <Coffee className="h-3 w-3 mr-1" />
-                    On Lunch
-                  </Badge>
-                )}
+                {getStatusBadge()}
               </div>
             </div>
           </div>
           
           <div className="space-y-3 text-sm">
-            <div className="p-3 rounded-lg bg-green-50 dark:bg-green-950/30 border border-green-200 dark:border-green-800">
-              <div className="flex items-center gap-2 text-green-700 dark:text-green-300 font-medium mb-1">
-                <Clock className="h-4 w-4" />
-                Real-Time Location
-              </div>
-              <p className="text-xs text-green-600 dark:text-green-400">
-                Last GPS update: {formatTimeAgo(active.last_location_check_at)}
-              </p>
-            </div>
+            {getLocationBox()}
 
             <div>
               <span className="text-muted-foreground">Project:</span>
@@ -744,8 +837,18 @@ export function PersonnelApplicantMap({ mapboxToken, isAdmin = false }: Personne
             <div className="flex items-center gap-4 text-sm flex-wrap">
               <div className="flex items-center gap-2">
                 <div className="w-3 h-3 rounded-full bg-green-500 ring-2 ring-green-500/30 animate-pulse" />
-                <span>Clocked In ({activeClocks.length})</span>
+                <span>Active (&lt;15m)</span>
               </div>
+              <div className="flex items-center gap-2">
+                <div className="w-3 h-3 rounded-full bg-amber-500" />
+                <span>Aging (15-60m)</span>
+              </div>
+              <div className="flex items-center gap-2">
+                <div className="w-3 h-3 rounded-full bg-gray-400" />
+                <span>Stale (&gt;60m)</span>
+              </div>
+            </div>
+            <div className="flex items-center gap-4 text-sm flex-wrap">
               <div className="flex items-center gap-2">
                 <div className="w-3 h-3 rounded-full bg-primary" />
                 <span>Personnel ({counts.personnelGeocoded}/{counts.personnelTotal})</span>
