@@ -41,6 +41,7 @@ interface WeeklyProjectSectionProps {
   isWeekClosed: boolean;
   selectedRows: Set<string>;
   onToggleRowSelection: (rowKey: string) => void;
+  onSelectProjectRows: (rowKeys: string[], selected: boolean) => void;
   onCellClick: (row: RowData, day: Date) => void;
   onEditRate: (row: RowData) => void;
   getRowTotal: (rowKey: string) => number;
@@ -67,6 +68,7 @@ export function WeeklyProjectSection({
   isWeekClosed,
   selectedRows,
   onToggleRowSelection,
+  onSelectProjectRows,
   onCellClick,
   onEditRate,
   getRowTotal,
@@ -111,15 +113,10 @@ export function WeeklyProjectSection({
   const someRowsSelected = rows.some((r) => selectedRows.has(r.rowKey));
 
   const handleSelectAllProject = (checked: boolean) => {
-    rows.forEach((row) => {
-      if (row.isPersonnelEntry && row.personnelId) {
-        if (checked && !selectedRows.has(row.rowKey)) {
-          onToggleRowSelection(row.rowKey);
-        } else if (!checked && selectedRows.has(row.rowKey)) {
-          onToggleRowSelection(row.rowKey);
-        }
-      }
-    });
+    const personnelRowKeys = rows
+      .filter((r) => r.isPersonnelEntry && r.personnelId)
+      .map((r) => r.rowKey);
+    onSelectProjectRows(personnelRowKeys, checked);
   };
 
   return (
