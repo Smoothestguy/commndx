@@ -353,11 +353,22 @@ export function EnhancedTimeEntryForm({
   }, [existingWeeklyEntries, entryType, weeklyProjectId]);
 
   // Sync hidden hours field when personnel are selected (for schema validation)
+  // Clamp to 24 so the schema's max(24) check always passes for multi-personnel totals
   useEffect(() => {
-    if (selectedPersonnel.size > 0 && dailyTotalHours > 0) {
-      form.setValue("hours", dailyTotalHours, { shouldValidate: true });
+    if (selectedPersonnel.size > 0) {
+      const schemaValue = dailyTotalHours > 0 ? Math.min(dailyTotalHours, 24) : 0;
+      form.setValue("hours", schemaValue, { shouldValidate: true, shouldDirty: true });
     }
   }, [selectedPersonnel.size, dailyTotalHours, form]);
+
+  // Handler for form validation failures (before handleDailySubmit runs)
+  const handleDailyInvalid = (errors: any) => {
+    const firstError = Object.values(errors)[0] as any;
+    toast({ 
+      title: firstError?.message ?? "Please fix the form errors before submitting.", 
+      variant: "destructive" 
+    });
+  };
 
   // Apply template hours to all selected personnel
   const applyTemplateToAll = () => {
@@ -1059,7 +1070,7 @@ export function EnhancedTimeEntryForm({
           {/* Daily Entry Form */}
           {(entryType === "daily" || entry) && (
             <Form {...form}>
-              <form onSubmit={form.handleSubmit(handleDailySubmit)} className="space-y-4">
+              <form onSubmit={form.handleSubmit(handleDailySubmit, handleDailyInvalid)} className="space-y-4">
                 <div className="grid grid-cols-2 gap-4">
                   <FormField
                     control={form.control}
