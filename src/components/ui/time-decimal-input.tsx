@@ -37,19 +37,16 @@ const TimeDecimalInput = React.forwardRef<HTMLInputElement, TimeDecimalInputProp
     const [displayValue, setDisplayValue] = React.useState<string>("");
     const [error, setError] = React.useState<string | null>(null);
     const [preview, setPreview] = React.useState<string | null>(null);
-
-    // Sync display value when external value changes
-    React.useEffect(() => {
-      if (value !== undefined && value !== null) {
-        // Only update if not focused to avoid fighting with user input
-        const input = document.activeElement;
-        if (input !== inputRef.current) {
-          setDisplayValue(value > 0 ? value.toFixed(2) : "");
-        }
-      }
-    }, [value]);
+    const [isFocused, setIsFocused] = React.useState(false);
 
     const inputRef = React.useRef<HTMLInputElement>(null);
+
+    // Sync display value when external value changes (only when not focused)
+    React.useEffect(() => {
+      if (value !== undefined && value !== null && !isFocused) {
+        setDisplayValue(value > 0 ? value.toFixed(2) : "");
+      }
+    }, [value, isFocused]);
 
     // Merge refs
     React.useImperativeHandle(ref, () => inputRef.current!, []);
@@ -59,19 +56,12 @@ const TimeDecimalInput = React.forwardRef<HTMLInputElement, TimeDecimalInputProp
       setDisplayValue(newValue);
       setError(null);
 
-      // Update preview
+      // Update preview for user feedback
       const previewText = getConversionPreview(newValue);
       setPreview(previewText);
 
-      // For simple numbers, update immediately
-      const parsed = parseTimeToDecimal(newValue);
-      if (parsed.isValid && !newValue.includes(":") && parsed.decimalHours !== value) {
-        // Don't update immediately for time format - wait for blur
-        if (!/^\d{3,4}$/.test(newValue.replace(/[:.]/g, ""))) {
-          // Simple decimal or single digit - update immediately
-          onValueChange(parsed.decimalHours);
-        }
-      }
+      // Don't commit value immediately - wait for blur/Enter
+      // This allows typing multi-digit numbers like "12" without interruption
     };
 
     const evaluateAndCommit = () => {
@@ -96,7 +86,12 @@ const TimeDecimalInput = React.forwardRef<HTMLInputElement, TimeDecimalInputProp
       setDisplayValue(result.decimalHours > 0 ? result.decimalHours.toFixed(2) : "");
     };
 
+    const handleFocus = () => {
+      setIsFocused(true);
+    };
+
     const handleBlur = () => {
+      setIsFocused(false);
       evaluateAndCommit();
     };
 
@@ -118,6 +113,7 @@ const TimeDecimalInput = React.forwardRef<HTMLInputElement, TimeDecimalInputProp
           ref={inputRef}
           value={displayValue}
           onChange={handleChange}
+          onFocus={handleFocus}
           onBlur={handleBlur}
           onKeyDown={handleKeyDown}
           placeholder={placeholder || (compact ? "0" : "8:20 or 8.33")}
