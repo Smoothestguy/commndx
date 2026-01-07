@@ -60,8 +60,19 @@ const TimeDecimalInput = React.forwardRef<HTMLInputElement, TimeDecimalInputProp
       const previewText = getConversionPreview(newValue);
       setPreview(previewText);
 
-      // Don't commit value immediately - wait for blur/Enter
-      // This allows typing multi-digit numbers like "12" without interruption
+      // Live commit: update parent state immediately if valid, but don't reformat display
+      // This enables submit button as soon as valid value is typed
+      if (!newValue || newValue.trim() === "") {
+        onValueChange(0);
+        return;
+      }
+
+      const result = parseTimeToDecimal(newValue);
+      if (result.isValid) {
+        onValueChange(result.decimalHours);
+        // Don't setDisplayValue here - keep raw text while typing
+      }
+      // If invalid, keep previous numeric value in parent state (don't update)
     };
 
     const evaluateAndCommit = () => {
