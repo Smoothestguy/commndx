@@ -33,8 +33,20 @@ const SidebarContext = React.createContext<SidebarContext | null>(null);
 
 function useSidebar() {
   const context = React.useContext(SidebarContext);
+
+  // Defensive fallback: avoid hard-crashing the entire app if a consumer renders
+  // outside of SidebarProvider for any reason (routing race, partial renders, etc.).
+  // Consumers will behave as if the sidebar is expanded and toggling is a no-op.
   if (!context) {
-    throw new Error("useSidebar must be used within a SidebarProvider.");
+    return {
+      state: "expanded" as const,
+      open: true,
+      setOpen: () => {},
+      openMobile: false,
+      setOpenMobile: () => {},
+      isMobile: false,
+      toggleSidebar: () => {},
+    };
   }
 
   return context;
