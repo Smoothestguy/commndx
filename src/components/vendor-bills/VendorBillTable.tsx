@@ -13,7 +13,7 @@ import { useQuickBooksConfig, useQuickBooksBillMapping, useSyncVendorBillToQB } 
 import { VendorBillPaymentDialog } from "./VendorBillPaymentDialog";
 import { BulkBillPaymentDialog } from "./BulkBillPaymentDialog";
 import { VendorBillCard } from "./VendorBillCard";
-import { useIsMobile, useIsTablet } from "@/hooks/use-mobile";
+import { useIsMobile, useIsWideTablet } from "@/hooks/use-mobile";
 import { toast } from "sonner";
 
 interface VendorBillTableProps {
@@ -190,7 +190,7 @@ export function VendorBillTable({ bills }: VendorBillTableProps) {
   const [isBulkSyncing, setIsBulkSyncing] = useState(false);
   
   const isMobile = useIsMobile();
-  const isTablet = useIsTablet();
+  const isWideTablet = useIsWideTablet();
   const navigate = useNavigate();
   const { data: qbConfig } = useQuickBooksConfig();
   const deleteBill = useDeleteVendorBill();
@@ -331,7 +331,7 @@ export function VendorBillTable({ bills }: VendorBillTableProps) {
       )}
 
       {/* Mobile Card View */}
-      {isMobile || isTablet ? (
+      {isMobile || isWideTablet ? (
         <div className="space-y-3">
           {bills.map((bill) => (
             <VendorBillCard
