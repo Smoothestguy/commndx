@@ -70,7 +70,7 @@ const SidebarProvider = React.forwardRef<
   const [_open, _setOpen] = React.useState(() => {
     if (typeof window !== 'undefined') {
       const width = window.innerWidth;
-      const isTabletViewport = width >= 768 && width < 1024;
+      const isTabletViewport = width >= 768 && width < 1180;
       if (isTabletViewport) return false;
     }
     return defaultOpen;
