@@ -148,31 +148,33 @@ export function ProductFilters({
 
       {/* A-Z Filter */}
 
-      {/* Category Pills */}
-      <div className="flex flex-wrap gap-1.5 sm:gap-2">
-        <button
-          onClick={() => onCategoryChange("")}
-          className={`px-3 sm:px-4 py-2 rounded-full text-xs sm:text-sm font-medium transition-all duration-200 min-h-[36px] sm:min-h-[40px] ${
-            selectedCategory === ""
-              ? "bg-primary text-primary-foreground shadow-lg shadow-primary/25"
-              : "bg-secondary text-muted-foreground hover:bg-secondary/80 active:bg-secondary/70"
-          }`}
-        >
-          All Categories
-        </button>
-        {filteredCategories.map((category) => (
+      {/* Category Pills - Horizontal scroll on tablet */}
+      <div className="overflow-x-auto -mx-4 px-4 md:-mx-0 md:px-0 lg:overflow-visible scrollbar-hide">
+        <div className="flex flex-nowrap lg:flex-wrap gap-1.5 sm:gap-2 min-w-max lg:min-w-0">
           <button
-            key={category}
-            onClick={() => onCategoryChange(category)}
-            className={`px-3 sm:px-4 py-2 rounded-full text-xs sm:text-sm font-medium transition-all duration-200 min-h-[36px] sm:min-h-[40px] truncate max-w-[150px] sm:max-w-none ${
-              selectedCategory === category
+            onClick={() => onCategoryChange("")}
+            className={`px-3 sm:px-4 py-2 rounded-full text-xs sm:text-sm font-medium transition-all duration-200 min-h-[36px] sm:min-h-[40px] whitespace-nowrap ${
+              selectedCategory === ""
                 ? "bg-primary text-primary-foreground shadow-lg shadow-primary/25"
                 : "bg-secondary text-muted-foreground hover:bg-secondary/80 active:bg-secondary/70"
             }`}
           >
-            {category}
+            All Categories
           </button>
-        ))}
+          {filteredCategories.map((category) => (
+            <button
+              key={category}
+              onClick={() => onCategoryChange(category)}
+              className={`px-3 sm:px-4 py-2 rounded-full text-xs sm:text-sm font-medium transition-all duration-200 min-h-[36px] sm:min-h-[40px] whitespace-nowrap ${
+                selectedCategory === category
+                  ? "bg-primary text-primary-foreground shadow-lg shadow-primary/25"
+                  : "bg-secondary text-muted-foreground hover:bg-secondary/80 active:bg-secondary/70"
+              }`}
+            >
+              {category}
+            </button>
+          ))}
+        </div>
       </div>
 
       {/* Active Filters Display */}

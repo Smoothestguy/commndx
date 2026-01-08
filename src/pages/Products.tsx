@@ -61,7 +61,7 @@ import {
   useProductUnits,
   useAddProductUnit,
 } from "@/integrations/supabase/hooks/useProductUnits";
-import { useIsMobile } from "@/hooks/use-mobile";
+import { useIsMobile, useIsTablet } from "@/hooks/use-mobile";
 import { ProductCard } from "@/components/products/ProductCard";
 import { ProductStats } from "@/components/products/ProductStats";
 import { ProductFilters } from "@/components/products/ProductFilters";
@@ -113,6 +113,7 @@ const Products = () => {
   const addCategory = useAddProductCategory();
   const addUnit = useAddProductUnit();
   const isMobile = useIsMobile();
+  const isTablet = useIsTablet();
 
   // QuickBooks hooks
   const { data: qbConfig } = useQuickBooksConfig();
@@ -412,9 +413,9 @@ const Products = () => {
         title="Products & Services"
         description="Manage your products, services, and labor items"
         actions={
-          <Button variant="glow" onClick={openNewDialog}>
+          <Button variant="glow" onClick={openNewDialog} className="whitespace-nowrap">
             <Plus className="h-4 w-4" />
-            Add Item
+            <span className={isTablet ? "sr-only" : undefined}>Add Item</span>
           </Button>
         }
       >
@@ -483,34 +484,34 @@ const Products = () => {
                       <Button
                         variant="outline"
                         size="sm"
-                        className="min-h-[36px] sm:min-h-[32px] text-xs sm:text-sm"
+                        className="min-h-[36px] sm:min-h-[32px] text-xs sm:text-sm whitespace-nowrap"
                         onClick={() => importProducts.mutate()}
                         disabled={
                           importProducts.isPending || exportProducts.isPending
                         }
                       >
                         {importProducts.isPending ? (
-                          <RefreshCw className="h-3 w-3 sm:h-4 sm:w-4 mr-1 animate-spin" />
+                          <RefreshCw className="h-3 w-3 sm:h-4 sm:w-4 animate-spin" />
                         ) : (
-                          <Cloud className="h-3 w-3 sm:h-4 sm:w-4 mr-1" />
+                          <Cloud className="h-3 w-3 sm:h-4 sm:w-4" />
                         )}
-                        Import
+                        <span className="ml-1">Import</span>
                       </Button>
                       <Button
                         variant="outline"
                         size="sm"
-                        className="min-h-[36px] sm:min-h-[32px] text-xs sm:text-sm"
+                        className="min-h-[36px] sm:min-h-[32px] text-xs sm:text-sm whitespace-nowrap"
                         onClick={() => exportProducts.mutate()}
                         disabled={
                           importProducts.isPending || exportProducts.isPending
                         }
                       >
                         {exportProducts.isPending ? (
-                          <RefreshCw className="h-3 w-3 sm:h-4 sm:w-4 mr-1 animate-spin" />
+                          <RefreshCw className="h-3 w-3 sm:h-4 sm:w-4 animate-spin" />
                         ) : (
-                          <Cloud className="h-3 w-3 sm:h-4 sm:w-4 mr-1" />
+                          <Cloud className="h-3 w-3 sm:h-4 sm:w-4" />
                         )}
-                        Export
+                        <span className="ml-1">Export</span>
                       </Button>
                     </div>
                   </div>
@@ -584,8 +585,8 @@ const Products = () => {
                     selectedLetter !== ""
                   }
                 />
-              ) : isMobile ? (
-                <div className="grid gap-3 sm:gap-4 grid-cols-1 sm:grid-cols-2">
+              ) : isMobile || isTablet ? (
+                <div className={`grid gap-3 sm:gap-4 ${isTablet ? "grid-cols-2" : "grid-cols-1"}`}>
                   {sortedProducts.map((product, index) => (
                     <ProductCard
                       key={product.id}
