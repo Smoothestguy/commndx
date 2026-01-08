@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
 import { formatLocalDate, parseLocalDate } from "@/lib/dateUtils";
 import { Eye, MoreHorizontal, Edit, Trash2, DollarSign, RefreshCw, CheckCircle2, AlertCircle, Loader2 } from "lucide-react";
@@ -198,6 +198,20 @@ export function VendorBillTable({ bills }: VendorBillTableProps) {
   const allSelected = bills.length > 0 && selectedIds.size === bills.length;
   const someSelected = selectedIds.size > 0 && selectedIds.size < bills.length;
 
+  // Calculate running total for selected bills
+  const selectionSummary = useMemo(() => {
+    const selectedBills = bills.filter(bill => selectedIds.has(bill.id));
+    const total = selectedBills.reduce((sum, bill) => sum + Number(bill.total), 0);
+    return {
+      count: selectedBills.length,
+      total,
+    };
+  }, [bills, selectedIds]);
+
+  const formatCurrency = (amount: number) => {
+    return `$${amount.toLocaleString("en-US", { minimumFractionDigits: 2 })}`;
+  };
+
   const handleSelectAll = (checked: boolean) => {
     if (checked) {
       setSelectedIds(new Set(bills.map(b => b.id)));
@@ -265,8 +279,15 @@ export function VendorBillTable({ bills }: VendorBillTableProps) {
   return (
     <>
       {selectedIds.size > 0 && (
-        <div className="flex flex-wrap items-center gap-2 sm:gap-4 p-3 bg-muted rounded-lg mb-4">
-          <span className="text-sm font-medium">{selectedIds.size} selected</span>
+        <div className="sticky top-0 z-10 flex flex-wrap items-center gap-2 sm:gap-4 p-3 bg-muted/95 backdrop-blur-sm rounded-lg mb-4 border shadow-sm">
+          <div className="flex flex-col sm:flex-row sm:items-center gap-1 sm:gap-3 mr-auto">
+            <span className="text-sm font-medium">
+              {selectionSummary.count} bill{selectionSummary.count !== 1 ? 's' : ''} selected
+            </span>
+            <span className="text-sm font-bold text-primary">
+              Total: {formatCurrency(selectionSummary.total)}
+            </span>
+          </div>
           <Button 
             variant="default" 
             size="sm"
