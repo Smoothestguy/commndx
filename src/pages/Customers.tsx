@@ -301,12 +301,13 @@ const Customers = () => {
           />
         )}
 
-        {/* Customers - Responsive Layout */}
+        {/* Customers - Responsive Layout using CSS show/hide for instant switching */}
         {!isLoading && !error && filteredCustomers.length > 0 && (
           <>
-            {isMobile ? (
+            {/* Mobile Cards - hidden on md+ */}
+            <div className="block md:hidden">
               <div className="grid gap-4">
-                {filteredCustomers.map((customer, index) => {
+                {filteredCustomers.map((customer) => {
                   const projectCount = projects?.filter(p => p.customer_id === customer.id).length || 0;
                   return (
                     <CustomerCard
@@ -315,19 +316,20 @@ const Customers = () => {
                       projectCount={projectCount}
                       onEdit={handleEdit}
                       onDelete={handleDelete}
-                      index={index}
                     />
                   );
                 })}
               </div>
-            ) : (
+            </div>
+            {/* Desktop Table - hidden below md */}
+            <div className="hidden md:block">
               <EnhancedDataTable 
                 tableId="customers"
                 data={filteredCustomers} 
                 columns={columns}
                 onRowClick={(customer) => navigate(`/customers/${customer.id}`)}
               />
-            )}
+            </div>
           </>
         )}
       </PullToRefreshWrapper>

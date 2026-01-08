@@ -9,7 +9,7 @@ interface CustomerCardProps {
   projectCount: number;
   onEdit: (customer: Customer) => void;
   onDelete: (id: string) => void;
-  index: number;
+  index?: number; // Made optional - no longer used for staggered animations
 }
 
 export const CustomerCard = ({
@@ -17,7 +17,6 @@ export const CustomerCard = ({
   projectCount,
   onEdit,
   onDelete,
-  index,
 }: CustomerCardProps) => {
   const displayName = getCustomerDisplayName(customer);
   const contactName = getCustomerSecondaryName(customer);
@@ -25,7 +24,6 @@ export const CustomerCard = ({
   return (
     <div
       className="glass rounded-xl p-4 hover:shadow-lg transition-all duration-300 animate-fade-in border-l-4 border-l-primary/50"
-      style={{ animationDelay: `${index * 50}ms` }}
     >
       <div className="flex items-start justify-between mb-3">
         <div className="flex-1">
