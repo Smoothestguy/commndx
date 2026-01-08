@@ -54,16 +54,15 @@ const SidebarProvider = React.forwardRef<
 
   // This is the internal state of the sidebar.
   // We use openProp and setOpenProp for control from outside the component.
-  // Default to collapsed on tablet for more content space
-  const [_open, _setOpen] = React.useState(() => isTablet ? false : defaultOpen);
+  const [_open, _setOpen] = React.useState(defaultOpen);
   const open = openProp ?? _open;
 
-  // Auto-collapse when entering tablet viewport
+  // Auto-collapse when on tablet viewport
   React.useEffect(() => {
     if (isTablet && _open && !openProp) {
       _setOpen(false);
     }
-  }, [isTablet, _open, openProp]);
+  }, [isTablet]);
   const setOpen = React.useCallback(
     (value: boolean | ((value: boolean) => boolean)) => {
       const openState = typeof value === "function" ? value(open) : value;
