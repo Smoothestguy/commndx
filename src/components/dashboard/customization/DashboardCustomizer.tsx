@@ -133,11 +133,18 @@ export function DashboardCustomizer({
     if (newCol + widget.size.width > maxCols) return;
 
     // Update widget position (0-indexed)
-    const updatedWidgets = layout.widgets.map((w) =>
+    let updatedWidgets = layout.widgets.map((w) =>
       w.widgetId === widgetId
         ? { ...w, position: { row: newRow, col: newCol } }
         : w
     );
+
+    // On mobile, sort widgets by row so DOM order matches visual order
+    if (isMobile) {
+      updatedWidgets = [...updatedWidgets].sort(
+        (a, b) => a.position.row - b.position.row
+      );
+    }
 
     triggerHaptic(ImpactStyle.Light);
     onLayoutChange({ ...layout, widgets: updatedWidgets });
