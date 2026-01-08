@@ -348,24 +348,24 @@ const Dashboard = () => {
         title="Dashboard"
         description="Welcome back to Command X"
         actions={
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-1.5 shrink-0">
             <Button
               variant="outline"
               size="sm"
               onClick={() => navigate("/staffing/map")}
-              className="h-9 px-3"
+              className="h-8 px-2"
             >
-              <MapPin className="h-4 w-4" />
-              <span className="ml-1.5 hidden sm:inline">Map View</span>
+              <MapPin className="h-3.5 w-3.5" />
+              <span className="ml-1 hidden sm:inline text-xs">Map</span>
             </Button>
             <Button
               variant="glow"
               size="sm"
               onClick={() => navigate("/estimates/new")}
-              className="h-9 px-3"
+              className="h-8 px-2"
             >
-              <Plus className="h-4 w-4" />
-              <span className="ml-1.5">New Estimate</span>
+              <Plus className="h-3.5 w-3.5" />
+              <span className="ml-1 hidden sm:inline text-xs">New</span>
             </Button>
           </div>
         }
