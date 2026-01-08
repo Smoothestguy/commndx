@@ -103,57 +103,84 @@ export function useSessionTracking(externalHasAccess?: boolean, externalAccessCh
     }, IDLE_TIMEOUT_MS);
   }, [isClockedIn, sessionId, user]);
 
-  // Handle visibility change
+  // Handle visibility change AND window blur/focus
+  // When tab is hidden OR window loses focus, stop idle accumulation
   useEffect(() => {
     if (!hasAccess || !isClockedIn) return;
 
-    const handleVisibilityChange = () => {
-      if (document.hidden) {
-        // Tab hidden - if idle, commit the idle time so far
-        if (isIdleRef.current && idleStartTimeRef.current) {
-          const idleDuration = Math.floor((Date.now() - idleStartTimeRef.current) / 1000);
-          setIdleSeconds((prev) => prev + idleDuration);
-          idleStartTimeRef.current = null;
-        }
-        
-        if (idleTimeoutRef.current) {
-          clearTimeout(idleTimeoutRef.current);
-          idleTimeoutRef.current = null;
-        }
-        
-        if (sessionId && user) {
-          supabase.from("session_activity_log").insert([{
-            session_id: sessionId,
-            user_id: user.id,
-            activity_type: "tab_hidden",
-            route: window.location.pathname,
-            action_name: "Tab hidden (counting as active)",
-          }]).then(() => {});
-        }
-      } else {
-        // Tab visible again - reset activity and restart idle detection
-        lastActivityTimeRef.current = Date.now();
+    const commitIdleAndPause = (eventType: string) => {
+      // If currently idle, commit the idle time so far
+      if (isIdleRef.current && idleStartTimeRef.current) {
+        const idleDuration = Math.floor((Date.now() - idleStartTimeRef.current) / 1000);
+        setIdleSeconds((prev) => prev + idleDuration);
+        idleStartTimeRef.current = null;
         isIdleRef.current = false;
         setIsIdle(false);
-        idleStartTimeRef.current = null;
-        
-        resetIdleTimer();
-        
-        if (sessionId && user) {
-          supabase.from("session_activity_log").insert([{
-            session_id: sessionId,
-            user_id: user.id,
-            activity_type: "tab_visible",
-            route: window.location.pathname,
-            action_name: "Tab visible",
-          }]).then(() => {});
-        }
+      }
+      
+      // Clear the idle timeout - don't accumulate idle while unfocused
+      if (idleTimeoutRef.current) {
+        clearTimeout(idleTimeoutRef.current);
+        idleTimeoutRef.current = null;
+      }
+      
+      if (sessionId && user) {
+        supabase.from("session_activity_log").insert([{
+          session_id: sessionId,
+          user_id: user.id,
+          activity_type: eventType,
+          route: window.location.pathname,
+          action_name: `${eventType} (pausing idle detection)`,
+        }]).then(() => {});
       }
     };
 
+    const resumeIdleDetection = (eventType: string) => {
+      // Reset activity and restart idle detection
+      lastActivityTimeRef.current = Date.now();
+      isIdleRef.current = false;
+      setIsIdle(false);
+      idleStartTimeRef.current = null;
+      
+      resetIdleTimer();
+      
+      if (sessionId && user) {
+        supabase.from("session_activity_log").insert([{
+          session_id: sessionId,
+          user_id: user.id,
+          activity_type: eventType,
+          route: window.location.pathname,
+          action_name: `${eventType} (resuming idle detection)`,
+        }]).then(() => {});
+      }
+    };
+
+    const handleVisibilityChange = () => {
+      if (document.hidden) {
+        commitIdleAndPause("tab_hidden");
+      } else {
+        resumeIdleDetection("tab_visible");
+      }
+    };
+
+    const handleWindowBlur = () => {
+      // Window lost focus (user switched to another app)
+      commitIdleAndPause("window_blur");
+    };
+
+    const handleWindowFocus = () => {
+      // Window regained focus
+      resumeIdleDetection("window_focus");
+    };
+
     document.addEventListener("visibilitychange", handleVisibilityChange);
+    window.addEventListener("blur", handleWindowBlur);
+    window.addEventListener("focus", handleWindowFocus);
+
     return () => {
       document.removeEventListener("visibilitychange", handleVisibilityChange);
+      window.removeEventListener("blur", handleWindowBlur);
+      window.removeEventListener("focus", handleWindowFocus);
     };
   }, [hasAccess, isClockedIn, sessionId, user, resetIdleTimer]);
 
@@ -307,13 +334,19 @@ export function useSessionTracking(externalHasAccess?: boolean, externalAccessCh
     }
 
     const syncToDatabase = async () => {
+      const elapsedSeconds = getElapsedSeconds();
+      
       // Get current idle seconds including any ongoing idle period
       let currentIdleSeconds = idleSeconds;
       if (isIdleRef.current && idleStartTimeRef.current) {
         currentIdleSeconds += Math.floor((Date.now() - idleStartTimeRef.current) / 1000);
       }
 
-      const activeSeconds = Math.max(0, getElapsedSeconds() - currentIdleSeconds);
+      // SANITY CAP: Idle can never exceed elapsed time
+      // This prevents runaway totals if state gets out of sync
+      currentIdleSeconds = Math.min(currentIdleSeconds, Math.max(0, elapsedSeconds - 1));
+
+      const activeSeconds = Math.max(0, elapsedSeconds - currentIdleSeconds);
 
       try {
         await supabase
