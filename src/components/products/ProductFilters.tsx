@@ -149,8 +149,8 @@ export function ProductFilters({
       {/* A-Z Filter */}
 
       {/* Category Pills - Horizontal scroll on tablet */}
-      <div className="overflow-x-auto -mx-4 px-4 md:-mx-0 md:px-0 lg:overflow-visible scrollbar-hide">
-        <div className="flex flex-nowrap lg:flex-wrap gap-1.5 sm:gap-2 min-w-max lg:min-w-0">
+          <div className="overflow-x-auto -mx-4 px-4 md:-mx-0 md:px-0 xl:overflow-visible scrollbar-hide">
+            <div className="flex flex-nowrap xl:flex-wrap gap-1.5 sm:gap-2 min-w-max xl:min-w-0">
           <button
             onClick={() => onCategoryChange("")}
             className={`px-3 sm:px-4 py-2 rounded-full text-xs sm:text-sm font-medium transition-all duration-200 min-h-[36px] sm:min-h-[40px] whitespace-nowrap ${
