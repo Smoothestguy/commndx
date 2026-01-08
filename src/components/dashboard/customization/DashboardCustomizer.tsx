@@ -12,7 +12,12 @@ import {
   DragOverlay,
   DragStartEvent,
 } from "@dnd-kit/core";
-import { sortableKeyboardCoordinates } from "@dnd-kit/sortable";
+import {
+  SortableContext,
+  sortableKeyboardCoordinates,
+  verticalListSortingStrategy,
+  arrayMove,
+} from "@dnd-kit/sortable";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Plus, Palette, LayoutGrid, Circle } from "lucide-react";
@@ -112,47 +117,56 @@ export function DashboardCustomizer({
 
     if (!over) return;
 
-    // Get the drop zone data (row, col) from the droppable (0-indexed)
+    const activeId = active.id as string;
+
+    // MOBILE: Use sortable list reordering (widget-to-widget drops)
+    if (isMobile) {
+      const overId = over.id as string;
+      
+      // Find indices of active and over widgets
+      const oldIndex = layout.widgets.findIndex((w) => w.widgetId === activeId);
+      const newIndex = layout.widgets.findIndex((w) => w.widgetId === overId);
+      
+      // If both are valid widgets and positions differ, reorder
+      if (oldIndex !== -1 && newIndex !== -1 && oldIndex !== newIndex) {
+        const reorderedWidgets = arrayMove(layout.widgets, oldIndex, newIndex);
+        // Normalize positions to sequential rows at col 0
+        const normalizedWidgets = reorderedWidgets.map((w, index) => ({
+          ...w,
+          position: { row: index, col: 0 },
+        }));
+        triggerHaptic(ImpactStyle.Light);
+        onLayoutChange({ ...layout, widgets: normalizedWidgets });
+      }
+      return;
+    }
+
+    // DESKTOP/TABLET: Use grid drop zone positioning
     const dropData = over.data.current as
       | { row?: number; col?: number }
       | undefined;
     if (!dropData || dropData.row === undefined || dropData.col === undefined)
       return;
 
-    const widgetId = active.id as string;
     const widgetIndex = layout.widgets.findIndex(
-      (w) => w.widgetId === widgetId
+      (w) => w.widgetId === activeId
     );
     if (widgetIndex === -1) return;
 
     const widget = layout.widgets[widgetIndex];
     const newRow = dropData.row;
-    // On mobile, always use column 0 (1-column stack)
-    const newCol = isMobile ? 0 : dropData.col;
+    const newCol = dropData.col;
 
-    // Check bounds - ensure widget fits in grid (desktop only)
-    // Skip bounds check on mobile since we force col=0 and treat as 1-column stack
-    if (!isMobile) {
-      const maxCols = 4;
-      if (newCol + widget.size.width > maxCols) return;
-    }
+    // Check bounds - ensure widget fits in grid
+    const maxCols = 4;
+    if (newCol + widget.size.width > maxCols) return;
 
-    // Update widget position (0-indexed)
-    let updatedWidgets = layout.widgets.map((w) =>
-      w.widgetId === widgetId
+    // Update widget position
+    const updatedWidgets = layout.widgets.map((w) =>
+      w.widgetId === activeId
         ? { ...w, position: { row: newRow, col: newCol } }
         : w
     );
-
-    // On mobile, sort widgets by row and normalize to sequential positions
-    if (isMobile) {
-      updatedWidgets = [...updatedWidgets]
-        .sort((a, b) => a.position.row - b.position.row)
-        .map((w, index) => ({
-          ...w,
-          position: { row: index, col: 0 },
-        }));
-    }
 
     triggerHaptic(ImpactStyle.Light);
     onLayoutChange({ ...layout, widgets: updatedWidgets });
@@ -259,15 +273,31 @@ export function DashboardCustomizer({
         onDragStart={handleDragStart}
         onDragEnd={handleDragEnd}
       >
-        <div
-          className={cn(
-            "transition-all duration-200",
-            // On mobile, sidebar overlays content; on desktop, content shifts
-            sidebarOpen && !isMobile && "mr-80"
-          )}
-        >
-          {children}
-        </div>
+        {/* Wrap with SortableContext on mobile for list reordering */}
+        {isMobile ? (
+          <SortableContext
+            items={layout.widgets.map((w) => w.widgetId)}
+            strategy={verticalListSortingStrategy}
+          >
+            <div
+              className={cn(
+                "transition-all duration-200",
+                sidebarOpen && !isMobile && "mr-80"
+              )}
+            >
+              {children}
+            </div>
+          </SortableContext>
+        ) : (
+          <div
+            className={cn(
+              "transition-all duration-200",
+              sidebarOpen && !isMobile && "mr-80"
+            )}
+          >
+            {children}
+          </div>
+        )}
 
         <DragOverlay>
           {activeId && (
