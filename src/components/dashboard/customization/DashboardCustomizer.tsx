@@ -2,6 +2,7 @@ import { useState, ReactNode } from "react";
 import {
   DndContext,
   pointerWithin,
+  closestCenter,
   KeyboardSensor,
   PointerSensor,
   TouchSensor,
@@ -139,11 +140,14 @@ export function DashboardCustomizer({
         : w
     );
 
-    // On mobile, sort widgets by row so DOM order matches visual order
+    // On mobile, sort widgets by row and normalize to sequential positions
     if (isMobile) {
-      updatedWidgets = [...updatedWidgets].sort(
-        (a, b) => a.position.row - b.position.row
-      );
+      updatedWidgets = [...updatedWidgets]
+        .sort((a, b) => a.position.row - b.position.row)
+        .map((w, index) => ({
+          ...w,
+          position: { row: index, col: 0 },
+        }));
     }
 
     triggerHaptic(ImpactStyle.Light);
@@ -245,7 +249,7 @@ export function DashboardCustomizer({
       {/* Main Content with Drag Context */}
       <DndContext
         sensors={sensors}
-        collisionDetection={pointerWithin}
+        collisionDetection={isMobile ? closestCenter : pointerWithin}
         onDragStart={handleDragStart}
         onDragEnd={handleDragEnd}
       >
