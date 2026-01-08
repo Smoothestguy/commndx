@@ -11,7 +11,7 @@ interface ProjectCardProps {
   onEdit: () => void;
   onDelete: () => void;
   onClick: () => void;
-  index: number;
+  index?: number; // Made optional - no longer used for staggered animations
 }
 
 const stageConfig: Record<ProjectStage, { label: string; variant: "default" | "secondary" | "outline" | "destructive"; className: string }> = {
@@ -28,7 +28,6 @@ export function ProjectCard({
   onEdit, 
   onDelete, 
   onClick,
-  index 
 }: ProjectCardProps) {
   const statusColorMap = {
     active: "border-success/30",
@@ -41,7 +40,6 @@ export function ProjectCard({
   return (
     <div
       className={`glass rounded-xl p-2.5 sm:p-4 transition-all duration-300 hover:border-primary/30 hover:shadow-lg hover:shadow-primary/5 cursor-pointer group animate-fade-in border-l-4 ${statusColorMap[project.status]} min-w-0 overflow-hidden`}
-      style={{ animationDelay: `${index * 50}ms` }}
       onClick={onClick}
     >
       {/* Header: Name & Badges */}

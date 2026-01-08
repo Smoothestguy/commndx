@@ -48,17 +48,17 @@ export function ProjectStats({ projects }: ProjectStatsProps) {
     },
   ];
 
+  // Show all 4 stats on tablet and desktop, only 2 on mobile
   const displayStats = isMobile ? stats.filter(s => s.showOnMobile) : stats;
 
   return (
-    <div className={`grid gap-2 sm:gap-4 mb-4 sm:mb-6 overflow-hidden ${isMobile ? 'grid-cols-2' : 'grid-cols-2 sm:grid-cols-4'}`}>
-      {displayStats.map((stat, index) => {
+    <div className={`grid gap-2 sm:gap-4 mb-4 sm:mb-6 overflow-hidden grid-cols-2 md:grid-cols-4`}>
+      {displayStats.map((stat) => {
         const Icon = stat.icon;
         return (
           <div
             key={stat.title}
             className="glass rounded-lg p-2 sm:p-4 transition-all duration-300 hover:border-primary/30 hover:shadow-lg hover:shadow-primary/5 animate-fade-in min-w-0"
-            style={{ animationDelay: `${index * 75}ms` }}
           >
             <div className="flex items-center justify-between gap-2">
               <div className="min-w-0">
