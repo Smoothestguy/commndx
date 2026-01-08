@@ -4,6 +4,7 @@ import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
+import { SidebarProvider } from "@/components/ui/sidebar";
 import { AuthProvider } from "@/contexts/AuthContext";
 import { AIAssistantProvider } from "@/contexts/AIAssistantContext";
 import { LocationTrackingProvider } from "@/contexts/LocationTrackingContext";
@@ -286,7 +287,9 @@ const App = () => {
                     <Route
                       element={
                         <ProtectedRoute>
-                          <SidebarLayout />
+                          <SidebarProvider>
+                            <SidebarLayout />
+                          </SidebarProvider>
                         </ProtectedRoute>
                       }
                     >

@@ -26,7 +26,7 @@ import { useUserRole } from "@/hooks/useUserRole";
 import { WelcomeBanner } from "./WelcomeBanner";
 import { DashboardLoadingSkeleton } from "./DashboardLoadingSkeleton";
 import { cn } from "@/lib/utils";
-import { useIsMobile } from "@/hooks/use-mobile";
+import { useIsMobile, useIsTablet } from "@/hooks/use-mobile";
 import { toast } from "sonner";
 import { useDashboardDraft } from "@/contexts/DashboardDraftContext";
 import { usePageHeaderActions } from "@/contexts/PageHeaderActionsContext";
@@ -65,6 +65,7 @@ export function CustomizableDashboard({
   const canCustomize = isAdmin || isManager;
   const draftContext = useDashboardDraft();
   const isMobile = useIsMobile();
+  const isTablet = useIsTablet();
   
   // Get page header actions context - may not be available during SSR/initial render
   let pageHeaderActions: ReturnType<typeof usePageHeaderActions> | null = null;
@@ -74,8 +75,11 @@ export function CustomizableDashboard({
     // Context not available, will render inline
   }
   
-  // Responsive column count based on screen size
-  const gridColumns = isMobile ? 1 : 4;
+  // Responsive column count based on screen size:
+  // - Mobile: 1 column (stacked)
+  // - Tablet: 2 columns
+  // - Desktop: 4 columns
+  const gridColumns = isMobile ? 1 : isTablet ? 2 : 4;
 
   // Track previous edit mode state to detect transitions
   const prevIsEditModeRef = useRef(isEditMode);
