@@ -39,11 +39,11 @@ export function ProjectCard({
 
   return (
     <div
-      className={`glass rounded-xl p-2.5 sm:p-4 transition-all duration-300 hover:border-primary/30 hover:shadow-lg hover:shadow-primary/5 cursor-pointer group animate-fade-in border-l-4 ${statusColorMap[project.status]} min-w-0 overflow-hidden`}
+      className={`glass rounded-xl p-3 sm:p-4 transition-all duration-300 hover:border-primary/30 hover:shadow-lg hover:shadow-primary/5 cursor-pointer group animate-fade-in border-l-4 ${statusColorMap[project.status]} min-w-0 overflow-hidden`}
       onClick={onClick}
     >
       {/* Header: Name & Badges */}
-      <div className="flex items-start justify-between gap-2 mb-2 min-w-0">
+      <div className="flex items-start justify-between gap-2 mb-1.5 min-w-0">
         <h3 className="font-heading text-sm sm:text-lg font-semibold text-foreground group-hover:text-primary transition-colors line-clamp-1 min-w-0 flex-1">
           {project.name}
         </h3>
@@ -67,10 +67,10 @@ export function ProjectCard({
         </div>
       </div>
 
-      {/* Chevron indicator - subtle */}
-      <div className="flex items-center justify-end mt-2 pt-2 border-t border-border/30">
+      {/* Chevron indicator - hidden on mobile */}
+      <div className="hidden sm:flex items-center justify-end mt-2 pt-2 border-t border-border/30">
         <div className="flex items-center gap-1 text-[10px] text-muted-foreground group-hover:text-primary transition-colors">
-          <span className="hidden sm:inline">View details</span>
+          <span>View details</span>
           <ChevronRight className="h-3.5 w-3.5" />
         </div>
       </div>
