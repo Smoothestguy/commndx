@@ -2,7 +2,7 @@ import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import { Slider } from "@/components/ui/slider";
 import { Button } from "@/components/ui/button";
-import { ScrollArea } from "@/components/ui/scroll-area";
+
 import {
   Select,
   SelectContent,
@@ -149,8 +149,8 @@ export function DashboardThemeEditor({
           </div>
         </div>
 
-        {/* Theme Options */}
-        <ScrollArea className="flex-1">
+        {/* Theme Options - Scrollable area */}
+        <div className="flex-1 min-h-0 overflow-y-auto overscroll-contain">
           <div className="p-4">
             <Accordion type="multiple" defaultValue={["background", "colors", "typography", "layout"]}>
               {/* Background */}
@@ -364,7 +364,7 @@ export function DashboardThemeEditor({
               </AccordionItem>
             </Accordion>
           </div>
-        </ScrollArea>
+        </div>
 
         {/* Mobile close button at bottom */}
         {isMobile && (
