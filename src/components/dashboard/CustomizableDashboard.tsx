@@ -433,13 +433,20 @@ export function CustomizableDashboard({
   // Calculate the max row needed (0-indexed)
   const maxRow = useMemo(() => {
     if (!draftLayout) return 0;
+    
+    // On mobile, max row is based on widget count (sequential stacking)
+    if (isMobile) {
+      return isEditMode ? draftLayout.widgets.length + 2 : draftLayout.widgets.length;
+    }
+    
+    // On desktop, calculate based on positions
     let max = 0;
     for (const lw of draftLayout.widgets) {
       max = Math.max(max, lw.position.row + lw.size.height);
     }
     // Add extra rows for dropping in edit mode
     return isEditMode ? max + 2 : max;
-  }, [draftLayout, isEditMode]);
+  }, [draftLayout, isEditMode, isMobile]);
 
   // Generate drop zones for empty cells (0-indexed positions, 1-indexed CSS Grid)
   const dropZones = useMemo(() => {
