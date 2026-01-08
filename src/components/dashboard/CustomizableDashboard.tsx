@@ -29,6 +29,7 @@ import { cn } from "@/lib/utils";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { toast } from "sonner";
 import { useDashboardDraft } from "@/contexts/DashboardDraftContext";
+import { usePageHeaderActions } from "@/contexts/PageHeaderActionsContext";
 
 interface CustomizableDashboardProps {
   children?: React.ReactNode;
@@ -64,6 +65,14 @@ export function CustomizableDashboard({
   const canCustomize = isAdmin || isManager;
   const draftContext = useDashboardDraft();
   const isMobile = useIsMobile();
+  
+  // Get page header actions context - may not be available during SSR/initial render
+  let pageHeaderActions: ReturnType<typeof usePageHeaderActions> | null = null;
+  try {
+    pageHeaderActions = usePageHeaderActions();
+  } catch {
+    // Context not available, will render inline
+  }
   
   // Responsive column count based on screen size
   const gridColumns = isMobile ? 1 : 4;
@@ -114,7 +123,8 @@ export function CustomizableDashboard({
     }
   }, [draftTheme, isEditMode, draftContext]);
 
-  // Track unsaved changes
+
+
   const hasUnsavedChanges = useMemo(() => {
     if (!isEditMode) return false;
     return (
@@ -207,6 +217,36 @@ export function CustomizableDashboard({
     setShowResetConfirm(false);
     setIsEditMode(false);
   };
+
+  // Register the EditModeToggle in the page header
+  useEffect(() => {
+    if (!pageHeaderActions || !canCustomize) return;
+    
+    pageHeaderActions.setRightActions(
+      <EditModeToggle
+        isEditMode={isEditMode}
+        onToggle={isEditMode ? handleExitEditMode : () => setIsEditMode(true)}
+        onSave={handleSave}
+        onRevert={handleRevert}
+        onReset={() => setShowResetConfirm(true)}
+        hasCustomConfig={hasCustomConfig}
+        hasUnsavedChanges={hasUnsavedChanges}
+        isSaving={isUpdating}
+      />
+    );
+    
+    return () => {
+      pageHeaderActions.setRightActions(null);
+    };
+  }, [
+    pageHeaderActions,
+    canCustomize,
+    isEditMode,
+    hasCustomConfig,
+    hasUnsavedChanges,
+    isUpdating,
+    showResetConfirm,
+  ]);
 
   // Map font family keys to actual CSS font stacks
   const getFontFamily = (fontKey?: string): string | undefined => {
@@ -435,20 +475,6 @@ export function CustomizableDashboard({
 
   return (
     <>
-      {/* Edit Mode Toggle in Actions Area */}
-      <div className="flex justify-end mb-4 relative z-[1]">
-        <EditModeToggle
-          isEditMode={isEditMode}
-          onToggle={isEditMode ? handleExitEditMode : () => setIsEditMode(true)}
-          onSave={handleSave}
-          onRevert={handleRevert}
-          onReset={() => setShowResetConfirm(true)}
-          hasCustomConfig={hasCustomConfig}
-          hasUnsavedChanges={hasUnsavedChanges}
-          isSaving={isUpdating}
-        />
-      </div>
-
       {/* Customizable Dashboard Content */}
       <DashboardCustomizer
         isEditMode={isEditMode}
