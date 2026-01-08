@@ -48,10 +48,10 @@ function PageLayoutContent({
                 </p>
               )}
             </div>
-            {(actions || rightActions) && (
-              <div className="flex items-center gap-2 sm:gap-3 w-full sm:w-auto justify-between sm:justify-end">
-                {actions && <div className="flex items-center gap-2">{actions}</div>}
-                {rightActions && <div className="flex items-center gap-2">{rightActions}</div>}
+          {(actions || rightActions) && (
+              <div className="flex flex-col gap-2 w-full sm:flex-row sm:items-center sm:w-auto sm:justify-end sm:gap-3">
+                {actions && <div className="flex items-center gap-2 overflow-x-auto min-w-0">{actions}</div>}
+                {rightActions && <div className="flex items-center gap-1 sm:gap-2 overflow-x-auto min-w-0 justify-end">{rightActions}</div>}
               </div>
             )}
           </header>
