@@ -4,6 +4,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
 import { toast } from "@/hooks/use-toast";
 import { Clock, AlertCircle, Calendar, CalendarDays, Users, UserPlus, UserCheck, Gift, AlertTriangle } from "lucide-react";
+import { DailyPersonnelHoursSection } from "./DailyPersonnelHoursSection";
 import { PersonnelAvatar } from "@/components/personnel/PersonnelAvatar";
 import {
   Dialog,
@@ -666,129 +667,6 @@ export function EnhancedTimeEntryForm({
     );
   };
 
-  // Apply to All Control - uses local state to allow typing before applying
-  const ApplyToAllControl = ({ onApply }: { onApply: (hours: number) => void }) => {
-    const [draftHours, setDraftHours] = useState<number>(0);
-    
-    return (
-      <div className="flex items-center gap-2">
-        <TimeDecimalInput
-          value={draftHours}
-          onValueChange={setDraftHours}
-          placeholder="Hours"
-          compact
-          className="w-20 h-8 text-sm"
-        />
-        <Button
-          type="button"
-          variant="secondary"
-          size="sm"
-          className="h-8 text-xs"
-          onClick={() => {
-            if (draftHours > 0) onApply(draftHours);
-          }}
-        >
-          Apply to All
-        </Button>
-      </div>
-    );
-  };
-
-  // Daily Personnel Hours Section - Individual hours per person
-  const DailyPersonnelHoursSection = () => {
-    if (selectedPersonnel.size === 0) return null;
-
-    const selectedPersonnelList = assignedPersonnel.filter(
-      a => a.personnel && selectedPersonnel.has(a.personnel.id)
-    );
-
-    return (
-      <div className="space-y-3">
-        <div className="flex items-center justify-between">
-          <Label className="flex items-center gap-2">
-            <Clock className="h-4 w-4" />
-            Hours per Personnel
-          </Label>
-          <ApplyToAllControl onApply={applyHoursToAllDaily} />
-        </div>
-
-        <div className="border rounded-lg divide-y">
-          {selectedPersonnelList.map((assignment) => {
-            const person = assignment.personnel!;
-            const hours = dailyPersonnelHours[person.id] || 0;
-            const cost = hours * (person.hourly_rate || 0) * (watchedIsHoliday ? holidayMultiplier : 1);
-            
-            return (
-              <div key={person.id} className="flex items-center justify-between p-3 gap-3">
-                <div className="flex items-center gap-2 flex-1 min-w-0">
-                  <PersonnelAvatar
-                    photoUrl={(person as any).photo_url}
-                    firstName={person.first_name}
-                    lastName={person.last_name}
-                    size="xs"
-                  />
-                  <div className="min-w-0">
-                    <span className="text-sm font-medium truncate block">
-                      {person.first_name} {person.last_name}
-                    </span>
-                    {person.hourly_rate && (
-                      <span className="text-xs text-muted-foreground">
-                        ${person.hourly_rate}/hr
-                      </span>
-                    )}
-                  </div>
-                </div>
-                <div className="flex items-center gap-3">
-                  <TimeDecimalInput
-                    value={hours}
-                    onValueChange={(val) => updateDailyPersonnelHour(person.id, val)}
-                    showIcon={false}
-                    showPreview={false}
-                    placeholder="0"
-                    className="w-20"
-                  />
-                  {cost > 0 && (
-                    <span className="text-sm font-medium text-primary w-20 text-right">
-                      ${cost.toFixed(2)}
-                    </span>
-                  )}
-                </div>
-              </div>
-            );
-          })}
-        </div>
-
-        {/* Totals */}
-        {dailyTotalHours > 0 && (
-          <div className="rounded-lg border p-3 bg-muted/30">
-            <div className="flex items-center justify-between text-sm">
-              <span className="text-muted-foreground flex items-center gap-2">
-                <Clock className="h-4 w-4" />
-                Total Hours:
-              </span>
-              <span className="font-medium">{dailyTotalHours.toFixed(2)}h</span>
-            </div>
-            {estimatedDailyCost > 0 && (
-              <div className="flex items-center justify-between text-sm mt-1">
-                <span className="text-muted-foreground flex items-center gap-1">
-                  Estimated Cost:
-                  {watchedIsHoliday && (
-                    <Badge variant="outline" className="text-purple-600 border-purple-300 text-xs">
-                      Holiday 2x
-                    </Badge>
-                  )}
-                </span>
-                <span className="font-medium text-primary">${estimatedDailyCost.toFixed(2)}</span>
-              </div>
-            )}
-            <p className="text-xs text-muted-foreground mt-2">
-              Overtime is calculated weekly when total exceeds {weeklyOvertimeThreshold}h
-            </p>
-          </div>
-        )}
-      </div>
-    );
-  };
 
   // Weekly Personnel Grid Selection
   const WeeklyPersonnelGrid = () => {
@@ -1116,7 +994,21 @@ export function EnhancedTimeEntryForm({
                 {!entry && <PersonnelSelectionSection />}
 
                 {/* Individual Hours per Personnel (when personnel selected) */}
-                {!entry && selectedPersonnel.size > 0 && <DailyPersonnelHoursSection />}
+                {!entry && selectedPersonnel.size > 0 && (
+                  <DailyPersonnelHoursSection
+                    selectedPersonnelList={assignedPersonnel.filter(
+                      a => a.personnel && selectedPersonnel.has(a.personnel.id)
+                    ).map(a => ({ personnel: a.personnel ? { ...a.personnel, photo_url: (a.personnel as any).photo_url } : null }))}
+                    dailyPersonnelHours={dailyPersonnelHours}
+                    updateDailyPersonnelHour={updateDailyPersonnelHour}
+                    applyHoursToAllDaily={applyHoursToAllDaily}
+                    watchedIsHoliday={watchedIsHoliday}
+                    holidayMultiplier={holidayMultiplier}
+                    dailyTotalHours={dailyTotalHours}
+                    estimatedDailyCost={estimatedDailyCost}
+                    weeklyOvertimeThreshold={weeklyOvertimeThreshold}
+                  />
+                )}
 
                 {/* Single Hours Field (when no personnel selected or editing) */}
                 {(entry || selectedPersonnel.size === 0) && (
