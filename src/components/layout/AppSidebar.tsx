@@ -144,7 +144,7 @@ export function AppSidebar() {
       <SidebarHeader className="border-b border-sidebar-border">
         <div
           className={cn(
-            "flex items-center gap-2 px-2 py-1",
+            "flex items-center gap-2 px-3 py-2",
             isCollapsed && "justify-center"
           )}
         >
@@ -152,8 +152,8 @@ export function AppSidebar() {
             src={logo}
             alt="Fairfield"
             className={cn(
-              "h-8 w-auto object-contain transition-all",
-              isCollapsed ? "max-w-[32px]" : "max-w-[140px]"
+              "object-contain transition-all duration-200",
+              isCollapsed ? "h-6 w-6" : "h-10 w-auto max-w-[160px]"
             )}
           />
         </div>
