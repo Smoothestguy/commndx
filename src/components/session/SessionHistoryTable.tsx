@@ -1,4 +1,4 @@
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import {
@@ -15,9 +15,10 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { format } from "date-fns";
 import { DateRange } from "react-day-picker";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Download, Eye, Clock, DollarSign } from "lucide-react";
+import { Download, Eye, Clock, DollarSign, RefreshCw } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { useIsMobile } from "@/hooks/use-mobile";
+import { useState } from "react";
 
 
 
@@ -38,6 +39,8 @@ interface Session {
   clock_in_type: string;
 }
 
+const STORAGE_KEY = "session_tracking_state";
+
 export function SessionHistoryTable({
   dateRange,
   onSelectSession,
@@ -47,7 +50,9 @@ export function SessionHistoryTable({
   const { user } = useAuth();
   const { toast } = useToast();
   const isMobile = useIsMobile();
+  const queryClient = useQueryClient();
   const userId = targetUserId || user?.id;
+  const [recalculatingId, setRecalculatingId] = useState<string | null>(null);
 
   // Fetch hourly rate for the user
   const { data: hourlyRate = 0 } = useQuery({
@@ -120,6 +125,61 @@ export function SessionHistoryTable({
 
   const formatCurrency = (amount: number): string => {
     return `$${amount.toFixed(2)}`;
+  };
+
+  const handleRecalculateIdle = async (sessionId: string, e: React.MouseEvent) => {
+    e.stopPropagation();
+    setRecalculatingId(sessionId);
+    
+    try {
+      const { data, error } = await supabase.functions.invoke('fix-session-idle', {
+        body: { sessionId, mode: 'recalc' }
+      });
+      
+      if (error) {
+        console.error('Error recalculating idle:', error);
+        toast({
+          title: "Failed to recalculate",
+          description: error.message,
+          variant: "destructive",
+        });
+        return;
+      }
+      
+      // Clear localStorage if this is the current user's active session
+      // This prevents the frontend from overwriting the correction
+      const storedState = localStorage.getItem(STORAGE_KEY);
+      if (storedState) {
+        try {
+          const parsed = JSON.parse(storedState);
+          if (parsed.sessionId === sessionId) {
+            localStorage.removeItem(STORAGE_KEY);
+            console.log('Cleared localStorage to prevent overwrite');
+          }
+        } catch (e) {
+          // Ignore parse errors
+        }
+      }
+      
+      // Invalidate queries to refresh UI
+      queryClient.invalidateQueries({ queryKey: ['session-history'] });
+      queryClient.invalidateQueries({ queryKey: ['session-stats'] });
+      queryClient.invalidateQueries({ queryKey: ['today-sessions'] });
+      
+      toast({
+        title: "Idle time recalculated",
+        description: `Corrected: ${formatDuration(data.previousIdleSeconds)} → ${formatDuration(data.newIdleSeconds)}`,
+      });
+    } catch (err) {
+      console.error('Error:', err);
+      toast({
+        title: "Error",
+        description: "Failed to recalculate idle time",
+        variant: "destructive",
+      });
+    } finally {
+      setRecalculatingId(null);
+    }
   };
 
   const exportToCSV = () => {
@@ -296,17 +356,28 @@ export function SessionHistoryTable({
                         <Badge variant="outline">{session.clock_in_type}</Badge>
                       </TableCell>
                       <TableCell>
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          onClick={() =>
-                            onSelectSession(
-                              selectedSessionId === session.id ? null : session.id
-                            )
-                          }
-                        >
-                          <Eye className="h-4 w-4" />
-                        </Button>
+                        <div className="flex items-center gap-1">
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={(e) => handleRecalculateIdle(session.id, e)}
+                            disabled={recalculatingId === session.id}
+                            title="Recalculate idle time from activity logs"
+                          >
+                            <RefreshCw className={`h-4 w-4 ${recalculatingId === session.id ? 'animate-spin' : ''}`} />
+                          </Button>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() =>
+                              onSelectSession(
+                                selectedSessionId === session.id ? null : session.id
+                              )
+                            }
+                          >
+                            <Eye className="h-4 w-4" />
+                          </Button>
+                        </div>
                       </TableCell>
                     </TableRow>
                   );

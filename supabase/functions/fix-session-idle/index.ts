@@ -56,7 +56,7 @@ serve(async (req) => {
     // Check session ownership
     const { data: session, error: sessionError } = await supabaseClient
       .from("user_work_sessions")
-      .select("user_id, total_idle_seconds, total_active_seconds, session_start")
+      .select("user_id, total_idle_seconds, total_active_seconds, session_start, idle_correction_version")
       .eq("id", sessionId)
       .single();
 
@@ -132,11 +132,14 @@ serve(async (req) => {
       });
     }
 
-    // Update the session
+    // Update the session with new idle seconds AND bump correction version
+    const newCorrectionVersion = (session.idle_correction_version || 0) + 1;
     const { error: updateError } = await supabaseClient
       .from("user_work_sessions")
       .update({
         total_idle_seconds: newIdleSeconds,
+        idle_correction_version: newCorrectionVersion,
+        idle_corrected_at: new Date().toISOString(),
       })
       .eq("id", sessionId);
 
@@ -156,6 +159,7 @@ serve(async (req) => {
         sessionId,
         previousIdleSeconds: session.total_idle_seconds,
         newIdleSeconds,
+        newCorrectionVersion,
         mode,
       }),
       { headers: { ...corsHeaders, "Content-Type": "application/json" } }

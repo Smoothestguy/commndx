@@ -6164,6 +6164,8 @@ export type Database = {
           clock_in_type: string | null
           created_at: string | null
           id: string
+          idle_corrected_at: string | null
+          idle_correction_version: number
           is_active: boolean | null
           session_end: string | null
           session_start: string
@@ -6177,6 +6179,8 @@ export type Database = {
           clock_in_type?: string | null
           created_at?: string | null
           id?: string
+          idle_corrected_at?: string | null
+          idle_correction_version?: number
           is_active?: boolean | null
           session_end?: string | null
           session_start?: string
@@ -6190,6 +6194,8 @@ export type Database = {
           clock_in_type?: string | null
           created_at?: string | null
           id?: string
+          idle_corrected_at?: string | null
+          idle_correction_version?: number
           is_active?: boolean | null
           session_end?: string | null
           session_start?: string
