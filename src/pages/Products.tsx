@@ -61,7 +61,7 @@ import {
   useProductUnits,
   useAddProductUnit,
 } from "@/integrations/supabase/hooks/useProductUnits";
-import { useIsMobile, useIsTablet } from "@/hooks/use-mobile";
+import { useIsMobile, useIsWideTablet } from "@/hooks/use-mobile";
 import { ProductCard } from "@/components/products/ProductCard";
 import { ProductStats } from "@/components/products/ProductStats";
 import { ProductFilters } from "@/components/products/ProductFilters";
@@ -113,7 +113,7 @@ const Products = () => {
   const addCategory = useAddProductCategory();
   const addUnit = useAddProductUnit();
   const isMobile = useIsMobile();
-  const isTablet = useIsTablet();
+  const isWideTablet = useIsWideTablet();
 
   // QuickBooks hooks
   const { data: qbConfig } = useQuickBooksConfig();
@@ -415,7 +415,7 @@ const Products = () => {
         actions={
           <Button variant="glow" onClick={openNewDialog} className="whitespace-nowrap">
             <Plus className="h-4 w-4" />
-            <span className={isTablet ? "sr-only" : undefined}>Add Item</span>
+            <span className={isWideTablet ? "sr-only" : undefined}>Add Item</span>
           </Button>
         }
       >
@@ -585,8 +585,8 @@ const Products = () => {
                     selectedLetter !== ""
                   }
                 />
-              ) : isMobile || isTablet ? (
-                <div className={`grid gap-3 sm:gap-4 ${isTablet ? "grid-cols-2" : "grid-cols-1"}`}>
+              ) : isMobile || isWideTablet ? (
+                <div className={`grid gap-3 sm:gap-4 ${isWideTablet ? "grid-cols-2" : "grid-cols-1"}`}>
                   {sortedProducts.map((product, index) => (
                     <ProductCard
                       key={product.id}
