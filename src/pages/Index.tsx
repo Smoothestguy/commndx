@@ -353,19 +353,19 @@ const Dashboard = () => {
               variant="outline"
               size="sm"
               onClick={() => navigate("/staffing/map")}
-              className="h-8 px-2"
+              className="h-8 px-3"
             >
               <MapPin className="h-3.5 w-3.5" />
-              <span className="ml-1 hidden sm:inline text-xs">Map</span>
+              <span className="ml-1 text-xs">Map View</span>
             </Button>
             <Button
               variant="glow"
               size="sm"
               onClick={() => navigate("/estimates/new")}
-              className="h-8 px-2"
+              className="h-8 px-3"
             >
               <Plus className="h-3.5 w-3.5" />
-              <span className="ml-1 hidden sm:inline text-xs">New</span>
+              <span className="ml-1 text-xs">New Estimate</span>
             </Button>
           </div>
         }
