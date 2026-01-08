@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
-import { ScrollArea } from "@/components/ui/scroll-area";
+
 import { Input } from "@/components/ui/input";
 import {
   Accordion,
@@ -83,8 +83,8 @@ export function WidgetLibrary({
           </div>
         </div>
 
-        {/* Widget List */}
-        <ScrollArea className="flex-1">
+        {/* Widget List - Scrollable area */}
+        <div className="flex-1 min-h-0 overflow-y-auto overscroll-contain">
           {search ? (
             // Show flat list when searching
             <div className="p-4 space-y-2">
@@ -175,7 +175,7 @@ export function WidgetLibrary({
               })}
             </Accordion>
           )}
-        </ScrollArea>
+        </div>
 
         {/* Mobile close button at bottom */}
         {isMobile && (
