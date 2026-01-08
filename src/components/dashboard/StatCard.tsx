@@ -37,13 +37,13 @@ export function StatCard({
     </>
   ) : (
     <>
-      <div className="flex items-center gap-3 mb-3">
-        <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-primary/10 transition-all duration-200 group-hover:bg-primary/15 flex-shrink-0">
-          <Icon className="h-5 w-5 text-primary" />
+      <div className="flex items-center gap-2 sm:gap-3 mb-2 sm:mb-3">
+        <div className="flex h-8 w-8 sm:h-10 sm:w-10 items-center justify-center rounded-lg bg-primary/10 transition-all duration-200 group-hover:bg-primary/15 flex-shrink-0">
+          <Icon className="h-4 w-4 sm:h-5 sm:w-5 text-primary" />
         </div>
-        <p className="text-sm font-medium text-muted-foreground">{title}</p>
+        <p className="text-xs sm:text-sm font-medium text-muted-foreground truncate min-w-0 flex-1">{title}</p>
       </div>
-      <p className="font-heading text-2xl sm:text-3xl font-bold text-foreground">
+      <p className="font-heading text-xl sm:text-2xl md:text-3xl font-bold text-foreground truncate">
         {value}
       </p>
       {change && (

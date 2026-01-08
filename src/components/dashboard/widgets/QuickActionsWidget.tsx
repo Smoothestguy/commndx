@@ -20,20 +20,12 @@ const QUICK_ACTIONS = [
 ];
 
 export function QuickActionsWidget({ widget, theme, isEditMode }: QuickActionsWidgetProps) {
-  const fontSizeClass = {
-    small: "text-xs",
-    medium: "text-sm",
-    large: "text-base",
-  }[theme?.fontSize ?? "medium"];
-
-  const spacingClass = {
-    compact: "gap-1",
-    normal: "gap-2",
-    relaxed: "gap-3",
-  }[theme?.spacing ?? "normal"];
-
   return (
-    <div className={cn("flex flex-wrap", spacingClass)}>
+    <div className={cn(
+      "grid gap-2",
+      // Mobile: 2 columns, Tablet: 3 columns, Desktop: flex wrap
+      "grid-cols-2 sm:grid-cols-3 lg:flex lg:flex-wrap"
+    )}>
       {QUICK_ACTIONS.map((action) => {
         const Icon = action.icon;
         return (
@@ -43,16 +35,25 @@ export function QuickActionsWidget({ widget, theme, isEditMode }: QuickActionsWi
             size="sm"
             asChild
             disabled={isEditMode}
-            className={cn(fontSizeClass)}
+            className={cn(
+              // Responsive text sizes
+              "text-[10px] sm:text-xs lg:text-sm",
+              // Responsive padding
+              "px-2 sm:px-3",
+              // Ensure proper height for touch
+              "h-8 sm:h-9",
+              // Truncate text on small screens
+              "justify-start"
+            )}
             style={{
               borderColor: theme?.accentColor,
               color: theme?.accentColor,
             }}
           >
-            <Link to={action.href}>
-              <Plus className="h-3 w-3 mr-1" />
-              <Icon className="h-3 w-3 mr-1" />
-              {action.label}
+            <Link to={action.href} className="flex items-center min-w-0">
+              <Plus className="h-3 w-3 mr-1 flex-shrink-0 hidden sm:block" />
+              <Icon className="h-3 w-3 mr-1 flex-shrink-0" />
+              <span className="truncate">{action.label}</span>
             </Link>
           </Button>
         );

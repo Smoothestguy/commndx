@@ -129,8 +129,8 @@ export function ActivityWidget({ widget, theme, isEditMode }: ActivityWidgetProp
   }
 
   return (
-    <ScrollArea className="h-48">
-      <div className="space-y-3 pr-4">
+    <ScrollArea className="h-40 sm:h-48">
+      <div className="space-y-2 sm:space-y-3 pr-4">
         {activities.map((activity) => {
           const Icon = ACTIVITY_ICONS[activity.type];
           return (

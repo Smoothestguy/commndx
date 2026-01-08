@@ -12,6 +12,7 @@ import {
   ChartWidget,
   ActivityWidget,
   QuickActionsWidget,
+  TableWidget,
   WIDGET_REGISTRY,
 } from "./widgets";
 import {
@@ -274,6 +275,14 @@ export function CustomizableDashboard({
         case "quick-actions":
           return (
             <QuickActionsWidget
+              widget={widget}
+              theme={draftTheme}
+              isEditMode={isEditMode}
+            />
+          );
+        case "table":
+          return (
+            <TableWidget
               widget={widget}
               theme={draftTheme}
               isEditMode={isEditMode}

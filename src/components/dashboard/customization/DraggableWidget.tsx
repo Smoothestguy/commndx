@@ -2,6 +2,7 @@ import { useDraggable } from "@dnd-kit/core";
 import { CSS } from "@dnd-kit/utilities";
 import { ReactNode } from "react";
 import { cn } from "@/lib/utils";
+import { useIsMobile } from "@/hooks/use-mobile";
 
 interface DraggableWidgetProps {
   id: string;
@@ -22,6 +23,7 @@ export function DraggableWidget({
   rowSpan = 1,
   colSpan = 1,
 }: DraggableWidgetProps) {
+  const isMobile = useIsMobile();
   const { attributes, listeners, setNodeRef, transform, isDragging } =
     useDraggable({
       id,
@@ -29,13 +31,21 @@ export function DraggableWidget({
       data: { row, col, rowSpan, colSpan },
     });
 
-  // Convert from 0-indexed positions to 1-indexed CSS Grid positions
+  // On mobile, force single column (no column constraints)
+  // On tablet (sm), use 2 columns max
+  // On desktop (lg+), use full colSpan
   const style: React.CSSProperties = {
     transform: transform ? CSS.Transform.toString(transform) : undefined,
+    // Row positioning (same for all sizes)
     gridRowStart: row !== undefined ? row + 1 : undefined,
     gridRowEnd: row !== undefined ? row + 1 + rowSpan : undefined,
-    gridColumnStart: col !== undefined ? col + 1 : undefined,
-    gridColumnEnd: col !== undefined ? col + 1 + colSpan : undefined,
+    // Column positioning - let CSS grid handle responsive layout on mobile
+    ...(isMobile
+      ? {} // No column constraints on mobile - widgets flow naturally
+      : {
+          gridColumnStart: col !== undefined ? col + 1 : undefined,
+          gridColumnEnd: col !== undefined ? col + 1 + colSpan : undefined,
+        }),
     // Smooth spring-like animation on drop
     transition: isDragging 
       ? undefined 

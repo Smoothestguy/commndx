@@ -2,6 +2,7 @@ import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { PieChart, Pie, Cell, BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, LineChart, Line } from "recharts";
 import { DashboardWidget, DashboardTheme } from "./types";
+import { useIsMobile } from "@/hooks/use-mobile";
 
 interface ChartWidgetProps {
   widget: DashboardWidget;
@@ -14,6 +15,7 @@ const COLORS = ["hsl(var(--primary))", "hsl(var(--secondary))", "hsl(var(--accen
 export function ChartWidget({ widget, theme, isEditMode }: ChartWidgetProps) {
   const { dataSource, displayOptions } = widget.config;
   const chartType = displayOptions?.chartType ?? "pie";
+  const isMobile = useIsMobile();
 
   const { data: chartData, isLoading } = useQuery({
     queryKey: ["chart-widget", dataSource, chartType],
@@ -69,66 +71,85 @@ export function ChartWidget({ widget, theme, isEditMode }: ChartWidgetProps) {
     staleTime: 60000, // Cache for 1 minute
   });
 
+  // Responsive chart height
+  const chartHeight = isMobile ? 160 : 200;
+
   if (isLoading) {
     return (
-      <div className="h-48 flex items-center justify-center">
-        <div className="animate-pulse text-muted-foreground">Loading chart...</div>
+      <div className="h-40 sm:h-48 flex items-center justify-center">
+        <div className="animate-pulse text-muted-foreground text-sm">Loading chart...</div>
       </div>
     );
   }
 
   if (!chartData || chartData.length === 0) {
     return (
-      <div className="h-48 flex items-center justify-center text-muted-foreground">
+      <div className="h-40 sm:h-48 flex items-center justify-center text-muted-foreground text-sm">
         No data available
       </div>
     );
   }
 
   return (
-    <div className="h-48 w-full">
-      <ResponsiveContainer width="100%" height="100%">
-        {chartType === "pie" ? (
-          <PieChart>
-            <Pie
-              data={chartData}
-              cx="50%"
-              cy="50%"
-              innerRadius={40}
-              outerRadius={70}
-              paddingAngle={2}
-              dataKey="value"
-              label={({ name, percent }) => `${name} ${(percent * 100).toFixed(0)}%`}
-              labelLine={false}
-            >
-              {chartData.map((_, index) => (
-                <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
-              ))}
-            </Pie>
-            <Tooltip />
-          </PieChart>
-        ) : chartType === "bar" ? (
-          <BarChart data={chartData}>
-            <XAxis dataKey="name" tick={{ fontSize: 12 }} />
-            <YAxis tick={{ fontSize: 12 }} />
-            <Tooltip />
-            <Bar dataKey="value" fill="hsl(var(--primary))" radius={[4, 4, 0, 0]} />
-          </BarChart>
-        ) : (
-          <LineChart data={chartData}>
-            <XAxis dataKey="name" tick={{ fontSize: 12 }} />
-            <YAxis tick={{ fontSize: 12 }} />
-            <Tooltip />
-            <Line
-              type="monotone"
-              dataKey="value"
-              stroke="hsl(var(--primary))"
-              strokeWidth={2}
-              dot={{ fill: "hsl(var(--primary))" }}
-            />
-          </LineChart>
-        )}
-      </ResponsiveContainer>
+    <div className="w-full overflow-x-auto">
+      <div 
+        className="min-w-[250px]" 
+        style={{ height: chartHeight }}
+      >
+        <ResponsiveContainer width="100%" height="100%">
+          {chartType === "pie" ? (
+            <PieChart>
+              <Pie
+                data={chartData}
+                cx="50%"
+                cy="50%"
+                innerRadius={isMobile ? 30 : 40}
+                outerRadius={isMobile ? 55 : 70}
+                paddingAngle={2}
+                dataKey="value"
+                label={isMobile ? false : ({ name, percent }) => `${name} ${(percent * 100).toFixed(0)}%`}
+                labelLine={false}
+              >
+                {chartData.map((_, index) => (
+                  <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+                ))}
+              </Pie>
+              <Tooltip />
+            </PieChart>
+          ) : chartType === "bar" ? (
+            <BarChart data={chartData} margin={{ top: 5, right: 5, left: isMobile ? -15 : 0, bottom: isMobile ? 20 : 5 }}>
+              <XAxis 
+                dataKey="name" 
+                tick={{ fontSize: isMobile ? 9 : 12 }} 
+                interval={0}
+                angle={isMobile ? -45 : 0}
+                textAnchor={isMobile ? "end" : "middle"}
+                height={isMobile ? 45 : 30}
+              />
+              <YAxis 
+                tick={{ fontSize: isMobile ? 9 : 12 }} 
+                width={isMobile ? 35 : 50}
+                tickFormatter={(value) => isMobile ? `${(value/1000).toFixed(0)}k` : value.toLocaleString()}
+              />
+              <Tooltip formatter={(value: number) => value.toLocaleString()} />
+              <Bar dataKey="value" fill="hsl(var(--primary))" radius={[4, 4, 0, 0]} />
+            </BarChart>
+          ) : (
+            <LineChart data={chartData} margin={{ top: 5, right: 5, left: isMobile ? -15 : 0, bottom: 5 }}>
+              <XAxis dataKey="name" tick={{ fontSize: isMobile ? 9 : 12 }} />
+              <YAxis tick={{ fontSize: isMobile ? 9 : 12 }} width={isMobile ? 35 : 50} />
+              <Tooltip />
+              <Line
+                type="monotone"
+                dataKey="value"
+                stroke="hsl(var(--primary))"
+                strokeWidth={2}
+                dot={{ fill: "hsl(var(--primary))", r: isMobile ? 3 : 4 }}
+              />
+            </LineChart>
+          )}
+        </ResponsiveContainer>
+      </div>
     </div>
   );
 }
