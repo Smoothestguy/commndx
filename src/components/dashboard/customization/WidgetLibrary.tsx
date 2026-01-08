@@ -51,7 +51,7 @@ export function WidgetLibrary({
       <div className={cn(
         "fixed bg-background shadow-lg z-[200] flex flex-col",
         // Bottom sheet on mobile, right sidebar on desktop
-        "inset-x-0 bottom-0 rounded-t-xl max-h-[85vh] border-t",
+        "inset-x-0 bottom-0 rounded-t-xl max-h-[70vh] max-h-[70dvh] border-t",
         "sm:inset-x-auto sm:right-0 sm:top-14 sm:bottom-0 sm:w-80 sm:rounded-none sm:max-h-none sm:border-l sm:border-t-0",
         // Slide up on mobile, slide in from right on desktop
         "animate-slide-in-up sm:animate-slide-in-right"
@@ -61,7 +61,7 @@ export function WidgetLibrary({
           <div className="w-10 h-1 bg-muted-foreground/30 rounded-full" />
         </div>
         {/* Header */}
-        <div className="p-4 border-b flex items-center justify-between shrink-0">
+        <div className="p-4 border-b flex items-center justify-between shrink-0 sticky top-0 bg-background z-10">
           <h3 className="font-semibold">Add Widgets</h3>
           <Button 
             variant="ghost" 
@@ -182,7 +182,7 @@ export function WidgetLibrary({
 
         {/* Mobile close button at bottom */}
         {isMobile && (
-          <div className="p-4 border-t shrink-0">
+          <div className="p-4 border-t shrink-0 pb-[calc(env(safe-area-inset-bottom)+1rem)]">
             <Button 
               onClick={onClose} 
               className="w-full h-12"
