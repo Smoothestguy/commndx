@@ -36,7 +36,7 @@ export default function VendorBillDetail() {
   const handleDelete = () => {
     if (id) {
       deleteBill.mutate(id, {
-        onSuccess: () => navigate("/vendor-bills"),
+        onSuccess: () => navigate("/vendor-bills" + window.location.search),
       });
     }
     setDeleteOpen(false);
@@ -74,7 +74,7 @@ export default function VendorBillDetail() {
       <div className="space-y-6">
         {/* Header Actions */}
         <div className="flex flex-col sm:flex-row gap-4 justify-between">
-          <Button variant="ghost" onClick={() => navigate("/vendor-bills")}>
+          <Button variant="ghost" onClick={() => navigate("/vendor-bills" + window.location.search)}>
             <ArrowLeft className="h-4 w-4 mr-2" />
             Back to Bills
           </Button>
@@ -116,7 +116,7 @@ export default function VendorBillDetail() {
                 Record Payment
               </Button>
             )}
-            <Button variant="outline" onClick={() => navigate(`/vendor-bills/${id}/edit`)}>
+            <Button variant="outline" onClick={() => navigate(`/vendor-bills/${id}/edit${window.location.search}`)}>
               <Edit className="h-4 w-4 mr-2" />
               Edit
             </Button>

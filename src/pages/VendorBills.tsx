@@ -1,4 +1,4 @@
-import { useState, useMemo } from "react";
+import { useState, useMemo, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
 import { PageLayout } from "@/components/layout/PageLayout";
 import { Button } from "@/components/ui/button";
@@ -10,6 +10,7 @@ import { VendorBillStatCard } from "@/components/vendor-bills/VendorBillStatCard
 import { VendorBillFilters } from "@/components/vendor-bills/VendorBillFilters";
 import { VendorBillTable } from "@/components/vendor-bills/VendorBillTable";
 import { SmartVendorBillDialog } from "@/components/vendor-bills/SmartVendorBillDialog";
+import { useUrlFilters } from "@/hooks/useUrlFilters";
 
 type CardFilter = "all" | "open" | "paid" | "overdue";
 
@@ -20,12 +21,54 @@ const formatCurrency = (amount: number) => {
   }).format(amount);
 };
 
+// Default filter values for URL persistence
+const defaultFilterValues = {
+  status: undefined as string | undefined,
+  vendor_id: undefined as string | undefined,
+  project_id: undefined as string | undefined,
+  start_date: undefined as string | undefined,
+  end_date: undefined as string | undefined,
+  activeFilter: undefined as string | undefined,
+  search: undefined as string | undefined,
+};
+
 export default function VendorBills() {
   const navigate = useNavigate();
-  const [search, setSearch] = useState("");
-  const [filters, setFilters] = useState<FilterType>({});
   const [smartDialogOpen, setSmartDialogOpen] = useState(false);
-  const [activeFilter, setActiveFilter] = useState<CardFilter>("all");
+  
+  // Use URL-based filter persistence
+  const { filters: urlFilters, setFilter, setFilters: setUrlFilters } = useUrlFilters(defaultFilterValues);
+  
+  // Derive filter values from URL
+  const search = urlFilters.search || "";
+  const activeFilter = (urlFilters.activeFilter as CardFilter) || "all";
+  
+  // Build the API filter object from URL params
+  const filters: FilterType = useMemo(() => ({
+    status: urlFilters.status as FilterType["status"],
+    vendor_id: urlFilters.vendor_id,
+    project_id: urlFilters.project_id,
+    start_date: urlFilters.start_date,
+    end_date: urlFilters.end_date,
+  }), [urlFilters.status, urlFilters.vendor_id, urlFilters.project_id, urlFilters.start_date, urlFilters.end_date]);
+  
+  const setSearch = useCallback((value: string) => {
+    setFilter("search", value || undefined);
+  }, [setFilter]);
+  
+  const setActiveFilter = useCallback((value: CardFilter) => {
+    setFilter("activeFilter", value === "all" ? undefined : value);
+  }, [setFilter]);
+  
+  const handleFiltersChange = useCallback((newFilters: FilterType) => {
+    setUrlFilters({
+      status: newFilters.status,
+      vendor_id: newFilters.vendor_id,
+      project_id: newFilters.project_id,
+      start_date: newFilters.start_date,
+      end_date: newFilters.end_date,
+    });
+  }, [setUrlFilters]);
 
   const { data: bills, isLoading } = useVendorBills(filters);
 
@@ -108,7 +151,7 @@ export default function VendorBills() {
           </div>
         </div>
 
-        <VendorBillFilters filters={filters} onFiltersChange={setFilters} />
+        <VendorBillFilters filters={filters} onFiltersChange={handleFiltersChange} />
 
         {bills && bills.length > 0 && (
           <div className="grid grid-cols-2 lg:grid-cols-4 gap-2 sm:gap-4">

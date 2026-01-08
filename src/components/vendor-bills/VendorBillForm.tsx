@@ -252,7 +252,16 @@ export function VendorBillForm({ bill, isEditing = false }: VendorBillFormProps)
         }
       }
 
-      navigate("/vendor-bills");
+      // Preserve filter params when navigating back
+      const searchParams = new URLSearchParams(window.location.search);
+      // Remove any edit-specific params, keep filter params
+      const filterParams = new URLSearchParams();
+      ["status", "vendor_id", "project_id", "start_date", "end_date", "activeFilter", "search"].forEach(key => {
+        const value = searchParams.get(key);
+        if (value) filterParams.set(key, value);
+      });
+      const queryString = filterParams.toString();
+      navigate("/vendor-bills" + (queryString ? `?${queryString}` : ""));
     } catch (error) {
       // Error handled by mutation
     }
