@@ -14,7 +14,7 @@ import { ProjectFilters } from "@/components/projects/ProjectFilters";
 import { ProjectEmptyState } from "@/components/projects/ProjectEmptyState";
 import { ProjectFormDialog, initialProjectFormData, type ProjectFormData } from "@/components/projects/ProjectFormDialog";
 import { FloatingActionButton } from "@/components/shared/FloatingActionButton";
-import { useIsMobile } from "@/hooks/use-mobile";
+import { useIsMobile, useIsTablet } from "@/hooks/use-mobile";
 import { useProjects, useAddProject, useUpdateProject, useDeleteProject, Project, ProjectStage } from "@/integrations/supabase/hooks/useProjects";
 import { useCustomers } from "@/integrations/supabase/hooks/useCustomers";
 import { format } from "date-fns";
@@ -25,6 +25,7 @@ import { getCustomerDisplayName } from "@/utils/customerDisplayName";
 const Projects = () => {
   const navigate = useNavigate();
   const isMobile = useIsMobile();
+  const isTablet = useIsTablet();
   const { data: projects, isLoading, error, refetch, isFetching } = useProjects();
   const { data: customers } = useCustomers();
   const addProject = useAddProject();
@@ -278,8 +279,8 @@ const Projects = () => {
             </div>
           </div>
 
-          {/* Mobile Filters */}
-          {isMobile && (
+          {/* Mobile/Tablet Filters */}
+          {(isMobile || isTablet) && (
             <ProjectFilters
               filterStatus={filterStatus}
               setFilterStatus={setFilterStatus}
@@ -314,31 +315,34 @@ const Projects = () => {
           />
         )}
 
-        {/* Mobile Card Layout */}
-        {!isLoading && !error && filteredProjects.length > 0 && isMobile && (
-          <div className="space-y-3">
-            {filteredProjects.map((project, index) => (
-              <ProjectCard
-                key={project.id}
-                project={project}
-                customerName={getCustomerDisplayName(customers?.find(c => c.id === project.customer_id))}
-                onEdit={() => handleEdit(project)}
-                onDelete={() => handleDelete(project.id)}
-                onClick={() => navigate(`/projects/${project.id}`)}
-                index={index}
+        {/* Responsive Layout using CSS show/hide for instant switching */}
+        {!isLoading && !error && filteredProjects.length > 0 && (
+          <>
+            {/* Mobile/Tablet Cards - hidden on lg+ */}
+            <div className="block lg:hidden">
+              <div className="grid gap-3 grid-cols-1 sm:grid-cols-2">
+                {filteredProjects.map((project) => (
+                  <ProjectCard
+                    key={project.id}
+                    project={project}
+                    customerName={getCustomerDisplayName(customers?.find(c => c.id === project.customer_id))}
+                    onEdit={() => handleEdit(project)}
+                    onDelete={() => handleDelete(project.id)}
+                    onClick={() => navigate(`/projects/${project.id}`)}
+                  />
+                ))}
+              </div>
+            </div>
+            {/* Desktop Table - hidden below lg */}
+            <div className="hidden lg:block">
+              <EnhancedDataTable
+                tableId="projects"
+                data={filteredProjects}
+                columns={columns}
+                onRowClick={(item) => navigate(`/projects/${item.id}`)}
               />
-            ))}
-          </div>
-        )}
-
-        {/* Desktop Table Layout with EnhancedDataTable */}
-        {!isLoading && !error && filteredProjects.length > 0 && !isMobile && (
-          <EnhancedDataTable
-            tableId="projects"
-            data={filteredProjects}
-            columns={columns}
-            onRowClick={(item) => navigate(`/projects/${item.id}`)}
-          />
+            </div>
+          </>
         )}
       </PullToRefreshWrapper>
 
