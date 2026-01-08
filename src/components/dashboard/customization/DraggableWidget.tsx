@@ -1,4 +1,5 @@
 import { useDraggable } from "@dnd-kit/core";
+import { useSortable } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
 import { ReactNode } from "react";
 import { cn } from "@/lib/utils";
@@ -24,29 +25,48 @@ export function DraggableWidget({
   colSpan = 1,
 }: DraggableWidgetProps) {
   const isMobile = useIsMobile();
-  const { attributes, listeners, setNodeRef, transform, isDragging } =
-    useDraggable({
-      id,
-      disabled: !isEditMode,
-      data: { row, col, rowSpan, colSpan },
-    });
+  const isMobileSortable = isMobile && isEditMode;
 
-  // On mobile, don't set any grid positioning - let widgets flow naturally
+  // Use sortable for mobile edit mode (vertical list reordering)
+  const sortable = useSortable({
+    id,
+    disabled: !isMobileSortable,
+  });
+
+  // Use draggable for desktop/tablet edit mode (grid positioning)
+  const draggable = useDraggable({
+    id,
+    disabled: !isEditMode || isMobile,
+    data: { row, col, rowSpan, colSpan },
+  });
+
+  // Choose which hook's values to use
+  const {
+    attributes,
+    listeners,
+    setNodeRef,
+    transform,
+    isDragging,
+  } = isMobileSortable ? sortable : draggable;
+
+  // Get transition from sortable (draggable doesn't have it)
+  const transition = isMobileSortable ? sortable.transition : undefined;
+
+  // On mobile, widgets flow in a flex container (no grid positioning)
   // On tablet/desktop, use full grid positioning
   const style: React.CSSProperties = {
-    transform: transform ? CSS.Transform.toString(transform) : undefined,
+    transform: CSS.Transform.toString(transform),
+    transition: transition ?? (isDragging 
+      ? undefined 
+      : "transform 0.25s cubic-bezier(0.18, 0.89, 0.32, 1.28), opacity 0.2s ease-out"),
     ...(isMobile
-      ? {} // No grid constraints on mobile - widgets stack vertically in DOM order
+      ? {} // No grid constraints on mobile - widgets stack in DOM/flex order
       : {
           gridRowStart: row !== undefined ? row + 1 : undefined,
           gridRowEnd: row !== undefined ? row + 1 + rowSpan : undefined,
           gridColumnStart: col !== undefined ? col + 1 : undefined,
           gridColumnEnd: col !== undefined ? col + 1 + colSpan : undefined,
         }),
-    // Smooth spring-like animation on drop
-    transition: isDragging 
-      ? undefined 
-      : "transform 0.25s cubic-bezier(0.18, 0.89, 0.32, 1.28), opacity 0.2s ease-out",
   };
 
   return (
