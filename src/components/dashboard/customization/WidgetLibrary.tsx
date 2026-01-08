@@ -49,13 +49,12 @@ export function WidgetLibrary({
       )}
       
       <div className={cn(
-        "fixed right-0 bg-background border-l shadow-lg z-[200] flex flex-col",
-        // Full screen on mobile, fixed width on desktop
-        "w-full sm:w-80",
-        // Position below header on desktop, full height on mobile
-        "top-0 sm:top-14 bottom-0 sm:h-auto h-full",
-        // Slide in animation
-        "animate-slide-in-right"
+        "fixed bg-background shadow-lg z-[200] flex flex-col",
+        // Bottom sheet on mobile, right sidebar on desktop
+        "inset-x-0 bottom-0 rounded-t-xl max-h-[85vh] border-t",
+        "sm:inset-x-auto sm:right-0 sm:top-14 sm:bottom-0 sm:w-80 sm:rounded-none sm:max-h-none sm:border-l sm:border-t-0",
+        // Slide up on mobile, slide in from right on desktop
+        "animate-slide-in-up sm:animate-slide-in-right"
       )}>
         {/* Header */}
         <div className="p-4 border-b flex items-center justify-between shrink-0">
