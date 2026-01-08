@@ -3,7 +3,7 @@ import { useSortable } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
 import { ReactNode } from "react";
 import { cn } from "@/lib/utils";
-import { useIsMobile } from "@/hooks/use-mobile";
+import { useIsMobile, useIsTablet } from "@/hooks/use-mobile";
 
 interface DraggableWidgetProps {
   id: string;
@@ -25,7 +25,10 @@ export function DraggableWidget({
   colSpan = 1,
 }: DraggableWidgetProps) {
   const isMobile = useIsMobile();
+  const isTablet = useIsTablet();
   const isMobileSortable = isMobile && isEditMode;
+  // On tablet (2-col grid), disable explicit grid positioning to let widgets flow naturally
+  const useFlowLayout = isMobile || isTablet;
 
   // Use sortable for mobile edit mode (vertical list reordering)
   const sortable = useSortable({
@@ -52,15 +55,15 @@ export function DraggableWidget({
   // Get transition from sortable (draggable doesn't have it)
   const transition = isMobileSortable ? sortable.transition : undefined;
 
-  // On mobile, widgets flow in a flex container (no grid positioning)
-  // On tablet/desktop, use full grid positioning
+  // On mobile/tablet, widgets flow naturally (no explicit grid positioning)
+  // On desktop, use full 4-column grid positioning
   const style: React.CSSProperties = {
     transform: CSS.Transform.toString(transform),
     transition: transition ?? (isDragging 
       ? undefined 
       : "transform 0.25s cubic-bezier(0.18, 0.89, 0.32, 1.28), opacity 0.2s ease-out"),
-    ...(isMobile
-      ? {} // No grid constraints on mobile - widgets stack in DOM/flex order
+    ...(useFlowLayout
+      ? {} // No grid constraints - widgets stack in DOM order
       : {
           gridRowStart: row !== undefined ? row + 1 : undefined,
           gridRowEnd: row !== undefined ? row + 1 + rowSpan : undefined,

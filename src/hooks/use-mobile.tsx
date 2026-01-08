@@ -20,7 +20,13 @@ export function useIsMobile() {
 }
 
 export function useIsTablet() {
-  const [isTablet, setIsTablet] = React.useState<boolean | undefined>(undefined);
+  const [isTablet, setIsTablet] = React.useState<boolean>(() => {
+    if (typeof window !== 'undefined') {
+      const width = window.innerWidth;
+      return width >= MOBILE_BREAKPOINT && width < TABLET_BREAKPOINT;
+    }
+    return false;
+  });
 
   React.useEffect(() => {
     const onChange = () => {
@@ -35,5 +41,5 @@ export function useIsTablet() {
     return () => mql.removeEventListener("change", onChange);
   }, []);
 
-  return !!isTablet;
+  return isTablet;
 }
