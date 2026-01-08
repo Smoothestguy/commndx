@@ -318,8 +318,8 @@ const Projects = () => {
         {/* Responsive Layout using CSS show/hide for instant switching */}
         {!isLoading && !error && filteredProjects.length > 0 && (
           <>
-            {/* Mobile/Tablet Cards - hidden on lg+ */}
-            <div className="block lg:hidden">
+            {/* Mobile/Tablet Cards - hidden on desktop (1180px+) */}
+            <div className="block min-[1180px]:hidden">
               <div className="grid gap-3 grid-cols-1 sm:grid-cols-2">
                 {filteredProjects.map((project) => (
                   <ProjectCard
@@ -333,8 +333,8 @@ const Projects = () => {
                 ))}
               </div>
             </div>
-            {/* Desktop Table - hidden below lg */}
-            <div className="hidden lg:block">
+            {/* Desktop Table - hidden below 1180px */}
+            <div className="hidden min-[1180px]:block">
               <EnhancedDataTable
                 tableId="projects"
                 data={filteredProjects}
