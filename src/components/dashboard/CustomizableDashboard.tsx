@@ -513,59 +513,39 @@ export function CustomizableDashboard({
         hasUnsavedChanges={hasUnsavedChanges}
       >
         <div className="relative min-h-[calc(100vh-200px)] z-[1]">
-          {/* Mobile Edit Mode: Flex container for sortable list */}
-          {isMobile && isEditMode ? (
-            <div
-              className={cn(
-                "flex flex-col",
-                {
-                  "gap-2": draftTheme.spacing === "compact",
-                  "gap-3": draftTheme.spacing === "normal" || !draftTheme.spacing,
-                  "gap-4": draftTheme.spacing === "relaxed",
-                }
-              )}
-              style={{ fontFamily: getFontFamily(draftTheme.fontFamily) }}
-            >
-              {/* No drop zones on mobile - widgets are sortable list items */}
-              {sortedLayoutWidgets.map((layoutWidget) =>
-                renderWidget(layoutWidget)
-              )}
-            </div>
-          ) : (
-            /* Desktop/Tablet and Mobile View Mode: Grid layout */
-            <div
-              className={cn(
-                "grid relative",
-                // Responsive columns
-                "grid-cols-1 sm:grid-cols-2 lg:grid-cols-4",
-                {
-                  "gap-2 sm:gap-2": draftTheme.spacing === "compact",
-                  "gap-3 sm:gap-4": draftTheme.spacing === "normal" || !draftTheme.spacing,
-                  "gap-4 sm:gap-6": draftTheme.spacing === "relaxed",
-                }
-              )}
-              style={{
-                fontFamily: getFontFamily(draftTheme.fontFamily),
-                gridAutoRows: isMobile ? "minmax(80px, auto)" : "minmax(100px, auto)",
-              }}
-            >
-              {/* Drop zones for empty cells in edit mode (desktop/tablet only) */}
-              {!isMobile && dropZones.map((zone) => (
-                <GridDropZone
-                  key={zone.id}
-                  id={zone.id}
-                  row={zone.row}
-                  col={zone.col}
-                  isEditMode={isEditMode}
-                />
-              ))}
+          {/* Dashboard Grid */}
+          <div
+            className={cn(
+              "grid relative",
+              // Responsive columns
+              "grid-cols-1 sm:grid-cols-2 lg:grid-cols-4",
+              {
+                "gap-2 sm:gap-2": draftTheme.spacing === "compact",
+                "gap-3 sm:gap-4": draftTheme.spacing === "normal" || !draftTheme.spacing,
+                "gap-4 sm:gap-6": draftTheme.spacing === "relaxed",
+              }
+            )}
+            style={{
+              fontFamily: getFontFamily(draftTheme.fontFamily),
+              gridAutoRows: isMobile ? "minmax(80px, auto)" : "minmax(100px, auto)",
+            }}
+          >
+            {/* Drop zones for empty cells in edit mode */}
+            {dropZones.map((zone) => (
+              <GridDropZone
+                key={zone.id}
+                id={zone.id}
+                row={zone.row}
+                col={zone.col}
+                isEditMode={isEditMode}
+              />
+            ))}
 
-              {/* Render widgets at their grid positions */}
-              {sortedLayoutWidgets.map((layoutWidget) =>
-                renderWidget(layoutWidget)
-              )}
-            </div>
-          )}
+            {/* Render widgets at their grid positions */}
+            {sortedLayoutWidgets.map((layoutWidget) =>
+              renderWidget(layoutWidget)
+            )}
+          </div>
         </div>
       </DashboardCustomizer>
 
