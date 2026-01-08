@@ -14,6 +14,7 @@ interface StoredState {
   idleSeconds: number;
   lastSyncAt: number;
   wasIdleAtLastSync: boolean;
+  idleCorrectionVersion: number;
 }
 
 export function useSessionTracking(externalHasAccess?: boolean, externalAccessChecked?: boolean) {
@@ -39,6 +40,7 @@ export function useSessionTracking(externalHasAccess?: boolean, externalAccessCh
   const syncIntervalRef = useRef<NodeJS.Timeout | null>(null);
   const displayIntervalRef = useRef<NodeJS.Timeout | null>(null);
   const idleStartTimeRef = useRef<number | null>(null);
+  const idleCorrectionVersionRef = useRef<number>(0);
 
   // Computed active seconds based on elapsed time - session_start timestamp
   const getElapsedSeconds = useCallback(() => {
@@ -287,6 +289,7 @@ export function useSessionTracking(externalHasAccess?: boolean, externalAccessCh
           // Resume the most recent active session
           const sessionStart = new Date(mostRecent.session_start).getTime();
           const storedIdleSeconds = mostRecent.total_idle_seconds || 0;
+          const serverCorrectionVersion = (mostRecent as { idle_correction_version?: number }).idle_correction_version || 0;
 
           // Use the database value directly - localStorage was causing double-counting
           // The database already has the correct idle time from the last sync before page closed
@@ -297,8 +300,9 @@ export function useSessionTracking(externalHasAccess?: boolean, externalAccessCh
           isIdleRef.current = false;
           clockedInAtRef.current = sessionStart;
           lastActivityTimeRef.current = Date.now();
+          idleCorrectionVersionRef.current = serverCorrectionVersion;
 
-          console.log(`Resumed session from ${new Date(sessionStart).toLocaleTimeString()}`);
+          console.log(`Resumed session from ${new Date(sessionStart).toLocaleTimeString()}, correction version: ${serverCorrectionVersion}`);
         }
       } catch (e) {
         console.error("Error loading session:", e);
@@ -319,6 +323,7 @@ export function useSessionTracking(externalHasAccess?: boolean, externalAccessCh
       idleSeconds,
       lastSyncAt: Date.now(),
       wasIdleAtLastSync: isIdleRef.current,
+      idleCorrectionVersion: idleCorrectionVersionRef.current,
     };
     localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
   }, [hasAccess, sessionId, idleSeconds, isClockedIn]);
@@ -335,6 +340,33 @@ export function useSessionTracking(externalHasAccess?: boolean, externalAccessCh
 
     const syncToDatabase = async () => {
       const elapsedSeconds = getElapsedSeconds();
+      
+      // FIRST: Check if server has a newer correction version
+      // If so, adopt server's idle time and don't overwrite it
+      try {
+        const { data: serverSession } = await supabase
+          .from("user_work_sessions")
+          .select("total_idle_seconds, idle_correction_version")
+          .eq("id", sessionId)
+          .single();
+        
+        if (serverSession) {
+          const serverVersion = (serverSession as { idle_correction_version?: number }).idle_correction_version || 0;
+          if (serverVersion > idleCorrectionVersionRef.current) {
+            // Server was corrected! Adopt the server's idle time
+            console.log(`Server correction detected: v${idleCorrectionVersionRef.current} -> v${serverVersion}, adopting server idle: ${serverSession.total_idle_seconds}s`);
+            setIdleSeconds(serverSession.total_idle_seconds || 0);
+            idleCorrectionVersionRef.current = serverVersion;
+            // Reset any ongoing idle period to prevent re-inflation
+            if (isIdleRef.current && idleStartTimeRef.current) {
+              idleStartTimeRef.current = Date.now();
+            }
+            return; // Skip this sync cycle, next one will use correct values
+          }
+        }
+      } catch (e) {
+        console.error("Error checking server correction:", e);
+      }
       
       // Get current idle seconds including any ongoing idle period
       let currentIdleSeconds = idleSeconds;
@@ -389,6 +421,7 @@ export function useSessionTracking(externalHasAccess?: boolean, externalAccessCh
         idleSeconds: currentIdleSeconds,
         lastSyncAt: Date.now(),
         wasIdleAtLastSync: isIdleRef.current,
+        idleCorrectionVersion: idleCorrectionVersionRef.current,
       };
       localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
     };
