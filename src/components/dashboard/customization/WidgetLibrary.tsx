@@ -43,7 +43,7 @@ export function WidgetLibrary({
       {/* Mobile overlay backdrop */}
       {isMobile && (
         <div 
-          className="fixed inset-0 bg-black/50 z-[199] animate-fade-in"
+          className="fixed inset-0 bg-black/20 z-[199] animate-fade-in"
           onClick={onClose}
         />
       )}
@@ -56,6 +56,10 @@ export function WidgetLibrary({
         // Slide up on mobile, slide in from right on desktop
         "animate-slide-in-up sm:animate-slide-in-right"
       )}>
+        {/* Drag handle for mobile bottom sheet */}
+        <div className="sm:hidden flex justify-center pt-2 pb-1">
+          <div className="w-10 h-1 bg-muted-foreground/30 rounded-full" />
+        </div>
         {/* Header */}
         <div className="p-4 border-b flex items-center justify-between shrink-0">
           <h3 className="font-semibold">Add Widgets</h3>
