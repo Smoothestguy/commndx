@@ -127,11 +127,15 @@ export function DashboardCustomizer({
 
     const widget = layout.widgets[widgetIndex];
     const newRow = dropData.row;
-    const newCol = dropData.col;
+    // On mobile, always use column 0 (1-column stack)
+    const newCol = isMobile ? 0 : dropData.col;
 
-    // Check bounds - ensure widget fits in grid (use responsive column count)
-    const maxCols = isMobile ? 1 : 4;
-    if (newCol + widget.size.width > maxCols) return;
+    // Check bounds - ensure widget fits in grid (desktop only)
+    // Skip bounds check on mobile since we force col=0 and treat as 1-column stack
+    if (!isMobile) {
+      const maxCols = 4;
+      if (newCol + widget.size.width > maxCols) return;
+    }
 
     // Update widget position (0-indexed)
     let updatedWidgets = layout.widgets.map((w) =>
@@ -168,11 +172,13 @@ export function DashboardCustomizer({
     };
     onWidgetsChange([...widgets, newWidget]);
 
-    // Add to layout
-    const maxRow = layout.widgets.reduce(
-      (max, w) => Math.max(max, w.position.row + w.size.height),
-      0
-    );
+    // Add to layout - on mobile, use sequential row based on widget count
+    const maxRow = isMobile 
+      ? layout.widgets.length 
+      : layout.widgets.reduce(
+          (max, w) => Math.max(max, w.position.row + w.size.height),
+          0
+        );
     const newLayoutWidget: LayoutWidget = {
       widgetId,
       position: { row: maxRow, col: 0 },
