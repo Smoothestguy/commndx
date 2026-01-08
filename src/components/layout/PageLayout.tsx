@@ -2,6 +2,7 @@ import { ReactNode } from "react";
 import { AppHeader } from "./AppHeader";
 import { useSwipeNavigation } from "@/hooks/useSwipeNavigation";
 import { cn } from "@/lib/utils";
+import { PageHeaderActionsProvider, usePageHeaderActions } from "@/contexts/PageHeaderActionsContext";
 
 interface PageLayoutProps {
   children: ReactNode;
@@ -14,13 +15,14 @@ interface PageLayoutProps {
  * PageLayout renders the page content with header, title, and actions.
  * It expects to be wrapped by SidebarLayout which provides the SidebarProvider context.
  */
-export function PageLayout({
+function PageLayoutContent({
   children,
   title,
   description,
   actions,
 }: PageLayoutProps) {
   const { swipeRef, isMobile } = useSwipeNavigation();
+  const { rightActions } = usePageHeaderActions();
 
   return (
     <>
@@ -46,8 +48,11 @@ export function PageLayout({
                 </p>
               )}
             </div>
-            {actions && (
-              <div className="flex items-center gap-2 sm:gap-3 w-full sm:w-auto">{actions}</div>
+            {(actions || rightActions) && (
+              <div className="flex items-center gap-2 sm:gap-3 w-full sm:w-auto justify-between sm:justify-end">
+                {actions && <div className="flex items-center gap-2">{actions}</div>}
+                {rightActions && <div className="flex items-center gap-2">{rightActions}</div>}
+              </div>
             )}
           </header>
 
@@ -56,5 +61,17 @@ export function PageLayout({
         </div>
       </main>
     </>
+  );
+}
+
+/**
+ * PageLayout renders the page content with header, title, and actions.
+ * It expects to be wrapped by SidebarLayout which provides the SidebarProvider context.
+ */
+export function PageLayout(props: PageLayoutProps) {
+  return (
+    <PageHeaderActionsProvider>
+      <PageLayoutContent {...props} />
+    </PageHeaderActionsProvider>
   );
 }
