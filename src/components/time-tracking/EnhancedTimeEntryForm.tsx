@@ -1,11 +1,14 @@
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect, useMemo, useCallback } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
 import { toast } from "@/hooks/use-toast";
-import { Clock, AlertCircle, Calendar, CalendarDays, Users, UserPlus, UserCheck, Gift, AlertTriangle } from "lucide-react";
+import { Clock, AlertCircle, Calendar, CalendarDays, Gift, AlertTriangle } from "lucide-react";
 import { DailyPersonnelHoursSection } from "./DailyPersonnelHoursSection";
-import { PersonnelAvatar } from "@/components/personnel/PersonnelAvatar";
+import { PersonnelSelectionSection } from "./PersonnelSelectionSection";
+import { WeeklyPersonnelGrid } from "./WeeklyPersonnelGrid";
+import { WeeklyQuickFillSection } from "./WeeklyQuickFillSection";
+import { PersonnelHoursTable } from "./PersonnelHoursTable";
 import {
   Dialog,
   DialogContent,
@@ -558,346 +561,6 @@ export function EnhancedTimeEntryForm({
     }));
   };
 
-  // Personnel Selection UI Component for Daily Mode
-  const PersonnelSelectionSection = () => {
-    if (!currentProjectId) return null;
-
-    return (
-      <div className="space-y-3">
-        <div className="flex items-center justify-between">
-          <Label className="flex items-center gap-2">
-            <Users className="h-4 w-4" />
-            Select Personnel (Optional)
-          </Label>
-          {assignedPersonnel.length > 0 && (
-            <div className="flex gap-2">
-              <Button 
-                type="button" 
-                variant="ghost" 
-                size="sm" 
-                onClick={selectAllPersonnel}
-                className="h-7 px-2 text-xs"
-              >
-                Select All
-              </Button>
-              <Button 
-                type="button" 
-                variant="ghost" 
-                size="sm" 
-                onClick={clearPersonnelSelection}
-                className="h-7 px-2 text-xs"
-              >
-                Clear
-              </Button>
-            </div>
-          )}
-        </div>
-
-        {assignedPersonnel.length > 0 ? (
-          <div className="grid grid-cols-2 gap-2 max-h-40 overflow-y-auto p-1">
-            {assignedPersonnel.map((assignment) => {
-              const person = assignment.personnel;
-              if (!person) return null;
-              const isSelected = selectedPersonnel.has(person.id);
-              return (
-                <div
-                  key={person.id}
-                  onClick={() => togglePersonnel(person.id)}
-                  className={cn(
-                    "flex items-center justify-between p-2 rounded-lg cursor-pointer transition-colors border",
-                    isSelected
-                      ? "bg-primary/10 border-primary"
-                      : "bg-muted/30 border-transparent hover:bg-muted/50"
-                  )}
-                >
-                  <div className="flex items-center gap-2">
-                    <Checkbox checked={isSelected} className="pointer-events-none" />
-                    <PersonnelAvatar
-                      photoUrl={(person as any).photo_url}
-                      firstName={person.first_name}
-                      lastName={person.last_name}
-                      size="xs"
-                    />
-                    <span className="text-sm">{person.first_name} {person.last_name}</span>
-                  </div>
-                  {person.hourly_rate && (
-                    <span className="text-xs text-muted-foreground">
-                      ${person.hourly_rate}/hr
-                    </span>
-                  )}
-                </div>
-              );
-            })}
-          </div>
-        ) : (
-          <div className="text-center py-3 text-sm text-muted-foreground border rounded-lg">
-            No personnel assigned to this project
-          </div>
-        )}
-
-        <div className="flex gap-2">
-          <Button
-            type="button"
-            variant="ghost"
-            size="sm"
-            onClick={() => setQuickAddOpen(true)}
-            className="text-xs"
-          >
-            <UserPlus className="h-3.5 w-3.5 mr-1" />
-            Add New
-          </Button>
-          <Button
-            type="button"
-            variant="ghost"
-            size="sm"
-            onClick={() => setAssignExistingOpen(true)}
-            className="text-xs"
-          >
-            <UserCheck className="h-3.5 w-3.5 mr-1" />
-            Assign Existing
-          </Button>
-        </div>
-
-        {selectedPersonnel.size === 0 && (
-          <p className="text-xs text-muted-foreground">
-            Leave empty to log time for yourself
-          </p>
-        )}
-      </div>
-    );
-  };
-
-
-  // Weekly Personnel Grid Selection
-  const WeeklyPersonnelGrid = () => {
-    if (!weeklyProjectId) return null;
-
-    return (
-      <div className="space-y-3">
-        <div className="flex items-center justify-between">
-          <Label className="flex items-center gap-2">
-            <Users className="h-4 w-4" />
-            Select Personnel *
-          </Label>
-          {assignedPersonnel.length > 0 && (
-            <div className="flex gap-2">
-              <Button 
-                type="button" 
-                variant="ghost" 
-                size="sm" 
-                onClick={selectAllPersonnel}
-                className="h-7 px-2 text-xs"
-              >
-                Select All
-              </Button>
-              <Button 
-                type="button" 
-                variant="ghost" 
-                size="sm" 
-                onClick={clearPersonnelSelection}
-                className="h-7 px-2 text-xs"
-              >
-                Clear
-              </Button>
-            </div>
-          )}
-        </div>
-
-        {assignedPersonnel.length > 0 ? (
-          <div className="grid grid-cols-3 gap-2 max-h-32 overflow-y-auto p-1 border rounded-lg">
-            {assignedPersonnel.map((assignment) => {
-              const person = assignment.personnel;
-              if (!person) return null;
-              const isSelected = selectedPersonnel.has(person.id);
-              return (
-                <div
-                  key={person.id}
-                  onClick={() => togglePersonnel(person.id)}
-                  className={cn(
-                    "flex items-center justify-between p-2 rounded-lg cursor-pointer transition-colors border",
-                    isSelected
-                      ? "bg-primary/10 border-primary"
-                      : "bg-muted/30 border-transparent hover:bg-muted/50"
-                  )}
-                >
-                  <div className="flex items-center gap-2">
-                    <Checkbox checked={isSelected} className="pointer-events-none" />
-                    <span className="text-sm truncate">{person.first_name} {person.last_name}</span>
-                  </div>
-                  {person.hourly_rate && (
-                    <span className="text-xs text-muted-foreground whitespace-nowrap">
-                      ${person.hourly_rate}/hr
-                    </span>
-                  )}
-                </div>
-              );
-            })}
-          </div>
-        ) : (
-          <div className="text-center py-3 text-sm text-muted-foreground border rounded-lg">
-            No personnel assigned to this project
-          </div>
-        )}
-
-        <div className="flex gap-2">
-          <Button
-            type="button"
-            variant="ghost"
-            size="sm"
-            onClick={() => setQuickAddOpen(true)}
-            className="text-xs"
-          >
-            <UserPlus className="h-3.5 w-3.5 mr-1" />
-            Add New
-          </Button>
-          <Button
-            type="button"
-            variant="ghost"
-            size="sm"
-            onClick={() => setAssignExistingOpen(true)}
-            className="text-xs"
-          >
-            <UserCheck className="h-3.5 w-3.5 mr-1" />
-            Assign Existing
-          </Button>
-        </div>
-      </div>
-    );
-  };
-
-  // Quick Fill Template Section
-  const QuickFillSection = () => {
-    if (selectedPersonnel.size === 0) return null;
-
-    return (
-      <div className="space-y-2 border rounded-lg p-3 bg-muted/30">
-        <div className="flex items-center justify-between">
-          <Label className="text-sm font-medium">Quick Fill - Set Same Hours for All Selected Personnel</Label>
-          <Button
-            type="button"
-            size="sm"
-            variant="secondary"
-            onClick={applyTemplateToAll}
-            className="h-7 text-xs"
-          >
-            Apply to All
-          </Button>
-        </div>
-        <div className="flex gap-2 overflow-x-auto pb-1">
-          {weekDays.map((day) => {
-            const dateKey = format(day, "yyyy-MM-dd");
-            return (
-              <div key={dateKey} className="flex flex-col items-center gap-1 min-w-[60px]">
-                <span className="text-xs text-muted-foreground">{format(day, "EEE")}</span>
-                <Input
-                  type="number"
-                  step="0.25"
-                  min="0"
-                  max="24"
-                  placeholder="0"
-                  value={templateHours[dateKey] || ""}
-                  onChange={(e) => updateTemplateHour(dateKey, e.target.value)}
-                  className="w-14 h-8 text-center text-sm"
-                />
-              </div>
-            );
-          })}
-        </div>
-      </div>
-    );
-  };
-
-  // Per-Personnel Hours Table
-  const PersonnelHoursTable = () => {
-    if (selectedPersonnel.size === 0) return null;
-
-    const selectedPersonnelList = assignedPersonnel.filter(
-      a => a.personnel && selectedPersonnel.has(a.personnel.id)
-    );
-
-    return (
-      <div className="border rounded-lg overflow-hidden">
-        <div className="overflow-x-auto">
-          <Table>
-            <TableHeader>
-              <TableRow className="bg-muted/50">
-                <TableHead className="sticky left-0 bg-muted/50 min-w-[140px]">Personnel</TableHead>
-                {weekDays.map((day) => (
-                  <TableHead key={format(day, "yyyy-MM-dd")} className="text-center min-w-[70px]">
-                    <div className="flex flex-col">
-                      <span className="text-xs">{format(day, "EEE")}</span>
-                      <span className="text-xs text-muted-foreground">{format(day, "M/d")}</span>
-                    </div>
-                  </TableHead>
-                ))}
-                <TableHead className="text-right min-w-[70px]">Total</TableHead>
-                <TableHead className="text-right min-w-[80px]">Cost</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {selectedPersonnelList.map((assignment) => {
-                const person = assignment.personnel!;
-                const { total, cost } = getPersonnelTotals(person.id);
-                return (
-                  <TableRow key={person.id}>
-                    <TableCell className="sticky left-0 bg-background font-medium">
-                      {person.first_name} {person.last_name}
-                    </TableCell>
-                    {weekDays.map((day) => {
-                      const dateKey = format(day, "yyyy-MM-dd");
-                      return (
-                        <TableCell key={dateKey} className="p-1">
-                          <Input
-                            type="number"
-                            step="0.25"
-                            min="0"
-                            max="24"
-                            placeholder="0"
-                            value={personnelHours[`${person.id}_${dateKey}`] || ""}
-                            onChange={(e) => updatePersonnelHour(person.id, dateKey, e.target.value)}
-                            className="w-14 h-8 text-center text-sm"
-                          />
-                        </TableCell>
-                      );
-                    })}
-                    <TableCell className="text-right font-medium">
-                      {total.toFixed(1)}h
-                    </TableCell>
-                    <TableCell className="text-right font-medium text-primary">
-                      ${cost.toFixed(2)}
-                    </TableCell>
-                  </TableRow>
-                );
-              })}
-              {/* Totals Row */}
-              <TableRow className="bg-muted/30 font-semibold">
-                <TableCell className="sticky left-0 bg-muted/30">Total</TableCell>
-                {weekDays.map((day) => {
-                  const dateKey = format(day, "yyyy-MM-dd");
-                  let dayTotal = 0;
-                  selectedPersonnel.forEach(personnelId => {
-                    dayTotal += parseFloat(personnelHours[`${personnelId}_${dateKey}`]) || 0;
-                  });
-                  return (
-                    <TableCell key={dateKey} className="text-center text-sm">
-                      {dayTotal > 0 ? `${dayTotal.toFixed(1)}` : "-"}
-                    </TableCell>
-                  );
-                })}
-                <TableCell className="text-right">
-                  {grandTotals.totalHours.toFixed(1)}h
-                </TableCell>
-                <TableCell className="text-right text-primary">
-                  ${grandTotals.totalCost.toFixed(2)}
-                </TableCell>
-              </TableRow>
-            </TableBody>
-          </Table>
-        </div>
-      </div>
-    );
-  };
-
   return (
     <>
       <Dialog open={open} onOpenChange={onOpenChange}>
@@ -991,7 +654,20 @@ export function EnhancedTimeEntryForm({
                 </div>
 
                 {/* Personnel Selection for Daily */}
-                {!entry && <PersonnelSelectionSection />}
+                {!entry && currentProjectId && (
+                  <PersonnelSelectionSection
+                    assignedPersonnel={assignedPersonnel.map(a => ({
+                      personnel: a.personnel ? { ...a.personnel, photo_url: (a.personnel as any).photo_url } : null
+                    }))}
+                    selectedPersonnel={selectedPersonnel}
+                    togglePersonnel={togglePersonnel}
+                    selectAllPersonnel={selectAllPersonnel}
+                    clearPersonnelSelection={clearPersonnelSelection}
+                    showProjectActions={!!currentProjectId}
+                    onQuickAddOpen={() => setQuickAddOpen(true)}
+                    onAssignExistingOpen={() => setAssignExistingOpen(true)}
+                  />
+                )}
 
                 {/* Individual Hours per Personnel (when personnel selected) */}
                 {!entry && selectedPersonnel.size > 0 && (
@@ -1153,14 +829,61 @@ export function EnhancedTimeEntryForm({
                 <WeekNavigator currentWeek={currentWeek} onWeekChange={setCurrentWeek} />
               </div>
 
-              {/* Personnel Selection Grid */}
-              <WeeklyPersonnelGrid />
+              {weeklyProjectId && (
+                <WeeklyPersonnelGrid
+                  weeklyProjectId={weeklyProjectId}
+                  assignedPersonnel={assignedPersonnel.map(a => ({
+                    personnel: a.personnel ? { ...a.personnel, photo_url: (a.personnel as any).photo_url } : null
+                  }))}
+                  selectedPersonnel={selectedPersonnel}
+                  selectAllPersonnel={selectAllPersonnel}
+                  clearPersonnelSelection={clearPersonnelSelection}
+                  togglePersonnel={togglePersonnel}
+                  setQuickAddOpen={setQuickAddOpen}
+                  setAssignExistingOpen={setAssignExistingOpen}
+                />
+              )}
 
               {/* Quick Fill Template */}
-              <QuickFillSection />
+              {selectedPersonnel.size > 0 && (
+                <WeeklyQuickFillSection
+                  selectedPersonnelSize={selectedPersonnel.size}
+                  weekDays={weekDays.map(day => ({
+                    date: day,
+                    dayName: format(day, "EEE"),
+                    dateKey: format(day, "yyyy-MM-dd"),
+                  }))}
+                  templateHours={Object.fromEntries(
+                    Object.entries(templateHours).map(([k, v]) => [k, parseFloat(v) || 0])
+                  )}
+                  updateTemplateHour={(dateKey, value) => updateTemplateHour(dateKey, String(value))}
+                  applyTemplateToAll={applyTemplateToAll}
+                />
+              )}
 
               {/* Per-Personnel Hours Table */}
-              <PersonnelHoursTable />
+              {selectedPersonnel.size > 0 && (
+                <PersonnelHoursTable
+                  selectedPersonnel={selectedPersonnel}
+                  assignedPersonnel={assignedPersonnel.map(a => ({
+                    personnel: a.personnel ? { ...a.personnel, photo_url: (a.personnel as any).photo_url } : null
+                  }))}
+                  weekDays={weekDays.map(day => ({
+                    date: day,
+                    dayName: format(day, "EEE"),
+                    dateKey: format(day, "yyyy-MM-dd"),
+                  }))}
+                  personnelHours={Object.fromEntries(
+                    Object.entries(personnelHours).map(([k, v]) => [k, parseFloat(v) || 0])
+                  )}
+                  updatePersonnelHour={(personnelId, dateKey, value) => updatePersonnelHour(personnelId, dateKey, String(value))}
+                  getPersonnelTotals={(personnelId) => {
+                    const totals = getPersonnelTotals(personnelId);
+                    return { regular: Math.min(totals.total, 40), overtime: Math.max(0, totals.total - 40), total: totals.total };
+                  }}
+                  grandTotals={{ regular: Math.min(grandTotals.totalHours, 40), overtime: Math.max(0, grandTotals.totalHours - 40), total: grandTotals.totalHours }}
+                />
+              )}
 
               {/* Single user hours (when no personnel selected) */}
               {selectedPersonnel.size === 0 && weeklyProjectId && (
