@@ -539,8 +539,8 @@ export function PersonnelTable({
         </div>
       )}
 
-      {/* Mobile: Card-based layout */}
-      {isMobile ? (
+      {/* Mobile/Tablet Cards - hidden on desktop (1180px+) */}
+      <div className="block min-[1180px]:hidden">
         <div className="space-y-3">
           {personnel.map((person) => (
             <MobilePersonnelCard
@@ -553,8 +553,10 @@ export function PersonnelTable({
             />
           ))}
         </div>
-      ) : (
-        /* Desktop/Tablet: Enhanced Table view */
+      </div>
+
+      {/* Desktop Table - hidden below 1180px */}
+      <div className="hidden min-[1180px]:block">
         <EnhancedDataTable
           tableId="personnel"
           data={personnel}
@@ -565,7 +567,7 @@ export function PersonnelTable({
             }
           }}
         />
-      )}
+      </div>
 
       {/* Pagination */}
       <TablePagination
