@@ -261,23 +261,10 @@ export function useSessionTracking(externalHasAccess?: boolean, externalAccessCh
           const sessionStart = new Date(mostRecent.session_start).getTime();
           const storedIdleSeconds = mostRecent.total_idle_seconds || 0;
 
-          // Check localStorage for any additional idle time since last sync
-          const savedState = localStorage.getItem(STORAGE_KEY);
-          let additionalIdleSeconds = 0;
-          if (savedState) {
-            try {
-              const state: StoredState = JSON.parse(savedState);
-              if (state.sessionId === mostRecent.id && state.wasIdleAtLastSync) {
-                // User was idle when app closed, add that time
-                additionalIdleSeconds = Math.floor((Date.now() - state.lastSyncAt) / 1000);
-              }
-            } catch (e) {
-              console.error("Error parsing localStorage:", e);
-            }
-          }
-
+          // Use the database value directly - localStorage was causing double-counting
+          // The database already has the correct idle time from the last sync before page closed
           setSessionId(mostRecent.id);
-          setIdleSeconds(storedIdleSeconds + additionalIdleSeconds);
+          setIdleSeconds(storedIdleSeconds);
           setIsClockedIn(true);
           setIsIdle(false);
           isIdleRef.current = false;
