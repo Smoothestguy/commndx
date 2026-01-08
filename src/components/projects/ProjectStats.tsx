@@ -52,7 +52,7 @@ export function ProjectStats({ projects }: ProjectStatsProps) {
   const displayStats = isMobile ? stats.filter(s => s.showOnMobile) : stats;
 
   return (
-    <div className={`grid gap-2 sm:gap-4 mb-4 sm:mb-6 overflow-hidden grid-cols-2 md:grid-cols-4`}>
+    <div className="grid gap-1.5 sm:gap-4 mb-4 sm:mb-6 overflow-hidden grid-cols-2 md:grid-cols-4">
       {displayStats.map((stat) => {
         const Icon = stat.icon;
         return (
