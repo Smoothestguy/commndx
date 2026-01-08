@@ -193,14 +193,6 @@ export default function TimeTracking() {
                   <Users className="h-4 w-4 mr-2" />
                   <span className="text-sm whitespace-nowrap">Manage Personnel</span>
                 </Button>
-                <Button
-                  variant="secondary"
-                  className="flex-1 min-w-[calc(50%-0.25rem)] sm:flex-none sm:min-w-0 h-11 sm:h-10"
-                  onClick={() => navigate("/team-timesheet")}
-                >
-                  <Users className="h-4 w-4 mr-2" />
-                  <span className="text-sm whitespace-nowrap">Log Team Time</span>
-                </Button>
               </>
             )}
             <Button
