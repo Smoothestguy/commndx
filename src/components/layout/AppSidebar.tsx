@@ -151,10 +151,7 @@ export function AppSidebar() {
           <img
             src={logo}
             alt="Fairfield"
-            className={cn(
-              "object-contain transition-all duration-200",
-              isCollapsed ? "h-6 w-6" : "h-10 w-auto max-w-[160px]"
-            )}
+            className="object-contain transition-all duration-200 h-10 w-auto max-w-[160px] group-data-[state=collapsed]:h-6 group-data-[state=collapsed]:w-6 group-data-[state=collapsed]:max-w-[24px]"
           />
         </div>
       </SidebarHeader>
