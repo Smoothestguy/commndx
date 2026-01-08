@@ -68,9 +68,9 @@ export function EditModeToggle({
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
-        <Button variant="outline" size="sm" className="gap-2">
+        <Button variant="outline" size="sm" className="gap-2 h-8 px-2 sm:px-3">
           <Settings className="h-4 w-4" />
-          Customize
+          <span className="hidden sm:inline">Customize</span>
         </Button>
       </DropdownMenuTrigger>
       <DropdownMenuContent align="end">
