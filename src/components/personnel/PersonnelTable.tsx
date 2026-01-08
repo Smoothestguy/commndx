@@ -541,7 +541,7 @@ export function PersonnelTable({
 
       {/* Mobile/Tablet Cards - hidden on desktop (1180px+) */}
       <div className="block min-[1180px]:hidden">
-        <div className="space-y-3">
+        <div className="grid gap-3 grid-cols-1 sm:grid-cols-2">
           {personnel.map((person) => (
             <MobilePersonnelCard
               key={person.id}
