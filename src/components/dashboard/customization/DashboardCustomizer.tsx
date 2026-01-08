@@ -32,7 +32,7 @@ import {
 } from "../widgets/types";
 import { WIDGET_REGISTRY } from "../widgets/registry";
 import { cn } from "@/lib/utils";
-import { useIsMobile } from "@/hooks/use-mobile";
+import { useIsMobile, useIsTablet } from "@/hooks/use-mobile";
 import { Haptics, ImpactStyle } from "@capacitor/haptics";
 
 interface DashboardCustomizerProps {
@@ -74,6 +74,10 @@ export function DashboardCustomizer({
   const [showWidgetLibrary, setShowWidgetLibrary] = useState(false);
   const [showThemeEditor, setShowThemeEditor] = useState(false);
   const isMobile = useIsMobile();
+  const isTablet = useIsTablet();
+  
+  // Tablet uses 2-column grid, desktop uses 4
+  const maxCols = isTablet ? 2 : 4;
 
   // Close one panel when opening the other
   const handleOpenThemeEditor = () => {
@@ -157,9 +161,10 @@ export function DashboardCustomizer({
     const newRow = dropData.row;
     const newCol = dropData.col;
 
-    // Check bounds - ensure widget fits in grid
-    const maxCols = 4;
-    if (newCol + widget.size.width > maxCols) return;
+    // Check bounds - ensure widget fits in grid (maxCols already defined above)
+    // On tablet, clamp widget width to fit in 2-column grid
+    const effectiveWidth = isTablet ? Math.min(widget.size.width, maxCols) : widget.size.width;
+    if (newCol + effectiveWidth > maxCols) return;
 
     // Update widget position
     const updatedWidgets = layout.widgets.map((w) =>
