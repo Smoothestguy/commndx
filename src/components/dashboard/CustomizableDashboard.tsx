@@ -417,18 +417,25 @@ export function CustomizableDashboard({
       // Skip if widget won't render (no registry entry or not visible)
       if (!widget || !widget.visible || !registryEntry) continue;
 
-      for (let r = lw.position.row; r < lw.position.row + lw.size.height; r++) {
-        for (
-          let c = lw.position.col;
-          c < lw.position.col + lw.size.width;
-          c++
-        ) {
-          occupied.add(`${r}-${c}`);
+      // On mobile, treat each widget as occupying exactly 1 row at column 0
+      // (widgets stack vertically regardless of their desktop size)
+      if (isMobile) {
+        occupied.add(`${lw.position.row}-0`);
+      } else {
+        // Desktop: use actual widget size
+        for (let r = lw.position.row; r < lw.position.row + lw.size.height; r++) {
+          for (
+            let c = lw.position.col;
+            c < lw.position.col + lw.size.width;
+            c++
+          ) {
+            occupied.add(`${r}-${c}`);
+          }
         }
       }
     }
     return occupied;
-  }, [draftLayout, draftWidgets]);
+  }, [draftLayout, draftWidgets, isMobile]);
 
   // Calculate the max row needed (0-indexed)
   const maxRow = useMemo(() => {
