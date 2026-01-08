@@ -31,18 +31,15 @@ export function DraggableWidget({
       data: { row, col, rowSpan, colSpan },
     });
 
-  // On mobile, force single column (no column constraints)
-  // On tablet (sm), use 2 columns max
-  // On desktop (lg+), use full colSpan
+  // On mobile, don't set any grid positioning - let widgets flow naturally
+  // On tablet/desktop, use full grid positioning
   const style: React.CSSProperties = {
     transform: transform ? CSS.Transform.toString(transform) : undefined,
-    // Row positioning (same for all sizes)
-    gridRowStart: row !== undefined ? row + 1 : undefined,
-    gridRowEnd: row !== undefined ? row + 1 + rowSpan : undefined,
-    // Column positioning - let CSS grid handle responsive layout on mobile
     ...(isMobile
-      ? {} // No column constraints on mobile - widgets flow naturally
+      ? {} // No grid constraints on mobile - widgets stack vertically in DOM order
       : {
+          gridRowStart: row !== undefined ? row + 1 : undefined,
+          gridRowEnd: row !== undefined ? row + 1 + rowSpan : undefined,
           gridColumnStart: col !== undefined ? col + 1 : undefined,
           gridColumnEnd: col !== undefined ? col + 1 + colSpan : undefined,
         }),
