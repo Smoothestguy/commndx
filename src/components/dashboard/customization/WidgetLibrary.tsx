@@ -12,6 +12,7 @@ import { Plus, Search, X } from "lucide-react";
 import { WIDGET_REGISTRY, WIDGET_CATEGORIES, getWidgetsByCategory } from "../widgets/registry";
 import { DashboardWidget } from "../widgets/types";
 import { cn } from "@/lib/utils";
+import { useIsMobile } from "@/hooks/use-mobile";
 
 interface WidgetLibraryProps {
   isOpen: boolean;
@@ -28,6 +29,7 @@ export function WidgetLibrary({
 }: WidgetLibraryProps) {
   const [search, setSearch] = useState("");
   const activeWidgetIds = activeWidgets.map((w) => w.id);
+  const isMobile = useIsMobile();
 
   const filteredRegistry = Object.entries(WIDGET_REGISTRY).filter(([id, widget]) =>
     widget.title.toLowerCase().includes(search.toLowerCase()) ||
@@ -37,115 +39,157 @@ export function WidgetLibrary({
   if (!isOpen) return null;
 
   return (
-    <div className="fixed right-0 top-0 h-full w-80 bg-background border-l shadow-lg z-50 flex flex-col">
-      {/* Header */}
-      <div className="p-4 border-b flex items-center justify-between">
-        <h3 className="font-semibold">Add Widgets</h3>
-        <Button variant="ghost" size="icon" onClick={onClose}>
-          <X className="h-4 w-4" />
-        </Button>
-      </div>
-
-      {/* Search */}
-      <div className="p-4 border-b">
-        <div className="relative">
-          <Search className="absolute left-2 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-          <Input
-            placeholder="Search widgets..."
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            className="pl-8"
-          />
+    <>
+      {/* Mobile overlay backdrop */}
+      {isMobile && (
+        <div 
+          className="fixed inset-0 bg-black/50 z-[199] animate-fade-in"
+          onClick={onClose}
+        />
+      )}
+      
+      <div className={cn(
+        "fixed right-0 bg-background border-l shadow-lg z-[200] flex flex-col",
+        // Full screen on mobile, fixed width on desktop
+        "w-full sm:w-80",
+        // Position below header on desktop, full height on mobile
+        "top-0 sm:top-14 bottom-0 sm:h-auto h-full",
+        // Slide in animation
+        "animate-slide-in-right"
+      )}>
+        {/* Header */}
+        <div className="p-4 border-b flex items-center justify-between shrink-0">
+          <h3 className="font-semibold">Add Widgets</h3>
+          <Button 
+            variant="ghost" 
+            size="icon" 
+            onClick={onClose}
+            className="h-10 w-10 sm:h-8 sm:w-8"
+          >
+            <X className="h-5 w-5 sm:h-4 sm:w-4" />
+          </Button>
         </div>
-      </div>
 
-      {/* Widget List */}
-      <ScrollArea className="flex-1">
-        {search ? (
-          // Show flat list when searching
-          <div className="p-4 space-y-2">
-            {filteredRegistry.map(([id, widget]) => {
-              const isActive = activeWidgetIds.includes(id);
-              const Icon = widget.icon;
-              return (
-                <div
-                  key={id}
-                  className={cn(
-                    "flex items-center gap-3 p-3 rounded-lg border",
-                    isActive ? "bg-muted/50 border-muted" : "hover:bg-muted/30 cursor-pointer"
-                  )}
-                  onClick={() => !isActive && onAddWidget(id)}
-                >
-                  <div className="p-2 rounded-md bg-primary/10">
-                    <Icon className="h-4 w-4 text-primary" />
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <p className="font-medium text-sm">{widget.title}</p>
-                    <p className="text-xs text-muted-foreground truncate">
-                      {widget.description}
-                    </p>
-                  </div>
-                  {!isActive && (
-                    <Button variant="ghost" size="icon" className="h-6 w-6">
-                      <Plus className="h-3 w-3" />
-                    </Button>
-                  )}
-                  {isActive && (
-                    <span className="text-xs text-muted-foreground">Added</span>
-                  )}
-                </div>
-              );
-            })}
+        {/* Search */}
+        <div className="p-4 border-b shrink-0">
+          <div className="relative">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+            <Input
+              placeholder="Search widgets..."
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              className="pl-9 h-11 sm:h-9"
+            />
           </div>
-        ) : (
-          // Show categorized list
-          <Accordion type="multiple" defaultValue={["stats", "charts", "lists", "actions"]} className="p-4">
-            {Object.entries(WIDGET_CATEGORIES).map(([categoryId, category]) => {
-              const widgets = getWidgetsByCategory(categoryId as keyof typeof WIDGET_CATEGORIES);
-              if (widgets.length === 0) return null;
+        </div>
 
-              return (
-                <AccordionItem key={categoryId} value={categoryId}>
-                  <AccordionTrigger className="text-sm font-medium">
-                    {category.label}
-                  </AccordionTrigger>
-                  <AccordionContent>
-                    <div className="space-y-2 pt-2">
-                      {widgets.map((widget) => {
-                        const isActive = activeWidgetIds.includes(widget.id);
-                        const Icon = widget.icon;
-                        return (
-                          <div
-                            key={widget.id}
-                            className={cn(
-                              "flex items-center gap-3 p-2 rounded-md",
-                              isActive
-                                ? "bg-muted/50"
-                                : "hover:bg-muted/30 cursor-pointer"
-                            )}
-                            onClick={() => !isActive && onAddWidget(widget.id)}
-                          >
-                            <Icon className="h-4 w-4 text-muted-foreground" />
-                            <span className="flex-1 text-sm">{widget.title}</span>
-                            {!isActive && (
-                              <Plus className="h-3 w-3 text-muted-foreground" />
-                            )}
-                            {isActive && (
-                              <span className="text-xs text-muted-foreground">
-                                Added
-                              </span>
-                            )}
-                          </div>
-                        );
-                      })}
+        {/* Widget List */}
+        <ScrollArea className="flex-1">
+          {search ? (
+            // Show flat list when searching
+            <div className="p-4 space-y-2">
+              {filteredRegistry.map(([id, widget]) => {
+                const isActive = activeWidgetIds.includes(id);
+                const Icon = widget.icon;
+                return (
+                  <div
+                    key={id}
+                    className={cn(
+                      "flex items-center gap-3 p-3 sm:p-2 rounded-lg border",
+                      // Larger touch targets on mobile
+                      "min-h-[64px] sm:min-h-0",
+                      isActive 
+                        ? "bg-muted/50 border-muted" 
+                        : "hover:bg-muted/30 active:bg-muted/50 active:scale-[0.98] cursor-pointer transition-all"
+                    )}
+                    onClick={() => !isActive && onAddWidget(id)}
+                  >
+                    <div className="p-2 rounded-md bg-primary/10 shrink-0">
+                      <Icon className="h-5 w-5 sm:h-4 sm:w-4 text-primary" />
                     </div>
-                  </AccordionContent>
-                </AccordionItem>
-              );
-            })}
-          </Accordion>
+                    <div className="flex-1 min-w-0">
+                      <p className="font-medium text-sm">{widget.title}</p>
+                      <p className="text-xs text-muted-foreground truncate">
+                        {widget.description}
+                      </p>
+                    </div>
+                    {!isActive && (
+                      <Button variant="ghost" size="icon" className="h-9 w-9 sm:h-6 sm:w-6 shrink-0">
+                        <Plus className="h-4 w-4 sm:h-3 sm:w-3" />
+                      </Button>
+                    )}
+                    {isActive && (
+                      <span className="text-xs text-muted-foreground shrink-0">Added</span>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+          ) : (
+            // Show categorized list
+            <Accordion type="multiple" defaultValue={["stats", "charts", "lists", "actions"]} className="p-4">
+              {Object.entries(WIDGET_CATEGORIES).map(([categoryId, category]) => {
+                const widgets = getWidgetsByCategory(categoryId as keyof typeof WIDGET_CATEGORIES);
+                if (widgets.length === 0) return null;
+
+                return (
+                  <AccordionItem key={categoryId} value={categoryId}>
+                    <AccordionTrigger className="text-sm font-medium py-3">
+                      {category.label}
+                    </AccordionTrigger>
+                    <AccordionContent>
+                      <div className="space-y-2 pt-2">
+                        {widgets.map((widget) => {
+                          const isActive = activeWidgetIds.includes(widget.id);
+                          const Icon = widget.icon;
+                          return (
+                            <div
+                              key={widget.id}
+                              className={cn(
+                                "flex items-center gap-3 p-3 sm:p-2 rounded-md",
+                                // Larger touch targets on mobile
+                                "min-h-[52px] sm:min-h-0",
+                                isActive
+                                  ? "bg-muted/50"
+                                  : "hover:bg-muted/30 active:bg-muted/50 active:scale-[0.98] cursor-pointer transition-all"
+                              )}
+                              onClick={() => !isActive && onAddWidget(widget.id)}
+                            >
+                              <Icon className="h-5 w-5 sm:h-4 sm:w-4 text-muted-foreground shrink-0" />
+                              <span className="flex-1 text-sm">{widget.title}</span>
+                              {!isActive && (
+                                <Plus className="h-4 w-4 sm:h-3 sm:w-3 text-muted-foreground shrink-0" />
+                              )}
+                              {isActive && (
+                                <span className="text-xs text-muted-foreground shrink-0">
+                                  Added
+                                </span>
+                              )}
+                            </div>
+                          );
+                        })}
+                      </div>
+                    </AccordionContent>
+                  </AccordionItem>
+                );
+              })}
+            </Accordion>
+          )}
+        </ScrollArea>
+
+        {/* Mobile close button at bottom */}
+        {isMobile && (
+          <div className="p-4 border-t shrink-0">
+            <Button 
+              onClick={onClose} 
+              className="w-full h-12"
+              variant="secondary"
+            >
+              Close
+            </Button>
+          </div>
         )}
-      </ScrollArea>
-    </div>
+      </div>
+    </>
   );
 }

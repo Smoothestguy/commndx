@@ -36,6 +36,10 @@ export function DraggableWidget({
     gridRowEnd: row !== undefined ? row + 1 + rowSpan : undefined,
     gridColumnStart: col !== undefined ? col + 1 : undefined,
     gridColumnEnd: col !== undefined ? col + 1 + colSpan : undefined,
+    // Smooth spring-like animation on drop
+    transition: isDragging 
+      ? undefined 
+      : "transform 0.25s cubic-bezier(0.18, 0.89, 0.32, 1.28), opacity 0.2s ease-out",
   };
 
   return (
@@ -43,8 +47,9 @@ export function DraggableWidget({
       ref={setNodeRef}
       style={style}
       className={cn(
-        "transition-shadow duration-200",
-        isDragging && "opacity-70 z-50 shadow-2xl"
+        "will-change-transform",
+        isDragging && "opacity-80 z-50 shadow-2xl scale-[1.02]",
+        isEditMode && "touch-none cursor-grab active:cursor-grabbing"
       )}
       {...(isEditMode ? { ...attributes, ...listeners } : {})}
     >
