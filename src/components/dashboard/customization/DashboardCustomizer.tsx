@@ -4,6 +4,7 @@ import {
   pointerWithin,
   KeyboardSensor,
   PointerSensor,
+  TouchSensor,
   useSensor,
   useSensors,
   DragEndEvent,
@@ -25,6 +26,8 @@ import {
 } from "../widgets/types";
 import { WIDGET_REGISTRY } from "../widgets/registry";
 import { cn } from "@/lib/utils";
+import { useIsMobile } from "@/hooks/use-mobile";
+import { Haptics, ImpactStyle } from "@capacitor/haptics";
 
 interface DashboardCustomizerProps {
   isEditMode: boolean;
@@ -40,6 +43,15 @@ interface DashboardCustomizerProps {
   children: ReactNode;
 }
 
+// Haptic feedback helper
+const triggerHaptic = async (style: ImpactStyle = ImpactStyle.Medium) => {
+  try {
+    await Haptics.impact({ style });
+  } catch {
+    // Haptics not available (web browser)
+  }
+};
+
 export function DashboardCustomizer({
   isEditMode,
   layout,
@@ -53,8 +65,9 @@ export function DashboardCustomizer({
   hasUnsavedChanges,
   children,
 }: DashboardCustomizerProps) {
-const [showWidgetLibrary, setShowWidgetLibrary] = useState(false);
+  const [showWidgetLibrary, setShowWidgetLibrary] = useState(false);
   const [showThemeEditor, setShowThemeEditor] = useState(false);
+  const isMobile = useIsMobile();
 
   // Close one panel when opening the other
   const handleOpenThemeEditor = () => {
@@ -69,10 +82,17 @@ const [showWidgetLibrary, setShowWidgetLibrary] = useState(false);
   const [showResetDialog, setShowResetDialog] = useState(false);
   const [activeId, setActiveId] = useState<string | null>(null);
 
+  // Touch-optimized sensors for mobile
   const sensors = useSensors(
     useSensor(PointerSensor, {
       activationConstraint: {
         distance: 8,
+      },
+    }),
+    useSensor(TouchSensor, {
+      activationConstraint: {
+        delay: 200, // Press and hold to start drag
+        tolerance: 5, // Allow slight movement before canceling
       },
     }),
     useSensor(KeyboardSensor, {
@@ -82,6 +102,7 @@ const [showWidgetLibrary, setShowWidgetLibrary] = useState(false);
 
   const handleDragStart = (event: DragStartEvent) => {
     setActiveId(event.active.id as string);
+    triggerHaptic(ImpactStyle.Medium);
   };
 
   const handleDragEnd = (event: DragEndEvent) => {
@@ -107,8 +128,9 @@ const [showWidgetLibrary, setShowWidgetLibrary] = useState(false);
     const newRow = dropData.row;
     const newCol = dropData.col;
 
-    // Check bounds - ensure widget fits in 4-column grid (0-indexed: cols 0-3)
-    if (newCol + widget.size.width > 4) return;
+    // Check bounds - ensure widget fits in grid (use responsive column count)
+    const maxCols = isMobile ? 1 : 4;
+    if (newCol + widget.size.width > maxCols) return;
 
     // Update widget position (0-indexed)
     const updatedWidgets = layout.widgets.map((w) =>
@@ -117,6 +139,7 @@ const [showWidgetLibrary, setShowWidgetLibrary] = useState(false);
         : w
     );
 
+    triggerHaptic(ImpactStyle.Light);
     onLayoutChange({ ...layout, widgets: updatedWidgets });
   };
 
@@ -148,6 +171,8 @@ const [showWidgetLibrary, setShowWidgetLibrary] = useState(false);
       ...layout,
       widgets: [...layout.widgets, newLayoutWidget],
     });
+    
+    triggerHaptic(ImpactStyle.Light);
   };
 
   const handleRemoveWidget = (widgetId: string) => {
@@ -167,42 +192,45 @@ const [showWidgetLibrary, setShowWidgetLibrary] = useState(false);
     return <>{children}</>;
   }
 
+  const sidebarOpen = showWidgetLibrary || showThemeEditor;
+
   return (
     <div className="relative">
-      {/* Edit Mode Toolbar */}
-      <div className="mb-4 p-3 bg-primary/5 border border-primary/20 rounded-lg flex items-center justify-between">
+      {/* Edit Mode Toolbar - Mobile optimized */}
+      <div className="mb-4 p-3 bg-primary/5 border border-primary/20 rounded-lg flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 sm:gap-0">
         <div className="flex items-center gap-2">
           <LayoutGrid className="h-4 w-4 text-primary" />
           <span className="text-sm font-medium">Edit Mode</span>
           {hasUnsavedChanges ? (
             <Badge variant="secondary" className="text-xs gap-1">
               <Circle className="h-2 w-2 fill-orange-500 text-orange-500" />
-              Unsaved changes
+              <span className="hidden sm:inline">Unsaved changes</span>
+              <span className="sm:hidden">Unsaved</span>
             </Badge>
           ) : (
-            <span className="text-xs text-muted-foreground">
+            <span className="text-xs text-muted-foreground hidden sm:inline">
               Drag widgets to rearrange
             </span>
           )}
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2 w-full sm:w-auto">
           <Button
             variant="outline"
             size="sm"
             onClick={handleOpenThemeEditor}
-            className="gap-2"
+            className="gap-2 flex-1 sm:flex-initial h-10 sm:h-9"
           >
             <Palette className="h-4 w-4" />
-            Theme
+            <span className="sm:inline">Theme</span>
           </Button>
           <Button
             variant="outline"
             size="sm"
             onClick={handleOpenWidgetLibrary}
-            className="gap-2"
+            className="gap-2 flex-1 sm:flex-initial h-10 sm:h-9"
           >
             <Plus className="h-4 w-4" />
-            Add Widget
+            <span className="sm:inline">Add Widget</span>
           </Button>
         </div>
       </div>
@@ -217,7 +245,8 @@ const [showWidgetLibrary, setShowWidgetLibrary] = useState(false);
         <div
           className={cn(
             "transition-all duration-200",
-            (showWidgetLibrary || showThemeEditor) && "mr-80"
+            // On mobile, sidebar overlays content; on desktop, content shifts
+            sidebarOpen && !isMobile && "mr-80"
           )}
         >
           {children}
@@ -225,7 +254,7 @@ const [showWidgetLibrary, setShowWidgetLibrary] = useState(false);
 
         <DragOverlay>
           {activeId && (
-            <div className="bg-background/80 backdrop-blur border rounded-lg p-4 shadow-lg">
+            <div className="bg-background/90 backdrop-blur-sm border-2 border-primary/50 rounded-lg p-4 shadow-2xl scale-105 transition-transform">
               <p className="font-medium text-sm">
                 {WIDGET_REGISTRY[activeId]?.title || activeId}
               </p>

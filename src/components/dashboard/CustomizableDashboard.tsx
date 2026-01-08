@@ -25,6 +25,7 @@ import { useUserRole } from "@/hooks/useUserRole";
 import { WelcomeBanner } from "./WelcomeBanner";
 import { DashboardLoadingSkeleton } from "./DashboardLoadingSkeleton";
 import { cn } from "@/lib/utils";
+import { useIsMobile } from "@/hooks/use-mobile";
 import { toast } from "sonner";
 import { useDashboardDraft } from "@/contexts/DashboardDraftContext";
 
@@ -61,6 +62,10 @@ export function CustomizableDashboard({
 
   const canCustomize = isAdmin || isManager;
   const draftContext = useDashboardDraft();
+  const isMobile = useIsMobile();
+  
+  // Responsive column count based on screen size
+  const gridColumns = isMobile ? 1 : 4;
 
   // Track previous edit mode state to detect transitions
   const prevIsEditModeRef = useRef(isEditMode);
@@ -392,7 +397,7 @@ export function CustomizableDashboard({
     if (!isEditMode) return [];
     const zones: { id: string; row: number; col: number }[] = [];
     for (let row = 0; row < maxRow; row++) {
-      for (let col = 0; col < 4; col++) {
+      for (let col = 0; col < gridColumns; col++) {
         if (!getOccupiedCells.has(`${row}-${col}`)) {
           // Store 0-indexed position but pass 1-indexed to CSS Grid
           zones.push({ id: `drop-${row}-${col}`, row, col });
@@ -400,7 +405,7 @@ export function CustomizableDashboard({
       }
     }
     return zones;
-  }, [isEditMode, maxRow, getOccupiedCells]);
+  }, [isEditMode, maxRow, getOccupiedCells, gridColumns]);
 
   // While role is resolving, avoid flashing fallback dashboard content
   if (roleLoading) {
@@ -451,14 +456,19 @@ export function CustomizableDashboard({
         <div className="relative min-h-[calc(100vh-200px)] z-[1]">
           {/* Dashboard Grid */}
           <div
-            className={cn("grid grid-cols-4 relative", {
-              "gap-2": draftTheme.spacing === "compact",
-              "gap-4": draftTheme.spacing === "normal" || !draftTheme.spacing,
-              "gap-6": draftTheme.spacing === "relaxed",
-            })}
+            className={cn(
+              "grid relative",
+              // Responsive columns
+              "grid-cols-1 sm:grid-cols-2 lg:grid-cols-4",
+              {
+                "gap-2 sm:gap-2": draftTheme.spacing === "compact",
+                "gap-3 sm:gap-4": draftTheme.spacing === "normal" || !draftTheme.spacing,
+                "gap-4 sm:gap-6": draftTheme.spacing === "relaxed",
+              }
+            )}
             style={{
               fontFamily: getFontFamily(draftTheme.fontFamily),
-              gridAutoRows: "minmax(100px, auto)",
+              gridAutoRows: isMobile ? "minmax(80px, auto)" : "minmax(100px, auto)",
             }}
           >
             {/* Drop zones for empty cells in edit mode */}
