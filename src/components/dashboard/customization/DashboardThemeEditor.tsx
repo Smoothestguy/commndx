@@ -97,23 +97,27 @@ export function DashboardThemeEditor({
 
   return (
     <>
-      {/* Mobile overlay backdrop */}
+      {/* Mobile overlay backdrop - lighter so dashboard is visible */}
       {isMobile && (
         <div 
-          className="fixed inset-0 bg-black/50 z-[199] animate-fade-in"
+          className="fixed inset-0 bg-black/20 z-[199]"
           onClick={onClose}
         />
       )}
       
       <div className={cn(
-        "fixed right-0 bg-background border-l shadow-lg z-[200] flex flex-col",
-        // Full screen on mobile, fixed width on desktop
-        "w-full sm:w-80",
-        // Position below header on desktop, full height on mobile
-        "top-0 sm:top-14 bottom-0",
-        // Slide in animation
-        "animate-slide-in-right"
+        "fixed bg-background border shadow-lg z-[200] flex flex-col",
+        // Mobile: Bottom sheet that takes ~70% height, allowing dashboard to peek above
+        "inset-x-0 bottom-0 rounded-t-xl max-h-[70vh] border-t",
+        // Desktop: Right sidebar
+        "sm:inset-x-auto sm:right-0 sm:top-14 sm:bottom-0 sm:w-80 sm:rounded-none sm:max-h-none sm:border-l sm:border-t-0",
+        // Animation
+        "animate-slide-in-up sm:animate-slide-in-right"
       )}>
+        {/* Drag handle for mobile bottom sheet */}
+        <div className="sm:hidden flex justify-center pt-2 pb-1">
+          <div className="w-10 h-1 bg-muted-foreground/30 rounded-full" />
+        </div>
         {/* Header */}
         <div className="p-4 border-b flex items-center justify-between shrink-0">
           <h3 className="font-semibold">Theme Settings</h3>

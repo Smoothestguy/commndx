@@ -213,24 +213,24 @@ export function DashboardCustomizer({
             </span>
           )}
         </div>
-        <div className="flex items-center gap-2 w-full sm:w-auto">
+        <div className="flex items-center gap-2 w-full sm:w-auto overflow-x-auto pb-1 -mb-1">
           <Button
             variant="outline"
             size="sm"
             onClick={handleOpenThemeEditor}
-            className="gap-2 flex-1 sm:flex-initial h-10 sm:h-9"
+            className="gap-2 flex-1 sm:flex-initial h-10 sm:h-9 shrink-0"
           >
             <Palette className="h-4 w-4" />
-            <span className="sm:inline">Theme</span>
+            <span>Theme</span>
           </Button>
           <Button
             variant="outline"
             size="sm"
             onClick={handleOpenWidgetLibrary}
-            className="gap-2 flex-1 sm:flex-initial h-10 sm:h-9"
+            className="gap-2 flex-1 sm:flex-initial h-10 sm:h-9 shrink-0"
           >
             <Plus className="h-4 w-4" />
-            <span className="sm:inline">Add Widget</span>
+            <span>Add Widget</span>
           </Button>
         </div>
       </div>

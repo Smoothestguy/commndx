@@ -31,35 +31,35 @@ export function EditModeToggle({
 }: EditModeToggleProps) {
   if (isEditMode) {
     return (
-      <div className="flex items-center gap-2">
+      <div className="flex items-center gap-1 sm:gap-2">
         <Button
           onClick={onRevert}
           variant="outline"
           size="sm"
-          className="gap-2"
+          className="gap-1.5 h-9 px-2 sm:px-3"
           disabled={!hasUnsavedChanges || isSaving}
         >
           <Undo2 className="h-4 w-4" />
-          Revert
+          <span className="hidden xs:inline">Revert</span>
         </Button>
         <Button
           onClick={onSave}
           variant="default"
           size="sm"
-          className="gap-2"
+          className="gap-1.5 h-9 px-2 sm:px-3"
           disabled={!hasUnsavedChanges || isSaving}
         >
           <Save className="h-4 w-4" />
-          {isSaving ? "Saving..." : "Save"}
+          <span className="hidden xs:inline">{isSaving ? "Saving..." : "Save"}</span>
         </Button>
         <Button
           onClick={onToggle}
           variant="ghost"
           size="sm"
-          className="gap-2"
+          className="gap-1.5 h-9 px-2 sm:px-3"
         >
           <Check className="h-4 w-4" />
-          Done
+          <span className="hidden xs:inline">Done</span>
         </Button>
       </div>
     );
