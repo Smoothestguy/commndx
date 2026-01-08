@@ -1,0 +1,89 @@
+import { Checkbox } from "@/components/ui/checkbox";
+import { Button } from "@/components/ui/button";
+import { PersonnelAvatar } from "@/components/personnel/PersonnelAvatar";
+import { Plus, Users } from "lucide-react";
+
+interface PersonnelItem {
+  id: string;
+  first_name: string;
+  last_name: string;
+  hourly_rate?: number;
+  photo_url?: string;
+}
+
+interface WeeklyPersonnelGridProps {
+  weeklyProjectId: string | undefined;
+  assignedPersonnel: Array<{ personnel: PersonnelItem | null }>;
+  selectedPersonnel: Set<string>;
+  selectAllPersonnel: () => void;
+  clearPersonnelSelection: () => void;
+  togglePersonnel: (id: string) => void;
+  setQuickAddOpen: (open: boolean) => void;
+  setAssignExistingOpen: (open: boolean) => void;
+}
+
+export function WeeklyPersonnelGrid({
+  weeklyProjectId,
+  assignedPersonnel,
+  selectedPersonnel,
+  selectAllPersonnel,
+  clearPersonnelSelection,
+  togglePersonnel,
+  setQuickAddOpen,
+  setAssignExistingOpen,
+}: WeeklyPersonnelGridProps) {
+  const allSelected = assignedPersonnel.length > 0 && 
+    assignedPersonnel.every(a => a.personnel && selectedPersonnel.has(a.personnel.id));
+
+  return (
+    <div className="space-y-2">
+      <div className="flex items-center justify-between">
+        <div className="flex items-center gap-2">
+          <Checkbox
+            checked={allSelected}
+            onCheckedChange={(checked) => {
+              if (checked) selectAllPersonnel();
+              else clearPersonnelSelection();
+            }}
+          />
+          <span className="text-sm font-medium">Select Personnel</span>
+        </div>
+        {weeklyProjectId && (
+          <div className="flex gap-2">
+            <Button type="button" variant="outline" size="sm" onClick={() => setQuickAddOpen(true)}>
+              <Plus className="h-4 w-4 mr-1" /> Quick Add
+            </Button>
+            <Button type="button" variant="outline" size="sm" onClick={() => setAssignExistingOpen(true)}>
+              <Users className="h-4 w-4 mr-1" /> Assign
+            </Button>
+          </div>
+        )}
+      </div>
+      <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-2 max-h-32 overflow-y-auto border rounded-lg p-2">
+        {assignedPersonnel.map((assignment) => {
+          const person = assignment.personnel;
+          if (!person) return null;
+          const isSelected = selectedPersonnel.has(person.id);
+          return (
+            <div
+              key={person.id}
+              className={`flex items-center gap-2 p-2 rounded-lg cursor-pointer transition-colors ${
+                isSelected ? 'bg-primary/10 border-primary border' : 'bg-muted/50 hover:bg-muted'
+              }`}
+              onClick={() => togglePersonnel(person.id)}
+            >
+              <Checkbox checked={isSelected} />
+              <PersonnelAvatar
+                photoUrl={person.photo_url}
+                firstName={person.first_name}
+                lastName={person.last_name}
+                size="xs"
+              />
+              <span className="text-xs truncate">{person.first_name} {person.last_name}</span>
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
