@@ -1,6 +1,7 @@
 import { useEffect, useRef, useCallback, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useGeolocation } from "@/hooks/useGeolocation";
+import { useNativeGeolocation } from "@/hooks/useNativeGeolocation";
 import { useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 
@@ -19,16 +20,95 @@ interface ProjectGeofence {
 }
 
 const LOCATION_CHECK_INTERVAL = 5 * 60 * 1000; // 5 minutes
+const MILES_TO_METERS = 1609.34;
 
 export function useLocationMonitor(
   activeEntry: ActiveEntry | null,
   projectGeofence: ProjectGeofence | null
 ) {
   const queryClient = useQueryClient();
-  const { geoData, requestLocation } = useGeolocation(false);
+  const { requestLocation } = useGeolocation(false);
   const intervalRef = useRef<NodeJS.Timeout | null>(null);
   const lastUpdateRef = useRef<number>(0);
-  const [lastLocation, setLastLocation] = useState<{ lat: number; lng: number } | null>(null);
+  const [lastLocation, setLastLocation] = useState<{
+    lat: number;
+    lng: number;
+  } | null>(null);
+  const geofenceAddedRef = useRef<string | null>(null);
+
+  // Handle native geofence exit - auto clock out
+  const handleGeofenceExit = useCallback(
+    async (identifier: string) => {
+      console.log("[LocationMonitor] Geofence EXIT detected:", identifier);
+
+      // Extract project ID from identifier
+      const projectId = identifier.replace("project-", "");
+
+      // Verify this is the active project
+      if (!activeEntry || activeEntry.project_id !== projectId) {
+        console.log(
+          "[LocationMonitor] Geofence exit for non-active project, ignoring"
+        );
+        return;
+      }
+
+      // Skip if on lunch
+      if (activeEntry.is_on_lunch) {
+        console.log("[LocationMonitor] On lunch break, ignoring geofence exit");
+        return;
+      }
+
+      // Trigger auto-clock-out via the server
+      try {
+        const { data, error } = await supabase.functions.invoke(
+          "update-clock-location",
+          {
+            body: {
+              time_entry_id: activeEntry.id,
+              lat: 0, // Will trigger out-of-range check
+              lng: 0,
+              accuracy: 0,
+              geofence_exit: true, // Flag to indicate this is a geofence exit
+            },
+          }
+        );
+
+        if (error) {
+          console.error("[LocationMonitor] Error on geofence exit:", error);
+          return;
+        }
+
+        if (data?.auto_clocked_out) {
+          toast.error("You've been clocked out because you left the job site", {
+            duration: 10000,
+            description:
+              "Contact your administrator if you believe this was in error.",
+          });
+
+          queryClient.invalidateQueries({ queryKey: ["active-clock-entry"] });
+          queryClient.invalidateQueries({
+            queryKey: ["all-open-clock-entries"],
+          });
+          queryClient.invalidateQueries({ queryKey: ["time_entries"] });
+        }
+      } catch (err) {
+        console.error("[LocationMonitor] Failed to handle geofence exit:", err);
+      }
+    },
+    [activeEntry, queryClient]
+  );
+
+  // Initialize native geolocation with geofence handler
+  const {
+    isNative,
+    isTracking: isNativeTracking,
+    startTracking: startNativeTracking,
+    stopTracking: stopNativeTracking,
+    getCurrentLocation: getNativeLocation,
+    addGeofence,
+    removeGeofence,
+    removeAllGeofences,
+  } = useNativeGeolocation(handleGeofenceExit);
 
   const sendLocationUpdate = useCallback(async () => {
     if (!activeEntry || !projectGeofence) return;
@@ -51,11 +131,25 @@ export function useLocationMonitor(
       return;
     }
 
-    // Request fresh location
-    const freshGeoData = await requestLocation();
+    // Request fresh location - use native on mobile, web API on browser
+    let lat: number | null = null;
+    let lng: number | null = null;
+    let accuracy: number | null = null;
+
+    if (isNative) {
+      const nativeLocation = await getNativeLocation();
+      lat = nativeLocation.lat;
+      lng = nativeLocation.lng;
+      accuracy = nativeLocation.accuracy;
+    } else {
+      const freshGeoData = await requestLocation();
+      lat = freshGeoData.lat;
+      lng = freshGeoData.lng;
+      accuracy = freshGeoData.accuracy;
+    }
 
     // Check if we have valid coordinates
-    if (!freshGeoData.lat || !freshGeoData.lng) {
+    if (!lat || !lng) {
       console.log("[LocationMonitor] No valid coordinates available");
       return;
     }
@@ -69,22 +163,26 @@ export function useLocationMonitor(
     lastUpdateRef.current = now;
 
     console.log("[LocationMonitor] Sending location update", {
-      lat: freshGeoData.lat,
-      lng: freshGeoData.lng,
-      accuracy: freshGeoData.accuracy,
+      lat,
+      lng,
+      accuracy,
+      source: isNative ? "native" : "web",
     });
 
-    setLastLocation({ lat: freshGeoData.lat, lng: freshGeoData.lng });
+    setLastLocation({ lat, lng });
 
     try {
-      const { data, error } = await supabase.functions.invoke("update-clock-location", {
-        body: {
-          time_entry_id: activeEntry.id,
-          lat: freshGeoData.lat,
-          lng: freshGeoData.lng,
-          accuracy: freshGeoData.accuracy,
-        },
-      });
+      const { data, error } = await supabase.functions.invoke(
+        "update-clock-location",
+        {
+          body: {
+            time_entry_id: activeEntry.id,
+            lat,
+            lng,
+            accuracy,
+          },
+        }
+      );
 
       if (error) {
         console.error("[LocationMonitor] Error updating location:", error);
@@ -95,18 +193,110 @@ export function useLocationMonitor(
       if (data?.auto_clocked_out) {
         toast.error("You've been clocked out because you left the job site", {
           duration: 10000,
-          description: "Contact your administrator if you believe this was in error.",
+          description:
+            "Contact your administrator if you believe this was in error.",
         });
 
         // Invalidate queries to refresh UI
         queryClient.invalidateQueries({ queryKey: ["active-clock-entry"] });
+        queryClient.invalidateQueries({ queryKey: ["all-open-clock-entries"] });
         queryClient.invalidateQueries({ queryKey: ["time_entries"] });
       }
     } catch (err) {
       console.error("[LocationMonitor] Failed to send location update:", err);
     }
-  }, [activeEntry, projectGeofence, requestLocation, queryClient]);
+  }, [
+    activeEntry,
+    projectGeofence,
+    requestLocation,
+    getNativeLocation,
+    isNative,
+    queryClient,
+  ]);
 
+  // Effect to manage native geofencing
+  useEffect(() => {
+    const setupNativeGeofence = async () => {
+      if (!isNative || !activeEntry || !projectGeofence) return;
+
+      // Only set up geofence if location is required and site has coordinates
+      if (
+        !projectGeofence.require_clock_location ||
+        !projectGeofence.site_lat ||
+        !projectGeofence.site_lng
+      ) {
+        // Remove any existing geofence
+        if (geofenceAddedRef.current) {
+          await removeGeofence(geofenceAddedRef.current);
+          geofenceAddedRef.current = null;
+        }
+        return;
+      }
+
+      // Skip if on lunch - pause geofencing
+      if (activeEntry.is_on_lunch) {
+        console.log("[LocationMonitor] On lunch - pausing geofence monitoring");
+        if (geofenceAddedRef.current) {
+          await removeGeofence(geofenceAddedRef.current);
+          geofenceAddedRef.current = null;
+        }
+        return;
+      }
+
+      const geofenceId = `project-${activeEntry.project_id}`;
+
+      // Only add if not already added for this project
+      if (geofenceAddedRef.current !== geofenceId) {
+        // Remove old geofence if exists
+        if (geofenceAddedRef.current) {
+          await removeGeofence(geofenceAddedRef.current);
+        }
+
+        // Start native tracking
+        await startNativeTracking();
+
+        // Add new geofence
+        await addGeofence({
+          identifier: geofenceId,
+          latitude: projectGeofence.site_lat,
+          longitude: projectGeofence.site_lng,
+          radius: projectGeofence.geofence_radius_miles * MILES_TO_METERS,
+          notifyOnExit: true,
+          notifyOnEntry: false,
+        });
+
+        geofenceAddedRef.current = geofenceId;
+        console.log("[LocationMonitor] Native geofence added:", geofenceId);
+      }
+    };
+
+    setupNativeGeofence();
+
+    // Cleanup when conditions change
+    return () => {
+      if (isNative && geofenceAddedRef.current && !activeEntry) {
+        // Entry ended, clean up
+        removeGeofence(geofenceAddedRef.current);
+        geofenceAddedRef.current = null;
+        stopNativeTracking();
+      }
+    };
+  }, [
+    isNative,
+    activeEntry?.id,
+    activeEntry?.project_id,
+    activeEntry?.is_on_lunch,
+    projectGeofence?.require_clock_location,
+    projectGeofence?.site_lat,
+    projectGeofence?.site_lng,
+    projectGeofence?.geofence_radius_miles,
+    addGeofence,
+    removeGeofence,
+    startNativeTracking,
+    stopNativeTracking,
+  ]);
+
+  // Effect for web-based polling (fallback for browsers)
   useEffect(() => {
     // Clear any existing interval
     if (intervalRef.current) {
@@ -132,7 +322,9 @@ export function useLocationMonitor(
       return;
     }
 
-    console.log("[LocationMonitor] Starting location monitoring");
+    console.log("[LocationMonitor] Starting location monitoring", {
+      mode: isNative ? "native (geofence + polling)" : "web (polling only)",
+    });
 
     // Initial location update after a short delay
     const initialTimeout = setTimeout(() => {
@@ -140,33 +332,28 @@ export function useLocationMonitor(
     }, 5000);
 
     // Set up interval for periodic updates
+    // On native, this is less critical since geofencing handles exit detection
+    // But we still poll to update the server with current location
     intervalRef.current = setInterval(() => {
       sendLocationUpdate();
     }, LOCATION_CHECK_INTERVAL);
 
-    // Visibility change handler - send update when user returns to tab
+    // Visibility change handler - send update when user returns to tab (web only)
     const handleVisibilityChange = () => {
-      if (document.visibilityState === 'visible' && shouldMonitor) {
-        console.log("[LocationMonitor] Tab became visible - sending location update");
-        // Small delay to let the browser settle
+      if (document.visibilityState === "visible" && shouldMonitor) {
+        console.log(
+          "[LocationMonitor] Tab became visible - sending location update"
+        );
         setTimeout(() => {
           sendLocationUpdate();
         }, 1000);
       }
     };
 
-    // Page unload handler - attempt final update before leaving
-    const handleBeforeUnload = () => {
-      if (shouldMonitor) {
-        console.log("[LocationMonitor] Page unloading - attempting final update");
-        // Use navigator.sendBeacon for reliable delivery (fire-and-forget)
-        // Note: This won't work with our edge function, but logs the attempt
-        // The server-side stale detection will catch this case
-      }
-    };
-
-    document.addEventListener('visibilitychange', handleVisibilityChange);
-    window.addEventListener('beforeunload', handleBeforeUnload);
+    // Only add web-specific listeners when not native
+    if (!isNative) {
+      document.addEventListener("visibilitychange", handleVisibilityChange);
+    }
 
     return () => {
       clearTimeout(initialTimeout);
@@ -174,8 +361,12 @@ export function useLocationMonitor(
         clearInterval(intervalRef.current);
         intervalRef.current = null;
       }
-      document.removeEventListener('visibilitychange', handleVisibilityChange);
-      window.removeEventListener('beforeunload', handleBeforeUnload);
+      if (!isNative) {
+        document.removeEventListener(
+          "visibilitychange",
+          handleVisibilityChange
+        );
+      }
     };
   }, [
     activeEntry?.id,
@@ -185,6 +376,7 @@ export function useLocationMonitor(
     projectGeofence?.site_lat,
     projectGeofence?.site_lng,
     sendLocationUpdate,
+    isNative,
   ]);
 
   return {
@@ -195,6 +387,8 @@ export function useLocationMonitor(
       projectGeofence?.site_lat &&
       projectGeofence?.site_lng
     ),
+    isNative,
+    isNativeTracking,
     lastLocation,
   };
 }

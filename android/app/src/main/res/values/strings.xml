@@ -1,0 +1,7 @@
+<?xml version='1.0' encoding='utf-8'?>
+<resources>
+    <string name="app_name">Command X</string>
+    <string name="title_activity_main">Command X</string>
+    <string name="package_name">com.commndx.app</string>
+    <string name="custom_url_scheme">com.commndx.app</string>
+</resources>

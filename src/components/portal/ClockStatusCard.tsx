@@ -1,7 +1,15 @@
 import { useState, useEffect, useCallback } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Clock, Coffee, LogOut, Play, Loader2, MapPin, AlertTriangle, Radio } from "lucide-react";
+import {
+  Clock,
+  Coffee,
+  LogOut,
+  Play,
+  Loader2,
+  MapPin,
+  AlertTriangle,
+} from "lucide-react";
 import {
   ClockEntry,
   useClockOut,
@@ -15,6 +23,7 @@ import { useLocationMonitor } from "@/hooks/useLocationMonitor";
 import { useProjectGeofence } from "@/integrations/supabase/hooks/useProjectGeofence";
 import { LocationPermissionDialog } from "./LocationPermissionDialog";
 import { ClockInModal } from "./ClockInModal";
+import { TrackingStatusIndicator } from "@/components/location/TrackingStatusIndicator";
 
 interface Project {
   id: string;
@@ -49,31 +58,40 @@ export function ClockStatusCard({
   const { data: projectGeofence } = useProjectGeofence(activeEntry?.project_id);
 
   // Location monitoring hook - tracks location while clocked in
-  const { isMonitoring, lastLocation } = useLocationMonitor(
-    activeEntry ? {
-      id: activeEntry.id,
-      project_id: activeEntry.project_id,
-      is_on_lunch: activeEntry.is_on_lunch ?? false,
-      clock_blocked_until: (activeEntry as any).clock_blocked_until ?? null,
-    } : null,
-    projectGeofence ? {
-      require_clock_location: projectGeofence.require_clock_location,
-      site_lat: projectGeofence.site_lat,
-      site_lng: projectGeofence.site_lng,
-      geofence_radius_miles: projectGeofence.geofence_radius_miles,
-    } : null
-  );
+  const { isMonitoring, isNative, isNativeTracking, lastLocation } =
+    useLocationMonitor(
+      activeEntry
+        ? {
+            id: activeEntry.id,
+            project_id: activeEntry.project_id,
+            is_on_lunch: activeEntry.is_on_lunch ?? false,
+            clock_blocked_until:
+              (activeEntry as any).clock_blocked_until ?? null,
+          }
+        : null,
+      projectGeofence
+        ? {
+            require_clock_location: projectGeofence.require_clock_location,
+            site_lat: projectGeofence.site_lat,
+            site_lng: projectGeofence.site_lng,
+            geofence_radius_miles: projectGeofence.geofence_radius_miles,
+          }
+        : null
+    );
 
   const isClockedIn = !!activeEntry;
   const isOnLunch = activeEntry?.is_on_lunch ?? false;
   const activeProject = activeEntry?.project;
   const requiresLocation = activeProject?.require_clock_location ?? false;
   const isLocationDenied = permissionState === "denied";
-  const hasAlreadyTakenLunch = (activeEntry?.lunch_duration_minutes || 0) > 0 || !!activeEntry?.lunch_end_at;
-  
+  const hasAlreadyTakenLunch =
+    (activeEntry?.lunch_duration_minutes || 0) > 0 ||
+    !!activeEntry?.lunch_end_at;
+
   // Check if clock-in is blocked (auto-clocked-out user)
   const clockBlockedUntil = (activeEntry as any)?.clock_blocked_until;
-  const isBlocked = clockBlockedUntil && new Date(clockBlockedUntil) > new Date();
+  const isBlocked =
+    clockBlockedUntil && new Date(clockBlockedUntil) > new Date();
 
   // Update elapsed time every second
   useEffect(() => {
@@ -85,7 +103,9 @@ export function ClockStatusCard({
     const updateElapsed = () => {
       const clockIn = new Date(activeEntry.clock_in_at);
       const now = new Date();
-      const totalSeconds = Math.floor((now.getTime() - clockIn.getTime()) / 1000);
+      const totalSeconds = Math.floor(
+        (now.getTime() - clockIn.getTime()) / 1000
+      );
       // Subtract lunch duration if applicable
       const lunchSeconds = (activeEntry.lunch_duration_minutes || 0) * 60;
       setElapsedTime(Math.max(0, totalSeconds - lunchSeconds));
@@ -189,7 +209,14 @@ export function ClockStatusCard({
     } finally {
       setIsActioning(false);
     }
-  }, [activeEntry, personnelId, requiresLocation, isLocationDenied, requestLocation, clockOut]);
+  }, [
+    activeEntry,
+    personnelId,
+    requiresLocation,
+    isLocationDenied,
+    requestLocation,
+    clockOut,
+  ]);
 
   const formatElapsedTime = (seconds: number) => {
     const hours = Math.floor(seconds / 3600);
@@ -227,7 +254,15 @@ export function ClockStatusCard({
 
   return (
     <>
-      <Card className={`${isClockedIn ? (isOnLunch ? "border-amber-500/50 bg-amber-500/5" : "border-green-500/50 bg-green-500/5") : ""}`}>
+      <Card
+        className={`${
+          isClockedIn
+            ? isOnLunch
+              ? "border-amber-500/50 bg-amber-500/5"
+              : "border-green-500/50 bg-green-500/5"
+            : ""
+        }`}
+      >
         <CardHeader className="pb-3">
           <CardTitle className="flex items-center gap-2 text-lg">
             <Clock className="h-5 w-5" />
@@ -258,7 +293,9 @@ export function ClockStatusCard({
                   <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-amber-400 opacity-75"></span>
                   <span className="relative inline-flex rounded-full h-3 w-3 bg-amber-500"></span>
                 </span>
-                <span className="font-medium text-amber-600">On Lunch Break</span>
+                <span className="font-medium text-amber-600">
+                  On Lunch Break
+                </span>
               </div>
 
               <div className="bg-muted/50 rounded-lg p-4 space-y-2">
@@ -275,7 +312,9 @@ export function ClockStatusCard({
                   </span>
                 </div>
                 <div className="flex justify-between">
-                  <span className="text-muted-foreground text-sm">Lunch duration</span>
+                  <span className="text-muted-foreground text-sm">
+                    Lunch duration
+                  </span>
                   <span className="font-mono text-lg font-bold text-amber-600">
                     {formatElapsedTime(lunchElapsed)}
                   </span>
@@ -309,7 +348,9 @@ export function ClockStatusCard({
                   <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75"></span>
                   <span className="relative inline-flex rounded-full h-3 w-3 bg-green-500"></span>
                 </span>
-                <span className="font-medium text-green-600">Currently Working</span>
+                <span className="font-medium text-green-600">
+                  Currently Working
+                </span>
               </div>
 
               <div className="bg-muted/50 rounded-lg p-4 space-y-2">
@@ -332,7 +373,9 @@ export function ClockStatusCard({
                   </div>
                 )}
                 <div className="flex justify-between">
-                  <span className="text-muted-foreground text-sm">Time worked</span>
+                  <span className="text-muted-foreground text-sm">
+                    Time worked
+                  </span>
                   <span className="font-mono text-2xl font-bold text-green-600">
                     {formatElapsedTime(elapsedTime)}
                   </span>
@@ -340,15 +383,17 @@ export function ClockStatusCard({
               </div>
 
               {requiresLocation && (
-                <div className="flex items-center gap-1 text-xs text-muted-foreground">
-                  <MapPin className="h-3 w-3" />
-                  Location captured at clock in/out
-                  {isMonitoring && (
-                    <span className="ml-2 flex items-center gap-1 text-green-600">
-                      <Radio className="h-3 w-3 animate-pulse" />
-                      Tracking active
-                    </span>
-                  )}
+                <div className="flex items-center justify-between text-xs text-muted-foreground">
+                  <div className="flex items-center gap-1">
+                    <MapPin className="h-3 w-3" />
+                    Location captured at clock in/out
+                  </div>
+                  <TrackingStatusIndicator
+                    isTracking={isMonitoring}
+                    isNative={isNative}
+                    isNativeTracking={isNativeTracking}
+                    lastLocation={lastLocation}
+                  />
                 </div>
               )}
 
