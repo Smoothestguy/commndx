@@ -348,12 +348,12 @@ const Dashboard = () => {
         title="Dashboard"
         description="Welcome back to Command X"
         actions={
-          <div className="flex gap-2">
+          <div className="flex items-center gap-2">
             <Button
               variant="outline"
               size="sm"
               onClick={() => navigate("/staffing/map")}
-              className="min-h-[36px]"
+              className="h-9 px-3"
             >
               <MapPin className="h-4 w-4" />
               <span className="ml-1.5 hidden sm:inline">Map View</span>
@@ -362,7 +362,7 @@ const Dashboard = () => {
               variant="glow"
               size="sm"
               onClick={() => navigate("/estimates/new")}
-              className="min-h-[36px]"
+              className="h-9 px-3"
             >
               <Plus className="h-4 w-4" />
               <span className="ml-1.5">New Estimate</span>
