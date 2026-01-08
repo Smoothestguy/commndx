@@ -81,7 +81,7 @@ function BillRow({
   return (
     <TableRow 
       className="cursor-pointer hover:bg-muted/50"
-      onClick={() => navigate(`/vendor-bills/${bill.id}`)}
+      onClick={() => navigate(`/vendor-bills/${bill.id}${window.location.search}`)}
     >
       <TableCell className="w-10" onClick={(e) => e.stopPropagation()}>
         <Checkbox
@@ -94,7 +94,7 @@ function BillRow({
           variant="ghost" 
           size="sm" 
           className="h-8 w-8 p-0"
-          onClick={() => navigate(`/vendor-bills/${bill.id}`)}
+          onClick={() => navigate(`/vendor-bills/${bill.id}${window.location.search}`)}
         >
           <Eye className="h-4 w-4" />
         </Button>
@@ -139,11 +139,11 @@ function BillRow({
             </Button>
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end">
-            <DropdownMenuItem onClick={() => navigate(`/vendor-bills/${bill.id}`)}>
+            <DropdownMenuItem onClick={() => navigate(`/vendor-bills/${bill.id}${window.location.search}`)}>
               <Eye className="mr-2 h-4 w-4" />
               View
             </DropdownMenuItem>
-            <DropdownMenuItem onClick={() => navigate(`/vendor-bills/${bill.id}/edit`)}>
+            <DropdownMenuItem onClick={() => navigate(`/vendor-bills/${bill.id}/edit${window.location.search}`)}>
               <Edit className="mr-2 h-4 w-4" />
               Edit
             </DropdownMenuItem>
@@ -315,8 +315,8 @@ export function VendorBillTable({ bills }: VendorBillTableProps) {
             <VendorBillCard
               key={bill.id}
               bill={bill}
-              onView={(id) => navigate(`/vendor-bills/${id}`)}
-              onEdit={(id) => navigate(`/vendor-bills/${id}/edit`)}
+              onView={(id) => navigate(`/vendor-bills/${id}${window.location.search}`)}
+              onEdit={(id) => navigate(`/vendor-bills/${id}/edit${window.location.search}`)}
               onDelete={setDeleteId}
               onRecordPayment={setPaymentBillId}
             />
