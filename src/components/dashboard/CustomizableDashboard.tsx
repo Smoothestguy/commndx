@@ -446,7 +446,9 @@ export function CustomizableDashboard({
     if (!isEditMode) return [];
     const zones: { id: string; row: number; col: number }[] = [];
     for (let row = 0; row < maxRow; row++) {
-      for (let col = 0; col < gridColumns; col++) {
+      // On mobile, only create drop zones for column 0
+      const colsToCheck = isMobile ? 1 : gridColumns;
+      for (let col = 0; col < colsToCheck; col++) {
         if (!getOccupiedCells.has(`${row}-${col}`)) {
           // Store 0-indexed position but pass 1-indexed to CSS Grid
           zones.push({ id: `drop-${row}-${col}`, row, col });
@@ -454,7 +456,15 @@ export function CustomizableDashboard({
       }
     }
     return zones;
-  }, [isEditMode, maxRow, getOccupiedCells, gridColumns]);
+  }, [isEditMode, maxRow, getOccupiedCells, gridColumns, isMobile]);
+
+  // On mobile, sort widgets by row so DOM order matches visual order
+  const sortedLayoutWidgets = useMemo(() => {
+    if (!draftLayout) return [];
+    return isMobile
+      ? [...draftLayout.widgets].sort((a, b) => a.position.row - b.position.row)
+      : draftLayout.widgets;
+  }, [draftLayout, isMobile]);
 
   // While role is resolving, avoid flashing fallback dashboard content
   if (roleLoading) {
@@ -518,7 +528,7 @@ export function CustomizableDashboard({
             ))}
 
             {/* Render widgets at their grid positions */}
-            {draftLayout.widgets.map((layoutWidget) =>
+            {sortedLayoutWidgets.map((layoutWidget) =>
               renderWidget(layoutWidget)
             )}
           </div>
