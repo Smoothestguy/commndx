@@ -11,7 +11,7 @@ import { usePurchaseOrders, PurchaseOrder } from "@/integrations/supabase/hooks/
 import { useVendors } from "@/integrations/supabase/hooks/useVendors";
 import { useProjects } from "@/integrations/supabase/hooks/useProjects";
 import { PullToRefreshWrapper } from "@/components/shared/PullToRefreshWrapper";
-import { useIsMobile } from "@/hooks/use-mobile";
+
 import { PurchaseOrderCard } from "@/components/purchase-orders/PurchaseOrderCard";
 import { PurchaseOrderStats } from "@/components/purchase-orders/PurchaseOrderStats";
 import { PurchaseOrderEmptyState } from "@/components/purchase-orders/PurchaseOrderEmptyState";
@@ -21,7 +21,7 @@ const PurchaseOrders = () => {
   const { data: purchaseOrders, isLoading, error, refetch, isFetching } = usePurchaseOrders();
   const { data: vendors } = useVendors();
   const { data: projects } = useProjects();
-  const isMobile = useIsMobile();
+  
   
   const [search, setSearch] = useState("");
   const [selectedStatus, setSelectedStatus] = useState("all");
@@ -228,25 +228,32 @@ const PurchaseOrders = () => {
                   onCreatePO={() => navigate("/purchase-orders/new")}
                   hasFilters={hasActiveFilters}
                 />
-              ) : isMobile ? (
-                <div className="grid gap-4 sm:grid-cols-2">
-                  {filteredPOs.map((po, index) => (
-                    <PurchaseOrderCard
-                      key={po.id}
-                      purchaseOrder={po}
-                      onClick={() => navigate(`/purchase-orders/${po.id}`)}
-                      onJobOrderClick={(jobOrderId) => navigate(`/job-orders/${jobOrderId}`)}
-                      index={index}
-                    />
-                  ))}
-                </div>
               ) : (
-                <EnhancedDataTable
-                  tableId="purchase-orders"
-                  data={filteredPOs}
-                  columns={columns}
-                  onRowClick={(item) => navigate(`/purchase-orders/${item.id}`)}
-                />
+                <>
+                  {/* Mobile/Tablet Cards - hidden on desktop (1180px+) */}
+                  <div className="block min-[1180px]:hidden">
+                    <div className="grid gap-4 grid-cols-1 sm:grid-cols-2">
+                      {filteredPOs.map((po, index) => (
+                        <PurchaseOrderCard
+                          key={po.id}
+                          purchaseOrder={po}
+                          onClick={() => navigate(`/purchase-orders/${po.id}`)}
+                          onJobOrderClick={(jobOrderId) => navigate(`/job-orders/${jobOrderId}`)}
+                          index={index}
+                        />
+                      ))}
+                    </div>
+                  </div>
+                  {/* Desktop Table - hidden below 1180px */}
+                  <div className="hidden min-[1180px]:block">
+                    <EnhancedDataTable
+                      tableId="purchase-orders"
+                      data={filteredPOs}
+                      columns={columns}
+                      onRowClick={(item) => navigate(`/purchase-orders/${item.id}`)}
+                    />
+                  </div>
+                </>
               )}
             </>
           )}

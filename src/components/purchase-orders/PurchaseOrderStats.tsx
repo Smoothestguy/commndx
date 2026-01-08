@@ -1,12 +1,15 @@
 import { DollarSign, Clock, ShoppingCart, CheckCircle } from "lucide-react";
 import { PurchaseOrder } from "@/integrations/supabase/hooks/usePurchaseOrders";
 import { formatCurrency } from "@/lib/utils";
+import { useIsMobile } from "@/hooks/use-mobile";
 
 interface PurchaseOrderStatsProps {
   purchaseOrders: PurchaseOrder[];
 }
 
 export function PurchaseOrderStats({ purchaseOrders }: PurchaseOrderStatsProps) {
+  const isMobile = useIsMobile();
+  
   const totalValue = purchaseOrders.reduce((sum, po) => sum + po.total, 0);
   const inProgressValue = purchaseOrders
     .filter((po) => po.status === "in-progress")
@@ -22,30 +25,36 @@ export function PurchaseOrderStats({ purchaseOrders }: PurchaseOrderStatsProps) 
       value: formatCurrency(totalValue),
       icon: DollarSign,
       color: "text-primary",
+      showOnMobile: true,
     },
     {
       label: "In Progress",
       value: formatCurrency(inProgressValue),
       icon: Clock,
       color: "text-warning",
+      showOnMobile: false,
     },
     {
       label: "Active POs",
       value: activePOs,
       icon: ShoppingCart,
       color: "text-primary",
+      showOnMobile: true,
     },
     {
       label: "Completed",
       value: completedCount,
       icon: CheckCircle,
       color: "text-success",
+      showOnMobile: false,
     },
   ];
 
+  const displayStats = isMobile ? stats.filter(s => s.showOnMobile) : stats;
+
   return (
-    <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4 mb-6">
-      {stats.map((stat, index) => {
+    <div className="grid gap-4 grid-cols-2 md:grid-cols-4 mb-6">
+      {displayStats.map((stat, index) => {
         const Icon = stat.icon;
         return (
           <div
