@@ -120,8 +120,8 @@ export function WidgetContainer({
               <GripVertical className="h-4 w-4 text-muted-foreground" />
             </div>
           )}
-          {icon && <span className="text-muted-foreground">{icon}</span>}
-          <CardTitle className={cn(fontSizeClass)}>{title}</CardTitle>
+          {icon && <span className="text-muted-foreground flex-shrink-0">{icon}</span>}
+          <CardTitle className={cn(fontSizeClass, "truncate min-w-0")}>{title}</CardTitle>
         </div>
       </CardHeader>
 
