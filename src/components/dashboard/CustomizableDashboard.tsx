@@ -402,6 +402,7 @@ export function CustomizableDashboard({
       >
         <WidgetContainer
           title={widget.title}
+          titleLink={registryEntry.titleLink}
           icon={<Icon className="h-4 w-4" />}
           isEditMode={isEditMode}
           theme={draftTheme}

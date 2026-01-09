@@ -82,6 +82,7 @@ export interface DashboardTheme {
 export interface WidgetRegistryEntry {
   type: WidgetType;
   title: string;
+  titleLink?: string;
   description: string;
   icon: LucideIcon;
   category: "stats" | "charts" | "lists" | "actions" | "other";
