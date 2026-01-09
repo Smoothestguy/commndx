@@ -106,6 +106,7 @@ export default function StaffingApplications() {
   const [projectFilter, setProjectFilter] = useState<string>("all");
   const [statusFilter, setStatusFilter] = useState<string>("all");
   const [experienceFilter, setExperienceFilter] = useState<string>("all");
+  const [postingFilter, setPostingFilter] = useState<string>("all");
   const [selectedApp, setSelectedApp] = useState<Application | null>(null);
   const [showDetailDialog, setShowDetailDialog] = useState(false);
   const [showCreateDialog, setShowCreateDialog] = useState(false);
@@ -192,11 +193,23 @@ export default function StaffingApplications() {
     }
   };
 
-  // Filter applications by search and experience
+  // Get job postings that have applications for the filter dropdown
+  const postingsWithApplications = useMemo(() => {
+    if (!jobPostings || !applications) return [];
+    const postingIdsWithApps = new Set(applications.map(app => app.job_posting_id));
+    return jobPostings.filter(p => postingIdsWithApps.has(p.id));
+  }, [jobPostings, applications]);
+
+  // Filter applications by search, experience, and job posting
   const filteredApplications = useMemo(() => {
     return applications?.filter((app) => {
       const applicant = app.applicants;
       if (!applicant) return false;
+      
+      // Job posting filter
+      if (postingFilter !== "all" && app.job_posting_id !== postingFilter) {
+        return false;
+      }
       
       // Search filter
       const fullName = `${applicant.first_name} ${applicant.last_name}`.toLowerCase();
@@ -219,7 +232,7 @@ export default function StaffingApplications() {
       
       return true;
     });
-  }, [applications, search, experienceFilter, formTemplates]);
+  }, [applications, search, experienceFilter, postingFilter, formTemplates]);
 
   const handleCreateTaskOrder = async () => {
     if (!newTaskOrder.project_id || !newTaskOrder.title) {
@@ -461,6 +474,19 @@ export default function StaffingApplications() {
                 <SelectItem value="reviewing">Reviewing</SelectItem>
                 <SelectItem value="approved">Approved</SelectItem>
                 <SelectItem value="rejected">Rejected</SelectItem>
+              </SelectContent>
+            </Select>
+            <Select value={postingFilter} onValueChange={setPostingFilter}>
+              <SelectTrigger className="w-full sm:w-[280px]">
+                <SelectValue placeholder="All Job Postings" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All Job Postings</SelectItem>
+                {postingsWithApplications.map((posting) => (
+                  <SelectItem key={posting.id} value={posting.id}>
+                    {posting.project_task_orders?.title} — {posting.project_task_orders?.projects?.name}
+                  </SelectItem>
+                ))}
               </SelectContent>
             </Select>
           </div>

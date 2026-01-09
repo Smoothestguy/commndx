@@ -321,14 +321,16 @@ export default function PublicApplicationForm() {
       console.error("[Form] Application submission error:", err);
       
       if (err?.message === "DUPLICATE_APPLICATION") {
-        toast.error("You have already applied for this position. Only one application per person is allowed.");
+        toast.error("You have already applied for this specific position. You can still apply for other open positions.");
       } else if (err?.message?.includes("row-level security")) {
         toast.error("Permission error. Please contact support if this persists.");
         console.error("[Form] RLS policy error - check database policies");
       } else if (err?.code === "PGRST301") {
         toast.error("Database connection error. Please try again.");
       } else if (err?.code === "23505") {
-        toast.error("This email has already been used. Please use a different email.");
+        // This could be a unique constraint on applications (applicant_id + job_posting_id)
+        // or on applicants (email) - but we handle applicant reuse now, so this is likely applications
+        toast.error("You have already applied for this specific position.");
       } else {
         toast.error(err?.message || "Failed to submit application. Please try again.");
       }

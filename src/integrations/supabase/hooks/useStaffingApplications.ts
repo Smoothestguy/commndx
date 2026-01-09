@@ -386,28 +386,28 @@ export const useSubmitApplication = () => {
       let applicantId: string;
 
       if (existingApplicant) {
-        // Update existing applicant
-        console.log("[Application] Updating existing applicant:", existingApplicant.id);
-        const { error: updateError } = await supabase
-          .from("applicants")
-          .update({
-            first_name: applicantData.first_name,
-            last_name: applicantData.last_name,
-            phone: applicantData.phone,
-            address: applicantData.address || null,
-            city: applicantData.city || null,
-            state: applicantData.state || null,
-            home_zip: applicantData.home_zip || null,
-            photo_url: applicantData.photo_url || null,
-          } as any)
-          .eq("id", existingApplicant.id);
-
-        if (updateError) {
-          console.error("[Application] Error updating applicant:", updateError);
-          throw updateError;
-        }
+        // Use existing applicant ID - don't attempt to update (would fail RLS for public users)
+        // Applicant info updates can happen during admin review if needed
         applicantId = existingApplicant.id;
-        console.log("[Application] Applicant updated successfully");
+        console.log("[Application] Using existing applicant:", applicantId);
+        
+        // Check if this applicant has already applied to THIS SPECIFIC job posting
+        const { data: existingApplication, error: checkError } = await supabase
+          .from("applications")
+          .select("id")
+          .eq("applicant_id", applicantId)
+          .eq("job_posting_id", posting_id)
+          .maybeSingle();
+        
+        if (checkError) {
+          console.error("[Application] Error checking existing application:", checkError);
+          throw checkError;
+        }
+        
+        if (existingApplication) {
+          console.log("[Application] Duplicate application detected for same job posting");
+          throw new Error("DUPLICATE_APPLICATION");
+        }
       } else {
         // Create new applicant
         console.log("[Application] Creating new applicant");
