@@ -8,6 +8,7 @@ import { SidebarProvider } from "@/components/ui/sidebar";
 import { AuthProvider } from "@/contexts/AuthContext";
 import { AIAssistantProvider } from "@/contexts/AIAssistantContext";
 import { LocationTrackingProvider } from "@/contexts/LocationTrackingContext";
+import { UIDensityProvider } from "@/contexts/UIDensityContext";
 import { ProtectedRoute } from "@/components/ProtectedRoute";
 import { ThemeProvider } from "@/components/ThemeProvider";
 import { BottomNav } from "@/components/layout/BottomNav";
@@ -287,9 +288,11 @@ const App = () => {
                     <Route
                       element={
                         <ProtectedRoute>
-                          <SidebarProvider>
-                            <SidebarLayout />
-                          </SidebarProvider>
+                          <UIDensityProvider>
+                            <SidebarProvider>
+                              <SidebarLayout />
+                            </SidebarProvider>
+                          </UIDensityProvider>
                         </ProtectedRoute>
                       }
                     >
