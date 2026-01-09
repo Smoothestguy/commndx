@@ -80,7 +80,23 @@ serve(async (req) => {
 
     const applicant: ApplicantData = applicants[0];
 
-    console.log(`[lookup-applicant] Found applicant: ${applicant.id} for ${email || phone}`);
+    // Fetch the most recent application's answers for this applicant
+    const { data: applications, error: appError } = await supabase
+      .from("applications")
+      .select("answers, sms_consent")
+      .eq("applicant_id", applicant.id)
+      .order("created_at", { ascending: false })
+      .limit(1);
+
+    let previousAnswers: Record<string, any> | null = null;
+    let previousSmsConsent = false;
+    
+    if (!appError && applications && applications.length > 0) {
+      previousAnswers = applications[0].answers as Record<string, any> | null;
+      previousSmsConsent = applications[0].sms_consent || false;
+    }
+
+    console.log(`[lookup-applicant] Found applicant: ${applicant.id} for ${email || phone}, has previous answers: ${!!previousAnswers}`);
 
     return new Response(
       JSON.stringify({ 
@@ -96,7 +112,9 @@ serve(async (req) => {
           state: applicant.state,
           home_zip: applicant.home_zip,
           photo_url: applicant.photo_url,
-        }
+        },
+        previousAnswers,
+        previousSmsConsent,
       }),
       { headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );

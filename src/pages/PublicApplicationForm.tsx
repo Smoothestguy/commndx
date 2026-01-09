@@ -33,7 +33,7 @@ import { useGeolocation } from "@/hooks/useGeolocation";
 import { cn } from "@/lib/utils";
 import { SignaturePad } from "@/components/form-builder/SignaturePad";
 import { FormFileUpload } from "@/components/form-builder/FormFileUpload";
-import { useApplicantLookup, FoundApplicantData } from "@/hooks/useApplicantLookup";
+import { useApplicantLookup, FoundApplicantData, LookupResult } from "@/hooks/useApplicantLookup";
 
 // Helper function to render fields based on layout
 function renderFieldsWithLayout(
@@ -106,6 +106,8 @@ export default function PublicApplicationForm() {
   // Returning applicant auto-fill state
   const [isReturningApplicant, setIsReturningApplicant] = useState(false);
   const [coreFieldsLocked, setCoreFieldsLocked] = useState(false);
+  const [customFieldsLocked, setCustomFieldsLocked] = useState(false);
+  const [lockedAnswerIds, setLockedAnswerIds] = useState<Set<string>>(new Set());
   const { lookupApplicant, isLookingUp, foundApplicant, clearApplicant } = useApplicantLookup();
 
   const { data: posting, isLoading, error } = useJobPostingByToken(token || "");
@@ -205,7 +207,11 @@ export default function PublicApplicationForm() {
   });
 
   // Handle auto-fill when applicant is found
-  const handleAutoFill = useCallback((applicantData: FoundApplicantData) => {
+  const handleAutoFill = useCallback((lookupResult: LookupResult) => {
+    const applicantData = lookupResult.applicant;
+    if (!applicantData) return;
+    
+    // Fill core fields
     form.setValue("first_name", applicantData.first_name || "");
     form.setValue("last_name", applicantData.last_name || "");
     form.setValue("email", applicantData.email || "");
@@ -214,9 +220,34 @@ export default function PublicApplicationForm() {
     if (applicantData.photo_url) {
       form.setValue("photo_url", applicantData.photo_url);
     }
+    
+    // Fill previous custom answers if available
+    const prevAnswers = lookupResult.previousAnswers;
+    if (prevAnswers && Object.keys(prevAnswers).length > 0) {
+      const answeredIds = new Set<string>();
+      Object.entries(prevAnswers).forEach(([fieldId, value]) => {
+        // Only pre-fill if the value is not empty
+        const hasValue = value !== undefined && value !== null && value !== "" && 
+          !(Array.isArray(value) && value.length === 0) &&
+          !(typeof value === "object" && Object.keys(value).length === 0);
+        
+        if (hasValue) {
+          setCustomAnswers(prev => ({ ...prev, [fieldId]: value }));
+          answeredIds.add(fieldId);
+        }
+      });
+      setLockedAnswerIds(answeredIds);
+      setCustomFieldsLocked(answeredIds.size > 0);
+    }
+    
+    // Pre-fill SMS consent if they've previously consented
+    if (lookupResult.previousSmsConsent) {
+      setSmsConsent(true);
+    }
+    
     setIsReturningApplicant(true);
     setCoreFieldsLocked(true);
-    toast.success("Welcome back! We've pre-filled your information.");
+    toast.success("Welcome back! We've pre-filled your information from your previous application.");
   }, [form]);
 
   // Handle email/phone lookup on blur
@@ -244,10 +275,29 @@ export default function PublicApplicationForm() {
   const handleClearAutoFill = useCallback(() => {
     setIsReturningApplicant(false);
     setCoreFieldsLocked(false);
+    setCustomFieldsLocked(false);
+    setLockedAnswerIds(new Set());
+    setSmsConsent(false);
     clearApplicant();
     form.reset();
+    // Reset custom answers to defaults
+    const defaults: Record<string, any> = {};
+    customFields.forEach(field => {
+      if (field.type === "checkbox") {
+        defaults[field.id] = false;
+      } else if (field.type === "multiselect") {
+        defaults[field.id] = [];
+      } else if (field.type === "address") {
+        defaults[field.id] = { street: "", line2: "", city: "", state: "", zip: "" };
+      } else if (field.type === "file") {
+        defaults[field.id] = null;
+      } else {
+        defaults[field.id] = "";
+      }
+    });
+    setCustomAnswers(defaults);
     toast.info("You can now enter new information.");
-  }, [clearApplicant, form]);
+  }, [clearApplicant, form, customFields]);
 
   const handleFileUploadStateChange = useCallback((fieldId: string, isUploading: boolean) => {
     setUploadingFields(prev => {
@@ -395,6 +445,10 @@ export default function PublicApplicationForm() {
   const renderCustomField = (field: FormFieldType) => {
     const value = customAnswers[field.id];
     const translated = getCustomField(field.id);
+    const isFieldLocked = lockedAnswerIds.has(field.id);
+    
+    // Locked styling
+    const lockedInputClass = isFieldLocked ? "bg-muted cursor-not-allowed opacity-70" : "";
     
     // Grid layout for options
     const optionGridClass = field.optionLayout === "grid" 
@@ -423,8 +477,10 @@ export default function PublicApplicationForm() {
             </FormLabel>
             <Input
               value={value || ""}
-              onChange={(e) => updateCustomAnswer(field.id, e.target.value)}
+              onChange={(e) => !isFieldLocked && updateCustomAnswer(field.id, e.target.value)}
               placeholder={translated.placeholder}
+              readOnly={isFieldLocked}
+              className={cn(lockedInputClass)}
             />
             {translated.helpText && <p className="text-xs text-muted-foreground">{translated.helpText}</p>}
           </div>
@@ -446,9 +502,10 @@ export default function PublicApplicationForm() {
               <Input
                 type="email"
                 value={value || ""}
-                onChange={(e) => updateCustomAnswer(field.id, e.target.value)}
+                onChange={(e) => !isFieldLocked && updateCustomAnswer(field.id, e.target.value)}
                 placeholder={translated.placeholder}
-                className={field.showIcon !== false ? "pl-12 rounded-l-none" : ""}
+                readOnly={isFieldLocked}
+                className={cn(field.showIcon !== false ? "pl-12 rounded-l-none" : "", lockedInputClass)}
               />
             </div>
             {translated.helpText && <p className="text-xs text-muted-foreground">{translated.helpText}</p>}
@@ -462,9 +519,11 @@ export default function PublicApplicationForm() {
               <FormattedPhoneInput
                 label={translated.label + (field.required ? " *" : "")}
                 value={value || ""}
-                onChange={(v) => updateCustomAnswer(field.id, v)}
+                onChange={(v) => !isFieldLocked && updateCustomAnswer(field.id, v)}
                 helpText={translated.helpText}
                 showIcon={true}
+                disabled={isFieldLocked}
+                className={lockedInputClass}
               />
             ) : (
               <div className="space-y-2">
@@ -475,9 +534,11 @@ export default function PublicApplicationForm() {
                 <Input
                   type="tel"
                   value={value || ""}
-                  onChange={(e) => updateCustomAnswer(field.id, e.target.value.replace(/\D/g, ""))}
+                  onChange={(e) => !isFieldLocked && updateCustomAnswer(field.id, e.target.value.replace(/\D/g, ""))}
                   placeholder={translated.placeholder}
                   maxLength={10}
+                  readOnly={isFieldLocked}
+                  className={cn(lockedInputClass)}
                 />
                 {translated.helpText && <p className="text-xs text-muted-foreground">{translated.helpText}</p>}
               </div>
@@ -491,8 +552,9 @@ export default function PublicApplicationForm() {
             <AddressField
               label={translated.label + (field.required ? " *" : "")}
               value={value as AddressValue}
-              onChange={(v) => updateCustomAnswer(field.id, v)}
+              onChange={(v) => !isFieldLocked && updateCustomAnswer(field.id, v)}
               helpText={translated.helpText}
+              disabled={isFieldLocked}
             />
           </div>
         );
@@ -506,9 +568,10 @@ export default function PublicApplicationForm() {
             </FormLabel>
             <Textarea
               value={value || ""}
-              onChange={(e) => updateCustomAnswer(field.id, e.target.value)}
+              onChange={(e) => !isFieldLocked && updateCustomAnswer(field.id, e.target.value)}
               placeholder={translated.placeholder}
-              className="min-h-[100px]"
+              className={cn("min-h-[100px]", lockedInputClass)}
+              readOnly={isFieldLocked}
             />
             {translated.helpText && <p className="text-xs text-muted-foreground">{translated.helpText}</p>}
           </div>
@@ -524,8 +587,10 @@ export default function PublicApplicationForm() {
             <Input
               type="number"
               value={value || ""}
-              onChange={(e) => updateCustomAnswer(field.id, e.target.value)}
+              onChange={(e) => !isFieldLocked && updateCustomAnswer(field.id, e.target.value)}
               placeholder={translated.placeholder}
+              readOnly={isFieldLocked}
+              className={cn(lockedInputClass)}
             />
             {translated.helpText && <p className="text-xs text-muted-foreground">{translated.helpText}</p>}
           </div>
@@ -540,9 +605,10 @@ export default function PublicApplicationForm() {
             </FormLabel>
             <Select
               value={value || ""}
-              onValueChange={(v) => updateCustomAnswer(field.id, v)}
+              onValueChange={(v) => !isFieldLocked && updateCustomAnswer(field.id, v)}
+              disabled={isFieldLocked}
             >
-              <SelectTrigger>
+              <SelectTrigger className={cn(lockedInputClass)}>
                 <SelectValue placeholder={`Select ${translated.label.toLowerCase()}`} />
               </SelectTrigger>
               <SelectContent>
@@ -561,7 +627,7 @@ export default function PublicApplicationForm() {
         const selectedValues = Array.isArray(value) ? value : [];
         const multiselectOptions = translated.options || field.options || [];
         return (
-          <div key={field.id} className="space-y-2">
+          <div key={field.id} className={cn("space-y-2", isFieldLocked && "opacity-70 pointer-events-none")}>
             <FormLabel>
               {translated.label}
               {field.required && " *"}
@@ -571,7 +637,9 @@ export default function PublicApplicationForm() {
                 <div key={option} className="flex items-center gap-2">
                   <Checkbox
                     checked={selectedValues.includes(option)}
+                    disabled={isFieldLocked}
                     onCheckedChange={(checked) => {
+                      if (isFieldLocked) return;
                       if (checked) {
                         updateCustomAnswer(field.id, [...selectedValues, option]);
                       } else {
@@ -589,10 +657,11 @@ export default function PublicApplicationForm() {
 
       case "checkbox":
         return (
-          <div key={field.id} className="flex flex-row items-start space-x-3 space-y-0">
+          <div key={field.id} className={cn("flex flex-row items-start space-x-3 space-y-0", isFieldLocked && "opacity-70 pointer-events-none")}>
             <Checkbox
               checked={value || false}
-              onCheckedChange={(checked) => updateCustomAnswer(field.id, checked)}
+              disabled={isFieldLocked}
+              onCheckedChange={(checked) => !isFieldLocked && updateCustomAnswer(field.id, checked)}
             />
             <div className="space-y-1 leading-none">
               <FormLabel>
@@ -607,19 +676,20 @@ export default function PublicApplicationForm() {
       case "radio":
         const radioOptions = translated.options || field.options || [];
         return (
-          <div key={field.id} className="space-y-2">
+          <div key={field.id} className={cn("space-y-2", isFieldLocked && "opacity-70 pointer-events-none")}>
             <FormLabel>
               {translated.label}
               {field.required && " *"}
             </FormLabel>
             <RadioGroup
               value={value || ""}
-              onValueChange={(v) => updateCustomAnswer(field.id, v)}
+              onValueChange={(v) => !isFieldLocked && updateCustomAnswer(field.id, v)}
               className={optionGridClass}
+              disabled={isFieldLocked}
             >
               {radioOptions.map((option) => (
                 <div key={option} className="flex items-center space-x-2">
-                  <RadioGroupItem value={option} id={`${field.id}-${option}`} />
+                  <RadioGroupItem value={option} id={`${field.id}-${option}`} disabled={isFieldLocked} />
                   <FormLabel htmlFor={`${field.id}-${option}`} className="font-normal">
                     {option}
                   </FormLabel>
@@ -640,7 +710,9 @@ export default function PublicApplicationForm() {
             <Input
               type="date"
               value={value || ""}
-              onChange={(e) => updateCustomAnswer(field.id, e.target.value)}
+              onChange={(e) => !isFieldLocked && updateCustomAnswer(field.id, e.target.value)}
+              readOnly={isFieldLocked}
+              className={cn(lockedInputClass)}
             />
             {translated.helpText && <p className="text-xs text-muted-foreground">{translated.helpText}</p>}
           </div>
@@ -651,7 +723,7 @@ export default function PublicApplicationForm() {
           <div key={field.id}>
             <FormFileUpload
               value={value as string | null}
-              onChange={(url) => updateCustomAnswer(field.id, url)}
+              onChange={(url) => !isFieldLocked && updateCustomAnswer(field.id, url)}
               onUploadStateChange={(isUploading) => handleFileUploadStateChange(field.id, isUploading)}
               label={translated.label}
               required={field.required}
@@ -660,11 +732,13 @@ export default function PublicApplicationForm() {
               maxFileSize={field.maxFileSize}
               storageBucket="application-files"
               storagePath="form-uploads"
+              disabled={isFieldLocked}
             />
           </div>
         );
 
       case "signature":
+        // Signature is NEVER locked - always allow signing
         return (
           <div key={field.id}>
             <SignaturePad
@@ -816,7 +890,10 @@ export default function PublicApplicationForm() {
                       Welcome back, {foundApplicant.first_name}!
                     </AlertTitle>
                     <AlertDescription className="text-green-700 dark:text-green-300">
-                      We've pre-filled your information from your previous application.
+                      {customFieldsLocked 
+                        ? "We've pre-filled all your information from your previous application. Just sign and submit!"
+                        : "We've pre-filled your personal information from your previous application."
+                      }
                       <Button 
                         type="button"
                         variant="link" 
