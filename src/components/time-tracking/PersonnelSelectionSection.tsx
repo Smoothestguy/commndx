@@ -79,12 +79,17 @@ export function PersonnelSelectionSection({
             const person = assignment.personnel;
             const isSelected = selectedPersonnel.has(person.id);
             return (
-              <div
+              <button
+                type="button"
                 key={person.id}
-                className={`flex items-center gap-2 p-2 rounded-lg cursor-pointer transition-colors ${
-                  isSelected ? 'bg-primary/10 border-primary border' : 'bg-muted/50 hover:bg-muted'
+                className={`flex items-center gap-2 p-2 rounded-lg cursor-pointer transition-colors text-left w-full ${
+                  isSelected ? 'bg-primary/10 border-primary border' : 'bg-muted/50 hover:bg-muted border border-transparent'
                 }`}
-                onClick={() => togglePersonnel(person.id)}
+                onClick={(e) => {
+                  e.preventDefault();
+                  e.stopPropagation();
+                  togglePersonnel(person.id);
+                }}
               >
                 <Checkbox 
                   checked={isSelected} 
@@ -107,7 +112,7 @@ export function PersonnelSelectionSection({
                     </span>
                   )}
                 </div>
-              </div>
+              </button>
             );
           })}
       </div>
