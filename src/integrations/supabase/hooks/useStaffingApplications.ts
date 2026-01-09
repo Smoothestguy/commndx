@@ -1099,7 +1099,31 @@ export const useUpdateApplication = () => {
   });
 };
 
-// ============ REVOKE APPROVAL ============
+// ============ REMOVE FROM POSTING (only rejects this specific application) ============
+
+export const useRemoveFromPosting = () => {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async ({ applicationId }: { applicationId: string }) => {
+      // Only update the specific application to rejected - keeps applicant and other applications intact
+      const { data, error } = await supabase
+        .from("applications")
+        .update({ status: 'rejected' as const })
+        .eq("id", applicationId)
+        .select("*, applicants (*)")
+        .single();
+
+      if (error) throw error;
+      return data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["applications"] });
+    },
+  });
+};
+
+// ============ REVOKE APPROVAL (deletes entire applicant record) ============
 
 export const useRevokeApproval = () => {
   const queryClient = useQueryClient();

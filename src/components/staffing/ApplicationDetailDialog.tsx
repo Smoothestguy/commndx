@@ -31,6 +31,7 @@ import {
   useApproveApplication,
   useRejectApplication,
   useRevokeApproval,
+  useRemoveFromPosting,
   useUpdateApplicant,
   useUpdateApplication,
 } from "@/integrations/supabase/hooks/useStaffingApplications";
@@ -94,9 +95,11 @@ export function ApplicationDetailDialog({
   const approveApplication = useApproveApplication();
   const rejectApplication = useRejectApplication();
   const revokeApproval = useRevokeApproval();
+  const removeFromPosting = useRemoveFromPosting();
   const updateApplicant = useUpdateApplicant();
   const updateApplication = useUpdateApplication();
   const [showRevokeConfirm, setShowRevokeConfirm] = useState(false);
+  const [showRemoveFromPostingConfirm, setShowRemoveFromPostingConfirm] = useState(false);
 
   // Build field label map from form template
   const fieldLabelMap = useMemo(() => {
@@ -266,11 +269,23 @@ export function ApplicationDetailDialog({
     if (!application) return;
     try {
       await revokeApproval.mutateAsync({ applicationId: application.id });
-      toast.success("Approval revoked. Applicant can now reapply.");
+      toast.success("Entire applicant record deleted. They can now reapply.");
       setShowRevokeConfirm(false);
       onOpenChange(false);
     } catch (error) {
-      toast.error("Failed to revoke approval");
+      toast.error("Failed to delete applicant");
+    }
+  };
+
+  const handleRemoveFromPosting = async () => {
+    if (!application) return;
+    try {
+      await removeFromPosting.mutateAsync({ applicationId: application.id });
+      toast.success("Removed from this posting. Applicant remains in system for other applications.");
+      setShowRemoveFromPostingConfirm(false);
+      onOpenChange(false);
+    } catch (error) {
+      toast.error("Failed to remove from posting");
     }
   };
 
@@ -832,16 +847,25 @@ export function ApplicationDetailDialog({
                     )}
                   </div>
                 )}
-                {!showRevokeConfirm && (
+                {!showRevokeConfirm && !showRemoveFromPostingConfirm && (
                   <div className="flex flex-wrap gap-2 w-full justify-end">
+                    <Button
+                      variant="outline"
+                      className="text-amber-600 hover:bg-amber-50 dark:hover:bg-amber-900/20 flex-1 sm:flex-none"
+                      onClick={() => setShowRemoveFromPostingConfirm(true)}
+                    >
+                      <X className="h-4 w-4 sm:mr-1" />
+                      <span className="hidden sm:inline">Remove from Posting</span>
+                      <span className="sm:hidden">Remove</span>
+                    </Button>
                     <Button
                       variant="outline"
                       className="text-destructive hover:bg-destructive/10 flex-1 sm:flex-none"
                       onClick={() => setShowRevokeConfirm(true)}
                     >
                       <Trash2 className="h-4 w-4 sm:mr-1" />
-                      <span className="hidden sm:inline">Delete Applicant</span>
-                      <span className="sm:hidden">Delete</span>
+                      <span className="hidden sm:inline">Delete Entire Applicant</span>
+                      <span className="sm:hidden">Delete All</span>
                     </Button>
                     <Button
                       variant="outline"
@@ -852,16 +876,46 @@ export function ApplicationDetailDialog({
                     </Button>
                   </div>
                 )}
+                {showRemoveFromPostingConfirm && (
+                  <div className="flex flex-col gap-3 w-full">
+                    <div className="text-sm text-amber-700 dark:text-amber-300 bg-amber-50 dark:bg-amber-900/20 p-3 rounded-md border border-amber-200 dark:border-amber-800">
+                      <p className="font-medium">Remove from this posting only?</p>
+                      <ul className="mt-2 list-disc pl-4 text-muted-foreground text-xs space-y-1">
+                        <li>Their application for <strong>{application.job_postings?.project_task_orders?.title || "this position"}</strong> will be rejected</li>
+                        <li>Their applicant record will remain in the system</li>
+                        <li>Any other applications they have will not be affected</li>
+                      </ul>
+                    </div>
+                    <div className="flex flex-wrap gap-2 justify-end">
+                      <Button
+                        variant="outline"
+                        onClick={() => setShowRemoveFromPostingConfirm(false)}
+                        className="flex-1 sm:flex-none"
+                      >
+                        Cancel
+                      </Button>
+                      <Button
+                        variant="default"
+                        className="bg-amber-600 hover:bg-amber-700 flex-1 sm:flex-none"
+                        onClick={handleRemoveFromPosting}
+                        disabled={removeFromPosting.isPending}
+                      >
+                        <span className="hidden sm:inline">{removeFromPosting.isPending ? "Removing..." : "Yes, Remove from Posting"}</span>
+                        <span className="sm:hidden">{removeFromPosting.isPending ? "..." : "Remove"}</span>
+                      </Button>
+                    </div>
+                  </div>
+                )}
                 {showRevokeConfirm && (
                   <div className="flex flex-col gap-3 w-full">
                     <div className="text-sm text-destructive bg-destructive/10 p-3 rounded-md">
-                      <p className="font-medium">Are you sure you want to delete this applicant?</p>
+                      <p className="font-medium">Delete entire applicant record?</p>
                       <ul className="mt-2 list-disc pl-4 text-muted-foreground text-xs space-y-1">
-                        <li>The applicant record for {application.applicants?.first_name} {application.applicants?.last_name} will be deleted</li>
-                        <li>Their application for this position will be deleted</li>
+                        <li>The applicant record for {application.applicants?.first_name} {application.applicants?.last_name} will be <strong>permanently deleted</strong></li>
+                        <li><strong>All applications</strong> they have submitted will be deleted</li>
                         <li>Any associated personnel record will be deleted</li>
                       </ul>
-                      <p className="mt-2 text-xs font-medium">They will be able to submit a new application.</p>
+                      <p className="mt-2 text-xs font-medium">They will be able to submit a new application from scratch.</p>
                     </div>
                     <div className="flex flex-wrap gap-2 justify-end">
                       <Button
@@ -877,7 +931,7 @@ export function ApplicationDetailDialog({
                         disabled={revokeApproval.isPending}
                         className="flex-1 sm:flex-none"
                       >
-                        <span className="hidden sm:inline">{revokeApproval.isPending ? "Deleting..." : "Yes, Delete Applicant"}</span>
+                        <span className="hidden sm:inline">{revokeApproval.isPending ? "Deleting..." : "Yes, Delete Everything"}</span>
                         <span className="sm:hidden">{revokeApproval.isPending ? "..." : "Delete"}</span>
                       </Button>
                     </div>
