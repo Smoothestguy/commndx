@@ -131,6 +131,8 @@ import ActivityHistory from "./pages/ActivityHistory";
 import AiDevAssistant from "./pages/admin/AiDevAssistant";
 import Trash from "./pages/admin/Trash";
 import DocumentCenter from "./pages/DocumentCenter";
+import { UpdateNotification } from "./components/electron/UpdateNotification";
+
 const queryClient = new QueryClient();
 
 const App = () => {
@@ -606,6 +608,7 @@ const App = () => {
                     onOpenChange={setMoreMenuOpen}
                   />
                   <ChatInterface />
+                  <UpdateNotification />
                 </AIAssistantProvider>
               </LocationTrackingProvider>
             </AuthProvider>

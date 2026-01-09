@@ -1,0 +1,63 @@
+{
+  $schema: "https://raw.githubusercontent.com/electron-userland/electron-builder/master/packages/app-builder-lib/scheme.json",
+  appId: "com.commndx.desktop",
+  productName: "Command X",
+  directories: {
+    buildResources: "build",
+    output: "release",
+  },
+  files: ["dist/**/*", "dist-electron/**/*"],
+  // GitHub Releases configuration for auto-updates
+  publish: {
+    provider: "github",
+    owner: "Smoothestguy",
+    repo: "commndx",
+    releaseType: "release",
+  },
+  mac: {
+    target: ["dmg", "zip"],
+    artifactName: "${productName}-${version}-${arch}.${ext}",
+    category: "public.app-category.business",
+    icon: "build/icon.icns",
+    hardenedRuntime: true,
+    gatekeeperAssess: false,
+    entitlements: "build/entitlements.mac.plist",
+    entitlementsInherit: "build/entitlements.mac.plist",
+  },
+  dmg: {
+    contents: [
+      {
+        x: 130,
+        y: 220,
+      },
+      {
+        x: 410,
+        y: 220,
+        type: "link",
+        path: "/Applications",
+      },
+    ],
+  },
+  win: {
+    target: [
+      {
+        target: "nsis",
+        arch: ["x64"],
+      },
+    ],
+    artifactName: "${productName}-${version}-Setup.${ext}",
+    icon: "build/icon.ico",
+  },
+  nsis: {
+    oneClick: false,
+    perMachine: false,
+    allowToChangeInstallationDirectory: true,
+    deleteAppDataOnUninstall: false,
+  },
+  linux: {
+    target: ["AppImage", "deb"],
+    artifactName: "${productName}-${version}.${ext}",
+    category: "Office",
+    icon: "build/icons",
+  },
+}
