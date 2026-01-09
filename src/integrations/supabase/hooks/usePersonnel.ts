@@ -517,31 +517,119 @@ export const useHardDeletePersonnel = () => {
 
   return useMutation({
     mutationFn: async (id: string) => {
-      // Delete related records first
-      await supabase.from("emergency_contacts").delete().eq("personnel_id", id);
-      await supabase.from("personnel_certifications").delete().eq("personnel_id", id);
-      await supabase.from("personnel_languages").delete().eq("personnel_id", id);
-      await supabase.from("personnel_capabilities").delete().eq("personnel_id", id);
-      await supabase.from("personnel_onboarding_tokens").delete().eq("personnel_id", id);
+      console.log("[Personnel] Starting comprehensive hard delete for:", id);
       
-      // Clear the link in personnel_registrations
+      // ============================================
+      // 1. DELETE records that should be fully removed
+      // ============================================
+      
+      // Delete emergency contacts
+      await supabase.from("emergency_contacts").delete().eq("personnel_id", id);
+
+      // Delete certifications
+      await supabase.from("personnel_certifications").delete().eq("personnel_id", id);
+
+      // Delete languages
+      await supabase.from("personnel_languages").delete().eq("personnel_id", id);
+
+      // Delete capabilities
+      await supabase.from("personnel_capabilities").delete().eq("personnel_id", id);
+
+      // Delete onboarding tokens
+      await supabase.from("personnel_onboarding_tokens").delete().eq("personnel_id", id);
+
+      // Delete project assignments
+      await supabase.from("personnel_project_assignments").delete().eq("personnel_id", id);
+
+      // Delete schedules
+      await supabase.from("personnel_schedules").delete().eq("personnel_id", id);
+
+      // Delete personnel invitations
+      await supabase.from("personnel_invitations").delete().eq("personnel_id", id);
+
+      // Delete general invitations linked to this personnel
+      await supabase.from("invitations").delete().eq("personnel_id", id);
+
+      // Delete notifications
+      await supabase.from("personnel_notifications").delete().eq("personnel_id", id);
+
+      // Delete notification preferences
+      await supabase.from("personnel_notification_preferences").delete().eq("personnel_id", id);
+
+      // Delete documents (note: storage files should be cleaned separately if needed)
+      await supabase.from("personnel_documents").delete().eq("personnel_id", id);
+
+      // Delete W9 forms
+      await supabase.from("personnel_w9_forms").delete().eq("personnel_id", id);
+
+      // Delete clock alerts
+      await supabase.from("clock_alerts").delete().eq("personnel_id", id);
+
+      // ============================================
+      // 2. UNLINK records that should preserve history
+      // ============================================
+
+      // Unlink from registrations (don't delete registration, just unlink)
       await supabase
         .from("personnel_registrations")
         .update({ personnel_id: null })
         .eq("personnel_id", id);
 
-      // Finally delete personnel
+      // Unlink time entries (preserve historical time tracking data)
+      await supabase
+        .from("time_entries")
+        .update({ personnel_id: null })
+        .eq("personnel_id", id);
+
+      // Unlink personnel payments (preserve financial records)
+      await supabase
+        .from("personnel_payments")
+        .update({ personnel_id: null })
+        .eq("personnel_id", id);
+
+      // Unlink project labor expenses (preserve financial records)
+      await supabase
+        .from("project_labor_expenses")
+        .update({ personnel_id: null })
+        .eq("personnel_id", id);
+
+      // Unlink reimbursements (preserve financial records)
+      await supabase
+        .from("reimbursements")
+        .update({ personnel_id: null })
+        .eq("personnel_id", id);
+
+      // Unlink roof inspections (preserve inspection history)
+      await supabase
+        .from("roof_inspections")
+        .update({ inspector_id: null })
+        .eq("inspector_id", id);
+
+      // ============================================
+      // 3. Finally delete the personnel record
+      // ============================================
       const { error } = await supabase.from("personnel").delete().eq("id", id);
+
       if (error) throw error;
+      
+      console.log("[Personnel] Hard delete completed successfully");
     },
     onSuccess: () => {
+      // Invalidate all affected queries
       queryClient.invalidateQueries({ queryKey: ["personnel"] });
       queryClient.invalidateQueries({ queryKey: ["personnel-stats"] });
       queryClient.invalidateQueries({ queryKey: ["personnel-registrations"] });
+      queryClient.invalidateQueries({ queryKey: ["project-assignments"] });
+      queryClient.invalidateQueries({ queryKey: ["personnel-schedules"] });
+      queryClient.invalidateQueries({ queryKey: ["time-entries"] });
+      queryClient.invalidateQueries({ queryKey: ["personnel-payments"] });
+      queryClient.invalidateQueries({ queryKey: ["project-labor-expenses"] });
+      queryClient.invalidateQueries({ queryKey: ["reimbursements"] });
       toast.success("Personnel permanently deleted");
     },
     onError: (error: Error) => {
-      toast.error(`Failed to delete: ${error.message}`);
+      console.error("[Personnel] Hard delete failed:", error);
+      toast.error(`Failed to permanently delete: ${error.message}`);
     },
   });
 };
