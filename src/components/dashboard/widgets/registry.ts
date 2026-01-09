@@ -15,6 +15,7 @@ import {
   AlertCircle,
   Calendar,
   Briefcase,
+  Trash2,
 } from "lucide-react";
 import { WidgetRegistryEntry } from "./types";
 
@@ -207,6 +208,15 @@ export const WIDGET_REGISTRY: Record<string, WidgetRegistryEntry> = {
     category: 'actions',
     defaultSize: { width: 2, height: 1 },
     defaultConfig: {},
+  },
+  'trash': {
+    type: 'trash',
+    title: 'Recently Deleted',
+    description: 'Recently deleted items across the system',
+    icon: Trash2,
+    category: 'lists',
+    defaultSize: { width: 2, height: 2 },
+    defaultConfig: { displayOptions: { limit: 10 } },
   },
 };
 
