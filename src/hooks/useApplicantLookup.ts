@@ -14,10 +14,18 @@ export interface FoundApplicantData {
   photo_url: string | null;
 }
 
+export interface PreviousFieldData {
+  id: string;
+  label: string;
+  type: string;
+  options?: string[];
+}
+
 export interface LookupResult {
   found: boolean;
   applicant?: FoundApplicantData;
   previousAnswers?: Record<string, any> | null;
+  previousFields?: PreviousFieldData[];
   previousSmsConsent?: boolean;
   error?: string;
 }
