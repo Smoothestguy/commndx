@@ -344,9 +344,10 @@ export function BulkTimeEntryForm({ open, onOpenChange }: BulkTimeEntryFormProps
                 </div>
               </div>
               <div className="flex flex-wrap gap-2">
-                {assignedPersonnel.map((assignment) => {
+                {assignedPersonnel
+                  .filter((a): a is typeof a & { personnel: NonNullable<typeof a.personnel> } => a.personnel !== null)
+                  .map((assignment) => {
                   const person = assignment.personnel;
-                  if (!person) return null;
                   const data = weeklyHours.get(person.id);
                   const selected = data?.selected || false;
                   
