@@ -13,6 +13,7 @@ import {
   ActivityWidget,
   QuickActionsWidget,
   TableWidget,
+  TrashWidget,
   WIDGET_REGISTRY,
 } from "./widgets";
 import {
@@ -327,6 +328,14 @@ export function CustomizableDashboard({
         case "table":
           return (
             <TableWidget
+              widget={widget}
+              theme={draftTheme}
+              isEditMode={isEditMode}
+            />
+          );
+        case "trash":
+          return (
+            <TrashWidget
               widget={widget}
               theme={draftTheme}
               isEditMode={isEditMode}

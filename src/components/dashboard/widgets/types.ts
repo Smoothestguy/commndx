@@ -40,7 +40,8 @@ export type WidgetType =
   | "table"
   | "welcome"
   | "assignments"
-  | "reimbursements";
+  | "reimbursements"
+  | "trash";
 
 export interface WidgetConfig {
   dataSource?: string;
