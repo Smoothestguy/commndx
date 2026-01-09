@@ -232,8 +232,9 @@ export default function StaffingApplications() {
       const applicant = app.applicants;
       if (!applicant) return false;
       
-      // Only show applications from applicants who have never been approved
-      if (!neverApprovedApplicantIds.has(app.applicant_id)) {
+      // Always show approved applications
+      // For non-approved applications, only show if the applicant has never been approved before
+      if (app.status !== 'approved' && !neverApprovedApplicantIds.has(app.applicant_id)) {
         return false;
       }
       
