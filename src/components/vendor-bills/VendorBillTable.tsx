@@ -6,6 +6,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Checkbox } from "@/components/ui/checkbox";
+import { IndeterminateCheckbox } from "@/components/ui/indeterminate-checkbox";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { VendorBill, useDeleteVendorBill } from "@/integrations/supabase/hooks/useVendorBills";
@@ -351,11 +352,9 @@ export function VendorBillTable({ bills }: VendorBillTableProps) {
             <TableHeader>
               <TableRow className="bg-muted/50">
                 <TableHead className="w-10">
-                  <Checkbox
+                  <IndeterminateCheckbox
                     checked={allSelected}
-                    ref={(el) => {
-                      if (el) (el as any).indeterminate = someSelected;
-                    }}
+                    indeterminate={someSelected}
                     onCheckedChange={handleSelectAll}
                   />
                 </TableHead>
