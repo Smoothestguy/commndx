@@ -1,6 +1,5 @@
 import * as React from "react";
 import * as LabelPrimitive from "@radix-ui/react-label";
-import { Slot } from "@radix-ui/react-slot";
 import { Controller, ControllerProps, FieldPath, FieldValues, FormProvider, useFormContext } from "react-hook-form";
 
 import { cn } from "@/lib/utils";
@@ -82,21 +81,20 @@ const FormLabel = React.forwardRef<
 });
 FormLabel.displayName = "FormLabel";
 
-const FormControl = React.forwardRef<React.ElementRef<typeof Slot>, React.ComponentPropsWithoutRef<typeof Slot>>(
-  ({ ...props }, _ref) => {
+const FormControl = React.forwardRef<HTMLElement, React.PropsWithChildren<{}>>(
+  ({ children }, ref) => {
     const { error, formItemId, formDescriptionId, formMessageId } = useFormField();
 
-    // Avoid forwarding refs through Radix Slot here.
-    // Slot composes refs internally; when child refs are callback refs that can change identity
-    // it can trigger attach/detach loops and "Maximum update depth exceeded".
-    return (
-      <Slot
-        id={formItemId}
-        aria-describedby={!error ? `${formDescriptionId}` : `${formDescriptionId} ${formMessageId}`}
-        aria-invalid={!!error}
-        {...props}
-      />
-    );
+    // Instead of Radix Slot (which composes refs and can cause loops),
+    // use cloneElement to inject aria props without ref composition
+    const child = React.Children.only(children) as React.ReactElement;
+    
+    return React.cloneElement(child, {
+      id: formItemId,
+      'aria-describedby': !error ? formDescriptionId : `${formDescriptionId} ${formMessageId}`,
+      'aria-invalid': !!error,
+      ref, // Forward ref directly without Radix composition
+    });
   },
 );
 FormControl.displayName = "FormControl";
