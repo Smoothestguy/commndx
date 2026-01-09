@@ -6,6 +6,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+import { IndeterminateCheckbox } from "@/components/ui/indeterminate-checkbox";
 import { Checkbox } from "@/components/ui/checkbox";
 import { cn } from "@/lib/utils";
 import { ArrowUp, ArrowDown, ArrowUpDown } from "lucide-react";
@@ -80,13 +81,9 @@ export function DataTable<T extends { id: string | number }>({
                 "w-10 text-table-header-foreground font-semibold",
                 compact ? "py-2 px-3 h-9" : "py-3 px-4"
               )}>
-                <Checkbox
+                <IndeterminateCheckbox
                   checked={allSelected}
-                  ref={(el) => {
-                    if (el) {
-                      (el as HTMLButtonElement).dataset.state = someSelected ? "indeterminate" : allSelected ? "checked" : "unchecked";
-                    }
-                  }}
+                  indeterminate={someSelected}
                   onCheckedChange={handleSelectAll}
                   aria-label="Select all"
                   className="border-table-header-foreground/50"

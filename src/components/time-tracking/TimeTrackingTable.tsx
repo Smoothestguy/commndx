@@ -2,6 +2,7 @@ import { useState } from "react";
 import { format } from "date-fns";
 import { Pencil, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { IndeterminateCheckbox } from "@/components/ui/indeterminate-checkbox";
 import { Checkbox } from "@/components/ui/checkbox";
 import { StatusBadge } from "@/components/shared/StatusBadge";
 import { PersonnelAvatar } from "@/components/personnel/PersonnelAvatar";
@@ -135,13 +136,9 @@ export function TimeTrackingTable({ entries, onEdit, onBulkDelete, isDeleting }:
             <TableRow className="border-border/50 hover:bg-transparent">
               {onBulkDelete && (
                 <TableHead className="w-[50px]">
-                  <Checkbox
+                  <IndeterminateCheckbox
                     checked={allSelected}
-                    ref={(el) => {
-                      if (el) {
-                        (el as HTMLButtonElement & { indeterminate: boolean }).indeterminate = someSelected;
-                      }
-                    }}
+                    indeterminate={someSelected}
                     onCheckedChange={handleSelectAll}
                     aria-label="Select all"
                   />
