@@ -44,18 +44,24 @@ const TimeDecimalInput = React.forwardRef<HTMLInputElement, TimeDecimalInputProp
 
     const inputRef = React.useRef<HTMLInputElement | null>(null);
 
-    const setMergedRef = React.useCallback(
-      (node: HTMLInputElement | null) => {
-        inputRef.current = node;
-        if (!ref) return;
-        if (typeof ref === "function") {
-          ref(node);
-        } else {
-          (ref as React.MutableRefObject<HTMLInputElement | null>).current = node;
-        }
-      },
-      [ref]
-    );
+    // NOTE: react-hook-form can pass a new ref callback on each render.
+    // If we put `ref` in the deps of a merged-ref callback, the callback identity changes,
+    // which can cause Radix composed refs to attach/detach repeatedly and trigger nested updates.
+    const forwardedRef = React.useRef<typeof ref>(ref);
+    React.useEffect(() => {
+      forwardedRef.current = ref;
+    }, [ref]);
+
+    const setMergedRef = React.useCallback((node: HTMLInputElement | null) => {
+      inputRef.current = node;
+      const currentRef = forwardedRef.current;
+      if (!currentRef) return;
+      if (typeof currentRef === "function") {
+        currentRef(node);
+      } else {
+        (currentRef as React.MutableRefObject<HTMLInputElement | null>).current = node;
+      }
+    }, []);
 
     // Sync display value when external value changes (only when not focused)
     React.useEffect(() => {
