@@ -81,22 +81,45 @@ serve(async (req) => {
     const applicant: ApplicantData = applicants[0];
 
     // Fetch the most recent application's answers for this applicant
+    // Also fetch the form template fields so we can do smart matching by label
     const { data: applications, error: appError } = await supabase
       .from("applications")
-      .select("answers, sms_consent")
+      .select(`
+        answers, 
+        sms_consent,
+        job_postings!inner (
+          form_template_id,
+          application_form_templates!inner (
+            fields
+          )
+        )
+      `)
       .eq("applicant_id", applicant.id)
       .order("created_at", { ascending: false })
       .limit(1);
 
     let previousAnswers: Record<string, any> | null = null;
     let previousSmsConsent = false;
+    let previousFields: Array<{ id: string; label: string; type: string; options?: string[] }> = [];
     
     if (!appError && applications && applications.length > 0) {
       previousAnswers = applications[0].answers as Record<string, any> | null;
       previousSmsConsent = applications[0].sms_consent || false;
+      
+      // Extract the form template fields from the nested join
+      const jobPosting = applications[0].job_postings as any;
+      if (jobPosting?.application_form_templates?.fields) {
+        const fields = jobPosting.application_form_templates.fields as any[];
+        previousFields = fields.map((f: any) => ({
+          id: f.id,
+          label: f.label,
+          type: f.type,
+          options: f.options,
+        }));
+      }
     }
 
-    console.log(`[lookup-applicant] Found applicant: ${applicant.id} for ${email || phone}, has previous answers: ${!!previousAnswers}`);
+    console.log(`[lookup-applicant] Found applicant: ${applicant.id} for ${email || phone}, has previous answers: ${!!previousAnswers}, fields: ${previousFields.length}`);
 
     return new Response(
       JSON.stringify({ 
@@ -114,6 +137,7 @@ serve(async (req) => {
           photo_url: applicant.photo_url,
         },
         previousAnswers,
+        previousFields,
         previousSmsConsent,
       }),
       { headers: { ...corsHeaders, "Content-Type": "application/json" } }

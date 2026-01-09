@@ -206,6 +206,23 @@ export default function PublicApplicationForm() {
     },
   });
 
+  // Helper to check if answer is compatible with field options
+  const isAnswerCompatible = (answer: any, field: FormFieldType): boolean => {
+    if (field.type === "radio" || field.type === "dropdown") {
+      // Check if the answer is one of the available options
+      return field.options?.includes(answer) || false;
+    }
+    if (field.type === "multiselect") {
+      // Check if all selected options exist in current field
+      if (!Array.isArray(answer)) return false;
+      return answer.every(opt => field.options?.includes(opt));
+    }
+    if (field.type === "checkbox") {
+      return typeof answer === "boolean";
+    }
+    return true; // Other types are generally compatible
+  };
+
   // Handle auto-fill when applicant is found
   const handleAutoFill = useCallback((lookupResult: LookupResult) => {
     const applicantData = lookupResult.applicant;
@@ -223,19 +240,68 @@ export default function PublicApplicationForm() {
     
     // Fill previous custom answers if available
     const prevAnswers = lookupResult.previousAnswers;
+    const prevFields = lookupResult.previousFields;
+    
     if (prevAnswers && Object.keys(prevAnswers).length > 0) {
       const answeredIds = new Set<string>();
+      const mergedAnswers: Record<string, any> = {};
+      
+      // First pass: exact ID matches
       Object.entries(prevAnswers).forEach(([fieldId, value]) => {
-        // Only pre-fill if the value is not empty
-        const hasValue = value !== undefined && value !== null && value !== "" && 
-          !(Array.isArray(value) && value.length === 0) &&
-          !(typeof value === "object" && Object.keys(value).length === 0);
-        
-        if (hasValue) {
-          setCustomAnswers(prev => ({ ...prev, [fieldId]: value }));
-          answeredIds.add(fieldId);
+        const currentField = customFields.find(f => f.id === fieldId);
+        if (currentField) {
+          const hasValue = value !== undefined && value !== null && value !== "" && 
+            !(Array.isArray(value) && value.length === 0) &&
+            !(typeof value === "object" && Object.keys(value).length === 0);
+          
+          // Check compatibility and exclude signature fields
+          if (hasValue && currentField.type !== "signature" && isAnswerCompatible(value, currentField)) {
+            mergedAnswers[fieldId] = value;
+            answeredIds.add(fieldId);
+          }
         }
       });
+      
+      // Second pass: smart matching by label similarity for unmatched current fields
+      // This handles cases where a new form has similar questions with different IDs
+      if (prevFields && prevFields.length > 0) {
+        customFields.forEach(currentField => {
+          // Skip if already matched or is a signature
+          if (answeredIds.has(currentField.id) || currentField.type === "signature") return;
+          
+          // Find a previous field with similar label and same type
+          const normalizeLabel = (label: string) => 
+            label.toLowerCase().replace(/[^a-z0-9]/g, '');
+          
+          const currentLabelNorm = normalizeLabel(currentField.label);
+          
+          for (const prevField of prevFields) {
+            if (prevField.type !== currentField.type) continue;
+            
+            const prevLabelNorm = normalizeLabel(prevField.label);
+            const prevAnswer = prevAnswers[prevField.id];
+            
+            // Check for exact label match or high similarity
+            const isSimilar = currentLabelNorm === prevLabelNorm ||
+              currentLabelNorm.includes(prevLabelNorm) ||
+              prevLabelNorm.includes(currentLabelNorm);
+            
+            if (isSimilar && prevAnswer !== undefined) {
+              const hasValue = prevAnswer !== null && prevAnswer !== "" && 
+                !(Array.isArray(prevAnswer) && prevAnswer.length === 0) &&
+                !(typeof prevAnswer === "object" && Object.keys(prevAnswer).length === 0);
+              
+              if (hasValue && isAnswerCompatible(prevAnswer, currentField)) {
+                mergedAnswers[currentField.id] = prevAnswer;
+                answeredIds.add(currentField.id);
+                break; // Found a match, move to next field
+              }
+            }
+          }
+        });
+      }
+      
+      setCustomAnswers(prev => ({ ...prev, ...mergedAnswers }));
       setLockedAnswerIds(answeredIds);
       setCustomFieldsLocked(answeredIds.size > 0);
     }
@@ -248,7 +314,7 @@ export default function PublicApplicationForm() {
     setIsReturningApplicant(true);
     setCoreFieldsLocked(true);
     toast.success("Welcome back! We've pre-filled your information from your previous application.");
-  }, [form]);
+  }, [form, customFields]);
 
   // Handle email/phone lookup on blur
   const handleEmailBlur = useCallback(async (email: string) => {
