@@ -72,46 +72,47 @@ export function PersonnelHoursTable({
             </tr>
           </thead>
           <tbody>
-            {selectedList.map((assignment) => {
-              const person = assignment.personnel;
-              if (!person) return null;
-              const totals = getPersonnelTotals(person.id);
-              return (
-                <tr key={person.id} className="border-t">
-                  <td className="p-2">
-                    <div className="flex items-center gap-2">
-                      <PersonnelAvatar
-                        photoUrl={person.photo_url}
-                        firstName={person.first_name}
-                        lastName={person.last_name}
-                        size="xs"
-                      />
-                      <span className="truncate text-xs">{person.first_name} {person.last_name}</span>
-                    </div>
-                  </td>
-                  {weekDays.map((day) => {
-                    const key = `${person.id}_${day.dateKey}`;
-                    return (
-                      <td key={day.dateKey} className="p-1">
-                        <Input
-                          type="number"
-                          min="0"
-                          max="24"
-                          step="0.25"
-                          value={personnelHours[key] || ''}
-                          onChange={(e) => updatePersonnelHour(person.id, day.dateKey, parseFloat(e.target.value) || 0)}
-                          className="h-8 text-center text-sm px-1"
-                          placeholder="0"
+            {selectedList
+              .filter((a): a is { personnel: NonNullable<typeof a.personnel> } => a.personnel !== null)
+              .map((assignment) => {
+                const person = assignment.personnel;
+                const totals = getPersonnelTotals(person.id);
+                return (
+                  <tr key={person.id} className="border-t">
+                    <td className="p-2">
+                      <div className="flex items-center gap-2">
+                        <PersonnelAvatar
+                          photoUrl={person.photo_url}
+                          firstName={person.first_name}
+                          lastName={person.last_name}
+                          size="xs"
                         />
-                      </td>
-                    );
-                  })}
-                  <td className="p-2 text-center text-xs">{totals.regular.toFixed(1)}</td>
-                  <td className="p-2 text-center text-xs text-orange-600">{totals.overtime.toFixed(1)}</td>
-                  <td className="p-2 text-center text-xs font-medium">{totals.total.toFixed(1)}</td>
-                </tr>
-              );
-            })}
+                        <span className="truncate text-xs">{person.first_name} {person.last_name}</span>
+                      </div>
+                    </td>
+                    {weekDays.map((day) => {
+                      const key = `${person.id}_${day.dateKey}`;
+                      return (
+                        <td key={day.dateKey} className="p-1">
+                          <Input
+                            type="number"
+                            min="0"
+                            max="24"
+                            step="0.25"
+                            value={personnelHours[key] || ''}
+                            onChange={(e) => updatePersonnelHour(person.id, day.dateKey, parseFloat(e.target.value) || 0)}
+                            className="h-8 text-center text-sm px-1"
+                            placeholder="0"
+                          />
+                        </td>
+                      );
+                    })}
+                    <td className="p-2 text-center text-xs">{totals.regular.toFixed(1)}</td>
+                    <td className="p-2 text-center text-xs text-orange-600">{totals.overtime.toFixed(1)}</td>
+                    <td className="p-2 text-center text-xs font-medium">{totals.total.toFixed(1)}</td>
+                  </tr>
+                );
+              })}
           </tbody>
           <tfoot className="bg-muted/30 border-t">
             <tr>
