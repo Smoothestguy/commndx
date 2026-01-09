@@ -1096,93 +1096,95 @@ export function ProjectTimeEntriesTable({
 
                         {/* Daily Entry Rows (Level 3) */}
                         {expandedPersonnel.has(personnelKey) &&
-                          personnel.dailyEntries.map((daily) =>
-                            daily.entries.map((entry) => (
-                              <TableRow
-                                key={entry.id}
-                                className="bg-background hover:bg-muted/20"
-                              >
-                                {onBulkDelete && (
+                          personnel.dailyEntries.map((daily) => (
+                            <React.Fragment key={daily.date}>
+                              {daily.entries.map((entry) => (
+                                <TableRow
+                                  key={entry.id}
+                                  className="bg-background hover:bg-muted/20"
+                                >
+                                  {onBulkDelete && (
+                                    <TableCell>
+                                      <Checkbox
+                                        checked={selectedIds.has(entry.id)}
+                                        onCheckedChange={(checked) =>
+                                          handleSelectEntry(entry.id, !!checked)
+                                        }
+                                        aria-label={`Select entry`}
+                                      />
+                                    </TableCell>
+                                  )}
                                   <TableCell>
-                                    <Checkbox
-                                      checked={selectedIds.has(entry.id)}
-                                      onCheckedChange={(checked) =>
-                                        handleSelectEntry(entry.id, !!checked)
-                                      }
-                                      aria-label={`Select entry`}
-                                    />
-                                  </TableCell>
-                                )}
-                                <TableCell>
-                                  <div className="flex items-center gap-3 pl-16">
-                                    <div className="flex flex-col">
-                                      <span className="font-medium">
-                                        {format(
-                                          parseISO(entry.entry_date),
-                                          "EEE, MMM d"
-                                        )}
-                                      </span>
-                                      {entry.description && (
-                                        <span className="text-sm text-muted-foreground truncate max-w-[300px]">
-                                          {entry.description}
+                                    <div className="flex items-center gap-3 pl-16">
+                                      <div className="flex flex-col">
+                                        <span className="font-medium">
+                                          {format(
+                                            parseISO(entry.entry_date),
+                                            "EEE, MMM d"
+                                          )}
                                         </span>
+                                        {entry.description && (
+                                          <span className="text-sm text-muted-foreground truncate max-w-[300px]">
+                                            {entry.description}
+                                          </span>
+                                        )}
+                                      </div>
+                                      {entry.is_holiday && (
+                                        <Badge
+                                          variant="outline"
+                                          className="bg-purple-500/10 text-purple-500 border-purple-500/20"
+                                        >
+                                          Holiday
+                                        </Badge>
                                       )}
                                     </div>
-                                    {entry.is_holiday && (
-                                      <Badge
-                                        variant="outline"
-                                        className="bg-purple-500/10 text-purple-500 border-purple-500/20"
-                                      >
-                                        Holiday
-                                      </Badge>
-                                    )}
-                                  </div>
-                                </TableCell>
-                                <TableCell></TableCell>
-                                <TableCell className="text-right">
-                                  {Number(entry.hours).toFixed(2)}h
-                                </TableCell>
-                                <TableCell className="text-right text-muted-foreground">
-                                  $
-                                  {(
-                                    Number(entry.hours) *
-                                    getHourlyRate(entry) *
-                                    (entry.is_holiday ? holidayMultiplier : 1)
-                                  ).toFixed(2)}
-                                </TableCell>
-                                <TableCell className="text-center">
-                                  <StatusBadge status={getStatus(entry)} />
-                                </TableCell>
-                                <TableCell>
-                                  <div className="flex items-center gap-1">
-                                    <Button
-                                      variant="ghost"
-                                      size="icon"
-                                      className="h-8 w-8"
-                                      onClick={() => onEdit(entry)}
-                                      disabled={project.isLocked}
-                                    >
-                                      <Pencil className="h-4 w-4" />
-                                    </Button>
-                                    {onBulkDelete && (
+                                  </TableCell>
+                                  <TableCell></TableCell>
+                                  <TableCell className="text-right">
+                                    {Number(entry.hours).toFixed(2)}h
+                                  </TableCell>
+                                  <TableCell className="text-right text-muted-foreground">
+                                    $
+                                    {(
+                                      Number(entry.hours) *
+                                      getHourlyRate(entry) *
+                                      (entry.is_holiday ? holidayMultiplier : 1)
+                                    ).toFixed(2)}
+                                  </TableCell>
+                                  <TableCell className="text-center">
+                                    <StatusBadge status={getStatus(entry)} />
+                                  </TableCell>
+                                  <TableCell>
+                                    <div className="flex items-center gap-1">
                                       <Button
                                         variant="ghost"
                                         size="icon"
-                                        className="h-8 w-8 text-destructive hover:text-destructive"
-                                        onClick={() => {
-                                          setSelectedIds(new Set([entry.id]));
-                                          setShowDeleteDialog(true);
-                                        }}
+                                        className="h-8 w-8"
+                                        onClick={() => onEdit(entry)}
                                         disabled={project.isLocked}
                                       >
-                                        <Trash2 className="h-4 w-4" />
+                                        <Pencil className="h-4 w-4" />
                                       </Button>
-                                    )}
-                                  </div>
-                                </TableCell>
-                              </TableRow>
-                            ))
-                          )}
+                                      {onBulkDelete && (
+                                        <Button
+                                          variant="ghost"
+                                          size="icon"
+                                          className="h-8 w-8 text-destructive hover:text-destructive"
+                                          onClick={() => {
+                                            setSelectedIds(new Set([entry.id]));
+                                            setShowDeleteDialog(true);
+                                          }}
+                                          disabled={project.isLocked}
+                                        >
+                                          <Trash2 className="h-4 w-4" />
+                                        </Button>
+                                      )}
+                                    </div>
+                                  </TableCell>
+                                </TableRow>
+                              ))}
+                            </React.Fragment>
+                          ))}
                       </React.Fragment>
                     );
                   })}
