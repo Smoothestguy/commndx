@@ -711,12 +711,14 @@ export function EnhancedTimeEntryForm({
                     <FormItem className={!entry && selectedPersonnel.size > 0 ? "hidden" : undefined}>
                       <FormLabel>Hours</FormLabel>
                       <FormControl>
-                        <TimeDecimalInput
-                          value={field.value || 0}
-                          onValueChange={field.onChange}
-                          showIcon={true}
-                          showPreview={true}
-                          placeholder="e.g., 8:20 or 8.33"
+                        <Input
+                          type="number"
+                          step="0.01"
+                          min="0"
+                          max="24"
+                          value={field.value || ""}
+                          onChange={(e) => field.onChange(parseFloat(e.target.value) || 0)}
+                          placeholder="e.g., 8.33"
                         />
                       </FormControl>
                       <FormMessage />
