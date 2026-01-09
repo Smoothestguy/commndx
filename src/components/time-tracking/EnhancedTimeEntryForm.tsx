@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo, useCallback } from "react";
+import { useState, useEffect, useMemo, useCallback, useRef } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
@@ -117,7 +117,9 @@ export function EnhancedTimeEntryForm({
   const [weeklyProjectId, setWeeklyProjectId] = useState("");
   const [weeklyDescription, setWeeklyDescription] = useState("");
   const [weeklyBillable, setWeeklyBillable] = useState(true);
-  const [selectedPersonnel, setSelectedPersonnel] = useState<Set<string>>(new Set());
+  // Store as array for stable identity; derive Set for lookups
+  const [selectedPersonnelIds, setSelectedPersonnelIds] = useState<string[]>([]);
+  const selectedPersonnel = useMemo(() => new Set(selectedPersonnelIds), [selectedPersonnelIds]);
   const [quickAddOpen, setQuickAddOpen] = useState(false);
   const [assignExistingOpen, setAssignExistingOpen] = useState(false);
   
@@ -180,27 +182,25 @@ export function EnhancedTimeEntryForm({
     currentWeek
   );
 
-  // Personnel selection functions
-  const selectAllPersonnel = () => {
+  // Personnel selection functions (array-based for stable identity)
+  const selectAllPersonnel = useCallback(() => {
     const allIds = assignedPersonnel
       .filter(a => a.personnel)
       .map(a => a.personnel!.id);
-    setSelectedPersonnel(new Set(allIds));
-  };
+    setSelectedPersonnelIds(allIds);
+  }, [assignedPersonnel]);
 
-  const clearPersonnelSelection = () => {
-    setSelectedPersonnel(new Set());
-  };
+  const clearPersonnelSelection = useCallback(() => {
+    setSelectedPersonnelIds([]);
+  }, []);
 
-  const togglePersonnel = (personnelId: string) => {
-    const newSet = new Set(selectedPersonnel);
-    if (newSet.has(personnelId)) {
-      newSet.delete(personnelId);
-    } else {
-      newSet.add(personnelId);
-    }
-    setSelectedPersonnel(newSet);
-  };
+  const togglePersonnel = useCallback((personnelId: string) => {
+    setSelectedPersonnelIds(prev => 
+      prev.includes(personnelId) 
+        ? prev.filter(id => id !== personnelId)
+        : [...prev, personnelId]
+    );
+  }, []);
 
   // Get week days
   const weekDays = useMemo(() => {
@@ -310,7 +310,7 @@ export function EnhancedTimeEntryForm({
       setWeeklyProjectId("");
       setWeeklyDescription("");
       setWeeklyBillable(true);
-      setSelectedPersonnel(new Set());
+      setSelectedPersonnelIds([]);
       setPersonnelHours({});
       setTemplateHours({});
       setHolidayDays({});
@@ -324,7 +324,7 @@ export function EnhancedTimeEntryForm({
     if (entryType === "weekly" && existingWeeklyEntries.length > 0) {
       return;
     }
-    setSelectedPersonnel(new Set());
+    setSelectedPersonnelIds([]);
     setPersonnelHours({});
     setDailyPersonnelHours({});
   }, [currentProjectId]);
@@ -350,20 +350,25 @@ export function EnhancedTimeEntryForm({
       }));
       
       // Auto-select personnel who have existing entries (if none selected yet)
-      if (selectedPersonnel.size === 0 && personnelWithEntries.size > 0) {
-        setSelectedPersonnel(personnelWithEntries);
+      if (selectedPersonnelIds.length === 0 && personnelWithEntries.size > 0) {
+        setSelectedPersonnelIds(Array.from(personnelWithEntries));
       }
     }
   }, [existingWeeklyEntries, entryType, weeklyProjectId]);
 
   // Sync hidden hours field when personnel are selected (for schema validation)
   // Clamp to 24 so the schema's max(24) check always passes for multi-personnel totals
+  // Guard: only update if value changed to prevent re-render loops
+  const lastSyncedHoursRef = useRef<number | null>(null);
   useEffect(() => {
-    if (selectedPersonnel.size > 0) {
+    if (selectedPersonnelIds.length > 0) {
       const schemaValue = dailyTotalHours > 0 ? Math.min(dailyTotalHours, 24) : 0;
-      form.setValue("hours", schemaValue, { shouldValidate: true, shouldDirty: true });
+      if (lastSyncedHoursRef.current !== schemaValue) {
+        lastSyncedHoursRef.current = schemaValue;
+        form.setValue("hours", schemaValue, { shouldValidate: true, shouldDirty: true });
+      }
     }
-  }, [selectedPersonnel.size, dailyTotalHours, form]);
+  }, [selectedPersonnelIds.length, dailyTotalHours, form]);
 
   // Handler for form validation failures (before handleDailySubmit runs)
   const handleDailyInvalid = (errors: any) => {
@@ -455,7 +460,7 @@ export function EnhancedTimeEntryForm({
       
       onOpenChange(false);
       form.reset();
-      setSelectedPersonnel(new Set());
+      setSelectedPersonnelIds([]);
       setDailyPersonnelHours({});
     } catch (error: any) {
       console.error("Failed to save time entry:", error);
@@ -514,7 +519,7 @@ export function EnhancedTimeEntryForm({
         await bulkAddPersonnelTimeEntries.mutateAsync(entries);
         onOpenChange(false);
         setPersonnelHours({});
-        setSelectedPersonnel(new Set());
+        setSelectedPersonnelIds([]);
         setHolidayDays({});
       } catch (error) {
         console.error("Failed to save weekly entries:", error);

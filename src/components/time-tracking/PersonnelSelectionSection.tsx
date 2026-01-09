@@ -85,7 +85,11 @@ export function PersonnelSelectionSection({
               }`}
               onClick={() => togglePersonnel(person.id)}
             >
-              <Checkbox checked={isSelected} />
+              <Checkbox 
+                checked={isSelected} 
+                onCheckedChange={() => togglePersonnel(person.id)}
+                onClick={(e) => e.stopPropagation()}
+              />
               <PersonnelAvatar
                 photoUrl={person.photo_url}
                 firstName={person.first_name}
