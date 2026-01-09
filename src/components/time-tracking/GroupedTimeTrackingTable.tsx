@@ -2,6 +2,7 @@ import { useState, useMemo } from "react";
 import { format } from "date-fns";
 import { ChevronDown, ChevronRight, Pencil, Trash2, Gift, Clock, DollarSign, Check, X, FileText, Receipt, ClipboardList, CircleDollarSign, Lock, ArrowUp, ArrowDown, ArrowUpDown } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { IndeterminateCheckbox } from "@/components/ui/indeterminate-checkbox";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Badge } from "@/components/ui/badge";
 import { Card } from "@/components/ui/card";
@@ -441,13 +442,9 @@ export function GroupedTimeTrackingTable({
           {onBulkDelete && groupedEntries.length > 0 && (
             <div className="glass rounded-xl border border-border/50 p-3">
               <div className="flex items-center gap-3">
-                <Checkbox
+              <IndeterminateCheckbox
                   checked={allSelected}
-                  ref={(el) => {
-                    if (el) {
-                      (el as HTMLButtonElement & { indeterminate: boolean }).indeterminate = someSelected;
-                    }
-                  }}
+                  indeterminate={someSelected}
                   onCheckedChange={(checked) => handleSelectAll(!!checked)}
                   aria-label="Select all entries"
                 />
@@ -463,13 +460,9 @@ export function GroupedTimeTrackingTable({
               {/* Group Header */}
               <div className="flex items-start gap-3">
                 {onBulkDelete && (
-                  <Checkbox
+                  <IndeterminateCheckbox
                     checked={isGroupSelected(group)}
-                    ref={(el) => {
-                      if (el) {
-                        (el as HTMLButtonElement & { indeterminate: boolean }).indeterminate = isGroupIndeterminate(group);
-                      }
-                    }}
+                    indeterminate={isGroupIndeterminate(group)}
                     onCheckedChange={(checked) => handleSelectGroup(group, !!checked)}
                     className="mt-1"
                     aria-label={`Select all entries for ${group.personnelName}`}
@@ -753,13 +746,9 @@ export function GroupedTimeTrackingTable({
             <TableRow className="bg-table-header hover:bg-table-header border-b border-table-border">
               {onBulkDelete && (
                 <TableHead className="w-10 text-table-header-foreground font-semibold py-2 px-3 h-9">
-                  <Checkbox
+                  <IndeterminateCheckbox
                     checked={allSelected}
-                    ref={(el) => {
-                      if (el) {
-                        (el as HTMLButtonElement).dataset.state = someSelected ? "indeterminate" : allSelected ? "checked" : "unchecked";
-                      }
-                    }}
+                    indeterminate={someSelected}
                     onCheckedChange={handleSelectAll}
                     aria-label="Select all"
                     className="border-table-header-foreground/50"
@@ -863,13 +852,9 @@ export function GroupedTimeTrackingTable({
                     >
                       {onBulkDelete && (
                         <TableCell className="py-1.5 px-3 w-10">
-                          <Checkbox
+                          <IndeterminateCheckbox
                             checked={isGroupSelected(group)}
-                            ref={(el) => {
-                              if (el) {
-                                (el as HTMLButtonElement & { indeterminate: boolean }).indeterminate = isGroupIndeterminate(group);
-                              }
-                            }}
+                            indeterminate={isGroupIndeterminate(group)}
                             onCheckedChange={(checked) => handleSelectGroup(group, !!checked)}
                             onClick={(e) => e.stopPropagation()}
                             aria-label={`Select all entries for ${group.personnelName}`}
