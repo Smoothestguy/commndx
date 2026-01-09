@@ -20,6 +20,7 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { ScrollArea, ScrollBar } from "@/components/ui/scroll-area";
+import { PostingEntryCard } from "./PostingEntryCard";
 import type { Application } from "@/integrations/supabase/hooks/useStaffingApplications";
 import type { FormField } from "@/integrations/supabase/hooks/useApplicationFormTemplates";
 
@@ -166,10 +167,16 @@ export function PostingEntriesTable({
   selectedIds = new Set(),
   onSelectionChange,
 }: PostingEntriesTableProps) {
+
   // Filter out profile picture field from columns (shown separately)
   const displayFields = useMemo(() => {
     return formFields.filter((f) => f.type !== "section");
   }, [formFields]);
+
+  // Limit custom fields on desktop to prevent excessive columns
+  const limitedDisplayFields = useMemo(() => {
+    return displayFields.slice(0, 4);
+  }, [displayFields]);
 
   const isAllSelected = applications.length > 0 && applications.every((app) => selectedIds.has(app.id));
   const isSomeSelected = applications.some((app) => selectedIds.has(app.id)) && !isAllSelected;
@@ -208,142 +215,167 @@ export function PostingEntriesTable({
     );
   }
 
+  // Card view for tablet and mobile (< 1180px)
   return (
-    <ScrollArea className="w-full">
-      <div className="min-w-max">
-        <Table>
-          <TableHeader>
-            <TableRow className="bg-muted/50">
-              {selectable && (
-                <TableHead className="w-10">
-                  <Checkbox
-                    checked={isAllSelected ? true : isSomeSelected ? "indeterminate" : false}
-                    onCheckedChange={handleSelectAll}
-                  />
-                </TableHead>
-              )}
-              <TableHead className="w-10"></TableHead>
-              <TableHead className="w-14">Photo</TableHead>
-              <TableHead className="min-w-[150px]">Name</TableHead>
-              <TableHead className="min-w-[180px]">Email</TableHead>
-              <TableHead className="min-w-[120px]">Phone</TableHead>
-              {displayFields.map((field) => (
-                <TableHead key={field.id} className="min-w-[120px] max-w-[200px]">
-                  {field.label}
-                </TableHead>
-              ))}
-              <TableHead className="min-w-[100px]">Submitted</TableHead>
-              <TableHead className="min-w-[90px]">Status</TableHead>
-              <TableHead className="w-24 text-right">Actions</TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {applications.map((app) => {
-              const answers = app.answers as Record<string, unknown> | null;
-              const profilePic = getProfilePicture(answers, formFields, (app.applicants as any)?.photo_url);
+    <>
+      {/* Card layout for tablet/mobile */}
+      <div className="block min-[1180px]:hidden">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+          {applications.map((app) => (
+            <PostingEntryCard
+              key={app.id}
+              application={app}
+              formFields={formFields}
+              onViewApplication={onViewApplication}
+              onApprove={onApprove}
+              onReject={onReject}
+              selectable={selectable}
+              isSelected={selectedIds.has(app.id)}
+              onSelectionChange={handleSelectOne}
+            />
+          ))}
+        </div>
+      </div>
 
-              return (
-                <TableRow
-                  key={app.id}
-                  className="cursor-pointer hover:bg-muted/50"
-                  onClick={() => onViewApplication(app)}
-                >
+      {/* Table layout for desktop (>= 1180px) */}
+      <div className="hidden min-[1180px]:block">
+        <ScrollArea className="w-full">
+          <div className="min-w-max">
+            <Table>
+              <TableHeader>
+                <TableRow className="bg-muted/50">
                   {selectable && (
-                    <TableCell onClick={(e) => e.stopPropagation()}>
+                    <TableHead className="w-10">
                       <Checkbox
-                        checked={selectedIds.has(app.id)}
-                        onCheckedChange={() => handleSelectOne(app.id)}
+                        checked={isAllSelected ? true : isSomeSelected ? "indeterminate" : false}
+                        onCheckedChange={handleSelectAll}
                       />
-                    </TableCell>
+                    </TableHead>
                   )}
-                  <TableCell onClick={(e) => e.stopPropagation()}>
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      className="h-8 w-8"
+                  <TableHead className="w-10"></TableHead>
+                  <TableHead className="w-14">Photo</TableHead>
+                  <TableHead className="min-w-[150px]">Name</TableHead>
+                  <TableHead className="min-w-[180px]">Email</TableHead>
+                  <TableHead className="min-w-[120px]">Phone</TableHead>
+                  {limitedDisplayFields.map((field) => (
+                    <TableHead key={field.id} className="min-w-[120px] max-w-[200px]">
+                      {field.label}
+                    </TableHead>
+                  ))}
+                  <TableHead className="min-w-[100px]">Submitted</TableHead>
+                  <TableHead className="min-w-[90px]">Status</TableHead>
+                  <TableHead className="w-24 text-right">Actions</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {applications.map((app) => {
+                  const answers = app.answers as Record<string, unknown> | null;
+                  const profilePic = getProfilePicture(answers, formFields, (app.applicants as any)?.photo_url);
+
+                  return (
+                    <TableRow
+                      key={app.id}
+                      className="cursor-pointer hover:bg-muted/50"
                       onClick={() => onViewApplication(app)}
                     >
-                      <Eye className="h-4 w-4" />
-                    </Button>
-                  </TableCell>
-                  <TableCell>
-                    <TooltipProvider>
-                      <Tooltip>
-                        <TooltipTrigger asChild>
-                          <div className="relative">
-                            {profilePic ? (
-                              <Avatar className="h-10 w-10 ring-2 ring-primary/20">
-                                <AvatarImage src={profilePic} alt="Profile" />
-                                <AvatarFallback className="bg-muted">
-                                  <ImageOff className="h-4 w-4 text-muted-foreground" />
-                                </AvatarFallback>
-                              </Avatar>
-                            ) : (
-                              <div className="h-10 w-10 rounded-full bg-muted/50 border-2 border-dashed border-muted-foreground/30 flex items-center justify-center">
-                                <ImageOff className="h-4 w-4 text-muted-foreground/50" />
+                      {selectable && (
+                        <TableCell onClick={(e) => e.stopPropagation()}>
+                          <Checkbox
+                            checked={selectedIds.has(app.id)}
+                            onCheckedChange={() => handleSelectOne(app.id)}
+                          />
+                        </TableCell>
+                      )}
+                      <TableCell onClick={(e) => e.stopPropagation()}>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="h-8 w-8"
+                          onClick={() => onViewApplication(app)}
+                        >
+                          <Eye className="h-4 w-4" />
+                        </Button>
+                      </TableCell>
+                      <TableCell>
+                        <TooltipProvider>
+                          <Tooltip>
+                            <TooltipTrigger asChild>
+                              <div className="relative">
+                                {profilePic ? (
+                                  <Avatar className="h-10 w-10 ring-2 ring-primary/20">
+                                    <AvatarImage src={profilePic} alt="Profile" />
+                                    <AvatarFallback className="bg-muted">
+                                      <ImageOff className="h-4 w-4 text-muted-foreground" />
+                                    </AvatarFallback>
+                                  </Avatar>
+                                ) : (
+                                  <div className="h-10 w-10 rounded-full bg-muted/50 border-2 border-dashed border-muted-foreground/30 flex items-center justify-center">
+                                    <ImageOff className="h-4 w-4 text-muted-foreground/50" />
+                                  </div>
+                                )}
                               </div>
-                            )}
+                            </TooltipTrigger>
+                            <TooltipContent>
+                              {profilePic ? "View photo" : "No photo uploaded"}
+                            </TooltipContent>
+                          </Tooltip>
+                        </TooltipProvider>
+                      </TableCell>
+                      <TableCell className="font-medium">
+                        {app.applicants?.first_name} {app.applicants?.last_name}
+                      </TableCell>
+                      <TableCell className="text-sm text-muted-foreground">
+                        {app.applicants?.email}
+                      </TableCell>
+                      <TableCell className="text-sm text-muted-foreground">
+                        {app.applicants?.phone || "—"}
+                      </TableCell>
+                      {limitedDisplayFields.map((field) => (
+                        <TableCell key={field.id}>
+                          {formatFieldValue(answers?.[field.id], field)}
+                        </TableCell>
+                      ))}
+                      <TableCell className="text-sm text-muted-foreground whitespace-nowrap">
+                        {format(new Date(app.created_at), "MMM d, yyyy")}
+                      </TableCell>
+                      <TableCell>
+                        <Badge className={statusColors[app.status]}>
+                          {app.status.charAt(0).toUpperCase() + app.status.slice(1)}
+                        </Badge>
+                      </TableCell>
+                      <TableCell onClick={(e) => e.stopPropagation()}>
+                        {app.status === "submitted" && (
+                          <div className="flex items-center justify-end gap-1">
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              className="h-8 w-8 text-green-600 hover:text-green-700 hover:bg-green-50"
+                              onClick={() => onApprove(app)}
+                              title="Approve"
+                            >
+                              <CheckCircle className="h-4 w-4" />
+                            </Button>
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              className="h-8 w-8 text-destructive hover:text-destructive hover:bg-destructive/10"
+                              onClick={() => onReject(app)}
+                              title="Reject"
+                            >
+                              <XCircle className="h-4 w-4" />
+                            </Button>
                           </div>
-                        </TooltipTrigger>
-                        <TooltipContent>
-                          {profilePic ? "View photo" : "No photo uploaded"}
-                        </TooltipContent>
-                      </Tooltip>
-                    </TooltipProvider>
-                  </TableCell>
-                  <TableCell className="font-medium">
-                    {app.applicants?.first_name} {app.applicants?.last_name}
-                  </TableCell>
-                  <TableCell className="text-sm text-muted-foreground">
-                    {app.applicants?.email}
-                  </TableCell>
-                  <TableCell className="text-sm text-muted-foreground">
-                    {app.applicants?.phone || "—"}
-                  </TableCell>
-                  {displayFields.map((field) => (
-                    <TableCell key={field.id}>
-                      {formatFieldValue(answers?.[field.id], field)}
-                    </TableCell>
-                  ))}
-                  <TableCell className="text-sm text-muted-foreground whitespace-nowrap">
-                    {format(new Date(app.created_at), "MMM d, yyyy")}
-                  </TableCell>
-                  <TableCell>
-                    <Badge className={statusColors[app.status]}>
-                      {app.status.charAt(0).toUpperCase() + app.status.slice(1)}
-                    </Badge>
-                  </TableCell>
-                  <TableCell onClick={(e) => e.stopPropagation()}>
-                    {app.status === "submitted" && (
-                      <div className="flex items-center justify-end gap-1">
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          className="h-8 w-8 text-green-600 hover:text-green-700 hover:bg-green-50"
-                          onClick={() => onApprove(app)}
-                          title="Approve"
-                        >
-                          <CheckCircle className="h-4 w-4" />
-                        </Button>
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          className="h-8 w-8 text-destructive hover:text-destructive hover:bg-destructive/10"
-                          onClick={() => onReject(app)}
-                          title="Reject"
-                        >
-                          <XCircle className="h-4 w-4" />
-                        </Button>
-                      </div>
-                    )}
-                  </TableCell>
-                </TableRow>
-              );
-            })}
-          </TableBody>
-        </Table>
+                        )}
+                      </TableCell>
+                    </TableRow>
+                  );
+                })}
+              </TableBody>
+            </Table>
+          </div>
+          <ScrollBar orientation="horizontal" />
+        </ScrollArea>
       </div>
-      <ScrollBar orientation="horizontal" />
-    </ScrollArea>
+    </>
   );
 }
