@@ -1,4 +1,5 @@
 import { ReactNode } from "react";
+import { Link } from "react-router-dom";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { GripVertical, Settings, X } from "lucide-react";
@@ -8,6 +9,7 @@ import { WidgetResizer } from "../customization/WidgetResizer";
 
 interface WidgetContainerProps {
   title: string;
+  titleLink?: string;
   icon?: ReactNode;
   children: ReactNode;
   isEditMode?: boolean;
@@ -25,6 +27,7 @@ interface WidgetContainerProps {
 
 export function WidgetContainer({
   title,
+  titleLink,
   icon,
   children,
   isEditMode = false,
@@ -112,7 +115,13 @@ export function WidgetContainer({
             </div>
           )}
           {icon && <span className="text-muted-foreground flex-shrink-0 [&>svg]:h-3 [&>svg]:w-3">{icon}</span>}
-          <span className="text-xs font-semibold truncate min-w-0">{title}</span>
+          {titleLink && !isEditMode ? (
+            <Link to={titleLink} className="text-xs font-semibold truncate min-w-0 hover:text-primary hover:underline">
+              {title}
+            </Link>
+          ) : (
+            <span className="text-xs font-semibold truncate min-w-0">{title}</span>
+          )}
         </div>
 
         <div className={cn(noPadding ? "p-0" : "p-1.5")}>
@@ -185,7 +194,13 @@ export function WidgetContainer({
             </div>
           )}
           {icon && <span className="text-muted-foreground flex-shrink-0">{icon}</span>}
-          <CardTitle className={cn(fontSizeClass, "truncate min-w-0")}>{title}</CardTitle>
+          {titleLink && !isEditMode ? (
+            <Link to={titleLink} className={cn(fontSizeClass, "truncate min-w-0 font-semibold hover:text-primary hover:underline")}>
+              {title}
+            </Link>
+          ) : (
+            <CardTitle className={cn(fontSizeClass, "truncate min-w-0")}>{title}</CardTitle>
+          )}
         </div>
       </CardHeader>
 

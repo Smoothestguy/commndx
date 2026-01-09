@@ -212,6 +212,7 @@ export const WIDGET_REGISTRY: Record<string, WidgetRegistryEntry> = {
   'trash': {
     type: 'trash',
     title: 'Recently Deleted',
+    titleLink: '/admin/trash',
     description: 'Recently deleted items across the system',
     icon: Trash2,
     category: 'lists',
