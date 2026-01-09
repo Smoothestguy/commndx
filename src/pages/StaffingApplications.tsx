@@ -200,11 +200,39 @@ export default function StaffingApplications() {
     return jobPostings.filter(p => postingIdsWithApps.has(p.id));
   }, [jobPostings, applications]);
 
+  // Identify first-time applications per applicant (their very first application)
+  const firstTimeApplicationIds = useMemo(() => {
+    if (!applications) return new Set<string>();
+    
+    // Sort all applications by created_at ascending to find first per applicant
+    const sorted = [...applications].sort(
+      (a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime()
+    );
+    
+    const firstAppIds = new Set<string>();
+    const seenApplicants = new Set<string>();
+    
+    for (const app of sorted) {
+      if (!seenApplicants.has(app.applicant_id)) {
+        seenApplicants.add(app.applicant_id);
+        firstAppIds.add(app.id);
+      }
+    }
+    
+    return firstAppIds;
+  }, [applications]);
+
   // Filter applications by search, experience, and job posting
+  // Main list only shows FIRST-TIME applicants (their very first application)
   const filteredApplications = useMemo(() => {
     return applications?.filter((app) => {
       const applicant = app.applicants;
       if (!applicant) return false;
+      
+      // Only show first-time applications in main list
+      if (!firstTimeApplicationIds.has(app.id)) {
+        return false;
+      }
       
       // Job posting filter
       if (postingFilter !== "all" && app.job_posting_id !== postingFilter) {
@@ -232,7 +260,7 @@ export default function StaffingApplications() {
       
       return true;
     });
-  }, [applications, search, experienceFilter, postingFilter, formTemplates]);
+  }, [applications, search, experienceFilter, postingFilter, formTemplates, firstTimeApplicationIds]);
 
   const handleCreateTaskOrder = async () => {
     if (!newTaskOrder.project_id || !newTaskOrder.title) {
