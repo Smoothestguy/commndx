@@ -176,6 +176,20 @@ export function EnhancedTimeEntryForm({
     currentProjectId || undefined
   );
 
+  // Normalize personnel list for child components (prevents ref-churn from inline .map())
+  const assignedPersonnelForSelection = useMemo(
+    () => assignedPersonnel.map((a) => ({ personnel: a.personnel })),
+    [assignedPersonnel]
+  );
+
+  const selectedPersonnelListDaily = useMemo(
+    () =>
+      assignedPersonnel
+        .filter((a) => a.personnel !== null && selectedPersonnel.has(a.personnel.id))
+        .map((a) => ({ personnel: a.personnel })),
+    [assignedPersonnel, selectedPersonnel]
+  );
+
   // Fetch existing time entries for the selected project/week (for pre-populating)
   const { data: existingWeeklyEntries = [] } = usePersonnelTimeEntriesByWeek(
     weeklyProjectId,
@@ -662,9 +676,7 @@ export function EnhancedTimeEntryForm({
                 {/* Personnel Selection for Daily */}
                 {!entry && currentProjectId && (
                   <PersonnelSelectionSection
-                    assignedPersonnel={assignedPersonnel.map(a => ({
-                      personnel: a.personnel ? { ...a.personnel, photo_url: (a.personnel as any).photo_url } : null
-                    }))}
+                    assignedPersonnel={assignedPersonnelForSelection}
                     selectedPersonnel={selectedPersonnel}
                     togglePersonnel={togglePersonnel}
                     selectAllPersonnel={selectAllPersonnel}
@@ -678,9 +690,7 @@ export function EnhancedTimeEntryForm({
                 {/* Individual Hours per Personnel (when personnel selected) */}
                 {!entry && selectedPersonnel.size > 0 && (
                   <DailyPersonnelHoursSection
-                    selectedPersonnelList={assignedPersonnel
-                      .filter(a => a.personnel !== null && selectedPersonnel.has(a.personnel.id))
-                      .map(a => ({ personnel: { ...a.personnel!, photo_url: (a.personnel as any)?.photo_url } }))}
+                    selectedPersonnelList={selectedPersonnelListDaily}
                     dailyPersonnelHours={dailyPersonnelHours}
                     updateDailyPersonnelHour={updateDailyPersonnelHour}
                     applyHoursToAllDaily={applyHoursToAllDaily}
