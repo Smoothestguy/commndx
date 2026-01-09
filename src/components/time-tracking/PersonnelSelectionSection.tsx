@@ -1,9 +1,8 @@
 import { Label } from "@/components/ui/label";
-import { Checkbox } from "@/components/ui/checkbox";
 import { IndeterminateCheckbox } from "@/components/ui/indeterminate-checkbox";
 import { Button } from "@/components/ui/button";
 import { PersonnelAvatar } from "@/components/personnel/PersonnelAvatar";
-import { Plus, Users } from "lucide-react";
+import { Plus, Users, Check } from "lucide-react";
 
 interface PersonnelItem {
   id: string;
@@ -79,23 +78,27 @@ export function PersonnelSelectionSection({
             const person = assignment.personnel;
             const isSelected = selectedPersonnel.has(person.id);
             return (
-              <button
-                type="button"
+              <div
                 key={person.id}
+                role="button"
+                tabIndex={0}
                 className={`flex items-center gap-2 p-2 rounded-lg cursor-pointer transition-colors text-left w-full ${
                   isSelected ? 'bg-primary/10 border-primary border' : 'bg-muted/50 hover:bg-muted border border-transparent'
                 }`}
-                onClick={(e) => {
-                  e.preventDefault();
-                  e.stopPropagation();
-                  togglePersonnel(person.id);
+                onClick={() => togglePersonnel(person.id)}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter' || e.key === ' ') {
+                    e.preventDefault();
+                    togglePersonnel(person.id);
+                  }
                 }}
               >
-                <Checkbox 
-                  checked={isSelected} 
-                  onCheckedChange={() => togglePersonnel(person.id)}
-                  onClick={(e) => e.stopPropagation()}
-                />
+                {/* Native styled checkbox - no Radix */}
+                <div className={`h-4 w-4 rounded border flex items-center justify-center flex-shrink-0 transition-colors ${
+                  isSelected ? 'bg-primary border-primary text-primary-foreground' : 'border-input bg-background'
+                }`}>
+                  {isSelected && <Check className="h-3 w-3" />}
+                </div>
                 <PersonnelAvatar
                   photoUrl={person.photo_url}
                   firstName={person.first_name}
@@ -112,7 +115,7 @@ export function PersonnelSelectionSection({
                     </span>
                   )}
                 </div>
-              </button>
+              </div>
             );
           })}
       </div>
