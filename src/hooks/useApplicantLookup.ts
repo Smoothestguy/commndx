@@ -14,19 +14,23 @@ export interface FoundApplicantData {
   photo_url: string | null;
 }
 
-interface LookupResult {
+export interface LookupResult {
   found: boolean;
   applicant?: FoundApplicantData;
+  previousAnswers?: Record<string, any> | null;
+  previousSmsConsent?: boolean;
   error?: string;
 }
 
 export function useApplicantLookup() {
   const [isLookingUp, setIsLookingUp] = useState(false);
   const [foundApplicant, setFoundApplicant] = useState<FoundApplicantData | null>(null);
+  const [previousAnswers, setPreviousAnswers] = useState<Record<string, any> | null>(null);
+  const [previousSmsConsent, setPreviousSmsConsent] = useState(false);
   const [hasLookedUp, setHasLookedUp] = useState(false);
   const debounceRef = useRef<NodeJS.Timeout | null>(null);
 
-  const lookupApplicant = useCallback(async (email?: string, phone?: string): Promise<FoundApplicantData | null> => {
+  const lookupApplicant = useCallback(async (email?: string, phone?: string): Promise<LookupResult | null> => {
     // Clear any pending debounce
     if (debounceRef.current) {
       clearTimeout(debounceRef.current);
@@ -65,9 +69,11 @@ export function useApplicantLookup() {
 
       if (data?.found && data.applicant) {
         setFoundApplicant(data.applicant);
+        setPreviousAnswers(data.previousAnswers || null);
+        setPreviousSmsConsent(data.previousSmsConsent || false);
         setHasLookedUp(true);
         setIsLookingUp(false);
-        return data.applicant;
+        return data;
       }
 
       setHasLookedUp(true);
@@ -92,6 +98,8 @@ export function useApplicantLookup() {
 
   const clearApplicant = useCallback(() => {
     setFoundApplicant(null);
+    setPreviousAnswers(null);
+    setPreviousSmsConsent(false);
     setHasLookedUp(false);
   }, []);
 
@@ -100,6 +108,8 @@ export function useApplicantLookup() {
     lookupWithDebounce,
     isLookingUp,
     foundApplicant,
+    previousAnswers,
+    previousSmsConsent,
     hasLookedUp,
     clearApplicant,
   };
