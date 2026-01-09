@@ -583,11 +583,11 @@ export function ProjectTimeEntriesTable({
                           checked={isProjectSelected(project)}
                           ref={(el) => {
                             if (el) {
-                              (
-                                el as HTMLButtonElement & {
-                                  indeterminate: boolean;
-                                }
-                              ).indeterminate = isProjectIndeterminate(project);
+                              const isIndet = isProjectIndeterminate(project);
+                              const btn = el as HTMLButtonElement & { indeterminate: boolean };
+                              if (btn.indeterminate !== isIndet) {
+                                btn.indeterminate = isIndet;
+                              }
                             }
                           }}
                           onCheckedChange={(checked) =>
@@ -664,12 +664,11 @@ export function ProjectTimeEntriesTable({
                                     checked={isPersonnelSelected(personnel)}
                                     ref={(el) => {
                                       if (el) {
-                                        (
-                                          el as HTMLButtonElement & {
-                                            indeterminate: boolean;
-                                          }
-                                        ).indeterminate =
-                                          isPersonnelIndeterminate(personnel);
+                                        const isIndet = isPersonnelIndeterminate(personnel);
+                                        const btn = el as HTMLButtonElement & { indeterminate: boolean };
+                                        if (btn.indeterminate !== isIndet) {
+                                          btn.indeterminate = isIndet;
+                                        }
                                       }
                                     }}
                                     onCheckedChange={(checked) =>
@@ -971,11 +970,11 @@ export function ProjectTimeEntriesTable({
                         checked={isProjectSelected(project)}
                         ref={(el) => {
                           if (el) {
-                            (
-                              el as HTMLButtonElement & {
-                                indeterminate: boolean;
-                              }
-                            ).indeterminate = isProjectIndeterminate(project);
+                            const isIndet = isProjectIndeterminate(project);
+                            const btn = el as HTMLButtonElement & { indeterminate: boolean };
+                            if (btn.indeterminate !== isIndet) {
+                              btn.indeterminate = isIndet;
+                            }
                           }
                         }}
                         onCheckedChange={(checked) =>
@@ -1052,12 +1051,11 @@ export function ProjectTimeEntriesTable({
                                 checked={isPersonnelSelected(personnel)}
                                 ref={(el) => {
                                   if (el) {
-                                    (
-                                      el as HTMLButtonElement & {
-                                        indeterminate: boolean;
-                                      }
-                                    ).indeterminate =
-                                      isPersonnelIndeterminate(personnel);
+                                    const isIndet = isPersonnelIndeterminate(personnel);
+                                    const btn = el as HTMLButtonElement & { indeterminate: boolean };
+                                    if (btn.indeterminate !== isIndet) {
+                                      btn.indeterminate = isIndet;
+                                    }
                                   }
                                 }}
                                 onCheckedChange={(checked) =>
