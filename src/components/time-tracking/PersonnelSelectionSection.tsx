@@ -73,42 +73,43 @@ export function PersonnelSelectionSection({
       )}
 
       <div className="grid grid-cols-2 gap-2 max-h-40 overflow-y-auto border rounded-lg p-2">
-        {assignedPersonnel.map((assignment) => {
-          const person = assignment.personnel;
-          if (!person) return null;
-          const isSelected = selectedPersonnel.has(person.id);
-          return (
-            <div
-              key={person.id}
-              className={`flex items-center gap-2 p-2 rounded-lg cursor-pointer transition-colors ${
-                isSelected ? 'bg-primary/10 border-primary border' : 'bg-muted/50 hover:bg-muted'
-              }`}
-              onClick={() => togglePersonnel(person.id)}
-            >
-              <Checkbox 
-                checked={isSelected} 
-                onCheckedChange={() => togglePersonnel(person.id)}
-                onClick={(e) => e.stopPropagation()}
-              />
-              <PersonnelAvatar
-                photoUrl={person.photo_url}
-                firstName={person.first_name}
-                lastName={person.last_name}
-                size="xs"
-              />
-              <div className="min-w-0 flex-1">
-                <span className="text-xs font-medium truncate block">
-                  {person.first_name} {person.last_name}
-                </span>
-                {person.hourly_rate && (
-                  <span className="text-xs text-muted-foreground">
-                    ${person.hourly_rate}/hr
+        {assignedPersonnel
+          .filter((a): a is { personnel: NonNullable<typeof a.personnel> } => a.personnel !== null)
+          .map((assignment) => {
+            const person = assignment.personnel;
+            const isSelected = selectedPersonnel.has(person.id);
+            return (
+              <div
+                key={person.id}
+                className={`flex items-center gap-2 p-2 rounded-lg cursor-pointer transition-colors ${
+                  isSelected ? 'bg-primary/10 border-primary border' : 'bg-muted/50 hover:bg-muted'
+                }`}
+                onClick={() => togglePersonnel(person.id)}
+              >
+                <Checkbox 
+                  checked={isSelected} 
+                  onCheckedChange={() => togglePersonnel(person.id)}
+                  onClick={(e) => e.stopPropagation()}
+                />
+                <PersonnelAvatar
+                  photoUrl={person.photo_url}
+                  firstName={person.first_name}
+                  lastName={person.last_name}
+                  size="xs"
+                />
+                <div className="min-w-0 flex-1">
+                  <span className="text-xs font-medium truncate block">
+                    {person.first_name} {person.last_name}
                   </span>
-                )}
+                  {person.hourly_rate && (
+                    <span className="text-xs text-muted-foreground">
+                      ${person.hourly_rate}/hr
+                    </span>
+                  )}
+                </div>
               </div>
-            </div>
-          );
-        })}
+            );
+          })}
       </div>
     </div>
   );
