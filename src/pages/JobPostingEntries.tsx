@@ -38,7 +38,7 @@ import {
 export default function JobPostingEntries() {
   const { postingId } = useParams<{ postingId: string }>();
   const navigate = useNavigate();
-  const [statusFilter, setStatusFilter] = useState<string>("all");
+  const [statusFilter, setStatusFilter] = useState<string>("active");
   const [selectedApp, setSelectedApp] = useState<Application | null>(null);
   const [showDetailDialog, setShowDetailDialog] = useState(false);
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
@@ -55,10 +55,20 @@ export default function JobPostingEntries() {
   const formTemplate = formTemplates?.find((t) => t.id === currentPosting?.form_template_id);
 
   // Fetch applications for this specific posting
+  // Filter by status - "active" means non-rejected, "all" includes rejected
   const { data: applications, isLoading } = useApplications({
     postingId,
-    status: statusFilter !== "all" ? statusFilter : undefined,
+    status: statusFilter === "all" ? undefined : statusFilter === "active" ? undefined : statusFilter,
   });
+
+  // Further filter for "active" (non-rejected) applications
+  const filteredByStatus = useMemo(() => {
+    if (!applications) return [];
+    if (statusFilter === "active") {
+      return applications.filter(app => app.status !== "rejected");
+    }
+    return applications;
+  }, [applications, statusFilter]);
 
   // Get form fields for dynamic columns
   const formFields = useMemo<FormField[]>(() => {
@@ -66,7 +76,7 @@ export default function JobPostingEntries() {
     return formTemplate.fields.filter((f: FormField) => f.type !== "section");
   }, [formTemplate]);
 
-  const filteredApplications = applications || [];
+  const filteredApplications = filteredByStatus;
 
   const handleExportCSV = () => {
     const selected = selectedIds.size > 0
@@ -201,6 +211,7 @@ export default function JobPostingEntries() {
                   <SelectValue placeholder="All Statuses" />
                 </SelectTrigger>
                 <SelectContent>
+                  <SelectItem value="active">Active (Hide Rejected)</SelectItem>
                   <SelectItem value="all">All Statuses</SelectItem>
                   <SelectItem value="submitted">Submitted</SelectItem>
                   <SelectItem value="reviewing">Reviewing</SelectItem>
