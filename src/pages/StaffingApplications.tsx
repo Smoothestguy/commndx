@@ -373,7 +373,7 @@ export default function StaffingApplications() {
                 <div
                   key={posting.id}
                   className="flex items-center justify-between p-3 rounded-lg border bg-muted/30 cursor-pointer hover:bg-muted/50 transition-colors"
-                  onClick={() => window.open(`/apply/${posting.public_token}`, "_blank")}
+                  onClick={() => navigate(`/staffing/applications/posting/${posting.id}`)}
                 >
                   <div>
                     <p className="font-medium">{posting.project_task_orders?.title}</p>
