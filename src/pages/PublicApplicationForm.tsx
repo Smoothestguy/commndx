@@ -4,7 +4,7 @@ import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
 import { format } from "date-fns";
-import { MapPin, Calendar, Users, CheckCircle2, Loader2, Mail, AlertTriangle, Navigation } from "lucide-react";
+import { MapPin, Calendar, Users, CheckCircle2, Loader2, Mail, AlertTriangle, Navigation, UserCheck, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -33,6 +33,7 @@ import { useGeolocation } from "@/hooks/useGeolocation";
 import { cn } from "@/lib/utils";
 import { SignaturePad } from "@/components/form-builder/SignaturePad";
 import { FormFileUpload } from "@/components/form-builder/FormFileUpload";
+import { useApplicantLookup, FoundApplicantData } from "@/hooks/useApplicantLookup";
 
 // Helper function to render fields based on layout
 function renderFieldsWithLayout(
@@ -101,6 +102,11 @@ export default function PublicApplicationForm() {
   const [photoError, setPhotoError] = useState<string | null>(null);
   const [smsConsent, setSmsConsent] = useState(false);
   const [smsConsentError, setSmsConsentError] = useState<string | null>(null);
+  
+  // Returning applicant auto-fill state
+  const [isReturningApplicant, setIsReturningApplicant] = useState(false);
+  const [coreFieldsLocked, setCoreFieldsLocked] = useState(false);
+  const { lookupApplicant, isLookingUp, foundApplicant, clearApplicant } = useApplicantLookup();
 
   const { data: posting, isLoading, error } = useJobPostingByToken(token || "");
   const submitApplication = useSubmitApplication();
@@ -197,6 +203,51 @@ export default function PublicApplicationForm() {
       photo_url: "",
     },
   });
+
+  // Handle auto-fill when applicant is found
+  const handleAutoFill = useCallback((applicantData: FoundApplicantData) => {
+    form.setValue("first_name", applicantData.first_name || "");
+    form.setValue("last_name", applicantData.last_name || "");
+    form.setValue("email", applicantData.email || "");
+    form.setValue("phone", applicantData.phone || "");
+    form.setValue("home_zip", applicantData.home_zip || "");
+    if (applicantData.photo_url) {
+      form.setValue("photo_url", applicantData.photo_url);
+    }
+    setIsReturningApplicant(true);
+    setCoreFieldsLocked(true);
+    toast.success("Welcome back! We've pre-filled your information.");
+  }, [form]);
+
+  // Handle email/phone lookup on blur
+  const handleEmailBlur = useCallback(async (email: string) => {
+    if (!email || !email.includes("@") || isReturningApplicant) return;
+    
+    const result = await lookupApplicant(email, undefined);
+    if (result) {
+      handleAutoFill(result);
+    }
+  }, [lookupApplicant, handleAutoFill, isReturningApplicant]);
+
+  const handlePhoneBlur = useCallback(async (phone: string) => {
+    if (!phone || isReturningApplicant) return;
+    const normalizedPhone = phone.replace(/\D/g, "");
+    if (normalizedPhone.length !== 10) return;
+    
+    const result = await lookupApplicant(undefined, normalizedPhone);
+    if (result) {
+      handleAutoFill(result);
+    }
+  }, [lookupApplicant, handleAutoFill, isReturningApplicant]);
+
+  // Clear auto-fill and allow editing
+  const handleClearAutoFill = useCallback(() => {
+    setIsReturningApplicant(false);
+    setCoreFieldsLocked(false);
+    clearApplicant();
+    form.reset();
+    toast.info("You can now enter new information.");
+  }, [clearApplicant, form]);
 
   const handleFileUploadStateChange = useCallback((fieldId: string, isUploading: boolean) => {
     setUploadingFields(prev => {
@@ -757,6 +808,35 @@ export default function PublicApplicationForm() {
           <CardContent>
             <Form {...form}>
               <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
+                {/* Returning Applicant Welcome Banner */}
+                {isReturningApplicant && foundApplicant && (
+                  <Alert className="border-green-200 bg-green-50 dark:bg-green-950/30 dark:border-green-800">
+                    <UserCheck className="h-4 w-4 text-green-600" />
+                    <AlertTitle className="text-green-900 dark:text-green-100">
+                      Welcome back, {foundApplicant.first_name}!
+                    </AlertTitle>
+                    <AlertDescription className="text-green-700 dark:text-green-300">
+                      We've pre-filled your information from your previous application.
+                      <Button 
+                        type="button"
+                        variant="link" 
+                        className="p-0 h-auto text-green-700 dark:text-green-400 ml-2 underline"
+                        onClick={handleClearAutoFill}
+                      >
+                        Use different information
+                      </Button>
+                    </AlertDescription>
+                  </Alert>
+                )}
+
+                {/* Lookup Loading Indicator */}
+                {isLookingUp && (
+                  <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                    <span>Checking for existing application...</span>
+                  </div>
+                )}
+
                 {/* Location requirement notice */}
                 {formSettings.requireLocation && !hasLocation && (
                   <Alert variant="default" className="border-blue-200 bg-blue-50 dark:bg-blue-950/30 dark:border-blue-800">
@@ -795,14 +875,17 @@ export default function PublicApplicationForm() {
                       onUploadStateChange={(isUploading) => handleFileUploadStateChange("core_photo", isUploading)}
                       label={`${getCoreLabel('profilePicture')}${formSettings.requireProfilePhoto !== false ? ' *' : ''}`}
                       required={formSettings.requireProfilePhoto !== false}
-                      helpText={formSettings.requireProfilePhoto !== false 
-                        ? "A clear photo is required for your application (max 10MB)" 
-                        : "Upload a clear photo of yourself (optional)"
+                      helpText={coreFieldsLocked && foundApplicant?.photo_url
+                        ? "Using your existing photo from previous application"
+                        : formSettings.requireProfilePhoto !== false 
+                          ? "A clear photo is required for your application (max 10MB)" 
+                          : "Upload a clear photo of yourself (optional)"
                       }
                       acceptedFileTypes={["image/jpeg", "image/jpg", "image/png", "image/heic"]}
                       maxFileSize={10}
                       storageBucket="application-files"
                       storagePath="profile-photos"
+                      disabled={coreFieldsLocked && !!foundApplicant?.photo_url}
                     />
                     {photoError && (
                       <p className="text-sm font-medium text-destructive">{photoError}</p>
@@ -820,7 +903,12 @@ export default function PublicApplicationForm() {
                         <FormItem>
                           <FormLabel>{getCoreLabel('firstName')} *</FormLabel>
                           <FormControl>
-                            <Input placeholder="John" {...field} />
+                            <Input 
+                              placeholder="John" 
+                              {...field} 
+                              readOnly={coreFieldsLocked}
+                              className={cn(coreFieldsLocked && "bg-muted cursor-not-allowed opacity-70")}
+                            />
                           </FormControl>
                           <FormMessage />
                         </FormItem>
@@ -835,7 +923,12 @@ export default function PublicApplicationForm() {
                         <FormItem>
                           <FormLabel>{getCoreLabel('lastName')} *</FormLabel>
                           <FormControl>
-                            <Input placeholder="Doe" {...field} />
+                            <Input 
+                              placeholder="Doe" 
+                              {...field} 
+                              readOnly={coreFieldsLocked}
+                              className={cn(coreFieldsLocked && "bg-muted cursor-not-allowed opacity-70")}
+                            />
                           </FormControl>
                           <FormMessage />
                         </FormItem>
@@ -854,14 +947,31 @@ export default function PublicApplicationForm() {
                           <FormLabel>{getCoreLabel('email')} *</FormLabel>
                           <FormControl>
                             <div className="relative flex items-center">
-                              <div className="absolute left-0 flex items-center justify-center w-10 h-full bg-muted border border-r-0 rounded-l-md">
-                                <Mail className="h-4 w-4 text-muted-foreground" />
+                              <div className={cn(
+                                "absolute left-0 flex items-center justify-center w-10 h-full bg-muted border border-r-0 rounded-l-md",
+                                coreFieldsLocked && "opacity-70"
+                              )}>
+                                {isLookingUp ? (
+                                  <Loader2 className="h-4 w-4 text-muted-foreground animate-spin" />
+                                ) : (
+                                  <Mail className="h-4 w-4 text-muted-foreground" />
+                                )}
                               </div>
                               <Input 
                                 type="email" 
                                 placeholder="john@example.com" 
-                                className="pl-12 rounded-l-none" 
-                                {...field} 
+                                className={cn(
+                                  "pl-12 rounded-l-none",
+                                  coreFieldsLocked && "bg-muted cursor-not-allowed opacity-70"
+                                )}
+                                {...field}
+                                readOnly={coreFieldsLocked}
+                                onBlur={(e) => {
+                                  field.onBlur();
+                                  if (!coreFieldsLocked) {
+                                    handleEmailBlur(e.target.value);
+                                  }
+                                }}
                               />
                             </div>
                           </FormControl>
@@ -882,6 +992,7 @@ export default function PublicApplicationForm() {
                               value={field.value}
                               onChange={field.onChange}
                               showIcon
+                              disabled={coreFieldsLocked}
                             />
                           </FormControl>
                           <FormMessage />
@@ -899,7 +1010,16 @@ export default function PublicApplicationForm() {
                       <FormItem>
                         <FormLabel>Home ZIP Code</FormLabel>
                         <FormControl>
-                          <Input placeholder="12345" maxLength={10} className="w-1/3 min-w-[120px]" {...field} />
+                          <Input 
+                            placeholder="12345" 
+                            maxLength={10} 
+                            className={cn(
+                              "w-1/3 min-w-[120px]",
+                              coreFieldsLocked && "bg-muted cursor-not-allowed opacity-70"
+                            )}
+                            {...field}
+                            readOnly={coreFieldsLocked}
+                          />
                         </FormControl>
                         <FormMessage />
                       </FormItem>

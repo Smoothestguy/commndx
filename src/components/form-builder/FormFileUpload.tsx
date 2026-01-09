@@ -15,6 +15,7 @@ interface FormFileUploadProps {
   maxFileSize?: number; // in MB
   storageBucket?: string;
   storagePath?: string;
+  disabled?: boolean;
 }
 
 export function FormFileUpload({
@@ -28,6 +29,7 @@ export function FormFileUpload({
   maxFileSize = 5,
   storageBucket = "application-files",
   storagePath = "uploads",
+  disabled = false,
 }: FormFileUploadProps) {
   const inputRef = useRef<HTMLInputElement>(null);
   const [dragOver, setDragOver] = useState(false);
@@ -247,36 +249,40 @@ export function FormFileUpload({
                 </div>
               )}
             </div>
-            <Button
-              type="button"
-              variant="ghost"
-              size="sm"
-              className="h-8 w-8 p-0 flex-shrink-0"
-              onClick={removeFile}
-              disabled={uploading}
-            >
-              <X className="h-4 w-4 text-muted-foreground" />
-            </Button>
+            {!disabled && (
+              <Button
+                type="button"
+                variant="ghost"
+                size="sm"
+                className="h-8 w-8 p-0 flex-shrink-0"
+                onClick={removeFile}
+                disabled={uploading}
+              >
+                <X className="h-4 w-4 text-muted-foreground" />
+              </Button>
+            )}
           </div>
         </div>
       ) : (
         <div
-          onClick={handleClick}
-          onDrop={handleDrop}
-          onDragOver={handleDragOver}
-          onDragLeave={handleDragLeave}
+          onClick={disabled ? undefined : handleClick}
+          onDrop={disabled ? undefined : handleDrop}
+          onDragOver={disabled ? undefined : handleDragOver}
+          onDragLeave={disabled ? undefined : handleDragLeave}
           className={cn(
-            "border-2 border-dashed rounded-lg p-4 text-center cursor-pointer transition-colors",
-            dragOver
-              ? "border-primary bg-primary/5"
-              : "bg-muted/30 hover:bg-muted/50 border-muted-foreground/25"
+            "border-2 border-dashed rounded-lg p-4 text-center transition-colors",
+            disabled 
+              ? "bg-muted/50 border-muted-foreground/15 cursor-not-allowed opacity-70"
+              : dragOver
+                ? "border-primary bg-primary/5 cursor-pointer"
+                : "bg-muted/30 hover:bg-muted/50 border-muted-foreground/25 cursor-pointer"
           )}
         >
           <Upload className="h-6 w-6 mx-auto text-muted-foreground mb-2" />
           <p className="text-sm text-muted-foreground">
-            Click to upload or drag and drop
+            {disabled ? "File upload disabled" : "Click to upload or drag and drop"}
           </p>
-          {acceptedFileTypes && (
+          {!disabled && acceptedFileTypes && (
             <p className="text-xs text-muted-foreground mt-1">
               Max {maxFileSize}MB
             </p>
