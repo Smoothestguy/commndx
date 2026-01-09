@@ -33,13 +33,29 @@ export interface TimeDecimalInputProps
  * - "8.5" → 8.50 hours (already decimal)
  */
 const TimeDecimalInput = React.forwardRef<HTMLInputElement, TimeDecimalInputProps>(
-  ({ className, value, onValueChange, showPreview = false, showIcon = false, compact = false, placeholder, ...props }, ref) => {
+  (
+    { className, value, onValueChange, showPreview = false, showIcon = false, compact = false, placeholder, ...props },
+    ref
+  ) => {
     const [displayValue, setDisplayValue] = React.useState<string>("");
     const [error, setError] = React.useState<string | null>(null);
     const [preview, setPreview] = React.useState<string | null>(null);
     const [isFocused, setIsFocused] = React.useState(false);
 
-    const inputRef = React.useRef<HTMLInputElement>(null);
+    const inputRef = React.useRef<HTMLInputElement | null>(null);
+
+    const setMergedRef = React.useCallback(
+      (node: HTMLInputElement | null) => {
+        inputRef.current = node;
+        if (!ref) return;
+        if (typeof ref === "function") {
+          ref(node);
+        } else {
+          (ref as React.MutableRefObject<HTMLInputElement | null>).current = node;
+        }
+      },
+      [ref]
+    );
 
     // Sync display value when external value changes (only when not focused)
     React.useEffect(() => {
@@ -47,9 +63,6 @@ const TimeDecimalInput = React.forwardRef<HTMLInputElement, TimeDecimalInputProp
         setDisplayValue(value > 0 ? value.toFixed(2) : "");
       }
     }, [value, isFocused]);
-
-    // Merge refs
-    React.useImperativeHandle(ref, () => inputRef.current!, []);
 
     const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
       const newValue = e.target.value;
@@ -121,7 +134,7 @@ const TimeDecimalInput = React.forwardRef<HTMLInputElement, TimeDecimalInputProp
         <input
           type="text"
           inputMode="decimal"
-          ref={inputRef}
+          ref={setMergedRef}
           value={displayValue}
           onChange={handleChange}
           onFocus={handleFocus}
