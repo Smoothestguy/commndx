@@ -217,9 +217,10 @@ export function PersonnelAssignmentDialog({
                   <div className="py-2 text-sm text-muted-foreground">No personnel assigned</div>
                 ) : (
                   <div className="space-y-2">
-                    {assignedPersonnel.map((assignment) => {
+                    {assignedPersonnel
+                      .filter((a): a is typeof a & { personnel: NonNullable<typeof a.personnel> } => a.personnel !== null)
+                      .map((assignment) => {
                       const person = assignment.personnel;
-                      if (!person) return null;
                       const isEditing = editingAssignmentId === assignment.id;
                       const bracket = assignment.project_rate_brackets;
                       

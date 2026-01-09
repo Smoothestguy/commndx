@@ -677,9 +677,9 @@ export function EnhancedTimeEntryForm({
                 {/* Individual Hours per Personnel (when personnel selected) */}
                 {!entry && selectedPersonnel.size > 0 && (
                   <DailyPersonnelHoursSection
-                    selectedPersonnelList={assignedPersonnel.filter(
-                      a => a.personnel && selectedPersonnel.has(a.personnel.id)
-                    ).map(a => ({ personnel: a.personnel ? { ...a.personnel, photo_url: (a.personnel as any).photo_url } : null }))}
+                    selectedPersonnelList={assignedPersonnel
+                      .filter(a => a.personnel !== null && selectedPersonnel.has(a.personnel.id))
+                      .map(a => ({ personnel: { ...a.personnel!, photo_url: (a.personnel as any)?.photo_url } }))}
                     dailyPersonnelHours={dailyPersonnelHours}
                     updateDailyPersonnelHour={updateDailyPersonnelHour}
                     applyHoursToAllDaily={applyHoursToAllDaily}
