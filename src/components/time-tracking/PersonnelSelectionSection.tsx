@@ -1,5 +1,6 @@
 import { Label } from "@/components/ui/label";
 import { Checkbox } from "@/components/ui/checkbox";
+import { IndeterminateCheckbox } from "@/components/ui/indeterminate-checkbox";
 import { Button } from "@/components/ui/button";
 import { PersonnelAvatar } from "@/components/personnel/PersonnelAvatar";
 import { Plus, Users } from "lucide-react";
@@ -35,6 +36,7 @@ export function PersonnelSelectionSection({
 }: PersonnelSelectionSectionProps) {
   const allSelected = assignedPersonnel.length > 0 && 
     assignedPersonnel.every(a => a.personnel && selectedPersonnel.has(a.personnel.id));
+  const someSelected = selectedPersonnel.size > 0 && !allSelected;
 
   return (
     <div className="space-y-3">
@@ -44,9 +46,10 @@ export function PersonnelSelectionSection({
           Personnel
         </Label>
         <div className="flex items-center gap-2">
-          <Checkbox
+          <IndeterminateCheckbox
             id="select-all-personnel"
             checked={allSelected}
+            indeterminate={someSelected}
             onCheckedChange={(checked) => {
               if (checked) selectAllPersonnel();
               else clearPersonnelSelection();

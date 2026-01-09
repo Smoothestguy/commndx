@@ -1,4 +1,5 @@
 import { Checkbox } from "@/components/ui/checkbox";
+import { IndeterminateCheckbox } from "@/components/ui/indeterminate-checkbox";
 import { Button } from "@/components/ui/button";
 import { PersonnelAvatar } from "@/components/personnel/PersonnelAvatar";
 import { Plus, Users } from "lucide-react";
@@ -34,13 +35,15 @@ export function WeeklyPersonnelGrid({
 }: WeeklyPersonnelGridProps) {
   const allSelected = assignedPersonnel.length > 0 && 
     assignedPersonnel.every(a => a.personnel && selectedPersonnel.has(a.personnel.id));
+  const someSelected = selectedPersonnel.size > 0 && !allSelected;
 
   return (
     <div className="space-y-2">
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-2">
-          <Checkbox
+          <IndeterminateCheckbox
             checked={allSelected}
+            indeterminate={someSelected}
             onCheckedChange={(checked) => {
               if (checked) selectAllPersonnel();
               else clearPersonnelSelection();
