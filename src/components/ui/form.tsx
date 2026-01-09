@@ -83,12 +83,14 @@ const FormLabel = React.forwardRef<
 FormLabel.displayName = "FormLabel";
 
 const FormControl = React.forwardRef<React.ElementRef<typeof Slot>, React.ComponentPropsWithoutRef<typeof Slot>>(
-  ({ ...props }, ref) => {
+  ({ ...props }, _ref) => {
     const { error, formItemId, formDescriptionId, formMessageId } = useFormField();
 
+    // Avoid forwarding refs through Radix Slot here.
+    // Slot composes refs internally; when child refs are callback refs that can change identity
+    // it can trigger attach/detach loops and "Maximum update depth exceeded".
     return (
       <Slot
-        ref={ref}
         id={formItemId}
         aria-describedby={!error ? `${formDescriptionId}` : `${formDescriptionId} ${formMessageId}`}
         aria-invalid={!!error}
