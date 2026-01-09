@@ -19,6 +19,7 @@ import {
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
+import { IndeterminateCheckbox } from "@/components/ui/indeterminate-checkbox";
 import { Badge } from "@/components/ui/badge";
 import { Card } from "@/components/ui/card";
 import { StatusBadge } from "@/components/shared/StatusBadge";
@@ -579,17 +580,9 @@ export function ProjectTimeEntriesTable({
                         onClick={(e) => e.stopPropagation()}
                         className="pt-0.5"
                       >
-                        <Checkbox
+                        <IndeterminateCheckbox
                           checked={isProjectSelected(project)}
-                          ref={(el) => {
-                            if (el) {
-                              const isIndet = isProjectIndeterminate(project);
-                              const btn = el as HTMLButtonElement & { indeterminate: boolean };
-                              if (btn.indeterminate !== isIndet) {
-                                btn.indeterminate = isIndet;
-                              }
-                            }
-                          }}
+                          indeterminate={isProjectIndeterminate(project)}
                           onCheckedChange={(checked) =>
                             handleSelectProject(project, !!checked)
                           }
@@ -660,17 +653,9 @@ export function ProjectTimeEntriesTable({
                                   onClick={(e) => e.stopPropagation()}
                                   className="pt-0.5"
                                 >
-                                  <Checkbox
+                                  <IndeterminateCheckbox
                                     checked={isPersonnelSelected(personnel)}
-                                    ref={(el) => {
-                                      if (el) {
-                                        const isIndet = isPersonnelIndeterminate(personnel);
-                                        const btn = el as HTMLButtonElement & { indeterminate: boolean };
-                                        if (btn.indeterminate !== isIndet) {
-                                          btn.indeterminate = isIndet;
-                                        }
-                                      }
-                                    }}
+                                    indeterminate={isPersonnelIndeterminate(personnel)}
                                     onCheckedChange={(checked) =>
                                       handleSelectPersonnel(
                                         personnel,
@@ -966,17 +951,9 @@ export function ProjectTimeEntriesTable({
                 >
                   {onBulkDelete && (
                     <TableCell onClick={(e) => e.stopPropagation()}>
-                      <Checkbox
+                      <IndeterminateCheckbox
                         checked={isProjectSelected(project)}
-                        ref={(el) => {
-                          if (el) {
-                            const isIndet = isProjectIndeterminate(project);
-                            const btn = el as HTMLButtonElement & { indeterminate: boolean };
-                            if (btn.indeterminate !== isIndet) {
-                              btn.indeterminate = isIndet;
-                            }
-                          }
-                        }}
+                        indeterminate={isProjectIndeterminate(project)}
                         onCheckedChange={(checked) =>
                           handleSelectProject(project, !!checked)
                         }
@@ -1047,17 +1024,9 @@ export function ProjectTimeEntriesTable({
                         >
                           {onBulkDelete && (
                             <TableCell onClick={(e) => e.stopPropagation()}>
-                              <Checkbox
+                              <IndeterminateCheckbox
                                 checked={isPersonnelSelected(personnel)}
-                                ref={(el) => {
-                                  if (el) {
-                                    const isIndet = isPersonnelIndeterminate(personnel);
-                                    const btn = el as HTMLButtonElement & { indeterminate: boolean };
-                                    if (btn.indeterminate !== isIndet) {
-                                      btn.indeterminate = isIndet;
-                                    }
-                                  }
-                                }}
+                                indeterminate={isPersonnelIndeterminate(personnel)}
                                 onCheckedChange={(checked) =>
                                   handleSelectPersonnel(personnel, !!checked)
                                 }
