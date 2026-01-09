@@ -47,6 +47,7 @@ const PRESET_THEMES: Array<{ name: string; theme: Partial<DashboardTheme> }> = [
       fontSize: "medium",
       spacing: "normal",
       borderRadius: "medium",
+      density: "normal",
     },
   },
   {
@@ -55,6 +56,17 @@ const PRESET_THEMES: Array<{ name: string; theme: Partial<DashboardTheme> }> = [
       fontSize: "small",
       spacing: "compact",
       borderRadius: "small",
+      density: "normal",
+    },
+  },
+  {
+    name: "Spreadsheet",
+    theme: {
+      fontSize: "small",
+      spacing: "compact",
+      borderRadius: "none",
+      density: "spreadsheet",
+      cardOpacity: 100,
     },
   },
   {
@@ -63,6 +75,7 @@ const PRESET_THEMES: Array<{ name: string; theme: Partial<DashboardTheme> }> = [
       fontSize: "large",
       spacing: "relaxed",
       borderRadius: "large",
+      density: "normal",
     },
   },
   {
@@ -70,6 +83,7 @@ const PRESET_THEMES: Array<{ name: string; theme: Partial<DashboardTheme> }> = [
     theme: {
       accentColor: "#6366f1",
       borderRadius: "medium",
+      density: "normal",
     },
   },
   {
@@ -77,6 +91,7 @@ const PRESET_THEMES: Array<{ name: string; theme: Partial<DashboardTheme> }> = [
     theme: {
       accentColor: "#f59e0b",
       borderRadius: "large",
+      density: "normal",
     },
   },
 ];
@@ -359,6 +374,27 @@ export function DashboardThemeEditor({
                         <SelectItem value="large">Large</SelectItem>
                       </SelectContent>
                     </Select>
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label>Density</Label>
+                    <Select
+                      value={theme.density || "normal"}
+                      onValueChange={(value) =>
+                        updateTheme({ density: value as DashboardTheme["density"] })
+                      }
+                    >
+                      <SelectTrigger className="h-11 sm:h-9">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="normal">Normal</SelectItem>
+                        <SelectItem value="spreadsheet">Spreadsheet (Dense)</SelectItem>
+                      </SelectContent>
+                    </Select>
+                    <p className="text-xs text-muted-foreground">
+                      Spreadsheet mode shows more data with minimal spacing
+                    </p>
                   </div>
                 </AccordionContent>
               </AccordionItem>

@@ -543,14 +543,18 @@ export function CustomizableDashboard({
                 // Responsive columns
                 "grid-cols-1 sm:grid-cols-2 lg:grid-cols-4",
                 {
-                  "gap-2 sm:gap-2": draftTheme.spacing === "compact",
-                  "gap-3 sm:gap-4": draftTheme.spacing === "normal" || !draftTheme.spacing,
-                  "gap-4 sm:gap-6": draftTheme.spacing === "relaxed",
+                  // Spreadsheet mode: minimal gaps
+                  "gap-1": draftTheme.density === "spreadsheet",
+                  "gap-2 sm:gap-2": draftTheme.spacing === "compact" && draftTheme.density !== "spreadsheet",
+                  "gap-3 sm:gap-4": (draftTheme.spacing === "normal" || !draftTheme.spacing) && draftTheme.density !== "spreadsheet",
+                  "gap-4 sm:gap-6": draftTheme.spacing === "relaxed" && draftTheme.density !== "spreadsheet",
                 }
               )}
               style={{
                 fontFamily: getFontFamily(draftTheme.fontFamily),
-                gridAutoRows: isMobile ? "minmax(80px, auto)" : "minmax(100px, auto)",
+                gridAutoRows: draftTheme.density === "spreadsheet" 
+                  ? "minmax(50px, auto)" 
+                  : isMobile ? "minmax(80px, auto)" : "minmax(100px, auto)",
               }}
             >
               {/* Drop zones for empty cells in edit mode (desktop/tablet only) */}

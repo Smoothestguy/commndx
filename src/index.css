@@ -337,4 +337,46 @@
   .tap-highlight-transparent {
     -webkit-tap-highlight-color: transparent;
   }
+
+  /* Spreadsheet-style tables */
+  .spreadsheet-table {
+    @apply w-full border-collapse text-xs;
+  }
+  
+  .spreadsheet-table th {
+    @apply h-7 px-1.5 py-1 text-xs font-semibold bg-muted text-muted-foreground border-b border-r border-border text-left;
+  }
+  
+  .spreadsheet-table td {
+    @apply h-6 px-1.5 py-0.5 text-xs border-b border-r border-border truncate;
+  }
+  
+  .spreadsheet-table tr:nth-child(even) {
+    @apply bg-muted/30;
+  }
+  
+  .spreadsheet-table tr:hover {
+    @apply bg-muted/50;
+  }
+
+  /* Spreadsheet status cell colors */
+  .spreadsheet-status-success {
+    @apply bg-green-500 text-white px-1.5 py-0.5 text-[10px] font-medium;
+  }
+  
+  .spreadsheet-status-error {
+    @apply bg-red-500 text-white px-1.5 py-0.5 text-[10px] font-medium;
+  }
+  
+  .spreadsheet-status-warning {
+    @apply bg-amber-500 text-white px-1.5 py-0.5 text-[10px] font-medium;
+  }
+  
+  .spreadsheet-status-info {
+    @apply bg-cyan-500 text-black px-1.5 py-0.5 text-[10px] font-medium;
+  }
+  
+  .spreadsheet-status-neutral {
+    @apply bg-gray-400 text-white px-1.5 py-0.5 text-[10px] font-medium;
+  }
 }
