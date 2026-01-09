@@ -1,7 +1,7 @@
 import { Clock } from "lucide-react";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
-import { Input } from "@/components/ui/input";
+import { TimeDecimalInput } from "@/components/ui/time-decimal-input";
 import { PersonnelAvatar } from "@/components/personnel/PersonnelAvatar";
 import { ApplyToAllControl } from "./ApplyToAllControl";
 
@@ -79,15 +79,12 @@ export function DailyPersonnelHoursSection({
                   </div>
                 </div>
                 <div className="flex items-center gap-3">
-                  <Input
-                    type="number"
-                    step="0.01"
-                    min="0"
-                    max="24"
-                    value={hours || ""}
-                    onChange={(e) => updateDailyPersonnelHour(person.id, parseFloat(e.target.value) || 0)}
+                  <TimeDecimalInput
+                    value={hours}
+                    onValueChange={(value) => updateDailyPersonnelHour(person.id, value)}
                     placeholder="0"
-                    className="w-20 text-center"
+                    compact
+                    className="w-20"
                   />
                   {cost > 0 && (
                     <span className="text-sm font-medium text-primary w-20 text-right">
