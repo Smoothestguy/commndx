@@ -383,7 +383,8 @@ export function EnhancedTimeEntryForm({
         form.setValue("hours", schemaValue, { shouldValidate: false, shouldDirty: true });
       }
     }
-  }, [selectedPersonnelIds.length, dailyTotalHours, form]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selectedPersonnelIds.length, dailyTotalHours]);
 
   // Handler for form validation failures (before handleDailySubmit runs)
   const handleDailyInvalid = (errors: any) => {
