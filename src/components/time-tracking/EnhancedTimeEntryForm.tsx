@@ -702,28 +702,26 @@ export function EnhancedTimeEntryForm({
                   />
                 )}
 
-                {/* Single Hours Field (when no personnel selected or editing) */}
-                {(entry || selectedPersonnel.size === 0) && (
-                  <FormField
-                    control={form.control}
-                    name="hours"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Hours</FormLabel>
-                        <FormControl>
-                          <TimeDecimalInput
-                            value={field.value || 0}
-                            onValueChange={field.onChange}
-                            showIcon={true}
-                            showPreview={true}
-                            placeholder="e.g., 8:20 or 8.33"
-                          />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                )}
+                {/* Hours Field - always mounted to prevent RHF registration churn */}
+                <FormField
+                  control={form.control}
+                  name="hours"
+                  render={({ field }) => (
+                    <FormItem className={!entry && selectedPersonnel.size > 0 ? "hidden" : undefined}>
+                      <FormLabel>Hours</FormLabel>
+                      <FormControl>
+                        <TimeDecimalInput
+                          value={field.value || 0}
+                          onValueChange={field.onChange}
+                          showIcon={true}
+                          showPreview={true}
+                          placeholder="e.g., 8:20 or 8.33"
+                        />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
 
                 <FormField
                   control={form.control}
