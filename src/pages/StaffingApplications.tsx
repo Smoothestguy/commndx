@@ -200,37 +200,40 @@ export default function StaffingApplications() {
     return jobPostings.filter(p => postingIdsWithApps.has(p.id));
   }, [jobPostings, applications]);
 
-  // Identify first-time applications per applicant (their very first application)
-  const firstTimeApplicationIds = useMemo(() => {
+  // Identify applicants who have NEVER been approved (across all their applications)
+  // These are "new" applicants whose applications should appear in the main list
+  const neverApprovedApplicantIds = useMemo(() => {
     if (!applications) return new Set<string>();
     
-    // Sort all applications by created_at ascending to find first per applicant
-    const sorted = [...applications].sort(
-      (a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime()
-    );
+    // Group applications by applicant
+    const applicantApplications = new Map<string, Application[]>();
+    for (const app of applications) {
+      const existing = applicantApplications.get(app.applicant_id) || [];
+      existing.push(app);
+      applicantApplications.set(app.applicant_id, existing);
+    }
     
-    const firstAppIds = new Set<string>();
-    const seenApplicants = new Set<string>();
-    
-    for (const app of sorted) {
-      if (!seenApplicants.has(app.applicant_id)) {
-        seenApplicants.add(app.applicant_id);
-        firstAppIds.add(app.id);
+    // Find applicants who have never had an approved application
+    const neverApproved = new Set<string>();
+    for (const [applicantId, apps] of applicantApplications) {
+      const hasApproval = apps.some(a => a.status === 'approved');
+      if (!hasApproval) {
+        neverApproved.add(applicantId);
       }
     }
     
-    return firstAppIds;
+    return neverApproved;
   }, [applications]);
 
   // Filter applications by search, experience, and job posting
-  // Main list only shows FIRST-TIME applicants (their very first application)
+  // Main list shows ALL applications from applicants who have NEVER been approved
   const filteredApplications = useMemo(() => {
     return applications?.filter((app) => {
       const applicant = app.applicants;
       if (!applicant) return false;
       
-      // Only show first-time applications in main list
-      if (!firstTimeApplicationIds.has(app.id)) {
+      // Only show applications from applicants who have never been approved
+      if (!neverApprovedApplicantIds.has(app.applicant_id)) {
         return false;
       }
       
@@ -260,7 +263,7 @@ export default function StaffingApplications() {
       
       return true;
     });
-  }, [applications, search, experienceFilter, postingFilter, formTemplates, firstTimeApplicationIds]);
+  }, [applications, search, experienceFilter, postingFilter, formTemplates, neverApprovedApplicantIds]);
 
   const handleCreateTaskOrder = async () => {
     if (!newTaskOrder.project_id || !newTaskOrder.title) {
