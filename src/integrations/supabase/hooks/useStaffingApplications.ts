@@ -391,12 +391,14 @@ export const useSubmitApplication = () => {
         applicantId = existingApplicant.id;
         console.log("[Application] Using existing applicant:", applicantId);
         
-        // Check if this applicant has already applied to THIS SPECIFIC job posting
+        // Check if this applicant has an ACTIVE (non-rejected) application for this job posting
+        // Allow re-application if previous application was rejected/removed
         const { data: existingApplication, error: checkError } = await supabase
           .from("applications")
           .select("id")
           .eq("applicant_id", applicantId)
           .eq("job_posting_id", posting_id)
+          .neq("status", "rejected")
           .maybeSingle();
         
         if (checkError) {
