@@ -365,7 +365,8 @@ export function EnhancedTimeEntryForm({
       const schemaValue = dailyTotalHours > 0 ? Math.min(dailyTotalHours, 24) : 0;
       if (lastSyncedHoursRef.current !== schemaValue) {
         lastSyncedHoursRef.current = schemaValue;
-        form.setValue("hours", schemaValue, { shouldValidate: true, shouldDirty: true });
+        // Avoid shouldValidate here to prevent nested update loops; validation runs on submit.
+        form.setValue("hours", schemaValue, { shouldValidate: false, shouldDirty: true });
       }
     }
   }, [selectedPersonnelIds.length, dailyTotalHours, form]);
