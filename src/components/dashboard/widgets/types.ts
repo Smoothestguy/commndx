@@ -73,6 +73,8 @@ export interface DashboardTheme {
   backgroundPosition?: "center" | "top" | "bottom";
   backgroundOverlay?: number; // 0-100 opacity for dark overlay
   backgroundPages?: string[]; // Array of page identifiers where background should appear
+  // Density mode for spreadsheet-like layouts
+  density?: "normal" | "spreadsheet";
 }
 
 // Widget registry entry

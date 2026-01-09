@@ -10,6 +10,7 @@ interface StatCardProps {
   icon: LucideIcon;
   href?: string;
   compact?: boolean;
+  spreadsheet?: boolean;
   backgroundColor?: string;
   textColor?: string;
 }
@@ -22,9 +23,35 @@ export function StatCard({
   icon: Icon,
   href,
   compact = false,
+  spreadsheet = false,
   backgroundColor,
   textColor,
 }: StatCardProps) {
+  // Spreadsheet mode: ultra-dense single-line display
+  if (spreadsheet) {
+    const spreadsheetContent = (
+      <div className="flex items-center justify-between py-1 px-2 text-xs">
+        <div className="flex items-center gap-1.5 min-w-0">
+          <Icon className="h-3 w-3 text-muted-foreground flex-shrink-0" />
+          <span className="text-muted-foreground truncate">{title}</span>
+        </div>
+        <span className="font-bold font-mono">{value}</span>
+      </div>
+    );
+
+    const spreadsheetClasses = "bg-card border-b border-border hover:bg-muted/50 transition-colors";
+
+    if (href) {
+      return (
+        <Link to={href} className={spreadsheetClasses} style={{ backgroundColor, color: textColor }}>
+          {spreadsheetContent}
+        </Link>
+      );
+    }
+
+    return <div className={spreadsheetClasses} style={{ backgroundColor, color: textColor }}>{spreadsheetContent}</div>;
+  }
+
   const cardContent = compact ? (
     <>
       <div className="flex items-center gap-1 sm:gap-1.5 mb-0.5 sm:mb-1 min-w-0">

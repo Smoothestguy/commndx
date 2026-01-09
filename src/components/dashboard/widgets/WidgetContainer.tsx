@@ -39,24 +39,88 @@ export function WidgetContainer({
   noPadding = false,
   dragHandleProps,
 }: WidgetContainerProps) {
-  const borderRadiusClass = {
+  const isSpreadsheet = theme?.density === "spreadsheet";
+  
+  const borderRadiusClass = isSpreadsheet ? "rounded-none" : {
     none: "rounded-none",
     small: "rounded-sm",
     medium: "rounded-lg",
     large: "rounded-xl",
   }[theme?.borderRadius ?? "medium"];
 
-  const fontSizeClass = {
+  const fontSizeClass = isSpreadsheet ? "text-xs" : {
     small: "text-sm",
     medium: "text-base",
     large: "text-lg",
   }[theme?.fontSize ?? "medium"];
 
-  const spacingClass = {
+  const spacingClass = isSpreadsheet ? "p-1.5" : {
     compact: "p-3",
     normal: "p-4",
     relaxed: "p-6",
   }[theme?.spacing ?? "normal"];
+
+  // Spreadsheet mode: ultra-compact styling with no shadows
+  if (isSpreadsheet) {
+    return (
+      <div
+        className={cn(
+          "relative bg-card border border-border",
+          isEditMode && "ring-1 ring-primary/30 ring-dashed",
+          className
+        )}
+        style={{
+          backgroundColor: theme?.cardBackground,
+          color: theme?.cardTextColor,
+        }}
+      >
+        {isEditMode && (
+          <div className="absolute top-0.5 right-0.5 flex items-center gap-0.5 z-10">
+            {size && onResize && (
+              <WidgetResizer
+                currentSize={size}
+                minSize={minSize}
+                maxSize={maxSize}
+                onChange={onResize}
+              />
+            )}
+            {onRemove && (
+              <Button
+                variant="ghost"
+                size="icon"
+                className="h-5 w-5 bg-background/80 hover:bg-destructive hover:text-destructive-foreground"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onRemove();
+                }}
+              >
+                <X className="h-3 w-3" />
+              </Button>
+            )}
+          </div>
+        )}
+
+        <div
+          className={cn(
+            "py-1 px-2 border-b border-border flex items-center gap-1.5",
+            isEditMode && "cursor-move"
+          )}
+        >
+          {isEditMode && (
+            <div {...dragHandleProps} className="cursor-grab active:cursor-grabbing">
+              <GripVertical className="h-3 w-3 text-muted-foreground" />
+            </div>
+          )}
+          {icon && <span className="text-muted-foreground flex-shrink-0 [&>svg]:h-3 [&>svg]:w-3">{icon}</span>}
+          <span className="text-xs font-semibold truncate min-w-0">{title}</span>
+        </div>
+
+        <div className={cn(noPadding ? "p-0" : "p-1.5")}>
+          {children}
+        </div>
+      </div>
+    );
+  }
 
   return (
     <Card
