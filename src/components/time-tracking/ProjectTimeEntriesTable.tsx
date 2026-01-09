@@ -1,4 +1,4 @@
-import { useState, useMemo } from "react";
+import React, { useState, useMemo } from "react";
 import { format, parseISO } from "date-fns";
 import {
   ChevronDown,
@@ -959,10 +959,9 @@ export function ProjectTimeEntriesTable({
           </TableHeader>
           <TableBody>
             {projectGroups.map((project) => (
-              <>
+              <React.Fragment key={project.projectId}>
                 {/* Project Row (Level 1) */}
                 <TableRow
-                  key={project.projectId}
                   className="bg-muted/50 hover:bg-muted/70 cursor-pointer font-medium"
                   onClick={() => toggleProject(project.projectId)}
                 >
@@ -1042,9 +1041,8 @@ export function ProjectTimeEntriesTable({
                   project.personnelGroups.map((personnel) => {
                     const personnelKey = `${project.projectId}-${personnel.personnelId}`;
                     return (
-                      <>
+                      <React.Fragment key={personnelKey}>
                         <TableRow
-                          key={personnelKey}
                           className="bg-muted/30 hover:bg-muted/50 cursor-pointer"
                           onClick={() => togglePersonnel(personnelKey)}
                         >
@@ -1218,10 +1216,10 @@ export function ProjectTimeEntriesTable({
                               </TableRow>
                             ))
                           )}
-                      </>
+                      </React.Fragment>
                     );
                   })}
-              </>
+              </React.Fragment>
             ))}
           </TableBody>
         </Table>
