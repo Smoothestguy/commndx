@@ -1,5 +1,6 @@
 import { LucideIcon } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { useUIDensity } from "@/contexts/UIDensityContext";
 
 interface InvoiceStatCardProps {
   label: string;
@@ -18,12 +19,34 @@ export const InvoiceStatCard = ({
   onClick,
   variant = "default",
 }: InvoiceStatCardProps) => {
+  const { isSpreadsheetMode } = useUIDensity();
+  
   const variantStyles = {
     default: "text-muted-foreground",
     success: "text-green-600 dark:text-green-400",
     warning: "text-amber-600 dark:text-amber-400",
     danger: "text-red-600 dark:text-red-400",
   };
+
+  if (isSpreadsheetMode) {
+    return (
+      <button
+        onClick={onClick}
+        className={cn(
+          "flex items-center justify-between gap-2 px-2 py-1 border bg-card text-card-foreground transition-colors cursor-pointer text-left w-full text-xs",
+          isActive
+            ? "ring-1 ring-primary border-primary bg-primary/5"
+            : "border-border hover:bg-muted/50"
+        )}
+      >
+        <div className="flex items-center gap-1.5">
+          <Icon className={cn("h-3 w-3", variantStyles[variant])} />
+          <span className="text-muted-foreground">{label}</span>
+        </div>
+        <span className="font-semibold">{value}</span>
+      </button>
+    );
+  }
 
   return (
     <button

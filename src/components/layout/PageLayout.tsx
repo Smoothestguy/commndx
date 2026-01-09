@@ -3,6 +3,7 @@ import { AppHeader } from "./AppHeader";
 import { useSwipeNavigation } from "@/hooks/useSwipeNavigation";
 import { cn } from "@/lib/utils";
 import { PageHeaderActionsProvider, usePageHeaderActions } from "@/contexts/PageHeaderActionsContext";
+import { useUIDensity } from "@/contexts/UIDensityContext";
 
 interface PageLayoutProps {
   children: ReactNode;
@@ -23,6 +24,7 @@ function PageLayoutContent({
 }: PageLayoutProps) {
   const { swipeRef, isMobile } = useSwipeNavigation();
   const { rightActions } = usePageHeaderActions();
+  const { isSpreadsheetMode } = useUIDensity();
 
   return (
     <>
@@ -32,32 +34,42 @@ function PageLayoutContent({
       {/* Main Content */}
       <main
         className={cn(
-          "flex-1 min-h-[calc(100vh-3.5rem)] p-4 lg:p-6 overflow-x-hidden relative z-[1]",
+          "flex-1 min-h-[calc(100vh-3.5rem)] overflow-x-hidden relative z-[1]",
+          isSpreadsheetMode ? "p-2 lg:p-3" : "p-4 lg:p-6",
           isMobile && "pb-24"
         )}
       >
         <div ref={swipeRef} className="max-w-[1600px] mx-auto w-full">
-          <header className="relative z-[2] mb-6 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+          <header className={cn(
+            "relative z-[2] flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2",
+            isSpreadsheetMode ? "mb-2" : "mb-6 gap-4"
+          )}>
             <div>
-              <h1 className="font-heading text-xl sm:text-2xl font-bold text-foreground">
+              <h1 className={cn(
+                "font-heading font-bold text-foreground",
+                isSpreadsheetMode ? "text-base sm:text-lg" : "text-xl sm:text-2xl"
+              )}>
                 {title}
               </h1>
-              {description && (
+              {description && !isSpreadsheetMode && (
                 <p className="mt-1 text-sm text-muted-foreground">
                   {description}
                 </p>
               )}
             </div>
           {(actions || rightActions) && (
-              <div className="flex flex-col gap-2 w-full sm:flex-row sm:items-center sm:w-auto sm:justify-end sm:gap-3">
-                {actions && <div className="flex items-center gap-2 overflow-x-auto min-w-0">{actions}</div>}
+              <div className={cn(
+                "flex flex-col w-full sm:flex-row sm:items-center sm:w-auto sm:justify-end",
+                isSpreadsheetMode ? "gap-1 sm:gap-2" : "gap-2 sm:gap-3"
+              )}>
+                {actions && <div className="flex items-center gap-1 sm:gap-2 overflow-x-auto min-w-0">{actions}</div>}
                 {rightActions && <div className="flex items-center gap-1 sm:gap-2 overflow-x-auto min-w-0 justify-end">{rightActions}</div>}
               </div>
             )}
           </header>
 
           {/* Page Content */}
-          <div className="animate-fade-in">{children}</div>
+          <div className={isSpreadsheetMode ? "" : "animate-fade-in"}>{children}</div>
         </div>
       </main>
     </>

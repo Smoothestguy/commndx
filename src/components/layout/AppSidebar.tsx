@@ -4,6 +4,7 @@ import { cn } from "@/lib/utils";
 import { useAuth } from "@/contexts/AuthContext";
 import { useUserRole } from "@/hooks/useUserRole";
 import { usePermissionCheck } from "@/hooks/usePermissionCheck";
+import { useUIDensity } from "@/contexts/UIDensityContext";
 import {
   Sidebar,
   SidebarContent,
@@ -104,6 +105,7 @@ export function AppSidebar() {
   const { isAdmin, isManager, isAccounting } = useUserRole();
   const { state } = useSidebar();
   const isCollapsed = state === "collapsed";
+  const { isSpreadsheetMode } = useUIDensity();
 
   // Permission checks for admin modules
   const userMgmtPerms = usePermissionCheck('user_management');
@@ -115,6 +117,11 @@ export function AppSidebar() {
   const [vendorsOpen, setVendorsOpen] = useState(false);
   const [staffingOpen, setStaffingOpen] = useState(false);
   const [accountOpen, setAccountOpen] = useState(false);
+  
+  // Compact mode class helpers
+  const menuButtonClass = isSpreadsheetMode ? "h-7 text-xs py-1" : "";
+  const iconClass = isSpreadsheetMode ? "h-3.5 w-3.5" : "h-4 w-4";
+  const groupLabelClass = isSpreadsheetMode ? "text-[10px] py-1" : "";
 
   // Auto-expand section if current route is within it
   useEffect(() => {
@@ -169,10 +176,13 @@ export function AppSidebar() {
                       asChild
                       isActive={isActive}
                       tooltip={item.name}
-                      className={cn(isActive && "bg-primary/15 text-primary")}
+                      className={cn(
+                        isActive && "bg-primary/15 text-primary",
+                        menuButtonClass
+                      )}
                     >
                       <Link to={item.href}>
-                        <item.icon className="h-4 w-4" />
+                        <item.icon className={iconClass} />
                         <span>{item.name}</span>
                       </Link>
                     </SidebarMenuButton>
@@ -186,12 +196,13 @@ export function AppSidebar() {
         {/* Vendors Section */}
         <SidebarGroup>
           <Collapsible open={vendorsOpen} onOpenChange={setVendorsOpen}>
-            <SidebarGroupLabel asChild>
+            <SidebarGroupLabel asChild className={groupLabelClass}>
               <CollapsibleTrigger className="flex w-full items-center justify-between">
                 <span>Vendors</span>
                 <ChevronDown
                   className={cn(
-                    "h-4 w-4 transition-transform duration-200",
+                    "transition-transform duration-200",
+                    isSpreadsheetMode ? "h-3 w-3" : "h-4 w-4",
                     vendorsOpen && "rotate-180"
                   )}
                 />
@@ -210,9 +221,10 @@ export function AppSidebar() {
                           asChild
                           isActive={isActive}
                           tooltip={item.name}
+                          className={menuButtonClass}
                         >
                           <Link to={item.href}>
-                            <item.icon className="h-4 w-4" />
+                            <item.icon className={iconClass} />
                             <span>{item.name}</span>
                           </Link>
                         </SidebarMenuButton>
@@ -228,12 +240,13 @@ export function AppSidebar() {
         {/* Staffing Section */}
         <SidebarGroup>
           <Collapsible open={staffingOpen} onOpenChange={setStaffingOpen}>
-            <SidebarGroupLabel asChild>
+            <SidebarGroupLabel asChild className={groupLabelClass}>
               <CollapsibleTrigger className="flex w-full items-center justify-between">
                 <span>Staffing</span>
                 <ChevronDown
                   className={cn(
-                    "h-4 w-4 transition-transform duration-200",
+                    "transition-transform duration-200",
+                    isSpreadsheetMode ? "h-3 w-3" : "h-4 w-4",
                     staffingOpen && "rotate-180"
                   )}
                 />
@@ -252,9 +265,10 @@ export function AppSidebar() {
                           asChild
                           isActive={isActive}
                           tooltip={item.name}
+                          className={menuButtonClass}
                         >
                           <Link to={item.href}>
-                            <item.icon className="h-4 w-4" />
+                            <item.icon className={iconClass} />
                             <span>{item.name}</span>
                           </Link>
                         </SidebarMenuButton>
@@ -272,12 +286,13 @@ export function AppSidebar() {
       <SidebarFooter className="border-t border-sidebar-border">
         <SidebarGroup>
           <Collapsible open={accountOpen} onOpenChange={setAccountOpen}>
-            <SidebarGroupLabel asChild>
+            <SidebarGroupLabel asChild className={groupLabelClass}>
               <CollapsibleTrigger className="flex w-full items-center justify-between">
                 <span>Account</span>
                 <ChevronDown
                   className={cn(
-                    "h-4 w-4 transition-transform duration-200",
+                    "transition-transform duration-200",
+                    isSpreadsheetMode ? "h-3 w-3" : "h-4 w-4",
                     accountOpen && "rotate-180"
                   )}
                 />
@@ -293,9 +308,10 @@ export function AppSidebar() {
                         asChild
                         isActive={location.pathname === "/user-management"}
                         tooltip="User Management"
+                        className={menuButtonClass}
                       >
                         <Link to="/user-management">
-                          <Shield className="h-4 w-4" />
+                          <Shield className={iconClass} />
                           <span>User Management</span>
                         </Link>
                       </SidebarMenuButton>
@@ -309,9 +325,10 @@ export function AppSidebar() {
                         asChild
                         isActive={location.pathname === "/permissions"}
                         tooltip="Permissions"
+                        className={menuButtonClass}
                       >
                         <Link to="/permissions">
-                          <KeyRound className="h-4 w-4" />
+                          <KeyRound className={iconClass} />
                           <span>Permissions</span>
                         </Link>
                       </SidebarMenuButton>
@@ -326,9 +343,10 @@ export function AppSidebar() {
                           asChild
                           isActive={location.pathname === "/admin/preview/vendor-portal"}
                           tooltip="Vendor Portal Preview"
+                          className={menuButtonClass}
                         >
                           <Link to="/admin/preview/vendor-portal">
-                            <Eye className="h-4 w-4" />
+                            <Eye className={iconClass} />
                             <span>Vendor Portal Preview</span>
                           </Link>
                         </SidebarMenuButton>
@@ -338,9 +356,10 @@ export function AppSidebar() {
                           asChild
                           isActive={location.pathname === "/admin/preview/personnel-portal"}
                           tooltip="Personnel Portal Preview"
+                          className={menuButtonClass}
                         >
                           <Link to="/admin/preview/personnel-portal">
-                            <Eye className="h-4 w-4" />
+                            <Eye className={iconClass} />
                             <span>Personnel Portal Preview</span>
                           </Link>
                         </SidebarMenuButton>
@@ -355,9 +374,10 @@ export function AppSidebar() {
                         asChild
                         isActive={location.pathname === "/admin/audit-logs"}
                         tooltip="Audit Logs"
+                        className={menuButtonClass}
                       >
                         <Link to="/admin/audit-logs">
-                          <ScrollText className="h-4 w-4" />
+                          <ScrollText className={iconClass} />
                           <span>Audit Logs</span>
                         </Link>
                       </SidebarMenuButton>
@@ -371,9 +391,10 @@ export function AppSidebar() {
                         asChild
                         isActive={location.pathname === "/document-center"}
                         tooltip="Document Center"
+                        className={menuButtonClass}
                       >
                         <Link to="/document-center">
-                          <FolderSearch className="h-4 w-4" />
+                          <FolderSearch className={iconClass} />
                           <span>Document Center</span>
                         </Link>
                       </SidebarMenuButton>
@@ -385,9 +406,10 @@ export function AppSidebar() {
                       asChild
                       isActive={location.pathname === "/activity-history"}
                       tooltip="Activity History"
+                      className={menuButtonClass}
                     >
                       <Link to="/activity-history">
-                        <History className="h-4 w-4" />
+                        <History className={iconClass} />
                         <span>Activity History</span>
                       </Link>
                     </SidebarMenuButton>
@@ -397,16 +419,17 @@ export function AppSidebar() {
                       asChild
                       isActive={location.pathname === "/settings"}
                       tooltip="Settings"
+                      className={menuButtonClass}
                     >
                       <Link to="/settings">
-                        <Settings className="h-4 w-4" />
+                        <Settings className={iconClass} />
                         <span>Settings</span>
                       </Link>
                     </SidebarMenuButton>
                   </SidebarMenuItem>
                   <SidebarMenuItem>
-                    <SidebarMenuButton onClick={signOut} tooltip="Sign Out">
-                      <LogOut className="h-4 w-4" />
+                    <SidebarMenuButton onClick={signOut} tooltip="Sign Out" className={menuButtonClass}>
+                      <LogOut className={iconClass} />
                       <span>Sign Out</span>
                     </SidebarMenuButton>
                   </SidebarMenuItem>
