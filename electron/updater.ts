@@ -1,7 +1,8 @@
 import pkg from "electron-updater";
 const { autoUpdater } = pkg;
 import { BrowserWindow, ipcMain } from "electron";
-import log from "electron-log";
+import electronLog from "electron-log";
+const log = electronLog.default || electronLog;
 
 // Configure logging
 log.transports.file.level = "info";
