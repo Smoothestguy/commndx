@@ -5,25 +5,35 @@ import { initAutoUpdater } from "./updater";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
-// The built directory structure
-//
-// ├─┬─┬ dist
-// │ │ └── index.html
-// │ │
-// │ ├─┬ dist-electron
-// │ │ ├── main.js
-// │ │ └── preload.mjs
-// │
-process.env.APP_ROOT = path.join(__dirname, "..");
+// Determine if we're running in a packaged app or development
+const isPackaged = app.isPackaged;
 
-// 🚧 Use ['ENV_NAME'] avoid vite:define plugin - https://github.com/nicholasday/electron-vite/tree/main/packages/electron-vite
+// Path resolution differs between dev and production
+// In development: 
+//   __dirname = /project/dist-electron
+//   dist = /project/dist
+// In production (packaged):
+//   __dirname = /path/to/app.asar/dist-electron
+//   dist = /path/to/app.asar/dist
+
+let RENDERER_DIST: string;
+let VITE_PUBLIC: string;
+
+if (isPackaged) {
+  // In packaged app, both dist and dist-electron are at the root of the asar
+  RENDERER_DIST = path.join(__dirname, "..", "dist");
+  VITE_PUBLIC = RENDERER_DIST;
+} else {
+  // In development, use the standard structure
+  process.env.APP_ROOT = path.join(__dirname, "..");
+  RENDERER_DIST = path.join(process.env.APP_ROOT, "dist");
+  VITE_PUBLIC = process.env["VITE_DEV_SERVER_URL"]
+    ? path.join(process.env.APP_ROOT, "public")
+    : RENDERER_DIST;
+}
+
 export const VITE_DEV_SERVER_URL = process.env["VITE_DEV_SERVER_URL"];
-export const MAIN_DIST = path.join(process.env.APP_ROOT, "dist-electron");
-export const RENDERER_DIST = path.join(process.env.APP_ROOT, "dist");
-
-process.env.VITE_PUBLIC = VITE_DEV_SERVER_URL
-  ? path.join(process.env.APP_ROOT, "public")
-  : RENDERER_DIST;
+export const MAIN_DIST = path.join(__dirname);
 
 let win: BrowserWindow | null;
 
@@ -33,32 +43,33 @@ function createWindow() {
     height: 900,
     minWidth: 800,
     minHeight: 600,
-    icon: path.join(process.env.VITE_PUBLIC, "favicon.ico"),
+    icon: path.join(VITE_PUBLIC, "favicon.ico"),
     webPreferences: {
       preload: path.join(__dirname, "preload.mjs"),
       nodeIntegration: false,
       contextIsolation: true,
     },
-    titleBarStyle: "hiddenInset", // Modern macOS look
+    titleBarStyle: "hiddenInset",
     backgroundColor: "#000000",
-    show: false, // Don't show until ready
+    show: false,
   });
 
-  // Show window when ready to prevent visual flash
+  // Debug logging for path resolution
+  console.log("[Electron] isPackaged:", isPackaged);
+  console.log("[Electron] __dirname:", __dirname);
+  console.log("[Electron] RENDERER_DIST:", RENDERER_DIST);
+
   win.once("ready-to-show", () => {
     win?.show();
-    // Initialize auto-updater after window is ready
     if (!VITE_DEV_SERVER_URL) {
       initAutoUpdater(win!);
     }
   });
 
-  // Test active push message to Renderer-process.
   win.webContents.on("did-finish-load", () => {
     win?.webContents.send("main-process-message", new Date().toLocaleString());
   });
 
-  // Open external links in browser
   win.webContents.setWindowOpenHandler(({ url }) => {
     if (url.startsWith("https:") || url.startsWith("http:")) {
       shell.openExternal(url);
@@ -69,7 +80,9 @@ function createWindow() {
   if (VITE_DEV_SERVER_URL) {
     win.loadURL(VITE_DEV_SERVER_URL);
   } else {
-    win.loadFile(path.join(RENDERER_DIST, "index.html"));
+    const indexPath = path.join(RENDERER_DIST, "index.html");
+    console.log("[Electron] Loading:", indexPath);
+    win.loadFile(indexPath);
   }
 }
 
