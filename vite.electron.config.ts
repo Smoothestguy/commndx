@@ -1,83 +1,45 @@
-import { defineConfig } from 'vite';
-import react from '@vitejs/plugin-react-swc';
-import path from 'path';
-import electron from 'vite-plugin-electron';
-import renderer from 'vite-plugin-electron-renderer';
-import { componentTagger } from 'lovable-tagger';
+import { defineConfig } from "vite";
+import path from "path";
+import electron from "vite-plugin-electron";
 
-// https://vitejs.dev/config/
-export default defineConfig(({ mode }) => ({
-  server: {
-    host: '::',
-    port: 8080,
-  },
+// This config is specifically for building Electron main/preload files
+export default defineConfig({
   plugins: [
-    react(),
-    mode === 'development' && componentTagger(),
     electron([
       {
         // Main process entry file
-        entry: 'electron/main.ts',
-        onstart({ startup }) {
-          startup();
-        },
+        entry: "electron/main.ts",
         vite: {
           build: {
-            outDir: 'dist-electron',
+            outDir: "dist-electron",
+            minify: false,
             rollupOptions: {
-              external: ['electron'],
+              external: ["electron", "electron-updater", "electron-log"],
             },
           },
         },
       },
       {
         // Preload scripts
-        entry: 'electron/preload.ts',
-        onstart({ reload }) {
-          reload();
-        },
+        entry: "electron/preload.ts",
         vite: {
           build: {
-            outDir: 'dist-electron',
+            outDir: "dist-electron",
+            minify: false,
             rollupOptions: {
-              external: ['electron'],
+              external: ["electron"],
             },
           },
         },
       },
     ]),
-    renderer(),
-  ].filter(Boolean),
+  ],
   resolve: {
     alias: {
-      '@': path.resolve(__dirname, './src'),
-    },
-  },
-  optimizeDeps: {
-    include: ['pdf-lib', 'exceljs', 'jspdf'],
-    esbuildOptions: {
-      target: 'esnext',
+      "@": path.resolve(__dirname, "./src"),
     },
   },
   build: {
-    target: 'esnext',
-    rollupOptions: {
-      output: {
-        manualChunks: {
-          'pdf-libs': ['pdf-lib', 'jspdf'],
-          'excel-libs': ['exceljs', 'xlsx'],
-          'map-libs': ['mapbox-gl'],
-          vendor: ['react', 'react-dom', 'react-router-dom'],
-          ui: ['@radix-ui/react-dialog', '@radix-ui/react-select', '@radix-ui/react-tabs'],
-        },
-      },
-    },
-    commonjsOptions: {
-      include: [/node_modules/],
-      transformMixedEsModules: true,
-    },
+    outDir: "dist-electron",
   },
-  // Clear screen disabled for Electron dev
-  clearScreen: false,
-}));
-
+});

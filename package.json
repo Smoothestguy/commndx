@@ -17,10 +17,11 @@
     "cap:run:ios": "npx cap run ios",
     "cap:run:android": "npx cap run android",
     "electron:dev": "vite --config vite.electron.config.ts",
-    "electron:build": "npm run build && electron-builder",
-    "electron:build:mac": "npm run build && electron-builder --mac",
-    "electron:build:win": "npm run build && electron-builder --win",
-    "electron:build:linux": "npm run build && electron-builder --linux",
+    "electron:compile": "vite build --config vite.electron.config.ts",
+    "electron:build": "npm run build && npm run electron:compile && electron-builder",
+    "electron:build:mac": "npm run build && npm run electron:compile && electron-builder --mac",
+    "electron:build:win": "npm run build && npm run electron:compile && electron-builder --win",
+    "electron:build:linux": "npm run build && npm run electron:compile && electron-builder --linux",
     "electron:preview": "electron ."
   },
   "dependencies": {
