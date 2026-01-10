@@ -9,7 +9,7 @@ const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const isPackaged = app.isPackaged;
 
 // Path resolution differs between dev and production
-// In development: 
+// In development:
 //   __dirname = /project/dist-electron
 //   dist = /project/dist
 // In production (packaged):
@@ -20,13 +20,14 @@ let RENDERER_DIST: string;
 let VITE_PUBLIC: string;
 
 if (isPackaged) {
-  // In packaged app, both dist and dist-electron are at the root of the asar
-  RENDERER_DIST = path.join(__dirname, "..", "dist");
+  // In packaged app, dist-electron contains the web app files (index.html and assets)
+  // since vite.electron.config.ts builds the renderer output there
+  RENDERER_DIST = __dirname;
   VITE_PUBLIC = RENDERER_DIST;
 } else {
   // In development, use the standard structure
   process.env.APP_ROOT = path.join(__dirname, "..");
-  RENDERER_DIST = path.join(process.env.APP_ROOT, "dist");
+  RENDERER_DIST = path.join(process.env.APP_ROOT, "dist-electron");
   VITE_PUBLIC = process.env["VITE_DEV_SERVER_URL"]
     ? path.join(process.env.APP_ROOT, "public")
     : RENDERER_DIST;
