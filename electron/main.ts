@@ -46,7 +46,7 @@ function createWindow() {
     minHeight: 600,
     icon: path.join(VITE_PUBLIC, "favicon.ico"),
     webPreferences: {
-      preload: path.join(__dirname, "preload.js"),
+      preload: path.join(__dirname, "preload.cjs"),
       nodeIntegration: false,
       contextIsolation: true,
     },
