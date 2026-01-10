@@ -3,7 +3,18 @@ import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
+import {
+  BrowserRouter,
+  HashRouter,
+  Routes,
+  Route,
+  Navigate,
+} from "react-router-dom";
+
+// Detect if running in Electron - HashRouter is required for file:// protocol
+const isElectron =
+  typeof window !== "undefined" && window.electronAPI?.isElectron;
+const Router = isElectron ? HashRouter : BrowserRouter;
 import { SidebarProvider } from "@/components/ui/sidebar";
 import { AuthProvider } from "@/contexts/AuthContext";
 import { AIAssistantProvider } from "@/contexts/AIAssistantContext";
@@ -144,7 +155,7 @@ const App = () => {
         <TooltipProvider>
           <Toaster />
           <Sonner />
-          <BrowserRouter>
+          <Router>
             <AuthProvider>
               <LocationTrackingProvider>
                 <AIAssistantProvider>
@@ -612,7 +623,7 @@ const App = () => {
                 </AIAssistantProvider>
               </LocationTrackingProvider>
             </AuthProvider>
-          </BrowserRouter>
+          </Router>
         </TooltipProvider>
       </ThemeProvider>
     </QueryClientProvider>
