@@ -14,6 +14,7 @@ interface VendorBillCardProps {
   onView: (id: string) => void;
   onEdit: (id: string) => void;
   onDelete: (id: string) => void;
+  onHardDelete?: (id: string) => void;
   onRecordPayment: (id: string) => void;
 }
 
@@ -33,7 +34,7 @@ const statusLabels: Record<string, string> = {
   void: "Void",
 };
 
-export function VendorBillCard({ bill, onView, onEdit, onDelete, onRecordPayment }: VendorBillCardProps) {
+export function VendorBillCard({ bill, onView, onEdit, onDelete, onHardDelete, onRecordPayment }: VendorBillCardProps) {
   const isOverdue = parseLocalDate(bill.due_date) < new Date() && bill.status !== "paid" && bill.status !== "void";
   const { data: qbConfig } = useQuickBooksConfig();
   const { data: billMapping, refetch: refetchMapping } = useQuickBooksBillMapping(bill.id);
@@ -141,6 +142,15 @@ export function VendorBillCard({ bill, onView, onEdit, onDelete, onRecordPayment
                   <Trash2 className="mr-2 h-4 w-4" />
                   Delete
                 </DropdownMenuItem>
+                {onHardDelete && (
+                  <DropdownMenuItem 
+                    onClick={(e) => { e.stopPropagation(); onHardDelete(bill.id); }}
+                    className="text-destructive font-medium"
+                  >
+                    <Trash2 className="mr-2 h-4 w-4" />
+                    Delete Forever
+                  </DropdownMenuItem>
+                )}
               </DropdownMenuContent>
             </DropdownMenu>
           </div>
