@@ -100,6 +100,9 @@ serve(async (req) => {
   }
 
   try {
+    // Capture the auth header to forward to downstream functions
+    const authHeader = req.headers.get("Authorization");
+    
     const { estimateId } = await req.json();
     console.log("Creating QuickBooks estimate for:", estimateId);
 
@@ -146,18 +149,26 @@ serve(async (req) => {
 
     const { accessToken, realmId } = await getValidToken(supabase);
 
-    // Get or create customer in QuickBooks
-    const { data: customerSyncResult, error: customerError } = await supabase.functions.invoke(
-      "quickbooks-sync-customers",
+    // Get or create customer in QuickBooks - forward auth header via fetch
+    const customerSyncResponse = await fetch(
+      `${SUPABASE_URL}/functions/v1/quickbooks-sync-customers`,
       {
-        body: { action: "find-or-create", customerId: estimate.customer_id },
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          ...(authHeader ? { Authorization: authHeader } : {}),
+        },
+        body: JSON.stringify({ action: "find-or-create", customerId: estimate.customer_id }),
       }
     );
 
-    if (customerError) {
-      throw new Error(`Customer sync failed: ${customerError.message}`);
+    if (!customerSyncResponse.ok) {
+      const errorText = await customerSyncResponse.text();
+      console.error("Customer sync failed:", errorText);
+      throw new Error(`Customer sync failed: ${customerSyncResponse.status}`);
     }
 
+    const customerSyncResult = await customerSyncResponse.json();
     const qbCustomerId = customerSyncResult.quickbooksCustomerId;
     if (!qbCustomerId) {
       throw new Error("Failed to get QuickBooks customer ID");
