@@ -1,5 +1,4 @@
 import { ReactNode } from "react";
-import { AppHeader } from "./AppHeader";
 import { useSwipeNavigation } from "@/hooks/useSwipeNavigation";
 import { cn } from "@/lib/utils";
 import { PageHeaderActionsProvider, usePageHeaderActions } from "@/contexts/PageHeaderActionsContext";
@@ -27,18 +26,13 @@ function PageLayoutContent({
   const { isSpreadsheetMode } = useUIDensity();
 
   return (
-    <>
-      {/* Fixed Header */}
-      <AppHeader />
-
-      {/* Main Content */}
-      <main
-        className={cn(
-          "flex-1 min-h-[calc(100vh-3.5rem)] overflow-x-hidden relative z-[1]",
-          isSpreadsheetMode ? "p-2 lg:p-3" : "p-4 lg:p-6",
-          isMobile && "pb-24"
-        )}
-      >
+    <main
+      className={cn(
+        "flex-1 min-h-0 overflow-x-hidden relative z-[1]",
+        isSpreadsheetMode ? "p-2 lg:p-3" : "p-4 lg:p-6",
+        isMobile && "pb-24"
+      )}
+    >
         <div ref={swipeRef} className="max-w-[1600px] mx-auto w-full">
           <header className={cn(
             "relative z-[2] flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2",
@@ -72,7 +66,6 @@ function PageLayoutContent({
           <div className={isSpreadsheetMode ? "" : "animate-fade-in"}>{children}</div>
         </div>
       </main>
-    </>
   );
 }
 
