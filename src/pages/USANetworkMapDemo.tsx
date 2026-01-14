@@ -2,6 +2,8 @@ import { SEO } from "@/components/SEO";
 import USANetworkMap from "@/components/USANetworkMap";
 import USANetworkMapV2 from "@/components/USANetworkMapV2";
 import USANetworkMapFinal from "@/components/USANetworkMapFinal";
+import USA3DNetworkMap from "@/components/USA3DNetworkMap";
+import USA3DMapSimple from "@/components/USA3DMapSimple";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 
@@ -15,7 +17,7 @@ const USANetworkMapDemo = () => {
       
       <div className="min-h-screen bg-background">
         {/* USA Network Map Header - Matching Reference */}
-        <USANetworkMapFinal 
+        <USA3DMapSimple 
           title="Nationwide"
           subtitle="On-Demand"
           tagline="Waste Solutions."
