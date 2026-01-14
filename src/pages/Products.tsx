@@ -74,6 +74,7 @@ import {
 } from "@/integrations/supabase/hooks/useQuickBooks";
 import { ProductConflictDialog } from "@/components/quickbooks/ProductConflictDialog";
 import { Badge } from "@/components/ui/badge";
+import { TablePagination } from "@/components/shared/TablePagination";
 
 const typeConfig: Record<
   ItemType,
@@ -149,8 +150,12 @@ const Products = () => {
   const [selectedProductIds, setSelectedProductIds] = useState<Set<string>>(
     new Set()
   );
-  const [showBulkDeleteDialog, setShowBulkDeleteDialog] = useState(false);
+const [showBulkDeleteDialog, setShowBulkDeleteDialog] = useState(false);
   const [showBulkEditDialog, setShowBulkEditDialog] = useState(false);
+
+  // Pagination state
+  const [currentPage, setCurrentPage] = useState(1);
+  const [rowsPerPage, setRowsPerPage] = useState(10);
 
   // Update unit when item type changes (only for new items)
   useEffect(() => {
@@ -585,32 +590,49 @@ const Products = () => {
                     selectedLetter !== ""
                   }
                 />
-              ) : isMobile || isTablet ? (
-                <div className={`grid gap-3 sm:gap-4 ${isTablet ? "grid-cols-2" : "grid-cols-1"}`}>
-                  {sortedProducts.map((product, index) => (
-                    <ProductCard
-                      key={product.id}
-                      product={product}
-                      onEdit={handleEdit}
-                      onDelete={handleDelete}
-                      index={index}
-                      selectable
-                      isSelected={selectedProductIds.has(product.id)}
-                      onSelectChange={handleSelectionChange}
-                    />
-                  ))}
-                </div>
               ) : (
-                <DataTable
-                  data={sortedProducts}
-                  columns={columns}
-                  selectable
-                  selectedIds={selectedProductIds}
-                  onSelectionChange={setSelectedProductIds}
-                  sortKey={sortKey}
-                  sortDirection={sortDirection}
-                  onSort={handleSort}
-                />
+                <>
+                  {isMobile || isTablet ? (
+                    <div className={`grid gap-3 sm:gap-4 ${isTablet ? "grid-cols-2" : "grid-cols-1"}`}>
+                      {sortedProducts
+                        .slice((currentPage - 1) * rowsPerPage, currentPage * rowsPerPage)
+                        .map((product, index) => (
+                          <ProductCard
+                            key={product.id}
+                            product={product}
+                            onEdit={handleEdit}
+                            onDelete={handleDelete}
+                            index={index}
+                            selectable
+                            isSelected={selectedProductIds.has(product.id)}
+                            onSelectChange={handleSelectionChange}
+                          />
+                        ))}
+                    </div>
+                  ) : (
+                    <DataTable
+                      data={sortedProducts.slice((currentPage - 1) * rowsPerPage, currentPage * rowsPerPage)}
+                      columns={columns}
+                      selectable
+                      selectedIds={selectedProductIds}
+                      onSelectionChange={setSelectedProductIds}
+                      sortKey={sortKey}
+                      sortDirection={sortDirection}
+                      onSort={handleSort}
+                    />
+                  )}
+                  <TablePagination
+                    currentPage={currentPage}
+                    totalCount={sortedProducts.length}
+                    rowsPerPage={rowsPerPage}
+                    onPageChange={setCurrentPage}
+                    onRowsPerPageChange={(size) => {
+                      setRowsPerPage(size);
+                      setCurrentPage(1);
+                    }}
+                    rowsPerPageOptions={[10, 20, 30, 40]}
+                  />
+                </>
               )}
             </>
           )}
