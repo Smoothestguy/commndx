@@ -289,13 +289,22 @@ export const useUpdateInvoice = () => {
       const { data: updatedInvoice, error: updateError } = await supabase
         .from("invoices")
         .update({
-          status: invoice.status,
-          subtotal: invoice.subtotal,
-          tax_rate: invoice.tax_rate,
-          tax_amount: invoice.tax_amount,
-          total: invoice.total,
-          due_date: invoice.due_date,
+          customer_id: invoice.customer_id ?? oldInvoice.customer_id,
+          customer_name: invoice.customer_name ?? oldInvoice.customer_name,
+          project_id: invoice.project_id !== undefined ? invoice.project_id : oldInvoice.project_id,
+          project_name: invoice.project_name !== undefined ? invoice.project_name : oldInvoice.project_name,
+          status: invoice.status ?? oldInvoice.status,
+          subtotal: invoice.subtotal ?? oldInvoice.subtotal,
+          tax_rate: invoice.tax_rate ?? oldInvoice.tax_rate,
+          tax_amount: invoice.tax_amount ?? oldInvoice.tax_amount,
+          total: invoice.total ?? oldInvoice.total,
+          due_date: invoice.due_date ?? oldInvoice.due_date,
           paid_date: invoice.paid_date,
+          notes: invoice.notes !== undefined ? invoice.notes : oldInvoice.notes,
+          customer_po: (invoice as any).customer_po !== undefined ? (invoice as any).customer_po : oldInvoice.customer_po,
+          remaining_amount: invoice.total !== undefined 
+            ? invoice.total - (oldInvoice.paid_amount || 0) 
+            : oldInvoice.remaining_amount,
         })
         .eq("id", id)
         .select()
@@ -370,11 +379,37 @@ export const useUpdateInvoice = () => {
         if (jobUpdateError) throw jobUpdateError;
       }
 
+      // Auto-sync to QuickBooks if connected and invoice is mapped
+      try {
+        const { data: qbConfig } = await supabase
+          .from("quickbooks_config")
+          .select("is_connected")
+          .single();
+
+        if (qbConfig?.is_connected) {
+          const { data: mapping } = await supabase
+            .from("quickbooks_invoice_mappings")
+            .select("quickbooks_invoice_id, sync_status")
+            .eq("invoice_id", id)
+            .maybeSingle();
+
+          if (mapping && !["deleted", "voided", "error"].includes(mapping.sync_status || "")) {
+            await supabase.functions.invoke("quickbooks-update-invoice", {
+              body: { invoiceId: id },
+            });
+          }
+        }
+      } catch (qbError) {
+        // Log but don't fail the invoice update
+        console.error("QuickBooks sync failed:", qbError);
+      }
+
       return updatedInvoice;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["invoices"] });
       queryClient.invalidateQueries({ queryKey: ["job_orders"] });
+      queryClient.invalidateQueries({ queryKey: ["quickbooks-sync-logs"] });
       toast({
         title: "Success",
         description: "Invoice updated successfully",

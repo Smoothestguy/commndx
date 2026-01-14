@@ -3,7 +3,7 @@ import { PageLayout } from "@/components/layout/PageLayout";
 import { DetailPageLayout } from "@/components/layout/DetailPageLayout";
 import { Button } from "@/components/ui/button";
 import { StatusBadge } from "@/components/shared/StatusBadge";
-import { ArrowLeft, Send, Download, CheckCircle, Trash2, DollarSign } from "lucide-react";
+import { ArrowLeft, Send, Download, CheckCircle, Trash2, DollarSign, Edit } from "lucide-react";
 import { toast } from "@/hooks/use-toast";
 import { useInvoice, useMarkInvoicePaid, useDeleteInvoice } from "@/integrations/supabase/hooks/useInvoices";
 import { useCompanySettings } from "@/integrations/supabase/hooks/useCompanySettings";
@@ -133,9 +133,17 @@ const InvoiceDetail = () => {
 
   const remainingAmount = Number(invoice.remaining_amount) || Number(invoice.total) - Number(invoice.paid_amount || 0);
 
+  const canEdit = invoice.status !== "paid";
+
   // Mobile actions configuration
   const mobileActions = {
     primary: [
+      ...(canEdit ? [{
+        label: "Edit",
+        icon: <Edit className="h-4 w-4" />,
+        onClick: () => navigate(`/invoices/${id}/edit`),
+        variant: "default" as const,
+      }] : []),
       ...(invoice.status !== "paid" ? [{
         label: "Record Payment",
         icon: <DollarSign className="h-4 w-4" />,
@@ -173,6 +181,12 @@ const InvoiceDetail = () => {
   const desktopActions = (
     <div className="flex items-center gap-3">
       <StatusBadge status={invoice.status} />
+      {canEdit && (
+        <Button variant="outline" onClick={() => navigate(`/invoices/${id}/edit`)}>
+          <Edit className="h-4 w-4 mr-2" />
+          Edit
+        </Button>
+      )}
       {invoice.status !== "paid" && (
         <>
           <AlertDialog>

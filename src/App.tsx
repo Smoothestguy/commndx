@@ -59,6 +59,7 @@ import Invoices from "./pages/Invoices";
 import NewInvoice from "./pages/NewInvoice";
 import NewTimeEntryInvoice from "./pages/NewTimeEntryInvoice";
 import InvoiceDetail from "./pages/InvoiceDetail";
+import EditInvoice from "./pages/EditInvoice";
 import TimeTracking from "./pages/TimeTracking";
 import TeamTimesheet from "./pages/TeamTimesheet";
 import Reimbursements from "./pages/Reimbursements";
@@ -398,6 +399,10 @@ const App = () => {
                         element={<NewTimeEntryInvoice />}
                       />
                       <Route path="/invoices/:id" element={<InvoiceDetail />} />
+                      <Route
+                        path="/invoices/:id/edit"
+                        element={<EditInvoice />}
+                      />
                       <Route path="/time-tracking" element={<TimeTracking />} />
                       <Route
                         path="/team-timesheet"
