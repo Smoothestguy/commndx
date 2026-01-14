@@ -341,6 +341,77 @@ async function uploadAttachmentToQB(
   }
 }
 
+// Cache for QuickBooks service items to avoid repeated API calls
+const itemCache: Map<string, string> = new Map();
+
+// Get or create a Service Item in QuickBooks for ItemBasedExpenseLineDetail
+async function getOrCreateQBServiceItem(
+  description: string,
+  accessToken: string,
+  realmId: string,
+  expenseAccountRef: { value: string; name: string }
+): Promise<string> {
+  // Use a generic "Labor" item for all bill line items
+  const itemName = "Labor";
+  
+  // Check cache first
+  if (itemCache.has(itemName)) {
+    console.log(`Using cached Service item: ${itemName}`);
+    return itemCache.get(itemName)!;
+  }
+  
+  // Search for existing item in QuickBooks
+  console.log(`Searching QuickBooks for Service item: ${itemName}`);
+  
+  try {
+    const searchQuery = encodeURIComponent(`SELECT * FROM Item WHERE Name = '${itemName}' MAXRESULTS 1`);
+    const result = await qbRequest('GET', `/query?query=${searchQuery}&minorversion=65`, accessToken, realmId);
+    
+    if (result.QueryResponse?.Item?.length > 0) {
+      const existingItem = result.QueryResponse.Item[0];
+      console.log(`Found existing Service item: ${existingItem.Name} (ID: ${existingItem.Id})`);
+      itemCache.set(itemName, existingItem.Id);
+      return existingItem.Id;
+    }
+  } catch (e) {
+    console.log(`Error searching for Service item: ${e}, will try to create`);
+  }
+  
+  // Create a new Service item if not found
+  console.log(`Creating new Service item in QuickBooks: ${itemName}`);
+  
+  const newItem = {
+    Name: itemName,
+    Type: "Service",
+    ExpenseAccountRef: expenseAccountRef,
+  };
+  
+  try {
+    const createResult = await qbRequest('POST', '/item?minorversion=65', accessToken, realmId, newItem);
+    const itemId = createResult.Item.Id;
+    console.log(`Created Service item: ${itemName} (ID: ${itemId})`);
+    itemCache.set(itemName, itemId);
+    return itemId;
+  } catch (createError: any) {
+    // Handle duplicate name error
+    if (createError.message?.includes('Duplicate Name Exists') || createError.message?.includes('6240')) {
+      console.log(`Duplicate item name error, searching with LIKE query...`);
+      
+      const likeQuery = encodeURIComponent(`SELECT * FROM Item WHERE Name LIKE '%${itemName}%' MAXRESULTS 10`);
+      const likeResult = await qbRequest('GET', `/query?query=${likeQuery}&minorversion=65`, accessToken, realmId);
+      
+      if (likeResult.QueryResponse?.Item?.length > 0) {
+        const foundItem = likeResult.QueryResponse.Item[0];
+        console.log(`Found existing item after duplicate error: ${foundItem.Name} (ID: ${foundItem.Id})`);
+        itemCache.set(itemName, foundItem.Id);
+        return foundItem.Id;
+      }
+    }
+    
+    throw createError;
+  }
+}
+
 // Get expense account reference - tries to match by category name first
 async function getExpenseAccountRef(
   categoryName: string | null,
@@ -442,8 +513,9 @@ async function getExpenseAccountRef(
 }
 
 serve(async (req) => {
-  // Clear account cache for each request to ensure fresh data
+  // Clear caches for each request to ensure fresh data
   accountCache.clear();
+  itemCache.clear();
   
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders });
@@ -546,26 +618,39 @@ serve(async (req) => {
         // Get the appropriate expense account based on category
         const expenseAccountRef = await getExpenseAccountRef(categoryName, accessToken, realmId);
         
-        console.log(`Line item "${item.description}" -> Category: ${categoryName || 'none'} -> QB Account: ${expenseAccountRef.name}`);
+        // Get or create a Service item for ItemBasedExpenseLineDetail
+        const qbItemId = await getOrCreateQBServiceItem(item.description, accessToken, realmId, expenseAccountRef);
+        
+        const qty = Number(item.quantity) || 1;
+        const unitPrice = Number(item.unit_cost) || Number(item.total);
+        
+        console.log(`Line item "${item.description}" -> Qty: ${qty}, Unit Price: ${unitPrice} -> QB Account: ${expenseAccountRef.name}`);
         
         qbLineItems.push({
-          DetailType: 'AccountBasedExpenseLineDetail',
+          DetailType: 'ItemBasedExpenseLineDetail',
           Amount: Number(item.total),
           Description: item.description,
-          AccountBasedExpenseLineDetail: {
-            AccountRef: expenseAccountRef,
+          ItemBasedExpenseLineDetail: {
+            ItemRef: { value: qbItemId },
+            Qty: qty,
+            UnitPrice: unitPrice,
+            BillableStatus: 'NotBillable',
           },
         });
       }
     } else {
       // If no line items, create one with the total using default account
       const defaultAccountRef = await getExpenseAccountRef(null, accessToken, realmId);
+      const qbItemId = await getOrCreateQBServiceItem(`Bill ${bill.number}`, accessToken, realmId, defaultAccountRef);
       qbLineItems.push({
-        DetailType: 'AccountBasedExpenseLineDetail',
+        DetailType: 'ItemBasedExpenseLineDetail',
         Amount: Number(bill.subtotal),
         Description: `Bill ${bill.number}`,
-        AccountBasedExpenseLineDetail: {
-          AccountRef: defaultAccountRef,
+        ItemBasedExpenseLineDetail: {
+          ItemRef: { value: qbItemId },
+          Qty: 1,
+          UnitPrice: Number(bill.subtotal),
+          BillableStatus: 'NotBillable',
         },
       });
     }
