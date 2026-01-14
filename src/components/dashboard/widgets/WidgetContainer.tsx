@@ -134,7 +134,7 @@ export function WidgetContainer({
   return (
     <Card
       className={cn(
-        "relative transition-colors border-0 shadow-none bg-card/40 hover:bg-card/60",
+        "relative transition-all duration-200",
         borderRadiusClass,
         isEditMode && "ring-2 ring-primary/20 ring-dashed",
         className
@@ -182,7 +182,7 @@ export function WidgetContainer({
       )}
 
       <CardHeader
-        className={cn("pb-1 pt-3 px-3", isEditMode && "cursor-move")}
+        className={cn("pb-2", isEditMode && "cursor-move", spacingClass)}
       >
         <div className="flex items-center gap-2">
           {isEditMode && (
@@ -204,7 +204,7 @@ export function WidgetContainer({
         </div>
       </CardHeader>
 
-      <CardContent className={cn(noPadding ? "p-0" : "px-3 pb-3", "pt-0")}>
+      <CardContent className={cn(noPadding ? "p-0" : spacingClass, "pt-0")}>
         {children}
       </CardContent>
     </Card>

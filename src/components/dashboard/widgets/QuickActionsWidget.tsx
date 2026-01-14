@@ -31,23 +31,28 @@ export function QuickActionsWidget({ widget, theme, isEditMode }: QuickActionsWi
         return (
           <Button
             key={action.href}
-            variant="ghost"
+            variant="outline"
             size="sm"
             asChild
             disabled={isEditMode}
             className={cn(
-              "text-xs",
-              "px-2 h-7",
-              "justify-start",
-              "hover:bg-primary/10 hover:text-primary",
-              "border-0"
+              // Responsive text sizes
+              "text-[10px] sm:text-xs lg:text-sm",
+              // Responsive padding
+              "px-2 sm:px-3",
+              // Ensure proper height for touch
+              "h-8 sm:h-9",
+              // Truncate text on small screens
+              "justify-start"
             )}
             style={{
+              borderColor: theme?.accentColor,
               color: theme?.accentColor,
             }}
           >
             <Link to={action.href} className="flex items-center min-w-0">
-              <Icon className="h-3 w-3 mr-1.5 flex-shrink-0" />
+              <Plus className="h-3 w-3 mr-1 flex-shrink-0 hidden sm:block" />
+              <Icon className="h-3 w-3 mr-1 flex-shrink-0" />
               <span className="truncate">{action.label}</span>
             </Link>
           </Button>

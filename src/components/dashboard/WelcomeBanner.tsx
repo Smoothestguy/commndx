@@ -47,7 +47,7 @@ export const WelcomeBanner = ({ theme }: WelcomeBannerProps) => {
   };
 
   const gradientStyle = getGradientStyle();
-  const baseClasses = "relative overflow-hidden rounded-md p-3 sm:p-4 mb-3";
+  const baseClasses = "relative overflow-hidden rounded-xl p-4 sm:p-6 mb-4 sm:mb-6";
   const defaultGradient = "bg-gradient-to-r from-primary/90 via-primary to-primary/80";
 
   if (isLoading) {
@@ -79,17 +79,18 @@ export const WelcomeBanner = ({ theme }: WelcomeBannerProps) => {
       {/* Content */}
       <div className="relative z-10 flex items-center justify-between">
         <div>
-          <div className="flex items-center gap-1.5 mb-0.5">
-            <Sparkles className="h-3.5 w-3.5 text-primary-foreground/80" />
-            <span className="text-[11px] font-medium text-primary-foreground/80 uppercase tracking-wide">
+          <div className="flex items-center gap-2 mb-1">
+            <Sparkles className="h-4 w-4 sm:h-5 sm:w-5 text-primary-foreground/80" />
+            <span className="text-xs sm:text-sm font-medium text-primary-foreground/80 uppercase tracking-wide">
               {greeting}
             </span>
           </div>
-          <h2 className="text-base sm:text-lg font-heading font-semibold text-primary-foreground mb-0.5">
+          <h2 className="text-lg sm:text-2xl font-heading font-bold text-primary-foreground mb-0.5 sm:mb-1">
             {getDisplayName()}
           </h2>
-          <p className="text-[11px] sm:text-xs text-primary-foreground/70 italic leading-relaxed line-clamp-1">
-            "{quote.text}" {quote.author && <span className="not-italic text-primary-foreground/50">— {quote.author}</span>}
+          <p className="text-xs sm:text-sm text-primary-foreground/70 italic leading-relaxed">
+            "{quote.text}"
+            {quote.author && <span className="not-italic text-primary-foreground/50"> — {quote.author}</span>}
           </p>
         </div>
         
