@@ -100,28 +100,28 @@ export function TableWidget({ widget, theme, isEditMode }: TableWidgetProps) {
 
   return (
     <ScrollArea className="h-40 sm:h-48">
-      <div className="space-y-2 pr-2">
+      <div className="divide-y divide-border/30">
         {invoices.map((invoice) => (
           <div
             key={invoice.id}
             className={cn(
-              "flex items-center justify-between p-2 sm:p-3 rounded-lg border border-border bg-background/50",
+              "flex items-center justify-between py-2 first:pt-0",
               fontSizeClass
             )}
           >
             <div className="min-w-0 flex-1 mr-2">
-              <p className="font-medium truncate">#{invoice.number}</p>
-              <p className="text-xs text-muted-foreground truncate">
+              <p className="font-medium truncate text-xs">#{invoice.number}</p>
+              <p className="text-[11px] text-muted-foreground truncate">
                 {invoice.customer_name}
               </p>
             </div>
-            <div className="text-right flex-shrink-0 flex flex-col items-end gap-1">
-              <p className="font-semibold text-xs sm:text-sm">
+            <div className="text-right flex-shrink-0 flex items-center gap-2">
+              <p className="font-semibold text-xs">
                 {formatCurrency(invoice.total)}
               </p>
               <Badge 
                 variant={getStatusVariant(invoice.status)} 
-                className="text-[10px] px-1.5 py-0"
+                className="text-[10px] px-1.5 py-0 h-4"
               >
                 {invoice.status}
               </Badge>
