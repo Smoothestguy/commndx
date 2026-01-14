@@ -326,6 +326,79 @@ async function processEstimateUpdate(
   return { success: true, action: "updated", estimateId: mapping.estimate_id };
 }
 
+// Process a single invoice update from QuickBooks (primarily for deletion sync)
+async function processInvoiceUpdate(
+  supabase: any,
+  qbInvoiceId: string,
+  operation: string,
+  accessToken: string,
+  realmId: string
+) {
+  console.log(`[Webhook] Processing invoice ${qbInvoiceId}, operation: ${operation}`);
+
+  // Find the local mapping
+  const { data: mapping, error: mappingError } = await supabase
+    .from("quickbooks_invoice_mappings")
+    .select("*, invoices:invoice_id(*)")
+    .eq("quickbooks_invoice_id", qbInvoiceId)
+    .maybeSingle();
+
+  if (mappingError) {
+    console.error("[Webhook] Error finding invoice mapping:", mappingError);
+    return { success: false, error: mappingError.message };
+  }
+
+  if (!mapping) {
+    console.log("[Webhook] No local mapping found for QB invoice:", qbInvoiceId);
+    return { success: true, skipped: true, reason: "No local mapping" };
+  }
+
+  if (operation === "Delete" || operation === "Void") {
+    // Soft-delete the local invoice (set deleted_at)
+    const { error: deleteError } = await supabase
+      .from("invoices")
+      .update({ 
+        deleted_at: new Date().toISOString(),
+        updated_at: new Date().toISOString()
+      })
+      .eq("id", mapping.invoice_id);
+
+    if (deleteError) {
+      console.error("[Webhook] Error soft-deleting invoice:", deleteError);
+      return { success: false, error: deleteError.message };
+    }
+
+    // Update mapping to reflect deleted status
+    await supabase
+      .from("quickbooks_invoice_mappings")
+      .update({
+        sync_status: "deleted",
+        synced_at: new Date().toISOString(),
+      })
+      .eq("id", mapping.id);
+
+    // Log the sync
+    await supabase.from("quickbooks_sync_log").insert({
+      entity_type: "invoice",
+      entity_id: mapping.invoice_id,
+      action: "webhook_delete",
+      status: "success",
+      details: {
+        qb_invoice_id: qbInvoiceId,
+        qb_doc_number: mapping.quickbooks_doc_number,
+        operation,
+      },
+    });
+
+    console.log("[Webhook] Soft-deleted invoice from QB webhook:", mapping.invoice_id);
+    return { success: true, action: "deleted", invoiceId: mapping.invoice_id };
+  }
+
+  // For Create/Update operations - not yet implemented
+  console.log("[Webhook] Invoice create/update sync not yet implemented");
+  return { success: true, skipped: true, reason: "Update sync not implemented" };
+}
+
 // Process a single bill update from QuickBooks
 async function processBillUpdate(
   supabase: any,
@@ -569,6 +642,15 @@ serve(async (req) => {
             realmId
           );
           results.push({ entityId: entity.id, entityType: "Bill", ...result });
+        } else if (entity.name === "Invoice") {
+          const result = await processInvoiceUpdate(
+            supabase,
+            entity.id,
+            entity.operation,
+            accessToken,
+            realmId
+          );
+          results.push({ entityId: entity.id, entityType: "Invoice", ...result });
         } else {
           console.log(`[Webhook] Skipping unsupported entity type: ${entity.name}`);
         }
