@@ -212,19 +212,27 @@ serve(async (req) => {
       );
     }
 
-    // Find or create QuickBooks customer
-    const customerResponse = await supabase.functions.invoke('quickbooks-sync-customers', {
-      body: { 
+    // Find or create QuickBooks customer - use fetch with auth forwarding
+    const authHeader = req.headers.get("Authorization");
+    const customerResponse = await fetch(`${SUPABASE_URL}/functions/v1/quickbooks-sync-customers`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': authHeader || '',
+      },
+      body: JSON.stringify({ 
         action: 'find-or-create',
         customerId: invoice.customer_id
-      }
+      })
     });
 
-    if (customerResponse.error) {
-      throw new Error(`Customer sync failed: ${customerResponse.error.message}`);
+    if (!customerResponse.ok) {
+      const errorData = await customerResponse.json().catch(() => ({}));
+      throw new Error(`Customer sync failed: ${errorData.error || customerResponse.statusText}`);
     }
 
-    const qbCustomerId = customerResponse.data?.quickbooksCustomerId;
+    const customerData = await customerResponse.json();
+    const qbCustomerId = customerData?.quickbooksCustomerId;
     if (!qbCustomerId) {
       throw new Error("Could not get QuickBooks customer ID");
     }
@@ -258,18 +266,26 @@ serve(async (req) => {
         
         for (const productId of unmappedProductIds) {
           try {
-            const syncResponse = await supabase.functions.invoke('quickbooks-sync-products', {
-              body: { 
+            const syncResponse = await fetch(`${SUPABASE_URL}/functions/v1/quickbooks-sync-products`, {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json',
+                'Authorization': authHeader || '',
+              },
+              body: JSON.stringify({ 
                 action: 'sync-single',
                 productId: productId
-              }
+              })
             });
 
-            if (syncResponse.error) {
-              console.warn(`Failed to sync product ${productId}:`, syncResponse.error);
-            } else if (syncResponse.data?.quickbooksItemId) {
-              console.log(`Successfully synced product ${productId} to QB item ${syncResponse.data.quickbooksItemId}`);
-              qbItemMap.set(productId, syncResponse.data.quickbooksItemId);
+            if (!syncResponse.ok) {
+              console.warn(`Failed to sync product ${productId}:`, await syncResponse.text());
+            } else {
+              const syncData = await syncResponse.json();
+              if (syncData?.quickbooksItemId) {
+                console.log(`Successfully synced product ${productId} to QB item ${syncData.quickbooksItemId}`);
+                qbItemMap.set(productId, syncData.quickbooksItemId);
+              }
             }
           } catch (syncError) {
             console.warn(`Error syncing product ${productId}:`, syncError);
