@@ -22,7 +22,7 @@ const ACTION_COLORS: Record<string, string> = {
   payment: "bg-indigo-500/10 text-indigo-500 border-indigo-500/20",
 };
 
-const RESOURCE_ICONS: Record<string, React.ElementType> = {
+const RESOURCE_ICONS: Record<string, React.ComponentType<{ className?: string }>> = {
   estimate: FileText,
   invoice: Receipt,
   purchase_order: Truck,

@@ -54,7 +54,7 @@ const USA3DMapSimple = ({
     ];
 
     // Major cities (x, y, size, name)
-    const cities = [
+    const cities: [number, number, number, string][] = [
       [115, 90, 4, 'Seattle'],
       [105, 160, 6, 'San Francisco'],
       [110, 210, 7, 'Los Angeles'],
