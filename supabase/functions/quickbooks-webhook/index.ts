@@ -164,6 +164,26 @@ async function fetchQBInvoice(invoiceId: string, accessToken: string, realmId: s
   return data.Invoice;
 }
 
+// Fetch customer from QuickBooks
+async function fetchQBCustomer(customerId: string, accessToken: string, realmId: string) {
+  const url = `https://quickbooks.api.intuit.com/v3/company/${realmId}/customer/${customerId}`;
+  
+  const response = await fetch(url, {
+    headers: {
+      Authorization: `Bearer ${accessToken}`,
+      Accept: "application/json",
+    },
+  });
+
+  if (!response.ok) {
+    const errorText = await response.text();
+    throw new Error(`Failed to fetch QB customer: ${errorText}`);
+  }
+
+  const data = await response.json();
+  return data.Customer;
+}
+
 // Map QB estimate status to local status
 function mapQbStatusToLocal(txnStatus: string | undefined): string {
   switch (txnStatus) {
@@ -206,6 +226,235 @@ function mapQbInvoiceStatusToLocal(balance: number, totalAmt: number, dueDate?: 
     }
   }
   return "sent";
+}
+
+// Process a single customer update from QuickBooks
+async function processCustomerUpdate(
+  supabase: any,
+  qbCustomerId: string,
+  operation: string,
+  accessToken: string,
+  realmId: string
+) {
+  console.log(`[Webhook] Processing customer ${qbCustomerId}, operation: ${operation}`);
+
+  // Find the local mapping
+  const { data: mapping, error: mappingError } = await supabase
+    .from("quickbooks_customer_mappings")
+    .select("*, customers:customer_id(*)")
+    .eq("quickbooks_customer_id", qbCustomerId)
+    .maybeSingle();
+
+  if (mappingError) {
+    console.error("[Webhook] Error finding customer mapping:", mappingError);
+    return { success: false, error: mappingError.message };
+  }
+
+  // Handle Delete/Void operations
+  if (operation === "Delete" || operation === "Void") {
+    if (!mapping) {
+      console.log("[Webhook] No local mapping found for deleted QB customer:", qbCustomerId);
+      return { success: true, skipped: true, reason: "No local mapping" };
+    }
+
+    // Soft-delete the local customer
+    const { error: deleteError } = await supabase
+      .from("customers")
+      .update({
+        deleted_at: new Date().toISOString(),
+        updated_at: new Date().toISOString(),
+      })
+      .eq("id", mapping.customer_id);
+
+    if (deleteError) {
+      console.error("[Webhook] Error soft-deleting customer:", deleteError);
+      return { success: false, error: deleteError.message };
+    }
+
+    // Update mapping status
+    await supabase
+      .from("quickbooks_customer_mappings")
+      .update({
+        sync_status: "deleted",
+        last_synced_at: new Date().toISOString(),
+      })
+      .eq("id", mapping.id);
+
+    // Log the sync
+    await supabase.from("quickbooks_sync_log").insert({
+      entity_type: "customer",
+      entity_id: mapping.customer_id,
+      action: "webhook_delete",
+      status: "success",
+      details: {
+        qb_customer_id: qbCustomerId,
+        operation,
+      },
+    });
+
+    console.log("[Webhook] Soft-deleted customer from QB webhook:", mapping.customer_id);
+    return { success: true, action: "deleted", customerId: mapping.customer_id };
+  }
+
+  // Fetch the full customer from QuickBooks
+  const qbCustomer = await fetchQBCustomer(qbCustomerId, accessToken, realmId);
+  console.log("[Webhook] Fetched QB customer:", qbCustomer.DisplayName);
+
+  // Build address from QB BillAddr
+  let address = null;
+  if (qbCustomer.BillAddr) {
+    const addr = qbCustomer.BillAddr;
+    const parts = [
+      addr.Line1,
+      addr.Line2,
+      addr.City,
+      addr.CountrySubDivisionCode,
+      addr.PostalCode,
+    ].filter(Boolean);
+    address = parts.join(", ");
+  }
+
+  // Determine customer type from QB Job field
+  const customerType = qbCustomer.Job ? "commercial" : "residential";
+
+  // Extract email - use fallback if not provided
+  let email = qbCustomer.PrimaryEmailAddr?.Address;
+  if (!email) {
+    email = `qb-${qbCustomerId}@quickbooks.imported`;
+  }
+
+  if (!mapping) {
+    // No local mapping exists - create new customer in Command X
+    console.log("[Webhook] Creating new customer from QuickBooks:", qbCustomer.DisplayName);
+
+    // Check if email already exists (to prevent duplicates)
+    const { data: existingCustomer } = await supabase
+      .from("customers")
+      .select("id, email")
+      .eq("email", email)
+      .is("deleted_at", null)
+      .maybeSingle();
+
+    if (existingCustomer) {
+      console.log("[Webhook] Customer with this email already exists, creating mapping only");
+      
+      // Just create mapping to existing customer
+      await supabase.from("quickbooks_customer_mappings").insert({
+        customer_id: existingCustomer.id,
+        quickbooks_customer_id: qbCustomerId,
+        sync_status: "synced",
+        last_synced_at: new Date().toISOString(),
+      });
+
+      return { success: true, action: "mapped_existing", customerId: existingCustomer.id };
+    }
+
+    // Create new customer
+    const { data: newCustomer, error: insertError } = await supabase
+      .from("customers")
+      .insert({
+        name: qbCustomer.DisplayName,
+        email: email,
+        phone: qbCustomer.PrimaryPhone?.FreeFormNumber || null,
+        company: qbCustomer.CompanyName || null,
+        address: address,
+        notes: qbCustomer.Notes || null,
+        customer_type: customerType,
+      })
+      .select()
+      .single();
+
+    if (insertError) {
+      console.error("[Webhook] Error creating customer:", insertError);
+      return { success: false, error: insertError.message };
+    }
+
+    // Create the mapping
+    await supabase.from("quickbooks_customer_mappings").insert({
+      customer_id: newCustomer.id,
+      quickbooks_customer_id: qbCustomerId,
+      sync_status: "synced",
+      last_synced_at: new Date().toISOString(),
+    });
+
+    // Log the sync
+    await supabase.from("quickbooks_sync_log").insert({
+      entity_type: "customer",
+      entity_id: newCustomer.id,
+      action: "webhook_create",
+      status: "success",
+      details: {
+        qb_customer_id: qbCustomerId,
+        qb_display_name: qbCustomer.DisplayName,
+        operation,
+      },
+    });
+
+    console.log("[Webhook] Created new customer from QB:", newCustomer.id);
+    return { success: true, action: "created", customerId: newCustomer.id };
+  }
+
+  // Mapping exists - check for conflict detection
+  const qbLastUpdated = new Date(qbCustomer.MetaData.LastUpdatedTime);
+  const localLastSynced = mapping.last_synced_at ? new Date(mapping.last_synced_at) : null;
+
+  // Check if QB is actually newer than our last sync
+  if (localLastSynced && qbLastUpdated <= localLastSynced) {
+    console.log("[Webhook] QB customer is not newer than local, skipping");
+    return { success: true, skipped: true, reason: "Local is up to date" };
+  }
+
+  // Update the local customer
+  const customerUpdate = {
+    name: qbCustomer.DisplayName,
+    phone: qbCustomer.PrimaryPhone?.FreeFormNumber || mapping.customers?.phone,
+    company: qbCustomer.CompanyName || mapping.customers?.company,
+    address: address || mapping.customers?.address,
+    notes: qbCustomer.Notes || mapping.customers?.notes,
+    customer_type: customerType,
+    updated_at: new Date().toISOString(),
+  };
+
+  // Only update email if it's a real email (not the placeholder)
+  if (qbCustomer.PrimaryEmailAddr?.Address) {
+    (customerUpdate as any).email = qbCustomer.PrimaryEmailAddr.Address;
+  }
+
+  const { error: updateError } = await supabase
+    .from("customers")
+    .update(customerUpdate)
+    .eq("id", mapping.customer_id);
+
+  if (updateError) {
+    console.error("[Webhook] Error updating customer:", updateError);
+    return { success: false, error: updateError.message };
+  }
+
+  // Update the mapping
+  await supabase
+    .from("quickbooks_customer_mappings")
+    .update({
+      last_synced_at: new Date().toISOString(),
+      sync_status: "synced",
+    })
+    .eq("id", mapping.id);
+
+  // Log the sync
+  await supabase.from("quickbooks_sync_log").insert({
+    entity_type: "customer",
+    entity_id: mapping.customer_id,
+    action: "webhook_update",
+    status: "success",
+    details: {
+      qb_customer_id: qbCustomerId,
+      qb_display_name: qbCustomer.DisplayName,
+      operation,
+      fields_updated: Object.keys(customerUpdate),
+    },
+  });
+
+  console.log("[Webhook] Successfully updated customer from QB:", mapping.customer_id);
+  return { success: true, action: "updated", customerId: mapping.customer_id };
 }
 
 // Process a single estimate update from QuickBooks
@@ -819,6 +1068,15 @@ serve(async (req) => {
             realmId
           );
           results.push({ entityId: entity.id, entityType: "Invoice", ...result });
+        } else if (entity.name === "Customer") {
+          const result = await processCustomerUpdate(
+            supabase,
+            entity.id,
+            entity.operation,
+            accessToken,
+            realmId
+          );
+          results.push({ entityId: entity.id, entityType: "Customer", ...result });
         } else {
           console.log(`[Webhook] Skipping unsupported entity type: ${entity.name}`);
         }
