@@ -1124,31 +1124,67 @@ async function processBillUpdate(
   }
 
   if (operation === "Delete" || operation === "Void") {
-    // Mark the local mapping as voided
+    const billId = mapping.bill_id;
+    console.log("[Webhook] Hard deleting vendor bill from QB delete:", billId);
+    
+    // 1. Get payment IDs first for attachment cleanup
+    const { data: payments } = await supabase
+      .from("vendor_bill_payments")
+      .select("id")
+      .eq("bill_id", billId);
+    
+    // 2. Delete payment attachments
+    if (payments && payments.length > 0) {
+      const paymentIds = payments.map((p: any) => p.id);
+      await supabase
+        .from("vendor_bill_payment_attachments")
+        .delete()
+        .in("payment_id", paymentIds);
+    }
+    
+    // 3. Delete payments
+    await supabase
+      .from("vendor_bill_payments")
+      .delete()
+      .eq("bill_id", billId);
+    
+    // 4. Delete bill attachments
+    await supabase
+      .from("vendor_bill_attachments")
+      .delete()
+      .eq("bill_id", billId);
+    
+    // 5. Delete line items
+    await supabase
+      .from("vendor_bill_line_items")
+      .delete()
+      .eq("bill_id", billId);
+    
+    // 6. Delete change order links
+    await supabase
+      .from("change_order_vendor_bills")
+      .delete()
+      .eq("vendor_bill_id", billId);
+    
+    // 7. Delete QuickBooks mapping
     await supabase
       .from("quickbooks_bill_mappings")
-      .update({
-        sync_status: "voided",
-        last_synced_at: new Date().toISOString(),
-      })
+      .delete()
       .eq("id", mapping.id);
-
-    // Soft-delete the local vendor bill
+    
+    // 8. Delete the bill itself
     const { error: deleteError } = await supabase
       .from("vendor_bills")
-      .update({
-        deleted_at: new Date().toISOString(),
-        status: "void",
-      })
-      .eq("id", mapping.bill_id)
-      .is("deleted_at", null);
-
+      .delete()
+      .eq("id", billId);
+    
     if (deleteError) {
-      console.error("[Webhook] Error soft-deleting vendor bill:", deleteError);
+      console.error("[Webhook] Error hard-deleting vendor bill:", deleteError);
+      return { success: false, error: deleteError.message };
     }
-
-    console.log("[Webhook] Soft-deleted vendor bill from QB:", mapping.bill_id);
-    return { success: true, action: "deleted" };
+    
+    console.log("[Webhook] Hard-deleted vendor bill from QB:", billId);
+    return { success: true, action: "hard_deleted" };
   }
 
   // Fetch the full bill from QuickBooks
