@@ -118,7 +118,7 @@ export function LeftPanel({ collapsed, onToggleCollapse }: LeftPanelProps) {
   }
 
   return (
-    <div className="w-64 bg-card border-r border-border flex flex-col">
+    <div className="w-72 bg-card border-r border-border flex flex-col">
       {/* Panel Header */}
       <div className="flex items-center justify-between px-3 py-2 border-b border-border">
         <h3 className="text-sm font-semibold">Quick Access</h3>
@@ -158,7 +158,7 @@ export function LeftPanel({ collapsed, onToggleCollapse }: LeftPanelProps) {
                       <span className="font-medium">{estimate.number}</span>
                       <Badge variant="outline" className="text-[10px]">Pending</Badge>
                     </div>
-                    <p className="text-muted-foreground truncate">{estimate.customer_name}</p>
+                    <p className="text-muted-foreground break-words leading-tight">{estimate.customer_name}</p>
                   </Link>
                 ))}
               </div>
@@ -194,7 +194,7 @@ export function LeftPanel({ collapsed, onToggleCollapse }: LeftPanelProps) {
                       <span className="font-medium">{invoice.number}</span>
                       <Badge variant="destructive" className="text-[10px]">Overdue</Badge>
                     </div>
-                    <p className="text-muted-foreground truncate">{invoice.customer_name}</p>
+                    <p className="text-muted-foreground break-words leading-tight">{invoice.customer_name}</p>
                   </Link>
                 ))}
               </div>
@@ -221,7 +221,7 @@ export function LeftPanel({ collapsed, onToggleCollapse }: LeftPanelProps) {
                     to={`/projects/${project.id}`}
                     className="block rounded-md p-2 text-xs hover:bg-muted transition-colors"
                   >
-                    <p className="font-medium truncate">{project.name}</p>
+                    <p className="font-medium break-words leading-tight">{project.name}</p>
                     <p className="text-muted-foreground">
                       {formatDistanceToNow(new Date(project.created_at), { addSuffix: true })}
                     </p>
