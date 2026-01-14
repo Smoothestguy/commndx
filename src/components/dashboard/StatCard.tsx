@@ -39,7 +39,7 @@ export function StatCard({
       </div>
     );
 
-    const spreadsheetClasses = "bg-card border-b border-border hover:bg-muted/50 transition-colors";
+    const spreadsheetClasses = "bg-transparent border-b border-border/30 hover:bg-muted/30 transition-colors";
 
     if (href) {
       return (
@@ -54,8 +54,8 @@ export function StatCard({
 
   const cardContent = compact ? (
     <>
-      <div className="flex items-center gap-1 sm:gap-1.5 mb-0.5 sm:mb-1 min-w-0">
-        <div className="flex h-5 w-5 sm:h-6 sm:w-6 items-center justify-center rounded bg-primary/10 flex-shrink-0">
+      <div className="flex items-center gap-1.5 mb-0.5 min-w-0">
+        <div className="flex h-5 w-5 items-center justify-center rounded-sm bg-primary/10 flex-shrink-0">
           <Icon className="h-3 w-3 sm:h-3.5 sm:w-3.5 text-primary" />
         </div>
         <p className="text-[9px] sm:text-[10px] font-medium text-muted-foreground truncate min-w-0">{title}</p>
@@ -64,13 +64,13 @@ export function StatCard({
     </>
   ) : (
     <>
-      <div className="flex items-center gap-2 sm:gap-3 mb-2 sm:mb-3">
-        <div className="flex h-8 w-8 sm:h-10 sm:w-10 items-center justify-center rounded-lg bg-primary/10 transition-all duration-200 group-hover:bg-primary/15 flex-shrink-0">
-          <Icon className="h-4 w-4 sm:h-5 sm:w-5 text-primary" />
+      <div className="flex items-center gap-2 mb-2">
+        <div className="flex h-7 w-7 items-center justify-center rounded-sm bg-primary/10 flex-shrink-0">
+          <Icon className="h-3.5 w-3.5 text-primary" />
         </div>
-        <p className="text-xs sm:text-sm font-medium text-muted-foreground truncate min-w-0 flex-1">{title}</p>
+        <p className="text-xs font-medium text-muted-foreground truncate min-w-0 flex-1">{title}</p>
       </div>
-      <p className="font-heading text-xl sm:text-2xl md:text-3xl font-bold text-foreground truncate">
+      <p className="font-heading text-lg sm:text-xl font-semibold text-foreground truncate">
         {value}
       </p>
       {change && (
@@ -89,9 +89,9 @@ export function StatCard({
   );
 
   const cardClasses = cn(
-    "bg-card rounded-lg border border-border shadow-sm transition-all duration-200 hover:shadow-md group block min-w-0 overflow-hidden",
-    compact ? "p-1.5 sm:p-2" : "p-4 sm:p-5",
-    href && "cursor-pointer hover:border-primary/50"
+    "bg-card/60 rounded-md transition-colors group block min-w-0 overflow-hidden hover:bg-card/90",
+    compact ? "p-1.5 sm:p-2" : "p-3 sm:p-4",
+    href && "cursor-pointer"
   );
 
   const cardStyle = {

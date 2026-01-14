@@ -130,29 +130,21 @@ export function ActivityWidget({ widget, theme, isEditMode }: ActivityWidgetProp
 
   return (
     <ScrollArea className="h-40 sm:h-48">
-      <div className="space-y-2 sm:space-y-3 pr-4">
+      <div className="divide-y divide-border/30">
         {activities.map((activity) => {
           const Icon = ACTIVITY_ICONS[activity.type];
           return (
-            <div key={activity.id} className="flex items-start gap-3">
-              <div
-                className={cn(
-                  "p-2 rounded-full",
-                  theme?.accentColor ? "" : "bg-primary/10"
-                )}
-                style={{ backgroundColor: theme?.accentColor ? `${theme.accentColor}20` : undefined }}
-              >
-                <Icon className="h-3 w-3" style={{ color: theme?.accentColor }} />
-              </div>
+            <div key={activity.id} className="flex items-start gap-2 py-2 first:pt-0">
+              <Icon 
+                className="h-3.5 w-3.5 mt-0.5 flex-shrink-0 text-muted-foreground" 
+                style={{ color: theme?.accentColor }} 
+              />
               <div className="flex-1 min-w-0">
-                <p className={cn("font-medium truncate", fontSizeClass)}>
+                <p className={cn("font-medium truncate text-xs", fontSizeClass)}>
                   {activity.title}
                 </p>
-                <p className="text-xs text-muted-foreground truncate">
-                  {activity.description}
-                </p>
-                <p className="text-xs text-muted-foreground">
-                  {formatDistanceToNow(new Date(activity.timestamp), { addSuffix: true })}
+                <p className="text-[11px] text-muted-foreground truncate">
+                  {activity.description} · {formatDistanceToNow(new Date(activity.timestamp), { addSuffix: true })}
                 </p>
               </div>
             </div>
