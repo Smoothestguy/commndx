@@ -144,6 +144,7 @@ import Trash from "./pages/admin/Trash";
 import DocumentCenter from "./pages/DocumentCenter";
 import { UpdateNotification } from "./components/electron/UpdateNotification";
 import NetworkMapDemo from "./pages/NetworkMapDemo";
+import USANetworkMapDemo from "./pages/USANetworkMapDemo";
 
 const queryClient = new QueryClient();
 
@@ -213,6 +214,7 @@ const App = () => {
                     />
                     {/* Network Map Demo */}
                     <Route path="/network-map-demo" element={<NetworkMapDemo />} />
+                    <Route path="/usa-network-map-demo" element={<USANetworkMapDemo />} />
                     {/* Admin Contractor Routes - moved to SidebarLayout group below */}
                     {/* Portal Routes */}
                     <Route path="/portal/login" element={<PortalLogin />} />
