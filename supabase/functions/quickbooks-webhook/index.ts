@@ -144,6 +144,26 @@ async function fetchQBBill(billId: string, accessToken: string, realmId: string)
   return data.Bill;
 }
 
+// Fetch invoice from QuickBooks
+async function fetchQBInvoice(invoiceId: string, accessToken: string, realmId: string) {
+  const url = `https://quickbooks.api.intuit.com/v3/company/${realmId}/invoice/${invoiceId}`;
+  
+  const response = await fetch(url, {
+    headers: {
+      Authorization: `Bearer ${accessToken}`,
+      Accept: "application/json",
+    },
+  });
+
+  if (!response.ok) {
+    const errorText = await response.text();
+    throw new Error(`Failed to fetch QB invoice: ${errorText}`);
+  }
+
+  const data = await response.json();
+  return data.Invoice;
+}
+
 // Map QB estimate status to local status
 function mapQbStatusToLocal(txnStatus: string | undefined): string {
   switch (txnStatus) {
@@ -167,6 +187,16 @@ function mapQbBillStatusToLocal(balance: number, totalAmt: number): string {
     return "partially_paid";
   }
   return "open";
+}
+
+// Map QB invoice balance to local status
+function mapQbInvoiceStatusToLocal(balance: number, totalAmt: number): string {
+  if (balance === 0 && totalAmt > 0) {
+    return "paid";
+  } else if (balance < totalAmt && balance > 0) {
+    return "partial";
+  }
+  return "pending";
 }
 
 // Process a single estimate update from QuickBooks
@@ -394,9 +424,138 @@ async function processInvoiceUpdate(
     return { success: true, action: "deleted", invoiceId: mapping.invoice_id };
   }
 
-  // For Create/Update operations - not yet implemented
-  console.log("[Webhook] Invoice create/update sync not yet implemented");
-  return { success: true, skipped: true, reason: "Update sync not implemented" };
+  // For Create/Update operations - sync changes from QuickBooks
+  console.log("[Webhook] Processing invoice create/update from QuickBooks");
+
+  // Fetch the full invoice from QuickBooks
+  const qbInvoice = await fetchQBInvoice(qbInvoiceId, accessToken, realmId);
+  console.log("[Webhook] Fetched QB invoice:", qbInvoice.DocNumber);
+
+  // Get QB last updated time for conflict detection
+  const qbLastUpdated = new Date(qbInvoice.MetaData.LastUpdatedTime);
+  const localLastSynced = mapping.synced_at ? new Date(mapping.synced_at) : null;
+
+  // Check if QB is actually newer than our last sync
+  if (localLastSynced && qbLastUpdated <= localLastSynced) {
+    console.log("[Webhook] QB invoice is not newer than local, skipping");
+    return { success: true, skipped: true, reason: "Local is up to date" };
+  }
+
+  // Calculate amounts from QB invoice
+  const totalAmt = parseFloat(qbInvoice.TotalAmt || "0");
+  const balance = parseFloat(qbInvoice.Balance || "0");
+  const taxAmount = parseFloat(qbInvoice.TxnTaxDetail?.TotalTax || "0");
+  const subtotal = totalAmt - taxAmount;
+  const paidAmount = totalAmt - balance;
+
+  // Update the local invoice
+  const invoiceUpdate = {
+    due_date: qbInvoice.DueDate || mapping.invoices?.due_date,
+    notes: qbInvoice.PrivateNote || null,
+    subtotal: subtotal,
+    tax_amount: taxAmount,
+    total: totalAmt,
+    paid_amount: paidAmount,
+    remaining_amount: balance,
+    status: mapQbInvoiceStatusToLocal(balance, totalAmt),
+    updated_at: new Date().toISOString(),
+  };
+
+  const { error: updateError } = await supabase
+    .from("invoices")
+    .update(invoiceUpdate)
+    .eq("id", mapping.invoice_id);
+
+  if (updateError) {
+    console.error("[Webhook] Error updating invoice:", updateError);
+    return { success: false, error: updateError.message };
+  }
+
+  // Update line items - delete existing and insert new
+  await supabase
+    .from("invoice_line_items")
+    .delete()
+    .eq("invoice_id", mapping.invoice_id);
+
+  if (qbInvoice.Line && qbInvoice.Line.length > 0) {
+    const lineItems = [];
+    let displayOrder = 0;
+
+    for (const line of qbInvoice.Line) {
+      if (line.DetailType === "SalesItemLineDetail" && line.SalesItemLineDetail) {
+        const detail = line.SalesItemLineDetail;
+        
+        // Try to find matching product by QB item ID
+        let productId = null;
+        let productName = detail.ItemRef?.name || null;
+        
+        if (detail.ItemRef?.value) {
+          const { data: productMapping } = await supabase
+            .from("quickbooks_product_mappings")
+            .select("product_id, products(name)")
+            .eq("quickbooks_item_id", detail.ItemRef.value)
+            .maybeSingle();
+          
+          if (productMapping) {
+            productId = productMapping.product_id;
+            // Use local product name if we have a mapping
+            if (productMapping.products?.name) {
+              productName = productMapping.products.name;
+            }
+          }
+        }
+
+        lineItems.push({
+          invoice_id: mapping.invoice_id,
+          product_id: productId,
+          product_name: productName,
+          description: line.Description || detail.ItemRef?.name || "Item",
+          quantity: detail.Qty || 1,
+          unit_price: parseFloat(detail.UnitPrice || "0"),
+          markup: 0,
+          total: parseFloat(line.Amount || "0"),
+          display_order: displayOrder++,
+        });
+      }
+    }
+
+    if (lineItems.length > 0) {
+      const { error: lineError } = await supabase
+        .from("invoice_line_items")
+        .insert(lineItems);
+
+      if (lineError) {
+        console.error("[Webhook] Error inserting invoice line items:", lineError);
+      }
+    }
+  }
+
+  // Update the mapping with new sync timestamp
+  await supabase
+    .from("quickbooks_invoice_mappings")
+    .update({
+      synced_at: new Date().toISOString(),
+      sync_status: "synced",
+      quickbooks_doc_number: qbInvoice.DocNumber,
+    })
+    .eq("id", mapping.id);
+
+  // Log the sync action
+  await supabase.from("quickbooks_sync_log").insert({
+    entity_type: "invoice",
+    entity_id: mapping.invoice_id,
+    action: "webhook_update",
+    status: "success",
+    details: {
+      qb_invoice_id: qbInvoiceId,
+      qb_doc_number: qbInvoice.DocNumber,
+      operation,
+      fields_updated: ["due_date", "notes", "subtotal", "tax_amount", "total", "paid_amount", "remaining_amount", "status", "line_items"],
+    },
+  });
+
+  console.log("[Webhook] Successfully updated invoice from QB:", mapping.invoice_id);
+  return { success: true, action: "updated", invoiceId: mapping.invoice_id };
 }
 
 // Process a single bill update from QuickBooks
