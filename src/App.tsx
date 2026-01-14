@@ -24,7 +24,7 @@ import { ProtectedRoute } from "@/components/ProtectedRoute";
 import { ThemeProvider } from "@/components/ThemeProvider";
 import { BottomNav } from "@/components/layout/BottomNav";
 import { MoreMenu } from "@/components/layout/MoreMenu";
-import { SidebarLayout } from "@/components/layout/SidebarLayout";
+import { NetSuiteLayout } from "@/components/layout/netsuite/NetSuiteLayout";
 import { ChatInterface } from "@/components/ai-assistant/ChatInterface";
 import Index from "./pages/Index";
 import Auth from "./pages/Auth";
@@ -303,14 +303,12 @@ const App = () => {
                         </PortalProtectedRoute>
                       }
                     />
-                    {/* Protected Routes with Sidebar */}
+                    {/* Protected Routes with NetSuite Layout */}
                     <Route
                       element={
                         <ProtectedRoute>
                           <UIDensityProvider>
-                            <SidebarProvider>
-                              <SidebarLayout />
-                            </SidebarProvider>
+                            <NetSuiteLayout />
                           </UIDensityProvider>
                         </ProtectedRoute>
                       }
