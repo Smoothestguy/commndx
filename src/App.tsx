@@ -143,6 +143,7 @@ import AiDevAssistant from "./pages/admin/AiDevAssistant";
 import Trash from "./pages/admin/Trash";
 import DocumentCenter from "./pages/DocumentCenter";
 import { UpdateNotification } from "./components/electron/UpdateNotification";
+import NetworkMapDemo from "./pages/NetworkMapDemo";
 
 const queryClient = new QueryClient();
 
@@ -210,6 +211,8 @@ const App = () => {
                       path="/contractor/success"
                       element={<ContractorSubmissionSuccess />}
                     />
+                    {/* Network Map Demo */}
+                    <Route path="/network-map-demo" element={<NetworkMapDemo />} />
                     {/* Admin Contractor Routes - moved to SidebarLayout group below */}
                     {/* Portal Routes */}
                     <Route path="/portal/login" element={<PortalLogin />} />
