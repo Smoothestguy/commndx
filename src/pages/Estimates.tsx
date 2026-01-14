@@ -17,6 +17,7 @@ import { EstimateCard } from "@/components/estimates/EstimateCard";
 import { EstimateStats } from "@/components/estimates/EstimateStats";
 import { EstimateEmptyState } from "@/components/estimates/EstimateEmptyState";
 import { EstimateBulkEditModal } from "@/components/estimates/EstimateBulkEditModal";
+import { TablePagination } from "@/components/shared/TablePagination";
 
 const Estimates = () => {
   const navigate = useNavigate();
@@ -30,6 +31,10 @@ const Estimates = () => {
   const [selectedStatus, setSelectedStatus] = useState("all");
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [bulkEditModalOpen, setBulkEditModalOpen] = useState(false);
+
+  // Pagination state
+  const [currentPage, setCurrentPage] = useState(1);
+  const [rowsPerPage, setRowsPerPage] = useState(10);
 
   const bulkUpdate = useBulkUpdateEstimates();
 
@@ -320,29 +325,46 @@ const Estimates = () => {
                   onCreateEstimate={() => navigate("/estimates/new")}
                   hasFilters={hasActiveFilters}
                 />
-              ) : isMobile ? (
-                <div className="grid gap-4 sm:grid-cols-2">
-                  {filteredEstimates.map((estimate, index) => (
-                    <EstimateCard
-                      key={estimate.id}
-                      estimate={estimate}
-                      onClick={() => handleRowClick(estimate)}
-                      index={index}
-                    />
-                  ))}
-                </div>
               ) : (
-                <EnhancedDataTable
-                  tableId="estimates"
-                  data={filteredEstimates}
-                  columns={columns}
-                  onRowClick={handleRowClick}
-                  defaultSortKey="number"
-                  defaultSortDirection="desc"
-                  selectable={true}
-                  selectedIds={selectedIds}
-                  onSelectionChange={setSelectedIds}
-                />
+                <>
+                  {isMobile ? (
+                    <div className="grid gap-4 sm:grid-cols-2">
+                      {filteredEstimates
+                        .slice((currentPage - 1) * rowsPerPage, currentPage * rowsPerPage)
+                        .map((estimate, index) => (
+                          <EstimateCard
+                            key={estimate.id}
+                            estimate={estimate}
+                            onClick={() => handleRowClick(estimate)}
+                            index={index}
+                          />
+                        ))}
+                    </div>
+                  ) : (
+                    <EnhancedDataTable
+                      tableId="estimates"
+                      data={filteredEstimates.slice((currentPage - 1) * rowsPerPage, currentPage * rowsPerPage)}
+                      columns={columns}
+                      onRowClick={handleRowClick}
+                      defaultSortKey="number"
+                      defaultSortDirection="desc"
+                      selectable={true}
+                      selectedIds={selectedIds}
+                      onSelectionChange={setSelectedIds}
+                    />
+                  )}
+                  <TablePagination
+                    currentPage={currentPage}
+                    totalCount={filteredEstimates.length}
+                    rowsPerPage={rowsPerPage}
+                    onPageChange={setCurrentPage}
+                    onRowsPerPageChange={(size) => {
+                      setRowsPerPage(size);
+                      setCurrentPage(1);
+                    }}
+                    rowsPerPageOptions={[10, 20, 30, 40]}
+                  />
+                </>
               )}
             </>
           )}

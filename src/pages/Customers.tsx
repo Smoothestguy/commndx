@@ -26,6 +26,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { useCustomers, useAddCustomer, useUpdateCustomer, useDeleteCustomer, Customer } from "@/integrations/supabase/hooks/useCustomers";
 import { useProjects } from "@/integrations/supabase/hooks/useProjects";
 import { useQuickBooksConfig, useImportCustomersFromQB, useExportCustomersToQB } from "@/integrations/supabase/hooks/useQuickBooks";
+import { TablePagination } from "@/components/shared/TablePagination";
 
 const Customers = () => {
   const navigate = useNavigate();
@@ -55,6 +56,10 @@ const Customers = () => {
     notes: "",
     tax_exempt: false,
   });
+
+  // Pagination state
+  const [currentPage, setCurrentPage] = useState(1);
+  const [rowsPerPage, setRowsPerPage] = useState(10);
 
   const filteredCustomers = customers?.filter(
     (c) =>
@@ -307,29 +312,43 @@ const Customers = () => {
             {/* Mobile Cards - hidden on md+ */}
             <div className="block md:hidden">
               <div className="grid gap-4">
-                {filteredCustomers.map((customer) => {
-                  const projectCount = projects?.filter(p => p.customer_id === customer.id).length || 0;
-                  return (
-                    <CustomerCard
-                      key={customer.id}
-                      customer={customer}
-                      projectCount={projectCount}
-                      onEdit={handleEdit}
-                      onDelete={handleDelete}
-                    />
-                  );
-                })}
+                {filteredCustomers
+                  .slice((currentPage - 1) * rowsPerPage, currentPage * rowsPerPage)
+                  .map((customer) => {
+                    const projectCount = projects?.filter(p => p.customer_id === customer.id).length || 0;
+                    return (
+                      <CustomerCard
+                        key={customer.id}
+                        customer={customer}
+                        projectCount={projectCount}
+                        onEdit={handleEdit}
+                        onDelete={handleDelete}
+                      />
+                    );
+                  })}
               </div>
             </div>
             {/* Desktop Table - hidden below md */}
             <div className="hidden md:block">
               <EnhancedDataTable 
                 tableId="customers"
-                data={filteredCustomers} 
+                data={filteredCustomers.slice((currentPage - 1) * rowsPerPage, currentPage * rowsPerPage)} 
                 columns={columns}
                 onRowClick={(customer) => navigate(`/customers/${customer.id}`)}
               />
             </div>
+            {/* Pagination */}
+            <TablePagination
+              currentPage={currentPage}
+              totalCount={filteredCustomers.length}
+              rowsPerPage={rowsPerPage}
+              onPageChange={setCurrentPage}
+              onRowsPerPageChange={(size) => {
+                setRowsPerPage(size);
+                setCurrentPage(1);
+              }}
+              rowsPerPageOptions={[10, 20, 30, 40]}
+            />
           </>
         )}
       </PullToRefreshWrapper>

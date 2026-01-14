@@ -31,6 +31,7 @@ import { useQuickBooksConfig } from "@/integrations/supabase/hooks/useQuickBooks
 import { Invoice } from "@/integrations/supabase/hooks/useInvoices";
 import { InvoiceStatCard } from "@/components/invoices/InvoiceStatCard";
 import { BulkPaymentDialog } from "@/components/invoices/BulkPaymentDialog";
+import { TablePagination } from "@/components/shared/TablePagination";
 
 type CardFilter =
   | "all"
@@ -57,6 +58,10 @@ const Invoices = () => {
   const [activeFilter, setActiveFilter] = useState<CardFilter>("all");
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [bulkPaymentOpen, setBulkPaymentOpen] = useState(false);
+
+  // Pagination state
+  const [currentPage, setCurrentPage] = useState(1);
+  const [rowsPerPage, setRowsPerPage] = useState(10);
 
   // Count selected invoices with outstanding balance
   const selectedWithBalance = useMemo(() => {
@@ -464,19 +469,21 @@ const Invoices = () => {
             <>
               {isMobile ? (
                 <div className="grid gap-4">
-                  {filteredInvoices.map((invoice, index) => (
-                    <InvoiceCard
-                      key={invoice.id}
-                      invoice={invoice}
-                      onView={(id) => navigate(`/invoices/${id}`)}
-                      index={index}
-                    />
-                  ))}
+                  {filteredInvoices
+                    .slice((currentPage - 1) * rowsPerPage, currentPage * rowsPerPage)
+                    .map((invoice, index) => (
+                      <InvoiceCard
+                        key={invoice.id}
+                        invoice={invoice}
+                        onView={(id) => navigate(`/invoices/${id}`)}
+                        index={index}
+                      />
+                    ))}
                 </div>
               ) : (
                 <EnhancedDataTable
                   tableId="invoices"
-                  data={filteredInvoices}
+                  data={filteredInvoices.slice((currentPage - 1) * rowsPerPage, currentPage * rowsPerPage)}
                   columns={columns}
                   onRowClick={(item) => navigate(`/invoices/${item.id}`)}
                   selectable
@@ -484,6 +491,17 @@ const Invoices = () => {
                   onSelectionChange={setSelectedIds}
                 />
               )}
+              <TablePagination
+                currentPage={currentPage}
+                totalCount={filteredInvoices.length}
+                rowsPerPage={rowsPerPage}
+                onPageChange={setCurrentPage}
+                onRowsPerPageChange={(size) => {
+                  setRowsPerPage(size);
+                  setCurrentPage(1);
+                }}
+                rowsPerPageOptions={[10, 20, 30, 40]}
+              />
             </>
           )}
         </PullToRefreshWrapper>
