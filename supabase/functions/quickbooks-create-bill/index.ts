@@ -360,16 +360,17 @@ async function getOrCreateQBServiceItem(
     return itemCache.get(itemName)!;
   }
   
-  // Search for existing item in QuickBooks
+  // Search for existing item in QuickBooks - must be Service or NonInventory type (not Category)
   console.log(`Searching QuickBooks for Service item: ${itemName}`);
   
   try {
-    const searchQuery = encodeURIComponent(`SELECT * FROM Item WHERE Name = '${itemName}' MAXRESULTS 1`);
+    // Filter by Type to exclude Category items which cannot be used in transactions
+    const searchQuery = encodeURIComponent(`SELECT * FROM Item WHERE Name = '${itemName}' AND Type IN ('Service', 'NonInventory') MAXRESULTS 1`);
     const result = await qbRequest('GET', `/query?query=${searchQuery}&minorversion=65`, accessToken, realmId);
     
     if (result.QueryResponse?.Item?.length > 0) {
       const existingItem = result.QueryResponse.Item[0];
-      console.log(`Found existing Service item: ${existingItem.Name} (ID: ${existingItem.Id})`);
+      console.log(`Found existing Service item: ${existingItem.Name} (ID: ${existingItem.Id}, Type: ${existingItem.Type})`);
       itemCache.set(itemName, existingItem.Id);
       return existingItem.Id;
     }
@@ -393,19 +394,36 @@ async function getOrCreateQBServiceItem(
     itemCache.set(itemName, itemId);
     return itemId;
   } catch (createError: any) {
-    // Handle duplicate name error
+    // Handle duplicate name error - a Category with same name may exist
     if (createError.message?.includes('Duplicate Name Exists') || createError.message?.includes('6240')) {
-      console.log(`Duplicate item name error, searching with LIKE query...`);
+      console.log(`Duplicate item name error, searching for Service/NonInventory items with LIKE query...`);
       
-      const likeQuery = encodeURIComponent(`SELECT * FROM Item WHERE Name LIKE '%${itemName}%' MAXRESULTS 10`);
+      // Filter by Type to exclude Category items
+      const likeQuery = encodeURIComponent(`SELECT * FROM Item WHERE Name LIKE '%${itemName}%' AND Type IN ('Service', 'NonInventory') MAXRESULTS 10`);
       const likeResult = await qbRequest('GET', `/query?query=${likeQuery}&minorversion=65`, accessToken, realmId);
       
       if (likeResult.QueryResponse?.Item?.length > 0) {
         const foundItem = likeResult.QueryResponse.Item[0];
-        console.log(`Found existing item after duplicate error: ${foundItem.Name} (ID: ${foundItem.Id})`);
+        console.log(`Found existing Service item after duplicate error: ${foundItem.Name} (ID: ${foundItem.Id}, Type: ${foundItem.Type})`);
         itemCache.set(itemName, foundItem.Id);
         return foundItem.Id;
       }
+      
+      // If no Service item found, the duplicate is a Category - create with different name
+      console.log(`Existing "${itemName}" is a Category, creating "Labor - Service" item instead`);
+      const altItemName = "Labor - Service";
+      
+      const altItem = {
+        Name: altItemName,
+        Type: "Service",
+        ExpenseAccountRef: expenseAccountRef,
+      };
+      
+      const altResult = await qbRequest('POST', '/item?minorversion=65', accessToken, realmId, altItem);
+      const altItemId = altResult.Item.Id;
+      console.log(`Created alternative Service item: ${altItemName} (ID: ${altItemId})`);
+      itemCache.set(itemName, altItemId);
+      return altItemId;
     }
     
     throw createError;
