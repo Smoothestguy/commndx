@@ -190,13 +190,22 @@ function mapQbBillStatusToLocal(balance: number, totalAmt: number): string {
 }
 
 // Map QB invoice balance to local status
-function mapQbInvoiceStatusToLocal(balance: number, totalAmt: number): string {
+function mapQbInvoiceStatusToLocal(balance: number, totalAmt: number, dueDate?: string): string {
   if (balance === 0 && totalAmt > 0) {
     return "paid";
   } else if (balance < totalAmt && balance > 0) {
-    return "partial";
+    return "partially_paid";
   }
-  return "pending";
+  // Check if overdue (past due date and still has balance)
+  if (dueDate && balance > 0) {
+    const due = new Date(dueDate);
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    if (due < today) {
+      return "overdue";
+    }
+  }
+  return "sent";
 }
 
 // Process a single estimate update from QuickBooks
@@ -457,7 +466,7 @@ async function processInvoiceUpdate(
     total: totalAmt,
     paid_amount: paidAmount,
     remaining_amount: balance,
-    status: mapQbInvoiceStatusToLocal(balance, totalAmt),
+    status: mapQbInvoiceStatusToLocal(balance, totalAmt, qbInvoice.DueDate),
     updated_at: new Date().toISOString(),
   };
 
