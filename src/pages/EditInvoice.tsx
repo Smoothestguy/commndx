@@ -162,13 +162,14 @@ const SortableLineItem = ({
           <div className="md:col-span-2">
             <Label>Product (Optional)</Label>
             <Select
-              value={item.product_id || ""}
-              onValueChange={(value) => onSelectProduct(index, value)}
+              value={item.product_id || "none"}
+              onValueChange={(value) => onSelectProduct(index, value === "none" ? "" : value)}
             >
               <SelectTrigger>
                 <SelectValue placeholder="Select a product..." />
               </SelectTrigger>
               <SelectContent>
+                <SelectItem value="none">No product</SelectItem>
                 {products?.map((product) => (
                   <SelectItem key={product.id} value={product.id}>
                     {product.name} - {formatCurrency(product.price)}
@@ -709,12 +710,15 @@ const EditInvoice = () => {
               </div>
               <div>
                 <Label>Project (Optional)</Label>
-                <Select value={selectedProjectId} onValueChange={setSelectedProjectId}>
+                <Select 
+                  value={selectedProjectId || "none"} 
+                  onValueChange={(value) => setSelectedProjectId(value === "none" ? "" : value)}
+                >
                   <SelectTrigger>
                     <SelectValue placeholder="Select a project" />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="">No Project</SelectItem>
+                    <SelectItem value="none">No Project</SelectItem>
                     {filteredProjects?.map((project) => (
                       <SelectItem key={project.id} value={project.id}>
                         {project.name}
