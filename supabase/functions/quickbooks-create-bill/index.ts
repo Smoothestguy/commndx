@@ -351,8 +351,8 @@ async function getOrCreateQBServiceItem(
   realmId: string,
   expenseAccountRef: { value: string; name: string }
 ): Promise<string> {
-  // Use a generic "Labor" item for all bill line items
-  const itemName = "Labor";
+  // Use a unique name that won't conflict with existing categories
+  const itemName = "Contract Labor Expense";
   
   // Check cache first
   if (itemCache.has(itemName)) {
@@ -360,26 +360,29 @@ async function getOrCreateQBServiceItem(
     return itemCache.get(itemName)!;
   }
   
-  // Search for existing item in QuickBooks - must be Service or NonInventory type (not Category)
-  console.log(`Searching QuickBooks for Service item: ${itemName}`);
+  // Search for existing item in QuickBooks - must be Service or NonInventory type
+  console.log(`Searching QuickBooks for purchasable Service item: ${itemName}`);
   
   try {
-    // Filter by Type to exclude Category items which cannot be used in transactions
     const searchQuery = encodeURIComponent(`SELECT * FROM Item WHERE Name = '${itemName}' AND Type IN ('Service', 'NonInventory') MAXRESULTS 1`);
     const result = await qbRequest('GET', `/query?query=${searchQuery}&minorversion=65`, accessToken, realmId);
     
     if (result.QueryResponse?.Item?.length > 0) {
       const existingItem = result.QueryResponse.Item[0];
-      console.log(`Found existing Service item: ${existingItem.Name} (ID: ${existingItem.Id}, Type: ${existingItem.Type})`);
-      itemCache.set(itemName, existingItem.Id);
-      return existingItem.Id;
+      // Verify it has an expense account (is purchasable)
+      if (existingItem.ExpenseAccountRef?.value) {
+        console.log(`Found existing purchasable Service item: ${existingItem.Name} (ID: ${existingItem.Id})`);
+        itemCache.set(itemName, existingItem.Id);
+        return existingItem.Id;
+      }
+      console.log(`Found item "${existingItem.Name}" but it lacks ExpenseAccountRef, will create new`);
     }
   } catch (e) {
     console.log(`Error searching for Service item: ${e}, will try to create`);
   }
   
-  // Create a new Service item if not found
-  console.log(`Creating new Service item in QuickBooks: ${itemName}`);
+  // Create a new Service item with expense account configured
+  console.log(`Creating new purchasable Service item in QuickBooks: ${itemName}`);
   
   const newItem = {
     Name: itemName,
@@ -394,36 +397,42 @@ async function getOrCreateQBServiceItem(
     itemCache.set(itemName, itemId);
     return itemId;
   } catch (createError: any) {
-    // Handle duplicate name error - a Category with same name may exist
+    // Handle duplicate name error
     if (createError.message?.includes('Duplicate Name Exists') || createError.message?.includes('6240')) {
-      console.log(`Duplicate item name error, searching for Service/NonInventory items with LIKE query...`);
+      console.log(`Duplicate name exists, trying to find a valid purchasable Service item...`);
       
-      // Filter by Type to exclude Category items
-      const likeQuery = encodeURIComponent(`SELECT * FROM Item WHERE Name LIKE '%${itemName}%' AND Type IN ('Service', 'NonInventory') MAXRESULTS 10`);
-      const likeResult = await qbRequest('GET', `/query?query=${likeQuery}&minorversion=65`, accessToken, realmId);
+      // Search for any Service/NonInventory item with an expense account
+      const allItemsQuery = encodeURIComponent(`SELECT * FROM Item WHERE Type IN ('Service', 'NonInventory') MAXRESULTS 50`);
+      const allItemsResult = await qbRequest('GET', `/query?query=${allItemsQuery}&minorversion=65`, accessToken, realmId);
       
-      if (likeResult.QueryResponse?.Item?.length > 0) {
-        const foundItem = likeResult.QueryResponse.Item[0];
-        console.log(`Found existing Service item after duplicate error: ${foundItem.Name} (ID: ${foundItem.Id}, Type: ${foundItem.Type})`);
-        itemCache.set(itemName, foundItem.Id);
-        return foundItem.Id;
+      if (allItemsResult.QueryResponse?.Item?.length > 0) {
+        // Find an item that has ExpenseAccountRef (is purchasable)
+        const purchasableItem = allItemsResult.QueryResponse.Item.find(
+          (item: any) => item.ExpenseAccountRef?.value && !item.Name.includes(':')
+        );
+        
+        if (purchasableItem) {
+          console.log(`Found purchasable item: ${purchasableItem.Name} (ID: ${purchasableItem.Id})`);
+          itemCache.set(itemName, purchasableItem.Id);
+          return purchasableItem.Id;
+        }
       }
       
-      // If no Service item found, the duplicate is a Category - create with different name
-      console.log(`Existing "${itemName}" is a Category, creating "Labor - Service" item instead`);
-      const altItemName = "Labor - Service";
+      // Create with timestamp suffix to ensure unique name
+      const uniqueName = `Contract Labor ${Date.now()}`;
+      console.log(`Creating unique Service item: ${uniqueName}`);
       
-      const altItem = {
-        Name: altItemName,
+      const uniqueItem = {
+        Name: uniqueName,
         Type: "Service",
         ExpenseAccountRef: expenseAccountRef,
       };
       
-      const altResult = await qbRequest('POST', '/item?minorversion=65', accessToken, realmId, altItem);
-      const altItemId = altResult.Item.Id;
-      console.log(`Created alternative Service item: ${altItemName} (ID: ${altItemId})`);
-      itemCache.set(itemName, altItemId);
-      return altItemId;
+      const uniqueResult = await qbRequest('POST', '/item?minorversion=65', accessToken, realmId, uniqueItem);
+      const uniqueItemId = uniqueResult.Item.Id;
+      console.log(`Created unique Service item: ${uniqueName} (ID: ${uniqueItemId})`);
+      itemCache.set(itemName, uniqueItemId);
+      return uniqueItemId;
     }
     
     throw createError;
