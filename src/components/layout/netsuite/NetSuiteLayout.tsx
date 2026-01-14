@@ -24,8 +24,8 @@ interface NetSuiteLayoutProps {
 export function NetSuiteLayout({ children }: NetSuiteLayoutProps) {
   const { shouldShowBackground } = useBackgroundMedia();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
-  const [leftPanelCollapsed, setLeftPanelCollapsed] = useState(false);
-  const [rightPanelCollapsed, setRightPanelCollapsed] = useState(false);
+  const [leftPanelCollapsed, setLeftPanelCollapsed] = useState(true);
+  const [rightPanelCollapsed, setRightPanelCollapsed] = useState(true);
   const isMobile = useIsMobile();
 
   return (
