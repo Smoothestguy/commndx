@@ -13,6 +13,7 @@ import { useAddInvoice } from "@/integrations/supabase/hooks/useInvoices";
 import { Loader2 } from "lucide-react";
 import { format } from "date-fns";
 import { toast } from "sonner";
+import { getNextInvoiceNumber } from "@/utils/invoiceNumberGenerator";
 
 export const TimeEntryInvoiceForm = () => {
   const navigate = useNavigate();
@@ -72,6 +73,10 @@ export const TimeEntryInvoiceForm = () => {
     if (!project) return;
 
     try {
+      // Get fresh invoice number from QuickBooks (or local fallback)
+      const { number: invoiceNumber, source } = await getNextInvoiceNumber();
+      console.log(`Generated invoice number ${invoiceNumber} from ${source}`);
+
       const lineItems = selectedEntriesData?.map((entry) => {
         const rate = entry.profiles?.hourly_rate || 0;
         const hours = Number(entry.hours);
@@ -91,7 +96,7 @@ export const TimeEntryInvoiceForm = () => {
         customer_id: project.customer_id,
         customer_name: "", // Will be filled by backend
         project_name: project.name,
-        number: "", // Auto-generated
+        number: invoiceNumber, // Use QuickBooks-synced number
         subtotal: subtotal,
         tax_rate: taxRate,
         tax_amount: taxAmount,

@@ -4,7 +4,7 @@ import { formatDistanceToNow } from "date-fns";
 import { Button } from "@/components/ui/button";
 import { useNavigate } from "react-router-dom";
 
-const ENTITY_ICONS: Record<TrashEntityType, React.ElementType> = {
+const ENTITY_ICONS: Record<TrashEntityType, React.ComponentType<{ className?: string }>> = {
   purchase_order: ShoppingCart,
   invoice: Receipt,
   estimate: FileText,

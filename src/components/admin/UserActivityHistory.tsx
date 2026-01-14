@@ -35,7 +35,7 @@ interface UserActivityHistoryProps {
   maxHeight?: string;
 }
 
-const actionConfig: Record<string, { icon: React.ElementType; color: string; label: string }> = {
+const actionConfig: Record<string, { icon: React.ComponentType<{ className?: string }>; color: string; label: string }> = {
   sign_in: { icon: LogIn, color: "bg-green-500/10 text-green-600 border-green-500/20", label: "Sign In" },
   sign_out: { icon: LogOut, color: "bg-gray-500/10 text-gray-600 border-gray-500/20", label: "Sign Out" },
   sign_up: { icon: User, color: "bg-blue-500/10 text-blue-600 border-blue-500/20", label: "Sign Up" },
