@@ -1133,8 +1133,22 @@ async function processBillUpdate(
       })
       .eq("id", mapping.id);
 
-    console.log("[Webhook] Marked bill as voided:", mapping.bill_id);
-    return { success: true, action: "voided" };
+    // Soft-delete the local vendor bill
+    const { error: deleteError } = await supabase
+      .from("vendor_bills")
+      .update({
+        deleted_at: new Date().toISOString(),
+        status: "void",
+      })
+      .eq("id", mapping.bill_id)
+      .is("deleted_at", null);
+
+    if (deleteError) {
+      console.error("[Webhook] Error soft-deleting vendor bill:", deleteError);
+    }
+
+    console.log("[Webhook] Soft-deleted vendor bill from QB:", mapping.bill_id);
+    return { success: true, action: "deleted" };
   }
 
   // Fetch the full bill from QuickBooks
