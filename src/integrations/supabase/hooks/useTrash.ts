@@ -185,6 +185,38 @@ export const usePermanentlyDelete = () => {
         }
       }
 
+      // For customers, attempt to deactivate in QuickBooks
+      if (entityType === "customer") {
+        try {
+          const { data, error } = await supabase.functions.invoke("quickbooks-delete-customer", {
+            body: { customerId: id },
+          });
+
+          if (error) {
+            console.error("QuickBooks customer deactivate failed:", error);
+            qbWarning = `Could not deactivate in QuickBooks: ${error.message}`;
+          } else if (data && !data.success && data.error) {
+            console.warn("QuickBooks deactivate warning:", data.error);
+            qbWarning = data.error;
+          } else if (data?.deactivated) {
+            console.log("Customer deactivated in QuickBooks successfully");
+          }
+        } catch (qbError: any) {
+          console.error("QuickBooks deactivate error:", qbError);
+          qbWarning = `QuickBooks sync error: ${qbError.message || "Unknown error"}`;
+        }
+
+        // Also clean up the local QuickBooks mapping
+        try {
+          await supabase
+            .from("quickbooks_customer_mappings")
+            .delete()
+            .eq("customer_id", id);
+        } catch (mappingError) {
+          console.error("Failed to clean up QB customer mapping:", mappingError);
+        }
+      }
+
       // Proceed with local permanent delete regardless of QB result
       const { error } = await supabase.from(table as any).delete().eq("id", id);
 
