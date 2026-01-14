@@ -7,6 +7,8 @@ import { DEFAULT_HOURLY_RATE } from "@/utils/sessionTime";
 const STORAGE_KEY = "session_tracking_state";
 const IDLE_TIMEOUT_MS = 5 * 60 * 1000; // 5 minutes of inactivity = idle
 const SYNC_INTERVAL_MS = 30 * 1000; // Sync to DB every 30 seconds
+const PRIMARY_TAB_HEARTBEAT_MS = 2000; // Heartbeat for primary tab claim
+const PRIMARY_TAB_STORAGE_KEY = "session_tracking_primary_tab";
 
 interface StoredState {
   sessionId: string | null;
@@ -15,6 +17,11 @@ interface StoredState {
   lastSyncAt: number;
   wasIdleAtLastSync: boolean;
   idleCorrectionVersion: number;
+}
+
+interface PrimaryTabState {
+  tabId: string;
+  lastHeartbeat: number;
 }
 
 export function useSessionTracking(externalHasAccess?: boolean, externalAccessChecked?: boolean) {
@@ -41,6 +48,11 @@ export function useSessionTracking(externalHasAccess?: boolean, externalAccessCh
   const displayIntervalRef = useRef<NodeJS.Timeout | null>(null);
   const idleStartTimeRef = useRef<number | null>(null);
   const idleCorrectionVersionRef = useRef<number>(0);
+  
+  // Cross-tab coordination refs
+  const tabIdRef = useRef<string>(`tab_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`);
+  const isPrimaryTabRef = useRef(false);
+  const hasLoggedIdleStartRef = useRef(false); // Prevent duplicate idle_start events
 
   // Computed active seconds based on elapsed time - session_start timestamp
   const getElapsedSeconds = useCallback(() => {
@@ -56,6 +68,43 @@ export function useSessionTracking(externalHasAccess?: boolean, externalAccessCh
   // Force re-render for display updates
   const [, setTick] = useState(0);
 
+  // Check if this tab is the primary tab for idle tracking
+  const checkIsPrimaryTab = useCallback(() => {
+    const stored = localStorage.getItem(PRIMARY_TAB_STORAGE_KEY);
+    if (stored) {
+      try {
+        const state: PrimaryTabState = JSON.parse(stored);
+        // If stored heartbeat is more than 3x the interval, consider it stale
+        if (Date.now() - state.lastHeartbeat > PRIMARY_TAB_HEARTBEAT_MS * 3) {
+          // Claim primary status
+          isPrimaryTabRef.current = true;
+          localStorage.setItem(PRIMARY_TAB_STORAGE_KEY, JSON.stringify({
+            tabId: tabIdRef.current,
+            lastHeartbeat: Date.now(),
+          }));
+          return true;
+        }
+        isPrimaryTabRef.current = state.tabId === tabIdRef.current;
+        return isPrimaryTabRef.current;
+      } catch {
+        // Invalid state, claim it
+        isPrimaryTabRef.current = true;
+        localStorage.setItem(PRIMARY_TAB_STORAGE_KEY, JSON.stringify({
+          tabId: tabIdRef.current,
+          lastHeartbeat: Date.now(),
+        }));
+        return true;
+      }
+    }
+    // No primary tab, claim it
+    isPrimaryTabRef.current = true;
+    localStorage.setItem(PRIMARY_TAB_STORAGE_KEY, JSON.stringify({
+      tabId: tabIdRef.current,
+      lastHeartbeat: Date.now(),
+    }));
+    return true;
+  }, []);
+
   // Reset idle timer on activity
   const resetIdleTimer = useCallback(() => {
     if (!isClockedIn) return;
@@ -69,8 +118,9 @@ export function useSessionTracking(externalHasAccess?: boolean, externalAccessCh
       idleStartTimeRef.current = null;
       isIdleRef.current = false;
       setIsIdle(false);
+      hasLoggedIdleStartRef.current = false; // Reset the guard
 
-      if (sessionId && user) {
+      if (sessionId && user && isPrimaryTabRef.current) {
         supabase.from("session_activity_log").insert([{
           session_id: sessionId,
           user_id: user.id,
@@ -89,6 +139,16 @@ export function useSessionTracking(externalHasAccess?: boolean, externalAccessCh
     idleTimeoutRef.current = setTimeout(() => {
       if (!isClockedIn || document.hidden) return;
       
+      // Only log idle_start if we're the primary tab AND haven't already logged it
+      if (!isPrimaryTabRef.current || hasLoggedIdleStartRef.current) {
+        // Still mark as idle locally for UI purposes
+        idleStartTimeRef.current = Date.now();
+        isIdleRef.current = true;
+        setIsIdle(true);
+        return;
+      }
+      
+      hasLoggedIdleStartRef.current = true;
       idleStartTimeRef.current = Date.now();
       isIdleRef.current = true;
       setIsIdle(true);
@@ -104,6 +164,49 @@ export function useSessionTracking(externalHasAccess?: boolean, externalAccessCh
       }
     }, IDLE_TIMEOUT_MS);
   }, [isClockedIn, sessionId, user]);
+
+  // Primary tab heartbeat - maintain primary status
+  useEffect(() => {
+    if (!hasAccess || !isClockedIn) return;
+
+    // Try to claim primary on mount
+    checkIsPrimaryTab();
+
+    const heartbeatInterval = setInterval(() => {
+      if (isPrimaryTabRef.current) {
+        localStorage.setItem(PRIMARY_TAB_STORAGE_KEY, JSON.stringify({
+          tabId: tabIdRef.current,
+          lastHeartbeat: Date.now(),
+        }));
+      } else {
+        // Check if we should take over
+        checkIsPrimaryTab();
+      }
+    }, PRIMARY_TAB_HEARTBEAT_MS);
+
+    // Listen for storage changes (cross-tab communication)
+    const handleStorageChange = (e: StorageEvent) => {
+      if (e.key === PRIMARY_TAB_STORAGE_KEY && e.newValue) {
+        try {
+          const state: PrimaryTabState = JSON.parse(e.newValue);
+          isPrimaryTabRef.current = state.tabId === tabIdRef.current;
+        } catch {
+          // Ignore parse errors
+        }
+      }
+    };
+
+    window.addEventListener("storage", handleStorageChange);
+
+    return () => {
+      clearInterval(heartbeatInterval);
+      window.removeEventListener("storage", handleStorageChange);
+      // If we were primary, clear it so another tab can take over
+      if (isPrimaryTabRef.current) {
+        localStorage.removeItem(PRIMARY_TAB_STORAGE_KEY);
+      }
+    };
+  }, [hasAccess, isClockedIn, checkIsPrimaryTab]);
 
   // Handle visibility change AND window blur/focus
   // When tab is hidden OR window loses focus, stop idle accumulation

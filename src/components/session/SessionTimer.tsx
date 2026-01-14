@@ -9,12 +9,18 @@ import {
   TooltipContent,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
-import { Clock, Play, Square, Pause, DollarSign } from "lucide-react";
+import { Clock, Play, Square, Pause, DollarSign, RefreshCw } from "lucide-react";
 import { formatTimeHMS, formatSessionCurrency } from "@/utils/sessionTime";
+import { supabase } from "@/integrations/supabase/client";
+import { toast } from "sonner";
+import { useState } from "react";
+import { useQueryClient } from "@tanstack/react-query";
 
 export function SessionTimer() {
   // Check access once at the top level
   const { hasAccess, isChecking } = useSessionAccess();
+  const [isFixingIdle, setIsFixingIdle] = useState(false);
+  const queryClient = useQueryClient();
 
   // Pass the access state to child hooks to avoid duplicate checks
   const {
@@ -22,6 +28,7 @@ export function SessionTimer() {
     isClockedIn,
     isIdle,
     hourlyRate,
+    sessionId,
     clockIn,
     clockOut,
   } = useSessionTracking(hasAccess, !isChecking);
@@ -34,6 +41,36 @@ export function SessionTimer() {
   } = useTodaySessions(hasAccess, !isChecking);
 
   const { showSessionEarnings } = useUserDisplayPreferences();
+
+  // Fix idle time for current session
+  const handleFixIdleTime = async () => {
+    if (!sessionId) return;
+    
+    setIsFixingIdle(true);
+    try {
+      const { data, error } = await supabase.functions.invoke("fix-session-idle", {
+        body: { sessionId, mode: "recalc" },
+      });
+      
+      if (error) throw error;
+      
+      if (data?.success) {
+        toast.success(`Idle time corrected: ${Math.round((data.correctedIdleSeconds || 0) / 60)}m`);
+        // Invalidate queries to refresh the display
+        queryClient.invalidateQueries({ queryKey: ["today-sessions"] });
+        queryClient.invalidateQueries({ queryKey: ["session-history"] });
+        // Force page reload to reset tracking state with corrected values
+        window.location.reload();
+      } else {
+        toast.error(data?.error || "Failed to fix idle time");
+      }
+    } catch (err) {
+      console.error("Error fixing idle time:", err);
+      toast.error("Failed to fix idle time");
+    } finally {
+      setIsFixingIdle(false);
+    }
+  };
 
   // Only render for users with access
   if (isChecking || !hasAccess || isLoading) {
@@ -97,6 +134,19 @@ export function SessionTimer() {
             <p className="text-muted-foreground">{sessionCount} session{sessionCount !== 1 ? 's' : ''} today</p>
             {isIdle && (
               <p className="text-amber-500">Timer paused - you're idle</p>
+            )}
+            {todayIdleSeconds > 600 && (
+              <button
+                onClick={(e) => {
+                  e.stopPropagation();
+                  handleFixIdleTime();
+                }}
+                disabled={isFixingIdle}
+                className="mt-2 flex items-center gap-1 text-blue-500 hover:text-blue-400 disabled:opacity-50"
+              >
+                <RefreshCw className={`h-3 w-3 ${isFixingIdle ? "animate-spin" : ""}`} />
+                {isFixingIdle ? "Fixing..." : "Fix idle time"}
+              </button>
             )}
           </div>
         </TooltipContent>
