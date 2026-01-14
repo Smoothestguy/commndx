@@ -82,9 +82,10 @@ jobs:
           generate_release_notes: true
           fail_on_unmatched_files: false
           files: |
-            artifacts/**/*.dmg
-            artifacts/**/*.zip
-            artifacts/**/*.exe
-            artifacts/**/*.yml
+            artifacts/release-mac/*.dmg
+            artifacts/release-mac/*.zip
+            artifacts/release-mac/latest-mac.yml
+            artifacts/release-win/*.exe
+            artifacts/release-win/latest.yml
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
