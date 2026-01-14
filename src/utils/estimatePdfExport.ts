@@ -337,6 +337,7 @@ export const generateEstimatePDF = async (estimate: EstimateData): Promise<void>
     const nameLines = doc.splitTextToSize(displayName, maxDescWidth);
 
     nameLines.forEach((line: string, index: number) => {
+      checkPageBreak(6); // Check before each line to prevent cutoff
       if (index === 0) {
         doc.text(line, margin + 5, yPos);
         doc.setFont("helvetica", "normal");
@@ -357,6 +358,7 @@ export const generateEstimatePDF = async (estimate: EstimateData): Promise<void>
       doc.setTextColor(128);
       const descLines = doc.splitTextToSize(item.description, maxDescWidth);
       descLines.forEach((line: string) => {
+        checkPageBreak(5); // Check before each description line
         doc.text(line, margin + 5, yPos);
         yPos += 4;
       });
@@ -414,16 +416,21 @@ export const generateEstimatePDF = async (estimate: EstimateData): Promise<void>
     });
   }
 
-  // ==================== FOOTER ====================
-  doc.setTextColor(107, 114, 128);
-  doc.setFontSize(9);
-  doc.setFont("helvetica", "normal");
-  const footerY = pageHeight - 20;
+  // ==================== FOOTER ON ALL PAGES ====================
+  const totalPages = doc.getNumberOfPages();
+  const footerText = company.estimate_footer || `${company.company_name || "Fairfield Group"} - Project Management System`;
   
-  // Use company name or fallback
-  const footerText = company.estimate_footer || `${company.company_name || "Command X"} - Project Management System`;
-  doc.text(footerText, pageWidth / 2, footerY, { align: "center" });
-  doc.text("Thank you for your business!", pageWidth / 2, footerY + 5, { align: "center" });
+  for (let i = 1; i <= totalPages; i++) {
+    doc.setPage(i);
+    doc.setTextColor(107, 114, 128);
+    doc.setFontSize(9);
+    doc.setFont("helvetica", "normal");
+    
+    const footerY = pageHeight - 20;
+    doc.text(footerText, pageWidth / 2, footerY, { align: "center" });
+    doc.text("Thank you for your business!", pageWidth / 2, footerY + 5, { align: "center" });
+    doc.text(`Page ${i} of ${totalPages}`, pageWidth / 2, footerY + 10, { align: "center" });
+  }
 
   // Save the PDF
   doc.save(`Estimate-${estimate.number}.pdf`);
