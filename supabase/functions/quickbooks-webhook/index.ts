@@ -184,6 +184,26 @@ async function fetchQBCustomer(customerId: string, accessToken: string, realmId:
   return data.Customer;
 }
 
+// Fetch vendor from QuickBooks
+async function fetchQBVendor(vendorId: string, accessToken: string, realmId: string) {
+  const url = `https://quickbooks.api.intuit.com/v3/company/${realmId}/vendor/${vendorId}`;
+  
+  const response = await fetch(url, {
+    headers: {
+      Authorization: `Bearer ${accessToken}`,
+      Accept: "application/json",
+    },
+  });
+
+  if (!response.ok) {
+    const errorText = await response.text();
+    throw new Error(`Failed to fetch QB vendor: ${errorText}`);
+  }
+
+  const data = await response.json();
+  return data.Vendor;
+}
+
 // Map QB estimate status to local status
 function mapQbStatusToLocal(txnStatus: string | undefined): string {
   switch (txnStatus) {
@@ -455,6 +475,251 @@ async function processCustomerUpdate(
 
   console.log("[Webhook] Successfully updated customer from QB:", mapping.customer_id);
   return { success: true, action: "updated", customerId: mapping.customer_id };
+}
+
+// Process a single vendor update from QuickBooks
+async function processVendorUpdate(
+  supabase: any,
+  qbVendorId: string,
+  operation: string,
+  accessToken: string,
+  realmId: string
+) {
+  console.log(`[Webhook] Processing vendor ${qbVendorId}, operation: ${operation}`);
+
+  // Find the local mapping
+  const { data: mapping, error: mappingError } = await supabase
+    .from("quickbooks_vendor_mappings")
+    .select("*, vendors:vendor_id(*)")
+    .eq("quickbooks_vendor_id", qbVendorId)
+    .maybeSingle();
+
+  if (mappingError) {
+    console.error("[Webhook] Error finding vendor mapping:", mappingError);
+    return { success: false, error: mappingError.message };
+  }
+
+  // Handle Delete/Void operations
+  if (operation === "Delete" || operation === "Void") {
+    if (!mapping) {
+      console.log("[Webhook] No local mapping found for deleted QB vendor:", qbVendorId);
+      return { success: true, skipped: true, reason: "No local mapping" };
+    }
+
+    // Soft-delete the local vendor
+    const { error: deleteError } = await supabase
+      .from("vendors")
+      .update({
+        deleted_at: new Date().toISOString(),
+        is_active: false,
+        updated_at: new Date().toISOString(),
+      })
+      .eq("id", mapping.vendor_id);
+
+    if (deleteError) {
+      console.error("[Webhook] Error soft-deleting vendor:", deleteError);
+      return { success: false, error: deleteError.message };
+    }
+
+    // Update mapping status
+    await supabase
+      .from("quickbooks_vendor_mappings")
+      .update({
+        sync_status: "deleted",
+        last_synced_at: new Date().toISOString(),
+      })
+      .eq("id", mapping.id);
+
+    // Log the sync
+    await supabase.from("quickbooks_sync_log").insert({
+      entity_type: "vendor",
+      entity_id: mapping.vendor_id,
+      action: "webhook_delete",
+      status: "success",
+      details: {
+        qb_vendor_id: qbVendorId,
+        operation,
+      },
+    });
+
+    console.log("[Webhook] Soft-deleted vendor from QB webhook:", mapping.vendor_id);
+    return { success: true, action: "deleted", vendorId: mapping.vendor_id };
+  }
+
+  // Fetch the full vendor from QuickBooks
+  const qbVendor = await fetchQBVendor(qbVendorId, accessToken, realmId);
+  console.log("[Webhook] Fetched QB vendor:", qbVendor.DisplayName);
+
+  // Extract email - use fallback if not provided
+  let email = qbVendor.PrimaryEmailAddr?.Address;
+  if (!email) {
+    email = `qb-vendor-${qbVendorId}@quickbooks.imported`;
+  }
+
+  // Build address components from QB BillAddr
+  let address = null;
+  let city = null;
+  let state = null;
+  let zip = null;
+  if (qbVendor.BillAddr) {
+    const addr = qbVendor.BillAddr;
+    address = addr.Line1 || null;
+    city = addr.City || null;
+    state = addr.CountrySubDivisionCode || null;
+    zip = addr.PostalCode || null;
+  }
+
+  if (!mapping) {
+    // No local mapping exists - create new vendor in Command X
+    console.log("[Webhook] Creating new vendor from QuickBooks:", qbVendor.DisplayName);
+
+    // Check if email already exists (to prevent duplicates)
+    const { data: existingVendor } = await supabase
+      .from("vendors")
+      .select("id, email")
+      .eq("email", email)
+      .is("deleted_at", null)
+      .maybeSingle();
+
+    if (existingVendor) {
+      console.log("[Webhook] Vendor with this email already exists, creating mapping only");
+      
+      // Just create mapping to existing vendor
+      await supabase.from("quickbooks_vendor_mappings").insert({
+        vendor_id: existingVendor.id,
+        quickbooks_vendor_id: qbVendorId,
+        sync_status: "synced",
+        last_synced_at: new Date().toISOString(),
+      });
+
+      return { success: true, action: "mapped_existing", vendorId: existingVendor.id };
+    }
+
+    // Create new vendor
+    const { data: newVendor, error: insertError } = await supabase
+      .from("vendors")
+      .insert({
+        name: qbVendor.DisplayName,
+        email: email,
+        phone: qbVendor.PrimaryPhone?.FreeFormNumber || null,
+        company: qbVendor.CompanyName || null,
+        address: address,
+        city: city,
+        state: state,
+        zip: zip,
+        specialty: qbVendor.Notes || null,
+        account_number: qbVendor.AcctNum || null,
+        license_number: qbVendor.AcctNum || null,
+        tax_id: qbVendor.TaxIdentifier || null,
+        track_1099: qbVendor.Vendor1099 || false,
+        billing_rate: qbVendor.BillRate ? parseFloat(qbVendor.BillRate) : null,
+        status: "active",
+        is_active: true,
+      })
+      .select()
+      .single();
+
+    if (insertError) {
+      console.error("[Webhook] Error creating vendor:", insertError);
+      return { success: false, error: insertError.message };
+    }
+
+    // Create the mapping
+    await supabase.from("quickbooks_vendor_mappings").insert({
+      vendor_id: newVendor.id,
+      quickbooks_vendor_id: qbVendorId,
+      sync_status: "synced",
+      last_synced_at: new Date().toISOString(),
+    });
+
+    // Log the sync
+    await supabase.from("quickbooks_sync_log").insert({
+      entity_type: "vendor",
+      entity_id: newVendor.id,
+      action: "webhook_create",
+      status: "success",
+      details: {
+        qb_vendor_id: qbVendorId,
+        qb_display_name: qbVendor.DisplayName,
+        operation,
+      },
+    });
+
+    console.log("[Webhook] Created new vendor from QB:", newVendor.id);
+    return { success: true, action: "created", vendorId: newVendor.id };
+  }
+
+  // Mapping exists - check for conflict detection
+  const qbLastUpdated = new Date(qbVendor.MetaData.LastUpdatedTime);
+  const localLastSynced = mapping.last_synced_at ? new Date(mapping.last_synced_at) : null;
+
+  // Check if QB is actually newer than our last sync
+  if (localLastSynced && qbLastUpdated <= localLastSynced) {
+    console.log("[Webhook] QB vendor is not newer than local, skipping");
+    return { success: true, skipped: true, reason: "Local is up to date" };
+  }
+
+  // Update the local vendor
+  const vendorUpdate: Record<string, any> = {
+    name: qbVendor.DisplayName,
+    phone: qbVendor.PrimaryPhone?.FreeFormNumber || mapping.vendors?.phone,
+    company: qbVendor.CompanyName || mapping.vendors?.company,
+    address: address || mapping.vendors?.address,
+    city: city || mapping.vendors?.city,
+    state: state || mapping.vendors?.state,
+    zip: zip || mapping.vendors?.zip,
+    specialty: qbVendor.Notes || mapping.vendors?.specialty,
+    account_number: qbVendor.AcctNum || mapping.vendors?.account_number,
+    tax_id: qbVendor.TaxIdentifier || mapping.vendors?.tax_id,
+    track_1099: qbVendor.Vendor1099 ?? mapping.vendors?.track_1099,
+    updated_at: new Date().toISOString(),
+  };
+
+  // Only update email if it's a real email (not the placeholder)
+  if (qbVendor.PrimaryEmailAddr?.Address) {
+    vendorUpdate.email = qbVendor.PrimaryEmailAddr.Address;
+  }
+
+  // Update billing rate if provided
+  if (qbVendor.BillRate) {
+    vendorUpdate.billing_rate = parseFloat(qbVendor.BillRate);
+  }
+
+  const { error: updateError } = await supabase
+    .from("vendors")
+    .update(vendorUpdate)
+    .eq("id", mapping.vendor_id);
+
+  if (updateError) {
+    console.error("[Webhook] Error updating vendor:", updateError);
+    return { success: false, error: updateError.message };
+  }
+
+  // Update the mapping
+  await supabase
+    .from("quickbooks_vendor_mappings")
+    .update({
+      last_synced_at: new Date().toISOString(),
+      sync_status: "synced",
+    })
+    .eq("id", mapping.id);
+
+  // Log the sync
+  await supabase.from("quickbooks_sync_log").insert({
+    entity_type: "vendor",
+    entity_id: mapping.vendor_id,
+    action: "webhook_update",
+    status: "success",
+    details: {
+      qb_vendor_id: qbVendorId,
+      qb_display_name: qbVendor.DisplayName,
+      operation,
+      fields_updated: Object.keys(vendorUpdate),
+    },
+  });
+
+  console.log("[Webhook] Successfully updated vendor from QB:", mapping.vendor_id);
+  return { success: true, action: "updated", vendorId: mapping.vendor_id };
 }
 
 // Process a single estimate update from QuickBooks
@@ -1091,6 +1356,15 @@ serve(async (req) => {
             realmId
           );
           results.push({ entityId: entity.id, entityType: "Customer", ...result });
+        } else if (entity.name === "Vendor") {
+          const result = await processVendorUpdate(
+            supabase,
+            entity.id,
+            entity.operation,
+            accessToken,
+            realmId
+          );
+          results.push({ entityId: entity.id, entityType: "Vendor", ...result });
         } else {
           console.log(`[Webhook] Skipping unsupported entity type: ${entity.name}`);
         }
