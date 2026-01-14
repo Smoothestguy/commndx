@@ -542,19 +542,6 @@ export const useBulkAddVendorBillPayments = () => {
             continue;
           }
 
-          // Try to sync to QuickBooks (non-blocking)
-          try {
-            const qbConnected = await isQuickBooksConnected();
-            if (qbConnected) {
-              await supabase.functions.invoke("quickbooks-receive-bill-payment", {
-                body: { paymentId: insertedPayment.id },
-              });
-            }
-          } catch (qbError) {
-            console.error("QuickBooks bill payment sync error (non-blocking):", qbError);
-            // Don't fail the payment if QB sync fails
-          }
-
           results.push({
             bill_id: payment.bill_id,
             bill_number: payment.bill_number,

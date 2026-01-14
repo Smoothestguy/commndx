@@ -701,22 +701,6 @@ export const useAddInvoicePayment = () => {
       // Update invoice paid amounts
       await updateInvoicePaidAmounts(payment.invoice_id);
 
-      // Auto-sync to QuickBooks if connected
-      try {
-        const { data: qbConfig } = await supabase
-          .from("quickbooks_config")
-          .select("is_connected")
-          .single();
-
-        if (qbConfig?.is_connected) {
-          await supabase.functions.invoke("quickbooks-receive-payment", {
-            body: { paymentId: newPayment.id },
-          });
-        }
-      } catch (qbError) {
-        console.error("QuickBooks payment sync failed:", qbError);
-      }
-
       return newPayment;
     },
     onSuccess: () => {
@@ -856,18 +840,6 @@ export const useBulkAddInvoicePayments = () => {
     ): Promise<BulkPaymentResult[]> => {
       const results: BulkPaymentResult[] = [];
 
-      // Check if QuickBooks is connected
-      let qbConnected = false;
-      try {
-        const { data: qbConfig } = await supabase
-          .from("quickbooks_config")
-          .select("is_connected")
-          .single();
-        qbConnected = qbConfig?.is_connected ?? false;
-      } catch {
-        // QB not configured
-      }
-
       // Process each payment
       for (const payment of payments) {
         try {
@@ -910,21 +882,6 @@ export const useBulkAddInvoicePayments = () => {
 
           // Update invoice paid amounts
           await updateInvoicePaidAmounts(payment.invoice_id);
-
-          // Sync to QuickBooks if connected
-          if (qbConnected && newPayment) {
-            try {
-              await supabase.functions.invoke("quickbooks-receive-payment", {
-                body: { paymentId: newPayment.id },
-              });
-            } catch (qbError) {
-              console.error(
-                "QuickBooks payment sync failed for:",
-                payment.invoice_number,
-                qbError
-              );
-            }
-          }
 
           results.push({
             invoice_id: payment.invoice_id,
