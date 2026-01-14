@@ -591,3 +591,127 @@ export const useBulkAddVendorBillPayments = () => {
     },
   });
 };
+
+// Hard delete vendor bill - permanently removes bill and all related data
+export const useHardDeleteVendorBill = () => {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async (id: string) => {
+      console.log("[VendorBill] Starting hard delete for:", id);
+
+      // Check if QuickBooks is connected and try to void there first
+      try {
+        const { data: settings } = await supabase
+          .from("integration_settings")
+          .select("setting_value")
+          .eq("setting_key", "quickbooks_config")
+          .maybeSingle();
+
+        const isQBConnected = settings?.setting_value && 
+          typeof settings.setting_value === 'object' && 
+          'is_connected' in settings.setting_value &&
+          settings.setting_value.is_connected;
+
+        if (isQBConnected) {
+          await supabase.functions.invoke("quickbooks-void-bill", {
+            body: { billId: id },
+          });
+        }
+      } catch (qbError) {
+        console.error("QuickBooks void error (non-blocking):", qbError);
+      }
+
+      // 1. Get all payment IDs for this bill to delete their attachments
+      const { data: payments } = await supabase
+        .from("vendor_bill_payments")
+        .select("id")
+        .eq("bill_id", id);
+
+      // 2. Delete payment attachments
+      if (payments && payments.length > 0) {
+        const paymentIds = payments.map(p => p.id);
+        const { error: paymentAttachError } = await supabase
+          .from("vendor_bill_payment_attachments")
+          .delete()
+          .in("payment_id", paymentIds);
+        
+        if (paymentAttachError) {
+          console.error("Error deleting payment attachments:", paymentAttachError);
+        }
+      }
+
+      // 3. Delete payments
+      const { error: paymentsError } = await supabase
+        .from("vendor_bill_payments")
+        .delete()
+        .eq("bill_id", id);
+      
+      if (paymentsError) {
+        console.error("Error deleting payments:", paymentsError);
+      }
+
+      // 4. Delete bill attachments
+      const { error: attachError } = await supabase
+        .from("vendor_bill_attachments")
+        .delete()
+        .eq("bill_id", id);
+      
+      if (attachError) {
+        console.error("Error deleting attachments:", attachError);
+      }
+
+      // 5. Delete line items
+      const { error: lineItemsError } = await supabase
+        .from("vendor_bill_line_items")
+        .delete()
+        .eq("bill_id", id);
+      
+      if (lineItemsError) {
+        console.error("Error deleting line items:", lineItemsError);
+      }
+
+      // 6. Delete change order links
+      const { error: coLinksError } = await supabase
+        .from("change_order_vendor_bills")
+        .delete()
+        .eq("vendor_bill_id", id);
+      
+      if (coLinksError) {
+        console.error("Error deleting change order links:", coLinksError);
+      }
+
+      // 7. Delete QuickBooks mapping
+      const { error: mappingError } = await supabase
+        .from("quickbooks_bill_mappings")
+        .delete()
+        .eq("bill_id", id);
+      
+      if (mappingError) {
+        console.error("Error deleting QB mapping:", mappingError);
+      }
+
+      // 8. Finally delete the bill itself
+      const { error } = await supabase
+        .from("vendor_bills")
+        .delete()
+        .eq("id", id);
+
+      if (error) throw error;
+
+      return id;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["vendor-bills"] });
+      queryClient.invalidateQueries({ queryKey: ["vendor-bills-by-po"] });
+      queryClient.invalidateQueries({ queryKey: ["purchase_orders"] });
+      queryClient.invalidateQueries({ queryKey: ["deleted_items"] });
+      queryClient.invalidateQueries({ queryKey: ["quickbooks-sync-logs"] });
+      queryClient.invalidateQueries({ queryKey: ["quickbooks-bill-mappings"] });
+      toast.success("Vendor bill permanently deleted");
+    },
+    onError: (error: Error) => {
+      toast.error(`Failed to permanently delete: ${error.message}`);
+    },
+  });
+};

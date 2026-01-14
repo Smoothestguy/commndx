@@ -9,7 +9,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { IndeterminateCheckbox } from "@/components/ui/indeterminate-checkbox";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
-import { VendorBill, useDeleteVendorBill } from "@/integrations/supabase/hooks/useVendorBills";
+import { VendorBill, useDeleteVendorBill, useHardDeleteVendorBill } from "@/integrations/supabase/hooks/useVendorBills";
 import { useQuickBooksConfig, useQuickBooksBillMapping, useSyncVendorBillToQB } from "@/integrations/supabase/hooks/useQuickBooks";
 import { VendorBillPaymentDialog } from "./VendorBillPaymentDialog";
 import { BulkBillPaymentDialog } from "./BulkBillPaymentDialog";
@@ -42,12 +42,14 @@ function BillRow({
   isSelected, 
   onSelect, 
   onDelete,
+  onHardDelete,
   onRecordPayment 
 }: { 
   bill: VendorBill; 
   isSelected: boolean; 
   onSelect: (checked: boolean) => void;
   onDelete: (id: string) => void;
+  onHardDelete: (id: string) => void;
   onRecordPayment: (id: string) => void;
 }) {
   const navigate = useNavigate();
@@ -175,6 +177,13 @@ function BillRow({
               <Trash2 className="mr-2 h-4 w-4" />
               Delete
             </DropdownMenuItem>
+            <DropdownMenuItem 
+              onClick={() => onHardDelete(bill.id)}
+              className="text-destructive font-medium"
+            >
+              <Trash2 className="mr-2 h-4 w-4" />
+              Delete Forever
+            </DropdownMenuItem>
           </DropdownMenuContent>
         </DropdownMenu>
       </TableCell>
@@ -185,6 +194,7 @@ function BillRow({
 export function VendorBillTable({ bills }: VendorBillTableProps) {
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [deleteId, setDeleteId] = useState<string | null>(null);
+  const [hardDeleteId, setHardDeleteId] = useState<string | null>(null);
   const [bulkDeleteOpen, setBulkDeleteOpen] = useState(false);
   const [bulkPaymentOpen, setBulkPaymentOpen] = useState(false);
   const [paymentBillId, setPaymentBillId] = useState<string | null>(null);
@@ -195,6 +205,7 @@ export function VendorBillTable({ bills }: VendorBillTableProps) {
   const navigate = useNavigate();
   const { data: qbConfig } = useQuickBooksConfig();
   const deleteBill = useDeleteVendorBill();
+  const hardDeleteBill = useHardDeleteVendorBill();
   const syncToQB = useSyncVendorBillToQB();
 
   const allSelected = bills.length > 0 && selectedIds.size === bills.length;
@@ -341,6 +352,7 @@ export function VendorBillTable({ bills }: VendorBillTableProps) {
               onView={(id) => navigate(`/vendor-bills/${id}${window.location.search}`)}
               onEdit={(id) => navigate(`/vendor-bills/${id}/edit${window.location.search}`)}
               onDelete={setDeleteId}
+              onHardDelete={setHardDeleteId}
               onRecordPayment={setPaymentBillId}
             />
           ))}
@@ -378,6 +390,7 @@ export function VendorBillTable({ bills }: VendorBillTableProps) {
                   isSelected={selectedIds.has(bill.id)}
                   onSelect={(checked) => handleSelectOne(bill.id, checked)}
                   onDelete={setDeleteId}
+                  onHardDelete={setHardDeleteId}
                   onRecordPayment={setPaymentBillId}
                 />
               ))}
@@ -405,6 +418,41 @@ export function VendorBillTable({ bills }: VendorBillTableProps) {
               className="bg-destructive text-destructive-foreground"
             >
               Delete
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {/* Hard Delete Forever Dialog */}
+      <AlertDialog open={!!hardDeleteId} onOpenChange={() => setHardDeleteId(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle className="text-destructive">Permanently Delete Bill</AlertDialogTitle>
+            <AlertDialogDescription asChild>
+              <div>
+                <p>This will <strong>permanently delete</strong> this bill and all its:</p>
+                <ul className="list-disc pl-5 mt-2 space-y-1 text-sm">
+                  <li>Line items</li>
+                  <li>Payments and payment attachments</li>
+                  <li>Attachments</li>
+                  <li>QuickBooks sync data</li>
+                </ul>
+                <p className="mt-2 font-medium text-destructive">
+                  This action cannot be undone.
+                </p>
+              </div>
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={() => {
+                if (hardDeleteId) hardDeleteBill.mutate(hardDeleteId);
+                setHardDeleteId(null);
+              }}
+              className="bg-destructive text-destructive-foreground"
+            >
+              Delete Forever
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
