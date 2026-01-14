@@ -486,7 +486,7 @@ async function processEstimateUpdate(
   }
 
   if (operation === "Delete" || operation === "Void") {
-    // Mark the local estimate as voided/deleted
+    // Mark the mapping as voided
     await supabase
       .from("quickbooks_estimate_mappings")
       .update({
@@ -495,8 +495,22 @@ async function processEstimateUpdate(
       })
       .eq("id", mapping.id);
 
-    console.log("[Webhook] Marked estimate as voided:", mapping.estimate_id);
-    return { success: true, action: "voided" };
+    // Soft-delete the local estimate
+    const { error: deleteError } = await supabase
+      .from("estimates")
+      .update({
+        deleted_at: new Date().toISOString(),
+        status: "closed",
+      })
+      .eq("id", mapping.estimate_id)
+      .is("deleted_at", null);
+
+    if (deleteError) {
+      console.error("[Webhook] Error soft-deleting estimate:", deleteError);
+    }
+
+    console.log("[Webhook] Soft-deleted estimate from QB:", mapping.estimate_id);
+    return { success: true, action: "deleted" };
   }
 
   // Fetch the full estimate from QuickBooks
