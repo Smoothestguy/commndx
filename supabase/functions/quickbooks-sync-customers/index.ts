@@ -423,7 +423,26 @@ serve(async (req) => {
 
       if (customerError) throw customerError;
 
-      const mapping = customer.quickbooks_customer_mappings?.[0];
+      // Get mapping from embedded query
+      let mapping = customer.quickbooks_customer_mappings?.[0];
+      
+      // FALLBACK: If no mapping found via embed, query directly
+      if (!mapping) {
+        console.log(`[sync-single] No embedded mapping found for customer ${customerId}, checking directly...`);
+        const { data: directMapping } = await supabase
+          .from('quickbooks_customer_mappings')
+          .select('*')
+          .eq('customer_id', customerId)
+          .single();
+        
+        if (directMapping) {
+          console.log(`[sync-single] Found mapping via direct query: QB ID ${directMapping.quickbooks_customer_id}`);
+          mapping = directMapping;
+        }
+      }
+      
+      console.log(`[sync-single] Customer: ${customer.name}, Mapping exists: ${!!mapping}, QB ID: ${mapping?.quickbooks_customer_id || 'none'}`);
+      
       const addressParts = (customer.address || '').split(', ');
       
       const qbCustomer: any = {
@@ -502,7 +521,23 @@ serve(async (req) => {
 
       if (customerError) throw customerError;
 
-      const mapping = customer.quickbooks_customer_mappings?.[0];
+      // Get mapping from embedded query
+      let mapping = customer.quickbooks_customer_mappings?.[0];
+      
+      // FALLBACK: If no mapping found via embed, query directly
+      if (!mapping) {
+        console.log(`[find-or-create] No embedded mapping found for customer ${customerId}, checking directly...`);
+        const { data: directMapping } = await supabase
+          .from('quickbooks_customer_mappings')
+          .select('*')
+          .eq('customer_id', customerId)
+          .single();
+        
+        if (directMapping) {
+          console.log(`[find-or-create] Found mapping via direct query: QB ID ${directMapping.quickbooks_customer_id}`);
+          mapping = directMapping;
+        }
+      }
 
       if (mapping && mapping.quickbooks_customer_id) {
         return new Response(JSON.stringify({ 
