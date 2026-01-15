@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef, useMemo } from "react";
+import { useState, useEffect, useRef, useMemo, useCallback } from "react";
 import { WelcomeStrip } from "./WelcomeStrip";
 import { KPIBar } from "./KPIBar";
 import { QuickActionsRow } from "./QuickActionsRow";
@@ -99,12 +99,12 @@ export function RowBasedDashboard() {
   }, [isEditMode, draftTheme, activeTheme]);
 
   // Theme change handler
-  const handleThemeChange = (theme: DashboardTheme) => {
+  const handleThemeChange = useCallback((theme: DashboardTheme) => {
     setDraftTheme(theme);
-  };
+  }, []);
 
   // Save changes to database
-  const handleSave = async () => {
+  const handleSave = useCallback(async () => {
     if (!draftTheme) return;
     try {
       await updateConfigAsync({ theme: draftTheme });
@@ -112,46 +112,67 @@ export function RowBasedDashboard() {
     } catch (error) {
       // Error toast is handled in the hook
     }
-  };
+  }, [draftTheme, updateConfigAsync]);
 
   // Revert to saved state
-  const handleRevert = () => {
+  const handleRevert = useCallback(() => {
     setDraftTheme(activeTheme);
     toast.info("Changes reverted");
-  };
+  }, [activeTheme]);
 
   // Handle exit edit mode
-  const handleExitEditMode = () => {
+  const handleExitEditMode = useCallback(() => {
     if (hasUnsavedChanges) {
       setShowUnsavedDialog(true);
     } else {
       setIsEditMode(false);
       setShowThemeEditor(false);
     }
-  };
+  }, [hasUnsavedChanges]);
 
   // Save and exit
-  const handleSaveAndExit = async () => {
-    await handleSave();
+  const handleSaveAndExit = useCallback(async () => {
+    if (!draftTheme) return;
+    try {
+      await updateConfigAsync({ theme: draftTheme });
+      toast.success("Dashboard saved");
+    } catch (error) {
+      // Error toast is handled in the hook
+    }
     setShowUnsavedDialog(false);
     setIsEditMode(false);
     setShowThemeEditor(false);
-  };
+  }, [draftTheme, updateConfigAsync]);
 
   // Discard and exit
-  const handleDiscardAndExit = () => {
-    handleRevert();
+  const handleDiscardAndExit = useCallback(() => {
+    setDraftTheme(activeTheme);
     setShowUnsavedDialog(false);
     setIsEditMode(false);
     setShowThemeEditor(false);
-  };
+  }, [activeTheme]);
 
-  const handleReset = () => {
+  const handleReset = useCallback(() => {
     resetToDefault();
     setShowResetConfirm(false);
     setIsEditMode(false);
     setShowThemeEditor(false);
-  };
+  }, [resetToDefault]);
+
+  // Store handlers in ref to avoid useEffect dependency issues
+  const handlersRef = useRef({
+    handleExitEditMode,
+    handleSave,
+    handleRevert,
+  });
+  
+  useEffect(() => {
+    handlersRef.current = {
+      handleExitEditMode,
+      handleSave,
+      handleRevert,
+    };
+  });
 
   // Register the EditModeToggle in the page header
   useEffect(() => {
@@ -160,9 +181,9 @@ export function RowBasedDashboard() {
     pageHeaderActions.setRightActions(
       <EditModeToggle
         isEditMode={isEditMode}
-        onToggle={isEditMode ? handleExitEditMode : () => setIsEditMode(true)}
-        onSave={handleSave}
-        onRevert={handleRevert}
+        onToggle={isEditMode ? () => handlersRef.current.handleExitEditMode() : () => setIsEditMode(true)}
+        onSave={() => handlersRef.current.handleSave()}
+        onRevert={() => handlersRef.current.handleRevert()}
         onReset={() => setShowResetConfirm(true)}
         hasCustomConfig={hasCustomConfig}
         hasUnsavedChanges={hasUnsavedChanges}

@@ -172,7 +172,10 @@ export function RightPanel({ collapsed, onToggleCollapse, backgroundColor, textC
   if (collapsed) {
     return (
       <div 
-        className="w-12 bg-card border-l border-border flex flex-col items-center py-2"
+        className={cn(
+          "w-12 border-l border-border flex flex-col items-center py-2",
+          !backgroundColor && "bg-card"
+        )}
         style={panelStyle}
       >
         <Button
@@ -196,7 +199,13 @@ export function RightPanel({ collapsed, onToggleCollapse, backgroundColor, textC
   }
 
   return (
-    <div className="w-72 bg-card border-l border-border flex flex-col" style={panelStyle}>
+    <div 
+      className={cn(
+        "w-72 border-l border-border flex flex-col",
+        !backgroundColor && "bg-card"
+      )}
+      style={panelStyle}
+    >
       {/* Panel Header */}
       <div className="flex items-center justify-between px-3 py-2 border-b border-border">
         <h3 className="text-sm font-semibold">Key Metrics</h3>
