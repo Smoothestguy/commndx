@@ -183,25 +183,33 @@ const PurchaseOrders = () => {
         title="Purchase Orders"
         description="Manage vendor purchase orders for job orders"
         actions={
-          <Button variant="glow" onClick={() => navigate("/purchase-orders/new")}>
-            <Plus className="h-4 w-4" />
-            New Purchase Order
-          </Button>
+          <div className="flex items-center gap-2">
+            {/* Search in header - responsive width */}
+            <div className="hidden sm:block w-48 md:w-64 lg:w-80">
+              <SearchInput
+                placeholder="Search purchase orders..."
+                value={search}
+                onChange={setSearch}
+                className="h-9 bg-secondary border-border"
+              />
+            </div>
+            <Button variant="glow" size="sm" onClick={() => navigate("/purchase-orders/new")}>
+              <Plus className="mr-2 h-4 w-4" />
+              <span className="hidden sm:inline">New Purchase Order</span>
+              <span className="sm:hidden">New</span>
+            </Button>
+          </div>
         }
       >
         <PullToRefreshWrapper onRefresh={refetch} isRefreshing={isFetching}>
-          {/* Search & Filter Controls */}
-          <div className="mb-6 space-y-4">
-            <div className="flex flex-col sm:flex-row gap-3">
-              <div className="flex-1 max-w-md">
-                <SearchInput
-                  placeholder="Search purchase orders..."
-                  value={search}
-                  onChange={setSearch}
-                  className="bg-secondary border-border"
-                />
-              </div>
-            </div>
+          {/* Mobile-only search */}
+          <div className="sm:hidden mb-4">
+            <SearchInput
+              placeholder="Search purchase orders..."
+              value={search}
+              onChange={setSearch}
+              className="bg-secondary border-border"
+            />
           </div>
 
           {/* Loading & Error States */}
