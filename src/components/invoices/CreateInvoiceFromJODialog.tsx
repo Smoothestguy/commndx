@@ -259,6 +259,7 @@ export function CreateInvoiceFromJODialog({
                       type="number"
                       min={0}
                       max={item.remainingQuantity}
+                      step="any"
                       value={item.quantityToInvoice}
                       onChange={(e) => updateQuantity(item.id, Number(e.target.value))}
                       className="w-24"
@@ -305,6 +306,7 @@ export function CreateInvoiceFromJODialog({
                         type="number"
                         min={0}
                         max={item.remainingQuantity}
+                        step="any"
                         value={item.quantityToInvoice}
                         onChange={(e) => updateQuantity(item.id, Number(e.target.value))}
                         className="w-24 text-right"

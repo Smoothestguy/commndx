@@ -77,6 +77,7 @@ export function ValidationSettings({ field, onUpdate }: ValidationSettingsProps)
             <Label className="text-xs text-muted-foreground">Min Value</Label>
             <Input
               type="number"
+              step="any"
               value={validation.min ?? ""}
               onChange={(e) => updateValidation({ 
                 min: e.target.value !== "" ? parseFloat(e.target.value) : undefined 
@@ -89,6 +90,7 @@ export function ValidationSettings({ field, onUpdate }: ValidationSettingsProps)
             <Label className="text-xs text-muted-foreground">Max Value</Label>
             <Input
               type="number"
+              step="any"
               value={validation.max ?? ""}
               onChange={(e) => updateValidation({ 
                 max: e.target.value !== "" ? parseFloat(e.target.value) : undefined 

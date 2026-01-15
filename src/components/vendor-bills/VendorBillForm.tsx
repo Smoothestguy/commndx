@@ -451,7 +451,7 @@ export function VendorBillForm({ bill, isEditing = false }: VendorBillFormProps)
                       <Input
                         type="number"
                         min="0"
-                        step="1"
+                        step="any"
                         value={item.quantity}
                         onChange={(e) => updateLineItem(item.id, "quantity", Number(e.target.value))}
                         className="w-[80px]"
