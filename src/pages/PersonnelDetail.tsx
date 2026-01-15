@@ -7,7 +7,7 @@ import { useRevokeOnboardingToken } from "@/integrations/supabase/hooks/usePerso
 import { useApplicationByPersonnelId, useReverseApprovalWithReason } from "@/integrations/supabase/hooks/useStaffingApplications";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { SecureAvatar } from "@/components/ui/secure-avatar";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { ScrollArea, ScrollBar } from "@/components/ui/scroll-area";
@@ -320,13 +320,18 @@ const PersonnelDetail = () => {
         <Card>
           <CardContent className="pt-6">
             <div className="flex flex-col sm:flex-row items-start gap-6">
-              <Avatar className="h-24 w-24">
-                <AvatarImage src={personnel.photo_url || ""} />
-                <AvatarFallback className="text-2xl">
-                  {personnel.first_name[0]}
-                  {personnel.last_name[0]}
-                </AvatarFallback>
-              </Avatar>
+              <SecureAvatar
+                bucket="personnel-photos"
+                photoUrl={personnel.photo_url}
+                className="h-24 w-24"
+                fallback={
+                  <span className="text-2xl">
+                    {personnel.first_name[0]}
+                    {personnel.last_name[0]}
+                  </span>
+                }
+                alt={`${personnel.first_name} ${personnel.last_name}`}
+              />
 
               <div className="flex-1 space-y-3">
                 <div>

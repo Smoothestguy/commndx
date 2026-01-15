@@ -1,7 +1,7 @@
 import { format } from "date-fns";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { SecureAvatar } from "@/components/ui/secure-avatar";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Eye, CheckCircle, XCircle, ImageOff } from "lucide-react";
 import type { Application } from "@/integrations/supabase/hooks/useStaffingApplications";
@@ -95,12 +95,13 @@ export function PostingEntryCard({
         {/* Avatar */}
         <div className="shrink-0">
           {profilePic ? (
-            <Avatar className="h-12 w-12 ring-2 ring-primary/20">
-              <AvatarImage src={profilePic} alt="Profile" />
-              <AvatarFallback className="bg-muted">
-                <ImageOff className="h-5 w-5 text-muted-foreground" />
-              </AvatarFallback>
-            </Avatar>
+            <SecureAvatar
+              bucket="personnel-photos"
+              photoUrl={profilePic}
+              className="h-12 w-12 ring-2 ring-primary/20"
+              fallback={<ImageOff className="h-5 w-5 text-muted-foreground" />}
+              alt="Profile"
+            />
           ) : (
             <div className="h-12 w-12 rounded-full bg-muted/50 border-2 border-dashed border-muted-foreground/30 flex items-center justify-center">
               <ImageOff className="h-5 w-5 text-muted-foreground/50" />

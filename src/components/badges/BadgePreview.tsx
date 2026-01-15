@@ -1,5 +1,5 @@
 import { Card } from "@/components/ui/card";
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { SecureAvatar } from "@/components/ui/secure-avatar";
 import { Separator } from "@/components/ui/separator";
 interface PersonnelCertification {
   id: string;
@@ -108,13 +108,18 @@ export const BadgePreview = ({
 
       {/* Body Section */}
       <div className="flex-1 p-3 flex flex-col items-center gap-2 overflow-hidden">
-        {isEnabled("photo") && <Avatar className="h-14 w-14 border-2 border-muted">
-            <AvatarImage src={personnel.photo_url || ""} />
-            <AvatarFallback className="text-base bg-muted">
-              {personnel.first_name[0]}
-              {personnel.last_name[0]}
-            </AvatarFallback>
-          </Avatar>}
+        {isEnabled("photo") && <SecureAvatar
+            bucket="personnel-photos"
+            photoUrl={personnel.photo_url}
+            className="h-14 w-14 border-2 border-muted"
+            fallback={
+              <span className="text-base bg-muted">
+                {personnel.first_name[0]}
+                {personnel.last_name[0]}
+              </span>
+            }
+            alt={`${personnel.first_name} ${personnel.last_name}`}
+          />}
 
         {/* Name */}
         <h3 className="text-sm font-bold text-center leading-tight" style={{

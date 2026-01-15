@@ -2,7 +2,7 @@ import { format } from "date-fns";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { SecureAvatar } from "@/components/ui/secure-avatar";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -85,12 +85,13 @@ export function MobileApplicationCard({
     >
       <CardContent className="p-4">
         <div className="flex items-start gap-3">
-          <Avatar className="h-10 w-10 flex-shrink-0">
-            <AvatarImage src={profilePic || undefined} alt="Profile" />
-            <AvatarFallback className="text-xs">
-              <User className="h-4 w-4" />
-            </AvatarFallback>
-          </Avatar>
+          <SecureAvatar
+            bucket="personnel-photos"
+            photoUrl={profilePic}
+            className="h-10 w-10 flex-shrink-0"
+            fallback={<User className="h-4 w-4" />}
+            alt="Profile"
+          />
           <div className="flex-1 min-w-0 space-y-2">
             <div className="flex items-start justify-between gap-2">
               <div className="min-w-0 flex-1">

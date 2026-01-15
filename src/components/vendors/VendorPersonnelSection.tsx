@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { SecureAvatar } from "@/components/ui/secure-avatar";
 import { Badge } from "@/components/ui/badge";
 import { Loader2 } from "lucide-react";
 import { usePersonnelByVendor, usePersonnel, useAssignPersonnelToVendor } from "@/integrations/supabase/hooks/usePersonnel";
@@ -117,13 +117,18 @@ export const VendorPersonnelSection = ({ vendorId, vendorName }: VendorPersonnel
                     className="flex items-center gap-3 flex-1 cursor-pointer"
                     onClick={() => navigate(`/personnel/${person.id}`)}
                   >
-                    <Avatar className="h-10 w-10">
-                      <AvatarImage src={person.photo_url || undefined} />
-                      <AvatarFallback>
-                        {person.first_name?.[0]}
-                        {person.last_name?.[0]}
-                      </AvatarFallback>
-                    </Avatar>
+                    <SecureAvatar
+                      bucket="personnel-photos"
+                      photoUrl={person.photo_url}
+                      className="h-10 w-10"
+                      fallback={
+                        <span>
+                          {person.first_name?.[0]}
+                          {person.last_name?.[0]}
+                        </span>
+                      }
+                      alt={`${person.first_name} ${person.last_name}`}
+                    />
                     <div>
                       <p className="font-medium">
                         {person.first_name} {person.last_name}

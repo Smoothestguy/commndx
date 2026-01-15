@@ -2,7 +2,7 @@ import { useMemo } from "react";
 import { format } from "date-fns";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { SecureAvatar } from "@/components/ui/secure-avatar";
 import { Eye, CheckCircle, XCircle, User, Trash2, Undo2 } from "lucide-react";
 import { EnhancedDataTable, EnhancedColumn } from "@/components/shared/EnhancedDataTable";
 import { useIsMobile } from "@/hooks/use-mobile";
@@ -133,12 +133,13 @@ export function ApplicationsTable({
           const profilePic = app.applicants?.photo_url || getProfilePicture(app.answers as Record<string, unknown>, fieldTypeMap);
         return (
           <div className="flex items-center gap-3">
-            <Avatar className="h-9 w-9">
-              <AvatarImage src={profilePic || undefined} alt="Profile" />
-              <AvatarFallback className="text-xs">
-                <User className="h-4 w-4" />
-              </AvatarFallback>
-            </Avatar>
+            <SecureAvatar
+              bucket="personnel-photos"
+              photoUrl={profilePic}
+              className="h-9 w-9"
+              fallback={<User className="h-4 w-4" />}
+              alt="Profile"
+            />
             <div>
               <p className="font-medium">
                 {app.applicants?.first_name} {app.applicants?.last_name}

@@ -4,7 +4,7 @@ import 'mapbox-gl/dist/mapbox-gl.css';
 import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { SecureAvatar } from "@/components/ui/secure-avatar";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
 import { Users, UserCheck, MapPin, Loader2, RefreshCw, AlertCircle, ExternalLink, Activity, Clock, Coffee, AlertTriangle } from "lucide-react";
@@ -581,12 +581,13 @@ export function PersonnelApplicantMap({ mapboxToken, isAdmin = false }: Personne
       return (
         <div className="space-y-4">
           <div className="flex items-center gap-3">
-            <Avatar className="h-16 w-16">
-              <AvatarImage src={active.photo_url || undefined} />
-              <AvatarFallback className="text-lg">
-                {getInitials(active.first_name, active.last_name)}
-              </AvatarFallback>
-            </Avatar>
+            <SecureAvatar
+              bucket="personnel-photos"
+              photoUrl={active.photo_url}
+              className="h-16 w-16"
+              fallback={<span className="text-lg">{getInitials(active.first_name, active.last_name)}</span>}
+              alt={`${active.first_name} ${active.last_name}`}
+            />
             <div>
               <h3 className="font-semibold text-lg">
                 {active.first_name} {active.last_name}
@@ -650,12 +651,13 @@ export function PersonnelApplicantMap({ mapboxToken, isAdmin = false }: Personne
     return (
       <div className="space-y-4">
         <div className="flex items-center gap-3">
-          <Avatar className="h-16 w-16">
-            <AvatarImage src={person.photo_url || undefined} />
-            <AvatarFallback className="text-lg">
-              {getInitials(person.first_name, person.last_name)}
-            </AvatarFallback>
-          </Avatar>
+          <SecureAvatar
+            bucket="personnel-photos"
+            photoUrl={person.photo_url}
+            className="h-16 w-16"
+            fallback={<span className="text-lg">{getInitials(person.first_name, person.last_name)}</span>}
+            alt={`${person.first_name} ${person.last_name}`}
+          />
           <div>
             <h3 className="font-semibold text-lg">
               {person.first_name} {person.last_name}

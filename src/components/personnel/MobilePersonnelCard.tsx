@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { useNavigate, Link } from "react-router-dom";
 import { Card, CardContent } from "@/components/ui/card";
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { SecureAvatar } from "@/components/ui/secure-avatar";
 import { Badge } from "@/components/ui/badge";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Button } from "@/components/ui/button";
@@ -158,13 +158,18 @@ export const MobilePersonnelCard = ({
                 />
               </div>
             )}
-            <Avatar className="h-12 w-12 flex-shrink-0">
-              <AvatarImage src={personnel.photo_url || ""} />
-              <AvatarFallback className="text-sm">
-                {personnel.first_name[0]}
-                {personnel.last_name[0]}
-              </AvatarFallback>
-            </Avatar>
+            <SecureAvatar
+              bucket="personnel-photos"
+              photoUrl={personnel.photo_url}
+              className="h-12 w-12 flex-shrink-0"
+              fallback={
+                <span className="text-sm">
+                  {personnel.first_name[0]}
+                  {personnel.last_name[0]}
+                </span>
+              }
+              alt={`${personnel.first_name} ${personnel.last_name}`}
+            />
 
             <div className="flex-1 min-w-0 space-y-2">
               <div className="flex items-start justify-between gap-2">

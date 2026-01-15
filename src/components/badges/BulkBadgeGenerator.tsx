@@ -4,7 +4,7 @@ import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { SecureAvatar } from "@/components/ui/secure-avatar";
 import { Loader2 } from "lucide-react";
 import { SearchInput } from "@/components/ui/search-input";
 import { useBadgeTemplates, useDefaultBadgeTemplate } from "@/integrations/supabase/hooks/useBadgeTemplates";
@@ -166,13 +166,18 @@ export const BulkBadgeGenerator = ({
                     checked={selectedIds.includes(person.id)}
                     onCheckedChange={() => handleToggle(person.id)}
                   />
-                  <Avatar className="h-10 w-10">
-                    <AvatarImage src={person.photo_url || ""} />
-                    <AvatarFallback>
-                      {person.first_name[0]}
-                      {person.last_name[0]}
-                    </AvatarFallback>
-                  </Avatar>
+                  <SecureAvatar
+                    bucket="personnel-photos"
+                    photoUrl={person.photo_url}
+                    className="h-10 w-10"
+                    fallback={
+                      <span>
+                        {person.first_name[0]}
+                        {person.last_name[0]}
+                      </span>
+                    }
+                    alt={`${person.first_name} ${person.last_name}`}
+                  />
                   <div className="flex-1">
                     <div className="font-medium">
                       {person.first_name} {person.last_name}
