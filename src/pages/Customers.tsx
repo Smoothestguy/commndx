@@ -230,10 +230,20 @@ const Customers = () => {
       title="Customers"
       description="Manage your customers and their projects"
       actions={
-        <Button variant="glow" onClick={openNewDialog}>
-          <Plus className="h-4 w-4" />
-          Add Customer
-        </Button>
+        <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 w-full sm:w-auto">
+          <div className="w-full sm:w-48 md:w-56 lg:w-64 order-2 sm:order-1">
+            <SearchInput
+              placeholder="Search customers..."
+              value={search}
+              onChange={setSearch}
+              className="bg-secondary border-border"
+            />
+          </div>
+          <Button variant="glow" onClick={openNewDialog} className="order-1 sm:order-2 shrink-0">
+            <Plus className="h-4 w-4" />
+            Add Customer
+          </Button>
+        </div>
       }
     >
       <PullToRefreshWrapper onRefresh={refetch} isRefreshing={isFetching}>
@@ -285,15 +295,6 @@ const Customers = () => {
           </div>
         )}
 
-        {/* Search */}
-        <div className="mb-6 w-full md:max-w-lg lg:max-w-md">
-          <SearchInput
-            placeholder="Search customers..."
-            value={search}
-            onChange={setSearch}
-            className="bg-secondary border-border"
-          />
-        </div>
 
         {/* Loading & Error States */}
         {isLoading && (
