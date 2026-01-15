@@ -2,7 +2,7 @@ import { useState } from "react";
 import { useNavigate, Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { SecureAvatar } from "@/components/ui/secure-avatar";
 import { Checkbox } from "@/components/ui/checkbox";
 import {
   DropdownMenu,
@@ -264,13 +264,18 @@ export function PersonnelTable({
       sortable: false,
       filterable: false,
       render: (person: Personnel) => (
-        <Avatar className="h-8 w-8">
-          <AvatarImage src={person.photo_url || ""} />
-          <AvatarFallback className="text-xs">
-            {person.first_name[0]}
-            {person.last_name[0]}
-          </AvatarFallback>
-        </Avatar>
+        <SecureAvatar
+          bucket="personnel-photos"
+          photoUrl={person.photo_url}
+          className="h-8 w-8"
+          fallback={
+            <span className="text-xs">
+              {person.first_name[0]}
+              {person.last_name[0]}
+            </span>
+          }
+          alt={`${person.first_name} ${person.last_name}`}
+        />
       ),
     },
     {
