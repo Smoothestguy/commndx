@@ -14,6 +14,7 @@ import {
   Table as TableIcon,
   Check,
   MapPin,
+  MoreHorizontal,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -422,30 +423,6 @@ export default function StaffingApplications() {
                   </div>
                   <div className="flex items-center gap-2" onClick={(e) => e.stopPropagation()}>
                     <Button
-                      variant="ghost"
-                      size="sm"
-                      onClick={() => navigate(`/staffing/applications/posting/${posting.id}`)}
-                      title="View all entries"
-                    >
-                      <TableIcon className="h-4 w-4" />
-                    </Button>
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      onClick={() => handleEditTaskOrder(posting)}
-                      title="Edit task order details"
-                    >
-                      <Settings className="h-4 w-4" />
-                    </Button>
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      onClick={() => handleEditPosting(posting)}
-                      title="Edit form template"
-                    >
-                      <Pencil className="h-4 w-4" />
-                    </Button>
-                    <Button
                       variant="outline"
                       size="sm"
                       onClick={() => copyApplicationLink(posting.public_token)}
@@ -453,13 +430,31 @@ export default function StaffingApplications() {
                       <Copy className="h-4 w-4 mr-1" />
                       Copy Link
                     </Button>
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      onClick={() => window.open(`/apply/${posting.public_token}`, "_blank")}
-                    >
-                      <ExternalLink className="h-4 w-4" />
-                    </Button>
+                    <DropdownMenu>
+                      <DropdownMenuTrigger asChild>
+                        <Button variant="ghost" size="sm">
+                          <MoreHorizontal className="h-4 w-4" />
+                        </Button>
+                      </DropdownMenuTrigger>
+                      <DropdownMenuContent align="end" className="bg-popover">
+                        <DropdownMenuItem onClick={() => navigate(`/staffing/applications/posting/${posting.id}`)}>
+                          <TableIcon className="h-4 w-4 mr-2" />
+                          View All Entries
+                        </DropdownMenuItem>
+                        <DropdownMenuItem onClick={() => handleEditTaskOrder(posting)}>
+                          <Settings className="h-4 w-4 mr-2" />
+                          Edit Task Order
+                        </DropdownMenuItem>
+                        <DropdownMenuItem onClick={() => handleEditPosting(posting)}>
+                          <Pencil className="h-4 w-4 mr-2" />
+                          Edit Form Template
+                        </DropdownMenuItem>
+                        <DropdownMenuItem onClick={() => window.open(`/apply/${posting.public_token}`, "_blank")}>
+                          <ExternalLink className="h-4 w-4 mr-2" />
+                          Open Form
+                        </DropdownMenuItem>
+                      </DropdownMenuContent>
+                    </DropdownMenu>
                   </div>
                 </div>
               ))}
