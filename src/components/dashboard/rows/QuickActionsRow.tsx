@@ -56,7 +56,7 @@ export function QuickActionsRow() {
           e.preventDefault();
           navigate("/customers?action=add");
           break;
-        case 't':
+        case 'l':
           e.preventDefault();
           setTimeEntryOpen(true);
           break;
@@ -99,7 +99,7 @@ export function QuickActionsRow() {
     {
       icon: Clock,
       label: "Log Time",
-      shortcut: "T",
+      shortcut: "L",
       action: () => setTimeEntryOpen(true),
     },
     {
