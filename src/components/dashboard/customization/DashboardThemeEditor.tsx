@@ -516,6 +516,74 @@ export function DashboardThemeEditor({
                   </div>
                 </AccordionContent>
               </AccordionItem>
+
+              {/* Navigation Menu */}
+              <AccordionItem value="menu">
+                <AccordionTrigger className="py-3">Navigation Menu</AccordionTrigger>
+                <AccordionContent className="space-y-4">
+                  <div className="space-y-2">
+                    <Label>Dropdown Background</Label>
+                    <div className="flex gap-2">
+                      <Input
+                        type="color"
+                        value={theme.menuBackground || "#1a1a2e"}
+                        onChange={(e) => updateTheme({ menuBackground: e.target.value })}
+                        className="w-12 h-11 sm:h-9 p-1 cursor-pointer"
+                      />
+                      <Input
+                        value={theme.menuBackground || ""}
+                        onChange={(e) => updateTheme({ menuBackground: e.target.value })}
+                        placeholder="e.g., #1a1a2e"
+                        className="flex-1 h-11 sm:h-9"
+                      />
+                      {theme.menuBackground && (
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          onClick={() => updateTheme({ menuBackground: undefined })}
+                          className="h-11 w-11 sm:h-9 sm:w-9 shrink-0"
+                        >
+                          <X className="h-4 w-4" />
+                        </Button>
+                      )}
+                    </div>
+                    <p className="text-xs text-muted-foreground">
+                      Background color for menu dropdowns
+                    </p>
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label>Dropdown Text</Label>
+                    <div className="flex gap-2">
+                      <Input
+                        type="color"
+                        value={theme.menuTextColor || "#ffffff"}
+                        onChange={(e) => updateTheme({ menuTextColor: e.target.value })}
+                        className="w-12 h-11 sm:h-9 p-1 cursor-pointer"
+                      />
+                      <Input
+                        value={theme.menuTextColor || ""}
+                        onChange={(e) => updateTheme({ menuTextColor: e.target.value })}
+                        placeholder="e.g., #ffffff"
+                        className="flex-1 h-11 sm:h-9"
+                      />
+                      {theme.menuTextColor && (
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          onClick={() => updateTheme({ menuTextColor: undefined })}
+                          className="h-11 w-11 sm:h-9 sm:w-9 shrink-0"
+                        >
+                          <X className="h-4 w-4" />
+                        </Button>
+                      )}
+                    </div>
+                    <p className="text-xs text-muted-foreground">
+                      Text color for menu items
+                    </p>
+                  </div>
+                </AccordionContent>
+              </AccordionItem>
             </Accordion>
           </div>
         </div>

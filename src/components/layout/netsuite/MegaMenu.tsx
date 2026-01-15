@@ -131,7 +131,13 @@ const setupMenu: NavSection[] = [
   },
 ];
 
-function MegaMenuSection({ sections, isOpen }: { sections: NavSection[]; isOpen: boolean }) {
+interface MegaMenuSectionProps {
+  sections: NavSection[];
+  isOpen: boolean;
+  menuTextColor?: string;
+}
+
+function MegaMenuSection({ sections, isOpen, menuTextColor }: MegaMenuSectionProps) {
   const { isAdmin, isManager } = useUserRole();
   const location = useLocation();
 
@@ -148,7 +154,10 @@ function MegaMenuSection({ sections, isOpen }: { sections: NavSection[]; isOpen:
 
         return (
           <div key={section.title} className="space-y-2">
-            <h4 className="text-xs font-semibold text-muted-foreground uppercase tracking-wide px-2">
+            <h4 
+              className="text-xs font-semibold uppercase tracking-wide px-2"
+              style={{ color: menuTextColor ? `${menuTextColor}99` : undefined }}
+            >
               {section.title}
             </h4>
             <div className="space-y-1">
@@ -159,15 +168,19 @@ function MegaMenuSection({ sections, isOpen }: { sections: NavSection[]; isOpen:
                     key={item.href}
                     to={item.href}
                     className={cn(
-                      "flex items-start gap-3 rounded-md p-2 text-sm transition-colors hover:bg-accent hover:text-accent-foreground",
-                      isActive && "bg-accent/50 text-accent-foreground"
+                      "flex items-start gap-3 rounded-md p-2 text-sm transition-colors hover:bg-accent/20",
+                      isActive && "bg-accent/30"
                     )}
+                    style={{ color: menuTextColor || undefined }}
                   >
                     <item.icon className="h-4 w-4 mt-0.5 shrink-0" />
                     <div className="space-y-0.5">
                       <div className="font-medium leading-none">{item.name}</div>
                       {item.description && (
-                        <p className="text-xs text-muted-foreground line-clamp-1">
+                        <p 
+                          className="text-xs line-clamp-1"
+                          style={{ color: menuTextColor ? `${menuTextColor}99` : undefined }}
+                        >
                           {item.description}
                         </p>
                       )}
@@ -183,8 +196,18 @@ function MegaMenuSection({ sections, isOpen }: { sections: NavSection[]; isOpen:
   );
 }
 
-export function MegaMenu() {
+interface MegaMenuProps {
+  menuBackground?: string;
+  menuTextColor?: string;
+}
+
+export function MegaMenu({ menuBackground, menuTextColor }: MegaMenuProps) {
   const location = useLocation();
+
+  const menuContentStyle = {
+    backgroundColor: menuBackground || undefined,
+    color: menuTextColor || undefined,
+  };
 
   return (
     <NavigationMenu>
@@ -219,7 +242,9 @@ export function MegaMenu() {
             Transactions
           </NavigationMenuTrigger>
           <NavigationMenuContent>
-            <MegaMenuSection sections={transactionsMenu} isOpen />
+            <div style={menuContentStyle} className={cn(!menuBackground && "bg-popover")}>
+              <MegaMenuSection sections={transactionsMenu} isOpen menuTextColor={menuTextColor} />
+            </div>
           </NavigationMenuContent>
         </NavigationMenuItem>
 
@@ -236,7 +261,9 @@ export function MegaMenu() {
             Lists
           </NavigationMenuTrigger>
           <NavigationMenuContent>
-            <MegaMenuSection sections={listsMenu} isOpen />
+            <div style={menuContentStyle} className={cn(!menuBackground && "bg-popover")}>
+              <MegaMenuSection sections={listsMenu} isOpen menuTextColor={menuTextColor} />
+            </div>
           </NavigationMenuContent>
         </NavigationMenuItem>
 
@@ -253,7 +280,9 @@ export function MegaMenu() {
             Reports
           </NavigationMenuTrigger>
           <NavigationMenuContent>
-            <MegaMenuSection sections={reportsMenu} isOpen />
+            <div style={menuContentStyle} className={cn(!menuBackground && "bg-popover")}>
+              <MegaMenuSection sections={reportsMenu} isOpen menuTextColor={menuTextColor} />
+            </div>
           </NavigationMenuContent>
         </NavigationMenuItem>
 
@@ -270,7 +299,9 @@ export function MegaMenu() {
             Setup
           </NavigationMenuTrigger>
           <NavigationMenuContent>
-            <MegaMenuSection sections={setupMenu} isOpen />
+            <div style={menuContentStyle} className={cn(!menuBackground && "bg-popover")}>
+              <MegaMenuSection sections={setupMenu} isOpen menuTextColor={menuTextColor} />
+            </div>
           </NavigationMenuContent>
         </NavigationMenuItem>
       </NavigationMenuList>

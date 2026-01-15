@@ -81,6 +81,9 @@ export interface DashboardTheme {
   leftSidebarTextColor?: string;
   rightSidebarBackground?: string;
   rightSidebarTextColor?: string;
+  // Navigation menu customization
+  menuBackground?: string;
+  menuTextColor?: string;
 }
 
 // Widget registry entry
