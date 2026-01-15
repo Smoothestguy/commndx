@@ -232,14 +232,14 @@ export function RowBasedDashboard() {
         {/* Row 3: Quick Actions */}
         <QuickActionsRow />
 
-        {/* Row 4: Revenue Chart */}
-        <RevenueChartRow />
-
-        {/* Row 5: Tables Side by Side */}
+        {/* Row 4: Tables Side by Side */}
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
           <RecentInvoicesTable />
           <RecentActivityTable />
         </div>
+
+        {/* Row 5: Revenue Chart */}
+        <RevenueChartRow />
 
         {/* Row 6: Invoice Aging Summary */}
         <InvoiceAgingSummary />
