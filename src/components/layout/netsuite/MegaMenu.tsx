@@ -195,8 +195,8 @@ export function MegaMenu() {
             asChild
             className={cn(
               navigationMenuTriggerStyle(),
-              "bg-transparent text-header-foreground hover:bg-white/10 hover:text-header-foreground",
-              location.pathname === "/" && "bg-white/10"
+              "bg-transparent text-header-foreground hover:bg-black/10 dark:hover:bg-white/10 hover:text-header-foreground",
+              location.pathname === "/" && "bg-black/10 dark:bg-white/10"
             )}
           >
             <Link to="/">
@@ -210,10 +210,10 @@ export function MegaMenu() {
         <NavigationMenuItem>
           <NavigationMenuTrigger
             className={cn(
-              "bg-transparent text-header-foreground hover:bg-white/10 hover:text-header-foreground data-[state=open]:bg-white/10",
+              "bg-transparent text-header-foreground hover:bg-black/10 dark:hover:bg-white/10 hover:text-header-foreground data-[state=open]:bg-black/10 dark:data-[state=open]:bg-white/10",
               ["/estimates", "/invoices", "/purchase-orders", "/vendor-bills", "/change-orders"].some(
                 (p) => location.pathname.startsWith(p)
-              ) && "bg-white/10"
+              ) && "bg-black/10 dark:bg-white/10"
             )}
           >
             Transactions
@@ -227,10 +227,10 @@ export function MegaMenu() {
         <NavigationMenuItem>
           <NavigationMenuTrigger
             className={cn(
-              "bg-transparent text-header-foreground hover:bg-white/10 hover:text-header-foreground data-[state=open]:bg-white/10",
+              "bg-transparent text-header-foreground hover:bg-black/10 dark:hover:bg-white/10 hover:text-header-foreground data-[state=open]:bg-black/10 dark:data-[state=open]:bg-white/10",
               ["/customers", "/vendors", "/personnel", "/products", "/projects"].some(
                 (p) => location.pathname.startsWith(p)
-              ) && "bg-white/10"
+              ) && "bg-black/10 dark:bg-white/10"
             )}
           >
             Lists
@@ -244,10 +244,10 @@ export function MegaMenu() {
         <NavigationMenuItem>
           <NavigationMenuTrigger
             className={cn(
-              "bg-transparent text-header-foreground hover:bg-white/10 hover:text-header-foreground data-[state=open]:bg-white/10",
+              "bg-transparent text-header-foreground hover:bg-black/10 dark:hover:bg-white/10 hover:text-header-foreground data-[state=open]:bg-black/10 dark:data-[state=open]:bg-white/10",
               ["/time-tracking", "/project-assignments", "/staffing", "/vendor-documents", "/document-center", "/messages"].some(
                 (p) => location.pathname.startsWith(p)
-              ) && "bg-white/10"
+              ) && "bg-black/10 dark:bg-white/10"
             )}
           >
             Reports
@@ -261,10 +261,10 @@ export function MegaMenu() {
         <NavigationMenuItem>
           <NavigationMenuTrigger
             className={cn(
-              "bg-transparent text-header-foreground hover:bg-white/10 hover:text-header-foreground data-[state=open]:bg-white/10",
+              "bg-transparent text-header-foreground hover:bg-black/10 dark:hover:bg-white/10 hover:text-header-foreground data-[state=open]:bg-black/10 dark:data-[state=open]:bg-white/10",
               ["/user-management", "/permissions", "/admin", "/badge-templates", "/settings"].some(
                 (p) => location.pathname.startsWith(p)
-              ) && "bg-white/10"
+              ) && "bg-black/10 dark:bg-white/10"
             )}
           >
             Setup
