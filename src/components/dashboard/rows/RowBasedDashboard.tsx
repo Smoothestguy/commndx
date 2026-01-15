@@ -6,6 +6,7 @@ import { RevenueChartRow } from "./RevenueChartRow";
 import { RecentInvoicesTable } from "./RecentInvoicesTable";
 import { RecentActivityTable } from "./RecentActivityTable";
 import { InvoiceAgingSummary } from "./InvoiceAgingSummary";
+import { MobileSessionCard } from "@/components/session/MobileSessionCard";
 import { useDashboardConfig } from "@/hooks/useDashboardConfig";
 import { useUserRole } from "@/hooks/useUserRole";
 import { useDashboardDraft } from "@/contexts/DashboardDraftContext";
@@ -206,6 +207,9 @@ export function RowBasedDashboard() {
   return (
     <>
       <div className="space-y-4 p-4 lg:p-6">
+        {/* Mobile Session Clock - prominent on mobile */}
+        <MobileSessionCard />
+
         {/* Edit Mode Toolbar */}
         {isEditMode && (
           <div className="flex items-center gap-2 p-2 bg-muted/50 rounded-lg border border-dashed border-primary/30">
