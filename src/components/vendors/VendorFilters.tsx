@@ -1,4 +1,11 @@
-import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { X, ArrowUpAZ, ArrowDownAZ } from "lucide-react";
 import { VendorType } from "@/integrations/supabase/hooks/useVendors";
 
@@ -25,129 +32,81 @@ export const VendorFilters = ({
   sortOrder = "asc",
   onSortOrderChange,
 }: VendorFiltersProps) => {
-  const statusFilters = [
-    { value: "all" as const, label: "All" },
-    { value: "active" as const, label: "Active" },
-    { value: "inactive" as const, label: "Inactive" },
-  ];
-
-  const typeFilters = [
-    { value: "all" as const, label: "All Types" },
-    { value: "contractor" as const, label: "Contractor" },
-    { value: "personnel" as const, label: "Personnel" },
-    { value: "supplier" as const, label: "Supplier" },
-  ];
-
-  const sortFields = [
-    { value: "name" as const, label: "Name" },
-    { value: "company" as const, label: "Company" },
-    { value: "vendor_type" as const, label: "Type" },
-  ];
-
   const hasActiveFilters = statusFilter !== "all" || typeFilter !== "all";
 
   return (
-    <div className="mb-6 space-y-4">
-      {/* Status Filters */}
-      <div>
-        <p className="text-sm text-muted-foreground mb-2">Status</p>
-        <div className="flex flex-wrap gap-2">
-          {statusFilters.map((filter) => (
-            <button
-              key={filter.value}
-              onClick={() => onStatusFilterChange(filter.value)}
-              className={`px-4 py-2 rounded-full text-sm font-medium transition-all ${
-                statusFilter === filter.value
-                  ? "bg-primary text-primary-foreground shadow-lg"
-                  : "bg-secondary text-muted-foreground hover:bg-secondary/80"
-              }`}
-            >
-              {filter.label}
-            </button>
-          ))}
-        </div>
-      </div>
+    <div className="flex flex-wrap items-center gap-2 mb-4">
+      {/* Status Filter */}
+      <Select value={statusFilter} onValueChange={onStatusFilterChange}>
+        <SelectTrigger className="w-[110px] h-9 bg-secondary border-border">
+          <SelectValue placeholder="Status" />
+        </SelectTrigger>
+        <SelectContent>
+          <SelectItem value="all">All Status</SelectItem>
+          <SelectItem value="active">Active</SelectItem>
+          <SelectItem value="inactive">Inactive</SelectItem>
+        </SelectContent>
+      </Select>
 
-      {/* Type Filters */}
+      {/* Type Filter */}
       {onTypeFilterChange && (
-        <div>
-          <p className="text-sm text-muted-foreground mb-2">Type</p>
-          <div className="flex flex-wrap gap-2">
-            {typeFilters.map((filter) => (
-              <button
-                key={filter.value}
-                onClick={() => onTypeFilterChange(filter.value)}
-                className={`px-4 py-2 rounded-full text-sm font-medium transition-all ${
-                  typeFilter === filter.value
-                    ? "bg-primary text-primary-foreground shadow-lg"
-                    : "bg-secondary text-muted-foreground hover:bg-secondary/80"
-                }`}
-              >
-                {filter.label}
-              </button>
-            ))}
-          </div>
-        </div>
+        <Select value={typeFilter} onValueChange={onTypeFilterChange}>
+          <SelectTrigger className="w-[130px] h-9 bg-secondary border-border">
+            <SelectValue placeholder="Type" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">All Types</SelectItem>
+            <SelectItem value="contractor">Contractor</SelectItem>
+            <SelectItem value="personnel">Personnel</SelectItem>
+            <SelectItem value="supplier">Supplier</SelectItem>
+          </SelectContent>
+        </Select>
       )}
 
-      {/* Sort Options */}
-      {onSortByChange && onSortOrderChange && (
-        <div>
-          <p className="text-sm text-muted-foreground mb-2">Sort by</p>
-          <div className="flex flex-wrap items-center gap-2">
-            {sortFields.map((field) => (
-              <button
-                key={field.value}
-                onClick={() => onSortByChange(field.value)}
-                className={`px-4 py-2 rounded-full text-sm font-medium transition-all ${
-                  sortBy === field.value
-                    ? "bg-primary text-primary-foreground shadow-lg"
-                    : "bg-secondary text-muted-foreground hover:bg-secondary/80"
-                }`}
-              >
-                {field.label}
-              </button>
-            ))}
-            <button
-              onClick={() => onSortOrderChange(sortOrder === "asc" ? "desc" : "asc")}
-              className="px-3 py-2 rounded-full bg-secondary text-muted-foreground hover:bg-secondary/80 transition-all flex items-center gap-1"
-            >
-              {sortOrder === "asc" ? (
-                <ArrowUpAZ className="h-4 w-4" />
-              ) : (
-                <ArrowDownAZ className="h-4 w-4" />
-              )}
-              <span className="text-sm font-medium">{sortOrder === "asc" ? "A-Z" : "Z-A"}</span>
-            </button>
-          </div>
-        </div>
+      {/* Sort By */}
+      {onSortByChange && (
+        <Select value={sortBy} onValueChange={onSortByChange}>
+          <SelectTrigger className="w-[110px] h-9 bg-secondary border-border">
+            <SelectValue placeholder="Sort by" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="name">Name</SelectItem>
+            <SelectItem value="company">Company</SelectItem>
+            <SelectItem value="vendor_type">Type</SelectItem>
+          </SelectContent>
+        </Select>
       )}
 
-      {/* Active Filters Display */}
+      {/* Sort Order Toggle */}
+      {onSortOrderChange && (
+        <Button
+          variant="outline"
+          size="sm"
+          className="h-9 px-3"
+          onClick={() => onSortOrderChange(sortOrder === "asc" ? "desc" : "asc")}
+        >
+          {sortOrder === "asc" ? (
+            <ArrowUpAZ className="h-4 w-4" />
+          ) : (
+            <ArrowDownAZ className="h-4 w-4" />
+          )}
+        </Button>
+      )}
+
+      {/* Clear Filters */}
       {hasActiveFilters && (
-        <div className="flex items-center gap-2 flex-wrap">
-          <span className="text-sm text-muted-foreground">Active filters:</span>
-          {statusFilter !== "all" && (
-            <Badge
-              variant="secondary"
-              className="cursor-pointer hover:bg-secondary/80"
-              onClick={() => onStatusFilterChange("all")}
-            >
-              Status: {statusFilter}
-              <X className="h-3 w-3 ml-1" />
-            </Badge>
-          )}
-          {typeFilter !== "all" && onTypeFilterChange && (
-            <Badge
-              variant="secondary"
-              className="cursor-pointer hover:bg-secondary/80"
-              onClick={() => onTypeFilterChange("all")}
-            >
-              Type: {typeFilter}
-              <X className="h-3 w-3 ml-1" />
-            </Badge>
-          )}
-        </div>
+        <Button
+          variant="ghost"
+          size="sm"
+          className="h-9 px-3 text-muted-foreground"
+          onClick={() => {
+            onStatusFilterChange("all");
+            onTypeFilterChange?.("all");
+          }}
+        >
+          <X className="h-4 w-4 mr-1" />
+          Clear
+        </Button>
       )}
     </div>
   );
