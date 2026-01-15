@@ -413,7 +413,19 @@ export function CreateJobOrderDialog({
                       </div>
                     </div>
                   </div>
-                ))}
+              ))}
+                
+                {/* Add Item button at bottom for easy access */}
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={addLineItem}
+                  className="w-full border-dashed"
+                >
+                  <Plus className="h-4 w-4 mr-1" />
+                  Add Item
+                </Button>
               </div>
             </div>
 
