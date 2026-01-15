@@ -48,16 +48,16 @@
     --header-background: 0 0% 7%;
     --header-foreground: 0 0% 100%;
 
-    /* Sidebar - dark gray */
-    --sidebar-background: 0 0% 12%;
-    --sidebar-foreground: 0 0% 85%;
+    /* Sidebar - light gray in light mode */
+    --sidebar-background: 0 0% 98%;
+    --sidebar-foreground: 0 0% 15%;
     --sidebar-primary: 142 76% 36%;
     --sidebar-primary-foreground: 0 0% 100%;
-    --sidebar-accent: 0 0% 18%;
-    --sidebar-accent-foreground: 0 0% 100%;
-    --sidebar-border: 0 0% 20%;
+    --sidebar-accent: 0 0% 93%;
+    --sidebar-accent-foreground: 0 0% 15%;
+    --sidebar-border: 0 0% 88%;
     --sidebar-ring: 142 76% 36%;
-    --sidebar-muted: 0 0% 55%;
+    --sidebar-muted: 0 0% 45%;
 
     /* Table styling */
     --table-header-bg: 0 0% 10%;
