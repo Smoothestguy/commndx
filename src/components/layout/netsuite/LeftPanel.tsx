@@ -91,7 +91,10 @@ export function LeftPanel({ collapsed, onToggleCollapse, backgroundColor, textCo
   if (collapsed) {
     return (
       <div 
-        className="w-12 bg-card border-r border-border flex flex-col items-center py-2"
+        className={cn(
+          "w-12 border-r border-border flex flex-col items-center py-2",
+          !backgroundColor && "bg-card"
+        )}
         style={panelStyle}
       >
         <Button
@@ -128,7 +131,13 @@ export function LeftPanel({ collapsed, onToggleCollapse, backgroundColor, textCo
   }
 
   return (
-    <div className="w-72 bg-card border-r border-border flex flex-col" style={panelStyle}>
+    <div 
+      className={cn(
+        "w-72 border-r border-border flex flex-col",
+        !backgroundColor && "bg-card"
+      )}
+      style={panelStyle}
+    >
       {/* Panel Header */}
       <div className="flex items-center justify-between px-3 py-2 border-b border-border">
         <h3 className="text-sm font-semibold">Quick Access</h3>
