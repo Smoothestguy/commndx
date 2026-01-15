@@ -27,9 +27,11 @@ import { formatDistanceToNow } from "date-fns";
 interface LeftPanelProps {
   collapsed: boolean;
   onToggleCollapse: () => void;
+  backgroundColor?: string;
+  textColor?: string;
 }
 
-export function LeftPanel({ collapsed, onToggleCollapse }: LeftPanelProps) {
+export function LeftPanel({ collapsed, onToggleCollapse, backgroundColor, textColor }: LeftPanelProps) {
   const [remindersOpen, setRemindersOpen] = useState(true);
   const [recentOpen, setRecentOpen] = useState(true);
   const [alertsOpen, setAlertsOpen] = useState(true);
@@ -81,9 +83,17 @@ export function LeftPanel({ collapsed, onToggleCollapse }: LeftPanelProps) {
     },
   });
 
+  const panelStyle = {
+    backgroundColor: backgroundColor || undefined,
+    color: textColor || undefined,
+  };
+
   if (collapsed) {
     return (
-      <div className="w-12 bg-card border-r border-border flex flex-col items-center py-2">
+      <div 
+        className="w-12 bg-card border-r border-border flex flex-col items-center py-2"
+        style={panelStyle}
+      >
         <Button
           variant="ghost"
           size="icon"
@@ -118,7 +128,7 @@ export function LeftPanel({ collapsed, onToggleCollapse }: LeftPanelProps) {
   }
 
   return (
-    <div className="w-72 bg-card border-r border-border flex flex-col">
+    <div className="w-72 bg-card border-r border-border flex flex-col" style={panelStyle}>
       {/* Panel Header */}
       <div className="flex items-center justify-between px-3 py-2 border-b border-border">
         <h3 className="text-sm font-semibold">Quick Access</h3>

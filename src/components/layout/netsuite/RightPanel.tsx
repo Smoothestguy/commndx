@@ -23,6 +23,8 @@ import {
 interface RightPanelProps {
   collapsed: boolean;
   onToggleCollapse: () => void;
+  backgroundColor?: string;
+  textColor?: string;
 }
 
 interface KPIMeterProps {
@@ -108,9 +110,14 @@ function MiniStat({ label, value, trend, icon: Icon }: MiniStatProps) {
   );
 }
 
-export function RightPanel({ collapsed, onToggleCollapse }: RightPanelProps) {
+export function RightPanel({ collapsed, onToggleCollapse, backgroundColor, textColor }: RightPanelProps) {
   const [kpisOpen, setKpisOpen] = useState(true);
   const [statsOpen, setStatsOpen] = useState(true);
+
+  const panelStyle = {
+    backgroundColor: backgroundColor || undefined,
+    color: textColor || undefined,
+  };
 
   // Fetch summary stats
   const { data: invoiceStats } = useQuery({
@@ -164,7 +171,10 @@ export function RightPanel({ collapsed, onToggleCollapse }: RightPanelProps) {
 
   if (collapsed) {
     return (
-      <div className="w-12 bg-card border-l border-border flex flex-col items-center py-2">
+      <div 
+        className="w-12 bg-card border-l border-border flex flex-col items-center py-2"
+        style={panelStyle}
+      >
         <Button
           variant="ghost"
           size="icon"
@@ -186,7 +196,7 @@ export function RightPanel({ collapsed, onToggleCollapse }: RightPanelProps) {
   }
 
   return (
-    <div className="w-72 bg-card border-l border-border flex flex-col">
+    <div className="w-72 bg-card border-l border-border flex flex-col" style={panelStyle}>
       {/* Panel Header */}
       <div className="flex items-center justify-between px-3 py-2 border-b border-border">
         <h3 className="text-sm font-semibold">Key Metrics</h3>

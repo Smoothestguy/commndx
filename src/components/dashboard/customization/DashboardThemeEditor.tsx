@@ -398,6 +398,124 @@ export function DashboardThemeEditor({
                   </div>
                 </AccordionContent>
               </AccordionItem>
+
+              {/* Sidebars */}
+              <AccordionItem value="sidebars">
+                <AccordionTrigger className="py-3">Sidebars</AccordionTrigger>
+                <AccordionContent className="space-y-4">
+                  <div className="space-y-2">
+                    <Label>Left Panel Background</Label>
+                    <div className="flex gap-2">
+                      <Input
+                        type="color"
+                        value={theme.leftSidebarBackground || "#1a1a2e"}
+                        onChange={(e) => updateTheme({ leftSidebarBackground: e.target.value })}
+                        className="w-12 h-11 sm:h-9 p-1 cursor-pointer"
+                      />
+                      <Input
+                        value={theme.leftSidebarBackground || ""}
+                        onChange={(e) => updateTheme({ leftSidebarBackground: e.target.value })}
+                        placeholder="e.g., #1a1a2e"
+                        className="flex-1 h-11 sm:h-9"
+                      />
+                      {theme.leftSidebarBackground && (
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          onClick={() => updateTheme({ leftSidebarBackground: undefined })}
+                          className="h-11 w-11 sm:h-9 sm:w-9 shrink-0"
+                        >
+                          <X className="h-4 w-4" />
+                        </Button>
+                      )}
+                    </div>
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label>Left Panel Text</Label>
+                    <div className="flex gap-2">
+                      <Input
+                        type="color"
+                        value={theme.leftSidebarTextColor || "#ffffff"}
+                        onChange={(e) => updateTheme({ leftSidebarTextColor: e.target.value })}
+                        className="w-12 h-11 sm:h-9 p-1 cursor-pointer"
+                      />
+                      <Input
+                        value={theme.leftSidebarTextColor || ""}
+                        onChange={(e) => updateTheme({ leftSidebarTextColor: e.target.value })}
+                        placeholder="e.g., #ffffff"
+                        className="flex-1 h-11 sm:h-9"
+                      />
+                      {theme.leftSidebarTextColor && (
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          onClick={() => updateTheme({ leftSidebarTextColor: undefined })}
+                          className="h-11 w-11 sm:h-9 sm:w-9 shrink-0"
+                        >
+                          <X className="h-4 w-4" />
+                        </Button>
+                      )}
+                    </div>
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label>Right Panel Background</Label>
+                    <div className="flex gap-2">
+                      <Input
+                        type="color"
+                        value={theme.rightSidebarBackground || "#1a1a2e"}
+                        onChange={(e) => updateTheme({ rightSidebarBackground: e.target.value })}
+                        className="w-12 h-11 sm:h-9 p-1 cursor-pointer"
+                      />
+                      <Input
+                        value={theme.rightSidebarBackground || ""}
+                        onChange={(e) => updateTheme({ rightSidebarBackground: e.target.value })}
+                        placeholder="e.g., #1a1a2e"
+                        className="flex-1 h-11 sm:h-9"
+                      />
+                      {theme.rightSidebarBackground && (
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          onClick={() => updateTheme({ rightSidebarBackground: undefined })}
+                          className="h-11 w-11 sm:h-9 sm:w-9 shrink-0"
+                        >
+                          <X className="h-4 w-4" />
+                        </Button>
+                      )}
+                    </div>
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label>Right Panel Text</Label>
+                    <div className="flex gap-2">
+                      <Input
+                        type="color"
+                        value={theme.rightSidebarTextColor || "#ffffff"}
+                        onChange={(e) => updateTheme({ rightSidebarTextColor: e.target.value })}
+                        className="w-12 h-11 sm:h-9 p-1 cursor-pointer"
+                      />
+                      <Input
+                        value={theme.rightSidebarTextColor || ""}
+                        onChange={(e) => updateTheme({ rightSidebarTextColor: e.target.value })}
+                        placeholder="e.g., #ffffff"
+                        className="flex-1 h-11 sm:h-9"
+                      />
+                      {theme.rightSidebarTextColor && (
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          onClick={() => updateTheme({ rightSidebarTextColor: undefined })}
+                          className="h-11 w-11 sm:h-9 sm:w-9 shrink-0"
+                        >
+                          <X className="h-4 w-4" />
+                        </Button>
+                      )}
+                    </div>
+                  </div>
+                </AccordionContent>
+              </AccordionItem>
             </Accordion>
           </div>
         </div>
