@@ -22,6 +22,12 @@ interface QuickAction {
 export function QuickActionsRow() {
   const navigate = useNavigate();
   const [timeEntryOpen, setTimeEntryOpen] = useState(false);
+  const [isMac, setIsMac] = useState(false);
+
+  // Detect platform for keyboard shortcut hints
+  useEffect(() => {
+    setIsMac(navigator.platform.toUpperCase().indexOf("MAC") >= 0);
+  }, []);
 
   // Keyboard shortcut handler
   useEffect(() => {
@@ -121,7 +127,7 @@ export function QuickActionsRow() {
             <action.icon className="h-5 w-5 text-muted-foreground" />
             <span className="text-xs font-medium text-foreground">{action.label}</span>
             <kbd className="hidden sm:inline-flex h-5 px-1.5 items-center justify-center rounded bg-muted text-[10px] font-mono text-muted-foreground">
-              ⌘{action.shortcut}
+              {isMac ? "⌘" : "Ctrl+"}{action.shortcut}
             </kbd>
           </Button>
         ))}
