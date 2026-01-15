@@ -15,7 +15,19 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
-import { Loader2, Cloud, ChevronRight, Clock, Tag } from "lucide-react";
+import { 
+  Loader2, 
+  Cloud, 
+  ChevronRight, 
+  Clock, 
+  Tag, 
+  User, 
+  Shield, 
+  Plug, 
+  Settings2, 
+  LogOut,
+  Monitor
+} from "lucide-react";
 import { useTheme } from "next-themes";
 import { Switch } from "@/components/ui/switch";
 import { useUserRole } from "@/hooks/useUserRole";
@@ -90,6 +102,8 @@ export default function Settings() {
     }
   };
 
+  const isElectron = typeof window !== "undefined" && (window as any).electronAPI?.isElectron;
+
   return (
     <>
       <SEO
@@ -101,241 +115,284 @@ export default function Settings() {
         title="Settings"
         description="Manage your account settings and preferences"
       >
-        <div className="max-w-4xl space-y-6">
-          {/* Integrations Section */}
-          <Card>
-            <CardHeader>
-              <CardTitle>Integrations</CardTitle>
-              <CardDescription>Connect external services</CardDescription>
-            </CardHeader>
-            <CardContent>
-              <Link to="/settings/quickbooks">
-                <div className="flex items-center justify-between p-4 rounded-lg border hover:bg-muted/50 transition-colors cursor-pointer">
+        <div className="space-y-6">
+          {/* Two-column grid for main settings */}
+          <div className="grid gap-6 lg:grid-cols-2">
+            {/* Column 1 */}
+            <div className="space-y-6">
+              {/* Profile Card */}
+              <Card className="overflow-hidden">
+                <CardHeader className="border-b bg-muted/30">
                   <div className="flex items-center gap-3">
-                    <div
-                      className={`p-2 rounded-lg ${
-                        qbConfig?.is_connected ? "bg-green-500/10" : "bg-muted"
-                      }`}
-                    >
-                      <Cloud
-                        className={`h-5 w-5 ${
-                          qbConfig?.is_connected
-                            ? "text-green-500"
-                            : "text-muted-foreground"
-                        }`}
-                      />
+                    <div className="h-10 w-10 rounded-full bg-primary/10 flex items-center justify-center shrink-0">
+                      <User className="h-5 w-5 text-primary" />
                     </div>
                     <div>
-                      <p className="font-medium">QuickBooks Online</p>
-                      <p className="text-sm text-muted-foreground">
-                        {qbConfig?.is_connected
-                          ? `Connected to ${qbConfig.company_name}`
-                          : "Sync products, customers, and invoices"}
-                      </p>
+                      <CardTitle className="text-base">Profile</CardTitle>
+                      <CardDescription>Your account information</CardDescription>
                     </div>
                   </div>
-                  <div className="flex items-center gap-2">
-                    <Badge
-                      variant={qbConfig?.is_connected ? "default" : "secondary"}
-                    >
-                      {qbConfig?.is_connected ? "Connected" : "Not Connected"}
-                    </Badge>
-                    <ChevronRight className="h-4 w-4 text-muted-foreground" />
-                  </div>
-                </div>
-              </Link>
-
-              {/* Expense Categories */}
-              <Link to="/settings/expense-categories">
-                <div className="flex items-center justify-between p-4 rounded-lg border hover:bg-muted/50 transition-colors cursor-pointer mt-3">
-                  <div className="flex items-center gap-3">
-                    <div className="p-2 rounded-lg bg-primary/10">
-                      <Tag className="h-5 w-5 text-primary" />
-                    </div>
-                    <div>
-                      <p className="font-medium">Expense Categories</p>
-                      <p className="text-sm text-muted-foreground">
-                        Manage expense categories and QuickBooks mappings
-                      </p>
-                    </div>
-                  </div>
-                  <ChevronRight className="h-4 w-4 text-muted-foreground" />
-                </div>
-              </Link>
-
-              {/* Session History - for users with user management access */}
-              {(role === "admin" ||
-                role === "manager" ||
-                hasUserMgmtPermission) && (
-                <Link to="/session-history">
-                  <div className="flex items-center justify-between p-4 rounded-lg border hover:bg-muted/50 transition-colors cursor-pointer mt-3">
-                    <div className="flex items-center gap-3">
-                      <div className="p-2 rounded-lg bg-primary/10">
-                        <Clock className="h-5 w-5 text-primary" />
-                      </div>
-                      <div>
-                        <p className="font-medium">Session History</p>
-                        <p className="text-sm text-muted-foreground">
-                          View your work sessions and activity logs
-                        </p>
-                      </div>
-                    </div>
-                    <ChevronRight className="h-4 w-4 text-muted-foreground" />
-                  </div>
-                </Link>
-              )}
-            </CardContent>
-          </Card>
-
-          {/* Company Settings Section (Admin Only) */}
-          {role === "admin" && <CompanySettingsForm />}
-
-          {/* Profile Section */}
-          <Card>
-            <CardHeader>
-              <CardTitle>Profile</CardTitle>
-              <CardDescription>Your account information</CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <div>
-                <Label>Email</Label>
-                <Input value={user?.email || ""} disabled className="mt-1.5" />
-              </div>
-              <div>
-                <Label>Role</Label>
-                <div className="mt-1.5">
-                  {roleLoading ? (
-                    <Badge variant="outline">Loading...</Badge>
-                  ) : (
-                    <Badge variant={role === "admin" ? "default" : "secondary"}>
-                      {role
-                        ? role.charAt(0).toUpperCase() + role.slice(1)
-                        : "No role assigned"}
-                    </Badge>
-                  )}
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-
-          {/* Change Password Section */}
-          <Card>
-            <CardHeader>
-              <CardTitle>Change Password</CardTitle>
-              <CardDescription>
-                Update your password to keep your account secure
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              <form onSubmit={handlePasswordChange} className="space-y-4">
-                <div>
-                  <Label htmlFor="new-password">New Password</Label>
-                  <Input
-                    id="new-password"
-                    type="password"
-                    value={newPassword}
-                    onChange={(e) => setNewPassword(e.target.value)}
-                    placeholder="Enter new password"
-                    className="mt-1.5"
-                    required
-                  />
-                </div>
-                <div>
-                  <Label htmlFor="confirm-password">Confirm Password</Label>
-                  <Input
-                    id="confirm-password"
-                    type="password"
-                    value={confirmPassword}
-                    onChange={(e) => setConfirmPassword(e.target.value)}
-                    placeholder="Confirm new password"
-                    className="mt-1.5"
-                    required
-                  />
-                </div>
-                <Button type="submit" disabled={isChangingPassword}>
-                  {isChangingPassword && (
-                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                  )}
-                  Update Password
-                </Button>
-              </form>
-            </CardContent>
-          </Card>
-
-          {/* Preferences Section */}
-          <Card>
-            <CardHeader>
-              <CardTitle>Preferences</CardTitle>
-              <CardDescription>Customize your experience</CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <div className="flex items-center justify-between">
-                <div className="space-y-0.5">
-                  <Label>Dark Mode</Label>
-                  <p className="text-sm text-muted-foreground">
-                    Toggle dark mode on or off
-                  </p>
-                </div>
-                <Switch
-                  checked={theme === "dark"}
-                  onCheckedChange={(checked) =>
-                    setTheme(checked ? "dark" : "light")
-                  }
-                />
-              </div>
-
-              {hasSessionAccess && (
-                <div className="flex items-center justify-between">
-                  <div className="space-y-0.5">
-                    <Label>Show Session Earnings</Label>
-                    <p className="text-sm text-muted-foreground">
-                      Display earnings in the session timer
-                    </p>
-                  </div>
-                  <Switch
-                    checked={showSessionEarnings}
-                    onCheckedChange={updateShowSessionEarnings}
-                    disabled={isUpdatingPrefs}
-                  />
-                </div>
-              )}
-            </CardContent>
-          </Card>
-
-          {/* Application Section - Only show in Electron */}
-          {typeof window !== "undefined" &&
-            (window as any).electronAPI?.isElectron && (
-              <Card>
-                <CardHeader>
-                  <CardTitle>Application</CardTitle>
-                  <CardDescription>Desktop app settings</CardDescription>
                 </CardHeader>
-                <CardContent className="space-y-4">
-                  <div className="flex items-center justify-between">
-                    <div className="space-y-0.5">
-                      <Label>Software Updates</Label>
-                      <p className="text-sm text-muted-foreground">
-                        Check for new versions of the app
-                      </p>
+                <CardContent className="pt-5 space-y-4">
+                  <div>
+                    <Label className="text-muted-foreground text-xs uppercase tracking-wide">Email</Label>
+                    <Input value={user?.email || ""} disabled className="mt-1.5 bg-muted/50" />
+                  </div>
+                  <div>
+                    <Label className="text-muted-foreground text-xs uppercase tracking-wide">Role</Label>
+                    <div className="mt-1.5">
+                      {roleLoading ? (
+                        <Badge variant="outline">Loading...</Badge>
+                      ) : (
+                        <Badge variant={role === "admin" ? "default" : "secondary"}>
+                          {role
+                            ? role.charAt(0).toUpperCase() + role.slice(1)
+                            : "No role assigned"}
+                        </Badge>
+                      )}
                     </div>
-                    <CheckForUpdatesButton />
                   </div>
                 </CardContent>
               </Card>
-            )}
 
-          {/* Account Section */}
-          <Card>
-            <CardHeader>
-              <CardTitle>Account</CardTitle>
-              <CardDescription>Manage your account</CardDescription>
-            </CardHeader>
-            <CardContent>
-              <Button variant="outline" onClick={signOut}>
+              {/* Security Card */}
+              <Card className="overflow-hidden">
+                <CardHeader className="border-b bg-muted/30">
+                  <div className="flex items-center gap-3">
+                    <div className="h-10 w-10 rounded-full bg-orange-500/10 flex items-center justify-center shrink-0">
+                      <Shield className="h-5 w-5 text-orange-500" />
+                    </div>
+                    <div>
+                      <CardTitle className="text-base">Security</CardTitle>
+                      <CardDescription>Update your password</CardDescription>
+                    </div>
+                  </div>
+                </CardHeader>
+                <CardContent className="pt-5">
+                  <form onSubmit={handlePasswordChange} className="space-y-4">
+                    <div>
+                      <Label htmlFor="new-password">New Password</Label>
+                      <Input
+                        id="new-password"
+                        type="password"
+                        value={newPassword}
+                        onChange={(e) => setNewPassword(e.target.value)}
+                        placeholder="Enter new password"
+                        className="mt-1.5"
+                        required
+                      />
+                    </div>
+                    <div>
+                      <Label htmlFor="confirm-password">Confirm Password</Label>
+                      <Input
+                        id="confirm-password"
+                        type="password"
+                        value={confirmPassword}
+                        onChange={(e) => setConfirmPassword(e.target.value)}
+                        placeholder="Confirm new password"
+                        className="mt-1.5"
+                        required
+                      />
+                    </div>
+                    <Button type="submit" disabled={isChangingPassword} size="sm">
+                      {isChangingPassword && (
+                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                      )}
+                      Update Password
+                    </Button>
+                  </form>
+                </CardContent>
+              </Card>
+            </div>
+
+            {/* Column 2 */}
+            <div className="space-y-6">
+              {/* Integrations Card */}
+              <Card className="overflow-hidden">
+                <CardHeader className="border-b bg-muted/30">
+                  <div className="flex items-center gap-3">
+                    <div className="h-10 w-10 rounded-full bg-blue-500/10 flex items-center justify-center shrink-0">
+                      <Plug className="h-5 w-5 text-blue-500" />
+                    </div>
+                    <div>
+                      <CardTitle className="text-base">Integrations</CardTitle>
+                      <CardDescription>Connect external services</CardDescription>
+                    </div>
+                  </div>
+                </CardHeader>
+                <CardContent className="pt-5 space-y-3">
+                  <Link to="/settings/quickbooks">
+                    <div className="flex items-center justify-between p-3 rounded-lg border hover:bg-muted/50 transition-colors cursor-pointer">
+                      <div className="flex items-center gap-3">
+                        <div
+                          className={`p-2 rounded-lg ${
+                            qbConfig?.is_connected ? "bg-green-500/10" : "bg-muted"
+                          }`}
+                        >
+                          <Cloud
+                            className={`h-4 w-4 ${
+                              qbConfig?.is_connected
+                                ? "text-green-500"
+                                : "text-muted-foreground"
+                            }`}
+                          />
+                        </div>
+                        <div>
+                          <p className="font-medium text-sm">QuickBooks Online</p>
+                          <p className="text-xs text-muted-foreground">
+                            {qbConfig?.is_connected
+                              ? `Connected to ${qbConfig.company_name}`
+                              : "Sync products, customers, and invoices"}
+                          </p>
+                        </div>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <Badge
+                          variant={qbConfig?.is_connected ? "default" : "secondary"}
+                          className="text-xs"
+                        >
+                          {qbConfig?.is_connected ? "Connected" : "Not Connected"}
+                        </Badge>
+                        <ChevronRight className="h-4 w-4 text-muted-foreground" />
+                      </div>
+                    </div>
+                  </Link>
+
+                  <Link to="/settings/expense-categories">
+                    <div className="flex items-center justify-between p-3 rounded-lg border hover:bg-muted/50 transition-colors cursor-pointer">
+                      <div className="flex items-center gap-3">
+                        <div className="p-2 rounded-lg bg-primary/10">
+                          <Tag className="h-4 w-4 text-primary" />
+                        </div>
+                        <div>
+                          <p className="font-medium text-sm">Expense Categories</p>
+                          <p className="text-xs text-muted-foreground">
+                            Manage categories and mappings
+                          </p>
+                        </div>
+                      </div>
+                      <ChevronRight className="h-4 w-4 text-muted-foreground" />
+                    </div>
+                  </Link>
+
+                  {(role === "admin" ||
+                    role === "manager" ||
+                    hasUserMgmtPermission) && (
+                    <Link to="/session-history">
+                      <div className="flex items-center justify-between p-3 rounded-lg border hover:bg-muted/50 transition-colors cursor-pointer">
+                        <div className="flex items-center gap-3">
+                          <div className="p-2 rounded-lg bg-primary/10">
+                            <Clock className="h-4 w-4 text-primary" />
+                          </div>
+                          <div>
+                            <p className="font-medium text-sm">Session History</p>
+                            <p className="text-xs text-muted-foreground">
+                              View work sessions and activity
+                            </p>
+                          </div>
+                        </div>
+                        <ChevronRight className="h-4 w-4 text-muted-foreground" />
+                      </div>
+                    </Link>
+                  )}
+                </CardContent>
+              </Card>
+
+              {/* Preferences Card */}
+              <Card className="overflow-hidden">
+                <CardHeader className="border-b bg-muted/30">
+                  <div className="flex items-center gap-3">
+                    <div className="h-10 w-10 rounded-full bg-purple-500/10 flex items-center justify-center shrink-0">
+                      <Settings2 className="h-5 w-5 text-purple-500" />
+                    </div>
+                    <div>
+                      <CardTitle className="text-base">Preferences</CardTitle>
+                      <CardDescription>Customize your experience</CardDescription>
+                    </div>
+                  </div>
+                </CardHeader>
+                <CardContent className="pt-5 space-y-4">
+                  <div className="flex items-center justify-between">
+                    <div className="space-y-0.5">
+                      <Label className="text-sm">Dark Mode</Label>
+                      <p className="text-xs text-muted-foreground">
+                        Toggle dark mode on or off
+                      </p>
+                    </div>
+                    <Switch
+                      checked={theme === "dark"}
+                      onCheckedChange={(checked) =>
+                        setTheme(checked ? "dark" : "light")
+                      }
+                    />
+                  </div>
+
+                  {hasSessionAccess && (
+                    <div className="flex items-center justify-between">
+                      <div className="space-y-0.5">
+                        <Label className="text-sm">Show Session Earnings</Label>
+                        <p className="text-xs text-muted-foreground">
+                          Display earnings in the session timer
+                        </p>
+                      </div>
+                      <Switch
+                        checked={showSessionEarnings}
+                        onCheckedChange={updateShowSessionEarnings}
+                        disabled={isUpdatingPrefs}
+                      />
+                    </div>
+                  )}
+                </CardContent>
+              </Card>
+
+              {/* Application Section - Only show in Electron */}
+              {isElectron && (
+                <Card className="overflow-hidden">
+                  <CardHeader className="border-b bg-muted/30">
+                    <div className="flex items-center gap-3">
+                      <div className="h-10 w-10 rounded-full bg-emerald-500/10 flex items-center justify-center shrink-0">
+                        <Monitor className="h-5 w-5 text-emerald-500" />
+                      </div>
+                      <div>
+                        <CardTitle className="text-base">Application</CardTitle>
+                        <CardDescription>Desktop app settings</CardDescription>
+                      </div>
+                    </div>
+                  </CardHeader>
+                  <CardContent className="pt-5">
+                    <div className="flex items-center justify-between">
+                      <div className="space-y-0.5">
+                        <Label className="text-sm">Software Updates</Label>
+                        <p className="text-xs text-muted-foreground">
+                          Check for new versions
+                        </p>
+                      </div>
+                      <CheckForUpdatesButton />
+                    </div>
+                  </CardContent>
+                </Card>
+              )}
+            </div>
+          </div>
+
+          {/* Company Settings - Full Width (Admin Only) */}
+          {role === "admin" && <CompanySettingsForm />}
+
+          {/* Account Actions Footer */}
+          <div className="border-t pt-6">
+            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+              <div>
+                <p className="font-medium text-sm">Sign out of your account</p>
+                <p className="text-xs text-muted-foreground">
+                  You'll need to sign in again to access the app
+                </p>
+              </div>
+              <Button variant="outline" onClick={signOut} size="sm">
+                <LogOut className="mr-2 h-4 w-4" />
                 Sign Out
               </Button>
-            </CardContent>
-          </Card>
+            </div>
+          </div>
         </div>
       </PageLayout>
     </>
