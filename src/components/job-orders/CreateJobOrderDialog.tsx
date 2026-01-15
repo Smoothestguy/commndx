@@ -15,9 +15,9 @@ interface LineItem {
   id: string;
   product_id?: string;
   description: string;
-  quantity: number;
-  unit_price: number;
-  markup: number;
+  quantity: string;
+  unit_price: string;
+  markup: string;
   total: number;
 }
 
@@ -46,7 +46,7 @@ export function CreateJobOrderDialog({
   const [startDate, setStartDate] = useState(new Date().toISOString().split("T")[0]);
   const [completionDate, setCompletionDate] = useState("");
   const [lineItems, setLineItems] = useState<LineItem[]>([
-    { id: crypto.randomUUID(), description: "", quantity: 1, unit_price: 0, markup: 30, total: 0 },
+    { id: crypto.randomUUID(), description: "", quantity: "1", unit_price: "0", markup: "30", total: 0 },
   ]);
   const [productComboboxOpen, setProductComboboxOpen] = useState<Record<string, boolean>>({});
   const [productSearch, setProductSearch] = useState<Record<string, string>>({});
@@ -56,21 +56,25 @@ export function CreateJobOrderDialog({
     return products?.filter((p) => p.item_type === type) || [];
   };
 
-  const calculateLineItemTotal = (quantity: number, unitPrice: number, markup: number): number => {
-    const markedUpPrice = markup > 0 && markup < 100 ? unitPrice / (1 - markup / 100) : unitPrice;
-    return quantity * markedUpPrice;
+  const calculateLineItemTotal = (quantity: string, unitPrice: string, markup: string): number => {
+    const qty = parseFloat(quantity) || 0;
+    const price = parseFloat(unitPrice) || 0;
+    const mrk = parseFloat(markup) || 0;
+    const markedUpPrice = mrk > 0 && mrk < 100 ? price / (1 - mrk / 100) : price;
+    return qty * markedUpPrice;
   };
 
-  const updateLineItem = (id: string, field: keyof Omit<LineItem, 'id'>, value: string | number) => {
+  const updateLineItem = (id: string, field: keyof Omit<LineItem, 'id'>, value: string) => {
     const updated = lineItems.map(item => {
       if (item.id !== id) return item;
       const newItem = { ...item, [field]: value };
       
       if (field === "quantity" || field === "unit_price" || field === "markup") {
-        const qty = field === "quantity" ? Number(value) : newItem.quantity;
-        const price = field === "unit_price" ? Number(value) : newItem.unit_price;
-        const mrk = field === "markup" ? Number(value) : newItem.markup;
-        newItem.total = calculateLineItemTotal(qty, price, mrk);
+        newItem.total = calculateLineItemTotal(
+          field === "quantity" ? value : newItem.quantity,
+          field === "unit_price" ? value : newItem.unit_price,
+          field === "markup" ? value : newItem.markup
+        );
       }
       
       return newItem;
@@ -83,8 +87,8 @@ export function CreateJobOrderDialog({
     if (product) {
       setLineItems(items => items.map(item => {
         if (item.id !== lineItemId) return item;
-        const unitPrice = product.cost;
-        const markup = product.markup;
+        const unitPrice = product.cost.toString();
+        const markup = product.markup.toString();
         return {
           ...item,
           product_id: productId,
@@ -99,7 +103,7 @@ export function CreateJobOrderDialog({
   };
 
   const addLineItem = () => {
-    setLineItems([...lineItems, { id: crypto.randomUUID(), description: "", quantity: 1, unit_price: 0, markup: 30, total: 0 }]);
+    setLineItems([...lineItems, { id: crypto.randomUUID(), description: "", quantity: "1", unit_price: "0", markup: "30", total: 0 }]);
   };
 
   const removeLineItem = (id: string) => {
@@ -140,9 +144,9 @@ export function CreateJobOrderDialog({
         const product = products?.find(p => p.id === item.product_id);
         return {
           description: item.description,
-          quantity: item.quantity,
-          unit_price: item.unit_price,
-          markup: item.markup,
+          quantity: parseFloat(item.quantity) || 0,
+          unit_price: parseFloat(item.unit_price) || 0,
+          markup: parseFloat(item.markup) || 0,
           total: item.total,
           product_id: item.product_id,
           product_name: product?.name,
@@ -159,7 +163,7 @@ export function CreateJobOrderDialog({
     setTaxRate(8.25);
     setStartDate(new Date().toISOString().split("T")[0]);
     setCompletionDate("");
-    setLineItems([{ id: crypto.randomUUID(), description: "", quantity: 1, unit_price: 0, markup: 30, total: 0 }]);
+    setLineItems([{ id: crypto.randomUUID(), description: "", quantity: "1", unit_price: "0", markup: "30", total: 0 }]);
     setProductComboboxOpen({});
     setProductSearch({});
   };
@@ -363,6 +367,7 @@ export function CreateJobOrderDialog({
                         <Label className="text-xs text-muted-foreground">Qty</Label>
                         <Input
                           type="number"
+                          step="any"
                           value={item.quantity}
                           onChange={(e) => updateLineItem(item.id, "quantity", e.target.value)}
                           min="0"
