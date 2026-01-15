@@ -332,22 +332,52 @@ const Invoices = () => {
         title="Invoices"
         description="Manage billing and track payments"
         actions={
-          <div className="flex gap-2">
+          <div className="flex items-center gap-2">
+            {/* Search in header - responsive width */}
+            <div className="hidden sm:block w-48 md:w-64 lg:w-80">
+              <SearchInput
+                placeholder="Search invoices..."
+                value={search}
+                onChange={setSearch}
+                className="h-9 bg-secondary border-border"
+              />
+            </div>
             <Button
               variant="outline"
+              size="sm"
               onClick={() => navigate("/invoices/new-from-time")}
+              className="hidden md:flex"
             >
               <Clock className="mr-2 h-4 w-4" />
               From Time
             </Button>
-            <Button variant="glow" onClick={() => navigate("/invoices/new")}>
+            <Button
+              variant="outline"
+              size="icon"
+              onClick={() => navigate("/invoices/new-from-time")}
+              className="md:hidden"
+            >
+              <Clock className="h-4 w-4" />
+            </Button>
+            <Button variant="glow" size="sm" onClick={() => navigate("/invoices/new")}>
               <Plus className="mr-2 h-4 w-4" />
-              New Invoice
+              <span className="hidden sm:inline">New Invoice</span>
+              <span className="sm:hidden">New</span>
             </Button>
           </div>
         }
       >
         <PullToRefreshWrapper onRefresh={refetch} isRefreshing={isFetching}>
+          {/* Mobile-only search */}
+          <div className="sm:hidden mb-4">
+            <SearchInput
+              placeholder="Search invoices..."
+              value={search}
+              onChange={setSearch}
+              className="bg-secondary border-border"
+            />
+          </div>
+
           {/* QuickBooks Auto-Sync Notice */}
           {qbConfig?.is_connected && (
             <div className="mb-4 p-3 rounded-lg bg-green-500/10 border border-green-500/20">
@@ -360,18 +390,6 @@ const Invoices = () => {
               </div>
             </div>
           )}
-
-          {/* Search */}
-          <div className="mb-6">
-            <div className="max-w-md">
-              <SearchInput
-                placeholder="Search invoices..."
-                value={search}
-                onChange={setSearch}
-                className="bg-secondary border-border"
-              />
-            </div>
-          </div>
 
           {/* Clickable Stat Card Filters */}
           <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-2 sm:gap-3 lg:gap-4 mb-6">
