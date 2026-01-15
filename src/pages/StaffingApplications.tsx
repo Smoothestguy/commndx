@@ -14,7 +14,6 @@ import {
   Table as TableIcon,
   Check,
   MapPin,
-  ChevronDown,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -378,33 +377,6 @@ export default function StaffingApplications() {
           <p className="text-muted-foreground">Review and manage job applications</p>
         </div>
         <div className="flex gap-2">
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <Button variant="outline">
-                <FileText className="h-4 w-4 mr-2" />
-                Active Job Postings ({jobPostings?.filter(p => p.is_open).length || 0})
-                <ChevronDown className="h-4 w-4 ml-2" />
-              </Button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="end" className="w-80 bg-popover">
-              {(!jobPostings || jobPostings.filter(p => p.is_open).length === 0) ? (
-                <DropdownMenuItem disabled>No active postings</DropdownMenuItem>
-              ) : (
-                jobPostings.filter(p => p.is_open).map((posting) => (
-                  <DropdownMenuItem 
-                    key={posting.id}
-                    onClick={() => navigate(`/staffing/applications/posting/${posting.id}`)}
-                    className="flex flex-col items-start py-3 cursor-pointer"
-                  >
-                    <span className="font-medium">{posting.project_task_orders?.title || "Untitled Posting"}</span>
-                    <span className="text-xs text-muted-foreground">
-                      {posting.project_task_orders?.projects?.name || "No project"}
-                    </span>
-                  </DropdownMenuItem>
-                ))
-              )}
-            </DropdownMenuContent>
-          </DropdownMenu>
           <Button variant="outline" onClick={() => navigate("/staffing/map")}>
             <MapPin className="h-4 w-4 mr-2" />
             Map View
@@ -419,6 +391,82 @@ export default function StaffingApplications() {
           </Button>
         </div>
       </div>
+
+      {/* Active Postings */}
+      {jobPostings && jobPostings.length > 0 && (
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-lg">Active Job Postings</CardTitle>
+            <CardDescription>Share these links to collect applications</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-2">
+              {jobPostings.filter(p => p.is_open).map((posting) => (
+                <div
+                  key={posting.id}
+                  className="flex items-center justify-between p-3 rounded-lg border bg-muted/30 cursor-pointer hover:bg-muted/50 transition-colors"
+                  onClick={() => navigate(`/staffing/applications/posting/${posting.id}`)}
+                >
+                  <div>
+                    <p className="font-medium">{posting.project_task_orders?.title}</p>
+                    <div className="flex items-center gap-2">
+                      <p className="text-sm text-muted-foreground">
+                        {posting.project_task_orders?.projects?.name}
+                      </p>
+                      {posting.form_template_id && (
+                        <Badge variant="outline" className="text-xs">
+                          {formTemplates?.find(t => t.id === posting.form_template_id)?.name || "Custom Form"}
+                        </Badge>
+                      )}
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-2" onClick={(e) => e.stopPropagation()}>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => navigate(`/staffing/applications/posting/${posting.id}`)}
+                      title="View all entries"
+                    >
+                      <TableIcon className="h-4 w-4" />
+                    </Button>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => handleEditTaskOrder(posting)}
+                      title="Edit task order details"
+                    >
+                      <Settings className="h-4 w-4" />
+                    </Button>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => handleEditPosting(posting)}
+                      title="Edit form template"
+                    >
+                      <Pencil className="h-4 w-4" />
+                    </Button>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => copyApplicationLink(posting.public_token)}
+                    >
+                      <Copy className="h-4 w-4 mr-1" />
+                      Copy Link
+                    </Button>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => window.open(`/apply/${posting.public_token}`, "_blank")}
+                    >
+                      <ExternalLink className="h-4 w-4" />
+                    </Button>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </CardContent>
+        </Card>
+      )}
 
       {/* Filters */}
       <Card>
