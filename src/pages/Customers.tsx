@@ -1,5 +1,5 @@
-import { useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useState, useEffect } from "react";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import { SEO } from "@/components/SEO";
 import { PageLayout } from "@/components/layout/PageLayout";
 import { EnhancedDataTable, EnhancedColumn } from "@/components/shared/EnhancedDataTable";
@@ -30,6 +30,7 @@ import { TablePagination } from "@/components/shared/TablePagination";
 
 const Customers = () => {
   const navigate = useNavigate();
+  const [searchParams, setSearchParams] = useSearchParams();
   const { data: customers, isLoading, error, refetch, isFetching } = useCustomers();
   const { data: projects } = useProjects();
   const addCustomer = useAddCustomer();
@@ -208,6 +209,15 @@ const Customers = () => {
     });
     setIsDialogOpen(true);
   };
+
+  // Handle ?action=add query param to open dialog
+  useEffect(() => {
+    if (searchParams.get("action") === "add") {
+      openNewDialog();
+      searchParams.delete("action");
+      setSearchParams(searchParams, { replace: true });
+    }
+  }, [searchParams, setSearchParams]);
 
   return (
     <>

@@ -44,11 +44,11 @@ export function QuickActionsRow() {
           break;
         case 'p':
           e.preventDefault();
-          navigate("/projects/new");
+          navigate("/projects?action=add");
           break;
         case 'c':
           e.preventDefault();
-          navigate("/customers/new");
+          navigate("/customers?action=add");
           break;
         case 't':
           e.preventDefault();
@@ -56,7 +56,7 @@ export function QuickActionsRow() {
           break;
         case 'a':
           e.preventDefault();
-          navigate("/personnel/new");
+          navigate("/personnel?action=add");
           break;
       }
     };
@@ -82,13 +82,13 @@ export function QuickActionsRow() {
       icon: FolderPlus,
       label: "New Project",
       shortcut: "P",
-      action: () => navigate("/projects/new"),
+      action: () => navigate("/projects?action=add"),
     },
     {
       icon: UserPlus,
       label: "New Customer",
       shortcut: "C",
-      action: () => navigate("/customers/new"),
+      action: () => navigate("/customers?action=add"),
     },
     {
       icon: Clock,
@@ -100,7 +100,7 @@ export function QuickActionsRow() {
       icon: Users,
       label: "Add Personnel",
       shortcut: "A",
-      action: () => navigate("/personnel/new"),
+      action: () => navigate("/personnel?action=add"),
     },
   ];
 
