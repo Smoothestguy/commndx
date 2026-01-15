@@ -96,51 +96,25 @@ export interface WidgetRegistryEntry {
 export const DEFAULT_LAYOUT: DashboardLayout = {
   columns: 4,
   widgets: [
-    {
-      widgetId: "welcome",
-      position: { row: 0, col: 0 },
-      size: { width: 4, height: 1 },
-    },
-    {
-      widgetId: "revenue-stat",
-      position: { row: 1, col: 0 },
-      size: { width: 1, height: 1 },
-    },
-    {
-      widgetId: "projects-stat",
-      position: { row: 1, col: 1 },
-      size: { width: 1, height: 1 },
-    },
-    {
-      widgetId: "staffing-stat",
-      position: { row: 1, col: 2 },
-      size: { width: 1, height: 1 },
-    },
-    {
-      widgetId: "pending-invoices-stat",
-      position: { row: 1, col: 3 },
-      size: { width: 1, height: 1 },
-    },
-    {
-      widgetId: "projects-pie-chart",
-      position: { row: 2, col: 0 },
-      size: { width: 2, height: 2 },
-    },
-    {
-      widgetId: "recent-activity",
-      position: { row: 2, col: 2 },
-      size: { width: 2, height: 2 },
-    },
-    {
-      widgetId: "quick-actions",
-      position: { row: 4, col: 0 },
-      size: { width: 2, height: 1 },
-    },
-    {
-      widgetId: "assignments",
-      position: { row: 4, col: 2 },
-      size: { width: 2, height: 1 },
-    },
+    // Row 0: Welcome Banner (full width)
+    { widgetId: "welcome", position: { row: 0, col: 0 }, size: { width: 4, height: 1 } },
+    
+    // Row 1: KPI Stats (4 equal-width cards)
+    { widgetId: "revenue-stat", position: { row: 1, col: 0 }, size: { width: 1, height: 1 } },
+    { widgetId: "projects-stat", position: { row: 1, col: 1 }, size: { width: 1, height: 1 } },
+    { widgetId: "staffing-stat", position: { row: 1, col: 2 }, size: { width: 1, height: 1 } },
+    { widgetId: "pending-invoices-stat", position: { row: 1, col: 3 }, size: { width: 1, height: 1 } },
+    
+    // Row 2: Quick Actions (full width)
+    { widgetId: "quick-actions", position: { row: 2, col: 0 }, size: { width: 4, height: 1 } },
+    
+    // Row 3-4: Charts & Activity (2 cols each, 2 rows tall)
+    { widgetId: "revenue-bar-chart", position: { row: 3, col: 0 }, size: { width: 2, height: 2 } },
+    { widgetId: "recent-activity", position: { row: 3, col: 2 }, size: { width: 2, height: 2 } },
+    
+    // Row 5-6: Tables (2 cols each, 2 rows tall)
+    { widgetId: "recent-invoices", position: { row: 5, col: 0 }, size: { width: 2, height: 2 } },
+    { widgetId: "trash", position: { row: 5, col: 2 }, size: { width: 2, height: 2 } },
   ],
 };
 
@@ -181,10 +155,17 @@ export const DEFAULT_WIDGETS: DashboardWidget[] = [
     visible: true,
   },
   {
-    id: "projects-pie-chart",
+    id: "quick-actions",
+    type: "quick-actions",
+    title: "Quick Actions",
+    config: {},
+    visible: true,
+  },
+  {
+    id: "revenue-bar-chart",
     type: "chart",
-    title: "Projects by Status",
-    config: { dataSource: "projects", displayOptions: { chartType: "pie" } },
+    title: "Monthly Revenue",
+    config: { dataSource: "invoices", displayOptions: { chartType: "bar" } },
     visible: true,
   },
   {
@@ -195,17 +176,17 @@ export const DEFAULT_WIDGETS: DashboardWidget[] = [
     visible: true,
   },
   {
-    id: "quick-actions",
-    type: "quick-actions",
-    title: "Quick Actions",
-    config: {},
+    id: "recent-invoices",
+    type: "table",
+    title: "Recent Invoices",
+    config: { dataSource: "invoices", displayOptions: { limit: 5 } },
     visible: true,
   },
   {
-    id: "assignments",
-    type: "assignments",
-    title: "My Assignments",
-    config: {},
+    id: "trash",
+    type: "trash",
+    title: "Recently Deleted",
+    config: { displayOptions: { limit: 5 } },
     visible: true,
   },
 ];

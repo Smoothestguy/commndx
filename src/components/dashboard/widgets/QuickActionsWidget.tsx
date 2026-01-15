@@ -21,39 +21,25 @@ const QUICK_ACTIONS = [
 
 export function QuickActionsWidget({ widget, theme, isEditMode }: QuickActionsWidgetProps) {
   return (
-    <div className={cn(
-      "grid gap-2",
-      // Mobile: 2 columns, Tablet: 3 columns, Desktop: flex wrap
-      "grid-cols-2 sm:grid-cols-3 lg:flex lg:flex-wrap"
-    )}>
+    <div className="flex flex-wrap gap-2">
       {QUICK_ACTIONS.map((action) => {
         const Icon = action.icon;
         return (
           <Button
             key={action.href}
-            variant="outline"
+            variant="ghost"
             size="sm"
             asChild
             disabled={isEditMode}
             className={cn(
-              // Responsive text sizes
-              "text-[10px] sm:text-xs lg:text-sm",
-              // Responsive padding
-              "px-2 sm:px-3",
-              // Ensure proper height for touch
-              "h-8 sm:h-9",
-              // Truncate text on small screens
-              "justify-start"
+              "h-8 px-3 text-xs font-medium",
+              "bg-muted/50 hover:bg-muted border-0",
+              "text-foreground/80 hover:text-foreground"
             )}
-            style={{
-              borderColor: theme?.accentColor,
-              color: theme?.accentColor,
-            }}
           >
-            <Link to={action.href} className="flex items-center min-w-0">
-              <Plus className="h-3 w-3 mr-1 flex-shrink-0 hidden sm:block" />
-              <Icon className="h-3 w-3 mr-1 flex-shrink-0" />
-              <span className="truncate">{action.label}</span>
+            <Link to={action.href} className="flex items-center gap-1.5">
+              <Icon className="h-3.5 w-3.5" />
+              <span>{action.label}</span>
             </Link>
           </Button>
         );

@@ -168,7 +168,7 @@ export const WIDGET_REGISTRY: Record<string, WidgetRegistryEntry> = {
     description: 'Shortcuts to common tasks',
     icon: Zap,
     category: 'actions',
-    defaultSize: { width: 2, height: 1 },
+    defaultSize: { width: 4, height: 1 },
     defaultConfig: {},
   },
   'assignments': {
