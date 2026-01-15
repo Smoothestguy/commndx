@@ -76,6 +76,11 @@ export interface DashboardTheme {
   backgroundPages?: string[]; // Array of page identifiers where background should appear
   // Density mode for spreadsheet-like layouts
   density?: "normal" | "spreadsheet";
+  // Sidebar customization
+  leftSidebarBackground?: string;
+  leftSidebarTextColor?: string;
+  rightSidebarBackground?: string;
+  rightSidebarTextColor?: string;
 }
 
 // Widget registry entry

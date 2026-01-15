@@ -9,6 +9,7 @@ import { BackgroundMediaLayer } from "../BackgroundMediaLayer";
 import { DashboardDraftProvider } from "@/contexts/DashboardDraftContext";
 import { useBackgroundMedia } from "../useBackgroundMedia";
 import { useIsMobile } from "@/hooks/use-mobile";
+import { useDashboardConfig } from "@/hooks/useDashboardConfig";
 
 interface NetSuiteLayoutProps {
   children?: ReactNode;
@@ -23,6 +24,7 @@ interface NetSuiteLayoutProps {
  */
 export function NetSuiteLayout({ children }: NetSuiteLayoutProps) {
   const { shouldShowBackground } = useBackgroundMedia();
+  const { activeTheme } = useDashboardConfig();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [leftPanelCollapsed, setLeftPanelCollapsed] = useState(true);
   const [rightPanelCollapsed, setRightPanelCollapsed] = useState(true);
@@ -47,6 +49,8 @@ export function NetSuiteLayout({ children }: NetSuiteLayoutProps) {
             <LeftPanel 
               collapsed={leftPanelCollapsed}
               onToggleCollapse={() => setLeftPanelCollapsed(!leftPanelCollapsed)}
+              backgroundColor={activeTheme?.leftSidebarBackground}
+              textColor={activeTheme?.leftSidebarTextColor}
             />
           )}
 
@@ -65,6 +69,8 @@ export function NetSuiteLayout({ children }: NetSuiteLayoutProps) {
             <RightPanel
               collapsed={rightPanelCollapsed}
               onToggleCollapse={() => setRightPanelCollapsed(!rightPanelCollapsed)}
+              backgroundColor={activeTheme?.rightSidebarBackground}
+              textColor={activeTheme?.rightSidebarTextColor}
             />
           )}
         </div>
