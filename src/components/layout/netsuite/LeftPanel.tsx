@@ -32,9 +32,9 @@ interface LeftPanelProps {
 }
 
 export function LeftPanel({ collapsed, onToggleCollapse, backgroundColor, textColor }: LeftPanelProps) {
-  const [remindersOpen, setRemindersOpen] = useState(true);
-  const [recentOpen, setRecentOpen] = useState(true);
-  const [alertsOpen, setAlertsOpen] = useState(true);
+  const [remindersOpen, setRemindersOpen] = useState(false);
+  const [recentOpen, setRecentOpen] = useState(false);
+  const [alertsOpen, setAlertsOpen] = useState(false);
 
   // Fetch pending approvals (estimates pending approval)
   const { data: pendingEstimates } = useQuery({
