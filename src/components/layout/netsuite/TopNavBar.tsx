@@ -17,7 +17,9 @@ import { GlobalSearch } from "./GlobalSearch";
 import { AdminNotificationBell } from "@/components/notifications/AdminNotificationBell";
 import { SessionTimer } from "@/components/session/SessionTimer";
 import { useAIAssistant } from "@/contexts/AIAssistantContext";
+import { useTheme } from "next-themes";
 import logo from "@/assets/logo.png";
+import logoDark from "@/assets/logo-dark.png";
 
 interface TopNavBarProps {
   onMobileMenuToggle?: () => void;
@@ -27,6 +29,7 @@ export function TopNavBar({ onMobileMenuToggle }: TopNavBarProps) {
   const { user, signOut } = useAuth();
   const { isAdmin, isManager } = useUserRole();
   const { toggleOpen, messages } = useAIAssistant();
+  const { resolvedTheme } = useTheme();
   
   // Check for unread messages (last message is from assistant)
   const hasUnread = messages.length > 0 && messages[messages.length - 1].role === "assistant";
@@ -40,7 +43,7 @@ export function TopNavBar({ onMobileMenuToggle }: TopNavBarProps) {
           <Button
             variant="ghost"
             size="icon"
-            className="lg:hidden text-header-foreground hover:bg-white/10 h-8 w-8"
+            className="lg:hidden text-header-foreground hover:bg-black/10 dark:hover:bg-white/10 h-8 w-8"
             onClick={onMobileMenuToggle}
           >
             <Menu className="h-4 w-4" />
@@ -49,7 +52,7 @@ export function TopNavBar({ onMobileMenuToggle }: TopNavBarProps) {
           {/* Logo */}
           <Link to="/" className="flex items-center">
             <img
-              src={logo}
+              src={resolvedTheme === "light" ? logoDark : logo}
               alt="Fairfield"
               className="h-6 w-auto object-contain"
             />
@@ -68,7 +71,7 @@ export function TopNavBar({ onMobileMenuToggle }: TopNavBarProps) {
             variant="ghost"
             size="icon"
             onClick={toggleOpen}
-            className="relative text-header-foreground hover:bg-white/10 h-8 w-8"
+            className="relative text-header-foreground hover:bg-black/10 dark:hover:bg-white/10 h-8 w-8"
           >
             <MessageCircle className="h-4 w-4" />
             {hasUnread && (
@@ -77,7 +80,7 @@ export function TopNavBar({ onMobileMenuToggle }: TopNavBarProps) {
           </Button>
 
           {/* Divider */}
-          <div className="h-5 w-px bg-white/20 mx-1 hidden sm:block" />
+          <div className="h-5 w-px bg-black/20 dark:bg-white/20 mx-1 hidden sm:block" />
 
           {/* Session Timer */}
           <div className="hidden sm:block">
@@ -85,7 +88,7 @@ export function TopNavBar({ onMobileMenuToggle }: TopNavBarProps) {
           </div>
 
           {/* Divider */}
-          <div className="h-5 w-px bg-white/20 mx-1 hidden md:block" />
+          <div className="h-5 w-px bg-black/20 dark:bg-white/20 mx-1 hidden md:block" />
 
           {/* Global Search */}
           <GlobalSearch />
@@ -94,7 +97,7 @@ export function TopNavBar({ onMobileMenuToggle }: TopNavBarProps) {
           <QuickCreateMenu />
 
           {/* Divider */}
-          <div className="h-5 w-px bg-white/20 mx-1" />
+          <div className="h-5 w-px bg-black/20 dark:bg-white/20 mx-1" />
 
           {/* Notifications */}
           {(isAdmin || isManager) && <AdminNotificationBell />}
@@ -105,7 +108,7 @@ export function TopNavBar({ onMobileMenuToggle }: TopNavBarProps) {
               <Button
                 variant="ghost"
                 size="icon"
-                className="text-header-foreground hover:bg-white/10 h-8 w-8"
+                className="text-header-foreground hover:bg-black/10 dark:hover:bg-white/10 h-8 w-8"
               >
                 <User className="h-4 w-4" />
               </Button>

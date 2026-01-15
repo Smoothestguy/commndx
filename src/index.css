@@ -44,9 +44,9 @@
 
     --radius: 0.5rem;
 
-    /* Header - near black */
-    --header-background: 0 0% 7%;
-    --header-foreground: 0 0% 100%;
+    /* Header - light gray in light mode */
+    --header-background: 0 0% 96%;
+    --header-foreground: 0 0% 15%;
 
     /* Sidebar - light gray in light mode */
     --sidebar-background: 0 0% 98%;
