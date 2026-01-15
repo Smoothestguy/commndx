@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { 
   FileText, 
@@ -22,6 +22,48 @@ interface QuickAction {
 export function QuickActionsRow() {
   const navigate = useNavigate();
   const [timeEntryOpen, setTimeEntryOpen] = useState(false);
+
+  // Keyboard shortcut handler
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      // Only trigger with Cmd (Mac) or Ctrl (Windows/Linux)
+      if (!e.metaKey && !e.ctrlKey) return;
+      
+      // Don't trigger if user is typing in an input
+      if (e.target instanceof HTMLInputElement || 
+          e.target instanceof HTMLTextAreaElement) return;
+
+      switch (e.key.toLowerCase()) {
+        case 'e':
+          e.preventDefault();
+          navigate("/estimates/new");
+          break;
+        case 'i':
+          e.preventDefault();
+          navigate("/invoices/new");
+          break;
+        case 'p':
+          e.preventDefault();
+          navigate("/projects/new");
+          break;
+        case 'c':
+          e.preventDefault();
+          navigate("/customers/new");
+          break;
+        case 't':
+          e.preventDefault();
+          setTimeEntryOpen(true);
+          break;
+        case 'a':
+          e.preventDefault();
+          navigate("/personnel/new");
+          break;
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [navigate]);
 
   const actions: QuickAction[] = [
     {
@@ -79,7 +121,7 @@ export function QuickActionsRow() {
             <action.icon className="h-5 w-5 text-muted-foreground" />
             <span className="text-xs font-medium text-foreground">{action.label}</span>
             <kbd className="hidden sm:inline-flex h-5 px-1.5 items-center justify-center rounded bg-muted text-[10px] font-mono text-muted-foreground">
-              {action.shortcut}
+              ⌘{action.shortcut}
             </kbd>
           </Button>
         ))}
