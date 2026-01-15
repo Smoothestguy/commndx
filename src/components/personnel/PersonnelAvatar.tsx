@@ -1,5 +1,6 @@
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { cn } from "@/lib/utils";
+import { useSecureUrl } from "@/hooks/useSecureUrl";
 
 interface PersonnelAvatarProps {
   photoUrl?: string | null;
@@ -24,10 +25,13 @@ export function PersonnelAvatar({
   className,
 }: PersonnelAvatarProps) {
   const initials = `${firstName?.[0] || ""}${lastName?.[0] || ""}`.toUpperCase();
+  
+  // Use signed URL for personnel photos (private bucket)
+  const { url: securePhotoUrl } = useSecureUrl('personnel-photos', photoUrl);
 
   return (
     <Avatar className={cn(sizeClasses[size], className)}>
-      <AvatarImage src={photoUrl || undefined} alt={`${firstName} ${lastName}`} />
+      <AvatarImage src={securePhotoUrl || undefined} alt={`${firstName} ${lastName}`} />
       <AvatarFallback className="bg-primary/10 text-primary font-medium">
         {initials || "?"}
       </AvatarFallback>
