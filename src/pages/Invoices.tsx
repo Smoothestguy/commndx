@@ -41,6 +41,13 @@ type CardFilter =
   | "partial"
   | "pending";
 
+// Format large currency values as abbreviated (e.g., $4.9M)
+const formatCompactCurrency = (value: number) => {
+  if (value >= 1000000) return `$${(value / 1000000).toFixed(1)}M`;
+  if (value >= 100000) return `$${(value / 1000).toFixed(0)}k`;
+  return `$${value.toLocaleString(undefined, { minimumFractionDigits: 2 })}`;
+};
+
 const Invoices = () => {
   const navigate = useNavigate();
   const {
@@ -367,21 +374,17 @@ const Invoices = () => {
           </div>
 
           {/* Clickable Stat Card Filters */}
-          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4 mb-6">
+          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-2 sm:gap-3 lg:gap-4 mb-6">
             <InvoiceStatCard
               label="Total Invoiced"
-              value={`$${stats.total.toLocaleString(undefined, {
-                minimumFractionDigits: 2,
-              })}`}
+              value={formatCompactCurrency(stats.total)}
               icon={DollarSign}
               isActive={activeFilter === "all"}
               onClick={() => setActiveFilter("all")}
             />
             <InvoiceStatCard
               label="Payment Received"
-              value={`$${stats.received.toLocaleString(undefined, {
-                minimumFractionDigits: 2,
-              })}`}
+              value={formatCompactCurrency(stats.received)}
               icon={Wallet}
               variant="success"
               isActive={activeFilter === "paid"}
@@ -389,9 +392,7 @@ const Invoices = () => {
             />
             <InvoiceStatCard
               label="Outstanding Balance"
-              value={`$${stats.outstanding.toLocaleString(undefined, {
-                minimumFractionDigits: 2,
-              })}`}
+              value={formatCompactCurrency(stats.outstanding)}
               icon={TrendingUp}
               variant="warning"
               isActive={activeFilter === "outstanding"}
