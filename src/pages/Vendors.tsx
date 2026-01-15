@@ -610,27 +610,27 @@ const Vendors = () => {
             <VendorStats total={total} active={active} inactive={inactive} />
           )}
 
-          {/* Search */}
-          <div className="mb-6 max-w-md">
-            <SearchInput
-              placeholder={isPersonnelView ? "Search personnel..." : "Search vendors..."}
-              value={search}
-              onChange={setSearch}
-              className="bg-secondary border-border"
+          {/* Search & Filters - Combined Row */}
+          <div className="mb-6 flex flex-col sm:flex-row items-stretch sm:items-center gap-2 sm:gap-3">
+            <div className="w-full sm:w-48 md:w-56 lg:w-64 shrink-0">
+              <SearchInput
+                placeholder={isPersonnelView ? "Search personnel..." : "Search vendors..."}
+                value={search}
+                onChange={setSearch}
+                className="bg-secondary border-border"
+              />
+            </div>
+            <VendorFilters
+              statusFilter={statusFilter}
+              onStatusFilterChange={setStatusFilter}
+              typeFilter={typeFilter}
+              onTypeFilterChange={setTypeFilter}
+              sortBy={sortBy}
+              onSortByChange={setSortBy}
+              sortOrder={sortOrder}
+              onSortOrderChange={setSortOrder}
             />
           </div>
-
-          {/* Filters */}
-          <VendorFilters
-            statusFilter={statusFilter}
-            onStatusFilterChange={setStatusFilter}
-            typeFilter={typeFilter}
-            onTypeFilterChange={setTypeFilter}
-            sortBy={sortBy}
-            onSortByChange={setSortBy}
-            sortOrder={sortOrder}
-            onSortOrderChange={setSortOrder}
-          />
 
           {/* Loading & Error States */}
           {isLoading && (

@@ -35,7 +35,7 @@ export const VendorFilters = ({
   const hasActiveFilters = statusFilter !== "all" || typeFilter !== "all";
 
   return (
-    <div className="flex flex-wrap items-center gap-2 mb-4">
+    <div className="flex flex-wrap items-center gap-2">
       {/* Status Filter */}
       <Select value={statusFilter} onValueChange={onStatusFilterChange}>
         <SelectTrigger className="w-[110px] h-9 bg-secondary border-border">
