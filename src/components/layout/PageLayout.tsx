@@ -33,7 +33,7 @@ function PageLayoutContent({
         isMobile && "pb-24"
       )}
     >
-        <div ref={swipeRef} className="max-w-[1600px] mx-auto w-full">
+        <div ref={swipeRef} className="max-w-[1600px] 3xl:max-w-[1920px] 4xl:max-w-[2400px] 5xl:max-w-[3000px] mx-auto w-full">
           <header className={cn(
             "relative z-[2] flex flex-row items-center justify-between gap-2",
             isSpreadsheetMode ? "mb-2" : "mb-4 sm:mb-6"

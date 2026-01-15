@@ -70,28 +70,30 @@ export function DetailPageLayout({
       </header>
 
       <main className={cn(isMobile && mobileActions && "pb-32")}>
-        <div className="px-4 sm:px-6 lg:px-8 py-4 sm:py-6">
-          {/* Desktop Title Section */}
-          {!isMobile && (
-            <header className="mb-6 sm:mb-8 flex items-center justify-between gap-4">
-              <div>
-                <h1 className="font-heading text-2xl sm:text-3xl font-bold text-foreground">
-                  {title}
-                </h1>
-                {subtitle && (
-                  <p className="mt-1 text-sm sm:text-base text-muted-foreground">
-                    {subtitle}
-                  </p>
+        <div className="px-4 sm:px-6 lg:px-8 3xl:px-12 4xl:px-16 5xl:px-24 py-4 sm:py-6">
+          <div className="max-w-[1600px] 3xl:max-w-[1920px] 4xl:max-w-[2400px] 5xl:max-w-[3000px] mx-auto">
+            {/* Desktop Title Section */}
+            {!isMobile && (
+              <header className="mb-6 sm:mb-8 flex items-center justify-between gap-4">
+                <div>
+                  <h1 className="font-heading text-2xl sm:text-3xl font-bold text-foreground">
+                    {title}
+                  </h1>
+                  {subtitle && (
+                    <p className="mt-1 text-sm sm:text-base text-muted-foreground">
+                      {subtitle}
+                    </p>
+                  )}
+                </div>
+                {desktopActions && (
+                  <div className="flex items-center gap-3">{desktopActions}</div>
                 )}
-              </div>
-              {desktopActions && (
-                <div className="flex items-center gap-3">{desktopActions}</div>
-              )}
-            </header>
-          )}
+              </header>
+            )}
 
-          {/* Content */}
-          <div className="animate-fade-in">{children}</div>
+            {/* Content */}
+            <div className="animate-fade-in">{children}</div>
+          </div>
         </div>
       </main>
 
