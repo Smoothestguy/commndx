@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { Link, useLocation } from "react-router-dom";
+import { useTheme } from "next-themes";
 import { cn } from "@/lib/utils";
 import { useAuth } from "@/contexts/AuthContext";
 import { useUserRole } from "@/hooks/useUserRole";
@@ -52,6 +53,7 @@ import {
   History,
 } from "lucide-react";
 import logo from "@/assets/logo.png";
+import logoDark from "@/assets/logo-dark.png";
 
 const navigation = [
   { name: "Dashboard", href: "/", icon: LayoutDashboard },
@@ -106,6 +108,7 @@ export function AppSidebar() {
   const { state } = useSidebar();
   const isCollapsed = state === "collapsed";
   const { isSpreadsheetMode } = useUIDensity();
+  const { resolvedTheme } = useTheme();
 
   // Permission checks for admin modules
   const userMgmtPerms = usePermissionCheck('user_management');
@@ -156,7 +159,7 @@ export function AppSidebar() {
           )}
         >
           <img
-            src={logo}
+            src={resolvedTheme === "light" ? logoDark : logo}
             alt="Fairfield"
             className="object-contain transition-all duration-200 h-10 w-auto max-w-[160px] group-data-[state=collapsed]:h-6 group-data-[state=collapsed]:w-6 group-data-[state=collapsed]:max-w-[24px]"
           />
