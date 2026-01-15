@@ -1,5 +1,5 @@
-import { useState } from "react";
-import { useNavigate, Link } from "react-router-dom";
+import { useState, useEffect } from "react";
+import { useNavigate, Link, useSearchParams } from "react-router-dom";
 import { SEO } from "@/components/SEO";
 import { PageLayout } from "@/components/layout/PageLayout";
 import { EnhancedDataTable, EnhancedColumn } from "@/components/shared/EnhancedDataTable";
@@ -24,6 +24,7 @@ import { getCustomerDisplayName } from "@/utils/customerDisplayName";
 
 const Projects = () => {
   const navigate = useNavigate();
+  const [searchParams, setSearchParams] = useSearchParams();
   const isMobile = useIsMobile();
   const isTablet = useIsTablet();
   const { data: projects, isLoading, error, refetch, isFetching } = useProjects();
@@ -240,6 +241,15 @@ const Projects = () => {
     setFormData(initialProjectFormData);
     setIsDialogOpen(true);
   };
+
+  // Handle ?action=add query param to open dialog
+  useEffect(() => {
+    if (searchParams.get("action") === "add") {
+      openNewDialog();
+      searchParams.delete("action");
+      setSearchParams(searchParams, { replace: true });
+    }
+  }, [searchParams, setSearchParams]);
 
   return (
     <>

@@ -13,8 +13,8 @@ interface QuickActionsWidgetProps {
 const QUICK_ACTIONS = [
   { label: "New Estimate", href: "/estimates/new", icon: Receipt },
   { label: "New Invoice", href: "/invoices/new", icon: FileText },
-  { label: "New Project", href: "/projects/new", icon: FolderOpen },
-  { label: "New Customer", href: "/customers/new", icon: Briefcase },
+  { label: "New Project", href: "/projects?action=add", icon: FolderOpen },
+  { label: "New Customer", href: "/customers?action=add", icon: Briefcase },
   { label: "Log Time", href: "/time-tracking", icon: Clock },
   { label: "Add Personnel", href: "/personnel?action=add", icon: Users },
 ];
