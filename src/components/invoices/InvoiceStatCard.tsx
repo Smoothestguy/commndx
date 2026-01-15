@@ -52,17 +52,17 @@ export const InvoiceStatCard = ({
     <button
       onClick={onClick}
       className={cn(
-        "flex flex-col gap-2 p-4 rounded-lg border bg-card text-card-foreground transition-all duration-200 cursor-pointer hover:shadow-md text-left w-full",
+        "flex flex-col gap-1.5 p-3 sm:p-4 rounded-lg border bg-card text-card-foreground transition-all duration-200 cursor-pointer hover:shadow-md text-left w-full min-w-0 overflow-hidden",
         isActive
           ? "ring-2 ring-primary border-primary bg-primary/5"
           : "border-border hover:border-primary/50"
       )}
     >
-      <div className="flex items-center gap-2">
-        <Icon className={cn("h-4 w-4", variantStyles[variant])} />
-        <span className="text-sm text-muted-foreground">{label}</span>
+      <div className="flex items-center gap-2 min-w-0">
+        <Icon className={cn("h-4 w-4 shrink-0", variantStyles[variant])} />
+        <span className="text-xs sm:text-sm text-muted-foreground truncate">{label}</span>
       </div>
-      <span className="text-2xl font-bold">{value}</span>
+      <span className="text-lg sm:text-xl lg:text-2xl font-bold truncate">{value}</span>
     </button>
   );
 };
