@@ -47,30 +47,6 @@ export function RevenueChartRow() {
       const monthRevenue = invoices
         .filter((inv) => {
           if (inv.status !== "paid") return false;
-          const paidDate = new Date(inv.paid_at || inv.updated_at);
-          return paidDate >= monthStart && paidDate <= monthEnd;
-        })
-        .reduce((sum, inv) => sum + (inv.total || 0), 0);
-
-      months.push({
-        month: format(monthDate, "MMMM"),
-        shortMonth: format(monthDate, "MMM"),
-        revenue: monthRevenue,
-      });
-    }
-
-    const total = months.reduce((sum, m) => sum + m.revenue, 0);
-    
-    // Calculate change vs prior 6 months
-    const priorMonths: number[] = [];
-    for (let i = 11; i >= 6; i--) {
-      const monthDate = subMonths(now, i);
-      const monthStart = startOfMonth(monthDate);
-      const monthEnd = endOfMonth(monthDate);
-
-      const monthRevenue = invoices
-        .filter((inv) => {
-          if (inv.status !== "paid") return false;
           const paidDate = new Date(inv.paid_date || inv.created_at);
           return paidDate >= monthStart && paidDate <= monthEnd;
         })
