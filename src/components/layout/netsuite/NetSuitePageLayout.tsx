@@ -30,7 +30,7 @@ function NetSuitePageLayoutContent({
         isSpreadsheetMode ? "p-2 lg:p-3" : "p-4 lg:p-6"
       )}
     >
-      <div className="max-w-[1600px] mx-auto w-full">
+      <div className="max-w-[1600px] 3xl:max-w-[1920px] 4xl:max-w-[2400px] 5xl:max-w-[3000px] mx-auto w-full">
         {/* Page Header */}
         <header
           className={cn(
