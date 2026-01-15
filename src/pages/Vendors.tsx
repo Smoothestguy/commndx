@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useNavigate, Link } from "react-router-dom";
 import { SEO } from "@/components/SEO";
 import { PageLayout } from "@/components/layout/PageLayout";
@@ -16,6 +16,7 @@ import { VendorCard } from "@/components/vendors/VendorCard";
 import { VendorStats } from "@/components/vendors/VendorStats";
 import { VendorFilters } from "@/components/vendors/VendorFilters";
 import { VendorEmptyState } from "@/components/vendors/VendorEmptyState";
+import { TablePagination } from "@/components/shared/TablePagination";
 import { PersonnelCard } from "@/components/personnel/PersonnelCard";
 import { PersonnelStats } from "@/components/personnel/PersonnelStats";
 import { useIsMobile } from "@/hooks/use-mobile";
@@ -168,6 +169,15 @@ const Vendors = () => {
   const [targetType, setTargetType] = useState<VendorType>("supplier");
 
   const [formData, setFormData] = useState<VendorFormData>(initialFormData);
+
+  // Pagination state
+  const [currentPage, setCurrentPage] = useState(1);
+  const [rowsPerPage, setRowsPerPage] = useState(10);
+
+  // Reset page when filters change
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [search, statusFilter, typeFilter]);
 
   // Check if we're showing personnel data
   const isPersonnelView = typeFilter === "personnel";
@@ -648,21 +658,33 @@ const Vendors = () => {
             <>
               {isMobile ? (
                 <div className="grid gap-4">
-                  {filteredPersonnel.map((person) => (
-                    <PersonnelCard
-                      key={person.id}
-                      personnel={person}
-                    />
-                  ))}
+                  {filteredPersonnel
+                    .slice((currentPage - 1) * rowsPerPage, currentPage * rowsPerPage)
+                    .map((person) => (
+                      <PersonnelCard
+                        key={person.id}
+                        personnel={person}
+                      />
+                    ))}
                 </div>
               ) : (
                 <EnhancedDataTable
                   tableId="vendors-personnel"
-                  data={filteredPersonnel}
+                  data={filteredPersonnel.slice((currentPage - 1) * rowsPerPage, currentPage * rowsPerPage)}
                   columns={personnelColumns}
                   onRowClick={(person) => navigate(`/personnel/${person.id}`)}
                 />
               )}
+              <TablePagination
+                currentPage={currentPage}
+                totalCount={filteredPersonnel.length}
+                rowsPerPage={rowsPerPage}
+                onPageChange={setCurrentPage}
+                onRowsPerPageChange={(size) => {
+                  setRowsPerPage(size);
+                  setCurrentPage(1);
+                }}
+              />
             </>
           )}
 
@@ -671,26 +693,38 @@ const Vendors = () => {
             <>
               {isMobile ? (
                 <div className="grid gap-4">
-                  {filteredVendors.map((vendor, index) => (
-                    <VendorCard
-                      key={vendor.id}
-                      vendor={vendor}
-                      onEdit={handleEdit}
-                      onDelete={handleDelete}
-                      index={index}
-                      isSelected={selectedVendors.includes(vendor.id)}
-                      onSelect={handleSelectVendor}
-                    />
-                  ))}
+                  {filteredVendors
+                    .slice((currentPage - 1) * rowsPerPage, currentPage * rowsPerPage)
+                    .map((vendor, index) => (
+                      <VendorCard
+                        key={vendor.id}
+                        vendor={vendor}
+                        onEdit={handleEdit}
+                        onDelete={handleDelete}
+                        index={index}
+                        isSelected={selectedVendors.includes(vendor.id)}
+                        onSelect={handleSelectVendor}
+                      />
+                    ))}
                 </div>
               ) : (
                 <EnhancedDataTable
                   tableId="vendors"
-                  data={filteredVendors} 
+                  data={filteredVendors.slice((currentPage - 1) * rowsPerPage, currentPage * rowsPerPage)} 
                   columns={vendorColumns} 
                   onRowClick={(vendor) => navigate(`/vendors/${vendor.id}`)}
                 />
               )}
+              <TablePagination
+                currentPage={currentPage}
+                totalCount={filteredVendors.length}
+                rowsPerPage={rowsPerPage}
+                onPageChange={setCurrentPage}
+                onRowsPerPageChange={(size) => {
+                  setRowsPerPage(size);
+                  setCurrentPage(1);
+                }}
+              />
             </>
           )}
         </PullToRefreshWrapper>
