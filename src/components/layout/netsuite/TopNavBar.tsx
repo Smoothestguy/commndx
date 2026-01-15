@@ -18,6 +18,7 @@ import { AdminNotificationBell } from "@/components/notifications/AdminNotificat
 import { SessionTimer } from "@/components/session/SessionTimer";
 import { useAIAssistant } from "@/contexts/AIAssistantContext";
 import { useTheme } from "next-themes";
+import { useDashboardConfig } from "@/hooks/useDashboardConfig";
 import logo from "@/assets/logo.png";
 import logoDark from "@/assets/logo-dark.png";
 
@@ -30,6 +31,7 @@ export function TopNavBar({ onMobileMenuToggle }: TopNavBarProps) {
   const { isAdmin, isManager } = useUserRole();
   const { toggleOpen, messages } = useAIAssistant();
   const { resolvedTheme } = useTheme();
+  const { activeTheme } = useDashboardConfig();
   
   // Check for unread messages (last message is from assistant)
   const hasUnread = messages.length > 0 && messages[messages.length - 1].role === "assistant";
@@ -60,7 +62,10 @@ export function TopNavBar({ onMobileMenuToggle }: TopNavBarProps) {
 
           {/* Mega Menu Navigation - Desktop only */}
           <nav className="hidden lg:flex items-center ml-4">
-            <MegaMenu />
+            <MegaMenu 
+              menuBackground={activeTheme?.menuBackground}
+              menuTextColor={activeTheme?.menuTextColor}
+            />
           </nav>
         </div>
 
