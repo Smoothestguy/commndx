@@ -35,29 +35,26 @@ function PageLayoutContent({
     >
         <div ref={swipeRef} className="max-w-[1600px] mx-auto w-full">
           <header className={cn(
-            "relative z-[2] flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2",
-            isSpreadsheetMode ? "mb-2" : "mb-6 gap-4"
+            "relative z-[2] flex flex-row items-center justify-between gap-2",
+            isSpreadsheetMode ? "mb-2" : "mb-4 sm:mb-6"
           )}>
-            <div>
+            <div className="min-w-0 flex-1">
               <h1 className={cn(
-                "font-heading font-bold text-foreground",
-                isSpreadsheetMode ? "text-base sm:text-lg" : "text-xl sm:text-2xl"
+                "font-heading font-bold text-foreground truncate",
+                isSpreadsheetMode ? "text-base sm:text-lg" : "text-lg sm:text-2xl"
               )}>
                 {title}
               </h1>
               {description && !isSpreadsheetMode && (
-                <p className="mt-1 text-sm text-muted-foreground">
+                <p className="text-xs sm:text-sm text-muted-foreground truncate">
                   {description}
                 </p>
               )}
             </div>
-          {(actions || rightActions) && (
-              <div className={cn(
-                "flex flex-col w-full sm:flex-row sm:items-center sm:w-auto sm:justify-end",
-                isSpreadsheetMode ? "gap-1 sm:gap-2" : "gap-2 sm:gap-3"
-              )}>
-                {actions && <div className="flex items-center gap-1 sm:gap-2 overflow-x-auto min-w-0">{actions}</div>}
-                {rightActions && <div className="flex items-center gap-1 sm:gap-2 overflow-x-auto min-w-0 justify-end">{rightActions}</div>}
+            {(actions || rightActions) && (
+              <div className="flex items-center gap-2 shrink-0">
+                {actions}
+                {rightActions}
               </div>
             )}
           </header>
