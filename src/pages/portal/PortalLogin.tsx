@@ -5,10 +5,18 @@ import { useAuth } from "@/contexts/AuthContext";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
 import { toast } from "sonner";
-import { Loader2, User } from "lucide-react";
+import { Loader2, User, ArrowRightLeft } from "lucide-react";
 import { GoogleIcon } from "@/components/icons/GoogleIcon";
+import { PortalSwitcherModal } from "@/components/PortalSwitcherModal";
+import { usePortalSwitcher } from "@/hooks/usePortalSwitcher";
 
 export default function PortalLogin() {
   const navigate = useNavigate();
@@ -17,6 +25,11 @@ export default function PortalLogin() {
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
   const [isOAuthLoading, setIsOAuthLoading] = useState(false);
+  const {
+    isOpen: isPortalSwitcherOpen,
+    setIsOpen: setPortalSwitcherOpen,
+    openSwitcher,
+  } = usePortalSwitcher();
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -31,7 +44,9 @@ export default function PortalLogin() {
       if (error) throw error;
 
       // Check if user is linked to personnel
-      const { data: { user } } = await supabase.auth.getUser();
+      const {
+        data: { user },
+      } = await supabase.auth.getUser();
       if (user) {
         const { data: personnel } = await supabase
           .from("personnel")
@@ -117,7 +132,7 @@ export default function PortalLogin() {
                   required
                 />
               </div>
-              
+
               <div className="space-y-2">
                 <Label htmlFor="password">Password</Label>
                 <Input
@@ -129,19 +144,43 @@ export default function PortalLogin() {
                   required
                 />
               </div>
-              
-              <Button type="submit" className="w-full" disabled={loading || isOAuthLoading}>
+
+              <Button
+                type="submit"
+                className="w-full"
+                disabled={loading || isOAuthLoading}
+              >
                 {loading && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
                 Sign In
               </Button>
             </form>
           </div>
-          
+
           <p className="text-sm text-center text-muted-foreground mt-6">
-            Don't have an account? Contact your administrator to receive an invitation.
+            Don't have an account? Contact your administrator to receive an
+            invitation.
           </p>
+
+          {/* Portal Switcher */}
+          <div className="pt-4 mt-4 border-t border-border">
+            <Button
+              type="button"
+              variant="ghost"
+              className="w-full text-muted-foreground hover:text-foreground"
+              onClick={openSwitcher}
+            >
+              <ArrowRightLeft className="mr-2 h-4 w-4" />
+              Switch Portal
+            </Button>
+          </div>
         </CardContent>
       </Card>
+
+      {/* Portal Switcher Modal */}
+      <PortalSwitcherModal
+        open={isPortalSwitcherOpen}
+        onOpenChange={setPortalSwitcherOpen}
+      />
     </div>
   );
 }

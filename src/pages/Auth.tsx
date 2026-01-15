@@ -6,14 +6,20 @@ import { SEO } from "@/components/SEO";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Card, CardContent, CardDescription, CardHeader } from "@/components/ui/card";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+} from "@/components/ui/card";
 import { ParticleBackground } from "@/components/ui/particle-background";
-import { Loader2 } from "lucide-react";
+import { Loader2, ArrowRightLeft } from "lucide-react";
 import { toast } from "sonner";
 import logo from "@/assets/logo.png";
 import logoDark from "@/assets/logo-dark.png";
 import { GoogleIcon } from "@/components/icons/GoogleIcon";
-
+import { PortalSwitcherModal } from "@/components/PortalSwitcherModal";
+import { usePortalSwitcher } from "@/hooks/usePortalSwitcher";
 
 const Auth = () => {
   const navigate = useNavigate();
@@ -21,7 +27,12 @@ const Auth = () => {
   const { user, signIn, signInWithGoogle, loading: authLoading } = useAuth();
   const [isLoading, setIsLoading] = useState(false);
   const [isOAuthLoading, setIsOAuthLoading] = useState(false);
-  
+  const {
+    isOpen: isPortalSwitcherOpen,
+    setIsOpen: setPortalSwitcherOpen,
+    openSwitcher,
+  } = usePortalSwitcher();
+
   const currentTheme = resolvedTheme || theme;
 
   // Login form state
@@ -67,7 +78,7 @@ const Auth = () => {
 
   return (
     <div className="relative flex min-h-screen items-center justify-center bg-background p-4 overflow-hidden">
-      <SEO 
+      <SEO
         title="Sign In"
         description="Sign in to access Command X business management platform"
         keywords="sign in, login, authentication"
@@ -75,7 +86,7 @@ const Auth = () => {
       />
       {/* Aurora Background Waves */}
       <div className="aurora-bg absolute inset-0 z-0" />
-      
+
       {/* Additional floating elements for depth */}
       <div className="absolute inset-0 z-0 pointer-events-none">
         <div className="absolute top-1/4 left-1/4 w-96 h-96 bg-primary/20 rounded-full blur-3xl animate-aurora-float-1" />
@@ -89,22 +100,20 @@ const Auth = () => {
       <Card className="relative z-10 w-full max-w-md glass">
         <CardHeader className="text-center">
           <div className="flex justify-center mb-4">
-            <img 
-              src={currentTheme === "light" ? logoDark : logo} 
+            <img
+              src={currentTheme === "light" ? logoDark : logo}
               alt="Fairfield"
-              className="h-12 sm:h-14 md:h-16 lg:h-20 w-auto max-w-[250px] sm:max-w-[280px] md:max-w-[300px] object-contain" 
+              className="h-12 sm:h-14 md:h-16 lg:h-20 w-auto max-w-[250px] sm:max-w-[280px] md:max-w-[300px] object-contain"
             />
           </div>
-          <CardDescription>
-            Sign in to your account
-          </CardDescription>
+          <CardDescription>Sign in to your account</CardDescription>
         </CardHeader>
         <CardContent className="space-y-6">
           {/* OAuth Buttons */}
           <div className="space-y-3">
-            <Button 
+            <Button
               type="button"
-              variant="outline" 
+              variant="outline"
               className="w-full bg-secondary/50 border-border hover:bg-secondary"
               onClick={handleGoogleLogin}
               disabled={isOAuthLoading}
@@ -134,35 +143,72 @@ const Auth = () => {
           <form onSubmit={handleLogin} className="space-y-4">
             <div className="space-y-2">
               <Label htmlFor="login-email">Email</Label>
-              <Input 
-                id="login-email" 
-                type="email" 
-                placeholder="you@example.com" 
-                value={loginEmail} 
-                onChange={e => setLoginEmail(e.target.value)} 
-                required 
-                className="bg-secondary border-border" 
+              <Input
+                id="login-email"
+                type="email"
+                placeholder="you@example.com"
+                value={loginEmail}
+                onChange={(e) => setLoginEmail(e.target.value)}
+                required
+                className="bg-secondary border-border"
               />
             </div>
             <div className="space-y-2">
               <Label htmlFor="login-password">Password</Label>
-              <Input 
-                id="login-password" 
-                type="password" 
-                placeholder="••••••••" 
-                value={loginPassword} 
-                onChange={e => setLoginPassword(e.target.value)} 
-                required 
-                className="bg-secondary border-border" 
+              <Input
+                id="login-password"
+                type="password"
+                placeholder="••••••••"
+                value={loginPassword}
+                onChange={(e) => setLoginPassword(e.target.value)}
+                required
+                className="bg-secondary border-border"
               />
             </div>
-            <Button type="submit" className="w-full" variant="glow" disabled={isLoading || isOAuthLoading}>
+            <Button
+              type="submit"
+              className="w-full"
+              variant="glow"
+              disabled={isLoading || isOAuthLoading}
+            >
               {isLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
               Sign In
             </Button>
           </form>
+
+          {/* Portal Switcher */}
+          <div className="pt-4 border-t border-border">
+            <Button
+              type="button"
+              variant="ghost"
+              className="w-full text-muted-foreground hover:text-foreground"
+              onClick={openSwitcher}
+            >
+              <ArrowRightLeft className="mr-2 h-4 w-4" />
+              Switch to Personnel or Vendor Portal
+            </Button>
+            <p className="text-xs text-center text-muted-foreground mt-2">
+              <kbd className="px-1.5 py-0.5 rounded border bg-muted font-mono text-[10px]">
+                ⌘
+              </kbd>{" "}
+              +{" "}
+              <kbd className="px-1.5 py-0.5 rounded border bg-muted font-mono text-[10px]">
+                ⇧
+              </kbd>{" "}
+              +{" "}
+              <kbd className="px-1.5 py-0.5 rounded border bg-muted font-mono text-[10px]">
+                P
+              </kbd>
+            </p>
+          </div>
         </CardContent>
       </Card>
+
+      {/* Portal Switcher Modal */}
+      <PortalSwitcherModal
+        open={isPortalSwitcherOpen}
+        onOpenChange={setPortalSwitcherOpen}
+      />
     </div>
   );
 };
