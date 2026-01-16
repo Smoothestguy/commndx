@@ -34,7 +34,7 @@ export function VendorBillPaymentDialog({
   remainingAmount 
 }: VendorBillPaymentDialogProps) {
   const [paymentDate, setPaymentDate] = useState(format(new Date(), "yyyy-MM-dd"));
-  const [amount, setAmount] = useState(remainingAmount);
+  const [amount, setAmount] = useState(Math.round(remainingAmount * 100) / 100);
   const [paymentMethod, setPaymentMethod] = useState("Check");
   const [referenceNumber, setReferenceNumber] = useState("");
   const [notes, setNotes] = useState("");
@@ -56,10 +56,13 @@ export function VendorBillPaymentDialog({
     }
 
     try {
+      // Round to 2 decimal places (proper cents) before saving
+      const roundedAmount = Math.round(amount * 100) / 100;
+      
       const payment = await addPayment.mutateAsync({
         bill_id: billId,
         payment_date: paymentDate,
-        amount,
+        amount: roundedAmount,
         payment_method: paymentMethod,
         reference_number: referenceNumber || null,
         notes: notes || null,
@@ -82,7 +85,7 @@ export function VendorBillPaymentDialog({
 
       onOpenChange(false);
       // Reset form
-      setAmount(remainingAmount);
+      setAmount(Math.round(remainingAmount * 100) / 100);
       setReferenceNumber("");
       setNotes("");
       setPendingFiles([]);
@@ -123,7 +126,7 @@ export function VendorBillPaymentDialog({
               />
             </div>
             <p className="text-xs text-muted-foreground">
-              Remaining balance: ${remainingAmount.toLocaleString("en-US", { minimumFractionDigits: 2 })}
+              Remaining balance: ${(Math.round(remainingAmount * 100) / 100).toLocaleString("en-US", { minimumFractionDigits: 2 })}
             </p>
           </div>
 
