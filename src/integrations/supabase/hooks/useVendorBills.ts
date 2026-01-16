@@ -324,7 +324,7 @@ export const useUpdateVendorBill = () => {
           tax_rate: bill.tax_rate,
           tax_amount: bill.tax_amount,
           total: bill.total,
-          remaining_amount: Math.round(((bill.total || 0) - (bill.paid_amount || 0)) * 100) / 100,
+          remaining_amount: ((r) => r === 0 ? 0 : r)(Math.round(((bill.total || 0) - (bill.paid_amount || 0)) * 100) / 100),
           notes: bill.notes,
         })
         .eq("id", id);
