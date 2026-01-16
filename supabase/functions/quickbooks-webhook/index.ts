@@ -1476,27 +1476,69 @@ async function processBillPaymentUpdate(
           results.push({ billId: localBillId, success: true, action: "updated", paymentId: existingPayment.id });
         }
       } else {
-        // Create new payment
-        const { data: newPayment, error: insertError } = await supabase
+        // SMART MATCHING: Check for existing unlinked payment in Command X
+        // This handles the case where user records payment locally, then accountant records in QuickBooks later
+        const { data: unlinkedPayments } = await supabase
           .from("vendor_bill_payments")
-          .insert({
-            bill_id: localBillId,
-            payment_date: qbPayment.TxnDate,
-            amount: paymentAmount,
-            payment_method: mapQbPaymentTypeToLocal(qbPayment.PayType),
-            reference_number: qbPayment.DocNumber || null,
-            notes: qbPayment.PrivateNote || `Synced from QuickBooks`,
-            quickbooks_payment_id: qbBillPaymentId,
-          })
-          .select()
-          .single();
+          .select("id, payment_date, amount, notes")
+          .eq("bill_id", localBillId)
+          .is("quickbooks_payment_id", null) // No QB link yet
+          .order("payment_date", { ascending: false });
 
-        if (insertError) {
-          console.error("[Webhook] Error inserting payment:", insertError);
-          results.push({ billId: localBillId, success: false, error: insertError.message });
+        // Find a match: same amount (within $0.01), within 14 days
+        const qbPaymentDate = new Date(qbPayment.TxnDate);
+        const matchingPayment = unlinkedPayments?.find((p: any) => {
+          const amountMatch = Math.abs(parseFloat(p.amount) - paymentAmount) < 0.01;
+          const localPaymentDate = new Date(p.payment_date);
+          const daysDiff = Math.abs(qbPaymentDate.getTime() - localPaymentDate.getTime()) / (1000 * 60 * 60 * 24);
+          return amountMatch && daysDiff <= 14;
+        });
+
+        if (matchingPayment) {
+          // LINK existing Command X payment to QuickBooks (prevents duplicate!)
+          const existingNotes = matchingPayment.notes || '';
+          const updatedNotes = existingNotes.includes('[Linked to QB]') 
+            ? existingNotes 
+            : `${existingNotes} [Linked to QB]`.trim();
+
+          const { error: linkError } = await supabase
+            .from("vendor_bill_payments")
+            .update({
+              quickbooks_payment_id: qbBillPaymentId,
+              notes: updatedNotes,
+            })
+            .eq("id", matchingPayment.id);
+
+          if (linkError) {
+            console.error("[Webhook] Error linking payment:", linkError);
+            results.push({ billId: localBillId, success: false, error: linkError.message });
+          } else {
+            console.log("[Webhook] Linked existing payment to QB:", matchingPayment.id, "->", qbBillPaymentId);
+            results.push({ billId: localBillId, success: true, action: "linked", paymentId: matchingPayment.id });
+          }
         } else {
-          await recalculateBillTotals(supabase, localBillId);
-          results.push({ billId: localBillId, success: true, action: "created", paymentId: newPayment.id });
+          // No matching unlinked payment found - create new (accountant recorded first)
+          const { data: newPayment, error: insertError } = await supabase
+            .from("vendor_bill_payments")
+            .insert({
+              bill_id: localBillId,
+              payment_date: qbPayment.TxnDate,
+              amount: paymentAmount,
+              payment_method: mapQbPaymentTypeToLocal(qbPayment.PayType),
+              reference_number: qbPayment.DocNumber || null,
+              notes: qbPayment.PrivateNote || `Synced from QuickBooks`,
+              quickbooks_payment_id: qbBillPaymentId,
+            })
+            .select()
+            .single();
+
+          if (insertError) {
+            console.error("[Webhook] Error inserting payment:", insertError);
+            results.push({ billId: localBillId, success: false, error: insertError.message });
+          } else {
+            await recalculateBillTotals(supabase, localBillId);
+            results.push({ billId: localBillId, success: true, action: "created", paymentId: newPayment.id });
+          }
         }
       }
     }
