@@ -79,7 +79,8 @@ function BillRow({
 
   const formatCurrency = (amount: number) => {
     const rounded = Math.round(amount * 100) / 100;
-    return `$${rounded.toLocaleString("en-US", { minimumFractionDigits: 2 })}`;
+    const normalized = rounded === 0 ? 0 : rounded;
+    return `$${normalized.toLocaleString("en-US", { minimumFractionDigits: 2 })}`;
   };
 
   return (
@@ -224,7 +225,8 @@ export function VendorBillTable({ bills }: VendorBillTableProps) {
 
   const formatCurrency = (amount: number) => {
     const rounded = Math.round(amount * 100) / 100;
-    return `$${rounded.toLocaleString("en-US", { minimumFractionDigits: 2 })}`;
+    const normalized = rounded === 0 ? 0 : rounded;
+    return `$${normalized.toLocaleString("en-US", { minimumFractionDigits: 2 })}`;
   };
 
   const handleSelectAll = (checked: boolean) => {
