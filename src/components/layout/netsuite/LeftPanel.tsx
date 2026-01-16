@@ -12,6 +12,7 @@ import {
   Calendar,
   History
 } from "lucide-react";
+import { useRecentPages } from "@/hooks/useRecentPages";
 import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import {
@@ -32,9 +33,12 @@ interface LeftPanelProps {
 }
 
 export function LeftPanel({ collapsed, onToggleCollapse, backgroundColor, textColor }: LeftPanelProps) {
+  const [recentPagesOpen, setRecentPagesOpen] = useState(false);
   const [remindersOpen, setRemindersOpen] = useState(false);
   const [recentOpen, setRecentOpen] = useState(false);
   const [alertsOpen, setAlertsOpen] = useState(false);
+  
+  const recentPages = useRecentPages();
 
   // Fetch pending approvals (estimates pending approval)
   const { data: pendingEstimates } = useQuery({
@@ -107,6 +111,14 @@ export function LeftPanel({ collapsed, onToggleCollapse, backgroundColor, textCo
         </Button>
         <div className="space-y-3">
           <Button variant="ghost" size="icon" className="relative">
+            <Clock className="h-4 w-4" />
+            {recentPages.length > 0 && (
+              <span className="absolute -top-1 -right-1 h-4 w-4 bg-blue-500 text-white text-[10px] rounded-full flex items-center justify-center">
+                {recentPages.length}
+              </span>
+            )}
+          </Button>
+          <Button variant="ghost" size="icon" className="relative">
             <Bell className="h-4 w-4" />
             {(pendingEstimates?.length ?? 0) > 0 && (
               <span className="absolute -top-1 -right-1 h-4 w-4 bg-primary text-primary-foreground text-[10px] rounded-full flex items-center justify-center">
@@ -148,6 +160,43 @@ export function LeftPanel({ collapsed, onToggleCollapse, backgroundColor, textCo
 
       <ScrollArea className="flex-1">
         <div className="p-2 space-y-2">
+          {/* Recently Accessed Section */}
+          <Collapsible open={recentPagesOpen} onOpenChange={setRecentPagesOpen}>
+            <CollapsibleTrigger className="flex w-full items-center justify-between rounded-md px-2 py-1.5 text-sm font-medium hover:bg-muted">
+              <div className="flex items-center gap-2">
+                <Clock className="h-4 w-4 text-blue-500" />
+                <span>Recently Accessed</span>
+                {recentPages.length > 0 && (
+                  <Badge variant="secondary" className="h-5 px-1.5 text-[10px]">
+                    {recentPages.length}
+                  </Badge>
+                )}
+              </div>
+              <ChevronRight className={cn("h-4 w-4 transition-transform", recentPagesOpen && "rotate-90")} />
+            </CollapsibleTrigger>
+            <CollapsibleContent className="mt-1">
+              <div className="space-y-1 pl-6">
+                {recentPages.length === 0 && (
+                  <p className="text-xs text-muted-foreground py-2">No recent pages</p>
+                )}
+                {recentPages.map((page, index) => (
+                  <Link
+                    key={`${page.path}-${index}`}
+                    to={page.path}
+                    className="block rounded-md p-2 text-xs hover:bg-muted transition-colors"
+                  >
+                    <div className="flex items-center justify-between gap-2">
+                      <span className="font-medium truncate">{page.name}</span>
+                      <span className="text-muted-foreground text-[10px] whitespace-nowrap">
+                        {formatDistanceToNow(page.visitedAt, { addSuffix: true })}
+                      </span>
+                    </div>
+                  </Link>
+                ))}
+              </div>
+            </CollapsibleContent>
+          </Collapsible>
+
           {/* Reminders Section */}
           <Collapsible open={remindersOpen} onOpenChange={setRemindersOpen}>
             <CollapsibleTrigger className="flex w-full items-center justify-between rounded-md px-2 py-1.5 text-sm font-medium hover:bg-muted">
