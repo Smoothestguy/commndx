@@ -1,6 +1,7 @@
 import { useEffect } from "react";
-import { X, Package, Wrench, HardHat } from "lucide-react";
+import { X } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { ItemType, Product } from "@/integrations/supabase/hooks/useProducts";
 interface ProductFiltersProps {
   products: Product[];
@@ -12,31 +13,11 @@ interface ProductFiltersProps {
   selectedLetter: string;
   onLetterChange: (letter: string) => void;
 }
-const typeOptions: {
-  value: ItemType | "";
-  label: string;
-  icon: typeof Package;
-}[] = [
-  {
-    value: "",
-    label: "All Types",
-    icon: Package,
-  },
-  {
-    value: "product",
-    label: "Products",
-    icon: Package,
-  },
-  {
-    value: "service",
-    label: "Services",
-    icon: Wrench,
-  },
-  {
-    value: "labor",
-    label: "Labor",
-    icon: HardHat,
-  },
+const typeOptions: { value: ItemType | ""; label: string }[] = [
+  { value: "", label: "All Types" },
+  { value: "product", label: "Products" },
+  { value: "service", label: "Services" },
+  { value: "labor", label: "Labor" },
 ];
 const alphabet = [
   "A",
@@ -124,60 +105,54 @@ export function ProductFilters({
     });
   };
   return (
-    <div className="space-y-3 sm:space-y-4 mb-4 sm:mb-6">
-      {/* Type Filter */}
-      <div className="flex flex-wrap gap-1.5 sm:gap-2">
-        {typeOptions.map((option) => {
-          const Icon = option.icon;
-          return (
-            <button
-              key={option.value}
-              onClick={() => onTypeChange(option.value)}
-              className={`inline-flex items-center gap-1.5 sm:gap-2 px-3 sm:px-4 py-2 rounded-full text-xs sm:text-sm font-medium transition-all duration-200 min-h-[36px] sm:min-h-[40px] ${
-                selectedType === option.value
-                  ? "bg-primary text-primary-foreground shadow-lg shadow-primary/25"
-                  : "bg-secondary text-muted-foreground hover:bg-secondary/80 active:bg-secondary/70"
-              }`}
-            >
-              <Icon className="h-3 w-3 sm:h-4 sm:w-4 shrink-0" />
-              <span className="truncate">{option.label}</span>
-            </button>
-          );
-        })}
-      </div>
+    <div className="space-y-2 mb-4 sm:mb-6">
+      {/* Single Row: Type Dropdown + Category Pills */}
+      <div className="flex items-center gap-2">
+        {/* Type Filter - Compact Dropdown */}
+        <Select value={selectedType} onValueChange={(v) => onTypeChange(v as ItemType | "")}>
+          <SelectTrigger className="w-[120px] sm:w-[140px] min-h-[36px] sm:min-h-[40px] text-xs sm:text-sm bg-background shrink-0">
+            <SelectValue placeholder="Type" />
+          </SelectTrigger>
+          <SelectContent className="bg-popover">
+            {typeOptions.map((option) => (
+              <SelectItem key={option.value} value={option.value || "all"}>
+                {option.label}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
 
-      {/* A-Z Filter */}
-
-      {/* Category Pills - Horizontal scroll on tablet */}
-          <div className="overflow-x-auto -mx-4 px-4 md:-mx-0 md:px-0 xl:overflow-visible scrollbar-hide">
-            <div className="flex flex-nowrap xl:flex-wrap gap-1.5 sm:gap-2 min-w-max xl:min-w-0">
-          <button
-            onClick={() => onCategoryChange("")}
-            className={`px-3 sm:px-4 py-2 rounded-full text-xs sm:text-sm font-medium transition-all duration-200 min-h-[36px] sm:min-h-[40px] whitespace-nowrap ${
-              selectedCategory === ""
-                ? "bg-primary text-primary-foreground shadow-lg shadow-primary/25"
-                : "bg-secondary text-muted-foreground hover:bg-secondary/80 active:bg-secondary/70"
-            }`}
-          >
-            All Categories
-          </button>
-          {filteredCategories.map((category) => (
+        {/* Category Pills - Horizontal scroll */}
+        <div className="overflow-x-auto flex-1 scrollbar-hide">
+          <div className="flex gap-1.5 sm:gap-2 min-w-max">
             <button
-              key={category}
-              onClick={() => onCategoryChange(category)}
+              onClick={() => onCategoryChange("")}
               className={`px-3 sm:px-4 py-2 rounded-full text-xs sm:text-sm font-medium transition-all duration-200 min-h-[36px] sm:min-h-[40px] whitespace-nowrap ${
-                selectedCategory === category
+                selectedCategory === ""
                   ? "bg-primary text-primary-foreground shadow-lg shadow-primary/25"
                   : "bg-secondary text-muted-foreground hover:bg-secondary/80 active:bg-secondary/70"
               }`}
             >
-              {category}
+              All Categories
             </button>
-          ))}
+            {filteredCategories.map((category) => (
+              <button
+                key={category}
+                onClick={() => onCategoryChange(category)}
+                className={`px-3 sm:px-4 py-2 rounded-full text-xs sm:text-sm font-medium transition-all duration-200 min-h-[36px] sm:min-h-[40px] whitespace-nowrap ${
+                  selectedCategory === category
+                    ? "bg-primary text-primary-foreground shadow-lg shadow-primary/25"
+                    : "bg-secondary text-muted-foreground hover:bg-secondary/80 active:bg-secondary/70"
+                }`}
+              >
+                {category}
+              </button>
+            ))}
+          </div>
         </div>
       </div>
 
-      {/* Active Filters Display */}
+      {/* Active Filters Display - Separate row when active */}
       {(selectedCategory || selectedType || selectedLetter) && (
         <div className="flex items-center gap-1.5 sm:gap-2 flex-wrap">
           <span className="text-xs sm:text-sm text-muted-foreground">
