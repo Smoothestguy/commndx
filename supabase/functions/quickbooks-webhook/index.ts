@@ -1317,6 +1317,265 @@ async function processBillUpdate(
   return { success: true, action: "updated", billId: mapping.bill_id };
 }
 
+// Fetch bill payment from QuickBooks
+async function fetchQBBillPayment(billPaymentId: string, accessToken: string, realmId: string) {
+  const url = `https://quickbooks.api.intuit.com/v3/company/${realmId}/billpayment/${billPaymentId}`;
+  
+  const response = await fetch(url, {
+    headers: {
+      Authorization: `Bearer ${accessToken}`,
+      Accept: "application/json",
+    },
+  });
+
+  if (!response.ok) {
+    const errorText = await response.text();
+    throw new Error(`Failed to fetch QB bill payment: ${errorText}`);
+  }
+
+  const data = await response.json();
+  return data.BillPayment;
+}
+
+// Map QB payment type to local payment method
+function mapQbPaymentTypeToLocal(payType: string): string {
+  switch (payType?.toLowerCase()) {
+    case "check":
+      return "Check";
+    case "creditcard":
+      return "Credit Card";
+    default:
+      return "ACH"; // Default for electronic payments
+  }
+}
+
+// Process a single bill payment update from QuickBooks
+async function processBillPaymentUpdate(
+  supabase: any,
+  qbBillPaymentId: string,
+  operation: string,
+  accessToken: string,
+  realmId: string
+) {
+  console.log(`[Webhook] Processing bill payment ${qbBillPaymentId}, operation: ${operation}`);
+
+  // Handle Delete/Void operations - find and remove any linked payments
+  if (operation === "Delete" || operation === "Void") {
+    const { data: existingPayments, error: findError } = await supabase
+      .from("vendor_bill_payments")
+      .select("id, bill_id")
+      .eq("quickbooks_payment_id", qbBillPaymentId);
+
+    if (findError) {
+      console.error("[Webhook] Error finding payment by QB ID:", findError);
+      return { success: false, error: findError.message };
+    }
+
+    if (!existingPayments || existingPayments.length === 0) {
+      console.log("[Webhook] No local payment found for deleted QB payment:", qbBillPaymentId);
+      return { success: true, skipped: true, reason: "No local payment" };
+    }
+
+    // Delete payment attachments first
+    const paymentIds = existingPayments.map((p: any) => p.id);
+    await supabase
+      .from("vendor_bill_payment_attachments")
+      .delete()
+      .in("payment_id", paymentIds);
+
+    // Delete the payments
+    const { error: deleteError } = await supabase
+      .from("vendor_bill_payments")
+      .delete()
+      .eq("quickbooks_payment_id", qbBillPaymentId);
+
+    if (deleteError) {
+      console.error("[Webhook] Error deleting payment:", deleteError);
+      return { success: false, error: deleteError.message };
+    }
+
+    // Recalculate bill totals for affected bills
+    for (const payment of existingPayments) {
+      await recalculateBillTotals(supabase, payment.bill_id);
+    }
+
+    // Log the sync
+    await supabase.from("quickbooks_sync_log").insert({
+      entity_type: "bill_payment",
+      entity_id: qbBillPaymentId,
+      action: "webhook_delete",
+      status: "success",
+      details: {
+        qb_payment_id: qbBillPaymentId,
+        operation,
+        deleted_count: existingPayments.length,
+      },
+    });
+
+    console.log("[Webhook] Deleted bill payment from QB:", qbBillPaymentId);
+    return { success: true, action: "deleted", count: existingPayments.length };
+  }
+
+  // Fetch the full bill payment from QuickBooks
+  const qbPayment = await fetchQBBillPayment(qbBillPaymentId, accessToken, realmId);
+  console.log("[Webhook] Fetched QB bill payment:", qbPayment.Id, "Total:", qbPayment.TotalAmt);
+
+  const results = [];
+
+  // Process each line item (a BillPayment can cover multiple bills)
+  for (const line of qbPayment.Line || []) {
+    // Find linked bill transactions
+    for (const linkedTxn of line.LinkedTxn || []) {
+      if (linkedTxn.TxnType !== "Bill") {
+        continue;
+      }
+
+      const qbBillId = linkedTxn.TxnId;
+      const paymentAmount = parseFloat(line.Amount || "0");
+
+      // Find the local bill mapping
+      const { data: billMapping, error: mappingError } = await supabase
+        .from("quickbooks_bill_mappings")
+        .select("bill_id")
+        .eq("quickbooks_bill_id", qbBillId)
+        .maybeSingle();
+
+      if (mappingError || !billMapping) {
+        console.log(`[Webhook] No local mapping for QB bill ${qbBillId}, skipping payment`);
+        continue;
+      }
+
+      const localBillId = billMapping.bill_id;
+
+      // Check if this payment already exists (by QB payment ID and bill)
+      const { data: existingPayment } = await supabase
+        .from("vendor_bill_payments")
+        .select("id")
+        .eq("quickbooks_payment_id", qbBillPaymentId)
+        .eq("bill_id", localBillId)
+        .maybeSingle();
+
+      if (existingPayment) {
+        // Update existing payment
+        const { error: updateError } = await supabase
+          .from("vendor_bill_payments")
+          .update({
+            payment_date: qbPayment.TxnDate,
+            amount: paymentAmount,
+            payment_method: mapQbPaymentTypeToLocal(qbPayment.PayType),
+            reference_number: qbPayment.DocNumber || null,
+            notes: qbPayment.PrivateNote || null,
+          })
+          .eq("id", existingPayment.id);
+
+        if (updateError) {
+          console.error("[Webhook] Error updating payment:", updateError);
+          results.push({ billId: localBillId, success: false, error: updateError.message });
+        } else {
+          await recalculateBillTotals(supabase, localBillId);
+          results.push({ billId: localBillId, success: true, action: "updated", paymentId: existingPayment.id });
+        }
+      } else {
+        // Create new payment
+        const { data: newPayment, error: insertError } = await supabase
+          .from("vendor_bill_payments")
+          .insert({
+            bill_id: localBillId,
+            payment_date: qbPayment.TxnDate,
+            amount: paymentAmount,
+            payment_method: mapQbPaymentTypeToLocal(qbPayment.PayType),
+            reference_number: qbPayment.DocNumber || null,
+            notes: qbPayment.PrivateNote || `Synced from QuickBooks`,
+            quickbooks_payment_id: qbBillPaymentId,
+          })
+          .select()
+          .single();
+
+        if (insertError) {
+          console.error("[Webhook] Error inserting payment:", insertError);
+          results.push({ billId: localBillId, success: false, error: insertError.message });
+        } else {
+          await recalculateBillTotals(supabase, localBillId);
+          results.push({ billId: localBillId, success: true, action: "created", paymentId: newPayment.id });
+        }
+      }
+    }
+  }
+
+  // Log the sync
+  await supabase.from("quickbooks_sync_log").insert({
+    entity_type: "bill_payment",
+    entity_id: qbBillPaymentId,
+    action: "webhook_sync",
+    status: results.every((r: any) => r.success) ? "success" : "partial",
+    details: {
+      qb_payment_id: qbBillPaymentId,
+      qb_doc_number: qbPayment.DocNumber,
+      operation,
+      results,
+    },
+  });
+
+  console.log("[Webhook] Processed bill payment from QB:", qbBillPaymentId, "Results:", results.length);
+  return { success: true, action: "processed", results };
+}
+
+// Recalculate bill paid_amount and remaining_amount after payment changes
+async function recalculateBillTotals(supabase: any, billId: string) {
+  // Get all payments for this bill
+  const { data: payments, error: paymentsError } = await supabase
+    .from("vendor_bill_payments")
+    .select("amount")
+    .eq("bill_id", billId);
+
+  if (paymentsError) {
+    console.error("[Webhook] Error fetching payments for recalculation:", paymentsError);
+    return;
+  }
+
+  const totalPaid = (payments || []).reduce((sum: number, p: any) => sum + parseFloat(p.amount || 0), 0);
+
+  // Get the bill total
+  const { data: bill, error: billError } = await supabase
+    .from("vendor_bills")
+    .select("total")
+    .eq("id", billId)
+    .single();
+
+  if (billError || !bill) {
+    console.error("[Webhook] Error fetching bill for recalculation:", billError);
+    return;
+  }
+
+  const billTotal = parseFloat(bill.total || 0);
+  const remaining = Math.max(0, billTotal - totalPaid);
+
+  // Determine new status
+  let newStatus = "open";
+  if (remaining === 0 && billTotal > 0) {
+    newStatus = "paid";
+  } else if (totalPaid > 0 && remaining > 0) {
+    newStatus = "partially_paid";
+  }
+
+  // Update the bill
+  const { error: updateError } = await supabase
+    .from("vendor_bills")
+    .update({
+      paid_amount: totalPaid,
+      remaining_amount: remaining,
+      status: newStatus,
+      updated_at: new Date().toISOString(),
+    })
+    .eq("id", billId);
+
+  if (updateError) {
+    console.error("[Webhook] Error updating bill totals:", updateError);
+  } else {
+    console.log(`[Webhook] Recalculated bill ${billId}: paid=${totalPaid}, remaining=${remaining}, status=${newStatus}`);
+  }
+}
+
 serve(async (req) => {
   // Handle CORS preflight
   if (req.method === "OPTIONS") {
@@ -1415,6 +1674,15 @@ serve(async (req) => {
             realmId
           );
           results.push({ entityId: entity.id, entityType: "Vendor", ...result });
+        } else if (entity.name === "BillPayment") {
+          const result = await processBillPaymentUpdate(
+            supabase,
+            entity.id,
+            entity.operation,
+            accessToken,
+            realmId
+          );
+          results.push({ entityId: entity.id, entityType: "BillPayment", ...result });
         } else {
           console.log(`[Webhook] Skipping unsupported entity type: ${entity.name}`);
         }
