@@ -208,16 +208,16 @@ export default function VendorBillDetail() {
               </div>
               <div className="flex justify-end gap-8 text-lg">
                 <span className="font-semibold">Total:</span>
-                <span className="font-bold">${Number(bill.total).toFixed(2)}</span>
+                <span className="font-bold">${(Math.round(Number(bill.total) * 100) / 100).toFixed(2)}</span>
               </div>
               <Separator className="my-2" />
               <div className="flex justify-end gap-8">
                 <span className="text-muted-foreground">Amount Paid:</span>
-                <span className="font-medium text-green-600">${Number(bill.paid_amount).toFixed(2)}</span>
+                <span className="font-medium text-green-600">${(Math.round(Number(bill.paid_amount) * 100) / 100).toFixed(2)}</span>
               </div>
               <div className="flex justify-end gap-8 text-lg">
                 <span className="font-semibold">Remaining:</span>
-                <span className="font-bold text-primary">${Number(bill.remaining_amount).toFixed(2)}</span>
+                <span className="font-bold text-primary">${(Math.round(Number(bill.remaining_amount) * 100) / 100).toFixed(2)}</span>
               </div>
             </div>
           </CardContent>

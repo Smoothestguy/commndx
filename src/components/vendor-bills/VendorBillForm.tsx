@@ -158,9 +158,10 @@ export function VendorBillForm({ bill, isEditing = false }: VendorBillFormProps)
     setLineItems(prev => prev.filter(item => item.id !== id));
   };
 
-  const subtotal = lineItems.reduce((sum, item) => sum + item.total, 0);
-  const taxAmount = subtotal * (taxRate / 100);
-  const total = subtotal + taxAmount;
+  // Round all financial values to 2 decimal places (proper cents)
+  const subtotal = Math.round(lineItems.reduce((sum, item) => sum + item.total, 0) * 100) / 100;
+  const taxAmount = Math.round((subtotal * (taxRate / 100)) * 100) / 100;
+  const total = Math.round((subtotal + taxAmount) * 100) / 100;
 
   const handleSubmit = async () => {
     if (!selectedVendor) {
@@ -201,7 +202,7 @@ export function VendorBillForm({ bill, isEditing = false }: VendorBillFormProps)
         description: li.description,
         quantity: li.quantity,
         unit_cost: li.unit_cost,
-        total: li.total,
+        total: Math.round(li.total * 100) / 100, // Round to proper cents
       }));
 
     try {

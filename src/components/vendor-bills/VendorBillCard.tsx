@@ -170,12 +170,12 @@ export function VendorBillCard({ bill, onView, onEdit, onDelete, onHardDelete, o
           </div>
           <div>
             <p className="text-muted-foreground">Total</p>
-            <p className="font-semibold">${Number(bill.total).toLocaleString("en-US", { minimumFractionDigits: 2 })}</p>
+            <p className="font-semibold">${(Math.round(Number(bill.total) * 100) / 100).toLocaleString("en-US", { minimumFractionDigits: 2 })}</p>
           </div>
           <div>
             <p className="text-muted-foreground">Remaining</p>
             <p className="font-semibold text-orange-600 dark:text-orange-400">
-              ${Number(bill.remaining_amount).toLocaleString("en-US", { minimumFractionDigits: 2 })}
+              ${(Math.round(Number(bill.remaining_amount) * 100) / 100).toLocaleString("en-US", { minimumFractionDigits: 2 })}
             </p>
           </div>
         </div>
