@@ -102,11 +102,13 @@ const Personnel = () => {
   const handleEnterSelectionMode = () => {
     setSelectionMode(true);
     setSelectedIds([]);
+    toast.info("Selection mode enabled - tap personnel to select");
   };
 
   const handleExitSelectionMode = () => {
     setSelectionMode(false);
     setSelectedIds([]);
+    toast.info("Selection mode disabled");
   };
 
   const handlePrintBadges = () => {
@@ -150,6 +152,11 @@ const Personnel = () => {
 
         {/* Filters and action buttons on the same row */}
         <div className="flex flex-wrap items-center gap-2 w-full max-w-full">
+          {selectionMode && (
+            <Badge variant="secondary" className="bg-primary/10 text-primary border-primary/20">
+              Selection Mode Active
+            </Badge>
+          )}
           <PersonnelFilters
             search={search}
             onSearchChange={setSearch}
