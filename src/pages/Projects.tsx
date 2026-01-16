@@ -276,10 +276,10 @@ const Projects = () => {
           <ProjectStats projects={projects} />
         )}
 
-        {/* Search & Filters */}
-        <div className="mb-6 space-y-4 overflow-hidden">
-          <div className="flex gap-3">
-            <div className="flex-1 w-full sm:max-w-md min-w-0">
+        {/* Search & Filters - Combined Row */}
+        <div className="mb-6 overflow-hidden">
+          <div className="flex flex-wrap items-center gap-2 w-full">
+            <div className="flex-1 min-w-[200px] max-w-md">
               <SearchInput
                 placeholder="Search projects..."
                 value={search}
@@ -287,10 +287,6 @@ const Projects = () => {
                 className="bg-secondary border-border w-full"
               />
             </div>
-          </div>
-
-          {/* Mobile/Tablet Filters */}
-          {(isMobile || isTablet) && (
             <ProjectFilters
               filterStatus={filterStatus}
               setFilterStatus={setFilterStatus}
@@ -299,8 +295,9 @@ const Projects = () => {
               activeFiltersCount={hasActiveFilters ? 1 : 0}
               onClearFilters={clearFilters}
               search={search}
+              inline
             />
-          )}
+          </div>
         </div>
 
         {/* Loading & Error States */}

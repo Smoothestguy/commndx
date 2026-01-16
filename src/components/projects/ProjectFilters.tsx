@@ -18,6 +18,7 @@ interface ProjectFiltersProps {
   activeFiltersCount: number;
   onClearFilters: () => void;
   search: string;
+  inline?: boolean;
 }
 
 const stageLabels: Record<ProjectStage, string> = {
@@ -36,9 +37,42 @@ export function ProjectFilters({
   activeFiltersCount,
   onClearFilters,
   search,
+  inline = false,
 }: ProjectFiltersProps) {
   const hasActiveFilters = filterStatus !== "all" || filterStage !== "all" || search;
 
+  // Inline mode: just render the selects without wrapper
+  if (inline) {
+    return (
+      <>
+        <Select value={filterStage} onValueChange={setFilterStage}>
+          <SelectTrigger className="w-[120px] sm:w-[140px] min-h-[40px] text-xs sm:text-sm bg-background">
+            <SelectValue placeholder="Stage" />
+          </SelectTrigger>
+          <SelectContent className="bg-popover">
+            <SelectItem value="all">All Stages</SelectItem>
+            <SelectItem value="quote">Quote</SelectItem>
+            <SelectItem value="task_order">Task Order</SelectItem>
+            <SelectItem value="active">Active</SelectItem>
+            <SelectItem value="complete">Complete</SelectItem>
+            <SelectItem value="canceled">Canceled</SelectItem>
+          </SelectContent>
+        </Select>
+
+        <Select value={filterStatus} onValueChange={setFilterStatus}>
+          <SelectTrigger className="w-[120px] sm:w-[140px] min-h-[40px] text-xs sm:text-sm bg-background">
+            <SelectValue placeholder="Status" />
+          </SelectTrigger>
+          <SelectContent className="bg-popover">
+            <SelectItem value="all">All Status</SelectItem>
+            <SelectItem value="active">Active</SelectItem>
+            <SelectItem value="completed">Completed</SelectItem>
+            <SelectItem value="on-hold">On Hold</SelectItem>
+          </SelectContent>
+        </Select>
+      </>
+    );
+  }
   return (
     <div className="space-y-2">
       {/* Filters row - grid on mobile, flex on larger screens */}
