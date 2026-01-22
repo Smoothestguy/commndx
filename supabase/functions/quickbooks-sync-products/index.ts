@@ -144,6 +144,125 @@ async function findQBItemByName(name: string, accessToken: string, realmId: stri
   }
 }
 
+// Cache interface for income accounts during sync operation
+interface AccountCache {
+  serviceIncomeAccountId: string | null;
+  productIncomeAccountId: string | null;
+  expenseAccountId: string | null;
+}
+
+// Helper to get appropriate income accounts from QuickBooks
+async function getIncomeAccounts(accessToken: string, realmId: string): Promise<AccountCache> {
+  try {
+    // Query QuickBooks for Income-type accounts
+    const query = "SELECT * FROM Account WHERE AccountType = 'Income' AND Active = true MAXRESULTS 100";
+    const result = await qbRequest('GET', `/query?query=${encodeURIComponent(query)}&minorversion=65`, accessToken, realmId);
+    
+    const accounts = result.QueryResponse?.Account || [];
+    
+    let serviceIncomeAccountId: string | null = null;
+    let productIncomeAccountId: string | null = null;
+    
+    for (const account of accounts) {
+      const name = (account.Name || '').toLowerCase();
+      const subType = (account.AccountSubType || '').toLowerCase();
+      
+      // Look for service income account
+      if (!serviceIncomeAccountId && (
+        name.includes('service') || 
+        subType === 'servicefeesincome' ||
+        subType.includes('service')
+      )) {
+        serviceIncomeAccountId = account.Id;
+        console.log(`Found service income account: ${account.Name} (ID: ${account.Id})`);
+      }
+      
+      // Look for product/sales income account
+      if (!productIncomeAccountId && (
+        name.includes('sales of product') || 
+        name.includes('product sales') ||
+        name.includes('merchandise') ||
+        subType === 'salesofproductincome'
+      )) {
+        productIncomeAccountId = account.Id;
+        console.log(`Found product income account: ${account.Name} (ID: ${account.Id})`);
+      }
+    }
+    
+    // If no specific accounts found, use the first income account as fallback
+    if (!serviceIncomeAccountId && !productIncomeAccountId && accounts.length > 0) {
+      const fallbackAccount = accounts[0];
+      serviceIncomeAccountId = fallbackAccount.Id;
+      productIncomeAccountId = fallbackAccount.Id;
+      console.log(`Using fallback income account: ${fallbackAccount.Name} (ID: ${fallbackAccount.Id})`);
+    }
+    
+    // Get expense account (Cost of Goods Sold)
+    let expenseAccountId: string | null = null;
+    try {
+      const expenseQuery = "SELECT * FROM Account WHERE AccountType IN ('Cost of Goods Sold', 'Expense') AND Active = true MAXRESULTS 50";
+      const expenseResult = await qbRequest('GET', `/query?query=${encodeURIComponent(expenseQuery)}&minorversion=65`, accessToken, realmId);
+      
+      const expenseAccounts = expenseResult.QueryResponse?.Account || [];
+      const cogsAccount = expenseAccounts.find((a: any) => a.AccountType === 'Cost of Goods Sold');
+      expenseAccountId = cogsAccount?.Id || expenseAccounts[0]?.Id || null;
+      
+      if (expenseAccountId) {
+        console.log(`Found expense account: ${cogsAccount?.Name || expenseAccounts[0]?.Name} (ID: ${expenseAccountId})`);
+      }
+    } catch (expenseError) {
+      console.warn('Could not fetch expense accounts:', expenseError);
+    }
+    
+    console.log(`Account lookup complete - Service: ${serviceIncomeAccountId}, Product: ${productIncomeAccountId}, Expense: ${expenseAccountId}`);
+    
+    return {
+      serviceIncomeAccountId,
+      productIncomeAccountId,
+      expenseAccountId
+    };
+  } catch (error) {
+    console.error('Error fetching income accounts:', error);
+    return {
+      serviceIncomeAccountId: null,
+      productIncomeAccountId: null,
+      expenseAccountId: null
+    };
+  }
+}
+
+// Helper to build QB item with correct account refs based on item type
+function buildQBItem(product: any, accounts: AccountCache): any {
+  const isService = product.item_type === 'service';
+  const isLabor = product.item_type === 'labor';
+  
+  // Determine the correct income account based on item type
+  let incomeAccountId: string;
+  if (isService || isLabor) {
+    // Services and labor use service income account
+    incomeAccountId = accounts.serviceIncomeAccountId || accounts.productIncomeAccountId || '1';
+  } else {
+    // Products use product income account
+    incomeAccountId = accounts.productIncomeAccountId || accounts.serviceIncomeAccountId || '1';
+  }
+  
+  const expenseAccountId = accounts.expenseAccountId || '1';
+  
+  console.log(`Building QB item for "${product.name}" (type: ${product.item_type}) - Income Account: ${incomeAccountId}, Expense Account: ${expenseAccountId}`);
+  
+  return {
+    Name: product.name.substring(0, 100), // QB limit
+    Description: product.description?.substring(0, 4000) || '',
+    Type: isService || isLabor ? 'Service' : 'NonInventory',
+    UnitPrice: product.price,
+    PurchaseCost: product.cost,
+    Sku: product.sku || undefined,
+    Taxable: product.is_taxable,
+    IncomeAccountRef: { value: incomeAccountId },
+    ExpenseAccountRef: { value: expenseAccountId },
+  };
+}
+
 serve(async (req) => {
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders });
@@ -290,6 +409,9 @@ serve(async (req) => {
       // Export products to QuickBooks
       console.log('Exporting products to QuickBooks...');
       
+      // Get income accounts once at the start
+      const accounts = await getIncomeAccounts(accessToken, realmId);
+      
       // Get products without QB mapping or with pending status
       const { data: productsToExport, error: productsError } = await supabase
         .from('products')
@@ -307,17 +429,8 @@ serve(async (req) => {
       for (const product of productsToExport) {
         const mapping = product.quickbooks_product_mappings?.[0];
         
-        const qbItem = {
-          Name: product.name.substring(0, 100), // QB limit
-          Description: product.description?.substring(0, 4000) || '',
-          Type: product.item_type === 'service' ? 'Service' : 'NonInventory',
-          UnitPrice: product.price,
-          PurchaseCost: product.cost,
-          Sku: product.sku || undefined,
-          Taxable: product.is_taxable,
-          IncomeAccountRef: { value: '1' }, // Default income account
-          ExpenseAccountRef: { value: '1' }, // Default expense account
-        };
+        // Build QB item with correct income account based on item type
+        const qbItem = buildQBItem(product, accounts);
 
         try {
           if (mapping && mapping.quickbooks_item_id) {
@@ -447,19 +560,13 @@ serve(async (req) => {
 
       if (productError) throw productError;
 
+      // Get income accounts for this sync
+      const accounts = await getIncomeAccounts(accessToken, realmId);
+
       const mapping = product.quickbooks_product_mappings?.[0];
       
-      const qbItem = {
-        Name: product.name.substring(0, 100),
-        Description: product.description?.substring(0, 4000) || '',
-        Type: product.item_type === 'service' ? 'Service' : 'NonInventory',
-        UnitPrice: product.price,
-        PurchaseCost: product.cost,
-        Sku: product.sku || undefined,
-        Taxable: product.is_taxable,
-        IncomeAccountRef: { value: '1' },
-        ExpenseAccountRef: { value: '1' },
-      };
+      // Build QB item with correct income account based on item type
+      const qbItem = buildQBItem(product, accounts);
 
       if (mapping && mapping.quickbooks_item_id) {
         // Update existing
