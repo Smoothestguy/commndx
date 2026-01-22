@@ -156,11 +156,12 @@ async function getOrCreateQBVendor(supabase: any, vendorId: string, accessToken:
     throw new Error(`Vendor not found: ${vendorId}`);
   }
 
-  // First, search for existing vendor in QuickBooks by name
-  console.log(`Searching QuickBooks for existing vendor: ${vendor.name}`);
+  // Normalize vendor name (trim whitespace)
+  const normalizedName = vendor.name.trim();
+  console.log(`Searching QuickBooks for existing vendor: "${normalizedName}"`);
   
   try {
-    const searchQuery = encodeURIComponent(`SELECT * FROM Vendor WHERE DisplayName = '${vendor.name.replace(/'/g, "\\'")}'`);
+    const searchQuery = encodeURIComponent(`SELECT * FROM Vendor WHERE DisplayName = '${normalizedName.replace(/'/g, "\\'")}'`);
     const searchResult = await qbRequest('GET', `/query?query=${searchQuery}&minorversion=65`, accessToken, realmId);
     
     if (searchResult.QueryResponse?.Vendor?.length > 0) {
@@ -182,12 +183,12 @@ async function getOrCreateQBVendor(supabase: any, vendorId: string, accessToken:
     console.log(`Error searching for vendor, will try to create: ${e}`);
   }
 
-  console.log(`Creating new vendor in QuickBooks: ${vendor.name}`);
+  console.log(`Creating new vendor in QuickBooks: ${normalizedName}`);
 
-  // Create vendor in QuickBooks
+  // Create vendor in QuickBooks with normalized name
   const qbVendor = {
-    DisplayName: vendor.name,
-    CompanyName: vendor.company || vendor.name,
+    DisplayName: normalizedName,
+    CompanyName: vendor.company?.trim() || normalizedName,
     PrimaryEmailAddr: vendor.email ? { Address: vendor.email } : undefined,
     PrimaryPhone: vendor.phone ? { FreeFormNumber: vendor.phone } : undefined,
     BillAddr: vendor.address ? {
@@ -212,17 +213,37 @@ async function getOrCreateQBVendor(supabase: any, vendorId: string, accessToken:
     console.log(`Created vendor in QuickBooks with ID: ${qbVendorId}`);
     return qbVendorId;
   } catch (createError: any) {
-    // Handle duplicate name error - try to find by partial match
-    if (createError.message?.includes('Duplicate Name Exists')) {
-      console.log(`Duplicate name error, searching with LIKE query...`);
+    // Handle duplicate name error - extract ID from error message first
+    if (createError.message?.includes('Duplicate Name Exists') || createError.message?.includes('6240')) {
+      console.log(`Duplicate name error detected, attempting to extract ID from error...`);
       
-      const likeQuery = encodeURIComponent(`SELECT * FROM Vendor WHERE DisplayName LIKE '%${vendor.name.replace(/'/g, "\\'")}%' MAXRESULTS 10`);
+      // Extract ID from error message: "The name supplied already exists. : Id=1209"
+      const idMatch = createError.message.match(/Id=(\d+)/);
+      if (idMatch) {
+        const existingVendorId = idMatch[1];
+        console.log(`Extracted existing vendor ID from error: ${existingVendorId}`);
+        
+        // Create mapping directly using the extracted ID
+        await supabase.from('quickbooks_vendor_mappings').insert({
+          vendor_id: vendorId,
+          quickbooks_vendor_id: existingVendorId,
+          sync_status: 'synced',
+          last_synced_at: new Date().toISOString(),
+          sync_direction: 'export',
+        });
+        
+        return existingVendorId;
+      }
+      
+      // Fallback: search with LIKE query using normalized name
+      console.log(`ID not in error message, searching with LIKE query...`);
+      const likeQuery = encodeURIComponent(`SELECT * FROM Vendor WHERE DisplayName LIKE '%${normalizedName.replace(/'/g, "\\'")}%' MAXRESULTS 10`);
       const likeResult = await qbRequest('GET', `/query?query=${likeQuery}&minorversion=65`, accessToken, realmId);
       
       if (likeResult.QueryResponse?.Vendor?.length > 0) {
-        // Find best match (exact or closest)
+        // Find best match (exact or closest) using normalized comparison
         const exactMatch = likeResult.QueryResponse.Vendor.find(
-          (v: any) => v.DisplayName.toLowerCase() === vendor.name.toLowerCase()
+          (v: any) => v.DisplayName.trim().toLowerCase() === normalizedName.toLowerCase()
         );
         const matchedVendor = exactMatch || likeResult.QueryResponse.Vendor[0];
         

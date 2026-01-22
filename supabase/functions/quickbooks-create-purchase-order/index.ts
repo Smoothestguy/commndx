@@ -122,9 +122,10 @@ async function getOrCreateQBVendor(
     throw new Error("Vendor not found");
   }
 
-  // First, try to find existing vendor in QuickBooks by name
-  const vendorName = vendor.name.replace(/'/g, "\\'"); // Escape single quotes
-  const searchQuery = `SELECT * FROM Vendor WHERE DisplayName = '${vendorName}'`;
+  // Normalize vendor name (trim whitespace)
+  const normalizedName = vendor.name.trim();
+  const vendorNameEscaped = normalizedName.replace(/'/g, "\\'");
+  const searchQuery = `SELECT * FROM Vendor WHERE DisplayName = '${vendorNameEscaped}'`;
   
   try {
     const searchResult = await qbRequest(
@@ -153,10 +154,10 @@ async function getOrCreateQBVendor(
     console.log("Vendor search failed, will try to create:", searchError);
   }
 
-  // Create in QuickBooks
+  // Create in QuickBooks with normalized name
   const qbVendorData: any = {
-    DisplayName: vendor.name,
-    CompanyName: vendor.company || vendor.name,
+    DisplayName: normalizedName,
+    CompanyName: vendor.company?.trim() || normalizedName,
     PrimaryEmailAddr: vendor.email ? { Address: vendor.email } : undefined,
     PrimaryPhone: vendor.phone ? { FreeFormNumber: vendor.phone } : undefined,
   };
@@ -185,10 +186,31 @@ async function getOrCreateQBVendor(
 
     return qbVendorId;
   } catch (createError: any) {
-    // If duplicate name error, try to find by name again with fuzzy match
-    if (createError.message.includes("400")) {
-      console.log("Vendor creation failed, attempting fuzzy search...");
-      const fuzzyQuery = `SELECT * FROM Vendor WHERE DisplayName LIKE '%${vendor.name.split(" ")[0]}%'`;
+    // Handle duplicate name error - extract ID from error message first
+    if (createError.message?.includes("Duplicate Name Exists") || createError.message?.includes("6240") || createError.message?.includes("400")) {
+      console.log("Duplicate name error detected, attempting to extract ID from error...");
+      
+      // Extract ID from error message: "The name supplied already exists. : Id=1209"
+      const idMatch = createError.message.match(/Id=(\d+)/);
+      if (idMatch) {
+        const existingVendorId = idMatch[1];
+        console.log(`Extracted existing vendor ID from error: ${existingVendorId}`);
+        
+        // Create mapping directly using the extracted ID
+        await supabase.from("quickbooks_vendor_mappings").insert({
+          vendor_id: vendorId,
+          quickbooks_vendor_id: existingVendorId,
+          sync_status: "synced",
+          sync_direction: "export",
+          last_synced_at: new Date().toISOString(),
+        });
+        
+        return existingVendorId;
+      }
+      
+      // Fallback: fuzzy search with normalized name
+      console.log("ID not in error message, attempting fuzzy search...");
+      const fuzzyQuery = `SELECT * FROM Vendor WHERE DisplayName LIKE '%${normalizedName.split(" ")[0]}%'`;
       const fuzzyResult = await qbRequest(
         "GET",
         `/query?query=${encodeURIComponent(fuzzyQuery)}`,
@@ -196,8 +218,12 @@ async function getOrCreateQBVendor(
         realmId
       );
       
-      if (fuzzyResult.QueryResponse?.Vendor?.[0]) {
-        const existingQBVendor = fuzzyResult.QueryResponse.Vendor[0];
+      if (fuzzyResult.QueryResponse?.Vendor?.length > 0) {
+        // Find best match using normalized comparison
+        const exactMatch = fuzzyResult.QueryResponse.Vendor.find(
+          (v: any) => v.DisplayName.trim().toLowerCase() === normalizedName.toLowerCase()
+        );
+        const existingQBVendor = exactMatch || fuzzyResult.QueryResponse.Vendor[0];
         console.log("Found vendor via fuzzy search:", existingQBVendor.Id, existingQBVendor.DisplayName);
         
         await supabase.from("quickbooks_vendor_mappings").insert({
