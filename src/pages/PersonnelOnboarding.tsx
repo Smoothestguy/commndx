@@ -122,6 +122,22 @@ const PersonnelOnboarding = () => {
   const [currentStep, setCurrentStep] = useState(1);
   const [agreedToTerms, setAgreedToTerms] = useState(false);
 
+  // Cache validation data to prevent loss during React Query refetches
+  const [cachedValidation, setCachedValidation] = useState<{
+    token: NonNullable<typeof validationResult>["token"];
+    personnel: NonNullable<typeof validationResult>["personnel"];
+  } | null>(null);
+
+  // Update cached data when validation result is available
+  useEffect(() => {
+    if (validationResult?.isValid && validationResult?.token && validationResult?.personnel) {
+      setCachedValidation({
+        token: validationResult.token,
+        personnel: validationResult.personnel,
+      });
+    }
+  }, [validationResult?.isValid, validationResult?.token, validationResult?.personnel]);
+
   // Initialize form data from personnel record
   const [formData, setFormData] = useState<ExtendedOnboardingFormData>({
     first_name: "",
@@ -292,15 +308,23 @@ const PersonnelOnboarding = () => {
   };
 
   const handleSubmit = async () => {
+    // Use cached validation data if current query data is unavailable (handles refetch states)
+    const tokenData = validationResult?.token || cachedValidation?.token;
+    const personnelData = validationResult?.personnel || cachedValidation?.personnel;
+
     // Validate session is still active
-    if (!validationResult?.token || !validationResult?.personnel) {
-      toast.error("Your session has expired. Please refresh the page and request a new onboarding link.");
+    if (!tokenData || !personnelData) {
+      if (isLoading) {
+        toast.error("Please wait while we verify your session...");
+      } else {
+        toast.error("Unable to verify your session. Please refresh the page and try again.");
+      }
       return;
     }
 
-    // Check if token is expired
-    if (validationResult.token.expires_at) {
-      const expiresAt = new Date(validationResult.token.expires_at);
+    // Check if token is actually expired (not just query state)
+    if (tokenData.expires_at) {
+      const expiresAt = new Date(tokenData.expires_at);
       if (expiresAt < new Date()) {
         toast.error("Your onboarding link has expired. Please request a new one.");
         return;
@@ -314,8 +338,8 @@ const PersonnelOnboarding = () => {
 
     try {
       await completeOnboarding.mutateAsync({
-        token: validationResult.token.token,
-        personnelId: validationResult.personnel.id,
+        token: tokenData.token,
+        personnelId: personnelData.id,
         formData: formData as OnboardingFormData,
         // Pass extended fields separately
         bankName: formData.bank_name,
