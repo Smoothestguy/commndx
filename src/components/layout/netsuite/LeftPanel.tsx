@@ -20,6 +20,12 @@ import {
   CollapsibleContent,
   CollapsibleTrigger,
 } from "@/components/ui/collapsible";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
 import { Badge } from "@/components/ui/badge";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
@@ -94,51 +100,99 @@ export function LeftPanel({ collapsed, onToggleCollapse, backgroundColor, textCo
 
   if (collapsed) {
     return (
-      <div 
-        className={cn(
-          "w-12 border-r border-border flex flex-col items-center py-2",
-          !backgroundColor && "bg-card"
-        )}
-        style={panelStyle}
-      >
-        <Button
-          variant="ghost"
-          size="icon"
-          onClick={onToggleCollapse}
-          className="mb-4"
+      <TooltipProvider delayDuration={100}>
+        <div 
+          className={cn(
+            "w-12 border-r border-border flex flex-col items-center py-2",
+            !backgroundColor && "bg-card"
+          )}
+          style={panelStyle}
         >
-          <ChevronRight className="h-4 w-4" />
-        </Button>
-        <div className="space-y-3">
-          <Button variant="ghost" size="icon" className="relative">
-            <Clock className="h-4 w-4" />
-            {recentPages.length > 0 && (
-              <span className="absolute -top-1 -right-1 h-4 w-4 bg-blue-500 text-white text-[10px] rounded-full flex items-center justify-center">
-                {recentPages.length}
-              </span>
-            )}
+          <Button
+            variant="ghost"
+            size="icon"
+            onClick={onToggleCollapse}
+            className="mb-4"
+          >
+            <ChevronRight className="h-4 w-4" />
           </Button>
-          <Button variant="ghost" size="icon" className="relative">
-            <Bell className="h-4 w-4" />
-            {(pendingEstimates?.length ?? 0) > 0 && (
-              <span className="absolute -top-1 -right-1 h-4 w-4 bg-primary text-primary-foreground text-[10px] rounded-full flex items-center justify-center">
-                {pendingEstimates?.length}
-              </span>
-            )}
-          </Button>
-          <Button variant="ghost" size="icon" className="relative">
-            <AlertTriangle className="h-4 w-4" />
-            {(overdueInvoices?.length ?? 0) > 0 && (
-              <span className="absolute -top-1 -right-1 h-4 w-4 bg-destructive text-destructive-foreground text-[10px] rounded-full flex items-center justify-center">
-                {overdueInvoices?.length}
-              </span>
-            )}
-          </Button>
-          <Button variant="ghost" size="icon">
-            <History className="h-4 w-4" />
-          </Button>
+          <div className="space-y-3">
+            {/* Recently Accessed */}
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button 
+                  variant="ghost" 
+                  size="icon" 
+                  className="relative"
+                  onClick={() => { onToggleCollapse(); setRecentPagesOpen(true); }}
+                >
+                  <Clock className="h-4 w-4" />
+                  {recentPages.length > 0 && (
+                    <span className="absolute -top-1 -right-1 h-4 w-4 bg-blue-500 text-white text-[10px] rounded-full flex items-center justify-center">
+                      {recentPages.length}
+                    </span>
+                  )}
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent side="right">Recently Accessed</TooltipContent>
+            </Tooltip>
+
+            {/* Reminders */}
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button 
+                  variant="ghost" 
+                  size="icon" 
+                  className="relative"
+                  onClick={() => { onToggleCollapse(); setRemindersOpen(true); }}
+                >
+                  <Bell className="h-4 w-4" />
+                  {(pendingEstimates?.length ?? 0) > 0 && (
+                    <span className="absolute -top-1 -right-1 h-4 w-4 bg-primary text-primary-foreground text-[10px] rounded-full flex items-center justify-center">
+                      {pendingEstimates?.length}
+                    </span>
+                  )}
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent side="right">Reminders</TooltipContent>
+            </Tooltip>
+
+            {/* Alerts */}
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button 
+                  variant="ghost" 
+                  size="icon" 
+                  className="relative"
+                  onClick={() => { onToggleCollapse(); setAlertsOpen(true); }}
+                >
+                  <AlertTriangle className="h-4 w-4" />
+                  {(overdueInvoices?.length ?? 0) > 0 && (
+                    <span className="absolute -top-1 -right-1 h-4 w-4 bg-destructive text-destructive-foreground text-[10px] rounded-full flex items-center justify-center">
+                      {overdueInvoices?.length}
+                    </span>
+                  )}
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent side="right">Alerts</TooltipContent>
+            </Tooltip>
+
+            {/* Recent Projects */}
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button 
+                  variant="ghost" 
+                  size="icon"
+                  onClick={() => { onToggleCollapse(); setRecentOpen(true); }}
+                >
+                  <History className="h-4 w-4" />
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent side="right">Recent Projects</TooltipContent>
+            </Tooltip>
+          </div>
         </div>
-      </div>
+      </TooltipProvider>
     );
   }
 

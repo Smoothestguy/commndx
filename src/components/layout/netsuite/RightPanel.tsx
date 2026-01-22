@@ -19,6 +19,12 @@ import {
   CollapsibleContent,
   CollapsibleTrigger,
 } from "@/components/ui/collapsible";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
 
 interface RightPanelProps {
   collapsed: boolean;
@@ -171,30 +177,53 @@ export function RightPanel({ collapsed, onToggleCollapse, backgroundColor, textC
 
   if (collapsed) {
     return (
-      <div 
-        className={cn(
-          "w-12 border-l border-border flex flex-col items-center py-2",
-          !backgroundColor && "bg-card"
-        )}
-        style={panelStyle}
-      >
-        <Button
-          variant="ghost"
-          size="icon"
-          onClick={onToggleCollapse}
-          className="mb-4"
+      <TooltipProvider delayDuration={100}>
+        <div 
+          className={cn(
+            "w-12 border-l border-border flex flex-col items-center py-2",
+            !backgroundColor && "bg-card"
+          )}
+          style={panelStyle}
         >
-          <ChevronLeft className="h-4 w-4" />
-        </Button>
-        <div className="space-y-3">
-          <Button variant="ghost" size="icon">
-            <TrendingUp className="h-4 w-4" />
+          <Button
+            variant="ghost"
+            size="icon"
+            onClick={onToggleCollapse}
+            className="mb-4"
+          >
+            <ChevronLeft className="h-4 w-4" />
           </Button>
-          <Button variant="ghost" size="icon">
-            <DollarSign className="h-4 w-4" />
-          </Button>
+          <div className="space-y-3">
+            {/* KPI Overview */}
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button 
+                  variant="ghost" 
+                  size="icon"
+                  onClick={() => { onToggleCollapse(); setKpisOpen(true); }}
+                >
+                  <TrendingUp className="h-4 w-4" />
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent side="left">KPI Overview</TooltipContent>
+            </Tooltip>
+
+            {/* Quick Stats */}
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button 
+                  variant="ghost" 
+                  size="icon"
+                  onClick={() => { onToggleCollapse(); setStatsOpen(true); }}
+                >
+                  <DollarSign className="h-4 w-4" />
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent side="left">Quick Stats</TooltipContent>
+            </Tooltip>
+          </div>
         </div>
-      </div>
+      </TooltipProvider>
     );
   }
 
