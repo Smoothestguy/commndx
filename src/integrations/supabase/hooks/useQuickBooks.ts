@@ -284,11 +284,12 @@ export const useQuickBooksVendorMappings = () => {
   });
 };
 
-export const useImportVendorsFromQB = (onProgress?: (processed: number, total: number) => void) => {
+export const useImportVendorsFromQB = (onProgress?: (processed: number, total: number) => void, abortSignal?: AbortSignal) => {
   const queryClient = useQueryClient();
   
   return useMutation({
-    mutationFn: async () => {
+    mutationFn: async (signal?: AbortSignal) => {
+      const activeSignal = signal || abortSignal;
       let startPosition = 0;
       let totalImported = 0;
       let totalUpdated = 0;
@@ -297,6 +298,17 @@ export const useImportVendorsFromQB = (onProgress?: (processed: number, total: n
       let hasMore = true;
 
       while (hasMore) {
+        // Check for cancellation before each batch
+        if (activeSignal?.aborted) {
+          return { 
+            imported: totalImported, 
+            updated: totalUpdated, 
+            skipped: totalSkipped, 
+            totalCount,
+            cancelled: true 
+          };
+        }
+
         const { data, error } = await supabase.functions.invoke('quickbooks-sync-vendors', {
           body: { action: 'import', startPosition },
         });
@@ -316,13 +328,17 @@ export const useImportVendorsFromQB = (onProgress?: (processed: number, total: n
         }
       }
 
-      return { imported: totalImported, updated: totalUpdated, skipped: totalSkipped, totalCount };
+      return { imported: totalImported, updated: totalUpdated, skipped: totalSkipped, totalCount, cancelled: false };
     },
     onSuccess: (data) => {
       queryClient.invalidateQueries({ queryKey: ['vendors'] });
       queryClient.invalidateQueries({ queryKey: ['quickbooks-vendor-mappings'] });
       queryClient.invalidateQueries({ queryKey: ['quickbooks-sync-logs'] });
-      toast.success(`Imported ${data.imported} vendors, updated ${data.updated}`);
+      if (data.cancelled) {
+        toast.info(`Import cancelled. ${data.imported} vendors were imported before cancellation.`);
+      } else {
+        toast.success(`Imported ${data.imported} vendors, updated ${data.updated}`);
+      }
     },
     onError: (error: Error) => {
       toast.error(`Failed to import vendors: ${error.message}`);
@@ -330,11 +346,12 @@ export const useImportVendorsFromQB = (onProgress?: (processed: number, total: n
   });
 };
 
-export const useExportVendorsToQB = (onProgress?: (processed: number, total: number) => void) => {
+export const useExportVendorsToQB = (onProgress?: (processed: number, total: number) => void, abortSignal?: AbortSignal) => {
   const queryClient = useQueryClient();
   
   return useMutation({
-    mutationFn: async () => {
+    mutationFn: async (signal?: AbortSignal) => {
+      const activeSignal = signal || abortSignal;
       let startPosition = 0;
       let totalCreated = 0;
       let totalUpdated = 0;
@@ -343,6 +360,17 @@ export const useExportVendorsToQB = (onProgress?: (processed: number, total: num
       let hasMore = true;
 
       while (hasMore) {
+        // Check for cancellation before each batch
+        if (activeSignal?.aborted) {
+          return { 
+            created: totalCreated, 
+            updated: totalUpdated, 
+            errors: totalErrors, 
+            totalCount,
+            cancelled: true 
+          };
+        }
+
         const { data, error } = await supabase.functions.invoke('quickbooks-sync-vendors', {
           body: { action: 'export', startPosition },
         });
@@ -362,12 +390,16 @@ export const useExportVendorsToQB = (onProgress?: (processed: number, total: num
         }
       }
 
-      return { created: totalCreated, updated: totalUpdated, errors: totalErrors, totalCount };
+      return { created: totalCreated, updated: totalUpdated, errors: totalErrors, totalCount, cancelled: false };
     },
     onSuccess: (data) => {
       queryClient.invalidateQueries({ queryKey: ['quickbooks-vendor-mappings'] });
       queryClient.invalidateQueries({ queryKey: ['quickbooks-sync-logs'] });
-      toast.success(`Exported ${data.created} vendors, updated ${data.updated}`);
+      if (data.cancelled) {
+        toast.info(`Export cancelled. ${data.created} vendors were exported before cancellation.`);
+      } else {
+        toast.success(`Exported ${data.created} vendors, updated ${data.updated}`);
+      }
     },
     onError: (error: Error) => {
       toast.error(`Failed to export vendors: ${error.message}`);

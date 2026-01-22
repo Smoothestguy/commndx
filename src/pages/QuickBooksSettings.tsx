@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useSearchParams } from "react-router-dom";
 import { PageLayout } from "@/components/layout/PageLayout";
 import {
@@ -55,6 +55,7 @@ import {
   Receipt,
   FolderOpen,
   FileText,
+  Square,
 } from "lucide-react";
 import { format } from "date-fns";
 import { toast } from "sonner";
@@ -71,6 +72,10 @@ const QuickBooksSettings = () => {
     total: number;
   } | null>(null);
 
+  // Abort controllers for cancellable syncs
+  const vendorImportAbortRef = useRef<AbortController | null>(null);
+  const vendorExportAbortRef = useRef<AbortController | null>(null);
+
   const { data: config, isLoading: configLoading } = useQuickBooksConfig();
   const { data: syncLogs } = useQuickBooksSyncLogs(20);
   const { data: conflicts } = useQuickBooksConflicts();
@@ -84,12 +89,16 @@ const QuickBooksSettings = () => {
   const importCustomers = useImportCustomersFromQB();
   const exportCustomers = useExportCustomersToQB();
 
-  const importVendors = useImportVendorsFromQB((processed, total) => {
-    setVendorImportProgress({ processed, total });
-  });
-  const exportVendors = useExportVendorsToQB((processed, total) => {
-    setVendorExportProgress({ processed, total });
-  });
+  const importVendors = useImportVendorsFromQB(
+    (processed, total) => {
+      setVendorImportProgress({ processed, total });
+    }
+  );
+  const exportVendors = useExportVendorsToQB(
+    (processed, total) => {
+      setVendorExportProgress({ processed, total });
+    }
+  );
 
   // Invoice import
   const importInvoices = useImportInvoicesFromQB();
@@ -113,17 +122,39 @@ const QuickBooksSettings = () => {
   };
 
   const handleImportVendors = () => {
+    vendorImportAbortRef.current = new AbortController();
     setVendorImportProgress({ processed: 0, total: 0 });
-    importVendors.mutate(undefined, {
-      onSettled: () => setVendorImportProgress(null),
+    importVendors.mutate(vendorImportAbortRef.current.signal, {
+      onSettled: () => {
+        setVendorImportProgress(null);
+        vendorImportAbortRef.current = null;
+      },
     });
   };
 
+  const handleCancelVendorImport = () => {
+    if (vendorImportAbortRef.current) {
+      vendorImportAbortRef.current.abort();
+      toast.info("Cancelling vendor import...");
+    }
+  };
+
   const handleExportVendors = () => {
+    vendorExportAbortRef.current = new AbortController();
     setVendorExportProgress({ processed: 0, total: 0 });
-    exportVendors.mutate(undefined, {
-      onSettled: () => setVendorExportProgress(null),
+    exportVendors.mutate(vendorExportAbortRef.current.signal, {
+      onSettled: () => {
+        setVendorExportProgress(null);
+        vendorExportAbortRef.current = null;
+      },
     });
+  };
+
+  const handleCancelVendorExport = () => {
+    if (vendorExportAbortRef.current) {
+      vendorExportAbortRef.current.abort();
+      toast.info("Cancelling vendor export...");
+    }
   };
 
   // Handle OAuth callback
@@ -397,10 +428,21 @@ const QuickBooksSettings = () => {
                   </div>
                   {importVendors.isPending && vendorImportProgress && (
                     <div className="space-y-2">
-                      <div className="flex items-center gap-2 text-xs sm:text-sm text-muted-foreground">
-                        <RefreshCw className="h-4 w-4 animate-spin shrink-0" />
-                        Importing vendors... ({vendorImportProgress.processed}/
-                        {vendorImportProgress.total})
+                      <div className="flex items-center justify-between gap-2">
+                        <div className="flex items-center gap-2 text-xs sm:text-sm text-muted-foreground">
+                          <RefreshCw className="h-4 w-4 animate-spin shrink-0" />
+                          Importing vendors... ({vendorImportProgress.processed}/
+                          {vendorImportProgress.total})
+                        </div>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          className="h-7 px-2 text-destructive hover:text-destructive hover:bg-destructive/10"
+                          onClick={handleCancelVendorImport}
+                        >
+                          <Square className="h-3 w-3 mr-1 fill-current" />
+                          Cancel
+                        </Button>
                       </div>
                       {vendorImportProgress.total > 0 && (
                         <div className="w-full bg-muted rounded-full h-2">
@@ -420,10 +462,21 @@ const QuickBooksSettings = () => {
                   )}
                   {exportVendors.isPending && vendorExportProgress && (
                     <div className="space-y-2">
-                      <div className="flex items-center gap-2 text-xs sm:text-sm text-muted-foreground">
-                        <RefreshCw className="h-4 w-4 animate-spin shrink-0" />
-                        Exporting vendors... ({vendorExportProgress.processed}/
-                        {vendorExportProgress.total})
+                      <div className="flex items-center justify-between gap-2">
+                        <div className="flex items-center gap-2 text-xs sm:text-sm text-muted-foreground">
+                          <RefreshCw className="h-4 w-4 animate-spin shrink-0" />
+                          Exporting vendors... ({vendorExportProgress.processed}/
+                          {vendorExportProgress.total})
+                        </div>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          className="h-7 px-2 text-destructive hover:text-destructive hover:bg-destructive/10"
+                          onClick={handleCancelVendorExport}
+                        >
+                          <Square className="h-3 w-3 mr-1 fill-current" />
+                          Cancel
+                        </Button>
                       </div>
                       {vendorExportProgress.total > 0 && (
                         <div className="w-full bg-muted rounded-full h-2">
