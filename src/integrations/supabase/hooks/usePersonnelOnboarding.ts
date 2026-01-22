@@ -194,7 +194,8 @@ export function useOnboardingToken(token: string | undefined) {
       };
     },
     enabled: !!token,
-    staleTime: 30000, // Cache for 30 seconds
+    staleTime: 5 * 60 * 1000, // Cache for 5 minutes (user is filling out form)
+    refetchOnWindowFocus: false, // Don't refetch when user switches back to tab (common on mobile)
   });
 }
 
