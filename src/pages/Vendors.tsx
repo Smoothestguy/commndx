@@ -583,7 +583,7 @@ const Vendors = () => {
               {qbConfig?.is_connected && (
                 <Button
                   variant="outline"
-                  onClick={() => importVendorsFromQB.mutate()}
+                  onClick={() => importVendorsFromQB.mutate(undefined)}
                   disabled={importVendorsFromQB.isPending}
                 >
                   {importVendorsFromQB.isPending ? (
