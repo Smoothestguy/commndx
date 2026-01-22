@@ -1,4 +1,5 @@
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
+import { toast } from "sonner";
 import { useParams, useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -291,29 +292,86 @@ const PersonnelOnboarding = () => {
   };
 
   const handleSubmit = async () => {
-    if (!canProceed() || !validationResult?.token || !validationResult?.personnel) return;
+    // Validate session is still active
+    if (!validationResult?.token || !validationResult?.personnel) {
+      toast.error("Your session has expired. Please refresh the page and request a new onboarding link.");
+      return;
+    }
 
-    await completeOnboarding.mutateAsync({
-      token: validationResult.token.token,
-      personnelId: validationResult.personnel.id,
-      formData: formData as OnboardingFormData,
-      // Pass extended fields separately
-      bankName: formData.bank_name,
-      bankAccountType: formData.bank_account_type,
-      bankRoutingNumber: formData.bank_routing_number,
-      bankAccountNumber: formData.bank_account_number,
-      directDepositSignature: formData.direct_deposit_signature,
-      taxClassification: formData.tax_classification,
-      taxEin: formData.tax_ein,
-      taxBusinessName: formData.tax_business_name,
-      w9Signature: formData.w9_signature,
-      w9Certification: formData.w9_certification,
-      icaSignature: formData.ica_signature,
-    });
-    
-    // Redirect to personalized thank you page
-    navigate(`/onboarding-complete/${token}`, { replace: true });
+    // Check if token is expired
+    if (validationResult.token.expires_at) {
+      const expiresAt = new Date(validationResult.token.expires_at);
+      if (expiresAt < new Date()) {
+        toast.error("Your onboarding link has expired. Please request a new one.");
+        return;
+      }
+    }
+
+    if (!canProceed()) {
+      toast.error("Please complete all required fields before submitting.");
+      return;
+    }
+
+    try {
+      await completeOnboarding.mutateAsync({
+        token: validationResult.token.token,
+        personnelId: validationResult.personnel.id,
+        formData: formData as OnboardingFormData,
+        // Pass extended fields separately
+        bankName: formData.bank_name,
+        bankAccountType: formData.bank_account_type,
+        bankRoutingNumber: formData.bank_routing_number,
+        bankAccountNumber: formData.bank_account_number,
+        directDepositSignature: formData.direct_deposit_signature,
+        taxClassification: formData.tax_classification,
+        taxEin: formData.tax_ein,
+        taxBusinessName: formData.tax_business_name,
+        w9Signature: formData.w9_signature,
+        w9Certification: formData.w9_certification,
+        icaSignature: formData.ica_signature,
+      });
+      
+      // Redirect to personalized thank you page
+      navigate(`/onboarding-complete/${token}`, { replace: true });
+    } catch (error) {
+      console.error("[Onboarding] Submit error:", error);
+      // The mutation's onError handler shows a toast, but add fallback
+      if (error instanceof Error && !error.message.includes("toast")) {
+        toast.error("Failed to complete onboarding. Please try again.");
+      }
+    }
   };
+
+  // Token expiration warning
+  useEffect(() => {
+    if (!validationResult?.token?.expires_at) return;
+    
+    const expiresAt = new Date(validationResult.token.expires_at);
+    const warningTime = 30 * 60 * 1000; // 30 minutes before expiry
+    const now = new Date();
+    
+    const timeUntilExpiry = expiresAt.getTime() - now.getTime();
+    const timeUntilWarning = timeUntilExpiry - warningTime;
+    
+    // Already expired or within warning window
+    if (timeUntilExpiry <= 0) {
+      toast.error("Your onboarding link has expired. Please request a new one.");
+      return;
+    }
+    
+    if (timeUntilWarning <= 0) {
+      const minutesLeft = Math.ceil(timeUntilExpiry / 60000);
+      toast.warning(`Your session will expire in ${minutesLeft} minutes. Please complete and submit the form soon.`);
+      return;
+    }
+    
+    const timer = setTimeout(() => {
+      const minutesLeft = Math.ceil(warningTime / 60000);
+      toast.warning(`Your session will expire in about ${minutesLeft} minutes. Please complete and submit the form soon.`);
+    }, timeUntilWarning);
+    
+    return () => clearTimeout(timer);
+  }, [validationResult?.token?.expires_at]);
 
   // Loading state
   if (isLoading) {
