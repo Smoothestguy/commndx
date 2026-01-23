@@ -5,7 +5,7 @@ import { ConversationThread } from "@/components/messaging/ConversationThread";
 import { NewConversationDialog } from "@/components/messaging/NewConversationDialog";
 import { Button } from "@/components/ui/button";
 import { useConversations, Conversation } from "@/integrations/supabase/hooks/useConversations";
-import { Plus, MessageCircle, PanelLeftOpen } from "lucide-react";
+import { Plus, MessageCircle } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
@@ -93,20 +93,6 @@ export default function Conversations() {
 
       {/* Main content */}
       <div className="flex-1 flex overflow-hidden">
-        {/* Collapsed sidebar - show expand button */}
-        {isSidebarCollapsed && (
-          <div className="hidden md:flex border-r bg-background flex-shrink-0 flex-col items-center py-3">
-            <Button
-              variant="ghost"
-              size="icon"
-              onClick={() => setIsSidebarCollapsed(false)}
-              className="h-9 w-9"
-            >
-              <PanelLeftOpen className="h-5 w-5" />
-            </Button>
-          </div>
-        )}
-
         {/* Conversation list - hidden on mobile when a conversation is selected */}
         <div
           className={cn(
