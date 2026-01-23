@@ -34,6 +34,7 @@ import { cn } from "@/lib/utils";
 import { SignaturePad } from "@/components/form-builder/SignaturePad";
 import { FormFileUpload } from "@/components/form-builder/FormFileUpload";
 import { useApplicantLookup, FoundApplicantData, LookupResult } from "@/hooks/useApplicantLookup";
+import { SEO } from "@/components/SEO";
 
 // Helper function to render fields based on layout
 function renderFieldsWithLayout(
@@ -890,13 +891,19 @@ export default function PublicApplicationForm() {
   const hasTheme = theme.backgroundImage || theme.backgroundGradient || theme.backgroundColor;
 
   return (
-    <div 
-      className={cn("min-h-screen py-8 px-4", !hasTheme && "bg-muted/30")}
-      style={{
-        ...getBackgroundStyle(),
-        fontFamily: theme.fontFamily || "inherit",
-      }}
-    >
+    <>
+      <SEO 
+        title={`Apply - ${taskOrder.title}`}
+        description={taskOrder.job_description?.slice(0, 160) || "Submit your job application"}
+        image={theme.backgroundImage}
+      />
+      <div 
+        className={cn("min-h-screen py-8 px-4", !hasTheme && "bg-muted/30")}
+        style={{
+          ...getBackgroundStyle(),
+          fontFamily: theme.fontFamily || "inherit",
+        }}
+      >
       <div className="max-w-2xl mx-auto space-y-6">
         {/* Language Selector */}
         <div className="flex justify-end">
@@ -908,7 +915,12 @@ export default function PublicApplicationForm() {
         </div>
 
         {/* Job Info Card */}
-        <Card className={cn(theme.backgroundImage && "bg-background/95 backdrop-blur-sm")}>
+        <Card 
+          className={cn(theme.backgroundImage && "backdrop-blur-sm")}
+          style={theme.backgroundImage ? { 
+            backgroundColor: `hsl(var(--background) / ${(theme.cardOpacity ?? 90) / 100})` 
+          } : undefined}
+        >
           <CardHeader>
             <CardTitle className="text-xl">{taskOrder.title}</CardTitle>
           </CardHeader>
@@ -940,7 +952,12 @@ export default function PublicApplicationForm() {
         </Card>
 
         {/* Application Form */}
-        <Card className={cn(theme.backgroundImage && "bg-background/95 backdrop-blur-sm")}>
+        <Card 
+          className={cn(theme.backgroundImage && "backdrop-blur-sm")}
+          style={theme.backgroundImage ? { 
+            backgroundColor: `hsl(var(--background) / ${(theme.cardOpacity ?? 90) / 100})` 
+          } : undefined}
+        >
           <CardHeader>
             <CardTitle>Apply for this Position</CardTitle>
             <CardDescription>Fill out the form below to submit your application</CardDescription>
@@ -1258,5 +1275,6 @@ export default function PublicApplicationForm() {
         </Card>
       </div>
     </div>
+    </>
   );
 }
