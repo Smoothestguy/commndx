@@ -254,13 +254,24 @@ export function useSendConversationMessage() {
       conversationId,
       content,
       messageType = "in_app",
+      sendViaSMS = false,
+      recipientType,
+      recipientId,
+      recipientName,
+      recipientPhone,
     }: {
       conversationId: string;
       content: string;
       messageType?: "in_app" | "sms";
+      sendViaSMS?: boolean;
+      recipientType?: string;
+      recipientId?: string;
+      recipientName?: string;
+      recipientPhone?: string;
     }) => {
       if (!user) throw new Error("Not authenticated");
 
+      // Insert message into conversation_messages
       const { data, error } = await supabase
         .from("conversation_messages")
         .insert({
@@ -268,12 +279,39 @@ export function useSendConversationMessage() {
           sender_type: "user",
           sender_id: user.id,
           content,
-          message_type: messageType,
+          message_type: sendViaSMS ? "sms" : messageType,
         })
         .select()
         .single();
 
       if (error) throw error;
+
+      // If SMS delivery requested, send via edge function
+      if (sendViaSMS && recipientPhone && recipientType && recipientId && recipientName) {
+        try {
+          const { error: smsError } = await supabase.functions.invoke("send-sms", {
+            body: {
+              recipientType,
+              recipientId,
+              recipientName,
+              recipientPhone,
+              content,
+            },
+          });
+
+          if (smsError) {
+            console.error("Failed to send SMS:", smsError);
+            // Update message type back to in_app if SMS failed
+            await supabase
+              .from("conversation_messages")
+              .update({ message_type: "in_app" })
+              .eq("id", data.id);
+          }
+        } catch (smsErr) {
+          console.error("SMS sending error:", smsErr);
+        }
+      }
+
       return data;
     },
     onSuccess: (_, variables) => {

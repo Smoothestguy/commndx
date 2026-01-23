@@ -1,6 +1,6 @@
 import { format } from "date-fns";
 import { cn } from "@/lib/utils";
-import { Check, CheckCheck } from "lucide-react";
+import { Check, CheckCheck, Smartphone } from "lucide-react";
 
 interface MessageBubbleProps {
   content: string;
@@ -9,6 +9,7 @@ interface MessageBubbleProps {
   isOwnMessage: boolean;
   isRead?: boolean;
   isDelivered?: boolean;
+  messageType?: "in_app" | "sms";
 }
 
 export function MessageBubble({
@@ -18,6 +19,7 @@ export function MessageBubble({
   isOwnMessage,
   isRead,
   isDelivered,
+  messageType = "in_app",
 }: MessageBubbleProps) {
   return (
     <div
@@ -31,7 +33,7 @@ export function MessageBubble({
           {senderName}
         </span>
       )}
-      
+
       <div
         className={cn(
           "rounded-2xl px-4 py-2 break-words",
@@ -47,6 +49,9 @@ export function MessageBubble({
         <span className="text-xs text-muted-foreground">
           {format(new Date(timestamp), "h:mm a")}
         </span>
+        {messageType === "sms" && (
+          <Smartphone className="h-3 w-3 text-muted-foreground" />
+        )}
         {isOwnMessage && (
           <span className="text-muted-foreground">
             {isRead ? (
