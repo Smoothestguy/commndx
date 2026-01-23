@@ -21,7 +21,7 @@ export function ProjectSection({
   title,
   icon,
   count,
-  defaultOpen = true,
+  defaultOpen = false,
   children,
   className,
 }: ProjectSectionProps) {
