@@ -96,7 +96,7 @@ export function PostingEntryCard({
         <div className="shrink-0">
           {profilePic ? (
             <SecureAvatar
-              bucket="personnel-photos"
+              bucket="application-files"
               photoUrl={profilePic}
               className="h-12 w-12 ring-2 ring-primary/20"
               fallback={<ImageOff className="h-5 w-5 text-muted-foreground" />}

@@ -86,7 +86,7 @@ export function MobileApplicationCard({
       <CardContent className="p-4">
         <div className="flex items-start gap-3">
           <SecureAvatar
-            bucket="personnel-photos"
+            bucket="application-files"
             photoUrl={profilePic}
             className="h-10 w-10 flex-shrink-0"
             fallback={<User className="h-4 w-4" />}

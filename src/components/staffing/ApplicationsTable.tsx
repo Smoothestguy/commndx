@@ -134,7 +134,7 @@ export function ApplicationsTable({
         return (
           <div className="flex items-center gap-3">
             <SecureAvatar
-              bucket="personnel-photos"
+              bucket="application-files"
               photoUrl={profilePic}
               className="h-9 w-9"
               fallback={<User className="h-4 w-4" />}
