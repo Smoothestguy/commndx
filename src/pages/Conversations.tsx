@@ -5,12 +5,7 @@ import { ConversationThread } from "@/components/messaging/ConversationThread";
 import { NewConversationDialog } from "@/components/messaging/NewConversationDialog";
 import { Button } from "@/components/ui/button";
 import { useConversations, Conversation } from "@/integrations/supabase/hooks/useConversations";
-import { Plus, MessageCircle, ChevronDown } from "lucide-react";
-import {
-  Collapsible,
-  CollapsibleContent,
-  CollapsibleTrigger,
-} from "@/components/ui/collapsible";
+import { Plus, MessageCircle, PanelLeftOpen } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
@@ -19,7 +14,7 @@ export default function Conversations() {
   const [searchParams, setSearchParams] = useSearchParams();
   const [selectedConversation, setSelectedConversation] = useState<Conversation | null>(null);
   const [showNewDialog, setShowNewDialog] = useState(false);
-  const [isListOpen, setIsListOpen] = useState(true);
+  const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
   const { data: conversations } = useConversations();
 
   // Fetch recipient phone number when a conversation is selected
@@ -98,30 +93,32 @@ export default function Conversations() {
 
       {/* Main content */}
       <div className="flex-1 flex overflow-hidden">
+        {/* Collapsed sidebar - show expand button */}
+        {isSidebarCollapsed && (
+          <div className="hidden md:flex border-r bg-background flex-shrink-0 flex-col items-center py-3">
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={() => setIsSidebarCollapsed(false)}
+              className="h-9 w-9"
+            >
+              <PanelLeftOpen className="h-5 w-5" />
+            </Button>
+          </div>
+        )}
+
         {/* Conversation list - hidden on mobile when a conversation is selected */}
         <div
           className={cn(
-            "w-full md:w-80 lg:w-96 border-r bg-background flex-shrink-0 flex flex-col",
-            selectedConversation && "hidden md:block"
+            "w-full md:w-80 lg:w-96 border-r bg-background flex-shrink-0 flex flex-col transition-all duration-200",
+            selectedConversation && "hidden md:flex",
+            isSidebarCollapsed && "hidden"
           )}
         >
-          <Collapsible open={isListOpen} onOpenChange={setIsListOpen}>
-            <CollapsibleTrigger className="flex items-center justify-between w-full p-3 hover:bg-muted/50 transition-colors border-b">
-              <span className="text-sm font-medium text-muted-foreground">
-                Conversations
-              </span>
-              <ChevronDown className={cn(
-                "h-4 w-4 text-muted-foreground transition-transform duration-200",
-                isListOpen && "rotate-180"
-              )} />
-            </CollapsibleTrigger>
-            <CollapsibleContent>
-              <ConversationList
-                selectedConversationId={selectedConversation?.id || null}
-                onSelectConversation={handleSelectConversation}
-              />
-            </CollapsibleContent>
-          </Collapsible>
+          <ConversationList
+            selectedConversationId={selectedConversation?.id || null}
+            onSelectConversation={handleSelectConversation}
+          />
         </div>
 
         {/* Conversation thread - full width on mobile when selected */}
@@ -135,6 +132,8 @@ export default function Conversations() {
             conversation={selectedConversation}
             onBack={handleBack}
             recipientPhone={recipientPhone}
+            onToggleSidebar={() => setIsSidebarCollapsed(!isSidebarCollapsed)}
+            isSidebarCollapsed={isSidebarCollapsed}
           />
         </div>
       </div>
