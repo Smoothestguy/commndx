@@ -19,9 +19,10 @@ import { Button } from "@/components/ui/button";
 interface ConversationThreadProps {
   conversation: Conversation | null;
   onBack?: () => void;
+  recipientPhone?: string | null;
 }
 
-export function ConversationThread({ conversation, onBack }: ConversationThreadProps) {
+export function ConversationThread({ conversation, onBack, recipientPhone }: ConversationThreadProps) {
   const { user } = useAuth();
   const scrollRef = useRef<HTMLDivElement>(null);
   const [hasScrolledToBottom, setHasScrolledToBottom] = useState(false);
@@ -48,11 +49,22 @@ export function ConversationThread({ conversation, onBack }: ConversationThreadP
     }
   }, [messages]);
 
-  const handleSendMessage = async (content: string) => {
+  const handleSendMessage = async (content: string, sendViaSMS?: boolean) => {
     if (!conversation) return;
+
+    // Get the other participant info
+    const isParticipant1 = conversation.participant_1_type === "user";
+    const otherType = isParticipant1 ? conversation.participant_2_type : conversation.participant_1_type;
+    const otherId = isParticipant1 ? conversation.participant_2_id : conversation.participant_1_id;
+
     await sendMessage.mutateAsync({
       conversationId: conversation.id,
       content,
+      sendViaSMS: sendViaSMS || false,
+      recipientType: otherType,
+      recipientId: otherId,
+      recipientName: conversation.other_participant_name || "Unknown",
+      recipientPhone: recipientPhone || undefined,
     });
   };
 
@@ -177,6 +189,7 @@ export function ConversationThread({ conversation, onBack }: ConversationThreadP
                       isOwnMessage={message.sender_type === "user" && message.sender_id === user?.id}
                       isRead={!!message.read_at}
                       isDelivered={!!message.delivered_at}
+                      messageType={message.message_type as "in_app" | "sms"}
                     />
                   ))}
                 </div>
@@ -192,6 +205,8 @@ export function ConversationThread({ conversation, onBack }: ConversationThreadP
           onSend={handleSendMessage}
           isLoading={sendMessage.isPending}
           placeholder={`Message ${conversation.other_participant_name}...`}
+          showSMSToggle={conversation.other_participant_type === "personnel" || conversation.other_participant_type === "customer"}
+          recipientPhone={recipientPhone}
         />
       </div>
     </div>

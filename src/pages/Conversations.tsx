@@ -7,12 +7,48 @@ import { Button } from "@/components/ui/button";
 import { useConversations, Conversation } from "@/integrations/supabase/hooks/useConversations";
 import { Plus, MessageCircle } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { useQuery } from "@tanstack/react-query";
+import { supabase } from "@/integrations/supabase/client";
 
 export default function Conversations() {
   const [searchParams, setSearchParams] = useSearchParams();
   const [selectedConversation, setSelectedConversation] = useState<Conversation | null>(null);
   const [showNewDialog, setShowNewDialog] = useState(false);
   const { data: conversations } = useConversations();
+
+  // Fetch recipient phone number when a conversation is selected
+  const { data: recipientPhone } = useQuery({
+    queryKey: ["recipient-phone", selectedConversation?.id],
+    queryFn: async () => {
+      if (!selectedConversation) return null;
+
+      // Determine who the other participant is
+      const otherType = selectedConversation.other_participant_type;
+      const isParticipant1 = selectedConversation.participant_1_type === "user";
+      const otherId = isParticipant1
+        ? selectedConversation.participant_2_id
+        : selectedConversation.participant_1_id;
+
+      if (otherType === "personnel") {
+        const { data: personnel } = await supabase
+          .from("personnel")
+          .select("phone")
+          .eq("id", otherId)
+          .single();
+        return personnel?.phone || null;
+      } else if (otherType === "customer") {
+        const { data: customer } = await supabase
+          .from("customers")
+          .select("phone")
+          .eq("id", otherId)
+          .single();
+        return customer?.phone || null;
+      }
+
+      return null;
+    },
+    enabled: !!selectedConversation,
+  });
 
   // Handle URL params for conversation ID
   useEffect(() => {
@@ -79,6 +115,7 @@ export default function Conversations() {
           <ConversationThread
             conversation={selectedConversation}
             onBack={handleBack}
+            recipientPhone={recipientPhone}
           />
         </div>
       </div>

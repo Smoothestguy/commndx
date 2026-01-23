@@ -1,24 +1,42 @@
 import { useState, useRef, KeyboardEvent } from "react";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
-import { Send, Loader2 } from "lucide-react";
+import { Send, Loader2, Smartphone } from "lucide-react";
+import { cn } from "@/lib/utils";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
 
 interface MessageInputProps {
-  onSend: (content: string) => Promise<void>;
+  onSend: (content: string, sendViaSMS?: boolean) => Promise<void>;
   isLoading?: boolean;
   placeholder?: string;
+  showSMSToggle?: boolean;
+  recipientPhone?: string | null;
 }
 
-export function MessageInput({ onSend, isLoading, placeholder = "Type a message..." }: MessageInputProps) {
+export function MessageInput({
+  onSend,
+  isLoading,
+  placeholder = "Type a message...",
+  showSMSToggle = false,
+  recipientPhone,
+}: MessageInputProps) {
   const [message, setMessage] = useState("");
+  const [sendViaSMS, setSendViaSMS] = useState(false);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
+
+  const hasSMSCapability = showSMSToggle && recipientPhone;
 
   const handleSend = async () => {
     const trimmedMessage = message.trim();
     if (!trimmedMessage || isLoading) return;
 
     try {
-      await onSend(trimmedMessage);
+      await onSend(trimmedMessage, !!(sendViaSMS && hasSMSCapability));
       setMessage("");
       // Reset textarea height
       if (textareaRef.current) {
@@ -39,11 +57,17 @@ export function MessageInput({ onSend, isLoading, placeholder = "Type a message.
 
   const handleInput = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
     setMessage(e.target.value);
-    
+
     // Auto-resize textarea
     const textarea = e.target;
     textarea.style.height = "auto";
     textarea.style.height = `${Math.min(textarea.scrollHeight, 120)}px`;
+  };
+
+  const toggleSMS = () => {
+    if (hasSMSCapability) {
+      setSendViaSMS(!sendViaSMS);
+    }
   };
 
   return (
@@ -58,6 +82,34 @@ export function MessageInput({ onSend, isLoading, placeholder = "Type a message.
         rows={1}
         disabled={isLoading}
       />
+      {showSMSToggle && (
+        <TooltipProvider>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Button
+                type="button"
+                variant={sendViaSMS ? "default" : "outline"}
+                size="icon"
+                className={cn(
+                  "h-11 w-11 shrink-0 transition-colors",
+                  !hasSMSCapability && "opacity-50 cursor-not-allowed"
+                )}
+                onClick={toggleSMS}
+                disabled={!hasSMSCapability}
+              >
+                <Smartphone className="h-5 w-5" />
+              </Button>
+            </TooltipTrigger>
+            <TooltipContent>
+              {hasSMSCapability
+                ? sendViaSMS
+                  ? "SMS delivery enabled"
+                  : "Click to also send via SMS"
+                : "No phone number available"}
+            </TooltipContent>
+          </Tooltip>
+        </TooltipProvider>
+      )}
       <Button
         onClick={handleSend}
         disabled={!message.trim() || isLoading}
