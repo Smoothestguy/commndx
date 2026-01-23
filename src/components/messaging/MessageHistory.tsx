@@ -15,9 +15,10 @@ import { SearchInput } from "@/components/ui/search-input";
 interface MessageHistoryProps {
   recipientType?: 'customer' | 'personnel';
   recipientId?: string;
+  onMessageClick?: (message: Message) => void;
 }
 
-export function MessageHistory({ recipientType, recipientId }: MessageHistoryProps) {
+export function MessageHistory({ recipientType, recipientId, onMessageClick }: MessageHistoryProps) {
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState<string>("all");
   const [typeFilter, setTypeFilter] = useState<string>("all");
@@ -115,7 +116,11 @@ export function MessageHistory({ recipientType, recipientId }: MessageHistoryPro
       {filteredMessages && filteredMessages.length > 0 ? (
         <div className="space-y-3">
           {filteredMessages.map((message) => (
-            <MessageCard key={message.id} message={message} />
+            <MessageCard 
+              key={message.id} 
+              message={message} 
+              onClick={onMessageClick ? () => onMessageClick(message) : undefined}
+            />
           ))}
         </div>
       ) : (

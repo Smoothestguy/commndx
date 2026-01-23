@@ -1,10 +1,13 @@
 import { useState } from "react";
+import { useSearchParams } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { MessageHistory } from "@/components/messaging/MessageHistory";
 import { SendSMSDialog } from "@/components/messaging/SendSMSDialog";
 import { useCustomers } from "@/integrations/supabase/hooks/useCustomers";
 import { usePersonnel } from "@/integrations/supabase/hooks/usePersonnel";
+import { useGetOrCreateConversation } from "@/integrations/supabase/hooks/useConversations";
+import { Message } from "@/integrations/supabase/hooks/useMessages";
 import {
   Select,
   SelectContent,
@@ -24,8 +27,10 @@ import {
 } from "@/components/ui/command";
 import { MessageSquare, Send, Users, Check, ChevronsUpDown } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { toast } from "sonner";
 
 export function SMSBlastsTab() {
+  const [, setSearchParams] = useSearchParams();
   const [sendDialogOpen, setSendDialogOpen] = useState(false);
   const [selectedRecipientType, setSelectedRecipientType] = useState<'customer' | 'personnel'>('customer');
   const [selectedRecipientId, setSelectedRecipientId] = useState<string>("");
@@ -33,6 +38,7 @@ export function SMSBlastsTab() {
   
   const { data: customers } = useCustomers();
   const { data: personnel } = usePersonnel();
+  const getOrCreateConversation = useGetOrCreateConversation();
 
   const selectedCustomer = customers?.find(c => c.id === selectedRecipientId);
   const selectedPersonnel = personnel?.find(p => p.id === selectedRecipientId);
@@ -48,6 +54,21 @@ export function SMSBlastsTab() {
   const handleNewMessage = () => {
     if (selectedRecipient && recipientPhone) {
       setSendDialogOpen(true);
+    }
+  };
+
+  const handleMessageClick = async (message: Message) => {
+    try {
+      const conversation = await getOrCreateConversation.mutateAsync({
+        participantType: message.recipient_type as "customer" | "personnel",
+        participantId: message.recipient_id,
+      });
+      
+      // Navigate to inbox with this conversation selected
+      setSearchParams({ tab: "inbox", conversation: conversation.id });
+    } catch (error) {
+      console.error("Failed to open conversation:", error);
+      toast.error("Failed to open conversation");
     }
   };
 
@@ -165,7 +186,7 @@ export function SMSBlastsTab() {
           </CardTitle>
         </CardHeader>
         <CardContent>
-          <MessageHistory />
+          <MessageHistory onMessageClick={handleMessageClick} />
         </CardContent>
       </Card>
 
