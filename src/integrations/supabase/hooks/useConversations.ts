@@ -433,3 +433,22 @@ export function useTotalUnreadCount() {
     enabled: !!user,
   });
 }
+
+export function useDeleteConversationMessage() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async (messageId: string) => {
+      const { error } = await supabase
+        .from("conversation_messages")
+        .delete()
+        .eq("id", messageId);
+
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["conversation-messages"] });
+      queryClient.invalidateQueries({ queryKey: ["conversations"] });
+    },
+  });
+}

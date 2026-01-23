@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { useMessages, Message } from "@/integrations/supabase/hooks/useMessages";
+import { useMessages, useDeleteMessage, Message } from "@/integrations/supabase/hooks/useMessages";
 import { MessageCard } from "./MessageCard";
 import {
   Select,
@@ -16,9 +16,11 @@ interface MessageHistoryProps {
   recipientType?: 'customer' | 'personnel';
   recipientId?: string;
   onMessageClick?: (message: Message) => void;
+  onDeleteMessage?: (messageId: string) => void;
 }
 
-export function MessageHistory({ recipientType, recipientId, onMessageClick }: MessageHistoryProps) {
+export function MessageHistory({ recipientType, recipientId, onMessageClick, onDeleteMessage }: MessageHistoryProps) {
+  const deleteMessage = useDeleteMessage();
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState<string>("all");
   const [typeFilter, setTypeFilter] = useState<string>("all");
@@ -120,6 +122,8 @@ export function MessageHistory({ recipientType, recipientId, onMessageClick }: M
               key={message.id} 
               message={message} 
               onClick={onMessageClick ? () => onMessageClick(message) : undefined}
+              onDelete={onDeleteMessage || ((id) => deleteMessage.mutate(id))}
+              isDeleting={deleteMessage.isPending}
             />
           ))}
         </div>

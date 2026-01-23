@@ -4,16 +4,35 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Message } from "@/integrations/supabase/hooks/useMessages";
-import { MessageSquare, Phone, User, Clock, AlertCircle, CheckCircle, Reply, ChevronDown, ChevronUp, ArrowDownLeft, ArrowUpRight } from "lucide-react";
+import { MessageSquare, Phone, User, Clock, AlertCircle, CheckCircle, Reply, ChevronDown, ChevronUp, ArrowDownLeft, ArrowUpRight, MoreVertical, Trash2 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 
 interface MessageCardProps {
   message: Message;
   onClick?: () => void;
+  onDelete?: (messageId: string) => void;
+  isDeleting?: boolean;
 }
 
-export function MessageCard({ message, onClick }: MessageCardProps) {
+export function MessageCard({ message, onClick, onDelete, isDeleting }: MessageCardProps) {
   const [showResponse, setShowResponse] = useState(false);
+  const [showDeleteDialog, setShowDeleteDialog] = useState(false);
   
   const getStatusBadge = () => {
     switch (message.status) {
@@ -159,15 +178,69 @@ export function MessageCard({ message, onClick }: MessageCardProps) {
             )}
           </div>
 
-          <div className="text-right text-xs text-muted-foreground flex-shrink-0">
-            <div className="flex items-center gap-1">
-              <Clock className="h-3 w-3" />
-              {format(new Date(message.created_at), "MMM d, yyyy")}
+          <div className="text-right text-xs text-muted-foreground flex-shrink-0 flex flex-col items-end gap-2">
+            <div>
+              <div className="flex items-center gap-1">
+                <Clock className="h-3 w-3" />
+                {format(new Date(message.created_at), "MMM d, yyyy")}
+              </div>
+              <div>{format(new Date(message.created_at), "h:mm a")}</div>
             </div>
-            <div>{format(new Date(message.created_at), "h:mm a")}</div>
+            
+            {onDelete && (
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button 
+                    variant="ghost" 
+                    size="icon" 
+                    className="h-8 w-8"
+                    onClick={(e) => e.stopPropagation()}
+                  >
+                    <MoreVertical className="h-4 w-4" />
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end">
+                  <DropdownMenuItem 
+                    className="text-destructive focus:text-destructive"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setShowDeleteDialog(true);
+                    }}
+                  >
+                    <Trash2 className="mr-2 h-4 w-4" />
+                    Delete
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
+            )}
           </div>
         </div>
       </CardContent>
+
+      {/* Delete Confirmation Dialog */}
+      <AlertDialog open={showDeleteDialog} onOpenChange={setShowDeleteDialog}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete Message</AlertDialogTitle>
+            <AlertDialogDescription>
+              Are you sure you want to delete this message to {message.recipient_name}? This action cannot be undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={() => {
+                onDelete(message.id);
+                setShowDeleteDialog(false);
+              }}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              disabled={isDeleting}
+            >
+              {isDeleting ? "Deleting..." : "Delete"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </Card>
   );
 }
