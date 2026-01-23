@@ -9,9 +9,10 @@ import { cn } from "@/lib/utils";
 
 interface MessageCardProps {
   message: Message;
+  onClick?: () => void;
 }
 
-export function MessageCard({ message }: MessageCardProps) {
+export function MessageCard({ message, onClick }: MessageCardProps) {
   const [showResponse, setShowResponse] = useState(false);
   
   const getStatusBadge = () => {
@@ -79,10 +80,14 @@ export function MessageCard({ message }: MessageCardProps) {
   };
 
   return (
-    <Card className={cn(
-      "hover:shadow-md transition-shadow",
-      message.has_response && "border-l-4 border-l-blue-500"
-    )}>
+    <Card 
+      className={cn(
+        "hover:shadow-md transition-shadow",
+        message.has_response && "border-l-4 border-l-blue-500",
+        onClick && "cursor-pointer hover:bg-muted/50"
+      )}
+      onClick={onClick}
+    >
       <CardContent className="p-4">
         <div className="flex items-start justify-between gap-4">
           <div className="flex-1 min-w-0">
