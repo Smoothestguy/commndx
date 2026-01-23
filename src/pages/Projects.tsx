@@ -5,7 +5,7 @@ import { PageLayout } from "@/components/layout/PageLayout";
 import { EnhancedDataTable, EnhancedColumn } from "@/components/shared/EnhancedDataTable";
 import { StatusBadge } from "@/components/shared/StatusBadge";
 import { Button } from "@/components/ui/button";
-import { Plus, Edit, Trash2, Loader2 } from "lucide-react";
+import { Plus, Edit, Trash2, Loader2, Users as UsersIcon } from "lucide-react";
 import { SearchInput } from "@/components/ui/search-input";
 import { PullToRefreshWrapper } from "@/components/shared/PullToRefreshWrapper";
 import { ProjectCard } from "@/components/projects/ProjectCard";
@@ -17,10 +17,12 @@ import { FloatingActionButton } from "@/components/shared/FloatingActionButton";
 import { useIsMobile, useIsTablet } from "@/hooks/use-mobile";
 import { useProjects, useAddProject, useUpdateProject, useDeleteProject, Project, ProjectStage } from "@/integrations/supabase/hooks/useProjects";
 import { useCustomers } from "@/integrations/supabase/hooks/useCustomers";
+import { useAssignmentCountsByProject } from "@/integrations/supabase/hooks/usePersonnelProjectAssignments";
 import { format } from "date-fns";
 import { Badge } from "@/components/ui/badge";
 import { stageConfig } from "@/components/projects/ProjectCard";
 import { getCustomerDisplayName } from "@/utils/customerDisplayName";
+import { Users } from "lucide-react";
 
 const Projects = () => {
   const navigate = useNavigate();
@@ -32,6 +34,10 @@ const Projects = () => {
   const addProject = useAddProject();
   const updateProject = useUpdateProject();
   const deleteProject = useDeleteProject();
+  
+  // Get assignment counts for all projects
+  const projectIds = projects?.map(p => p.id) || [];
+  const { data: assignmentCounts } = useAssignmentCountsByProject(projectIds);
   
   const [search, setSearch] = useState("");
   const [filterStatus, setFilterStatus] = useState<string>("all");
@@ -142,6 +148,22 @@ const Projects = () => {
       filterable: true,
       getValue: (item) => item.status,
       render: (item) => <StatusBadge status={item.status} />,
+    },
+    {
+      key: "team",
+      header: "Team",
+      sortable: true,
+      filterable: false,
+      getValue: (item) => assignmentCounts?.[item.id] ?? 0,
+      render: (item) => {
+        const count = assignmentCounts?.[item.id] ?? 0;
+        return (
+          <div className="flex items-center gap-1.5 text-muted-foreground">
+            <UsersIcon className="h-4 w-4" />
+            <span>{count}</span>
+          </div>
+        );
+      },
     },
     {
       key: "actions",
@@ -333,6 +355,7 @@ const Projects = () => {
                     key={project.id}
                     project={project}
                     customerName={getCustomerDisplayName(customers?.find(c => c.id === project.customer_id))}
+                    assignmentCount={assignmentCounts?.[project.id] ?? 0}
                     onEdit={() => handleEdit(project)}
                     onDelete={() => handleDelete(project.id)}
                     onClick={() => navigate(`/projects/${project.id}`)}
