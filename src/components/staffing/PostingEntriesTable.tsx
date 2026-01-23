@@ -302,7 +302,7 @@ export function PostingEntriesTable({
                             <div className="relative">
                               {profilePic ? (
                                 <SecureAvatar
-                                  bucket="personnel-photos"
+                                  bucket="application-files"
                                   photoUrl={profilePic}
                                   className="h-10 w-10 ring-2 ring-primary/20"
                                   fallback={<ImageOff className="h-4 w-4 text-muted-foreground" />}
