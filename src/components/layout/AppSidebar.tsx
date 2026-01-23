@@ -65,8 +65,7 @@ const navigation = [
   { name: "Estimates", href: "/estimates", icon: FileText },
   { name: "Purchase Orders", href: "/purchase-orders", icon: ShoppingCart },
   { name: "Invoices", href: "/invoices", icon: Receipt },
-  { name: "SMS Blasts", href: "/messages", icon: Send },
-  { name: "Conversations", href: "/conversations", icon: MessageCircle },
+  { name: "Messages", href: "/messages", icon: MessageCircle },
   { name: "QuickBooks", href: "/settings/quickbooks", icon: Link2 },
 ];
 
