@@ -407,42 +407,38 @@ const Projects = () => {
             {/* Mobile/Tablet Cards - hidden on desktop (1180px+) */}
             <div className="block min-[1180px]:hidden">
               <ProjectSection
-                title="Individual Contracts"
-                icon={<User className="h-4 w-4" />}
-                count={categorization.counts.individual}
-                defaultOpen={true}
-              >
-                {renderProjectCards(categorization.individualProjects)}
-              </ProjectSection>
-              
-              <ProjectSection
                 title="Team Projects"
                 icon={<UsersIcon className="h-4 w-4" />}
                 count={categorization.counts.team}
-                defaultOpen={true}
               >
                 {renderProjectCards(categorization.teamProjects)}
+              </ProjectSection>
+              
+              <ProjectSection
+                title="Individual Contracts"
+                icon={<User className="h-4 w-4" />}
+                count={categorization.counts.individual}
+              >
+                {renderProjectCards(categorization.individualProjects)}
               </ProjectSection>
             </div>
 
             {/* Desktop Table - hidden below 1180px */}
             <div className="hidden min-[1180px]:block">
               <ProjectSection
-                title="Individual Contracts"
-                icon={<User className="h-4 w-4" />}
-                count={categorization.counts.individual}
-                defaultOpen={true}
-              >
-                {renderProjectTable(categorization.individualProjects, "projects-individual")}
-              </ProjectSection>
-              
-              <ProjectSection
                 title="Team Projects"
                 icon={<UsersIcon className="h-4 w-4" />}
                 count={categorization.counts.team}
-                defaultOpen={true}
               >
                 {renderProjectTable(categorization.teamProjects, "projects-team")}
+              </ProjectSection>
+              
+              <ProjectSection
+                title="Individual Contracts"
+                icon={<User className="h-4 w-4" />}
+                count={categorization.counts.individual}
+              >
+                {renderProjectTable(categorization.individualProjects, "projects-individual")}
               </ProjectSection>
             </div>
           </>
