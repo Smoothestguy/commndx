@@ -34,6 +34,7 @@ import { ProjectPurchaseOrdersList } from "@/components/project-hub/ProjectPurch
 import { ProjectVendorBillsList } from "@/components/project-hub/ProjectVendorBillsList";
 import { ProjectTimeEntriesList } from "@/components/project-hub/ProjectTimeEntriesList";
 import { ProjectRateBracketsSection } from "@/components/project-hub/ProjectRateBracketsSection";
+import { ProjectPersonnelSection } from "@/components/project-hub/ProjectPersonnelSection";
 
 import { ProjectActivityTimeline } from "@/components/project-hub/ProjectActivityTimeline";
 import { AddTMTicketDialog } from "@/components/tm-tickets/AddTMTicketDialog";
@@ -546,6 +547,11 @@ const ProjectDetail = () => {
       {/* Rate Brackets */}
       <div className="mb-8">
         <ProjectRateBracketsSection projectId={id!} />
+      </div>
+
+      {/* Assigned Personnel */}
+      <div className="mb-8">
+        <ProjectPersonnelSection projectId={id!} />
       </div>
 
       {/* Milestones */}
