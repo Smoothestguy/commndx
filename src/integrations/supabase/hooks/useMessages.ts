@@ -17,6 +17,12 @@ export interface Message {
   sent_at: string | null;
   created_at: string;
   updated_at: string;
+  // Response tracking fields
+  has_response: boolean | null;
+  response_content: string | null;
+  response_received_at: string | null;
+  direction: 'inbound' | 'outbound' | null;
+  parent_message_id: string | null;
 }
 
 interface SendSMSParams {
@@ -31,6 +37,8 @@ export function useMessages(filters?: {
   recipientType?: 'customer' | 'personnel';
   recipientId?: string;
   status?: string;
+  hasResponse?: boolean;
+  direction?: 'inbound' | 'outbound';
 }) {
   return useQuery({
     queryKey: ["messages", filters],
@@ -48,6 +56,12 @@ export function useMessages(filters?: {
       }
       if (filters?.status) {
         query = query.eq("status", filters.status);
+      }
+      if (filters?.hasResponse !== undefined) {
+        query = query.eq("has_response", filters.hasResponse);
+      }
+      if (filters?.direction) {
+        query = query.eq("direction", filters.direction);
       }
 
       const { data, error } = await query;

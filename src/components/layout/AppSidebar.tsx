@@ -51,6 +51,7 @@ import {
   ClipboardList,
   FolderSearch,
   History,
+  MessageCircle,
 } from "lucide-react";
 import logo from "@/assets/logo.png";
 import logoDark from "@/assets/logo-dark.png";
@@ -64,7 +65,8 @@ const navigation = [
   { name: "Estimates", href: "/estimates", icon: FileText },
   { name: "Purchase Orders", href: "/purchase-orders", icon: ShoppingCart },
   { name: "Invoices", href: "/invoices", icon: Receipt },
-  { name: "Messages", href: "/messages", icon: Send },
+  { name: "SMS Blasts", href: "/messages", icon: Send },
+  { name: "Conversations", href: "/conversations", icon: MessageCircle },
   { name: "QuickBooks", href: "/settings/quickbooks", icon: Link2 },
 ];
 

@@ -1282,6 +1282,124 @@ export type Database = {
         }
         Relationships: []
       }
+      conversation_messages: {
+        Row: {
+          content: string
+          conversation_id: string
+          created_at: string | null
+          delivered_at: string | null
+          id: string
+          message_type: string | null
+          read_at: string | null
+          sender_id: string
+          sender_type: string
+        }
+        Insert: {
+          content: string
+          conversation_id: string
+          created_at?: string | null
+          delivered_at?: string | null
+          id?: string
+          message_type?: string | null
+          read_at?: string | null
+          sender_id: string
+          sender_type: string
+        }
+        Update: {
+          content?: string
+          conversation_id?: string
+          created_at?: string | null
+          delivered_at?: string | null
+          id?: string
+          message_type?: string | null
+          read_at?: string | null
+          sender_id?: string
+          sender_type?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "conversation_messages_conversation_id_fkey"
+            columns: ["conversation_id"]
+            isOneToOne: false
+            referencedRelation: "conversations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      conversation_participants: {
+        Row: {
+          conversation_id: string
+          created_at: string | null
+          id: string
+          last_read_at: string | null
+          participant_id: string
+          participant_type: string
+          unread_count: number | null
+        }
+        Insert: {
+          conversation_id: string
+          created_at?: string | null
+          id?: string
+          last_read_at?: string | null
+          participant_id: string
+          participant_type: string
+          unread_count?: number | null
+        }
+        Update: {
+          conversation_id?: string
+          created_at?: string | null
+          id?: string
+          last_read_at?: string | null
+          participant_id?: string
+          participant_type?: string
+          unread_count?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "conversation_participants_conversation_id_fkey"
+            columns: ["conversation_id"]
+            isOneToOne: false
+            referencedRelation: "conversations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      conversations: {
+        Row: {
+          created_at: string | null
+          id: string
+          last_message_at: string | null
+          last_message_preview: string | null
+          participant_1_id: string
+          participant_1_type: string
+          participant_2_id: string
+          participant_2_type: string
+          updated_at: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          id?: string
+          last_message_at?: string | null
+          last_message_preview?: string | null
+          participant_1_id: string
+          participant_1_type: string
+          participant_2_id: string
+          participant_2_type: string
+          updated_at?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          id?: string
+          last_message_at?: string | null
+          last_message_preview?: string | null
+          participant_1_id?: string
+          participant_1_type?: string
+          participant_2_id?: string
+          participant_2_type?: string
+          updated_at?: string | null
+        }
+        Relationships: []
+      }
       customers: {
         Row: {
           address: string | null
@@ -2597,15 +2715,20 @@ export type Database = {
         Row: {
           content: string
           created_at: string | null
+          direction: string | null
           error_message: string | null
           external_id: string | null
+          has_response: boolean | null
           id: string
           message_type: string
+          parent_message_id: string | null
           payload: Json | null
           recipient_id: string
           recipient_name: string
           recipient_phone: string
           recipient_type: string
+          response_content: string | null
+          response_received_at: string | null
           sent_at: string | null
           sent_by: string | null
           status: string
@@ -2614,15 +2737,20 @@ export type Database = {
         Insert: {
           content: string
           created_at?: string | null
+          direction?: string | null
           error_message?: string | null
           external_id?: string | null
+          has_response?: boolean | null
           id?: string
           message_type?: string
+          parent_message_id?: string | null
           payload?: Json | null
           recipient_id: string
           recipient_name: string
           recipient_phone: string
           recipient_type: string
+          response_content?: string | null
+          response_received_at?: string | null
           sent_at?: string | null
           sent_by?: string | null
           status?: string
@@ -2631,21 +2759,34 @@ export type Database = {
         Update: {
           content?: string
           created_at?: string | null
+          direction?: string | null
           error_message?: string | null
           external_id?: string | null
+          has_response?: boolean | null
           id?: string
           message_type?: string
+          parent_message_id?: string | null
           payload?: Json | null
           recipient_id?: string
           recipient_name?: string
           recipient_phone?: string
           recipient_type?: string
+          response_content?: string | null
+          response_received_at?: string | null
           sent_at?: string | null
           sent_by?: string | null
           status?: string
           updated_at?: string | null
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "messages_parent_message_id_fkey"
+            columns: ["parent_message_id"]
+            isOneToOne: false
+            referencedRelation: "messages"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       milestones: {
         Row: {

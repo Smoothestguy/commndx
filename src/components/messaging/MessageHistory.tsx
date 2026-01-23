@@ -21,11 +21,15 @@ export function MessageHistory({ recipientType, recipientId }: MessageHistoryPro
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState<string>("all");
   const [typeFilter, setTypeFilter] = useState<string>("all");
+  const [responseFilter, setResponseFilter] = useState<string>("all");
+  const [directionFilter, setDirectionFilter] = useState<string>("all");
 
   const { data: messages, isLoading } = useMessages({
     recipientType: recipientType || (typeFilter !== "all" ? typeFilter as 'customer' | 'personnel' : undefined),
     recipientId,
     status: statusFilter !== "all" ? statusFilter : undefined,
+    hasResponse: responseFilter === "all" ? undefined : responseFilter === "yes",
+    direction: directionFilter !== "all" ? directionFilter as 'inbound' | 'outbound' : undefined,
   });
 
   const filteredMessages = messages?.filter((message) => {
@@ -81,6 +85,28 @@ export function MessageHistory({ recipientType, recipientId }: MessageHistoryPro
               <SelectItem value="delivered">Delivered</SelectItem>
               <SelectItem value="failed">Failed</SelectItem>
               <SelectItem value="pending">Pending</SelectItem>
+            </SelectContent>
+          </Select>
+
+          <Select value={responseFilter} onValueChange={setResponseFilter}>
+            <SelectTrigger className="w-[150px]">
+              <SelectValue placeholder="Response" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">All Messages</SelectItem>
+              <SelectItem value="yes">Has Response</SelectItem>
+              <SelectItem value="no">No Response</SelectItem>
+            </SelectContent>
+          </Select>
+
+          <Select value={directionFilter} onValueChange={setDirectionFilter}>
+            <SelectTrigger className="w-[150px]">
+              <SelectValue placeholder="Direction" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">All Directions</SelectItem>
+              <SelectItem value="outbound">Outbound</SelectItem>
+              <SelectItem value="inbound">Inbound</SelectItem>
             </SelectContent>
           </Select>
         </div>
