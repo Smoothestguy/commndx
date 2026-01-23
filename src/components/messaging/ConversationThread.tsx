@@ -13,16 +13,18 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { Users, Building2, User, ArrowLeft } from "lucide-react";
+import { Users, Building2, User, ArrowLeft, PanelLeftClose, PanelLeftOpen } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
 interface ConversationThreadProps {
   conversation: Conversation | null;
   onBack?: () => void;
   recipientPhone?: string | null;
+  onToggleSidebar?: () => void;
+  isSidebarCollapsed?: boolean;
 }
 
-export function ConversationThread({ conversation, onBack, recipientPhone }: ConversationThreadProps) {
+export function ConversationThread({ conversation, onBack, recipientPhone, onToggleSidebar, isSidebarCollapsed }: ConversationThreadProps) {
   const { user } = useAuth();
   const scrollRef = useRef<HTMLDivElement>(null);
   const [hasScrolledToBottom, setHasScrolledToBottom] = useState(false);
@@ -134,6 +136,11 @@ export function ConversationThread({ conversation, onBack, recipientPhone }: Con
         {onBack && (
           <Button variant="ghost" size="icon" onClick={onBack} className="md:hidden">
             <ArrowLeft className="h-5 w-5" />
+          </Button>
+        )}
+        {onToggleSidebar && (
+          <Button variant="ghost" size="icon" onClick={onToggleSidebar} className="hidden md:flex">
+            {isSidebarCollapsed ? <PanelLeftOpen className="h-5 w-5" /> : <PanelLeftClose className="h-5 w-5" />}
           </Button>
         )}
         <Avatar className="h-10 w-10">
