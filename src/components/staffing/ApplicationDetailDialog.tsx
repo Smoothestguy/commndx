@@ -1,6 +1,6 @@
 import { useState, useMemo } from "react";
 import { format } from "date-fns";
-import { Pencil, User, Save, X, AlertCircle, RefreshCw, Trash2, ShieldCheck, Upload, Calendar } from "lucide-react";
+import { Pencil, User, Save, X, AlertCircle, RefreshCw, Trash2, ShieldCheck, Upload, Calendar, CheckCircle2, MessageSquare, Send } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
@@ -39,6 +39,11 @@ import {
   useApplicationFormTemplate,
   FormField,
 } from "@/integrations/supabase/hooks/useApplicationFormTemplates";
+import {
+  useApplicationNotes,
+  useAddApplicationNote,
+  useToggleApplicationContacted,
+} from "@/integrations/supabase/hooks/useApplicationNotes";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { RequestMissingInfoDialog } from "./RequestMissingInfoDialog";
@@ -77,6 +82,7 @@ export function ApplicationDetailDialog({
   const [bypassPhotoUrl, setBypassPhotoUrl] = useState<string>("");
   const [bypassDob, setBypassDob] = useState<string>("");
   const [isSavingBypass, setIsSavingBypass] = useState(false);
+  const [newNote, setNewNote] = useState("");
   const [editForm, setEditForm] = useState({
     first_name: "",
     last_name: "",
@@ -86,6 +92,11 @@ export function ApplicationDetailDialog({
   });
 
   const { isAdmin } = useUserRole();
+
+  // Application notes
+  const { data: notes = [], isLoading: notesLoading } = useApplicationNotes(application?.id);
+  const addNote = useAddApplicationNote();
+  const toggleContacted = useToggleApplicationContacted();
 
   const formTemplateId = application?.job_postings?.form_template_id;
   const { data: formTemplate } = useApplicationFormTemplate(
@@ -652,10 +663,95 @@ export function ApplicationDetailDialog({
 
                 <Separator />
 
-                {/* Admin Notes */}
+                {/* Contact Status & Notes Section */}
+                <div className="space-y-4">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                      <MessageSquare className="h-4 w-4 text-muted-foreground" />
+                      <Label className="text-muted-foreground text-sm font-medium">
+                        Notes & Communication
+                      </Label>
+                    </div>
+                    <Button
+                      variant={application.contacted_at ? "default" : "outline"}
+                      size="sm"
+                      onClick={() => {
+                        const newState = !application.contacted_at;
+                        toggleContacted.mutate(
+                          { applicationId: application.id, contacted: newState },
+                          {
+                            onSuccess: () => {
+                              toast.success(newState ? "Marked as contacted" : "Marked as not contacted");
+                            },
+                            onError: () => {
+                              toast.error("Failed to update contact status");
+                            },
+                          }
+                        );
+                      }}
+                      disabled={toggleContacted.isPending}
+                      className={application.contacted_at ? "bg-green-600 hover:bg-green-700" : ""}
+                    >
+                      <CheckCircle2 className="h-4 w-4 mr-2" />
+                      {application.contacted_at ? "Contacted" : "Mark Contacted"}
+                    </Button>
+                  </div>
+
+                  {/* Notes list */}
+                  {notes.length > 0 && (
+                    <div className="space-y-2 max-h-40 overflow-y-auto">
+                      {notes.map((note) => (
+                        <div key={note.id} className="p-3 bg-muted rounded-lg">
+                          <div className="flex items-center justify-between text-xs text-muted-foreground mb-1">
+                            <span className="font-medium">{note.user_name}</span>
+                            <span>{format(new Date(note.created_at), "MMM d, yyyy h:mm a")}</span>
+                          </div>
+                          <p className="text-sm whitespace-pre-wrap">{note.content}</p>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+
+                  {/* Add note form */}
+                  <div className="flex gap-2">
+                    <Textarea
+                      placeholder="Add a note about this applicant..."
+                      value={newNote}
+                      onChange={(e) => setNewNote(e.target.value)}
+                      className="min-h-[60px] flex-1"
+                      rows={2}
+                    />
+                    <Button
+                      onClick={() => {
+                        if (!newNote.trim() || !application) return;
+                        addNote.mutate(
+                          { applicationId: application.id, content: newNote.trim() },
+                          {
+                            onSuccess: () => {
+                              setNewNote("");
+                              toast.success("Note added");
+                            },
+                            onError: () => {
+                              toast.error("Failed to add note");
+                            },
+                          }
+                        );
+                      }}
+                      disabled={!newNote.trim() || addNote.isPending}
+                      size="icon"
+                      className="h-[60px] w-10"
+                    >
+                      <Send className="h-4 w-4" />
+                    </Button>
+                  </div>
+                </div>
+
+                <Separator />
+
+                {/* Admin Notes (legacy single field) */}
                 <div className="space-y-2">
                   <Label className="text-muted-foreground text-sm">
-                    Admin Notes
+                    Internal Admin Notes
                   </Label>
                   <Textarea
                     placeholder="Add internal notes about this application..."

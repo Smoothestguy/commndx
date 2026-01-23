@@ -9,7 +9,7 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { Eye, CheckCircle, XCircle, MoreVertical, Mail, Calendar, Briefcase, User, Trash2 } from "lucide-react";
+import { Eye, CheckCircle, XCircle, MoreVertical, Mail, Calendar, Briefcase, User, Trash2, CheckCircle2 } from "lucide-react";
 import type { Application } from "@/integrations/supabase/hooks/useStaffingApplications";
 
 const statusColors: Record<string, string> = {
@@ -61,6 +61,7 @@ interface MobileApplicationCardProps {
   onApprove: (app: Application) => void;
   onReject: (app: Application) => void;
   onRevokeApproval?: (app: Application) => void;
+  onToggleContacted?: (app: Application) => void;
   fieldTypeMap?: Record<string, { label: string; type: string }>;
 }
 
@@ -70,6 +71,7 @@ export function MobileApplicationCard({
   onApprove,
   onReject,
   onRevokeApproval,
+  onToggleContacted,
   fieldTypeMap = {},
 }: MobileApplicationCardProps) {
   const handleClick = () => {
@@ -147,6 +149,30 @@ export function MobileApplicationCard({
               <Badge className={statusColors[application.status]}>
                 {application.status.charAt(0).toUpperCase() + application.status.slice(1)}
               </Badge>
+              {application.contacted_at ? (
+                <Badge
+                  variant="outline"
+                  className="text-green-600 border-green-600 cursor-pointer"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    onToggleContacted?.(application);
+                  }}
+                >
+                  <CheckCircle2 className="h-3 w-3 mr-1" />
+                  Contacted
+                </Badge>
+              ) : (
+                <Badge
+                  variant="outline"
+                  className="text-muted-foreground border-muted-foreground/50 cursor-pointer"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    onToggleContacted?.(application);
+                  }}
+                >
+                  Not Contacted
+                </Badge>
+              )}
             </div>
 
             <div className="space-y-1 text-xs text-muted-foreground">

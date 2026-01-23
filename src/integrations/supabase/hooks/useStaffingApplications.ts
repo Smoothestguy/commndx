@@ -65,6 +65,8 @@ export interface Application {
   edit_token_expires_at?: string | null;
   missing_fields?: string[];
   admin_message?: string | null;
+  contacted_at?: string | null;
+  contacted_by?: string | null;
   applicants?: Applicant;
   job_postings?: JobPosting & {
     project_task_orders?: TaskOrder & {
