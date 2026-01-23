@@ -1,12 +1,14 @@
-import { FolderKanban, CheckCircle2, Clock, PauseCircle } from "lucide-react";
+import { FolderKanban, CheckCircle2, Clock, PauseCircle, User, Users } from "lucide-react";
 import { Project } from "@/integrations/supabase/hooks/useProjects";
 import { useIsMobile } from "@/hooks/use-mobile";
 
 interface ProjectStatsProps {
   projects: Project[];
+  individualCount?: number;
+  teamCount?: number;
 }
 
-export function ProjectStats({ projects }: ProjectStatsProps) {
+export function ProjectStats({ projects, individualCount = 0, teamCount = 0 }: ProjectStatsProps) {
   const isMobile = useIsMobile();
   const totalProjects = projects.length;
   const activeProjects = projects.filter(p => p.status === "active").length;
@@ -31,24 +33,24 @@ export function ProjectStats({ projects }: ProjectStatsProps) {
       showOnMobile: true,
     },
     {
-      title: "Completed",
-      value: completedProjects,
-      icon: CheckCircle2,
-      color: "text-primary",
-      bgColor: "bg-primary/10",
+      title: "Individual",
+      value: individualCount,
+      icon: User,
+      color: "text-blue-500",
+      bgColor: "bg-blue-500/10",
       showOnMobile: false,
     },
     {
-      title: "On Hold",
-      value: onHoldProjects,
-      icon: PauseCircle,
-      color: "text-warning",
-      bgColor: "bg-warning/10",
+      title: "Team",
+      value: teamCount,
+      icon: Users,
+      color: "text-purple-500",
+      bgColor: "bg-purple-500/10",
       showOnMobile: false,
     },
   ];
 
-  // Show all 4 stats on tablet and desktop, only 2 on mobile
+  // Show all stats on tablet and desktop, only first 2 on mobile
   const displayStats = isMobile ? stats.filter(s => s.showOnMobile) : stats;
 
   return (
