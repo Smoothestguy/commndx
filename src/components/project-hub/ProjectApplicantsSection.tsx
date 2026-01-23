@@ -215,7 +215,11 @@ export function ProjectApplicantsSection({
     const initials = `${applicant.first_name[0]}${applicant.last_name[0]}`;
 
     return (
-      <TableRow key={application.id}>
+      <TableRow 
+        key={application.id}
+        className="cursor-pointer hover:bg-muted/50"
+        onClick={() => handleViewApplication(application)}
+      >
         <TableCell>
           <div className="flex items-center gap-3">
             <SecureAvatar
@@ -248,11 +252,13 @@ export function ProjectApplicantsSection({
           {format(new Date(application.created_at), "MMM d, yyyy")}
         </TableCell>
         <TableCell>
-          <div className="flex items-center gap-1">
+          <div 
+            className="flex items-center gap-1"
+            onClick={(e) => e.stopPropagation()}
+          >
             <Button
               variant="ghost"
               size="icon"
-              onClick={() => handleViewApplication(application)}
               title="View Details"
             >
               <Eye className="h-4 w-4" />
@@ -299,7 +305,8 @@ export function ProjectApplicantsSection({
     return (
       <div
         key={application.id}
-        className="p-4 rounded-lg border bg-card hover:bg-accent/50 transition-colors"
+        className="p-4 rounded-lg border bg-card hover:bg-accent/50 transition-colors cursor-pointer"
+        onClick={() => handleViewApplication(application)}
       >
         <div className="flex items-start justify-between gap-3">
           <div className="flex items-center gap-3 flex-1 min-w-0">
@@ -328,11 +335,13 @@ export function ProjectApplicantsSection({
           <span className="text-xs text-muted-foreground">
             Applied {format(new Date(application.created_at), "MMM d, yyyy")}
           </span>
-          <div className="flex items-center gap-1">
+          <div 
+            className="flex items-center gap-1"
+            onClick={(e) => e.stopPropagation()}
+          >
             <Button
               variant="ghost"
               size="sm"
-              onClick={() => handleViewApplication(application)}
             >
               <Eye className="h-4 w-4 mr-1" />
               View
