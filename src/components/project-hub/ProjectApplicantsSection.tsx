@@ -97,7 +97,7 @@ export function ProjectApplicantsSection({
   const isMobile = useIsMobile();
   const queryClient = useQueryClient();
 
-  const [isOpen, setIsOpen] = useState(true);
+  const [isOpen, setIsOpen] = useState(false);
   const [activeTab, setActiveTab] = useState<"pending" | "approved">("pending");
   const [selectedApplication, setSelectedApplication] =
     useState<Application | null>(null);

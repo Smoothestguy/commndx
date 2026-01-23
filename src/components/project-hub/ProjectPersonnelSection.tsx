@@ -50,7 +50,7 @@ export function ProjectPersonnelSection({ projectId }: ProjectPersonnelSectionPr
   const [isAssignDialogOpen, setIsAssignDialogOpen] = useState(false);
   const [removeConfirmId, setRemoveConfirmId] = useState<string | null>(null);
   const [personnelToRemove, setPersonnelToRemove] = useState<{ name: string } | null>(null);
-  const [isOpen, setIsOpen] = useState(true);
+  const [isOpen, setIsOpen] = useState(false);
   
   const { data: assignedPersonnel = [], isLoading } = usePersonnelByProject(projectId);
   const removeMutation = useRemovePersonnelFromProject();
