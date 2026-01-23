@@ -150,72 +150,72 @@ export function ProjectPersonnelSection({ projectId }: ProjectPersonnelSectionPr
                 const rateBracket = assignment.project_rate_brackets;
                 const billRate = assignment.bill_rate ?? rateBracket?.bill_rate;
                 
-                return (
-                  <div
-                    key={assignment.id}
-                    className="p-4 rounded-lg border bg-card hover:bg-accent/50 transition-colors"
-                  >
-                    <div className="flex items-start justify-between gap-3">
-                      <div 
-                        className="flex items-center gap-3 flex-1 cursor-pointer min-w-0"
-                        onClick={() => navigate(`/personnel/${assignment.personnel_id}`)}
-                      >
-                        <SecureAvatar
-                          bucket="personnel-photos"
-                          photoUrl={null}
-                          className="h-10 w-10 flex-shrink-0"
-                          fallback={
-                            <span>
-                              {personnel.first_name?.[0]}
-                              {personnel.last_name?.[0]}
-                            </span>
-                          }
-                          alt={`${personnel.first_name} ${personnel.last_name}`}
-                        />
-                        <div className="min-w-0">
-                          <p className="font-medium truncate">
-                            {personnel.first_name} {personnel.last_name}
-                          </p>
-                          <p className="text-sm text-muted-foreground truncate flex items-center gap-1">
-                            <Mail className="h-3 w-3" />
-                            {personnel.email}
-                          </p>
+                  return (
+                    <div
+                      key={assignment.id}
+                      className="p-4 rounded-lg border bg-card hover:bg-accent/50 transition-colors cursor-pointer"
+                      onClick={() => navigate(`/personnel/${assignment.personnel_id}`)}
+                    >
+                      <div className="flex items-start justify-between gap-3">
+                        <div className="flex items-center gap-3 flex-1 min-w-0">
+                          <SecureAvatar
+                            bucket="personnel-photos"
+                            photoUrl={null}
+                            className="h-10 w-10 flex-shrink-0"
+                            fallback={
+                              <span>
+                                {personnel.first_name?.[0]}
+                                {personnel.last_name?.[0]}
+                              </span>
+                            }
+                            alt={`${personnel.first_name} ${personnel.last_name}`}
+                          />
+                          <div className="min-w-0">
+                            <p className="font-medium truncate">
+                              {personnel.first_name} {personnel.last_name}
+                            </p>
+                            <p className="text-sm text-muted-foreground truncate flex items-center gap-1">
+                              <Mail className="h-3 w-3" />
+                              {personnel.email}
+                            </p>
+                          </div>
+                        </div>
+                        <div onClick={(e) => e.stopPropagation()}>
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="flex-shrink-0 text-destructive hover:text-destructive hover:bg-destructive/10"
+                            onClick={() => handleRemove(
+                              assignment.id,
+                              personnel.first_name,
+                              personnel.last_name
+                            )}
+                          >
+                            <UserMinus className="h-4 w-4" />
+                          </Button>
                         </div>
                       </div>
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        className="flex-shrink-0 text-destructive hover:text-destructive hover:bg-destructive/10"
-                        onClick={() => handleRemove(
-                          assignment.id,
-                          personnel.first_name,
-                          personnel.last_name
+                      <div className="mt-3 pt-3 border-t flex flex-wrap items-center gap-2 text-sm">
+                        {rateBracket?.name && (
+                          <Badge variant="secondary" className="flex items-center gap-1">
+                            <Briefcase className="h-3 w-3" />
+                            {rateBracket.name}
+                          </Badge>
                         )}
-                      >
-                        <UserMinus className="h-4 w-4" />
-                      </Button>
+                        {billRate != null && (
+                          <span className="text-muted-foreground">
+                            {formatCurrency(billRate)}/hr
+                          </span>
+                        )}
+                        {assignment.assigned_at && (
+                          <span className="text-muted-foreground ml-auto">
+                            Assigned {format(new Date(assignment.assigned_at), "MMM d, yyyy")}
+                          </span>
+                        )}
+                      </div>
                     </div>
-                    <div className="mt-3 pt-3 border-t flex flex-wrap items-center gap-2 text-sm">
-                      {rateBracket?.name && (
-                        <Badge variant="secondary" className="flex items-center gap-1">
-                          <Briefcase className="h-3 w-3" />
-                          {rateBracket.name}
-                        </Badge>
-                      )}
-                      {billRate != null && (
-                        <span className="text-muted-foreground">
-                          {formatCurrency(billRate)}/hr
-                        </span>
-                      )}
-                      {assignment.assigned_at && (
-                        <span className="text-muted-foreground ml-auto">
-                          Assigned {format(new Date(assignment.assigned_at), "MMM d, yyyy")}
-                        </span>
-                      )}
-                    </div>
-                  </div>
-                );
-              })}
+                  );
+                })}
             </div>
           ) : (
             // Desktop Table View
@@ -237,12 +237,13 @@ export function ProjectPersonnelSection({ projectId }: ProjectPersonnelSectionPr
                     const billRate = assignment.bill_rate ?? rateBracket?.bill_rate;
                     
                     return (
-                      <TableRow key={assignment.id}>
+                      <TableRow 
+                        key={assignment.id}
+                        className="cursor-pointer hover:bg-muted/50"
+                        onClick={() => navigate(`/personnel/${assignment.personnel_id}`)}
+                      >
                         <TableCell>
-                          <div 
-                            className="flex items-center gap-3 cursor-pointer hover:opacity-80"
-                            onClick={() => navigate(`/personnel/${assignment.personnel_id}`)}
-                          >
+                          <div className="flex items-center gap-3">
                             <SecureAvatar
                               bucket="personnel-photos"
                               photoUrl={null}
@@ -287,18 +288,20 @@ export function ProjectPersonnelSection({ projectId }: ProjectPersonnelSectionPr
                           }
                         </TableCell>
                         <TableCell>
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            className="text-destructive hover:text-destructive hover:bg-destructive/10"
-                            onClick={() => handleRemove(
-                              assignment.id,
-                              personnel.first_name,
-                              personnel.last_name
-                            )}
-                          >
-                            <UserMinus className="h-4 w-4" />
-                          </Button>
+                          <div onClick={(e) => e.stopPropagation()}>
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              className="text-destructive hover:text-destructive hover:bg-destructive/10"
+                              onClick={() => handleRemove(
+                                assignment.id,
+                                personnel.first_name,
+                                personnel.last_name
+                              )}
+                            >
+                              <UserMinus className="h-4 w-4" />
+                            </Button>
+                          </div>
                         </TableCell>
                       </TableRow>
                     );
