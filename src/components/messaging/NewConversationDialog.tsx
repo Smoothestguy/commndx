@@ -1,0 +1,274 @@
+import { useState, useEffect } from "react";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { Button } from "@/components/ui/button";
+import { SearchInput } from "@/components/ui/search-input";
+import { ScrollArea } from "@/components/ui/scroll-area";
+import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import { Skeleton } from "@/components/ui/skeleton";
+import { supabase } from "@/integrations/supabase/client";
+import { useGetOrCreateConversation } from "@/integrations/supabase/hooks/useConversations";
+import { Loader2, User, Users, Building2 } from "lucide-react";
+
+interface NewConversationDialogProps {
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+  onConversationCreated: (conversationId: string) => void;
+}
+
+interface Recipient {
+  id: string;
+  name: string;
+  type: "user" | "personnel" | "customer";
+  subtitle?: string;
+}
+
+export function NewConversationDialog({
+  open,
+  onOpenChange,
+  onConversationCreated,
+}: NewConversationDialogProps) {
+  const [recipientType, setRecipientType] = useState<"user" | "personnel" | "customer">("personnel");
+  const [search, setSearch] = useState("");
+  const [recipients, setRecipients] = useState<Recipient[]>([]);
+  const [isLoading, setIsLoading] = useState(false);
+  const [selectedRecipient, setSelectedRecipient] = useState<Recipient | null>(null);
+
+  const getOrCreateConversation = useGetOrCreateConversation();
+
+  useEffect(() => {
+    if (open) {
+      fetchRecipients();
+    }
+  }, [open, recipientType]);
+
+  const fetchRecipients = async () => {
+    setIsLoading(true);
+    try {
+      let data: Recipient[] = [];
+
+      if (recipientType === "user") {
+        const { data: profiles } = await supabase
+          .from("profiles")
+          .select("id, first_name, last_name, email")
+          .order("first_name");
+
+        data = (profiles || []).map((p) => ({
+          id: p.id,
+          name: `${p.first_name} ${p.last_name}`.trim() || "Unknown User",
+          type: "user" as const,
+          subtitle: p.email,
+        }));
+      } else if (recipientType === "personnel") {
+        const { data: personnel } = await supabase
+          .from("personnel")
+          .select("id, first_name, last_name, email, phone")
+          .eq("status", "active")
+          .order("first_name");
+
+        data = (personnel || []).map((p) => ({
+          id: p.id,
+          name: `${p.first_name} ${p.last_name}`.trim(),
+          type: "personnel" as const,
+          subtitle: p.email || p.phone,
+        }));
+      } else if (recipientType === "customer") {
+        const { data: customers } = await supabase
+          .from("customers")
+          .select("id, name, email, company")
+          .is("deleted_at", null)
+          .order("name");
+
+        data = (customers || []).map((c) => ({
+          id: c.id,
+          name: c.name,
+          type: "customer" as const,
+          subtitle: c.company || c.email,
+        }));
+      }
+
+      setRecipients(data);
+    } catch (error) {
+      console.error("Error fetching recipients:", error);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const filteredRecipients = recipients.filter(
+    (r) =>
+      r.name.toLowerCase().includes(search.toLowerCase()) ||
+      r.subtitle?.toLowerCase().includes(search.toLowerCase())
+  );
+
+  const handleStartConversation = async () => {
+    if (!selectedRecipient) return;
+
+    try {
+      const conversation = await getOrCreateConversation.mutateAsync({
+        participantType: selectedRecipient.type,
+        participantId: selectedRecipient.id,
+      });
+
+      onConversationCreated(conversation.id);
+      onOpenChange(false);
+      setSelectedRecipient(null);
+      setSearch("");
+    } catch (error) {
+      console.error("Error creating conversation:", error);
+    }
+  };
+
+  const getTypeIcon = (type: string) => {
+    switch (type) {
+      case "personnel":
+        return <Users className="h-4 w-4" />;
+      case "customer":
+        return <Building2 className="h-4 w-4" />;
+      default:
+        return <User className="h-4 w-4" />;
+    }
+  };
+
+  const getInitials = (name: string) => {
+    return name
+      .split(" ")
+      .map((n) => n[0])
+      .join("")
+      .toUpperCase()
+      .slice(0, 2);
+  };
+
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent className="sm:max-w-[425px]">
+        <DialogHeader>
+          <DialogTitle>New Conversation</DialogTitle>
+        </DialogHeader>
+
+        <div className="space-y-4 mt-2">
+          {/* Recipient type selector */}
+          <Select
+            value={recipientType}
+            onValueChange={(value) => {
+              setRecipientType(value as typeof recipientType);
+              setSelectedRecipient(null);
+            }}
+          >
+            <SelectTrigger>
+              <SelectValue placeholder="Select recipient type" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="personnel">
+                <div className="flex items-center gap-2">
+                  <Users className="h-4 w-4" />
+                  Personnel
+                </div>
+              </SelectItem>
+              <SelectItem value="customer">
+                <div className="flex items-center gap-2">
+                  <Building2 className="h-4 w-4" />
+                  Customer
+                </div>
+              </SelectItem>
+              <SelectItem value="user">
+                <div className="flex items-center gap-2">
+                  <User className="h-4 w-4" />
+                  User
+                </div>
+              </SelectItem>
+            </SelectContent>
+          </Select>
+
+          {/* Search */}
+          <SearchInput
+            placeholder={`Search ${recipientType}s...`}
+            value={search}
+            onChange={setSearch}
+          />
+
+          {/* Recipients list */}
+          <ScrollArea className="h-[250px] border rounded-md">
+            {isLoading ? (
+              <div className="p-2 space-y-2">
+                {[1, 2, 3, 4].map((i) => (
+                  <div key={i} className="flex items-center gap-3 p-2">
+                    <Skeleton className="h-10 w-10 rounded-full" />
+                    <div className="space-y-1.5">
+                      <Skeleton className="h-4 w-24" />
+                      <Skeleton className="h-3 w-32" />
+                    </div>
+                  </div>
+                ))}
+              </div>
+            ) : filteredRecipients.length === 0 ? (
+              <div className="flex items-center justify-center h-full text-sm text-muted-foreground">
+                No {recipientType}s found
+              </div>
+            ) : (
+              <div className="p-1">
+                {filteredRecipients.map((recipient) => (
+                  <button
+                    key={recipient.id}
+                    onClick={() => setSelectedRecipient(recipient)}
+                    className={`w-full flex items-center gap-3 p-2 rounded-md hover:bg-muted transition-colors ${
+                      selectedRecipient?.id === recipient.id ? "bg-muted" : ""
+                    }`}
+                  >
+                    <Avatar className="h-10 w-10">
+                      <AvatarFallback className="bg-primary/10 text-primary text-sm">
+                        {getInitials(recipient.name)}
+                      </AvatarFallback>
+                    </Avatar>
+                    <div className="text-left min-w-0">
+                      <div className="flex items-center gap-1.5">
+                        <span className="font-medium truncate">{recipient.name}</span>
+                        <span className="text-muted-foreground">
+                          {getTypeIcon(recipient.type)}
+                        </span>
+                      </div>
+                      {recipient.subtitle && (
+                        <p className="text-xs text-muted-foreground truncate">
+                          {recipient.subtitle}
+                        </p>
+                      )}
+                    </div>
+                  </button>
+                ))}
+              </div>
+            )}
+          </ScrollArea>
+
+          {/* Start conversation button */}
+          <Button
+            onClick={handleStartConversation}
+            disabled={!selectedRecipient || getOrCreateConversation.isPending}
+            className="w-full"
+          >
+            {getOrCreateConversation.isPending ? (
+              <>
+                <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                Creating...
+              </>
+            ) : selectedRecipient ? (
+              `Start conversation with ${selectedRecipient.name}`
+            ) : (
+              "Select a recipient"
+            )}
+          </Button>
+        </div>
+      </DialogContent>
+    </Dialog>
+  );
+}

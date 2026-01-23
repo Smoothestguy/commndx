@@ -1,14 +1,19 @@
 import { format } from "date-fns";
+import { useState } from "react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import { Message } from "@/integrations/supabase/hooks/useMessages";
-import { MessageSquare, Phone, User, Clock, AlertCircle, CheckCircle } from "lucide-react";
+import { MessageSquare, Phone, User, Clock, AlertCircle, CheckCircle, Reply, ChevronDown, ChevronUp, ArrowDownLeft, ArrowUpRight } from "lucide-react";
+import { cn } from "@/lib/utils";
 
 interface MessageCardProps {
   message: Message;
 }
 
 export function MessageCard({ message }: MessageCardProps) {
+  const [showResponse, setShowResponse] = useState(false);
+  
   const getStatusBadge = () => {
     switch (message.status) {
       case 'sent':
@@ -56,16 +61,43 @@ export function MessageCard({ message }: MessageCardProps) {
     );
   };
 
+  const getDirectionBadge = () => {
+    if (message.direction === 'inbound') {
+      return (
+        <Badge variant="outline" className="text-green-600 border-green-600">
+          <ArrowDownLeft className="mr-1 h-3 w-3" />
+          Inbound
+        </Badge>
+      );
+    }
+    return (
+      <Badge variant="outline" className="text-muted-foreground">
+        <ArrowUpRight className="mr-1 h-3 w-3" />
+        Outbound
+      </Badge>
+    );
+  };
+
   return (
-    <Card className="hover:shadow-md transition-shadow">
+    <Card className={cn(
+      "hover:shadow-md transition-shadow",
+      message.has_response && "border-l-4 border-l-blue-500"
+    )}>
       <CardContent className="p-4">
         <div className="flex items-start justify-between gap-4">
           <div className="flex-1 min-w-0">
-            <div className="flex items-center gap-2 mb-2">
+            <div className="flex items-center gap-2 mb-2 flex-wrap">
               <User className="h-4 w-4 text-muted-foreground" />
               <span className="font-medium truncate">{message.recipient_name}</span>
               {getRecipientTypeBadge()}
+              {getDirectionBadge()}
               {getStatusBadge()}
+              {message.has_response && (
+                <Badge variant="default" className="bg-blue-500">
+                  <Reply className="mr-1 h-3 w-3" />
+                  Replied
+                </Badge>
+              )}
             </div>
 
             <div className="flex items-center gap-2 text-sm text-muted-foreground mb-2">
@@ -81,6 +113,43 @@ export function MessageCard({ message }: MessageCardProps) {
             {message.error_message && (
               <div className="mt-2 p-2 bg-destructive/10 rounded text-sm text-destructive">
                 {message.error_message}
+              </div>
+            )}
+
+            {/* Response Section */}
+            {message.has_response && message.response_content && (
+              <div className="mt-3">
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="text-blue-600 hover:text-blue-700 p-0 h-auto"
+                  onClick={() => setShowResponse(!showResponse)}
+                >
+                  {showResponse ? (
+                    <>
+                      <ChevronUp className="mr-1 h-3 w-3" />
+                      Hide Response
+                    </>
+                  ) : (
+                    <>
+                      <ChevronDown className="mr-1 h-3 w-3" />
+                      View Response
+                    </>
+                  )}
+                </Button>
+                
+                {showResponse && (
+                  <div className="mt-2 p-3 bg-blue-50 dark:bg-blue-950 rounded-lg">
+                    <div className="flex items-center gap-2 text-xs text-muted-foreground mb-1">
+                      <Reply className="h-3 w-3" />
+                      <span>
+                        Response received {message.response_received_at && 
+                          format(new Date(message.response_received_at), "MMM d, yyyy 'at' h:mm a")}
+                      </span>
+                    </div>
+                    <p className="text-sm text-foreground">{message.response_content}</p>
+                  </div>
+                )}
               </div>
             )}
           </div>

@@ -77,6 +77,7 @@ import BadgeTemplateEditor from "./pages/BadgeTemplateEditor";
 import QuickBooksSettings from "./pages/QuickBooksSettings";
 import ExpenseCategories from "./pages/ExpenseCategories";
 import Messages from "./pages/Messages";
+import Conversations from "./pages/Conversations";
 import PrivacyPolicy from "./pages/legal/PrivacyPolicy";
 import TermsOfService from "./pages/legal/TermsOfService";
 import EULA from "./pages/legal/EULA";
