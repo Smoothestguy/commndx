@@ -2,6 +2,7 @@ import { X } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { ProjectStage } from "@/integrations/supabase/hooks/useProjects";
+import { ProjectCategory } from "@/hooks/useProjectCategorization";
 import {
   Select,
   SelectContent,
@@ -15,6 +16,8 @@ interface ProjectFiltersProps {
   setFilterStatus: (status: string) => void;
   filterStage: string;
   setFilterStage: (stage: string) => void;
+  filterCategory?: ProjectCategory;
+  setFilterCategory?: (category: ProjectCategory) => void;
   activeFiltersCount: number;
   onClearFilters: () => void;
   search: string;
@@ -29,17 +32,25 @@ const stageLabels: Record<ProjectStage, string> = {
   canceled: "Canceled",
 };
 
+const categoryLabels: Record<ProjectCategory, string> = {
+  all: "All Types",
+  individual: "Individual",
+  team: "Team",
+};
+
 export function ProjectFilters({
   filterStatus,
   setFilterStatus,
   filterStage,
   setFilterStage,
+  filterCategory = "all",
+  setFilterCategory,
   activeFiltersCount,
   onClearFilters,
   search,
   inline = false,
 }: ProjectFiltersProps) {
-  const hasActiveFilters = filterStatus !== "all" || filterStage !== "all" || search;
+  const hasActiveFilters = filterStatus !== "all" || filterStage !== "all" || filterCategory !== "all" || search;
 
   // Inline mode: just render the selects without wrapper
   if (inline) {
@@ -70,6 +81,19 @@ export function ProjectFilters({
             <SelectItem value="on-hold">On Hold</SelectItem>
           </SelectContent>
         </Select>
+
+        {setFilterCategory && (
+          <Select value={filterCategory} onValueChange={(v) => setFilterCategory(v as ProjectCategory)}>
+            <SelectTrigger className="w-[120px] sm:w-[140px] min-h-[40px] text-xs sm:text-sm bg-background">
+              <SelectValue placeholder="Type" />
+            </SelectTrigger>
+            <SelectContent className="bg-popover">
+              <SelectItem value="all">All Types</SelectItem>
+              <SelectItem value="individual">Individual</SelectItem>
+              <SelectItem value="team">Team</SelectItem>
+            </SelectContent>
+          </Select>
+        )}
       </>
     );
   }
@@ -104,6 +128,20 @@ export function ProjectFilters({
             <SelectItem value="on-hold">On Hold</SelectItem>
           </SelectContent>
         </Select>
+
+        {/* Category Select */}
+        {setFilterCategory && (
+          <Select value={filterCategory} onValueChange={(v) => setFilterCategory(v as ProjectCategory)}>
+            <SelectTrigger className="w-full sm:w-[140px] min-h-[44px] sm:min-h-[40px] text-xs sm:text-sm bg-background">
+              <SelectValue placeholder="Type" />
+            </SelectTrigger>
+            <SelectContent className="bg-popover">
+              <SelectItem value="all">All Types</SelectItem>
+              <SelectItem value="individual">Individual</SelectItem>
+              <SelectItem value="team">Team</SelectItem>
+            </SelectContent>
+          </Select>
+        )}
       </div>
 
       {/* Active Filters Display */}
@@ -122,6 +160,11 @@ export function ProjectFilters({
           {filterStatus !== "all" && (
             <Badge variant="secondary" className="text-[10px] h-5 gap-1 capitalize">
               {filterStatus}
+            </Badge>
+          )}
+          {filterCategory !== "all" && (
+            <Badge variant="secondary" className="text-[10px] h-5 gap-1">
+              {categoryLabels[filterCategory]}
             </Badge>
           )}
           <Button

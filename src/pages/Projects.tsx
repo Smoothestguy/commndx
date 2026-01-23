@@ -5,7 +5,7 @@ import { PageLayout } from "@/components/layout/PageLayout";
 import { EnhancedDataTable, EnhancedColumn } from "@/components/shared/EnhancedDataTable";
 import { StatusBadge } from "@/components/shared/StatusBadge";
 import { Button } from "@/components/ui/button";
-import { Plus, Edit, Trash2, Loader2, Users as UsersIcon } from "lucide-react";
+import { Plus, Edit, Trash2, Loader2, Users as UsersIcon, User } from "lucide-react";
 import { SearchInput } from "@/components/ui/search-input";
 import { PullToRefreshWrapper } from "@/components/shared/PullToRefreshWrapper";
 import { ProjectCard } from "@/components/projects/ProjectCard";
@@ -13,11 +13,14 @@ import { ProjectStats } from "@/components/projects/ProjectStats";
 import { ProjectFilters } from "@/components/projects/ProjectFilters";
 import { ProjectEmptyState } from "@/components/projects/ProjectEmptyState";
 import { ProjectFormDialog, initialProjectFormData, type ProjectFormData } from "@/components/projects/ProjectFormDialog";
+import { ProjectSection } from "@/components/projects/ProjectSection";
 import { FloatingActionButton } from "@/components/shared/FloatingActionButton";
 import { useIsMobile, useIsTablet } from "@/hooks/use-mobile";
 import { useProjects, useAddProject, useUpdateProject, useDeleteProject, Project, ProjectStage } from "@/integrations/supabase/hooks/useProjects";
 import { useCustomers } from "@/integrations/supabase/hooks/useCustomers";
 import { useAssignmentCountsByProject } from "@/integrations/supabase/hooks/usePersonnelProjectAssignments";
+import { useJobPostingCountsByProject } from "@/integrations/supabase/hooks/useJobPostingCountsByProject";
+import { useProjectCategorization, filterProjectsByCategory, ProjectCategory } from "@/hooks/useProjectCategorization";
 import { format } from "date-fns";
 import { Badge } from "@/components/ui/badge";
 import { stageConfig } from "@/components/projects/ProjectCard";
@@ -38,17 +41,19 @@ const Projects = () => {
   // Get assignment counts for all projects
   const projectIds = projects?.map(p => p.id) || [];
   const { data: assignmentCounts } = useAssignmentCountsByProject(projectIds);
+  const { data: jobPostingCounts } = useJobPostingCountsByProject(projectIds);
   
   const [search, setSearch] = useState("");
   const [filterStatus, setFilterStatus] = useState<string>("all");
   const [filterStage, setFilterStage] = useState<string>("all");
+  const [filterCategory, setFilterCategory] = useState<ProjectCategory>("all");
   
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [editingProject, setEditingProject] = useState<Project | null>(null);
   const [formData, setFormData] = useState<ProjectFormData>(initialProjectFormData);
 
-  // Apply filters
-  const filteredProjects = projects
+  // Apply filters (status, stage, search)
+  const baseFilteredProjects = projects
     ?.filter((p) => {
       // Search filter
       const searchMatch =
@@ -64,11 +69,27 @@ const Projects = () => {
       return searchMatch && statusMatch && stageMatch;
     }) || [];
 
-  const hasActiveFilters = filterStatus !== "all" || filterStage !== "all" || !!search;
+  // Then apply category filter
+  const filteredProjects = filterProjectsByCategory(
+    baseFilteredProjects,
+    filterCategory,
+    assignmentCounts,
+    jobPostingCounts
+  );
+
+  // Get categorization for grouped view (when category filter is "all")
+  const categorization = useProjectCategorization(
+    baseFilteredProjects,
+    assignmentCounts,
+    jobPostingCounts
+  );
+
+  const hasActiveFilters = filterStatus !== "all" || filterStage !== "all" || filterCategory !== "all" || !!search;
 
   const clearFilters = () => {
     setFilterStatus("all");
     setFilterStage("all");
+    setFilterCategory("all");
     setSearch("");
   };
 
@@ -273,6 +294,36 @@ const Projects = () => {
     }
   }, [searchParams, setSearchParams]);
 
+  // Helper to render project cards for a list of projects
+  const renderProjectCards = (projectList: Project[]) => (
+    <div className="grid gap-3 grid-cols-1 sm:grid-cols-2">
+      {projectList.map((project) => (
+        <ProjectCard
+          key={project.id}
+          project={project}
+          customerName={getCustomerDisplayName(customers?.find(c => c.id === project.customer_id))}
+          assignmentCount={assignmentCounts?.[project.id] ?? 0}
+          onEdit={() => handleEdit(project)}
+          onDelete={() => handleDelete(project.id)}
+          onClick={() => navigate(`/projects/${project.id}`)}
+        />
+      ))}
+    </div>
+  );
+
+  // Helper to render project table for a list of projects
+  const renderProjectTable = (projectList: Project[], tableId: string) => (
+    <EnhancedDataTable
+      tableId={tableId}
+      data={projectList}
+      columns={columns}
+      onRowClick={(item) => navigate(`/projects/${item.id}`)}
+    />
+  );
+
+  // Determine if we show grouped sections or flat list
+  const showGroupedView = filterCategory === "all" && baseFilteredProjects.length > 0;
+
   return (
     <>
       <SEO 
@@ -295,7 +346,11 @@ const Projects = () => {
       <PullToRefreshWrapper onRefresh={refetch} isRefreshing={isFetching}>
         {/* Quick Stats */}
         {!isLoading && !error && projects && (
-          <ProjectStats projects={projects} />
+          <ProjectStats 
+            projects={projects} 
+            individualCount={categorization.counts.individual}
+            teamCount={categorization.counts.team}
+          />
         )}
 
         {/* Search & Filters - Combined Row */}
@@ -314,6 +369,8 @@ const Projects = () => {
               setFilterStatus={setFilterStatus}
               filterStage={filterStage}
               setFilterStage={setFilterStage}
+              filterCategory={filterCategory}
+              setFilterCategory={setFilterCategory}
               activeFiltersCount={hasActiveFilters ? 1 : 0}
               onClearFilters={clearFilters}
               search={search}
@@ -336,7 +393,7 @@ const Projects = () => {
         )}
 
         {/* Empty State */}
-        {!isLoading && !error && filteredProjects.length === 0 && (
+        {!isLoading && !error && filteredProjects.length === 0 && !showGroupedView && (
           <ProjectEmptyState
             hasFilters={hasActiveFilters}
             onAddProject={openNewDialog}
@@ -344,33 +401,63 @@ const Projects = () => {
           />
         )}
 
-        {/* Responsive Layout using CSS show/hide for instant switching */}
-        {!isLoading && !error && filteredProjects.length > 0 && (
+        {/* Grouped View - when category filter is "all" */}
+        {!isLoading && !error && showGroupedView && (
           <>
             {/* Mobile/Tablet Cards - hidden on desktop (1180px+) */}
             <div className="block min-[1180px]:hidden">
-              <div className="grid gap-3 grid-cols-1 sm:grid-cols-2">
-                {filteredProjects.map((project) => (
-                  <ProjectCard
-                    key={project.id}
-                    project={project}
-                    customerName={getCustomerDisplayName(customers?.find(c => c.id === project.customer_id))}
-                    assignmentCount={assignmentCounts?.[project.id] ?? 0}
-                    onEdit={() => handleEdit(project)}
-                    onDelete={() => handleDelete(project.id)}
-                    onClick={() => navigate(`/projects/${project.id}`)}
-                  />
-                ))}
-              </div>
+              <ProjectSection
+                title="Individual Contracts"
+                icon={<User className="h-4 w-4" />}
+                count={categorization.counts.individual}
+                defaultOpen={true}
+              >
+                {renderProjectCards(categorization.individualProjects)}
+              </ProjectSection>
+              
+              <ProjectSection
+                title="Team Projects"
+                icon={<UsersIcon className="h-4 w-4" />}
+                count={categorization.counts.team}
+                defaultOpen={true}
+              >
+                {renderProjectCards(categorization.teamProjects)}
+              </ProjectSection>
+            </div>
+
+            {/* Desktop Table - hidden below 1180px */}
+            <div className="hidden min-[1180px]:block">
+              <ProjectSection
+                title="Individual Contracts"
+                icon={<User className="h-4 w-4" />}
+                count={categorization.counts.individual}
+                defaultOpen={true}
+              >
+                {renderProjectTable(categorization.individualProjects, "projects-individual")}
+              </ProjectSection>
+              
+              <ProjectSection
+                title="Team Projects"
+                icon={<UsersIcon className="h-4 w-4" />}
+                count={categorization.counts.team}
+                defaultOpen={true}
+              >
+                {renderProjectTable(categorization.teamProjects, "projects-team")}
+              </ProjectSection>
+            </div>
+          </>
+        )}
+
+        {/* Flat List View - when a specific category is selected */}
+        {!isLoading && !error && !showGroupedView && filteredProjects.length > 0 && (
+          <>
+            {/* Mobile/Tablet Cards - hidden on desktop (1180px+) */}
+            <div className="block min-[1180px]:hidden">
+              {renderProjectCards(filteredProjects)}
             </div>
             {/* Desktop Table - hidden below 1180px */}
             <div className="hidden min-[1180px]:block">
-              <EnhancedDataTable
-                tableId="projects"
-                data={filteredProjects}
-                columns={columns}
-                onRowClick={(item) => navigate(`/projects/${item.id}`)}
-              />
+              {renderProjectTable(filteredProjects, "projects")}
             </div>
           </>
         )}
