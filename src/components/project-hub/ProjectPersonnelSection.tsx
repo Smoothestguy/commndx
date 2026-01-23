@@ -1,7 +1,13 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { format } from "date-fns";
-import { Users, UserPlus, UserMinus, Loader2, Mail, Briefcase } from "lucide-react";
+import { Users, UserPlus, UserMinus, Loader2, Mail, Briefcase, ChevronDown } from "lucide-react";
+import { cn } from "@/lib/utils";
+import {
+  Collapsible,
+  CollapsibleContent,
+  CollapsibleTrigger,
+} from "@/components/ui/collapsible";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -44,6 +50,7 @@ export function ProjectPersonnelSection({ projectId }: ProjectPersonnelSectionPr
   const [isAssignDialogOpen, setIsAssignDialogOpen] = useState(false);
   const [removeConfirmId, setRemoveConfirmId] = useState<string | null>(null);
   const [personnelToRemove, setPersonnelToRemove] = useState<{ name: string } | null>(null);
+  const [isOpen, setIsOpen] = useState(true);
   
   const { data: assignedPersonnel = [], isLoading } = usePersonnelByProject(projectId);
   const removeMutation = useRemovePersonnelFromProject();
@@ -93,22 +100,36 @@ export function ProjectPersonnelSection({ projectId }: ProjectPersonnelSectionPr
 
   return (
     <>
-      <Card>
-        <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-4">
-          <div className="space-y-1">
-            <CardTitle className="flex items-center gap-2 text-lg">
-              <Users className="h-5 w-5 text-primary" />
-              Assigned Personnel
-            </CardTitle>
-            <CardDescription>
-              {validAssignments.length} personnel assigned to this project
-            </CardDescription>
-          </div>
-          <Button onClick={() => setIsAssignDialogOpen(true)} size="sm">
-            <UserPlus className="h-4 w-4 mr-2" />
-            {isMobile ? "Assign" : "Assign Personnel"}
-          </Button>
-        </CardHeader>
+      <Collapsible open={isOpen} onOpenChange={setIsOpen}>
+        <Card>
+          <CollapsibleTrigger asChild>
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-4 cursor-pointer hover:bg-accent/50 transition-colors rounded-t-lg">
+              <div className="space-y-1">
+                <CardTitle className="flex items-center gap-2 text-lg">
+                  <Users className="h-5 w-5 text-primary" />
+                  Assigned Personnel
+                  <ChevronDown className={cn(
+                    "h-4 w-4 text-muted-foreground transition-transform duration-200",
+                    isOpen && "rotate-180"
+                  )} />
+                </CardTitle>
+                <CardDescription>
+                  {validAssignments.length} personnel assigned to this project
+                </CardDescription>
+              </div>
+              <Button 
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setIsAssignDialogOpen(true);
+                }} 
+                size="sm"
+              >
+                <UserPlus className="h-4 w-4 mr-2" />
+                {isMobile ? "Assign" : "Assign Personnel"}
+              </Button>
+            </CardHeader>
+          </CollapsibleTrigger>
+          <CollapsibleContent>
         <CardContent>
           {validAssignments.length === 0 ? (
             <div className="text-center py-8">
@@ -287,7 +308,9 @@ export function ProjectPersonnelSection({ projectId }: ProjectPersonnelSectionPr
             </div>
           )}
         </CardContent>
-      </Card>
+          </CollapsibleContent>
+        </Card>
+      </Collapsible>
 
       {/* Assign Personnel Dialog */}
       <PersonnelAssignmentDialog
