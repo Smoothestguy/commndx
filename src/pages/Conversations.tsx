@@ -5,7 +5,12 @@ import { ConversationThread } from "@/components/messaging/ConversationThread";
 import { NewConversationDialog } from "@/components/messaging/NewConversationDialog";
 import { Button } from "@/components/ui/button";
 import { useConversations, Conversation } from "@/integrations/supabase/hooks/useConversations";
-import { Plus, MessageCircle } from "lucide-react";
+import { Plus, MessageCircle, ChevronDown } from "lucide-react";
+import {
+  Collapsible,
+  CollapsibleContent,
+  CollapsibleTrigger,
+} from "@/components/ui/collapsible";
 import { cn } from "@/lib/utils";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
@@ -14,6 +19,7 @@ export default function Conversations() {
   const [searchParams, setSearchParams] = useSearchParams();
   const [selectedConversation, setSelectedConversation] = useState<Conversation | null>(null);
   const [showNewDialog, setShowNewDialog] = useState(false);
+  const [isListOpen, setIsListOpen] = useState(true);
   const { data: conversations } = useConversations();
 
   // Fetch recipient phone number when a conversation is selected
@@ -95,14 +101,27 @@ export default function Conversations() {
         {/* Conversation list - hidden on mobile when a conversation is selected */}
         <div
           className={cn(
-            "w-full md:w-80 lg:w-96 border-r bg-background flex-shrink-0",
+            "w-full md:w-80 lg:w-96 border-r bg-background flex-shrink-0 flex flex-col",
             selectedConversation && "hidden md:block"
           )}
         >
-          <ConversationList
-            selectedConversationId={selectedConversation?.id || null}
-            onSelectConversation={handleSelectConversation}
-          />
+          <Collapsible open={isListOpen} onOpenChange={setIsListOpen}>
+            <CollapsibleTrigger className="flex items-center justify-between w-full p-3 hover:bg-muted/50 transition-colors border-b">
+              <span className="text-sm font-medium text-muted-foreground">
+                Conversations
+              </span>
+              <ChevronDown className={cn(
+                "h-4 w-4 text-muted-foreground transition-transform duration-200",
+                isListOpen && "rotate-180"
+              )} />
+            </CollapsibleTrigger>
+            <CollapsibleContent>
+              <ConversationList
+                selectedConversationId={selectedConversation?.id || null}
+                onSelectConversation={handleSelectConversation}
+              />
+            </CollapsibleContent>
+          </Collapsible>
         </div>
 
         {/* Conversation thread - full width on mobile when selected */}
