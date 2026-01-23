@@ -302,6 +302,41 @@ export type Database = {
         }
         Relationships: []
       }
+      application_notes: {
+        Row: {
+          application_id: string
+          content: string
+          created_at: string
+          id: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          application_id: string
+          content: string
+          created_at?: string
+          id?: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          application_id?: string
+          content?: string
+          created_at?: string
+          id?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "application_notes_application_id_fkey"
+            columns: ["application_id"]
+            isOneToOne: false
+            referencedRelation: "applications"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       application_revisions: {
         Row: {
           application_id: string
@@ -349,6 +384,8 @@ export type Database = {
           answers: Json | null
           applicant_id: string
           client_submitted_at: string | null
+          contacted_at: string | null
+          contacted_by: string | null
           created_at: string
           edit_token: string | null
           edit_token_expires_at: string | null
@@ -381,6 +418,8 @@ export type Database = {
           answers?: Json | null
           applicant_id: string
           client_submitted_at?: string | null
+          contacted_at?: string | null
+          contacted_by?: string | null
           created_at?: string
           edit_token?: string | null
           edit_token_expires_at?: string | null
@@ -413,6 +452,8 @@ export type Database = {
           answers?: Json | null
           applicant_id?: string
           client_submitted_at?: string | null
+          contacted_at?: string | null
+          contacted_by?: string | null
           created_at?: string
           edit_token?: string | null
           edit_token_expires_at?: string | null

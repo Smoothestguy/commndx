@@ -59,6 +59,7 @@ import {
   Application,
   TaskOrder,
 } from "@/integrations/supabase/hooks/useStaffingApplications";
+import { useToggleApplicationContacted } from "@/integrations/supabase/hooks/useApplicationNotes";
 import { useApplicationFormTemplates } from "@/integrations/supabase/hooks/useApplicationFormTemplates";
 import { toast } from "sonner";
 import { ApplicationsTable } from "@/components/staffing/ApplicationsTable";
@@ -161,6 +162,23 @@ export default function StaffingApplications() {
   const rejectApplication = useRejectApplication();
   const revokeApproval = useRevokeApproval();
   const reverseApproval = useReverseApprovalWithReason();
+  const toggleContacted = useToggleApplicationContacted();
+
+  // Handle toggle contacted
+  const handleToggleContacted = (app: Application) => {
+    const newContactedState = !app.contacted_at;
+    toggleContacted.mutate(
+      { applicationId: app.id, contacted: newContactedState },
+      {
+        onSuccess: () => {
+          toast.success(newContactedState ? "Marked as contacted" : "Marked as not contacted");
+        },
+        onError: () => {
+          toast.error("Failed to update contact status");
+        },
+      }
+    );
+  };
 
   // Handle approve click - opens type selection dialog
   const handleApproveClick = (app: Application) => {
@@ -673,6 +691,7 @@ export default function StaffingApplications() {
           setAppToReverse(app);
           setShowReverseDialog(true);
         }}
+        onToggleContacted={handleToggleContacted}
       />
 
       {/* Approval Type Selection Dialog */}

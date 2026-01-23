@@ -3,13 +3,14 @@ import { format } from "date-fns";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { SecureAvatar } from "@/components/ui/secure-avatar";
-import { Eye, CheckCircle, XCircle, User, Trash2, Undo2 } from "lucide-react";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
+import { Eye, CheckCircle, XCircle, User, Trash2, Undo2, Circle, CheckCircle2 } from "lucide-react";
 import { EnhancedDataTable, EnhancedColumn } from "@/components/shared/EnhancedDataTable";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { MobileApplicationCard } from "./MobileApplicationCard";
 import type { Application } from "@/integrations/supabase/hooks/useStaffingApplications";
 import { useApplicationFormTemplates, FormField } from "@/integrations/supabase/hooks/useApplicationFormTemplates";
-
+import { cn } from "@/lib/utils";
 const statusColors: Record<string, string> = {
   submitted: "bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-300",
   reviewing: "bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-300",
@@ -61,6 +62,7 @@ interface ApplicationsTableProps {
   onReject: (app: Application) => void;
   onRevokeApproval?: (app: Application) => void;
   onReverseApproval?: (app: Application) => void;
+  onToggleContacted?: (app: Application) => void;
   selectable?: boolean;
   selectedIds?: Set<string>;
   onSelectionChange?: (ids: Set<string>) => void;
@@ -74,6 +76,7 @@ export function ApplicationsTable({
   onReject,
   onRevokeApproval,
   onReverseApproval,
+  onToggleContacted,
   selectable = false,
   selectedIds,
   onSelectionChange,
@@ -192,6 +195,46 @@ export function ApplicationsTable({
       ),
     },
     {
+      key: "contacted",
+      header: "Contacted",
+      sortable: true,
+      filterable: true,
+      getValue: (app) => app.contacted_at ? "Yes" : "No",
+      render: (app: Application) => (
+        <TooltipProvider>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Button
+                variant="ghost"
+                size="icon"
+                className={cn(
+                  "h-8 w-8",
+                  app.contacted_at
+                    ? "text-green-600 hover:text-green-700"
+                    : "text-muted-foreground hover:text-foreground"
+                )}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onToggleContacted?.(app);
+                }}
+              >
+                {app.contacted_at ? (
+                  <CheckCircle2 className="h-4 w-4 fill-current" />
+                ) : (
+                  <Circle className="h-4 w-4" />
+                )}
+              </Button>
+            </TooltipTrigger>
+            <TooltipContent>
+              {app.contacted_at
+                ? `Contacted on ${format(new Date(app.contacted_at), "MMM d, yyyy")}`
+                : "Mark as contacted"}
+            </TooltipContent>
+          </Tooltip>
+        </TooltipProvider>
+      ),
+    },
+    {
       key: "actions",
       header: "",
       sortable: false,
@@ -288,6 +331,7 @@ export function ApplicationsTable({
               onApprove={onApprove}
               onReject={onReject}
               onRevokeApproval={onRevokeApproval}
+              onToggleContacted={onToggleContacted}
               fieldTypeMap={fieldTypeMap}
             />
           );
