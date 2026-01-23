@@ -46,6 +46,32 @@ export interface RateBracketInfo {
   overtime_multiplier: number;
 }
 
+// Get assignment counts for multiple projects (efficient batch query)
+export function useAssignmentCountsByProject(projectIds: string[]) {
+  return useQuery({
+    queryKey: ["personnel-assignment-counts", projectIds],
+    queryFn: async () => {
+      if (!projectIds.length) return {};
+      
+      const { data, error } = await supabase
+        .from("personnel_project_assignments")
+        .select("project_id")
+        .in("project_id", projectIds)
+        .eq("status", "active");
+
+      if (error) throw error;
+
+      // Group by project_id and count
+      const counts: Record<string, number> = {};
+      data?.forEach((a) => {
+        counts[a.project_id] = (counts[a.project_id] || 0) + 1;
+      });
+      return counts;
+    },
+    enabled: projectIds.length > 0,
+  });
+}
+
 // Get all personnel assigned to a specific project (filters out inactive/do_not_hire personnel)
 export function usePersonnelByProject(projectId: string | undefined) {
   return useQuery({

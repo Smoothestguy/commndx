@@ -1,13 +1,14 @@
 import { StatusBadge } from "@/components/shared/StatusBadge";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Edit, Trash2, Calendar, User, ChevronRight } from "lucide-react";
+import { Edit, Trash2, Calendar, User, ChevronRight, Users } from "lucide-react";
 import { format } from "date-fns";
 import { Project, ProjectStage } from "@/integrations/supabase/hooks/useProjects";
 
 interface ProjectCardProps {
   project: Project;
   customerName: string;
+  assignmentCount?: number;
   onEdit: () => void;
   onDelete: () => void;
   onClick: () => void;
@@ -24,7 +25,8 @@ const stageConfig: Record<ProjectStage, { label: string; variant: "default" | "s
 
 export function ProjectCard({ 
   project, 
-  customerName, 
+  customerName,
+  assignmentCount = 0,
   onEdit, 
   onDelete, 
   onClick,
@@ -55,15 +57,21 @@ export function ProjectCard({
         </div>
       </div>
 
-      {/* Customer & Date - Compact Row */}
+      {/* Customer, Team & Date - Compact Row */}
       <div className="flex items-center justify-between gap-2 text-[11px] sm:text-sm text-muted-foreground min-w-0">
         <div className="flex items-center gap-1.5 min-w-0 flex-1">
           <User className="h-3 w-3 sm:h-4 sm:w-4 flex-shrink-0" />
           <span className="truncate">{customerName}</span>
         </div>
-        <div className="flex items-center gap-1.5 flex-shrink-0">
-          <Calendar className="h-3 w-3 sm:h-4 sm:w-4" />
-          <span>{format(new Date(project.start_date), "MMM dd")}</span>
+        <div className="flex items-center gap-3 flex-shrink-0">
+          <div className="flex items-center gap-1">
+            <Users className="h-3 w-3 sm:h-4 sm:w-4" />
+            <span>{assignmentCount}</span>
+          </div>
+          <div className="flex items-center gap-1">
+            <Calendar className="h-3 w-3 sm:h-4 sm:w-4" />
+            <span>{format(new Date(project.start_date), "MMM dd")}</span>
+          </div>
         </div>
       </div>
 
