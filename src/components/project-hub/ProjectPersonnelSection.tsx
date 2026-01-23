@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { format } from "date-fns";
-import { Users, UserPlus, UserMinus, Loader2, Mail, Briefcase, ChevronDown } from "lucide-react";
+import { Users, UserPlus, UserMinus, Loader2, Mail, Briefcase, ChevronDown, MessageSquare } from "lucide-react";
 import { cn } from "@/lib/utils";
 import {
   Collapsible,
@@ -36,18 +36,21 @@ import {
   useRemovePersonnelFromProject 
 } from "@/integrations/supabase/hooks/usePersonnelProjectAssignments";
 import { PersonnelAssignmentDialog } from "@/components/time-tracking/PersonnelAssignmentDialog";
+import { BulkSMSDialog } from "@/components/messaging/BulkSMSDialog";
 import { useQueryClient } from "@tanstack/react-query";
 
 interface ProjectPersonnelSectionProps {
   projectId: string;
+  projectName?: string;
 }
 
-export function ProjectPersonnelSection({ projectId }: ProjectPersonnelSectionProps) {
+export function ProjectPersonnelSection({ projectId, projectName = "this project" }: ProjectPersonnelSectionProps) {
   const navigate = useNavigate();
   const isMobile = useIsMobile();
   const queryClient = useQueryClient();
   
   const [isAssignDialogOpen, setIsAssignDialogOpen] = useState(false);
+  const [isBulkSMSDialogOpen, setIsBulkSMSDialogOpen] = useState(false);
   const [removeConfirmId, setRemoveConfirmId] = useState<string | null>(null);
   const [personnelToRemove, setPersonnelToRemove] = useState<{ name: string } | null>(null);
   const [isOpen, setIsOpen] = useState(false);
@@ -117,16 +120,30 @@ export function ProjectPersonnelSection({ projectId }: ProjectPersonnelSectionPr
                   {validAssignments.length} personnel assigned to this project
                 </CardDescription>
               </div>
-              <Button 
-                onClick={(e) => {
-                  e.stopPropagation();
-                  setIsAssignDialogOpen(true);
-                }} 
-                size="sm"
-              >
-                <UserPlus className="h-4 w-4 mr-2" />
-                {isMobile ? "Assign" : "Assign Personnel"}
-              </Button>
+              <div className="flex items-center gap-2">
+                <Button 
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setIsBulkSMSDialogOpen(true);
+                  }} 
+                  size="sm"
+                  variant="outline"
+                  disabled={validAssignments.length === 0}
+                >
+                  <MessageSquare className="h-4 w-4 mr-2" />
+                  {isMobile ? "Text All" : "Blast Text"}
+                </Button>
+                <Button 
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setIsAssignDialogOpen(true);
+                  }} 
+                  size="sm"
+                >
+                  <UserPlus className="h-4 w-4 mr-2" />
+                  {isMobile ? "Assign" : "Assign Personnel"}
+                </Button>
+              </div>
             </CardHeader>
           </CollapsibleTrigger>
           <CollapsibleContent>
@@ -321,6 +338,20 @@ export function ProjectPersonnelSection({ projectId }: ProjectPersonnelSectionPr
         onOpenChange={setIsAssignDialogOpen}
         defaultProjectId={projectId}
         onAssignmentChange={handleAssignmentChange}
+      />
+
+      {/* Bulk SMS Dialog */}
+      <BulkSMSDialog
+        open={isBulkSMSDialogOpen}
+        onOpenChange={setIsBulkSMSDialogOpen}
+        projectId={projectId}
+        projectName={projectName}
+        recipients={validAssignments.map(a => ({
+          id: a.personnel_id,
+          firstName: a.personnel?.first_name || "",
+          lastName: a.personnel?.last_name || "",
+          phone: a.personnel?.phone || null,
+        }))}
       />
 
       {/* Remove Confirmation Dialog */}
