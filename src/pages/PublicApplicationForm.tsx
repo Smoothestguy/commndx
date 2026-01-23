@@ -824,13 +824,17 @@ export default function PublicApplicationForm() {
   };
 
   // Get background style from theme
+  // Detect mobile devices - iOS Safari has rendering bugs with background-attachment: fixed
+  const isMobile = typeof navigator !== 'undefined' && /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
+
   const getBackgroundStyle = () => {
     if (theme.backgroundImage) {
       return {
         backgroundImage: `url(${theme.backgroundImage})`,
         backgroundSize: "cover",
         backgroundPosition: "center",
-        backgroundAttachment: "fixed",
+        // Use scroll on mobile to prevent black screen when camera/photo picker is triggered
+        backgroundAttachment: isMobile ? "scroll" : "fixed",
       };
     }
     if (theme.backgroundGradient) {
