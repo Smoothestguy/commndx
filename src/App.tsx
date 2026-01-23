@@ -450,6 +450,7 @@ const App = () => {
                         element={<ExpenseCategories />}
                       />
                       <Route path="/messages" element={<Messages />} />
+                      <Route path="/conversations" element={<Conversations />} />
                       <Route
                         path="/notifications"
                         element={<AdminNotifications />}
