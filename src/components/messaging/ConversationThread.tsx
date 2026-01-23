@@ -5,8 +5,10 @@ import {
   useConversationMessages,
   useSendConversationMessage,
   useMarkConversationAsRead,
+  useDeleteConversationMessage,
   Conversation,
 } from "@/integrations/supabase/hooks/useConversations";
+import { toast } from "sonner";
 import { MessageBubble } from "./MessageBubble";
 import { MessageInput } from "./MessageInput";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -32,6 +34,16 @@ export function ConversationThread({ conversation, onBack, recipientPhone, onTog
   const { data: messages, isLoading } = useConversationMessages(conversation?.id || null);
   const sendMessage = useSendConversationMessage();
   const markAsRead = useMarkConversationAsRead();
+  const deleteMessage = useDeleteConversationMessage();
+
+  const handleDeleteMessage = async (messageId: string) => {
+    try {
+      await deleteMessage.mutateAsync(messageId);
+      toast.success("Message deleted");
+    } catch (error) {
+      toast.error("Failed to delete message");
+    }
+  };
 
   // Mark as read when conversation is opened
   useEffect(() => {
@@ -197,6 +209,9 @@ export function ConversationThread({ conversation, onBack, recipientPhone, onTog
                       isRead={!!message.read_at}
                       isDelivered={!!message.delivered_at}
                       messageType={message.message_type as "in_app" | "sms"}
+                      messageId={message.id}
+                      onDelete={handleDeleteMessage}
+                      isDeleting={deleteMessage.isPending}
                     />
                   ))}
                 </div>

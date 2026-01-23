@@ -143,3 +143,32 @@ export function useMessageStats() {
     },
   });
 }
+
+export function useDeleteMessage() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async (messageId: string) => {
+      const { error } = await supabase
+        .from("messages")
+        .delete()
+        .eq("id", messageId);
+
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["messages"] });
+      toast({
+        title: "Message Deleted",
+        description: "The message has been deleted.",
+      });
+    },
+    onError: (error: Error) => {
+      toast({
+        title: "Failed to Delete",
+        description: error.message,
+        variant: "destructive",
+      });
+    },
+  });
+}
