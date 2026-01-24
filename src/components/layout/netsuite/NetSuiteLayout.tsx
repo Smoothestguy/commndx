@@ -57,7 +57,9 @@ export function NetSuiteLayout({ children }: NetSuiteLayoutProps) {
           {/* Center Content */}
           <main
             className={cn(
-              "flex-1 flex flex-col min-h-[calc(100vh-3.5rem)] overflow-x-hidden",
+              "flex-1 flex flex-col overflow-x-hidden",
+              // Account for top nav (3.5rem) and bottom nav on mobile (4rem)
+              isMobile ? "min-h-[calc(100vh-7.5rem)]" : "min-h-[calc(100vh-3.5rem)]",
               shouldShowBackground && "bg-transparent"
             )}
           >
