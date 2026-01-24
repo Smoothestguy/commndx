@@ -57,7 +57,7 @@ export const VendorCard = ({ vendor, onEdit, onDelete, index, isSelected, onSele
               <Button
                 variant="ghost"
                 size="icon"
-                className="h-8 w-8"
+                className="h-10 w-10 sm:h-8 sm:w-8"
                 onClick={(e) => {
                   e.stopPropagation();
                   onEdit(vendor);
@@ -68,7 +68,7 @@ export const VendorCard = ({ vendor, onEdit, onDelete, index, isSelected, onSele
               <Button
                 variant="ghost"
                 size="icon"
-                className="h-8 w-8"
+                className="h-10 w-10 sm:h-8 sm:w-8"
                 onClick={(e) => {
                   e.stopPropagation();
                   onDelete(vendor.id);
