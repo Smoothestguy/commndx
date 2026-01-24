@@ -30,7 +30,7 @@ export function MessageInput({
   onStopTyping,
 }: MessageInputProps) {
   const [message, setMessage] = useState("");
-  const [sendViaSMS, setSendViaSMS] = useState(false);
+  const [sendViaSMS, setSendViaSMS] = useState(true);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
 
   const hasSMSCapability = showSMSToggle && recipientPhone;
@@ -109,8 +109,8 @@ export function MessageInput({
             <TooltipContent>
               {hasSMSCapability
                 ? sendViaSMS
-                  ? "SMS delivery enabled"
-                  : "Click to also send via SMS"
+                  ? "SMS delivery enabled (default)"
+                  : "Click to disable SMS delivery"
                 : "No phone number available"}
             </TooltipContent>
           </Tooltip>
