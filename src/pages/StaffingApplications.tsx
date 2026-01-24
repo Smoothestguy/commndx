@@ -440,26 +440,30 @@ export default function StaffingApplications() {
                 {jobPostings.filter(p => p.is_open).map((posting) => (
                   <div
                     key={posting.id}
-                    className="flex items-center justify-between p-3 rounded-lg border bg-muted/30 cursor-pointer hover:bg-muted/50 transition-colors"
+                    className="p-3 rounded-lg border bg-muted/30 cursor-pointer hover:bg-muted/50 transition-colors space-y-3 sm:space-y-0 sm:flex sm:items-center sm:justify-between"
                     onClick={() => navigate(`/staffing/applications/posting/${posting.id}`)}
                   >
-                    <div>
-                      <p className="font-medium">{posting.project_task_orders?.title}</p>
-                      <div className="flex items-center gap-2">
-                        <p className="text-sm text-muted-foreground">
+                    <div className="min-w-0 flex-1">
+                      <p className="font-medium truncate">{posting.project_task_orders?.title}</p>
+                      <div className="flex flex-wrap items-center gap-2">
+                        <p className="text-sm text-muted-foreground truncate">
                           {posting.project_task_orders?.projects?.name}
                         </p>
                         {posting.form_template_id && (
-                          <Badge variant="outline" className="text-xs">
+                          <Badge variant="outline" className="text-xs shrink-0">
                             {formTemplates?.find(t => t.id === posting.form_template_id)?.name || "Custom Form"}
                           </Badge>
                         )}
                       </div>
                     </div>
-                    <div className="flex items-center gap-2" onClick={(e) => e.stopPropagation()}>
+                    <div 
+                      className="flex flex-wrap items-center gap-1 sm:gap-2 pt-2 sm:pt-0 border-t sm:border-t-0 border-border/50 justify-end shrink-0" 
+                      onClick={(e) => e.stopPropagation()}
+                    >
                       <Button
                         variant="ghost"
                         size="sm"
+                        className="h-9 w-9 p-0"
                         onClick={() => navigate(`/staffing/applications/posting/${posting.id}`)}
                         title="View all entries"
                       >
@@ -468,6 +472,7 @@ export default function StaffingApplications() {
                       <Button
                         variant="ghost"
                         size="sm"
+                        className="h-9 w-9 p-0"
                         onClick={() => handleEditTaskOrder(posting)}
                         title="Edit task order details"
                       >
@@ -476,6 +481,7 @@ export default function StaffingApplications() {
                       <Button
                         variant="ghost"
                         size="sm"
+                        className="h-9 w-9 p-0"
                         onClick={() => handleEditPosting(posting)}
                         title="Edit form template"
                       >
@@ -484,15 +490,19 @@ export default function StaffingApplications() {
                       <Button
                         variant="outline"
                         size="sm"
+                        className="h-9 px-2 text-xs sm:px-3 sm:text-sm"
                         onClick={() => copyApplicationLink(posting.public_token)}
                       >
-                        <Copy className="h-4 w-4 mr-1" />
-                        Copy Link
+                        <Copy className="h-4 w-4 sm:mr-1" />
+                        <span className="hidden sm:inline">Copy Link</span>
+                        <span className="sm:hidden ml-1">Copy</span>
                       </Button>
                       <Button
                         variant="ghost"
                         size="sm"
+                        className="h-9 w-9 p-0"
                         onClick={() => window.open(`/apply/${posting.public_token}`, "_blank")}
+                        title="Open form in new tab"
                       >
                         <ExternalLink className="h-4 w-4" />
                       </Button>
