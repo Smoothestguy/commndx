@@ -5,8 +5,9 @@ import { useConversations, useDeleteConversation, Conversation } from "@/integra
 import { Skeleton } from "@/components/ui/skeleton";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
-import { MessageSquare, User, Users, Building2, Trash2 } from "lucide-react";
+import { MessageSquare, User, Users, Building2, Trash2, Search } from "lucide-react";
 import { ScrollArea } from "@/components/ui/scroll-area";
+import { Input } from "@/components/ui/input";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -34,6 +35,12 @@ export function ConversationList({
   const deleteConversation = useDeleteConversation();
   const { toast } = useToast();
   const [conversationToDelete, setConversationToDelete] = useState<string | null>(null);
+  const [searchQuery, setSearchQuery] = useState("");
+
+  // Filter conversations based on search
+  const filteredConversations = conversations?.filter((conv) =>
+    conv.other_participant_name?.toLowerCase().includes(searchQuery.toLowerCase())
+  ) || [];
 
   const formatMessageTime = (dateString: string | null) => {
     if (!dateString) return "";
@@ -120,20 +127,39 @@ export function ConversationList({
 
   return (
     <>
-      <ScrollArea className="h-full w-full">
+      {/* iPad-style Search Bar */}
+      <div className="p-3 border-b flex-shrink-0">
+        <div className="relative">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+          <Input
+            type="text"
+            placeholder="Search"
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            className="pl-9 h-9 rounded-full bg-muted/50 border-0 focus-visible:ring-1 focus-visible:ring-[#007AFF]"
+          />
+        </div>
+      </div>
+
+      <ScrollArea className="flex-1 w-full">
         <div className="divide-y w-full">
-          {conversations.map((conversation) => (
+          {filteredConversations.length === 0 && searchQuery && (
+            <div className="p-4 text-center text-sm text-muted-foreground">
+              No conversations found
+            </div>
+          )}
+          {filteredConversations.map((conversation) => (
             <button
               key={conversation.id}
               onClick={() => onSelectConversation(conversation)}
               className={cn(
-                "w-full grid grid-cols-[40px_1fr_auto] gap-3 p-3 hover:bg-muted/50 transition-colors text-left group",
-                selectedConversationId === conversation.id && "bg-muted"
+                "w-full grid grid-cols-[48px_1fr_auto] gap-3 p-4 hover:bg-muted/30 transition-colors text-left group",
+                selectedConversationId === conversation.id && "bg-[#007AFF]/10 border-l-2 border-l-[#007AFF]"
               )}
             >
-              {/* Column 1: Avatar - fixed 40px */}
-              <Avatar className="h-10 w-10">
-                <AvatarFallback className="bg-primary/10 text-primary">
+              {/* Column 1: Avatar - fixed 48px */}
+              <Avatar className="h-12 w-12">
+                <AvatarFallback className="bg-[#007AFF]/10 text-[#007AFF] text-sm font-medium">
                   {getInitials(conversation.other_participant_name)}
                 </AvatarFallback>
               </Avatar>
