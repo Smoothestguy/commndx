@@ -394,36 +394,35 @@ export function LeftPanel({ collapsed, onToggleCollapse, backgroundColor, textCo
             </CollapsibleTrigger>
             <CollapsibleContent className="mt-1">
               <div className="space-y-1 pl-6">
-                {(!conversations || conversations.length === 0) && (
-                  <p className="text-xs text-muted-foreground py-2">No messages</p>
-                )}
-                {conversations?.slice(0, 5).map((conv) => (
-                  <Link
-                    key={conv.id}
-                    to={`/messages?id=${conv.id}`}
-                    className="block rounded-md p-2 text-xs hover:bg-muted transition-colors"
-                  >
-                    <div className="flex items-center justify-between">
-                      <span className="font-medium truncate">{conv.other_participant_name}</span>
-                      {(conv.unread_count ?? 0) > 0 && (
+                {(() => {
+                  const unreadConversations = conversations?.filter(conv => (conv.unread_count ?? 0) > 0) || [];
+                  if (unreadConversations.length === 0) {
+                    return <p className="text-xs text-muted-foreground py-2">No unread messages</p>;
+                  }
+                  return unreadConversations.slice(0, 5).map((conv) => (
+                    <Link
+                      key={conv.id}
+                      to={`/messages?conversation=${conv.id}`}
+                      className="block rounded-md p-2 text-xs hover:bg-muted transition-colors"
+                    >
+                      <div className="flex items-center justify-between">
+                        <span className="font-medium truncate">{conv.other_participant_name}</span>
                         <Badge className="h-4 px-1 text-[9px] bg-[#007AFF] hover:bg-[#007AFF]">
                           {conv.unread_count}
                         </Badge>
-                      )}
-                    </div>
-                    <p className="text-muted-foreground truncate">
-                      {conv.last_message_preview || "No messages yet"}
-                    </p>
-                  </Link>
-                ))}
-                {conversations && conversations.length > 0 && (
-                  <Link
-                    to="/messages"
-                    className="block rounded-md p-2 text-xs text-[#007AFF] hover:bg-muted transition-colors font-medium"
-                  >
-                    View All Messages →
-                  </Link>
-                )}
+                      </div>
+                      <p className="text-muted-foreground truncate">
+                        {conv.last_message_preview || "No messages yet"}
+                      </p>
+                    </Link>
+                  ));
+                })()}
+                <Link
+                  to="/messages"
+                  className="block rounded-md p-2 text-xs text-[#007AFF] hover:bg-muted transition-colors font-medium"
+                >
+                  View All Messages →
+                </Link>
               </div>
             </CollapsibleContent>
           </Collapsible>
