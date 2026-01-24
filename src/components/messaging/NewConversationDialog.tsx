@@ -19,7 +19,7 @@ import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Skeleton } from "@/components/ui/skeleton";
 import { supabase } from "@/integrations/supabase/client";
 import { useGetOrCreateConversation } from "@/integrations/supabase/hooks/useConversations";
-import { Loader2, User, Users, Building2 } from "lucide-react";
+import { Loader2, User, Users, Building2, ClipboardList } from "lucide-react";
 
 interface NewConversationDialogProps {
   open: boolean;
@@ -30,7 +30,7 @@ interface NewConversationDialogProps {
 interface Recipient {
   id: string;
   name: string;
-  type: "user" | "personnel" | "customer";
+  type: "user" | "personnel" | "customer" | "applicant";
   subtitle?: string;
   phone?: string;
 }
@@ -40,7 +40,7 @@ export function NewConversationDialog({
   onOpenChange,
   onConversationCreated,
 }: NewConversationDialogProps) {
-  const [recipientType, setRecipientType] = useState<"user" | "personnel" | "customer">("personnel");
+  const [recipientType, setRecipientType] = useState<"user" | "personnel" | "customer" | "applicant">("personnel");
   const [search, setSearch] = useState("");
   const [recipients, setRecipients] = useState<Recipient[]>([]);
   const [isLoading, setIsLoading] = useState(false);
@@ -88,7 +88,7 @@ export function NewConversationDialog({
       } else if (recipientType === "customer") {
         const { data: customers } = await supabase
           .from("customers")
-          .select("id, name, email, company")
+          .select("id, name, email, company, phone")
           .is("deleted_at", null)
           .order("name");
 
@@ -97,6 +97,21 @@ export function NewConversationDialog({
           name: c.name,
           type: "customer" as const,
           subtitle: c.company || c.email,
+          phone: c.phone || undefined,
+        }));
+      } else if (recipientType === "applicant") {
+        const { data: applicants } = await supabase
+          .from("applicants")
+          .select("id, first_name, last_name, email, phone")
+          .not("phone", "is", null)
+          .order("first_name");
+
+        data = (applicants || []).map((a) => ({
+          id: a.id,
+          name: `${a.first_name} ${a.last_name}`.trim(),
+          type: "applicant" as const,
+          subtitle: a.email || undefined,
+          phone: a.phone || undefined,
         }));
       }
 
@@ -139,6 +154,8 @@ export function NewConversationDialog({
         return <Users className="h-4 w-4" />;
       case "customer":
         return <Building2 className="h-4 w-4" />;
+      case "applicant":
+        return <ClipboardList className="h-4 w-4" />;
       default:
         return <User className="h-4 w-4" />;
     }
@@ -183,6 +200,12 @@ export function NewConversationDialog({
                 <div className="flex items-center gap-2">
                   <Building2 className="h-4 w-4" />
                   Customer
+                </div>
+              </SelectItem>
+              <SelectItem value="applicant">
+                <div className="flex items-center gap-2">
+                  <ClipboardList className="h-4 w-4" />
+                  Applicant
                 </div>
               </SelectItem>
               <SelectItem value="user">

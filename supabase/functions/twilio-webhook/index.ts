@@ -12,7 +12,7 @@ function getPhoneDigits(phone: string): string {
 }
 
 interface PossibleSender {
-  type: "personnel" | "customer";
+  type: "personnel" | "customer" | "applicant";
   id: string;
   name: string;
 }
@@ -69,6 +69,18 @@ Deno.serve(async (req: Request) => {
 
     console.log(`Found ${customerMatches.length} customer matches`);
 
+    // Find ALL applicants with this phone number
+    const { data: allApplicants } = await supabase
+      .from("applicants")
+      .select("id, first_name, last_name, phone")
+      .not("phone", "is", null);
+
+    const applicantMatches = allApplicants?.filter(a => 
+      a.phone && getPhoneDigits(a.phone) === phoneDigits
+    ) || [];
+
+    console.log(`Found ${applicantMatches.length} applicant matches`);
+
     // Build list of possible senders
     const possibleSenders: PossibleSender[] = [
       ...personnelMatches.map(p => ({ 
@@ -80,6 +92,11 @@ Deno.serve(async (req: Request) => {
         type: "customer" as const, 
         id: c.id, 
         name: c.name 
+      })),
+      ...applicantMatches.map(a => ({ 
+        type: "applicant" as const, 
+        id: a.id, 
+        name: `${a.first_name} ${a.last_name}` 
       }))
     ];
 
