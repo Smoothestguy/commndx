@@ -88,6 +88,12 @@ export function MessagesInbox() {
     });
   };
 
+  const handleConversationDeleted = (deletedId: string) => {
+    if (selectedConversation?.id === deletedId) {
+      handleBack();
+    }
+  };
+
   return (
     <div className="flex flex-col h-[calc(100vh-20rem)]">
       {/* Header with New Message button */}
@@ -115,6 +121,7 @@ export function MessagesInbox() {
           <ConversationList
             selectedConversationId={selectedConversation?.id || null}
             onSelectConversation={handleSelectConversation}
+            onConversationDeleted={handleConversationDeleted}
           />
         </div>
 

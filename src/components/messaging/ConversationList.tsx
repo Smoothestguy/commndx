@@ -1,19 +1,39 @@
+import { useState } from "react";
 import { format, isToday, isYesterday } from "date-fns";
 import { cn } from "@/lib/utils";
-import { useConversations, Conversation } from "@/integrations/supabase/hooks/useConversations";
+import { useConversations, useDeleteConversation, Conversation } from "@/integrations/supabase/hooks/useConversations";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
-import { MessageSquare, User, Users, Building2 } from "lucide-react";
+import { MessageSquare, User, Users, Building2, Trash2 } from "lucide-react";
 import { ScrollArea } from "@/components/ui/scroll-area";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
+import { useToast } from "@/hooks/use-toast";
 
 interface ConversationListProps {
   selectedConversationId: string | null;
   onSelectConversation: (conversation: Conversation) => void;
+  onConversationDeleted?: (conversationId: string) => void;
 }
 
-export function ConversationList({ selectedConversationId, onSelectConversation }: ConversationListProps) {
+export function ConversationList({ 
+  selectedConversationId, 
+  onSelectConversation,
+  onConversationDeleted 
+}: ConversationListProps) {
   const { data: conversations, isLoading } = useConversations();
+  const deleteConversation = useDeleteConversation();
+  const { toast } = useToast();
+  const [conversationToDelete, setConversationToDelete] = useState<string | null>(null);
 
   const formatMessageTime = (dateString: string | null) => {
     if (!dateString) return "";
@@ -48,6 +68,28 @@ export function ConversationList({ selectedConversationId, onSelectConversation 
       .slice(0, 2);
   };
 
+  const handleDeleteClick = (e: React.MouseEvent, conversationId: string) => {
+    e.stopPropagation();
+    setConversationToDelete(conversationId);
+  };
+
+  const handleConfirmDelete = async () => {
+    if (!conversationToDelete) return;
+    
+    try {
+      await deleteConversation.mutateAsync(conversationToDelete);
+      toast({ title: "Conversation deleted" });
+      onConversationDeleted?.(conversationToDelete);
+    } catch (error) {
+      toast({ 
+        title: "Failed to delete conversation", 
+        variant: "destructive" 
+      });
+    } finally {
+      setConversationToDelete(null);
+    }
+  };
+
   if (isLoading) {
     return (
       <div className="space-y-2 p-2">
@@ -77,55 +119,86 @@ export function ConversationList({ selectedConversationId, onSelectConversation 
   }
 
   return (
-    <ScrollArea className="h-full">
-      <div className="divide-y">
-        {conversations.map((conversation) => (
-          <button
-            key={conversation.id}
-            onClick={() => onSelectConversation(conversation)}
-            className={cn(
-              "w-full flex items-start gap-3 p-3 hover:bg-muted/50 transition-colors text-left",
-              selectedConversationId === conversation.id && "bg-muted"
-            )}
-          >
-            <Avatar className="h-10 w-10">
-              <AvatarFallback className="bg-primary/10 text-primary">
-                {getInitials(conversation.other_participant_name)}
-              </AvatarFallback>
-            </Avatar>
+    <>
+      <ScrollArea className="h-full">
+        <div className="divide-y">
+          {conversations.map((conversation) => (
+            <button
+              key={conversation.id}
+              onClick={() => onSelectConversation(conversation)}
+              className={cn(
+                "w-full flex items-start gap-3 p-3 hover:bg-muted/50 transition-colors text-left group relative",
+                selectedConversationId === conversation.id && "bg-muted"
+              )}
+            >
+              <Avatar className="h-10 w-10">
+                <AvatarFallback className="bg-primary/10 text-primary">
+                  {getInitials(conversation.other_participant_name)}
+                </AvatarFallback>
+              </Avatar>
 
-            <div className="flex-1 min-w-0">
-              <div className="flex items-center justify-between gap-2">
-                <div className="flex items-center gap-1.5 min-w-0">
-                  <span className="font-medium truncate">
-                    {conversation.other_participant_name}
-                  </span>
-                  <span className="text-muted-foreground flex-shrink-0">
-                    {getParticipantIcon(conversation.other_participant_type)}
-                  </span>
+              <div className="flex-1 min-w-0">
+                <div className="flex items-center justify-between gap-2">
+                  <div className="flex items-center gap-1.5 min-w-0">
+                    <span className="font-medium truncate">
+                      {conversation.other_participant_name}
+                    </span>
+                    <span className="text-muted-foreground flex-shrink-0">
+                      {getParticipantIcon(conversation.other_participant_type)}
+                    </span>
+                  </div>
+                  <div className="flex items-center gap-1 flex-shrink-0">
+                    <span className="text-xs text-muted-foreground">
+                      {formatMessageTime(conversation.last_message_at)}
+                    </span>
+                    <button
+                      onClick={(e) => handleDeleteClick(e, conversation.id)}
+                      className="p-1 rounded hover:bg-destructive/10 text-muted-foreground hover:text-destructive opacity-0 group-hover:opacity-100 transition-opacity"
+                      title="Delete conversation"
+                    >
+                      <Trash2 className="h-3.5 w-3.5" />
+                    </button>
+                  </div>
                 </div>
-                <span className="text-xs text-muted-foreground flex-shrink-0">
-                  {formatMessageTime(conversation.last_message_at)}
-                </span>
-              </div>
 
-              <div className="flex items-center justify-between gap-2 mt-0.5">
-                <p className="text-sm text-muted-foreground truncate">
-                  {conversation.last_message_preview || "No messages yet"}
-                </p>
-                {(conversation.unread_count ?? 0) > 0 && (
-                  <Badge
-                    variant="default"
-                    className="h-5 min-w-[20px] px-1.5 text-xs font-medium flex-shrink-0"
-                  >
-                    {conversation.unread_count}
-                  </Badge>
-                )}
+                <div className="flex items-center justify-between gap-2 mt-0.5">
+                  <p className="text-sm text-muted-foreground truncate">
+                    {conversation.last_message_preview || "No messages yet"}
+                  </p>
+                  {(conversation.unread_count ?? 0) > 0 && (
+                    <Badge
+                      variant="default"
+                      className="h-5 min-w-[20px] px-1.5 text-xs font-medium flex-shrink-0"
+                    >
+                      {conversation.unread_count}
+                    </Badge>
+                  )}
+                </div>
               </div>
-            </div>
-          </button>
-        ))}
-      </div>
-    </ScrollArea>
+            </button>
+          ))}
+        </div>
+      </ScrollArea>
+
+      <AlertDialog open={!!conversationToDelete} onOpenChange={() => setConversationToDelete(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete conversation?</AlertDialogTitle>
+            <AlertDialogDescription>
+              This will permanently remove this conversation and all its messages. This action cannot be undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={handleConfirmDelete}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              Delete
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+    </>
   );
 }
