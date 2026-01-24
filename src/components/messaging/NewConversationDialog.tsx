@@ -231,10 +231,10 @@ export function NewConversationDialog({
                         {getInitials(recipient.name)}
                       </AvatarFallback>
                     </Avatar>
-                    <div className="text-left min-w-0">
-                      <div className="flex items-center gap-1.5">
-                        <span className="font-medium truncate">{recipient.name}</span>
-                        <span className="text-muted-foreground">
+                    <div className="flex-1 text-left min-w-0 overflow-hidden">
+                      <div className="flex items-center gap-1.5 min-w-0">
+                        <span className="font-medium truncate flex-1 min-w-0">{recipient.name}</span>
+                        <span className="text-muted-foreground flex-shrink-0">
                           {getTypeIcon(recipient.type)}
                         </span>
                       </div>
