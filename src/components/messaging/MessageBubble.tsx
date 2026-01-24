@@ -150,8 +150,8 @@ export function MessageBubble({
             isOwnMessage
               ? isFailed
                 ? "bg-destructive/20 text-foreground rounded-br-md border border-destructive/30"
-                : "bg-primary text-primary-foreground rounded-br-md"
-              : "bg-muted rounded-bl-md",
+                : "bg-[#007AFF] text-white rounded-br-md" // iPad Messages blue
+              : "bg-[#E9E9EB] dark:bg-[#3A3A3C] text-foreground rounded-bl-md", // iPad gray
             isSending && "opacity-70"
           )}
         >
