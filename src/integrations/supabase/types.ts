@@ -7310,6 +7310,14 @@ export type Database = {
         }
         Returns: boolean
       }
+      increment_unread_count: {
+        Args: {
+          p_conversation_id: string
+          p_exclude_id: string
+          p_exclude_type: string
+        }
+        Returns: undefined
+      }
       is_personnel: { Args: { _user_id: string }; Returns: boolean }
       is_vendor: { Args: { _user_id: string }; Returns: boolean }
       reset_vendor_bill_sequence_for_new_year: {
