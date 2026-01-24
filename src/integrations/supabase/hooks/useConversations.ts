@@ -226,7 +226,7 @@ export function useConversationMessages(conversationId: string | null) {
       .on(
         "postgres_changes",
         {
-          event: "INSERT",
+          event: "*",
           schema: "public",
           table: "conversation_messages",
           filter: `conversation_id=eq.${conversationId}`,
@@ -394,20 +394,34 @@ export function useMarkConversationAsRead() {
     mutationFn: async (conversationId: string) => {
       if (!user) throw new Error("Not authenticated");
 
-      const { error } = await supabase
+      const now = new Date().toISOString();
+
+      // Update participant's unread count
+      const { error: participantError } = await supabase
         .from("conversation_participants")
         .update({
           unread_count: 0,
-          last_read_at: new Date().toISOString(),
+          last_read_at: now,
         })
         .eq("conversation_id", conversationId)
         .eq("participant_type", "user")
         .eq("participant_id", user.id);
 
-      if (error) throw error;
+      if (participantError) throw participantError;
+
+      // Mark all messages NOT sent by current user as read
+      const { error: messagesError } = await supabase
+        .from("conversation_messages")
+        .update({ read_at: now })
+        .eq("conversation_id", conversationId)
+        .is("read_at", null)
+        .neq("sender_id", user.id);
+
+      if (messagesError) throw messagesError;
     },
-    onSuccess: () => {
+    onSuccess: (_, conversationId) => {
       queryClient.invalidateQueries({ queryKey: ["conversations"] });
+      queryClient.invalidateQueries({ queryKey: ["conversation-messages", conversationId] });
     },
   });
 }
