@@ -113,9 +113,9 @@ export function MessagesInbox() {
         {/* Conversation list - hidden on mobile when a conversation is selected */}
         <div
           className={cn(
-            "border-r bg-background flex-shrink-0 flex flex-col transition-all duration-200",
-            selectedConversation ? "hidden md:flex md:w-80" : "w-full md:w-80",
-            isSidebarCollapsed ? "md:w-0 md:border-r-0" : "md:w-80"
+            "border-r bg-background flex-shrink-0 flex flex-col overflow-hidden transition-all duration-200",
+            selectedConversation ? "hidden md:flex md:w-72" : "w-full md:w-72",
+            isSidebarCollapsed ? "md:w-0 md:border-r-0" : "md:w-72"
           )}
         >
           <ConversationList
