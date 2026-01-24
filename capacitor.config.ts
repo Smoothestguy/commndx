@@ -5,13 +5,16 @@ const config: CapacitorConfig = {
   appName: 'Command X',
   webDir: 'dist',
   
-  // Server configuration for development
-  // Comment out for production builds
+  // Server configuration
+  // For development: uncomment the url line below
+  // For production: keep url commented out
   server: {
-    // For development with hot reload, uncomment the url below:
+    // Development hot-reload (uncomment for local development):
     // url: 'http://localhost:5173',
-    cleartext: true,
+    
+    // Production settings
     androidScheme: 'https',
+    iosScheme: 'capacitor',
   },
   
   // iOS-specific configuration
@@ -19,12 +22,15 @@ const config: CapacitorConfig = {
     contentInset: 'automatic',
     backgroundColor: '#ffffff',
     preferredContentMode: 'mobile',
+    limitsNavigationsToAppBoundDomains: true,
   },
   
   // Android-specific configuration  
   android: {
     backgroundColor: '#ffffff',
-    allowMixedContent: true,
+    allowMixedContent: false, // Security: disabled for production
+    captureInput: true,
+    webContentsDebuggingEnabled: false, // Disable for production
   },
   
   // Plugin configurations
@@ -46,7 +52,22 @@ const config: CapacitorConfig = {
       launchShowDuration: 0,
     },
     
-    // Background Geolocation configuration (will be added in Phase 2)
+    // Push Notifications
+    PushNotifications: {
+      presentationOptions: ['badge', 'sound', 'alert'],
+    },
+    
+    // Splash Screen
+    SplashScreen: {
+      launchShowDuration: 2000,
+      launchAutoHide: true,
+      backgroundColor: '#ffffff',
+      showSpinner: false,
+      splashFullScreen: true,
+      splashImmersive: true,
+    },
+    
+    // Background Geolocation configuration
     // BackgroundGeolocation: {
     //   license: 'YOUR_LICENSE_KEY',
     // },
@@ -54,4 +75,3 @@ const config: CapacitorConfig = {
 };
 
 export default config;
-
