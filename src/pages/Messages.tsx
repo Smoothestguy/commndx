@@ -1,25 +1,21 @@
-import { useState } from "react";
 import { useSearchParams } from "react-router-dom";
 import { PageLayout } from "@/components/layout/PageLayout";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { MessagesInbox } from "@/components/messaging/MessagesInbox";
-import { SMSBlastsTab } from "@/components/messaging/SMSBlastsTab";
 import { useMessageStats } from "@/integrations/supabase/hooks/useMessages";
-import { useTotalUnreadCount } from "@/integrations/supabase/hooks/useConversations";
-import { MessageSquare, Send, CheckCircle, AlertCircle, Clock } from "lucide-react";
+import { MessageSquare, CheckCircle, AlertCircle, Clock } from "lucide-react";
 import { SEO } from "@/components/SEO";
 
 export default function Messages() {
   const [searchParams, setSearchParams] = useSearchParams();
-  const activeTab = searchParams.get("tab") || "inbox";
+  
+  // Redirect from old tab param to clean URL
+  if (searchParams.get("tab") === "blasts") {
+    searchParams.delete("tab");
+    setSearchParams(searchParams, { replace: true });
+  }
   
   const { data: stats } = useMessageStats();
-  const { data: unreadCount } = useTotalUnreadCount();
-
-  const handleTabChange = (value: string) => {
-    setSearchParams({ tab: value });
-  };
 
   return (
     <PageLayout title="Messages">
@@ -69,32 +65,8 @@ export default function Messages() {
           </Card>
         </div>
 
-        {/* Tabs for Inbox and SMS Blasts */}
-        <Tabs value={activeTab} onValueChange={handleTabChange} className="w-full">
-          <TabsList className="grid w-full max-w-md grid-cols-2">
-            <TabsTrigger value="inbox" className="flex items-center gap-2">
-              <MessageSquare className="h-4 w-4" />
-              Inbox
-              {unreadCount && unreadCount > 0 && (
-                <span className="ml-1 flex h-5 w-5 items-center justify-center rounded-full bg-primary text-[10px] font-medium text-primary-foreground">
-                  {unreadCount > 99 ? "99+" : unreadCount}
-                </span>
-              )}
-            </TabsTrigger>
-            <TabsTrigger value="blasts" className="flex items-center gap-2">
-              <Send className="h-4 w-4" />
-              SMS Blasts
-            </TabsTrigger>
-          </TabsList>
-
-          <TabsContent value="inbox" className="mt-6">
-            <MessagesInbox />
-          </TabsContent>
-
-          <TabsContent value="blasts" className="mt-6">
-            <SMSBlastsTab />
-          </TabsContent>
-        </Tabs>
+        {/* Inbox - now the primary view */}
+        <MessagesInbox />
       </div>
     </PageLayout>
   );

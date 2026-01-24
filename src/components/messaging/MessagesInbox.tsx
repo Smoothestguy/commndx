@@ -67,7 +67,7 @@ export function MessagesInbox() {
     setSelectedConversation(conversation);
     setSearchParams(prev => {
       prev.set("conversation", conversation.id);
-      prev.set("tab", "inbox");
+      prev.delete("tab"); // Clean up old tab param
       return prev;
     });
   };
@@ -75,7 +75,7 @@ export function MessagesInbox() {
   const handleConversationCreated = (conversationId: string) => {
     setSearchParams(prev => {
       prev.set("conversation", conversationId);
-      prev.set("tab", "inbox");
+      prev.delete("tab"); // Clean up old tab param
       return prev;
     });
   };
