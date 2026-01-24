@@ -14,6 +14,12 @@ export interface AdminNotification {
   related_id: string | null;
   metadata: Record<string, unknown>;
   created_at: string;
+  // New fields for priority and escalation
+  priority?: string | null;
+  escalation_count?: number | null;
+  escalated_at?: string | null;
+  group_key?: string | null;
+  count?: number | null;
 }
 
 export function useAdminNotifications() {

@@ -83,37 +83,52 @@ export type Database = {
       }
       admin_notifications: {
         Row: {
+          count: number | null
           created_at: string | null
+          escalated_at: string | null
+          escalation_count: number | null
+          group_key: string | null
           id: string
           is_read: boolean
           link_url: string | null
           message: string
           metadata: Json | null
           notification_type: string
+          priority: string | null
           related_id: string | null
           title: string
           user_id: string
         }
         Insert: {
+          count?: number | null
           created_at?: string | null
+          escalated_at?: string | null
+          escalation_count?: number | null
+          group_key?: string | null
           id?: string
           is_read?: boolean
           link_url?: string | null
           message: string
           metadata?: Json | null
           notification_type?: string
+          priority?: string | null
           related_id?: string | null
           title: string
           user_id: string
         }
         Update: {
+          count?: number | null
           created_at?: string | null
+          escalated_at?: string | null
+          escalation_count?: number | null
+          group_key?: string | null
           id?: string
           is_read?: boolean
           link_url?: string | null
           message?: string
           metadata?: Json | null
           notification_type?: string
+          priority?: string | null
           related_id?: string | null
           title?: string
           user_id?: string
@@ -1288,33 +1303,48 @@ export type Database = {
           conversation_id: string
           created_at: string | null
           delivered_at: string | null
+          error_code: string | null
+          error_message: string | null
+          failed_at: string | null
           id: string
           message_type: string | null
           read_at: string | null
+          retry_count: number | null
           sender_id: string
           sender_type: string
+          status: string | null
         }
         Insert: {
           content: string
           conversation_id: string
           created_at?: string | null
           delivered_at?: string | null
+          error_code?: string | null
+          error_message?: string | null
+          failed_at?: string | null
           id?: string
           message_type?: string | null
           read_at?: string | null
+          retry_count?: number | null
           sender_id: string
           sender_type: string
+          status?: string | null
         }
         Update: {
           content?: string
           conversation_id?: string
           created_at?: string | null
           delivered_at?: string | null
+          error_code?: string | null
+          error_message?: string | null
+          failed_at?: string | null
           id?: string
           message_type?: string | null
           read_at?: string | null
+          retry_count?: number | null
           sender_id?: string
           sender_type?: string
+          status?: string | null
         }
         Relationships: [
           {
@@ -4895,6 +4925,36 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      push_tokens: {
+        Row: {
+          created_at: string | null
+          device_name: string | null
+          id: string
+          last_used_at: string | null
+          platform: string | null
+          token: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string | null
+          device_name?: string | null
+          id?: string
+          last_used_at?: string | null
+          platform?: string | null
+          token: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string | null
+          device_name?: string | null
+          id?: string
+          last_used_at?: string | null
+          platform?: string | null
+          token?: string
+          user_id?: string
+        }
+        Relationships: []
       }
       quickbooks_account_mappings: {
         Row: {
