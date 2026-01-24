@@ -428,6 +428,35 @@ export function useMarkConversationAsRead() {
 
 export function useTotalUnreadCount() {
   const { user } = useAuth();
+  const queryClient = useQueryClient();
+
+  // Subscribe to participant changes for live updates
+  useEffect(() => {
+    if (!user) return;
+    
+    const channel = supabase
+      .channel('unread-count-realtime')
+      .on('postgres_changes', {
+        event: '*',
+        schema: 'public',
+        table: 'conversation_participants',
+        filter: `participant_id=eq.${user.id}`,
+      }, () => {
+        queryClient.invalidateQueries({ queryKey: ['unread-count'] });
+      })
+      .on('postgres_changes', {
+        event: '*',
+        schema: 'public',
+        table: 'conversation_messages',
+      }, () => {
+        queryClient.invalidateQueries({ queryKey: ['unread-count'] });
+      })
+      .subscribe();
+      
+    return () => { 
+      supabase.removeChannel(channel); 
+    };
+  }, [user?.id, queryClient]);
 
   return useQuery({
     queryKey: ["unread-count", user?.id],

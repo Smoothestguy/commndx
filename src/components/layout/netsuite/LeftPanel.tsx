@@ -10,7 +10,8 @@ import {
   AlertTriangle,
   CheckCircle2,
   Calendar,
-  History
+  History,
+  MessageSquare
 } from "lucide-react";
 import { useRecentPages } from "@/hooks/useRecentPages";
 import { Button } from "@/components/ui/button";
@@ -30,6 +31,7 @@ import { Badge } from "@/components/ui/badge";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { formatDistanceToNow } from "date-fns";
+import { useConversations, useTotalUnreadCount } from "@/integrations/supabase/hooks/useConversations";
 
 interface LeftPanelProps {
   collapsed: boolean;
@@ -43,8 +45,11 @@ export function LeftPanel({ collapsed, onToggleCollapse, backgroundColor, textCo
   const [remindersOpen, setRemindersOpen] = useState(false);
   const [recentOpen, setRecentOpen] = useState(false);
   const [alertsOpen, setAlertsOpen] = useState(false);
+  const [messagesOpen, setMessagesOpen] = useState(false);
   
   const recentPages = useRecentPages();
+  const { data: conversations } = useConversations();
+  const { data: unreadCount = 0 } = useTotalUnreadCount();
 
   // Fetch pending approvals (estimates pending approval)
   const { data: pendingEstimates } = useQuery({
@@ -189,6 +194,26 @@ export function LeftPanel({ collapsed, onToggleCollapse, backgroundColor, textCo
                 </Button>
               </TooltipTrigger>
               <TooltipContent side="right">Recent Projects</TooltipContent>
+            </Tooltip>
+
+            {/* Messages */}
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button 
+                  variant="ghost" 
+                  size="icon" 
+                  className="relative"
+                  onClick={() => { onToggleCollapse(); setMessagesOpen(true); }}
+                >
+                  <MessageSquare className="h-4 w-4" />
+                  {unreadCount > 0 && (
+                    <span className="absolute -top-1 -right-1 h-4 w-4 bg-[#007AFF] text-white text-[10px] rounded-full flex items-center justify-center">
+                      {unreadCount > 9 ? "9+" : unreadCount}
+                    </span>
+                  )}
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent side="right">Messages</TooltipContent>
             </Tooltip>
           </div>
         </div>
@@ -349,6 +374,56 @@ export function LeftPanel({ collapsed, onToggleCollapse, backgroundColor, textCo
                     </p>
                   </Link>
                 ))}
+              </div>
+            </CollapsibleContent>
+          </Collapsible>
+
+          {/* Messages Section */}
+          <Collapsible open={messagesOpen} onOpenChange={setMessagesOpen}>
+            <CollapsibleTrigger className="flex w-full items-center justify-between rounded-md px-2 py-1.5 text-sm font-medium hover:bg-muted">
+              <div className="flex items-center gap-2">
+                <MessageSquare className="h-4 w-4 text-[#007AFF]" />
+                <span>Messages</span>
+                {unreadCount > 0 && (
+                  <Badge className="h-5 px-1.5 text-[10px] bg-[#007AFF] hover:bg-[#007AFF]">
+                    {unreadCount}
+                  </Badge>
+                )}
+              </div>
+              <ChevronRight className={cn("h-4 w-4 transition-transform", messagesOpen && "rotate-90")} />
+            </CollapsibleTrigger>
+            <CollapsibleContent className="mt-1">
+              <div className="space-y-1 pl-6">
+                {(!conversations || conversations.length === 0) && (
+                  <p className="text-xs text-muted-foreground py-2">No messages</p>
+                )}
+                {conversations?.slice(0, 5).map((conv) => (
+                  <Link
+                    key={conv.id}
+                    to={`/messages?id=${conv.id}`}
+                    className="block rounded-md p-2 text-xs hover:bg-muted transition-colors"
+                  >
+                    <div className="flex items-center justify-between">
+                      <span className="font-medium truncate">{conv.other_participant_name}</span>
+                      {(conv.unread_count ?? 0) > 0 && (
+                        <Badge className="h-4 px-1 text-[9px] bg-[#007AFF] hover:bg-[#007AFF]">
+                          {conv.unread_count}
+                        </Badge>
+                      )}
+                    </div>
+                    <p className="text-muted-foreground truncate">
+                      {conv.last_message_preview || "No messages yet"}
+                    </p>
+                  </Link>
+                ))}
+                {conversations && conversations.length > 0 && (
+                  <Link
+                    to="/messages"
+                    className="block rounded-md p-2 text-xs text-[#007AFF] hover:bg-muted transition-colors font-medium"
+                  >
+                    View All Messages →
+                  </Link>
+                )}
               </div>
             </CollapsibleContent>
           </Collapsible>

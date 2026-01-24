@@ -2,7 +2,8 @@ import { Link } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
 import { useUserRole } from "@/hooks/useUserRole";
 import { cn } from "@/lib/utils";
-import { Menu, User, LogOut, MessageCircle } from "lucide-react";
+import { Menu, User, LogOut, MessageCircle, MessageSquareText } from "lucide-react";
+import { useTotalUnreadCount } from "@/integrations/supabase/hooks/useConversations";
 import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,
@@ -32,6 +33,7 @@ export function TopNavBar({ onMobileMenuToggle }: TopNavBarProps) {
   const { toggleOpen, messages } = useAIAssistant();
   const { resolvedTheme } = useTheme();
   const { activeTheme } = useDashboardConfig();
+  const { data: unreadCount = 0 } = useTotalUnreadCount();
   
   // Check for unread messages (last message is from assistant)
   const hasUnread = messages.length > 0 && messages[messages.length - 1].role === "assistant";
@@ -71,6 +73,22 @@ export function TopNavBar({ onMobileMenuToggle }: TopNavBarProps) {
 
         {/* Right Section: Session + Actions + User */}
         <div className="flex items-center gap-1">
+          {/* Messages Icon - iPhone style */}
+          <Link to="/messages">
+            <Button
+              variant="ghost"
+              size="icon"
+              className="relative text-header-foreground hover:bg-black/10 dark:hover:bg-white/10 h-8 w-8"
+            >
+              <MessageSquareText className="h-4 w-4" />
+              {unreadCount > 0 && (
+                <span className="absolute -top-0.5 -right-0.5 h-4 w-4 bg-destructive text-destructive-foreground text-[10px] rounded-full flex items-center justify-center animate-pulse font-medium">
+                  {unreadCount > 9 ? "9+" : unreadCount}
+                </span>
+              )}
+            </Button>
+          </Link>
+
           {/* AI Assistant Toggle */}
           <Button
             variant="ghost"
