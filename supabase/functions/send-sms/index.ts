@@ -6,7 +6,7 @@ const corsHeaders = {
 };
 
 interface SMSRequest {
-  recipientType: 'customer' | 'personnel';
+  recipientType: 'customer' | 'personnel' | 'applicant';
   recipientId: string;
   recipientName: string;
   recipientPhone: string;

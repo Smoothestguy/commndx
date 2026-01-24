@@ -9,6 +9,7 @@ import {
   Mail,
   ChevronDown,
   ClipboardList,
+  MessageSquare,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import {
@@ -49,6 +50,8 @@ import {
   RecordType,
 } from "@/components/personnel/ApprovalTypeSelectionDialog";
 import { PersonnelAssignmentDialog } from "@/components/time-tracking/PersonnelAssignmentDialog";
+import { useGetOrCreateConversation } from "@/integrations/supabase/hooks/useConversations";
+import { useNavigate } from "react-router-dom";
 import { toast } from "sonner";
 import { useQueryClient } from "@tanstack/react-query";
 
@@ -96,6 +99,8 @@ export function ProjectApplicantsSection({
 }: ProjectApplicantsSectionProps) {
   const isMobile = useIsMobile();
   const queryClient = useQueryClient();
+  const navigate = useNavigate();
+  const getOrCreateConversation = useGetOrCreateConversation();
 
   const [isOpen, setIsOpen] = useState(false);
   const [activeTab, setActiveTab] = useState<"pending" | "approved">("pending");
@@ -129,6 +134,26 @@ export function ProjectApplicantsSection({
   const handleViewApplication = (application: Application) => {
     setSelectedApplication(application);
     setIsDetailDialogOpen(true);
+  };
+
+  const handleMessageApplicant = async (application: Application, e: React.MouseEvent) => {
+    e.stopPropagation();
+    
+    if (!application.applicants?.phone) {
+      toast.error("This applicant doesn't have a phone number");
+      return;
+    }
+    
+    try {
+      const conversation = await getOrCreateConversation.mutateAsync({
+        participantType: "applicant",
+        participantId: application.applicant_id,
+      });
+      
+      navigate(`/messages?conversation=${conversation.id}`);
+    } catch (error) {
+      toast.error("Failed to start conversation");
+    }
   };
 
   const handleApproveClick = (application: Application) => {
@@ -259,6 +284,15 @@ export function ProjectApplicantsSection({
             <Button
               variant="ghost"
               size="icon"
+              onClick={(e) => handleMessageApplicant(application, e)}
+              disabled={!application.applicants?.phone}
+              title={application.applicants?.phone ? "Send Message" : "No phone number"}
+            >
+              <MessageSquare className="h-4 w-4" />
+            </Button>
+            <Button
+              variant="ghost"
+              size="icon"
               title="View Details"
             >
               <Eye className="h-4 w-4" />
@@ -339,6 +373,15 @@ export function ProjectApplicantsSection({
             className="flex items-center gap-1"
             onClick={(e) => e.stopPropagation()}
           >
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={(e) => handleMessageApplicant(application, e)}
+              disabled={!application.applicants?.phone}
+              title={application.applicants?.phone ? "Send Message" : "No phone number"}
+            >
+              <MessageSquare className="h-4 w-4" />
+            </Button>
             <Button
               variant="ghost"
               size="sm"

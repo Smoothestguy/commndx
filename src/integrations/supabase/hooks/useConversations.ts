@@ -5,9 +5,9 @@ import { useEffect } from "react";
 
 export interface Conversation {
   id: string;
-  participant_1_type: "user" | "personnel" | "customer";
+  participant_1_type: "user" | "personnel" | "customer" | "applicant";
   participant_1_id: string;
-  participant_2_type: "user" | "personnel" | "customer";
+  participant_2_type: "user" | "personnel" | "customer" | "applicant";
   participant_2_id: string;
   last_message_at: string | null;
   last_message_preview: string | null;
@@ -22,7 +22,7 @@ export interface Conversation {
 export interface ConversationMessage {
   id: string;
   conversation_id: string;
-  sender_type: "user" | "personnel" | "customer";
+  sender_type: "user" | "personnel" | "customer" | "applicant";
   sender_id: string;
   content: string;
   message_type: "in_app" | "sms";
@@ -94,6 +94,15 @@ export function useConversations() {
               .single();
             if (customer) {
               otherName = customer.name;
+            }
+          } else if (otherType === "applicant") {
+            const { data: applicant } = await supabase
+              .from("applicants")
+              .select("first_name, last_name")
+              .eq("id", otherId)
+              .single();
+            if (applicant) {
+              otherName = `${applicant.first_name} ${applicant.last_name}`.trim();
             }
           }
 
@@ -202,6 +211,15 @@ export function useConversationMessages(conversationId: string | null) {
               .single();
             if (customer) {
               senderName = customer.name;
+            }
+          } else if (msg.sender_type === "applicant") {
+            const { data: applicant } = await supabase
+              .from("applicants")
+              .select("first_name, last_name")
+              .eq("id", msg.sender_id)
+              .single();
+            if (applicant) {
+              senderName = `${applicant.first_name} ${applicant.last_name}`.trim();
             }
           }
 
@@ -330,7 +348,7 @@ export function useGetOrCreateConversation() {
       participantType,
       participantId,
     }: {
-      participantType: "user" | "personnel" | "customer";
+      participantType: "user" | "personnel" | "customer" | "applicant";
       participantId: string;
     }) => {
       if (!user) throw new Error("Not authenticated");

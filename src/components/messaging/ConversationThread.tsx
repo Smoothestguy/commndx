@@ -16,7 +16,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { Users, Building2, User, ArrowLeft, PanelLeftClose, PanelLeftOpen } from "lucide-react";
+import { Users, Building2, User, ArrowLeft, PanelLeftClose, PanelLeftOpen, ClipboardList } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
 interface ConversationThreadProps {
@@ -91,6 +91,8 @@ export function ConversationThread({ conversation, onBack, recipientPhone, onTog
         return <Users className="h-4 w-4" />;
       case "customer":
         return <Building2 className="h-4 w-4" />;
+      case "applicant":
+        return <ClipboardList className="h-4 w-4" />;
       default:
         return <User className="h-4 w-4" />;
     }
@@ -112,6 +114,8 @@ export function ConversationThread({ conversation, onBack, recipientPhone, onTog
         return "Personnel";
       case "customer":
         return "Customer";
+      case "applicant":
+        return "Applicant";
       default:
         return "User";
     }
@@ -246,7 +250,7 @@ export function ConversationThread({ conversation, onBack, recipientPhone, onTog
           onSend={handleSendMessage}
           isLoading={sendMessage.isPending}
           placeholder={`Message ${conversation.other_participant_name}...`}
-          showSMSToggle={conversation.other_participant_type === "personnel" || conversation.other_participant_type === "customer"}
+          showSMSToggle={conversation.other_participant_type === "personnel" || conversation.other_participant_type === "customer" || conversation.other_participant_type === "applicant"}
           recipientPhone={recipientPhone}
           onTyping={setTyping}
           onStopTyping={clearTyping}

@@ -5,7 +5,7 @@ import { useConversations, useDeleteConversation, Conversation } from "@/integra
 import { Skeleton } from "@/components/ui/skeleton";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
-import { MessageSquare, User, Users, Building2, Trash2, Search } from "lucide-react";
+import { MessageSquare, User, Users, Building2, Trash2, Search, ClipboardList } from "lucide-react";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Input } from "@/components/ui/input";
 import {
@@ -57,11 +57,13 @@ export function ConversationList({
   const getParticipantIcon = (type: string | undefined) => {
     switch (type) {
       case "personnel":
-        return <Users className="h-4 w-4" />;
+        return <Users className="h-3.5 w-3.5 text-blue-500" />;
       case "customer":
-        return <Building2 className="h-4 w-4" />;
+        return <Building2 className="h-3.5 w-3.5 text-green-500" />;
+      case "applicant":
+        return <ClipboardList className="h-3.5 w-3.5 text-purple-500" />;
       default:
-        return <User className="h-4 w-4" />;
+        return <User className="h-3.5 w-3.5 text-muted-foreground" />;
     }
   };
 
