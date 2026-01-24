@@ -125,11 +125,10 @@ Deno.serve(async (req: Request) => {
       conversationId = existingConversations[0].id;
       console.log(`Found existing conversation: ${conversationId}`);
     } else {
-      // Create a new conversation - find an admin to be the other participant
+      // Create a new conversation - find any user to be the other participant
       const { data: adminUser } = await supabase
         .from("profiles")
         .select("id")
-        .eq("role", "admin")
         .limit(1)
         .maybeSingle();
 
