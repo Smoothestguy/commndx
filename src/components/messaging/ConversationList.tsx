@@ -127,53 +127,51 @@ export function ConversationList({
               key={conversation.id}
               onClick={() => onSelectConversation(conversation)}
               className={cn(
-                "w-full flex items-start gap-3 p-3 pr-4 hover:bg-muted/50 transition-colors text-left group overflow-hidden",
+                "w-full grid grid-cols-[40px_1fr_auto] gap-3 p-3 hover:bg-muted/50 transition-colors text-left group",
                 selectedConversationId === conversation.id && "bg-muted"
               )}
             >
-              <Avatar className="h-10 w-10 flex-shrink-0">
+              {/* Column 1: Avatar - fixed 40px */}
+              <Avatar className="h-10 w-10">
                 <AvatarFallback className="bg-primary/10 text-primary">
                   {getInitials(conversation.other_participant_name)}
                 </AvatarFallback>
               </Avatar>
 
-              <div className="flex-1 min-w-0 overflow-hidden">
-                <div className="flex items-center gap-2 overflow-hidden">
-                  <div className="flex items-center gap-1.5 min-w-0 flex-1 overflow-hidden">
-                    <span className="font-medium truncate">
-                      {conversation.other_participant_name}
-                    </span>
-                    <span className="text-muted-foreground flex-shrink-0">
-                      {getParticipantIcon(conversation.other_participant_type)}
-                    </span>
-                  </div>
-                  <div className="flex items-center gap-1 flex-shrink-0 ml-auto">
-                    <span className="text-xs text-muted-foreground whitespace-nowrap">
-                      {formatMessageTime(conversation.last_message_at)}
-                    </span>
-                    <button
-                      onClick={(e) => handleDeleteClick(e, conversation.id)}
-                      className="p-1 rounded hover:bg-destructive/10 text-muted-foreground hover:text-destructive flex-shrink-0"
-                      title="Delete conversation"
-                    >
-                      <Trash2 className="h-4 w-4" />
-                    </button>
-                  </div>
+              {/* Column 2: Name + Preview - takes remaining space, truncates */}
+              <div className="min-w-0">
+                <div className="flex items-center gap-1.5">
+                  <span className="font-medium truncate">
+                    {conversation.other_participant_name}
+                  </span>
+                  <span className="text-muted-foreground flex-shrink-0">
+                    {getParticipantIcon(conversation.other_participant_type)}
+                  </span>
                 </div>
+                <p className="text-sm text-muted-foreground truncate mt-0.5">
+                  {conversation.last_message_preview || "No messages yet"}
+                </p>
+              </div>
 
-                <div className="flex items-center gap-2 mt-0.5 overflow-hidden">
-                  <p className="text-sm text-muted-foreground truncate flex-1 min-w-0">
-                    {conversation.last_message_preview || "No messages yet"}
-                  </p>
-                  {(conversation.unread_count ?? 0) > 0 && (
-                    <Badge
-                      variant="default"
-                      className="h-5 min-w-[20px] px-1.5 text-xs font-medium flex-shrink-0"
-                    >
-                      {conversation.unread_count}
-                    </Badge>
-                  )}
+              {/* Column 3: Time + Delete + Badge - auto width, never clips */}
+              <div className="flex flex-col items-end gap-1">
+                <div className="flex items-center gap-1">
+                  <span className="text-xs text-muted-foreground whitespace-nowrap">
+                    {formatMessageTime(conversation.last_message_at)}
+                  </span>
+                  <button
+                    onClick={(e) => handleDeleteClick(e, conversation.id)}
+                    className="p-1 rounded hover:bg-destructive/10 text-muted-foreground hover:text-destructive"
+                    title="Delete conversation"
+                  >
+                    <Trash2 className="h-4 w-4" />
+                  </button>
                 </div>
+                {(conversation.unread_count ?? 0) > 0 && (
+                  <Badge variant="default" className="h-5 min-w-[20px] px-1.5 text-xs font-medium">
+                    {conversation.unread_count}
+                  </Badge>
+                )}
               </div>
             </button>
           ))}
