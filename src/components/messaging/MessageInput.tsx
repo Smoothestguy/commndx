@@ -16,6 +16,8 @@ interface MessageInputProps {
   placeholder?: string;
   showSMSToggle?: boolean;
   recipientPhone?: string | null;
+  onTyping?: () => void;
+  onStopTyping?: () => void;
 }
 
 export function MessageInput({
@@ -24,6 +26,8 @@ export function MessageInput({
   placeholder = "Type a message...",
   showSMSToggle = false,
   recipientPhone,
+  onTyping,
+  onStopTyping,
 }: MessageInputProps) {
   const [message, setMessage] = useState("");
   const [sendViaSMS, setSendViaSMS] = useState(false);
@@ -36,6 +40,7 @@ export function MessageInput({
     if (!trimmedMessage || isLoading) return;
 
     try {
+      onStopTyping?.();
       await onSend(trimmedMessage, !!(sendViaSMS && hasSMSCapability));
       setMessage("");
       // Reset textarea height
@@ -57,6 +62,7 @@ export function MessageInput({
 
   const handleInput = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
     setMessage(e.target.value);
+    onTyping?.();
 
     // Auto-resize textarea
     const textarea = e.target;
