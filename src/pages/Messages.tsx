@@ -2,6 +2,7 @@ import { useSearchParams } from "react-router-dom";
 import { PageLayout } from "@/components/layout/PageLayout";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { MessagesInbox } from "@/components/messaging/MessagesInbox";
+import { LegacySMSHistory } from "@/components/messaging/LegacySMSHistory";
 import { useMessageStats } from "@/integrations/supabase/hooks/useMessages";
 import { MessageSquare, CheckCircle, AlertCircle, Clock } from "lucide-react";
 import { SEO } from "@/components/SEO";
@@ -67,6 +68,9 @@ export default function Messages() {
 
         {/* Inbox - now the primary view */}
         <MessagesInbox />
+
+        {/* Legacy SMS History - collapsible section */}
+        <LegacySMSHistory />
       </div>
     </PageLayout>
   );
