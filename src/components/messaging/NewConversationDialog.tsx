@@ -32,6 +32,7 @@ interface Recipient {
   name: string;
   type: "user" | "personnel" | "customer";
   subtitle?: string;
+  phone?: string;
 }
 
 export function NewConversationDialog({
@@ -81,7 +82,8 @@ export function NewConversationDialog({
           id: p.id,
           name: `${p.first_name} ${p.last_name}`.trim(),
           type: "personnel" as const,
-          subtitle: p.email || p.phone,
+          subtitle: p.email || undefined,
+          phone: p.phone || undefined,
         }));
       } else if (recipientType === "customer") {
         const { data: customers } = await supabase
@@ -109,7 +111,8 @@ export function NewConversationDialog({
   const filteredRecipients = recipients.filter(
     (r) =>
       r.name.toLowerCase().includes(search.toLowerCase()) ||
-      r.subtitle?.toLowerCase().includes(search.toLowerCase())
+      r.subtitle?.toLowerCase().includes(search.toLowerCase()) ||
+      r.phone?.includes(search.replace(/\D/g, ""))
   );
 
   const handleStartConversation = async () => {
@@ -238,9 +241,11 @@ export function NewConversationDialog({
                           {getTypeIcon(recipient.type)}
                         </span>
                       </div>
-                      {recipient.subtitle && (
+                      {(recipient.subtitle || recipient.phone) && (
                         <p className="text-xs text-muted-foreground truncate">
                           {recipient.subtitle}
+                          {recipient.subtitle && recipient.phone && " • "}
+                          {recipient.phone}
                         </p>
                       )}
                     </div>
