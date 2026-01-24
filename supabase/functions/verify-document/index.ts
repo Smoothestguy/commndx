@@ -13,41 +13,91 @@ interface VerificationResult {
   confidence: 'high' | 'medium' | 'low';
   issues: string[];
   message: string;
+  extracted_ssn_last4?: string;
+  extracted_name?: string;
+  ssn_matches?: boolean;
 }
 
-const getVerificationPrompt = (expectedType: string) => {
-  const documentDescription = expectedType === 'ssn_card' 
-    ? 'Social Security Card (SSN Card)' 
-    : 'Government-issued ID (Driver\'s License, State ID, or Passport)';
+const getSSNCardVerificationPrompt = (expectedSSNLast4?: string) => {
+  return `You are a document verification expert. Analyze this Social Security Card image.
 
-  return `You are a document verification expert. Analyze this image and determine if it is a legitimate ${documentDescription}.
-
-IMPORTANT: You must respond ONLY with a valid JSON object, no other text.
+CRITICAL: You must respond ONLY with a valid JSON object, no other text.
 
 Check the following:
-1. Document Type Match: Is this actually a ${documentDescription}?
-2. Legitimacy: Does it appear to be a real document (not a screenshot of a screen, not obviously photoshopped, not a printed copy of a photo)?
-3. Image Quality: Is the image clear enough to read important details?
+1. Document Type: Is this actually a Social Security Card?
+2. Legitimacy: Does it appear to be a real SSN card (not a screenshot, not photoshopped, not a printed copy)?
+3. Image Quality: Is the image clear enough to read the SSN and name?
 4. Required Elements:
-   ${expectedType === 'ssn_card' 
-     ? '- Social Security Administration header/logo\n   - A 9-digit SSN number visible\n   - Name on the card' 
-     : '- Photo of the ID holder\n   - Name clearly visible\n   - ID number/document number\n   - Expiration date (if applicable)\n   - Issuing authority (state seal, government logo)'}
+   - Social Security Administration header/logo
+   - A 9-digit SSN number visible
+   - Name on the card
+
+5. SSN EXTRACTION - CRITICAL: 
+   - Extract the LAST 4 DIGITS of the SSN visible on the card
+   - Extract the full name shown on the card
+${expectedSSNLast4 ? `   
+6. SSN CROSS-VERIFICATION:
+   - The user entered an SSN ending in: ${expectedSSNLast4}
+   - Verify if the SSN on the card ends with these same 4 digits
+   - Set ssn_matches to true ONLY if the last 4 digits match exactly
+` : ''}
 
 Respond with this exact JSON structure:
 {
   "verified": true/false,
-  "documentType": "ssn_card" | "government_id" | "unknown",
+  "documentType": "ssn_card",
   "confidence": "high" | "medium" | "low",
+  "extracted_ssn_last4": "1234",
+  "extracted_name": "John Doe",
+  "ssn_matches": true/false,
   "issues": ["issue1", "issue2"],
   "message": "Human-readable summary of verification result"
 }
 
-Guidelines for verification:
-- verified=true: Document appears legitimate and matches expected type
+Verification Guidelines:
+- verified=true: Document appears legitimate AND ${expectedSSNLast4 ? 'SSN matches entered value AND' : ''} is a real SSN card
+- verified=false: Wrong document type, appears fake, SSN doesn't match, or major issues
+- confidence=high: Clear image, all elements visible, appears authentic
+- confidence=medium: Some minor quality issues but document is identifiable  
+- confidence=low: Poor quality or some suspicious elements
+- issues: List specific problems found (empty array if none)
+- ssn_matches: Set to false if cannot read SSN clearly or digits don't match`;
+};
+
+const getGovernmentIDVerificationPrompt = () => {
+  return `You are a document verification expert. Analyze this Government-issued ID image.
+
+CRITICAL: You must respond ONLY with a valid JSON object, no other text.
+
+Check the following:
+1. Document Type: Is this a legitimate Government-issued ID (Driver's License, State ID, or Passport)?
+2. Legitimacy: Does it appear to be a real document (not a screenshot, not photoshopped, not a printed copy)?
+3. Image Quality: Is the image clear enough to read important details?
+4. Required Elements:
+   - Photo of the ID holder
+   - Name clearly visible
+   - ID number/document number
+   - Expiration date (if applicable)
+   - Issuing authority (state seal, government logo)
+
+5. EXTRACT the full name shown on the ID
+
+Respond with this exact JSON structure:
+{
+  "verified": true/false,
+  "documentType": "government_id",
+  "confidence": "high" | "medium" | "low",
+  "extracted_name": "John Doe",
+  "issues": ["issue1", "issue2"],
+  "message": "Human-readable summary of verification result"
+}
+
+Verification Guidelines:
+- verified=true: Document appears legitimate and is a valid government ID
 - verified=false: Wrong document type, appears fake, or major issues
 - confidence=high: Clear image, all elements visible, appears authentic
 - confidence=medium: Some minor quality issues but document is identifiable
-- confidence=low: Poor quality or some suspicious elements but might still be valid
+- confidence=low: Poor quality or some suspicious elements
 - issues: List specific problems found (empty array if none)`;
 };
 
@@ -57,7 +107,7 @@ serve(async (req) => {
   }
 
   try {
-    const { imageBase64, imageType, expectedDocumentType } = await req.json();
+    const { imageBase64, imageType, expectedDocumentType, expectedSSN } = await req.json();
 
     if (!imageBase64) {
       return new Response(
@@ -81,9 +131,17 @@ serve(async (req) => {
       );
     }
 
-    console.log(`Verifying document: expected type = ${expectedDocumentType}`);
+    // Extract last 4 digits of expected SSN for cross-verification
+    const expectedSSNLast4 = expectedSSN && expectedSSN.length >= 4 
+      ? expectedSSN.slice(-4) 
+      : undefined;
 
-    const prompt = getVerificationPrompt(expectedDocumentType);
+    console.log(`Verifying document: expected type = ${expectedDocumentType}, has expected SSN = ${!!expectedSSNLast4}`);
+
+    // Use document-specific prompts
+    const prompt = expectedDocumentType === 'ssn_card'
+      ? getSSNCardVerificationPrompt(expectedSSNLast4)
+      : getGovernmentIDVerificationPrompt();
     
     // Prepare the image URL
     const mimeType = imageType || 'image/jpeg';
@@ -184,6 +242,21 @@ serve(async (req) => {
           ? 'Document verified successfully' 
           : 'Document verification failed';
       }
+
+      // SSN mismatch override - if SSN was provided but doesn't match, fail verification
+      if (expectedDocumentType === 'ssn_card' && expectedSSNLast4) {
+        if (result.ssn_matches === false) {
+          result.verified = false;
+          result.confidence = 'high';
+          if (!result.issues.includes('SSN on card does not match entered SSN')) {
+            result.issues.push('SSN on card does not match entered SSN');
+          }
+          result.message = 'The SSN on your card does not match the number you entered. Please verify and try again.';
+        } else if (result.ssn_matches === true && result.verified) {
+          result.message = 'SSN card verified and matches your entered SSN.';
+        }
+      }
+
     } catch (parseError) {
       console.error('Failed to parse AI response as JSON:', parseError, content);
       result = {

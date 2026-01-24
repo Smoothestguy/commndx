@@ -3259,6 +3259,10 @@ export type Database = {
       }
       personnel_documents: {
         Row: {
+          ai_verification_confidence: string | null
+          ai_verification_result: Json | null
+          ai_verified: boolean | null
+          ai_verified_at: string | null
           created_at: string | null
           document_type: string
           file_name: string
@@ -3270,6 +3274,10 @@ export type Database = {
           uploaded_at: string | null
         }
         Insert: {
+          ai_verification_confidence?: string | null
+          ai_verification_result?: Json | null
+          ai_verified?: boolean | null
+          ai_verified_at?: string | null
           created_at?: string | null
           document_type: string
           file_name: string
@@ -3281,6 +3289,10 @@ export type Database = {
           uploaded_at?: string | null
         }
         Update: {
+          ai_verification_confidence?: string | null
+          ai_verification_result?: Json | null
+          ai_verified?: boolean | null
+          ai_verified_at?: string | null
           created_at?: string | null
           document_type?: string
           file_name?: string
