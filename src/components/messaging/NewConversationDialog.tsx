@@ -203,8 +203,8 @@ export function NewConversationDialog({
             {isLoading ? (
               <div className="p-2 space-y-2">
                 {[1, 2, 3, 4].map((i) => (
-                  <div key={i} className="flex items-center gap-3 p-2">
-                    <Skeleton className="h-10 w-10 rounded-full" />
+                  <div key={i} className="flex items-center gap-2 p-2">
+                    <Skeleton className="h-8 w-8 rounded-full flex-shrink-0" />
                     <div className="space-y-1.5">
                       <Skeleton className="h-4 w-24" />
                       <Skeleton className="h-3 w-32" />
@@ -222,12 +222,12 @@ export function NewConversationDialog({
                   <button
                     key={recipient.id}
                     onClick={() => setSelectedRecipient(recipient)}
-                    className={`w-full flex items-center gap-3 p-2 rounded-md hover:bg-muted transition-colors ${
+                    className={`w-full flex items-center gap-2 p-2 rounded-md hover:bg-muted transition-colors ${
                       selectedRecipient?.id === recipient.id ? "bg-muted" : ""
                     }`}
                   >
-                    <Avatar className="h-10 w-10">
-                      <AvatarFallback className="bg-primary/10 text-primary text-sm">
+                    <Avatar className="h-8 w-8 flex-shrink-0">
+                      <AvatarFallback className="bg-primary/10 text-primary text-xs">
                         {getInitials(recipient.name)}
                       </AvatarFallback>
                     </Avatar>
