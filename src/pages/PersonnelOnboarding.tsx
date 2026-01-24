@@ -216,6 +216,22 @@ const PersonnelOnboarding = () => {
 
   const progress = (currentStep / STEPS.length) * 100;
 
+  // Helper to check if a document passed AI verification (or wasn't verified)
+  const isDocumentVerified = (docType: RegistrationDocument["document_type"]): boolean => {
+    const doc = getDocumentByType(docType);
+    if (!doc) return false;
+    
+    // Check if document has verification result
+    const verification = (doc as any).verification;
+    if (!verification) {
+      // No verification performed (e.g., PDF files) - allow but note it
+      return true;
+    }
+    
+    // Must be verified (high or medium confidence acceptable)
+    return verification.verified === true;
+  };
+
   const canProceed = () => {
     switch (currentStep) {
       case 1:
@@ -227,14 +243,22 @@ const PersonnelOnboarding = () => {
       case 2:
         return true; // Address is optional
       case 3: {
-        // Required: citizenship status only (SSN and SSN card are optional)
+        // Required: SSN (9 digits), SSN card, and citizenship status
+        const hasSSN = formData.ssn_full && formData.ssn_full.length === 9;
+        const hasSSNCard = !!getDocumentByType("ssn_card");
         const hasCitizenship = !!formData.citizenship_status;
 
-        if (!hasCitizenship) return false;
+        // SSN and SSN card are now REQUIRED
+        if (!hasSSN || !hasSSNCard || !hasCitizenship) return false;
+
+        // SSN card must pass verification if it was AI verified
+        if (!isDocumentVerified("ssn_card")) return false;
 
         // Citizenship-specific requirements
         if (formData.citizenship_status === "us_citizen") {
-          return !!getDocumentByType("government_id");
+          const hasGovtId = !!getDocumentByType("government_id");
+          // Government ID must pass verification if AI verified
+          return hasGovtId && isDocumentVerified("government_id");
         } else {
           // Non-US citizen needs immigration status and appropriate documents
           if (!formData.immigration_status) return false;
@@ -668,12 +692,13 @@ const PersonnelOnboarding = () => {
                   <CategoryDocumentUpload
                     documentType="ssn_card"
                     label="Social Security Card *"
-                    helperText="Upload a clear image of your Social Security card"
+                    helperText="Upload a clear image of your Social Security card. AI will verify it matches your entered SSN."
                     required
                     existingDocument={getDocumentByType("ssn_card")}
                     onUpload={handleDocumentUpload}
                     onRemove={() => handleDocumentRemove("ssn_card")}
                     sessionId={sessionId}
+                    expectedSSN={formData.ssn_full}
                   />
                 </div>
 

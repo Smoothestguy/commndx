@@ -6,12 +6,15 @@ import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import type { RegistrationDocument } from "@/integrations/supabase/hooks/usePersonnelRegistrations";
 
-interface VerificationResult {
+export interface VerificationResult {
   verified: boolean;
   documentType: 'ssn_card' | 'government_id' | 'unknown';
   confidence: 'high' | 'medium' | 'low';
   issues: string[];
   message: string;
+  extracted_ssn_last4?: string;
+  extracted_name?: string;
+  ssn_matches?: boolean;
 }
 
 interface CategoryDocumentUploadProps {
@@ -23,6 +26,8 @@ interface CategoryDocumentUploadProps {
   onUpload: (doc: RegistrationDocument & { verification?: VerificationResult }) => void;
   onRemove: () => void;
   sessionId: string;
+  /** For SSN card verification - pass the entered SSN for cross-checking */
+  expectedSSN?: string;
 }
 
 const ALLOWED_TYPES = [
@@ -45,6 +50,7 @@ export const CategoryDocumentUpload = ({
   onUpload,
   onRemove,
   sessionId,
+  expectedSSN,
 }: CategoryDocumentUploadProps) => {
   const [uploading, setUploading] = useState(false);
   const [verifying, setVerifying] = useState(false);
@@ -80,6 +86,8 @@ export const CategoryDocumentUpload = ({
           imageBase64: base64,
           imageType: file.type,
           expectedDocumentType: documentType,
+          // Pass the expected SSN for cross-verification (SSN card only)
+          expectedSSN: documentType === 'ssn_card' ? expectedSSN : undefined,
         },
       });
 
