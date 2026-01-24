@@ -5,25 +5,16 @@ const corsHeaders = {
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
 };
 
-// Normalize phone number to E.164 format for matching
-function normalizePhone(phone: string): string {
-  const digits = phone.replace(/\D/g, "");
-  
-  if (digits.length === 11 && digits.startsWith("1")) {
-    return `+${digits}`;
-  }
-  
-  if (digits.length === 10) {
-    return `+1${digits}`;
-  }
-  
-  return phone.startsWith("+") ? phone : `+${digits}`;
-}
-
 // Extract last 10 digits for flexible matching
 function getPhoneDigits(phone: string): string {
   const digits = phone.replace(/\D/g, "");
   return digits.slice(-10);
+}
+
+interface PossibleSender {
+  type: "personnel" | "customer";
+  id: string;
+  name: string;
 }
 
 Deno.serve(async (req: Request) => {
@@ -40,7 +31,6 @@ Deno.serve(async (req: Request) => {
     const formData = await req.formData();
     const from = formData.get("From") as string;
     const body = formData.get("Body") as string;
-    const messageSid = formData.get("MessageSid") as string;
 
     console.log(`Incoming SMS from ${from}: ${body}`);
 
@@ -52,80 +42,90 @@ Deno.serve(async (req: Request) => {
       );
     }
 
-    const normalizedPhone = normalizePhone(from);
     const phoneDigits = getPhoneDigits(from);
+    console.log(`Looking for phone digits: ${phoneDigits}`);
 
-    // Try to identify the sender by phone number
-    let senderType: string | null = null;
-    let senderId: string | null = null;
-    let senderName: string | null = null;
-
-    // Check personnel table first
-    const { data: personnel } = await supabase
+    // Find ALL personnel with this phone number
+    const { data: allPersonnel } = await supabase
       .from("personnel")
       .select("id, first_name, last_name, phone")
-      .not("phone", "is", null)
-      .limit(100);
+      .not("phone", "is", null);
 
-    if (personnel) {
-      const match = personnel.find(p => {
-        if (!p.phone) return false;
-        return getPhoneDigits(p.phone) === phoneDigits;
-      });
-      if (match) {
-        senderType = "personnel";
-        senderId = match.id;
-        senderName = `${match.first_name} ${match.last_name}`;
-        console.log(`Matched to personnel: ${senderName}`);
-      }
-    }
+    const personnelMatches = allPersonnel?.filter(p => 
+      p.phone && getPhoneDigits(p.phone) === phoneDigits
+    ) || [];
 
-    // If not found in personnel, check customers
-    if (!senderId) {
-      const { data: customers } = await supabase
-        .from("customers")
-        .select("id, name, phone")
-        .not("phone", "is", null)
-        .limit(100);
+    console.log(`Found ${personnelMatches.length} personnel matches`);
 
-      if (customers) {
-        const match = customers.find(c => {
-          if (!c.phone) return false;
-          return getPhoneDigits(c.phone) === phoneDigits;
-        });
-        if (match) {
-          senderType = "customer";
-          senderId = match.id;
-          senderName = match.name;
-          console.log(`Matched to customer: ${senderName}`);
-        }
-      }
-    }
+    // Find ALL customers with this phone number
+    const { data: allCustomers } = await supabase
+      .from("customers")
+      .select("id, name, phone")
+      .not("phone", "is", null);
 
-    // If we couldn't identify the sender, log and return
-    if (!senderId || !senderType) {
-      console.warn(`Unknown sender phone: ${normalizedPhone}. Message not stored in conversations.`);
+    const customerMatches = allCustomers?.filter(c => 
+      c.phone && getPhoneDigits(c.phone) === phoneDigits
+    ) || [];
+
+    console.log(`Found ${customerMatches.length} customer matches`);
+
+    // Build list of possible senders
+    const possibleSenders: PossibleSender[] = [
+      ...personnelMatches.map(p => ({ 
+        type: "personnel" as const, 
+        id: p.id, 
+        name: `${p.first_name} ${p.last_name}` 
+      })),
+      ...customerMatches.map(c => ({ 
+        type: "customer" as const, 
+        id: c.id, 
+        name: c.name 
+      }))
+    ];
+
+    if (possibleSenders.length === 0) {
+      console.warn(`Unknown sender phone: ${phoneDigits}. Message not stored.`);
       return new Response(
         '<?xml version="1.0" encoding="UTF-8"?><Response></Response>',
         { headers: { ...corsHeaders, "Content-Type": "application/xml" } }
       );
     }
 
-    // Find an existing conversation where this sender is a participant
-    const { data: existingConversations } = await supabase
-      .from("conversations")
-      .select("id, participant_1_type, participant_1_id, participant_2_type, participant_2_id")
-      .or(`and(participant_1_type.eq.${senderType},participant_1_id.eq.${senderId}),and(participant_2_type.eq.${senderType},participant_2_id.eq.${senderId})`)
-      .order("last_message_at", { ascending: false })
-      .limit(1);
+    // Find the most recent conversation with ANY of these people
+    let conversationId: string | null = null;
+    let senderType: string | null = null;
+    let senderId: string | null = null;
+    let senderName: string | null = null;
 
-    let conversationId: string;
+    for (const sender of possibleSenders) {
+      const { data: existingConv } = await supabase
+        .from("conversations")
+        .select("id, last_message_at")
+        .or(`and(participant_1_type.eq.${sender.type},participant_1_id.eq.${sender.id}),and(participant_2_type.eq.${sender.type},participant_2_id.eq.${sender.id})`)
+        .order("last_message_at", { ascending: false })
+        .limit(1)
+        .maybeSingle();
 
-    if (existingConversations && existingConversations.length > 0) {
-      conversationId = existingConversations[0].id;
-      console.log(`Found existing conversation: ${conversationId}`);
-    } else {
-      // Create a new conversation - find any user to be the other participant
+      if (existingConv) {
+        conversationId = existingConv.id;
+        senderType = sender.type;
+        senderId = sender.id;
+        senderName = sender.name;
+        console.log(`Found existing conversation ${conversationId} for ${senderName}`);
+        break;
+      }
+    }
+
+    // If no existing conversation found, use first match and create new
+    if (!conversationId) {
+      const firstMatch = possibleSenders[0];
+      senderType = firstMatch.type;
+      senderId = firstMatch.id;
+      senderName = firstMatch.name;
+
+      console.log(`No existing conversation. Creating new for ${senderName}`);
+
+      // Find any user to be the other participant
       const { data: adminUser } = await supabase
         .from("profiles")
         .select("id")
@@ -133,7 +133,7 @@ Deno.serve(async (req: Request) => {
         .maybeSingle();
 
       if (!adminUser) {
-        console.error("No admin user found to create conversation");
+        console.error("No user found to create conversation");
         return new Response(
           '<?xml version="1.0" encoding="UTF-8"?><Response></Response>',
           { headers: { ...corsHeaders, "Content-Type": "application/xml" } }
