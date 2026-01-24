@@ -396,18 +396,21 @@ export default function StaffingApplications() {
           <h1 className="text-2xl font-bold text-foreground">Staffing Applications</h1>
           <p className="text-muted-foreground">Review and manage job applications</p>
         </div>
-        <div className="flex gap-2">
-          <Button variant="outline" onClick={() => navigate("/staffing/map")}>
+        <div className="flex flex-wrap gap-2">
+          <Button variant="outline" className="flex-1 sm:flex-none h-10" onClick={() => navigate("/staffing/map")}>
             <MapPin className="h-4 w-4 mr-2" />
-            Map View
+            <span className="hidden sm:inline">Map View</span>
+            <span className="sm:hidden">Map</span>
           </Button>
-          <Button variant="outline" onClick={() => navigate("/staffing/form-templates")}>
+          <Button variant="outline" className="flex-1 sm:flex-none h-10" onClick={() => navigate("/staffing/form-templates")}>
             <FileText className="h-4 w-4 mr-2" />
-            Form Templates
+            <span className="hidden sm:inline">Form Templates</span>
+            <span className="sm:hidden">Forms</span>
           </Button>
-          <Button onClick={() => setShowCreateDialog(true)}>
+          <Button className="flex-1 sm:flex-none h-10" onClick={() => setShowCreateDialog(true)}>
             <Plus className="h-4 w-4 mr-2" />
-            New Task Order
+            <span className="hidden sm:inline">New Task Order</span>
+            <span className="sm:hidden">New</span>
           </Button>
         </div>
       </div>
@@ -787,14 +790,14 @@ export default function StaffingApplications() {
 
       {/* Create Task Order Dialog */}
       <Dialog open={showCreateDialog} onOpenChange={setShowCreateDialog}>
-        <DialogContent>
+        <DialogContent className="max-h-[90vh] sm:max-h-[85vh] flex flex-col">
           <DialogHeader>
             <DialogTitle>Create Task Order</DialogTitle>
             <DialogDescription>
               Create a staffing request and generate an application link
             </DialogDescription>
           </DialogHeader>
-          <div className="space-y-4">
+          <div className="flex-1 overflow-y-auto space-y-4 pr-1">
             <div>
               <Label>Project *</Label>
               <Select
@@ -829,7 +832,7 @@ export default function StaffingApplications() {
                 placeholder="Describe the role and requirements..."
               />
             </div>
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div>
                 <Label>Headcount Needed</Label>
                 <Input
@@ -871,7 +874,7 @@ export default function StaffingApplications() {
               </p>
             </div>
           </div>
-          <DialogFooter>
+          <DialogFooter className="flex-shrink-0">
             <Button variant="outline" onClick={() => setShowCreateDialog(false)}>
               Cancel
             </Button>
@@ -887,14 +890,14 @@ export default function StaffingApplications() {
 
       {/* Edit Task Order Dialog */}
       <Dialog open={showEditTaskOrderDialog} onOpenChange={setShowEditTaskOrderDialog}>
-        <DialogContent>
+        <DialogContent className="max-h-[90vh] sm:max-h-[85vh] flex flex-col">
           <DialogHeader>
             <DialogTitle>Edit Task Order</DialogTitle>
             <DialogDescription>
               Update the task order details
             </DialogDescription>
           </DialogHeader>
-          <div className="space-y-4">
+          <div className="flex-1 overflow-y-auto space-y-4 pr-1">
             <div>
               <Label>Position Title *</Label>
               <Input
@@ -911,7 +914,7 @@ export default function StaffingApplications() {
                 placeholder="Describe the role and requirements..."
               />
             </div>
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div>
                 <Label>Headcount Needed</Label>
                 <Input
@@ -931,7 +934,7 @@ export default function StaffingApplications() {
               </div>
             </div>
           </div>
-          <DialogFooter>
+          <DialogFooter className="flex-shrink-0">
             <Button variant="outline" onClick={() => setShowEditTaskOrderDialog(false)}>
               Cancel
             </Button>
