@@ -1,4 +1,4 @@
-import { useParams, useSearchParams } from "react-router-dom";
+import { useParams, useSearchParams, useNavigate } from "react-router-dom";
 import { DetailPageLayout } from "@/components/layout/DetailPageLayout";
 import { SEO } from "@/components/SEO";
 import { usePersonnelById, useResendOnboardingEmail, useUpdatePersonnelRating, useUpdatePersonnel } from "@/integrations/supabase/hooks/usePersonnel";
@@ -21,8 +21,7 @@ import { useState } from "react";
 import { BadgeGenerator } from "@/components/badges/BadgeGenerator";
 import { PersonnelForm } from "@/components/personnel/PersonnelForm";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { SendSMSDialog } from "@/components/messaging/SendSMSDialog";
-import { MessageHistory } from "@/components/messaging/MessageHistory";
+import { useGetOrCreateConversation } from "@/integrations/supabase/hooks/useConversations";
 import { InviteToPortalDialog } from "@/components/personnel/InviteToPortalDialog";
 import { PersonnelProjectsList } from "@/components/personnel/PersonnelProjectsList";
 import { W9FormView } from "@/components/personnel/W9FormView";
@@ -52,6 +51,7 @@ interface ComplianceIssue {
 const PersonnelDetail = () => {
   const { id } = useParams<{ id: string }>();
   const [searchParams] = useSearchParams();
+  const navigate = useNavigate();
   const defaultTab = searchParams.get("tab") || "overview";
   const { data: personnel, isLoading } = usePersonnelById(id);
   const { data: existingInvitation } = usePersonnelInvitationCheck(id);
@@ -64,7 +64,7 @@ const PersonnelDetail = () => {
   const updateReimbursementStatus = useUpdateReimbursementStatus();
   const [badgeDialogOpen, setBadgeDialogOpen] = useState(false);
   const [editDialogOpen, setEditDialogOpen] = useState(false);
-  const [smsDialogOpen, setSmsDialogOpen] = useState(false);
+  const getOrCreateConversation = useGetOrCreateConversation();
   const [generate1099Open, setGenerate1099Open] = useState(false);
   const [defaultEditTab, setDefaultEditTab] = useState("personal");
   const [vendorMergeOpen, setVendorMergeOpen] = useState(false);
@@ -402,11 +402,18 @@ const PersonnelDetail = () => {
                   <Button 
                     variant="outline" 
                     size="sm" 
-                    onClick={() => setSmsDialogOpen(true)}
-                    disabled={!personnel.phone}
+                    onClick={async () => {
+                      if (!personnel) return;
+                      const conversation = await getOrCreateConversation.mutateAsync({
+                        participantType: "personnel",
+                        participantId: personnel.id,
+                      });
+                      navigate(`/messages?conversation=${conversation.id}`);
+                    }}
+                    disabled={!personnel.phone || getOrCreateConversation.isPending}
                   >
                     <MessageSquare className="mr-2 h-4 w-4" />
-                    Send SMS
+                    {getOrCreateConversation.isPending ? "Opening..." : "Send Message"}
                   </Button>
                   {personnel.onboarding_status !== "completed" && personnel.onboarding_status !== "revoked" && (
                     <>
@@ -794,21 +801,29 @@ const PersonnelDetail = () => {
           <TabsContent value="messages">
             <Card>
               <CardHeader className="flex flex-row items-center justify-between">
-                <CardTitle>Message History</CardTitle>
+                <CardTitle>Messages</CardTitle>
                 <Button 
                   size="sm" 
-                  onClick={() => setSmsDialogOpen(true)}
-                  disabled={!personnel.phone}
+                  onClick={async () => {
+                    if (!personnel) return;
+                    const conversation = await getOrCreateConversation.mutateAsync({
+                      participantType: "personnel",
+                      participantId: personnel.id,
+                    });
+                    navigate(`/messages?conversation=${conversation.id}`);
+                  }}
+                  disabled={!personnel.phone || getOrCreateConversation.isPending}
                 >
                   <MessageSquare className="mr-2 h-4 w-4" />
-                  Send SMS
+                  {getOrCreateConversation.isPending ? "Opening..." : "Open Conversation"}
                 </Button>
               </CardHeader>
               <CardContent>
-                <MessageHistory 
-                  recipientType="personnel" 
-                  recipientId={personnel.id} 
-                />
+                <div className="text-center py-8 text-muted-foreground">
+                  <MessageSquare className="h-12 w-12 mx-auto mb-4 opacity-50" />
+                  <p>Messages have been unified into a single inbox.</p>
+                  <p className="text-sm mt-1">Click "Open Conversation" to view and send messages.</p>
+                </div>
               </CardContent>
             </Card>
           </TabsContent>
@@ -1054,14 +1069,6 @@ const PersonnelDetail = () => {
         </DialogContent>
       </Dialog>
 
-      <SendSMSDialog
-        open={smsDialogOpen}
-        onOpenChange={setSmsDialogOpen}
-        recipientType="personnel"
-        recipientId={personnel.id}
-        recipientName={`${personnel.first_name} ${personnel.last_name}`}
-        recipientPhone={personnel.phone || ""}
-      />
 
       <Generate1099Dialog
         open={generate1099Open}
