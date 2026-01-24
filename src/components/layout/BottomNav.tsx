@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
-import { Home, ClipboardList, Wallet, Grid2X2, Plus, X, FileText, Receipt, ShoppingCart, UserPlus } from "lucide-react";
+import { Home, ClipboardList, Wallet, Grid2X2, Plus, X, FileText, Receipt, ShoppingCart, UserPlus, MessageCircle } from "lucide-react";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { useAuth } from "@/contexts/AuthContext";
 import { cn } from "@/lib/utils";
@@ -18,6 +18,7 @@ const quickActions = [
   { id: "invoice", icon: Receipt, label: "New Invoice", path: "/invoices/new", color: "text-green-400" },
   { id: "po", icon: ShoppingCart, label: "New PO", path: "/purchase-orders/new", color: "text-purple-400" },
   { id: "customer", icon: UserPlus, label: "New Customer", path: "/customers?new=true", color: "text-orange-400" },
+  { id: "message", icon: MessageCircle, label: "New Message", path: "/messages?new=true", color: "text-cyan-400" },
 ];
 
 interface BottomNavProps {
