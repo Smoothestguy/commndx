@@ -452,3 +452,38 @@ export function useDeleteConversationMessage() {
     },
   });
 }
+
+export function useDeleteConversation() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async (conversationId: string) => {
+      // Delete messages first (foreign key constraint)
+      const { error: messagesError } = await supabase
+        .from("conversation_messages")
+        .delete()
+        .eq("conversation_id", conversationId);
+
+      if (messagesError) throw messagesError;
+
+      // Delete participants
+      const { error: participantsError } = await supabase
+        .from("conversation_participants")
+        .delete()
+        .eq("conversation_id", conversationId);
+
+      if (participantsError) throw participantsError;
+
+      // Delete the conversation
+      const { error } = await supabase
+        .from("conversations")
+        .delete()
+        .eq("id", conversationId);
+
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["conversations"] });
+    },
+  });
+}
