@@ -731,7 +731,7 @@ const Vendors = () => {
 
         {/* Bulk Actions Toolbar - Only show for vendors, not personnel */}
         {!isPersonnelView && selectedVendors.length > 0 && (
-          <div className="fixed bottom-20 left-1/2 -translate-x-1/2 bg-card border border-border rounded-lg shadow-lg p-4 flex items-center gap-4 z-50 animate-fade-in">
+          <div className="fixed bottom-24 left-1/2 -translate-x-1/2 bg-card border border-border rounded-lg shadow-lg p-4 flex items-center gap-4 z-40 animate-fade-in">
             <span className="text-sm font-medium">{selectedVendors.length} vendor(s) selected</span>
             <Button variant="outline" size="sm" onClick={() => setIsTypeChangeDialogOpen(true)}>
               <Tag className="h-4 w-4 mr-2" />
