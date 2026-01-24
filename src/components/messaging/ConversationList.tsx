@@ -120,26 +120,26 @@ export function ConversationList({
 
   return (
     <>
-      <ScrollArea className="h-full">
-        <div className="divide-y">
+      <ScrollArea className="h-full w-full">
+        <div className="divide-y w-full">
           {conversations.map((conversation) => (
             <button
               key={conversation.id}
               onClick={() => onSelectConversation(conversation)}
               className={cn(
-                "w-full flex items-start gap-3 p-3 hover:bg-muted/50 transition-colors text-left group relative",
+                "w-full flex items-start gap-3 p-3 hover:bg-muted/50 transition-colors text-left group",
                 selectedConversationId === conversation.id && "bg-muted"
               )}
             >
-              <Avatar className="h-10 w-10">
+              <Avatar className="h-10 w-10 flex-shrink-0">
                 <AvatarFallback className="bg-primary/10 text-primary">
                   {getInitials(conversation.other_participant_name)}
                 </AvatarFallback>
               </Avatar>
 
-              <div className="flex-1 min-w-0 overflow-hidden">
-                <div className="flex items-center gap-2">
-                  <div className="flex items-center gap-1.5 min-w-0 flex-1 overflow-hidden">
+              <div className="flex-1 min-w-0">
+                <div className="flex items-center justify-between gap-2">
+                  <div className="flex items-center gap-1.5 min-w-0 flex-1">
                     <span className="font-medium truncate">
                       {conversation.other_participant_name}
                     </span>
@@ -148,21 +148,21 @@ export function ConversationList({
                     </span>
                   </div>
                   <div className="flex items-center gap-1 flex-shrink-0">
-                    <span className="text-xs text-muted-foreground whitespace-nowrap">
+                    <span className="text-xs text-muted-foreground">
                       {formatMessageTime(conversation.last_message_at)}
                     </span>
                     <button
                       onClick={(e) => handleDeleteClick(e, conversation.id)}
-                      className="p-1 rounded hover:bg-destructive/10 text-muted-foreground hover:text-destructive md:opacity-0 md:group-hover:opacity-100 transition-opacity"
+                      className="p-1 rounded hover:bg-destructive/10 text-muted-foreground hover:text-destructive"
                       title="Delete conversation"
                     >
-                      <Trash2 className="h-3.5 w-3.5" />
+                      <Trash2 className="h-4 w-4" />
                     </button>
                   </div>
                 </div>
 
                 <div className="flex items-center justify-between gap-2 mt-0.5">
-                  <p className="text-sm text-muted-foreground truncate">
+                  <p className="text-sm text-muted-foreground truncate flex-1 min-w-0">
                     {conversation.last_message_preview || "No messages yet"}
                   </p>
                   {(conversation.unread_count ?? 0) > 0 && (
