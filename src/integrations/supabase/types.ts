@@ -6219,6 +6219,41 @@ export type Database = {
           },
         ]
       }
+      typing_indicators: {
+        Row: {
+          conversation_id: string
+          id: string
+          started_at: string | null
+          user_id: string
+          user_name: string
+          user_type: string
+        }
+        Insert: {
+          conversation_id: string
+          id?: string
+          started_at?: string | null
+          user_id: string
+          user_name: string
+          user_type: string
+        }
+        Update: {
+          conversation_id?: string
+          id?: string
+          started_at?: string | null
+          user_id?: string
+          user_name?: string
+          user_type?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "typing_indicators_conversation_id_fkey"
+            columns: ["conversation_id"]
+            isOneToOne: false
+            referencedRelation: "conversations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       user_display_preferences: {
         Row: {
           created_at: string

@@ -8,6 +8,7 @@ import {
   useDeleteConversationMessage,
   Conversation,
 } from "@/integrations/supabase/hooks/useConversations";
+import { useTypingIndicator, useTypingSubscription } from "@/hooks/useTypingIndicator";
 import { toast } from "sonner";
 import { MessageBubble } from "./MessageBubble";
 import { MessageInput } from "./MessageInput";
@@ -35,6 +36,8 @@ export function ConversationThread({ conversation, onBack, recipientPhone, onTog
   const sendMessage = useSendConversationMessage();
   const markAsRead = useMarkConversationAsRead();
   const deleteMessage = useDeleteConversationMessage();
+  const { setTyping, clearTyping } = useTypingIndicator(conversation?.id || null);
+  const typingUsers = useTypingSubscription(conversation?.id || null);
 
   const handleDeleteMessage = async (messageId: string) => {
     try {
@@ -47,7 +50,7 @@ export function ConversationThread({ conversation, onBack, recipientPhone, onTog
 
   // Mark as read when conversation is opened
   useEffect(() => {
-    if (conversation?.id && (conversation.unread_count ?? 0) > 0) {
+    if (conversation?.id) {
       markAsRead.mutate(conversation.id);
     }
   }, [conversation?.id]);
@@ -221,6 +224,22 @@ export function ConversationThread({ conversation, onBack, recipientPhone, onTog
         )}
       </ScrollArea>
 
+      {/* Typing indicator */}
+      {typingUsers.length > 0 && (
+        <div className="px-4 py-2 text-sm text-muted-foreground">
+          <span className="inline-flex items-center gap-1">
+            <span className="flex gap-1">
+              <span className="w-1.5 h-1.5 bg-muted-foreground rounded-full animate-bounce" style={{ animationDelay: '0ms' }} />
+              <span className="w-1.5 h-1.5 bg-muted-foreground rounded-full animate-bounce" style={{ animationDelay: '150ms' }} />
+              <span className="w-1.5 h-1.5 bg-muted-foreground rounded-full animate-bounce" style={{ animationDelay: '300ms' }} />
+            </span>
+            <span className="ml-1">
+              {typingUsers.join(", ")} {typingUsers.length === 1 ? "is" : "are"} typing...
+            </span>
+          </span>
+        </div>
+      )}
+
       {/* Input */}
       <div className="p-4 border-t bg-background">
         <MessageInput
@@ -229,6 +248,8 @@ export function ConversationThread({ conversation, onBack, recipientPhone, onTog
           placeholder={`Message ${conversation.other_participant_name}...`}
           showSMSToggle={conversation.other_participant_type === "personnel" || conversation.other_participant_type === "customer"}
           recipientPhone={recipientPhone}
+          onTyping={setTyping}
+          onStopTyping={clearTyping}
         />
       </div>
     </div>
