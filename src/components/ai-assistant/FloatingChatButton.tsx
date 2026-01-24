@@ -9,7 +9,7 @@ export function FloatingChatButton() {
   const { isOpen, toggleOpen, messages } = useAIAssistant();
   const { position, isDragging, hasDragged, handleMouseDown, handleTouchStart } = useDraggable({
     storageKey: "ai-chat-button-position",
-    bounds: { top: 60, right: 20, bottom: 80, left: 20 },
+    bounds: { top: 80, right: 20, bottom: 80, left: 20 },
   });
 
   const handleClick = () => {
@@ -31,7 +31,7 @@ export function FloatingChatButton() {
         touchAction: 'none',
       }}
       className={cn(
-        "fixed z-50 h-14 w-14 rounded-full shadow-lg",
+        "fixed z-40 h-14 w-14 rounded-full shadow-lg",
         "transition-transform duration-150",
         isDragging ? "cursor-grabbing scale-110" : "cursor-grab hover:scale-105",
         isOpen
