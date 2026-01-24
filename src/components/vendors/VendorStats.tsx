@@ -12,8 +12,8 @@ export const VendorStats = ({
   inactive,
 }: VendorStatsProps) => {
   return (
-    <div className="flex gap-3 overflow-x-auto pb-2 -mx-4 px-4 mb-6 md:grid md:grid-cols-3 md:mx-0 md:px-0 md:overflow-visible md:pb-0 md:gap-4">
-      <div className="glass rounded-lg p-3 sm:p-4 min-w-[130px] flex-shrink-0 md:min-w-0 animate-fade-in">
+    <div className="flex gap-3 overflow-x-auto pb-2 pr-4 mb-6 md:grid md:grid-cols-3 md:overflow-visible md:pb-0 md:gap-4 md:pr-0">
+      <div className="glass rounded-lg p-3 sm:p-4 min-w-[140px] flex-shrink-0 md:min-w-0 animate-fade-in">
         <div className="flex items-center gap-2 sm:gap-3">
           <div className="p-1.5 sm:p-2 rounded-lg bg-primary/10">
             <Store className="h-4 w-4 sm:h-5 sm:w-5 text-primary" />
