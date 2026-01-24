@@ -137,9 +137,9 @@ export function ConversationList({
                 </AvatarFallback>
               </Avatar>
 
-              <div className="flex-1 min-w-0">
-                <div className="flex items-center justify-between gap-2">
-                  <div className="flex items-center gap-1.5 min-w-0">
+              <div className="flex-1 min-w-0 overflow-hidden">
+                <div className="flex items-center gap-2">
+                  <div className="flex items-center gap-1.5 min-w-0 flex-1 overflow-hidden">
                     <span className="font-medium truncate">
                       {conversation.other_participant_name}
                     </span>
@@ -148,12 +148,12 @@ export function ConversationList({
                     </span>
                   </div>
                   <div className="flex items-center gap-1 flex-shrink-0">
-                    <span className="text-xs text-muted-foreground">
+                    <span className="text-xs text-muted-foreground whitespace-nowrap">
                       {formatMessageTime(conversation.last_message_at)}
                     </span>
                     <button
                       onClick={(e) => handleDeleteClick(e, conversation.id)}
-                      className="p-1 rounded hover:bg-destructive/10 text-muted-foreground hover:text-destructive opacity-0 group-hover:opacity-100 transition-opacity"
+                      className="p-1 rounded hover:bg-destructive/10 text-muted-foreground hover:text-destructive md:opacity-0 md:group-hover:opacity-100 transition-opacity"
                       title="Delete conversation"
                     >
                       <Trash2 className="h-3.5 w-3.5" />
