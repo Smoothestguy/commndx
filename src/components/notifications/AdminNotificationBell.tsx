@@ -1,4 +1,4 @@
-import { Bell, Check, CheckCheck, Trash2, ExternalLink } from "lucide-react";
+import { Bell, Check, CheckCheck, Trash2, ExternalLink, AlertTriangle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   Popover,
@@ -18,6 +18,11 @@ import {
   useDeleteNotification,
   AdminNotification,
 } from "@/integrations/supabase/hooks/useAdminNotifications";
+import {
+  useNotificationBadgeState,
+  getNotificationPriority,
+  NotificationPriority,
+} from "@/hooks/useNotificationPriority";
 
 function getNotificationIcon(type: string) {
   switch (type) {
@@ -35,8 +40,27 @@ function getNotificationIcon(type: string) {
       return "✅";
     case "geofence_violation":
       return "🚨";
+    case "late_clock_in_attempt":
+      return "⚠️";
+    case "message_failed":
+      return "❌";
     default:
       return "🔔";
+  }
+}
+
+function getPriorityStyles(priority: NotificationPriority) {
+  switch (priority) {
+    case "critical":
+      return "border-l-4 border-l-destructive bg-destructive/5";
+    case "high":
+      return "border-l-4 border-l-orange-500 bg-orange-500/5";
+    case "normal":
+      return "";
+    case "low":
+      return "opacity-80";
+    default:
+      return "";
   }
 }
 
@@ -51,11 +75,20 @@ function NotificationItem({
   onDelete: (id: string) => void;
   onNavigate: (url: string) => void;
 }) {
+  const priority = getNotificationPriority({
+    id: notification.id,
+    is_read: notification.is_read,
+    priority: notification.priority as NotificationPriority | undefined,
+    notification_type: notification.notification_type,
+    created_at: notification.created_at,
+  });
+
   return (
     <div
       className={cn(
         "p-2.5 hover:bg-muted/50 transition-colors cursor-pointer group",
-        !notification.is_read && "bg-primary/5"
+        !notification.is_read && "bg-primary/5",
+        !notification.is_read && getPriorityStyles(priority)
       )}
       onClick={() => {
         if (!notification.is_read) {
@@ -72,12 +105,17 @@ function NotificationItem({
           <div className="flex items-start gap-2">
             <p className={cn(
               "text-sm break-words",
-              !notification.is_read && "font-medium"
+              !notification.is_read && "font-medium",
+              priority === "critical" && !notification.is_read && "text-destructive"
             )}>
               {notification.title}
             </p>
             {!notification.is_read && (
-              <span className="h-2 w-2 rounded-full bg-primary flex-shrink-0 mt-1.5" />
+              <span className={cn(
+                "h-2 w-2 rounded-full flex-shrink-0 mt-1.5",
+                priority === "critical" ? "bg-destructive animate-pulse" : 
+                priority === "high" ? "bg-orange-500" : "bg-primary"
+              )} />
             )}
           </div>
           <p className="text-xs text-muted-foreground line-clamp-2 break-words mt-0.5">
@@ -126,6 +164,17 @@ export function AdminNotificationBell() {
   const markAllRead = useMarkAllNotificationsRead();
   const deleteNotification = useDeleteNotification();
 
+  // Calculate badge state based on priority
+  const badgeState = useNotificationBadgeState(
+    notifications.map((n) => ({
+      id: n.id,
+      is_read: n.is_read,
+      priority: n.priority as NotificationPriority | undefined,
+      notification_type: n.notification_type,
+      created_at: n.created_at,
+    }))
+  );
+
   const handleNavigate = (url: string) => {
     navigate(url);
   };
@@ -134,9 +183,18 @@ export function AdminNotificationBell() {
     <Popover>
       <PopoverTrigger asChild>
         <Button variant="ghost" size="icon" className="relative text-header-foreground hover:bg-sidebar-accent">
-          <Bell className="h-5 w-5" />
+          <Bell className={cn(
+            "h-5 w-5",
+            badgeState.pulse && "animate-pulse"
+          )} />
           {unreadCount > 0 && (
-            <span className="absolute -top-0.5 -right-0.5 h-5 w-5 rounded-full bg-destructive text-destructive-foreground text-xs font-medium flex items-center justify-center">
+            <span className={cn(
+              "absolute -top-0.5 -right-0.5 h-5 w-5 rounded-full text-xs font-medium flex items-center justify-center",
+              badgeState.color === "destructive" 
+                ? "bg-destructive text-destructive-foreground" 
+                : "bg-primary text-primary-foreground",
+              badgeState.pulse && "animate-pulse"
+            )}>
               {unreadCount > 9 ? "9+" : unreadCount}
             </span>
           )}
@@ -145,7 +203,15 @@ export function AdminNotificationBell() {
       </PopoverTrigger>
       <PopoverContent className="w-96 p-0" align="end">
         <div className="flex items-center justify-between p-3 border-b">
-          <h4 className="font-semibold text-sm">Notifications</h4>
+          <div className="flex items-center gap-2">
+            <h4 className="font-semibold text-sm">Notifications</h4>
+            {badgeState.color === "destructive" && (
+              <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-full bg-destructive/10 text-destructive text-xs font-medium">
+                <AlertTriangle className="h-3 w-3" />
+                Action needed
+              </span>
+            )}
+          </div>
           {unreadCount > 0 && (
             <Button
               variant="ghost"

@@ -6,6 +6,8 @@ const corsHeaders = {
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
 };
 
+type NotificationPriority = "critical" | "high" | "normal" | "low";
+
 interface CreateNotificationRequest {
   notification_type: 
     | "po_approval" 
@@ -21,15 +23,37 @@ interface CreateNotificationRequest {
     | "auto_clock_out"
     | "geofence_violation"
     | "late_clock_in_attempt"
+    | "message_failed"
     | "general";
   title: string;
   message: string;
   link_url?: string;
   related_id?: string;
   metadata?: Record<string, unknown>;
+  priority?: NotificationPriority;
+  group_key?: string;
   // Optional: specify user IDs to notify. If not provided, notifies all admins/managers
   target_user_ids?: string[];
 }
+
+// Default priority mapping based on notification type
+const DEFAULT_PRIORITIES: Record<string, NotificationPriority> = {
+  message_failed: "critical",
+  late_clock_in_attempt: "critical",
+  missed_clock_in: "critical",
+  auto_clock_out: "critical",
+  geofence_violation: "critical",
+  po_approval: "high",
+  co_approval: "high",
+  personnel_registration: "high",
+  new_application: "high",
+  application_approved: "normal",
+  application_rejected: "normal",
+  onboarding_email_sent: "normal",
+  onboarding_started: "normal",
+  onboarding_complete: "normal",
+  general: "normal",
+};
 
 serve(async (req: Request) => {
   // Handle CORS preflight
@@ -46,7 +70,10 @@ serve(async (req: Request) => {
     const body: CreateNotificationRequest = await req.json();
     console.log("Creating admin notification:", body);
 
-    const { notification_type, title, message, link_url, related_id, metadata, target_user_ids } = body;
+    const { notification_type, title, message, link_url, related_id, metadata, target_user_ids, priority, group_key } = body;
+
+    // Determine final priority
+    const finalPriority = priority || DEFAULT_PRIORITIES[notification_type] || "normal";
 
     let userIds: string[] = [];
 
@@ -114,6 +141,32 @@ serve(async (req: Request) => {
       );
     }
 
+    // If group_key is provided, check for existing notification to update instead of creating duplicate
+    if (group_key) {
+      for (const user_id of eligibleUsers) {
+        const { data: existingNotification } = await supabase
+          .from("admin_notifications")
+          .select("id, count")
+          .eq("user_id", user_id)
+          .eq("group_key", group_key)
+          .eq("is_read", false)
+          .single();
+
+        if (existingNotification) {
+          // Update existing notification instead of creating new
+          await supabase
+            .from("admin_notifications")
+            .update({
+              title,
+              message,
+              count: (existingNotification.count || 1) + 1,
+              metadata: metadata || {},
+            })
+            .eq("id", existingNotification.id);
+        }
+      }
+    }
+
     // Create notifications for all eligible users
     const notifications = eligibleUsers.map((user_id) => ({
       user_id,
@@ -124,6 +177,10 @@ serve(async (req: Request) => {
       related_id: related_id || null,
       metadata: metadata || {},
       is_read: false,
+      priority: finalPriority,
+      group_key: group_key || null,
+      escalation_count: 0,
+      count: 1,
     }));
 
     const { error: insertError } = await supabase
@@ -135,10 +192,10 @@ serve(async (req: Request) => {
       throw insertError;
     }
 
-    console.log(`Created ${notifications.length} notifications for users:`, eligibleUsers);
+    console.log(`Created ${notifications.length} notifications with priority ${finalPriority} for users:`, eligibleUsers);
 
     return new Response(
-      JSON.stringify({ success: true, count: notifications.length }),
+      JSON.stringify({ success: true, count: notifications.length, priority: finalPriority }),
       { headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );
   } catch (error) {

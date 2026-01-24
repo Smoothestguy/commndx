@@ -65,7 +65,12 @@ Deno.serve(async (req: Request) => {
 
     // Validate required fields
     if (!recipientType || !recipientId || !recipientName || !recipientPhone || !content) {
-      return new Response(JSON.stringify({ error: "Missing required fields" }), {
+      return new Response(JSON.stringify({ 
+        error: "Missing required fields",
+        errorCode: "missing_fields",
+        errorTitle: "Missing Information",
+        errorDescription: "Required message details are missing."
+      }), {
         status: 400,
         headers: { "Content-Type": "application/json", ...corsHeaders },
       });
@@ -74,7 +79,12 @@ Deno.serve(async (req: Request) => {
     // Validate phone number format (basic check)
     const cleanPhone = recipientPhone.replace(/\D/g, '');
     if (cleanPhone.length < 10) {
-      return new Response(JSON.stringify({ error: "Invalid phone number format" }), {
+      return new Response(JSON.stringify({ 
+        error: "Invalid phone number format",
+        errorCode: "invalid_number",
+        errorTitle: "Invalid Phone Number",
+        errorDescription: "The phone number format is incorrect. Please verify the recipient's contact details."
+      }), {
         status: 400,
         headers: { "Content-Type": "application/json", ...corsHeaders },
       });
@@ -116,11 +126,16 @@ Deno.serve(async (req: Request) => {
         .from("messages")
         .update({
           status: 'failed',
-          error_message: 'Twilio credentials not configured'
+          error_message: 'SMS service not configured'
         })
         .eq("id", message.id);
 
-      return new Response(JSON.stringify({ error: "SMS service not configured" }), {
+      return new Response(JSON.stringify({ 
+        error: "SMS service not configured",
+        errorCode: "service_unavailable",
+        errorTitle: "SMS Service Unavailable",
+        errorDescription: "The SMS service is not configured. Contact support for assistance."
+      }), {
         status: 500,
         headers: { "Content-Type": "application/json", ...corsHeaders },
       });
@@ -170,24 +185,59 @@ Deno.serve(async (req: Request) => {
       });
     } else {
       const errorMessage = twilioData.message || twilioData.error_message || 'Failed to send SMS';
-      console.error("Twilio error:", errorMessage);
+      const twilioErrorCode = twilioData.code;
+      console.error("Twilio error:", errorMessage, "Code:", twilioErrorCode);
+
+      // Map Twilio error codes to human-readable errors
+      let errorCode = "unknown";
+      let errorTitle = "Send Failed";
+      let errorDescription = errorMessage;
+      
+      if (twilioErrorCode === 21211 || twilioErrorCode === 21614) {
+        errorCode = "invalid_number";
+        errorTitle = "Invalid Phone Number";
+        errorDescription = "The phone number is not valid or cannot receive SMS.";
+      } else if (twilioErrorCode === 21610) {
+        errorCode = "blocked";
+        errorTitle = "Message Blocked";
+        errorDescription = "The recipient has opted out of receiving messages.";
+      } else if (twilioErrorCode === 21408) {
+        errorCode = "undeliverable";
+        errorTitle = "Number Not Reachable";
+        errorDescription = "The number cannot receive SMS at this time.";
+      } else if (twilioErrorCode === 14107 || twilioErrorCode === 30006) {
+        errorCode = "rate_limit";
+        errorTitle = "Too Many Messages";
+        errorDescription = "SMS rate limit exceeded. Please wait and try again.";
+      }
 
       await supabaseClient
         .from("messages")
         .update({
           status: 'failed',
-          error_message: errorMessage
+          error_message: errorDescription
         })
         .eq("id", message.id);
 
-      return new Response(JSON.stringify({ error: errorMessage }), {
+      return new Response(JSON.stringify({ 
+        error: errorMessage,
+        errorCode,
+        errorTitle,
+        errorDescription,
+        twilioCode: twilioErrorCode
+      }), {
         status: 400,
         headers: { "Content-Type": "application/json", ...corsHeaders },
       });
     }
   } catch (error: any) {
     console.error("Error in send-sms function:", error);
-    return new Response(JSON.stringify({ error: error.message || "Internal server error" }), {
+    return new Response(JSON.stringify({ 
+      error: error.message || "Internal server error",
+      errorCode: "network_error",
+      errorTitle: "Connection Failed",
+      errorDescription: "Could not connect to the SMS service. Check your internet connection and try again."
+    }), {
       status: 500,
       headers: { "Content-Type": "application/json", ...corsHeaders },
     });

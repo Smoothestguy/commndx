@@ -1,6 +1,6 @@
 import { format } from "date-fns";
 import { cn } from "@/lib/utils";
-import { Check, CheckCheck, Smartphone, Trash2 } from "lucide-react";
+import { Check, CheckCheck, Smartphone, Trash2, AlertTriangle, RefreshCw, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   AlertDialog,
@@ -13,6 +13,15 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
+import { FailedMessageIndicator } from "./FailedMessageIndicator";
+
+type MessageStatus = "sending" | "sent" | "delivered" | "read" | "failed";
 
 interface MessageBubbleProps {
   content: string;
@@ -25,6 +34,12 @@ interface MessageBubbleProps {
   messageId?: string;
   onDelete?: (messageId: string) => void;
   isDeleting?: boolean;
+  // New status-related props
+  status?: MessageStatus;
+  errorCode?: string | null;
+  errorMessage?: string | null;
+  onRetry?: (messageId: string) => void;
+  isRetrying?: boolean;
 }
 
 export function MessageBubble({
@@ -38,8 +53,49 @@ export function MessageBubble({
   messageId,
   onDelete,
   isDeleting,
+  status,
+  errorCode,
+  errorMessage,
+  onRetry,
+  isRetrying,
 }: MessageBubbleProps) {
   const canDelete = isOwnMessage && messageId && onDelete;
+  const isFailed = status === "failed";
+  const isSending = status === "sending";
+
+  // Determine effective status from legacy props if not provided
+  const effectiveStatus = status || (isRead ? "read" : isDelivered ? "delivered" : "sent");
+
+  const renderStatusIcon = () => {
+    if (isSending) {
+      return <Loader2 className="h-3 w-3 animate-spin text-muted-foreground" />;
+    }
+    
+    if (isFailed) {
+      return (
+        <TooltipProvider>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <AlertTriangle className="h-3 w-3 text-destructive" />
+            </TooltipTrigger>
+            <TooltipContent side="left">
+              <p className="text-xs">Failed to send - tap for details</p>
+            </TooltipContent>
+          </Tooltip>
+        </TooltipProvider>
+      );
+    }
+
+    switch (effectiveStatus) {
+      case "read":
+        return <CheckCheck className="h-3 w-3 text-primary" />;
+      case "delivered":
+        return <CheckCheck className="h-3 w-3 text-muted-foreground" />;
+      case "sent":
+      default:
+        return <Check className="h-3 w-3 text-muted-foreground" />;
+    }
+  };
 
   return (
     <div
@@ -92,30 +148,44 @@ export function MessageBubble({
           className={cn(
             "rounded-2xl px-4 py-2 break-words",
             isOwnMessage
-              ? "bg-primary text-primary-foreground rounded-br-md"
-              : "bg-muted rounded-bl-md"
+              ? isFailed
+                ? "bg-destructive/20 text-foreground rounded-br-md border border-destructive/30"
+                : "bg-primary text-primary-foreground rounded-br-md"
+              : "bg-muted rounded-bl-md",
+            isSending && "opacity-70"
           )}
         >
           <p className="text-sm whitespace-pre-wrap">{content}</p>
         </div>
       </div>
 
+      {/* Failed message details */}
+      {isFailed && isOwnMessage && onRetry && messageId && (
+        <FailedMessageIndicator
+          errorCode={errorCode}
+          errorMessage={errorMessage}
+          onRetry={() => onRetry(messageId)}
+          isRetrying={isRetrying}
+          className="mt-1 max-w-full"
+        />
+      )}
+
       <div className="flex items-center gap-1 mt-1 px-1">
-        <span className="text-xs text-muted-foreground">
+        <span className={cn(
+          "text-xs",
+          isFailed ? "text-destructive" : "text-muted-foreground"
+        )}>
           {format(new Date(timestamp), "h:mm a")}
         </span>
         {messageType === "sms" && (
-          <Smartphone className="h-3 w-3 text-muted-foreground" />
+          <Smartphone className={cn(
+            "h-3 w-3",
+            isFailed ? "text-destructive" : "text-muted-foreground"
+          )} />
         )}
         {isOwnMessage && (
           <span className="text-muted-foreground">
-            {isRead ? (
-              <CheckCheck className="h-3 w-3 text-primary" />
-            ) : isDelivered ? (
-              <CheckCheck className="h-3 w-3" />
-            ) : (
-              <Check className="h-3 w-3" />
-            )}
+            {renderStatusIcon()}
           </span>
         )}
       </div>
