@@ -25,6 +25,7 @@ import { ThemeProvider } from "@/components/ThemeProvider";
 import { BottomNav } from "@/components/layout/BottomNav";
 import { MoreMenu } from "@/components/layout/MoreMenu";
 import { NetSuiteLayout } from "@/components/layout/netsuite/NetSuiteLayout";
+import { useNativeStatusBar } from "@/hooks/useNativeStatusBar";
 import { ChatInterface } from "@/components/ai-assistant/ChatInterface";
 import Index from "./pages/Index";
 import Auth from "./pages/Auth";
@@ -150,12 +151,19 @@ import USANetworkMapDemo from "./pages/USANetworkMapDemo";
 
 const queryClient = new QueryClient();
 
+// Wrapper component to use status bar hook inside ThemeProvider
+const NativeStatusBarManager = () => {
+  useNativeStatusBar();
+  return null;
+};
+
 const App = () => {
   const [moreMenuOpen, setMoreMenuOpen] = useState(false);
 
   return (
     <QueryClientProvider client={queryClient}>
       <ThemeProvider>
+        <NativeStatusBarManager />
         <TooltipProvider>
           <Toaster />
           <Sonner />
