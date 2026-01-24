@@ -454,6 +454,7 @@ export function useDeleteConversationMessage() {
 }
 
 export function useDeleteConversation() {
+  const { user } = useAuth();
   const queryClient = useQueryClient();
 
   return useMutation({
@@ -483,7 +484,7 @@ export function useDeleteConversation() {
       if (error) throw error;
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["conversations"] });
+      queryClient.invalidateQueries({ queryKey: ["conversations", user?.id] });
     },
   });
 }
