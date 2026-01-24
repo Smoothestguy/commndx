@@ -127,7 +127,7 @@ export function ConversationList({
               key={conversation.id}
               onClick={() => onSelectConversation(conversation)}
               className={cn(
-                "w-full flex items-start gap-3 p-3 hover:bg-muted/50 transition-colors text-left group",
+                "w-full flex items-start gap-3 p-3 pr-4 hover:bg-muted/50 transition-colors text-left group overflow-hidden",
                 selectedConversationId === conversation.id && "bg-muted"
               )}
             >
@@ -137,9 +137,9 @@ export function ConversationList({
                 </AvatarFallback>
               </Avatar>
 
-              <div className="flex-1 min-w-0">
-                <div className="flex items-center justify-between gap-2">
-                  <div className="flex items-center gap-1.5 min-w-0 flex-1">
+              <div className="flex-1 min-w-0 overflow-hidden">
+                <div className="flex items-center gap-2 overflow-hidden">
+                  <div className="flex items-center gap-1.5 min-w-0 flex-1 overflow-hidden">
                     <span className="font-medium truncate">
                       {conversation.other_participant_name}
                     </span>
@@ -147,13 +147,13 @@ export function ConversationList({
                       {getParticipantIcon(conversation.other_participant_type)}
                     </span>
                   </div>
-                  <div className="flex items-center gap-1 flex-shrink-0">
-                    <span className="text-xs text-muted-foreground">
+                  <div className="flex items-center gap-1 flex-shrink-0 ml-auto">
+                    <span className="text-xs text-muted-foreground whitespace-nowrap">
                       {formatMessageTime(conversation.last_message_at)}
                     </span>
                     <button
                       onClick={(e) => handleDeleteClick(e, conversation.id)}
-                      className="p-1 rounded hover:bg-destructive/10 text-muted-foreground hover:text-destructive"
+                      className="p-1 rounded hover:bg-destructive/10 text-muted-foreground hover:text-destructive flex-shrink-0"
                       title="Delete conversation"
                     >
                       <Trash2 className="h-4 w-4" />
@@ -161,7 +161,7 @@ export function ConversationList({
                   </div>
                 </div>
 
-                <div className="flex items-center justify-between gap-2 mt-0.5">
+                <div className="flex items-center gap-2 mt-0.5 overflow-hidden">
                   <p className="text-sm text-muted-foreground truncate flex-1 min-w-0">
                     {conversation.last_message_preview || "No messages yet"}
                   </p>
