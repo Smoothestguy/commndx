@@ -36,6 +36,7 @@ import { ProjectTimeEntriesList } from "@/components/project-hub/ProjectTimeEntr
 import { ProjectRateBracketsSection } from "@/components/project-hub/ProjectRateBracketsSection";
 import { ProjectPersonnelSection } from "@/components/project-hub/ProjectPersonnelSection";
 import { ProjectApplicantsSection } from "@/components/project-hub/ProjectApplicantsSection";
+import { ProjectAssetAssignmentsSection } from "@/components/project-hub/ProjectAssetAssignmentsSection";
 
 import { ProjectActivityTimeline } from "@/components/project-hub/ProjectActivityTimeline";
 import { AddTMTicketDialog } from "@/components/tm-tickets/AddTMTicketDialog";
@@ -557,7 +558,12 @@ const ProjectDetail = () => {
 
       {/* Assigned Personnel */}
       <div className="mb-8">
-        <ProjectPersonnelSection projectId={id!} />
+        <ProjectPersonnelSection projectId={id!} projectName={project.name} />
+      </div>
+
+      {/* Asset Assignments */}
+      <div className="mb-8">
+        <ProjectAssetAssignmentsSection projectId={id!} projectName={project.name} />
       </div>
 
       {/* Milestones */}
