@@ -4746,6 +4746,70 @@ export type Database = {
           },
         ]
       }
+      project_personnel_rate_history: {
+        Row: {
+          assignment_id: string | null
+          change_reason: string | null
+          changed_by: string | null
+          created_at: string
+          effective_from: string
+          effective_to: string | null
+          id: string
+          notes: string | null
+          pay_rate: number
+          personnel_id: string
+          project_id: string
+        }
+        Insert: {
+          assignment_id?: string | null
+          change_reason?: string | null
+          changed_by?: string | null
+          created_at?: string
+          effective_from?: string
+          effective_to?: string | null
+          id?: string
+          notes?: string | null
+          pay_rate: number
+          personnel_id: string
+          project_id: string
+        }
+        Update: {
+          assignment_id?: string | null
+          change_reason?: string | null
+          changed_by?: string | null
+          created_at?: string
+          effective_from?: string
+          effective_to?: string | null
+          id?: string
+          notes?: string | null
+          pay_rate?: number
+          personnel_id?: string
+          project_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "project_personnel_rate_history_assignment_id_fkey"
+            columns: ["assignment_id"]
+            isOneToOne: false
+            referencedRelation: "personnel_project_assignments"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "project_personnel_rate_history_personnel_id_fkey"
+            columns: ["personnel_id"]
+            isOneToOne: false
+            referencedRelation: "personnel"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "project_personnel_rate_history_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "projects"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       project_rate_brackets: {
         Row: {
           bill_rate: number
