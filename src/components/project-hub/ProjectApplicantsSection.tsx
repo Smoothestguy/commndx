@@ -6,7 +6,6 @@ import {
   UserX,
   Eye,
   Loader2,
-  MapPin,
   ChevronDown,
   ClipboardList,
   MessageSquare,
@@ -254,21 +253,19 @@ export function ProjectApplicantsSection({
               fallback={<span className="text-xs">{initials}</span>}
               alt={`${applicant.first_name} ${applicant.last_name}`}
             />
-            <div>
-              <p className="font-medium">
-                {applicant.first_name} {applicant.last_name}
-              </p>
-              <p className="text-sm text-muted-foreground flex items-center gap-1">
-                <MapPin className="h-3 w-3" />
-                {applicant.city && applicant.state
-                  ? `${applicant.city}, ${applicant.state}`
-                  : "—"}
-              </p>
-            </div>
+            <p className="font-medium">
+              {applicant.first_name} {applicant.last_name}
+            </p>
           </div>
         </TableCell>
         <TableCell>
           <span className="text-sm">{positionTitle}</span>
+        </TableCell>
+        <TableCell className="text-muted-foreground">
+          {applicant.city || "—"}
+        </TableCell>
+        <TableCell className="text-muted-foreground">
+          {applicant.state || "—"}
         </TableCell>
         <TableCell>
           <Badge className={cn("capitalize", statusColors[application.status])}>
@@ -513,6 +510,8 @@ export function ProjectApplicantsSection({
                             <TableRow>
                               <TableHead>Applicant</TableHead>
                               <TableHead>Position</TableHead>
+                              <TableHead>City</TableHead>
+                              <TableHead>State</TableHead>
                               <TableHead>Status</TableHead>
                               <TableHead>Applied</TableHead>
                               <TableHead className="w-[120px]">Actions</TableHead>
@@ -540,6 +539,8 @@ export function ProjectApplicantsSection({
                             <TableRow>
                               <TableHead>Applicant</TableHead>
                               <TableHead>Position</TableHead>
+                              <TableHead>City</TableHead>
+                              <TableHead>State</TableHead>
                               <TableHead>Status</TableHead>
                               <TableHead>Applied</TableHead>
                               <TableHead className="w-[120px]">Actions</TableHead>

@@ -9,7 +9,7 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { Eye, CheckCircle, XCircle, MoreVertical, Mail, Calendar, Briefcase, User, Trash2, CheckCircle2 } from "lucide-react";
+import { Eye, CheckCircle, XCircle, MoreVertical, Calendar, Briefcase, User, Trash2, CheckCircle2 } from "lucide-react";
 import type { Application } from "@/integrations/supabase/hooks/useStaffingApplications";
 
 const statusColors: Record<string, string> = {
@@ -176,12 +176,23 @@ export function MobileApplicationCard({
             </div>
 
             <div className="space-y-1 text-xs text-muted-foreground">
-              {application.applicants?.email && (
-                <div className="flex items-center gap-2 min-w-0">
-                  <Mail className="h-3.5 w-3.5 flex-shrink-0" />
-                  <span className="truncate">{application.applicants.email}</span>
-                </div>
-              )}
+              <div className="flex items-center gap-4">
+                {application.applicants?.city && (
+                  <div className="flex items-center gap-1">
+                    <span className="font-medium text-foreground/70">City:</span>
+                    <span>{application.applicants.city}</span>
+                  </div>
+                )}
+                {application.applicants?.state && (
+                  <div className="flex items-center gap-1">
+                    <span className="font-medium text-foreground/70">State:</span>
+                    <span>{application.applicants.state}</span>
+                  </div>
+                )}
+                {!application.applicants?.city && !application.applicants?.state && (
+                  <span>—</span>
+                )}
+              </div>
               {application.job_postings?.project_task_orders?.title && (
                 <div className="flex items-center gap-2">
                   <Briefcase className="h-3.5 w-3.5 flex-shrink-0" />
@@ -197,7 +208,12 @@ export function MobileApplicationCard({
               )}
               <div className="flex items-center gap-2">
                 <Calendar className="h-3.5 w-3.5 flex-shrink-0" />
-                <span>{format(new Date(application.created_at), "MMM d, yyyy")}</span>
+                <span>
+                  {format(
+                    new Date((application as any).submitted_at || application.created_at),
+                    "MMM d, yyyy h:mm a"
+                  )}
+                </span>
               </div>
             </div>
           </div>

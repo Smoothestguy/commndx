@@ -143,15 +143,36 @@ export function ApplicationsTable({
               fallback={<User className="h-4 w-4" />}
               alt="Profile"
             />
-            <div>
-              <p className="font-medium">
-                {app.applicants?.first_name} {app.applicants?.last_name}
-              </p>
-              <p className="text-sm text-muted-foreground">{app.applicants?.email}</p>
-            </div>
+            <p className="font-medium">
+              {app.applicants?.first_name} {app.applicants?.last_name}
+            </p>
           </div>
         );
       },
+    },
+    {
+      key: "city",
+      header: "City",
+      sortable: true,
+      filterable: true,
+      getValue: (app) => app.applicants?.city || "",
+      render: (app: Application) => (
+        <span className="text-muted-foreground">
+          {app.applicants?.city || "—"}
+        </span>
+      ),
+    },
+    {
+      key: "state",
+      header: "State",
+      sortable: true,
+      filterable: true,
+      getValue: (app) => app.applicants?.state || "",
+      render: (app: Application) => (
+        <span className="text-muted-foreground">
+          {app.applicants?.state || "—"}
+        </span>
+      ),
     },
     {
       key: "position",
@@ -175,12 +196,15 @@ export function ApplicationsTable({
       header: "Submitted",
       sortable: true,
       filterable: false,
-      getValue: (app) => app.created_at,
-      render: (app: Application) => (
-        <span className="text-muted-foreground text-sm">
-          {format(new Date(app.created_at), "MMM d, yyyy")}
-        </span>
-      ),
+      getValue: (app) => app.submitted_at || app.created_at,
+      render: (app: Application) => {
+        const timestamp = app.submitted_at || app.created_at;
+        return (
+          <span className="text-muted-foreground text-sm">
+            {format(new Date(timestamp), "MMM d, yyyy h:mm a")}
+          </span>
+        );
+      },
     },
     {
       key: "status",
