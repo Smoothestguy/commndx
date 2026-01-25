@@ -114,7 +114,7 @@ export function EnhancedDataTable<T extends { id: string | number }>({
   defaultSortKey,
   defaultSortDirection = 'desc',
 }: EnhancedDataTableProps<T>) {
-  const { isSpreadsheetMode } = useUIDensity();
+  const { isSpreadsheetMode, is2K1Mode, isCompactMode } = useUIDensity();
   const defaultColumnKeys = columns.map(col => String(col.key));
   
   const {
@@ -251,14 +251,27 @@ export function EnhancedDataTable<T extends { id: string | number }>({
     return breakpointMap[hideBelow];
   };
 
-  // Spreadsheet mode styling
+  // Density mode styling
+  // Spreadsheet: Ultra compact (24px rows, 11px text)
+  // 2K1: Condensed (~30% tighter than normal, 28px rows, 12px text)
+  // Normal: Standard padding
   const isUltraCompact = isSpreadsheetMode;
+  const isCondensed = is2K1Mode;
+  
+  // Get text size class based on density
+  const getTextClass = () => {
+    if (isUltraCompact) return "text-[11px]";
+    if (isCondensed) return "text-xs";
+    return compact ? "text-xs" : "text-sm";
+  };
   
   return (
     <div className={cn(
       "overflow-hidden",
       isUltraCompact 
         ? "border border-border" 
+        : isCondensed
+        ? "bg-card rounded border border-border shadow-sm"
         : "bg-card rounded-lg border border-border shadow-sm"
     )}>
       <div className="overflow-x-auto">
@@ -267,9 +280,7 @@ export function EnhancedDataTable<T extends { id: string | number }>({
         collisionDetection={closestCenter}
         onDragEnd={handleDragEnd}
       >
-        <Table className={cn(
-          isUltraCompact ? "text-[11px]" : compact && "text-xs"
-        )}>
+        <Table className={getTextClass()}>
           <TableHeader>
             <TableRow className={cn(
               "border-b border-table-border",
@@ -280,14 +291,20 @@ export function EnhancedDataTable<T extends { id: string | number }>({
               {selectable && (
                 <TableHead className={cn(
                   "w-8 text-table-header-foreground font-semibold",
-                  isUltraCompact ? "py-0.5 px-1.5 h-6" : compact ? "py-2 px-3 h-9" : "py-3 px-4"
+                  isUltraCompact ? "py-0.5 px-1.5 h-6" : 
+                  isCondensed ? "py-1 px-2 h-7" :
+                  compact ? "py-2 px-3 h-9" : "py-3 px-4"
                 )}>
                   <IndeterminateCheckbox
                     checked={allSelected}
                     indeterminate={someSelected}
                     onCheckedChange={handleSelectAll}
                     aria-label="Select all"
-                    className={cn("border-table-header-foreground/50", isUltraCompact && "h-3.5 w-3.5")}
+                    className={cn(
+                      "border-table-header-foreground/50", 
+                      isUltraCompact && "h-3.5 w-3.5",
+                      isCondensed && "h-3.5 w-3.5"
+                    )}
                   />
                 </TableHead>
               )}
@@ -308,7 +325,9 @@ export function EnhancedDataTable<T extends { id: string | number }>({
                       id={key}
                       className={cn(
                         "text-table-header-foreground font-semibold whitespace-nowrap",
-                        isUltraCompact ? "py-0.5 px-1.5 h-6" : compact ? "py-2 px-2 md:px-3 h-9" : "py-3 px-4",
+                        isUltraCompact ? "py-0.5 px-1.5 h-6" : 
+                        isCondensed ? "py-1 px-1.5 md:px-2 h-7" :
+                        compact ? "py-2 px-2 md:px-3 h-9" : "py-3 px-4",
                         column.className,
                         getResponsiveClass(column.hideBelow)
                       )}
@@ -323,7 +342,7 @@ export function EnhancedDataTable<T extends { id: string | number }>({
                         <span>{column.header}</span>
                         {column.sortable !== false && (
                           <SortIcon className={cn(
-                            isUltraCompact ? "h-3 w-3" : "h-3.5 w-3.5",
+                            isUltraCompact || isCondensed ? "h-3 w-3" : "h-3.5 w-3.5",
                             isSorted ? "text-primary" : "text-table-header-foreground/50"
                           )} />
                         )}
@@ -357,20 +376,23 @@ export function EnhancedDataTable<T extends { id: string | number }>({
                     index % 2 === 1 && "bg-table-stripe",
                     onRowClick && "cursor-pointer hover:bg-muted/50",
                     isSelected && "bg-primary/5",
-                    isUltraCompact && "h-6"
+                    isUltraCompact && "h-6",
+                    isCondensed && "h-7"
                   )}
                 >
                   {selectable && (
                     <TableCell className={cn(
                       "w-8",
-                      isUltraCompact ? "py-0.5 px-1.5" : compact ? "py-1.5 px-3" : "py-2 px-4"
+                      isUltraCompact ? "py-0.5 px-1.5" : 
+                      isCondensed ? "py-0.5 px-2" :
+                      compact ? "py-1.5 px-3" : "py-2 px-4"
                     )}>
                       <Checkbox
                         checked={isSelected}
                         onCheckedChange={(checked) => handleSelectOne(String(item.id), !!checked)}
                         onClick={(e) => e.stopPropagation()}
                         aria-label="Select row"
-                        className={isUltraCompact ? "h-3.5 w-3.5" : undefined}
+                        className={isUltraCompact || isCondensed ? "h-3.5 w-3.5" : undefined}
                       />
                     </TableCell>
                   )}
@@ -379,7 +401,9 @@ export function EnhancedDataTable<T extends { id: string | number }>({
                       key={String(column.key)}
                       className={cn(
                         "text-foreground min-w-0",
-                        isUltraCompact ? "py-0.5 px-1.5" : compact ? "py-1.5 px-2 md:px-3" : "py-2 px-4",
+                        isUltraCompact ? "py-0.5 px-1.5" : 
+                        isCondensed ? "py-1 px-1.5 md:px-2" :
+                        compact ? "py-1.5 px-2 md:px-3" : "py-2 px-4",
                         column.className,
                         getResponsiveClass(column.hideBelow)
                       )}

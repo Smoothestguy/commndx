@@ -51,6 +51,16 @@ const PRESET_THEMES: Array<{ name: string; theme: Partial<DashboardTheme> }> = [
     },
   },
   {
+    name: "2K1 View",
+    theme: {
+      fontFamily: "default",
+      fontSize: "small",
+      spacing: "compact",
+      borderRadius: "small",
+      density: "2k1",
+    },
+  },
+  {
     name: "Compact",
     theme: {
       fontSize: "small",
@@ -389,11 +399,12 @@ export function DashboardThemeEditor({
                       </SelectTrigger>
                       <SelectContent>
                         <SelectItem value="normal">Normal</SelectItem>
-                        <SelectItem value="spreadsheet">Spreadsheet (Dense)</SelectItem>
+                        <SelectItem value="2k1">2K1 View (Condensed)</SelectItem>
+                        <SelectItem value="spreadsheet">Spreadsheet (Ultra Dense)</SelectItem>
                       </SelectContent>
                     </Select>
                     <p className="text-xs text-muted-foreground">
-                      Spreadsheet mode shows more data with minimal spacing
+                      2K1 View reduces spacing ~30% for more data on screen
                     </p>
                   </div>
                 </AccordionContent>
