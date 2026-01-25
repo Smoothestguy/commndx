@@ -534,43 +534,6 @@ export function useDeletePersonnelAssignment() {
   });
 }
 
-// Bulk remove personnel from projects (soft delete)
-export function useBulkRemovePersonnelFromProject() {
-  const queryClient = useQueryClient();
-
-  return useMutation({
-    mutationFn: async (assignments: { projectId: string; personnelId: string }[]) => {
-      // First, get the assignment IDs for the given project-personnel pairs
-      const conditions = assignments.map(a => 
-        `(project_id.eq.${a.projectId},personnel_id.eq.${a.personnelId})`
-      ).join(',');
-      
-      // Use a simpler approach - update each pair
-      const results = await Promise.all(
-        assignments.map(async ({ projectId, personnelId }) => {
-          const { error } = await supabase
-            .from("personnel_project_assignments")
-            .update({ status: "removed" })
-            .eq("project_id", projectId)
-            .eq("personnel_id", personnelId)
-            .eq("status", "active");
-          
-          if (error) throw error;
-        })
-      );
-
-      return results;
-    },
-    onSuccess: (_, variables) => {
-      queryClient.invalidateQueries({ queryKey: ["personnel-project-assignments"] });
-      queryClient.invalidateQueries({ queryKey: ["admin-time-entries"] });
-      toast.success(`${variables.length} personnel removed from projects`);
-    },
-    onError: () => {
-      toast.error("Failed to remove personnel from projects");
-    },
-  });
-}
 
 // Resend assignment SMS notification
 export function useResendAssignmentSMS() {
