@@ -20,6 +20,9 @@ export interface PersonnelWithAssets {
   lastName: string;
   email: string;
   phone: string | null;
+  city: string | null;
+  state: string | null;
+  payRate: number | null;
   rateBracket: string | null;
   rateBracketId: string | null;
   billRate: number | null;
@@ -61,6 +64,7 @@ export function usePersonnelWithAssets(
           personnel_id,
           assigned_at,
           bill_rate,
+          pay_rate,
           rate_bracket_id,
           status,
           unassigned_at,
@@ -72,6 +76,9 @@ export function usePersonnelWithAssets(
             last_name,
             email,
             phone,
+            city,
+            state,
+            pay_rate,
             status
           ),
           project_rate_brackets (
@@ -147,6 +154,9 @@ export function usePersonnelWithAssets(
           last_name: string;
           email: string;
           phone: string | null;
+          city: string | null;
+          state: string | null;
+          pay_rate: number | null;
           status: string;
         };
         const rateBracket = a.project_rate_brackets as {
@@ -154,6 +164,9 @@ export function usePersonnelWithAssets(
           name: string;
           bill_rate: number;
         } | null;
+
+        // Pay rate priority: assignment pay_rate > personnel pay_rate
+        const payRate = (a as any).pay_rate ?? personnel.pay_rate ?? null;
 
         return {
           personnelId: a.personnel_id,
@@ -163,6 +176,9 @@ export function usePersonnelWithAssets(
           lastName: personnel.last_name,
           email: personnel.email,
           phone: personnel.phone,
+          city: personnel.city,
+          state: personnel.state,
+          payRate: payRate,
           rateBracket: rateBracket?.name || null,
           rateBracketId: a.rate_bracket_id,
           billRate: a.bill_rate ?? rateBracket?.bill_rate ?? null,
@@ -194,6 +210,7 @@ export function usePersonnelWithAssetsForExport(projectId: string | undefined, i
           personnel_id,
           assigned_at,
           bill_rate,
+          pay_rate,
           rate_bracket_id,
           personnel!inner (
             id,
@@ -201,6 +218,9 @@ export function usePersonnelWithAssetsForExport(projectId: string | undefined, i
             last_name,
             email,
             phone,
+            city,
+            state,
+            pay_rate,
             status
           ),
           project_rate_brackets (
@@ -298,6 +318,9 @@ export function usePersonnelWithAssetsForExport(projectId: string | undefined, i
           last_name: string;
           email: string;
           phone: string | null;
+          city: string | null;
+          state: string | null;
+          pay_rate: number | null;
           status: string;
         };
         const rateBracket = a.project_rate_brackets as {
@@ -305,6 +328,9 @@ export function usePersonnelWithAssetsForExport(projectId: string | undefined, i
           name: string;
           bill_rate: number;
         } | null;
+
+        // Pay rate priority: assignment pay_rate > personnel pay_rate
+        const payRate = (a as any).pay_rate ?? personnel.pay_rate ?? null;
 
         return {
           personnelId: a.personnel_id,
@@ -314,6 +340,9 @@ export function usePersonnelWithAssetsForExport(projectId: string | undefined, i
           lastName: personnel.last_name,
           email: personnel.email,
           phone: personnel.phone,
+          city: personnel.city,
+          state: personnel.state,
+          payRate: payRate,
           rateBracket: rateBracket?.name || null,
           rateBracketId: a.rate_bracket_id,
           billRate: a.bill_rate ?? rateBracket?.bill_rate ?? null,
