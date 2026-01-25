@@ -108,7 +108,7 @@ export function AppSidebar() {
   const { isAdmin, isManager, isAccounting } = useUserRole();
   const { state } = useSidebar();
   const isCollapsed = state === "collapsed";
-  const { isSpreadsheetMode } = useUIDensity();
+  const { isSpreadsheetMode, is2K1Mode, isCompactMode } = useUIDensity();
   const { resolvedTheme } = useTheme();
 
   // Permission checks for admin modules
@@ -123,9 +123,29 @@ export function AppSidebar() {
   const [accountOpen, setAccountOpen] = useState(false);
   
   // Compact mode class helpers
-  const menuButtonClass = isSpreadsheetMode ? "h-7 text-xs py-1" : "";
-  const iconClass = isSpreadsheetMode ? "h-3.5 w-3.5" : "h-4 w-4";
-  const groupLabelClass = isSpreadsheetMode ? "text-[10px] py-1" : "";
+  // Spreadsheet: Ultra compact (h-7, text-xs, py-1)
+  // 2K1: Condensed (~30% tighter than normal, h-8, text-[13px])
+  const getMenuButtonClass = () => {
+    if (isSpreadsheetMode) return "h-7 text-xs py-1";
+    if (is2K1Mode) return "h-8 text-[13px] py-1";
+    return "";
+  };
+  
+  const getIconClass = () => {
+    if (isSpreadsheetMode) return "h-3.5 w-3.5";
+    if (is2K1Mode) return "h-3.5 w-3.5";
+    return "h-4 w-4";
+  };
+  
+  const getGroupLabelClass = () => {
+    if (isSpreadsheetMode) return "text-[10px] py-1";
+    if (is2K1Mode) return "text-[11px] py-1";
+    return "";
+  };
+
+  const menuButtonClass = getMenuButtonClass();
+  const iconClass = getIconClass();
+  const groupLabelClass = getGroupLabelClass();
 
   // Auto-expand section if current route is within it
   useEffect(() => {

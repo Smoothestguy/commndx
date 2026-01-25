@@ -74,8 +74,8 @@ export interface DashboardTheme {
   backgroundPosition?: "center" | "top" | "bottom";
   backgroundOverlay?: number; // 0-100 opacity for dark overlay
   backgroundPages?: string[]; // Array of page identifiers where background should appear
-  // Density mode for spreadsheet-like layouts
-  density?: "normal" | "spreadsheet";
+  // Density mode for different UI compactness levels
+  density?: "normal" | "spreadsheet" | "2k1";
   // Sidebar customization
   leftSidebarBackground?: string;
   leftSidebarTextColor?: string;
