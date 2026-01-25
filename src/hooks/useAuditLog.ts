@@ -7,13 +7,16 @@ export type ActionType =
   | "approve" | "reject" | "send" | "complete"
   | "sign_in" | "sign_out" | "sign_up"
   | "payment" | "sync" | "upload" | "download"
-  | "invite" | "status_change";
+  | "invite" | "status_change"
+  | "bulk_unassign" | "bulk_sms" | "bulk_export" 
+  | "assign_asset" | "unassign_asset" | "transfer_asset";
 
 export type ResourceType = 
   | "estimate" | "invoice" | "purchase_order" | "job_order" 
   | "change_order" | "vendor_bill" | "personnel" | "vendor" 
   | "project" | "customer" | "auth" | "user" | "permission"
-  | "file" | "quickbooks" | "tm_ticket" | "time_entry";
+  | "file" | "quickbooks" | "tm_ticket" | "time_entry"
+  | "personnel_assignment" | "asset" | "asset_assignment";
 
 interface AuditLogParams {
   actionType: ActionType;

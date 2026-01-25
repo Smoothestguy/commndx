@@ -586,6 +586,133 @@ export type Database = {
           },
         ]
       }
+      asset_assignments: {
+        Row: {
+          asset_id: string
+          assigned_by: string | null
+          assigned_to_personnel_id: string | null
+          created_at: string | null
+          end_at: string | null
+          id: string
+          notes: string | null
+          project_id: string
+          start_at: string
+          status: string
+          unassigned_at: string | null
+          unassigned_by: string | null
+          updated_at: string | null
+        }
+        Insert: {
+          asset_id: string
+          assigned_by?: string | null
+          assigned_to_personnel_id?: string | null
+          created_at?: string | null
+          end_at?: string | null
+          id?: string
+          notes?: string | null
+          project_id: string
+          start_at?: string
+          status?: string
+          unassigned_at?: string | null
+          unassigned_by?: string | null
+          updated_at?: string | null
+        }
+        Update: {
+          asset_id?: string
+          assigned_by?: string | null
+          assigned_to_personnel_id?: string | null
+          created_at?: string | null
+          end_at?: string | null
+          id?: string
+          notes?: string | null
+          project_id?: string
+          start_at?: string
+          status?: string
+          unassigned_at?: string | null
+          unassigned_by?: string | null
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "asset_assignments_asset_id_fkey"
+            columns: ["asset_id"]
+            isOneToOne: false
+            referencedRelation: "assets"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "asset_assignments_assigned_to_personnel_id_fkey"
+            columns: ["assigned_to_personnel_id"]
+            isOneToOne: false
+            referencedRelation: "personnel"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "asset_assignments_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "projects"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      assets: {
+        Row: {
+          access_instructions: string | null
+          address: string | null
+          created_at: string | null
+          created_by: string | null
+          deleted_at: string | null
+          description: string | null
+          gate_code: string | null
+          id: string
+          instructions: string | null
+          label: string
+          metadata: Json | null
+          operating_hours: string | null
+          serial_number: string | null
+          status: string
+          type: string
+          updated_at: string | null
+        }
+        Insert: {
+          access_instructions?: string | null
+          address?: string | null
+          created_at?: string | null
+          created_by?: string | null
+          deleted_at?: string | null
+          description?: string | null
+          gate_code?: string | null
+          id?: string
+          instructions?: string | null
+          label: string
+          metadata?: Json | null
+          operating_hours?: string | null
+          serial_number?: string | null
+          status?: string
+          type: string
+          updated_at?: string | null
+        }
+        Update: {
+          access_instructions?: string | null
+          address?: string | null
+          created_at?: string | null
+          created_by?: string | null
+          deleted_at?: string | null
+          description?: string | null
+          gate_code?: string | null
+          id?: string
+          instructions?: string | null
+          label?: string
+          metadata?: Json | null
+          operating_hours?: string | null
+          serial_number?: string | null
+          status?: string
+          type?: string
+          updated_at?: string | null
+        }
+        Relationships: []
+      }
       assignment_removal_log: {
         Row: {
           assignment_id: string
