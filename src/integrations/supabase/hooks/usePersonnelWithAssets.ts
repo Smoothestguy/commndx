@@ -27,12 +27,31 @@ export interface PersonnelWithAssets {
   assets: PersonnelAsset[];
 }
 
+interface UsePersonnelWithAssetsOptions {
+  includeUnassigned?: boolean;
+}
+
 // Fetch all assigned personnel for a project with their active asset assignments
-export function usePersonnelWithAssets(projectId: string | undefined) {
+export function usePersonnelWithAssets(
+  projectId: string | undefined,
+  options: UsePersonnelWithAssetsOptions = {}
+) {
+  const { includeUnassigned = false } = options;
+  
   return useQuery({
-    queryKey: ["personnel-with-assets", projectId],
-    queryFn: async (): Promise<PersonnelWithAssets[]> => {
+    queryKey: ["personnel-with-assets", projectId, { includeUnassigned }],
+    queryFn: async (): Promise<(PersonnelWithAssets & {
+      status: string;
+      unassignedAt: string | null;
+      unassignedReason: string | null;
+      unassignedNotes: string | null;
+    })[]> => {
       if (!projectId) return [];
+
+      // Build the status filter
+      const statusFilter = includeUnassigned 
+        ? ["active", "unassigned", "removed"]
+        : ["active"];
 
       // First, get all personnel assigned to the project
       const { data: assignments, error: assignmentsError } = await supabase
@@ -43,6 +62,10 @@ export function usePersonnelWithAssets(projectId: string | undefined) {
           assigned_at,
           bill_rate,
           rate_bracket_id,
+          status,
+          unassigned_at,
+          unassigned_reason,
+          unassigned_notes,
           personnel!inner (
             id,
             first_name,
@@ -58,7 +81,7 @@ export function usePersonnelWithAssets(projectId: string | undefined) {
           )
         `)
         .eq("project_id", projectId)
-        .eq("status", "active")
+        .in("status", statusFilter)
         .eq("personnel.status", "active");
 
       if (assignmentsError) throw assignmentsError;
@@ -145,6 +168,10 @@ export function usePersonnelWithAssets(projectId: string | undefined) {
           billRate: a.bill_rate ?? rateBracket?.bill_rate ?? null,
           assignedAt: a.assigned_at,
           assets: personnelAssetsMap.get(a.personnel_id) || [],
+          status: a.status,
+          unassignedAt: a.unassigned_at,
+          unassignedReason: a.unassigned_reason,
+          unassignedNotes: a.unassigned_notes,
         };
       });
     },

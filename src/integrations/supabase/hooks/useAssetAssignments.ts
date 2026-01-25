@@ -13,6 +13,8 @@ export interface AssetAssignment {
   end_at: string | null;
   unassigned_at: string | null;
   unassigned_by: string | null;
+  unassigned_reason: string | null;
+  unassigned_notes: string | null;
   notes: string | null;
   status: "active" | "returned" | "transferred";
   created_at: string;
@@ -21,14 +23,14 @@ export interface AssetAssignment {
 
 export interface AssetAssignmentWithDetails extends AssetAssignment {
   assets: Asset | null;
-  personnel: {
+  personnel?: {
     id: string;
     first_name: string;
     last_name: string;
     email: string;
     phone: string | null;
   } | null;
-  projects: {
+  projects?: {
     id: string;
     name: string;
   } | null;

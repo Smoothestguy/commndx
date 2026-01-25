@@ -341,21 +341,85 @@ export function useBulkAssignPersonnelToProject() {
   });
 }
 
-// Remove personnel from a project (soft delete by changing status)
-export function useRemovePersonnelFromProject() {
+// Unassignment reason types
+export type UnassignmentReason = 
+  | "sent_home" 
+  | "no_show" 
+  | "left_site" 
+  | "terminated" 
+  | "project_ended" 
+  | "other";
+
+export const UNASSIGNMENT_REASONS: { value: UnassignmentReason; label: string }[] = [
+  { value: "sent_home", label: "Sent Home" },
+  { value: "no_show", label: "No Show" },
+  { value: "left_site", label: "Left Site" },
+  { value: "terminated", label: "Terminated" },
+  { value: "project_ended", label: "Project Ended" },
+  { value: "other", label: "Other" },
+];
+
+export interface UnassignPersonnelInput {
+  assignmentId: string;
+  reason: UnassignmentReason;
+  notes?: string;
+}
+
+// Unassign personnel from a project (soft unassign with audit trail)
+export function useUnassignPersonnelFromProject() {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: async (assignmentId: string) => {
+    mutationFn: async ({ assignmentId, reason, notes }: UnassignPersonnelInput) => {
+      const { data: { user } } = await supabase.auth.getUser();
+
       const { error } = await supabase
         .from("personnel_project_assignments")
-        .update({ status: "removed" })
+        .update({ 
+          status: "unassigned",
+          unassigned_at: new Date().toISOString(),
+          unassigned_by: user?.id || null,
+          unassigned_reason: reason,
+          unassigned_notes: notes || null,
+        })
         .eq("id", assignmentId);
 
       if (error) throw error;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["personnel-project-assignments"] });
+      queryClient.invalidateQueries({ queryKey: ["personnel-with-assets"] });
+      toast.success("Personnel unassigned from project");
+    },
+    onError: () => {
+      toast.error("Failed to unassign personnel");
+    },
+  });
+}
+
+// Legacy: Remove personnel from a project (soft delete by changing status)
+// Kept for backwards compatibility but prefer useUnassignPersonnelFromProject
+export function useRemovePersonnelFromProject() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async (assignmentId: string) => {
+      const { data: { user } } = await supabase.auth.getUser();
+      
+      const { error } = await supabase
+        .from("personnel_project_assignments")
+        .update({ 
+          status: "removed",
+          unassigned_at: new Date().toISOString(),
+          unassigned_by: user?.id || null,
+        })
+        .eq("id", assignmentId);
+
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["personnel-project-assignments"] });
+      queryClient.invalidateQueries({ queryKey: ["personnel-with-assets"] });
       toast.success("Personnel removed from project");
     },
     onError: () => {
@@ -370,9 +434,15 @@ export function useBulkRemovePersonnelFromProject() {
 
   return useMutation({
     mutationFn: async (assignmentIds: string[]) => {
+      const { data: { user } } = await supabase.auth.getUser();
+      
       const { error } = await supabase
         .from("personnel_project_assignments")
-        .update({ status: "removed" })
+        .update({ 
+          status: "removed",
+          unassigned_at: new Date().toISOString(),
+          unassigned_by: user?.id || null,
+        })
         .in("id", assignmentIds);
 
       if (error) throw error;
@@ -380,6 +450,7 @@ export function useBulkRemovePersonnelFromProject() {
     },
     onSuccess: ({ count }) => {
       queryClient.invalidateQueries({ queryKey: ["personnel-project-assignments"] });
+      queryClient.invalidateQueries({ queryKey: ["personnel-with-assets"] });
       toast.success(`${count} personnel removed from project`);
     },
     onError: () => {
