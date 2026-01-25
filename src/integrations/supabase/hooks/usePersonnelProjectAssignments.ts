@@ -364,6 +364,30 @@ export function useRemovePersonnelFromProject() {
   });
 }
 
+// Bulk remove multiple personnel from a project
+export function useBulkRemovePersonnelFromProject() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async (assignmentIds: string[]) => {
+      const { error } = await supabase
+        .from("personnel_project_assignments")
+        .update({ status: "removed" })
+        .in("id", assignmentIds);
+
+      if (error) throw error;
+      return { count: assignmentIds.length };
+    },
+    onSuccess: ({ count }) => {
+      queryClient.invalidateQueries({ queryKey: ["personnel-project-assignments"] });
+      toast.success(`${count} personnel removed from project`);
+    },
+    onError: () => {
+      toast.error("Failed to remove personnel");
+    },
+  });
+}
+
 // Get all projects assigned to a specific personnel member (includes rate bracket info)
 export function useProjectsForPersonnel(personnelId: string | undefined) {
   return useQuery({
