@@ -1,8 +1,9 @@
 import { useState, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
 import { format } from "date-fns";
-import { Users, UserPlus, UserMinus, Loader2, Mail, Briefcase, ChevronDown, MessageSquare, Download, History, MapPin, Phone } from "lucide-react";
+import { Users, UserPlus, UserMinus, Loader2, Mail, Briefcase, ChevronDown, MessageSquare, Download, History, MapPin, Phone, Pencil } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { formatCurrency } from "@/lib/utils";
 import {
   Collapsible,
   CollapsibleContent,
@@ -44,6 +45,8 @@ import type { PersonnelRowData } from "@/components/project-hub/personnel-table/
 import { useUserRole } from "@/hooks/useUserRole";
 import { useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
+import { EditPayRateDialog } from "@/components/project-hub/EditPayRateDialog";
+import { ViewRateHistoryDialog } from "@/components/project-hub/ViewRateHistoryDialog";
 
 interface ProjectPersonnelSectionProps {
   projectId: string;
@@ -68,6 +71,16 @@ export function ProjectPersonnelSection({ projectId, projectName = "this project
   const [isOpen, setIsOpen] = useState(false);
   const [showUnassigned, setShowUnassigned] = useState(false);
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+  const [editPayRateDialog, setEditPayRateDialog] = useState<{
+    personnelId: string;
+    personnelName: string;
+    assignmentId: string;
+    currentRate: number | null;
+  } | null>(null);
+  const [viewRateHistoryDialog, setViewRateHistoryDialog] = useState<{
+    personnelId: string;
+    personnelName: string;
+  } | null>(null);
   
   const { data: assignedPersonnel = [], isLoading } = usePersonnelWithAssets(projectId, {
     includeUnassigned: showUnassigned,
@@ -484,11 +497,57 @@ export function ProjectPersonnelSection({ projectId, projectName = "this project
                               </TableCell>
                             )}
                             {visibleColumns.some(c => c.key === "payRate") && (
-                              <TableCell>
-                                {person.payRate != null 
-                                  ? `${formatCurrency(person.payRate)}/hr`
-                                  : "—"
-                                }
+                              <TableCell onClick={(e) => e.stopPropagation()}>
+                                <div className="flex items-center gap-1 group">
+                                  <span>
+                                    {person.payRate != null 
+                                      ? `${formatCurrency(person.payRate)}/hr`
+                                      : "—"
+                                    }
+                                  </span>
+                                  {!isUnassigned && (isAdmin || isManager) && (
+                                    <div className="flex items-center gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity">
+                                      <TooltipProvider>
+                                        <Tooltip>
+                                          <TooltipTrigger asChild>
+                                            <Button
+                                              variant="ghost"
+                                              size="icon"
+                                              className="h-6 w-6"
+                                              onClick={() => setEditPayRateDialog({
+                                                personnelId: person.personnelId,
+                                                personnelName: person.name,
+                                                assignmentId: person.assignmentId,
+                                                currentRate: person.payRate,
+                                              })}
+                                            >
+                                              <Pencil className="h-3 w-3" />
+                                            </Button>
+                                          </TooltipTrigger>
+                                          <TooltipContent>Edit Pay Rate</TooltipContent>
+                                        </Tooltip>
+                                      </TooltipProvider>
+                                      <TooltipProvider>
+                                        <Tooltip>
+                                          <TooltipTrigger asChild>
+                                            <Button
+                                              variant="ghost"
+                                              size="icon"
+                                              className="h-6 w-6"
+                                              onClick={() => setViewRateHistoryDialog({
+                                                personnelId: person.personnelId,
+                                                personnelName: person.name,
+                                              })}
+                                            >
+                                              <History className="h-3 w-3" />
+                                            </Button>
+                                          </TooltipTrigger>
+                                          <TooltipContent>View Rate History</TooltipContent>
+                                        </Tooltip>
+                                      </TooltipProvider>
+                                    </div>
+                                  )}
+                                </div>
                               </TableCell>
                             )}
                             {visibleColumns.some(c => c.key === "billRate") && (
@@ -624,6 +683,30 @@ export function ProjectPersonnelSection({ projectId, projectName = "this project
           assignmentId={unassignDialog.assignmentId}
           projectId={projectId}
           onComplete={handleAssignmentChange}
+        />
+      )}
+
+      {/* Edit Pay Rate Dialog */}
+      {editPayRateDialog && (
+        <EditPayRateDialog
+          open={!!editPayRateDialog}
+          onOpenChange={(open) => !open && setEditPayRateDialog(null)}
+          projectId={projectId}
+          personnelId={editPayRateDialog.personnelId}
+          personnelName={editPayRateDialog.personnelName}
+          assignmentId={editPayRateDialog.assignmentId}
+          currentRate={editPayRateDialog.currentRate}
+        />
+      )}
+
+      {/* View Rate History Dialog */}
+      {viewRateHistoryDialog && (
+        <ViewRateHistoryDialog
+          open={!!viewRateHistoryDialog}
+          onOpenChange={(open) => !open && setViewRateHistoryDialog(null)}
+          projectId={projectId}
+          personnelId={viewRateHistoryDialog.personnelId}
+          personnelName={viewRateHistoryDialog.personnelName}
         />
       )}
     </>
