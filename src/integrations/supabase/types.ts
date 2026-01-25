@@ -3773,6 +3773,7 @@ export type Database = {
           created_at: string | null
           id: string
           last_time_entry_at: string | null
+          pay_rate: number | null
           personnel_id: string
           project_id: string
           rate_bracket_id: string | null
@@ -3790,6 +3791,7 @@ export type Database = {
           created_at?: string | null
           id?: string
           last_time_entry_at?: string | null
+          pay_rate?: number | null
           personnel_id: string
           project_id: string
           rate_bracket_id?: string | null
@@ -3807,6 +3809,7 @@ export type Database = {
           created_at?: string | null
           id?: string
           last_time_entry_at?: string | null
+          pay_rate?: number | null
           personnel_id?: string
           project_id?: string
           rate_bracket_id?: string | null
