@@ -11,6 +11,8 @@ import { MobileApplicationCard } from "./MobileApplicationCard";
 import type { Application } from "@/integrations/supabase/hooks/useStaffingApplications";
 import { useApplicationFormTemplates, FormField } from "@/integrations/supabase/hooks/useApplicationFormTemplates";
 import { cn } from "@/lib/utils";
+import { getCityWithFallback, getStateWithFallback } from "@/lib/locationUtils";
+
 const statusColors: Record<string, string> = {
   submitted: "bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-300",
   reviewing: "bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-300",
@@ -155,24 +157,30 @@ export function ApplicationsTable({
       header: "City",
       sortable: true,
       filterable: true,
-      getValue: (app) => app.applicants?.city || "",
-      render: (app: Application) => (
-        <span className="text-muted-foreground">
-          {app.applicants?.city || "—"}
-        </span>
-      ),
+      getValue: (app) => getCityWithFallback(app.applicants?.city, app.answers as Record<string, unknown>) || "",
+      render: (app: Application) => {
+        const city = getCityWithFallback(app.applicants?.city, app.answers as Record<string, unknown>);
+        return (
+          <span className="text-muted-foreground">
+            {city || "—"}
+          </span>
+        );
+      },
     },
     {
       key: "state",
       header: "State",
       sortable: true,
       filterable: true,
-      getValue: (app) => app.applicants?.state || "",
-      render: (app: Application) => (
-        <span className="text-muted-foreground">
-          {app.applicants?.state || "—"}
-        </span>
-      ),
+      getValue: (app) => getStateWithFallback(app.applicants?.state, app.answers as Record<string, unknown>) || "",
+      render: (app: Application) => {
+        const state = getStateWithFallback(app.applicants?.state, app.answers as Record<string, unknown>);
+        return (
+          <span className="text-muted-foreground">
+            {state || "—"}
+          </span>
+        );
+      },
     },
     {
       key: "position",

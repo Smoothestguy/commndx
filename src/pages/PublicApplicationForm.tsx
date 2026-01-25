@@ -464,6 +464,23 @@ export default function PublicApplicationForm() {
     console.log("[Form] SMS consent:", smsConsent);
 
     try {
+      // Extract address fields from customAnswers if present
+      let extractedAddress = "";
+      let extractedCity = "";
+      let extractedState = "";
+      let extractedZip = data.home_zip || "";
+
+      for (const value of Object.values(customAnswers)) {
+        if (typeof value === "object" && value !== null && "city" in value) {
+          const addr = value as { street?: string; city?: string; state?: string; zip?: string };
+          extractedAddress = addr.street || "";
+          extractedCity = addr.city || "";
+          extractedState = addr.state || "";
+          extractedZip = extractedZip || addr.zip || "";
+          break;
+        }
+      }
+
       await submitApplication.mutateAsync({
         posting_id: posting.id,
         applicant: {
@@ -471,7 +488,10 @@ export default function PublicApplicationForm() {
           last_name: data.last_name,
           email: data.email,
           phone: data.phone,
-          home_zip: data.home_zip,
+          address: extractedAddress || undefined,
+          city: extractedCity || undefined,
+          state: extractedState || undefined,
+          home_zip: extractedZip || data.home_zip,
           photo_url: data.photo_url,
         },
         answers: customAnswers,
