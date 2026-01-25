@@ -7,8 +7,10 @@ import {
   Eye,
   Loader2,
   ChevronDown,
+  ChevronUp,
   ClipboardList,
   MessageSquare,
+  ArrowUpDown,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import {
@@ -53,6 +55,10 @@ import { useGetOrCreateConversation } from "@/integrations/supabase/hooks/useCon
 import { useNavigate } from "react-router-dom";
 import { toast } from "sonner";
 import { useQueryClient } from "@tanstack/react-query";
+import { getCityWithFallback, getStateWithFallback } from "@/lib/locationUtils";
+
+type SortKey = "name" | "position" | "city" | "state" | "status" | "submitted";
+type SortDirection = "asc" | "desc";
 
 interface ProjectApplicantsSectionProps {
   projectId: string;
@@ -113,6 +119,8 @@ export function ProjectApplicantsSection({
   const [newlyCreatedPersonnelId, setNewlyCreatedPersonnelId] = useState<
     string | null
   >(null);
+  const [sortKey, setSortKey] = useState<SortKey>("submitted");
+  const [sortDirection, setSortDirection] = useState<SortDirection>("desc");
 
   const { data: applications = [], isLoading } = useApplications({
     projectId,
@@ -121,14 +129,86 @@ export function ProjectApplicantsSection({
   const approveWithType = useApproveApplicationWithType();
   const rejectApplication = useRejectApplication();
 
-  // Split applications into pending and approved
+  // Split applications into pending and approved, then sort
   const { pendingApplications, approvedApplications } = useMemo(() => {
     const pending = applications.filter((app) =>
       ["submitted", "reviewing", "needs_info", "updated"].includes(app.status)
     );
     const approved = applications.filter((app) => app.status === "approved");
-    return { pendingApplications: pending, approvedApplications: approved };
-  }, [applications]);
+
+    const sortApplications = (apps: Application[]) => {
+      return [...apps].sort((a, b) => {
+        let aVal: string | number = "";
+        let bVal: string | number = "";
+
+        switch (sortKey) {
+          case "name":
+            aVal = `${a.applicants?.first_name || ""} ${a.applicants?.last_name || ""}`.toLowerCase();
+            bVal = `${b.applicants?.first_name || ""} ${b.applicants?.last_name || ""}`.toLowerCase();
+            break;
+          case "position":
+            aVal = a.job_postings?.project_task_orders?.title?.toLowerCase() || "";
+            bVal = b.job_postings?.project_task_orders?.title?.toLowerCase() || "";
+            break;
+          case "city":
+            aVal = (getCityWithFallback(a.applicants?.city, a.answers as Record<string, unknown>) || "").toLowerCase();
+            bVal = (getCityWithFallback(b.applicants?.city, b.answers as Record<string, unknown>) || "").toLowerCase();
+            break;
+          case "state":
+            aVal = (getStateWithFallback(a.applicants?.state, a.answers as Record<string, unknown>) || "").toLowerCase();
+            bVal = (getStateWithFallback(b.applicants?.state, b.answers as Record<string, unknown>) || "").toLowerCase();
+            break;
+          case "status":
+            aVal = a.status.toLowerCase();
+            bVal = b.status.toLowerCase();
+            break;
+          case "submitted":
+            aVal = new Date(a.submitted_at || a.created_at).getTime();
+            bVal = new Date(b.submitted_at || b.created_at).getTime();
+            break;
+        }
+
+        if (typeof aVal === "string" && typeof bVal === "string") {
+          return sortDirection === "asc" ? aVal.localeCompare(bVal) : bVal.localeCompare(aVal);
+        }
+        return sortDirection === "asc" ? (aVal as number) - (bVal as number) : (bVal as number) - (aVal as number);
+      });
+    };
+
+    return {
+      pendingApplications: sortApplications(pending),
+      approvedApplications: sortApplications(approved),
+    };
+  }, [applications, sortKey, sortDirection]);
+
+  const handleSort = (key: SortKey) => {
+    if (sortKey === key) {
+      setSortDirection(sortDirection === "asc" ? "desc" : "asc");
+    } else {
+      setSortKey(key);
+      setSortDirection("asc");
+    }
+  };
+
+  const SortableHeader = ({ column, label }: { column: SortKey; label: string }) => (
+    <TableHead
+      className="cursor-pointer hover:bg-muted/50 select-none"
+      onClick={() => handleSort(column)}
+    >
+      <div className="flex items-center gap-1">
+        {label}
+        {sortKey === column ? (
+          sortDirection === "asc" ? (
+            <ChevronUp className="h-4 w-4" />
+          ) : (
+            <ChevronDown className="h-4 w-4" />
+          )
+        ) : (
+          <ArrowUpDown className="h-3 w-3 opacity-50" />
+        )}
+      </div>
+    </TableHead>
+  );
 
   const handleViewApplication = (application: Application) => {
     setSelectedApplication(application);
@@ -262,10 +342,10 @@ export function ProjectApplicantsSection({
           <span className="text-sm">{positionTitle}</span>
         </TableCell>
         <TableCell className="text-muted-foreground">
-          {applicant.city || "—"}
+          {getCityWithFallback(applicant.city, application.answers as Record<string, unknown>) || "—"}
         </TableCell>
         <TableCell className="text-muted-foreground">
-          {applicant.state || "—"}
+          {getStateWithFallback(applicant.state, application.answers as Record<string, unknown>) || "—"}
         </TableCell>
         <TableCell>
           <Badge className={cn("capitalize", statusColors[application.status])}>
@@ -508,12 +588,12 @@ export function ProjectApplicantsSection({
                         <Table>
                           <TableHeader>
                             <TableRow>
-                              <TableHead>Applicant</TableHead>
-                              <TableHead>Position</TableHead>
-                              <TableHead>City</TableHead>
-                              <TableHead>State</TableHead>
-                              <TableHead>Status</TableHead>
-                              <TableHead>Applied</TableHead>
+                              <SortableHeader column="name" label="Applicant" />
+                              <SortableHeader column="position" label="Position" />
+                              <SortableHeader column="city" label="City" />
+                              <SortableHeader column="state" label="State" />
+                              <SortableHeader column="status" label="Status" />
+                              <SortableHeader column="submitted" label="Applied" />
                               <TableHead className="w-[120px]">Actions</TableHead>
                             </TableRow>
                           </TableHeader>
@@ -537,12 +617,12 @@ export function ProjectApplicantsSection({
                         <Table>
                           <TableHeader>
                             <TableRow>
-                              <TableHead>Applicant</TableHead>
-                              <TableHead>Position</TableHead>
-                              <TableHead>City</TableHead>
-                              <TableHead>State</TableHead>
-                              <TableHead>Status</TableHead>
-                              <TableHead>Applied</TableHead>
+                              <SortableHeader column="name" label="Applicant" />
+                              <SortableHeader column="position" label="Position" />
+                              <SortableHeader column="city" label="City" />
+                              <SortableHeader column="state" label="State" />
+                              <SortableHeader column="status" label="Status" />
+                              <SortableHeader column="submitted" label="Applied" />
                               <TableHead className="w-[120px]">Actions</TableHead>
                             </TableRow>
                           </TableHeader>

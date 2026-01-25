@@ -11,6 +11,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { Eye, CheckCircle, XCircle, MoreVertical, Calendar, Briefcase, User, Trash2, CheckCircle2 } from "lucide-react";
 import type { Application } from "@/integrations/supabase/hooks/useStaffingApplications";
+import { getCityWithFallback, getStateWithFallback } from "@/lib/locationUtils";
 
 const statusColors: Record<string, string> = {
   submitted: "bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-300",
@@ -177,21 +178,33 @@ export function MobileApplicationCard({
 
             <div className="space-y-1 text-xs text-muted-foreground">
               <div className="flex items-center gap-4">
-                {application.applicants?.city && (
-                  <div className="flex items-center gap-1">
-                    <span className="font-medium text-foreground/70">City:</span>
-                    <span>{application.applicants.city}</span>
-                  </div>
-                )}
-                {application.applicants?.state && (
-                  <div className="flex items-center gap-1">
-                    <span className="font-medium text-foreground/70">State:</span>
-                    <span>{application.applicants.state}</span>
-                  </div>
-                )}
-                {!application.applicants?.city && !application.applicants?.state && (
-                  <span>—</span>
-                )}
+                {(() => {
+                  const city = getCityWithFallback(
+                    application.applicants?.city,
+                    application.answers as Record<string, unknown>
+                  );
+                  const state = getStateWithFallback(
+                    application.applicants?.state,
+                    application.answers as Record<string, unknown>
+                  );
+                  return (
+                    <>
+                      {city && (
+                        <div className="flex items-center gap-1">
+                          <span className="font-medium text-foreground/70">City:</span>
+                          <span>{city}</span>
+                        </div>
+                      )}
+                      {state && (
+                        <div className="flex items-center gap-1">
+                          <span className="font-medium text-foreground/70">State:</span>
+                          <span>{state}</span>
+                        </div>
+                      )}
+                      {!city && !state && <span>—</span>}
+                    </>
+                  );
+                })()}
               </div>
               {application.job_postings?.project_task_orders?.title && (
                 <div className="flex items-center gap-2">
