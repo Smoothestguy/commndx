@@ -6,7 +6,7 @@ import {
   UserX,
   Eye,
   Loader2,
-  Mail,
+  MapPin,
   ChevronDown,
   ClipboardList,
   MessageSquare,
@@ -259,8 +259,10 @@ export function ProjectApplicantsSection({
                 {applicant.first_name} {applicant.last_name}
               </p>
               <p className="text-sm text-muted-foreground flex items-center gap-1">
-                <Mail className="h-3 w-3" />
-                {applicant.email}
+                <MapPin className="h-3 w-3" />
+                {applicant.city && applicant.state
+                  ? `${applicant.city}, ${applicant.state}`
+                  : "—"}
               </p>
             </div>
           </div>
@@ -274,7 +276,9 @@ export function ProjectApplicantsSection({
           </Badge>
         </TableCell>
         <TableCell className="text-sm text-muted-foreground">
-          {format(new Date(application.created_at), "MMM d, yyyy")}
+          {application.submitted_at
+            ? format(new Date(application.submitted_at), "MMM d, yyyy h:mm a")
+            : format(new Date(application.created_at), "MMM d, yyyy h:mm a")}
         </TableCell>
         <TableCell>
           <div 
@@ -367,7 +371,9 @@ export function ProjectApplicantsSection({
 
         <div className="mt-3 pt-3 border-t flex items-center justify-between">
           <span className="text-xs text-muted-foreground">
-            Applied {format(new Date(application.created_at), "MMM d, yyyy")}
+            Applied {application.submitted_at
+              ? format(new Date(application.submitted_at), "MMM d, yyyy h:mm a")
+              : format(new Date(application.created_at), "MMM d, yyyy h:mm a")}
           </span>
           <div 
             className="flex items-center gap-1"

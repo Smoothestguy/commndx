@@ -61,6 +61,7 @@ export interface Application {
   notes: string | null;
   created_at: string;
   updated_at: string;
+  submitted_at?: string | null;
   edit_token?: string | null;
   edit_token_expires_at?: string | null;
   missing_fields?: string[];
