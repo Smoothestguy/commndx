@@ -90,6 +90,45 @@
 
     --font-heading: "Space Grotesk", sans-serif;
     --font-body: "Inter", sans-serif;
+    
+    /* ===========================================
+       DENSITY TOKENS - Normal Mode (Default)
+       =========================================== */
+    
+    /* Spacing tokens */
+    --density-spacing-3xs: 0.125rem;  /* 2px */
+    --density-spacing-2xs: 0.25rem;   /* 4px */
+    --density-spacing-xs: 0.5rem;     /* 8px */
+    --density-spacing-sm: 0.75rem;    /* 12px */
+    --density-spacing-md: 1rem;       /* 16px */
+    --density-spacing-lg: 1.5rem;     /* 24px */
+    --density-spacing-xl: 2rem;       /* 32px */
+    
+    /* Font size tokens */
+    --density-font-2xs: 0.625rem;     /* 10px */
+    --density-font-xs: 0.75rem;       /* 12px */
+    --density-font-sm: 0.8125rem;     /* 13px */
+    --density-font-base: 0.875rem;    /* 14px */
+    --density-font-md: 1rem;          /* 16px */
+    --density-font-lg: 1.125rem;      /* 18px */
+    --density-font-xl: 1.25rem;       /* 20px */
+    --density-font-2xl: 1.5rem;       /* 24px */
+    
+    /* Component-specific tokens */
+    --density-row-height: 2.5rem;     /* 40px - table row */
+    --density-row-height-compact: 2.25rem; /* 36px */
+    --density-button-height: 2.5rem;  /* 40px */
+    --density-button-height-sm: 2.25rem; /* 36px */
+    --density-input-height: 2.5rem;   /* 40px */
+    --density-card-padding: 1.5rem;   /* 24px */
+    --density-card-gap: 1.5rem;       /* 24px */
+    --density-section-gap: 1.5rem;    /* 24px */
+    --density-header-height: 3rem;    /* 48px */
+    
+    /* Border radius tokens */
+    --density-radius-sm: 0.25rem;     /* 4px */
+    --density-radius-md: 0.5rem;      /* 8px */
+    --density-radius-lg: 0.75rem;     /* 12px */
   }
 
   /* Dark Theme */
@@ -164,6 +203,106 @@
     --shadow-glow: 0 0 40px hsl(142 76% 36% / 0.2);
     --shadow-card: 0 4px 24px hsl(0 0% 0% / 0.5);
     --shadow-elevated: 0 8px 32px hsl(0 0% 0% / 0.7);
+  }
+  
+  /* ===========================================
+     2K1 VIEW DENSITY - Condensed (~35-40% tighter)
+     =========================================== */
+  .density-2k1 {
+    /* Spacing tokens - reduced ~35-40% */
+    --density-spacing-3xs: 0.0625rem;  /* 1px */
+    --density-spacing-2xs: 0.125rem;   /* 2px */
+    --density-spacing-xs: 0.25rem;     /* 4px */
+    --density-spacing-sm: 0.375rem;    /* 6px */
+    --density-spacing-md: 0.5rem;      /* 8px */
+    --density-spacing-lg: 0.75rem;     /* 12px */
+    --density-spacing-xl: 1rem;        /* 16px */
+    
+    /* Font size tokens - reduced by ~1 step */
+    --density-font-2xs: 0.5625rem;     /* 9px */
+    --density-font-xs: 0.6875rem;      /* 11px */
+    --density-font-sm: 0.75rem;        /* 12px */
+    --density-font-base: 0.8125rem;    /* 13px */
+    --density-font-md: 0.875rem;       /* 14px */
+    --density-font-lg: 1rem;           /* 16px */
+    --density-font-xl: 1.125rem;       /* 18px */
+    --density-font-2xl: 1.25rem;       /* 20px */
+    
+    /* Component tokens - condensed */
+    --density-row-height: 1.75rem;     /* 28px */
+    --density-row-height-compact: 1.5rem; /* 24px */
+    --density-button-height: 1.75rem;  /* 28px */
+    --density-button-height-sm: 1.5rem; /* 24px */
+    --density-input-height: 2rem;      /* 32px */
+    --density-card-padding: 0.75rem;   /* 12px */
+    --density-card-gap: 0.75rem;       /* 12px */
+    --density-section-gap: 0.75rem;    /* 12px */
+    --density-header-height: 2rem;     /* 32px */
+    
+    /* Border radius - slightly smaller */
+    --density-radius-sm: 0.125rem;     /* 2px */
+    --density-radius-md: 0.25rem;      /* 4px */
+    --density-radius-lg: 0.375rem;     /* 6px */
+  }
+  
+  /* ===========================================
+     SPREADSHEET DENSITY - Ultra Compact (ERP Mode)
+     =========================================== */
+  .density-spreadsheet {
+    /* Spacing tokens - minimal */
+    --density-spacing-3xs: 0;          /* 0px */
+    --density-spacing-2xs: 0.0625rem;  /* 1px */
+    --density-spacing-xs: 0.125rem;    /* 2px */
+    --density-spacing-sm: 0.25rem;     /* 4px */
+    --density-spacing-md: 0.375rem;    /* 6px */
+    --density-spacing-lg: 0.5rem;      /* 8px */
+    --density-spacing-xl: 0.75rem;     /* 12px */
+    
+    /* Font size tokens - smallest */
+    --density-font-2xs: 0.5rem;        /* 8px */
+    --density-font-xs: 0.625rem;       /* 10px */
+    --density-font-sm: 0.6875rem;      /* 11px */
+    --density-font-base: 0.6875rem;    /* 11px */
+    --density-font-md: 0.75rem;        /* 12px */
+    --density-font-lg: 0.8125rem;      /* 13px */
+    --density-font-xl: 0.875rem;       /* 14px */
+    --density-font-2xl: 1rem;          /* 16px */
+    
+    /* Component tokens - ultra compact */
+    --density-row-height: 1.5rem;      /* 24px */
+    --density-row-height-compact: 1.25rem; /* 20px */
+    --density-button-height: 1.5rem;   /* 24px */
+    --density-button-height-sm: 1.25rem; /* 20px */
+    --density-input-height: 1.75rem;   /* 28px */
+    --density-card-padding: 0.375rem;  /* 6px */
+    --density-card-gap: 0.375rem;      /* 6px */
+    --density-section-gap: 0.375rem;   /* 6px */
+    --density-header-height: 1.5rem;   /* 24px */
+    
+    /* Border radius - none or minimal */
+    --density-radius-sm: 0;
+    --density-radius-md: 0.125rem;     /* 2px */
+    --density-radius-lg: 0.125rem;     /* 2px */
+  }
+  
+  /* ===========================================
+     SECTION-LEVEL DENSITY OVERRIDES
+     These classes can override global density per-section
+     =========================================== */
+  .density-section-compact {
+    --density-spacing-xs: 0.25rem;
+    --density-spacing-sm: 0.5rem;
+    --density-spacing-md: 0.625rem;
+    --density-row-height: 1.75rem;
+    --density-card-padding: 0.5rem;
+  }
+  
+  .density-section-relaxed {
+    --density-spacing-xs: 0.625rem;
+    --density-spacing-sm: 1rem;
+    --density-spacing-md: 1.25rem;
+    --density-row-height: 2.75rem;
+    --density-card-padding: 1.25rem;
   }
 }
 
