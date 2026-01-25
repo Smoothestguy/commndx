@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { format } from "date-fns";
-import { Users, UserPlus, UserMinus, Loader2, Mail, Briefcase, ChevronDown, MessageSquare } from "lucide-react";
+import { Users, UserPlus, UserMinus, Loader2, Mail, Briefcase, ChevronDown, MessageSquare, Download } from "lucide-react";
 import { cn } from "@/lib/utils";
 import {
   Collapsible,
@@ -31,13 +31,15 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { useIsMobile } from "@/hooks/use-mobile";
-import { 
-  usePersonnelByProject, 
-  useRemovePersonnelFromProject 
-} from "@/integrations/supabase/hooks/usePersonnelProjectAssignments";
+import { useRemovePersonnelFromProject } from "@/integrations/supabase/hooks/usePersonnelProjectAssignments";
+import { usePersonnelWithAssets } from "@/integrations/supabase/hooks/usePersonnelWithAssets";
 import { PersonnelAssignmentDialog } from "@/components/time-tracking/PersonnelAssignmentDialog";
 import { BulkSMSDialog } from "@/components/messaging/BulkSMSDialog";
+import { PersonnelAssetsCell } from "@/components/project-hub/PersonnelAssetsCell";
+import { exportPersonnelWithAssetsToXLSX } from "@/utils/personnelAssetsExportUtils";
+import { useUserRole } from "@/hooks/useUserRole";
 import { useQueryClient } from "@tanstack/react-query";
+import { toast } from "sonner";
 
 interface ProjectPersonnelSectionProps {
   projectId: string;
@@ -48,14 +50,16 @@ export function ProjectPersonnelSection({ projectId, projectName = "this project
   const navigate = useNavigate();
   const isMobile = useIsMobile();
   const queryClient = useQueryClient();
+  const { isAdmin, isManager } = useUserRole();
   
   const [isAssignDialogOpen, setIsAssignDialogOpen] = useState(false);
   const [isBulkSMSDialogOpen, setIsBulkSMSDialogOpen] = useState(false);
   const [removeConfirmId, setRemoveConfirmId] = useState<string | null>(null);
   const [personnelToRemove, setPersonnelToRemove] = useState<{ name: string } | null>(null);
   const [isOpen, setIsOpen] = useState(false);
+  const [isExporting, setIsExporting] = useState(false);
   
-  const { data: assignedPersonnel = [], isLoading } = usePersonnelByProject(projectId);
+  const { data: assignedPersonnel = [], isLoading } = usePersonnelWithAssets(projectId);
   const removeMutation = useRemovePersonnelFromProject();
 
   const handleRemove = (assignmentId: string, firstName: string, lastName: string) => {
@@ -76,8 +80,32 @@ export function ProjectPersonnelSection({ projectId, projectName = "this project
 
   const handleAssignmentChange = () => {
     queryClient.invalidateQueries({ 
+      queryKey: ["personnel-with-assets", projectId] 
+    });
+    queryClient.invalidateQueries({ 
       queryKey: ["personnel-project-assignments", "by-project", projectId] 
     });
+  };
+
+  const handleExport = async () => {
+    if (assignedPersonnel.length === 0) {
+      toast.error("No personnel to export");
+      return;
+    }
+
+    setIsExporting(true);
+    try {
+      exportPersonnelWithAssetsToXLSX(assignedPersonnel, {
+        projectName: projectName,
+        isAdmin: isAdmin || isManager, // Admins and managers can see access codes
+      });
+      toast.success("Export completed successfully");
+    } catch (error) {
+      console.error("Export failed:", error);
+      toast.error("Failed to export personnel data");
+    } finally {
+      setIsExporting(false);
+    }
   };
 
   const formatCurrency = (amount: number | null | undefined) => {
@@ -87,9 +115,6 @@ export function ProjectPersonnelSection({ projectId, projectName = "this project
       currency: "USD",
     }).format(amount);
   };
-
-  // Filter out assignments without personnel data
-  const validAssignments = assignedPersonnel.filter(a => a.personnel);
 
   if (isLoading) {
     return (
@@ -117,10 +142,22 @@ export function ProjectPersonnelSection({ projectId, projectName = "this project
                   )} />
                 </CardTitle>
                 <CardDescription>
-                  {validAssignments.length} personnel assigned to this project
+                  {assignedPersonnel.length} personnel assigned to this project
                 </CardDescription>
               </div>
               <div className="flex items-center gap-2">
+                <Button 
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    handleExport();
+                  }} 
+                  size="sm"
+                  variant="outline"
+                  disabled={assignedPersonnel.length === 0 || isExporting}
+                >
+                  <Download className="h-4 w-4 mr-2" />
+                  {isExporting ? "Exporting..." : isMobile ? "Export" : "Export Excel"}
+                </Button>
                 <Button 
                   onClick={(e) => {
                     e.stopPropagation();
@@ -128,7 +165,7 @@ export function ProjectPersonnelSection({ projectId, projectName = "this project
                   }} 
                   size="sm"
                   variant="outline"
-                  disabled={validAssignments.length === 0}
+                  disabled={assignedPersonnel.length === 0}
                 >
                   <MessageSquare className="h-4 w-4 mr-2" />
                   {isMobile ? "Text All" : "Blast Text"}
@@ -148,7 +185,7 @@ export function ProjectPersonnelSection({ projectId, projectName = "this project
           </CollapsibleTrigger>
           <CollapsibleContent>
         <CardContent>
-          {validAssignments.length === 0 ? (
+          {assignedPersonnel.length === 0 ? (
             <div className="text-center py-8">
               <Users className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
               <p className="text-muted-foreground mb-4">
@@ -162,77 +199,79 @@ export function ProjectPersonnelSection({ projectId, projectName = "this project
           ) : isMobile ? (
             // Mobile Card View
             <div className="space-y-3">
-              {validAssignments.map((assignment) => {
-                const personnel = assignment.personnel!;
-                const rateBracket = assignment.project_rate_brackets;
-                const billRate = assignment.bill_rate ?? rateBracket?.bill_rate;
-                
-                  return (
-                    <div
-                      key={assignment.id}
-                      className="p-4 rounded-lg border bg-card hover:bg-accent/50 transition-colors cursor-pointer"
-                      onClick={() => navigate(`/personnel/${assignment.personnel_id}`)}
-                    >
-                      <div className="flex items-start justify-between gap-3">
-                        <div className="flex items-center gap-3 flex-1 min-w-0">
-                          <SecureAvatar
-                            bucket="personnel-photos"
-                            photoUrl={null}
-                            className="h-10 w-10 flex-shrink-0"
-                            fallback={
-                              <span>
-                                {personnel.first_name?.[0]}
-                                {personnel.last_name?.[0]}
-                              </span>
-                            }
-                            alt={`${personnel.first_name} ${personnel.last_name}`}
-                          />
-                          <div className="min-w-0">
-                            <p className="font-medium truncate">
-                              {personnel.first_name} {personnel.last_name}
-                            </p>
-                            <p className="text-sm text-muted-foreground truncate flex items-center gap-1">
-                              <Mail className="h-3 w-3" />
-                              {personnel.email}
-                            </p>
-                          </div>
-                        </div>
-                        <div onClick={(e) => e.stopPropagation()}>
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            className="flex-shrink-0 text-destructive hover:text-destructive hover:bg-destructive/10"
-                            onClick={() => handleRemove(
-                              assignment.id,
-                              personnel.first_name,
-                              personnel.last_name
-                            )}
-                          >
-                            <UserMinus className="h-4 w-4" />
-                          </Button>
+              {assignedPersonnel.map((person) => {
+                return (
+                  <div
+                    key={person.assignmentId}
+                    className="p-4 rounded-lg border bg-card hover:bg-accent/50 transition-colors cursor-pointer"
+                    onClick={() => navigate(`/personnel/${person.personnelId}`)}
+                  >
+                    <div className="flex items-start justify-between gap-3">
+                      <div className="flex items-center gap-3 flex-1 min-w-0">
+                        <SecureAvatar
+                          bucket="personnel-photos"
+                          photoUrl={null}
+                          className="h-10 w-10 flex-shrink-0"
+                          fallback={
+                            <span>
+                              {person.firstName?.[0]}
+                              {person.lastName?.[0]}
+                            </span>
+                          }
+                          alt={person.name}
+                        />
+                        <div className="min-w-0">
+                          <p className="font-medium truncate">
+                            {person.name}
+                          </p>
+                          <p className="text-sm text-muted-foreground truncate flex items-center gap-1">
+                            <Mail className="h-3 w-3" />
+                            {person.email}
+                          </p>
                         </div>
                       </div>
-                      <div className="mt-3 pt-3 border-t flex flex-wrap items-center gap-2 text-sm">
-                        {rateBracket?.name && (
-                          <Badge variant="secondary" className="flex items-center gap-1">
-                            <Briefcase className="h-3 w-3" />
-                            {rateBracket.name}
-                          </Badge>
-                        )}
-                        {billRate != null && (
-                          <span className="text-muted-foreground">
-                            {formatCurrency(billRate)}/hr
-                          </span>
-                        )}
-                        {assignment.assigned_at && (
-                          <span className="text-muted-foreground ml-auto">
-                            Assigned {format(new Date(assignment.assigned_at), "MMM d, yyyy")}
-                          </span>
-                        )}
+                      <div onClick={(e) => e.stopPropagation()}>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="flex-shrink-0 text-destructive hover:text-destructive hover:bg-destructive/10"
+                          onClick={() => handleRemove(
+                            person.assignmentId,
+                            person.firstName,
+                            person.lastName
+                          )}
+                        >
+                          <UserMinus className="h-4 w-4" />
+                        </Button>
                       </div>
                     </div>
-                  );
-                })}
+                    <div className="mt-3 pt-3 border-t flex flex-wrap items-center gap-2 text-sm">
+                      {person.rateBracket && (
+                        <Badge variant="secondary" className="flex items-center gap-1">
+                          <Briefcase className="h-3 w-3" />
+                          {person.rateBracket}
+                        </Badge>
+                      )}
+                      {person.billRate != null && (
+                        <span className="text-muted-foreground">
+                          {formatCurrency(person.billRate)}/hr
+                        </span>
+                      )}
+                      {person.assignedAt && (
+                        <span className="text-muted-foreground ml-auto">
+                          Assigned {format(new Date(person.assignedAt), "MMM d, yyyy")}
+                        </span>
+                      )}
+                    </div>
+                    {/* Assets on Mobile */}
+                    {person.assets.length > 0 && (
+                      <div className="mt-2 pt-2 border-t" onClick={(e) => e.stopPropagation()}>
+                        <PersonnelAssetsCell assets={person.assets} />
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
             </div>
           ) : (
             // Desktop Table View
@@ -243,21 +282,18 @@ export function ProjectPersonnelSection({ projectId, projectName = "this project
                     <TableHead>Personnel</TableHead>
                     <TableHead>Rate Bracket</TableHead>
                     <TableHead>Bill Rate</TableHead>
+                    <TableHead>Assets</TableHead>
                     <TableHead>Assigned</TableHead>
                     <TableHead className="w-[80px]">Actions</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {validAssignments.map((assignment) => {
-                    const personnel = assignment.personnel!;
-                    const rateBracket = assignment.project_rate_brackets;
-                    const billRate = assignment.bill_rate ?? rateBracket?.bill_rate;
-                    
+                  {assignedPersonnel.map((person) => {
                     return (
                       <TableRow 
-                        key={assignment.id}
+                        key={person.assignmentId}
                         className="cursor-pointer hover:bg-muted/50"
-                        onClick={() => navigate(`/personnel/${assignment.personnel_id}`)}
+                        onClick={() => navigate(`/personnel/${person.personnelId}`)}
                       >
                         <TableCell>
                           <div className="flex items-center gap-3">
@@ -267,40 +303,43 @@ export function ProjectPersonnelSection({ projectId, projectName = "this project
                               className="h-8 w-8"
                               fallback={
                                 <span className="text-xs">
-                                  {personnel.first_name?.[0]}
-                                  {personnel.last_name?.[0]}
+                                  {person.firstName?.[0]}
+                                  {person.lastName?.[0]}
                                 </span>
                               }
-                              alt={`${personnel.first_name} ${personnel.last_name}`}
+                              alt={person.name}
                             />
                             <div>
                               <p className="font-medium">
-                                {personnel.first_name} {personnel.last_name}
+                                {person.name}
                               </p>
                               <p className="text-sm text-muted-foreground">
-                                {personnel.email}
+                                {person.email}
                               </p>
                             </div>
                           </div>
                         </TableCell>
                         <TableCell>
-                          {rateBracket?.name ? (
+                          {person.rateBracket ? (
                             <Badge variant="secondary">
-                              {rateBracket.name}
+                              {person.rateBracket}
                             </Badge>
                           ) : (
                             <span className="text-muted-foreground">—</span>
                           )}
                         </TableCell>
                         <TableCell>
-                          {billRate != null 
-                            ? `${formatCurrency(billRate)}/hr`
+                          {person.billRate != null 
+                            ? `${formatCurrency(person.billRate)}/hr`
                             : "—"
                           }
                         </TableCell>
+                        <TableCell onClick={(e) => e.stopPropagation()}>
+                          <PersonnelAssetsCell assets={person.assets} />
+                        </TableCell>
                         <TableCell>
-                          {assignment.assigned_at 
-                            ? format(new Date(assignment.assigned_at), "MMM d, yyyy")
+                          {person.assignedAt 
+                            ? format(new Date(person.assignedAt), "MMM d, yyyy")
                             : "—"
                           }
                         </TableCell>
@@ -311,9 +350,9 @@ export function ProjectPersonnelSection({ projectId, projectName = "this project
                               size="icon"
                               className="text-destructive hover:text-destructive hover:bg-destructive/10"
                               onClick={() => handleRemove(
-                                assignment.id,
-                                personnel.first_name,
-                                personnel.last_name
+                                person.assignmentId,
+                                person.firstName,
+                                person.lastName
                               )}
                             >
                               <UserMinus className="h-4 w-4" />
@@ -346,11 +385,11 @@ export function ProjectPersonnelSection({ projectId, projectName = "this project
         onOpenChange={setIsBulkSMSDialogOpen}
         projectId={projectId}
         projectName={projectName}
-        recipients={validAssignments.map(a => ({
-          id: a.personnel_id,
-          firstName: a.personnel?.first_name || "",
-          lastName: a.personnel?.last_name || "",
-          phone: a.personnel?.phone || null,
+        recipients={assignedPersonnel.map(p => ({
+          id: p.personnelId,
+          firstName: p.firstName,
+          lastName: p.lastName,
+          phone: p.phone,
         }))}
       />
 
