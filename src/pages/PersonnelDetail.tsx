@@ -24,6 +24,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import { useGetOrCreateConversation } from "@/integrations/supabase/hooks/useConversations";
 import { InviteToPortalDialog } from "@/components/personnel/InviteToPortalDialog";
 import { PersonnelProjectsList } from "@/components/personnel/PersonnelProjectsList";
+import { PersonnelCommunicationLog } from "@/components/personnel/PersonnelCommunicationLog";
 import { W9FormView } from "@/components/personnel/W9FormView";
 import { Generate1099Dialog } from "@/components/personnel/Generate1099Dialog";
 import { usePersonnelW9Form } from "@/integrations/supabase/hooks/useW9Forms";
@@ -819,11 +820,7 @@ const PersonnelDetail = () => {
                 </Button>
               </CardHeader>
               <CardContent>
-                <div className="text-center py-8 text-muted-foreground">
-                  <MessageSquare className="h-12 w-12 mx-auto mb-4 opacity-50" />
-                  <p>Messages have been unified into a single inbox.</p>
-                  <p className="text-sm mt-1">Click "Open Conversation" to view and send messages.</p>
-                </div>
+                <PersonnelCommunicationLog personnelId={personnel.id} />
               </CardContent>
             </Card>
           </TabsContent>
