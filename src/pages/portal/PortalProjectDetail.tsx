@@ -1,24 +1,26 @@
 import { useParams, useNavigate } from "react-router-dom";
 import { useMemo } from "react";
 import { PortalLayout } from "@/components/portal/PortalLayout";
-import { useCurrentPersonnel, usePersonnelTimeEntries, usePersonnelAssignments } from "@/integrations/supabase/hooks/usePortal";
+import { useCurrentPersonnel, usePersonnelTimeEntries, usePersonnelAllAssignments } from "@/integrations/supabase/hooks/usePortal";
 import { usePersonnelProjectAssets } from "@/integrations/supabase/hooks/usePortalAssets";
 import { useCompanySettings } from "@/integrations/supabase/hooks/useCompanySettings";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
-import { ArrowLeft, Briefcase, Calendar, Clock, MapPin, User, Building, Phone, Mail, FileText, DollarSign, Package } from "lucide-react";
+import { ArrowLeft, Briefcase, Calendar, Clock, MapPin, User, Building, Phone, Mail, FileText, DollarSign, Package, AlertCircle } from "lucide-react";
 import { format, parseISO, startOfWeek } from "date-fns";
 import { ProjectWeeklyPayHistory } from "@/components/portal/ProjectWeeklyPayHistory";
 import { formatCurrency } from "@/lib/utils";
 import { PortalAssetCard } from "@/components/portal/PortalAssetCard";
+import { Alert, AlertDescription } from "@/components/ui/alert";
 
 export default function PortalProjectDetail() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const { data: personnel } = useCurrentPersonnel();
-  const { data: assignments, isLoading: assignmentsLoading } = usePersonnelAssignments(personnel?.id);
+  // Use ALL assignments (not just active) to allow viewing historical projects
+  const { data: allAssignments, isLoading: assignmentsLoading } = usePersonnelAllAssignments(personnel?.id);
   const { data: timeEntries, isLoading: timeLoading } = usePersonnelTimeEntries(personnel?.id);
   const { data: projectAssets, isLoading: assetsLoading } = usePersonnelProjectAssets(personnel?.id, id);
   const { data: companySettings } = useCompanySettings();
@@ -26,9 +28,10 @@ export default function PortalProjectDetail() {
   const overtimeMultiplier = companySettings?.overtime_multiplier ?? 1.5;
   const holidayMultiplier = companySettings?.holiday_multiplier ?? 2.0;
 
-  // Find the assignment for this project
-  const assignment = assignments?.find(a => a.project?.id === id);
+  // Find ANY assignment for this project (not just active - allows viewing history)
+  const assignment = allAssignments?.find(a => a.project?.id === id);
   const project = assignment?.project;
+  const isActiveAssignment = assignment?.status === 'active';
 
   // Filter time entries for this project
   const projectTimeEntries = timeEntries?.filter(entry => entry.project_id === id) || [];
@@ -197,10 +200,32 @@ export default function PortalProjectDetail() {
             <h1 className="text-2xl font-bold">{project.name}</h1>
             <p className="text-muted-foreground">Project Details</p>
           </div>
-          <Badge variant={project.status === "active" ? "default" : "secondary"}>
-            {project.status}
-          </Badge>
+          <div className="flex items-center gap-2">
+            {!isActiveAssignment && (
+              <Badge variant="outline" className="text-amber-600 border-amber-300 bg-amber-50">
+                Past Assignment
+              </Badge>
+            )}
+            <Badge variant={project.status === "active" ? "default" : "secondary"}>
+              {project.status}
+            </Badge>
+          </div>
         </div>
+
+        {/* Inactive Assignment Banner */}
+        {!isActiveAssignment && (
+          <Alert variant="default" className="border-amber-200 bg-amber-50/50">
+            <AlertCircle className="h-4 w-4 text-amber-600" />
+            <AlertDescription className="text-amber-800">
+              You are no longer actively assigned to this project. You can view your historical time entries and pay information below.
+              {assignment.unassigned_at && (
+                <span className="block text-sm text-amber-600 mt-1">
+                  Assignment ended: {format(parseISO(assignment.unassigned_at), "MMM d, yyyy")}
+                </span>
+              )}
+            </AlertDescription>
+          </Alert>
+        )}
 
         {/* Project Info Card */}
         <Card>
