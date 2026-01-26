@@ -49,6 +49,11 @@ export function useSessionTracking(externalHasAccess?: boolean, externalAccessCh
   const idleStartTimeRef = useRef<number | null>(null);
   const idleCorrectionVersionRef = useRef<number>(0);
   
+  // CRITICAL: Use ref for session ID to prevent stale closures in timeout callbacks
+  // This fixes race condition where idle events are logged to wrong session after clock-out/clock-in
+  const sessionIdRef = useRef<string | null>(null);
+  const isClockedInRef = useRef(false);
+  
   // Cross-tab coordination refs
   const tabIdRef = useRef<string>(`tab_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`);
   const isPrimaryTabRef = useRef(false);
@@ -107,7 +112,8 @@ export function useSessionTracking(externalHasAccess?: boolean, externalAccessCh
 
   // Reset idle timer on activity
   const resetIdleTimer = useCallback(() => {
-    if (!isClockedIn) return;
+    // Use ref to check clocked-in state to avoid stale closures
+    if (!isClockedInRef.current) return;
 
     lastActivityTimeRef.current = Date.now();
 
@@ -120,9 +126,11 @@ export function useSessionTracking(externalHasAccess?: boolean, externalAccessCh
       setIsIdle(false);
       hasLoggedIdleStartRef.current = false; // Reset the guard
 
-      if (sessionId && user && isPrimaryTabRef.current) {
+      // Use sessionIdRef to prevent logging to wrong session
+      const currentSessionId = sessionIdRef.current;
+      if (currentSessionId && user && isPrimaryTabRef.current) {
         supabase.from("session_activity_log").insert([{
-          session_id: sessionId,
+          session_id: currentSessionId,
           user_id: user.id,
           activity_type: "idle_end",
           route: window.location.pathname,
@@ -137,7 +145,12 @@ export function useSessionTracking(externalHasAccess?: boolean, externalAccessCh
     }
 
     idleTimeoutRef.current = setTimeout(() => {
-      if (!isClockedIn || document.hidden) return;
+      // CRITICAL: Use refs to check current state, not stale closure values
+      if (!isClockedInRef.current || document.hidden) return;
+      
+      // Get current session ID from ref
+      const currentSessionId = sessionIdRef.current;
+      if (!currentSessionId) return; // Guard: no valid session
       
       // Only log idle_start if we're the primary tab AND haven't already logged it
       if (!isPrimaryTabRef.current || hasLoggedIdleStartRef.current) {
@@ -153,9 +166,9 @@ export function useSessionTracking(externalHasAccess?: boolean, externalAccessCh
       isIdleRef.current = true;
       setIsIdle(true);
       
-      if (sessionId && user) {
+      if (user) {
         supabase.from("session_activity_log").insert([{
-          session_id: sessionId,
+          session_id: currentSessionId,
           user_id: user.id,
           activity_type: "idle_start",
           route: window.location.pathname,
@@ -163,7 +176,7 @@ export function useSessionTracking(externalHasAccess?: boolean, externalAccessCh
         }]).then(() => {});
       }
     }, IDLE_TIMEOUT_MS);
-  }, [isClockedIn, sessionId, user]);
+  }, [user]); // Removed isClockedIn and sessionId - use refs instead
 
   // Primary tab heartbeat - maintain primary status
   useEffect(() => {
@@ -229,9 +242,11 @@ export function useSessionTracking(externalHasAccess?: boolean, externalAccessCh
         idleTimeoutRef.current = null;
       }
       
-      if (sessionId && user) {
+      // Use sessionIdRef to prevent logging to wrong session
+      const currentSessionId = sessionIdRef.current;
+      if (currentSessionId && user) {
         supabase.from("session_activity_log").insert([{
-          session_id: sessionId,
+          session_id: currentSessionId,
           user_id: user.id,
           activity_type: eventType,
           route: window.location.pathname,
@@ -249,9 +264,11 @@ export function useSessionTracking(externalHasAccess?: boolean, externalAccessCh
       
       resetIdleTimer();
       
-      if (sessionId && user) {
+      // Use sessionIdRef to prevent logging to wrong session
+      const currentSessionId = sessionIdRef.current;
+      if (currentSessionId && user) {
         supabase.from("session_activity_log").insert([{
-          session_id: sessionId,
+          session_id: currentSessionId,
           user_id: user.id,
           activity_type: eventType,
           route: window.location.pathname,
@@ -397,8 +414,10 @@ export function useSessionTracking(externalHasAccess?: boolean, externalAccessCh
           // Use the database value directly - localStorage was causing double-counting
           // The database already has the correct idle time from the last sync before page closed
           setSessionId(mostRecent.id);
+          sessionIdRef.current = mostRecent.id; // Keep ref in sync
           setIdleSeconds(storedIdleSeconds);
           setIsClockedIn(true);
+          isClockedInRef.current = true; // Keep ref in sync
           setIsIdle(false);
           isIdleRef.current = false;
           clockedInAtRef.current = sessionStart;
@@ -567,6 +586,18 @@ export function useSessionTracking(externalHasAccess?: boolean, externalAccessCh
       if (!hasAccess || !user || isClockedIn) return;
 
       try {
+        // CRITICAL: Clear any pending idle timeout from previous session
+        // This prevents stale closures from logging events to wrong session
+        if (idleTimeoutRef.current) {
+          clearTimeout(idleTimeoutRef.current);
+          idleTimeoutRef.current = null;
+        }
+        
+        // Reset idle state to prevent carryover
+        hasLoggedIdleStartRef.current = false;
+        isIdleRef.current = false;
+        idleStartTimeRef.current = null;
+        
         // Check if there's already an active session
         const { data: existingSession } = await supabase
           .from("user_work_sessions")
@@ -581,8 +612,10 @@ export function useSessionTracking(externalHasAccess?: boolean, externalAccessCh
           // Resume existing session instead of creating new one
           const sessionStart = new Date(existingSession.session_start).getTime();
           setSessionId(existingSession.id);
+          sessionIdRef.current = existingSession.id; // Keep ref in sync
           setIdleSeconds(existingSession.total_idle_seconds || 0);
           setIsClockedIn(true);
+          isClockedInRef.current = true; // Keep ref in sync
           setIsIdle(false);
           isIdleRef.current = false;
           clockedInAtRef.current = sessionStart;
@@ -607,8 +640,10 @@ export function useSessionTracking(externalHasAccess?: boolean, externalAccessCh
         if (error) throw error;
 
         setSessionId(data.id);
+        sessionIdRef.current = data.id; // Keep ref in sync
         setIdleSeconds(0);
         setIsClockedIn(true);
+        isClockedInRef.current = true; // Keep ref in sync
         setIsIdle(false);
         isIdleRef.current = false;
         clockedInAtRef.current = now;
@@ -659,6 +694,11 @@ export function useSessionTracking(externalHasAccess?: boolean, externalAccessCh
         action_name: "Clocked out",
       }]);
 
+      // CRITICAL: Update refs BEFORE clearing timeout to prevent race condition
+      // Any pending timeout callbacks will see these values
+      sessionIdRef.current = null;
+      isClockedInRef.current = false;
+      
       setSessionId(null);
       setIdleSeconds(0);
       setIsClockedIn(false);
@@ -666,6 +706,7 @@ export function useSessionTracking(externalHasAccess?: boolean, externalAccessCh
       isIdleRef.current = false;
       clockedInAtRef.current = null;
       idleStartTimeRef.current = null;
+      hasLoggedIdleStartRef.current = false;
       localStorage.removeItem(STORAGE_KEY);
       
       if (idleTimeoutRef.current) {
