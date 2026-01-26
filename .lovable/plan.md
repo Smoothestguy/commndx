@@ -1,218 +1,144 @@
 
-# Plan: Fix Personnel Approval and QuickBooks Vendor Sync Issues
+# Plan: Require Current Password Before Changing Password
 
-## Summary of Issues Identified
-
-### Issue 1: Inconsistent Approval Behavior
-**Problem**: The `ApplicationDetailDialog.tsx` uses `useApproveApplication` hook which directly creates personnel without showing the record type selection dialog. Meanwhile, `RegistrationReviewDialog.tsx` uses `useApproveRegistration` which shows the `ApprovalTypeSelectionDialog` and lets admins choose to create personnel, vendor, customer, or personnel+vendor.
-
-**Root Cause**: Two different approval paths exist with different capabilities.
-
-### Issue 2: Missing Tax Fields During Vendor Sync
-**Problem**: When a vendor is created in `approve-personnel-registration/index.ts` (lines 286-299), it does NOT include:
-- `tax_id` (should use personnel's `ssn_full`)
-- `track_1099` (should default to `true` for 1099 contractors)
-
-The QuickBooks sync function (`quickbooks-sync-vendors/index.ts`) correctly syncs `TaxIdentifier` and `Vendor1099` from the vendor record, but the vendor wasn't created with those fields.
-
-### Issue 3: Manual Vendor Sync from Personnel Page Fails
-**Problem**: The `ConvertRecordTypeDialog.tsx` creates vendors locally but does NOT sync them to QuickBooks. After creating a vendor from the personnel detail page, the `quickbooks-sync-vendors` function is never called.
+## Overview
+Add a "Current Password" field to the password change form in Settings. The system will verify the user's current password before allowing them to set a new one, adding an important security layer.
 
 ---
 
-## Technical Solution
+## Current Behavior
+The password change form currently has:
+- New Password field
+- Confirm Password field
+- No verification of the current password
 
-### Fix 1: Update ApplicationDetailDialog to Show Type Selection
+This allows anyone with access to an active session to change the password without knowing the original password.
 
-**File**: `src/components/staffing/ApplicationDetailDialog.tsx`
+---
 
-**Changes**:
-1. Add state for type selection dialog
-2. Import `ApprovalTypeSelectionDialog` and `ApprovalRecordType`
-3. Replace `useApproveApplication` with `useApproveApplicationWithType`
-4. Modify `handleApprove` to show the type selection dialog instead of directly approving
-5. Add a new `handleApproveWithType` function that calls the approval with selected type
-6. Render the `ApprovalTypeSelectionDialog` component
+## Proposed Solution
+
+### Changes to Settings.tsx
+
+**1. Add new state for current password**
+```tsx
+const [currentPassword, setCurrentPassword] = useState("");
+```
+
+**2. Update handlePasswordChange function**
+- First verify the current password using `supabase.auth.signInWithPassword`
+- If verification fails, show an error message
+- If verification succeeds, proceed with `supabase.auth.updateUser`
+- Clear all password fields after success
 
 ```tsx
-// Add imports
-import { ApprovalTypeSelectionDialog, type RecordType } from "@/components/personnel/ApprovalTypeSelectionDialog";
-import { useApproveApplicationWithType } from "@/integrations/supabase/hooks/useStaffingApplications";
+const handlePasswordChange = async (e: React.FormEvent) => {
+  e.preventDefault();
 
-// Add state
-const [showTypeSelectionDialog, setShowTypeSelectionDialog] = useState(false);
+  if (newPassword !== confirmPassword) {
+    toast({ title: "Passwords don't match", ... });
+    return;
+  }
 
-// Replace hook
-const approveApplication = useApproveApplicationWithType();
+  if (newPassword.length < 6) {
+    toast({ title: "Password too short", ... });
+    return;
+  }
 
-// Modify handleApprove to show dialog
-const handleApprove = () => {
-  setShowTypeSelectionDialog(true);
-};
+  setIsChangingPassword(true);
 
-// Add new handler
-const handleApproveWithType = async (recordType: RecordType) => {
-  if (!application) return;
-  try {
-    await approveApplication.mutateAsync({
-      applicationId: application.id,
-      recordType,
-      notes: actionNotes,
+  // Step 1: Verify current password
+  const { error: verifyError } = await supabase.auth.signInWithPassword({
+    email: user?.email || "",
+    password: currentPassword,
+  });
+
+  if (verifyError) {
+    setIsChangingPassword(false);
+    toast({
+      title: "Invalid current password",
+      description: "Please enter your correct current password.",
+      variant: "destructive",
     });
-    toast.success("Application approved!");
-    setShowTypeSelectionDialog(false);
-    onOpenChange(false);
-  } catch (error) {
-    toast.error("Failed to approve application");
+    return;
+  }
+
+  // Step 2: Update to new password
+  const { error } = await supabase.auth.updateUser({
+    password: newPassword,
+  });
+
+  setIsChangingPassword(false);
+
+  if (error) {
+    toast({ title: "Error changing password", ... });
+  } else {
+    toast({ title: "Password updated", ... });
+    setCurrentPassword("");
+    setNewPassword("");
+    setConfirmPassword("");
   }
 };
-
-// Render dialog
-<ApprovalTypeSelectionDialog
-  open={showTypeSelectionDialog}
-  onOpenChange={setShowTypeSelectionDialog}
-  onConfirm={handleApproveWithType}
-  isLoading={approveApplication.isPending}
-  applicantName={`${application?.applicants?.first_name} ${application?.applicants?.last_name}`}
-/>
 ```
 
----
-
-### Fix 2: Include Tax Fields When Creating Vendor
-
-**File**: `supabase/functions/approve-personnel-registration/index.ts`
-
-**Changes** (lines 286-299): Add `tax_id` from personnel's SSN and set `track_1099` to true:
-
-```typescript
-// Create Vendor record if needed
-if (recordType === 'vendor' || recordType === 'personnel_vendor') {
-  const { data: vendor, error: vendorError } = await serviceClient
-    .from("vendors")
-    .insert({
-      name: `${registration.first_name} ${registration.last_name}`,
-      email: registration.email,
-      phone: registration.phone,
-      address: registration.address,
-      city: registration.city,
-      state: registration.state,
-      zip: registration.zip,
-      // Tax fields for 1099 tracking
-      tax_id: registration.ssn_full || null,
-      track_1099: true,
-      vendor_type: 'personnel',
-    })
-    .select()
-    .single();
-  // ...
-}
-```
-
----
-
-### Fix 3: Add QuickBooks Sync to ConvertRecordTypeDialog
-
-**File**: `src/components/personnel/ConvertRecordTypeDialog.tsx`
-
-**Changes**:
-1. Import and use the QuickBooks config and sync hooks
-2. After successfully creating a vendor, check if QuickBooks is connected
-3. If connected, sync the new vendor to QuickBooks
-4. Include tax_id from personnel's ssn_full when creating vendor
-
+**3. Add Current Password input field to the form**
 ```tsx
-// Add imports
-import { useQuickBooksConfig, useSyncSingleVendor } from "@/integrations/supabase/hooks/useQuickBooks";
-
-// Add hooks in component
-const { data: qbConfig } = useQuickBooksConfig();
-const syncVendorToQB = useSyncSingleVendor();
-
-// Update createVendorMutation to include tax fields and QB sync
-const createVendorMutation = useMutation({
-  mutationFn: async () => {
-    // Fetch full personnel record to get SSN
-    const { data: fullPersonnel } = await supabase
-      .from("personnel")
-      .select("ssn_full")
-      .eq("id", personnel.id)
-      .single();
-    
-    const { data: vendor, error: vendorError } = await supabase
-      .from("vendors")
-      .insert([{
-        name: `${personnel.first_name} ${personnel.last_name}`,
-        email: personnel.email,
-        phone: personnel.phone,
-        address: personnel.address,
-        city: personnel.city,
-        state: personnel.state,
-        zip: personnel.zip,
-        tax_id: fullPersonnel?.ssn_full || null,
-        track_1099: true,
-        vendor_type: 'personnel',
-      }])
-      .select()
-      .single();
-
-    if (vendorError) throw vendorError;
-
-    // Link to personnel
-    const { error: updateError } = await supabase
-      .from("personnel")
-      .update({ linked_vendor_id: vendor.id })
-      .eq("id", personnel.id);
-
-    if (updateError) throw updateError;
-
-    return vendor;
-  },
-  onSuccess: async (vendor) => {
-    // Sync to QuickBooks if connected
-    if (qbConfig?.is_connected) {
-      try {
-        await syncVendorToQB.mutateAsync(vendor.id);
-        toast.success("Vendor created and synced to QuickBooks");
-      } catch (qbError) {
-        console.error("QuickBooks sync failed:", qbError);
-        toast.success("Vendor created", {
-          description: "QuickBooks sync pending - can be retried from vendor page"
-        });
-      }
-    } else {
-      toast.success("Vendor record created and linked");
-    }
-    
-    queryClient.invalidateQueries({ queryKey: ["personnel", personnel.id] });
-    queryClient.invalidateQueries({ queryKey: ["vendors"] });
-    onOpenChange(false);
-  },
-  // ...
-});
+<div>
+  <Label htmlFor="current-password">Current Password</Label>
+  <Input
+    id="current-password"
+    type="password"
+    value={currentPassword}
+    onChange={(e) => setCurrentPassword(e.target.value)}
+    placeholder="Enter current password"
+    className="mt-1.5"
+    required
+  />
+</div>
 ```
-
-Also update `switchToVendorMutation` with the same tax field inclusion and QB sync.
 
 ---
 
-## Files to Modify
+## Updated Form Layout
+
+```
+┌─────────────────────────────────────┐
+│ Security                            │
+│ Update your password                │
+├─────────────────────────────────────┤
+│ Current Password                    │
+│ [••••••••••••••••]                  │
+│                                     │
+│ New Password                        │
+│ [••••••••••••••••]                  │
+│                                     │
+│ Confirm Password                    │
+│ [••••••••••••••••]                  │
+│                                     │
+│ [Update Password]                   │
+└─────────────────────────────────────┘
+```
+
+---
+
+## Security Benefits
+
+1. **Session hijacking protection**: Even if someone gains access to an active session, they cannot change the password without knowing the current one
+2. **Verification before change**: Confirms the user's identity before allowing sensitive account changes
+3. **Standard security practice**: Follows industry-standard password change workflows
+
+---
+
+## File to Modify
 
 | File | Changes |
 |------|---------|
-| `src/components/staffing/ApplicationDetailDialog.tsx` | Add type selection dialog, switch to `useApproveApplicationWithType` |
-| `supabase/functions/approve-personnel-registration/index.ts` | Add `tax_id` and `track_1099` fields when creating vendor |
-| `src/components/personnel/ConvertRecordTypeDialog.tsx` | Add QB sync after vendor creation, include tax fields |
+| `src/pages/Settings.tsx` | Add current password state, input field, and verification logic |
 
 ---
 
-## Expected Outcomes
+## Technical Notes
 
-1. **Consistent Approval**: Both the staffing applications list (green checkmark) and the application detail dialog will show the same record type selection options
-
-2. **Complete Tax Data**: Vendors created from personnel will have:
-   - `tax_id` populated from personnel's SSN
-   - `track_1099` set to `true`
-   - These will sync to QuickBooks as `TaxIdentifier` and `Vendor1099`
-
-3. **Working Manual Sync**: Creating a vendor from the personnel detail page will automatically trigger QuickBooks sync if connected, ensuring retroactive vendor creation works end-to-end
+- Uses `supabase.auth.signInWithPassword()` for verification - this is the recommended Supabase approach
+- The verification step doesn't create a new session, it just validates credentials
+- Error handling differentiates between "wrong current password" and "password update failed"
