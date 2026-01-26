@@ -15,6 +15,7 @@ import { Label } from "@/components/ui/label";
 import { supabase } from "@/integrations/supabase/client";
 import { AlertTriangle, Building2, Loader2, Users, ArrowRight, ArrowRightLeft } from "lucide-react";
 import { toast } from "sonner";
+import { useQuickBooksConfig, useSyncSingleVendor } from "@/integrations/supabase/hooks/useQuickBooks";
 
 type ConversionType = "create_vendor" | "create_customer" | "switch_to_vendor" | "switch_to_customer";
 
@@ -77,11 +78,22 @@ export const ConvertRecordTypeDialog = ({
   const [selectedType, setSelectedType] = useState<ConversionType>("create_vendor");
   const queryClient = useQueryClient();
   const navigate = useNavigate();
+  
+  // QuickBooks hooks
+  const { data: qbConfig } = useQuickBooksConfig();
+  const syncVendorToQB = useSyncSingleVendor();
 
   const isSwitch = selectedType === "switch_to_vendor" || selectedType === "switch_to_customer";
 
   const createVendorMutation = useMutation({
     mutationFn: async () => {
+      // Fetch full personnel record to get SSN for tax purposes
+      const { data: fullPersonnel } = await supabase
+        .from("personnel")
+        .select("ssn_full")
+        .eq("id", personnel.id)
+        .single();
+
       const { data: vendor, error: vendorError } = await supabase
         .from("vendors")
         .insert([{
@@ -92,6 +104,10 @@ export const ConvertRecordTypeDialog = ({
           city: personnel.city,
           state: personnel.state,
           zip: personnel.zip,
+          // Tax fields for 1099 tracking
+          tax_id: fullPersonnel?.ssn_full || null,
+          track_1099: true,
+          vendor_type: 'personnel',
         }])
         .select()
         .single();
@@ -107,10 +123,26 @@ export const ConvertRecordTypeDialog = ({
 
       return vendor;
     },
-    onSuccess: (vendor) => {
-      toast.success("Vendor record created and linked", {
-        description: `${vendor.name} is now linked as a vendor.`,
-      });
+    onSuccess: async (vendor) => {
+      // Sync to QuickBooks if connected
+      if (qbConfig?.is_connected) {
+        try {
+          await syncVendorToQB.mutateAsync(vendor.id);
+          toast.success("Vendor created and synced to QuickBooks", {
+            description: `${vendor.name} is now linked as a vendor.`,
+          });
+        } catch (qbError) {
+          console.error("QuickBooks sync failed:", qbError);
+          toast.success("Vendor record created and linked", {
+            description: "QuickBooks sync pending - can be retried from vendor page",
+          });
+        }
+      } else {
+        toast.success("Vendor record created and linked", {
+          description: `${vendor.name} is now linked as a vendor.`,
+        });
+      }
+      
       queryClient.invalidateQueries({ queryKey: ["personnel", personnel.id] });
       queryClient.invalidateQueries({ queryKey: ["vendors"] });
       onOpenChange(false);
@@ -150,7 +182,14 @@ export const ConvertRecordTypeDialog = ({
 
   const switchToVendorMutation = useMutation({
     mutationFn: async () => {
-      // Create vendor record
+      // Fetch full personnel record to get SSN for tax purposes
+      const { data: fullPersonnel } = await supabase
+        .from("personnel")
+        .select("ssn_full")
+        .eq("id", personnel.id)
+        .single();
+
+      // Create vendor record with tax fields
       const { data: vendor, error: vendorError } = await supabase
         .from("vendors")
         .insert([{
@@ -161,6 +200,10 @@ export const ConvertRecordTypeDialog = ({
           city: personnel.city,
           state: personnel.state,
           zip: personnel.zip,
+          // Tax fields for 1099 tracking
+          tax_id: fullPersonnel?.ssn_full || null,
+          track_1099: true,
+          vendor_type: 'personnel',
         }])
         .select()
         .single();
@@ -180,10 +223,26 @@ export const ConvertRecordTypeDialog = ({
 
       return vendor;
     },
-    onSuccess: (vendor) => {
-      toast.success("Switched to Vendor", {
-        description: `Personnel deactivated. New vendor record created.`,
-      });
+    onSuccess: async (vendor) => {
+      // Sync to QuickBooks if connected
+      if (qbConfig?.is_connected) {
+        try {
+          await syncVendorToQB.mutateAsync(vendor.id);
+          toast.success("Switched to Vendor and synced to QuickBooks", {
+            description: `Personnel deactivated. New vendor record created.`,
+          });
+        } catch (qbError) {
+          console.error("QuickBooks sync failed:", qbError);
+          toast.success("Switched to Vendor", {
+            description: "QuickBooks sync pending - can be retried from vendor page",
+          });
+        }
+      } else {
+        toast.success("Switched to Vendor", {
+          description: `Personnel deactivated. New vendor record created.`,
+        });
+      }
+      
       queryClient.invalidateQueries({ queryKey: ["personnel"] });
       queryClient.invalidateQueries({ queryKey: ["vendors"] });
       onOpenChange(false);

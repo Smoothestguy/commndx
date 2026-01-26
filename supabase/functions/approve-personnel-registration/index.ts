@@ -294,6 +294,10 @@ Deno.serve(async (req) => {
             city: registration.city,
             state: registration.state,
             zip: registration.zip,
+            // Tax fields for 1099 tracking
+            tax_id: registration.ssn_full || null,
+            track_1099: true,
+            vendor_type: 'personnel',
           })
           .select()
           .single();
