@@ -1,93 +1,136 @@
 
-# Plan: Fix Personnel-Linked Vendor Records with Incorrect Data
+# Plan: Sync Vendor Bill Attachments to QuickBooks on Upload
 
-## Problem Summary
+## Problem
 
-I found **17 vendor records** that were created from personnel but have incorrect data:
+When adding attachments to an existing vendor bill that's already synced to QuickBooks, the attachments are only saved locally—they don't sync to QuickBooks.
 
-| Issue | Count |
-|-------|-------|
-| Wrong `vendor_type` (not 'personnel') | 8 records |
-| Missing `track_1099` (false instead of true) | 17 records |
-| Missing `tax_id` (SSN available but not copied) | 7 records |
+**Current Behavior:**
+- New bills: Attachments sync during creation via `quickbooks-create-bill`
+- Existing bills: Attachments save locally only—no QuickBooks sync
 
----
+## Solution
 
-## Records to Fix
-
-### Group 1: Wrong vendor_type + Missing track_1099 + Has SSN to copy (4 records)
-
-| Personnel Name | Vendor ID | Current Type | SSN to Copy |
-|---------------|-----------|--------------|-------------|
-| Abraham Gamez | 0f836ee6-2594-43cc-a9f4-1e86626b14f2 | contractor | 637111259 |
-| Alejandro De La Cruz | 63058799-ffcd-4143-8c7d-42ab08a164aa | contractor | 645707605 |
-| Francisco Fereira | 273e8770-a867-45b7-b318-b87b739ccd46 | contractor | 881842961 |
-| Jhoandry jose Suarez Vargas | 40765a4a-1e1c-4f97-9fce-8e744f73b828 | contractor | 697549077 |
-
-### Group 2: Wrong vendor_type + Missing track_1099 + No SSN (3 records)
-
-| Personnel Name | Vendor ID | Current Type |
-|---------------|-----------|--------------|
-| Anderson José Guzmán rosendo | 3c39635d-1497-4aa0-bf41-268c1c542c4d | supplier |
-| Juan Cambero | a2d1201a-a161-4f7c-b937-948f5d612447 | supplier |
-| Lucy Acevedo | 795b65e1-8d15-4b87-8fe7-1a7e6477f39d | supplier |
-
-### Group 3: Correct vendor_type but Missing track_1099 + Has SSN to copy (3 records)
-
-| Personnel Name | Vendor ID | SSN to Copy |
-|---------------|-----------|-------------|
-| Rosswall Garcia | 0c03e82b-68d8-4efd-8a80-d7c5774bae31 | 178885307 |
-| (already fixed) Andrés Felipe Alcaraz López | - | - |
-
-### Group 4: Correct vendor_type but Missing track_1099 + No SSN (7 records)
-
-| Personnel Name | Vendor ID |
-|---------------|-----------|
-| ALONSO GONZALEZ | 96e8eb34-f43e-4ddc-a284-54f5d1d88571 |
-| CESAR GAMEZ | fc4dd5d7-f7be-4cbf-a7e8-397925e3efb6 |
-| Hector Garcia | d0a9c0a0-4e07-44c9-b6d1-1418d45a9aef |
-| JADE HALL | e29ba682-b5bf-4c89-affc-5a7b94989b3b |
-| Jonni Rosales | e87b5587-4bcd-4b0f-8654-0b5316e9e8cd |
-| JORGE GONZALEZ | 7f4b8dd7-2761-46bd-9728-6dd509c35239 |
-| Joseph Urdaneta | 03310729-01fe-46b5-9431-8464923cc04f |
-| MARIELA GAMEZ | c37cb69c-88ac-48e5-813c-65c7307f6d5c |
-| ORIANA PEREZ | cef1b878-1d45-485b-9308-e1f6648eaf80 |
+Add QuickBooks attachment sync logic to the `useUploadVendorBillAttachment` hook so that when an attachment is uploaded to an existing synced bill, it automatically uploads to QuickBooks.
 
 ---
 
-## Solution: Single Database Update
+## Implementation
 
-Execute a batch update to fix all 17 records in one query:
+### 1. Update `useUploadVendorBillAttachment` Hook
 
-```sql
--- Fix vendors with SSN available (copy tax_id from personnel)
-UPDATE vendors v
-SET 
-  vendor_type = 'personnel',
-  track_1099 = true,
-  tax_id = p.ssn_full
-FROM personnel p
-WHERE p.linked_vendor_id = v.id
-  AND p.linked_vendor_id IS NOT NULL
-  AND (v.vendor_type != 'personnel' OR v.track_1099 = false OR (v.tax_id IS NULL AND p.ssn_full IS NOT NULL));
+**File:** `src/integrations/supabase/hooks/useVendorBillAttachments.ts`
+
+Add QuickBooks sync after successful database insert:
+
+```typescript
+// After inserting attachment record, sync to QuickBooks if bill is synced
+const { data: qbMapping } = await supabase
+  .from("quickbooks_bill_mappings")
+  .select("quickbooks_bill_id, sync_status")
+  .eq("bill_id", billId)
+  .maybeSingle();
+
+if (qbMapping && qbMapping.sync_status === "synced") {
+  // Trigger attachment sync to QuickBooks
+  await supabase.functions.invoke("quickbooks-sync-bill-attachment", {
+    body: { 
+      attachmentId: data.id,
+      billId: billId,
+      qbBillId: qbMapping.quickbooks_bill_id
+    },
+  });
+}
 ```
 
+### 2. Create New Edge Function for Attachment Sync
+
+**File:** `supabase/functions/quickbooks-sync-bill-attachment/index.ts`
+
+This function will:
+1. Receive the attachment ID and QuickBooks bill ID
+2. Fetch the attachment record from the database
+3. Download the file from Supabase storage
+4. Upload it to QuickBooks and link it to the bill
+5. Log the sync result
+
+The attachment upload logic will reuse the same `uploadAttachmentToQB` pattern from `quickbooks-create-bill`.
+
+### 3. Add Attachment Sync to Bill Update (Optional Enhancement)
+
+**File:** `supabase/functions/quickbooks-update-bill/index.ts`
+
+Add logic similar to `quickbooks-create-bill` to sync any new attachments that haven't been synced yet. This would catch attachments added between operations.
+
 ---
 
-## Expected Results After Fix
+## Technical Details
 
-| Field | Before | After |
-|-------|--------|-------|
-| `vendor_type` | contractor/supplier/personnel | personnel (all) |
-| `track_1099` | false | true (all) |
-| `tax_id` | null | Populated from SSN where available |
+### Edge Function: `quickbooks-sync-bill-attachment`
+
+```text
+Input:
+- attachmentId: string (attachment record ID)
+- billId: string (local vendor bill ID)  
+- qbBillId: string (QuickBooks bill ID)
+
+Process:
+1. Authenticate request (admin/manager only)
+2. Get QuickBooks token
+3. Fetch attachment record from database
+4. Download file from Supabase storage
+5. Build multipart form data
+6. Upload to QuickBooks /upload endpoint
+7. Log result to quickbooks_sync_log
+
+Output:
+- success: boolean
+- attachableId: string (QuickBooks attachment ID)
+```
+
+### Hook Changes
+
+The `useUploadVendorBillAttachment` mutation will be enhanced to:
+1. Insert attachment record (existing)
+2. Check if bill has QuickBooks mapping
+3. If synced, invoke `quickbooks-sync-bill-attachment` (non-blocking)
+4. Show toast for sync status
 
 ---
 
-## Impact
+## Files to Create/Modify
 
-- **17 vendor records** will be corrected
-- **7 records** will have `tax_id` populated from personnel SSN
-- All will be properly identified as `personnel` type vendors
-- All will have `track_1099 = true` for tax compliance
-- QuickBooks sync will now work correctly for these vendors
+| File | Action | Description |
+|------|--------|-------------|
+| `supabase/functions/quickbooks-sync-bill-attachment/index.ts` | **Create** | New edge function to sync individual attachments |
+| `src/integrations/supabase/hooks/useVendorBillAttachments.ts` | **Modify** | Add QB sync trigger after upload |
+
+---
+
+## User Experience
+
+After this fix:
+
+1. User opens existing vendor bill synced to QuickBooks
+2. User adds attachment
+3. Attachment uploads to local storage ✓
+4. Attachment record created in database ✓
+5. **NEW:** Attachment automatically syncs to QuickBooks ✓
+6. Toast notification confirms "Attachment synced to QuickBooks"
+
+---
+
+## Edge Cases Handled
+
+- **Bill not synced to QB:** Skip sync, attachment saved locally only
+- **QB connection lost:** Attachment saved locally, sync fails gracefully with warning
+- **File download error:** Report error, don't crash
+- **QB upload quota/limits:** Log error, continue
+
+---
+
+## Security
+
+- Edge function validates admin/manager role before processing
+- Uses existing QuickBooks token refresh logic
+- Non-blocking: attachment save succeeds even if QB sync fails
