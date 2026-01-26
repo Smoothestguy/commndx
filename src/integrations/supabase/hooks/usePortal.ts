@@ -75,7 +75,7 @@ export function usePersonnelTimeEntries(personnelId: string | undefined) {
   });
 }
 
-// Get project assignments for current personnel
+// Get ACTIVE project assignments for current personnel (for actions like clocking in)
 export function usePersonnelAssignments(personnelId: string | undefined) {
   return useQuery({
     queryKey: ["personnel-assignments", personnelId],
@@ -95,6 +95,34 @@ export function usePersonnelAssignments(personnelId: string | undefined) {
         `)
         .eq("personnel_id", personnelId)
         .eq("status", "active");
+      
+      if (error) throw error;
+      return data;
+    },
+    enabled: !!personnelId,
+  });
+}
+
+// Get ALL project assignments for current personnel (for viewing history)
+export function usePersonnelAllAssignments(personnelId: string | undefined) {
+  return useQuery({
+    queryKey: ["personnel-all-assignments", personnelId],
+    queryFn: async () => {
+      if (!personnelId) return [];
+      
+      const { data, error } = await supabase
+        .from("personnel_project_assignments")
+        .select(`
+          *,
+          project:projects(
+            id, name, status, start_date, end_date,
+            description, address, city, state, zip,
+            customer_po, poc_name, poc_phone, poc_email,
+            customer:customers(id, name, company, phone, email)
+          )
+        `)
+        .eq("personnel_id", personnelId)
+        .order("assigned_at", { ascending: false });
       
       if (error) throw error;
       return data;

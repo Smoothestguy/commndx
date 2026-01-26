@@ -249,21 +249,54 @@ export function useBulkAssignPersonnelToProject() {
     }) => {
       const { data: { user } } = await supabase.auth.getUser();
       
-      const assignments = personnelIds.map((personnelId) => ({
-        personnel_id: personnelId,
-        project_id: projectId,
-        assigned_by: user?.id || null,
-        status: 'active',
-        assigned_at: new Date().toISOString(),
-        rate_bracket_id: rateBracketIds[personnelId] || null,
-      }));
+      const assignedPersonnelData: any[] = [];
+      
+      // For each personnel, check if they already have an active assignment
+      // If not, create a new one (preserving old ended assignments for history)
+      for (const personnelId of personnelIds) {
+        // Check if already has an active assignment
+        const { data: existing } = await supabase
+          .from("personnel_project_assignments")
+          .select("id")
+          .eq("personnel_id", personnelId)
+          .eq("project_id", projectId)
+          .eq("status", "active")
+          .maybeSingle();
 
-      const { data, error } = await supabase
-        .from("personnel_project_assignments")
-        .upsert(assignments, { onConflict: "personnel_id,project_id" })
-        .select();
+        if (existing) {
+          // Already active - update rate bracket if needed
+          const { data: updated, error: updateError } = await supabase
+            .from("personnel_project_assignments")
+            .update({ rate_bracket_id: rateBracketIds[personnelId] || null })
+            .eq("id", existing.id)
+            .select()
+            .single();
+          
+          if (!updateError && updated) {
+            assignedPersonnelData.push(updated);
+          }
+        } else {
+          // Insert new assignment (leaves old ended assignments intact for history)
+          const { data: inserted, error: insertError } = await supabase
+            .from("personnel_project_assignments")
+            .insert({
+              personnel_id: personnelId,
+              project_id: projectId,
+              assigned_by: user?.id || null,
+              status: 'active',
+              assigned_at: new Date().toISOString(),
+              rate_bracket_id: rateBracketIds[personnelId] || null,
+            })
+            .select()
+            .single();
+          
+          if (!insertError && inserted) {
+            assignedPersonnelData.push(inserted);
+          }
+        }
+      }
 
-      if (error) throw error;
+      const data = assignedPersonnelData;
       
       // Create schedule entries if schedule info was provided
       if (scheduledDate && scheduledStartTime) {
