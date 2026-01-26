@@ -184,6 +184,7 @@ export const generateEstimatePDF = async (estimate: EstimateData): Promise<void>
   doc.setFont("helvetica", "normal");
   doc.setFontSize(9);
   doc.text(estimate.customerName, margin + 5, billToY);
+  billToY += 5;
 
   // Customer address (if available)
   if (estimate.customerAddress) {
