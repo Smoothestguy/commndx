@@ -1,233 +1,234 @@
 
-# Plan: Fix Personnel Portal Project History Visibility After Unassignment
+# Plan: Enable Right-Click Context Menus
 
-## Problem Summary
+## Overview
 
-When personnel are unassigned from a project, they lose access to view that project's history in the portal. This happens because:
+Add right-click context menu support to the application's main interactive components. The context menu will provide quick access to common actions (View, Edit, Delete, etc.) without needing to click a "More" button.
 
-1. **Portal queries filter by `status = 'active'`** - The `usePersonnelAssignments` hook only returns assignments where `status = 'active'`, hiding all ended assignments
-2. **Unique constraint blocks history preservation** - There's a `UNIQUE (personnel_id, project_id)` constraint preventing multiple assignment records per personnel-project pair
-3. **Reassignment overwrites history** - The bulk assign uses `upsert` which updates the existing row instead of creating new assignment periods
+## Strategy
 
-## Current Table Schema
-
-The `personnel_project_assignments` table has:
-- `assigned_at` - when assignment started
-- `unassigned_at` - when assignment ended (nullable)
-- `status` - 'active', 'unassigned', or 'removed'
-
-There's no explicit `starts_at`/`ends_at` pattern, but the existing fields can serve the same purpose.
+Create a reusable approach that:
+1. Adds context menu support to the `EnhancedDataTable` component (used across Personnel, Invoices, Projects, Customers, etc.)
+2. Adds context menu support to key card components
+3. Uses the existing `ContextMenu` component from `@radix-ui/react-context-menu`
 
 ---
 
-## Solution Overview
+## Phase 1: Enhanced Data Table Context Menu
 
-### Phase 1: Database Changes
-
-**1.1 Drop the unique constraint and add period-based unique constraint**
-
-```sql
--- Drop old constraint
-ALTER TABLE personnel_project_assignments 
-DROP CONSTRAINT personnel_project_assignments_personnel_id_project_id_key;
-
--- Add new constraint that allows multiple assignments if they don't overlap
--- (only one active assignment per personnel-project at a time)
-CREATE UNIQUE INDEX personnel_project_assignments_active_unique 
-ON personnel_project_assignments (personnel_id, project_id) 
-WHERE status = 'active';
-```
-
-This allows multiple assignment records for the same personnel-project pair (for history), while ensuring only ONE can be active at a time.
-
-### Phase 2: Hook Updates
-
-**2.1 Update `usePersonnelAssignments` in `src/integrations/supabase/hooks/usePortal.ts`**
-
-Create two separate hooks:
-- `usePersonnelActiveAssignments` - for current/active projects (can clock in, submit)
-- `usePersonnelAllAssignments` - for all assignments (history visibility)
-
-```typescript
-// Active assignments only (for actions like clocking in)
-export function usePersonnelActiveAssignments(personnelId: string | undefined) {
-  return useQuery({
-    queryKey: ["personnel-active-assignments", personnelId],
-    queryFn: async () => {
-      if (!personnelId) return [];
-      const { data, error } = await supabase
-        .from("personnel_project_assignments")
-        .select(`*, project:projects(...)`)
-        .eq("personnel_id", personnelId)
-        .eq("status", "active");
-      if (error) throw error;
-      return data;
-    },
-    enabled: !!personnelId,
-  });
-}
-
-// All assignments (for viewing history)
-export function usePersonnelAllAssignments(personnelId: string | undefined) {
-  return useQuery({
-    queryKey: ["personnel-all-assignments", personnelId],
-    queryFn: async () => {
-      if (!personnelId) return [];
-      const { data, error } = await supabase
-        .from("personnel_project_assignments")
-        .select(`*, project:projects(...)`)
-        .eq("personnel_id", personnelId)
-        .order("assigned_at", { ascending: false });
-      if (error) throw error;
-      return data;
-    },
-    enabled: !!personnelId,
-  });
-}
-```
-
-**2.2 Update reassignment logic in `usePersonnelProjectAssignments.ts`**
-
-Change `useBulkAssignPersonnelToProject` to create NEW assignment rows instead of upserting:
-
-```typescript
-// Check if already has an active assignment
-const { data: existing } = await supabase
-  .from("personnel_project_assignments")
-  .select("id")
-  .eq("personnel_id", personnelId)
-  .eq("project_id", projectId)
-  .eq("status", "active")
-  .maybeSingle();
-
-if (existing) {
-  // Already active - skip or update
-  return existing;
-} else {
-  // Insert new assignment (leaves old ended assignments intact)
-  const { data, error } = await supabase
-    .from("personnel_project_assignments")
-    .insert({ personnel_id, project_id, status: 'active', ... })
-    .select()
-    .single();
-}
-```
-
-### Phase 3: Portal UI Updates
-
-**3.1 Update `PortalProjects.tsx`**
-
-Show two sections:
-- **Current Projects** - Active assignments (can clock in, take actions)
-- **Past Projects** - Ended assignments (view history only)
-
-```typescript
-const { data: allAssignments } = usePersonnelAllAssignments(personnel?.id);
-
-const currentProjects = allAssignments?.filter(a => a.status === 'active') || [];
-const pastProjects = allAssignments?.filter(a => a.status !== 'active') || [];
-
-// Deduplicate past projects (show latest assignment per project not in current)
-const pastProjectIds = new Set(pastProjects.map(a => a.project?.id));
-const uniquePastProjects = pastProjects.filter((a, i, arr) => 
-  arr.findIndex(x => x.project?.id === a.project?.id) === i
-);
-```
-
-**3.2 Update `PortalProjectDetail.tsx`**
-
-Allow viewing ANY project the personnel has ever been assigned to:
-
-```typescript
-// Find ANY assignment for this project (not just active)
-const assignment = allAssignments?.find(a => a.project?.id === id);
-const isActiveAssignment = assignment?.status === 'active';
-
-// Show history regardless of active status
-// Only restrict ACTIONS (clock in, submit) to active assignments
-```
-
-**3.3 Update `useClockEnabledProjects` in `useTimeClock.ts`**
-
-Keep filtering by `status = 'active'` - only active assignments can clock in.
-
----
-
-## Files to Modify
+### 1.1 Add Context Menu Props to EnhancedDataTable
 
 | File | Change |
 |------|--------|
-| **Database Migration** | Drop unique constraint, add partial unique index for active only |
-| `src/integrations/supabase/hooks/usePortal.ts` | Add `usePersonnelAllAssignments` hook, keep `usePersonnelAssignments` for active only |
-| `src/integrations/supabase/hooks/usePersonnelProjectAssignments.ts` | Update `useBulkAssignPersonnelToProject` to INSERT new rows instead of upsert |
-| `src/pages/portal/PortalProjects.tsx` | Show "Current" and "Past Projects" sections |
-| `src/pages/portal/PortalProjectDetail.tsx` | Allow viewing projects from any assignment (past or current) |
+| `src/components/shared/EnhancedDataTable.tsx` | Add optional `contextMenuItems` prop and wrap rows with ContextMenuTrigger |
+
+**New Props:**
+```typescript
+interface ContextMenuItem<T> {
+  label: string;
+  icon?: React.ComponentType<{ className?: string }>;
+  onClick: (item: T) => void;
+  variant?: 'default' | 'destructive';
+  condition?: (item: T) => boolean; // Show only when condition is true
+  separator?: boolean; // Add separator after this item
+}
+
+interface EnhancedDataTableProps<T> {
+  // ... existing props
+  contextMenuItems?: ContextMenuItem<T>[];
+}
+```
+
+**Implementation:**
+- Wrap each `TableRow` in a `ContextMenu` + `ContextMenuTrigger`
+- Render `ContextMenuContent` with the provided menu items
+- Only show context menu if `contextMenuItems` is provided
+
+### 1.2 Example Usage (Customers Page)
+
+```typescript
+const contextMenuItems = [
+  {
+    label: "View Details",
+    icon: Eye,
+    onClick: (customer) => navigate(`/customers/${customer.id}`),
+  },
+  {
+    label: "Edit",
+    icon: Edit,
+    onClick: (customer) => setEditingCustomer(customer),
+  },
+  {
+    label: "Delete",
+    icon: Trash2,
+    onClick: (customer) => handleDelete(customer.id),
+    variant: 'destructive',
+    separator: true, // Add separator before
+  },
+];
+
+<EnhancedDataTable
+  tableId="customers"
+  data={customers}
+  columns={columns}
+  contextMenuItems={contextMenuItems}
+/>
+```
+
+---
+
+## Phase 2: Card Components with Context Menu
+
+### 2.1 Create a Reusable ContextMenuWrapper Component
+
+| File | Change |
+|------|--------|
+| `src/components/shared/ContextMenuWrapper.tsx` | New reusable component for wrapping any element with context menu |
+
+```typescript
+interface ContextMenuWrapperProps {
+  children: React.ReactNode;
+  items: ContextMenuItem[];
+}
+
+export function ContextMenuWrapper({ children, items }: ContextMenuWrapperProps) {
+  return (
+    <ContextMenu>
+      <ContextMenuTrigger asChild>{children}</ContextMenuTrigger>
+      <ContextMenuContent>
+        {items.map((item, index) => (
+          <Fragment key={index}>
+            {item.separator && <ContextMenuSeparator />}
+            <ContextMenuItem onClick={item.onClick}>
+              {item.icon && <item.icon className="mr-2 h-4 w-4" />}
+              {item.label}
+            </ContextMenuItem>
+          </Fragment>
+        ))}
+      </ContextMenuContent>
+    </ContextMenu>
+  );
+}
+```
+
+### 2.2 Update Card Components
+
+| Component | File |
+|-----------|------|
+| CustomerCard | `src/components/customers/CustomerCard.tsx` |
+| ChangeOrderCard | `src/components/change-orders/ChangeOrderCard.tsx` |
+| VendorBillCard | `src/components/vendor-bills/VendorBillCard.tsx` |
+| MobilePersonnelCard | `src/components/personnel/MobilePersonnelCard.tsx` |
+
+Each card will be wrapped with `ContextMenuWrapper`, reusing the same menu items from the existing DropdownMenu.
+
+**Example - CustomerCard:**
+```typescript
+return (
+  <ContextMenu>
+    <ContextMenuTrigger asChild>
+      <div className="glass rounded-xl p-4...">
+        {/* existing card content */}
+      </div>
+    </ContextMenuTrigger>
+    <ContextMenuContent>
+      <ContextMenuItem onClick={() => onEdit(customer)}>
+        <Edit className="mr-2 h-4 w-4" />
+        Edit
+      </ContextMenuItem>
+      <ContextMenuSeparator />
+      <ContextMenuItem 
+        onClick={() => onDelete(customer.id)}
+        className="text-destructive"
+      >
+        <Trash2 className="mr-2 h-4 w-4" />
+        Delete
+      </ContextMenuItem>
+    </ContextMenuContent>
+  </ContextMenu>
+);
+```
+
+---
+
+## Files to Create/Modify
+
+| File | Action | Description |
+|------|--------|-------------|
+| `src/components/shared/ContextMenuWrapper.tsx` | Create | Reusable context menu wrapper component |
+| `src/components/shared/EnhancedDataTable.tsx` | Modify | Add contextMenuItems prop and wrap rows |
+| `src/components/customers/CustomerCard.tsx` | Modify | Add right-click context menu |
+| `src/components/change-orders/ChangeOrderCard.tsx` | Modify | Add right-click context menu |
+| `src/components/vendor-bills/VendorBillCard.tsx` | Modify | Add right-click context menu |
+| `src/components/personnel/MobilePersonnelCard.tsx` | Modify | Add right-click context menu |
+| `src/pages/Customers.tsx` | Modify | Pass contextMenuItems to EnhancedDataTable |
+| `src/pages/Projects.tsx` | Modify | Pass contextMenuItems to EnhancedDataTable |
+| `src/pages/Invoices.tsx` | Modify | Pass contextMenuItems to EnhancedDataTable |
 
 ---
 
 ## Technical Details
 
-### Database Migration SQL
+### EnhancedDataTable Row Rendering Update
 
-```sql
--- 1. Drop the existing unique constraint
-ALTER TABLE public.personnel_project_assignments 
-DROP CONSTRAINT IF EXISTS personnel_project_assignments_personnel_id_project_id_key;
+```typescript
+// Before
+<TableRow key={item.id} onClick={() => onRowClick?.(item)}>
+  {/* cells */}
+</TableRow>
 
--- 2. Add partial unique index (only one ACTIVE assignment per personnel-project)
-CREATE UNIQUE INDEX personnel_project_assignments_active_unique 
-ON public.personnel_project_assignments (personnel_id, project_id) 
-WHERE status = 'active';
-
--- 3. Add index for efficient history queries
-CREATE INDEX idx_personnel_assignments_history 
-ON public.personnel_project_assignments (personnel_id, assigned_at DESC);
-```
-
-### Assignment Flow After Fix
-
-```text
-Assign Ricardo to Project X
-+-----------------------------------------+
-| id: abc123                              |
-| personnel_id: ricardo                   |
-| project_id: X                           |
-| status: active                          |
-| assigned_at: 2025-01-01                 |
-| unassigned_at: null                     |
-+-----------------------------------------+
-
-Unassign Ricardo from Project X
-+-----------------------------------------+
-| id: abc123                              |
-| personnel_id: ricardo                   |
-| project_id: X                           |
-| status: unassigned                      |
-| assigned_at: 2025-01-01                 |
-| unassigned_at: 2025-01-15               |
-+-----------------------------------------+
-Ricardo can STILL VIEW Project X history!
-
-Reassign Ricardo to Project X
-+-----------------------------------------+       +-----------------------------------------+
-| id: abc123 (OLD)                        |       | id: xyz789 (NEW)                        |
-| personnel_id: ricardo                   |       | personnel_id: ricardo                   |
-| project_id: X                           |       | project_id: X                           |
-| status: unassigned                      |       | status: active                          |
-| assigned_at: 2025-01-01                 |       | assigned_at: 2025-01-20                 |
-| unassigned_at: 2025-01-15               |       | unassigned_at: null                     |
-+-----------------------------------------+       +-----------------------------------------+
-Both assignment periods preserved! Full history intact.
+// After
+{contextMenuItems ? (
+  <ContextMenu key={item.id}>
+    <ContextMenuTrigger asChild>
+      <TableRow onClick={() => onRowClick?.(item)}>
+        {/* cells */}
+      </TableRow>
+    </ContextMenuTrigger>
+    <ContextMenuContent>
+      {contextMenuItems.map((menuItem, idx) => {
+        if (menuItem.condition && !menuItem.condition(item)) return null;
+        return (
+          <Fragment key={idx}>
+            {menuItem.separator && <ContextMenuSeparator />}
+            <ContextMenuItem
+              onClick={(e) => {
+                e.stopPropagation();
+                menuItem.onClick(item);
+              }}
+              className={menuItem.variant === 'destructive' ? 'text-destructive' : ''}
+            >
+              {menuItem.icon && <menuItem.icon className="mr-2 h-4 w-4" />}
+              {menuItem.label}
+            </ContextMenuItem>
+          </Fragment>
+        );
+      })}
+    </ContextMenuContent>
+  </ContextMenu>
+) : (
+  <TableRow key={item.id} onClick={() => onRowClick?.(item)}>
+    {/* cells */}
+  </TableRow>
+)}
 ```
 
 ---
 
-## Acceptance Criteria Verification
+## User Experience
 
-| Criteria | How It's Met |
-|----------|--------------|
-| Unassigned Ricardo still sees Project X history | `usePersonnelAllAssignments` returns all assignments regardless of status |
-| Ricardo reassigned = moves back to Current | New active assignment created, old one preserved |
-| No assignment records deleted on unassign | Unassign sets `status = 'unassigned'`, no DELETE |
-| Past projects show all historical entries | Time entries query uses `project_id`, not assignment status |
-| Active actions restricted to active assignments | Clock-in/submit checks for `status = 'active'` |
+After implementation:
+- **Tables**: Right-click any row to see View, Edit, Delete options (and page-specific actions)
+- **Cards**: Right-click any card to see the same options as the "..." dropdown menu
+- **Consistency**: Context menu items mirror the existing dropdown menus for familiar UX
+- **Desktop-first**: Context menus primarily benefit desktop users with mice
+- **Accessibility**: Left-click and dropdown menus remain fully functional
+
+---
+
+## Benefits
+
+1. **Faster workflows** - Power users can right-click instead of finding the "..." button
+2. **Familiar UX** - Standard desktop convention that users expect
+3. **No UI clutter** - Context menu is hidden until needed
+4. **Reusable** - `ContextMenuWrapper` can be applied to any component
