@@ -44,6 +44,7 @@ export const useUploadVendorBillAttachment = () => {
       file: File;
       filePath: string;
     }) => {
+      // Insert attachment record
       const { data, error } = await supabase
         .from("vendor_bill_attachments")
         .insert({
@@ -58,6 +59,33 @@ export const useUploadVendorBillAttachment = () => {
         .single();
 
       if (error) throw error;
+
+      // Check if bill is synced to QuickBooks and sync attachment
+      const { data: qbMapping } = await supabase
+        .from("quickbooks_bill_mappings")
+        .select("quickbooks_bill_id, sync_status")
+        .eq("bill_id", billId)
+        .maybeSingle();
+
+      if (qbMapping && qbMapping.sync_status === "synced" && qbMapping.quickbooks_bill_id) {
+        // Trigger attachment sync to QuickBooks (non-blocking)
+        supabase.functions.invoke("quickbooks-sync-bill-attachment", {
+          body: {
+            attachmentId: data.id,
+            billId: billId,
+            qbBillId: qbMapping.quickbooks_bill_id,
+          },
+        }).then((response) => {
+          if (response.error) {
+            console.warn("QuickBooks attachment sync failed:", response.error);
+          } else if (response.data?.success) {
+            console.log("Attachment synced to QuickBooks:", response.data.message);
+          }
+        }).catch((err) => {
+          console.warn("QuickBooks attachment sync error:", err);
+        });
+      }
+
       return data;
     },
     onSuccess: (_, { billId }) => {
