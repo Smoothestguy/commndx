@@ -331,17 +331,20 @@ export function BulkCustomerInvoiceDialog({
           id,
           name,
           bill_rate,
-          overtime_multiplier
+          overtime_multiplier,
+          is_billable
         )
       `)
       .in('project_id', projectIds)
       .in('personnel_id', personnelIds)
       .eq('status', 'active');
 
+    // Build bracket lookup, filtering out non-billable brackets
     const bracketLookup = new Map<string, { id: string; name: string; billRate: number; otMultiplier: number }>();
     assignments?.forEach(a => {
       const bracket = a.project_rate_brackets as any;
-      if (bracket && a.personnel_id && a.project_id) {
+      // Skip non-billable brackets - they won't be included in invoices
+      if (bracket && a.personnel_id && a.project_id && bracket.is_billable !== false) {
         bracketLookup.set(`${a.project_id}-${a.personnel_id}`, {
           id: bracket.id,
           name: bracket.name,

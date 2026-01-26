@@ -4816,6 +4816,7 @@ export type Database = {
           created_at: string
           id: string
           is_active: boolean
+          is_billable: boolean
           name: string
           overtime_multiplier: number
           project_id: string
@@ -4826,6 +4827,7 @@ export type Database = {
           created_at?: string
           id?: string
           is_active?: boolean
+          is_billable?: boolean
           name: string
           overtime_multiplier?: number
           project_id: string
@@ -4836,6 +4838,7 @@ export type Database = {
           created_at?: string
           id?: string
           is_active?: boolean
+          is_billable?: boolean
           name?: string
           overtime_multiplier?: number
           project_id?: string
