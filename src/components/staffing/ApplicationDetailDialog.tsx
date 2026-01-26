@@ -29,6 +29,8 @@ import { ImageLightbox } from "@/components/ui/image-lightbox";
 import {
   Application,
   useApproveApplication,
+  useApproveApplicationWithType,
+  type ApprovalRecordType,
   useRejectApplication,
   useRevokeApproval,
   useRemoveFromPosting,
@@ -48,6 +50,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { RequestMissingInfoDialog } from "./RequestMissingInfoDialog";
 import { useUserRole } from "@/hooks/useUserRole";
+import { ApprovalTypeSelectionDialog, type RecordType } from "@/components/personnel/ApprovalTypeSelectionDialog";
 
 const statusColors: Record<string, string> = {
   submitted: "bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-300",
@@ -83,6 +86,7 @@ export function ApplicationDetailDialog({
   const [bypassDob, setBypassDob] = useState<string>("");
   const [isSavingBypass, setIsSavingBypass] = useState(false);
   const [newNote, setNewNote] = useState("");
+  const [showTypeSelectionDialog, setShowTypeSelectionDialog] = useState(false);
   const [editForm, setEditForm] = useState({
     first_name: "",
     last_name: "",
@@ -104,6 +108,7 @@ export function ApplicationDetailDialog({
   );
 
   const approveApplication = useApproveApplication();
+  const approveApplicationWithType = useApproveApplicationWithType();
   const rejectApplication = useRejectApplication();
   const revokeApproval = useRevokeApproval();
   const removeFromPosting = useRemoveFromPosting();
@@ -248,14 +253,25 @@ export function ApplicationDetailDialog({
     }
   };
 
-  const handleApprove = async () => {
+  const handleApprove = () => {
+    // Show the type selection dialog instead of directly approving
+    setShowTypeSelectionDialog(true);
+  };
+
+  const handleApproveWithType = async (recordType: RecordType) => {
     if (!application) return;
     try {
-      await approveApplication.mutateAsync({
+      await approveApplicationWithType.mutateAsync({
         applicationId: application.id,
+        recordType: recordType as ApprovalRecordType,
         notes: actionNotes,
       });
-      toast.success("Application approved! Applicant added to Personnel.");
+      
+      const typeLabel = recordType === 'personnel_vendor' 
+        ? 'Personnel + Vendor' 
+        : recordType.charAt(0).toUpperCase() + recordType.slice(1);
+      toast.success(`Application approved! ${typeLabel} record(s) created.`);
+      setShowTypeSelectionDialog(false);
       onOpenChange(false);
     } catch (error) {
       toast.error("Failed to approve application");
@@ -1050,6 +1066,14 @@ export function ApplicationDetailDialog({
         onOpenChange={setRequestInfoDialogOpen}
         application={application}
         onSuccess={() => onOpenChange(false)}
+      />
+
+      <ApprovalTypeSelectionDialog
+        open={showTypeSelectionDialog}
+        onOpenChange={setShowTypeSelectionDialog}
+        onConfirm={handleApproveWithType}
+        isLoading={approveApplicationWithType.isPending}
+        applicantName={`${application?.applicants?.first_name || ''} ${application?.applicants?.last_name || ''}`}
       />
     </>
   );
