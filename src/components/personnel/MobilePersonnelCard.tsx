@@ -13,6 +13,13 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import {
+  ContextMenu,
+  ContextMenuContent,
+  ContextMenuItem,
+  ContextMenuSeparator,
+  ContextMenuTrigger,
+} from "@/components/ui/context-menu";
+import {
   AlertDialog,
   AlertDialogAction,
   AlertDialogCancel,
@@ -139,167 +146,212 @@ export const MobilePersonnelCard = ({
     }
   };
 
-  return (
-    <>
-      <Card
-        className={`hover:shadow-md transition-all cursor-pointer active:bg-muted/50 ${
-          isSelected ? "ring-2 ring-primary" : ""
-        }`}
-        onClick={handleClick}
-      >
-        <CardContent className="p-4">
-          <div className="flex items-start gap-3">
-            {selectionMode && (
-              <div className="pt-1" onClick={(e) => e.stopPropagation()}>
-                <Checkbox
-                  checked={isSelected}
-                  onCheckedChange={() => onSelect?.(personnel.id)}
-                  className="h-5 w-5"
-                />
-              </div>
-            )}
-            <SecureAvatar
-              bucket="personnel-photos"
-              photoUrl={personnel.photo_url}
-              className="h-12 w-12 flex-shrink-0"
-              fallback={
-                <span className="text-sm">
-                  {personnel.first_name[0]}
-                  {personnel.last_name[0]}
-                </span>
-              }
-              alt={`${personnel.first_name} ${personnel.last_name}`}
-            />
+  const cardContent = (
+    <Card
+      className={`hover:shadow-md transition-all cursor-pointer active:bg-muted/50 ${
+        isSelected ? "ring-2 ring-primary" : ""
+      }`}
+      onClick={handleClick}
+    >
+      <CardContent className="p-4">
+        <div className="flex items-start gap-3">
+          {selectionMode && (
+            <div className="pt-1" onClick={(e) => e.stopPropagation()}>
+              <Checkbox
+                checked={isSelected}
+                onCheckedChange={() => onSelect?.(personnel.id)}
+                className="h-5 w-5"
+              />
+            </div>
+          )}
+          <SecureAvatar
+            bucket="personnel-photos"
+            photoUrl={personnel.photo_url}
+            className="h-12 w-12 flex-shrink-0"
+            fallback={
+              <span className="text-sm">
+                {personnel.first_name[0]}
+                {personnel.last_name[0]}
+              </span>
+            }
+            alt={`${personnel.first_name} ${personnel.last_name}`}
+          />
 
-            <div className="flex-1 min-w-0 space-y-2">
-              <div className="flex items-start justify-between gap-2">
-                <div className="min-w-0 flex-1">
-                  <div className="flex items-center gap-1.5">
-                    <h3 className="font-semibold text-sm truncate">
-                      {personnel.first_name} {personnel.last_name}
-                    </h3>
-                    <ComplianceBadge personnel={personnel} compact />
-                  </div>
-                  <p className="text-xs text-muted-foreground">
-                    {personnel.personnel_number}
-                  </p>
+          <div className="flex-1 min-w-0 space-y-2">
+            <div className="flex items-start justify-between gap-2">
+              <div className="min-w-0 flex-1">
+                <div className="flex items-center gap-1.5">
+                  <h3 className="font-semibold text-sm truncate">
+                    {personnel.first_name} {personnel.last_name}
+                  </h3>
+                  <ComplianceBadge personnel={personnel} compact />
                 </div>
-                <div
-                  className="flex-shrink-0"
-                  onClick={(e) => e.stopPropagation()}
-                >
-                  <DropdownMenu>
-                    <DropdownMenuTrigger asChild>
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        className="h-8 w-8"
-                      >
-                        <MoreVertical className="h-4 w-4" />
-                      </Button>
-                    </DropdownMenuTrigger>
-                    <DropdownMenuContent align="end">
-                      <DropdownMenuItem
-                        onClick={() => navigate(`/personnel/${personnel.id}`)}
-                      >
-                        <Eye className="mr-2 h-4 w-4" />
-                        View
-                      </DropdownMenuItem>
-                      <DropdownMenuItem
-                        onClick={() =>
-                          navigate(`/personnel/${personnel.id}?edit=true`)
-                        }
-                      >
-                        <Edit className="mr-2 h-4 w-4" />
-                        Edit
-                      </DropdownMenuItem>
-                      <DropdownMenuItem
-                        onClick={() => onPrintBadge?.(personnel.id)}
-                      >
-                        <Printer className="mr-2 h-4 w-4" />
-                        Print Badge
-                      </DropdownMenuItem>
-                      <DropdownMenuSeparator />
-                      <DropdownMenuItem
-                        onClick={handleToggleDNH}
-                        className={
-                          personnel.status === "do_not_hire"
-                            ? ""
-                            : "text-destructive"
-                        }
-                      >
-                        <AlertTriangle className="mr-2 h-4 w-4" />
-                        {personnel.status === "do_not_hire"
-                          ? "Remove from DNH"
-                          : "Mark DNH"}
-                      </DropdownMenuItem>
-                      <DropdownMenuItem
-                        onClick={() => setDeleteDialogOpen(true)}
-                        className="text-destructive"
-                      >
-                        <Trash2 className="mr-2 h-4 w-4" />
-                        Deactivate
-                      </DropdownMenuItem>
-                    </DropdownMenuContent>
-                  </DropdownMenu>
-                </div>
+                <p className="text-xs text-muted-foreground">
+                  {personnel.personnel_number}
+                </p>
               </div>
-
-              <div className="flex flex-wrap gap-1">
-                {getStatusBadge()}
-                {getEVerifyBadge()}
-                {personnel.portal_required === false && (
-                  <Badge variant="outline" className="gap-1 text-xs">
-                    <UserX className="h-3 w-3" />
-                    Temp
-                  </Badge>
-                )}
-              </div>
-
-              <div className="space-y-1 text-xs text-muted-foreground">
-                {personnel.email && (
-                  <div className="flex items-center gap-2 min-w-0">
-                    <Mail className="h-3.5 w-3.5 flex-shrink-0" />
-                    <span className="truncate">{personnel.email}</span>
-                  </div>
-                )}
-                {personnel.phone && (
-                  <div className="flex items-center gap-2">
-                    <Phone className="h-3.5 w-3.5 flex-shrink-0" />
-                    <span>{personnel.phone}</span>
-                  </div>
-                )}
-                {personnel.city && personnel.state && (
-                  <div className="flex items-center gap-2">
-                    <MapPin className="h-3.5 w-3.5 flex-shrink-0" />
-                    <span>
-                      {personnel.city}, {personnel.state}
-                    </span>
-                  </div>
-                )}
-                {vendor && (
-                  <div className="flex items-center gap-2">
-                    <Building2 className="h-3.5 w-3.5 flex-shrink-0" />
-                    <Link
-                      to={`/vendors/${vendor.id}`}
-                      className="text-primary hover:underline"
-                      onClick={(e) => e.stopPropagation()}
+              <div
+                className="flex-shrink-0"
+                onClick={(e) => e.stopPropagation()}
+              >
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="h-8 w-8"
                     >
-                      {vendor.name}
-                    </Link>
-                  </div>
-                )}
+                      <MoreVertical className="h-4 w-4" />
+                    </Button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align="end">
+                    <DropdownMenuItem
+                      onClick={() => navigate(`/personnel/${personnel.id}`)}
+                    >
+                      <Eye className="mr-2 h-4 w-4" />
+                      View
+                    </DropdownMenuItem>
+                    <DropdownMenuItem
+                      onClick={() =>
+                        navigate(`/personnel/${personnel.id}?edit=true`)
+                      }
+                    >
+                      <Edit className="mr-2 h-4 w-4" />
+                      Edit
+                    </DropdownMenuItem>
+                    <DropdownMenuItem
+                      onClick={() => onPrintBadge?.(personnel.id)}
+                    >
+                      <Printer className="mr-2 h-4 w-4" />
+                      Print Badge
+                    </DropdownMenuItem>
+                    <DropdownMenuSeparator />
+                    <DropdownMenuItem
+                      onClick={handleToggleDNH}
+                      className={
+                        personnel.status === "do_not_hire"
+                          ? ""
+                          : "text-destructive"
+                      }
+                    >
+                      <AlertTriangle className="mr-2 h-4 w-4" />
+                      {personnel.status === "do_not_hire"
+                        ? "Remove from DNH"
+                        : "Mark DNH"}
+                    </DropdownMenuItem>
+                    <DropdownMenuItem
+                      onClick={() => setDeleteDialogOpen(true)}
+                      className="text-destructive"
+                    >
+                      <Trash2 className="mr-2 h-4 w-4" />
+                      Deactivate
+                    </DropdownMenuItem>
+                  </DropdownMenuContent>
+                </DropdownMenu>
               </div>
+            </div>
 
-              {(personnel.hourly_rate ?? 0) > 0 && (
-                <div className="text-xs font-medium">
-                  Rate: ${personnel.hourly_rate}/hr
+            <div className="flex flex-wrap gap-1">
+              {getStatusBadge()}
+              {getEVerifyBadge()}
+              {personnel.portal_required === false && (
+                <Badge variant="outline" className="gap-1 text-xs">
+                  <UserX className="h-3 w-3" />
+                  Temp
+                </Badge>
+              )}
+            </div>
+
+            <div className="space-y-1 text-xs text-muted-foreground">
+              {personnel.email && (
+                <div className="flex items-center gap-2 min-w-0">
+                  <Mail className="h-3.5 w-3.5 flex-shrink-0" />
+                  <span className="truncate">{personnel.email}</span>
+                </div>
+              )}
+              {personnel.phone && (
+                <div className="flex items-center gap-2">
+                  <Phone className="h-3.5 w-3.5 flex-shrink-0" />
+                  <span>{personnel.phone}</span>
+                </div>
+              )}
+              {personnel.city && personnel.state && (
+                <div className="flex items-center gap-2">
+                  <MapPin className="h-3.5 w-3.5 flex-shrink-0" />
+                  <span>
+                    {personnel.city}, {personnel.state}
+                  </span>
+                </div>
+              )}
+              {vendor && (
+                <div className="flex items-center gap-2">
+                  <Building2 className="h-3.5 w-3.5 flex-shrink-0" />
+                  <Link
+                    to={`/vendors/${vendor.id}`}
+                    className="text-primary hover:underline"
+                    onClick={(e) => e.stopPropagation()}
+                  >
+                    {vendor.name}
+                  </Link>
                 </div>
               )}
             </div>
+
+            {(personnel.hourly_rate ?? 0) > 0 && (
+              <div className="text-xs font-medium">
+                Rate: ${personnel.hourly_rate}/hr
+              </div>
+            )}
           </div>
-        </CardContent>
-      </Card>
+        </div>
+      </CardContent>
+    </Card>
+  );
+
+  const contextMenuContent = (
+    <ContextMenuContent className="w-48">
+      <ContextMenuItem onClick={() => navigate(`/personnel/${personnel.id}`)}>
+        <Eye className="mr-2 h-4 w-4" />
+        View
+      </ContextMenuItem>
+      <ContextMenuItem onClick={() => navigate(`/personnel/${personnel.id}?edit=true`)}>
+        <Edit className="mr-2 h-4 w-4" />
+        Edit
+      </ContextMenuItem>
+      <ContextMenuItem onClick={() => onPrintBadge?.(personnel.id)}>
+        <Printer className="mr-2 h-4 w-4" />
+        Print Badge
+      </ContextMenuItem>
+      <ContextMenuSeparator />
+      <ContextMenuItem
+        onClick={handleToggleDNH}
+        className={personnel.status === "do_not_hire" ? "" : "text-destructive focus:text-destructive"}
+      >
+        <AlertTriangle className="mr-2 h-4 w-4" />
+        {personnel.status === "do_not_hire" ? "Remove from DNH" : "Mark DNH"}
+      </ContextMenuItem>
+      <ContextMenuItem
+        onClick={() => setDeleteDialogOpen(true)}
+        className="text-destructive focus:text-destructive"
+      >
+        <Trash2 className="mr-2 h-4 w-4" />
+        Deactivate
+      </ContextMenuItem>
+    </ContextMenuContent>
+  );
+
+  return (
+    <>
+      {selectionMode ? (
+        cardContent
+      ) : (
+        <ContextMenu>
+          <ContextMenuTrigger asChild>
+            {cardContent}
+          </ContextMenuTrigger>
+          {contextMenuContent}
+        </ContextMenu>
+      )}
 
       <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
         <AlertDialogContent>
