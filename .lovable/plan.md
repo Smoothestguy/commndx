@@ -1,144 +1,76 @@
 
-# Plan: Require Current Password Before Changing Password
+# Plan: Fix Personnel Status Filter Dropdown Not Displaying Options
 
-## Overview
-Add a "Current Password" field to the password change form in Settings. The system will verify the user's current password before allowing them to set a new one, adding an important security layer.
+## Problem Identified
 
----
-
-## Current Behavior
-The password change form currently has:
-- New Password field
-- Confirm Password field
-- No verification of the current password
-
-This allows anyone with access to an active session to change the password without knowing the original password.
-
----
-
-## Proposed Solution
-
-### Changes to Settings.tsx
-
-**1. Add new state for current password**
-```tsx
-const [currentPassword, setCurrentPassword] = useState("");
-```
-
-**2. Update handlePasswordChange function**
-- First verify the current password using `supabase.auth.signInWithPassword`
-- If verification fails, show an error message
-- If verification succeeds, proceed with `supabase.auth.updateUser`
-- Clear all password fields after success
+The `SelectContent` component in `src/components/ui/select.tsx` has an incorrect CSS class on the viewport that constrains its height to match the trigger button height:
 
 ```tsx
-const handlePasswordChange = async (e: React.FormEvent) => {
-  e.preventDefault();
-
-  if (newPassword !== confirmPassword) {
-    toast({ title: "Passwords don't match", ... });
-    return;
-  }
-
-  if (newPassword.length < 6) {
-    toast({ title: "Password too short", ... });
-    return;
-  }
-
-  setIsChangingPassword(true);
-
-  // Step 1: Verify current password
-  const { error: verifyError } = await supabase.auth.signInWithPassword({
-    email: user?.email || "",
-    password: currentPassword,
-  });
-
-  if (verifyError) {
-    setIsChangingPassword(false);
-    toast({
-      title: "Invalid current password",
-      description: "Please enter your correct current password.",
-      variant: "destructive",
-    });
-    return;
-  }
-
-  // Step 2: Update to new password
-  const { error } = await supabase.auth.updateUser({
-    password: newPassword,
-  });
-
-  setIsChangingPassword(false);
-
-  if (error) {
-    toast({ title: "Error changing password", ... });
-  } else {
-    toast({ title: "Password updated", ... });
-    setCurrentPassword("");
-    setNewPassword("");
-    setConfirmPassword("");
-  }
-};
+// Current (BROKEN)
+"h-[var(--radix-select-trigger-height)] w-full min-w-[var(--radix-select-trigger-width)]"
 ```
 
-**3. Add Current Password input field to the form**
+This means:
+- Trigger button height: ~44px
+- Dropdown viewport height: ~44px (same as trigger!)
+- Result: Only 1 option visible, or content gets clipped/hidden
+
+This affects ALL Select dropdowns across the application, including the Personnel status filter.
+
+---
+
+## Solution
+
+Fix the `SelectPrimitive.Viewport` className in `src/components/ui/select.tsx` by removing the height constraint and only keeping the width constraint:
+
 ```tsx
-<div>
-  <Label htmlFor="current-password">Current Password</Label>
-  <Input
-    id="current-password"
-    type="password"
-    value={currentPassword}
-    onChange={(e) => setCurrentPassword(e.target.value)}
-    placeholder="Enter current password"
-    className="mt-1.5"
-    required
-  />
-</div>
+// Fixed
+"w-full min-w-[var(--radix-select-trigger-width)]"
 ```
 
 ---
 
-## Updated Form Layout
+## Technical Details
 
-```
-┌─────────────────────────────────────┐
-│ Security                            │
-│ Update your password                │
-├─────────────────────────────────────┤
-│ Current Password                    │
-│ [••••••••••••••••]                  │
-│                                     │
-│ New Password                        │
-│ [••••••••••••••••]                  │
-│                                     │
-│ Confirm Password                    │
-│ [••••••••••••••••]                  │
-│                                     │
-│ [Update Password]                   │
-└─────────────────────────────────────┘
+**File to modify:** `src/components/ui/select.tsx`
+
+**Line 79-84 (Current):**
+```tsx
+<SelectPrimitive.Viewport
+  className={cn(
+    "p-1",
+    position === "popper" &&
+      "h-[var(--radix-select-trigger-height)] w-full min-w-[var(--radix-select-trigger-width)]",
+  )}
+>
 ```
 
----
-
-## Security Benefits
-
-1. **Session hijacking protection**: Even if someone gains access to an active session, they cannot change the password without knowing the current one
-2. **Verification before change**: Confirms the user's identity before allowing sensitive account changes
-3. **Standard security practice**: Follows industry-standard password change workflows
-
----
-
-## File to Modify
-
-| File | Changes |
-|------|---------|
-| `src/pages/Settings.tsx` | Add current password state, input field, and verification logic |
+**Line 79-84 (Fixed):**
+```tsx
+<SelectPrimitive.Viewport
+  className={cn(
+    "p-1",
+    position === "popper" &&
+      "w-full min-w-[var(--radix-select-trigger-width)]",
+  )}
+>
+```
 
 ---
 
-## Technical Notes
+## Impact
 
-- Uses `supabase.auth.signInWithPassword()` for verification - this is the recommended Supabase approach
-- The verification step doesn't create a new session, it just validates credentials
-- Error handling differentiates between "wrong current password" and "password update failed"
+This fix will restore proper dropdown behavior for:
+- Personnel status filter (Active/Inactive/DNH)
+- E-Verify status filter
+- Vendor filter
+- All other Select components throughout the application
+
+---
+
+## Root Cause
+
+The `h-[var(--radix-select-trigger-height)]` CSS variable sets a fixed height equal to the trigger button. This is incorrect because:
+1. The viewport should expand to fit its content
+2. The `max-h-96` on the parent `SelectContent` already limits maximum height
+3. Setting a fixed height collapses the dropdown to an unusable size
