@@ -87,6 +87,7 @@ import PortalDashboard from "./pages/portal/PortalDashboard";
 import PortalHours from "./pages/portal/PortalHours";
 import PortalProjects from "./pages/portal/PortalProjects";
 import PortalProjectDetail from "./pages/portal/PortalProjectDetail";
+import PortalAssets from "./pages/portal/PortalAssets";
 import PortalDocuments from "./pages/portal/PortalDocuments";
 import PortalReimbursements from "./pages/portal/PortalReimbursements";
 import PortalNotifications from "./pages/portal/PortalNotifications";
@@ -301,6 +302,14 @@ const App = () => {
                       element={
                         <PortalProtectedRoute>
                           <PortalTaxForms />
+                        </PortalProtectedRoute>
+                      }
+                    />
+                    <Route
+                      path="/portal/assets"
+                      element={
+                        <PortalProtectedRoute>
+                          <PortalAssets />
                         </PortalProtectedRoute>
                       }
                     />

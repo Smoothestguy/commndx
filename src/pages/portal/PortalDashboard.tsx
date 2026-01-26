@@ -1,10 +1,12 @@
 import { PortalLayout } from "@/components/portal/PortalLayout";
 import { useCurrentPersonnel, usePersonnelTimeEntries, usePersonnelAssignments, usePersonnelReimbursements, usePersonnelNotifications } from "@/integrations/supabase/hooks/usePortal";
+import { usePersonnelAssignedAssets } from "@/integrations/supabase/hooks/usePortalAssets";
 import { useCompanySettings } from "@/integrations/supabase/hooks/useCompanySettings";
 import { useClockEnabledProjects, useAllOpenClockEntries } from "@/integrations/supabase/hooks/useTimeClock";
 import { ClockStatusCard } from "@/components/portal/ClockStatusCard";
+import { PortalAssetCard } from "@/components/portal/PortalAssetCard";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Clock, Briefcase, Receipt, Bell, TrendingUp, Calendar } from "lucide-react";
+import { Clock, Briefcase, Receipt, Bell, TrendingUp, Calendar, Package } from "lucide-react";
 import { startOfWeek, endOfWeek, startOfMonth, endOfMonth, parseISO, isWithinInterval, format } from "date-fns";
 import { Link, useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
@@ -21,12 +23,13 @@ export default function PortalDashboard() {
   const { data: reimbursements, isLoading: reimbursementsLoading } = usePersonnelReimbursements(personnel?.id);
   const { data: notifications } = usePersonnelNotifications(personnel?.id);
   const { data: companySettings } = useCompanySettings();
+  const { data: assignedAssets, isLoading: assetsLoading } = usePersonnelAssignedAssets(personnel?.id);
   
   // Time clock data
   const { data: clockProjects, isLoading: clockProjectsLoading } = useClockEnabledProjects(personnel?.id);
   const { data: openClockEntries, isLoading: clockEntriesLoading } = useAllOpenClockEntries(personnel?.id);
 
-  const isLoading = personnelLoading || timeLoading || assignmentsLoading || reimbursementsLoading || clockProjectsLoading || clockEntriesLoading;
+  const isLoading = personnelLoading || timeLoading || assignmentsLoading || reimbursementsLoading || clockProjectsLoading || clockEntriesLoading || assetsLoading;
   
   // Get the active clock entry (if any)
   const activeClockEntry = openClockEntries?.[0] || null;
@@ -75,6 +78,9 @@ export default function PortalDashboard() {
 
   // Active projects count
   const activeProjects = assignments?.length || 0;
+
+  // Assigned assets count
+  const assetCount = assignedAssets?.length || 0;
 
   if (isLoading) {
     return (
@@ -237,6 +243,37 @@ export default function PortalDashboard() {
             </CardContent>
           </Card>
         </div>
+
+        {/* Assigned Assets */}
+        {assetCount > 0 && (
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-lg flex items-center gap-2">
+                <Package className="h-5 w-5" />
+                Assigned Assets
+              </CardTitle>
+              <CardDescription>
+                {assetCount} item{assetCount !== 1 ? "s" : ""} assigned to you
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-3">
+              {assignedAssets?.slice(0, 3).map((assignment) => (
+                <PortalAssetCard 
+                  key={assignment.id} 
+                  assignment={assignment}
+                  showProject={true}
+                />
+              ))}
+              {assetCount > 3 && (
+                <Link to="/portal/assets">
+                  <Button variant="ghost" className="w-full">
+                    View All Assets ({assetCount})
+                  </Button>
+                </Link>
+              )}
+            </CardContent>
+          </Card>
+        )}
 
         {/* Recent Activity */}
         {notifications && notifications.length > 0 && (
