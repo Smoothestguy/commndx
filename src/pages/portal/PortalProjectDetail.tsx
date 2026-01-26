@@ -2,15 +2,17 @@ import { useParams, useNavigate } from "react-router-dom";
 import { useMemo } from "react";
 import { PortalLayout } from "@/components/portal/PortalLayout";
 import { useCurrentPersonnel, usePersonnelTimeEntries, usePersonnelAssignments } from "@/integrations/supabase/hooks/usePortal";
+import { usePersonnelProjectAssets } from "@/integrations/supabase/hooks/usePortalAssets";
 import { useCompanySettings } from "@/integrations/supabase/hooks/useCompanySettings";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
-import { ArrowLeft, Briefcase, Calendar, Clock, MapPin, User, Building, Phone, Mail, FileText, DollarSign } from "lucide-react";
+import { ArrowLeft, Briefcase, Calendar, Clock, MapPin, User, Building, Phone, Mail, FileText, DollarSign, Package } from "lucide-react";
 import { format, parseISO, startOfWeek } from "date-fns";
 import { ProjectWeeklyPayHistory } from "@/components/portal/ProjectWeeklyPayHistory";
 import { formatCurrency } from "@/lib/utils";
+import { PortalAssetCard } from "@/components/portal/PortalAssetCard";
 
 export default function PortalProjectDetail() {
   const { id } = useParams<{ id: string }>();
@@ -18,6 +20,7 @@ export default function PortalProjectDetail() {
   const { data: personnel } = useCurrentPersonnel();
   const { data: assignments, isLoading: assignmentsLoading } = usePersonnelAssignments(personnel?.id);
   const { data: timeEntries, isLoading: timeLoading } = usePersonnelTimeEntries(personnel?.id);
+  const { data: projectAssets, isLoading: assetsLoading } = usePersonnelProjectAssets(personnel?.id, id);
   const { data: companySettings } = useCompanySettings();
 
   const overtimeMultiplier = companySettings?.overtime_multiplier ?? 1.5;
@@ -131,7 +134,7 @@ export default function PortalProjectDetail() {
   const totalHolidayPay = weeklyData.totalHolidayPay;
   const totalPay = totalRegularPay + totalOvertimePay + totalHolidayPay;
 
-  const isLoading = assignmentsLoading || timeLoading;
+  const isLoading = assignmentsLoading || timeLoading || assetsLoading;
 
   // Format address
   const formatAddress = () => {
@@ -320,6 +323,30 @@ export default function PortalProjectDetail() {
             </CardHeader>
             <CardContent>
               <p className="text-sm whitespace-pre-wrap">{project.description}</p>
+            </CardContent>
+          </Card>
+        )}
+
+        {/* Assigned Equipment */}
+        {projectAssets && projectAssets.length > 0 && (
+          <Card>
+            <CardHeader className="pb-3">
+              <CardTitle className="text-base flex items-center gap-2">
+                <Package className="h-4 w-4 text-primary" />
+                Assigned Equipment
+              </CardTitle>
+              <CardDescription>
+                {projectAssets.length} item{projectAssets.length !== 1 ? "s" : ""} assigned for this project
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-3">
+              {projectAssets.map((assignment) => (
+                <PortalAssetCard 
+                  key={assignment.id} 
+                  assignment={assignment}
+                  showProject={false}
+                />
+              ))}
             </CardContent>
           </Card>
         )}

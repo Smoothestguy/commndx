@@ -11,7 +11,8 @@ import {
   Menu,
   FileText,
   FolderOpen,
-  Timer
+  Timer,
+  Package
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/contexts/AuthContext";
@@ -25,6 +26,7 @@ const navItems = [
   { href: "/portal/time-clock", label: "Time Clock", icon: Timer },
   { href: "/portal/hours", label: "My Hours", icon: Clock },
   { href: "/portal/projects", label: "My Projects", icon: Briefcase },
+  { href: "/portal/assets", label: "My Assets", icon: Package },
   { href: "/portal/documents", label: "My Documents", icon: FolderOpen },
   { href: "/portal/reimbursements", label: "Reimbursements", icon: Receipt },
   { href: "/portal/tax-forms", label: "Tax Forms", icon: FileText },
