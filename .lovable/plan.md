@@ -1,234 +1,139 @@
 
-# Plan: Enable Right-Click Context Menus
+# Fix: Idle Events Written to Wrong Session After Clock-Out/Clock-In
 
-## Overview
+## Problem Identified
 
-Add right-click context menu support to the application's main interactive components. The context menu will provide quick access to common actions (View, Edit, Delete, etc.) without needing to click a "More" button.
+Your idle time shows 1hr 29min instead of ~29 min because of a **race condition** when clocking out and back in:
 
-## Strategy
+1. Session `e621d2c8` ended at 21:49:04 (lasted 3.5 minutes)
+2. You clocked into new session `c335ab93` at 21:49:06
+3. BUT idle events at 22:06:42 and 22:52:04 were logged to the OLD session `e621d2c8`
+4. This added 46 minutes of false idle to a session that was already closed
 
-Create a reusable approach that:
-1. Adds context menu support to the `EnhancedDataTable` component (used across Personnel, Invoices, Projects, Customers, etc.)
-2. Adds context menu support to key card components
-3. Uses the existing `ContextMenu` component from `@radix-ui/react-context-menu`
+The result: That 3.5-minute session now has 2721 seconds (45+ minutes) of idle time, which inflates your daily total.
 
----
+## Root Cause
 
-## Phase 1: Enhanced Data Table Context Menu
+In `useSessionTracking.ts`, when the idle timeout fires (lines 139-165) or when `resetIdleTimer` logs `idle_end` (lines 123-131), it uses the `sessionId` from React state. However:
 
-### 1.1 Add Context Menu Props to EnhancedDataTable
+1. The `sessionId` state update from `clockIn` may not have propagated yet
+2. The `idleTimeoutRef` was set up with a closure that captured the OLD `sessionId`
+3. Events are logged to whatever `sessionId` the closure captured, not the current one
+
+## Solution
+
+### 1. Immediate Data Fix
+
+Fix the corrupted session in the database:
+- Session `e621d2c8-66fb-4590-b751-6927d4e57e7d`: Recalculate idle to 0 (it was only 3.5 minutes with no valid idle events during its window)
+
+### 2. Code Fix: Use Ref for Session ID in Event Logging
+
+Track `sessionId` in a ref so closures always get the current value:
+
+**File: `src/hooks/useSessionTracking.ts`**
+
+```typescript
+// Add a ref to track current session ID
+const sessionIdRef = useRef<string | null>(null);
+
+// Keep ref in sync with state
+useEffect(() => {
+  sessionIdRef.current = sessionId;
+}, [sessionId]);
+
+// In resetIdleTimer and idle timeout, use sessionIdRef.current instead of sessionId
+```
+
+### 3. Code Fix: Clear Idle Timeout on Clock-Out
+
+Ensure any pending idle timeout is cleared when clocking out so it can't fire for a closed session:
+
+```typescript
+// In clockOut, already done at line 671-674:
+if (idleTimeoutRef.current) {
+  clearTimeout(idleTimeoutRef.current);
+  idleTimeoutRef.current = null;
+}
+```
+
+But also need to do this BEFORE creating a new session in `clockIn` if resuming from a previous state.
+
+### 4. Code Fix: Validate Session is Active Before Logging Events
+
+Add a guard to prevent logging events to closed sessions:
+
+```typescript
+// Before logging idle_start or idle_end:
+if (!isClockedIn || !sessionIdRef.current) return;
+```
+
+## Files to Modify
 
 | File | Change |
 |------|--------|
-| `src/components/shared/EnhancedDataTable.tsx` | Add optional `contextMenuItems` prop and wrap rows with ContextMenuTrigger |
-
-**New Props:**
-```typescript
-interface ContextMenuItem<T> {
-  label: string;
-  icon?: React.ComponentType<{ className?: string }>;
-  onClick: (item: T) => void;
-  variant?: 'default' | 'destructive';
-  condition?: (item: T) => boolean; // Show only when condition is true
-  separator?: boolean; // Add separator after this item
-}
-
-interface EnhancedDataTableProps<T> {
-  // ... existing props
-  contextMenuItems?: ContextMenuItem<T>[];
-}
-```
-
-**Implementation:**
-- Wrap each `TableRow` in a `ContextMenu` + `ContextMenuTrigger`
-- Render `ContextMenuContent` with the provided menu items
-- Only show context menu if `contextMenuItems` is provided
-
-### 1.2 Example Usage (Customers Page)
-
-```typescript
-const contextMenuItems = [
-  {
-    label: "View Details",
-    icon: Eye,
-    onClick: (customer) => navigate(`/customers/${customer.id}`),
-  },
-  {
-    label: "Edit",
-    icon: Edit,
-    onClick: (customer) => setEditingCustomer(customer),
-  },
-  {
-    label: "Delete",
-    icon: Trash2,
-    onClick: (customer) => handleDelete(customer.id),
-    variant: 'destructive',
-    separator: true, // Add separator before
-  },
-];
-
-<EnhancedDataTable
-  tableId="customers"
-  data={customers}
-  columns={columns}
-  contextMenuItems={contextMenuItems}
-/>
-```
-
----
-
-## Phase 2: Card Components with Context Menu
-
-### 2.1 Create a Reusable ContextMenuWrapper Component
-
-| File | Change |
-|------|--------|
-| `src/components/shared/ContextMenuWrapper.tsx` | New reusable component for wrapping any element with context menu |
-
-```typescript
-interface ContextMenuWrapperProps {
-  children: React.ReactNode;
-  items: ContextMenuItem[];
-}
-
-export function ContextMenuWrapper({ children, items }: ContextMenuWrapperProps) {
-  return (
-    <ContextMenu>
-      <ContextMenuTrigger asChild>{children}</ContextMenuTrigger>
-      <ContextMenuContent>
-        {items.map((item, index) => (
-          <Fragment key={index}>
-            {item.separator && <ContextMenuSeparator />}
-            <ContextMenuItem onClick={item.onClick}>
-              {item.icon && <item.icon className="mr-2 h-4 w-4" />}
-              {item.label}
-            </ContextMenuItem>
-          </Fragment>
-        ))}
-      </ContextMenuContent>
-    </ContextMenu>
-  );
-}
-```
-
-### 2.2 Update Card Components
-
-| Component | File |
-|-----------|------|
-| CustomerCard | `src/components/customers/CustomerCard.tsx` |
-| ChangeOrderCard | `src/components/change-orders/ChangeOrderCard.tsx` |
-| VendorBillCard | `src/components/vendor-bills/VendorBillCard.tsx` |
-| MobilePersonnelCard | `src/components/personnel/MobilePersonnelCard.tsx` |
-
-Each card will be wrapped with `ContextMenuWrapper`, reusing the same menu items from the existing DropdownMenu.
-
-**Example - CustomerCard:**
-```typescript
-return (
-  <ContextMenu>
-    <ContextMenuTrigger asChild>
-      <div className="glass rounded-xl p-4...">
-        {/* existing card content */}
-      </div>
-    </ContextMenuTrigger>
-    <ContextMenuContent>
-      <ContextMenuItem onClick={() => onEdit(customer)}>
-        <Edit className="mr-2 h-4 w-4" />
-        Edit
-      </ContextMenuItem>
-      <ContextMenuSeparator />
-      <ContextMenuItem 
-        onClick={() => onDelete(customer.id)}
-        className="text-destructive"
-      >
-        <Trash2 className="mr-2 h-4 w-4" />
-        Delete
-      </ContextMenuItem>
-    </ContextMenuContent>
-  </ContextMenu>
-);
-```
-
----
-
-## Files to Create/Modify
-
-| File | Action | Description |
-|------|--------|-------------|
-| `src/components/shared/ContextMenuWrapper.tsx` | Create | Reusable context menu wrapper component |
-| `src/components/shared/EnhancedDataTable.tsx` | Modify | Add contextMenuItems prop and wrap rows |
-| `src/components/customers/CustomerCard.tsx` | Modify | Add right-click context menu |
-| `src/components/change-orders/ChangeOrderCard.tsx` | Modify | Add right-click context menu |
-| `src/components/vendor-bills/VendorBillCard.tsx` | Modify | Add right-click context menu |
-| `src/components/personnel/MobilePersonnelCard.tsx` | Modify | Add right-click context menu |
-| `src/pages/Customers.tsx` | Modify | Pass contextMenuItems to EnhancedDataTable |
-| `src/pages/Projects.tsx` | Modify | Pass contextMenuItems to EnhancedDataTable |
-| `src/pages/Invoices.tsx` | Modify | Pass contextMenuItems to EnhancedDataTable |
-
----
+| `src/hooks/useSessionTracking.ts` | Add sessionIdRef, use in closures, validate before logging |
 
 ## Technical Details
 
-### EnhancedDataTable Row Rendering Update
+### The Race Condition Flow
 
-```typescript
-// Before
-<TableRow key={item.id} onClick={() => onRowClick?.(item)}>
-  {/* cells */}
-</TableRow>
-
-// After
-{contextMenuItems ? (
-  <ContextMenu key={item.id}>
-    <ContextMenuTrigger asChild>
-      <TableRow onClick={() => onRowClick?.(item)}>
-        {/* cells */}
-      </TableRow>
-    </ContextMenuTrigger>
-    <ContextMenuContent>
-      {contextMenuItems.map((menuItem, idx) => {
-        if (menuItem.condition && !menuItem.condition(item)) return null;
-        return (
-          <Fragment key={idx}>
-            {menuItem.separator && <ContextMenuSeparator />}
-            <ContextMenuItem
-              onClick={(e) => {
-                e.stopPropagation();
-                menuItem.onClick(item);
-              }}
-              className={menuItem.variant === 'destructive' ? 'text-destructive' : ''}
-            >
-              {menuItem.icon && <menuItem.icon className="mr-2 h-4 w-4" />}
-              {menuItem.label}
-            </ContextMenuItem>
-          </Fragment>
-        );
-      })}
-    </ContextMenuContent>
-  </ContextMenu>
-) : (
-  <TableRow key={item.id} onClick={() => onRowClick?.(item)}>
-    {/* cells */}
-  </TableRow>
-)}
+```text
+21:49:04 - Clock out from session A (e621d2c8)
+         - idleTimeoutRef still has closure with sessionId = "e621d2c8"
+21:49:06 - Clock in to session B (c335ab93)
+         - setSessionId("c335ab93") called
+         - BUT old closure in idleTimeoutRef still references "e621d2c8"
+22:06:42 - Idle timeout fires (5 min of inactivity)
+         - Logs idle_start to "e621d2c8" (wrong session!)
+22:52:04 - User activity detected
+         - Logs idle_end to "e621d2c8" (wrong session!)
 ```
 
----
+### Fix: Ref-Based Session ID
 
-## User Experience
+```typescript
+// Line 35: Add ref
+const [sessionId, setSessionId] = useState<string | null>(null);
+const sessionIdRef = useRef<string | null>(null);
 
-After implementation:
-- **Tables**: Right-click any row to see View, Edit, Delete options (and page-specific actions)
-- **Cards**: Right-click any card to see the same options as the "..." dropdown menu
-- **Consistency**: Context menu items mirror the existing dropdown menus for familiar UX
-- **Desktop-first**: Context menus primarily benefit desktop users with mice
-- **Accessibility**: Left-click and dropdown menus remain fully functional
+// Line 419 area: Keep in sync
+useEffect(() => {
+  sessionIdRef.current = sessionId;
+}, [sessionId]);
 
----
+// Line 123-131: Use ref instead of state
+if (sessionIdRef.current && user && isPrimaryTabRef.current) {
+  supabase.from("session_activity_log").insert([{
+    session_id: sessionIdRef.current,  // Use ref
+    // ...
+  }]);
+}
 
-## Benefits
+// Line 156-163: Use ref instead of state
+if (sessionIdRef.current && user) {
+  supabase.from("session_activity_log").insert([{
+    session_id: sessionIdRef.current,  // Use ref
+    // ...
+  }]);
+}
+```
 
-1. **Faster workflows** - Power users can right-click instead of finding the "..." button
-2. **Familiar UX** - Standard desktop convention that users expect
-3. **No UI clutter** - Context menu is hidden until needed
-4. **Reusable** - `ContextMenuWrapper` can be applied to any component
+### Additional Guard: Check Session is Still Active
+
+```typescript
+// In idle timeout callback (line 139):
+idleTimeoutRef.current = setTimeout(() => {
+  // Add guard: only log if still clocked in with valid session
+  if (!isClockedIn || !sessionIdRef.current) return;
+  if (document.hidden) return;
+  // ... rest of code
+}, IDLE_TIMEOUT_MS);
+```
+
+## Expected Result
+
+After the fix:
+- Your corrupted session will be corrected (45 min idle removed)
+- Future sessions won't have idle events logged to closed sessions
+- Daily total will accurately reflect actual idle time
