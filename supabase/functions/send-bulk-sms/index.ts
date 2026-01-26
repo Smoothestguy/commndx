@@ -6,10 +6,11 @@ const corsHeaders = {
 };
 
 interface BulkSMSRequest {
-  projectId: string;
-  projectName: string;
+  projectId?: string;
+  projectName?: string;
   content: string;
   recipientIds: string[];
+  messageContext?: string; // 'onboarding_reminder', 'project_notification', etc.
 }
 
 interface RecipientResult {
@@ -66,11 +67,11 @@ Deno.serve(async (req) => {
     }
 
     // Parse request body
-    const { projectId, projectName, content, recipientIds }: BulkSMSRequest = await req.json();
+    const { projectId, projectName, content, recipientIds, messageContext }: BulkSMSRequest = await req.json();
 
-    if (!projectId || !content || !recipientIds?.length) {
+    if (!content || !recipientIds?.length) {
       return new Response(
-        JSON.stringify({ error: "Missing required fields: projectId, content, recipientIds" }),
+        JSON.stringify({ error: "Missing required fields: content, recipientIds" }),
         { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
@@ -134,9 +135,9 @@ Deno.serve(async (req) => {
           status: "pending",
           sent_by: user.id,
           payload: {
-            notification_type: "bulk_notification",
-            project_id: projectId,
-            project_name: projectName,
+            notification_type: messageContext || "bulk_notification",
+            project_id: projectId || null,
+            project_name: projectName || null,
             bulk_batch_id: batchId,
           },
         })

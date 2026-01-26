@@ -3,9 +3,10 @@ import { useSearchParams } from "react-router-dom";
 import { ConversationList } from "@/components/messaging/ConversationList";
 import { ConversationThread } from "@/components/messaging/ConversationThread";
 import { NewConversationDialog } from "@/components/messaging/NewConversationDialog";
+import { OnboardingReminderDialog } from "@/components/messaging/OnboardingReminderDialog";
 import { Button } from "@/components/ui/button";
 import { useConversations, Conversation } from "@/integrations/supabase/hooks/useConversations";
-import { Plus, MessageCircle } from "lucide-react";
+import { Plus, MessageCircle, ClipboardList } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
@@ -15,6 +16,7 @@ export function MessagesInbox() {
   const conversationId = searchParams.get("conversation");
   const [selectedConversation, setSelectedConversation] = useState<Conversation | null>(null);
   const [newConversationOpen, setNewConversationOpen] = useState(false);
+  const [onboardingReminderOpen, setOnboardingReminderOpen] = useState(false);
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
 
   const { data: conversations } = useConversations();
@@ -102,10 +104,20 @@ export function MessagesInbox() {
           <MessageCircle className="h-5 w-5 text-muted-foreground" />
           <h3 className="text-lg font-semibold">Conversations</h3>
         </div>
-        <Button onClick={() => setNewConversationOpen(true)} size="sm">
-          <Plus className="h-4 w-4 mr-2" />
-          New Message
-        </Button>
+        <div className="flex items-center gap-2">
+          <Button
+            onClick={() => setOnboardingReminderOpen(true)}
+            variant="outline"
+            size="sm"
+          >
+            <ClipboardList className="h-4 w-4 mr-2" />
+            Onboarding Reminders
+          </Button>
+          <Button onClick={() => setNewConversationOpen(true)} size="sm">
+            <Plus className="h-4 w-4 mr-2" />
+            New Message
+          </Button>
+        </div>
       </div>
 
       {/* Main content */}
@@ -144,6 +156,11 @@ export function MessagesInbox() {
         open={newConversationOpen}
         onOpenChange={setNewConversationOpen}
         onConversationCreated={handleConversationCreated}
+      />
+
+      <OnboardingReminderDialog
+        open={onboardingReminderOpen}
+        onOpenChange={setOnboardingReminderOpen}
       />
     </div>
   );
