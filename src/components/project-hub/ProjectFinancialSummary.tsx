@@ -17,6 +17,8 @@ interface FinancialData {
   grossMargin: number;
   // Net profit fields
   totalLaborCost: number;
+  billableLaborCost?: number;
+  nonBillableLaborCost?: number;
   totalOtherExpenses: number;
   netProfit: number;
   netMargin: number;
@@ -80,7 +82,7 @@ export function ProjectFinancialSummary({ data }: ProjectFinancialSummaryProps) 
         <div className="grid gap-4 sm:grid-cols-2 pt-4 border-t border-border">
           <div className="space-y-3">
             <p className="text-sm text-muted-foreground flex items-center gap-1">
-              <Truck className="h-3 w-3" /> Vendor PO Costs
+              <Truck className="h-3 w-3" /> Total Costs
             </p>
             <p className="text-2xl font-bold">
               {formatCurrency(data.totalPOValue + data.totalLaborCost + data.totalOtherExpenses)}
@@ -94,6 +96,23 @@ export function ProjectFinancialSummary({ data }: ProjectFinancialSummaryProps) 
                 </span>
                 <span className="font-medium">{formatCurrency(data.totalLaborCost)}</span>
               </div>
+              {/* Show billable/non-billable breakdown if available */}
+              {(data.billableLaborCost !== undefined || data.nonBillableLaborCost !== undefined) && (
+                <div className="pl-4 space-y-1">
+                  {data.billableLaborCost !== undefined && data.billableLaborCost > 0 && (
+                    <div className="flex justify-between items-center text-xs">
+                      <span className="text-muted-foreground">Billable</span>
+                      <span>{formatCurrency(data.billableLaborCost)}</span>
+                    </div>
+                  )}
+                  {data.nonBillableLaborCost !== undefined && data.nonBillableLaborCost > 0 && (
+                    <div className="flex justify-between items-center text-xs">
+                      <span className="text-muted-foreground">Non-Billable</span>
+                      <span>{formatCurrency(data.nonBillableLaborCost)}</span>
+                    </div>
+                  )}
+                </div>
+              )}
               <div className="flex justify-between items-center text-sm">
                 <span className="text-muted-foreground flex items-center gap-1">
                   <Minus className="h-3 w-3" /> Other Expenses

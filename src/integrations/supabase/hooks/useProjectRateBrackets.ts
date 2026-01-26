@@ -9,6 +9,7 @@ export interface ProjectRateBracket {
   bill_rate: number;
   overtime_multiplier: number;
   is_active: boolean;
+  is_billable: boolean;
   created_at: string;
   updated_at: string;
 }
@@ -19,6 +20,7 @@ export interface RateBracketInsert {
   bill_rate: number;
   overtime_multiplier?: number;
   is_active?: boolean;
+  is_billable?: boolean;
 }
 
 export interface RateBracketUpdate {
@@ -27,6 +29,7 @@ export interface RateBracketUpdate {
   bill_rate?: number;
   overtime_multiplier?: number;
   is_active?: boolean;
+  is_billable?: boolean;
 }
 
 // Fetch all rate brackets for a project
@@ -81,9 +84,10 @@ export function useAddRateBracket() {
         .insert({
           project_id: bracket.project_id,
           name: bracket.name,
-          bill_rate: bracket.bill_rate,
+          bill_rate: bracket.is_billable === false ? 0 : bracket.bill_rate,
           overtime_multiplier: bracket.overtime_multiplier ?? 1.5,
           is_active: bracket.is_active ?? true,
+          is_billable: bracket.is_billable ?? true,
         })
         .select()
         .single();
