@@ -54,11 +54,21 @@ export default function Settings() {
     isUpdating: isUpdatingPrefs,
   } = useUserDisplayPreferences();
   const [isChangingPassword, setIsChangingPassword] = useState(false);
+  const [currentPassword, setCurrentPassword] = useState("");
   const [newPassword, setNewPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
 
   const handlePasswordChange = async (e: React.FormEvent) => {
     e.preventDefault();
+
+    if (!currentPassword) {
+      toast({
+        title: "Current password required",
+        description: "Please enter your current password.",
+        variant: "destructive",
+      });
+      return;
+    }
 
     if (newPassword !== confirmPassword) {
       toast({
@@ -80,6 +90,23 @@ export default function Settings() {
 
     setIsChangingPassword(true);
 
+    // Step 1: Verify current password
+    const { error: verifyError } = await supabase.auth.signInWithPassword({
+      email: user?.email || "",
+      password: currentPassword,
+    });
+
+    if (verifyError) {
+      setIsChangingPassword(false);
+      toast({
+        title: "Invalid current password",
+        description: "Please enter your correct current password.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    // Step 2: Update to new password
     const { error } = await supabase.auth.updateUser({
       password: newPassword,
     });
@@ -97,6 +124,7 @@ export default function Settings() {
         title: "Password updated",
         description: "Your password has been successfully changed.",
       });
+      setCurrentPassword("");
       setNewPassword("");
       setConfirmPassword("");
     }
@@ -170,6 +198,18 @@ export default function Settings() {
                 </CardHeader>
                 <CardContent className="pt-5">
                   <form onSubmit={handlePasswordChange} className="space-y-4">
+                    <div>
+                      <Label htmlFor="current-password">Current Password</Label>
+                      <Input
+                        id="current-password"
+                        type="password"
+                        value={currentPassword}
+                        onChange={(e) => setCurrentPassword(e.target.value)}
+                        placeholder="Enter current password"
+                        className="mt-1.5"
+                        required
+                      />
+                    </div>
                     <div>
                       <Label htmlFor="new-password">New Password</Label>
                       <Input
