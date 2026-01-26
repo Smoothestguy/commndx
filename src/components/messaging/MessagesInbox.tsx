@@ -95,7 +95,7 @@ export function MessagesInbox() {
   };
 
   return (
-    <div className="flex flex-col h-[calc(100vh-20rem)]">
+    <div className="flex flex-col h-[calc(100vh-10rem)]">
       {/* Header with New Message button */}
       <div className="flex items-center justify-between mb-4">
         <div className="flex items-center gap-2">
