@@ -1,76 +1,61 @@
 
-# Plan: Fix Personnel Status Filter Dropdown Not Displaying Options
+
+# Plan: Fix Existing Vendor Record for Andrés Felipe Alcaraz López
 
 ## Problem Identified
 
-The `SelectContent` component in `src/components/ui/select.tsx` has an incorrect CSS class on the viewport that constrains its height to match the trigger button height:
+The vendor record for **Andrés Felipe Alcaraz López** was created before my code fix was deployed. As a result, the vendor has incorrect data:
 
-```tsx
-// Current (BROKEN)
-"h-[var(--radix-select-trigger-height)] w-full min-w-[var(--radix-select-trigger-width)]"
-```
+| Field | Current Value | Should Be |
+|-------|--------------|-----------|
+| `vendor_type` | `supplier` | `personnel` |
+| `track_1099` | `false` | `true` |
+| `tax_id` | `null` | `082415208` (from personnel SSN) |
 
-This means:
-- Trigger button height: ~44px
-- Dropdown viewport height: ~44px (same as trigger!)
-- Result: Only 1 option visible, or content gets clipped/hidden
-
-This affects ALL Select dropdowns across the application, including the Personnel status filter.
+The personnel record (`a235edf4-d675-4e89-a38e-21cc9deb0675`) is correctly linked to the vendor (`8269ef6a-bf14-42a7-88e5-35673571b849`), but the vendor data needs to be corrected.
 
 ---
 
 ## Solution
 
-Fix the `SelectPrimitive.Viewport` className in `src/components/ui/select.tsx` by removing the height constraint and only keeping the width constraint:
+Update the existing vendor record directly in the database to have the correct values.
 
-```tsx
-// Fixed
-"w-full min-w-[var(--radix-select-trigger-width)]"
+### Database Update Required
+
+```sql
+UPDATE vendors
+SET 
+  vendor_type = 'personnel',
+  track_1099 = true,
+  tax_id = '082415208'
+WHERE id = '8269ef6a-bf14-42a7-88e5-35673571b849';
 ```
 
 ---
 
-## Technical Details
+## After Fix Verification
 
-**File to modify:** `src/components/ui/select.tsx`
-
-**Line 79-84 (Current):**
-```tsx
-<SelectPrimitive.Viewport
-  className={cn(
-    "p-1",
-    position === "popper" &&
-      "h-[var(--radix-select-trigger-height)] w-full min-w-[var(--radix-select-trigger-width)]",
-  )}
->
-```
-
-**Line 79-84 (Fixed):**
-```tsx
-<SelectPrimitive.Viewport
-  className={cn(
-    "p-1",
-    position === "popper" &&
-      "w-full min-w-[var(--radix-select-trigger-width)]",
-  )}
->
-```
+Once updated, the vendor record will have:
+- `vendor_type`: `personnel` - Correctly identifies this as a personnel-linked vendor
+- `track_1099`: `true` - Enables 1099 tax tracking
+- `tax_id`: `082415208` - Tax identifier for QuickBooks sync
 
 ---
 
-## Impact
+## QuickBooks Sync (Optional)
 
-This fix will restore proper dropdown behavior for:
-- Personnel status filter (Active/Inactive/DNH)
-- E-Verify status filter
-- Vendor filter
-- All other Select components throughout the application
+After the database update, if QuickBooks integration is connected, you may want to trigger a sync to push the updated tax information to QuickBooks:
+- Go to the Vendor detail page
+- Use the "Sync to QuickBooks" action
 
 ---
 
-## Root Cause
+## Future Prevention
 
-The `h-[var(--radix-select-trigger-height)]` CSS variable sets a fixed height equal to the trigger button. This is incorrect because:
-1. The viewport should expand to fit its content
-2. The `max-h-96` on the parent `SelectContent` already limits maximum height
-3. Setting a fixed height collapses the dropdown to an unusable size
+The code fix I implemented earlier ensures that any **new** vendor records created from the `ConvertRecordTypeDialog` will automatically have the correct:
+- `vendor_type: 'personnel'`
+- `track_1099: true`
+- `tax_id` populated from the personnel's SSN
+
+This was a one-time issue caused by timing between the code change and deployment.
+
