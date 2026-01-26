@@ -3,10 +3,11 @@ import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 
 interface BulkSMSParams {
-  projectId: string;
-  projectName: string;
+  projectId?: string;
+  projectName?: string;
   content: string;
   recipientIds: string[];
+  messageContext?: string;
 }
 
 interface RecipientResult {
