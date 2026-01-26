@@ -2,10 +2,16 @@ import { Card, CardContent } from "@/components/ui/card";
 import { SecureAvatar } from "@/components/ui/secure-avatar";
 import { Badge } from "@/components/ui/badge";
 import { Checkbox } from "@/components/ui/checkbox";
-import { Mail, Phone, MapPin, AlertTriangle, Building2 } from "lucide-react";
+import { Mail, Phone, MapPin, AlertTriangle, Building2, Eye, Edit } from "lucide-react";
 import { useNavigate, Link } from "react-router-dom";
 import { useVendors } from "@/integrations/supabase/hooks/useVendors";
 import { ComplianceBadge } from "./ComplianceBadge";
+import {
+  ContextMenu,
+  ContextMenuContent,
+  ContextMenuItem,
+  ContextMenuTrigger,
+} from "@/components/ui/context-menu";
 import type { Database } from "@/integrations/supabase/types";
 
 type Personnel = Database["public"]["Tables"]["personnel"]["Row"];
@@ -68,7 +74,7 @@ export const PersonnelCard = ({
     }
   };
 
-  return (
+  const cardContent = (
     <Card
       className={`hover:shadow-md transition-all cursor-pointer ${
         isSelected ? "ring-2 ring-primary" : ""
@@ -157,5 +163,28 @@ export const PersonnelCard = ({
         </div>
       </CardContent>
     </Card>
+  );
+
+  // Only wrap in context menu when not in selection mode
+  if (selectionMode) {
+    return cardContent;
+  }
+
+  return (
+    <ContextMenu>
+      <ContextMenuTrigger asChild>
+        {cardContent}
+      </ContextMenuTrigger>
+      <ContextMenuContent className="w-48">
+        <ContextMenuItem onClick={() => navigate(`/personnel/${personnel.id}`)}>
+          <Eye className="mr-2 h-4 w-4" />
+          View Details
+        </ContextMenuItem>
+        <ContextMenuItem onClick={() => navigate(`/personnel/${personnel.id}?edit=true`)}>
+          <Edit className="mr-2 h-4 w-4" />
+          Edit
+        </ContextMenuItem>
+      </ContextMenuContent>
+    </ContextMenu>
   );
 };
