@@ -82,6 +82,7 @@ import Conversations from "./pages/Conversations";
 import PrivacyPolicy from "./pages/legal/PrivacyPolicy";
 import TermsOfService from "./pages/legal/TermsOfService";
 import EULA from "./pages/legal/EULA";
+import Copyright from "./pages/legal/Copyright";
 import NotFound from "./pages/NotFound";
 import PortalDashboard from "./pages/portal/PortalDashboard";
 import PortalHours from "./pages/portal/PortalHours";
@@ -199,6 +200,7 @@ const App = () => {
                     <Route path="/legal/privacy" element={<PrivacyPolicy />} />
                     <Route path="/legal/terms" element={<TermsOfService />} />
                     <Route path="/legal/eula" element={<EULA />} />
+                    <Route path="/legal/copyright" element={<Copyright />} />
                     {/* Public Application Form */}
                     <Route
                       path="/apply/:token"
