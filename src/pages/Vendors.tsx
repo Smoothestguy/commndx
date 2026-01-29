@@ -215,10 +215,15 @@ const Vendors = () => {
           return false;
         }
         
-        const matchesSearch =
-          v.name.toLowerCase().includes(search.toLowerCase()) ||
-          (v.specialty && v.specialty.toLowerCase().includes(search.toLowerCase())) ||
-          (v.company && v.company.toLowerCase().includes(search.toLowerCase()));
+      const searchLower = search.toLowerCase();
+      const matchesSearch =
+        v.name.toLowerCase().includes(searchLower) ||
+        v.email.toLowerCase().includes(searchLower) ||
+        (v.phone && v.phone.toLowerCase().includes(searchLower)) ||
+        (v.specialty && v.specialty.toLowerCase().includes(searchLower)) ||
+        (v.company && v.company.toLowerCase().includes(searchLower)) ||
+        (v.account_number && v.account_number.toLowerCase().includes(searchLower)) ||
+        (v.tax_id && v.tax_id.toLowerCase().includes(searchLower));
 
         const matchesStatus = statusFilter === "all" || v.status === statusFilter;
         const matchesType = typeFilter === "all" || v.vendor_type === typeFilter;
