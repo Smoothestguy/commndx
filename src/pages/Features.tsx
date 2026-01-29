@@ -1,4 +1,5 @@
 import { SEO } from "@/components/SEO";
+import commandXLogo from "@/assets/command-x-logo.png";
 import { 
   LayoutDashboard, 
   FolderKanban, 
@@ -295,9 +296,11 @@ const Features = () => {
         {/* Hero Section */}
         <div className="bg-gradient-to-br from-primary/10 via-background to-accent/10 py-16 px-4 sm:px-6 lg:px-8">
           <div className="max-w-5xl mx-auto text-center">
-            <h1 className="text-4xl sm:text-5xl font-bold text-foreground mb-4 font-heading">
-              Command X
-            </h1>
+            <img 
+              src={commandXLogo} 
+              alt="Command X Logo" 
+              className="h-20 sm:h-28 mx-auto mb-6 invert dark:invert-0"
+            />
             <p className="text-xl text-muted-foreground mb-6 max-w-3xl mx-auto">
               Complete Construction Workforce & Project Management Platform
             </p>
