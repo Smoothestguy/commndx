@@ -1,4 +1,4 @@
-import { useParams, useSearchParams, useNavigate } from "react-router-dom";
+import { useParams, useSearchParams, useNavigate, Link } from "react-router-dom";
 import { DetailPageLayout } from "@/components/layout/DetailPageLayout";
 import { SEO } from "@/components/SEO";
 import { usePersonnelById, useResendOnboardingEmail, useUpdatePersonnelRating, useUpdatePersonnel } from "@/integrations/supabase/hooks/usePersonnel";
@@ -374,10 +374,12 @@ const PersonnelDetail = () => {
                     </Badge>
                   )}
                   {personnel.vendor_id && (
-                    <Badge variant="outline" className="gap-1">
-                      <Building2 className="h-3 w-3" />
-                      Linked to Vendor
-                    </Badge>
+                    <Link to={`/vendors/${personnel.vendor_id}`}>
+                      <Badge variant="outline" className="gap-1 cursor-pointer hover:bg-accent">
+                        <Building2 className="h-3 w-3" />
+                        Linked to Vendor
+                      </Badge>
+                    </Link>
                   )}
                   {(personnel as any).portal_required === false && (
                     <Badge variant="secondary" className="gap-1">
