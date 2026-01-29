@@ -561,6 +561,19 @@ serve(async (req) => {
 
     console.log("Updating bill in QuickBooks:", JSON.stringify(qbBill, null, 2));
 
+    // IMPORTANT: Update last_synced_at BEFORE sending to QB to prevent webhook race condition
+    // When QB receives our update, it immediately fires a webhook back. If we update last_synced_at
+    // after the QB call, the webhook might arrive first and overwrite local changes with stale QB data.
+    const syncTimestamp = new Date().toISOString();
+    await supabase
+      .from("quickbooks_bill_mappings")
+      .update({
+        last_synced_at: syncTimestamp,
+        sync_status: "syncing",
+        updated_at: syncTimestamp,
+      })
+      .eq("bill_id", billId);
+
     const result = await qbRequest(
       "POST",
       "/bill?minorversion=65",
@@ -571,13 +584,11 @@ serve(async (req) => {
 
     console.log("QuickBooks bill updated:", result.Bill.Id);
 
-    // Update mapping timestamp
+    // Update mapping status to synced after successful QB update
     await supabase
       .from("quickbooks_bill_mappings")
       .update({
-        last_synced_at: new Date().toISOString(),
         sync_status: "synced",
-        updated_at: new Date().toISOString(),
         error_message: null,
       })
       .eq("bill_id", billId);
