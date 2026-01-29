@@ -1,65 +1,66 @@
 
+# Fix: Vendor Search Fails When Personnel Has No Linked Vendor
 
-# Enhance Vendor Search Functionality
+## Problem Identified
+The vendor search in the "Link Personnel to Vendor" dialog fails with a **400 error** when the personnel record has no linked vendor (`vendor_id` is null).
 
-## Problem
-The Vendors page search currently only looks at `name`, `specialty`, and `company` fields. Users need to search by additional fields like **email**, **phone**, and **account number** to quickly find vendors.
+**Root Cause:** Line 69 in `PersonnelVendorMergeDialog.tsx`:
+```typescript
+.neq("id", currentVendorId || "")
+```
 
-## Current Behavior
-| Search Location | Fields Searched | Status |
-|-----------------|-----------------|--------|
-| Vendors list page | name, specialty, company | **Missing email, phone, account_number** |
-| Personnel list (in Vendors page) | name, email, phone | Already working |
-| Personnel-to-Vendor link dialog | name, email, phone | Already working |
+When `currentVendorId` is `null` or `undefined`, this passes an empty string `""` to the `.neq()` filter. PostgreSQL then tries to compare `id` (a UUID column) against an empty string, which fails with:
+```
+"invalid input syntax for type uuid: \"\""
+```
+
+**Network request showing the error:**
+```
+GET .../vendors?...&id=neq.&order=name.asc
+Status: 400
+Response: {"code":"22P02","message":"invalid input syntax for type uuid: \"\""}
+```
 
 ## Solution
-Update the vendor filtering logic in `src/pages/Vendors.tsx` to include additional searchable fields.
+Conditionally apply the `.neq()` filter only when `currentVendorId` is a valid value (not null/undefined).
 
-### Changes to `src/pages/Vendors.tsx`
+### Changes to `src/components/merge/PersonnelVendorMergeDialog.tsx`
 
-**Before (lines 218-221):**
+**Before (lines 65-71):**
 ```typescript
-const matchesSearch =
-  v.name.toLowerCase().includes(search.toLowerCase()) ||
-  (v.specialty && v.specialty.toLowerCase().includes(search.toLowerCase())) ||
-  (v.company && v.company.toLowerCase().includes(search.toLowerCase()));
+const { data, error } = await supabase
+  .from("vendors")
+  .select("id, name, email, phone, company, status")
+  .or(`name.ilike.%${searchQuery}%,email.ilike.%${searchQuery}%,phone.ilike.%${searchQuery}%`)
+  .neq("id", currentVendorId || "")
+  .order("name")
+  .limit(20);
 ```
 
 **After:**
 ```typescript
-const searchLower = search.toLowerCase();
-const matchesSearch =
-  v.name.toLowerCase().includes(searchLower) ||
-  v.email.toLowerCase().includes(searchLower) ||
-  (v.phone && v.phone.toLowerCase().includes(searchLower)) ||
-  (v.specialty && v.specialty.toLowerCase().includes(searchLower)) ||
-  (v.company && v.company.toLowerCase().includes(searchLower)) ||
-  (v.account_number && v.account_number.toLowerCase().includes(searchLower)) ||
-  (v.tax_id && v.tax_id.toLowerCase().includes(searchLower));
+let query = supabase
+  .from("vendors")
+  .select("id, name, email, phone, company, status")
+  .or(`name.ilike.%${searchQuery}%,email.ilike.%${searchQuery}%,phone.ilike.%${searchQuery}%`);
+
+// Only exclude current vendor if one is linked
+if (currentVendorId) {
+  query = query.neq("id", currentVendorId);
+}
+
+const { data, error } = await query
+  .order("name")
+  .limit(20);
 ```
-
-### Fields Now Searchable
-
-| Field | Purpose |
-|-------|---------|
-| `name` | Vendor display name |
-| `email` | Contact email |
-| `phone` | Contact phone number |
-| `specialty` | Trade/specialty |
-| `company` | Company name |
-| `account_number` | Internal account reference |
-| `tax_id` | Tax identification (partial match for last digits) |
 
 ## File Changes Summary
 
 | File | Action |
 |------|--------|
-| `src/pages/Vendors.tsx` | Update vendor filter logic to include email, phone, account_number, and tax_id |
+| `src/components/merge/PersonnelVendorMergeDialog.tsx` | Conditionally apply `.neq()` filter only when `currentVendorId` is truthy |
 
 ## Technical Notes
-
-- The `email` field is required (non-nullable), so no null check needed
-- Other fields like `phone`, `account_number`, and `tax_id` are nullable and require null checks
-- Personnel search already includes email and phone (lines 193-196)
-- PersonnelVendorMergeDialog already searches vendors by email and phone via database query (line 68)
-
+- The `.neq("id", "")` call generates an invalid PostgREST filter `id=neq.` which PostgreSQL rejects
+- When no vendor is linked (`currentVendorId` is null), we don't need to exclude any vendor from results
+- This pattern (conditional filter chaining) is common in Supabase queries when filters are optional
