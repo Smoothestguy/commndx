@@ -53,7 +53,7 @@ const keyBenefits: KeyBenefit[] = [
   {
     icon: <MapPin className="h-8 w-8" />,
     title: "Accurate, Verified Payroll",
-    description: "GPS-verified time clocks with geofencing ensure workers clock in from the job site—not their couch",
+    description: "GPS-verified time clocks with geofencing ensure workers clock in from the job site, not their couch",
   },
   {
     icon: <CreditCard className="h-8 w-8" />,
@@ -68,7 +68,7 @@ const keyBenefits: KeyBenefit[] = [
   {
     icon: <Users className="h-8 w-8" />,
     title: "Streamlined Crew Management",
-    description: "From self-registration to W-9s and electronic signatures—onboard and manage your workforce digitally",
+    description: "From self-registration to W-9s and electronic signatures, onboard and manage your workforce digitally",
   },
 ];
 
@@ -77,7 +77,7 @@ const featureCategories: FeatureCategory[] = [
     id: "dashboard",
     icon: <LayoutDashboard className="h-6 w-6" />,
     title: "Dashboard & KPIs",
-    description: "Stop guessing, start knowing—see revenue, projects, and staffing at a glance",
+    description: "Stop guessing, start knowing. See revenue, projects, and staffing at a glance",
     features: [
       { text: "Customizable widget-based dashboard" },
       { text: "Real-time KPI stats (revenue, active projects, staffing, pending invoices)" },
@@ -133,7 +133,7 @@ const featureCategories: FeatureCategory[] = [
     id: "financials",
     icon: <FileText className="h-6 w-6" />,
     title: "Financial Documents",
-    description: "Get paid faster—streamline the path from estimate to invoice to cash",
+    description: "Get paid faster. Streamline the path from estimate to invoice to cash",
     features: [
       { text: "Estimates with line items, tax rates, and customer approval workflow", highlight: "Faster approvals" },
       { text: "Job Orders generated from approved estimates with progress billing" },
@@ -165,7 +165,7 @@ const featureCategories: FeatureCategory[] = [
     id: "personnel",
     icon: <UserCheck className="h-6 w-6" />,
     title: "Personnel Management",
-    description: "Hire to retire—manage your crew with digital onboarding and compliance tracking",
+    description: "Hire to retire. Manage your crew with digital onboarding and compliance tracking",
     features: [
       { text: "Full personnel records with photo" },
       { text: "Contact information, address, SSN (masked)" },
@@ -200,7 +200,7 @@ const featureCategories: FeatureCategory[] = [
     id: "quickbooks",
     icon: <RefreshCw className="h-6 w-6" />,
     title: "QuickBooks Integration",
-    description: "End double-entry forever—your books stay in sync automatically",
+    description: "End double-entry forever. Your books stay in sync automatically",
     features: [
       { text: "Products: Import/export product catalog" },
       { text: "Customers: Sync customer records" },
@@ -264,7 +264,7 @@ const featureCategories: FeatureCategory[] = [
     id: "platform",
     icon: <Smartphone className="h-6 w-6" />,
     title: "Platform Features",
-    description: "Work from anywhere—native apps for iOS, Android, macOS, Windows, and Web",
+    description: "Work from anywhere. Native apps for iOS, Android, macOS, Windows, and Web",
     features: [
       { text: "Web: React with responsive design" },
       { text: "iOS: Native Capacitor app" },
