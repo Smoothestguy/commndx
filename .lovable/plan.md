@@ -1,72 +1,80 @@
 
-
-# Fix: Allow Formatted Phone Number Search
+# Fix: Allow Formatted Phone Number Search on Vendors Page
 
 ## Problem
-Phone numbers are stored in the database as digits only (e.g., `9045345243`), but users often paste formatted phone numbers like `(904) 534-5243`. The current search looks for the exact string, which doesn't match.
+Phone number search on the Vendors page fails when pasting formatted phone numbers like `(904) 534-5243`. The search compares the exact formatted string against database values stored as digits only (e.g., `9045345243`).
 
-| Search Input | Stored Value | Match? |
-|--------------|--------------|--------|
-| `9045345243` | `9045345243` | Yes |
-| `(904) 534-5243` | `9045345243` | No |
-| `904-534-5243` | `9045345243` | No |
+**Current behavior in `src/pages/Vendors.tsx`:**
+
+| Search Type | Current Code (Line) | Issue |
+|-------------|---------------------|-------|
+| Vendor phone | `v.phone.toLowerCase().includes(searchLower)` (line 222) | No normalization |
+| Personnel phone | `p.phone.includes(search)` (line 196) | No normalization |
 
 ## Solution
-Normalize the search input by stripping all non-digit characters before searching the phone field. This way, both formatted and unformatted phone numbers will match.
+Normalize the search input by stripping non-digit characters when matching phone numbers. This allows users to paste formatted phone numbers like `(904) 534-5243` which will be converted to `9045345243` for matching.
 
-### Changes to `src/integrations/supabase/hooks/usePersonnel.ts`
+### Changes to `src/pages/Vendors.tsx`
 
-**Before (lines 29-33):**
+**Fix 1: Vendor search (around line 218-226)**
+
+Before:
 ```typescript
-if (filters?.search) {
-  query = query.or(
-    `first_name.ilike.%${filters.search}%,last_name.ilike.%${filters.search}%,email.ilike.%${filters.search}%,phone.ilike.%${filters.search}%,personnel_number.ilike.%${filters.search}%`
-  );
-}
+const searchLower = search.toLowerCase();
+const matchesSearch =
+  v.name.toLowerCase().includes(searchLower) ||
+  v.email.toLowerCase().includes(searchLower) ||
+  (v.phone && v.phone.toLowerCase().includes(searchLower)) ||
+  ...
 ```
 
-**After:**
+After:
 ```typescript
-if (filters?.search) {
-  // Strip non-digits from search for phone matching
-  const phoneSearch = filters.search.replace(/\D/g, '');
-  
-  // Build search conditions - use normalized phone if it has digits
-  const searchConditions = [
-    `first_name.ilike.%${filters.search}%`,
-    `last_name.ilike.%${filters.search}%`,
-    `email.ilike.%${filters.search}%`,
-    `personnel_number.ilike.%${filters.search}%`,
-  ];
-  
-  // Add phone search with normalized digits if there are any
-  if (phoneSearch.length > 0) {
-    searchConditions.push(`phone.ilike.%${phoneSearch}%`);
-  }
-  
-  query = query.or(searchConditions.join(','));
-}
+const searchLower = search.toLowerCase();
+const phoneSearch = search.replace(/\D/g, ''); // Strip non-digits
+const matchesSearch =
+  v.name.toLowerCase().includes(searchLower) ||
+  v.email.toLowerCase().includes(searchLower) ||
+  (v.phone && phoneSearch.length > 0 && v.phone.includes(phoneSearch)) ||
+  ...
 ```
 
-### Also Update `usePersonnelWithRelations` (around lines 127-131)
-Apply the same fix to maintain consistent search behavior.
+**Fix 2: Personnel search in Vendors page (around line 193-196)**
+
+Before:
+```typescript
+const matchesSearch =
+  fullName.includes(search.toLowerCase()) ||
+  p.email.toLowerCase().includes(search.toLowerCase()) ||
+  (p.phone && p.phone.includes(search));
+```
+
+After:
+```typescript
+const phoneSearch = search.replace(/\D/g, ''); // Strip non-digits
+const matchesSearch =
+  fullName.includes(search.toLowerCase()) ||
+  p.email.toLowerCase().includes(search.toLowerCase()) ||
+  (p.phone && phoneSearch.length > 0 && p.phone.includes(phoneSearch));
+```
 
 ## File Changes Summary
 
 | File | Action |
 |------|--------|
-| `src/integrations/supabase/hooks/usePersonnel.ts` | Normalize phone search by stripping non-digits in both `usePersonnel` and `usePersonnelWithRelations` hooks |
+| `src/pages/Vendors.tsx` | Normalize phone search by stripping non-digits for both vendor and personnel filtering |
 
-## How It Works
+## How It Works After Fix
 
 | User Types | Phone Search Becomes | Matches DB Value |
 |------------|---------------------|------------------|
 | `(904) 534-5243` | `9045345243` | `9045345243` Yes |
 | `904-534-5243` | `9045345243` | `9045345243` Yes |
 | `9045345243` | `9045345243` | `9045345243` Yes |
-| `John` | (empty - no digits) | Name search only |
+| `John` | (empty) | Name/email search only |
 
 ## Technical Notes
-- The `replace(/\D/g, '')` regex strips all non-digit characters
-- Other fields (name, email, personnel_number) still use the original search string
-- This matches the input behavior of the `FormattedPhoneInput` component which also stores only digits
+- Uses `replace(/\D/g, '')` to strip all non-digit characters
+- Only applies phone matching when the normalized search has digits (avoids matching empty string)
+- Other fields (name, email, specialty, company, etc.) continue using the original search string
+- This matches the fix already applied to `usePersonnel.ts` hook
