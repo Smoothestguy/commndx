@@ -1,43 +1,80 @@
 
-# Add Copyright Page
+
+# Add Features Overview Page
 
 ## Overview
-Create a dedicated Copyright page that provides comprehensive intellectual property notices, ownership information, and trademark details for Fairfield/Command X.
+Create a comprehensive, publicly accessible page at `/features` that showcases everything Command X does. This page will be accessible without signing in (like the legal pages) so you can easily share it with friends and potential users.
 
 ## Implementation
 
-### 1. Create Copyright Page Component
-**File:** `src/pages/legal/Copyright.tsx`
+### 1. Create Features Page Component
+**File:** `src/pages/Features.tsx`
 
-Create a new legal page following the existing pattern (EULA, TermsOfService, PrivacyPolicy) with:
-- SEO component with title "Copyright Notice"
-- Consistent styling with other legal pages
-- Sections covering:
-  1. **Copyright Ownership** - Statement of copyright ownership by Fairfield
-  2. **All Rights Reserved** - Standard copyright notice with current year
-  3. **Trademarks** - Command X, Fairfield trademarks and logos
-  4. **Permitted Uses** - What users can and cannot do with content
-  5. **User-Generated Content** - Ownership of content users create
-  6. **Third-Party Content** - Attribution and third-party rights
-  7. **DMCA / Takedown Requests** - How to report copyright infringement
-  8. **Contact Information** - admin@fairfieldrg.com for inquiries
+A professionally styled, scannable page with the complete feature overview you provided, organized into visual sections:
+
+**Page Structure:**
+- Hero section with Command X branding and tagline
+- Table of contents for quick navigation
+- Feature categories as collapsible or scrollable sections with icons:
+
+| Section | Features Covered |
+|---------|------------------|
+| Dashboard & KPIs | Widgets, stats, activity feed, quick actions |
+| Project Management | Project lifecycle, assignments, geofencing |
+| Customer Management | Database, contacts, QuickBooks sync |
+| Vendor Management | Bills, payments, documents, portal access |
+| Financial Documents | Estimates, Job Orders, Change Orders, POs, Invoices, Vendor Bills |
+| Time & Attendance | Clock system, GPS geofencing, background tracking |
+| Personnel Management | Database, registration portal, onboarding, badges |
+| Messaging | SMS via Twilio, conversations, typing indicators |
+| QuickBooks Integration | Two-way sync, batch processing, account mapping |
+| Staffing & Recruiting | Job postings, form builder, applicant tracking |
+| User Portals | Personnel, Vendor, Subcontractor, Contractor portals |
+| Security & Admin | Auth, user management, permissions, audit logs |
+| Platform Features | Cross-platform support, desktop, mobile, UI/UX |
+| Document Management | Document center, attachments |
+| Additional Features | AI assistant, reimbursements, legal pages |
+
+**Styling:**
+- Consistent with legal pages (dark/light theme support)
+- Icons from Lucide for each category
+- Responsive grid layout for feature cards
+- Smooth scroll navigation
 
 ### 2. Add Route to App.tsx
-Add the route alongside the other legal pages:
+Add the route in the public routes section (alongside legal pages):
+
 ```tsx
-import Copyright from "./pages/legal/Copyright";
+import Features from "./pages/Features";
 // ...
-<Route path="/legal/copyright" element={<Copyright />} />
+<Route path="/features" element={<Features />} />
 ```
 
-### 3. Cross-Link from Other Legal Pages (Optional Enhancement)
-Add footer links in other legal pages to reference the new Copyright page for comprehensive coverage.
+### 3. Optional: Add Navigation Link
+Consider adding a "Features" link in the sign-in page or legal page footers for discoverability.
 
 ## File Changes Summary
 | File | Action |
 |------|--------|
-| `src/pages/legal/Copyright.tsx` | Create new file |
+| `src/pages/Features.tsx` | Create new file (~400 lines) |
 | `src/App.tsx` | Add import and route |
 
+## Technical Details
+
+**SEO Configuration:**
+```tsx
+<SEO 
+  title="Features" 
+  description="Command X - Complete construction workforce and project management platform. Manage personnel, projects, finances, and operations across iOS, Android, macOS, Windows, and Web."
+  keywords="construction management, workforce management, project tracking, time clock, invoicing, estimates, QuickBooks integration"
+/>
+```
+
+**Accessibility:**
+- Proper heading hierarchy (h1 > h2 > h3)
+- Descriptive link text
+- Keyboard-navigable sections
+
 ## Result
-The Copyright page will be accessible at `/legal/copyright` with full SEO support and consistent styling matching your other legal documents.
+The Features page will be accessible at `/features` (or `/about` if preferred) as a public, shareable link that showcases Command X's full capabilities to anyone without requiring sign-in.
+
