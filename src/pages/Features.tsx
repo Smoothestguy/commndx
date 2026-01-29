@@ -16,10 +16,11 @@ import {
   Smartphone, 
   FileArchive, 
   Sparkles,
-  ChevronDown,
   MapPin,
   CreditCard,
-  Globe
+  Globe,
+  Eye,
+  Zap
 } from "lucide-react";
 import {
   Accordion,
@@ -27,245 +28,279 @@ import {
   AccordionItem,
   AccordionTrigger,
 } from "@/components/ui/accordion";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
 
 interface FeatureCategory {
   id: string;
   icon: React.ReactNode;
   title: string;
   description: string;
-  features: string[];
+  features: { text: string; highlight?: string }[];
 }
+
+interface KeyBenefit {
+  icon: React.ReactNode;
+  title: string;
+  description: string;
+}
+
+const keyBenefits: KeyBenefit[] = [
+  {
+    icon: <Clock className="h-8 w-8" />,
+    title: "Save Hours Every Week",
+    description: "Automated invoicing and two-way QuickBooks sync eliminate double-entry and manual data transfers",
+  },
+  {
+    icon: <MapPin className="h-8 w-8" />,
+    title: "Accurate, Verified Payroll",
+    description: "GPS-verified time clocks with geofencing ensure workers clock in from the job site—not their couch",
+  },
+  {
+    icon: <CreditCard className="h-8 w-8" />,
+    title: "Get Paid Faster",
+    description: "Digital estimate approvals, progress billing, and invoice workflows accelerate your cash flow",
+  },
+  {
+    icon: <Eye className="h-8 w-8" />,
+    title: "Complete Project Visibility",
+    description: "Real-time dashboards show costs, progress, and staffing so you always know where things stand",
+  },
+  {
+    icon: <Users className="h-8 w-8" />,
+    title: "Streamlined Crew Management",
+    description: "From self-registration to W-9s and electronic signatures—onboard and manage your workforce digitally",
+  },
+];
 
 const featureCategories: FeatureCategory[] = [
   {
     id: "dashboard",
     icon: <LayoutDashboard className="h-6 w-6" />,
     title: "Dashboard & KPIs",
-    description: "Real-time business intelligence at your fingertips",
+    description: "Stop guessing, start knowing—see revenue, projects, and staffing at a glance",
     features: [
-      "Customizable widget-based dashboard",
-      "Real-time KPI stats (revenue, active projects, staffing, pending invoices)",
-      "Activity feed showing recent actions",
-      "Quick action buttons for common tasks",
-      "Welcome banner with user greeting",
-      "Trash widget to recover deleted items",
+      { text: "Customizable widget-based dashboard" },
+      { text: "Real-time KPI stats (revenue, active projects, staffing, pending invoices)" },
+      { text: "Activity feed showing recent actions" },
+      { text: "Quick action buttons for common tasks" },
+      { text: "Welcome banner with user greeting" },
+      { text: "Trash widget to recover deleted items" },
     ],
   },
   {
     id: "projects",
     icon: <FolderKanban className="h-6 w-6" />,
     title: "Project Management",
-    description: "End-to-end project lifecycle tracking",
+    description: "End-to-end project lifecycle tracking from quote to completion",
     features: [
-      "Create and track projects with statuses: Quote, Task Order, Active, Complete, Canceled",
-      "Individual vs Team project classification",
-      "Personnel assignments to projects",
-      "Site location with GPS coordinates and geofence radius",
-      "Project-level settings for time clock requirements",
-      "Link to customers, estimates, job orders, invoices",
+      { text: "Create and track projects with statuses: Quote, Task Order, Active, Complete, Canceled" },
+      { text: "Individual vs Team project classification" },
+      { text: "Personnel assignments to projects" },
+      { text: "Site location with GPS coordinates and geofence radius", highlight: "Ensures on-site presence" },
+      { text: "Project-level settings for time clock requirements" },
+      { text: "Link to customers, estimates, job orders, invoices" },
     ],
   },
   {
     id: "customers",
     icon: <Users className="h-6 w-6" />,
     title: "Customer Management",
-    description: "Comprehensive customer relationship tracking",
+    description: "Comprehensive customer relationship tracking with QuickBooks sync",
     features: [
-      "Full customer database with contact details",
-      "Company name, address, email, phone",
-      "Link customers to projects and invoices",
-      "Customer-specific estimates and job orders",
-      "Sync with QuickBooks",
+      { text: "Full customer database with contact details" },
+      { text: "Company name, address, email, phone" },
+      { text: "Link customers to projects and invoices" },
+      { text: "Customer-specific estimates and job orders" },
+      { text: "Sync with QuickBooks", highlight: "No double-entry" },
     ],
   },
   {
     id: "vendors",
     icon: <Building2 className="h-6 w-6" />,
     title: "Vendor Management",
-    description: "Streamline vendor relationships and payments",
+    description: "Streamline vendor relationships, payments, and compliance",
     features: [
-      "Vendor database with contact information",
-      "Vendor bills and payment tracking",
-      "Document uploads per vendor",
-      "Specialty and license number tracking",
-      "Tax ID and 1099 tracking",
-      "Vendor portal access management",
-      "Sync with QuickBooks",
+      { text: "Vendor database with contact information" },
+      { text: "Vendor bills and payment tracking" },
+      { text: "Document uploads per vendor" },
+      { text: "Specialty and license number tracking" },
+      { text: "Tax ID and 1099 tracking", highlight: "Stay compliant" },
+      { text: "Vendor portal access management" },
+      { text: "Sync with QuickBooks" },
     ],
   },
   {
     id: "financials",
     icon: <FileText className="h-6 w-6" />,
     title: "Financial Documents",
-    description: "Complete document workflow from estimate to payment",
+    description: "Get paid faster—streamline the path from estimate to invoice to cash",
     features: [
-      "Estimates with line items, tax rates, and customer approval workflow",
-      "Job Orders generated from approved estimates with progress billing",
-      "Change Orders (additive/deductive) with customer approval",
-      "Purchase Orders linked to vendors and job orders",
-      "Invoices with progress billing and QuickBooks sync",
-      "Vendor Bills with approval workflow and payment tracking",
-      "Version history and attachment support",
+      { text: "Estimates with line items, tax rates, and customer approval workflow", highlight: "Faster approvals" },
+      { text: "Job Orders generated from approved estimates with progress billing" },
+      { text: "Change Orders (additive/deductive) with customer approval" },
+      { text: "Purchase Orders linked to vendors and job orders" },
+      { text: "Invoices with progress billing and QuickBooks sync" },
+      { text: "Vendor Bills with approval workflow and payment tracking" },
+      { text: "Version history and attachment support" },
     ],
   },
   {
     id: "timeclock",
     icon: <Clock className="h-6 w-6" />,
     title: "Time & Attendance",
-    description: "GPS-verified time tracking with geofencing",
+    description: "Eliminate buddy punching and payroll disputes with location-verified clock-ins",
     features: [
-      "Clock In/Out with GPS location capture",
-      "Lunch break start/end with duration tracking",
-      "Real-time hours calculation with sub-second precision",
-      "Project-based time tracking",
-      "GPS geofencing with configurable radius",
-      "Haversine formula for distance calculation",
-      "Background location tracking on iOS/Android",
-      "Auto-start on device boot",
-      "Personal and team timesheet views",
+      { text: "Clock In/Out with GPS location capture" },
+      { text: "Lunch break start/end with duration tracking" },
+      { text: "Real-time hours calculation with sub-second precision" },
+      { text: "Project-based time tracking" },
+      { text: "GPS geofencing with configurable radius", highlight: "Prevents time theft" },
+      { text: "Haversine formula for distance calculation" },
+      { text: "Background location tracking on iOS/Android" },
+      { text: "Auto-start on device boot" },
+      { text: "Personal and team timesheet views" },
     ],
   },
   {
     id: "personnel",
     icon: <UserCheck className="h-6 w-6" />,
     title: "Personnel Management",
-    description: "Complete workforce administration",
+    description: "Hire to retire—manage your crew with digital onboarding and compliance tracking",
     features: [
-      "Full personnel records with photo",
-      "Contact information, address, SSN (masked)",
-      "Citizenship and immigration status tracking",
-      "Emergency contacts",
-      "Hire date and employment type",
-      "Hourly rate and pay type",
-      "Status tracking: Active, Inactive, Terminated",
-      "Public self-registration portal",
-      "Token-based onboarding with W-9 and contractor agreements",
-      "Electronic signature with scroll-to-read requirement",
-      "Personnel ID badge templates and printing",
+      { text: "Full personnel records with photo" },
+      { text: "Contact information, address, SSN (masked)" },
+      { text: "Citizenship and immigration status tracking" },
+      { text: "Emergency contacts" },
+      { text: "Hire date and employment type" },
+      { text: "Hourly rate and pay type" },
+      { text: "Status tracking: Active, Inactive, Terminated" },
+      { text: "Public self-registration portal", highlight: "Self-service onboarding" },
+      { text: "Token-based onboarding with W-9 and contractor agreements" },
+      { text: "Electronic signature with scroll-to-read requirement" },
+      { text: "Personnel ID badge templates and printing" },
     ],
   },
   {
     id: "messaging",
     icon: <MessageSquare className="h-6 w-6" />,
     title: "Messaging & Communications",
-    description: "Integrated SMS and in-app messaging",
+    description: "Keep field and office aligned with integrated SMS and in-app messaging",
     features: [
-      "SMS messaging via Twilio",
-      "Message status tracking: Pending → Sent → Delivered → Failed",
-      "Twilio webhook for receiving replies",
-      "Conversation-based messaging threads",
-      "Real-time typing indicators",
-      "Read/delivered status indicators",
-      "Bulk SMS to multiple recipients",
-      "Automated assignment notifications",
+      { text: "SMS messaging via Twilio" },
+      { text: "Message status tracking: Pending → Sent → Delivered → Failed" },
+      { text: "Twilio webhook for receiving replies" },
+      { text: "Conversation-based messaging threads" },
+      { text: "Real-time typing indicators" },
+      { text: "Read/delivered status indicators" },
+      { text: "Bulk SMS to multiple recipients" },
+      { text: "Automated assignment notifications", highlight: "Instant updates" },
     ],
   },
   {
     id: "quickbooks",
     icon: <RefreshCw className="h-6 w-6" />,
     title: "QuickBooks Integration",
-    description: "Two-way sync with QuickBooks Online",
+    description: "End double-entry forever—your books stay in sync automatically",
     features: [
-      "Products: Import/export product catalog",
-      "Customers: Sync customer records",
-      "Vendors: Sync with tax ID and 1099 tracking",
-      "Invoices: Create and import invoices",
-      "Estimates: Sync estimates",
-      "Purchase Orders: Export POs",
-      "Vendor Bills: Create bills in QuickBooks",
-      "Batch processing with progress tracking",
-      "Conflict detection and resolution",
-      "Account mapping for expense categories",
+      { text: "Products: Import/export product catalog" },
+      { text: "Customers: Sync customer records" },
+      { text: "Vendors: Sync with tax ID and 1099 tracking" },
+      { text: "Invoices: Create and import invoices" },
+      { text: "Estimates: Sync estimates" },
+      { text: "Purchase Orders: Export POs" },
+      { text: "Vendor Bills: Create bills in QuickBooks" },
+      { text: "Batch processing with progress tracking" },
+      { text: "Conflict detection and resolution" },
+      { text: "Account mapping for expense categories", highlight: "Saves 5+ hours/week" },
     ],
   },
   {
     id: "staffing",
     icon: <Briefcase className="h-6 w-6" />,
     title: "Staffing & Recruiting",
-    description: "End-to-end applicant tracking",
+    description: "End-to-end applicant tracking from job posting to hire",
     features: [
-      "Create task orders for projects",
-      "Generate public job posting links",
-      "Track headcount needed with location and start date",
-      "Drag-and-drop form builder with custom themes",
-      "Application status workflow: Submitted → Reviewing → Approved/Rejected",
-      "Applicant details with photo and answer review",
-      "Bulk actions and notes",
-      "Export to CSV, Excel, PDF, JSON",
-      "Contacted tracking and revoke approval",
+      { text: "Create task orders for projects" },
+      { text: "Generate public job posting links" },
+      { text: "Track headcount needed with location and start date" },
+      { text: "Drag-and-drop form builder with custom themes" },
+      { text: "Application status workflow: Submitted → Reviewing → Approved/Rejected" },
+      { text: "Applicant details with photo and answer review" },
+      { text: "Bulk actions and notes" },
+      { text: "Export to CSV, Excel, PDF, JSON" },
+      { text: "Contacted tracking and revoke approval" },
     ],
   },
   {
     id: "portals",
     icon: <DoorOpen className="h-6 w-6" />,
     title: "User Portals",
-    description: "Dedicated portals for different user types",
+    description: "Dedicated self-service portals reduce admin workload",
     features: [
-      "Personnel Portal: Dashboard, time clock, hours history, documents, reimbursements, tax forms",
-      "Vendor Portal: PO management, bill submission, payment tracking",
-      "Subcontractor Portal: PO viewing, bill submission, back charges",
-      "Contractor Portal: Public bill and expense submission with multi-language support",
+      { text: "Personnel Portal: Dashboard, time clock, hours history, documents, reimbursements, tax forms" },
+      { text: "Vendor Portal: PO management, bill submission, payment tracking" },
+      { text: "Subcontractor Portal: PO viewing, bill submission, back charges" },
+      { text: "Contractor Portal: Public bill and expense submission with multi-language support" },
     ],
   },
   {
     id: "security",
     icon: <Shield className="h-6 w-6" />,
     title: "Security & Administration",
-    description: "Enterprise-grade security and access control",
+    description: "Enterprise-grade security and access control for peace of mind",
     features: [
-      "Email/password authentication",
-      "OAuth: Google and Microsoft sign-in",
-      "Invitation-based access",
-      "Token-based portal access",
-      "Role-based access: Admin, Manager, Accounting",
-      "Granular permission controls",
-      "Audit logs and user activity history",
-      "Session history tracking",
-      "Soft delete with trash recovery",
+      { text: "Email/password authentication" },
+      { text: "OAuth: Google and Microsoft sign-in" },
+      { text: "Invitation-based access" },
+      { text: "Token-based portal access" },
+      { text: "Role-based access: Admin, Manager, Accounting" },
+      { text: "Granular permission controls" },
+      { text: "Audit logs and user activity history" },
+      { text: "Session history tracking" },
+      { text: "Soft delete with trash recovery" },
     ],
   },
   {
     id: "platform",
     icon: <Smartphone className="h-6 w-6" />,
     title: "Platform Features",
-    description: "Native apps for every platform",
+    description: "Work from anywhere—native apps for iOS, Android, macOS, Windows, and Web",
     features: [
-      "Web: React with responsive design",
-      "iOS: Native Capacitor app",
-      "Android: Native Capacitor app",
-      "macOS: Electron desktop app with auto-updates",
-      "Windows: Electron desktop app with auto-updates",
-      "Dark/Light theme support",
-      "Customizable dashboard widgets with drag-and-drop",
-      "Density settings (spreadsheet, compact, normal, relaxed)",
-      "Mobile-first responsive design with bottom navigation",
+      { text: "Web: React with responsive design" },
+      { text: "iOS: Native Capacitor app" },
+      { text: "Android: Native Capacitor app" },
+      { text: "macOS: Electron desktop app with auto-updates" },
+      { text: "Windows: Electron desktop app with auto-updates" },
+      { text: "Dark/Light theme support" },
+      { text: "Customizable dashboard widgets with drag-and-drop" },
+      { text: "Density settings (spreadsheet, compact, normal, relaxed)" },
+      { text: "Mobile-first responsive design with bottom navigation", highlight: "Field + office aligned" },
     ],
   },
   {
     id: "documents",
     icon: <FileArchive className="h-6 w-6" />,
     title: "Document Management",
-    description: "Centralized document storage and organization",
+    description: "Centralized document storage with role-based access control",
     features: [
-      "Centralized document storage",
-      "Category-based organization",
-      "File upload support",
-      "Access control by role",
-      "Attach files to estimates, invoices, POs",
-      "Image lightbox preview",
+      { text: "Centralized document storage" },
+      { text: "Category-based organization" },
+      { text: "File upload support" },
+      { text: "Access control by role" },
+      { text: "Attach files to estimates, invoices, POs" },
+      { text: "Image lightbox preview" },
     ],
   },
   {
     id: "additional",
     icon: <Sparkles className="h-6 w-6" />,
     title: "Additional Features",
-    description: "Extended functionality and tools",
+    description: "Extended functionality and tools to boost productivity",
     features: [
-      "AI Assistant for development support",
-      "Personnel expense reimbursement requests",
-      "Visual network map demonstrations",
-      "Legal pages: Privacy Policy, Terms of Service, EULA, Copyright",
+      { text: "AI Assistant for development support" },
+      { text: "Personnel expense reimbursement requests" },
+      { text: "Visual network map demonstrations" },
+      { text: "Legal pages: Privacy Policy, Terms of Service, EULA, Copyright" },
     ],
   },
 ];
@@ -329,6 +364,39 @@ const Features = () => {
           </div>
         </div>
 
+        {/* Key Benefits Section */}
+        <div className="bg-primary/5 border-y border-border">
+          <div className="max-w-5xl mx-auto py-12 px-4 sm:px-6 lg:px-8">
+            <div className="text-center mb-10">
+              <div className="inline-flex items-center gap-2 bg-primary/10 text-primary px-4 py-1.5 rounded-full text-sm font-medium mb-4">
+                <Zap className="h-4 w-4" />
+                Why Construction Teams Choose Us
+              </div>
+              <h2 className="text-2xl font-bold text-foreground">
+                Built to Solve Your Biggest Headaches
+              </h2>
+            </div>
+            <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-6">
+              {keyBenefits.map((benefit, index) => (
+                <div
+                  key={index}
+                  className="bg-background border border-border rounded-xl p-6 hover:shadow-md transition-shadow"
+                >
+                  <div className="h-14 w-14 rounded-lg bg-primary/10 text-primary flex items-center justify-center mb-4">
+                    {benefit.icon}
+                  </div>
+                  <h3 className="font-semibold text-foreground text-lg mb-2">
+                    {benefit.title}
+                  </h3>
+                  <p className="text-sm text-muted-foreground leading-relaxed">
+                    {benefit.description}
+                  </p>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+
         {/* Quick Stats */}
         <div className="border-b border-border">
           <div className="max-w-5xl mx-auto py-8 px-4 sm:px-6 lg:px-8">
@@ -385,7 +453,14 @@ const Features = () => {
                         className="flex items-start gap-2 text-sm text-muted-foreground"
                       >
                         <span className="text-primary mt-1">•</span>
-                        <span>{feature}</span>
+                        <span className="flex-1">
+                          {feature.text}
+                          {feature.highlight && (
+                            <Badge variant="secondary" className="ml-2 text-xs font-normal">
+                              {feature.highlight}
+                            </Badge>
+                          )}
+                        </span>
                       </li>
                     ))}
                   </ul>
@@ -393,6 +468,18 @@ const Features = () => {
               </AccordionItem>
             ))}
           </Accordion>
+        </div>
+
+        {/* Social Proof Placeholder */}
+        <div className="bg-muted/20 border-y border-border">
+          <div className="max-w-5xl mx-auto py-12 px-4 sm:px-6 lg:px-8 text-center">
+            <p className="text-lg font-medium text-foreground mb-2">
+              Trusted by construction teams across the country
+            </p>
+            <p className="text-sm text-muted-foreground">
+              Join companies streamlining their workforce and project management
+            </p>
+          </div>
         </div>
 
         {/* Tech Stack */}
