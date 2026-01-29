@@ -301,8 +301,13 @@ const Features = () => {
               alt="Command X Logo" 
               className="h-20 sm:h-28 mx-auto mb-6 invert dark:invert-0"
             />
-            <p className="text-xl text-muted-foreground mb-6 max-w-3xl mx-auto">
+            <p className="text-xl text-muted-foreground mb-4 max-w-3xl mx-auto">
               Complete Construction Workforce & Project Management Platform
+            </p>
+            <p className="text-base text-muted-foreground mb-8 max-w-2xl mx-auto leading-relaxed">
+              Manage your entire construction business from one platform. Track projects, personnel, 
+              and finances with GPS-verified time clocks, automated invoicing, and seamless QuickBooks 
+              integration. Built for field teams and back-office alike.
             </p>
             <div className="flex flex-wrap justify-center gap-3 text-sm text-muted-foreground">
               <span className="flex items-center gap-1.5 bg-muted/50 px-3 py-1.5 rounded-full">
