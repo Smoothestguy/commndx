@@ -1,93 +1,168 @@
 
 
-# Improve Features Page to Communicate Value & Importance
+# Add Better Error Handling for QuickBooks Vendor Sync Failures
 
-## Overview
-Enhance the Features page to shift from a "what it does" list to a "why it matters" value proposition. This helps potential users immediately understand the business impact of each feature.
+## Problem Statement
+When a vendor bill fails to sync to QuickBooks due to a vendor issue (e.g., the vendor was deleted in QuickBooks), the current error message is a raw API error that doesn't help users understand or resolve the problem:
 
-## Key Improvements
+**Current error:** `"QuickBooks API error: 400 - Invalid Reference Id : Vendor assigned to this transaction has been deleted..."`
 
-### 1. Add Value-Driven Headlines for Each Category
-Replace generic descriptions with benefit-focused taglines that highlight the problem solved.
+Users need:
+1. A clear explanation of what went wrong
+2. Which vendor is causing the issue
+3. Actionable steps to fix it
 
-| Category | Current Description | Improved Value Statement |
-|----------|---------------------|--------------------------|
-| Dashboard & KPIs | "Real-time business intelligence at your fingertips" | "Stop guessing, start knowing—see revenue, projects, and staffing at a glance" |
-| Time & Attendance | "GPS-verified time tracking with geofencing" | "Eliminate buddy punching and payroll disputes with location-verified clock-ins" |
-| Financial Documents | "Complete document workflow from estimate to payment" | "Get paid faster—streamline the path from estimate to invoice to cash" |
-| QuickBooks Integration | "Two-way sync with QuickBooks Online" | "End double-entry forever—your books stay in sync automatically" |
-| Personnel Management | "Complete workforce administration" | "Hire to retire—manage your crew with digital onboarding and compliance tracking" |
+## Solution Overview
+Create a comprehensive error handling system that:
+1. Parses QuickBooks API errors to extract vendor-specific issues
+2. Shows a user-friendly dialog with the error details and recovery options
+3. Provides one-click actions to re-sync the vendor or navigate to the vendor profile
+4. Stores detailed error information in the mapping table for debugging
 
-### 2. Add "Key Benefits" Callout Section
-Insert a visually prominent section below the hero that highlights the **top 4-5 pain points** Command X solves:
+## Implementation Details
 
-| Benefit | Icon | Description |
-|---------|------|-------------|
-| Save Hours Weekly | Clock | Automated invoicing and QuickBooks sync eliminate manual data entry |
-| Accurate Payroll | MapPin | GPS-verified time clocks prevent disputes and buddy punching |
-| Faster Payments | CreditCard | Customer approval workflows and progress billing accelerate cash flow |
-| Complete Visibility | Eye | Real-time dashboards show project status, costs, and staffing at a glance |
-| Work From Anywhere | Smartphone | Native apps for iOS, Android, macOS, Windows, and Web |
+### 1. Create VendorBillSyncErrorDialog Component
+**File:** `src/components/vendor-bills/VendorBillSyncErrorDialog.tsx`
 
-### 3. Add Micro-Benefits to Feature Lists
-For key features, append short benefit phrases in parentheses:
+A new dialog component that displays when a vendor bill sync fails:
 
-**Before:**
-- "GPS geofencing with configurable radius"
+| Element | Description |
+|---------|-------------|
+| Error Type Badge | Shows error category (e.g., "Vendor Issue", "Connection Error") |
+| Vendor Name | Highlights which vendor is causing the problem |
+| Error Description | User-friendly explanation of what went wrong |
+| Recovery Actions | Buttons for "Re-sync Vendor", "Edit Vendor", "Retry Sync" |
 
-**After:**
-- "GPS geofencing with configurable radius (ensures workers are on-site)"
+**Error Categories to Handle:**
+- **Vendor Deleted:** Vendor was deleted in QuickBooks
+- **Vendor Not Found:** Vendor mapping is invalid
+- **Token Expired:** QuickBooks connection needs refresh
+- **Rate Limited:** Too many requests
+- **Generic Error:** Fallback for unknown errors
 
-### 4. Highlight Standout Features
-Add a "Why It Matters" callout badge for the most differentiating features:
-- GPS Geofencing → "Prevents time theft"
-- Two-Way QuickBooks Sync → "Saves 5+ hours/week"
-- Customer Approval Links → "Faster approvals"
-- Multi-Platform → "Field + office aligned"
+### 2. Create Error Parser Utility
+**File:** `src/lib/quickbooksErrorParser.ts`
 
-### 5. Add Social Proof Section (Optional)
-A placeholder section for future testimonials or use case quotes that reinforce value.
+Utility functions to parse QuickBooks API errors and extract actionable information:
 
-## File Changes Summary
-| File | Action |
-|------|--------|
-| `src/pages/Features.tsx` | Update descriptions, add Key Benefits section, enhance feature items |
-
-## Visual Structure After Changes
-
-```text
-┌─────────────────────────────────────────┐
-│              HERO SECTION               │
-│   Logo + Tagline + Summary + Platforms  │
-└─────────────────────────────────────────┘
-┌─────────────────────────────────────────┐
-│           KEY BENEFITS (NEW)            │
-│  [Save Hours] [Accurate Payroll] [...]  │
-│     Why construction teams choose us    │
-└─────────────────────────────────────────┘
-┌─────────────────────────────────────────┐
-│             QUICK STATS                 │
-│    50+ Features | 5 Platforms | ...     │
-└─────────────────────────────────────────┘
-┌─────────────────────────────────────────┐
-│         FEATURE ACCORDIONS              │
-│  (with improved value-driven headers)   │
-└─────────────────────────────────────────┘
+```typescript
+interface ParsedQBError {
+  type: 'vendor_deleted' | 'vendor_not_found' | 'auth_error' | 'rate_limit' | 'unknown';
+  title: string;
+  description: string;
+  vendorName?: string;
+  vendorId?: string;
+  actionable: boolean;
+  suggestedAction?: 'resync_vendor' | 'reconnect' | 'retry';
+}
 ```
 
-## Proposed Key Benefits Copy
+**Error Pattern Matching:**
+- `"Invalid Reference Id"` + `"deleted"` → Vendor deleted in QuickBooks
+- `"Vendor not found"` → Vendor mapping broken
+- `"AuthenticationFailed"` or 401 → Token expired
+- `"RateLimitExceeded"` → Too many requests
 
-| Icon | Title | Description |
-|------|-------|-------------|
-| Clock | Save Hours Every Week | Automated invoicing and two-way QuickBooks sync eliminate double-entry and manual data transfers |
-| MapPin | Accurate, Verified Payroll | GPS-verified time clocks with geofencing ensure workers clock in from the job site—not their couch |
-| CreditCard | Get Paid Faster | Digital estimate approvals, progress billing, and invoice workflows accelerate your cash flow |
-| Eye | Complete Project Visibility | Real-time dashboards show costs, progress, and staffing so you always know where things stand |
-| Users | Streamlined Crew Management | From self-registration to W-9s and electronic signatures—onboard and manage your workforce digitally |
+### 3. Update useQuickBooks Hook
+**File:** `src/integrations/supabase/hooks/useQuickBooks.ts`
+
+Enhance `useSyncVendorBillToQB` to:
+1. Parse the error response and extract structured data
+2. Return the error along with vendor context from the bill
+3. Provide a method to resync the vendor before retrying
+
+### 4. Update VendorBillForm Component
+**File:** `src/components/vendor-bills/VendorBillForm.tsx`
+
+Modify the sync error handling to:
+1. Show the new `VendorBillSyncErrorDialog` instead of a simple toast
+2. Pass vendor information to the dialog for context
+3. Allow retry after vendor is re-synced
+
+### 5. Update VendorBillTable and VendorBillCard
+**Files:** 
+- `src/components/vendor-bills/VendorBillTable.tsx`
+- `src/components/vendor-bills/VendorBillCard.tsx`
+
+Add:
+1. Show error message on hover over the "Error" badge
+2. Show the sync error dialog when clicking "Retry QuickBooks Sync"
+3. Display the specific error from `billMapping.error_message`
+
+### 6. Update Edge Function Error Response
+**File:** `supabase/functions/quickbooks-create-bill/index.ts`
+
+Enhance error responses to include:
+1. Error code/type for easier parsing
+2. Vendor name and ID when applicable
+3. Suggested recovery action
+
+## File Changes Summary
+
+| File | Action |
+|------|--------|
+| `src/components/vendor-bills/VendorBillSyncErrorDialog.tsx` | Create new dialog component |
+| `src/lib/quickbooksErrorParser.ts` | Create new error parser utility |
+| `src/integrations/supabase/hooks/useQuickBooks.ts` | Update to return structured errors |
+| `src/components/vendor-bills/VendorBillForm.tsx` | Add error dialog integration |
+| `src/components/vendor-bills/VendorBillTable.tsx` | Show error details on hover/click |
+| `src/components/vendor-bills/VendorBillCard.tsx` | Show error details on hover/click |
+| `supabase/functions/quickbooks-create-bill/index.ts` | Enhance error response structure |
+
+## UI/UX Design
+
+**Error Dialog Layout:**
+```text
+┌────────────────────────────────────────────────────┐
+│  ⚠️ QuickBooks Sync Failed                        │
+├────────────────────────────────────────────────────┤
+│                                                    │
+│  [Vendor Issue] badge                              │
+│                                                    │
+│  The vendor "Enyerbe Figueredo" has been deleted  │
+│  in QuickBooks. This bill cannot sync until the   │
+│  vendor is restored or re-synced.                 │
+│                                                    │
+│  ┌──────────────────────────────────────────────┐ │
+│  │ Technical Details (collapsed by default)     │ │
+│  │ Error code: 2500                             │ │
+│  │ Invalid Reference Id: Vendor deleted...       │ │
+│  └──────────────────────────────────────────────┘ │
+│                                                    │
+│  Suggested Actions:                                │
+│  ┌─────────────────┐  ┌──────────────────────┐   │
+│  │ Re-sync Vendor  │  │ View Vendor Profile  │   │
+│  └─────────────────┘  └──────────────────────┘   │
+│                                                    │
+│              [Cancel]  [Retry Sync]               │
+└────────────────────────────────────────────────────┘
+```
+
+**Error Badge Tooltip:**
+When hovering over the "Sync Error" badge, show the error message in a tooltip.
+
+## Error Messages
+
+| Error Type | User-Friendly Message |
+|------------|----------------------|
+| Vendor Deleted | "The vendor '{name}' has been deleted in QuickBooks. Re-sync the vendor to create it again, or restore it in QuickBooks." |
+| Vendor Not Found | "The vendor '{name}' could not be found in QuickBooks. Try re-syncing the vendor." |
+| Auth Error | "The QuickBooks connection has expired. Please reconnect to QuickBooks in settings." |
+| Rate Limit | "QuickBooks is temporarily limiting requests. Please wait a few minutes and try again." |
+| Unknown | "An unexpected error occurred while syncing to QuickBooks. Please try again." |
+
+## Recovery Actions
+
+1. **Re-sync Vendor:** Calls `useSyncSingleVendor` to create/update the vendor in QuickBooks, then retries the bill sync
+2. **View Vendor Profile:** Navigates to `/vendors/{id}` for manual inspection
+3. **Retry Sync:** Simply retries the bill sync (useful after manual fixes)
+4. **Go to Settings:** Links to `/settings/quickbooks` for reconnection issues
 
 ## Technical Notes
-- Uses existing Lucide icons (Clock, MapPin, CreditCard, Eye, Users)
-- Maintains current Accordion structure
-- Responsive grid for Key Benefits section
-- No new dependencies required
+
+- Uses existing `useSyncSingleVendor` hook for vendor re-sync
+- Error message is already stored in `quickbooks_bill_mappings.error_message`
+- The `billMapping` query already returns `error_message` field
+- Follows existing dialog patterns from `ProductConflictDialog.tsx`
+- Uses `Collapsible` component for technical details section
 
