@@ -364,39 +364,6 @@ const Features = () => {
           </div>
         </div>
 
-        {/* Key Benefits Section */}
-        <div className="bg-primary/5 border-y border-border">
-          <div className="max-w-5xl mx-auto py-12 px-4 sm:px-6 lg:px-8">
-            <div className="text-center mb-10">
-              <div className="inline-flex items-center gap-2 bg-primary/10 text-primary px-4 py-1.5 rounded-full text-sm font-medium mb-4">
-                <Zap className="h-4 w-4" />
-                Why Construction Teams Choose Us
-              </div>
-              <h2 className="text-2xl font-bold text-foreground">
-                Built to Solve Your Biggest Headaches
-              </h2>
-            </div>
-            <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-6">
-              {keyBenefits.map((benefit, index) => (
-                <div
-                  key={index}
-                  className="bg-background border border-border rounded-xl p-6 hover:shadow-md transition-shadow"
-                >
-                  <div className="h-14 w-14 rounded-lg bg-primary/10 text-primary flex items-center justify-center mb-4">
-                    {benefit.icon}
-                  </div>
-                  <h3 className="font-semibold text-foreground text-lg mb-2">
-                    {benefit.title}
-                  </h3>
-                  <p className="text-sm text-muted-foreground leading-relaxed">
-                    {benefit.description}
-                  </p>
-                </div>
-              ))}
-            </div>
-          </div>
-        </div>
-
         {/* Quick Stats */}
         <div className="border-b border-border">
           <div className="max-w-5xl mx-auto py-8 px-4 sm:px-6 lg:px-8">
@@ -468,6 +435,39 @@ const Features = () => {
               </AccordionItem>
             ))}
           </Accordion>
+        </div>
+
+        {/* Key Benefits Section */}
+        <div className="bg-primary/5 border-y border-border">
+          <div className="max-w-5xl mx-auto py-12 px-4 sm:px-6 lg:px-8">
+            <div className="text-center mb-10">
+              <div className="inline-flex items-center gap-2 bg-primary/10 text-primary px-4 py-1.5 rounded-full text-sm font-medium mb-4">
+                <Zap className="h-4 w-4" />
+                Why Construction Teams Choose Us
+              </div>
+              <h2 className="text-2xl font-bold text-foreground">
+                Built to Solve Your Biggest Headaches
+              </h2>
+            </div>
+            <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-6">
+              {keyBenefits.map((benefit, index) => (
+                <div
+                  key={index}
+                  className="bg-background border border-border rounded-xl p-6 hover:shadow-md transition-shadow"
+                >
+                  <div className="h-14 w-14 rounded-lg bg-primary/10 text-primary flex items-center justify-center mb-4">
+                    {benefit.icon}
+                  </div>
+                  <h3 className="font-semibold text-foreground text-lg mb-2">
+                    {benefit.title}
+                  </h3>
+                  <p className="text-sm text-muted-foreground leading-relaxed">
+                    {benefit.description}
+                  </p>
+                </div>
+              ))}
+            </div>
+          </div>
         </div>
 
         {/* Social Proof Placeholder */}
