@@ -27,9 +27,23 @@ export const usePersonnel = (filters?: {
       }
 
       if (filters?.search) {
-        query = query.or(
-          `first_name.ilike.%${filters.search}%,last_name.ilike.%${filters.search}%,email.ilike.%${filters.search}%,phone.ilike.%${filters.search}%,personnel_number.ilike.%${filters.search}%`
-        );
+        // Strip non-digits from search for phone matching
+        const phoneSearch = filters.search.replace(/\D/g, '');
+        
+        // Build search conditions - use normalized phone if it has digits
+        const searchConditions = [
+          `first_name.ilike.%${filters.search}%`,
+          `last_name.ilike.%${filters.search}%`,
+          `email.ilike.%${filters.search}%`,
+          `personnel_number.ilike.%${filters.search}%`,
+        ];
+        
+        // Add phone search with normalized digits if there are any
+        if (phoneSearch.length > 0) {
+          searchConditions.push(`phone.ilike.%${phoneSearch}%`);
+        }
+        
+        query = query.or(searchConditions.join(','));
       }
 
       if (filters?.everifyStatus && filters.everifyStatus !== "all") {
@@ -126,9 +140,23 @@ export const usePersonnelWithRelations = (filters?: {
       }
 
       if (filters?.search) {
-        query = query.or(
-          `first_name.ilike.%${filters.search}%,last_name.ilike.%${filters.search}%,email.ilike.%${filters.search}%,phone.ilike.%${filters.search}%,personnel_number.ilike.%${filters.search}%`
-        );
+        // Strip non-digits from search for phone matching
+        const phoneSearch = filters.search.replace(/\D/g, '');
+        
+        // Build search conditions - use normalized phone if it has digits
+        const searchConditions = [
+          `first_name.ilike.%${filters.search}%`,
+          `last_name.ilike.%${filters.search}%`,
+          `email.ilike.%${filters.search}%`,
+          `personnel_number.ilike.%${filters.search}%`,
+        ];
+        
+        // Add phone search with normalized digits if there are any
+        if (phoneSearch.length > 0) {
+          searchConditions.push(`phone.ilike.%${phoneSearch}%`);
+        }
+        
+        query = query.or(searchConditions.join(','));
       }
 
       const { data, error } = await query;
