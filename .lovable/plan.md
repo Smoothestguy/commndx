@@ -1,66 +1,86 @@
 
-# Fix: Vendor Search Fails When Personnel Has No Linked Vendor
+# Add Phone to Personnel Search
 
 ## Problem Identified
-The vendor search in the "Link Personnel to Vendor" dialog fails with a **400 error** when the personnel record has no linked vendor (`vendor_id` is null).
+The Personnel Management search currently does NOT include the `phone` field. Looking at line 29-32 in `usePersonnel.ts`:
 
-**Root Cause:** Line 69 in `PersonnelVendorMergeDialog.tsx`:
 ```typescript
-.neq("id", currentVendorId || "")
+if (filters?.search) {
+  query = query.or(
+    `first_name.ilike.%${filters.search}%,last_name.ilike.%${filters.search}%,email.ilike.%${filters.search}%,personnel_number.ilike.%${filters.search}%`
+  );
+}
 ```
 
-When `currentVendorId` is `null` or `undefined`, this passes an empty string `""` to the `.neq()` filter. PostgreSQL then tries to compare `id` (a UUID column) against an empty string, which fails with:
-```
-"invalid input syntax for type uuid: \"\""
-```
-
-**Network request showing the error:**
-```
-GET .../vendors?...&id=neq.&order=name.asc
-Status: 400
-Response: {"code":"22P02","message":"invalid input syntax for type uuid: \"\""}
-```
+| Field | Currently Searchable |
+|-------|---------------------|
+| first_name | Yes |
+| last_name | Yes |
+| email | Yes |
+| personnel_number | Yes |
+| **phone** | **NO - Missing** |
 
 ## Solution
-Conditionally apply the `.neq()` filter only when `currentVendorId` is a valid value (not null/undefined).
+Add `phone` field to the search filter in the `usePersonnel` hook.
 
-### Changes to `src/components/merge/PersonnelVendorMergeDialog.tsx`
+### Changes to `src/integrations/supabase/hooks/usePersonnel.ts`
 
-**Before (lines 65-71):**
+**Before (lines 29-33):**
 ```typescript
-const { data, error } = await supabase
-  .from("vendors")
-  .select("id, name, email, phone, company, status")
-  .or(`name.ilike.%${searchQuery}%,email.ilike.%${searchQuery}%,phone.ilike.%${searchQuery}%`)
-  .neq("id", currentVendorId || "")
-  .order("name")
-  .limit(20);
+if (filters?.search) {
+  query = query.or(
+    `first_name.ilike.%${filters.search}%,last_name.ilike.%${filters.search}%,email.ilike.%${filters.search}%,personnel_number.ilike.%${filters.search}%`
+  );
+}
 ```
 
 **After:**
 ```typescript
-let query = supabase
-  .from("vendors")
-  .select("id, name, email, phone, company, status")
-  .or(`name.ilike.%${searchQuery}%,email.ilike.%${searchQuery}%,phone.ilike.%${searchQuery}%`);
-
-// Only exclude current vendor if one is linked
-if (currentVendorId) {
-  query = query.neq("id", currentVendorId);
+if (filters?.search) {
+  query = query.or(
+    `first_name.ilike.%${filters.search}%,last_name.ilike.%${filters.search}%,email.ilike.%${filters.search}%,phone.ilike.%${filters.search}%,personnel_number.ilike.%${filters.search}%`
+  );
 }
+```
 
-const { data, error } = await query
-  .order("name")
-  .limit(20);
+### Also Update `usePersonnelWithRelations` (lines 128-131)
+The same fix needs to be applied to the `usePersonnelWithRelations` hook which has the same search logic:
+
+**Before:**
+```typescript
+if (filters?.search) {
+  query = query.or(
+    `first_name.ilike.%${filters.search}%,last_name.ilike.%${filters.search}%,email.ilike.%${filters.search}%,personnel_number.ilike.%${filters.search}%`
+  );
+}
+```
+
+**After:**
+```typescript
+if (filters?.search) {
+  query = query.or(
+    `first_name.ilike.%${filters.search}%,last_name.ilike.%${filters.search}%,email.ilike.%${filters.search}%,phone.ilike.%${filters.search}%,personnel_number.ilike.%${filters.search}%`
+  );
+}
 ```
 
 ## File Changes Summary
 
 | File | Action |
 |------|--------|
-| `src/components/merge/PersonnelVendorMergeDialog.tsx` | Conditionally apply `.neq()` filter only when `currentVendorId` is truthy |
+| `src/integrations/supabase/hooks/usePersonnel.ts` | Add `phone.ilike` to search filters in both `usePersonnel` and `usePersonnelWithRelations` hooks |
+
+## Fields After Fix
+
+| Field | Searchable |
+|-------|------------|
+| first_name | Yes |
+| last_name | Yes |
+| email | Yes |
+| phone | Yes |
+| personnel_number | Yes |
 
 ## Technical Notes
-- The `.neq("id", "")` call generates an invalid PostgREST filter `id=neq.` which PostgreSQL rejects
-- When no vendor is linked (`currentVendorId` is null), we don't need to exclude any vendor from results
-- This pattern (conditional filter chaining) is common in Supabase queries when filters are optional
+- The `phone` field is nullable, but using `ilike` with null values is safe in PostgreSQL (returns no match)
+- This matches the pattern used in the Vendors page search we just updated
+- Both hooks need updating to ensure consistent search behavior across the app
