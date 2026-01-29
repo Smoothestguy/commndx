@@ -32,6 +32,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import { PendingAttachmentsUpload, PendingFile } from "@/components/shared/PendingAttachmentsUpload";
 import { finalizeAttachments, cleanupPendingAttachments } from "@/utils/attachmentUtils";
 import { VendorBillAttachments } from "@/components/vendor-bills/VendorBillAttachments";
+import { VendorBillSyncErrorDialog } from "@/components/vendor-bills/VendorBillSyncErrorDialog";
 
 interface VendorBillFormProps {
   bill?: VendorBill;
@@ -86,6 +87,11 @@ export function VendorBillForm({ bill, isEditing = false }: VendorBillFormProps)
 
   // Pending attachments state (for new bills)
   const [pendingAttachments, setPendingAttachments] = useState<PendingFile[]>([]);
+
+  // Sync error dialog state
+  const [syncErrorDialogOpen, setSyncErrorDialogOpen] = useState(false);
+  const [syncErrorMessage, setSyncErrorMessage] = useState("");
+  const [syncErrorBillId, setSyncErrorBillId] = useState<string | null>(null);
 
   const notesRef = useRef<HTMLTextAreaElement>(null);
 
@@ -242,11 +248,23 @@ export function VendorBillForm({ bill, isEditing = false }: VendorBillFormProps)
         if (qbConfig?.is_connected && status !== 'draft') {
           setIsSyncing(true);
           try {
-            await syncToQB.mutateAsync(savedBillId);
-            toast.success("Bill created and synced to QuickBooks");
+            const syncResult = await syncToQB.mutateAsync(savedBillId);
+            if (syncResult.success) {
+              toast.success("Bill created and synced to QuickBooks");
+            } else {
+              // Show error dialog instead of just a toast
+              setSyncErrorMessage(syncResult.error || "Unknown error");
+              setSyncErrorBillId(savedBillId);
+              setSyncErrorDialogOpen(true);
+              toast.warning("Bill created locally, but QuickBooks sync failed.");
+            }
           } catch (qbError) {
             console.error('QuickBooks sync error:', qbError);
-            toast.warning("Bill created locally, but QuickBooks sync failed. You can sync later.");
+            const errorMsg = qbError instanceof Error ? qbError.message : 'Unknown error';
+            setSyncErrorMessage(errorMsg);
+            setSyncErrorBillId(savedBillId);
+            setSyncErrorDialogOpen(true);
+            toast.warning("Bill created locally, but QuickBooks sync failed.");
           } finally {
             setIsSyncing(false);
           }
@@ -275,7 +293,17 @@ export function VendorBillForm({ bill, isEditing = false }: VendorBillFormProps)
     }
   };
 
+  // Handler for retrying sync from error dialog
+  const handleRetrySyncFromDialog = async () => {
+    if (!syncErrorBillId) return;
+    const result = await syncToQB.mutateAsync(syncErrorBillId);
+    if (!result.success) {
+      throw new Error(result.error || "Sync failed");
+    }
+  };
+
   return (
+    <>
     <div className="space-y-6">
       <Card>
         <CardHeader>
@@ -571,5 +599,17 @@ export function VendorBillForm({ bill, isEditing = false }: VendorBillFormProps)
         </Button>
       </div>
     </div>
+
+    {/* QuickBooks Sync Error Dialog */}
+    <VendorBillSyncErrorDialog
+      open={syncErrorDialogOpen}
+      onOpenChange={setSyncErrorDialogOpen}
+      errorMessage={syncErrorMessage}
+      vendorId={selectedVendor?.id}
+      vendorName={selectedVendor?.name}
+      billId={syncErrorBillId || undefined}
+      onRetrySync={handleRetrySyncFromDialog}
+    />
+    </>
   );
 }

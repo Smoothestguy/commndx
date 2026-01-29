@@ -526,28 +526,46 @@ export const useSyncInvoiceToQB = () => {
   });
 };
 
-// Vendor Bill sync
+// Vendor Bill sync - returns the full error for dialog handling
+export interface VendorBillSyncResult {
+  success: boolean;
+  quickbooksBillId?: string;
+  quickbooksDocNumber?: string;
+  attachmentsSynced?: number;
+  attachmentsFailed?: number;
+  error?: string;
+}
+
 export const useSyncVendorBillToQB = () => {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: async (billId: string) => {
+    mutationFn: async (billId: string): Promise<VendorBillSyncResult> => {
       const { data, error } = await supabase.functions.invoke('quickbooks-create-bill', {
         body: { billId },
       });
 
-      if (error) throw error;
-      if (data.error) throw new Error(data.error);
-      return data;
+      if (error) {
+        return { success: false, error: error.message };
+      }
+      if (data.error) {
+        return { success: false, error: data.error };
+      }
+      return { 
+        success: true, 
+        quickbooksBillId: data.quickbooksBillId,
+        quickbooksDocNumber: data.quickbooksDocNumber,
+        attachmentsSynced: data.attachmentsSynced,
+        attachmentsFailed: data.attachmentsFailed,
+      };
     },
-    onSuccess: () => {
+    onSuccess: (result) => {
       queryClient.invalidateQueries({ queryKey: ["quickbooks-sync-logs"] });
       queryClient.invalidateQueries({ queryKey: ["vendor-bills"] });
       queryClient.invalidateQueries({ queryKey: ["quickbooks-bill-mappings"] });
+      // Don't show toast here - let the caller handle it based on success/error
     },
-    onError: (error: Error) => {
-      toast.error(`Vendor bill sync failed: ${error.message}`);
-    },
+    // Don't use onError - we return errors in the result instead
   });
 };
 

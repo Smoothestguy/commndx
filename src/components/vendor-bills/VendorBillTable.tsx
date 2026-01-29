@@ -9,11 +9,13 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { IndeterminateCheckbox } from "@/components/ui/indeterminate-checkbox";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { VendorBill, useDeleteVendorBill, useHardDeleteVendorBill } from "@/integrations/supabase/hooks/useVendorBills";
 import { useQuickBooksConfig, useQuickBooksBillMapping, useSyncVendorBillToQB } from "@/integrations/supabase/hooks/useQuickBooks";
 import { VendorBillPaymentDialog } from "./VendorBillPaymentDialog";
 import { BulkBillPaymentDialog } from "./BulkBillPaymentDialog";
 import { VendorBillCard } from "./VendorBillCard";
+import { VendorBillSyncErrorDialog } from "./VendorBillSyncErrorDialog";
 import { useIsMobile, useIsTablet } from "@/hooks/use-mobile";
 import { toast } from "sonner";
 
@@ -43,7 +45,8 @@ function BillRow({
   onSelect, 
   onDelete,
   onHardDelete,
-  onRecordPayment 
+  onRecordPayment,
+  onSyncError,
 }: { 
   bill: VendorBill; 
   isSelected: boolean; 
@@ -51,6 +54,7 @@ function BillRow({
   onDelete: (id: string) => void;
   onHardDelete: (id: string) => void;
   onRecordPayment: (id: string) => void;
+  onSyncError: (billId: string, errorMessage: string, vendorId?: string, vendorName?: string) => void;
 }) {
   const navigate = useNavigate();
   const { data: qbConfig } = useQuickBooksConfig();
@@ -62,16 +66,24 @@ function BillRow({
   const isSynced = billMapping?.sync_status === 'synced';
   const hasSyncError = billMapping?.sync_status === 'error';
   const canSync = qbConfig?.is_connected && bill.status !== 'draft' && !isSynced;
+  const errorMessage = billMapping?.error_message;
 
   const handleSyncToQB = async (e: React.MouseEvent) => {
     e.stopPropagation();
     setIsSyncing(true);
     try {
-      await syncToQB.mutateAsync(bill.id);
-      toast.success("Bill synced to QuickBooks");
-      refetchMapping();
+      const result = await syncToQB.mutateAsync(bill.id);
+      if (result.success) {
+        toast.success("Bill synced to QuickBooks");
+        refetchMapping();
+      } else {
+        // Show error dialog
+        onSyncError(bill.id, result.error || "Unknown error", bill.vendor_id, bill.vendor_name);
+        refetchMapping();
+      }
     } catch (error) {
-      // Error handled by mutation
+      const errorMsg = error instanceof Error ? error.message : "Unknown error";
+      onSyncError(bill.id, errorMsg, bill.vendor_id, bill.vendor_name);
     } finally {
       setIsSyncing(false);
     }
@@ -129,10 +141,26 @@ function BillRow({
             </Badge>
           )}
           {hasSyncError && (
-            <Badge variant="outline" className="bg-red-50 text-red-700 border-red-200 dark:bg-red-900/20 dark:text-red-400 dark:border-red-800 gap-1 text-xs">
-              <AlertCircle className="h-3 w-3" />
-              Error
-            </Badge>
+            <TooltipProvider>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Badge 
+                    variant="outline" 
+                    className="bg-red-50 text-red-700 border-red-200 dark:bg-red-900/20 dark:text-red-400 dark:border-red-800 gap-1 text-xs cursor-help"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      onSyncError(bill.id, errorMessage || "Sync failed", bill.vendor_id, bill.vendor_name);
+                    }}
+                  >
+                    <AlertCircle className="h-3 w-3" />
+                    Error
+                  </Badge>
+                </TooltipTrigger>
+                <TooltipContent side="top" className="max-w-xs">
+                  <p className="text-xs">{errorMessage || "QuickBooks sync failed. Click for details."}</p>
+                </TooltipContent>
+              </Tooltip>
+            </TooltipProvider>
           )}
         </TableCell>
       )}
@@ -202,6 +230,13 @@ export function VendorBillTable({ bills }: VendorBillTableProps) {
   const [paymentBillId, setPaymentBillId] = useState<string | null>(null);
   const [isBulkSyncing, setIsBulkSyncing] = useState(false);
   
+  // Sync error dialog state
+  const [syncErrorDialogOpen, setSyncErrorDialogOpen] = useState(false);
+  const [syncErrorMessage, setSyncErrorMessage] = useState("");
+  const [syncErrorBillId, setSyncErrorBillId] = useState<string | null>(null);
+  const [syncErrorVendorId, setSyncErrorVendorId] = useState<string | undefined>();
+  const [syncErrorVendorName, setSyncErrorVendorName] = useState<string | undefined>();
+  
   const isMobile = useIsMobile();
   const isTablet = useIsTablet();
   const navigate = useNavigate();
@@ -209,6 +244,22 @@ export function VendorBillTable({ bills }: VendorBillTableProps) {
   const deleteBill = useDeleteVendorBill();
   const hardDeleteBill = useHardDeleteVendorBill();
   const syncToQB = useSyncVendorBillToQB();
+
+  const handleSyncError = (billId: string, errorMessage: string, vendorId?: string, vendorName?: string) => {
+    setSyncErrorBillId(billId);
+    setSyncErrorMessage(errorMessage);
+    setSyncErrorVendorId(vendorId);
+    setSyncErrorVendorName(vendorName);
+    setSyncErrorDialogOpen(true);
+  };
+
+  const handleRetrySyncFromDialog = async () => {
+    if (!syncErrorBillId) return;
+    const result = await syncToQB.mutateAsync(syncErrorBillId);
+    if (!result.success) {
+      throw new Error(result.error || "Sync failed");
+    }
+  };
 
   const allSelected = bills.length > 0 && selectedIds.size === bills.length;
   const someSelected = selectedIds.size > 0 && selectedIds.size < bills.length;
@@ -396,6 +447,7 @@ export function VendorBillTable({ bills }: VendorBillTableProps) {
                   onDelete={setDeleteId}
                   onHardDelete={setHardDeleteId}
                   onRecordPayment={setPaymentBillId}
+                  onSyncError={handleSyncError}
                 />
               ))}
             </TableBody>
@@ -500,6 +552,17 @@ export function VendorBillTable({ bills }: VendorBillTableProps) {
         bills={bills}
         selectedIds={selectedIds}
         onClearSelection={() => setSelectedIds(new Set())}
+      />
+
+      {/* QuickBooks Sync Error Dialog */}
+      <VendorBillSyncErrorDialog
+        open={syncErrorDialogOpen}
+        onOpenChange={setSyncErrorDialogOpen}
+        errorMessage={syncErrorMessage}
+        vendorId={syncErrorVendorId}
+        vendorName={syncErrorVendorName}
+        billId={syncErrorBillId || undefined}
+        onRetrySync={handleRetrySyncFromDialog}
       />
     </>
   );
