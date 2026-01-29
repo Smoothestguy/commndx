@@ -62,11 +62,17 @@ export function PersonnelVendorMergeDialog({
     queryFn: async () => {
       if (!searchQuery.trim()) return [];
 
-      const { data, error } = await supabase
+      let query = supabase
         .from("vendors")
         .select("id, name, email, phone, company, status")
-        .or(`name.ilike.%${searchQuery}%,email.ilike.%${searchQuery}%,phone.ilike.%${searchQuery}%`)
-        .neq("id", currentVendorId || "")
+        .or(`name.ilike.%${searchQuery}%,email.ilike.%${searchQuery}%,phone.ilike.%${searchQuery}%`);
+
+      // Only exclude current vendor if one is linked
+      if (currentVendorId) {
+        query = query.neq("id", currentVendorId);
+      }
+
+      const { data, error } = await query
         .order("name")
         .limit(20);
 
