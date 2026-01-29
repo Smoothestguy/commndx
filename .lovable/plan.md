@@ -1,27 +1,18 @@
 
-# Add Phone to Personnel Search
 
-## Problem Identified
-The Personnel Management search currently does NOT include the `phone` field. Looking at line 29-32 in `usePersonnel.ts`:
+# Fix: Allow Formatted Phone Number Search
 
-```typescript
-if (filters?.search) {
-  query = query.or(
-    `first_name.ilike.%${filters.search}%,last_name.ilike.%${filters.search}%,email.ilike.%${filters.search}%,personnel_number.ilike.%${filters.search}%`
-  );
-}
-```
+## Problem
+Phone numbers are stored in the database as digits only (e.g., `9045345243`), but users often paste formatted phone numbers like `(904) 534-5243`. The current search looks for the exact string, which doesn't match.
 
-| Field | Currently Searchable |
-|-------|---------------------|
-| first_name | Yes |
-| last_name | Yes |
-| email | Yes |
-| personnel_number | Yes |
-| **phone** | **NO - Missing** |
+| Search Input | Stored Value | Match? |
+|--------------|--------------|--------|
+| `9045345243` | `9045345243` | Yes |
+| `(904) 534-5243` | `9045345243` | No |
+| `904-534-5243` | `9045345243` | No |
 
 ## Solution
-Add `phone` field to the search filter in the `usePersonnel` hook.
+Normalize the search input by stripping all non-digit characters before searching the phone field. This way, both formatted and unformatted phone numbers will match.
 
 ### Changes to `src/integrations/supabase/hooks/usePersonnel.ts`
 
@@ -29,7 +20,7 @@ Add `phone` field to the search filter in the `usePersonnel` hook.
 ```typescript
 if (filters?.search) {
   query = query.or(
-    `first_name.ilike.%${filters.search}%,last_name.ilike.%${filters.search}%,email.ilike.%${filters.search}%,personnel_number.ilike.%${filters.search}%`
+    `first_name.ilike.%${filters.search}%,last_name.ilike.%${filters.search}%,email.ilike.%${filters.search}%,phone.ilike.%${filters.search}%,personnel_number.ilike.%${filters.search}%`
   );
 }
 ```
@@ -37,50 +28,45 @@ if (filters?.search) {
 **After:**
 ```typescript
 if (filters?.search) {
-  query = query.or(
-    `first_name.ilike.%${filters.search}%,last_name.ilike.%${filters.search}%,email.ilike.%${filters.search}%,phone.ilike.%${filters.search}%,personnel_number.ilike.%${filters.search}%`
-  );
+  // Strip non-digits from search for phone matching
+  const phoneSearch = filters.search.replace(/\D/g, '');
+  
+  // Build search conditions - use normalized phone if it has digits
+  const searchConditions = [
+    `first_name.ilike.%${filters.search}%`,
+    `last_name.ilike.%${filters.search}%`,
+    `email.ilike.%${filters.search}%`,
+    `personnel_number.ilike.%${filters.search}%`,
+  ];
+  
+  // Add phone search with normalized digits if there are any
+  if (phoneSearch.length > 0) {
+    searchConditions.push(`phone.ilike.%${phoneSearch}%`);
+  }
+  
+  query = query.or(searchConditions.join(','));
 }
 ```
 
-### Also Update `usePersonnelWithRelations` (lines 128-131)
-The same fix needs to be applied to the `usePersonnelWithRelations` hook which has the same search logic:
-
-**Before:**
-```typescript
-if (filters?.search) {
-  query = query.or(
-    `first_name.ilike.%${filters.search}%,last_name.ilike.%${filters.search}%,email.ilike.%${filters.search}%,personnel_number.ilike.%${filters.search}%`
-  );
-}
-```
-
-**After:**
-```typescript
-if (filters?.search) {
-  query = query.or(
-    `first_name.ilike.%${filters.search}%,last_name.ilike.%${filters.search}%,email.ilike.%${filters.search}%,phone.ilike.%${filters.search}%,personnel_number.ilike.%${filters.search}%`
-  );
-}
-```
+### Also Update `usePersonnelWithRelations` (around lines 127-131)
+Apply the same fix to maintain consistent search behavior.
 
 ## File Changes Summary
 
 | File | Action |
 |------|--------|
-| `src/integrations/supabase/hooks/usePersonnel.ts` | Add `phone.ilike` to search filters in both `usePersonnel` and `usePersonnelWithRelations` hooks |
+| `src/integrations/supabase/hooks/usePersonnel.ts` | Normalize phone search by stripping non-digits in both `usePersonnel` and `usePersonnelWithRelations` hooks |
 
-## Fields After Fix
+## How It Works
 
-| Field | Searchable |
-|-------|------------|
-| first_name | Yes |
-| last_name | Yes |
-| email | Yes |
-| phone | Yes |
-| personnel_number | Yes |
+| User Types | Phone Search Becomes | Matches DB Value |
+|------------|---------------------|------------------|
+| `(904) 534-5243` | `9045345243` | `9045345243` Yes |
+| `904-534-5243` | `9045345243` | `9045345243` Yes |
+| `9045345243` | `9045345243` | `9045345243` Yes |
+| `John` | (empty - no digits) | Name search only |
 
 ## Technical Notes
-- The `phone` field is nullable, but using `ilike` with null values is safe in PostgreSQL (returns no match)
-- This matches the pattern used in the Vendors page search we just updated
-- Both hooks need updating to ensure consistent search behavior across the app
+- The `replace(/\D/g, '')` regex strips all non-digit characters
+- Other fields (name, email, personnel_number) still use the original search string
+- This matches the input behavior of the `FormattedPhoneInput` component which also stores only digits
