@@ -1,168 +1,65 @@
 
 
-# Add Better Error Handling for QuickBooks Vendor Sync Failures
+# Enhance Vendor Search Functionality
 
-## Problem Statement
-When a vendor bill fails to sync to QuickBooks due to a vendor issue (e.g., the vendor was deleted in QuickBooks), the current error message is a raw API error that doesn't help users understand or resolve the problem:
+## Problem
+The Vendors page search currently only looks at `name`, `specialty`, and `company` fields. Users need to search by additional fields like **email**, **phone**, and **account number** to quickly find vendors.
 
-**Current error:** `"QuickBooks API error: 400 - Invalid Reference Id : Vendor assigned to this transaction has been deleted..."`
+## Current Behavior
+| Search Location | Fields Searched | Status |
+|-----------------|-----------------|--------|
+| Vendors list page | name, specialty, company | **Missing email, phone, account_number** |
+| Personnel list (in Vendors page) | name, email, phone | Already working |
+| Personnel-to-Vendor link dialog | name, email, phone | Already working |
 
-Users need:
-1. A clear explanation of what went wrong
-2. Which vendor is causing the issue
-3. Actionable steps to fix it
+## Solution
+Update the vendor filtering logic in `src/pages/Vendors.tsx` to include additional searchable fields.
 
-## Solution Overview
-Create a comprehensive error handling system that:
-1. Parses QuickBooks API errors to extract vendor-specific issues
-2. Shows a user-friendly dialog with the error details and recovery options
-3. Provides one-click actions to re-sync the vendor or navigate to the vendor profile
-4. Stores detailed error information in the mapping table for debugging
+### Changes to `src/pages/Vendors.tsx`
 
-## Implementation Details
-
-### 1. Create VendorBillSyncErrorDialog Component
-**File:** `src/components/vendor-bills/VendorBillSyncErrorDialog.tsx`
-
-A new dialog component that displays when a vendor bill sync fails:
-
-| Element | Description |
-|---------|-------------|
-| Error Type Badge | Shows error category (e.g., "Vendor Issue", "Connection Error") |
-| Vendor Name | Highlights which vendor is causing the problem |
-| Error Description | User-friendly explanation of what went wrong |
-| Recovery Actions | Buttons for "Re-sync Vendor", "Edit Vendor", "Retry Sync" |
-
-**Error Categories to Handle:**
-- **Vendor Deleted:** Vendor was deleted in QuickBooks
-- **Vendor Not Found:** Vendor mapping is invalid
-- **Token Expired:** QuickBooks connection needs refresh
-- **Rate Limited:** Too many requests
-- **Generic Error:** Fallback for unknown errors
-
-### 2. Create Error Parser Utility
-**File:** `src/lib/quickbooksErrorParser.ts`
-
-Utility functions to parse QuickBooks API errors and extract actionable information:
-
+**Before (lines 218-221):**
 ```typescript
-interface ParsedQBError {
-  type: 'vendor_deleted' | 'vendor_not_found' | 'auth_error' | 'rate_limit' | 'unknown';
-  title: string;
-  description: string;
-  vendorName?: string;
-  vendorId?: string;
-  actionable: boolean;
-  suggestedAction?: 'resync_vendor' | 'reconnect' | 'retry';
-}
+const matchesSearch =
+  v.name.toLowerCase().includes(search.toLowerCase()) ||
+  (v.specialty && v.specialty.toLowerCase().includes(search.toLowerCase())) ||
+  (v.company && v.company.toLowerCase().includes(search.toLowerCase()));
 ```
 
-**Error Pattern Matching:**
-- `"Invalid Reference Id"` + `"deleted"` → Vendor deleted in QuickBooks
-- `"Vendor not found"` → Vendor mapping broken
-- `"AuthenticationFailed"` or 401 → Token expired
-- `"RateLimitExceeded"` → Too many requests
+**After:**
+```typescript
+const searchLower = search.toLowerCase();
+const matchesSearch =
+  v.name.toLowerCase().includes(searchLower) ||
+  v.email.toLowerCase().includes(searchLower) ||
+  (v.phone && v.phone.toLowerCase().includes(searchLower)) ||
+  (v.specialty && v.specialty.toLowerCase().includes(searchLower)) ||
+  (v.company && v.company.toLowerCase().includes(searchLower)) ||
+  (v.account_number && v.account_number.toLowerCase().includes(searchLower)) ||
+  (v.tax_id && v.tax_id.toLowerCase().includes(searchLower));
+```
 
-### 3. Update useQuickBooks Hook
-**File:** `src/integrations/supabase/hooks/useQuickBooks.ts`
+### Fields Now Searchable
 
-Enhance `useSyncVendorBillToQB` to:
-1. Parse the error response and extract structured data
-2. Return the error along with vendor context from the bill
-3. Provide a method to resync the vendor before retrying
-
-### 4. Update VendorBillForm Component
-**File:** `src/components/vendor-bills/VendorBillForm.tsx`
-
-Modify the sync error handling to:
-1. Show the new `VendorBillSyncErrorDialog` instead of a simple toast
-2. Pass vendor information to the dialog for context
-3. Allow retry after vendor is re-synced
-
-### 5. Update VendorBillTable and VendorBillCard
-**Files:** 
-- `src/components/vendor-bills/VendorBillTable.tsx`
-- `src/components/vendor-bills/VendorBillCard.tsx`
-
-Add:
-1. Show error message on hover over the "Error" badge
-2. Show the sync error dialog when clicking "Retry QuickBooks Sync"
-3. Display the specific error from `billMapping.error_message`
-
-### 6. Update Edge Function Error Response
-**File:** `supabase/functions/quickbooks-create-bill/index.ts`
-
-Enhance error responses to include:
-1. Error code/type for easier parsing
-2. Vendor name and ID when applicable
-3. Suggested recovery action
+| Field | Purpose |
+|-------|---------|
+| `name` | Vendor display name |
+| `email` | Contact email |
+| `phone` | Contact phone number |
+| `specialty` | Trade/specialty |
+| `company` | Company name |
+| `account_number` | Internal account reference |
+| `tax_id` | Tax identification (partial match for last digits) |
 
 ## File Changes Summary
 
 | File | Action |
 |------|--------|
-| `src/components/vendor-bills/VendorBillSyncErrorDialog.tsx` | Create new dialog component |
-| `src/lib/quickbooksErrorParser.ts` | Create new error parser utility |
-| `src/integrations/supabase/hooks/useQuickBooks.ts` | Update to return structured errors |
-| `src/components/vendor-bills/VendorBillForm.tsx` | Add error dialog integration |
-| `src/components/vendor-bills/VendorBillTable.tsx` | Show error details on hover/click |
-| `src/components/vendor-bills/VendorBillCard.tsx` | Show error details on hover/click |
-| `supabase/functions/quickbooks-create-bill/index.ts` | Enhance error response structure |
-
-## UI/UX Design
-
-**Error Dialog Layout:**
-```text
-┌────────────────────────────────────────────────────┐
-│  ⚠️ QuickBooks Sync Failed                        │
-├────────────────────────────────────────────────────┤
-│                                                    │
-│  [Vendor Issue] badge                              │
-│                                                    │
-│  The vendor "Enyerbe Figueredo" has been deleted  │
-│  in QuickBooks. This bill cannot sync until the   │
-│  vendor is restored or re-synced.                 │
-│                                                    │
-│  ┌──────────────────────────────────────────────┐ │
-│  │ Technical Details (collapsed by default)     │ │
-│  │ Error code: 2500                             │ │
-│  │ Invalid Reference Id: Vendor deleted...       │ │
-│  └──────────────────────────────────────────────┘ │
-│                                                    │
-│  Suggested Actions:                                │
-│  ┌─────────────────┐  ┌──────────────────────┐   │
-│  │ Re-sync Vendor  │  │ View Vendor Profile  │   │
-│  └─────────────────┘  └──────────────────────┘   │
-│                                                    │
-│              [Cancel]  [Retry Sync]               │
-└────────────────────────────────────────────────────┘
-```
-
-**Error Badge Tooltip:**
-When hovering over the "Sync Error" badge, show the error message in a tooltip.
-
-## Error Messages
-
-| Error Type | User-Friendly Message |
-|------------|----------------------|
-| Vendor Deleted | "The vendor '{name}' has been deleted in QuickBooks. Re-sync the vendor to create it again, or restore it in QuickBooks." |
-| Vendor Not Found | "The vendor '{name}' could not be found in QuickBooks. Try re-syncing the vendor." |
-| Auth Error | "The QuickBooks connection has expired. Please reconnect to QuickBooks in settings." |
-| Rate Limit | "QuickBooks is temporarily limiting requests. Please wait a few minutes and try again." |
-| Unknown | "An unexpected error occurred while syncing to QuickBooks. Please try again." |
-
-## Recovery Actions
-
-1. **Re-sync Vendor:** Calls `useSyncSingleVendor` to create/update the vendor in QuickBooks, then retries the bill sync
-2. **View Vendor Profile:** Navigates to `/vendors/{id}` for manual inspection
-3. **Retry Sync:** Simply retries the bill sync (useful after manual fixes)
-4. **Go to Settings:** Links to `/settings/quickbooks` for reconnection issues
+| `src/pages/Vendors.tsx` | Update vendor filter logic to include email, phone, account_number, and tax_id |
 
 ## Technical Notes
 
-- Uses existing `useSyncSingleVendor` hook for vendor re-sync
-- Error message is already stored in `quickbooks_bill_mappings.error_message`
-- The `billMapping` query already returns `error_message` field
-- Follows existing dialog patterns from `ProductConflictDialog.tsx`
-- Uses `Collapsible` component for technical details section
+- The `email` field is required (non-nullable), so no null check needed
+- Other fields like `phone`, `account_number`, and `tax_id` are nullable and require null checks
+- Personnel search already includes email and phone (lines 193-196)
+- PersonnelVendorMergeDialog already searches vendors by email and phone via database query (line 68)
 
