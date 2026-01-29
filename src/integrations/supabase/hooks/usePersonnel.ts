@@ -28,7 +28,7 @@ export const usePersonnel = (filters?: {
 
       if (filters?.search) {
         query = query.or(
-          `first_name.ilike.%${filters.search}%,last_name.ilike.%${filters.search}%,email.ilike.%${filters.search}%,personnel_number.ilike.%${filters.search}%`
+          `first_name.ilike.%${filters.search}%,last_name.ilike.%${filters.search}%,email.ilike.%${filters.search}%,phone.ilike.%${filters.search}%,personnel_number.ilike.%${filters.search}%`
         );
       }
 
@@ -127,7 +127,7 @@ export const usePersonnelWithRelations = (filters?: {
 
       if (filters?.search) {
         query = query.or(
-          `first_name.ilike.%${filters.search}%,last_name.ilike.%${filters.search}%,email.ilike.%${filters.search}%,personnel_number.ilike.%${filters.search}%`
+          `first_name.ilike.%${filters.search}%,last_name.ilike.%${filters.search}%,email.ilike.%${filters.search}%,phone.ilike.%${filters.search}%,personnel_number.ilike.%${filters.search}%`
         );
       }
 
