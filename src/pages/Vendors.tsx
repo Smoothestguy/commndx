@@ -190,10 +190,11 @@ const Vendors = () => {
   const filteredPersonnel = personnelData
     ?.filter((p) => {
       const fullName = `${p.first_name} ${p.last_name}`.toLowerCase();
+      const phoneSearch = search.replace(/\D/g, ''); // Strip non-digits for phone matching
       const matchesSearch =
         fullName.includes(search.toLowerCase()) ||
         p.email.toLowerCase().includes(search.toLowerCase()) ||
-        (p.phone && p.phone.includes(search));
+        (p.phone && phoneSearch.length > 0 && p.phone.includes(phoneSearch));
 
       const matchesStatus = statusFilter === "all" || p.status === statusFilter;
 
@@ -216,10 +217,11 @@ const Vendors = () => {
         }
         
       const searchLower = search.toLowerCase();
+      const phoneSearch = search.replace(/\D/g, ''); // Strip non-digits for phone matching
       const matchesSearch =
         v.name.toLowerCase().includes(searchLower) ||
         v.email.toLowerCase().includes(searchLower) ||
-        (v.phone && v.phone.toLowerCase().includes(searchLower)) ||
+        (v.phone && phoneSearch.length > 0 && v.phone.includes(phoneSearch)) ||
         (v.specialty && v.specialty.toLowerCase().includes(searchLower)) ||
         (v.company && v.company.toLowerCase().includes(searchLower)) ||
         (v.account_number && v.account_number.toLowerCase().includes(searchLower)) ||
