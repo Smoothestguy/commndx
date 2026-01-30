@@ -633,15 +633,26 @@ serve(async (req) => {
       }
     }
 
-    // Check if already synced
+    // Check if already synced - also check if we have a QB bill ID (handles stuck 'syncing' status)
     const { data: existingMapping } = await supabase
       .from('quickbooks_bill_mappings')
       .select('*')
       .eq('bill_id', billId)
       .single();
 
-    if (existingMapping && existingMapping.sync_status === 'synced') {
+    // Skip if already synced OR if we have a QB bill ID (indicating it exists in QB)
+    if (existingMapping && (existingMapping.sync_status === 'synced' || existingMapping.quickbooks_bill_id)) {
       console.log(`Bill already synced to QuickBooks: ${existingMapping.quickbooks_bill_id}`);
+      
+      // Update status to 'synced' if it was stuck in another state but has a QB ID
+      if (existingMapping.sync_status !== 'synced' && existingMapping.quickbooks_bill_id) {
+        console.log(`Fixing stuck sync status from '${existingMapping.sync_status}' to 'synced'`);
+        await supabase
+          .from('quickbooks_bill_mappings')
+          .update({ sync_status: 'synced', updated_at: new Date().toISOString() })
+          .eq('id', existingMapping.id);
+      }
+      
       return new Response(JSON.stringify({ 
         success: true, 
         message: 'Bill already synced',
@@ -822,6 +833,49 @@ serve(async (req) => {
 
     // Create service client for error logging
     const serviceSupabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
+
+    // Handle duplicate document number error (code 6140) - link to existing QB bill
+    if (billId && (errorMessage.includes('6140') || errorMessage.includes('Duplicate Document Number'))) {
+      const txnIdMatch = errorMessage.match(/TxnId=(\d+)/);
+      const docNumberMatch = errorMessage.match(/DocNumber=([^\s]+)/);
+      
+      if (txnIdMatch) {
+        const existingQbBillId = txnIdMatch[1];
+        const existingDocNumber = docNumberMatch ? docNumberMatch[1] : null;
+        console.log(`Duplicate detected - linking to existing QB Bill: ${existingQbBillId}`);
+        
+        // Update mapping with the existing QB ID
+        await serviceSupabase
+          .from('quickbooks_bill_mappings')
+          .upsert({
+            bill_id: billId,
+            quickbooks_bill_id: existingQbBillId,
+            quickbooks_doc_number: existingDocNumber,
+            sync_status: 'synced',
+            last_synced_at: new Date().toISOString(),
+            error_message: null,
+            updated_at: new Date().toISOString(),
+          }, { onConflict: 'bill_id' });
+        
+        // Log the recovery
+        await serviceSupabase.from('quickbooks_sync_log').insert({
+          entity_type: 'vendor_bill',
+          entity_id: billId,
+          action: 'create',
+          status: 'recovered',
+          error_message: `Linked to existing QB Bill ${existingQbBillId} after duplicate error`,
+        });
+        
+        return new Response(JSON.stringify({ 
+          success: true, 
+          message: 'Linked to existing QuickBooks bill',
+          quickbooksBillId: existingQbBillId,
+          quickbooksDocNumber: existingDocNumber,
+        }), {
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        });
+      }
+    }
 
     // Update mapping with error if it exists
     if (billId) {
