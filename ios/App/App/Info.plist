@@ -22,8 +22,41 @@
 	<string>$(CURRENT_PROJECT_VERSION)</string>
 	<key>LSRequiresIPhoneOS</key>
 	<true/>
+	<key>LSSupportsOpeningDocumentsInPlace</key>
+	<false/>
 	<key>MinimumOSVersion</key>
 	<string>14.0</string>
+	<key>NSAppTransportSecurity</key>
+	<dict>
+		<key>NSAllowsArbitraryLoads</key>
+		<false/>
+		<key>NSAllowsArbitraryLoadsInWebContent</key>
+		<true/>
+	</dict>
+	<key>NSCameraUsageDescription</key>
+	<string>Command X needs camera access to capture photos for documents, receipts, and profile pictures.</string>
+	<key>NSLocationAlwaysAndWhenInUseUsageDescription</key>
+	<string>Command X needs access to your location to track your time at job sites. This allows automatic clock-out when you leave the work area, even when the app is in the background.</string>
+	<key>NSLocationAlwaysUsageDescription</key>
+	<string>Command X needs access to your location to track your time at job sites. This allows automatic clock-out when you leave the work area.</string>
+	<key>NSLocationWhenInUseUsageDescription</key>
+	<string>Command X needs access to your location to verify you are at the job site when clocking in and out.</string>
+	<key>NSMotionUsageDescription</key>
+	<string>Command X uses motion detection to optimize battery usage while tracking your location at job sites.</string>
+	<key>NSPhotoLibraryAddUsageDescription</key>
+	<string>Command X needs permission to save photos and documents to your library.</string>
+	<key>NSPhotoLibraryUsageDescription</key>
+	<string>Command X needs access to your photo library to upload images for documents, receipts, and profile pictures.</string>
+	<key>NSUserNotificationCenterUsageDescription</key>
+	<string>Command X sends notifications for time clock reminders, messages, and important updates.</string>
+	<key>UIBackgroundModes</key>
+	<array>
+		<string>location</string>
+		<string>fetch</string>
+		<string>remote-notification</string>
+	</array>
+	<key>UIFileSharingEnabled</key>
+	<false/>
 	<key>UILaunchStoryboardName</key>
 	<string>LaunchScreen</string>
 	<key>UIMainStoryboardFile</key>
@@ -47,52 +80,5 @@
 	</array>
 	<key>UIViewControllerBasedStatusBarAppearance</key>
 	<true/>
-	
-	<!-- Location Permissions -->
-	<key>NSLocationAlwaysAndWhenInUseUsageDescription</key>
-	<string>Command X needs access to your location to track your time at job sites. This allows automatic clock-out when you leave the work area, even when the app is in the background.</string>
-	<key>NSLocationWhenInUseUsageDescription</key>
-	<string>Command X needs access to your location to verify you are at the job site when clocking in and out.</string>
-	<key>NSLocationAlwaysUsageDescription</key>
-	<string>Command X needs access to your location to track your time at job sites. This allows automatic clock-out when you leave the work area.</string>
-	
-	<!-- Camera and Photo Library Permissions -->
-	<key>NSCameraUsageDescription</key>
-	<string>Command X needs camera access to capture photos for documents, receipts, and profile pictures.</string>
-	<key>NSPhotoLibraryUsageDescription</key>
-	<string>Command X needs access to your photo library to upload images for documents, receipts, and profile pictures.</string>
-	<key>NSPhotoLibraryAddUsageDescription</key>
-	<string>Command X needs permission to save photos and documents to your library.</string>
-	
-	<!-- Motion Detection -->
-	<key>NSMotionUsageDescription</key>
-	<string>Command X uses motion detection to optimize battery usage while tracking your location at job sites.</string>
-	
-	<!-- Push Notifications -->
-	<key>NSUserNotificationCenterUsageDescription</key>
-	<string>Command X sends notifications for time clock reminders, messages, and important updates.</string>
-	
-	<!-- Background Modes -->
-	<key>UIBackgroundModes</key>
-	<array>
-		<string>location</string>
-		<string>fetch</string>
-		<string>remote-notification</string>
-	</array>
-	
-	<!-- App Transport Security -->
-	<key>NSAppTransportSecurity</key>
-	<dict>
-		<key>NSAllowsArbitraryLoads</key>
-		<false/>
-		<key>NSAllowsArbitraryLoadsInWebContent</key>
-		<true/>
-	</dict>
-	
-	<!-- iTunes File Sharing -->
-	<key>UIFileSharingEnabled</key>
-	<false/>
-	<key>LSSupportsOpeningDocumentsInPlace</key>
-	<false/>
 </dict>
 </plist>
