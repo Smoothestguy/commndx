@@ -218,3 +218,6 @@ verify_jwt = false
 
 [functions.quickbooks-sync-bill-attachment]
 verify_jwt = false
+
+[functions.quickbooks-update-vendor]
+verify_jwt = false

@@ -146,12 +146,20 @@ export const useUpdateVendor = () => {
         const qbConnected = await isQuickBooksConnected();
         if (qbConnected) {
           console.log("QuickBooks connected - syncing updated vendor:", id);
-          await supabase.functions.invoke("quickbooks-sync-vendors", {
-            body: { action: "sync-single", vendorId: id },
-          });
+          const { data: syncResult, error: syncError } = await supabase.functions.invoke(
+            "quickbooks-update-vendor",
+            { body: { vendorId: id } }
+          );
+          
+          if (syncError || syncResult?.error) {
+            console.error("QuickBooks sync error:", syncError || syncResult?.error);
+            // Surface error to user (non-blocking) - will show in onSuccess
+            toast.warning("Vendor saved, but QuickBooks sync failed. Check sync status.");
+          }
         }
       } catch (qbError) {
         console.error("QuickBooks sync error (non-blocking):", qbError);
+        toast.warning("Vendor saved, but QuickBooks sync failed.");
       }
 
       // Log audit action

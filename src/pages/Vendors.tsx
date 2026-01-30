@@ -63,7 +63,8 @@ import {
 } from "@/integrations/supabase/hooks/useVendors";
 import { usePersonnel } from "@/integrations/supabase/hooks/usePersonnel";
 import { useExpenseCategories } from "@/integrations/supabase/hooks/useExpenseCategories";
-import { useQuickBooksConfig, useSyncSingleVendor, useImportVendorsFromQB } from "@/integrations/supabase/hooks/useQuickBooks";
+import { useQuickBooksConfig, useSyncSingleVendor, useImportVendorsFromQB, useQuickBooksVendorMappings } from "@/integrations/supabase/hooks/useQuickBooks";
+import { QuickBooksSyncBadge } from "@/components/quickbooks/QuickBooksSyncBadge";
 import type { Database } from "@/integrations/supabase/types";
 
 type Personnel = Database["public"]["Tables"]["personnel"]["Row"];
@@ -151,7 +152,13 @@ const Vendors = () => {
   const { data: qbConfig } = useQuickBooksConfig();
   const syncVendorToQB = useSyncSingleVendor();
   const importVendorsFromQB = useImportVendorsFromQB();
+  const { data: vendorMappings } = useQuickBooksVendorMappings();
   const isMobile = useIsMobile();
+
+  // Create a map for quick lookup of vendor sync status
+  const vendorSyncStatusMap = new Map(
+    vendorMappings?.map((m) => [m.vendor_id, m.sync_status as 'synced' | 'pending' | 'error']) || []
+  );
 
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState<"all" | "active" | "inactive">("all");
@@ -344,6 +351,20 @@ const Vendors = () => {
       getValue: (item) => item.status,
       render: (item) => <StatusBadge status={item.status} />,
     },
+    // Only show QB Status column if QuickBooks is connected
+    ...(qbConfig?.is_connected ? [{
+      key: "qb_status" as const,
+      header: "QB Status",
+      sortable: false,
+      filterable: false,
+      render: (item: Vendor) => {
+        const syncStatus = vendorSyncStatusMap.get(item.id);
+        if (!syncStatus) {
+          return <QuickBooksSyncBadge status="not_synced" size="sm" />;
+        }
+        return <QuickBooksSyncBadge status={syncStatus} size="sm" />;
+      },
+    }] : []),
     {
       key: "actions",
       header: "",
