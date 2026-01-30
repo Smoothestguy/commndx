@@ -233,15 +233,30 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 
   const signInWithGoogle = useCallback(async () => {
     try {
-      // For Electron: use desktop callback redirect which will forward to commandx://
-      const redirectUri = isElectron()
-        ? `${
-            import.meta.env.VITE_APP_URL || "https://commndx.com"
-          }/auth/desktop-callback`
-        : window.location.origin;
+      // For Electron: open OAuth in external browser
+      if (isElectron()) {
+        const redirectUri = `${
+          import.meta.env.VITE_APP_URL || "https://commndx.com"
+        }/auth/desktop-callback`;
 
+        // Build the OAuth URL and open in external browser
+        const params = new URLSearchParams({
+          provider: "google",
+          redirect_uri: redirectUri,
+          state: crypto.randomUUID(),
+        });
+        const oauthUrl = `/~oauth/initiate?${params.toString()}`;
+
+        // Open in external browser - the callback page will redirect to commandx://
+        await window.electronAPI?.openExternal(
+          `https://commndx.com${oauthUrl}`
+        );
+        return { error: null };
+      }
+
+      // For web: use normal Lovable OAuth flow
       const { error } = await lovable.auth.signInWithOAuth("google", {
-        redirect_uri: redirectUri,
+        redirect_uri: window.location.origin,
       });
 
       if (error) {
@@ -255,15 +270,30 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 
   const signInWithApple = useCallback(async () => {
     try {
-      // For Electron: use desktop callback redirect which will forward to commandx://
-      const redirectUri = isElectron()
-        ? `${
-            import.meta.env.VITE_APP_URL || "https://commndx.com"
-          }/auth/desktop-callback`
-        : window.location.origin;
+      // For Electron: open OAuth in external browser
+      if (isElectron()) {
+        const redirectUri = `${
+          import.meta.env.VITE_APP_URL || "https://commndx.com"
+        }/auth/desktop-callback`;
 
+        // Build the OAuth URL and open in external browser
+        const params = new URLSearchParams({
+          provider: "apple",
+          redirect_uri: redirectUri,
+          state: crypto.randomUUID(),
+        });
+        const oauthUrl = `/~oauth/initiate?${params.toString()}`;
+
+        // Open in external browser - the callback page will redirect to commandx://
+        await window.electronAPI?.openExternal(
+          `https://commndx.com${oauthUrl}`
+        );
+        return { error: null };
+      }
+
+      // For web: use normal Lovable OAuth flow
       const { error } = await lovable.auth.signInWithOAuth("apple", {
-        redirect_uri: redirectUri,
+        redirect_uri: window.location.origin,
       });
 
       if (error) {
