@@ -42,31 +42,32 @@ export function SessionTimer() {
 
   const { showSessionEarnings } = useUserDisplayPreferences();
 
-  // Fix idle time for current session
+  // Reset idle time to zero for current session
   const handleFixIdleTime = async () => {
     if (!sessionId) return;
     
     setIsFixingIdle(true);
     try {
+      // Set idle time to 0 since user was working externally (e.g., VS Code)
       const { data, error } = await supabase.functions.invoke("fix-session-idle", {
-        body: { sessionId, mode: "recalc" },
+        body: { sessionId, mode: "set", idleSeconds: 0 },
       });
       
       if (error) throw error;
       
       if (data?.success) {
-        toast.success(`Idle time corrected: ${Math.round((data.correctedIdleSeconds || 0) / 60)}m`);
+        toast.success("Idle time reset to zero");
         // Invalidate queries to refresh the display
         queryClient.invalidateQueries({ queryKey: ["today-sessions"] });
         queryClient.invalidateQueries({ queryKey: ["session-history"] });
         // Force page reload to reset tracking state with corrected values
         window.location.reload();
       } else {
-        toast.error(data?.error || "Failed to fix idle time");
+        toast.error(data?.error || "Failed to reset idle time");
       }
     } catch (err) {
-      console.error("Error fixing idle time:", err);
-      toast.error("Failed to fix idle time");
+      console.error("Error resetting idle time:", err);
+      toast.error("Failed to reset idle time");
     } finally {
       setIsFixingIdle(false);
     }
@@ -135,7 +136,7 @@ export function SessionTimer() {
             {isIdle && (
               <p className="text-amber-500">Timer paused - you're idle</p>
             )}
-            {todayIdleSeconds > 600 && (
+            {todayIdleSeconds > 60 && (
               <button
                 onClick={(e) => {
                   e.stopPropagation();
@@ -145,7 +146,7 @@ export function SessionTimer() {
                 className="mt-2 flex items-center gap-1 text-blue-500 hover:text-blue-400 disabled:opacity-50"
               >
                 <RefreshCw className={`h-3 w-3 ${isFixingIdle ? "animate-spin" : ""}`} />
-                {isFixingIdle ? "Fixing..." : "Fix idle time"}
+                {isFixingIdle ? "Resetting..." : "Reset idle time to zero"}
               </button>
             )}
           </div>
