@@ -351,6 +351,8 @@ export const useUpdateVendorBill = () => {
       }
 
       // Auto-sync to QuickBooks if connected and bill was previously synced
+      let qbSyncFailed = false;
+      let qbErrorMessage = "";
       try {
         const qbConnected = await isQuickBooksConnected();
         if (qbConnected) {
@@ -363,27 +365,40 @@ export const useUpdateVendorBill = () => {
 
           if (mapping && mapping.sync_status !== "voided" && mapping.quickbooks_bill_id) {
             console.log("QuickBooks connected - updating bill:", id);
-            await supabase.functions.invoke("quickbooks-update-bill", {
+            const { error: syncError } = await supabase.functions.invoke("quickbooks-update-bill", {
               body: { billId: id },
             });
+            if (syncError) {
+              qbSyncFailed = true;
+              qbErrorMessage = syncError.message || "Unknown sync error";
+              console.error("QuickBooks sync returned error:", syncError);
+            }
           }
         }
       } catch (qbError) {
         console.error("QuickBooks update sync error (non-blocking):", qbError);
+        qbSyncFailed = true;
+        qbErrorMessage = qbError instanceof Error ? qbError.message : "Unknown error";
         // Don't throw - QB sync failure shouldn't prevent bill update
       }
 
-      return id;
+      return { id, qbSyncFailed, qbErrorMessage };
     },
-    onSuccess: (id) => {
+    onSuccess: (result) => {
       queryClient.invalidateQueries({ queryKey: ["vendor-bills"] });
-      queryClient.invalidateQueries({ queryKey: ["vendor-bill", id] });
+      queryClient.invalidateQueries({ queryKey: ["vendor-bill", result.id] });
       queryClient.invalidateQueries({ queryKey: ["vendor-bills-by-po"] });
       queryClient.invalidateQueries({ queryKey: ["purchase_orders"] });
       queryClient.invalidateQueries({ queryKey: ["quickbooks-sync-logs"] });
       queryClient.invalidateQueries({ queryKey: ["quickbooks-bill-mappings"] });
-      queryClient.invalidateQueries({ queryKey: ["quickbooks-bill-mapping", id] });
-      toast.success("Vendor bill updated successfully");
+      queryClient.invalidateQueries({ queryKey: ["quickbooks-bill-mapping", result.id] });
+      
+      if (result.qbSyncFailed) {
+        toast.warning("Bill saved, but QuickBooks sync failed. Check sync status.");
+        console.error("QuickBooks sync error details:", result.qbErrorMessage);
+      } else {
+        toast.success("Vendor bill updated successfully");
+      }
     },
     onError: (error: Error) => {
       toast.error(`Failed to update vendor bill: ${error.message}`);

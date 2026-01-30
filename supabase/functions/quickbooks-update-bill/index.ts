@@ -270,14 +270,22 @@ async function getOrCreateQBServiceItem(
   console.log(`Searching QuickBooks for Service item: ${itemName}`);
   
   try {
-    const searchQuery = encodeURIComponent(`SELECT * FROM Item WHERE Name = '${itemName}' MAXRESULTS 1`);
+    const searchQuery = encodeURIComponent(`SELECT * FROM Item WHERE Name = '${itemName}' MAXRESULTS 10`);
     const result = await qbRequest('GET', `/query?query=${searchQuery}&minorversion=65`, accessToken, realmId);
     
     if (result.QueryResponse?.Item?.length > 0) {
-      const existingItem = result.QueryResponse.Item[0];
-      console.log(`Found existing Service item: ${existingItem.Name} (ID: ${existingItem.Id})`);
-      itemCache.set(itemName, existingItem.Id);
-      return existingItem.Id;
+      // Filter out Category and Bundle items - they cannot be used in transactions
+      const validItem = result.QueryResponse.Item.find(
+        (item: any) => item.Type !== 'Category' && item.Type !== 'Bundle'
+      );
+      
+      if (validItem) {
+        console.log(`Found existing Service item: ${validItem.Name} (ID: ${validItem.Id}, Type: ${validItem.Type})`);
+        itemCache.set(itemName, validItem.Id);
+        return validItem.Id;
+      }
+      
+      console.log(`Found item "${itemName}" but it's a Category/Bundle type, will create new Service item`);
     }
   } catch (e) {
     console.log(`Error searching for Service item: ${e}, will try to create`);
