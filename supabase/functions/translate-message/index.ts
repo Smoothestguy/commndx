@@ -28,15 +28,6 @@ serve(async (req) => {
         { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
-    
-    // If target is English and no source specified, likely already English - return as-is
-    if (targetLanguage.toLowerCase() === 'english' && !sourceLanguage) {
-      console.log('[translate-message] Target is English, returning original text');
-      return new Response(
-        JSON.stringify({ translatedText: text, detectedLanguage: 'English' }),
-        { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      );
-    }
 
     const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
     if (!LOVABLE_API_KEY) {
