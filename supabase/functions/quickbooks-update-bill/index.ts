@@ -257,8 +257,8 @@ async function getOrCreateQBServiceItem(
   realmId: string,
   expenseAccountRef: { value: string; name: string }
 ): Promise<string> {
-  // Use a generic "Labor" item for all bill line items
-  const itemName = "Labor";
+  // Use the same name as quickbooks-create-bill for consistency
+  const itemName = "Contract Labor Expense";
   
   // Check cache first
   if (itemCache.has(itemName)) {
@@ -267,7 +267,7 @@ async function getOrCreateQBServiceItem(
   }
   
   // Search for existing item in QuickBooks
-  console.log(`Searching QuickBooks for Service item: ${itemName}`);
+  console.log(`Searching QuickBooks for purchasable Service item: ${itemName}`);
   
   try {
     const searchQuery = encodeURIComponent(`SELECT * FROM Item WHERE Name = '${itemName}' MAXRESULTS 10`);
@@ -276,23 +276,23 @@ async function getOrCreateQBServiceItem(
     if (result.QueryResponse?.Item?.length > 0) {
       // Filter out Category and Bundle items - they cannot be used in transactions
       const validItem = result.QueryResponse.Item.find(
-        (item: any) => item.Type !== 'Category' && item.Type !== 'Bundle'
+        (item: any) => item.Type !== 'Category' && item.Type !== 'Bundle' && item.ExpenseAccountRef?.value
       );
       
       if (validItem) {
-        console.log(`Found existing Service item: ${validItem.Name} (ID: ${validItem.Id}, Type: ${validItem.Type})`);
+        console.log(`Found existing purchasable Service item: ${validItem.Name} (ID: ${validItem.Id})`);
         itemCache.set(itemName, validItem.Id);
         return validItem.Id;
       }
       
-      console.log(`Found item "${itemName}" but it's a Category/Bundle type, will create new Service item`);
+      console.log(`Found item "${itemName}" but it's unusable (Category/Bundle or no ExpenseAccountRef)`);
     }
   } catch (e) {
     console.log(`Error searching for Service item: ${e}, will try to create`);
   }
   
-  // Create a new Service item if not found
-  console.log(`Creating new Service item in QuickBooks: ${itemName}`);
+  // Create a new Service item
+  console.log(`Creating new purchasable Service item in QuickBooks: ${itemName}`);
   
   const newItem = {
     Name: itemName,
@@ -307,19 +307,46 @@ async function getOrCreateQBServiceItem(
     itemCache.set(itemName, itemId);
     return itemId;
   } catch (createError: any) {
-    // Handle duplicate name error
-    if (createError.message?.includes('Duplicate Name Exists') || createError.message?.includes('6240')) {
-      console.log(`Duplicate item name error, searching with LIKE query...`);
+    // Handle duplicate name error with smart fallback
+    if (createError.message?.includes('Duplicate Name Exists') || 
+        createError.message?.includes('6240') ||
+        createError.message?.includes('6000') ||
+        createError.message?.includes('already exists')) {
       
-      const likeQuery = encodeURIComponent(`SELECT * FROM Item WHERE Name LIKE '%${itemName}%' MAXRESULTS 10`);
-      const likeResult = await qbRequest('GET', `/query?query=${likeQuery}&minorversion=65`, accessToken, realmId);
+      console.log(`Name conflict detected, searching for any valid purchasable Service item...`);
       
-      if (likeResult.QueryResponse?.Item?.length > 0) {
-        const foundItem = likeResult.QueryResponse.Item[0];
-        console.log(`Found existing item after duplicate error: ${foundItem.Name} (ID: ${foundItem.Id})`);
-        itemCache.set(itemName, foundItem.Id);
-        return foundItem.Id;
+      // Search for any Service/NonInventory item with an expense account
+      const allItemsQuery = encodeURIComponent(`SELECT * FROM Item WHERE Type IN ('Service', 'NonInventory') MAXRESULTS 50`);
+      const allItemsResult = await qbRequest('GET', `/query?query=${allItemsQuery}&minorversion=65`, accessToken, realmId);
+      
+      if (allItemsResult.QueryResponse?.Item?.length > 0) {
+        // Find an item that has ExpenseAccountRef (is purchasable)
+        const purchasableItem = allItemsResult.QueryResponse.Item.find(
+          (item: any) => item.ExpenseAccountRef?.value && !item.Name.includes(':')
+        );
+        
+        if (purchasableItem) {
+          console.log(`Found purchasable item: ${purchasableItem.Name} (ID: ${purchasableItem.Id})`);
+          itemCache.set(itemName, purchasableItem.Id);
+          return purchasableItem.Id;
+        }
       }
+      
+      // Final fallback: create with timestamp suffix to ensure unique name
+      const uniqueName = `Contract Labor ${Date.now()}`;
+      console.log(`Creating unique Service item as final fallback: ${uniqueName}`);
+      
+      const uniqueItem = {
+        Name: uniqueName,
+        Type: "Service",
+        ExpenseAccountRef: expenseAccountRef,
+      };
+      
+      const uniqueResult = await qbRequest('POST', '/item?minorversion=65', accessToken, realmId, uniqueItem);
+      const uniqueItemId = uniqueResult.Item.Id;
+      console.log(`Created unique Service item: ${uniqueName} (ID: ${uniqueItemId})`);
+      itemCache.set(itemName, uniqueItemId);
+      return uniqueItemId;
     }
     
     throw createError;
