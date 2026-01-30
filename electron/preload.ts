@@ -45,6 +45,14 @@ contextBridge.exposeInMainWorld("electronAPI", {
     ipcRenderer.on("update-status", (_event, info) => callback(info));
   },
 
+  // Deep link handling for OAuth
+  onDeepLink: (callback: (url: string) => void) => {
+    ipcRenderer.on("deep-link", (_event, url) => callback(url));
+  },
+
+  // Open URL in external browser (for OAuth)
+  openExternal: (url: string) => ipcRenderer.invoke("open-external", url),
+
   // Check if running in Electron
   isElectron: true,
 });
@@ -61,6 +69,9 @@ declare global {
       downloadUpdate: () => Promise<boolean>;
       installUpdate: () => void;
       onUpdateStatus: (callback: (info: UpdateInfo) => void) => void;
+      // Deep link / OAuth
+      onDeepLink: (callback: (url: string) => void) => void;
+      openExternal: (url: string) => Promise<void>;
       isElectron: boolean;
     };
   }

@@ -1,5 +1,11 @@
 export interface ElectronUpdateInfo {
-  status: 'checking' | 'available' | 'not-available' | 'downloading' | 'downloaded' | 'error';
+  status:
+    | "checking"
+    | "available"
+    | "not-available"
+    | "downloading"
+    | "downloaded"
+    | "error";
   data?: {
     version?: string;
     releaseDate?: string;
@@ -22,6 +28,9 @@ declare global {
       downloadUpdate: () => Promise<boolean>;
       installUpdate: () => void;
       onUpdateStatus: (callback: (info: ElectronUpdateInfo) => void) => void;
+      // Deep link / OAuth support
+      onDeepLink: (callback: (url: string) => void) => void;
+      openExternal: (url: string) => Promise<void>;
       isElectron: boolean;
     };
   }

@@ -5,8 +5,14 @@ import { initAutoUpdater } from "./updater";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
+// Custom protocol for deep links (OAuth callbacks)
+const PROTOCOL = "commandx";
+
 // Determine if we're running in a packaged app or development
 const isPackaged = app.isPackaged;
+
+// Store the deep link URL if app was opened via protocol before window is ready
+let pendingDeepLink: string | null = null;
 
 // Path resolution differs between dev and production
 // In development:
@@ -37,6 +43,62 @@ export const VITE_DEV_SERVER_URL = process.env["VITE_DEV_SERVER_URL"];
 export const MAIN_DIST = path.join(__dirname);
 
 let win: BrowserWindow | null;
+
+// Register custom protocol for deep links
+// This must be done before app.whenReady()
+if (process.defaultApp) {
+  // Development: need to pass the script path
+  if (process.argv.length >= 2) {
+    app.setAsDefaultProtocolClient(PROTOCOL, process.execPath, [
+      path.resolve(process.argv[1]),
+    ]);
+  }
+} else {
+  // Production: just register the protocol
+  app.setAsDefaultProtocolClient(PROTOCOL);
+}
+
+// Handle deep link URL
+function handleDeepLink(url: string) {
+  console.log("[Electron] Deep link received:", url);
+  if (win && win.webContents) {
+    // Send the deep link to the renderer process
+    win.webContents.send("deep-link", url);
+    // Focus the window
+    if (win.isMinimized()) win.restore();
+    win.focus();
+  } else {
+    // Window not ready yet, store for later
+    pendingDeepLink = url;
+  }
+}
+
+// Single instance lock for Windows/Linux
+// This ensures only one instance runs and deep links are forwarded
+const gotTheLock = app.requestSingleInstanceLock();
+
+if (!gotTheLock) {
+  app.quit();
+} else {
+  app.on("second-instance", (_event, commandLine) => {
+    // On Windows/Linux, the deep link URL is passed via command line
+    const url = commandLine.find((arg) => arg.startsWith(`${PROTOCOL}://`));
+    if (url) {
+      handleDeepLink(url);
+    }
+    // Focus existing window
+    if (win) {
+      if (win.isMinimized()) win.restore();
+      win.focus();
+    }
+  });
+}
+
+// macOS: Handle deep links via open-url event
+app.on("open-url", (event, url) => {
+  event.preventDefault();
+  handleDeepLink(url);
+});
 
 function createWindow() {
   win = new BrowserWindow({
@@ -69,6 +131,13 @@ function createWindow() {
 
   win.webContents.on("did-finish-load", () => {
     win?.webContents.send("main-process-message", new Date().toLocaleString());
+
+    // Send any pending deep link that was received before window was ready
+    if (pendingDeepLink && win) {
+      console.log("[Electron] Sending pending deep link:", pendingDeepLink);
+      win.webContents.send("deep-link", pendingDeepLink);
+      pendingDeepLink = null;
+    }
   });
 
   win.webContents.setWindowOpenHandler(({ url }) => {
@@ -110,6 +179,12 @@ ipcMain.handle("get-app-version", () => {
 
 ipcMain.handle("get-platform", () => {
   return process.platform;
+});
+
+// Open URL in external browser (for OAuth)
+ipcMain.handle("open-external", (_event, url: string) => {
+  console.log("[Electron] Opening external URL:", url);
+  return shell.openExternal(url);
 });
 
 app.whenReady().then(createWindow);

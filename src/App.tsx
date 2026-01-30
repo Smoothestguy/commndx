@@ -30,6 +30,7 @@ import { ChatInterface } from "@/components/ai-assistant/ChatInterface";
 import Index from "./pages/Index";
 import Auth from "./pages/Auth";
 import AuthCallback from "./pages/AuthCallback";
+import DesktopCallback from "./pages/DesktopCallback";
 import Unauthorized from "./pages/Unauthorized";
 import Products from "./pages/Products";
 import Customers from "./pages/Customers";
@@ -177,6 +178,10 @@ const App = () => {
                   <Routes>
                     <Route path="/auth" element={<Auth />} />
                     <Route path="/auth/callback" element={<AuthCallback />} />
+                    <Route
+                      path="/auth/desktop-callback"
+                      element={<DesktopCallback />}
+                    />
                     <Route path="/unauthorized" element={<Unauthorized />} />
                     <Route
                       path="/accept-invitation"
@@ -228,8 +233,14 @@ const App = () => {
                       element={<ContractorSubmissionSuccess />}
                     />
                     {/* Network Map Demo */}
-                    <Route path="/network-map-demo" element={<NetworkMapDemo />} />
-                    <Route path="/usa-network-map-demo" element={<USANetworkMapDemo />} />
+                    <Route
+                      path="/network-map-demo"
+                      element={<NetworkMapDemo />}
+                    />
+                    <Route
+                      path="/usa-network-map-demo"
+                      element={<USANetworkMapDemo />}
+                    />
                     {/* Admin Contractor Routes - moved to SidebarLayout group below */}
                     {/* Portal Routes */}
                     <Route path="/portal/login" element={<PortalLogin />} />
@@ -471,7 +482,10 @@ const App = () => {
                         element={<ExpenseCategories />}
                       />
                       <Route path="/messages" element={<Messages />} />
-                      <Route path="/conversations" element={<Navigate to="/messages" replace />} />
+                      <Route
+                        path="/conversations"
+                        element={<Navigate to="/messages" replace />}
+                      />
                       <Route
                         path="/notifications"
                         element={<AdminNotifications />}

@@ -23,6 +23,15 @@
     gatekeeperAssess: false,
     entitlements: "build/entitlements.mac.plist",
     entitlementsInherit: "build/entitlements.mac.plist",
+    // Register commandx:// protocol for OAuth deep links
+    extendInfo: {
+      CFBundleURLTypes: [
+        {
+          CFBundleURLSchemes: ["commandx"],
+          CFBundleURLName: "com.commndx.desktop",
+        },
+      ],
+    },
   },
   dmg: {
     contents: [
