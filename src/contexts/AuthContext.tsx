@@ -12,11 +12,25 @@ import { supabase } from "@/integrations/supabase/client";
 import { lovable } from "@/integrations/lovable";
 import { useNavigate } from "react-router-dom";
 
-// Check if running in Electron
+// Check if running in Electron - multiple detection methods for robustness
 const isElectron = () => {
-  return (
-    typeof window !== "undefined" && window.electronAPI?.isElectron === true
-  );
+  if (typeof window === "undefined") return false;
+
+  // Primary check: our exposed API
+  if (window.electronAPI?.isElectron === true) return true;
+
+  // Fallback checks for Electron environment
+  const userAgent = navigator.userAgent.toLowerCase();
+  if (userAgent.includes("electron")) return true;
+
+  // Check for Electron-specific properties
+  if (
+    typeof window.process !== "undefined" &&
+    window.process.type === "renderer"
+  )
+    return true;
+
+  return false;
 };
 
 interface AuthContextType {
@@ -233,27 +247,52 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 
   const signInWithGoogle = useCallback(async () => {
     try {
-      // For Electron: open OAuth in external browser
-      if (isElectron()) {
-        const redirectUri = `${
-          import.meta.env.VITE_APP_URL || "https://commndx.com"
-        }/auth/desktop-callback`;
+      const electronDetected = isElectron();
+      console.log(
+        "[Auth] signInWithGoogle called, isElectron:",
+        electronDetected
+      );
+      console.log("[Auth] window.electronAPI:", window.electronAPI);
+      console.log("[Auth] userAgent:", navigator.userAgent);
 
-        // Build the OAuth URL and open in external browser
-        const params = new URLSearchParams({
-          provider: "google",
-          redirect_uri: redirectUri,
-          state: crypto.randomUUID(),
-        });
-        const oauthUrl = `/~oauth/initiate?${params.toString()}`;
-
-        // Open in external browser - the callback page will redirect to commandx://
-        await window.electronAPI?.openExternal(
-          `https://commndx.com${oauthUrl}`
+      // For Electron: use Supabase OAuth directly (opens in external browser)
+      if (electronDetected) {
+        // Use Supabase OAuth with redirect to desktop callback page
+        const redirectTo = "https://fairfieldrg.com/auth/desktop-callback";
+        console.log(
+          "[Auth] Using Supabase OAuth for Electron, redirectTo:",
+          redirectTo
         );
+
+        const { data, error } = await supabase.auth.signInWithOAuth({
+          provider: "google",
+          options: {
+            redirectTo,
+            skipBrowserRedirect: true, // Don't redirect the Electron window
+          },
+        });
+
+        console.log("[Auth] Supabase OAuth response:", {
+          url: data?.url,
+          error,
+        });
+
+        if (error) {
+          return { error };
+        }
+
+        // Open the OAuth URL in the external browser
+        if (data?.url) {
+          console.log(
+            "[Auth] Opening OAuth URL in external browser:",
+            data.url
+          );
+          await window.electronAPI?.openExternal(data.url);
+        }
         return { error: null };
       }
 
+      console.log("[Auth] Using Lovable OAuth for web");
       // For web: use normal Lovable OAuth flow
       const { error } = await lovable.auth.signInWithOAuth("google", {
         redirect_uri: window.location.origin,
@@ -272,9 +311,10 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     try {
       // For Electron: open OAuth in external browser
       if (isElectron()) {
-        const redirectUri = `${
-          import.meta.env.VITE_APP_URL || "https://commndx.com"
-        }/auth/desktop-callback`;
+        // Use fairfieldrg.com as the OAuth host (Lovable's configured domain)
+        const oauthHost =
+          import.meta.env.VITE_OAUTH_HOST || "https://fairfieldrg.com";
+        const redirectUri = `${oauthHost}/auth/desktop-callback`;
 
         // Build the OAuth URL and open in external browser
         const params = new URLSearchParams({
@@ -285,9 +325,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         const oauthUrl = `/~oauth/initiate?${params.toString()}`;
 
         // Open in external browser - the callback page will redirect to commandx://
-        await window.electronAPI?.openExternal(
-          `https://commndx.com${oauthUrl}`
-        );
+        await window.electronAPI?.openExternal(`${oauthHost}${oauthUrl}`);
         return { error: null };
       }
 
