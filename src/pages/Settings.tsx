@@ -38,6 +38,7 @@ import { useQuickBooksConfig } from "@/integrations/supabase/hooks/useQuickBooks
 import { useUserDisplayPreferences } from "@/hooks/useUserDisplayPreferences";
 import { useSessionAccess } from "@/hooks/useSessionAccess";
 import { CheckForUpdatesButton } from "@/components/electron/UpdateNotification";
+import { DeleteAccountSection } from "@/components/settings/DeleteAccountSection";
 
 export default function Settings() {
   const { user, signOut } = useAuth();
@@ -433,6 +434,9 @@ export default function Settings() {
               </Button>
             </div>
           </div>
+
+          {/* Danger Zone - Account Deletion */}
+          <DeleteAccountSection />
         </div>
       </PageLayout>
     </>
