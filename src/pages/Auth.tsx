@@ -18,13 +18,14 @@ import { toast } from "sonner";
 import logo from "@/assets/logo.png";
 import logoDark from "@/assets/logo-dark.png";
 import { GoogleIcon } from "@/components/icons/GoogleIcon";
+import { AppleIcon } from "@/components/icons/AppleIcon";
 import { PortalSwitcherModal } from "@/components/PortalSwitcherModal";
 import { usePortalSwitcher } from "@/hooks/usePortalSwitcher";
 
 const Auth = () => {
   const navigate = useNavigate();
   const { theme, resolvedTheme } = useTheme();
-  const { user, signIn, signInWithGoogle, loading: authLoading } = useAuth();
+  const { user, signIn, signInWithGoogle, signInWithApple, loading: authLoading } = useAuth();
   const [isLoading, setIsLoading] = useState(false);
   const [isOAuthLoading, setIsOAuthLoading] = useState(false);
   const {
@@ -62,6 +63,15 @@ const Auth = () => {
   const handleGoogleLogin = async () => {
     setIsOAuthLoading(true);
     const { error } = await signInWithGoogle();
+    if (error) {
+      toast.error(error.message);
+      setIsOAuthLoading(false);
+    }
+  };
+
+  const handleAppleLogin = async () => {
+    setIsOAuthLoading(true);
+    const { error } = await signInWithApple();
     if (error) {
       toast.error(error.message);
       setIsOAuthLoading(false);
@@ -124,6 +134,20 @@ const Auth = () => {
                 <GoogleIcon className="mr-2 h-5 w-5" />
               )}
               Continue with Google
+            </Button>
+            <Button
+              type="button"
+              variant="outline"
+              className="w-full bg-secondary/50 border-border hover:bg-secondary"
+              onClick={handleAppleLogin}
+              disabled={isOAuthLoading}
+            >
+              {isOAuthLoading ? (
+                <Loader2 className="mr-2 h-5 w-5 animate-spin" />
+              ) : (
+                <AppleIcon className="mr-2 h-5 w-5" />
+              )}
+              Continue with Apple
             </Button>
           </div>
 

@@ -5,6 +5,7 @@ import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Settings, Bell, Mail, Smartphone, Briefcase, DollarSign, UserPlus } from "lucide-react";
+import { DeleteAccountSection } from "@/components/settings/DeleteAccountSection";
 
 export default function PortalSettings() {
   const { data: personnel } = useCurrentPersonnel();
@@ -203,6 +204,9 @@ export default function PortalSettings() {
             </CardContent>
           </Card>
         )}
+
+        {/* Danger Zone - Account Deletion */}
+        <DeleteAccountSection />
       </div>
     </PortalLayout>
   );
