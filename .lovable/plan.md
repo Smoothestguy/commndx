@@ -1,119 +1,160 @@
 
-# Fix: QuickBooks Bill Update Failing Silently
+# Fix: Vendor Edits Not Syncing to QuickBooks
 
 ## Problem Identified
 
-When you update a vendor bill, it shows "synced" but doesn't actually sync to QuickBooks. Investigation revealed:
+When you edit a vendor in Command X, the changes should sync to QuickBooks but they're not reflecting. After investigation, I found:
 
-1. **The `quickbooks-update-bill` function IS being called**
-2. **But it fails with QuickBooks error 2500**: "An item in this transaction is set up as a **category** instead of a product or service"
-3. The "Labor" item (ID: 51) used for bill line items is configured as a **category** in QuickBooks, which is invalid for transactions
-4. The error is caught silently in the update hook (non-blocking), so you see "Bill updated successfully" but QB sync actually failed
+### Current State
+1. **The sync infrastructure exists** - `quickbooks-sync-vendors` has a `sync-single` action that works correctly (tested and confirmed)
+2. **`useUpdateVendor` hook DOES call the sync** - after updating locally, it invokes the edge function
+3. **BUT: Errors are swallowed silently** - the catch block only logs to console, no user feedback
+4. **No sync status visibility** - unlike Vendor Bills which show QB sync status, Vendors have no visual indicator
 
-## Root Cause
+### Root Cause
+The sync IS being triggered, but if it fails for any reason (e.g., network issues, QB API errors, rate limits), users see "Vendor updated successfully" but never know the QB sync failed.
 
-The edge function logs show:
-```
-INFO Found existing Service item: Labor (ID: 51)
-ERROR Invalid Reference Id: An item in this transaction is set up as a category instead of a product or service
-```
-
-In QuickBooks Online, there are two types of Items:
-- **Products/Services** (Type: "Service", "Inventory", "NonInventory") - Can be used in transactions
-- **Categories** (Type: "Category") - Only for organizing, CANNOT be used in transactions
-
-The "Labor" item (ID: 51) was likely created or modified to be a Category, making it unusable for bills.
+This differs from Invoices/Estimates/Bills which have:
+- Dedicated `quickbooks-update-*` edge functions with proper error handling
+- Toast warnings when sync fails
+- Sync status badges in the UI
 
 ---
 
-## Solution
+## Solution Overview
 
-### Fix 1: QuickBooks Configuration (Immediate - Manual Action Required)
+Create parity with the Invoice/Estimate/Bill sync pattern by:
 
-In QuickBooks Online:
-1. Go to **Settings (gear icon) → Products and Services**
-2. Find the "Labor" item
-3. Check if it's a Category - if so, you need to either:
-   - Change it to a Service type (if QuickBooks allows), OR
-   - Create a NEW "Labor" service item and delete/hide the category version
+1. **Create a dedicated `quickbooks-update-vendor` edge function** (consistent with other entities)
+2. **Add sync failure feedback** - show toast.warning when QB sync fails
+3. **Add sync status to Vendor UI** - show sync status on vendor list/detail pages
+4. **Implement race condition prevention** - update mapping timestamp BEFORE sending to QB (like bills)
 
-### Fix 2: Update Edge Function to Handle Category Items (Code Fix)
+---
 
-Modify `quickbooks-update-bill/index.ts` to:
-1. **Validate item type** when searching for existing items - skip items with Type="Category"
-2. **Improve error handling** to provide clear feedback when QB sync fails
-3. **Log sync failures** to the `quickbooks_sync_log` table
+## Technical Implementation
 
-**Changes to `getOrCreateQBServiceItem` function:**
+### 1. Create `quickbooks-update-vendor` Edge Function
+
+New file: `supabase/functions/quickbooks-update-vendor/index.ts`
 
 ```typescript
-// In the search result check, filter out Category items
-if (result.QueryResponse?.Item?.length > 0) {
-  // Find a valid service/product item (not a Category)
-  const validItem = result.QueryResponse.Item.find(
-    (item: any) => item.Type !== 'Category' && item.Type !== 'Bundle'
-  );
-  
-  if (validItem) {
-    console.log(`Found existing Service item: ${validItem.Name} (ID: ${validItem.Id})`);
-    itemCache.set(itemName, validItem.Id);
-    return validItem.Id;
+// Purpose: Handle vendor updates to QuickBooks with proper error handling
+// - Fetches current vendor data from Command X
+// - Gets existing QB vendor via mapping
+// - Updates QB vendor with SyncToken for conflict prevention
+// - Logs to quickbooks_sync_log on success/failure
+// - Returns detailed error information for frontend handling
+```
+
+Key features:
+- Uses existing mapping to find QB vendor ID
+- Fetches SyncToken from QB before update (conflict prevention)
+- Updates `last_synced_at` BEFORE sending to QB (race condition prevention per project memory)
+- Logs sync activity to `quickbooks_sync_log` table
+- Returns structured error data for frontend parsing
+
+### 2. Update `useUpdateVendor` Hook
+
+File: `src/integrations/supabase/hooks/useVendors.ts`
+
+Changes:
+- Call `quickbooks-update-vendor` instead of `quickbooks-sync-vendors`
+- Show `toast.warning()` when sync fails (matching bill behavior)
+- Return sync status from mutation
+
+```typescript
+// After local update succeeds:
+try {
+  const qbConnected = await isQuickBooksConnected();
+  if (qbConnected) {
+    console.log("QuickBooks connected - syncing updated vendor:", id);
+    const { data: syncResult, error: syncError } = await supabase.functions.invoke(
+      "quickbooks-update-vendor",
+      { body: { vendorId: id } }
+    );
+    
+    if (syncError || syncResult?.error) {
+      console.error("QuickBooks sync error:", syncError || syncResult?.error);
+      // Surface error to user (non-blocking)
+      toast.warning("Vendor saved, but QuickBooks sync failed. Check sync status.");
+    }
   }
-  
-  console.log(`Found item "${itemName}" but it's a Category, will create new Service item`);
-}
-```
-
-### Fix 3: Surface Sync Errors to the User
-
-Update `useUpdateVendorBill` hook to display a warning toast when QB sync fails:
-
-```typescript
 } catch (qbError) {
-  console.error("QuickBooks update sync error (non-blocking):", qbError);
-  // Show warning to user instead of silently failing
-  toast.warning("Bill saved, but QuickBooks sync failed. Check sync status.");
+  console.error("QuickBooks sync error (non-blocking):", qbError);
+  toast.warning("Vendor saved, but QuickBooks sync failed.");
 }
+```
+
+### 3. Add QuickBooks Sync Status Badge to Vendor List
+
+File: `src/pages/Vendors.tsx` (or vendor table component)
+
+Add a QB sync status column showing:
+- Green checkmark: Synced
+- Yellow warning: Pending/Error
+- Gray dash: Not linked to QB
+
+### 4. Update `supabase/config.toml`
+
+Add the new edge function configuration:
+
+```toml
+[functions.quickbooks-update-vendor]
+verify_jwt = false
 ```
 
 ---
 
-## Implementation Steps
+## Files to Create/Modify
 
-1. **Immediate manual fix in QuickBooks:**
-   - Check the "Labor" item in QuickBooks and ensure it's a Service type, not a Category
-   - If it's a Category, create a new "Labor" Service item
-
-2. **Code changes:**
-   - Update `quickbooks-update-bill/index.ts` to filter out Category items
-   - Update `quickbooks-create-bill/index.ts` with the same fix
-   - Update `useUpdateVendorBill` hook to show toast warning on sync failure
-   - Add sync failure logging to the error catch block
-
-3. **Deploy and test:**
-   - Deploy updated edge functions
-   - Retry the bill update
-   - Verify sync succeeds in QuickBooks
+| File | Action | Description |
+|------|--------|-------------|
+| `supabase/functions/quickbooks-update-vendor/index.ts` | Create | New dedicated vendor update function |
+| `supabase/config.toml` | Update | Add function configuration |
+| `src/integrations/supabase/hooks/useVendors.ts` | Update | Call new function, add toast warning |
+| `src/pages/Vendors.tsx` | Update | Add QB sync status column |
+| `src/components/vendors/VendorEditDialog.tsx` | Update (optional) | Show sync status after save |
 
 ---
 
-## Files to Modify
+## Edge Function Logic Flow
 
-| File | Change |
-|------|--------|
-| `supabase/functions/quickbooks-update-bill/index.ts` | Filter out Category items, improve error logging |
-| `supabase/functions/quickbooks-create-bill/index.ts` | Same Category item filtering (consistency) |
-| `src/integrations/supabase/hooks/useVendorBills.ts` | Show warning toast on QB sync failure |
+```text
+1. Receive vendorId
+2. Check quickbooks_vendor_mappings for existing QB link
+   └─ If no mapping → Return "not synced" (skip update)
+3. Fetch current vendor data from Command X
+4. Get valid QB access token
+5. Fetch current QB vendor to get SyncToken
+6. Update mapping.last_synced_at = now() (race condition prevention)
+7. Send sparse update to QB vendor endpoint
+8. Log to quickbooks_sync_log (success/failure)
+9. Return result with sync status
+```
+
+---
+
+## Comparison: Before vs After
+
+| Aspect | Before | After |
+|--------|--------|-------|
+| Sync trigger | Uses generic `sync-single` action | Dedicated `quickbooks-update-vendor` function |
+| Error handling | Silent (console.error only) | Toast warning to user |
+| Sync logging | Not logged for single vendor updates | Logged to `quickbooks_sync_log` |
+| Race conditions | Not protected | Uses timestamp update before QB call |
+| User feedback | "Vendor updated successfully" always | Shows warning if QB sync fails |
+| Status visibility | None | Sync status badge in vendor list |
 
 ---
 
 ## Summary
 
-The vendor bill appears "synced" because:
-1. The local database update succeeds
-2. The QB sync is triggered but fails with error 2500
-3. The error is caught silently (non-blocking design)
+The vendor sync infrastructure works but lacks proper user feedback and error handling. This fix creates parity with the Invoice/Bill sync pattern by:
 
-The fix requires:
-1. **Manual**: Fix the "Labor" item in QuickBooks to be a Service, not a Category
-2. **Code**: Add item type validation + user-facing error feedback
+1. Creating a dedicated edge function for vendor updates
+2. Adding user-facing feedback when sync fails
+3. Adding sync status visibility in the UI
+4. Implementing race condition prevention
+
+This ensures you'll know immediately if a vendor edit fails to sync to QuickBooks, matching the behavior of other synced entities.
