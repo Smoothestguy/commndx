@@ -1,137 +1,119 @@
 
-# Fix: QuickBooks Bill Duplicate Document Number Error
+# Fix: QuickBooks Bill Update Failing Silently
 
 ## Problem Identified
 
-When syncing a vendor bill to QuickBooks, you received this error:
+When you update a vendor bill, it shows "synced" but doesn't actually sync to QuickBooks. Investigation revealed:
 
+1. **The `quickbooks-update-bill` function IS being called**
+2. **But it fails with QuickBooks error 2500**: "An item in this transaction is set up as a **category** instead of a product or service"
+3. The "Labor" item (ID: 51) used for bill line items is configured as a **category** in QuickBooks, which is invalid for transactions
+4. The error is caught silently in the update hook (non-blocking), so you see "Bill updated successfully" but QB sync actually failed
+
+## Root Cause
+
+The edge function logs show:
 ```
-Duplicate Document Number Error: You must specify a different number. 
-This number has already been used. DocNumber=BILL-2625476 is assigned 
-to TxnType=Bill with TxnId=17250
+INFO Found existing Service item: Labor (ID: 51)
+ERROR Invalid Reference Id: An item in this transaction is set up as a category instead of a product or service
 ```
 
-## Root Cause Analysis
+In QuickBooks Online, there are two types of Items:
+- **Products/Services** (Type: "Service", "Inventory", "NonInventory") - Can be used in transactions
+- **Categories** (Type: "Category") - Only for organizing, CANNOT be used in transactions
 
-The investigation revealed:
+The "Labor" item (ID: 51) was likely created or modified to be a Category, making it unusable for bills.
 
-1. Bill `BILL-2625476` was **already successfully synced** to QuickBooks (TxnId=17250) on January 29th
-2. However, the local mapping table has `sync_status: 'syncing'` instead of `'synced'`
-3. The `quickbooks-create-bill` edge function only skips creation if `sync_status === 'synced'`
-4. Since status was `'syncing'`, it tried to create a new bill with the same document number, which QuickBooks rejected
-
-This is a logic bug where the function should also check if the bill already has a QuickBooks ID before attempting to create.
+---
 
 ## Solution
 
-### Fix 1: Update the existing mapping record (Immediate)
+### Fix 1: QuickBooks Configuration (Immediate - Manual Action Required)
 
-Update the stuck mapping to correct status:
+In QuickBooks Online:
+1. Go to **Settings (gear icon) → Products and Services**
+2. Find the "Labor" item
+3. Check if it's a Category - if so, you need to either:
+   - Change it to a Service type (if QuickBooks allows), OR
+   - Create a NEW "Labor" service item and delete/hide the category version
 
-```sql
-UPDATE quickbooks_bill_mappings 
-SET sync_status = 'synced', updated_at = now()
-WHERE bill_id = 'e292aed2-d08b-4d2b-a9c7-05e351fd8b58';
-```
+### Fix 2: Update Edge Function to Handle Category Items (Code Fix)
 
-### Fix 2: Improve the edge function logic (Permanent)
+Modify `quickbooks-update-bill/index.ts` to:
+1. **Validate item type** when searching for existing items - skip items with Type="Category"
+2. **Improve error handling** to provide clear feedback when QB sync fails
+3. **Log sync failures** to the `quickbooks_sync_log` table
 
-Update `quickbooks-create-bill/index.ts` to check for existing QuickBooks ID, not just status:
+**Changes to `getOrCreateQBServiceItem` function:**
 
-**Current code (lines 643-653):**
-```javascript
-if (existingMapping && existingMapping.sync_status === 'synced') {
-  // Only skips if status is exactly 'synced'
-}
-```
-
-**Fixed code:**
-```javascript
-// Skip if already synced OR if we have a QB bill ID (indicating it exists in QB)
-if (existingMapping && (existingMapping.sync_status === 'synced' || existingMapping.quickbooks_bill_id)) {
-  console.log(`Bill already synced to QuickBooks: ${existingMapping.quickbooks_bill_id}`);
+```typescript
+// In the search result check, filter out Category items
+if (result.QueryResponse?.Item?.length > 0) {
+  // Find a valid service/product item (not a Category)
+  const validItem = result.QueryResponse.Item.find(
+    (item: any) => item.Type !== 'Category' && item.Type !== 'Bundle'
+  );
   
-  // Update status to 'synced' if it was stuck
-  if (existingMapping.sync_status !== 'synced' && existingMapping.quickbooks_bill_id) {
-    await supabase
-      .from('quickbooks_bill_mappings')
-      .update({ sync_status: 'synced', updated_at: new Date().toISOString() })
-      .eq('id', existingMapping.id);
+  if (validItem) {
+    console.log(`Found existing Service item: ${validItem.Name} (ID: ${validItem.Id})`);
+    itemCache.set(itemName, validItem.Id);
+    return validItem.Id;
   }
   
-  return new Response(JSON.stringify({ 
-    success: true, 
-    message: 'Bill already synced',
-    quickbooksBillId: existingMapping.quickbooks_bill_id,
-    quickbooksDocNumber: existingMapping.quickbooks_doc_number,
-  }), {
-    headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-  });
+  console.log(`Found item "${itemName}" but it's a Category, will create new Service item`);
 }
 ```
 
-### Fix 3: Handle duplicate document errors gracefully
+### Fix 3: Surface Sync Errors to the User
 
-Add error handling to extract the existing bill ID from the error message and create/update the mapping:
+Update `useUpdateVendorBill` hook to display a warning toast when QB sync fails:
 
-```javascript
-} catch (error: unknown) {
-  const errorMessage = error instanceof Error ? error.message : 'Unknown error';
-  
-  // Handle duplicate document number error (code 6140)
-  if (errorMessage.includes('6140') || errorMessage.includes('Duplicate Document Number')) {
-    // Extract the TxnId from error message
-    const txnIdMatch = errorMessage.match(/TxnId=(\d+)/);
-    if (txnIdMatch) {
-      const existingQbBillId = txnIdMatch[1];
-      console.log(`Duplicate detected - linking to existing QB Bill: ${existingQbBillId}`);
-      
-      // Update mapping with the existing QB ID
-      await supabase
-        .from('quickbooks_bill_mappings')
-        .upsert({
-          bill_id: billId,
-          quickbooks_bill_id: existingQbBillId,
-          quickbooks_doc_number: bill.number,
-          sync_status: 'synced',
-          last_synced_at: new Date().toISOString(),
-          error_message: null,
-        }, { onConflict: 'bill_id' });
-      
-      return new Response(JSON.stringify({ 
-        success: true, 
-        message: 'Linked to existing QuickBooks bill',
-        quickbooksBillId: existingQbBillId,
-      }), {
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-      });
-    }
-  }
-  
-  // Continue with normal error handling...
+```typescript
+} catch (qbError) {
+  console.error("QuickBooks update sync error (non-blocking):", qbError);
+  // Show warning to user instead of silently failing
+  toast.warning("Bill saved, but QuickBooks sync failed. Check sync status.");
 }
 ```
+
+---
 
 ## Implementation Steps
 
-1. **Immediate fix**: Run SQL to fix the stuck mapping record
-2. **Update edge function**: Modify `quickbooks-create-bill/index.ts` with improved logic
-3. **Test**: Retry the sync to verify the fix works
+1. **Immediate manual fix in QuickBooks:**
+   - Check the "Labor" item in QuickBooks and ensure it's a Service type, not a Category
+   - If it's a Category, create a new "Labor" Service item
 
-## Technical Details
+2. **Code changes:**
+   - Update `quickbooks-update-bill/index.ts` to filter out Category items
+   - Update `quickbooks-create-bill/index.ts` with the same fix
+   - Update `useUpdateVendorBill` hook to show toast warning on sync failure
+   - Add sync failure logging to the error catch block
 
-| File | Change |
-|------|--------|
-| `supabase/functions/quickbooks-create-bill/index.ts` | Add check for existing QB ID + handle duplicate error gracefully |
-| Database | Update stuck mapping record to `sync_status = 'synced'` |
+3. **Deploy and test:**
+   - Deploy updated edge functions
+   - Retry the bill update
+   - Verify sync succeeds in QuickBooks
+
+---
 
 ## Files to Modify
 
-- `supabase/functions/quickbooks-create-bill/index.ts` (lines 636-654, 812-854)
+| File | Change |
+|------|--------|
+| `supabase/functions/quickbooks-update-bill/index.ts` | Filter out Category items, improve error logging |
+| `supabase/functions/quickbooks-create-bill/index.ts` | Same Category item filtering (consistency) |
+| `src/integrations/supabase/hooks/useVendorBills.ts` | Show warning toast on QB sync failure |
 
-## Testing Plan
+---
 
-1. Run the SQL fix to update the stuck mapping
-2. Deploy the updated edge function
-3. Verify that re-syncing the bill no longer causes errors
-4. Test with other bills that may have the same issue
+## Summary
+
+The vendor bill appears "synced" because:
+1. The local database update succeeds
+2. The QB sync is triggered but fails with error 2500
+3. The error is caught silently (non-blocking design)
+
+The fix requires:
+1. **Manual**: Fix the "Labor" item in QuickBooks to be a Service, not a Category
+2. **Code**: Add item type validation + user-facing error feedback
