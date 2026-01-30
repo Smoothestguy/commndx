@@ -385,18 +385,29 @@ async function getOrCreateQBServiceItem(
   console.log(`Searching QuickBooks for purchasable Service item: ${itemName}`);
   
   try {
-    const searchQuery = encodeURIComponent(`SELECT * FROM Item WHERE Name = '${itemName}' AND Type IN ('Service', 'NonInventory') MAXRESULTS 1`);
+    // Search for items - explicitly filter out Category type in query
+    const searchQuery = encodeURIComponent(`SELECT * FROM Item WHERE Name = '${itemName}' MAXRESULTS 10`);
     const result = await qbRequest('GET', `/query?query=${searchQuery}&minorversion=65`, accessToken, realmId);
     
     if (result.QueryResponse?.Item?.length > 0) {
-      const existingItem = result.QueryResponse.Item[0];
-      // Verify it has an expense account (is purchasable)
-      if (existingItem.ExpenseAccountRef?.value) {
-        console.log(`Found existing purchasable Service item: ${existingItem.Name} (ID: ${existingItem.Id})`);
-        itemCache.set(itemName, existingItem.Id);
-        return existingItem.Id;
+      // Filter out Category and Bundle items - they cannot be used in transactions
+      const validItem = result.QueryResponse.Item.find(
+        (item: any) => item.Type !== 'Category' && item.Type !== 'Bundle' && item.ExpenseAccountRef?.value
+      );
+      
+      if (validItem) {
+        console.log(`Found existing purchasable Service item: ${validItem.Name} (ID: ${validItem.Id}, Type: ${validItem.Type})`);
+        itemCache.set(itemName, validItem.Id);
+        return validItem.Id;
       }
-      console.log(`Found item "${existingItem.Name}" but it lacks ExpenseAccountRef, will create new`);
+      
+      // Check if we only found Category items
+      const categoryItems = result.QueryResponse.Item.filter((item: any) => item.Type === 'Category');
+      if (categoryItems.length > 0) {
+        console.log(`Found item "${itemName}" but it's a Category type (cannot be used in transactions), will create new Service item`);
+      } else {
+        console.log(`Found item "${itemName}" but it lacks ExpenseAccountRef, will create new`);
+      }
     }
   } catch (e) {
     console.log(`Error searching for Service item: ${e}, will try to create`);
