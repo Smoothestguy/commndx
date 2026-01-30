@@ -1,6 +1,7 @@
+import { useState } from "react";
 import { format } from "date-fns";
 import { cn } from "@/lib/utils";
-import { Check, CheckCheck, Smartphone, Trash2, AlertTriangle, RefreshCw, Loader2 } from "lucide-react";
+import { Check, CheckCheck, Smartphone, Trash2, AlertTriangle, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   AlertDialog,
@@ -20,6 +21,8 @@ import {
   TooltipTrigger,
 } from "@/components/ui/tooltip";
 import { FailedMessageIndicator } from "./FailedMessageIndicator";
+import { TranslateButton } from "./TranslateButton";
+import { useMessageTranslation, LanguageCode } from "@/hooks/useMessageTranslation";
 
 type MessageStatus = "sending" | "sent" | "delivered" | "read" | "failed";
 
@@ -40,6 +43,8 @@ interface MessageBubbleProps {
   errorMessage?: string | null;
   onRetry?: (messageId: string) => void;
   isRetrying?: boolean;
+  // Translation props
+  defaultTranslationLanguage?: LanguageCode;
 }
 
 export function MessageBubble({
@@ -58,13 +63,39 @@ export function MessageBubble({
   errorMessage,
   onRetry,
   isRetrying,
+  defaultTranslationLanguage = "en",
 }: MessageBubbleProps) {
+  const [translatedText, setTranslatedText] = useState<string | null>(null);
+  const [detectedLanguage, setDetectedLanguage] = useState<string | null>(null);
+  const { translateMessage, isTranslating } = useMessageTranslation();
+
   const canDelete = isOwnMessage && messageId && onDelete;
+  const canTranslate = !isOwnMessage; // Only translate incoming messages
   const isFailed = status === "failed";
   const isSending = status === "sending";
 
   // Determine effective status from legacy props if not provided
   const effectiveStatus = status || (isRead ? "read" : isDelivered ? "delivered" : "sent");
+
+  const handleTranslate = async () => {
+    if (translatedText) {
+      // Already translated - clear it
+      setTranslatedText(null);
+      setDetectedLanguage(null);
+      return;
+    }
+
+    const result = await translateMessage(content, defaultTranslationLanguage);
+    if (result) {
+      setTranslatedText(result.translatedText);
+      setDetectedLanguage(result.detectedLanguage || null);
+    }
+  };
+
+  const handleClearTranslation = () => {
+    setTranslatedText(null);
+    setDetectedLanguage(null);
+  };
 
   const renderStatusIcon = () => {
     if (isSending) {
@@ -111,6 +142,17 @@ export function MessageBubble({
       )}
 
       <div className="flex items-center gap-1">
+        {/* Translate button for incoming messages - appears on left */}
+        {canTranslate && (
+          <TranslateButton
+            onClick={handleTranslate}
+            isTranslating={isTranslating}
+            isTranslated={!!translatedText}
+            onClearTranslation={translatedText ? handleClearTranslation : undefined}
+            className="opacity-0 group-hover:opacity-100 transition-opacity"
+          />
+        )}
+
         {/* Delete button for own messages - appears on left */}
         {canDelete && isOwnMessage && (
           <AlertDialog>
@@ -155,7 +197,16 @@ export function MessageBubble({
             isSending && "opacity-70"
           )}
         >
-          <p className="text-sm whitespace-pre-wrap">{content}</p>
+          <p className="text-sm whitespace-pre-wrap">
+            {translatedText || content}
+          </p>
+          
+          {/* Show translation indicator */}
+          {translatedText && detectedLanguage && (
+            <p className="text-xs opacity-70 mt-1 italic">
+              Translated from {detectedLanguage}
+            </p>
+          )}
         </div>
       </div>
 

@@ -221,3 +221,6 @@ verify_jwt = false
 
 [functions.quickbooks-update-vendor]
 verify_jwt = false
+
+[functions.translate-message]
+verify_jwt = false
