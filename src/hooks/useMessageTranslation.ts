@@ -38,11 +38,6 @@ export function useMessageTranslation() {
     }
 
     const targetLangName = SUPPORTED_LANGUAGES.find(l => l.code === targetLanguage)?.name || targetLanguage;
-    
-    // If target is English, return original (assume it's already English or user wants English)
-    if (targetLanguage === 'en' && !sourceLanguage) {
-      return { translatedText: text, detectedLanguage: 'English' };
-    }
 
     // Check cache
     const cacheKey = getCacheKey(text, targetLanguage);
