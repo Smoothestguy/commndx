@@ -1,95 +1,137 @@
-# Database Security Hardening - COMPLETED
 
-## Summary
+# Fix: QuickBooks Bill Duplicate Document Number Error
 
-✅ **Security hardening migration has been applied successfully.**
+## Problem Identified
 
-The database has been hardened to use Role-Based Access Control (RBAC) instead of permissive `USING (true)` policies.
-
----
-
-## Changes Applied
-
-### Phase 1: Critical Tables (COMPLETED)
-| Table | Status | Fix Applied |
-|-------|--------|-------------|
-| `quickbooks_config` | ✅ SECURED | Removed `USING (true)` policy - admin-only access |
-| `emergency_contacts` | ✅ SECURED | Admin/manager access + self-access for personnel |
-| `messages` | ✅ SECURED | Staff-only access (admin/manager/user roles) |
-
-### Phase 2: Token/Invitation Tables (COMPLETED)
-| Table | Status | Fix Applied |
-|-------|--------|-------------|
-| `personnel_invitations` | ✅ SECURED | Admin/manager + self-access |
-| `vendor_invitations` | ✅ SECURED | Admin/manager + self-access |
-| `personnel_registration_invites` | ✅ SECURED | Admin/manager access only |
-| `personnel_onboarding_tokens` | ✅ SECURED | Admin/manager + self-access |
-
-### Phase 3: Business Data Tables (COMPLETED)
-All 65+ business data tables now use staff-only access:
-- Financial tables: `invoice_payments`, `vendor_bill_payments`, `personnel_payments`
-- Document tables: All estimates, invoices, POs, change orders, vendor bills
-- Project tables: `projects`, `job_orders`, `tasks`, `milestones`
-- Personnel/Vendor: Capabilities, certifications, documents
-- QuickBooks: All mappings and sync logs
-
-### Phase 4: Special Cases (COMPLETED)
-| Table | Status | Notes |
-|-------|--------|-------|
-| `applicants` | ✅ SECURED | Public INSERT preserved, SELECT restricted to staff |
-| `applications` | ✅ SECURED | Public INSERT preserved, SELECT restricted to staff |
-| `company_settings` | ⚠️ INTENTIONAL | `USING (true)` kept for public logo/name display |
-| `contractor_form_configurations` | ⚠️ INTENTIONAL | `USING (true)` kept for public form display |
-
----
-
-## New Access Control Model
+When syncing a vendor bill to QuickBooks, you received this error:
 
 ```
-┌─────────────────────────────────────────────────────────────┐
-│                    ACCESS CONTROL MATRIX                     │
-├─────────────────┬───────────┬─────────────┬─────────────────┤
-│ User Type       │ Own Data  │ Staff Data  │ Business Data   │
-├─────────────────┼───────────┼─────────────┼─────────────────┤
-│ Admin           │ ✅ Full   │ ✅ Full     │ ✅ Full         │
-│ Manager         │ ✅ Full   │ ✅ Full     │ ✅ Full         │
-│ User (Staff)    │ ✅ Full   │ ❌ None     │ ✅ Full         │
-│ Personnel       │ ✅ Own    │ ❌ None     │ ❌ None         │
-│ Vendor          │ ✅ Own    │ ❌ None     │ ❌ None         │
-│ Unauthenticated │ ❌ None   │ ❌ None     │ ❌ None         │
-└─────────────────┴───────────┴─────────────┴─────────────────┘
+Duplicate Document Number Error: You must specify a different number. 
+This number has already been used. DocNumber=BILL-2625476 is assigned 
+to TxnType=Bill with TxnId=17250
 ```
 
----
+## Root Cause Analysis
 
-## Remaining Linter Warnings (Non-Critical)
+The investigation revealed:
 
-The security linter shows warnings for:
-1. **Function Search Path Mutable** - Low risk, functions use `SECURITY DEFINER` safely
-2. **Extension in Public** - pg_trgm extension, acceptable for similarity search
-3. **RLS Policy Always True** - Remaining intentional public policies (INSERT for applications, company settings)
+1. Bill `BILL-2625476` was **already successfully synced** to QuickBooks (TxnId=17250) on January 29th
+2. However, the local mapping table has `sync_status: 'syncing'` instead of `'synced'`
+3. The `quickbooks-create-bill` edge function only skips creation if `sync_status === 'synced'`
+4. Since status was `'syncing'`, it tried to create a new bill with the same document number, which QuickBooks rejected
 
-These are acceptable trade-offs for the application's functionality.
+This is a logic bug where the function should also check if the bill already has a QuickBooks ID before attempting to create.
 
----
+## Solution
 
-## Testing Checklist
+### Fix 1: Update the existing mapping record (Immediate)
 
-Before App Store submission, verify:
+Update the stuck mapping to correct status:
 
-- [ ] Admin users can access all tables
-- [ ] Manager users can access all tables
-- [ ] Staff users can access business data but not other users' personal data
-- [ ] Personnel portal users can only see their own records
-- [ ] Vendor portal users can only see their own records
-- [ ] Unauthenticated users can submit job applications
-- [ ] Unauthenticated users CANNOT read any data
+```sql
+UPDATE quickbooks_bill_mappings 
+SET sync_status = 'synced', updated_at = now()
+WHERE bill_id = 'e292aed2-d08b-4d2b-a9c7-05e351fd8b58';
+```
 
----
+### Fix 2: Improve the edge function logic (Permanent)
 
-## Next Steps
+Update `quickbooks-create-bill/index.ts` to check for existing QuickBooks ID, not just status:
 
-1. ✅ Migration applied
-2. ⏳ Test all user flows
-3. ⏳ Verify no data leaks
-4. ⏳ Proceed with App Store submission
+**Current code (lines 643-653):**
+```javascript
+if (existingMapping && existingMapping.sync_status === 'synced') {
+  // Only skips if status is exactly 'synced'
+}
+```
+
+**Fixed code:**
+```javascript
+// Skip if already synced OR if we have a QB bill ID (indicating it exists in QB)
+if (existingMapping && (existingMapping.sync_status === 'synced' || existingMapping.quickbooks_bill_id)) {
+  console.log(`Bill already synced to QuickBooks: ${existingMapping.quickbooks_bill_id}`);
+  
+  // Update status to 'synced' if it was stuck
+  if (existingMapping.sync_status !== 'synced' && existingMapping.quickbooks_bill_id) {
+    await supabase
+      .from('quickbooks_bill_mappings')
+      .update({ sync_status: 'synced', updated_at: new Date().toISOString() })
+      .eq('id', existingMapping.id);
+  }
+  
+  return new Response(JSON.stringify({ 
+    success: true, 
+    message: 'Bill already synced',
+    quickbooksBillId: existingMapping.quickbooks_bill_id,
+    quickbooksDocNumber: existingMapping.quickbooks_doc_number,
+  }), {
+    headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+  });
+}
+```
+
+### Fix 3: Handle duplicate document errors gracefully
+
+Add error handling to extract the existing bill ID from the error message and create/update the mapping:
+
+```javascript
+} catch (error: unknown) {
+  const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+  
+  // Handle duplicate document number error (code 6140)
+  if (errorMessage.includes('6140') || errorMessage.includes('Duplicate Document Number')) {
+    // Extract the TxnId from error message
+    const txnIdMatch = errorMessage.match(/TxnId=(\d+)/);
+    if (txnIdMatch) {
+      const existingQbBillId = txnIdMatch[1];
+      console.log(`Duplicate detected - linking to existing QB Bill: ${existingQbBillId}`);
+      
+      // Update mapping with the existing QB ID
+      await supabase
+        .from('quickbooks_bill_mappings')
+        .upsert({
+          bill_id: billId,
+          quickbooks_bill_id: existingQbBillId,
+          quickbooks_doc_number: bill.number,
+          sync_status: 'synced',
+          last_synced_at: new Date().toISOString(),
+          error_message: null,
+        }, { onConflict: 'bill_id' });
+      
+      return new Response(JSON.stringify({ 
+        success: true, 
+        message: 'Linked to existing QuickBooks bill',
+        quickbooksBillId: existingQbBillId,
+      }), {
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+    }
+  }
+  
+  // Continue with normal error handling...
+}
+```
+
+## Implementation Steps
+
+1. **Immediate fix**: Run SQL to fix the stuck mapping record
+2. **Update edge function**: Modify `quickbooks-create-bill/index.ts` with improved logic
+3. **Test**: Retry the sync to verify the fix works
+
+## Technical Details
+
+| File | Change |
+|------|--------|
+| `supabase/functions/quickbooks-create-bill/index.ts` | Add check for existing QB ID + handle duplicate error gracefully |
+| Database | Update stuck mapping record to `sync_status = 'synced'` |
+
+## Files to Modify
+
+- `supabase/functions/quickbooks-create-bill/index.ts` (lines 636-654, 812-854)
+
+## Testing Plan
+
+1. Run the SQL fix to update the stuck mapping
+2. Deploy the updated edge function
+3. Verify that re-syncing the bill no longer causes errors
+4. Test with other bills that may have the same issue
