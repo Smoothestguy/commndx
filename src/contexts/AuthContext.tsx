@@ -26,7 +26,7 @@ const isElectron = () => {
   // Check for Electron-specific properties
   if (
     typeof window.process !== "undefined" &&
-    window.process.type === "renderer"
+    (window.process as { type?: string })?.type === "renderer"
   )
     return true;
 
