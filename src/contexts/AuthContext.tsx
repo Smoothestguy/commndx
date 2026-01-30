@@ -236,7 +236,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       // For Electron: use desktop callback redirect which will forward to commandx://
       const redirectUri = isElectron()
         ? `${
-            import.meta.env.VITE_APP_URL || "https://commandx.app"
+            import.meta.env.VITE_APP_URL || "https://commndx.com"
           }/auth/desktop-callback`
         : window.location.origin;
 
@@ -258,7 +258,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       // For Electron: use desktop callback redirect which will forward to commandx://
       const redirectUri = isElectron()
         ? `${
-            import.meta.env.VITE_APP_URL || "https://commandx.app"
+            import.meta.env.VITE_APP_URL || "https://commndx.com"
           }/auth/desktop-callback`
         : window.location.origin;
 
