@@ -1,57 +1,53 @@
 
-# Fix: Translation to English Not Working
+# Fix: Reset All Today's Sessions Idle Time
 
 ## Problem Identified
 
-When clicking translate on a Spanish message ("Buenas noche. El. Link. No deja seguir. Como hacemos"), the system:
-1. **Showed the original Spanish text** instead of translating to English
-2. **Displayed "Translated from English"** which is incorrect - the message was in Spanish
+When clicking "Reset idle time to zero", only the **current active session** is reset. However, the UI shows **today's totals** which includes idle time from **all sessions today** (based on local timezone).
 
-**Root Cause:**
-Both the frontend hook and edge function have faulty "optimization" logic that skips translation when the target language is English, assuming the text is already in English. This breaks the core use case of translating foreign language messages to English.
+Your situation:
+- **Current session**: 0 idle seconds (reset worked)
+- **Previous session from today**: 4124 seconds (~1h 8m) idle - NOT reset
+- **UI shows**: 1:08:44 total idle (sum of both sessions)
+
+## Solution
+
+Modify the reset function to fix idle time for **all of today's sessions**, not just the current active one.
+
+---
 
 ## Files to Modify
 
 | File | Change |
 |------|--------|
-| `src/hooks/useMessageTranslation.ts` | Remove incorrect English shortcut logic |
-| `supabase/functions/translate-message/index.ts` | Remove incorrect English shortcut logic |
+| `supabase/functions/fix-session-idle/index.ts` | Add support for `fixAllToday` mode that resets all sessions from today |
+| `src/components/session/SessionTimer.tsx` | Update to call the edge function with the new mode |
 
 ---
 
 ## Technical Changes
 
-### 1. Fix `useMessageTranslation.ts` (lines 42-45)
+### 1. Update `fix-session-idle/index.ts`
 
-**Current (broken):**
-```typescript
-// If target is English, return original (assume it's already English or user wants English)
-if (targetLanguage === 'en' && !sourceLanguage) {
-  return { translatedText: text, detectedLanguage: 'English' };
+Add a new mode `fixAllToday` that:
+1. Finds all sessions from today (using the same timezone logic as the frontend)
+2. Sets `total_idle_seconds = 0` for each session
+3. Returns the count of sessions fixed
+
+New request body option:
+```json
+{
+  "mode": "fixAllToday",
+  "startOfToday": "2026-01-30T05:00:00.000Z"  // Frontend sends local midnight in UTC
 }
 ```
 
-**Fixed:**
-Remove this block entirely. Let the edge function handle all translations, including to English.
+### 2. Update `SessionTimer.tsx`
 
----
-
-### 2. Fix `translate-message/index.ts` (lines 32-39)
-
-**Current (broken):**
-```typescript
-// If target is English and no source specified, likely already English - return as-is
-if (targetLanguage.toLowerCase() === 'english' && !sourceLanguage) {
-  console.log('[translate-message] Target is English, returning original text');
-  return new Response(
-    JSON.stringify({ translatedText: text, detectedLanguage: 'English' }),
-    { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-  );
-}
-```
-
-**Fixed:**
-Remove this block entirely. The AI model should detect the source language and translate to English properly.
+Change `handleFixIdleTime` to:
+1. Calculate `startOfToday` the same way `useTodaySessions` does
+2. Call edge function with `mode: "fixAllToday"` and the start timestamp
+3. This will reset idle for all sessions shown in the "Today's Totals"
 
 ---
 
@@ -59,34 +55,15 @@ Remove this block entirely. The AI model should detect the source language and t
 
 | Before | After |
 |--------|-------|
-| Spanish → English: Returns original Spanish, says "from English" | Spanish → English: Actually translates to English, correctly shows "from Spanish" |
-| AI is never called for English targets | AI properly detects language and translates |
+| Only resets current active session | Resets ALL sessions included in today's totals |
+| Previous session's 4124s idle remains | All sessions set to 0 idle |
+| UI still shows 1:08:44 | UI shows 0:00:00 |
 
 ---
 
-## Logic Flow After Fix
+## Security Considerations
 
-```text
-User clicks "Translate" on: "Buenas noche. El. Link. No deja seguir."
-↓
-translateMessage(text, 'en') called
-↓
-Edge function invoked with targetLanguage: "English"
-↓
-AI prompt: "Detect source language and translate to English"
-↓
-AI returns: "Good evening. The link. It won't let me continue. What do we do?"
-         + "DETECTED: Spanish"
-↓
-UI shows: "Good evening. The link. It won't let me continue. What do we do?"
-         "Translated from Spanish"
-```
-
----
-
-## Summary
-
-Two lines of faulty "optimization" code prevented translation to English from working. Removing these shortcuts ensures:
-1. All translations go through the AI, regardless of target language
-2. Source language is properly detected
-3. English users can translate incoming foreign language messages
+The edge function already:
+- Validates the user is authenticated
+- Checks if user is admin/manager OR the session owner
+- We'll add the same ownership check for all sessions being modified
