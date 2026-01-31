@@ -10,7 +10,7 @@ import {
   TooltipTrigger,
 } from "@/components/ui/tooltip";
 import { Clock, Play, Square, Pause, DollarSign, RefreshCw } from "lucide-react";
-import { formatTimeHMS, formatSessionCurrency } from "@/utils/sessionTime";
+import { formatTimeHMS, formatSessionCurrency, getStartOfToday } from "@/utils/sessionTime";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { useState } from "react";
@@ -42,21 +42,23 @@ export function SessionTimer() {
 
   const { showSessionEarnings } = useUserDisplayPreferences();
 
-  // Reset idle time to zero for current session
+  // Reset idle time to zero for ALL of today's sessions
   const handleFixIdleTime = async () => {
-    if (!sessionId) return;
-    
     setIsFixingIdle(true);
     try {
-      // Set idle time to 0 since user was working externally (e.g., VS Code)
+      // Calculate start of today using the same logic as useTodaySessions
+      const startOfToday = getStartOfToday();
+      
+      // Reset idle for all sessions from today
       const { data, error } = await supabase.functions.invoke("fix-session-idle", {
-        body: { sessionId, mode: "set", idleSeconds: 0 },
+        body: { mode: "fixAllToday", startOfToday },
       });
       
       if (error) throw error;
       
       if (data?.success) {
-        toast.success("Idle time reset to zero");
+        const count = data.sessionsFixed || 0;
+        toast.success(`Idle time reset to zero for ${count} session${count !== 1 ? 's' : ''}`);
         // Invalidate queries to refresh the display
         queryClient.invalidateQueries({ queryKey: ["today-sessions"] });
         queryClient.invalidateQueries({ queryKey: ["session-history"] });

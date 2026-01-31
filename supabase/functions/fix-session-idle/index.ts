@@ -44,8 +44,77 @@ serve(async (req) => {
 
     const isAdminOrManager = roleData?.role === "admin" || roleData?.role === "manager";
 
-    const { sessionId, mode, idleSeconds } = await req.json();
+    const { sessionId, mode, idleSeconds, startOfToday } = await req.json();
 
+    // Handle fixAllToday mode - reset idle for all sessions from today
+    if (mode === "fixAllToday") {
+      if (!startOfToday) {
+        return new Response(JSON.stringify({ error: "startOfToday is required for fixAllToday mode" }), {
+          status: 400,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+
+      // Find all sessions for this user from today
+      const { data: todaySessions, error: sessionsError } = await supabaseClient
+        .from("user_work_sessions")
+        .select("id, total_idle_seconds, idle_correction_version")
+        .eq("user_id", user.id)
+        .gte("session_start", startOfToday);
+
+      if (sessionsError) {
+        console.error("Error fetching today's sessions:", sessionsError);
+        return new Response(JSON.stringify({ error: "Failed to fetch sessions" }), {
+          status: 500,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+
+      if (!todaySessions || todaySessions.length === 0) {
+        return new Response(JSON.stringify({ 
+          success: true, 
+          message: "No sessions found for today",
+          sessionsFixed: 0 
+        }), {
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+
+      // Calculate total idle being reset
+      const totalIdleReset = todaySessions.reduce((sum, s) => sum + (s.total_idle_seconds || 0), 0);
+
+      // Update all sessions to 0 idle
+      const sessionIds = todaySessions.map(s => s.id);
+      const { error: updateError } = await supabaseClient
+        .from("user_work_sessions")
+        .update({
+          total_idle_seconds: 0,
+          idle_corrected_at: new Date().toISOString(),
+        })
+        .in("id", sessionIds);
+
+      if (updateError) {
+        console.error("Error updating sessions:", updateError);
+        return new Response(JSON.stringify({ error: "Failed to update sessions" }), {
+          status: 500,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+
+      console.log(`Fixed ${todaySessions.length} sessions for user ${user.id}: reset ${totalIdleReset}s total idle to 0`);
+
+      return new Response(
+        JSON.stringify({
+          success: true,
+          sessionsFixed: todaySessions.length,
+          totalIdleReset,
+          mode: "fixAllToday",
+        }),
+        { headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
+    // Original single-session modes below
     if (!sessionId) {
       return new Response(JSON.stringify({ error: "sessionId is required" }), {
         status: 400,
@@ -126,7 +195,7 @@ serve(async (req) => {
 
       newIdleSeconds = Math.floor(totalIdleMs / 1000);
     } else {
-      return new Response(JSON.stringify({ error: "mode must be 'set' or 'recalc'" }), {
+      return new Response(JSON.stringify({ error: "mode must be 'set', 'recalc', or 'fixAllToday'" }), {
         status: 400,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
