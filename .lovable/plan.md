@@ -1,69 +1,196 @@
 
-# Fix: Reset All Today's Sessions Idle Time
 
-## Problem Identified
+# Google Play Developer Content Policy Compliance Audit
 
-When clicking "Reset idle time to zero", only the **current active session** is reset. However, the UI shows **today's totals** which includes idle time from **all sessions today** (based on local timezone).
+## Summary
 
-Your situation:
-- **Current session**: 0 idle seconds (reset worked)
-- **Previous session from today**: 4124 seconds (~1h 8m) idle - NOT reset
-- **UI shows**: 1:08:44 total idle (sum of both sessions)
-
-## Solution
-
-Modify the reset function to fix idle time for **all of today's sessions**, not just the current active one.
+Command X is a workforce management app that collects sensitive personal data (SSN, bank information, location). Based on the Google Play Developer Content Policy requirements, I've identified several areas that need attention for full compliance.
 
 ---
 
-## Files to Modify
+## Compliance Assessment
+
+### 1. User Data Policy
+
+| Requirement | Current Status | Action Needed |
+|-------------|----------------|---------------|
+| Privacy Policy in app | Have `/legal/privacy` route | None |
+| Privacy Policy link in Play Console | Need to configure | Add URL in Play Console |
+| Data Safety Section | Not yet completed | Must complete form in Play Console |
+| Account deletion option | Implemented via `delete-own-account` edge function | None |
+| Account deletion link in Play Console | Need to configure | Add deletion URL in Play Console |
+
+### 2. Prominent Disclosure & Consent (Critical)
+
+**Issue**: The app collects **background location data** for geofencing. Google requires:
+1. In-app disclosure **before** requesting permission
+2. Clear explanation of what data is collected and why
+3. Disclosure must be **within the app**, not just in privacy policy
+
+**Current Implementation**: The `PermissionRequestFlow.tsx` component shows a dialog explaining location use - this partially meets the requirement but needs enhancement.
+
+**Required Changes**:
+- Add more specific disclosure text matching Google's template: "Command X collects location data to enable automatic clock-out when you leave job sites, even when the app is closed or not in use."
+- Ensure the disclosure appears **before** the system permission dialog
+- Add disclosure about background location usage specifically
+
+### 3. Data Safety Section (Play Console)
+
+You must declare in Google Play Console:
+
+| Data Type | Collected | Shared | Purpose |
+|-----------|-----------|--------|---------|
+| **Precise location** | Yes | No | App functionality (geofencing) |
+| **Background location** | Yes | No | Auto clock-out feature |
+| **Name** | Yes | No | Account/profile |
+| **Email address** | Yes | No | Authentication |
+| **Phone number** | Yes | Twilio (for SMS) | Notifications |
+| **Government ID (SSN)** | Yes | No | Employment compliance |
+| **Financial info (bank account)** | Yes | No | Payroll/direct deposit |
+| **Photos** | Yes | No | Document uploads |
+
+### 4. Permissions Policy
+
+**Background Location**: Google has strict requirements:
+- Must have a core feature that **requires** background location
+- Must provide prominent disclosure
+- Cannot use for advertising
+
+**Your justification**: Auto-clock-out when leaving job site is a valid core feature.
+
+### 5. Security Vulnerabilities (Must Fix Before Submission)
+
+The security scan revealed critical issues that violate Google's User Data policy on "secure handling":
+
+| Issue | Severity | Details |
+|-------|----------|---------|
+| QuickBooks OAuth tokens exposed | CRITICAL | `quickbooks_config` table readable by all authenticated users |
+| Personnel SSN/bank data exposed | CRITICAL | `personnel` table with sensitive data has overly permissive RLS |
+| Emergency contacts exposed | HIGH | Personal contact info readable by all users |
+| Messages table exposed | HIGH | Phone numbers and message content accessible |
+
+**These must be fixed** - Google requires "Handle all personal and sensitive user data securely."
+
+### 6. Privacy Policy Updates Needed
+
+Your current privacy policy needs additions for Google Play compliance:
+
+| Required Section | Status |
+|------------------|--------|
+| Developer contact information | Have email only - add physical address |
+| Types of data collected | Incomplete - missing SSN, bank info, government ID |
+| Background location disclosure | Missing |
+| Data retention policy | Basic mention - needs specifics |
+| Children's privacy | Missing (should state app is not for children) |
+
+### 7. App Backup Security
+
+**Issue**: `android:allowBackup="true"` in AndroidManifest.xml could expose sensitive data.
+
+**Fix**: Add `android:dataExtractionRules` or set `android:allowBackup="false"` since this app handles SSN and bank data.
+
+---
+
+## Implementation Plan
+
+### Phase 1: Critical Security Fixes (Required)
 
 | File | Change |
 |------|--------|
-| `supabase/functions/fix-session-idle/index.ts` | Add support for `fixAllToday` mode that resets all sessions from today |
-| `src/components/session/SessionTimer.tsx` | Update to call the edge function with the new mode |
+| Database migration | Restrict `quickbooks_config` RLS policy to admins only |
+| Database migration | Restrict `personnel` table RLS - only allow self-access for non-admins |
+| Database migration | Restrict `emergency_contacts` RLS policy |
+| Database migration | Restrict `messages` table RLS policy |
+
+### Phase 2: Disclosure & Consent Updates
+
+| File | Change |
+|------|--------|
+| `src/components/location/PermissionRequestFlow.tsx` | Update disclosure text to meet Google's template format |
+| New component | Add prominent disclosure screen that appears before permission request |
+| `src/pages/legal/PrivacyPolicy.tsx` | Add missing data types (SSN, bank info, background location) |
+| `src/pages/legal/PrivacyPolicy.tsx` | Add children's privacy statement |
+| `src/pages/legal/PrivacyPolicy.tsx` | Add physical contact address |
+
+### Phase 3: Android Configuration
+
+| File | Change |
+|------|--------|
+| `android/app/src/main/AndroidManifest.xml` | Set `android:allowBackup="false"` or add `dataExtractionRules` |
+| `android/app/src/main/res/xml/data_extraction_rules.xml` | Create file to exclude sensitive data from backup |
+
+### Phase 4: Play Console Configuration (Manual)
+
+1. Complete Data Safety form with all data types listed above
+2. Add Privacy Policy URL: `https://commndx.lovable.app/legal/privacy`
+3. Add Account Deletion URL: `https://commndx.lovable.app/portal/settings` (or create dedicated deletion page)
+4. Content Rating questionnaire
+5. Target audience and content declaration
 
 ---
 
-## Technical Changes
+## Technical Details
 
-### 1. Update `fix-session-idle/index.ts`
+### Database Migration for RLS Hardening
 
-Add a new mode `fixAllToday` that:
-1. Finds all sessions from today (using the same timezone logic as the frontend)
-2. Sets `total_idle_seconds = 0` for each session
-3. Returns the count of sessions fixed
+```sql
+-- Secure QuickBooks tokens
+DROP POLICY IF EXISTS "Authenticated users can view quickbooks config" ON public.quickbooks_config;
+CREATE POLICY "Only admins can view QuickBooks config"
+  ON public.quickbooks_config FOR SELECT
+  USING (has_role(auth.uid(), 'admin'));
 
-New request body option:
-```json
-{
-  "mode": "fixAllToday",
-  "startOfToday": "2026-01-30T05:00:00.000Z"  // Frontend sends local midnight in UTC
-}
+-- Secure personnel sensitive data
+DROP POLICY IF EXISTS "Authenticated users can view personnel" ON public.personnel;
+CREATE POLICY "Admins and managers can view all personnel"
+  ON public.personnel FOR SELECT
+  USING (has_role(auth.uid(), 'admin') OR has_role(auth.uid(), 'manager'));
+CREATE POLICY "Personnel can view own record"
+  ON public.personnel FOR SELECT
+  USING (user_id = auth.uid());
+
+-- Similar for emergency_contacts and messages tables
 ```
 
-### 2. Update `SessionTimer.tsx`
+### Updated Location Disclosure Component
 
-Change `handleFixIdleTime` to:
-1. Calculate `startOfToday` the same way `useTodaySessions` does
-2. Call edge function with `mode: "fixAllToday"` and the start timestamp
-3. This will reset idle for all sessions shown in the "Today's Totals"
+The `PermissionRequestFlow.tsx` needs updated disclosure text:
+
+```
+"Command X collects location data to enable automatic clock-out 
+when you leave job sites, even when the app is closed or not in use. 
+Your location is only tracked while you are clocked in to a job site."
+```
+
+### Android Backup Configuration
+
+Create `android/app/src/main/res/xml/data_extraction_rules.xml`:
+
+```xml
+<?xml version="1.0" encoding="utf-8"?>
+<data-extraction-rules>
+    <cloud-backup>
+        <exclude domain="sharedpref" path="."/>
+        <exclude domain="database" path="."/>
+    </cloud-backup>
+    <device-transfer>
+        <exclude domain="sharedpref" path="."/>
+        <exclude domain="database" path="."/>
+    </device-transfer>
+</data-extraction-rules>
+```
 
 ---
 
-## Why This Fixes the Issue
+## Checklist for Google Play Submission
 
-| Before | After |
-|--------|-------|
-| Only resets current active session | Resets ALL sessions included in today's totals |
-| Previous session's 4124s idle remains | All sessions set to 0 idle |
-| UI still shows 1:08:44 | UI shows 0:00:00 |
+- [ ] Fix critical RLS policy vulnerabilities
+- [ ] Update PermissionRequestFlow with compliant disclosure
+- [ ] Update Privacy Policy with all required sections
+- [ ] Disable or restrict Android backup
+- [ ] Complete Data Safety form in Play Console
+- [ ] Add Privacy Policy URL in Play Console
+- [ ] Add Account Deletion URL in Play Console
+- [ ] Complete Content Rating questionnaire
+- [ ] Verify app targets users 13+ (not children)
 
----
-
-## Security Considerations
-
-The edge function already:
-- Validates the user is authenticated
-- Checks if user is admin/manager OR the session owner
-- We'll add the same ownership check for all sessions being modified
