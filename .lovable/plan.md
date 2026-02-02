@@ -1,196 +1,242 @@
 
 
-# Google Play Developer Content Policy Compliance Audit
+# Google Play Security Compliance: Fix All 27 Security Errors
 
-## Summary
+## Overview
 
-Command X is a workforce management app that collects sensitive personal data (SSN, bank information, location). Based on the Google Play Developer Content Policy requirements, I've identified several areas that need attention for full compliance.
+The security scan reveals **27 critical security errors** across the database that must be fixed for Google Play Developer Content Policy compliance. The previous migration (February 2nd) secured only 5 tables. This plan addresses the remaining vulnerable tables.
 
 ---
 
-## Compliance Assessment
+## Current Security Status
 
-### 1. User Data Policy
+| Category | Tables Secured | Tables Remaining |
+|----------|----------------|------------------|
+| QuickBooks OAuth Tokens | 1 (quickbooks_config) | 0 |
+| Personnel PII (SSN, Bank) | 1 (personnel) | 0 |
+| Emergency Contacts | 1 (emergency_contacts) | 0 |
+| Private Messages | 2 (conversations, conversation_messages) | 1 (messages) |
+| **Business Data (Still Exposed)** | 0 | **20+** |
 
-| Requirement | Current Status | Action Needed |
-|-------------|----------------|---------------|
-| Privacy Policy in app | Have `/legal/privacy` route | None |
-| Privacy Policy link in Play Console | Need to configure | Add URL in Play Console |
-| Data Safety Section | Not yet completed | Must complete form in Play Console |
-| Account deletion option | Implemented via `delete-own-account` edge function | None |
-| Account deletion link in Play Console | Need to configure | Add deletion URL in Play Console |
+---
 
-### 2. Prominent Disclosure & Consent (Critical)
+## Tables Requiring RLS Hardening
 
-**Issue**: The app collects **background location data** for geofencing. Google requires:
-1. In-app disclosure **before** requesting permission
-2. Clear explanation of what data is collected and why
-3. Disclosure must be **within the app**, not just in privacy policy
+### CRITICAL - Sensitive Data Exposure
 
-**Current Implementation**: The `PermissionRequestFlow.tsx` component shows a dialog explaining location use - this partially meets the requirement but needs enhancement.
+| Table | Sensitive Data Exposed | Required Access |
+|-------|------------------------|-----------------|
+| `messages` | Phone numbers, SMS content | Admins/Managers only |
+| `vendors` | Tax IDs, bank info, W-9 data | Admins/Managers + Vendor self-access |
+| `applicants` | Personal info, addresses, GPS | Staff only |
+| `applications` | Answers, phone, GPS, consent data | Staff only |
+| `time_entries` | GPS locations, hourly rates | Admins/Managers + Personnel self-access |
+| `personnel_payments` | Payroll amounts, rates, hours | Admins/Managers + Personnel self-access |
+| `vendor_bills` | Cost structure, billing info | Admins/Managers + Vendor self-access |
+| `reimbursements` | Expense data, receipts | Admins/Managers + Personnel self-access |
 
-**Required Changes**:
-- Add more specific disclosure text matching Google's template: "Command X collects location data to enable automatic clock-out when you leave job sites, even when the app is closed or not in use."
-- Ensure the disclosure appears **before** the system permission dialog
-- Add disclosure about background location usage specifically
+### HIGH - Business Data Exposure
 
-### 3. Data Safety Section (Play Console)
+| Table | Data Exposed | Required Access |
+|-------|--------------|-----------------|
+| `customers` | Contact info, addresses | Staff only |
+| `invoices` | Pricing, customer PO numbers | Staff only |
+| `estimates` | Pricing strategy, margins | Staff only |
+| `projects` | Customer locations, GPS, contacts | Staff only |
+| `job_orders` | Financial details, costs | Staff only |
+| `purchase_orders` | Vendor costs, supply chain | Staff + Vendor self-access |
+| `change_orders` | Scope changes, additional costs | Staff only |
+| `invoice_payments` | Payment methods, references | Staff only |
 
-You must declare in Google Play Console:
+### MEDIUM - Token/Invitation Exposure
 
-| Data Type | Collected | Shared | Purpose |
-|-----------|-----------|--------|---------|
-| **Precise location** | Yes | No | App functionality (geofencing) |
-| **Background location** | Yes | No | Auto clock-out feature |
-| **Name** | Yes | No | Account/profile |
-| **Email address** | Yes | No | Authentication |
-| **Phone number** | Yes | Twilio (for SMS) | Notifications |
-| **Government ID (SSN)** | Yes | No | Employment compliance |
-| **Financial info (bank account)** | Yes | No | Payroll/direct deposit |
-| **Photos** | Yes | No | Document uploads |
+| Table | Issue | Required Access |
+|-------|-------|-----------------|
+| `personnel_onboarding_tokens` | All tokens visible | Token-based lookup only |
+| `vendor_onboarding_tokens` | All tokens visible | Token-based lookup only |
+| `personnel_invitations` | All invites visible | Token-based lookup only |
+| `vendor_invitations` | All invites visible | Token-based lookup only |
+| `invitations` | All user invites visible | Token-based lookup only |
 
-### 4. Permissions Policy
+### LOW - QuickBooks Mapping Tables
 
-**Background Location**: Google has strict requirements:
-- Must have a core feature that **requires** background location
-- Must provide prominent disclosure
-- Cannot use for advertising
-
-**Your justification**: Auto-clock-out when leaving job site is a valid core feature.
-
-### 5. Security Vulnerabilities (Must Fix Before Submission)
-
-The security scan revealed critical issues that violate Google's User Data policy on "secure handling":
-
-| Issue | Severity | Details |
-|-------|----------|---------|
-| QuickBooks OAuth tokens exposed | CRITICAL | `quickbooks_config` table readable by all authenticated users |
-| Personnel SSN/bank data exposed | CRITICAL | `personnel` table with sensitive data has overly permissive RLS |
-| Emergency contacts exposed | HIGH | Personal contact info readable by all users |
-| Messages table exposed | HIGH | Phone numbers and message content accessible |
-
-**These must be fixed** - Google requires "Handle all personal and sensitive user data securely."
-
-### 6. Privacy Policy Updates Needed
-
-Your current privacy policy needs additions for Google Play compliance:
-
-| Required Section | Status |
-|------------------|--------|
-| Developer contact information | Have email only - add physical address |
-| Types of data collected | Incomplete - missing SSN, bank info, government ID |
-| Background location disclosure | Missing |
-| Data retention policy | Basic mention - needs specifics |
-| Children's privacy | Missing (should state app is not for children) |
-
-### 7. App Backup Security
-
-**Issue**: `android:allowBackup="true"` in AndroidManifest.xml could expose sensitive data.
-
-**Fix**: Add `android:dataExtractionRules` or set `android:allowBackup="false"` since this app handles SSN and bank data.
+| Table | Issue | Required Access |
+|-------|-------|-----------------|
+| `quickbooks_customer_mappings` | Exposes system structure | Admins only |
+| `quickbooks_vendor_mappings` | Exposes system structure | Admins only |
+| `quickbooks_invoice_mappings` | Exposes system structure | Admins only |
+| `quickbooks_bill_mappings` | Exposes system structure | Admins only |
+| `quickbooks_product_mappings` | Exposes system structure | Admins only |
+| `quickbooks_account_mappings` | Exposes system structure | Admins only |
 
 ---
 
 ## Implementation Plan
 
-### Phase 1: Critical Security Fixes (Required)
+### Phase 1: Database Migration
 
-| File | Change |
-|------|--------|
-| Database migration | Restrict `quickbooks_config` RLS policy to admins only |
-| Database migration | Restrict `personnel` table RLS - only allow self-access for non-admins |
-| Database migration | Restrict `emergency_contacts` RLS policy |
-| Database migration | Restrict `messages` table RLS policy |
+Create a comprehensive migration that:
 
-### Phase 2: Disclosure & Consent Updates
+1. **Drops all overly permissive `USING (true)` SELECT policies** for sensitive tables
+2. **Creates role-based policies** using the existing `has_role()` function
+3. **Adds self-access policies** for portal users (personnel and vendors)
 
-| File | Change |
-|------|--------|
-| `src/components/location/PermissionRequestFlow.tsx` | Update disclosure text to meet Google's template format |
-| New component | Add prominent disclosure screen that appears before permission request |
-| `src/pages/legal/PrivacyPolicy.tsx` | Add missing data types (SSN, bank info, background location) |
-| `src/pages/legal/PrivacyPolicy.tsx` | Add children's privacy statement |
-| `src/pages/legal/PrivacyPolicy.tsx` | Add physical contact address |
+### Phase 2: Policy Categories
 
-### Phase 3: Android Configuration
+#### A. Admin-Only Tables
+```text
+- messages (SMS logs with phone numbers)
+- quickbooks_*_mappings (6 tables)
+```
 
-| File | Change |
-|------|--------|
-| `android/app/src/main/AndroidManifest.xml` | Set `android:allowBackup="false"` or add `dataExtractionRules` |
-| `android/app/src/main/res/xml/data_extraction_rules.xml` | Create file to exclude sensitive data from backup |
+#### B. Admin/Manager + Self-Access Tables
+```text
+- personnel_payments (payroll data)
+- vendor_bills (vendor costs)
+- time_entries (GPS locations)
+- reimbursements (expense data)
+```
 
-### Phase 4: Play Console Configuration (Manual)
+#### C. Staff-Only Tables (Admin/Manager/User roles)
+```text
+- customers, invoices, estimates, projects
+- job_orders, purchase_orders, change_orders
+- applicants, applications, invoice_payments
+```
 
-1. Complete Data Safety form with all data types listed above
-2. Add Privacy Policy URL: `https://commndx.lovable.app/legal/privacy`
-3. Add Account Deletion URL: `https://commndx.lovable.app/portal/settings` (or create dedicated deletion page)
-4. Content Rating questionnaire
-5. Target audience and content declaration
+#### D. Token-Based Access Tables
+```text
+- personnel_onboarding_tokens
+- vendor_onboarding_tokens  
+- personnel_invitations
+- vendor_invitations
+- invitations
+```
+
+#### E. Vendor Portal Access
+```text
+- purchase_orders (vendor can view their own POs)
+- vendor_bills (vendor can view their own bills)
+- vendors (vendor can view own record)
+```
 
 ---
 
 ## Technical Details
 
-### Database Migration for RLS Hardening
+### Migration SQL Structure
 
 ```sql
--- Secure QuickBooks tokens
-DROP POLICY IF EXISTS "Authenticated users can view quickbooks config" ON public.quickbooks_config;
-CREATE POLICY "Only admins can view QuickBooks config"
-  ON public.quickbooks_config FOR SELECT
-  USING (has_role(auth.uid(), 'admin'));
+-- Example: Secure the messages table (SMS logs)
+DROP POLICY IF EXISTS "Authenticated users can view messages" ON public.messages;
 
--- Secure personnel sensitive data
-DROP POLICY IF EXISTS "Authenticated users can view personnel" ON public.personnel;
-CREATE POLICY "Admins and managers can view all personnel"
-  ON public.personnel FOR SELECT
-  USING (has_role(auth.uid(), 'admin') OR has_role(auth.uid(), 'manager'));
-CREATE POLICY "Personnel can view own record"
-  ON public.personnel FOR SELECT
-  USING (user_id = auth.uid());
+CREATE POLICY "Only admins and managers can view messages"
+  ON public.messages FOR SELECT
+  TO authenticated
+  USING (
+    public.has_role(auth.uid(), 'admin') OR 
+    public.has_role(auth.uid(), 'manager')
+  );
 
--- Similar for emergency_contacts and messages tables
+-- Example: Secure personnel_payments with self-access
+DROP POLICY IF EXISTS "Authenticated users can view personnel payments" ON public.personnel_payments;
+
+CREATE POLICY "Admins and managers can view all personnel payments"
+  ON public.personnel_payments FOR SELECT
+  TO authenticated
+  USING (
+    public.has_role(auth.uid(), 'admin') OR 
+    public.has_role(auth.uid(), 'manager')
+  );
+
+CREATE POLICY "Personnel can view own payments"
+  ON public.personnel_payments FOR SELECT
+  TO authenticated
+  USING (
+    personnel_id = public.get_personnel_id_for_user(auth.uid())
+  );
+
+-- Example: Token-based access for invitations
+DROP POLICY IF EXISTS "Anyone can view invitations by token" ON public.personnel_invitations;
+
+CREATE POLICY "Token-based invitation lookup"
+  ON public.personnel_invitations FOR SELECT
+  TO public
+  USING (
+    -- Staff can view all
+    (auth.role() = 'authenticated' AND (
+      public.has_role(auth.uid(), 'admin') OR 
+      public.has_role(auth.uid(), 'manager')
+    )) OR
+    -- Public can only see if they have the exact token (handled at app level)
+    false
+  );
 ```
 
-### Updated Location Disclosure Component
+### Helper Functions Needed
 
-The `PermissionRequestFlow.tsx` needs updated disclosure text:
-
-```
-"Command X collects location data to enable automatic clock-out 
-when you leave job sites, even when the app is closed or not in use. 
-Your location is only tracked while you are clocked in to a job site."
-```
-
-### Android Backup Configuration
-
-Create `android/app/src/main/res/xml/data_extraction_rules.xml`:
-
-```xml
-<?xml version="1.0" encoding="utf-8"?>
-<data-extraction-rules>
-    <cloud-backup>
-        <exclude domain="sharedpref" path="."/>
-        <exclude domain="database" path="."/>
-    </cloud-backup>
-    <device-transfer>
-        <exclude domain="sharedpref" path="."/>
-        <exclude domain="database" path="."/>
-    </device-transfer>
-</data-extraction-rules>
-```
+Check if these functions exist, create if missing:
+- `get_vendor_id_for_user(user_id uuid)` - returns vendor_id for portal users
 
 ---
 
-## Checklist for Google Play Submission
+## Files to Create/Modify
 
-- [ ] Fix critical RLS policy vulnerabilities
-- [ ] Update PermissionRequestFlow with compliant disclosure
-- [ ] Update Privacy Policy with all required sections
-- [ ] Disable or restrict Android backup
-- [ ] Complete Data Safety form in Play Console
-- [ ] Add Privacy Policy URL in Play Console
-- [ ] Add Account Deletion URL in Play Console
-- [ ] Complete Content Rating questionnaire
-- [ ] Verify app targets users 13+ (not children)
+| File | Action |
+|------|--------|
+| `supabase/migrations/[timestamp]_comprehensive_rls_hardening.sql` | New migration with all RLS policy updates |
+
+---
+
+## Security Findings to Clear After Implementation
+
+After applying this migration, we should mark these security findings as resolved:
+- `quickbooks_tokens_public` (already fixed)
+- `personnel_sensitive_data` (already fixed)
+- `emergency_contacts_public_exposure` (already fixed)
+- `messages_table_public_exposure`
+- `time_entries_public_exposure`
+- `personnel_onboarding_tokens_public_exposure`
+- `estimates_table_public_exposure`
+- `purchase_orders_public_exposure`
+- `job_orders_public_exposure`
+- `change_orders_public_exposure`
+- `projects_public_exposure`
+- `vendor_invitations_public_exposure`
+- `personnel_invitations_public_exposure`
+- `quickbooks_mappings_public_exposure`
+- `personnel_table_public_exposure`
+- `vendors_table_public_exposure`
+- `vendor_bills_public_exposure`
+- `applicants_table_public_exposure`
+- `applications_table_public_exposure`
+- `reimbursements_public_exposure`
+- `invitations_public_exposure`
+- `invoice_payments_public_exposure`
+- `personnel_payments_public_exposure`
+- `vendor_onboarding_tokens_public_exposure`
+- `customers_table_public_exposure`
+- `invoices_table_public_exposure`
+
+---
+
+## Expected Outcome
+
+After implementation:
+- **27 errors → 0 errors** for data exposure issues
+- All sensitive data restricted to authorized roles only
+- Portal users (personnel/vendors) can only access their own records
+- Token-based tables only accessible via exact token match
+- Full Google Play Developer Content Policy compliance for "secure handling" of user data
+
+---
+
+## Testing Recommendations
+
+After applying the migration:
+1. Test as admin - should see all data
+2. Test as personnel portal user - should only see own records
+3. Test as vendor portal user - should only see own POs and bills
+4. Test as unauthenticated - should see nothing
+5. Verify the app still functions correctly for all user types
 
