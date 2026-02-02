@@ -1,0 +1,28 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  Data Extraction Rules for Google Play Policy Compliance
+  This app handles sensitive personal data (SSN, bank information)
+  so we exclude all data from backup to prevent exposure.
+-->
+<data-extraction-rules>
+    <cloud-backup>
+        <!-- Exclude all shared preferences (may contain tokens, user preferences) -->
+        <exclude domain="sharedpref" path="."/>
+        <!-- Exclude all databases (contains sensitive user data) -->
+        <exclude domain="database" path="."/>
+        <!-- Exclude all files in internal storage -->
+        <exclude domain="file" path="."/>
+        <!-- Exclude cache -->
+        <exclude domain="cache" path="."/>
+        <!-- Exclude external storage data -->
+        <exclude domain="external" path="."/>
+    </cloud-backup>
+    <device-transfer>
+        <!-- Also exclude from device-to-device transfer -->
+        <exclude domain="sharedpref" path="."/>
+        <exclude domain="database" path="."/>
+        <exclude domain="file" path="."/>
+        <exclude domain="cache" path="."/>
+        <exclude domain="external" path="."/>
+    </device-transfer>
+</data-extraction-rules>

@@ -75,13 +75,25 @@ export function PermissionRequestFlow({
               </DialogDescription>
             </DialogHeader>
 
-            <div className="space-y-4 py-4">
+            {/* Google Play Policy Compliant Disclosure */}
+            <div className="bg-muted/50 rounded-lg p-4 my-4 border border-border">
+              <p className="text-sm text-foreground font-medium mb-2">
+                Background Location Disclosure
+              </p>
+              <p className="text-xs text-muted-foreground">
+                Command X collects location data to enable automatic clock-out when you leave 
+                job sites, <strong>even when the app is closed or not in use</strong>. Your location 
+                is only tracked while you are clocked in to a job site.
+              </p>
+            </div>
+
+            <div className="space-y-4 py-2">
               <div className="flex items-start gap-3">
                 <Shield className="h-5 w-5 text-green-500 mt-0.5 shrink-0" />
                 <div>
                   <p className="font-medium text-sm">Your privacy is protected</p>
                   <p className="text-xs text-muted-foreground">
-                    Location is only tracked while you're clocked in at a job site.
+                    Location data is never shared with third parties or used for advertising.
                   </p>
                 </div>
               </div>
@@ -90,9 +102,9 @@ export function PermissionRequestFlow({
                 <div className="flex items-start gap-3">
                   <MapPin className="h-5 w-5 text-blue-500 mt-0.5 shrink-0" />
                   <div>
-                    <p className="font-medium text-sm">Background tracking</p>
+                    <p className="font-medium text-sm">Background location required</p>
                     <p className="text-xs text-muted-foreground">
-                      Select "Always Allow" for automatic clock-out when you leave the job site.
+                      Select "Allow all the time" to enable automatic clock-out when you leave the job site.
                     </p>
                   </div>
                 </div>
