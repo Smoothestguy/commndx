@@ -60,54 +60,36 @@ export const useUploadVendorBillAttachment = () => {
 
       if (error) throw error;
 
-      // Check if bill is synced to QuickBooks and sync attachment
-      const { data: qbMapping } = await supabase
-        .from("quickbooks_bill_mappings")
-        .select("quickbooks_bill_id, sync_status")
-        .eq("bill_id", billId)
-        .maybeSingle();
-
-      // Log the mapping result for debugging
-      console.log("QB mapping check for bill:", billId, qbMapping);
-
-      // Check for valid sync statuses (different sources may use different values)
-      const validSyncStatuses = ["synced", "success"];
-      const isSynced = qbMapping && 
-        validSyncStatuses.includes(qbMapping.sync_status) && 
-        qbMapping.quickbooks_bill_id;
-
-      if (isSynced) {
-        // Get current session to forward auth header
-        const { data: { session } } = await supabase.auth.getSession();
-        
-        console.log("Triggering QB attachment sync:", {
+      // Always attempt to sync attachment to QuickBooks (server resolves mapping)
+      const { data: { session } } = await supabase.auth.getSession();
+      
+      console.log("Triggering QB attachment sync:", {
+        attachmentId: data.id,
+        billId,
+      });
+      
+      // Trigger attachment sync to QuickBooks (non-blocking)
+      // Server will look up QB mapping with service-level access
+      supabase.functions.invoke("quickbooks-sync-bill-attachment", {
+        body: {
           attachmentId: data.id,
-          billId,
-          qbBillId: qbMapping.quickbooks_bill_id
-        });
-        
-        // Trigger attachment sync to QuickBooks (non-blocking)
-        supabase.functions.invoke("quickbooks-sync-bill-attachment", {
-          body: {
-            attachmentId: data.id,
-            billId: billId,
-            qbBillId: qbMapping.quickbooks_bill_id,
-          },
-          headers: session?.access_token ? {
-            Authorization: `Bearer ${session.access_token}`,
-          } : undefined,
-        }).then((response) => {
-          if (response.error) {
-            console.warn("QuickBooks attachment sync failed:", response.error);
-          } else if (response.data?.success) {
-            console.log("Attachment synced to QuickBooks:", response.data.message);
-          } else if (response.data?.error) {
-            console.warn("QuickBooks attachment sync returned error:", response.data.error);
-          }
-        }).catch((err) => {
-          console.warn("QuickBooks attachment sync error:", err);
-        });
-      }
+          billId: billId,
+        },
+        headers: session?.access_token ? {
+          Authorization: `Bearer ${session.access_token}`,
+        } : undefined,
+      }).then((response) => {
+        if (response.error) {
+          console.warn("QuickBooks attachment sync failed:", response.error);
+        } else if (response.data?.success) {
+          console.log("Attachment synced to QuickBooks:", response.data.message);
+        } else if (response.data?.error) {
+          // Non-blocking: just log if bill not synced yet
+          console.log("QuickBooks attachment sync skipped:", response.data.error);
+        }
+      }).catch((err) => {
+        console.warn("QuickBooks attachment sync error:", err);
+      });
 
       return data;
     },
