@@ -183,8 +183,8 @@ export default function VendorDashboard() {
             onRefresh={handleRefresh}
             isRefreshing={isRefreshing}
           >
-            {/* Stats */}
-            <div className="grid gap-3 sm:gap-6 grid-cols-2 md:grid-cols-4 mb-4 sm:mb-8">
+            {/* Stats - 2 cols on mobile/tablet portrait, 4 cols on tablet landscape+ */}
+            <div className="grid gap-3 sm:gap-4 grid-cols-2 lg:grid-cols-4 mb-4 sm:mb-8">
               <StatCard
                 title="Open POs"
                 value={isLoading ? "..." : stats.openPOs}

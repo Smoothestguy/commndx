@@ -68,15 +68,15 @@ export function StatCard({
         <div className="flex h-8 w-8 sm:h-10 sm:w-10 items-center justify-center rounded-lg bg-primary/10 transition-all duration-200 group-hover:bg-primary/15 flex-shrink-0">
           <Icon className="h-4 w-4 sm:h-5 sm:w-5 text-primary" />
         </div>
-        <p className="text-xs sm:text-sm font-medium text-muted-foreground truncate min-w-0 flex-1">{title}</p>
+        <p className="text-xs sm:text-sm font-medium text-muted-foreground line-clamp-2 min-w-0 flex-1">{title}</p>
       </div>
-      <p className="font-heading text-xl sm:text-2xl md:text-3xl font-bold text-foreground truncate">
+      <p className="font-heading text-lg sm:text-xl md:text-2xl lg:text-3xl font-bold text-foreground break-words">
         {value}
       </p>
       {change && (
         <p
           className={cn(
-            "mt-2 text-sm font-medium",
+            "mt-1.5 sm:mt-2 text-xs sm:text-sm font-medium line-clamp-2",
             changeType === "positive" && "text-success",
             changeType === "negative" && "text-destructive",
             changeType === "neutral" && "text-muted-foreground"
