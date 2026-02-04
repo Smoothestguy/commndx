@@ -1,150 +1,119 @@
 
-
-# Mobile Optimization for AI Assistant Inline Forms
+# Add Pagination to Staffing Applications Page
 
 ## Overview
-Enhance the EstimateFormInline, InvoiceFormInline, and LineItemBuilder components to provide a better mobile experience with proper touch targets, responsive layouts, and improved visibility.
+Add pagination to the staffing applications page so that only 10 applications display at a time, with controls to navigate between pages and change the page size.
+
+## Current State
+- The page currently shows **all** filtered applications at once
+- The `ApplicationsTable` component receives the full `filteredApplications` array
+- No pagination controls exist on this page
+
+## Solution
+Reuse the existing `TablePagination` component and add pagination state to slice the applications array.
 
 ---
 
-## Issues to Address
+## Changes
 
-| Issue | Current | Improved |
-|-------|---------|----------|
-| Delete button size | 24x24px (`h-6 w-6`) | 40x40px on mobile for easier touch |
-| Line item layout | Single row for Qty/Price/Total | Stacked layout on mobile |
-| Message container | Fixed `max-w-[80%]` | Wider on mobile to fit forms |
-| Input heights | 32px (`h-8`) | 40px on mobile for touch targets |
-| Total display | Fixed `w-16` inline | Full width row on mobile |
-| Add Item button | 32px height | 44px on mobile |
-| Submit button | Standard height | 48px on mobile |
+### File: `src/pages/StaffingApplications.tsx`
 
----
+**1. Add pagination state variables:**
 
-## Technical Changes
-
-### 1. LineItemBuilder.tsx - Responsive Line Items
-
-**Stack Qty/Price inputs on narrow screens:**
-```tsx
-// Current: flex gap-2 (always horizontal)
-<div className="flex gap-2">
-  <div className="flex-1">Qty</div>
-  <div className="flex-1">Price</div>
-  <div className="w-16">Total</div>
-</div>
-
-// Improved: Grid that stacks on mobile
-<div className="grid grid-cols-2 gap-2">
-  <div>
-    <label>Qty</label>
-    <Input className="h-10" /> {/* Larger touch target */}
-  </div>
-  <div>
-    <label>Price</label>
-    <Input className="h-10" />
-  </div>
-</div>
-<div className="text-right text-sm font-medium pt-1">
-  Line Total: $XX.XX
-</div>
+```typescript
+const [currentPage, setCurrentPage] = useState(1);
+const [rowsPerPage, setRowsPerPage] = useState(10);
 ```
 
-**Larger delete button:**
-```tsx
-// Current
-<Button className="h-6 w-6">
+**2. Create paginated applications array:**
 
-// Improved
-<Button className="h-8 w-8 sm:h-6 sm:w-6 min-h-[44px] min-w-[44px] sm:min-h-0 sm:min-w-0">
+After the existing `filteredApplications` memo, add:
+
+```typescript
+const paginatedApplications = useMemo(() => {
+  if (!filteredApplications) return [];
+  const startIndex = (currentPage - 1) * rowsPerPage;
+  return filteredApplications.slice(startIndex, startIndex + rowsPerPage);
+}, [filteredApplications, currentPage, rowsPerPage]);
 ```
 
-**Larger Add Item button:**
-```tsx
-// Current
-<Button className="w-full h-8 text-xs">
+**3. Reset page when filters change:**
 
-// Improved  
-<Button className="w-full h-10 text-sm">
+Add a useEffect to reset to page 1 when search/filter criteria change:
+
+```typescript
+useEffect(() => {
+  setCurrentPage(1);
+}, [search, projectFilter, statusFilter, experienceFilter, postingFilter]);
 ```
 
-### 2. ChatMessage.tsx - Wider Forms on Mobile
+**4. Update ApplicationsTable to use paginated data:**
 
+Change from:
 ```tsx
-// Current: max-w-[80%] - forms get cramped
-<div className="max-w-[80%] rounded-2xl px-4 py-2.5">
-
-// Improved: Full width when showing forms
-<div className={cn(
-  "rounded-2xl px-4 py-2.5",
-  message.formRequest 
-    ? "max-w-full w-full" 
-    : "max-w-[80%]",
-  isUser ? "..." : "..."
-)}>
+<ApplicationsTable
+  applications={filteredApplications || []}
+  ...
 ```
 
-### 3. EstimateFormInline.tsx & InvoiceFormInline.tsx
-
-**Larger submit button:**
+To:
 ```tsx
-// Current
-<Button className="w-full">
-
-// Improved
-<Button className="w-full h-11 text-base font-medium">
+<ApplicationsTable
+  applications={paginatedApplications}
+  ...
 ```
 
-**Larger select trigger:**
-```tsx
-// Current
-<SelectTrigger className="h-9 text-sm">
+**5. Add TablePagination component:**
 
-// Improved
-<SelectTrigger className="h-10 text-sm">
+Import and add below the ApplicationsTable:
+
+```tsx
+import { TablePagination } from "@/components/shared/TablePagination";
+
+// After the </ApplicationsTable> and inside the Card component:
+<TablePagination
+  currentPage={currentPage}
+  totalCount={filteredApplications?.length || 0}
+  rowsPerPage={rowsPerPage}
+  onPageChange={setCurrentPage}
+  onRowsPerPageChange={(size) => {
+    setRowsPerPage(size);
+    setCurrentPage(1);
+  }}
+/>
 ```
 
 ---
 
-## Files to Modify
+## Visual Result
 
-| File | Changes |
-|------|---------|
-| `src/components/ai-assistant/forms/LineItemBuilder.tsx` | Grid layout for inputs, larger buttons, better spacing |
-| `src/components/ai-assistant/forms/EstimateFormInline.tsx` | Larger submit button, improved select height |
-| `src/components/ai-assistant/forms/InvoiceFormInline.tsx` | Same as EstimateFormInline |
-| `src/components/ai-assistant/ChatMessage.tsx` | Full-width messages when showing forms |
-
----
-
-## Visual Comparison
-
-**Before (mobile):**
+**Before:**
 ```
-┌──────────────────────────┐
-│ Select product...    [x] │
-│ [Qty: 1] [Price: 0] $0   │  ← Cramped
-└──────────────────────────┘
+┌────────────────────────────────────────┐
+│ Applications Table                      │
+│ [All 47 applications shown at once]     │
+└────────────────────────────────────────┘
 ```
 
-**After (mobile):**
+**After:**
 ```
-┌────────────────────────────────┐
-│ Select product...          [x] │
-│ ┌─────────┐  ┌───────────────┐ │
-│ │ Qty: 1  │  │ Price: $0.00  │ │
-│ └─────────┘  └───────────────┘ │
-│              Line Total: $0.00 │
-└────────────────────────────────┘
+┌────────────────────────────────────────┐
+│ Applications Table                      │
+│ [10 applications shown]                 │
+├────────────────────────────────────────┤
+│ Showing 1-10 of 47  │ Rows: [10 ▼]     │
+│ [◀ Previous] [1][2][3]...[5] [Next ▶]  │
+└────────────────────────────────────────┘
 ```
 
 ---
 
 ## Summary
 
-- Use 2-column grid for Qty/Price instead of cramped 3-column flex
-- Move line total to its own row for clarity
-- Increase all touch targets to 40-44px minimum
-- Make form messages full-width to give forms room to breathe
-- Use larger font sizes on mobile submit buttons
-
+| Change | Description |
+|--------|-------------|
+| Add state | `currentPage` and `rowsPerPage` with default of 10 |
+| Paginate data | Slice `filteredApplications` based on current page |
+| Reset on filter | Reset to page 1 when any filter changes |
+| Add UI | Add `TablePagination` below the table |
+| Import | Add import for `TablePagination` component |
