@@ -191,11 +191,14 @@ serve(async (req) => {
       global: { headers: { Authorization: authHeader } },
     });
 
-    // Use getUser to validate the token
-    const { data: userData, error: authError } = await userSupabase.auth.getUser();
+     // Use the JWT from the Authorization header to validate.
+     // In edge/runtime contexts there is no persisted session, so getUser() without a token
+     // can fail with: "Auth session missing!".
+     const token = authHeader.replace("Bearer ", "").trim();
+     const { data: userData, error: authError } = await userSupabase.auth.getUser(token);
     
     if (authError || !userData?.user) {
-      console.log("[AUTH] getUser failed:", authError?.message || "No user data");
+       console.log("[AUTH] getUser failed:", authError?.message || "No user data");
       return new Response(
         JSON.stringify({ error: "Unauthorized" }),
         { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } }
