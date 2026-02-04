@@ -1,144 +1,210 @@
 
-# Enhancing AI Assistant Capabilities
 
-## Problem Summary
-The AI Assistant is too limited in its abilities:
-1. **Navigation**: Doesn't know about all available pages (e.g., `/admin/trash`, `/messages`, `/jobs`, `/sales`, etc.)
-2. **Invoice Creation**: Only has a `create_estimate` tool, no `create_invoice` tool
-3. **System Prompt**: Doesn't give the AI enough context about what routes exist
+# Enhanced AI Assistant with Interactive Forms
 
-## Solution Overview
+## Overview
+Currently, when you ask the AI to create an estimate or invoice, it asks you to type out customer names and line item details. This plan adds interactive dropdown selectors and form inputs directly in the chat, making it much faster and easier to provide the required information.
 
-Expand the AI assistant's capabilities with:
-1. A comprehensive navigation route list in the system prompt
-2. A new `create_invoice` tool for creating invoices
-3. Better understanding of page aliases (e.g., "trash page" = "/admin/trash", "recently deleted" = "/admin/trash")
+## What You'll See
+
+Instead of this conversation:
+```
+You: "Create an estimate for me"
+AI: "What is the customer's name and what are the line items?"
+You: [type everything manually]
+```
+
+You'll get this:
+```
+You: "Create an estimate for me"
+AI: Shows interactive form with:
+   - Customer dropdown (searchable)
+   - Project dropdown (based on customer)
+   - "Add Line Item" section with product picker
+   - Quantity and price inputs
+   - Submit button
+```
+
+---
+
+## User Experience Flow
+
+```text
+User: "I want to create an estimate"
+                ↓
+AI responds with an interactive form embedded in the chat:
+┌────────────────────────────────────────┐
+│  Let me help you create an estimate.   │
+│                                        │
+│  Customer: [▼ Select customer...]      │
+│  Project:  [▼ Select project...]       │
+│                                        │
+│  Line Items:                           │
+│  ┌──────────────────────────────────┐  │
+│  │ [▼ Select product] Qty:[1] $[__] │  │
+│  │ [+ Add another item]             │  │
+│  └──────────────────────────────────┘  │
+│                                        │
+│  Notes: [________________________]     │
+│                                        │
+│  [Create Estimate]                     │
+└────────────────────────────────────────┘
+```
 
 ---
 
 ## Technical Changes
 
-### 1. Enhanced System Prompt with Complete Route Map
+### 1. Update Message Type to Support Forms
 
-Add a comprehensive list of all navigable pages to the system prompt:
+**File**: `src/contexts/AIAssistantContext.tsx`
 
-```text
-Available pages you can navigate to:
-- Dashboard: /
-- Estimates: /estimates (list), /estimates/new (create), /estimates/:id (view)
-- Invoices: /invoices (list), /invoices/new (create), /invoices/:id (view)
-- Purchase Orders: /purchase-orders (list), /purchase-orders/new (create)
-- Vendor Bills: /vendor-bills (list), /vendor-bills/new (create)
-- Customers: /customers (list), /customers/:id (view)
-- Vendors: /vendors (list), /vendors/:id (view)
-- Personnel: /personnel (list), /personnel/:id (view)
-- Products: /products
-- Projects: /projects (list), /projects/:id (view)
-- Time Tracking: /time-tracking, /team-timesheet
-- Messages: /messages, /conversations
-- Jobs: /jobs
-- Sales: /sales
-- Settings: /settings
-- Document Center: /document-center
-- Expense Categories: /expense-categories
-- Admin Pages:
-  - Trash/Recently Deleted: /admin/trash
-  - Audit Logs: /admin/audit-logs
-- Staffing:
-  - Applications: /staffing/applications
-  - Form Templates: /staffing/form-templates
-  - Map View: /staffing/map
-```
-
-### 2. New `create_invoice` Tool
-
-Add a tool similar to `create_estimate` that creates invoices:
+Add a new `formRequest` field to the ChatMessage type:
 
 ```typescript
-{
-  type: "function",
-  function: {
-    name: "create_invoice",
-    description: "Create a new invoice for a customer. Use this when users want to create, add, or make a new invoice.",
-    parameters: {
-      type: "object",
-      properties: {
-        customer_id: { type: "string", description: "The UUID of the customer" },
-        customer_name: { type: "string", description: "The name of the customer" },
-        project_id: { type: "string", description: "Optional project ID" },
-        line_items: {
-          type: "array",
-          items: {
-            type: "object",
-            properties: {
-              description: { type: "string" },
-              quantity: { type: "number" },
-              unit_price: { type: "number" },
-              markup: { type: "number" }
-            },
-            required: ["description", "quantity", "unit_price"]
-          }
-        },
-        notes: { type: "string" },
-        tax_rate: { type: "number" },
-        due_days: { type: "number", description: "Days until due (default: 30)" }
-      },
-      required: ["customer_name", "line_items"]
+export interface ChatMessage {
+  id: string;
+  role: "user" | "assistant";
+  content: string;
+  timestamp: Date;
+  actions?: Array<{ type: string; path?: string; label?: string }>;
+  formRequest?: {
+    type: "create_estimate" | "create_invoice";
+    prefilled?: {
+      customer_name?: string;
+      customer_id?: string;
+      line_items?: Array<{ description: string; quantity: number; unit_price: number }>;
+    };
+  };
+}
+```
+
+### 2. Create Interactive Form Components
+
+**New File**: `src/components/ai-assistant/forms/EstimateFormInline.tsx`
+
+A compact form component for creating estimates within the chat:
+- Searchable customer combobox (using existing customer data)
+- Optional project selector (filters by selected customer)
+- Line item builder with product picker
+- Quantity and price inputs
+- Submit button that calls `sendMessage` with structured data
+
+**New File**: `src/components/ai-assistant/forms/InvoiceFormInline.tsx`
+
+Similar to EstimateFormInline but for invoices:
+- Due date field instead of valid until
+- Same customer/project/line item selection
+
+### 3. Update ChatMessage Component
+
+**File**: `src/components/ai-assistant/ChatMessage.tsx`
+
+Detect when a message has `formRequest` and render the appropriate inline form:
+
+```tsx
+{message.formRequest && (
+  message.formRequest.type === "create_estimate" ? (
+    <EstimateFormInline 
+      prefilled={message.formRequest.prefilled}
+      onSubmit={handleFormSubmit}
+    />
+  ) : (
+    <InvoiceFormInline 
+      prefilled={message.formRequest.prefilled}
+      onSubmit={handleFormSubmit}
+    />
+  )
+)}
+```
+
+### 4. Update AI Assistant Edge Function
+
+**File**: `supabase/functions/ai-assistant/index.ts`
+
+When the AI decides to create an estimate/invoice but needs more info, instead of asking with plain text, return a `formRequest` in the response:
+
+```typescript
+// When AI needs form input
+return {
+  content: "Let me help you create an estimate. Please fill in the details below:",
+  formRequest: {
+    type: "create_estimate",
+    prefilled: {
+      customer_name: extractedCustomerName, // if mentioned
     }
   }
-}
+};
 ```
 
-### 3. Enhanced `navigate_to` Tool Description
+### 5. Update Context to Handle Form Submissions
 
-Update the tool to be more helpful:
+**File**: `src/contexts/AIAssistantContext.tsx`
 
-```typescript
-{
-  name: "navigate_to",
-  description: "Navigate to a specific page in the application. Common page aliases: 'trash' or 'recently deleted' = '/admin/trash', 'create invoice' = '/invoices/new', 'create estimate' = '/estimates/new', 'dashboard' or 'home' = '/'",
-  parameters: {
-    // ... existing
-  }
-}
+Add a new function `submitForm` that:
+- Takes the filled form data
+- Sends it to the AI assistant edge function with a special flag
+- The edge function then executes the `create_estimate` or `create_invoice` tool directly
+
+---
+
+## Files to Create/Modify
+
+| File | Action | Purpose |
+|------|--------|---------|
+| `src/contexts/AIAssistantContext.tsx` | Modify | Add `formRequest` to message type, add `submitForm` function |
+| `src/components/ai-assistant/ChatMessage.tsx` | Modify | Render inline forms when `formRequest` is present |
+| `src/components/ai-assistant/forms/EstimateFormInline.tsx` | Create | Interactive estimate creation form |
+| `src/components/ai-assistant/forms/InvoiceFormInline.tsx` | Create | Interactive invoice creation form |
+| `src/components/ai-assistant/forms/LineItemBuilder.tsx` | Create | Reusable line item input component |
+| `supabase/functions/ai-assistant/index.ts` | Modify | Return `formRequest` instead of text when collecting input |
+
+---
+
+## Form Components Design
+
+### EstimateFormInline
+- Uses `useCustomers()` hook for customer dropdown
+- Uses `useProjectsByCustomer()` for project dropdown
+- Uses `useProducts()` for product picker in line items
+- Calculates subtotal/total on the fly
+- On submit: sends structured data back to context
+
+### LineItemBuilder
+- Product combobox (grouped by type: Product/Service/Labor)
+- Auto-fills description and price from selected product
+- Manual entry also supported
+- Add/remove line items
+- Shows running total
+
+---
+
+## Example Interaction After Implementation
+
+**User**: "Create an invoice for ABC Construction"
+
+**AI Response** (with interactive form):
+```
+I'll create an invoice for ABC Construction. Please add the line items:
+
+[Customer: ABC Construction ▼] [Project: Select... ▼]
+
+Line Items:
+┌────────────────────────────────────┐
+│ Product: [Select or type...    ▼] │
+│ Qty: [1]  Price: [$0.00]          │
+│ [+ Add Item]                      │
+└────────────────────────────────────┘
+
+[Create Invoice]
 ```
 
-### 4. Implement `createInvoice` Function
-
-Similar to `createEstimate`, handles:
-- Customer lookup by name
-- Line item calculation (subtotal, tax, total)
-- Due date calculation
-- Invoice creation with line items
-- Returns navigation action to view the new invoice
-
 ---
 
-## Files to Modify
+## Prefilling Logic
 
-| File | Changes |
-|------|---------|
-| `supabase/functions/ai-assistant/index.ts` | Add `create_invoice` tool definition, implement `createInvoice` function, expand system prompt with route map |
+The AI will attempt to prefill fields when mentioned:
+- "Create an invoice for **ABC Company**" → Customer dropdown pre-selects ABC Company
+- "Create an estimate with **2 hours of consulting at $150**" → Line item pre-populated
+- "Create an invoice for **Project Alpha**" → Project dropdown pre-selected (and customer inferred)
 
----
-
-## User Experience After Fix
-
-| User Says | AI Does |
-|-----------|---------|
-| "Take me to trash page" | Navigates to `/admin/trash` |
-| "I want to create an invoice" | Either navigates to `/invoices/new` or asks for details (customer, items) and creates it directly |
-| "Show me recently deleted items" | Navigates to `/admin/trash` |
-| "Create an invoice for ABC Company for $500 consulting" | Creates the invoice with the specified details |
-| "Go to messages" | Navigates to `/messages` |
-| "Take me to the audit logs" | Navigates to `/admin/audit-logs` |
-
----
-
-## Implementation Summary
-
-1. Expand the system prompt with a comprehensive route directory
-2. Add page aliases so natural language like "trash page" works
-3. Add `create_invoice` tool so the AI can create invoices (not just estimates)
-4. Implement `createInvoice` function with full invoice creation logic
-5. Update tool descriptions to include common aliases
