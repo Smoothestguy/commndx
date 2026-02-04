@@ -90,100 +90,103 @@ export function LineItemBuilder({ items, onChange, className }: LineItemBuilderP
         Line Items
       </div>
       
-      <div className="space-y-2">
+      <div className="space-y-3">
         {items.map((item, index) => (
           <div
             key={item.id}
-            className="flex gap-2 items-start p-2 bg-background/50 rounded-lg border border-border/50"
+            className="p-3 bg-background/50 rounded-lg border border-border/50 space-y-3"
           >
-            <div className="flex-1 space-y-2">
-              <Select
-                value={item.product_id || ""}
-                onValueChange={(value) => {
-                  if (value === "_manual_") {
-                    updateItem(item.id, "product_id", "");
-                  } else {
-                    selectProduct(item.id, value);
-                  }
-                }}
+            <div className="flex gap-2 items-start">
+              <div className="flex-1">
+                <Select
+                  value={item.product_id || ""}
+                  onValueChange={(value) => {
+                    if (value === "_manual_") {
+                      updateItem(item.id, "product_id", "");
+                    } else {
+                      selectProduct(item.id, value);
+                    }
+                  }}
+                >
+                  <SelectTrigger className="h-10 text-sm">
+                    <SelectValue placeholder="Select or type..." />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="_manual_">
+                      <span className="text-muted-foreground">Manual entry</span>
+                    </SelectItem>
+                    {Object.entries(groupedProducts).map(([type, prods]) => (
+                      <React.Fragment key={type}>
+                        <div className="px-2 py-1 text-xs font-semibold text-muted-foreground uppercase">
+                          {type}s
+                        </div>
+                        {prods.map((product) => (
+                          <SelectItem key={product.id} value={product.id}>
+                            {product.name} — ${product.price.toFixed(2)}
+                          </SelectItem>
+                        ))}
+                      </React.Fragment>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <Button
+                type="button"
+                variant="ghost"
+                size="icon"
+                className="h-10 w-10 min-h-[44px] min-w-[44px] text-muted-foreground hover:text-destructive flex-shrink-0"
+                onClick={() => removeItem(item.id)}
+                disabled={items.length === 1}
               >
-                <SelectTrigger className="h-8 text-xs">
-                  <SelectValue placeholder="Select or type..." />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="_manual_">
-                    <span className="text-muted-foreground">Manual entry</span>
-                  </SelectItem>
-                  {Object.entries(groupedProducts).map(([type, prods]) => (
-                    <React.Fragment key={type}>
-                      <div className="px-2 py-1 text-xs font-semibold text-muted-foreground uppercase">
-                        {type}s
-                      </div>
-                      {prods.map((product) => (
-                        <SelectItem key={product.id} value={product.id}>
-                          {product.name} — ${product.price.toFixed(2)}
-                        </SelectItem>
-                      ))}
-                    </React.Fragment>
-                  ))}
-                </SelectContent>
-              </Select>
+                <Trash2 className="h-4 w-4" />
+              </Button>
+            </div>
 
-              {!item.product_id && (
+            {!item.product_id && (
+              <Input
+                value={item.description}
+                onChange={(e) =>
+                  updateItem(item.id, "description", e.target.value)
+                }
+                placeholder="Description"
+                className="h-10 text-sm"
+              />
+            )}
+
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <label className="text-xs text-muted-foreground mb-1 block">Qty</label>
                 <Input
-                  value={item.description}
+                  type="number"
+                  min={1}
+                  value={item.quantity}
                   onChange={(e) =>
-                    updateItem(item.id, "description", e.target.value)
+                    updateItem(item.id, "quantity", parseFloat(e.target.value) || 1)
                   }
-                  placeholder="Description"
-                  className="h-8 text-xs"
+                  className="h-10 text-sm"
                 />
-              )}
-
-              <div className="flex gap-2">
-                <div className="flex-1">
-                  <label className="text-[10px] text-muted-foreground">Qty</label>
-                  <Input
-                    type="number"
-                    min={1}
-                    value={item.quantity}
-                    onChange={(e) =>
-                      updateItem(item.id, "quantity", parseFloat(e.target.value) || 1)
-                    }
-                    className="h-8 text-xs"
-                  />
-                </div>
-                <div className="flex-1">
-                  <label className="text-[10px] text-muted-foreground">Price</label>
-                  <Input
-                    type="number"
-                    min={0}
-                    step={0.01}
-                    value={item.unit_price}
-                    onChange={(e) =>
-                      updateItem(item.id, "unit_price", parseFloat(e.target.value) || 0)
-                    }
-                    className="h-8 text-xs"
-                  />
-                </div>
-                <div className="w-16 text-right pt-4">
-                  <span className="text-xs font-medium">
-                    ${(item.quantity * item.unit_price).toFixed(2)}
-                  </span>
-                </div>
+              </div>
+              <div>
+                <label className="text-xs text-muted-foreground mb-1 block">Price</label>
+                <Input
+                  type="number"
+                  min={0}
+                  step={0.01}
+                  value={item.unit_price}
+                  onChange={(e) =>
+                    updateItem(item.id, "unit_price", parseFloat(e.target.value) || 0)
+                  }
+                  className="h-10 text-sm"
+                />
               </div>
             </div>
 
-            <Button
-              type="button"
-              variant="ghost"
-              size="icon"
-              className="h-6 w-6 text-muted-foreground hover:text-destructive"
-              onClick={() => removeItem(item.id)}
-              disabled={items.length === 1}
-            >
-              <Trash2 className="h-3 w-3" />
-            </Button>
+            <div className="text-right pt-1 border-t border-border/30">
+              <span className="text-sm font-medium">
+                Line Total: ${(item.quantity * item.unit_price).toFixed(2)}
+              </span>
+            </div>
           </div>
         ))}
       </div>
@@ -191,17 +194,17 @@ export function LineItemBuilder({ items, onChange, className }: LineItemBuilderP
       <Button
         type="button"
         variant="outline"
-        size="sm"
-        className="w-full h-8 text-xs"
+        size="default"
+        className="w-full h-11 text-sm"
         onClick={addItem}
       >
-        <Plus className="h-3 w-3 mr-1" />
+        <Plus className="h-4 w-4 mr-2" />
         Add Item
       </Button>
 
-      <div className="flex justify-between items-center pt-2 border-t border-border/50">
-        <span className="text-xs font-medium text-muted-foreground">Subtotal</span>
-        <span className="text-sm font-semibold">${subtotal.toFixed(2)}</span>
+      <div className="flex justify-between items-center pt-3 border-t border-border/50">
+        <span className="text-sm font-medium text-muted-foreground">Subtotal</span>
+        <span className="text-base font-semibold">${subtotal.toFixed(2)}</span>
       </div>
     </div>
   );

@@ -66,7 +66,10 @@ export function ChatMessage({ message }: ChatMessageProps) {
       {/* Message Content */}
       <div
         className={cn(
-          "max-w-[80%] rounded-2xl px-4 py-2.5",
+          "rounded-2xl px-4 py-2.5",
+          message.formRequest 
+            ? "max-w-full w-full" 
+            : "max-w-[80%]",
           isUser
             ? "bg-primary text-primary-foreground rounded-br-md"
             : "bg-muted text-foreground rounded-bl-md"
