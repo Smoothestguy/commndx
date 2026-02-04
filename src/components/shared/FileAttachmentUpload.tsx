@@ -30,6 +30,10 @@ interface FileAttachmentUploadProps {
   isRetrying?: boolean;
   /** Called before upload starts. Return false to abort upload. */
   onBeforeUpload?: (file: File, filePath: string) => Promise<boolean>;
+  /** If true, disables all upload interactions and shows an info panel instead. */
+  uploadDisabled?: boolean;
+  /** Optional message shown when uploads are disabled. */
+  uploadDisabledMessage?: string;
 }
 
 const ALLOWED_TYPES = [
@@ -61,6 +65,8 @@ export const FileAttachmentUpload = ({
   isPulling = false,
   isRetrying = false,
   onBeforeUpload,
+  uploadDisabled = false,
+  uploadDisabledMessage,
 }: FileAttachmentUploadProps) => {
   const { user } = useAuth();
   const [uploading, setUploading] = useState(false);
@@ -172,11 +178,13 @@ export const FileAttachmentUpload = ({
   const handleDrop = (e: React.DragEvent) => {
     e.preventDefault();
     setDragOver(false);
+    if (uploadDisabled) return;
     handleFileChange(e.dataTransfer.files);
   };
 
   const handleDragOver = (e: React.DragEvent) => {
     e.preventDefault();
+    if (uploadDisabled) return;
     setDragOver(true);
   };
 
@@ -186,6 +194,7 @@ export const FileAttachmentUpload = ({
   };
 
   const handlePaste = async (e: React.ClipboardEvent) => {
+    if (uploadDisabled) return;
     const items = e.clipboardData?.items;
     if (!items) return;
 
@@ -238,46 +247,58 @@ export const FileAttachmentUpload = ({
       </CardHeader>
       <CardContent className="space-y-4">
         {/* Upload Area */}
-        <div
-          className={`border-2 border-dashed rounded-lg p-6 text-center transition-colors ${
-            dragOver
-              ? "border-primary bg-primary/5"
-              : "border-border hover:border-primary/50"
-          }`}
-          onDrop={handleDrop}
-          onDragOver={handleDragOver}
-          onDragLeave={handleDragLeave}
-          onPaste={handlePaste}
-          tabIndex={0}
-        >
-          <Input
-            ref={fileInputRef}
-            type="file"
-            onChange={(e) => handleFileChange(e.target.files)}
-            accept=".pdf,.jpg,.jpeg,.png,.webp,.doc,.docx"
-            className="hidden"
-            id={`file-upload-${entityId}`}
-            disabled={uploading}
-          />
-          <label
-            htmlFor={`file-upload-${entityId}`}
-            className="cursor-pointer flex flex-col items-center gap-2"
-          >
-            {uploading ? (
-              <Loader2 className="h-8 w-8 animate-spin text-primary" />
-            ) : (
-              <Upload className="h-8 w-8 text-muted-foreground" />
-            )}
-            <div>
-              <p className="text-sm font-medium">
-                {uploading ? "Uploading..." : "Click to upload, drag and drop, or paste"}
-              </p>
+        {uploadDisabled ? (
+          <div className="border-2 border-dashed rounded-lg p-6 text-center bg-secondary/20">
+            <X className="h-8 w-8 text-muted-foreground mx-auto" />
+            <div className="mt-2">
+              <p className="text-sm font-medium">Uploads disabled</p>
               <p className="text-xs text-muted-foreground mt-1">
-                PDF, images, or Word docs (max 10MB) · Cmd+V to paste
+                {uploadDisabledMessage || "Open this record in edit mode to add attachments."}
               </p>
             </div>
-          </label>
-        </div>
+          </div>
+        ) : (
+          <div
+            className={`border-2 border-dashed rounded-lg p-6 text-center transition-colors ${
+              dragOver
+                ? "border-primary bg-primary/5"
+                : "border-border hover:border-primary/50"
+            }`}
+            onDrop={handleDrop}
+            onDragOver={handleDragOver}
+            onDragLeave={handleDragLeave}
+            onPaste={handlePaste}
+            tabIndex={0}
+          >
+            <Input
+              ref={fileInputRef}
+              type="file"
+              onChange={(e) => handleFileChange(e.target.files)}
+              accept=".pdf,.jpg,.jpeg,.png,.webp,.doc,.docx"
+              className="hidden"
+              id={`file-upload-${entityId}`}
+              disabled={uploading}
+            />
+            <label
+              htmlFor={`file-upload-${entityId}`}
+              className="cursor-pointer flex flex-col items-center gap-2"
+            >
+              {uploading ? (
+                <Loader2 className="h-8 w-8 animate-spin text-primary" />
+              ) : (
+                <Upload className="h-8 w-8 text-muted-foreground" />
+              )}
+              <div>
+                <p className="text-sm font-medium">
+                  {uploading ? "Uploading..." : "Click to upload, drag and drop, or paste"}
+                </p>
+                <p className="text-xs text-muted-foreground mt-1">
+                  PDF, images, or Word docs (max 10MB) · Cmd+V to paste
+                </p>
+              </div>
+            </label>
+          </div>
+        )}
 
         {/* Attachments List */}
         {isLoading ? (

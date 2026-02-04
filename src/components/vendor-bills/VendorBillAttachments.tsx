@@ -25,12 +25,15 @@ import { Loader2 } from "lucide-react";
 
 interface VendorBillAttachmentsProps {
   billId: string;
+  /** True only when the user is actively editing the bill. */
+  isEditMode?: boolean;
   isFormDirty?: boolean;
   onSaveRequired?: () => Promise<void>;
 }
 
 export const VendorBillAttachments = ({ 
   billId, 
+  isEditMode = false,
   isFormDirty = false,
   onSaveRequired 
 }: VendorBillAttachmentsProps) => {
@@ -102,6 +105,14 @@ export const VendorBillAttachments = ({
 
   // Called before upload to check if save is required
   const handleBeforeUpload = async (file: File, filePath: string): Promise<boolean> => {
+    // Hard block: uploads only allowed from edit mode
+    if (!isEditMode) {
+      toast.error("Press Edit to upload attachments", {
+        description: "Attachments can only be added while editing the bill so they sync correctly.",
+      });
+      return false;
+    }
+
     // Check if form has unsaved changes - require save first
     if (isFormDirty && onSaveRequired) {
       // Store the pending upload and show dialog
@@ -157,6 +168,8 @@ export const VendorBillAttachments = ({
         isPulling={pullAttachmentsMutation.isPending}
         isRetrying={retrySyncMutation.isPending}
         onBeforeUpload={handleBeforeUpload}
+        uploadDisabled={!isEditMode}
+        uploadDisabledMessage="Press Edit to add attachments."
       />
 
       {/* Save Required Dialog */}
