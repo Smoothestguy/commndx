@@ -33,6 +33,7 @@ import { PendingAttachmentsUpload, PendingFile } from "@/components/shared/Pendi
 import { finalizeAttachments, cleanupPendingAttachments } from "@/utils/attachmentUtils";
 import { VendorBillAttachments } from "@/components/vendor-bills/VendorBillAttachments";
 import { VendorBillSyncErrorDialog } from "@/components/vendor-bills/VendorBillSyncErrorDialog";
+import { useSyncPendingAttachments } from "@/integrations/supabase/hooks/useVendorBillAttachments";
 
 interface VendorBillFormProps {
   bill?: VendorBill;
@@ -72,6 +73,7 @@ export function VendorBillForm({ bill, isEditing = false }: VendorBillFormProps)
   const addBill = useAddVendorBill();
   const updateBill = useUpdateVendorBill();
   const syncToQB = useSyncVendorBillToQB();
+  const syncPendingAttachments = useSyncPendingAttachments();
 
   const [isSyncing, setIsSyncing] = useState(false);
   const [vendorOpen, setVendorOpen] = useState(false);
@@ -268,6 +270,20 @@ export function VendorBillForm({ bill, isEditing = false }: VendorBillFormProps)
         lineItems: lineItemsData,
       });
       savedBillId = bill.id;
+      
+      // Sync any pending attachments to QuickBooks after bill is saved
+      try {
+        const attachSyncResult = await syncPendingAttachments.mutateAsync({ billId: savedBillId });
+        if (attachSyncResult.synced > 0) {
+          toast.success(`${attachSyncResult.synced} attachment(s) synced to QuickBooks`);
+        }
+        if (attachSyncResult.failed > 0) {
+          toast.warning(`${attachSyncResult.failed} attachment(s) failed to sync`);
+        }
+      } catch (attachSyncErr) {
+        console.warn("Attachment sync error:", attachSyncErr);
+        // Non-blocking - bill was saved successfully
+      }
       
       // Reset initial form data after successful save (no longer dirty)
       setInitialFormData(JSON.stringify({

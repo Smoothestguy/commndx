@@ -89,7 +89,7 @@ export const useUploadVendorBillAttachment = () => {
       file: File;
       filePath: string;
     }) => {
-      // Insert attachment record
+      // Insert attachment record (NO auto-sync to QuickBooks - will sync when bill is saved)
       const { data, error } = await supabase
         .from("vendor_bill_attachments")
         .insert({
@@ -105,40 +105,51 @@ export const useUploadVendorBillAttachment = () => {
 
       if (error) throw error;
 
-      // Sync to QuickBooks (non-blocking, with user feedback)
-      syncAttachmentToQuickBooks(data.id, billId).then((result) => {
-        if (result.success) {
-          toast.success("Synced to QuickBooks", {
-            description: result.message,
-          });
-        } else if (result.error) {
-          // Only show warning if it's not a "not synced yet" case
-          if (!result.error.includes("not synced") && !result.error.includes("not fully synced")) {
-            toast.warning("QuickBooks sync failed", {
-              description: result.error,
-              action: {
-                label: "Retry",
-                onClick: () => {
-                  syncAttachmentToQuickBooks(data.id, billId).then((retryResult) => {
-                    if (retryResult.success) {
-                      toast.success("Synced to QuickBooks");
-                    } else {
-                      toast.error("Retry failed", { description: retryResult.error });
-                    }
-                  });
-                },
-              },
-            });
-          } else {
-            console.log("Bill not synced to QuickBooks yet, attachment sync skipped");
-          }
-        }
-      });
+      // NOTE: Attachment sync to QuickBooks is now deferred until bill is saved
+      // This prevents sync failures when uploading while the form has unsaved changes
 
       return data;
     },
     onSuccess: (_, { billId }) => {
       queryClient.invalidateQueries({ queryKey: ["vendor-bill-attachments", billId] });
+      toast.success("Attachment added", {
+        description: "It will sync to QuickBooks when you save the bill.",
+      });
+    },
+  });
+};
+
+// Hook to sync all pending attachments after bill save
+export const useSyncPendingAttachments = () => {
+  return useMutation({
+    mutationFn: async ({ billId }: { billId: string }) => {
+      // Get all attachments for this bill
+      const { data: attachments, error } = await supabase
+        .from("vendor_bill_attachments")
+        .select("id")
+        .eq("bill_id", billId);
+
+      if (error) throw error;
+      if (!attachments || attachments.length === 0) return { synced: 0, failed: 0 };
+
+      let synced = 0;
+      let failed = 0;
+
+      // Sync each attachment
+      for (const attachment of attachments) {
+        const result = await syncAttachmentToQuickBooks(attachment.id, billId);
+        if (result.success) {
+          synced++;
+        } else {
+          // Don't count as failed if bill isn't synced yet
+          if (!result.error?.includes("not synced") && !result.error?.includes("not fully synced")) {
+            failed++;
+            console.warn(`Attachment ${attachment.id} sync failed:`, result.error);
+          }
+        }
+      }
+
+      return { synced, failed };
     },
   });
 };
