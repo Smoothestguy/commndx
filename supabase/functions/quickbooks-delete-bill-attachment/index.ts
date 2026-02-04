@@ -14,7 +14,7 @@ interface DeleteRequest {
 // Get a valid QuickBooks access token, refreshing if needed
 async function getValidAccessToken(supabase: any): Promise<{ accessToken: string; realmId: string } | null> {
   const { data: connection, error } = await supabase
-    .from("quickbooks_connections")
+    .from("quickbooks_config")
     .select("*")
     .single();
 
