@@ -1,114 +1,131 @@
 
-## Goal
-Make vendor bill attachments reliably sync to QuickBooks for **BILL-2625501** (and all bills), even when the client cannot read QuickBooks mapping rows due to permissions/RLS, and even if the mapping data is temporarily unavailable at upload time.
 
-## What I found (why it didn’t sync)
-- The attachment record exists in the database:
-  - Attachment: `59d75695-8b4b-4d1c-8685-da9cc9f2be98`
-  - Bill: `facf00cb-50a9-4f51-a503-836b75be5c2a`
-  - File: `vendor_bill/facf00cb-50a9-4f51-a503-836b75be5c2a/1770225387671.jpeg`
-- The bill is mapped and synced:
-  - `quickbooks_bill_mappings.quickbooks_bill_id = 17342`
-  - `sync_status = 'synced'`
-- There were **no client network requests** to `quickbooks-sync-bill-attachment` when you uploaded the file.
-- That strongly suggests the client-side “should I sync?” check is preventing the call (most likely because the client can’t read `quickbooks_bill_mappings` consistently due to RLS/permissions), so the sync function never runs.
+# Fix Vendor Bill Attachment Sync to QuickBooks
 
-## Strategy (robust fix)
-Stop relying on the browser/client to know whether a bill is synced, and stop requiring the client to pass `qbBillId`.
+## Problem
 
-Instead:
-1. The client always *attempts* to sync after an attachment is created.
-2. The backend function `quickbooks-sync-bill-attachment` becomes the source of truth:
-   - It will look up the bill’s QuickBooks mapping using service-level access.
-   - It will decide whether syncing is possible and return a clear response.
+Attachments uploaded to vendor bills on the Published site are not syncing to QuickBooks because:
 
-This eliminates the entire class of bugs where “mapping exists but the client can’t see it”.
+1. **The Published site is running OLD code** - The fix we implemented earlier today only exists in the Preview/development environment. The Published site still has code that either never calls the sync function or has the old client-side mapping check that fails.
+
+2. **No sync requests are reaching the edge function** - Edge function logs show only boot/shutdown events, no actual sync attempts. Database has zero `bill_attachment` entries in `quickbooks_sync_log`.
+
+3. **The "success" message you see is for the file upload only** - The Supabase storage upload succeeds, but the QuickBooks sync never triggers.
 
 ---
 
-## Changes to implement
+## Solution
 
-### A) Frontend: always attempt attachment sync (and don’t depend on mapping)
-**File:** `src/integrations/supabase/hooks/useVendorBillAttachments.ts`
+### Step 1: Verify and Redeploy Edge Function
 
-**Change:**
-- After inserting the `vendor_bill_attachments` row, call:
-  - `supabase.functions.invoke("quickbooks-sync-bill-attachment", { body: { attachmentId, billId } })`
-- Keep forwarding the session `Authorization` header (so the function can verify the user is allowed), but do not require any mapping read on the client.
+Ensure the updated `quickbooks-sync-bill-attachment` function (with server-side mapping resolution) is deployed.
 
-**Behavior:**
-- If the bill isn’t mapped yet, the function returns a clean “not synced / no mapping” message and we log it.
-- If the bill is mapped, the function uploads to QuickBooks immediately.
+### Step 2: Publish the Updated Frontend Code
 
-**UX addition (optional but recommended):**
-- If the sync fails, show a toast like:
-  - “Attachment uploaded, but QuickBooks sync failed. (Retry)”
-- Add a “Retry QuickBooks sync” button next to each attachment (simple UI improvement) that just calls the same function again for that attachment.
+The frontend changes in `useVendorBillAttachments.ts` that always attempt the sync must be published to production.
 
----
+### Step 3: Update Database Schema for Logging
 
-### B) Backend function: make `qbBillId` optional; fetch mapping server-side
-**File:** `supabase/functions/quickbooks-sync-bill-attachment/index.ts`
+The edge function uses an `operation` column in `quickbooks_sync_log` inserts, but the table schema shows columns are: `id, entity_type, entity_id, quickbooks_id, action, status, error_message, details, created_at`. The function should use `action` instead of `operation`.
 
-**Change request body handling:**
-- Current: requires `{ attachmentId, billId, qbBillId }`
-- Updated: accept `{ attachmentId, billId, qbBillId? }`
+**File**: `supabase/functions/quickbooks-sync-bill-attachment/index.ts`
 
-**New logic:**
-1. Validate the user JWT (already done).
-2. Verify user role is admin/manager (already done).
-3. Load attachment by `attachmentId` (already done).
-4. If `qbBillId` is missing:
-   - Query `quickbooks_bill_mappings` by `billId`
-   - Ensure it has:
-     - `quickbooks_bill_id`
-     - `sync_status` in `['synced', 'success']` (matching existing app conventions)
-   - If not found or not synced:
-     - Return `200` with `{ success: false, error: "Bill not synced to QuickBooks yet" }` (or `409`, but `200` is easier for non-blocking flows)
-5. Proceed to upload attachment to QuickBooks with the resolved `qbBillId`.
+Change from:
+```typescript
+await supabase.from("quickbooks_sync_log").insert({
+  entity_type: "bill_attachment",
+  entity_id: attachmentId,
+  operation: "upload",  // Wrong column name
+  ...
+});
+```
 
-**Logging improvements:**
-- Add explicit logs:
-  - “Received request: attachmentId=…, billId=…”
-  - “Resolved qbBillId=…”
-  - “Upload ok attachableId=…”
-  - Include full error text from QuickBooks when upload fails.
+Change to:
+```typescript
+await supabase.from("quickbooks_sync_log").insert({
+  entity_type: "bill_attachment",
+  entity_id: attachmentId,
+  action: "upload",  // Correct column name
+  ...
+});
+```
 
-**DB logging:**
-- `quickbooks_sync_log` currently uses columns like `action`, `status`, `details`, etc. (not `operation`).
-- Ensure attachment uploads log consistently:
-  - `entity_type: "bill_attachment"`
-  - `entity_id: attachmentId`
-  - `action: "upload"`
-  - `status: "success" | "error"`
-  - `error_message` if any
-  - `details` with `bill_id`, `qb_bill_id`, `file_name`, `qb_attachable_id`
+### Step 4: Fix metadata vs details column
 
----
+Similarly, the function uses `metadata` but the column is named `details`:
 
-### C) Validate the fix end-to-end
-After implementation, we’ll verify:
+Change from:
+```typescript
+metadata: {
+  bill_id: billId,
+  qb_bill_id: qbBillId,
+  ...
+}
+```
 
-1) **From the app**
-- Open vendor bill `BILL-2625501`
-- Upload a new attachment
-- Confirm there is a network call to the backend function
-- Confirm backend logs show it resolved qbBillId and uploaded successfully
-- Confirm attachment appears on the bill in QuickBooks
-
-2) **Retry path**
-- If QuickBooks is temporarily unavailable, the UI should show a clear message and allow retry.
+Change to:
+```typescript
+details: {
+  bill_id: billId,
+  qb_bill_id: qbBillId,
+  ...
+}
+```
 
 ---
 
-## Security considerations (kept intact)
-- Function continues to require a valid user session token and checks roles (admin/manager).
-- Mapping lookup happens server-side with service-level access; client does not need read access to mapping tables.
+## Files to Modify
+
+| File | Change |
+|------|--------|
+| `supabase/functions/quickbooks-sync-bill-attachment/index.ts` | Fix column names: `operation` to `action`, `metadata` to `details` |
 
 ---
 
-## Expected outcome
-- Uploading an attachment to a synced vendor bill will always trigger an attempt to sync to QuickBooks.
-- Sync will no longer fail silently due to client-side permission/mapping visibility issues.
-- You’ll get better logs and clearer UI feedback when QuickBooks upload fails.
+## After Implementation
+
+After these changes are made and the code is published to production:
+
+1. Upload a new attachment to BILL-2625501
+2. Check edge function logs for sync activity
+3. Check `quickbooks_sync_log` for `entity_type = 'bill_attachment'` entries
+4. Verify the attachment appears in QuickBooks
+
+---
+
+## Technical Details
+
+The current edge function code at lines 307-319:
+```typescript
+await supabase.from("quickbooks_sync_log").insert({
+  entity_type: "bill_attachment",
+  entity_id: attachmentId,
+  operation: "upload",        // Should be: action
+  status: result.success ? "success" : "error",
+  error_message: result.error || null,
+  metadata: {                 // Should be: details
+    bill_id: billId,
+    qb_bill_id: qbBillId,
+    file_name: attachment.file_name,
+    qb_attachable_id: result.attachableId,
+  },
+});
+```
+
+Will be updated to:
+```typescript
+await supabase.from("quickbooks_sync_log").insert({
+  entity_type: "bill_attachment",
+  entity_id: attachmentId,
+  action: "upload",
+  status: result.success ? "success" : "error",
+  error_message: result.error || null,
+  details: {
+    bill_id: billId,
+    qb_bill_id: qbBillId,
+    file_name: attachment.file_name,
+    qb_attachable_id: result.attachableId,
+  },
+});
+```
 
