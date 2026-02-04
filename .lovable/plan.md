@@ -1,9 +1,9 @@
 
-# Move Recently Deleted Access to Sidebar
+# Add Trash to Quick Access Panel
 
 ## Overview
 
-Remove the Recently Deleted card from the dashboard and add a "Trash" link in the sidebar's Account section instead, providing quick access from anywhere in the app.
+Add a "Trash" section to the Quick Access panel (`LeftPanel.tsx`) to provide quick visibility into recently deleted items, matching the existing pattern used by other sections like Reminders, Alerts, and Messages.
 
 ---
 
@@ -11,84 +11,129 @@ Remove the Recently Deleted card from the dashboard and add a "Trash" link in th
 
 | File | Change |
 |------|--------|
-| `src/components/dashboard/rows/RowBasedDashboard.tsx` | Remove the `RecentlyDeleted` component from the layout, revert Row 6 to single-column `InvoiceAgingSummary` |
-| `src/components/layout/AppSidebar.tsx` | Add "Trash" link in the Account section (visible to admins/managers) |
+| `src/components/layout/netsuite/LeftPanel.tsx` | Add Trash section with icon, badge count, and expandable list of deleted items |
 
 ---
 
 ## Technical Details
 
-### 1. Remove from Dashboard
-
-Revert the recent change to `RowBasedDashboard.tsx`:
+### 1. Add Import
 
 ```tsx
-// Before (current)
-{/* Row 6: Invoice Aging Summary + Recently Deleted */}
-<div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-  <InvoiceAgingSummary />
-  <RecentlyDeleted />
-</div>
-
-// After
-{/* Row 6: Invoice Aging Summary */}
-<InvoiceAgingSummary />
-```
-
-Also remove the import:
-```tsx
-import { RecentlyDeleted } from "@/components/dashboard/RecentlyDeleted";
-```
-
-### 2. Add to Sidebar
-
-In `AppSidebar.tsx`, add a Trash link to the Account section:
-
-```tsx
-// Add Trash2 to the lucide-react imports
 import { Trash2 } from "lucide-react";
+import { useDeletedItems, getEntityLabel } from "@/integrations/supabase/hooks/useTrash";
+```
 
-// Add after Audit Logs, before Document Center (visible to admin/manager only)
-{(isAdmin || isManager) && (
-  <SidebarMenuItem>
-    <SidebarMenuButton
-      asChild
-      isActive={location.pathname === "/admin/trash"}
-      tooltip="Trash"
-      className={menuButtonClass}
+### 2. Add State Variable
+
+```tsx
+const [trashOpen, setTrashOpen] = useState(false);
+```
+
+### 3. Add Data Fetch
+
+```tsx
+const { data: deletedItems } = useDeletedItems(undefined, 5);
+```
+
+### 4. Add Collapsed State Icon (in the collapsed view section)
+
+Add between Recent Projects and Messages icons:
+
+```tsx
+{/* Trash */}
+<Tooltip>
+  <TooltipTrigger asChild>
+    <Button 
+      variant="ghost" 
+      size="icon" 
+      className="relative"
+      onClick={() => { onToggleCollapse(); setTrashOpen(true); }}
     >
-      <Link to="/admin/trash">
-        <Trash2 className={iconClass} />
-        <span>Trash</span>
+      <Trash2 className="h-4 w-4" />
+      {(deletedItems?.length ?? 0) > 0 && (
+        <span className="absolute -top-1 -right-1 h-4 w-4 bg-muted-foreground text-background text-[10px] rounded-full flex items-center justify-center">
+          {deletedItems?.length}
+        </span>
+      )}
+    </Button>
+  </TooltipTrigger>
+  <TooltipContent side="right">Trash</TooltipContent>
+</Tooltip>
+```
+
+### 5. Add Expanded State Section (in the expanded view section)
+
+Add between Recent Projects and Messages sections:
+
+```tsx
+{/* Trash Section */}
+<Collapsible open={trashOpen} onOpenChange={setTrashOpen}>
+  <CollapsibleTrigger className="flex w-full items-center justify-between rounded-md px-2 py-1.5 text-sm font-medium hover:bg-muted">
+    <div className="flex items-center gap-2">
+      <Trash2 className="h-4 w-4 text-muted-foreground" />
+      <span>Trash</span>
+      {(deletedItems?.length ?? 0) > 0 && (
+        <Badge variant="secondary" className="h-5 px-1.5 text-[10px]">
+          {deletedItems?.length}
+        </Badge>
+      )}
+    </div>
+    <ChevronRight className={cn("h-4 w-4 transition-transform", trashOpen && "rotate-90")} />
+  </CollapsibleTrigger>
+  <CollapsibleContent className="mt-1">
+    <div className="space-y-1 pl-6">
+      {deletedItems?.length === 0 && (
+        <p className="text-xs text-muted-foreground py-2">No deleted items</p>
+      )}
+      {deletedItems?.map((item) => (
+        <Link
+          key={item.id}
+          to="/admin/trash"
+          className="block rounded-md p-2 text-xs hover:bg-muted transition-colors"
+        >
+          <div className="flex items-center justify-between">
+            <span className="font-medium truncate">{item.identifier}</span>
+            <Badge variant="outline" className="text-[10px]">
+              {getEntityLabel(item.entity_type)}
+            </Badge>
+          </div>
+          <p className="text-muted-foreground">
+            {formatDistanceToNow(new Date(item.deleted_at), { addSuffix: true })}
+          </p>
+        </Link>
+      ))}
+      <Link
+        to="/admin/trash"
+        className="block rounded-md p-2 text-xs text-muted-foreground hover:bg-muted transition-colors font-medium"
+      >
+        View All Trash →
       </Link>
-    </SidebarMenuButton>
-  </SidebarMenuItem>
-)}
+    </div>
+  </CollapsibleContent>
+</Collapsible>
 ```
 
 ---
 
-## Updated Sidebar Account Section
+## Updated Quick Access Panel
 
-After implementation, the Account section will include:
+After implementation:
 
-| Item | Visibility |
-|------|------------|
-| User Management | Admin or has permission |
-| Permissions | Admin or has permission |
-| Vendor Portal Preview | Admin only |
-| Personnel Portal Preview | Admin only |
-| Audit Logs | Admin or has permission |
-| **Trash** | Admin or Manager |
-| Document Center | Admin/Manager/Accounting or has permission |
-| Activity History | All authenticated |
-| Settings | All authenticated |
-| Sign Out | All authenticated |
+| Section | Icon | Badge | Data Source |
+|---------|------|-------|-------------|
+| Recently Accessed | Clock (blue) | Count | `useRecentPages` |
+| Reminders | Bell (primary) | Count | Pending estimates |
+| Alerts | AlertTriangle (destructive) | Count | Overdue invoices |
+| Recent Projects | History (muted) | - | Recent projects |
+| **Trash** | Trash2 (muted) | Count | `useDeletedItems` |
+| Messages | MessageSquare (blue) | Count | Unread conversations |
 
 ---
 
 ## Result
 
-- Dashboard remains clean with Invoice Aging Summary as the final row
-- Trash is accessible from the sidebar under Account (for admins/managers)
-- Quick navigation to `/admin/trash` from anywhere in the app
+- Trash appears in Quick Access panel with a count badge showing recently deleted items
+- Users can expand to see the 5 most recent deleted items with entity type and time
+- Clicking any item or "View All Trash" navigates to `/admin/trash`
+- Works in both collapsed (icon only) and expanded (full list) panel modes
