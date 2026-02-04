@@ -55,6 +55,9 @@ export const syncAttachmentToQuickBooks = async (
         attachmentId,
         billId,
       },
+      headers: {
+        Authorization: `Bearer ${session.access_token}`,
+      },
     });
 
     if (response.error) {
