@@ -75,19 +75,27 @@ export default function SubcontractorBillDetail() {
             <Card>
               <CardContent className="pt-6">
                 <p className="text-sm text-muted-foreground">Bill Total</p>
-                <p className="text-2xl font-bold">{formatCurrency(bill.total || 0)}</p>
+                <p className="text-2xl font-bold">
+                  {formatCurrency(bill.total || 0)}
+                </p>
               </CardContent>
             </Card>
             <Card>
               <CardContent className="pt-6">
                 <p className="text-sm text-muted-foreground">Paid Amount</p>
-                <p className="text-2xl font-bold text-green-600">{formatCurrency(bill.paid_amount || 0)}</p>
+                <p className="text-2xl font-bold text-green-600">
+                  {formatCurrency(bill.paid_amount || 0)}
+                </p>
               </CardContent>
             </Card>
             <Card>
               <CardContent className="pt-6">
                 <p className="text-sm text-muted-foreground">Remaining</p>
-                <p className={`text-2xl font-bold ${(bill.remaining_amount || 0) > 0 ? "text-destructive" : ""}`}>
+                <p
+                  className={`text-2xl font-bold ${
+                    (bill.remaining_amount || 0) > 0 ? "text-destructive" : ""
+                  }`}
+                >
                   {formatCurrency(bill.remaining_amount || 0)}
                 </p>
               </CardContent>
@@ -109,26 +117,38 @@ export default function SubcontractorBillDetail() {
                 <CardTitle className="text-base">Line Items</CardTitle>
               </CardHeader>
               <CardContent>
-                {bill.vendor_bill_line_items && bill.vendor_bill_line_items.length > 0 ? (
+                {bill.vendor_bill_line_items &&
+                bill.vendor_bill_line_items.length > 0 ? (
                   <div className="space-y-3">
                     {bill.vendor_bill_line_items.map((item: any) => (
-                      <div key={item.id} className="flex justify-between items-start border-b pb-2 last:border-0">
+                      <div
+                        key={item.id}
+                        className="flex justify-between items-start border-b pb-2 last:border-0"
+                      >
                         <div className="flex-1">
-                          <p className="font-medium text-sm">{item.description}</p>
+                          <p className="font-medium text-sm">
+                            {item.description}
+                          </p>
                           <p className="text-xs text-muted-foreground">
                             {item.quantity} × {formatCurrency(item.unit_cost)}
                           </p>
                         </div>
-                        <p className="font-medium">{formatCurrency(item.total)}</p>
+                        <p className="font-medium">
+                          {formatCurrency(item.total)}
+                        </p>
                       </div>
                     ))}
                     <div className="pt-2 border-t flex justify-between">
                       <span className="font-medium">Total</span>
-                      <span className="font-bold">{formatCurrency(bill.total)}</span>
+                      <span className="font-bold">
+                        {formatCurrency(bill.total)}
+                      </span>
                     </div>
                   </div>
                 ) : (
-                  <p className="text-sm text-muted-foreground">No line items.</p>
+                  <p className="text-sm text-muted-foreground">
+                    No line items.
+                  </p>
                 )}
               </CardContent>
             </Card>
@@ -139,17 +159,22 @@ export default function SubcontractorBillDetail() {
                 <CardTitle className="text-base">Payment History</CardTitle>
               </CardHeader>
               <CardContent>
-                {bill.vendor_bill_payments && bill.vendor_bill_payments.length > 0 ? (
+                {bill.vendor_bill_payments &&
+                bill.vendor_bill_payments.length > 0 ? (
                   <div className="space-y-3">
                     {bill.vendor_bill_payments.map((payment: any) => (
-                      <div key={payment.id} className="flex justify-between items-start border-b pb-2 last:border-0">
+                      <div
+                        key={payment.id}
+                        className="flex justify-between items-start border-b pb-2 last:border-0"
+                      >
                         <div>
                           <p className="font-medium text-sm">
                             {formatLocalDate(payment.payment_date)}
                           </p>
                           <p className="text-xs text-muted-foreground">
                             {payment.payment_method}
-                            {payment.reference_number && ` • Ref: ${payment.reference_number}`}
+                            {payment.reference_number &&
+                              ` • Ref: ${payment.reference_number}`}
                           </p>
                         </div>
                         <p className="font-medium text-green-600">
@@ -159,7 +184,9 @@ export default function SubcontractorBillDetail() {
                     ))}
                   </div>
                 ) : (
-                  <p className="text-sm text-muted-foreground">No payments recorded yet.</p>
+                  <p className="text-sm text-muted-foreground">
+                    No payments recorded yet.
+                  </p>
                 )}
               </CardContent>
             </Card>
