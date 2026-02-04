@@ -1,4 +1,4 @@
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { 
   Search, 
@@ -63,6 +63,7 @@ import { useToggleApplicationContacted } from "@/integrations/supabase/hooks/use
 import { useApplicationFormTemplates } from "@/integrations/supabase/hooks/useApplicationFormTemplates";
 import { toast } from "sonner";
 import { ApplicationsTable } from "@/components/staffing/ApplicationsTable";
+import { TablePagination } from "@/components/shared/TablePagination";
 import { ApplicationDetailDialog } from "@/components/staffing/ApplicationDetailDialog";
 import {
   exportApplicationsToCSV,
@@ -118,6 +119,10 @@ export default function StaffingApplications() {
   const [editingTaskOrder, setEditingTaskOrder] = useState<TaskOrder | null>(null);
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [activePostingsOpen, setActivePostingsOpen] = useState(false);
+  
+  // Pagination state
+  const [currentPage, setCurrentPage] = useState(1);
+  const [rowsPerPage, setRowsPerPage] = useState(10);
   
   // Approval type selection dialog state
   const [appToApprove, setAppToApprove] = useState<Application | null>(null);
@@ -285,6 +290,18 @@ export default function StaffingApplications() {
       return true;
     });
   }, [applications, search, experienceFilter, postingFilter, formTemplates, neverApprovedApplicantIds]);
+
+  // Paginated applications
+  const paginatedApplications = useMemo(() => {
+    if (!filteredApplications) return [];
+    const startIndex = (currentPage - 1) * rowsPerPage;
+    return filteredApplications.slice(startIndex, startIndex + rowsPerPage);
+  }, [filteredApplications, currentPage, rowsPerPage]);
+
+  // Reset page when filters change
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [search, projectFilter, statusFilter, experienceFilter, postingFilter]);
 
   const handleCreateTaskOrder = async () => {
     if (!newTaskOrder.project_id || !newTaskOrder.title) {
@@ -670,8 +687,10 @@ export default function StaffingApplications() {
       )}
 
       {/* Applications Table */}
-      <ApplicationsTable
-        applications={filteredApplications || []}
+      <Card>
+        <CardContent className="p-0">
+          <ApplicationsTable
+            applications={paginatedApplications}
         isLoading={isLoading}
         selectable
         selectedIds={selectedIds}
@@ -705,7 +724,19 @@ export default function StaffingApplications() {
           setShowReverseDialog(true);
         }}
         onToggleContacted={handleToggleContacted}
-      />
+          />
+          <TablePagination
+            currentPage={currentPage}
+            totalCount={filteredApplications?.length || 0}
+            rowsPerPage={rowsPerPage}
+            onPageChange={setCurrentPage}
+            onRowsPerPageChange={(size) => {
+              setRowsPerPage(size);
+              setCurrentPage(1);
+            }}
+          />
+        </CardContent>
+      </Card>
 
       {/* Approval Type Selection Dialog */}
       <ApprovalTypeSelectionDialog
