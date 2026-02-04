@@ -57,7 +57,8 @@ export const syncAttachmentToQuickBooks = async (
 
     if (response.error) {
       console.error("QuickBooks attachment sync error:", response.error);
-      return { success: false, error: response.error.message || "Sync failed" };
+      const errorDetails = response.error.message || response.error.name || "Unknown error";
+      return { success: false, error: `Sync failed: ${errorDetails}` };
     }
 
     if (response.data?.success) {

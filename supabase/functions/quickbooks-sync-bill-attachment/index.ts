@@ -162,6 +162,10 @@ async function uploadAttachmentToQB(
 }
 
 serve(async (req) => {
+  // Log entry immediately for debugging
+  console.log(`[ENTRY] quickbooks-sync-bill-attachment called at ${new Date().toISOString()}`);
+  console.log(`[ENTRY] Method: ${req.method}`);
+
   // Handle CORS preflight
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
