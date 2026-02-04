@@ -133,14 +133,88 @@ const tools = [
   {
     type: "function",
     function: {
+      name: "create_invoice",
+      description: "Create a new invoice for a customer. Use this when users want to create, add, or make a new invoice.",
+      parameters: {
+        type: "object",
+        properties: {
+          customer_id: {
+            type: "string",
+            description: "The UUID of the customer. Optional if customer_name is provided."
+          },
+          customer_name: {
+            type: "string",
+            description: "The name of the customer"
+          },
+          project_id: {
+            type: "string",
+            description: "Optional project ID to associate with the invoice"
+          },
+          line_items: {
+            type: "array",
+            items: {
+              type: "object",
+              properties: {
+                description: { type: "string", description: "Line item description" },
+                quantity: { type: "number", description: "Quantity" },
+                unit_price: { type: "number", description: "Price per unit" },
+                markup: { type: "number", description: "Markup percentage (default: 0)" }
+              },
+              required: ["description", "quantity", "unit_price"]
+            },
+            description: "Array of line items for the invoice"
+          },
+          notes: { type: "string", description: "Optional notes for the invoice" },
+          tax_rate: { type: "number", description: "Tax rate percentage (default: 0)" },
+          due_days: { type: "number", description: "Number of days until due (default: 30)" }
+        },
+        required: ["customer_name", "line_items"]
+      }
+    }
+  },
+  {
+    type: "function",
+    function: {
       name: "navigate_to",
-      description: "Navigate to a specific page or record in the application",
+      description: `Navigate to a specific page or record in the application. 
+
+Common page aliases you should understand:
+- "trash", "recently deleted", "deleted items" = /admin/trash
+- "create invoice", "new invoice" = /invoices/new
+- "create estimate", "new estimate" = /estimates/new
+- "dashboard", "home" = /
+- "audit logs", "logs" = /admin/audit-logs
+- "messages", "inbox" = /messages
+- "jobs" = /jobs
+- "sales" = /sales
+- "settings" = /settings
+
+Available pages:
+- Dashboard: /
+- Estimates: /estimates (list), /estimates/new (create), /estimates/:id (view)
+- Invoices: /invoices (list), /invoices/new (create), /invoices/:id (view)
+- Purchase Orders: /purchase-orders (list), /purchase-orders/new (create)
+- Vendor Bills: /vendor-bills (list), /vendor-bills/new (create)
+- Customers: /customers (list), /customers/:id (view)
+- Vendors: /vendors (list), /vendors/:id (view)
+- Personnel: /personnel (list), /personnel/:id (view)
+- Products: /products
+- Projects: /projects (list), /projects/:id (view)
+- Time Tracking: /time-tracking, /team-timesheet
+- Messages: /messages, /conversations
+- Jobs: /jobs
+- Sales: /sales
+- Settings: /settings
+- Document Center: /document-center
+- Expense Categories: /expense-categories
+- Admin: /admin/trash (Trash/Recently Deleted), /admin/audit-logs (Audit Logs)
+- Staffing: /staffing/applications, /staffing/form-templates, /staffing/map`,
       parameters: {
         type: "object",
         properties: {
           path: {
             type: "string",
-            description: "The path to navigate to (e.g., '/estimates', '/estimates/123', '/invoices/new')"
+            description: "The path to navigate to (e.g., '/estimates', '/estimates/123', '/invoices/new', '/admin/trash')"
           }
         },
         required: ["path"]
@@ -167,6 +241,8 @@ async function executeTool(
       return await getStatistics(supabase, args);
     case "create_estimate":
       return await createEstimate(supabase, args, userId);
+    case "create_invoice":
+      return await createInvoice(supabase, args, userId);
     case "navigate_to":
       return { action: "navigate", path: args.path };
     default:
@@ -451,6 +527,127 @@ async function createEstimate(supabase: any, args: any, userId: string): Promise
   };
 }
 
+async function createInvoice(supabase: any, args: any, userId: string): Promise<any> {
+  const { customer_id, customer_name, project_id, line_items, notes, tax_rate = 0, due_days = 30 } = args;
+
+  // First, find or verify the customer
+  let customerId = customer_id;
+  let resolvedCustomerName = customer_name;
+  
+  if (!customerId && customer_name) {
+    // Search for existing customer
+    const { data: customers } = await supabase
+      .from("customers")
+      .select("id, name")
+      .ilike("name", `%${customer_name}%`)
+      .limit(1);
+    
+    if (customers && customers.length > 0) {
+      customerId = customers[0].id;
+      resolvedCustomerName = customers[0].name;
+    } else {
+      return {
+        error: `Customer "${customer_name}" not found. Please create the customer first or provide an existing customer name.`,
+        suggestion: "You can create a new customer by navigating to /customers",
+        action: "navigate",
+        path: "/customers"
+      };
+    }
+  }
+
+  if (!customerId) {
+    return { error: "Customer ID or name is required" };
+  }
+
+  // Get project name if project_id is provided
+  let projectName = null;
+  if (project_id) {
+    const { data: project } = await supabase
+      .from("projects")
+      .select("name")
+      .eq("id", project_id)
+      .single();
+    
+    if (project) {
+      projectName = project.name;
+    }
+  }
+
+  // Calculate totals
+  const subtotal = line_items.reduce((sum: number, item: any) => {
+    const itemTotal = item.quantity * item.unit_price * (1 + (item.markup || 0) / 100);
+    return sum + itemTotal;
+  }, 0);
+  
+  const taxAmount = subtotal * (tax_rate / 100);
+  const total = subtotal + taxAmount;
+
+  const dueDate = new Date();
+  dueDate.setDate(dueDate.getDate() + due_days);
+
+  // Create the invoice
+  const { data: invoice, error: invoiceError } = await supabase
+    .from("invoices")
+    .insert({
+      customer_id: customerId,
+      customer_name: resolvedCustomerName,
+      project_id: project_id || null,
+      project_name: projectName,
+      notes: notes || null,
+      subtotal,
+      tax_rate,
+      tax_amount: taxAmount,
+      total,
+      remaining_amount: total,
+      due_date: dueDate.toISOString().split('T')[0],
+      status: "draft",
+      created_by: userId
+    })
+    .select()
+    .single();
+
+  if (invoiceError) {
+    console.error("Create invoice error:", invoiceError);
+    return { error: invoiceError.message };
+  }
+
+  // Create line items
+  const lineItemsToInsert = line_items.map((item: any, index: number) => ({
+    invoice_id: invoice.id,
+    description: item.description,
+    quantity: item.quantity,
+    unit_price: item.unit_price,
+    markup: item.markup || 0,
+    total: item.quantity * item.unit_price * (1 + (item.markup || 0) / 100),
+    display_order: index
+  }));
+
+  const { error: lineItemsError } = await supabase
+    .from("invoice_line_items")
+    .insert(lineItemsToInsert);
+
+  if (lineItemsError) {
+    console.error("Create invoice line items error:", lineItemsError);
+    // Try to clean up the invoice
+    await supabase.from("invoices").delete().eq("id", invoice.id);
+    return { error: lineItemsError.message };
+  }
+
+  return {
+    success: true,
+    invoice: {
+      id: invoice.id,
+      number: invoice.number,
+      customer_name: resolvedCustomerName,
+      total,
+      due_date: dueDate.toISOString().split('T')[0],
+      status: "draft"
+    },
+    action: "navigate",
+    path: `/invoices/${invoice.id}`
+  };
+}
+
 serve(async (req) => {
   // Handle CORS preflight requests
   if (req.method === "OPTIONS") {
@@ -481,18 +678,54 @@ serve(async (req) => {
     const userId = user?.id || "anonymous";
 
     // System prompt for the AI assistant
-    const systemPrompt = `You are an AI assistant for Fairfield Construction, a construction management application. You help users manage their construction business by:
+    const systemPrompt = `You are an AI assistant for a construction management application. You help users manage their construction business by:
 
 1. Searching and finding records (customers, invoices, estimates, job orders, projects, purchase orders, vendors, personnel, products)
-2. Creating new estimates and other records
+2. Creating new estimates and invoices
 3. Providing statistics and summaries about the business
 4. Answering questions about projects, customers, and financials
 5. Navigating users to relevant pages
 
-When users ask you to find or search for something, use the search_records tool.
-When users ask for statistics or summaries, use the get_statistics tool.
-When users ask to create an estimate, use the create_estimate tool.
-When users want to view or go to a specific page, use the navigate_to tool.
+AVAILABLE PAGES YOU CAN NAVIGATE TO:
+- Dashboard: /
+- Estimates: /estimates (list), /estimates/new (create), /estimates/:id (view)
+- Invoices: /invoices (list), /invoices/new (create), /invoices/:id (view)
+- Purchase Orders: /purchase-orders (list), /purchase-orders/new (create)
+- Vendor Bills: /vendor-bills (list), /vendor-bills/new (create)
+- Customers: /customers (list), /customers/:id (view)
+- Vendors: /vendors (list), /vendors/:id (view)
+- Personnel: /personnel (list), /personnel/:id (view)
+- Products: /products
+- Projects: /projects (list), /projects/:id (view)
+- Time Tracking: /time-tracking, /team-timesheet
+- Messages: /messages, /conversations
+- Jobs: /jobs
+- Sales: /sales
+- Settings: /settings
+- Document Center: /document-center
+- Expense Categories: /expense-categories
+- Admin Pages:
+  - Trash/Recently Deleted: /admin/trash (use for "trash", "recently deleted", "deleted items")
+  - Audit Logs: /admin/audit-logs
+- Staffing:
+  - Applications: /staffing/applications
+  - Form Templates: /staffing/form-templates
+  - Map View: /staffing/map
+
+PAGE ALIASES TO UNDERSTAND:
+- "trash page", "recently deleted", "deleted items" → navigate to /admin/trash
+- "create invoice", "new invoice", "make an invoice" → either use create_invoice tool OR navigate to /invoices/new
+- "create estimate", "new estimate" → either use create_estimate tool OR navigate to /estimates/new
+- "dashboard", "home", "main page" → navigate to /
+- "audit logs", "logs", "activity logs" → navigate to /admin/audit-logs
+- "messages", "inbox", "conversations" → navigate to /messages
+
+IMPORTANT BEHAVIORS:
+- When users ask to "create an invoice" without details, ask for the customer name and line items OR navigate to /invoices/new
+- When users ask to "go to trash" or "show recently deleted", navigate to /admin/trash
+- When users mention "deleted items" or want to restore something, navigate to /admin/trash
+- When users ask for statistics or summaries, use the get_statistics tool
+- When users want to search for something, use the search_records tool
 
 Always be helpful, concise, and professional. Format monetary values with currency symbols.
 When showing results, format them in a clear, readable way.
