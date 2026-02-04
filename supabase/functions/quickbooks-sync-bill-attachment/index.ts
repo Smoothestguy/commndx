@@ -213,14 +213,54 @@ serve(async (req) => {
       );
     }
 
-    // Parse request body
-    const { attachmentId, billId, qbBillId } = await req.json();
+    // Parse request body - qbBillId is now optional (resolved server-side)
+    const { attachmentId, billId, qbBillId: providedQbBillId } = await req.json();
 
-    if (!attachmentId || !billId || !qbBillId) {
+    if (!attachmentId || !billId) {
       return new Response(
-        JSON.stringify({ error: "Missing required fields: attachmentId, billId, qbBillId" }),
+        JSON.stringify({ error: "Missing required fields: attachmentId, billId" }),
         { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
+    }
+
+    console.log(`Received request: attachmentId=${attachmentId}, billId=${billId}, qbBillId=${providedQbBillId || '(will resolve)'}`);
+
+    // Resolve qbBillId server-side if not provided
+    let qbBillId = providedQbBillId;
+    if (!qbBillId) {
+      const { data: mapping, error: mappingError } = await supabase
+        .from("quickbooks_bill_mappings")
+        .select("quickbooks_bill_id, sync_status")
+        .eq("bill_id", billId)
+        .maybeSingle();
+
+      if (mappingError) {
+        console.error(`Error fetching QB mapping for bill ${billId}:`, mappingError);
+        return new Response(
+          JSON.stringify({ success: false, error: "Failed to check QuickBooks mapping" }),
+          { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        );
+      }
+
+      if (!mapping) {
+        console.log(`Bill ${billId} not mapped to QuickBooks yet`);
+        return new Response(
+          JSON.stringify({ success: false, error: "Bill not synced to QuickBooks yet" }),
+          { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        );
+      }
+
+      const validSyncStatuses = ["synced", "success"];
+      if (!validSyncStatuses.includes(mapping.sync_status) || !mapping.quickbooks_bill_id) {
+        console.log(`Bill ${billId} has mapping but sync_status=${mapping.sync_status}, qb_id=${mapping.quickbooks_bill_id}`);
+        return new Response(
+          JSON.stringify({ success: false, error: "Bill not fully synced to QuickBooks yet" }),
+          { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        );
+      }
+
+      qbBillId = mapping.quickbooks_bill_id;
+      console.log(`Resolved qbBillId=${qbBillId} from mapping for bill ${billId}`);
     }
 
     console.log(`Syncing attachment ${attachmentId} to QuickBooks bill ${qbBillId}`);
