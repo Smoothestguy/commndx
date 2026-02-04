@@ -126,7 +126,19 @@ export const FileAttachmentUpload = ({
 
       if (error) throw error;
 
-      window.open(data.signedUrl, "_blank");
+      // Fetch as blob and trigger download instead of opening in new tab
+      const response = await fetch(data.signedUrl);
+      if (!response.ok) throw new Error("Failed to fetch file");
+      
+      const blob = await response.blob();
+      const blobUrl = window.URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      link.href = blobUrl;
+      link.download = attachment.file_name;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      window.URL.revokeObjectURL(blobUrl);
     } catch (error: any) {
       console.error("Download error:", error);
       toast.error("Failed to download file");
