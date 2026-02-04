@@ -229,7 +229,7 @@ export default function VendorBillDetail() {
         )}
 
         {/* Attachments */}
-        <VendorBillAttachments billId={bill.id} />
+        <VendorBillAttachments billId={bill.id} isEditMode={false} />
       </div>
 
       {/* Delete Dialog */}

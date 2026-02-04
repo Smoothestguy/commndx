@@ -631,6 +631,7 @@ export function VendorBillForm({ bill, isEditing = false }: VendorBillFormProps)
       {isEditing && bill ? (
         <VendorBillAttachments 
           billId={bill.id} 
+          isEditMode
           isFormDirty={isFormDirty}
           onSaveRequired={handleSaveForAttachment}
         />
