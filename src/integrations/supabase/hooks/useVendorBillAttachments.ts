@@ -207,6 +207,43 @@ export const useRetrySyncAttachment = () => {
   });
 };
 
+// Delete attachment from QuickBooks
+const deleteAttachmentFromQuickBooks = async (
+  attachmentId: string,
+  billId: string
+): Promise<{ success: boolean; message?: string; error?: string }> => {
+  try {
+    const { data: { session } } = await supabase.auth.getSession();
+    
+    if (!session?.access_token) {
+      return { success: false, error: "Not authenticated" };
+    }
+
+    console.log("Deleting attachment from QuickBooks:", { attachmentId, billId });
+    
+    const response = await supabase.functions.invoke("quickbooks-delete-bill-attachment", {
+      body: { attachmentId, billId },
+      headers: {
+        Authorization: `Bearer ${session.access_token}`,
+      },
+    });
+
+    if (response.error) {
+      console.error("QuickBooks attachment delete error:", response.error);
+      return { success: false, error: response.error.message || "Delete failed" };
+    }
+
+    if (response.data?.success) {
+      return { success: true, message: response.data.message };
+    } else {
+      return { success: false, error: response.data?.error || "Delete failed" };
+    }
+  } catch (err: any) {
+    console.error("QuickBooks attachment delete exception:", err);
+    return { success: false, error: err.message || "Delete failed" };
+  }
+};
+
 export const useDeleteVendorBillAttachment = () => {
   const queryClient = useQueryClient();
 
@@ -224,9 +261,29 @@ export const useDeleteVendorBillAttachment = () => {
         .eq("id", attachmentId);
 
       if (error) throw error;
+
+      // Delete from QuickBooks (async, non-blocking)
+      deleteAttachmentFromQuickBooks(attachmentId, billId)
+        .then((result) => {
+          if (result.success) {
+            console.log("Attachment deleted from QuickBooks:", result.message);
+            toast.success("Deleted from QuickBooks", {
+              description: result.message || "Attachment removed from QuickBooks",
+            });
+          } else if (result.error && !result.error.includes("never synced")) {
+            console.warn("QuickBooks delete warning:", result.error);
+            toast.warning("QuickBooks sync", {
+              description: result.error,
+            });
+          }
+        })
+        .catch((err) => {
+          console.error("QuickBooks delete failed:", err);
+        });
     },
     onSuccess: (_, { billId }) => {
       queryClient.invalidateQueries({ queryKey: ["vendor-bill-attachments", billId] });
+      toast.success("Attachment deleted");
     },
   });
 };
