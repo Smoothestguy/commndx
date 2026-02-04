@@ -18,6 +18,7 @@ const navItems = [
   { href: "/vendor", label: "Dashboard", icon: Home },
   { href: "/vendor/pos", label: "My POs", icon: ClipboardList },
   { href: "/vendor/bills", label: "My Bills", icon: FileText },
+  { href: "/vendor/settings", label: "Settings", icon: Settings },
 ];
 
 interface VendorPortalLayoutProps {
