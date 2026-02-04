@@ -12,7 +12,9 @@ import {
   FileText,
   FolderOpen,
   Timer,
-  Package
+  Package,
+  ChevronLeft,
+  ChevronRight
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/contexts/AuthContext";
@@ -20,6 +22,8 @@ import { useCurrentPersonnel, usePersonnelNotifications } from "@/integrations/s
 import { cn } from "@/lib/utils";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
 import { PersonnelAvatar } from "@/components/personnel/PersonnelAvatar";
+import { useIsMobile, useIsWideTablet } from "@/hooks/use-mobile";
+import { Tooltip, TooltipContent, TooltipTrigger, TooltipProvider } from "@/components/ui/tooltip";
 
 const navItems = [
   { href: "/portal", label: "Dashboard", icon: Home },
@@ -44,102 +48,183 @@ export function PortalLayout({ children }: PortalLayoutProps) {
   const { data: personnel } = useCurrentPersonnel();
   const { data: notifications } = usePersonnelNotifications(personnel?.id);
   const [mobileOpen, setMobileOpen] = useState(false);
+  const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
+  const isMobile = useIsMobile();
+  const isWideTablet = useIsWideTablet();
   
   const unreadCount = notifications?.filter(n => !n.is_read).length || 0;
 
-  const NavContent = () => (
+  // On tablet, default to collapsed sidebar for more content space
+  const isCollapsed = isWideTablet ? sidebarCollapsed : false;
+  const sidebarWidth = isCollapsed ? "w-16" : "w-64";
+  const mainMargin = isCollapsed ? "md:ml-16" : "md:ml-64";
+
+  const NavContent = ({ collapsed = false }: { collapsed?: boolean }) => (
     <div className="flex flex-col h-full">
-      <div className="p-4 border-b">
-        <div className="flex items-center gap-3">
+      <div className={cn("p-4 border-b", collapsed && "px-2")}>
+        <div className={cn("flex items-center gap-3", collapsed && "justify-center")}>
           {personnel && (
             <PersonnelAvatar
               photoUrl={personnel.photo_url}
               firstName={personnel.first_name}
               lastName={personnel.last_name}
-              size="md"
+              size={collapsed ? "sm" : "md"}
             />
           )}
-          <div>
-            <h2 className="font-semibold text-lg">Personnel Portal</h2>
-            {personnel && (
-              <p className="text-sm text-muted-foreground">
-                {personnel.first_name} {personnel.last_name}
-              </p>
-            )}
-          </div>
+          {!collapsed && (
+            <div className="min-w-0">
+              <h2 className="font-semibold text-lg truncate">Personnel Portal</h2>
+              {personnel && (
+                <p className="text-sm text-muted-foreground truncate">
+                  {personnel.first_name} {personnel.last_name}
+                </p>
+              )}
+            </div>
+          )}
         </div>
       </div>
       
-      <nav className="flex-1 p-4 space-y-1">
-        {navItems.map((item) => {
-          const isActive = location.pathname === item.href;
-          const Icon = item.icon;
-          
-          return (
-            <Link
-              key={item.href}
-              to={item.href}
-              onClick={() => setMobileOpen(false)}
-              className={cn(
-                "flex items-center gap-3 px-3 py-2 rounded-md text-sm font-medium transition-colors",
-                isActive 
-                  ? "bg-primary text-primary-foreground" 
-                  : "hover:bg-muted"
-              )}
-            >
-              <Icon className="h-4 w-4" />
-              {item.label}
-              {item.href === "/portal/notifications" && unreadCount > 0 && (
-                <span className="ml-auto bg-destructive text-destructive-foreground text-xs px-2 py-0.5 rounded-full">
-                  {unreadCount}
-                </span>
-              )}
-            </Link>
-          );
-        })}
+      <nav className={cn("flex-1 p-4 space-y-1", collapsed && "px-2")}>
+        <TooltipProvider delayDuration={0}>
+          {navItems.map((item) => {
+            const isActive = location.pathname === item.href;
+            const Icon = item.icon;
+            
+            const linkContent = (
+              <Link
+                key={item.href}
+                to={item.href}
+                onClick={() => setMobileOpen(false)}
+                className={cn(
+                  "flex items-center gap-3 rounded-md text-sm font-medium transition-colors min-h-[44px]",
+                  collapsed ? "justify-center px-2 py-3" : "px-3 py-2",
+                  isActive 
+                    ? "bg-primary text-primary-foreground" 
+                    : "hover:bg-muted"
+                )}
+              >
+                <Icon className="h-5 w-5 flex-shrink-0" />
+                {!collapsed && (
+                  <>
+                    <span className="truncate">{item.label}</span>
+                    {item.href === "/portal/notifications" && unreadCount > 0 && (
+                      <span className="ml-auto bg-destructive text-destructive-foreground text-xs px-2 py-0.5 rounded-full">
+                        {unreadCount}
+                      </span>
+                    )}
+                  </>
+                )}
+                {collapsed && item.href === "/portal/notifications" && unreadCount > 0 && (
+                  <span className="absolute -top-1 -right-1 bg-destructive text-destructive-foreground text-xs w-5 h-5 flex items-center justify-center rounded-full">
+                    {unreadCount > 9 ? "9+" : unreadCount}
+                  </span>
+                )}
+              </Link>
+            );
+
+            if (collapsed) {
+              return (
+                <Tooltip key={item.href}>
+                  <TooltipTrigger asChild>
+                    <div className="relative">{linkContent}</div>
+                  </TooltipTrigger>
+                  <TooltipContent side="right" className="font-medium">
+                    {item.label}
+                  </TooltipContent>
+                </Tooltip>
+              );
+            }
+
+            return linkContent;
+          })}
+        </TooltipProvider>
       </nav>
       
-      <div className="p-4 border-t">
-        <Button 
-          variant="ghost" 
-          className="w-full justify-start gap-3"
-          onClick={signOut}
-        >
-          <LogOut className="h-4 w-4" />
-          Sign Out
-        </Button>
+      <div className={cn("p-4 border-t", collapsed && "px-2")}>
+        {collapsed ? (
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Button 
+                variant="ghost" 
+                size="icon"
+                className="w-full min-h-[44px]"
+                onClick={signOut}
+              >
+                <LogOut className="h-5 w-5" />
+              </Button>
+            </TooltipTrigger>
+            <TooltipContent side="right">Sign Out</TooltipContent>
+          </Tooltip>
+        ) : (
+          <Button 
+            variant="ghost" 
+            className="w-full justify-start gap-3 min-h-[44px]"
+            onClick={signOut}
+          >
+            <LogOut className="h-5 w-5" />
+            Sign Out
+          </Button>
+        )}
       </div>
     </div>
   );
 
   return (
-    <div className="min-h-screen bg-background">
-      {/* Desktop Sidebar */}
-      <aside className="hidden md:fixed md:inset-y-0 md:left-0 md:flex md:w-64 md:flex-col border-r bg-card">
-        <NavContent />
-      </aside>
-      
-      {/* Mobile Header */}
-      <header className="md:hidden sticky top-0 z-50 flex items-center justify-between p-4 border-b bg-card">
-        <h2 className="font-semibold">Personnel Portal</h2>
-        <Sheet open={mobileOpen} onOpenChange={setMobileOpen}>
-          <SheetTrigger asChild>
-            <Button variant="ghost" size="icon">
-              <Menu className="h-5 w-5" />
-            </Button>
-          </SheetTrigger>
-          <SheetContent side="left" className="p-0 w-64">
-            <NavContent />
-          </SheetContent>
-        </Sheet>
-      </header>
-      
-      {/* Main Content */}
-      <main className="md:ml-64 min-h-screen">
-        <div className="p-4 md:p-6 lg:p-8">
-          {children}
-        </div>
-      </main>
-    </div>
+    <TooltipProvider>
+      <div className="min-h-screen bg-background">
+        {/* Desktop/Tablet Sidebar */}
+        {!isMobile && (
+          <aside className={cn(
+            "fixed inset-y-0 left-0 flex flex-col border-r bg-card transition-all duration-300 z-30",
+            sidebarWidth
+          )}>
+            <NavContent collapsed={isCollapsed} />
+            
+            {/* Collapse toggle for tablets */}
+            {isWideTablet && (
+              <Button
+                variant="ghost"
+                size="icon"
+                className="absolute -right-3 top-20 h-6 w-6 rounded-full border bg-card shadow-md"
+                onClick={() => setSidebarCollapsed(!sidebarCollapsed)}
+              >
+                {isCollapsed ? (
+                  <ChevronRight className="h-3 w-3" />
+                ) : (
+                  <ChevronLeft className="h-3 w-3" />
+                )}
+              </Button>
+            )}
+          </aside>
+        )}
+        
+        {/* Mobile Header */}
+        {isMobile && (
+          <header className="sticky top-0 z-50 flex items-center justify-between p-4 border-b bg-card">
+            <h2 className="font-semibold">Personnel Portal</h2>
+            <Sheet open={mobileOpen} onOpenChange={setMobileOpen}>
+              <SheetTrigger asChild>
+                <Button variant="ghost" size="icon" className="min-h-[44px] min-w-[44px]">
+                  <Menu className="h-5 w-5" />
+                </Button>
+              </SheetTrigger>
+              <SheetContent side="left" className="p-0 w-72">
+                <NavContent />
+              </SheetContent>
+            </Sheet>
+          </header>
+        )}
+        
+        {/* Main Content */}
+        <main className={cn(
+          "min-h-screen transition-all duration-300",
+          !isMobile && mainMargin
+        )}>
+          <div className="p-4 md:p-6 lg:p-8">
+            {children}
+          </div>
+        </main>
+      </div>
+    </TooltipProvider>
   );
 }
