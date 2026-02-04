@@ -15,6 +15,12 @@ const config: CapacitorConfig = {
     // Production settings
     androidScheme: 'https',
     iosScheme: 'capacitor',
+    
+    // Allow navigation to Supabase domains for authentication
+    allowNavigation: [
+      '*.supabase.co',
+      '*.supabase.com',
+    ],
   },
   
   // iOS-specific configuration

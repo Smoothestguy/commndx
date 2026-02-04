@@ -99,55 +99,43 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const deepLinkListenerSet = useRef(false);
 
   useEffect(() => {
+    let isMounted = true;
+
     // Set up auth state listener FIRST
     const {
       data: { subscription },
     } = supabase.auth.onAuthStateChange((event, session) => {
       console.log("[Auth] Auth state change:", event);
-      setSession(session);
-      setUser(session?.user ?? null);
-      setLoading(false);
-    });
-
-    // Check for existing session with timeout and error handling
-    const checkSession = async () => {
-      try {
-        // Add a timeout to prevent hanging
-        const timeoutPromise = new Promise<never>((_, reject) => {
-          setTimeout(() => reject(new Error("Session check timeout")), 5000);
-        });
-
-        const sessionPromise = supabase.auth.getSession();
-
-        const { data: { session }, error } = await Promise.race([
-          sessionPromise,
-          timeoutPromise.then(() => { throw new Error("Timeout"); })
-        ]) as Awaited<typeof sessionPromise>;
-
-        if (error) {
-          console.error("[Auth] Error getting session:", error);
-          // Clear potentially corrupted session
-          await supabase.auth.signOut();
-        }
-
+      if (isMounted) {
         setSession(session);
         setUser(session?.user ?? null);
-      } catch (err) {
-        console.error("[Auth] Session check failed:", err);
-        // Clear localStorage on failure to break the loop
-        try {
-          localStorage.removeItem(`sb-${import.meta.env.VITE_SUPABASE_PROJECT_ID}-auth-token`);
-        } catch (e) {
-          console.error("[Auth] Failed to clear auth token:", e);
-        }
-      } finally {
         setLoading(false);
       }
+    });
+
+    // Simple session check without complex Promise.race
+    supabase.auth.getSession()
+      .then(({ data: { session }, error }) => {
+        if (error) {
+          console.error("[Auth] Error getting session:", error);
+        }
+        if (isMounted) {
+          setSession(session);
+          setUser(session?.user ?? null);
+          setLoading(false);
+        }
+      })
+      .catch((err) => {
+        console.error("[Auth] Session check failed:", err);
+        if (isMounted) {
+          setLoading(false);
+        }
+      });
+
+    return () => {
+      isMounted = false;
+      subscription.unsubscribe();
     };
-
-    checkSession();
-
-    return () => subscription.unsubscribe();
   }, []);
 
   // Set up deep link listener for Electron OAuth callbacks
