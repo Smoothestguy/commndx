@@ -15,12 +15,13 @@ import {
 import { toast } from "sonner";
 import { Loader2, User, ArrowRightLeft } from "lucide-react";
 import { GoogleIcon } from "@/components/icons/GoogleIcon";
+import { AppleIcon } from "@/components/icons/AppleIcon";
 import { PortalSwitcherModal } from "@/components/PortalSwitcherModal";
 import { usePortalSwitcher } from "@/hooks/usePortalSwitcher";
 
 export default function PortalLogin() {
   const navigate = useNavigate();
-  const { signInWithGoogle } = useAuth();
+  const { signInWithGoogle, signInWithApple } = useAuth();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
@@ -80,6 +81,18 @@ export default function PortalLogin() {
     }
   };
 
+  const handleAppleLogin = async () => {
+    setIsOAuthLoading(true);
+    try {
+      const { error } = await signInWithApple();
+      if (error) throw error;
+      // AuthCallback will handle the redirect
+    } catch (error: any) {
+      toast.error(error.message || "Failed to sign in with Apple");
+      setIsOAuthLoading(false);
+    }
+  };
+
   return (
     <div className="min-h-screen flex items-center justify-center bg-background p-4">
       <Card className="w-full max-w-md">
@@ -107,6 +120,21 @@ export default function PortalLogin() {
                 <GoogleIcon className="h-4 w-4 mr-2" />
               )}
               Continue with Google
+            </Button>
+
+            <Button
+              type="button"
+              variant="outline"
+              className="w-full"
+              onClick={handleAppleLogin}
+              disabled={isOAuthLoading || loading}
+            >
+              {isOAuthLoading ? (
+                <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+              ) : (
+                <AppleIcon className="h-4 w-4 mr-2" />
+              )}
+              Continue with Apple
             </Button>
 
             <div className="relative">
