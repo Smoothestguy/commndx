@@ -1,69 +1,139 @@
 
-# Fix Personnel Notification Preferences Duplicate Key Error
 
-## Problem
-When toggling SMS notifications off in the personnel portal settings, users get the error:
-> "duplicate key value violates unique constraint 'personnel_notification_preferences_personnel_id_key'"
+# Fix: Authentication Infinite Loading on Custom Domain
 
-## Root Cause
-The `useUpdateNotificationPreferences` hook in `src/integrations/supabase/hooks/usePortal.ts` uses Supabase's `upsert()` method but does **not specify the conflict column**.
+## Problem Analysis
 
-Current code (lines 247-254):
-```typescript
-const { data, error } = await supabase
-  .from("personnel_notification_preferences")
-  .upsert({
-    personnel_id: personnelId,
-    ...preferences,
-  })
-  .select()
-  .single();
+The auth page gets stuck in infinite loading because of a race condition in `AuthContext.tsx`:
+
+```text
+┌─────────────────────────────────────────────────────────────────┐
+│ Current Flow (Broken on Custom Domain)                         │
+├─────────────────────────────────────────────────────────────────┤
+│                                                                 │
+│  1. loading = true (initial state)                              │
+│                                                                 │
+│  2. onAuthStateChange listener set up                           │
+│     └─> Waits for auth EVENT (might never fire!)                │
+│                                                                 │
+│  3. getSession() called                                         │
+│     └─> If corrupted localStorage token exists:                 │
+│         • Supabase tries to refresh token                       │
+│         • Network request may hang or fail silently             │
+│         • setLoading(false) never called                        │
+│                                                                 │
+│  Result: Spinner forever until 10s timeout triggers reload      │
+│          (which might reload into the same broken state)        │
+└─────────────────────────────────────────────────────────────────┘
 ```
 
-The table structure:
-- **Primary key**: `id` (uuid, auto-generated)
-- **Unique constraint**: `personnel_id` (the column we want to match on)
-
-By default, Supabase's `upsert` matches on the **primary key** (`id`). Since no `id` is provided, it attempts an INSERT. When a record for that `personnel_id` already exists, it violates the unique constraint.
+The 10-second timeout workaround doesn't actually fix the issue - it just reloads the page, which can put you right back in the same broken state if localStorage still has corrupted data.
 
 ## Solution
-Add the `onConflict` option to specify that upsert should match on `personnel_id`:
+
+Fix the `AuthContext` to handle all edge cases properly:
+
+1. Set `onAuthStateChange` listener **first** (before calling getSession) - this is correct
+2. Add **error handling** to `getSession()` to catch failures
+3. Add a **reasonable timeout** inside the auth context itself (not just in Auth.tsx)
+4. **Clear corrupted session data** when getSession fails to break the loop
+
+## Implementation
+
+### File: `src/contexts/AuthContext.tsx`
+
+**Change 1:** Add proper error handling and timeout to the session initialization
 
 ```typescript
-const { data, error } = await supabase
-  .from("personnel_notification_preferences")
-  .upsert(
-    {
-      personnel_id: personnelId,
-      ...preferences,
-    },
-    { onConflict: 'personnel_id' }
-  )
-  .select()
-  .single();
+// Lines 101-119 - Replace the useEffect
+useEffect(() => {
+  // Set up auth state listener FIRST
+  const {
+    data: { subscription },
+  } = supabase.auth.onAuthStateChange((event, session) => {
+    console.log("[Auth] Auth state change:", event);
+    setSession(session);
+    setUser(session?.user ?? null);
+    setLoading(false);
+  });
+
+  // Check for existing session with timeout and error handling
+  const checkSession = async () => {
+    try {
+      // Add a timeout to prevent hanging
+      const timeoutPromise = new Promise<never>((_, reject) => {
+        setTimeout(() => reject(new Error("Session check timeout")), 5000);
+      });
+
+      const sessionPromise = supabase.auth.getSession();
+      
+      const { data: { session }, error } = await Promise.race([
+        sessionPromise,
+        timeoutPromise.then(() => { throw new Error("Timeout"); })
+      ]) as Awaited<typeof sessionPromise>;
+
+      if (error) {
+        console.error("[Auth] Error getting session:", error);
+        // Clear potentially corrupted session
+        await supabase.auth.signOut();
+      }
+      
+      setSession(session);
+      setUser(session?.user ?? null);
+    } catch (err) {
+      console.error("[Auth] Session check failed:", err);
+      // Clear localStorage on failure to break the loop
+      try {
+        localStorage.removeItem(`sb-${import.meta.env.VITE_SUPABASE_PROJECT_ID}-auth-token`);
+      } catch (e) {
+        console.error("[Auth] Failed to clear auth token:", e);
+      }
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  checkSession();
+
+  return () => subscription.unsubscribe();
+}, []);
 ```
 
-This tells Supabase: "If a row with this `personnel_id` already exists, update it; otherwise, insert a new row."
+### File: `src/pages/Auth.tsx`
 
----
+**Change 2:** Remove the 10-second reload timeout (no longer needed with proper error handling)
 
-## File Changes
-
-### `src/integrations/supabase/hooks/usePortal.ts`
-
-**Lines 247-254** - Update the upsert call:
-
-| Before | After |
-|--------|-------|
-| `.upsert({ personnel_id: personnelId, ...preferences })` | `.upsert({ personnel_id: personnelId, ...preferences }, { onConflict: 'personnel_id' })` |
-
----
+Remove lines 51-61:
+```typescript
+// REMOVE THIS - the reload causes a loop and doesn't fix the root cause
+useEffect(() => {
+  if (authLoading) {
+    const timeout = setTimeout(() => {
+      console.warn('[Auth] Loading state stuck, reloading...');
+      window.location.reload();
+    }, 10000);
+    return () => clearTimeout(timeout);
+  }
+}, [authLoading]);
+```
 
 ## Summary
 
-| Aspect | Details |
-|--------|---------|
-| Root cause | Missing `onConflict` option in upsert |
-| Fix | Add `{ onConflict: 'personnel_id' }` to upsert call |
-| Files modified | 1 file: `usePortal.ts` |
-| Risk | Low - standard Supabase upsert pattern |
+| Aspect | Before | After |
+|--------|--------|-------|
+| Error handling | None - getSession silently fails | Full try/catch with logging |
+| Timeout | 10s reload (creates loop) | 5s internal timeout with cleanup |
+| Corrupted state | Persists after reload | Automatically cleared |
+| Recovery | Manual clear localStorage | Automatic recovery |
+
+## Technical Details
+
+The Supabase project ID from `.env` is `xfjjvznxkcckuwxmcsdc`, so the localStorage key to clear is:
+`sb-xfjjvznxkcckuwxmcsdc-auth-token`
+
+This fix ensures that:
+1. Loading state **always** resolves within 5 seconds
+2. Corrupted sessions are automatically cleared
+3. The page doesn't get stuck in a reload loop
+4. Proper error logging helps debug future issues
+
