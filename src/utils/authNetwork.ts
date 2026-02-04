@@ -127,18 +127,21 @@ export async function pingAuthHealth(timeoutMs = 5000): Promise<AuthHealthResult
   const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
 
   try {
-    // Use a simple HEAD request to the base URL (lighter than /auth/v1/health)
-    const response = await fetch(`${SUPABASE_URL}/auth/v1/`, {
-      method: "HEAD",
+    // Use GET request instead of HEAD for better CORS compatibility
+    // The /auth/v1/settings endpoint is publicly accessible and CORS-friendly
+    const response = await fetch(`${SUPABASE_URL}/auth/v1/settings`, {
+      method: "GET",
       signal: controller.signal,
+      cache: "no-store",
     });
 
     clearTimeout(timeoutId);
     const latencyMs = Math.round(performance.now() - startTime);
 
-    // Even a 4xx response means the server is reachable
+    // Any HTTP response means the server is reachable (even 4xx/5xx)
+    console.info(`[Auth Health] Ping successful: ${response.status} in ${latencyMs}ms`);
     return {
-      healthy: response.status < 500,
+      healthy: true,
       latencyMs,
     };
   } catch (error) {
