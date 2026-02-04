@@ -6,7 +6,6 @@ import {
   useUploadVendorBillAttachment,
   useDeleteVendorBillAttachment,
   useRetrySyncAttachment,
-  syncAttachmentToQuickBooks,
 } from "@/integrations/supabase/hooks/useVendorBillAttachments";
 import { usePullBillAttachments } from "@/integrations/supabase/hooks/usePullBillAttachments";
 import { supabase } from "@/integrations/supabase/client";
