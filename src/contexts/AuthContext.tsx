@@ -218,20 +218,20 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         });
 
         if (error) {
-          await logAuthEvent("sign_up", email, undefined, false, error.message);
+          logAuthEvent("sign_up", email, undefined, false, error.message).catch(console.error);
           return { error };
         }
 
-        await logAuthEvent("sign_up", email, data.user?.id, true);
+        logAuthEvent("sign_up", email, data.user?.id, true).catch(console.error);
         return { error: null };
       } catch (error) {
-        await logAuthEvent(
+        logAuthEvent(
           "sign_up",
           email,
           undefined,
           false,
           (error as Error).message
-        );
+        ).catch(console.error);
         return { error: error as Error };
       }
     },
@@ -247,21 +247,21 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         });
 
         if (error) {
-          await logAuthEvent("sign_in", email, undefined, false, error.message);
+          logAuthEvent("sign_in", email, undefined, false, error.message).catch(console.error);
           return { error };
         }
 
-        await logAuthEvent("sign_in", email, data.user?.id, true);
+        logAuthEvent("sign_in", email, data.user?.id, true).catch(console.error);
         navigate("/");
         return { error: null };
       } catch (error) {
-        await logAuthEvent(
+        logAuthEvent(
           "sign_in",
           email,
           undefined,
           false,
           (error as Error).message
-        );
+        ).catch(console.error);
         return { error: error as Error };
       }
     },
@@ -273,7 +273,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     const currentUserId = user?.id;
 
     await supabase.auth.signOut();
-    await logAuthEvent("sign_out", currentEmail, currentUserId, true);
+    logAuthEvent("sign_out", currentEmail, currentUserId, true).catch(console.error);
     navigate("/auth");
   }, [user, navigate]);
 
