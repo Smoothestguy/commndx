@@ -305,8 +305,7 @@ export const generateEstimatePDF = async (estimate: EstimateData): Promise<void>
   doc.setFont("helvetica", "bold");
   doc.setFontSize(10);
   doc.text("Description", margin + 5, yPos + 7);
-  doc.text("Qty", pageWidth - 90, yPos + 7);
-  doc.text("Unit Price", pageWidth - 65, yPos + 7);
+  doc.text("Qty", pageWidth - 55, yPos + 7);
   doc.text("Amount", pageWidth - margin - 5, yPos + 7, { align: "right" });
 
   yPos += 10;
@@ -328,7 +327,7 @@ export const generateEstimatePDF = async (estimate: EstimateData): Promise<void>
 
     yPos += 8;
 
-    const maxDescWidth = pageWidth - 120;
+    const maxDescWidth = pageWidth - 90;
     const displayName = item.productName || item.description;
     const showDescription = item.productName && item.description && item.productName !== item.description;
 
@@ -342,8 +341,7 @@ export const generateEstimatePDF = async (estimate: EstimateData): Promise<void>
       if (index === 0) {
         doc.text(line, margin + 5, yPos);
         doc.setFont("helvetica", "normal");
-        doc.text(item.quantity.toString(), pageWidth - 90, yPos);
-        doc.text(formatCurrencyForPDF(item.unitPrice), pageWidth - 65, yPos);
+        doc.text(item.quantity.toString(), pageWidth - 55, yPos);
         doc.text(formatCurrencyForPDF(item.total), pageWidth - margin - 5, yPos, { align: "right" });
       } else {
         doc.setFont("helvetica", "bold");
