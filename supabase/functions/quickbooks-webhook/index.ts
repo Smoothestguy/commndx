@@ -234,10 +234,68 @@ async function processAttachableUpdate(
 ) {
   console.log(`[Webhook] Processing attachable ${qbAttachableId}, operation: ${operation}`);
 
-  // Handle Delete operation - we don't delete local attachments when QB attachments are deleted
+  // Handle Delete operation - delete the local attachment if it was synced from QB
   if (operation === "Delete") {
-    console.log("[Webhook] Attachable deleted in QB, no action taken locally");
-    return { success: true, skipped: true, reason: "Delete not synced to local" };
+    console.log("[Webhook] Attachable deleted in QB, attempting to delete locally...");
+    
+    // Find the local attachment by looking for qb- prefix in file_path or via sync log
+    // First try sync log to find which bill and filename this was
+    const { data: syncLog } = await supabase
+      .from("quickbooks_sync_log")
+      .select("entity_id, details")
+      .eq("entity_type", "bill_attachment")
+      .ilike("details", `%"qb_attachable_id":"${qbAttachableId}"%`)
+      .order("created_at", { ascending: false })
+      .limit(1)
+      .maybeSingle();
+    
+    if (syncLog?.entity_id) {
+      // Try to find attachment in this bill with qb- in the path
+      const { data: attachments } = await supabase
+        .from("vendor_bill_attachments")
+        .select("id, file_path")
+        .eq("bill_id", syncLog.entity_id)
+        .ilike("file_path", `%qb-${qbAttachableId}%`);
+      
+      if (attachments && attachments.length > 0) {
+        for (const att of attachments) {
+          // Delete from storage first
+          try {
+            await supabase.storage
+              .from("document-attachments")
+              .remove([att.file_path]);
+          } catch (storageErr) {
+            console.error("[Webhook] Failed to delete from storage:", storageErr);
+          }
+          
+          // Delete the record
+          await supabase
+            .from("vendor_bill_attachments")
+            .delete()
+            .eq("id", att.id);
+          
+          console.log(`[Webhook] Deleted local attachment ${att.id} (from QB delete)`);
+        }
+        
+        // Log the sync
+        try {
+          await supabase.from("quickbooks_sync_log").insert({
+            entity_type: "bill_attachment",
+            entity_id: syncLog.entity_id,
+            action: "webhook_delete",
+            status: "success",
+            details: JSON.stringify({ qb_attachable_id: qbAttachableId }),
+          });
+        } catch (logErr) {
+          console.error("[Webhook] Failed to log delete:", logErr);
+        }
+        
+        return { success: true, action: "deleted", attachableId: qbAttachableId };
+      }
+    }
+    
+    console.log("[Webhook] No matching local attachment found for QB delete");
+    return { success: true, skipped: true, reason: "No local attachment to delete" };
   }
 
   // Fetch the full attachable from QuickBooks
