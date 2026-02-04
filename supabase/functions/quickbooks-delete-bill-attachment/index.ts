@@ -216,7 +216,7 @@ Deno.serve(async (req) => {
       .select("details")
       .eq("entity_type", "bill_attachment")
       .eq("entity_id", attachmentId)
-      .eq("action", "create")
+      .eq("action", "upload")
       .order("created_at", { ascending: false })
       .limit(1)
       .maybeSingle();
