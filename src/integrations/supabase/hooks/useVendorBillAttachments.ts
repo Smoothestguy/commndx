@@ -43,15 +43,17 @@ export const syncAttachmentToQuickBooks = async (
       return { success: false, error: "Not authenticated" };
     }
 
+    // Defensive: avoid ever sending an empty/invalid token header.
+    // supabase.functions.invoke will automatically attach the current session JWT.
+    const tokenPreview = `${session.access_token.slice(0, 10)}...${session.access_token.slice(-6)}`;
+
     console.log("Syncing attachment to QuickBooks:", { attachmentId, billId });
+    console.log("Auth token preview (client):", tokenPreview);
     
     const response = await supabase.functions.invoke("quickbooks-sync-bill-attachment", {
       body: {
         attachmentId,
         billId,
-      },
-      headers: {
-        Authorization: `Bearer ${session.access_token}`,
       },
     });
 
