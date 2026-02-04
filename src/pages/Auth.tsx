@@ -48,6 +48,18 @@ const Auth = () => {
     }
   }, [user, authLoading, navigate]);
 
+  // Safety timeout to prevent infinite loading - force loading to complete after 10 seconds
+  useEffect(() => {
+    if (authLoading) {
+      const timeout = setTimeout(() => {
+        // If still loading after 10 seconds, something is wrong - reload the page
+        console.warn('[Auth] Loading state stuck, reloading...');
+        window.location.reload();
+      }, 10000);
+      return () => clearTimeout(timeout);
+    }
+  }, [authLoading]);
+
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsLoading(true);
