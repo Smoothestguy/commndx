@@ -1,139 +1,109 @@
 
-# Add Trash to Quick Access Panel
+# Add Apple Sign-In to Portal Login Pages
 
 ## Overview
 
-Add a "Trash" section to the Quick Access panel (`LeftPanel.tsx`) to provide quick visibility into recently deleted items, matching the existing pattern used by other sections like Reminders, Alerts, and Messages.
+Add "Continue with Apple" OAuth button to both the Vendor Portal and Personnel Portal login pages, following the existing pattern from the admin sign-in page.
 
 ---
 
-## Changes Required
+## Files to Modify
 
 | File | Change |
 |------|--------|
-| `src/components/layout/netsuite/LeftPanel.tsx` | Add Trash section with icon, badge count, and expandable list of deleted items |
+| `src/pages/portal/PortalLogin.tsx` | Add Apple sign-in button and handler |
+| `src/pages/vendor-portal/VendorLogin.tsx` | Add Apple sign-in button and handler |
 
 ---
 
-## Technical Details
+## Changes for Each File
 
 ### 1. Add Import
 
 ```tsx
-import { Trash2 } from "lucide-react";
-import { useDeletedItems, getEntityLabel } from "@/integrations/supabase/hooks/useTrash";
+import { AppleIcon } from "@/components/icons/AppleIcon";
 ```
 
-### 2. Add State Variable
+### 2. Update useAuth Destructuring
 
 ```tsx
-const [trashOpen, setTrashOpen] = useState(false);
+// Before
+const { signInWithGoogle } = useAuth();
+
+// After
+const { signInWithGoogle, signInWithApple } = useAuth();
 ```
 
-### 3. Add Data Fetch
+### 3. Add Apple Login Handler
 
 ```tsx
-const { data: deletedItems } = useDeletedItems(undefined, 5);
+const handleAppleLogin = async () => {
+  setIsOAuthLoading(true);
+  try {
+    const { error } = await signInWithApple();
+    if (error) throw error;
+    // AuthCallback will handle the redirect
+  } catch (error: any) {
+    toast.error(error.message || "Failed to sign in with Apple");
+    setIsOAuthLoading(false);
+  }
+};
 ```
 
-### 4. Add Collapsed State Icon (in the collapsed view section)
-
-Add between Recent Projects and Messages icons:
+### 4. Add Apple Button (after Google button)
 
 ```tsx
-{/* Trash */}
-<Tooltip>
-  <TooltipTrigger asChild>
-    <Button 
-      variant="ghost" 
-      size="icon" 
-      className="relative"
-      onClick={() => { onToggleCollapse(); setTrashOpen(true); }}
-    >
-      <Trash2 className="h-4 w-4" />
-      {(deletedItems?.length ?? 0) > 0 && (
-        <span className="absolute -top-1 -right-1 h-4 w-4 bg-muted-foreground text-background text-[10px] rounded-full flex items-center justify-center">
-          {deletedItems?.length}
-        </span>
-      )}
-    </Button>
-  </TooltipTrigger>
-  <TooltipContent side="right">Trash</TooltipContent>
-</Tooltip>
-```
-
-### 5. Add Expanded State Section (in the expanded view section)
-
-Add between Recent Projects and Messages sections:
-
-```tsx
-{/* Trash Section */}
-<Collapsible open={trashOpen} onOpenChange={setTrashOpen}>
-  <CollapsibleTrigger className="flex w-full items-center justify-between rounded-md px-2 py-1.5 text-sm font-medium hover:bg-muted">
-    <div className="flex items-center gap-2">
-      <Trash2 className="h-4 w-4 text-muted-foreground" />
-      <span>Trash</span>
-      {(deletedItems?.length ?? 0) > 0 && (
-        <Badge variant="secondary" className="h-5 px-1.5 text-[10px]">
-          {deletedItems?.length}
-        </Badge>
-      )}
-    </div>
-    <ChevronRight className={cn("h-4 w-4 transition-transform", trashOpen && "rotate-90")} />
-  </CollapsibleTrigger>
-  <CollapsibleContent className="mt-1">
-    <div className="space-y-1 pl-6">
-      {deletedItems?.length === 0 && (
-        <p className="text-xs text-muted-foreground py-2">No deleted items</p>
-      )}
-      {deletedItems?.map((item) => (
-        <Link
-          key={item.id}
-          to="/admin/trash"
-          className="block rounded-md p-2 text-xs hover:bg-muted transition-colors"
-        >
-          <div className="flex items-center justify-between">
-            <span className="font-medium truncate">{item.identifier}</span>
-            <Badge variant="outline" className="text-[10px]">
-              {getEntityLabel(item.entity_type)}
-            </Badge>
-          </div>
-          <p className="text-muted-foreground">
-            {formatDistanceToNow(new Date(item.deleted_at), { addSuffix: true })}
-          </p>
-        </Link>
-      ))}
-      <Link
-        to="/admin/trash"
-        className="block rounded-md p-2 text-xs text-muted-foreground hover:bg-muted transition-colors font-medium"
-      >
-        View All Trash →
-      </Link>
-    </div>
-  </CollapsibleContent>
-</Collapsible>
+<Button
+  type="button"
+  variant="outline"
+  className="w-full"
+  onClick={handleAppleLogin}
+  disabled={isOAuthLoading || loading}
+>
+  {isOAuthLoading ? (
+    <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+  ) : (
+    <AppleIcon className="h-4 w-4 mr-2" />
+  )}
+  Continue with Apple
+</Button>
 ```
 
 ---
 
-## Updated Quick Access Panel
+## Updated OAuth Section Layout
 
-After implementation:
+After implementation, the OAuth section in each portal will show:
 
-| Section | Icon | Badge | Data Source |
-|---------|------|-------|-------------|
-| Recently Accessed | Clock (blue) | Count | `useRecentPages` |
-| Reminders | Bell (primary) | Count | Pending estimates |
-| Alerts | AlertTriangle (destructive) | Count | Overdue invoices |
-| Recent Projects | History (muted) | - | Recent projects |
-| **Trash** | Trash2 (muted) | Count | `useDeletedItems` |
-| Messages | MessageSquare (blue) | Count | Unread conversations |
+```text
+┌─────────────────────────────────┐
+│   [G] Continue with Google      │
+├─────────────────────────────────┤
+│   [] Continue with Apple       │
+├─────────────────────────────────┤
+│     Or continue with email      │
+├─────────────────────────────────┤
+│   Email/Password Form           │
+└─────────────────────────────────┘
+```
 
 ---
 
-## Result
+## Authentication Flow
 
-- Trash appears in Quick Access panel with a count badge showing recently deleted items
-- Users can expand to see the 5 most recent deleted items with entity type and time
-- Clicking any item or "View All Trash" navigates to `/admin/trash`
-- Works in both collapsed (icon only) and expanded (full list) panel modes
+1. User clicks "Continue with Apple"
+2. `handleAppleLogin` sets `isOAuthLoading = true` (disables all buttons)
+3. `signInWithApple()` from AuthContext is called
+4. For web: Lovable OAuth flow redirects to Apple
+5. For Electron: Opens OAuth in external browser
+6. After successful auth, `AuthCallback` handles the redirect
+7. Role-based logic routes user to correct portal based on vendor/personnel record
+
+---
+
+## Security Considerations
+
+- Shared `isOAuthLoading` state prevents multiple simultaneous OAuth attempts
+- Both buttons are disabled during any loading state (OAuth or email login)
+- Error handling displays user-friendly toast messages
+- AuthCallback validates user has appropriate portal access (vendor_id or personnel user_id link)
