@@ -1,6 +1,7 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
+import { toast } from "sonner";
 
 export interface VendorBillAttachment {
   id: string;
@@ -28,6 +29,49 @@ export const useVendorBillAttachments = (billId: string) => {
     },
     enabled: !!billId,
   });
+};
+
+// Sync attachment to QuickBooks (can be used for initial upload or retry)
+export const syncAttachmentToQuickBooks = async (
+  attachmentId: string,
+  billId: string
+): Promise<{ success: boolean; message?: string; error?: string }> => {
+  try {
+    const { data: { session } } = await supabase.auth.getSession();
+    
+    if (!session?.access_token) {
+      return { success: false, error: "Not authenticated" };
+    }
+
+    console.log("Syncing attachment to QuickBooks:", { attachmentId, billId });
+    
+    const response = await supabase.functions.invoke("quickbooks-sync-bill-attachment", {
+      body: {
+        attachmentId,
+        billId,
+      },
+      headers: {
+        Authorization: `Bearer ${session.access_token}`,
+      },
+    });
+
+    if (response.error) {
+      console.error("QuickBooks attachment sync error:", response.error);
+      return { success: false, error: response.error.message || "Sync failed" };
+    }
+
+    if (response.data?.success) {
+      return { success: true, message: response.data.message || "Synced to QuickBooks" };
+    } else {
+      return { 
+        success: false, 
+        error: response.data?.error || response.data?.message || "Sync failed" 
+      };
+    }
+  } catch (err: any) {
+    console.error("QuickBooks attachment sync exception:", err);
+    return { success: false, error: err.message || "Sync failed" };
+  }
 };
 
 export const useUploadVendorBillAttachment = () => {
@@ -60,41 +104,58 @@ export const useUploadVendorBillAttachment = () => {
 
       if (error) throw error;
 
-      // Always attempt to sync attachment to QuickBooks (server resolves mapping)
-      const { data: { session } } = await supabase.auth.getSession();
-      
-      console.log("Triggering QB attachment sync:", {
-        attachmentId: data.id,
-        billId,
-      });
-      
-      // Trigger attachment sync to QuickBooks (non-blocking)
-      // Server will look up QB mapping with service-level access
-      supabase.functions.invoke("quickbooks-sync-bill-attachment", {
-        body: {
-          attachmentId: data.id,
-          billId: billId,
-        },
-        headers: session?.access_token ? {
-          Authorization: `Bearer ${session.access_token}`,
-        } : undefined,
-      }).then((response) => {
-        if (response.error) {
-          console.warn("QuickBooks attachment sync failed:", response.error);
-        } else if (response.data?.success) {
-          console.log("Attachment synced to QuickBooks:", response.data.message);
-        } else if (response.data?.error) {
-          // Non-blocking: just log if bill not synced yet
-          console.log("QuickBooks attachment sync skipped:", response.data.error);
+      // Sync to QuickBooks (non-blocking, with user feedback)
+      syncAttachmentToQuickBooks(data.id, billId).then((result) => {
+        if (result.success) {
+          toast.success("Synced to QuickBooks", {
+            description: result.message,
+          });
+        } else if (result.error) {
+          // Only show warning if it's not a "not synced yet" case
+          if (!result.error.includes("not synced") && !result.error.includes("not fully synced")) {
+            toast.warning("QuickBooks sync failed", {
+              description: result.error,
+              action: {
+                label: "Retry",
+                onClick: () => {
+                  syncAttachmentToQuickBooks(data.id, billId).then((retryResult) => {
+                    if (retryResult.success) {
+                      toast.success("Synced to QuickBooks");
+                    } else {
+                      toast.error("Retry failed", { description: retryResult.error });
+                    }
+                  });
+                },
+              },
+            });
+          } else {
+            console.log("Bill not synced to QuickBooks yet, attachment sync skipped");
+          }
         }
-      }).catch((err) => {
-        console.warn("QuickBooks attachment sync error:", err);
       });
 
       return data;
     },
     onSuccess: (_, { billId }) => {
       queryClient.invalidateQueries({ queryKey: ["vendor-bill-attachments", billId] });
+    },
+  });
+};
+
+export const useRetrySyncAttachment = () => {
+  return useMutation({
+    mutationFn: async ({
+      attachmentId,
+      billId,
+    }: {
+      attachmentId: string;
+      billId: string;
+    }) => {
+      const result = await syncAttachmentToQuickBooks(attachmentId, billId);
+      if (!result.success) {
+        throw new Error(result.error || "Sync failed");
+      }
+      return result;
     },
   });
 };

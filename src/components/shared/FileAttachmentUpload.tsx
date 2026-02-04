@@ -3,7 +3,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { supabase } from "@/integrations/supabase/client";
-import { FileText, Loader2, Trash2, Upload, Download, Paperclip, X } from "lucide-react";
+import { FileText, Loader2, Trash2, Upload, Download, Paperclip, X, RefreshCw, CloudDownload } from "lucide-react";
 import { format } from "date-fns";
 import { toast } from "sonner";
 import { useAuth } from "@/contexts/AuthContext";
@@ -24,6 +24,10 @@ interface FileAttachmentUploadProps {
   isLoading: boolean;
   onUpload: (file: File, filePath: string) => Promise<void>;
   onDelete: (attachmentId: string, filePath: string) => Promise<void>;
+  onRetrySync?: (attachmentId: string) => Promise<void>;
+  onPullFromQuickBooks?: () => Promise<void>;
+  isPulling?: boolean;
+  isRetrying?: boolean;
 }
 
 const ALLOWED_TYPES = [
@@ -50,10 +54,15 @@ export const FileAttachmentUpload = ({
   isLoading,
   onUpload,
   onDelete,
+  onRetrySync,
+  onPullFromQuickBooks,
+  isPulling = false,
+  isRetrying = false,
 }: FileAttachmentUploadProps) => {
   const { user } = useAuth();
   const [uploading, setUploading] = useState(false);
   const [deleting, setDeleting] = useState<string | null>(null);
+  const [retrying, setRetrying] = useState<string | null>(null);
   const [dragOver, setDragOver] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -191,11 +200,26 @@ export const FileAttachmentUpload = ({
 
   return (
     <Card>
-      <CardHeader>
+      <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
         <CardTitle className="flex items-center gap-2">
           <Paperclip className="h-5 w-5" />
           Attachments
         </CardTitle>
+        {entityType === "vendor_bill" && onPullFromQuickBooks && (
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={onPullFromQuickBooks}
+            disabled={isPulling}
+          >
+            {isPulling ? (
+              <Loader2 className="h-4 w-4 animate-spin mr-2" />
+            ) : (
+              <CloudDownload className="h-4 w-4 mr-2" />
+            )}
+            Import from QB
+          </Button>
+        )}
       </CardHeader>
       <CardContent className="space-y-4">
         {/* Upload Area */}
@@ -268,14 +292,38 @@ export const FileAttachmentUpload = ({
                     variant="ghost"
                     size="icon"
                     onClick={() => handleDownload(attachment)}
+                    title="Download"
                   >
                     <Download className="h-4 w-4" />
                   </Button>
+                  {entityType === "vendor_bill" && onRetrySync && (
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      onClick={async () => {
+                        setRetrying(attachment.id);
+                        try {
+                          await onRetrySync(attachment.id);
+                        } finally {
+                          setRetrying(null);
+                        }
+                      }}
+                      disabled={retrying === attachment.id}
+                      title="Retry QuickBooks Sync"
+                    >
+                      {retrying === attachment.id ? (
+                        <Loader2 className="h-4 w-4 animate-spin" />
+                      ) : (
+                        <RefreshCw className="h-4 w-4 text-muted-foreground" />
+                      )}
+                    </Button>
+                  )}
                   <Button
                     variant="ghost"
                     size="icon"
                     onClick={() => handleDelete(attachment)}
                     disabled={deleting === attachment.id}
+                    title="Delete"
                   >
                     {deleting === attachment.id ? (
                       <Loader2 className="h-4 w-4 animate-spin" />
