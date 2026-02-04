@@ -1,138 +1,110 @@
 
-## What’s most likely happening (why it worked before, and why it’s failing now)
+## What’s actually broken (and what update likely caused it)
 
-“Failed to fetch” is not an “invalid password” type of error. It means the app did not successfully complete the network request at all (the browser/device never got an HTTP response). That typically comes from one of these:
+Right now the app can’t sign in on the **published web site** and shows a generic **“Failed to fetch”** for every sign-in method. Given the code we now have, the most likely regression is:
 
-1) **The authentication endpoint can’t be reached from the user’s environment** (DNS/SSL/network routing issue, captive portal, iOS networking quirks, etc.).
-2) **The app is making requests to an undefined/incorrect backend URL at runtime** (env/config mismatch in the published build).
-3) **A request is hanging indefinitely** and the UI reports it as a generic fetch failure (no timeout/retry, poor error surfacing).
-4) **OAuth completes but session setup fails** (e.g., setSession fails silently / storage issues), causing the app to bounce back to login.
+- We added a **mandatory pre-flight “health check”** (`pingAuthHealth()`) that runs *before* attempting email/password sign-in (and also before sign-up and in the portal logins).
+- That health check currently does a **`HEAD` request** to `…/auth/v1/`.
+- In some hosting/CDN/backends, **`HEAD` responses don’t include the same CORS headers** as `GET/POST`, or they can be blocked/handled differently.
+- When a CORS header is missing, the browser reports it as **`TypeError: Failed to fetch`** (even if the server is reachable), which matches your symptom exactly.
+- Because we **return early** when the health check fails, the app never even gets to the real sign-in call, so *everything looks dead*.
 
-Important context from our repo inspection:
-- In the Preview environment, requests to the auth endpoint succeed (we can reproduce a normal 400 Invalid credentials).
-- You’re seeing failures on the **published web URL**, and all sign-in methods are affected. That strongly suggests a **runtime environment / published-build config / request handling** issue rather than “bad credentials.”
+In other words: the “hardening” change accidentally introduced a new failure point that blocks sign-in.
 
-## Goals
+## Goal
 
-1) Stop showing a vague “Failed to fetch” with no actionable info.
-2) Add a **safe, user-friendly “auth health check”** and **structured diagnostics** (without exposing secrets).
-3) Add **timeouts + retries** so transient network hiccups don’t look like a total outage.
-4) Make OAuth flows more resilient: if tokens return but session setup fails, we show a precise message and a recovery path.
-
----
-
-## Implementation Plan (code changes)
-
-### A) Add a small “Network/Auth Diagnostics” utility
-Create a new utility module (e.g. `src/utils/authNetwork.ts`) that provides:
-
-1. **withTimeout(promise, ms)**  
-   - Uses `AbortController` (where applicable) or a wrapper timeout to prevent hangs.
-   - Returns a consistent error object.
-
-2. **classifyNetworkError(err)**  
-   - Detects `TypeError: Failed to fetch`, abort errors, and other common network failures.
-   - Produces a user-safe message like:
-     - “Can’t reach the sign-in service. Please check your connection and try again.”
-     - Plus a “Details” string for logs (not UI) containing: current origin, whether backend URL is defined, and which endpoint was being called.
-
-3. **pingAuthHealth()**  
-   - Calls `GET {backendUrl}/auth/v1/health` (or a lightweight endpoint) with a short timeout (e.g. 3–5 seconds).
-   - If this fails, we can immediately show “Network issue” instead of attempting login and failing in a less clear way.
-
-Notes:
-- We will not show backend URLs or keys to users, but we will log them to console in a redacted way for debugging.
+Restore “sign in works like before” on the published site by:
+1) Removing the health check as a blocking dependency (so auth attempts always happen)
+2) Switching any remaining health check to an endpoint/method that is reliable under CORS
+3) Adding clear logging so we can confirm whether the failure is on the health check or the actual sign-in request
 
 ---
 
-### B) Instrument all login entrypoints (not just AuthContext)
-Right now, there are multiple login paths:
-- `src/pages/Auth.tsx` uses `useAuth().signIn()`
-- `src/pages/portal/PortalLogin.tsx` uses `supabase.auth.signInWithPassword` directly
-- `src/pages/vendor-portal/VendorLogin.tsx` uses it directly
-- `src/pages/subcontractor-portal/SubcontractorLogin.tsx` also uses it directly (found via search)
+## Implementation plan (code changes)
 
-We will update each to:
-1) Run `await pingAuthHealth()` before attempting sign-in.
-2) Wrap the sign-in call in a timeout (e.g. 10–15 seconds).
-3) On error:
-   - If it’s a network failure, show a dedicated toast:
-     - “Network issue: can’t reach sign-in service. Try again in a moment.”
-   - Otherwise show the actual auth error (invalid credentials, etc.).
-4) Ensure loading spinners always stop in `finally`.
+### 1) Change `pingAuthHealth()` to avoid `HEAD` and be CORS-safe
+**File:** `src/utils/authNetwork.ts`
 
-Outcome: whichever login page a user uses, they get consistent behavior and clear errors.
+- Replace the `HEAD ${SUPABASE_URL}/auth/v1/` request with a `GET` request to a more CORS-consistent endpoint:
+  - Prefer: `GET ${SUPABASE_URL}/auth/v1/health`
+  - If that endpoint is not available, fallback to `GET ${SUPABASE_URL}/auth/v1/settings` (or another documented public auth endpoint)
+- Add:
+  - `cache: "no-store"` (avoid cached bad results)
+  - A short timeout (keep your AbortController)
+- Treat “any HTTP response” (even 4xx) as “reachable” (health check is about reachability, not authorization).
+
+**Why:** This removes the likely CORS/HEAD mismatch that is currently causing “Failed to fetch”.
 
 ---
 
-### C) Make OAuth flows provide better recovery (Apple/Google “bounces back”)
-Update `src/contexts/AuthContext.tsx` OAuth methods to:
-1) If `lovable.auth.signInWithOAuth(...)` returns tokens but `supabase.auth.setSession(...)` fails:
-   - Show a specific toast: “Sign-in completed but the app couldn’t save the session. Please try again.”
-   - Log a detailed console error including the caught exception and a hint if `localStorage` is blocked/unavailable.
-2) Add a short “post-OAuth health validation”:
-   - after setting session, call `supabase.auth.getSession()` with timeout to confirm session is present.
-   - If not present, show a dedicated message.
+### 2) Make the health check non-blocking (never prevent sign-in)
+**Files:**
+- `src/contexts/AuthContext.tsx`
+- `src/pages/portal/PortalLogin.tsx`
+- `src/pages/vendor-portal/VendorLogin.tsx`
+- `src/pages/subcontractor-portal/SubcontractorLogin.tsx`
 
-Outcome: instead of silently returning to login, users see why and what to do.
+Change the current pattern:
 
----
+```ts
+const health = await pingAuthHealth(...)
+if (!health.healthy) return { error: ... }
+```
 
-### D) Add a “diagnostic banner” only when auth requests fail (published-safe)
-In `src/pages/Auth.tsx` (and optionally portal logins), when we detect a network error:
-- Render a small inline panel under the form:
-  - “We’re having trouble reaching the sign-in service.”
-  - Buttons:
-    - “Retry”
-    - “Copy diagnostics” (copies a short text block: timestamp, route, app version string, origin, and a yes/no for whether backend URL is present; no secrets)
-This helps you (and Apple review / support) diagnose quickly without guessing.
+To:
 
----
+- Run `pingAuthHealth()` in a **best-effort** way:
+  - If it fails, log it and optionally show the banner
+  - But still proceed to attempt the actual sign-in call
+- Only show the network banner when:
+  - The real sign-in attempt fails with a network error, OR
+  - The health check fails *and* the sign-in attempt fails, OR
+  - The user explicitly presses “Retry” after a failure
 
-### E) Confirm published build is actually running the same code (cache/version check)
-Add a lightweight **build version string** displayed only in the console on app start (and optionally in the diagnostics copy text).
-- Example: `console.info("[Build] version:", __BUILD_VERSION__)`
-- Use Vite define or a simple constant file.
-This helps detect if someone is loading a cached older bundle.
+**Why:** Even if the health check is imperfect, it can’t be allowed to block all sign-ins again.
 
 ---
 
-## Investigation/Validation Steps (done alongside implementation)
+### 3) Add one clear “where did it fail” marker (diagnostics you can trust)
+**Files:**
+- `src/contexts/AuthContext.tsx` (signIn + signUp)
+- Portal login pages (handleLogin)
 
-1) In our controlled preview environment:
-   - Confirm email/password shows “Invalid credentials” for wrong login (proves network works).
-   - Confirm OAuth reaches callback and sets a session.
-2) After implementing the above:
-   - Re-test on the **published URL** and confirm:
-     - If backend is reachable, invalid credentials show properly (no “Failed to fetch”).
-     - If backend is not reachable, the UI shows the health-check error panel and offers “Copy diagnostics.”
+Add console markers like:
+- `[Auth] healthCheck: start/result`
+- `[Auth] signInWithPassword: start/result`
+- Include the current `window.location.origin` and whether `VITE_SUPABASE_URL` exists (boolean only, no secrets)
 
----
-
-## Why these issues might have appeared “suddenly”
-Based on what we can see:
-- The code currently doesn’t apply timeouts/retries or a pre-flight health check, so any transient network/SSL hiccup becomes a scary generic “Failed to fetch.”
-- You have multiple login pages doing their own sign-in logic; one fix in AuthContext doesn’t automatically protect the portal pages.
-- OAuth flows can succeed at the provider but still fail to store the session locally; without explicit validation, that looks like “it just sends me back to login.”
-
-This plan doesn’t just patch one spot; it hardens every sign-in route and makes failures diagnosable.
+**Why:** If it still fails after this, we’ll know whether the failure is before auth (health) or at auth (token request/CORS/blocked).
 
 ---
 
-## Files we will likely change
+### 4) Quick verification steps (published web)
+After changes are applied and republished:
 
-- `src/contexts/AuthContext.tsx` (wrap signIn/signUp + OAuth with health check, timeout, better error messaging)
-- `src/pages/Auth.tsx` (use new diagnostics, show banner/panel on network failures)
-- `src/pages/portal/PortalLogin.tsx` (health check + timeout + consistent errors)
-- `src/pages/vendor-portal/VendorLogin.tsx` (health check + timeout + consistent errors)
-- `src/pages/subcontractor-portal/SubcontractorLogin.tsx` (health check + timeout + consistent errors)
-- `src/utils/authNetwork.ts` (new)
-- Optional: a small `src/constants/buildInfo.ts` or Vite define usage for build version logging
+1) Open the **published** site in an incognito window.
+2) Attempt email/password sign-in.
+   - Expected outcomes:
+     - Wrong password: you should see “Invalid login credentials” (proves network works)
+     - Correct password: you should land in the dashboard
+3) Attempt Google/Apple:
+   - Should redirect back and land in the app (or show unauthorized if your authorization enforcement triggers).
+
+If it still fails, we will use the new console markers + the “Copy diagnostics” output to pinpoint the exact failing request and fix the underlying CORS/origin configuration accordingly.
 
 ---
 
-## Rollout / App Store sensitivity note (non-technical)
-After we implement this, you should:
-- Test sign-in end-to-end on the published web app.
-- Then create a new native build so the App Store/TestFlight build includes the fixes (native builds don’t automatically update when web code changes, depending on how you packaged it).
+## Why this started happening “now”
+This isn’t random. It’s extremely consistent with the change we introduced:
+- Adding a **blocking pre-flight network call** (HEAD) before sign-in.
+If that call fails due to CORS/method handling on the published domain, the app will fail sign-in 100% of the time—exactly what you’re seeing.
+
+---
+
+## Files we’ll touch
+- `src/utils/authNetwork.ts` (fix health check method/endpoint)
+- `src/contexts/AuthContext.tsx` (make health check non-blocking + add markers)
+- `src/pages/portal/PortalLogin.tsx` (non-blocking + markers)
+- `src/pages/vendor-portal/VendorLogin.tsx` (non-blocking + markers)
+- `src/pages/subcontractor-portal/SubcontractorLogin.tsx` (non-blocking + markers)
 
