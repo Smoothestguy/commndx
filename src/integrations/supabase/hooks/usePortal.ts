@@ -246,10 +246,13 @@ export function useUpdateNotificationPreferences() {
     mutationFn: async ({ personnelId, preferences }: { personnelId: string; preferences: Partial<PersonnelNotificationPreferences> }) => {
       const { data, error } = await supabase
         .from("personnel_notification_preferences")
-        .upsert({
-          personnel_id: personnelId,
-          ...preferences,
-        })
+        .upsert(
+          {
+            personnel_id: personnelId,
+            ...preferences,
+          },
+          { onConflict: 'personnel_id' }
+        )
         .select()
         .single();
       
