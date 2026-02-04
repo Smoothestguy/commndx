@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { useQuery } from "@tanstack/react-query";
 import { FileAttachmentUpload } from "@/components/shared/FileAttachmentUpload";
 import {
   useVendorBillAttachments,
@@ -8,6 +9,7 @@ import {
   syncAttachmentToQuickBooks,
 } from "@/integrations/supabase/hooks/useVendorBillAttachments";
 import { usePullBillAttachments } from "@/integrations/supabase/hooks/usePullBillAttachments";
+import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import {
   AlertDialog,
@@ -37,6 +39,22 @@ export const VendorBillAttachments = ({
   const deleteAttachment = useDeleteVendorBillAttachment();
   const retrySyncMutation = useRetrySyncAttachment();
   const pullAttachmentsMutation = usePullBillAttachments();
+
+  // Query the bill's QB sync status to warn if not synced
+  const { data: billMapping } = useQuery({
+    queryKey: ["bill-qb-mapping", billId],
+    queryFn: async () => {
+      const { data } = await supabase
+        .from("quickbooks_bill_mappings")
+        .select("sync_status, quickbooks_bill_id")
+        .eq("bill_id", billId)
+        .maybeSingle();
+      return data;
+    },
+    enabled: !!billId,
+  });
+
+  const isBillSyncedToQB = billMapping?.sync_status === "synced" && !!billMapping?.quickbooks_bill_id;
 
   // State for save-first dialog
   const [showSaveDialog, setShowSaveDialog] = useState(false);
@@ -84,12 +102,21 @@ export const VendorBillAttachments = ({
 
   // Called before upload to check if save is required
   const handleBeforeUpload = async (file: File, filePath: string): Promise<boolean> => {
+    // Check if form has unsaved changes - require save first
     if (isFormDirty && onSaveRequired) {
       // Store the pending upload and show dialog
       setPendingUpload({ file, filePath });
       setShowSaveDialog(true);
       return false; // Don't proceed with upload yet
     }
+    
+    // Warn if bill isn't synced to QuickBooks yet (but allow upload)
+    if (!isBillSyncedToQB) {
+      toast.warning("Bill not synced to QuickBooks", {
+        description: "The attachment will upload, but QB sync will happen after the bill is synced.",
+      });
+    }
+    
     return true; // Proceed with upload
   };
 
