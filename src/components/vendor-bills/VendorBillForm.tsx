@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -93,6 +93,9 @@ export function VendorBillForm({ bill, isEditing = false }: VendorBillFormProps)
   const [syncErrorMessage, setSyncErrorMessage] = useState("");
   const [syncErrorBillId, setSyncErrorBillId] = useState<string | null>(null);
 
+  // Track initial form data for dirty state detection
+  const [initialFormData, setInitialFormData] = useState<string | null>(null);
+
   const notesRef = useRef<HTMLTextAreaElement>(null);
 
   useEffect(() => {
@@ -115,8 +118,51 @@ export function VendorBillForm({ bill, isEditing = false }: VendorBillFormProps)
           total: Number(li.total),
         })));
       }
+      
+      // Set initial form data snapshot for dirty detection
+      setInitialFormData(JSON.stringify({
+        vendor_id: bill.vendor_id,
+        bill_date: bill.bill_date,
+        due_date: bill.due_date,
+        status: bill.status,
+        tax_rate: Number(bill.tax_rate),
+        notes: bill.notes || "",
+        lineItems: JSON.stringify(bill.line_items?.map(li => ({
+          project_id: li.project_id,
+          category_id: li.category_id,
+          description: li.description,
+          quantity: Number(li.quantity),
+          unit_cost: Number(li.unit_cost),
+        })) || []),
+      }));
     }
   }, [bill, isEditing, vendors]);
+
+  // Compute if form has unsaved changes
+  const isFormDirty = useMemo(() => {
+    if (!initialFormData || !isEditing) return false;
+    const currentData = JSON.stringify({
+      vendor_id: selectedVendor?.id,
+      bill_date: billDate,
+      due_date: dueDate,
+      status,
+      tax_rate: taxRate,
+      notes,
+      lineItems: JSON.stringify(lineItems.map(li => ({
+        project_id: li.project_id,
+        category_id: li.category_id,
+        description: li.description,
+        quantity: li.quantity,
+        unit_cost: li.unit_cost,
+      }))),
+    });
+    return currentData !== initialFormData;
+  }, [initialFormData, selectedVendor?.id, billDate, dueDate, status, taxRate, notes, lineItems, isEditing]);
+
+  // Handler to save the bill (used by attachments component when dirty)
+  const handleSaveForAttachment = async (): Promise<void> => {
+    await handleSubmitInternal(false); // Save without navigating
+  };
 
   // Auto-adjust due date when bill date changes (only for new bills)
   useEffect(() => {
@@ -169,20 +215,21 @@ export function VendorBillForm({ bill, isEditing = false }: VendorBillFormProps)
   const taxAmount = Math.round((subtotal * (taxRate / 100)) * 100) / 100;
   const total = Math.round((subtotal + taxAmount) * 100) / 100;
 
-  const handleSubmit = async () => {
+  // Internal submit handler with optional navigation
+  const handleSubmitInternal = async (shouldNavigate: boolean = true) => {
     if (!selectedVendor) {
       toast.error("Please select a vendor");
-      return;
+      throw new Error("Vendor required");
     }
 
     if (lineItems.every(li => !li.description.trim())) {
       toast.error("Please add at least one line item with a description");
-      return;
+      throw new Error("Line items required");
     }
 
     if (parseLocalDate(dueDate) < parseLocalDate(billDate)) {
       toast.error("Due date cannot be before bill date");
-      return;
+      throw new Error("Invalid dates");
     }
 
     const billData = {
@@ -211,66 +258,82 @@ export function VendorBillForm({ bill, isEditing = false }: VendorBillFormProps)
         total: Math.round(li.total * 100) / 100, // Round to proper cents
       }));
 
-    try {
-      let savedBillId: string;
+    let savedBillId: string;
+    
+    if (isEditing && bill) {
+      // For edits, the hook now auto-syncs to QuickBooks
+      await updateBill.mutateAsync({
+        id: bill.id,
+        bill: { ...billData, paid_amount: bill.paid_amount },
+        lineItems: lineItemsData,
+      });
+      savedBillId = bill.id;
       
-      if (isEditing && bill) {
-        // For edits, the hook now auto-syncs to QuickBooks
-        await updateBill.mutateAsync({
-          id: bill.id,
-          bill: { ...billData, paid_amount: bill.paid_amount },
-          lineItems: lineItemsData,
-        });
-        savedBillId = bill.id;
-        // Toast is handled by the mutation, QB sync happens automatically in hook
-      } else {
-        const result = await addBill.mutateAsync({
-          bill: billData,
-          lineItems: lineItemsData,
-        });
-        savedBillId = result.id;
+      // Reset initial form data after successful save (no longer dirty)
+      setInitialFormData(JSON.stringify({
+        vendor_id: selectedVendor.id,
+        bill_date: billDate,
+        due_date: dueDate,
+        status,
+        tax_rate: taxRate,
+        notes,
+        lineItems: JSON.stringify(lineItemsData.map(li => ({
+          project_id: li.project_id,
+          category_id: li.category_id,
+          description: li.description,
+          quantity: li.quantity,
+          unit_cost: li.unit_cost,
+        }))),
+      }));
+    } else {
+      const result = await addBill.mutateAsync({
+        bill: billData,
+        lineItems: lineItemsData,
+      });
+      savedBillId = result.id;
 
-        // Finalize pending attachments for new bills
-        if (pendingAttachments.length > 0 && user) {
-          const attachResult = await finalizeAttachments(
-            pendingAttachments,
-            savedBillId,
-            "vendor_bill",
-            user.id
-          );
-          if (!attachResult.success) {
-            toast.warning("Bill saved but some attachments failed to upload");
-          }
-        }
-
-        // Sync to QuickBooks AFTER attachments are finalized (for new bills only)
-        // This ensures attachments are in the database when QB sync runs
-        if (qbConfig?.is_connected && status !== 'draft') {
-          setIsSyncing(true);
-          try {
-            const syncResult = await syncToQB.mutateAsync(savedBillId);
-            if (syncResult.success) {
-              toast.success("Bill created and synced to QuickBooks");
-            } else {
-              // Show error dialog instead of just a toast
-              setSyncErrorMessage(syncResult.error || "Unknown error");
-              setSyncErrorBillId(savedBillId);
-              setSyncErrorDialogOpen(true);
-              toast.warning("Bill created locally, but QuickBooks sync failed.");
-            }
-          } catch (qbError) {
-            console.error('QuickBooks sync error:', qbError);
-            const errorMsg = qbError instanceof Error ? qbError.message : 'Unknown error';
-            setSyncErrorMessage(errorMsg);
-            setSyncErrorBillId(savedBillId);
-            setSyncErrorDialogOpen(true);
-            toast.warning("Bill created locally, but QuickBooks sync failed.");
-          } finally {
-            setIsSyncing(false);
-          }
+      // Finalize pending attachments for new bills
+      if (pendingAttachments.length > 0 && user) {
+        const attachResult = await finalizeAttachments(
+          pendingAttachments,
+          savedBillId,
+          "vendor_bill",
+          user.id
+        );
+        if (!attachResult.success) {
+          toast.warning("Bill saved but some attachments failed to upload");
         }
       }
 
+      // Sync to QuickBooks AFTER attachments are finalized (for new bills only)
+      // This ensures attachments are in the database when QB sync runs
+      if (qbConfig?.is_connected && status !== 'draft') {
+        setIsSyncing(true);
+        try {
+          const syncResult = await syncToQB.mutateAsync(savedBillId);
+          if (syncResult.success) {
+            toast.success("Bill created and synced to QuickBooks");
+          } else {
+            // Show error dialog instead of just a toast
+            setSyncErrorMessage(syncResult.error || "Unknown error");
+            setSyncErrorBillId(savedBillId);
+            setSyncErrorDialogOpen(true);
+            toast.warning("Bill created locally, but QuickBooks sync failed.");
+          }
+        } catch (qbError) {
+          console.error('QuickBooks sync error:', qbError);
+          const errorMsg = qbError instanceof Error ? qbError.message : 'Unknown error';
+          setSyncErrorMessage(errorMsg);
+          setSyncErrorBillId(savedBillId);
+          setSyncErrorDialogOpen(true);
+          toast.warning("Bill created locally, but QuickBooks sync failed.");
+        } finally {
+          setIsSyncing(false);
+        }
+      }
+    }
+
+    if (shouldNavigate) {
       // Preserve filter params when navigating back
       const searchParams = new URLSearchParams(window.location.search);
       // Remove any edit-specific params, keep filter params
@@ -281,8 +344,14 @@ export function VendorBillForm({ bill, isEditing = false }: VendorBillFormProps)
       });
       const queryString = filterParams.toString();
       navigate("/vendor-bills" + (queryString ? `?${queryString}` : ""));
+    }
+  };
+
+  const handleSubmit = async () => {
+    try {
+      await handleSubmitInternal(true);
     } catch (error) {
-      // Error handled by mutation
+      // Error handled by mutation or validation
     }
   };
 
@@ -560,7 +629,11 @@ export function VendorBillForm({ bill, isEditing = false }: VendorBillFormProps)
 
       {/* Attachments Section */}
       {isEditing && bill ? (
-        <VendorBillAttachments billId={bill.id} />
+        <VendorBillAttachments 
+          billId={bill.id} 
+          isFormDirty={isFormDirty}
+          onSaveRequired={handleSaveForAttachment}
+        />
       ) : (
         <PendingAttachmentsUpload
           entityType="vendor_bill"
