@@ -21,6 +21,8 @@ import { GoogleIcon } from "@/components/icons/GoogleIcon";
 import { AppleIcon } from "@/components/icons/AppleIcon";
 import { PortalSwitcherModal } from "@/components/PortalSwitcherModal";
 import { usePortalSwitcher } from "@/hooks/usePortalSwitcher";
+import { NetworkErrorBanner } from "@/components/auth/NetworkErrorBanner";
+import { isNetworkError } from "@/utils/authNetwork";
 
 const Auth = () => {
   const navigate = useNavigate();
@@ -28,6 +30,7 @@ const Auth = () => {
   const { user, signIn, signInWithGoogle, signInWithApple, loading: authLoading } = useAuth();
   const [isLoading, setIsLoading] = useState(false);
   const [isOAuthLoading, setIsOAuthLoading] = useState(false);
+  const [showNetworkError, setShowNetworkError] = useState(false);
   const {
     isOpen: isPortalSwitcherOpen,
     setIsOpen: setPortalSwitcherOpen,
@@ -49,33 +52,67 @@ const Auth = () => {
   }, [user, authLoading, navigate]);
 
 
-  const handleLogin = async (e: React.FormEvent) => {
-    e.preventDefault();
+  const handleLogin = async (e?: React.FormEvent) => {
+    e?.preventDefault();
     setIsLoading(true);
-    const { error } = await signIn(loginEmail, loginPassword);
-    if (error) {
-      toast.error(error.message);
-    } else {
-      toast.success("Logged in successfully");
+    setShowNetworkError(false);
+    
+    try {
+      const { error } = await signIn(loginEmail, loginPassword);
+      if (error) {
+        // Check if the error message indicates a network issue
+        if (isNetworkError(error) || error.message.includes("Can't reach") || error.message.includes("check your connection")) {
+          setShowNetworkError(true);
+        }
+        toast.error(error.message);
+      } else {
+        toast.success("Logged in successfully");
+      }
+    } finally {
+      setIsLoading(false);
     }
-    setIsLoading(false);
   };
 
   const handleGoogleLogin = async () => {
     setIsOAuthLoading(true);
-    const { error } = await signInWithGoogle();
-    if (error) {
-      toast.error(error.message);
+    setShowNetworkError(false);
+    
+    try {
+      const { error } = await signInWithGoogle();
+      if (error) {
+        if (isNetworkError(error) || error.message.includes("Can't reach")) {
+          setShowNetworkError(true);
+        }
+        toast.error(error.message);
+        setIsOAuthLoading(false);
+      }
+    } catch {
       setIsOAuthLoading(false);
     }
   };
 
   const handleAppleLogin = async () => {
     setIsOAuthLoading(true);
-    const { error } = await signInWithApple();
-    if (error) {
-      toast.error(error.message);
+    setShowNetworkError(false);
+    
+    try {
+      const { error } = await signInWithApple();
+      if (error) {
+        if (isNetworkError(error) || error.message.includes("Can't reach")) {
+          setShowNetworkError(true);
+        }
+        toast.error(error.message);
+        setIsOAuthLoading(false);
+      }
+    } catch {
       setIsOAuthLoading(false);
+    }
+  };
+
+  const handleRetry = () => {
+    setShowNetworkError(false);
+    if (loginEmail && loginPassword) {
+      handleLogin();
     }
   };
 
@@ -200,6 +237,11 @@ const Auth = () => {
               Sign In
             </Button>
           </form>
+
+          {/* Network Error Banner */}
+          {showNetworkError && (
+            <NetworkErrorBanner onRetry={handleRetry} isRetrying={isLoading} />
+          )}
 
           {/* Portal Switcher */}
           <div className="pt-4 border-t border-border">

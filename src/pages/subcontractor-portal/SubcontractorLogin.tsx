@@ -9,6 +9,8 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { toast } from "sonner";
 import { Loader2, HardHat } from "lucide-react";
 import { GoogleIcon } from "@/components/icons/GoogleIcon";
+import { NetworkErrorBanner } from "@/components/auth/NetworkErrorBanner";
+import { withTimeout, isNetworkError, classifyNetworkError, pingAuthHealth } from "@/utils/authNetwork";
 
 export default function SubcontractorLogin() {
   const navigate = useNavigate();
@@ -17,16 +19,29 @@ export default function SubcontractorLogin() {
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
   const [isOAuthLoading, setIsOAuthLoading] = useState(false);
+  const [showNetworkError, setShowNetworkError] = useState(false);
 
-  const handleLogin = async (e: React.FormEvent) => {
-    e.preventDefault();
+  const handleLogin = async (e?: React.FormEvent) => {
+    e?.preventDefault();
     setLoading(true);
+    setShowNetworkError(false);
 
     try {
-      const { error } = await supabase.auth.signInWithPassword({
+      // Pre-flight health check
+      const health = await pingAuthHealth(5000);
+      if (!health.healthy) {
+        console.error("[SubcontractorLogin] Health check failed:", health.error);
+        setShowNetworkError(true);
+        toast.error("Can't reach the sign-in service. Please check your connection.");
+        return;
+      }
+
+      const signInPromise = supabase.auth.signInWithPassword({
         email,
         password,
       });
+
+      const { error } = await withTimeout(signInPromise, 15000, "Sign in");
 
       if (error) throw error;
 
@@ -47,21 +62,40 @@ export default function SubcontractorLogin() {
           await supabase.auth.signOut();
         }
       }
-    } catch (error: any) {
-      toast.error(error.message || "Failed to sign in");
+    } catch (error: unknown) {
+      if (isNetworkError(error)) {
+        const networkErr = classifyNetworkError(error);
+        setShowNetworkError(true);
+        toast.error(networkErr.userMessage);
+      } else {
+        toast.error((error as Error).message || "Failed to sign in");
+      }
     } finally {
       setLoading(false);
     }
   };
 
+  const handleRetry = () => {
+    setShowNetworkError(false);
+    if (email && password) {
+      handleLogin();
+    }
+  };
+
   const handleGoogleLogin = async () => {
     setIsOAuthLoading(true);
+    setShowNetworkError(false);
     try {
       const { error } = await signInWithGoogle();
-      if (error) throw error;
+      if (error) {
+        if (isNetworkError(error) || error.message.includes("Can't reach")) {
+          setShowNetworkError(true);
+        }
+        throw error;
+      }
       // AuthCallback will handle the redirect
-    } catch (error: any) {
-      toast.error(error.message || "Failed to sign in with Google");
+    } catch (error: unknown) {
+      toast.error((error as Error).message || "Failed to sign in with Google");
       setIsOAuthLoading(false);
     }
   };
@@ -137,6 +171,11 @@ export default function SubcontractorLogin() {
               </Button>
             </form>
           </div>
+
+          {/* Network Error Banner */}
+          {showNetworkError && (
+            <NetworkErrorBanner onRetry={handleRetry} isRetrying={loading} />
+          )}
           
           <p className="text-sm text-center text-muted-foreground mt-6">
             Don't have an account? Contact your administrator to receive an invitation.

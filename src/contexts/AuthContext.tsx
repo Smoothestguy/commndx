@@ -11,6 +11,12 @@ import { User, Session } from "@supabase/supabase-js";
 import { supabase } from "@/integrations/supabase/client";
 import { lovable } from "@/integrations/lovable";
 import { useNavigate } from "react-router-dom";
+import { 
+  withTimeout, 
+  isNetworkError, 
+  classifyNetworkError,
+  pingAuthHealth 
+} from "@/utils/authNetwork";
 
 // Check if running in Electron - multiple detection methods for robustness
 const isElectron = () => {
@@ -191,9 +197,17 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       lastName: string
     ) => {
       try {
+        // Pre-flight health check
+        const health = await pingAuthHealth(5000);
+        if (!health.healthy) {
+          console.error("[Auth] Health check failed before sign-up:", health.error);
+          const networkErr = classifyNetworkError(new Error(health.error || "Service unreachable"));
+          return { error: new Error(networkErr.userMessage) };
+        }
+
         const redirectUrl = `${window.location.origin}/`;
 
-        const { data, error } = await supabase.auth.signUp({
+        const signUpPromise = supabase.auth.signUp({
           email,
           password,
           options: {
@@ -205,6 +219,8 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
           },
         });
 
+        const { data, error } = await withTimeout(signUpPromise, 15000, "Sign up");
+
         if (error) {
           logAuthEvent("sign_up", email, undefined, false, error.message).catch(console.error);
           return { error };
@@ -213,6 +229,12 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         logAuthEvent("sign_up", email, data.user?.id, true).catch(console.error);
         return { error: null };
       } catch (error) {
+        if (isNetworkError(error)) {
+          const networkErr = classifyNetworkError(error);
+          logAuthEvent("sign_up", email, undefined, false, networkErr.technicalDetails).catch(console.error);
+          return { error: new Error(networkErr.userMessage) };
+        }
+        
         logAuthEvent(
           "sign_up",
           email,
@@ -229,10 +251,21 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const signIn = useCallback(
     async (email: string, password: string) => {
       try {
-        const { data, error } = await supabase.auth.signInWithPassword({
+        // Pre-flight health check
+        const health = await pingAuthHealth(5000);
+        if (!health.healthy) {
+          console.error("[Auth] Health check failed before sign-in:", health.error);
+          const networkErr = classifyNetworkError(new Error(health.error || "Service unreachable"));
+          return { error: new Error(networkErr.userMessage) };
+        }
+
+        // Wrap sign-in with timeout
+        const signInPromise = supabase.auth.signInWithPassword({
           email,
           password,
         });
+
+        const { data, error } = await withTimeout(signInPromise, 15000, "Sign in");
 
         if (error) {
           logAuthEvent("sign_in", email, undefined, false, error.message).catch(console.error);
@@ -243,6 +276,13 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         navigate("/");
         return { error: null };
       } catch (error) {
+        // Check if this is a network error vs. auth error
+        if (isNetworkError(error)) {
+          const networkErr = classifyNetworkError(error);
+          logAuthEvent("sign_in", email, undefined, false, networkErr.technicalDetails).catch(console.error);
+          return { error: new Error(networkErr.userMessage) };
+        }
+        
         logAuthEvent(
           "sign_in",
           email,
