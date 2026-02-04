@@ -28,6 +28,8 @@ interface FileAttachmentUploadProps {
   onPullFromQuickBooks?: () => Promise<void>;
   isPulling?: boolean;
   isRetrying?: boolean;
+  /** Called before upload starts. Return false to abort upload. */
+  onBeforeUpload?: (file: File, filePath: string) => Promise<boolean>;
 }
 
 const ALLOWED_TYPES = [
@@ -58,6 +60,7 @@ export const FileAttachmentUpload = ({
   onPullFromQuickBooks,
   isPulling = false,
   isRetrying = false,
+  onBeforeUpload,
 }: FileAttachmentUploadProps) => {
   const { user } = useAuth();
   const [uploading, setUploading] = useState(false);
@@ -81,11 +84,23 @@ export const FileAttachmentUpload = ({
       return;
     }
 
+    const fileExt = file.name.split(".").pop();
+    const filePath = `${entityType}/${entityId}/${Date.now()}.${fileExt}`;
+
+    // Check if we need to save first (for dirty forms)
+    if (onBeforeUpload) {
+      const shouldProceed = await onBeforeUpload(file, filePath);
+      if (!shouldProceed) {
+        // Upload was intercepted (e.g., save dialog shown)
+        if (fileInputRef.current) {
+          fileInputRef.current.value = "";
+        }
+        return;
+      }
+    }
+
     setUploading(true);
     try {
-      const fileExt = file.name.split(".").pop();
-      const filePath = `${entityType}/${entityId}/${Date.now()}.${fileExt}`;
-
       const { error: uploadError } = await supabase.storage
         .from("document-attachments")
         .upload(filePath, file);
