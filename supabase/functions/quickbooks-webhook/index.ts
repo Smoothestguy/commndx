@@ -302,16 +302,19 @@ async function processAttachableUpdate(
     const fileExt = qbAttachable.FileName?.split('.').pop() || 'bin';
     const storagePath = `vendor_bill/${localBillId}/${Date.now()}-qb-${qbAttachableId}.${fileExt}`;
 
-    // Upload to Supabase storage
+    // Upload to Supabase storage using Blob for better SDK compatibility
+    console.log(`[Webhook] Uploading attachment to storage: ${storagePath}`);
+    const uploadBlob = new Blob([fileBytes], { type: qbAttachable.ContentType || 'application/octet-stream' });
     const { error: uploadError } = await supabase.storage
       .from('document-attachments')
-      .upload(storagePath, fileBytes, {
+      .upload(storagePath, uploadBlob, {
         contentType: qbAttachable.ContentType || 'application/octet-stream',
       });
 
     if (uploadError) {
       throw new Error(`Storage upload failed: ${uploadError.message}`);
     }
+    console.log(`[Webhook] Successfully uploaded attachment to storage: ${storagePath}`);
 
     // Create attachment record
     const { error: insertError } = await supabase
@@ -329,19 +332,23 @@ async function processAttachableUpdate(
       throw new Error(`Failed to insert attachment record: ${insertError.message}`);
     }
 
-    // Log the sync
-    await supabase.from("quickbooks_sync_log").insert({
-      entity_type: "bill_attachment",
-      entity_id: localBillId,
-      operation: "webhook_create",
-      status: "success",
-      error_message: null,
-      metadata: {
-        qb_attachable_id: qbAttachableId,
-        qb_bill_id: qbBillId,
-        file_name: qbAttachable.FileName,
-      },
-    });
+    // Log the sync (wrapped in try/catch to not break webhook processing)
+    try {
+      await supabase.from("quickbooks_sync_log").insert({
+        entity_type: "bill_attachment",
+        entity_id: localBillId,
+        action: "webhook_create",
+        status: "success",
+        error_message: null,
+        details: JSON.stringify({
+          qb_attachable_id: qbAttachableId,
+          qb_bill_id: qbBillId,
+          file_name: qbAttachable.FileName,
+        }),
+      });
+    } catch (logError) {
+      console.error("[Webhook] Failed to log sync, continuing:", logError);
+    }
 
     console.log(`[Webhook] Created attachment from QB: ${qbAttachable.FileName}`);
     return { success: true, action: "created", billId: localBillId };
@@ -349,18 +356,22 @@ async function processAttachableUpdate(
   } catch (downloadError: any) {
     console.error("[Webhook] Failed to download/store attachment:", downloadError.message);
     
-    // Log the error
-    await supabase.from("quickbooks_sync_log").insert({
-      entity_type: "bill_attachment",
-      entity_id: localBillId,
-      operation: "webhook_create",
-      status: "error",
-      error_message: downloadError.message,
-      metadata: {
-        qb_attachable_id: qbAttachableId,
-        qb_bill_id: qbBillId,
-      },
-    });
+    // Log the error (wrapped in try/catch to not break webhook processing)
+    try {
+      await supabase.from("quickbooks_sync_log").insert({
+        entity_type: "bill_attachment",
+        entity_id: localBillId,
+        action: "webhook_create",
+        status: "error",
+        error_message: downloadError.message,
+        details: JSON.stringify({
+          qb_attachable_id: qbAttachableId,
+          qb_bill_id: qbBillId,
+        }),
+      });
+    } catch (logError) {
+      console.error("[Webhook] Failed to log error, continuing:", logError);
+    }
     
     return { success: false, error: downloadError.message };
   }
