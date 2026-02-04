@@ -179,20 +179,23 @@ serve(async (req) => {
     // Validate authorization
     const authHeader = req.headers.get("Authorization");
     if (!authHeader?.startsWith("Bearer ")) {
+      console.log("[AUTH] No Authorization header or invalid format");
       return new Response(
         JSON.stringify({ error: "Unauthorized" }),
         { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
 
-    // Create client with user's auth
+    // Create client with user's auth for validation
     const userSupabase = createClient(supabaseUrl, Deno.env.get("SUPABASE_ANON_KEY")!, {
       global: { headers: { Authorization: authHeader } },
     });
 
+    // Use getUser to validate the token
     const { data: userData, error: authError } = await userSupabase.auth.getUser();
     
     if (authError || !userData?.user) {
+      console.log("[AUTH] getUser failed:", authError?.message || "No user data");
       return new Response(
         JSON.stringify({ error: "Unauthorized" }),
         { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } }
@@ -200,6 +203,7 @@ serve(async (req) => {
     }
 
     const userId = userData.user.id;
+    console.log("[AUTH] Authenticated user:", userId);
 
     // Check user role (admin or manager only)
     const { data: roles } = await supabase
@@ -211,6 +215,7 @@ serve(async (req) => {
     const hasPermission = userRoles.includes("admin") || userRoles.includes("manager");
 
     if (!hasPermission) {
+      console.log("[AUTH] User lacks permission, roles:", userRoles);
       return new Response(
         JSON.stringify({ error: "Forbidden: Admin or Manager role required" }),
         { status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" } }
