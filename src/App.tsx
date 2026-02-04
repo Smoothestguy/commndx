@@ -119,6 +119,7 @@ import VendorPODetail from "./pages/vendor-portal/VendorPODetail";
 import VendorBillsList from "./pages/vendor-portal/VendorBillsList";
 import VendorPortalBillDetail from "./pages/vendor-portal/VendorBillDetail";
 import VendorNewBill from "./pages/vendor-portal/VendorNewBill";
+import VendorSettings from "./pages/vendor-portal/VendorSettings";
 
 // Subcontractor Portal
 import { SubcontractorProtectedRoute } from "./components/subcontractor-portal/SubcontractorProtectedRoute";
@@ -598,6 +599,14 @@ const App = () => {
                       element={
                         <VendorProtectedRoute>
                           <VendorPortalBillDetail />
+                        </VendorProtectedRoute>
+                      }
+                    />
+                    <Route
+                      path="/vendor/settings"
+                      element={
+                        <VendorProtectedRoute>
+                          <VendorSettings />
                         </VendorProtectedRoute>
                       }
                     />
