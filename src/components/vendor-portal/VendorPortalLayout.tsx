@@ -34,7 +34,7 @@ export function VendorPortalLayout({ children }: VendorPortalLayoutProps) {
   const location = useLocation();
   const { data: vendor } = useCurrentVendor();
   const [mobileOpen, setMobileOpen] = useState(false);
-  const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
+  const [sidebarCollapsed, setSidebarCollapsed] = useState(true);
   const isMobile = useIsMobile();
   const isWideTablet = useIsWideTablet();
 
