@@ -1,177 +1,138 @@
 
-# Fix: Authentication Failures (Email Sign-In and Apple OAuth)
+## What’s most likely happening (why it worked before, and why it’s failing now)
 
-## Problem Summary
+“Failed to fetch” is not an “invalid password” type of error. It means the app did not successfully complete the network request at all (the browser/device never got an HTTP response). That typically comes from one of these:
 
-You're experiencing two distinct but related issues:
-1. **Email sign-in shows "Failed to fetch"** - the network request doesn't complete
-2. **Apple sign-in redirects back to login** - authentication appears to succeed but session isn't established
+1) **The authentication endpoint can’t be reached from the user’s environment** (DNS/SSL/network routing issue, captive portal, iOS networking quirks, etc.).
+2) **The app is making requests to an undefined/incorrect backend URL at runtime** (env/config mismatch in the published build).
+3) **A request is hanging indefinitely** and the UI reports it as a generic fetch failure (no timeout/retry, poor error surfacing).
+4) **OAuth completes but session setup fails** (e.g., setSession fails silently / storage issues), causing the app to bounce back to login.
 
-These issues are happening on both the preview and custom domains, suggesting problems introduced in recent code changes or app configuration.
+Important context from our repo inspection:
+- In the Preview environment, requests to the auth endpoint succeed (we can reproduce a normal 400 Invalid credentials).
+- You’re seeing failures on the **published web URL**, and all sign-in methods are affected. That strongly suggests a **runtime environment / published-build config / request handling** issue rather than “bad credentials.”
 
-## Root Cause Analysis
+## Goals
 
-### Issue 1: "Failed to fetch" Error
+1) Stop showing a vague “Failed to fetch” with no actionable info.
+2) Add a **safe, user-friendly “auth health check”** and **structured diagnostics** (without exposing secrets).
+3) Add **timeouts + retries** so transient network hiccups don’t look like a total outage.
+4) Make OAuth flows more resilient: if tokens return but session setup fails, we show a precise message and a recovery path.
 
-After reviewing the recent changes, the session initialization in `AuthContext.tsx` has a potential issue with how `Promise.race` handles errors. The current code can throw a generic "Timeout" error that gets caught, but the actual network request may still be in-flight or blocked.
+---
 
-Additionally, on **mobile apps (Capacitor/iOS/Android)**, the "Failed to fetch" error often indicates:
-- Network security configuration blocking requests
-- SSL/TLS certificate issues  
-- The app's `capacitor.config.ts` or `network_security_config.xml` not allowing the Supabase domain
+## Implementation Plan (code changes)
 
-### Issue 2: Apple OAuth Redirect Loop
+### A) Add a small “Network/Auth Diagnostics” utility
+Create a new utility module (e.g. `src/utils/authNetwork.ts`) that provides:
 
-The Apple sign-in uses Lovable's OAuth bridge, but the `AuthCallback.tsx` is trying to get the session via `supabase.auth.getSession()`. After OAuth completes:
-1. Lovable's auth bridge sets tokens in the session
-2. `AuthCallback` runs before the session is fully propagated
-3. No session found → redirects back to `/auth`
+1. **withTimeout(promise, ms)**  
+   - Uses `AbortController` (where applicable) or a wrapper timeout to prevent hangs.
+   - Returns a consistent error object.
 
-## Solution
+2. **classifyNetworkError(err)**  
+   - Detects `TypeError: Failed to fetch`, abort errors, and other common network failures.
+   - Produces a user-safe message like:
+     - “Can’t reach the sign-in service. Please check your connection and try again.”
+     - Plus a “Details” string for logs (not UI) containing: current origin, whether backend URL is defined, and which endpoint was being called.
 
-### Part 1: Fix Session Initialization Race Condition
+3. **pingAuthHealth()**  
+   - Calls `GET {backendUrl}/auth/v1/health` (or a lightweight endpoint) with a short timeout (e.g. 3–5 seconds).
+   - If this fails, we can immediately show “Network issue” instead of attempting login and failing in a less clear way.
 
-Update `AuthContext.tsx` to properly handle the Promise.race and ensure `setLoading(false)` is always called:
+Notes:
+- We will not show backend URLs or keys to users, but we will log them to console in a redacted way for debugging.
 
-```typescript
-// Current problematic code:
-const { data: { session }, error } = await Promise.race([
-  sessionPromise,
-  timeoutPromise.then(() => { throw new Error("Timeout"); })
-]) as Awaited<typeof sessionPromise>;
+---
 
-// Fixed version - simpler and more reliable:
-useEffect(() => {
-  let isMounted = true;
-  
-  const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
-    console.log("[Auth] Auth state change:", event);
-    if (isMounted) {
-      setSession(session);
-      setUser(session?.user ?? null);
-      setLoading(false);
-    }
-  });
+### B) Instrument all login entrypoints (not just AuthContext)
+Right now, there are multiple login paths:
+- `src/pages/Auth.tsx` uses `useAuth().signIn()`
+- `src/pages/portal/PortalLogin.tsx` uses `supabase.auth.signInWithPassword` directly
+- `src/pages/vendor-portal/VendorLogin.tsx` uses it directly
+- `src/pages/subcontractor-portal/SubcontractorLogin.tsx` also uses it directly (found via search)
 
-  // Simple session check without complex Promise.race
-  supabase.auth.getSession().then(({ data: { session }, error }) => {
-    if (error) {
-      console.error("[Auth] Error getting session:", error);
-    }
-    if (isMounted) {
-      setSession(session);
-      setUser(session?.user ?? null);
-      setLoading(false);
-    }
-  }).catch((err) => {
-    console.error("[Auth] Session check failed:", err);
-    if (isMounted) {
-      setLoading(false);
-    }
-  });
+We will update each to:
+1) Run `await pingAuthHealth()` before attempting sign-in.
+2) Wrap the sign-in call in a timeout (e.g. 10–15 seconds).
+3) On error:
+   - If it’s a network failure, show a dedicated toast:
+     - “Network issue: can’t reach sign-in service. Try again in a moment.”
+   - Otherwise show the actual auth error (invalid credentials, etc.).
+4) Ensure loading spinners always stop in `finally`.
 
-  return () => {
-    isMounted = false;
-    subscription.unsubscribe();
-  };
-}, []);
-```
+Outcome: whichever login page a user uses, they get consistent behavior and clear errors.
 
-### Part 2: Ensure AuthCallback Waits for Session
+---
 
-The `AuthCallback.tsx` needs to wait for the `onAuthStateChange` event rather than immediately calling `getSession()`:
+### C) Make OAuth flows provide better recovery (Apple/Google “bounces back”)
+Update `src/contexts/AuthContext.tsx` OAuth methods to:
+1) If `lovable.auth.signInWithOAuth(...)` returns tokens but `supabase.auth.setSession(...)` fails:
+   - Show a specific toast: “Sign-in completed but the app couldn’t save the session. Please try again.”
+   - Log a detailed console error including the caught exception and a hint if `localStorage` is blocked/unavailable.
+2) Add a short “post-OAuth health validation”:
+   - after setting session, call `supabase.auth.getSession()` with timeout to confirm session is present.
+   - If not present, show a dedicated message.
 
-```typescript
-// In AuthCallback.tsx - wait for auth event before checking session
-useEffect(() => {
-  const { data: { subscription } } = supabase.auth.onAuthStateChange(
-    async (event, session) => {
-      console.log("[AuthCallback] Auth event:", event);
-      
-      if (event === 'SIGNED_IN' && session) {
-        // Process the authenticated session
-        await handleAuthenticatedUser(session);
-      } else if (event === 'INITIAL_SESSION') {
-        // Check if we have a session from URL hash
-        if (session) {
-          await handleAuthenticatedUser(session);
-        } else {
-          // No session in URL - check if callback has tokens
-          const hashParams = new URLSearchParams(window.location.hash.substring(1));
-          const accessToken = hashParams.get('access_token');
-          
-          if (!accessToken) {
-            setError("No session found");
-            setTimeout(() => navigate("/auth"), 2000);
-          }
-          // If tokens in URL, wait for SIGNED_IN event
-        }
-      }
-    }
-  );
+Outcome: instead of silently returning to login, users see why and what to do.
 
-  return () => subscription.unsubscribe();
-}, [navigate]);
-```
+---
 
-### Part 3: Mobile App Network Configuration (if applicable)
+### D) Add a “diagnostic banner” only when auth requests fail (published-safe)
+In `src/pages/Auth.tsx` (and optionally portal logins), when we detect a network error:
+- Render a small inline panel under the form:
+  - “We’re having trouble reaching the sign-in service.”
+  - Buttons:
+    - “Retry”
+    - “Copy diagnostics” (copies a short text block: timestamp, route, app version string, origin, and a yes/no for whether backend URL is present; no secrets)
+This helps you (and Apple review / support) diagnose quickly without guessing.
 
-If you're submitting to the App Store (iOS), ensure the following:
+---
 
-**In `capacitor.config.ts`:**
-```typescript
-{
-  server: {
-    cleartext: false,
-    allowNavigation: [
-      "*.supabase.co",
-      "*.supabase.com"
-    ]
-  }
-}
-```
+### E) Confirm published build is actually running the same code (cache/version check)
+Add a lightweight **build version string** displayed only in the console on app start (and optionally in the diagnostics copy text).
+- Example: `console.info("[Build] version:", __BUILD_VERSION__)`
+- Use Vite define or a simple constant file.
+This helps detect if someone is loading a cached older bundle.
 
-**In `ios/App/App/Info.plist`:**
-```xml
-<key>NSAppTransportSecurity</key>
-<dict>
-  <key>NSAllowsArbitraryLoads</key>
-  <false/>
-  <key>NSExceptionDomains</key>
-  <dict>
-    <key>supabase.co</key>
-    <dict>
-      <key>NSIncludesSubdomains</key>
-      <true/>
-      <key>NSExceptionAllowsInsecureHTTPLoads</key>
-      <false/>
-      <key>NSExceptionRequiresForwardSecrecy</key>
-      <true/>
-    </dict>
-  </dict>
-</dict>
-```
+---
 
-## Files to Modify
+## Investigation/Validation Steps (done alongside implementation)
 
-| File | Change |
-|------|--------|
-| `src/contexts/AuthContext.tsx` | Simplify session initialization, remove problematic Promise.race |
-| `src/pages/AuthCallback.tsx` | Wait for auth state change event before processing |
+1) In our controlled preview environment:
+   - Confirm email/password shows “Invalid credentials” for wrong login (proves network works).
+   - Confirm OAuth reaches callback and sets a session.
+2) After implementing the above:
+   - Re-test on the **published URL** and confirm:
+     - If backend is reachable, invalid credentials show properly (no “Failed to fetch”).
+     - If backend is not reachable, the UI shows the health-check error panel and offers “Copy diagnostics.”
 
-## Summary
+---
 
-| Issue | Cause | Fix |
-|-------|-------|-----|
-| "Failed to fetch" | Complex Promise.race potentially causing issues | Simplify to standard async/await with proper error handling |
-| Apple redirect loop | AuthCallback checks session before it's established | Wait for `onAuthStateChange` event |
-| Mobile app failures | Network security config | Add Supabase domains to allowed list |
+## Why these issues might have appeared “suddenly”
+Based on what we can see:
+- The code currently doesn’t apply timeouts/retries or a pre-flight health check, so any transient network/SSL hiccup becomes a scary generic “Failed to fetch.”
+- You have multiple login pages doing their own sign-in logic; one fix in AuthContext doesn’t automatically protect the portal pages.
+- OAuth flows can succeed at the provider but still fail to store the session locally; without explicit validation, that looks like “it just sends me back to login.”
 
-## Testing Checklist
+This plan doesn’t just patch one spot; it hardens every sign-in route and makes failures diagnosable.
 
-After implementing fixes:
-1. Clear browser cache and local storage
-2. Test email sign-in on web
-3. Test Apple sign-in on web  
-4. Test on iOS simulator/TestFlight
-5. Verify no console errors during auth flow
+---
+
+## Files we will likely change
+
+- `src/contexts/AuthContext.tsx` (wrap signIn/signUp + OAuth with health check, timeout, better error messaging)
+- `src/pages/Auth.tsx` (use new diagnostics, show banner/panel on network failures)
+- `src/pages/portal/PortalLogin.tsx` (health check + timeout + consistent errors)
+- `src/pages/vendor-portal/VendorLogin.tsx` (health check + timeout + consistent errors)
+- `src/pages/subcontractor-portal/SubcontractorLogin.tsx` (health check + timeout + consistent errors)
+- `src/utils/authNetwork.ts` (new)
+- Optional: a small `src/constants/buildInfo.ts` or Vite define usage for build version logging
+
+---
+
+## Rollout / App Store sensitivity note (non-technical)
+After we implement this, you should:
+- Test sign-in end-to-end on the published web app.
+- Then create a new native build so the App Store/TestFlight build includes the fixes (native builds don’t automatically update when web code changes, depending on how you packaged it).
+
