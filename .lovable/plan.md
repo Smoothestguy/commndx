@@ -1,96 +1,57 @@
 
-# CommandX → QuickBooks Attachment Deletion Sync
 
-## Summary
-When you delete an attachment in CommandX, it should also be deleted from QuickBooks. Currently, deletions only happen locally - the attachment remains in QB.
+# Fix: CommandX to QuickBooks Attachment Deletion
 
----
+## Root Cause Identified
 
-## What Will Be Built
+The edge function `quickbooks-delete-bill-attachment` is failing to find the QuickBooks Attachable ID because it's querying the sync log with the wrong action filter:
 
-### 1. New Edge Function: `quickbooks-delete-bill-attachment`
+| What the code looks for | What's actually stored |
+|-------------------------|------------------------|
+| `action = "create"` | `action = "upload"` |
 
-A new backend function that:
-- Receives the attachment ID and bill ID from CommandX
-- Looks up the QuickBooks `Attachable` ID from the sync log (stored when the attachment was uploaded)
-- Fetches the current `SyncToken` from QuickBooks (required for delete operations)
-- Deletes the attachment in QuickBooks using the API
-- Logs success or failure for audit purposes
-
-**API Pattern (same as bill deletion):**
-```text
-1. GET /attachable/{id} → get SyncToken
-2. POST /attachable?operation=delete with { Id, SyncToken }
+**Evidence from logs:**
+```
+Entity ID: 842881e1-d5e1-44e7-b73c-7e9c6bf196c2
+Action: upload (not "create")  
+Details: { qb_attachable_id: 74282170, ... }
 ```
 
-### 2. Update Delete Hook
-
-Modify the existing `useDeleteVendorBillAttachment` hook to:
-- After successfully deleting the local attachment, call the new edge function
-- Handle gracefully if the attachment was never synced to QB (no-op)
-- Show a toast notification for QB sync status
+This explains why the function logs: `"No QB Attachable ID found for attachment ... - was never synced"`
 
 ---
 
-## Files to Create/Modify
+## Fix Required
 
-| File | Action | Description |
-|------|--------|-------------|
-| `supabase/functions/quickbooks-delete-bill-attachment/index.ts` | **Create** | New edge function to delete attachments from QuickBooks |
-| `src/integrations/supabase/hooks/useVendorBillAttachments.ts` | **Modify** | Update `useDeleteVendorBillAttachment` to call the new function |
+### File: `supabase/functions/quickbooks-delete-bill-attachment/index.ts`
 
----
-
-## Technical Details
-
-### Edge Function Logic
-
-```text
-quickbooks-delete-bill-attachment
-├── Authenticate user (admin/manager only)
-├── Receive: { attachmentId, billId }
-├── Query sync log for qb_attachable_id
-│   └── If not found → return success (was never synced)
-├── Get QB access token (refresh if needed)
-├── Fetch Attachable from QB to get SyncToken
-│   └── If 404 → already deleted, mark as success
-├── DELETE: POST /attachable?operation=delete
-├── Log result to quickbooks_sync_log
-└── Return success/failure
+**Change line 219** from:
+```typescript
+.eq("action", "create")
 ```
 
-### Delete Hook Flow
-
-```text
-User clicks Delete
-    ↓
-Delete from Supabase Storage (file)
-    ↓
-Delete from vendor_bill_attachments (DB record)
-    ↓
-Call quickbooks-delete-bill-attachment (async, non-blocking)
-    ↓
-Show toast based on result
+**To:**
+```typescript
+.eq("action", "upload")
 ```
 
----
-
-## Edge Cases Handled
-
-| Scenario | Handling |
-|----------|----------|
-| Attachment never synced to QB | Skip QB deletion, return success |
-| Attachment already deleted in QB | Return success (idempotent) |
-| QB API temporarily unavailable | Log error, still allow local deletion |
-| User lacks permission | Return 403, block deletion |
+This single-line fix will allow the function to correctly find the sync log entry and retrieve the `qb_attachable_id` needed for deletion.
 
 ---
 
-## Verification Steps
+## Files to Modify
 
-After implementation:
-1. Upload an attachment in CommandX to a synced bill
-2. Verify it appears in QuickBooks
-3. Delete the attachment in CommandX
-4. Verify it's removed from both CommandX AND QuickBooks
-5. Check sync log for successful deletion record
+| File | Change |
+|------|--------|
+| `supabase/functions/quickbooks-delete-bill-attachment/index.ts` | Change action filter from `"create"` to `"upload"` |
+
+---
+
+## Verification After Fix
+
+1. Delete an attachment in CommandX
+2. Check edge function logs - should now show:
+   - `"Found QB Attachable ID: XXXXX"`
+   - `"Successfully deleted Attachable XXXXX from QuickBooks"`
+3. Verify the attachment is removed from QuickBooks
+
