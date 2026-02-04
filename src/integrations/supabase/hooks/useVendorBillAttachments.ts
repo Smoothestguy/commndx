@@ -67,9 +67,24 @@ export const useUploadVendorBillAttachment = () => {
         .eq("bill_id", billId)
         .maybeSingle();
 
-      if (qbMapping && qbMapping.sync_status === "synced" && qbMapping.quickbooks_bill_id) {
+      // Log the mapping result for debugging
+      console.log("QB mapping check for bill:", billId, qbMapping);
+
+      // Check for valid sync statuses (different sources may use different values)
+      const validSyncStatuses = ["synced", "success"];
+      const isSynced = qbMapping && 
+        validSyncStatuses.includes(qbMapping.sync_status) && 
+        qbMapping.quickbooks_bill_id;
+
+      if (isSynced) {
         // Get current session to forward auth header
         const { data: { session } } = await supabase.auth.getSession();
+        
+        console.log("Triggering QB attachment sync:", {
+          attachmentId: data.id,
+          billId,
+          qbBillId: qbMapping.quickbooks_bill_id
+        });
         
         // Trigger attachment sync to QuickBooks (non-blocking)
         supabase.functions.invoke("quickbooks-sync-bill-attachment", {
