@@ -48,7 +48,7 @@ export function PortalLayout({ children }: PortalLayoutProps) {
   const { data: personnel } = useCurrentPersonnel();
   const { data: notifications } = usePersonnelNotifications(personnel?.id);
   const [mobileOpen, setMobileOpen] = useState(false);
-  const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
+  const [sidebarCollapsed, setSidebarCollapsed] = useState(true);
   const isMobile = useIsMobile();
   const isWideTablet = useIsWideTablet();
   
