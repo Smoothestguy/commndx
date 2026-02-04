@@ -98,16 +98,16 @@ export function InvoiceFormInline({ prefilled, onSubmit, isSubmitting }: Invoice
     );
 
   return (
-    <form onSubmit={handleSubmit} className="mt-3 space-y-4 p-3 bg-muted/30 rounded-lg border border-border/50">
+    <form onSubmit={handleSubmit} className="mt-3 space-y-4 p-4 bg-muted/30 rounded-lg border border-border/50">
       {/* Customer Selection */}
-      <div className="space-y-1.5">
-        <label className="text-xs font-medium text-muted-foreground">Customer</label>
+      <div className="space-y-2">
+        <label className="text-sm font-medium text-muted-foreground">Customer</label>
         <Select
           value={selectedCustomerId}
           onValueChange={setSelectedCustomerId}
           disabled={customersLoading}
         >
-          <SelectTrigger className="h-9 text-sm">
+          <SelectTrigger className="h-11 text-sm">
             <SelectValue placeholder={customersLoading ? "Loading..." : "Select customer..."} />
           </SelectTrigger>
           <SelectContent>
@@ -127,25 +127,25 @@ export function InvoiceFormInline({ prefilled, onSubmit, isSubmitting }: Invoice
       <LineItemBuilder items={lineItems} onChange={setLineItems} />
 
       {/* Notes */}
-      <div className="space-y-1.5">
-        <label className="text-xs font-medium text-muted-foreground">Notes (optional)</label>
+      <div className="space-y-2">
+        <label className="text-sm font-medium text-muted-foreground">Notes (optional)</label>
         <Textarea
           value={notes}
           onChange={(e) => setNotes(e.target.value)}
           placeholder="Add any notes..."
-          className="min-h-[60px] text-sm resize-none"
+          className="min-h-[80px] text-sm resize-none"
         />
       </div>
 
       {/* Submit */}
       <Button
         type="submit"
-        className="w-full"
+        className="w-full h-12 text-base font-medium"
         disabled={!isValid || isSubmitting}
       >
         {isSubmitting ? (
           <>
-            <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+            <Loader2 className="h-5 w-5 mr-2 animate-spin" />
             Creating...
           </>
         ) : (
