@@ -1,210 +1,150 @@
 
 
-# Enhanced AI Assistant with Interactive Forms
+# Mobile Optimization for AI Assistant Inline Forms
 
 ## Overview
-Currently, when you ask the AI to create an estimate or invoice, it asks you to type out customer names and line item details. This plan adds interactive dropdown selectors and form inputs directly in the chat, making it much faster and easier to provide the required information.
-
-## What You'll See
-
-Instead of this conversation:
-```
-You: "Create an estimate for me"
-AI: "What is the customer's name and what are the line items?"
-You: [type everything manually]
-```
-
-You'll get this:
-```
-You: "Create an estimate for me"
-AI: Shows interactive form with:
-   - Customer dropdown (searchable)
-   - Project dropdown (based on customer)
-   - "Add Line Item" section with product picker
-   - Quantity and price inputs
-   - Submit button
-```
+Enhance the EstimateFormInline, InvoiceFormInline, and LineItemBuilder components to provide a better mobile experience with proper touch targets, responsive layouts, and improved visibility.
 
 ---
 
-## User Experience Flow
+## Issues to Address
 
-```text
-User: "I want to create an estimate"
-                ↓
-AI responds with an interactive form embedded in the chat:
-┌────────────────────────────────────────┐
-│  Let me help you create an estimate.   │
-│                                        │
-│  Customer: [▼ Select customer...]      │
-│  Project:  [▼ Select project...]       │
-│                                        │
-│  Line Items:                           │
-│  ┌──────────────────────────────────┐  │
-│  │ [▼ Select product] Qty:[1] $[__] │  │
-│  │ [+ Add another item]             │  │
-│  └──────────────────────────────────┘  │
-│                                        │
-│  Notes: [________________________]     │
-│                                        │
-│  [Create Estimate]                     │
-└────────────────────────────────────────┘
-```
+| Issue | Current | Improved |
+|-------|---------|----------|
+| Delete button size | 24x24px (`h-6 w-6`) | 40x40px on mobile for easier touch |
+| Line item layout | Single row for Qty/Price/Total | Stacked layout on mobile |
+| Message container | Fixed `max-w-[80%]` | Wider on mobile to fit forms |
+| Input heights | 32px (`h-8`) | 40px on mobile for touch targets |
+| Total display | Fixed `w-16` inline | Full width row on mobile |
+| Add Item button | 32px height | 44px on mobile |
+| Submit button | Standard height | 48px on mobile |
 
 ---
 
 ## Technical Changes
 
-### 1. Update Message Type to Support Forms
+### 1. LineItemBuilder.tsx - Responsive Line Items
 
-**File**: `src/contexts/AIAssistantContext.tsx`
+**Stack Qty/Price inputs on narrow screens:**
+```tsx
+// Current: flex gap-2 (always horizontal)
+<div className="flex gap-2">
+  <div className="flex-1">Qty</div>
+  <div className="flex-1">Price</div>
+  <div className="w-16">Total</div>
+</div>
 
-Add a new `formRequest` field to the ChatMessage type:
-
-```typescript
-export interface ChatMessage {
-  id: string;
-  role: "user" | "assistant";
-  content: string;
-  timestamp: Date;
-  actions?: Array<{ type: string; path?: string; label?: string }>;
-  formRequest?: {
-    type: "create_estimate" | "create_invoice";
-    prefilled?: {
-      customer_name?: string;
-      customer_id?: string;
-      line_items?: Array<{ description: string; quantity: number; unit_price: number }>;
-    };
-  };
-}
+// Improved: Grid that stacks on mobile
+<div className="grid grid-cols-2 gap-2">
+  <div>
+    <label>Qty</label>
+    <Input className="h-10" /> {/* Larger touch target */}
+  </div>
+  <div>
+    <label>Price</label>
+    <Input className="h-10" />
+  </div>
+</div>
+<div className="text-right text-sm font-medium pt-1">
+  Line Total: $XX.XX
+</div>
 ```
 
-### 2. Create Interactive Form Components
+**Larger delete button:**
+```tsx
+// Current
+<Button className="h-6 w-6">
 
-**New File**: `src/components/ai-assistant/forms/EstimateFormInline.tsx`
+// Improved
+<Button className="h-8 w-8 sm:h-6 sm:w-6 min-h-[44px] min-w-[44px] sm:min-h-0 sm:min-w-0">
+```
 
-A compact form component for creating estimates within the chat:
-- Searchable customer combobox (using existing customer data)
-- Optional project selector (filters by selected customer)
-- Line item builder with product picker
-- Quantity and price inputs
-- Submit button that calls `sendMessage` with structured data
+**Larger Add Item button:**
+```tsx
+// Current
+<Button className="w-full h-8 text-xs">
 
-**New File**: `src/components/ai-assistant/forms/InvoiceFormInline.tsx`
+// Improved  
+<Button className="w-full h-10 text-sm">
+```
 
-Similar to EstimateFormInline but for invoices:
-- Due date field instead of valid until
-- Same customer/project/line item selection
-
-### 3. Update ChatMessage Component
-
-**File**: `src/components/ai-assistant/ChatMessage.tsx`
-
-Detect when a message has `formRequest` and render the appropriate inline form:
+### 2. ChatMessage.tsx - Wider Forms on Mobile
 
 ```tsx
-{message.formRequest && (
-  message.formRequest.type === "create_estimate" ? (
-    <EstimateFormInline 
-      prefilled={message.formRequest.prefilled}
-      onSubmit={handleFormSubmit}
-    />
-  ) : (
-    <InvoiceFormInline 
-      prefilled={message.formRequest.prefilled}
-      onSubmit={handleFormSubmit}
-    />
-  )
-)}
+// Current: max-w-[80%] - forms get cramped
+<div className="max-w-[80%] rounded-2xl px-4 py-2.5">
+
+// Improved: Full width when showing forms
+<div className={cn(
+  "rounded-2xl px-4 py-2.5",
+  message.formRequest 
+    ? "max-w-full w-full" 
+    : "max-w-[80%]",
+  isUser ? "..." : "..."
+)}>
 ```
 
-### 4. Update AI Assistant Edge Function
+### 3. EstimateFormInline.tsx & InvoiceFormInline.tsx
 
-**File**: `supabase/functions/ai-assistant/index.ts`
+**Larger submit button:**
+```tsx
+// Current
+<Button className="w-full">
 
-When the AI decides to create an estimate/invoice but needs more info, instead of asking with plain text, return a `formRequest` in the response:
-
-```typescript
-// When AI needs form input
-return {
-  content: "Let me help you create an estimate. Please fill in the details below:",
-  formRequest: {
-    type: "create_estimate",
-    prefilled: {
-      customer_name: extractedCustomerName, // if mentioned
-    }
-  }
-};
+// Improved
+<Button className="w-full h-11 text-base font-medium">
 ```
 
-### 5. Update Context to Handle Form Submissions
+**Larger select trigger:**
+```tsx
+// Current
+<SelectTrigger className="h-9 text-sm">
 
-**File**: `src/contexts/AIAssistantContext.tsx`
-
-Add a new function `submitForm` that:
-- Takes the filled form data
-- Sends it to the AI assistant edge function with a special flag
-- The edge function then executes the `create_estimate` or `create_invoice` tool directly
-
----
-
-## Files to Create/Modify
-
-| File | Action | Purpose |
-|------|--------|---------|
-| `src/contexts/AIAssistantContext.tsx` | Modify | Add `formRequest` to message type, add `submitForm` function |
-| `src/components/ai-assistant/ChatMessage.tsx` | Modify | Render inline forms when `formRequest` is present |
-| `src/components/ai-assistant/forms/EstimateFormInline.tsx` | Create | Interactive estimate creation form |
-| `src/components/ai-assistant/forms/InvoiceFormInline.tsx` | Create | Interactive invoice creation form |
-| `src/components/ai-assistant/forms/LineItemBuilder.tsx` | Create | Reusable line item input component |
-| `supabase/functions/ai-assistant/index.ts` | Modify | Return `formRequest` instead of text when collecting input |
-
----
-
-## Form Components Design
-
-### EstimateFormInline
-- Uses `useCustomers()` hook for customer dropdown
-- Uses `useProjectsByCustomer()` for project dropdown
-- Uses `useProducts()` for product picker in line items
-- Calculates subtotal/total on the fly
-- On submit: sends structured data back to context
-
-### LineItemBuilder
-- Product combobox (grouped by type: Product/Service/Labor)
-- Auto-fills description and price from selected product
-- Manual entry also supported
-- Add/remove line items
-- Shows running total
-
----
-
-## Example Interaction After Implementation
-
-**User**: "Create an invoice for ABC Construction"
-
-**AI Response** (with interactive form):
-```
-I'll create an invoice for ABC Construction. Please add the line items:
-
-[Customer: ABC Construction ▼] [Project: Select... ▼]
-
-Line Items:
-┌────────────────────────────────────┐
-│ Product: [Select or type...    ▼] │
-│ Qty: [1]  Price: [$0.00]          │
-│ [+ Add Item]                      │
-└────────────────────────────────────┘
-
-[Create Invoice]
+// Improved
+<SelectTrigger className="h-10 text-sm">
 ```
 
 ---
 
-## Prefilling Logic
+## Files to Modify
 
-The AI will attempt to prefill fields when mentioned:
-- "Create an invoice for **ABC Company**" → Customer dropdown pre-selects ABC Company
-- "Create an estimate with **2 hours of consulting at $150**" → Line item pre-populated
-- "Create an invoice for **Project Alpha**" → Project dropdown pre-selected (and customer inferred)
+| File | Changes |
+|------|---------|
+| `src/components/ai-assistant/forms/LineItemBuilder.tsx` | Grid layout for inputs, larger buttons, better spacing |
+| `src/components/ai-assistant/forms/EstimateFormInline.tsx` | Larger submit button, improved select height |
+| `src/components/ai-assistant/forms/InvoiceFormInline.tsx` | Same as EstimateFormInline |
+| `src/components/ai-assistant/ChatMessage.tsx` | Full-width messages when showing forms |
+
+---
+
+## Visual Comparison
+
+**Before (mobile):**
+```
+┌──────────────────────────┐
+│ Select product...    [x] │
+│ [Qty: 1] [Price: 0] $0   │  ← Cramped
+└──────────────────────────┘
+```
+
+**After (mobile):**
+```
+┌────────────────────────────────┐
+│ Select product...          [x] │
+│ ┌─────────┐  ┌───────────────┐ │
+│ │ Qty: 1  │  │ Price: $0.00  │ │
+│ └─────────┘  └───────────────┘ │
+│              Line Total: $0.00 │
+└────────────────────────────────┘
+```
+
+---
+
+## Summary
+
+- Use 2-column grid for Qty/Price instead of cramped 3-column flex
+- Move line total to its own row for clarity
+- Increase all touch targets to 40-44px minimum
+- Make form messages full-width to give forms room to breathe
+- Use larger font sizes on mobile submit buttons
 
