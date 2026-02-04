@@ -1,76 +1,64 @@
 
+# Fix: Bidirectional Delete for Attachments Uploaded from CommandX
 
-# Fix: Delay QuickBooks Attachment Sync Until Bill is Saved
+## Problem Identified
 
-## Problem Found
+When you delete an attachment in QuickBooks that was originally **uploaded from CommandX**, the webhook cannot find the corresponding local attachment to delete. This is because:
 
-The QuickBooks attachment sync is triggered **immediately** when you upload a file in Edit mode - it doesn't wait for you to press "Update Bill". This causes sync failures because:
-
-1. You're editing the bill (form has changes)
-2. You upload an attachment → file uploads successfully
-3. The code **immediately** calls `syncAttachmentToQuickBooks()` in a `.then()` callback
-4. But the bill hasn't been saved yet, so QuickBooks may have stale data or the sync fails
-
-The "save-first" dialog we implemented only catches the case when `isFormDirty` is true. But the real issue is that **any attachment upload in edit mode should NOT sync to QuickBooks until the bill is saved**.
-
-## Root Cause (Code Location)
-
-In `src/integrations/supabase/hooks/useVendorBillAttachments.ts`, lines 108-136:
-
-```typescript
-// This runs IMMEDIATELY after file upload
-syncAttachmentToQuickBooks(data.id, billId).then((result) => {
-  // Shows success/failure toasts
-});
-```
+1. **Wrong lookup key**: The sync log stores `entity_id` = attachment ID (not bill ID), but the current code treats it as a bill ID
+2. **Wrong file path pattern**: The code searches for `qb-${attachableId}` in the file path, but only attachments pulled FROM QuickBooks have this prefix. Attachments uploaded FROM CommandX have normal file paths like `vendor-bills/abc123/invoice.pdf`
 
 ## Solution
 
-Change the attachment sync to be **deferred** until after the bill is saved, not immediate:
+Update the webhook delete logic to:
 
-### Option A: Remove Auto-Sync, Require Manual Sync (Simplest)
-- Remove the automatic `syncAttachmentToQuickBooks()` call after upload
-- User must click "Retry Sync" after saving the bill
-- **Pro**: Simple, prevents all timing issues
-- **Con**: Extra manual step for users
-
-### Option B: Sync After Bill Save (Recommended)
-- Upload the attachment but **don't** sync to QuickBooks immediately
-- Store "pending sync" state on the attachment
-- When the bill is saved (Update Bill button), sync all pending attachments as part of the save flow
-- **Pro**: Seamless UX - user uploads, presses save, everything syncs
-- **Con**: More complex implementation
-
-### Option C: Only Allow Uploads After Bill is Unchanged (Strictest)
-- Block uploads entirely unless the form has no unsaved changes AND the bill is synced to QB
-- **Pro**: Prevents all sync timing issues
-- **Con**: May frustrate users who want to add attachments while editing
-
-## Recommended Implementation: Option B (Hybrid)
-
-1. **Remove auto-sync from upload hook**: In `useUploadVendorBillAttachment`, don't call `syncAttachmentToQuickBooks()` automatically
-
-2. **Add sync step to bill save flow**: When `handleSubmit` in `VendorBillForm` successfully saves the bill:
-   - Query for any attachments without a QuickBooks sync
-   - Sync them one-by-one (or in parallel)
-   - Show combined success/failure toasts
-
-3. **Keep "Retry Sync" button**: For any attachments that fail, user can manually retry
+1. **Parse the `details` JSON** from the sync log to get the actual `bill_id` and `file_name`
+2. **Use the attachment ID directly** since `entity_id` in the sync log IS the attachment ID
+3. **Fall back to matching by file name** if direct ID lookup works
 
 ## Files to Modify
 
 | File | Change |
 |------|--------|
-| `src/integrations/supabase/hooks/useVendorBillAttachments.ts` | Remove auto-sync in `useUploadVendorBillAttachment`, add `useSyncPendingAttachments` hook |
-| `src/components/vendor-bills/VendorBillForm.tsx` | After bill save succeeds, call sync for pending attachments |
-| `src/components/vendor-bills/VendorBillAttachments.tsx` | Update messaging to indicate "will sync when bill is saved" |
+| `supabase/functions/quickbooks-webhook/index.ts` | Fix the delete logic to correctly find and delete local attachments |
+
+## Technical Details
+
+### Current (Broken) Logic
+```typescript
+// Treats entity_id as bill_id - WRONG for uploaded attachments
+.eq("bill_id", syncLog.entity_id)
+// Looks for qb- prefix - WRONG for uploaded attachments
+.ilike("file_path", `%qb-${qbAttachableId}%`)
+```
+
+### Fixed Logic
+```typescript
+// 1. entity_id IS the attachment ID for uploads, try direct lookup
+const { data: directAttachment } = await supabase
+  .from("vendor_bill_attachments")
+  .select("id, file_path")
+  .eq("id", syncLog.entity_id)
+  .maybeSingle();
+
+if (directAttachment) {
+  // Delete this attachment directly
+}
+
+// 2. If not found, parse details to get bill_id and file_name
+const details = JSON.parse(syncLog.details);
+const { data: matchByName } = await supabase
+  .from("vendor_bill_attachments")
+  .select("id, file_path")
+  .eq("bill_id", details.bill_id)
+  .eq("file_name", details.file_name);
+```
 
 ## Expected Behavior After Fix
 
-1. **Edit bill** → make changes
-2. **Upload attachment** → file uploads, toast shows "Attachment added (will sync to QB when you save)"
-3. **Press "Update Bill"** → bill saves, then attachments sync to QuickBooks
-4. **Toast shows** → "Bill updated and attachments synced to QuickBooks"
-
-If you upload an attachment and then cancel without saving, the attachment stays local but isn't synced to QB (can be synced later via Retry button).
-
+1. Upload attachment in CommandX to a vendor bill
+2. Attachment syncs to QuickBooks
+3. Delete attachment in QuickBooks
+4. Webhook fires, finds the local attachment (by direct ID or file name match)
+5. Local attachment is deleted from storage and database
+6. CommandX UI reflects the deletion
