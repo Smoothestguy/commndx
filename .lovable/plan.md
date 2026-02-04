@@ -1,75 +1,45 @@
-# Google Play Security Compliance - COMPLETED ✅
 
-## Summary
 
-Successfully implemented comprehensive RLS hardening migration to fix all 27 critical security errors for Google Play Developer Content Policy compliance.
+# Add Recently Deleted Card to Dashboard
 
-## Status: COMPLETE
+## Problem
+The `RecentlyDeleted` component exists at `src/components/dashboard/RecentlyDeleted.tsx` but was never added to the main dashboard layout in `RowBasedDashboard.tsx`.
 
-| Metric | Before | After |
-|--------|--------|-------|
-| Data Exposure Errors | 27 | 0 |
-| Tables Secured | 5 | 25+ |
-| Compliance Status | Failed | Passed |
+## Solution
+Add the Recently Deleted card to the dashboard, placing it alongside the Invoice Aging Summary in a two-column layout for better visual balance.
 
-## What Was Fixed
+## Changes Required
 
-### Tables Now Secured with Role-Based Access
+| File | Change |
+|------|--------|
+| `src/components/dashboard/rows/RowBasedDashboard.tsx` | Import `RecentlyDeleted` component and add it to the layout |
 
-**Admin-Only Tables:**
-- `messages` (SMS logs with phone numbers)
-- `quickbooks_customer_mappings`
-- `quickbooks_vendor_mappings`
-- `quickbooks_invoice_mappings`
-- `quickbooks_bill_mappings`
-- `quickbooks_product_mappings`
-- `quickbooks_account_mappings`
+## New Dashboard Layout
 
-**Admin/Manager + Self-Access Tables:**
-- `personnel_payments` - Personnel can view own payments
-- `vendor_bills` - Vendors can view own bills
-- `time_entries` - Personnel can view own time entries
-- `reimbursements` - Personnel can view own reimbursements
-- `vendors` - Vendors can view own record
+```text
+Row 1: Welcome Strip
+Row 2: KPI Bar  
+Row 3: Quick Actions
+Row 4: Recent Invoices | Recent Activity (side by side)
+Row 5: Revenue Chart
+Row 6: Invoice Aging Summary | Recently Deleted (side by side) <-- NEW
+```
 
-**Staff-Only Tables (Admin/Manager/User):**
-- `customers`
-- `invoices`
-- `estimates`
-- `projects` (+ personnel can view assigned projects)
-- `job_orders`
-- `purchase_orders` (+ vendors can view own POs)
-- `change_orders`
-- `invoice_payments`
-- `applicants`
-- `applications`
+## Technical Details
 
-**Token-Based Access Tables:**
-- `personnel_onboarding_tokens`
-- `vendor_onboarding_tokens`
-- `personnel_invitations`
-- `vendor_invitations`
-- `invitations`
+Add this import at the top:
+```typescript
+import { RecentlyDeleted } from "@/components/dashboard/RecentlyDeleted";
+```
 
-## Google Play Console URLs
+Replace the current Row 6 section with a two-column grid:
+```typescript
+{/* Row 6: Invoice Aging Summary + Recently Deleted */}
+<div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+  <InvoiceAgingSummary />
+  <RecentlyDeleted />
+</div>
+```
 
-| Setting | URL |
-|---------|-----|
-| Privacy Policy | `https://commndx.com/legal/privacy` |
-| Account Deletion | `https://commndx.com/portal/settings` |
+This matches the pattern already used for Row 4 (Recent Invoices + Recent Activity).
 
-## Remaining Warnings (Non-Critical)
-
-The remaining warnings are informational and do not block Google Play compliance:
-- Function search path warnings (cosmetic)
-- Extension in public schema (standard setup)
-- RLS "always true" for INSERT/UPDATE/DELETE (intentional for staff operations)
-- Security definer functions (audited, contain proper validation)
-
-## Migration Applied
-
-Two migrations were applied:
-1. `comprehensive_rls_hardening` (Part 1) - Admin-only tables
-2. `comprehensive_rls_hardening` (Part 2) - Staff + self-access tables
-
-All policies use the existing `has_role()`, `get_personnel_id_for_user()`, and `get_vendor_id_for_user()` security definer functions.
