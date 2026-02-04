@@ -224,3 +224,6 @@ verify_jwt = false
 
 [functions.translate-message]
 verify_jwt = false
+
+[functions.quickbooks-delete-bill-attachment]
+verify_jwt = false
