@@ -307,10 +307,10 @@ serve(async (req) => {
     await supabase.from("quickbooks_sync_log").insert({
       entity_type: "bill_attachment",
       entity_id: attachmentId,
-      operation: "upload",
+      action: "upload",
       status: result.success ? "success" : "error",
       error_message: result.error || null,
-      metadata: {
+      details: {
         bill_id: billId,
         qb_bill_id: qbBillId,
         file_name: attachment.file_name,
