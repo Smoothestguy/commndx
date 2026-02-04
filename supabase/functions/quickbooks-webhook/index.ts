@@ -234,12 +234,11 @@ async function processAttachableUpdate(
 ) {
   console.log(`[Webhook] Processing attachable ${qbAttachableId}, operation: ${operation}`);
 
-  // Handle Delete operation - delete the local attachment if it was synced from QB
+  // Handle Delete operation - delete the local attachment
   if (operation === "Delete") {
     console.log("[Webhook] Attachable deleted in QB, attempting to delete locally...");
     
-    // Find the local attachment by looking for qb- prefix in file_path or via sync log
-    // First try sync log to find which bill and filename this was
+    // Find the sync log for this attachable
     const { data: syncLog } = await supabase
       .from("quickbooks_sync_log")
       .select("entity_id, details")
@@ -249,49 +248,93 @@ async function processAttachableUpdate(
       .limit(1)
       .maybeSingle();
     
+    let attachmentToDelete: { id: string; file_path: string } | null = null;
+    let billIdForLog: string | null = null;
+    
     if (syncLog?.entity_id) {
-      // Try to find attachment in this bill with qb- in the path
-      const { data: attachments } = await supabase
+      // For attachments UPLOADED from CommandX, entity_id IS the attachment ID
+      // Try direct lookup first
+      const { data: directAttachment } = await supabase
         .from("vendor_bill_attachments")
-        .select("id, file_path")
-        .eq("bill_id", syncLog.entity_id)
-        .ilike("file_path", `%qb-${qbAttachableId}%`);
+        .select("id, file_path, bill_id")
+        .eq("id", syncLog.entity_id)
+        .maybeSingle();
       
-      if (attachments && attachments.length > 0) {
-        for (const att of attachments) {
-          // Delete from storage first
+      if (directAttachment) {
+        attachmentToDelete = directAttachment;
+        billIdForLog = directAttachment.bill_id;
+        console.log(`[Webhook] Found attachment by direct ID lookup: ${directAttachment.id}`);
+      } else {
+        // entity_id might be the bill_id for attachments pulled FROM QB
+        // Try to find by qb- prefix in file_path (for QB-sourced attachments)
+        const { data: qbAttachments } = await supabase
+          .from("vendor_bill_attachments")
+          .select("id, file_path")
+          .eq("bill_id", syncLog.entity_id)
+          .ilike("file_path", `%qb-${qbAttachableId}%`);
+        
+        if (qbAttachments && qbAttachments.length > 0) {
+          attachmentToDelete = qbAttachments[0];
+          billIdForLog = syncLog.entity_id;
+          console.log(`[Webhook] Found attachment by qb- prefix: ${qbAttachments[0].id}`);
+        } else if (syncLog.details) {
+          // Fallback: parse details to find by bill_id and file_name
           try {
-            await supabase.storage
-              .from("document-attachments")
-              .remove([att.file_path]);
-          } catch (storageErr) {
-            console.error("[Webhook] Failed to delete from storage:", storageErr);
+            const details = JSON.parse(syncLog.details);
+            if (details.bill_id && details.file_name) {
+              const { data: matchByName } = await supabase
+                .from("vendor_bill_attachments")
+                .select("id, file_path")
+                .eq("bill_id", details.bill_id)
+                .eq("file_name", details.file_name)
+                .maybeSingle();
+              
+              if (matchByName) {
+                attachmentToDelete = matchByName;
+                billIdForLog = details.bill_id;
+                console.log(`[Webhook] Found attachment by file_name: ${matchByName.id}`);
+              }
+            }
+          } catch (parseErr) {
+            console.error("[Webhook] Failed to parse sync log details:", parseErr);
           }
-          
-          // Delete the record
-          await supabase
-            .from("vendor_bill_attachments")
-            .delete()
-            .eq("id", att.id);
-          
-          console.log(`[Webhook] Deleted local attachment ${att.id} (from QB delete)`);
         }
-        
-        // Log the sync
-        try {
-          await supabase.from("quickbooks_sync_log").insert({
-            entity_type: "bill_attachment",
-            entity_id: syncLog.entity_id,
-            action: "webhook_delete",
-            status: "success",
-            details: JSON.stringify({ qb_attachable_id: qbAttachableId }),
-          });
-        } catch (logErr) {
-          console.error("[Webhook] Failed to log delete:", logErr);
-        }
-        
-        return { success: true, action: "deleted", attachableId: qbAttachableId };
       }
+    }
+    
+    if (attachmentToDelete) {
+      // Delete from storage first
+      try {
+        await supabase.storage
+          .from("document-attachments")
+          .remove([attachmentToDelete.file_path]);
+        console.log(`[Webhook] Deleted from storage: ${attachmentToDelete.file_path}`);
+      } catch (storageErr) {
+        console.error("[Webhook] Failed to delete from storage:", storageErr);
+      }
+      
+      // Delete the record
+      await supabase
+        .from("vendor_bill_attachments")
+        .delete()
+        .eq("id", attachmentToDelete.id);
+      
+      console.log(`[Webhook] Deleted local attachment ${attachmentToDelete.id} (from QB delete)`);
+      
+      // Log the sync
+      try {
+        await supabase.from("quickbooks_sync_log").insert({
+          entity_type: "bill_attachment",
+          entity_id: billIdForLog || attachmentToDelete.id,
+          action: "webhook_delete",
+          status: "success",
+          details: JSON.stringify({ qb_attachable_id: qbAttachableId, deleted_attachment_id: attachmentToDelete.id }),
+        });
+      } catch (logErr) {
+        console.error("[Webhook] Failed to log delete:", logErr);
+      }
+      
+      return { success: true, action: "deleted", attachableId: qbAttachableId };
     }
     
     console.log("[Webhook] No matching local attachment found for QB delete");
