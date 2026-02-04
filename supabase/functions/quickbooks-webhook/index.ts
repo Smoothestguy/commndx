@@ -204,6 +204,168 @@ async function fetchQBVendor(vendorId: string, accessToken: string, realmId: str
   return data.Vendor;
 }
 
+// Fetch attachable (attachment) from QuickBooks
+async function fetchQBAttachable(attachableId: string, accessToken: string, realmId: string) {
+  const url = `https://quickbooks.api.intuit.com/v3/company/${realmId}/attachable/${attachableId}?minorversion=65`;
+  
+  const response = await fetch(url, {
+    headers: {
+      Authorization: `Bearer ${accessToken}`,
+      Accept: "application/json",
+    },
+  });
+
+  if (!response.ok) {
+    const errorText = await response.text();
+    throw new Error(`Failed to fetch QB attachable: ${errorText}`);
+  }
+
+  const data = await response.json();
+  return data.Attachable;
+}
+
+// Process a single attachable (attachment) update from QuickBooks
+async function processAttachableUpdate(
+  supabase: any,
+  qbAttachableId: string,
+  operation: string,
+  accessToken: string,
+  realmId: string
+) {
+  console.log(`[Webhook] Processing attachable ${qbAttachableId}, operation: ${operation}`);
+
+  // Handle Delete operation - we don't delete local attachments when QB attachments are deleted
+  if (operation === "Delete") {
+    console.log("[Webhook] Attachable deleted in QB, no action taken locally");
+    return { success: true, skipped: true, reason: "Delete not synced to local" };
+  }
+
+  // Fetch the full attachable from QuickBooks
+  const qbAttachable = await fetchQBAttachable(qbAttachableId, accessToken, realmId);
+  
+  // Check if this attachment is linked to a Bill
+  const billRef = qbAttachable.AttachableRef?.find(
+    (ref: any) => ref.EntityRef?.type === "Bill"
+  );
+  
+  if (!billRef) {
+    console.log("[Webhook] Attachable not linked to a Bill, skipping");
+    return { success: true, skipped: true, reason: "Not a bill attachment" };
+  }
+
+  const qbBillId = billRef.EntityRef.value;
+
+  // Find the local bill mapping
+  const { data: billMapping, error: mappingError } = await supabase
+    .from("quickbooks_bill_mappings")
+    .select("bill_id")
+    .eq("quickbooks_bill_id", qbBillId)
+    .maybeSingle();
+
+  if (mappingError || !billMapping) {
+    console.log(`[Webhook] No local bill found for QB bill ${qbBillId}`);
+    return { success: true, skipped: true, reason: "No local bill mapping" };
+  }
+
+  const localBillId = billMapping.bill_id;
+
+  // Check if we already have this attachment (by file name to prevent duplicates)
+  const { data: existingAttachment } = await supabase
+    .from("vendor_bill_attachments")
+    .select("id")
+    .eq("bill_id", localBillId)
+    .eq("file_name", qbAttachable.FileName)
+    .maybeSingle();
+
+  if (existingAttachment) {
+    console.log("[Webhook] Attachment already exists locally, skipping");
+    return { success: true, skipped: true, reason: "Already exists" };
+  }
+
+  // Download the attachment from QuickBooks
+  if (!qbAttachable.TempDownloadUri) {
+    console.log("[Webhook] No download URI for attachable, skipping");
+    return { success: true, skipped: true, reason: "No download URI" };
+  }
+
+  try {
+    const fileResponse = await fetch(qbAttachable.TempDownloadUri);
+    if (!fileResponse.ok) {
+      throw new Error(`Failed to download attachment: ${fileResponse.status}`);
+    }
+
+    const fileBlob = await fileResponse.blob();
+    const fileBuffer = await fileBlob.arrayBuffer();
+    const fileBytes = new Uint8Array(fileBuffer);
+
+    // Generate storage path with qb- prefix to identify QB-sourced attachments
+    const fileExt = qbAttachable.FileName?.split('.').pop() || 'bin';
+    const storagePath = `vendor_bill/${localBillId}/${Date.now()}-qb-${qbAttachableId}.${fileExt}`;
+
+    // Upload to Supabase storage
+    const { error: uploadError } = await supabase.storage
+      .from('document-attachments')
+      .upload(storagePath, fileBytes, {
+        contentType: qbAttachable.ContentType || 'application/octet-stream',
+      });
+
+    if (uploadError) {
+      throw new Error(`Storage upload failed: ${uploadError.message}`);
+    }
+
+    // Create attachment record
+    const { error: insertError } = await supabase
+      .from("vendor_bill_attachments")
+      .insert({
+        bill_id: localBillId,
+        file_name: qbAttachable.FileName,
+        file_path: storagePath,
+        file_type: qbAttachable.ContentType || 'application/octet-stream',
+        file_size: qbAttachable.Size || fileBytes.length,
+        uploaded_by: null, // From QuickBooks
+      });
+
+    if (insertError) {
+      throw new Error(`Failed to insert attachment record: ${insertError.message}`);
+    }
+
+    // Log the sync
+    await supabase.from("quickbooks_sync_log").insert({
+      entity_type: "bill_attachment",
+      entity_id: localBillId,
+      operation: "webhook_create",
+      status: "success",
+      error_message: null,
+      metadata: {
+        qb_attachable_id: qbAttachableId,
+        qb_bill_id: qbBillId,
+        file_name: qbAttachable.FileName,
+      },
+    });
+
+    console.log(`[Webhook] Created attachment from QB: ${qbAttachable.FileName}`);
+    return { success: true, action: "created", billId: localBillId };
+
+  } catch (downloadError: any) {
+    console.error("[Webhook] Failed to download/store attachment:", downloadError.message);
+    
+    // Log the error
+    await supabase.from("quickbooks_sync_log").insert({
+      entity_type: "bill_attachment",
+      entity_id: localBillId,
+      operation: "webhook_create",
+      status: "error",
+      error_message: downloadError.message,
+      metadata: {
+        qb_attachable_id: qbAttachableId,
+        qb_bill_id: qbBillId,
+      },
+    });
+    
+    return { success: false, error: downloadError.message };
+  }
+}
+
 // Map QB estimate status to local status
 function mapQbStatusToLocal(txnStatus: string | undefined): string {
   switch (txnStatus) {
@@ -1725,6 +1887,15 @@ serve(async (req) => {
             realmId
           );
           results.push({ entityId: entity.id, entityType: "BillPayment", ...result });
+        } else if (entity.name === "Attachable") {
+          const result = await processAttachableUpdate(
+            supabase,
+            entity.id,
+            entity.operation,
+            accessToken,
+            realmId
+          );
+          results.push({ entityId: entity.id, entityType: "Attachable", ...result });
         } else {
           console.log(`[Webhook] Skipping unsupported entity type: ${entity.name}`);
         }
