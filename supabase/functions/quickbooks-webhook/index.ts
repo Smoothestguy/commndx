@@ -239,14 +239,17 @@ async function processAttachableUpdate(
     console.log("[Webhook] Attachable deleted in QB, attempting to delete locally...");
     
     // Find the sync log for this attachable
+    // Use text cast since details is JSONB and we need to search for the qb_attachable_id
     const { data: syncLog } = await supabase
       .from("quickbooks_sync_log")
       .select("entity_id, details")
       .eq("entity_type", "bill_attachment")
-      .ilike("details", `%"qb_attachable_id":"${qbAttachableId}"%`)
+      .or(`details.cs.{"qb_attachable_id":"${qbAttachableId}"},details::text.ilike.%${qbAttachableId}%`)
       .order("created_at", { ascending: false })
       .limit(1)
       .maybeSingle();
+    
+    console.log(`[Webhook] Sync log lookup for attachable ${qbAttachableId}:`, syncLog ? "found" : "not found");
     
     let attachmentToDelete: { id: string; file_path: string } | null = null;
     let billIdForLog: string | null = null;
@@ -279,8 +282,12 @@ async function processAttachableUpdate(
           console.log(`[Webhook] Found attachment by qb- prefix: ${qbAttachments[0].id}`);
         } else if (syncLog.details) {
           // Fallback: parse details to find by bill_id and file_name
+          // details is JSONB so it may already be an object or a string
           try {
-            const details = JSON.parse(syncLog.details);
+            const details = typeof syncLog.details === 'string' 
+              ? JSON.parse(syncLog.details) 
+              : syncLog.details;
+            console.log(`[Webhook] Parsed details for fallback lookup:`, details);
             if (details.bill_id && details.file_name) {
               const { data: matchByName } = await supabase
                 .from("vendor_bill_attachments")
