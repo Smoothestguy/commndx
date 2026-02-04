@@ -220,6 +220,40 @@ Available pages:
         required: ["path"]
       }
     }
+  },
+  {
+    type: "function",
+    function: {
+      name: "show_form",
+      description: "Show an interactive form to the user for creating estimates or invoices. ALWAYS use this tool when the user wants to create an estimate or invoice but hasn't provided complete details (customer name AND line items with prices). This shows a form with dropdowns for customer selection, product selection, and quantity/price inputs directly in the chat.",
+      parameters: {
+        type: "object",
+        properties: {
+          form_type: {
+            type: "string",
+            enum: ["create_estimate", "create_invoice"],
+            description: "The type of form to show"
+          },
+          prefilled_customer_name: {
+            type: "string",
+            description: "Optional: Pre-fill the customer dropdown if the user mentioned a customer name"
+          },
+          prefilled_line_items: {
+            type: "array",
+            items: {
+              type: "object",
+              properties: {
+                description: { type: "string" },
+                quantity: { type: "number" },
+                unit_price: { type: "number" }
+              }
+            },
+            description: "Optional: Pre-fill line items if the user mentioned any"
+          }
+        },
+        required: ["form_type"]
+      }
+    }
   }
 ];
 
@@ -245,6 +279,17 @@ async function executeTool(
       return await createInvoice(supabase, args, userId);
     case "navigate_to":
       return { action: "navigate", path: args.path };
+    case "show_form":
+      return { 
+        action: "show_form", 
+        formRequest: {
+          type: args.form_type,
+          prefilled: {
+            customer_name: args.prefilled_customer_name,
+            line_items: args.prefilled_line_items
+          }
+        }
+      };
     default:
       return { error: `Unknown tool: ${toolName}` };
   }
@@ -655,7 +700,8 @@ serve(async (req) => {
   }
 
   try {
-    const { messages, stream = true } = await req.json();
+    const body = await req.json();
+    const { messages, formSubmission, stream = true } = body;
     
     const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
     if (!LOVABLE_API_KEY) {
@@ -676,6 +722,51 @@ serve(async (req) => {
     // Get user ID from auth
     const { data: { user } } = await supabase.auth.getUser();
     const userId = user?.id || "anonymous";
+
+    // Handle direct form submissions (from inline forms)
+    if (formSubmission) {
+      console.log("Handling form submission:", formSubmission);
+      
+      let result;
+      if (formSubmission.type === "create_estimate") {
+        result = await createEstimate(supabase, {
+          customer_id: formSubmission.customer_id,
+          customer_name: formSubmission.customer_name,
+          line_items: formSubmission.line_items,
+          notes: formSubmission.notes,
+        }, userId);
+      } else if (formSubmission.type === "create_invoice") {
+        result = await createInvoice(supabase, {
+          customer_id: formSubmission.customer_id,
+          customer_name: formSubmission.customer_name,
+          line_items: formSubmission.line_items,
+          notes: formSubmission.notes,
+        }, userId);
+      } else {
+        return new Response(JSON.stringify({ error: "Unknown form type" }), {
+          status: 400,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+
+      if (result.error) {
+        return new Response(JSON.stringify({ error: result.error }), {
+          status: 400,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+
+      const docType = formSubmission.type === "create_estimate" ? "Estimate" : "Invoice";
+      const docNumber = result.estimate?.number || result.invoice?.number;
+      const total = result.estimate?.total || result.invoice?.total;
+
+      return new Response(JSON.stringify({
+        content: `✅ **${docType} ${docNumber}** created successfully for **${formSubmission.customer_name}**!\n\nTotal: **$${total.toFixed(2)}**`,
+        actions: result.path ? [{ type: "navigate", path: result.path }] : []
+      }), {
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
 
     // System prompt for the AI assistant
     const systemPrompt = `You are an AI assistant for a construction management application. You help users manage their construction business by:
@@ -714,14 +805,14 @@ AVAILABLE PAGES YOU CAN NAVIGATE TO:
 
 PAGE ALIASES TO UNDERSTAND:
 - "trash page", "recently deleted", "deleted items" → navigate to /admin/trash
-- "create invoice", "new invoice", "make an invoice" → either use create_invoice tool OR navigate to /invoices/new
-- "create estimate", "new estimate" → either use create_estimate tool OR navigate to /estimates/new
 - "dashboard", "home", "main page" → navigate to /
 - "audit logs", "logs", "activity logs" → navigate to /admin/audit-logs
 - "messages", "inbox", "conversations" → navigate to /messages
 
 IMPORTANT BEHAVIORS:
-- When users ask to "create an invoice" without details, ask for the customer name and line items OR navigate to /invoices/new
+- When users ask to "create an invoice" or "create an estimate" without providing BOTH a customer name AND complete line items (with quantities and prices), you MUST use the show_form tool to display an interactive form. This lets them select from dropdowns instead of typing everything.
+- If the user mentions a customer name like "create an invoice for ABC Company", use show_form with prefilled_customer_name set to that name.
+- Only use create_invoice or create_estimate tools directly if the user provides ALL required details: customer name, item descriptions, quantities, AND prices.
 - When users ask to "go to trash" or "show recently deleted", navigate to /admin/trash
 - When users mention "deleted items" or want to restore something, navigate to /admin/trash
 - When users ask for statistics or summaries, use the get_statistics tool
@@ -786,6 +877,7 @@ If you use a tool and get results, summarize them clearly for the user.`;
     if (assistantMessage.tool_calls && assistantMessage.tool_calls.length > 0) {
       const toolResults: any[] = [];
       const actions: any[] = [];
+      let formRequest: any = null;
 
       for (const toolCall of assistantMessage.tool_calls) {
         const args = JSON.parse(toolCall.function.arguments);
@@ -801,6 +893,27 @@ If you use a tool and get results, summarize them clearly for the user.`;
         if (result.action === "navigate") {
           actions.push({ type: "navigate", path: result.path });
         }
+        
+        // Collect form request (if show_form tool was used)
+        if (result.action === "show_form" && result.formRequest) {
+          formRequest = result.formRequest;
+        }
+      }
+      
+      // If we have a form request, return it directly without another AI call
+      if (formRequest) {
+        const formType = formRequest.type === "create_estimate" ? "estimate" : "invoice";
+        const customerPrefix = formRequest.prefilled?.customer_name 
+          ? ` for **${formRequest.prefilled.customer_name}**` 
+          : "";
+        
+        return new Response(JSON.stringify({
+          content: `Let me help you create an ${formType}${customerPrefix}. Please fill in the details below:`,
+          formRequest,
+          actions: []
+        }), {
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
       }
 
       // Make a second call with the tool results

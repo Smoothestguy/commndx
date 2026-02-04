@@ -4,6 +4,9 @@ import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { useNavigate } from "react-router-dom";
 import type { ChatMessage as ChatMessageType } from "@/contexts/AIAssistantContext";
+import { useAIAssistant } from "@/contexts/AIAssistantContext";
+import { EstimateFormInline } from "./forms/EstimateFormInline";
+import { InvoiceFormInline } from "./forms/InvoiceFormInline";
 
 interface ChatMessageProps {
   message: ChatMessageType;
@@ -11,12 +14,23 @@ interface ChatMessageProps {
 
 export function ChatMessage({ message }: ChatMessageProps) {
   const navigate = useNavigate();
+  const { submitForm, isLoading } = useAIAssistant();
   const isUser = message.role === "user";
 
   const handleActionClick = (action: { type: string; path?: string }) => {
     if (action.type === "navigate" && action.path) {
       navigate(action.path);
     }
+  };
+
+  const handleFormSubmit = (data: {
+    type: "create_estimate" | "create_invoice";
+    customer_id: string;
+    customer_name: string;
+    line_items: Array<{ description: string; quantity: number; unit_price: number }>;
+    notes?: string;
+  }) => {
+    submitForm(data);
   };
 
   // Simple markdown-like formatting
@@ -63,8 +77,26 @@ export function ChatMessage({ message }: ChatMessageProps) {
           dangerouslySetInnerHTML={{ __html: formatContent(message.content) }}
         />
 
+        {/* Inline Form for Estimate */}
+        {message.formRequest && message.formRequest.type === "create_estimate" && (
+          <EstimateFormInline
+            prefilled={message.formRequest.prefilled}
+            onSubmit={handleFormSubmit}
+            isSubmitting={isLoading}
+          />
+        )}
+
+        {/* Inline Form for Invoice */}
+        {message.formRequest && message.formRequest.type === "create_invoice" && (
+          <InvoiceFormInline
+            prefilled={message.formRequest.prefilled}
+            onSubmit={handleFormSubmit}
+            isSubmitting={isLoading}
+          />
+        )}
+
         {/* Action Buttons */}
-        {message.actions && message.actions.length > 0 && (
+        {message.actions && message.actions.length > 0 && !message.formRequest && (
           <div className="flex flex-wrap gap-2 mt-3 pt-2 border-t border-border/20">
             {message.actions.map((action, index) => (
               <Button
