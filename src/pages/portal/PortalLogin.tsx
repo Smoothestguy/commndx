@@ -41,13 +41,12 @@ export default function PortalLogin() {
     setShowNetworkError(false);
 
     try {
-      // Pre-flight health check
+      console.info(`[PortalLogin] signIn: start | origin: ${window.location.origin}`);
+      
+      // Non-blocking health check - log but don't block sign-in
       const health = await pingAuthHealth(5000);
       if (!health.healthy) {
-        console.error("[PortalLogin] Health check failed:", health.error);
-        setShowNetworkError(true);
-        toast.error("Can't reach the sign-in service. Please check your connection.");
-        return;
+        console.warn("[PortalLogin] Health check failed, proceeding anyway:", health.error);
       }
 
       const signInPromise = supabase.auth.signInWithPassword({
@@ -59,6 +58,8 @@ export default function PortalLogin() {
 
       if (error) throw error;
 
+      console.info("[PortalLogin] signIn: success, checking personnel link");
+      
       // Check if user is linked to personnel
       const {
         data: { user },
@@ -78,6 +79,7 @@ export default function PortalLogin() {
         }
       }
     } catch (error: unknown) {
+      console.error("[PortalLogin] signIn: exception", error);
       if (isNetworkError(error)) {
         const networkErr = classifyNetworkError(error);
         setShowNetworkError(true);

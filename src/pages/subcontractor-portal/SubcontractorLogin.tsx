@@ -27,13 +27,12 @@ export default function SubcontractorLogin() {
     setShowNetworkError(false);
 
     try {
-      // Pre-flight health check
+      console.info(`[SubcontractorLogin] signIn: start | origin: ${window.location.origin}`);
+      
+      // Non-blocking health check - log but don't block sign-in
       const health = await pingAuthHealth(5000);
       if (!health.healthy) {
-        console.error("[SubcontractorLogin] Health check failed:", health.error);
-        setShowNetworkError(true);
-        toast.error("Can't reach the sign-in service. Please check your connection.");
-        return;
+        console.warn("[SubcontractorLogin] Health check failed, proceeding anyway:", health.error);
       }
 
       const signInPromise = supabase.auth.signInWithPassword({
@@ -45,6 +44,8 @@ export default function SubcontractorLogin() {
 
       if (error) throw error;
 
+      console.info("[SubcontractorLogin] signIn: success, checking contractor link");
+      
       // Check if user is linked to a contractor
       const { data: { user } } = await supabase.auth.getUser();
       if (user) {
@@ -63,6 +64,7 @@ export default function SubcontractorLogin() {
         }
       }
     } catch (error: unknown) {
+      console.error("[SubcontractorLogin] signIn: exception", error);
       if (isNetworkError(error)) {
         const networkErr = classifyNetworkError(error);
         setShowNetworkError(true);

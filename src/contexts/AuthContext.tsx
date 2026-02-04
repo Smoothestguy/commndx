@@ -197,12 +197,12 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       lastName: string
     ) => {
       try {
-        // Pre-flight health check
+        console.info(`[Auth] signUp: start | origin: ${window.location.origin} | backend: ${!!import.meta.env.VITE_SUPABASE_URL}`);
+        
+        // Non-blocking health check - log but don't block sign-up
         const health = await pingAuthHealth(5000);
         if (!health.healthy) {
-          console.error("[Auth] Health check failed before sign-up:", health.error);
-          const networkErr = classifyNetworkError(new Error(health.error || "Service unreachable"));
-          return { error: new Error(networkErr.userMessage) };
+          console.warn("[Auth] Health check failed before sign-up, proceeding anyway:", health.error);
         }
 
         const redirectUrl = `${window.location.origin}/`;
@@ -222,13 +222,16 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         const { data, error } = await withTimeout(signUpPromise, 15000, "Sign up");
 
         if (error) {
+          console.error("[Auth] signUp: error", error.message);
           logAuthEvent("sign_up", email, undefined, false, error.message).catch(console.error);
           return { error };
         }
 
+        console.info("[Auth] signUp: success");
         logAuthEvent("sign_up", email, data.user?.id, true).catch(console.error);
         return { error: null };
       } catch (error) {
+        console.error("[Auth] signUp: exception", error);
         if (isNetworkError(error)) {
           const networkErr = classifyNetworkError(error);
           logAuthEvent("sign_up", email, undefined, false, networkErr.technicalDetails).catch(console.error);
@@ -251,12 +254,12 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const signIn = useCallback(
     async (email: string, password: string) => {
       try {
-        // Pre-flight health check
+        console.info(`[Auth] signIn: start | origin: ${window.location.origin} | backend: ${!!import.meta.env.VITE_SUPABASE_URL}`);
+        
+        // Non-blocking health check - log but don't block sign-in
         const health = await pingAuthHealth(5000);
         if (!health.healthy) {
-          console.error("[Auth] Health check failed before sign-in:", health.error);
-          const networkErr = classifyNetworkError(new Error(health.error || "Service unreachable"));
-          return { error: new Error(networkErr.userMessage) };
+          console.warn("[Auth] Health check failed before sign-in, proceeding anyway:", health.error);
         }
 
         // Wrap sign-in with timeout
@@ -268,14 +271,17 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         const { data, error } = await withTimeout(signInPromise, 15000, "Sign in");
 
         if (error) {
+          console.error("[Auth] signIn: error", error.message);
           logAuthEvent("sign_in", email, undefined, false, error.message).catch(console.error);
           return { error };
         }
 
+        console.info("[Auth] signIn: success");
         logAuthEvent("sign_in", email, data.user?.id, true).catch(console.error);
         navigate("/");
         return { error: null };
       } catch (error) {
+        console.error("[Auth] signIn: exception", error);
         // Check if this is a network error vs. auth error
         if (isNetworkError(error)) {
           const networkErr = classifyNetworkError(error);

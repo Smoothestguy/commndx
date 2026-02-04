@@ -41,13 +41,12 @@ export default function VendorLogin() {
     setShowNetworkError(false);
 
     try {
-      // Pre-flight health check
+      console.info(`[VendorLogin] signIn: start | origin: ${window.location.origin}`);
+      
+      // Non-blocking health check - log but don't block sign-in
       const health = await pingAuthHealth(5000);
       if (!health.healthy) {
-        console.error("[VendorLogin] Health check failed:", health.error);
-        setShowNetworkError(true);
-        toast.error("Can't reach the sign-in service. Please check your connection.");
-        return;
+        console.warn("[VendorLogin] Health check failed, proceeding anyway:", health.error);
       }
 
       const signInPromise = supabase.auth.signInWithPassword({
@@ -59,6 +58,8 @@ export default function VendorLogin() {
 
       if (error) throw error;
 
+      console.info("[VendorLogin] signIn: success, checking vendor link");
+      
       // Check if user is linked to vendor
       const {
         data: { user },
@@ -78,6 +79,7 @@ export default function VendorLogin() {
         }
       }
     } catch (error: unknown) {
+      console.error("[VendorLogin] signIn: exception", error);
       if (isNetworkError(error)) {
         const networkErr = classifyNetworkError(error);
         setShowNetworkError(true);
