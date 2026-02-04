@@ -1,139 +1,85 @@
 
+# Fix: Sign-In Stuck in Loading State
 
-# Fix: Authentication Infinite Loading on Custom Domain
+## Problem
 
-## Problem Analysis
+After clicking "Sign In" with valid credentials, the button shows a loading spinner indefinitely. The authentication succeeds but the UI never updates.
 
-The auth page gets stuck in infinite loading because of a race condition in `AuthContext.tsx`:
+## Root Cause
+
+In `AuthContext.tsx`, the `signIn` function calls `await logAuthEvent()` which inserts into the `audit_logs` table. This call:
+
+1. **Blocks the entire sign-in flow** with `await`
+2. **Has no timeout** - if the insert hangs, the promise never resolves
+3. **The RLS policy** requires authenticated users, but the session may not be fully propagated yet
 
 ```text
-┌─────────────────────────────────────────────────────────────────┐
-│ Current Flow (Broken on Custom Domain)                         │
-├─────────────────────────────────────────────────────────────────┤
-│                                                                 │
-│  1. loading = true (initial state)                              │
-│                                                                 │
-│  2. onAuthStateChange listener set up                           │
-│     └─> Waits for auth EVENT (might never fire!)                │
-│                                                                 │
-│  3. getSession() called                                         │
-│     └─> If corrupted localStorage token exists:                 │
-│         • Supabase tries to refresh token                       │
-│         • Network request may hang or fail silently             │
-│         • setLoading(false) never called                        │
-│                                                                 │
-│  Result: Spinner forever until 10s timeout triggers reload      │
-│          (which might reload into the same broken state)        │
-└─────────────────────────────────────────────────────────────────┘
+User clicks Sign In
+       │
+       ▼
+signInWithPassword() succeeds ✓
+       │
+       ▼
+await logAuthEvent() ← HANGS HERE
+       │              (insert to audit_logs may fail/timeout)
+       ▼
+navigate("/") ← Never reached
+setIsLoading(false) ← Never called
 ```
-
-The 10-second timeout workaround doesn't actually fix the issue - it just reloads the page, which can put you right back in the same broken state if localStorage still has corrupted data.
 
 ## Solution
 
-Fix the `AuthContext` to handle all edge cases properly:
+Make audit logging **non-blocking** ("fire and forget"). The audit log should not prevent the user from signing in.
 
-1. Set `onAuthStateChange` listener **first** (before calling getSession) - this is correct
-2. Add **error handling** to `getSession()` to catch failures
-3. Add a **reasonable timeout** inside the auth context itself (not just in Auth.tsx)
-4. **Clear corrupted session data** when getSession fails to break the loop
+### Changes to `src/contexts/AuthContext.tsx`
 
-## Implementation
+**1. Remove `await` from all `logAuthEvent` calls in authentication functions:**
 
-### File: `src/contexts/AuthContext.tsx`
+| Location | Before | After |
+|----------|--------|-------|
+| `signIn` success (line 254) | `await logAuthEvent(...)` | `logAuthEvent(...).catch(...)` |
+| `signIn` error (line 250) | `await logAuthEvent(...)` | `logAuthEvent(...).catch(...)` |
+| `signUp` success (line 225) | `await logAuthEvent(...)` | `logAuthEvent(...).catch(...)` |
+| `signUp` error (line 221) | `await logAuthEvent(...)` | `logAuthEvent(...).catch(...)` |
+| `signUp` catch (line 228-234) | `await logAuthEvent(...)` | `logAuthEvent(...).catch(...)` |
+| `signIn` catch (line 258-264) | `await logAuthEvent(...)` | `logAuthEvent(...).catch(...)` |
+| `signOut` (line 276) | `await logAuthEvent(...)` | `logAuthEvent(...).catch(...)` |
 
-**Change 1:** Add proper error handling and timeout to the session initialization
+**2. Example of the fix:**
 
+Before:
 ```typescript
-// Lines 101-119 - Replace the useEffect
-useEffect(() => {
-  // Set up auth state listener FIRST
-  const {
-    data: { subscription },
-  } = supabase.auth.onAuthStateChange((event, session) => {
-    console.log("[Auth] Auth state change:", event);
-    setSession(session);
-    setUser(session?.user ?? null);
-    setLoading(false);
-  });
-
-  // Check for existing session with timeout and error handling
-  const checkSession = async () => {
-    try {
-      // Add a timeout to prevent hanging
-      const timeoutPromise = new Promise<never>((_, reject) => {
-        setTimeout(() => reject(new Error("Session check timeout")), 5000);
-      });
-
-      const sessionPromise = supabase.auth.getSession();
-      
-      const { data: { session }, error } = await Promise.race([
-        sessionPromise,
-        timeoutPromise.then(() => { throw new Error("Timeout"); })
-      ]) as Awaited<typeof sessionPromise>;
-
-      if (error) {
-        console.error("[Auth] Error getting session:", error);
-        // Clear potentially corrupted session
-        await supabase.auth.signOut();
-      }
-      
-      setSession(session);
-      setUser(session?.user ?? null);
-    } catch (err) {
-      console.error("[Auth] Session check failed:", err);
-      // Clear localStorage on failure to break the loop
-      try {
-        localStorage.removeItem(`sb-${import.meta.env.VITE_SUPABASE_PROJECT_ID}-auth-token`);
-      } catch (e) {
-        console.error("[Auth] Failed to clear auth token:", e);
-      }
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  checkSession();
-
-  return () => subscription.unsubscribe();
-}, []);
+await logAuthEvent("sign_in", email, data.user?.id, true);
+navigate("/");
+return { error: null };
 ```
 
-### File: `src/pages/Auth.tsx`
-
-**Change 2:** Remove the 10-second reload timeout (no longer needed with proper error handling)
-
-Remove lines 51-61:
+After:
 ```typescript
-// REMOVE THIS - the reload causes a loop and doesn't fix the root cause
-useEffect(() => {
-  if (authLoading) {
-    const timeout = setTimeout(() => {
-      console.warn('[Auth] Loading state stuck, reloading...');
-      window.location.reload();
-    }, 10000);
-    return () => clearTimeout(timeout);
-  }
-}, [authLoading]);
+// Fire and forget - don't block sign-in flow
+logAuthEvent("sign_in", email, data.user?.id, true).catch(console.error);
+navigate("/");
+return { error: null };
 ```
+
+## Technical Details
+
+The `logAuthEvent` function already has its own try-catch, but the `await` means we still wait for the database operation. By removing `await` and adding `.catch()`, we:
+
+1. Let the sign-in complete immediately
+2. Log asynchronously in the background
+3. Catch any errors without blocking the user
+
+## Files to Modify
+
+| File | Change |
+|------|--------|
+| `src/contexts/AuthContext.tsx` | Remove `await` from all `logAuthEvent` calls, add `.catch(console.error)` |
 
 ## Summary
 
 | Aspect | Before | After |
 |--------|--------|-------|
-| Error handling | None - getSession silently fails | Full try/catch with logging |
-| Timeout | 10s reload (creates loop) | 5s internal timeout with cleanup |
-| Corrupted state | Persists after reload | Automatically cleared |
-| Recovery | Manual clear localStorage | Automatic recovery |
-
-## Technical Details
-
-The Supabase project ID from `.env` is `xfjjvznxkcckuwxmcsdc`, so the localStorage key to clear is:
-`sb-xfjjvznxkcckuwxmcsdc-auth-token`
-
-This fix ensures that:
-1. Loading state **always** resolves within 5 seconds
-2. Corrupted sessions are automatically cleared
-3. The page doesn't get stuck in a reload loop
-4. Proper error logging helps debug future issues
-
+| Sign-in flow | Blocked by audit log | Immediate response |
+| Audit logging | Must complete for sign-in | Background "fire and forget" |
+| Error handling | Silently hangs | Logs errors, doesn't block user |
