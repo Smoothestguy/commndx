@@ -1,148 +1,76 @@
 
 
-# Fix: Block Attachment Upload Until Bill is Saved (Complete Flow)
+# Fix: Delay QuickBooks Attachment Sync Until Bill is Saved
 
-## Problem Identified
+## Problem Found
 
-The "save-before-upload" logic is only checking if the **form has unsaved edits** (`isFormDirty`). However, you can upload attachments even when:
+The QuickBooks attachment sync is triggered **immediately** when you upload a file in Edit mode - it doesn't wait for you to press "Update Bill". This causes sync failures because:
 
-1. **No form edits were made** (so `isFormDirty = false`)
-2. **But the bill was never saved after some underlying issue** that prevents QuickBooks sync
+1. You're editing the bill (form has changes)
+2. You upload an attachment → file uploads successfully
+3. The code **immediately** calls `syncAttachmentToQuickBooks()` in a `.then()` callback
+4. But the bill hasn't been saved yet, so QuickBooks may have stale data or the sync fails
 
-The toast error "Edge Function returned a non-2xx status code" indicates the edge function IS being called, but it's returning an error. The issue is that the sync fails but the upload still completes, showing "File uploaded successfully" followed by "QuickBooks sync failed".
+The "save-first" dialog we implemented only catches the case when `isFormDirty` is true. But the real issue is that **any attachment upload in edit mode should NOT sync to QuickBooks until the bill is saved**.
 
-**Root Cause Analysis:**
-- Looking at the edge function logs, we see only "booted" messages but no actual request logs
-- The `quickbooks_sync_log` table has **zero** `bill_attachment` entries
-- Yet the attachment record exists in `vendor_bill_attachments`
+## Root Cause (Code Location)
 
-This suggests one of two scenarios:
-1. The edge function call fails at CORS preflight (never reaches the function body)
-2. The edge function times out or crashes before logging
+In `src/integrations/supabase/hooks/useVendorBillAttachments.ts`, lines 108-136:
+
+```typescript
+// This runs IMMEDIATELY after file upload
+syncAttachmentToQuickBooks(data.id, billId).then((result) => {
+  // Shows success/failure toasts
+});
+```
 
 ## Solution
 
-### Part 1: Fix the Edge Function to Always Log
+Change the attachment sync to be **deferred** until after the bill is saved, not immediate:
 
-The edge function should log the incoming request **immediately** at the start, before any processing. This will help diagnose where failures occur.
+### Option A: Remove Auto-Sync, Require Manual Sync (Simplest)
+- Remove the automatic `syncAttachmentToQuickBooks()` call after upload
+- User must click "Retry Sync" after saving the bill
+- **Pro**: Simple, prevents all timing issues
+- **Con**: Extra manual step for users
 
-**File:** `supabase/functions/quickbooks-sync-bill-attachment/index.ts`
+### Option B: Sync After Bill Save (Recommended)
+- Upload the attachment but **don't** sync to QuickBooks immediately
+- Store "pending sync" state on the attachment
+- When the bill is saved (Update Bill button), sync all pending attachments as part of the save flow
+- **Pro**: Seamless UX - user uploads, presses save, everything syncs
+- **Con**: More complex implementation
 
-Add at the very start of the request handler (after CORS check):
+### Option C: Only Allow Uploads After Bill is Unchanged (Strictest)
+- Block uploads entirely unless the form has no unsaved changes AND the bill is synced to QB
+- **Pro**: Prevents all sync timing issues
+- **Con**: May frustrate users who want to add attachments while editing
 
-```typescript
-console.log(`[ENTRY] quickbooks-sync-bill-attachment called at ${new Date().toISOString()}`);
-console.log(`[ENTRY] Method: ${req.method}, Headers: ${JSON.stringify(Object.fromEntries(req.headers.entries()))}`);
-```
+## Recommended Implementation: Option B (Hybrid)
 
-### Part 2: Fix the CORS Headers to Match What Supabase Client Sends
+1. **Remove auto-sync from upload hook**: In `useUploadVendorBillAttachment`, don't call `syncAttachmentToQuickBooks()` automatically
 
-The current CORS headers may not include all headers the Supabase JS client sends. Looking at the network requests, the client sends these headers:
-- `x-client-info: supabase-js-web/2.90.1`
-- Plus the standard ones
+2. **Add sync step to bill save flow**: When `handleSubmit` in `VendorBillForm` successfully saves the bill:
+   - Query for any attachments without a QuickBooks sync
+   - Sync them one-by-one (or in parallel)
+   - Show combined success/failure toasts
 
-Ensure the edge function's `Access-Control-Allow-Headers` includes `x-client-info` (in addition to the ones already listed).
-
-**File:** `supabase/functions/quickbooks-sync-bill-attachment/index.ts`
-
-```typescript
-const corsHeaders = {
-  "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version",
-};
-```
-
-This already includes `x-client-info`, but let me verify the current deployed version matches.
-
-### Part 3: Better Error Handling on the Frontend
-
-Change the frontend sync call to show a more descriptive error when the edge function fails:
-
-**File:** `src/integrations/supabase/hooks/useVendorBillAttachments.ts`
-
-In `syncAttachmentToQuickBooks`, improve error handling to capture the full error:
-
-```typescript
-if (response.error) {
-  console.error("QuickBooks attachment sync error:", response.error);
-  // Include more context in the error
-  return { 
-    success: false, 
-    error: `${response.error.message || "Sync failed"} (${response.error.name || "unknown"})` 
-  };
-}
-```
-
-### Part 4: Add a Sync Status Check Before Upload (Optional Enhancement)
-
-Consider adding a pre-flight check before allowing attachment uploads that verifies:
-1. The bill has a valid QuickBooks mapping
-2. The mapping status is "synced"
-
-If not, show a warning: "This bill hasn't been synced to QuickBooks yet. Sync the bill first before adding attachments."
-
-This would go in `VendorBillAttachments.tsx`:
-
-```typescript
-// Query the bill's QB sync status
-const { data: billMapping } = useQuery({
-  queryKey: ["bill-qb-mapping", billId],
-  queryFn: async () => {
-    const { data } = await supabase
-      .from("quickbooks_bill_mappings")
-      .select("sync_status, quickbooks_bill_id")
-      .eq("bill_id", billId)
-      .maybeSingle();
-    return data;
-  },
-});
-
-const isBillSyncedToQB = billMapping?.sync_status === "synced" && !!billMapping?.quickbooks_bill_id;
-```
-
-Then in `handleBeforeUpload`:
-```typescript
-if (!isBillSyncedToQB) {
-  toast.warning("Bill not synced to QuickBooks", {
-    description: "Sync the bill first, then attachments will sync automatically."
-  });
-  // Still allow upload, but warn that QB sync won't work
-}
-```
-
----
+3. **Keep "Retry Sync" button**: For any attachments that fail, user can manually retry
 
 ## Files to Modify
 
 | File | Change |
 |------|--------|
-| `supabase/functions/quickbooks-sync-bill-attachment/index.ts` | Add entry logging, verify CORS headers |
-| `src/integrations/supabase/hooks/useVendorBillAttachments.ts` | Improve error messages |
-| `src/components/vendor-bills/VendorBillAttachments.tsx` | (Optional) Add QB sync status check |
+| `src/integrations/supabase/hooks/useVendorBillAttachments.ts` | Remove auto-sync in `useUploadVendorBillAttachment`, add `useSyncPendingAttachments` hook |
+| `src/components/vendor-bills/VendorBillForm.tsx` | After bill save succeeds, call sync for pending attachments |
+| `src/components/vendor-bills/VendorBillAttachments.tsx` | Update messaging to indicate "will sync when bill is saved" |
 
----
+## Expected Behavior After Fix
 
-## Testing Plan
+1. **Edit bill** → make changes
+2. **Upload attachment** → file uploads, toast shows "Attachment added (will sync to QB when you save)"
+3. **Press "Update Bill"** → bill saves, then attachments sync to QuickBooks
+4. **Toast shows** → "Bill updated and attachments synced to QuickBooks"
 
-After implementation:
-
-1. **Upload attachment on published site**
-2. **Check edge function logs** - should now see "[ENTRY]" log immediately
-3. **Check if CORS error appears** in browser console (F12 → Network tab)
-4. **Verify `quickbooks_sync_log`** has an entry for the attachment sync attempt
-
-If the "[ENTRY]" log doesn't appear, the issue is CORS or network-level. If it appears but sync fails, the error will be logged with full details.
-
----
-
-## Why the Current "Save First" Dialog Doesn't Trigger
-
-The dialog shows when `isFormDirty === true`. But:
-- `isFormDirty` is computed by comparing current form values to initial values
-- If you open a bill and don't change anything, `isFormDirty` stays `false`
-- The upload proceeds without the dialog
-
-The edge function SHOULD still work in this case (the bill IS synced to QuickBooks per the mapping). The failure is happening at the edge function level, not the form state level.
-
-**The real issue is the edge function call failing, not the form dirty state logic.**
+If you upload an attachment and then cancel without saving, the attachment stays local but isn't synced to QB (can be synced later via Retry button).
 
