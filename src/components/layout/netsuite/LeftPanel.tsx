@@ -11,7 +11,8 @@ import {
   CheckCircle2,
   Calendar,
   History,
-  MessageSquare
+  MessageSquare,
+  Trash2
 } from "lucide-react";
 import { useRecentPages } from "@/hooks/useRecentPages";
 import { Button } from "@/components/ui/button";
@@ -32,6 +33,7 @@ import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { formatDistanceToNow } from "date-fns";
 import { useConversations, useTotalUnreadCount } from "@/integrations/supabase/hooks/useConversations";
+import { useDeletedItems, getEntityLabel } from "@/integrations/supabase/hooks/useTrash";
 
 interface LeftPanelProps {
   collapsed: boolean;
@@ -45,11 +47,13 @@ export function LeftPanel({ collapsed, onToggleCollapse, backgroundColor, textCo
   const [remindersOpen, setRemindersOpen] = useState(false);
   const [recentOpen, setRecentOpen] = useState(false);
   const [alertsOpen, setAlertsOpen] = useState(false);
+  const [trashOpen, setTrashOpen] = useState(false);
   const [messagesOpen, setMessagesOpen] = useState(false);
   
   const recentPages = useRecentPages();
   const { data: conversations } = useConversations();
   const { data: unreadCount = 0 } = useTotalUnreadCount();
+  const { data: deletedItems } = useDeletedItems(undefined, 5);
 
   // Fetch pending approvals (estimates pending approval)
   const { data: pendingEstimates } = useQuery({
@@ -194,6 +198,26 @@ export function LeftPanel({ collapsed, onToggleCollapse, backgroundColor, textCo
                 </Button>
               </TooltipTrigger>
               <TooltipContent side="right">Recent Projects</TooltipContent>
+            </Tooltip>
+
+            {/* Trash */}
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button 
+                  variant="ghost" 
+                  size="icon" 
+                  className="relative"
+                  onClick={() => { onToggleCollapse(); setTrashOpen(true); }}
+                >
+                  <Trash2 className="h-4 w-4" />
+                  {(deletedItems?.length ?? 0) > 0 && (
+                    <span className="absolute -top-1 -right-1 h-4 w-4 bg-muted-foreground text-background text-[10px] rounded-full flex items-center justify-center">
+                      {deletedItems?.length}
+                    </span>
+                  )}
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent side="right">Trash</TooltipContent>
             </Tooltip>
 
             {/* Messages */}
@@ -374,6 +398,52 @@ export function LeftPanel({ collapsed, onToggleCollapse, backgroundColor, textCo
                     </p>
                   </Link>
                 ))}
+              </div>
+            </CollapsibleContent>
+          </Collapsible>
+
+          {/* Trash Section */}
+          <Collapsible open={trashOpen} onOpenChange={setTrashOpen}>
+            <CollapsibleTrigger className="flex w-full items-center justify-between rounded-md px-2 py-1.5 text-sm font-medium hover:bg-muted">
+              <div className="flex items-center gap-2">
+                <Trash2 className="h-4 w-4 text-muted-foreground" />
+                <span>Trash</span>
+                {(deletedItems?.length ?? 0) > 0 && (
+                  <Badge variant="secondary" className="h-5 px-1.5 text-[10px]">
+                    {deletedItems?.length}
+                  </Badge>
+                )}
+              </div>
+              <ChevronRight className={cn("h-4 w-4 transition-transform", trashOpen && "rotate-90")} />
+            </CollapsibleTrigger>
+            <CollapsibleContent className="mt-1">
+              <div className="space-y-1 pl-6">
+                {deletedItems?.length === 0 && (
+                  <p className="text-xs text-muted-foreground py-2">No deleted items</p>
+                )}
+                {deletedItems?.map((item) => (
+                  <Link
+                    key={item.id}
+                    to="/admin/trash"
+                    className="block rounded-md p-2 text-xs hover:bg-muted transition-colors"
+                  >
+                    <div className="flex items-center justify-between">
+                      <span className="font-medium truncate">{item.identifier}</span>
+                      <Badge variant="outline" className="text-[10px]">
+                        {getEntityLabel(item.entity_type)}
+                      </Badge>
+                    </div>
+                    <p className="text-muted-foreground">
+                      {formatDistanceToNow(new Date(item.deleted_at), { addSuffix: true })}
+                    </p>
+                  </Link>
+                ))}
+                <Link
+                  to="/admin/trash"
+                  className="block rounded-md p-2 text-xs text-muted-foreground hover:bg-muted transition-colors font-medium"
+                >
+                  View All Trash →
+                </Link>
               </div>
             </CollapsibleContent>
           </Collapsible>
