@@ -52,6 +52,7 @@ import {
   FolderSearch,
   History,
   MessageCircle,
+  Trash2,
 } from "lucide-react";
 import logo from "@/assets/logo.png";
 import logoDark from "@/assets/logo-dark.png";
@@ -403,6 +404,23 @@ export function AppSidebar() {
                         <Link to="/admin/audit-logs">
                           <ScrollText className={iconClass} />
                           <span>Audit Logs</span>
+                        </Link>
+                      </SidebarMenuButton>
+                    </SidebarMenuItem>
+                  )}
+                  
+                  {/* Trash - show if admin OR manager */}
+                  {(isAdmin || isManager) && (
+                    <SidebarMenuItem>
+                      <SidebarMenuButton
+                        asChild
+                        isActive={location.pathname === "/admin/trash"}
+                        tooltip="Trash"
+                        className={menuButtonClass}
+                      >
+                        <Link to="/admin/trash">
+                          <Trash2 className={iconClass} />
+                          <span>Trash</span>
                         </Link>
                       </SidebarMenuButton>
                     </SidebarMenuItem>

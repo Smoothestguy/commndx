@@ -6,7 +6,7 @@ import { RevenueChartRow } from "./RevenueChartRow";
 import { RecentInvoicesTable } from "./RecentInvoicesTable";
 import { RecentActivityTable } from "./RecentActivityTable";
 import { InvoiceAgingSummary } from "./InvoiceAgingSummary";
-import { RecentlyDeleted } from "@/components/dashboard/RecentlyDeleted";
+
 import { MobileSessionCard } from "@/components/session/MobileSessionCard";
 import { useDashboardConfig } from "@/hooks/useDashboardConfig";
 import { useUserRole } from "@/hooks/useUserRole";
@@ -246,11 +246,8 @@ export function RowBasedDashboard() {
         {/* Row 5: Revenue Chart */}
         <RevenueChartRow />
 
-        {/* Row 6: Invoice Aging Summary + Recently Deleted */}
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-          <InvoiceAgingSummary />
-          <RecentlyDeleted />
-        </div>
+        {/* Row 6: Invoice Aging Summary */}
+        <InvoiceAgingSummary />
       </div>
 
       {/* Theme Editor Sidebar */}
