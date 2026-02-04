@@ -1,119 +1,115 @@
 
-# Fix Vendor Bill Attachment Sync and Add Toast Close Button
 
-## Problem Summary
+# Remove Unit Price from Estimate PDF
 
-Two issues reported:
-1. Attachments added to vendor bills are not syncing to QuickBooks
-2. Toast notifications at the bottom of the screen don't have a visible close button (X)
+## Overview
+
+Hide the unit price column from the estimate PDF document to show only Description, Quantity, and Amount (total per line).
 
 ---
 
-## Issue 1: Attachment Sync Not Working
+## Current Layout
 
-### Investigation Findings
+```text
+┌──────────────────────────────────────────────────────────┐
+│ Description          │ Qty │ Unit Price │ Amount        │
+├──────────────────────────────────────────────────────────┤
+│ Product Name         │  5  │   $100.00  │   $500.00     │
+│ Another Item         │  2  │    $50.00  │   $100.00     │
+└──────────────────────────────────────────────────────────┘
+```
 
-The sync logs show no attachment-related entries, meaning the sync function is never being invoked. After reviewing the code:
+## New Layout (After Change)
 
-- The `useUploadVendorBillAttachment` hook correctly checks for QB bill mappings
-- The edge function `quickbooks-sync-bill-attachment` exists and is properly implemented
-- The hook calls `supabase.functions.invoke()` in a `.then()` callback
+```text
+┌──────────────────────────────────────────────────────────┐
+│ Description                           │ Qty │ Amount    │
+├──────────────────────────────────────────────────────────┤
+│ Product Name                          │  5  │   $500.00 │
+│ Another Item                          │  2  │   $100.00 │
+└──────────────────────────────────────────────────────────┘
+```
 
-**Root Cause**: The code checks if `sync_status === "synced"`, but the mapping table may have a different status value (like `success` instead of `synced`), causing the condition to fail silently.
+---
 
-### Solution
+## File to Modify
 
-Update the sync condition to check for valid sync status values and add better logging to catch issues:
+| File | Changes |
+|------|---------|
+| `src/utils/estimatePdfExport.ts` | Remove Unit Price column header and values, adjust column positions |
 
-**File**: `src/integrations/supabase/hooks/useVendorBillAttachments.ts`
+---
 
+## Implementation Details
+
+### Changes to `src/utils/estimatePdfExport.ts`
+
+**1. Remove Unit Price column header (line 309)**
+
+Current:
 ```typescript
-// Fix: Check for valid sync status (could be 'synced' or 'success')
-const isSynced = qbMapping.sync_status === "synced" || qbMapping.sync_status === "success";
-
-if (qbMapping && isSynced && qbMapping.quickbooks_bill_id) {
-  console.log("Triggering QB attachment sync for bill:", billId);
-  // ... sync code
-}
+doc.text("Description", margin + 5, yPos + 7);
+doc.text("Qty", pageWidth - 90, yPos + 7);
+doc.text("Unit Price", pageWidth - 65, yPos + 7);  // Remove this
+doc.text("Amount", pageWidth - margin - 5, yPos + 7, { align: "right" });
 ```
 
-Also add immediate logging before the QB mapping check to debug the issue.
-
----
-
-## Issue 2: Toast Close Button Not Visible
-
-### Investigation Findings
-
-The app uses Sonner for toast notifications. The `Toaster` component in `src/components/ui/sonner.tsx` doesn't have the `closeButton` prop enabled.
-
-### Solution
-
-Add `closeButton={true}` to the Sonner Toaster component to always show an X button on toasts.
-
-**File**: `src/components/ui/sonner.tsx`
-
-```tsx
-return (
-  <Sonner
-    theme={theme as ToasterProps["theme"]}
-    className="toaster group"
-    closeButton={true}  // Add this line
-    toastOptions={{...}}
-    {...props}
-  />
-);
-```
-
----
-
-## Files to Modify
-
-| File | Change |
-|------|--------|
-| `src/integrations/supabase/hooks/useVendorBillAttachments.ts` | Fix sync status check and add debugging logs |
-| `src/components/ui/sonner.tsx` | Add `closeButton={true}` prop |
-
----
-
-## Technical Details
-
-### Attachment Sync Fix
-
-The current code:
+Updated:
 ```typescript
-if (qbMapping && qbMapping.sync_status === "synced" && qbMapping.quickbooks_bill_id) {
+doc.text("Description", margin + 5, yPos + 7);
+doc.text("Qty", pageWidth - 55, yPos + 7);  // Adjust position
+doc.text("Amount", pageWidth - margin - 5, yPos + 7, { align: "right" });
 ```
 
-Will be updated to:
+**2. Remove Unit Price from line items (line 346)**
+
+Current:
 ```typescript
-// Log the mapping result for debugging
-console.log("QB mapping check for bill:", billId, qbMapping);
-
-// Check for valid sync statuses (different sources may use different values)
-const validSyncStatuses = ["synced", "success"];
-const isSynced = qbMapping && 
-  validSyncStatuses.includes(qbMapping.sync_status) && 
-  qbMapping.quickbooks_bill_id;
-
-if (isSynced) {
-  console.log("Triggering QB attachment sync:", {
-    attachmentId: data.id,
-    billId,
-    qbBillId: qbMapping.quickbooks_bill_id
-  });
-  // ... rest of sync code
-}
+doc.text(line, margin + 5, yPos);
+doc.setFont("helvetica", "normal");
+doc.text(item.quantity.toString(), pageWidth - 90, yPos);
+doc.text(formatCurrencyForPDF(item.unitPrice), pageWidth - 65, yPos);  // Remove this
+doc.text(formatCurrencyForPDF(item.total), pageWidth - margin - 5, yPos, { align: "right" });
 ```
 
-### Toast Close Button
+Updated:
+```typescript
+doc.text(line, margin + 5, yPos);
+doc.setFont("helvetica", "normal");
+doc.text(item.quantity.toString(), pageWidth - 55, yPos);  // Adjust position
+doc.text(formatCurrencyForPDF(item.total), pageWidth - margin - 5, yPos, { align: "right" });
+```
 
-Sonner supports a `closeButton` prop that renders a visible X button on all toasts. This makes it easy for users to dismiss notifications without waiting for auto-dismiss.
+**3. Adjust description max width**
+
+Current:
+```typescript
+const maxDescWidth = pageWidth - 120;
+```
+
+Updated (wider description area since unit price column is removed):
+```typescript
+const maxDescWidth = pageWidth - 90;
+```
 
 ---
 
-## Expected Behavior After Fix
+## Summary of Changes
 
-1. **Attachment Sync**: When adding attachments to a synced vendor bill, they will sync to QuickBooks. Console logs will show the sync process for debugging.
+| Line(s) | Change |
+|---------|--------|
+| 309 | Remove "Unit Price" header, adjust "Qty" position from -90 to -55 |
+| 331 | Increase maxDescWidth from 120 to 90 |
+| 345-346 | Remove unit price line, adjust quantity position from -90 to -55 |
 
-2. **Toast Close Button**: All toast notifications will display an X button in the top-right corner that users can click to immediately dismiss the notification.
+---
+
+## Expected Result
+
+After this change, the estimate PDF will display:
+- **Description** - Product/service name with details
+- **Qty** - Quantity ordered  
+- **Amount** - Total price for the line item (quantity × unit price)
+
+The unit price will be hidden from the customer-facing PDF while still being tracked internally in the system.
+
