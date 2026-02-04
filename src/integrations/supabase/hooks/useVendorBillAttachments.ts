@@ -1,4 +1,5 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { toast } from "sonner";
@@ -15,6 +16,35 @@ export interface VendorBillAttachment {
 }
 
 export const useVendorBillAttachments = (billId: string) => {
+  const queryClient = useQueryClient();
+
+  // Subscribe to realtime changes on vendor_bill_attachments for this bill
+  useEffect(() => {
+    if (!billId) return;
+
+    const channel = supabase
+      .channel(`vendor-bill-attachments-${billId}`)
+      .on(
+        "postgres_changes",
+        {
+          event: "*",
+          schema: "public",
+          table: "vendor_bill_attachments",
+          filter: `bill_id=eq.${billId}`,
+        },
+        (payload) => {
+          console.log("[Realtime] Attachment change detected:", payload.eventType);
+          // Invalidate the query to refetch fresh data
+          queryClient.invalidateQueries({ queryKey: ["vendor-bill-attachments", billId] });
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [billId, queryClient]);
+
   return useQuery({
     queryKey: ["vendor-bill-attachments", billId],
     queryFn: async () => {

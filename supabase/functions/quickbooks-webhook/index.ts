@@ -204,6 +204,209 @@ async function fetchQBVendor(vendorId: string, accessToken: string, realmId: str
   return data.Vendor;
 }
 
+// Query QuickBooks for attachables linked to a specific bill
+async function queryQBAttachablesForBill(
+  qbBillId: string,
+  accessToken: string,
+  realmId: string
+): Promise<any[]> {
+  const query = `SELECT * FROM Attachable WHERE AttachableRef.EntityRef.Type = 'Bill' AND AttachableRef.EntityRef.value = '${qbBillId}'`;
+  const url = `https://quickbooks.api.intuit.com/v3/company/${realmId}/query?query=${encodeURIComponent(query)}&minorversion=65`;
+  
+  console.log(`[Webhook] Querying QB attachables for bill ${qbBillId}...`);
+  
+  const response = await fetch(url, {
+    headers: {
+      Authorization: `Bearer ${accessToken}`,
+      Accept: "application/json",
+    },
+  });
+
+  if (!response.ok) {
+    const errorText = await response.text();
+    console.error(`[Webhook] QB attachables query failed: ${errorText}`);
+    return [];
+  }
+
+  const data = await response.json();
+  const attachables = data.QueryResponse?.Attachable || [];
+  console.log(`[Webhook] Found ${attachables.length} attachables in QuickBooks for bill ${qbBillId}`);
+  return attachables;
+}
+
+// Reconcile local attachments with QuickBooks after a Bill Update
+async function reconcileBillAttachments(
+  supabase: any,
+  localBillId: string,
+  qbBillId: string,
+  accessToken: string,
+  realmId: string
+) {
+  try {
+    console.log(`[Webhook] Reconciling attachments for bill ${localBillId} (QB: ${qbBillId})...`);
+    
+    // 1. Query QuickBooks for current attachables
+    const qbAttachables = await queryQBAttachablesForBill(qbBillId, accessToken, realmId);
+    
+    // Build sets for matching
+    const qbAttachableIds = new Set(qbAttachables.map((a: any) => a.Id));
+    const qbFileNames = new Set(qbAttachables.map((a: any) => a.FileName?.toLowerCase()));
+    
+    console.log(`[Webhook] QB has ${qbAttachableIds.size} attachables, filenames: ${Array.from(qbFileNames).join(', ')}`);
+    
+    // 2. Get local attachments for this bill
+    const { data: localAttachments, error: fetchError } = await supabase
+      .from("vendor_bill_attachments")
+      .select("id, file_name, file_path, uploaded_by")
+      .eq("bill_id", localBillId);
+    
+    if (fetchError) {
+      console.error("[Webhook] Error fetching local attachments:", fetchError);
+      return;
+    }
+    
+    if (!localAttachments || localAttachments.length === 0) {
+      console.log("[Webhook] No local attachments to reconcile");
+      return;
+    }
+    
+    console.log(`[Webhook] Found ${localAttachments.length} local attachments to check`);
+    
+    // 3. Check each local attachment
+    const toDelete: Array<{ id: string; file_path: string; reason: string }> = [];
+    
+    for (const local of localAttachments) {
+      let existsInQB = false;
+      let matchReason = "";
+      
+      // Check if it's a QB-sourced attachment (file_path contains -qb-)
+      const qbIdMatch = local.file_path?.match(/-qb-(\d+)\./);
+      if (qbIdMatch) {
+        const embeddedQbId = qbIdMatch[1];
+        if (qbAttachableIds.has(embeddedQbId)) {
+          existsInQB = true;
+          matchReason = `matched by embedded QB ID ${embeddedQbId}`;
+        }
+      }
+      
+      // Fallback: check by filename
+      if (!existsInQB && local.file_name) {
+        if (qbFileNames.has(local.file_name.toLowerCase())) {
+          existsInQB = true;
+          matchReason = `matched by filename ${local.file_name}`;
+        }
+      }
+      
+      // For CommandX-uploaded attachments, check sync log for qb_attachable_id
+      if (!existsInQB && local.uploaded_by) {
+        const { data: syncLog } = await supabase
+          .from("quickbooks_sync_log")
+          .select("details")
+          .eq("entity_type", "bill_attachment")
+          .eq("entity_id", local.id)
+          .eq("status", "success")
+          .order("created_at", { ascending: false })
+          .limit(1)
+          .maybeSingle();
+        
+        if (syncLog?.details) {
+          try {
+            const details = typeof syncLog.details === 'string' 
+              ? JSON.parse(syncLog.details) 
+              : syncLog.details;
+            const qbAttachableId = details?.qb_attachable_id;
+            
+            if (qbAttachableId) {
+              if (qbAttachableIds.has(qbAttachableId)) {
+                existsInQB = true;
+                matchReason = `matched by sync log QB ID ${qbAttachableId}`;
+              } else {
+                // Has a QB ID but not in current QB set - should be deleted
+                console.log(`[Webhook] Attachment ${local.id} has QB ID ${qbAttachableId} but it's not in QuickBooks anymore`);
+              }
+            } else {
+              // No QB ID in sync log = local-only, don't delete
+              existsInQB = true;
+              matchReason = "local-only (no qb_attachable_id in sync log)";
+            }
+          } catch (parseErr) {
+            console.error("[Webhook] Failed to parse sync log details:", parseErr);
+            // Skip on parse error to be safe
+            existsInQB = true;
+            matchReason = "skipped due to parse error";
+          }
+        } else {
+          // No sync log = not yet synced to QB, don't delete
+          existsInQB = true;
+          matchReason = "local-only (no sync log)";
+        }
+      }
+      
+      if (existsInQB) {
+        console.log(`[Webhook] Attachment ${local.id} exists: ${matchReason}`);
+      } else {
+        console.log(`[Webhook] Attachment ${local.id} (${local.file_name}) NOT found in QuickBooks - marking for deletion`);
+        toDelete.push({ 
+          id: local.id, 
+          file_path: local.file_path, 
+          reason: "Missing in QuickBooks" 
+        });
+      }
+    }
+    
+    // 4. Delete attachments that no longer exist in QuickBooks
+    if (toDelete.length > 0) {
+      console.log(`[Webhook] Deleting ${toDelete.length} attachment(s) not found in QuickBooks`);
+      
+      for (const item of toDelete) {
+        // Delete from storage
+        try {
+          await supabase.storage
+            .from("document-attachments")
+            .remove([item.file_path]);
+          console.log(`[Webhook] Deleted from storage: ${item.file_path}`);
+        } catch (storageErr) {
+          console.error(`[Webhook] Failed to delete from storage: ${item.file_path}`, storageErr);
+        }
+        
+        // Delete the record
+        const { error: deleteError } = await supabase
+          .from("vendor_bill_attachments")
+          .delete()
+          .eq("id", item.id);
+        
+        if (deleteError) {
+          console.error(`[Webhook] Failed to delete attachment record ${item.id}:`, deleteError);
+        } else {
+          console.log(`[Webhook] Deleted attachment record ${item.id}`);
+        }
+      }
+      
+      // Log the reconciliation
+      try {
+        await supabase.from("quickbooks_sync_log").insert({
+          entity_type: "bill_attachment",
+          entity_id: localBillId,
+          action: "webhook_reconcile_delete",
+          status: "success",
+          details: JSON.stringify({
+            qb_bill_id: qbBillId,
+            qb_attachable_ids: Array.from(qbAttachableIds),
+            deleted_attachments: toDelete.map(d => ({ id: d.id, reason: d.reason })),
+          }),
+        });
+      } catch (logErr) {
+        console.error("[Webhook] Failed to log reconciliation:", logErr);
+      }
+    } else {
+      console.log("[Webhook] All local attachments still exist in QuickBooks - no deletions needed");
+    }
+    
+  } catch (error: any) {
+    console.error("[Webhook] Error during attachment reconciliation:", error.message);
+  }
+}
+
 // Fetch attachable (attachment) from QuickBooks
 async function fetchQBAttachable(attachableId: string, accessToken: string, realmId: string) {
   const url = `https://quickbooks.api.intuit.com/v3/company/${realmId}/attachable/${attachableId}?minorversion=65`;
@@ -1593,6 +1796,9 @@ async function processBillUpdate(
       operation,
     },
   });
+
+  // Reconcile attachments - delete any that no longer exist in QuickBooks
+  await reconcileBillAttachments(supabase, mapping.bill_id, qbBillId, accessToken, realmId);
 
   console.log("[Webhook] Successfully updated vendor bill from QB:", mapping.bill_id);
   return { success: true, action: "updated", billId: mapping.bill_id };
