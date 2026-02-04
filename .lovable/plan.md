@@ -1,45 +1,94 @@
 
+# Move Recently Deleted Access to Sidebar
 
-# Add Recently Deleted Card to Dashboard
+## Overview
 
-## Problem
-The `RecentlyDeleted` component exists at `src/components/dashboard/RecentlyDeleted.tsx` but was never added to the main dashboard layout in `RowBasedDashboard.tsx`.
+Remove the Recently Deleted card from the dashboard and add a "Trash" link in the sidebar's Account section instead, providing quick access from anywhere in the app.
 
-## Solution
-Add the Recently Deleted card to the dashboard, placing it alongside the Invoice Aging Summary in a two-column layout for better visual balance.
+---
 
 ## Changes Required
 
 | File | Change |
 |------|--------|
-| `src/components/dashboard/rows/RowBasedDashboard.tsx` | Import `RecentlyDeleted` component and add it to the layout |
+| `src/components/dashboard/rows/RowBasedDashboard.tsx` | Remove the `RecentlyDeleted` component from the layout, revert Row 6 to single-column `InvoiceAgingSummary` |
+| `src/components/layout/AppSidebar.tsx` | Add "Trash" link in the Account section (visible to admins/managers) |
 
-## New Dashboard Layout
-
-```text
-Row 1: Welcome Strip
-Row 2: KPI Bar  
-Row 3: Quick Actions
-Row 4: Recent Invoices | Recent Activity (side by side)
-Row 5: Revenue Chart
-Row 6: Invoice Aging Summary | Recently Deleted (side by side) <-- NEW
-```
+---
 
 ## Technical Details
 
-Add this import at the top:
-```typescript
-import { RecentlyDeleted } from "@/components/dashboard/RecentlyDeleted";
-```
+### 1. Remove from Dashboard
 
-Replace the current Row 6 section with a two-column grid:
-```typescript
+Revert the recent change to `RowBasedDashboard.tsx`:
+
+```tsx
+// Before (current)
 {/* Row 6: Invoice Aging Summary + Recently Deleted */}
 <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
   <InvoiceAgingSummary />
   <RecentlyDeleted />
 </div>
+
+// After
+{/* Row 6: Invoice Aging Summary */}
+<InvoiceAgingSummary />
 ```
 
-This matches the pattern already used for Row 4 (Recent Invoices + Recent Activity).
+Also remove the import:
+```tsx
+import { RecentlyDeleted } from "@/components/dashboard/RecentlyDeleted";
+```
 
+### 2. Add to Sidebar
+
+In `AppSidebar.tsx`, add a Trash link to the Account section:
+
+```tsx
+// Add Trash2 to the lucide-react imports
+import { Trash2 } from "lucide-react";
+
+// Add after Audit Logs, before Document Center (visible to admin/manager only)
+{(isAdmin || isManager) && (
+  <SidebarMenuItem>
+    <SidebarMenuButton
+      asChild
+      isActive={location.pathname === "/admin/trash"}
+      tooltip="Trash"
+      className={menuButtonClass}
+    >
+      <Link to="/admin/trash">
+        <Trash2 className={iconClass} />
+        <span>Trash</span>
+      </Link>
+    </SidebarMenuButton>
+  </SidebarMenuItem>
+)}
+```
+
+---
+
+## Updated Sidebar Account Section
+
+After implementation, the Account section will include:
+
+| Item | Visibility |
+|------|------------|
+| User Management | Admin or has permission |
+| Permissions | Admin or has permission |
+| Vendor Portal Preview | Admin only |
+| Personnel Portal Preview | Admin only |
+| Audit Logs | Admin or has permission |
+| **Trash** | Admin or Manager |
+| Document Center | Admin/Manager/Accounting or has permission |
+| Activity History | All authenticated |
+| Settings | All authenticated |
+| Sign Out | All authenticated |
+
+---
+
+## Result
+
+- Dashboard remains clean with Invoice Aging Summary as the final row
+- Trash is accessible from the sidebar under Account (for admins/managers)
+- Quick navigation to `/admin/trash` from anywhere in the app
