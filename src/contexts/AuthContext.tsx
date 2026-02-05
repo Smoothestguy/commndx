@@ -11,11 +11,6 @@ import { User, Session } from "@supabase/supabase-js";
 import { supabase } from "@/integrations/supabase/client";
 import { lovable } from "@/integrations/lovable";
 import { useNavigate } from "react-router-dom";
-import { 
-  withTimeout, 
-  isNetworkError, 
-  classifyNetworkError
-} from "@/utils/authNetwork";
 
 // Check if running in Electron - multiple detection methods for robustness
 const isElectron = () => {
@@ -104,43 +99,23 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const deepLinkListenerSet = useRef(false);
 
   useEffect(() => {
-    let isMounted = true;
-
-    // Set up auth state listener FIRST
+    // Set up auth state listener
     const {
       data: { subscription },
     } = supabase.auth.onAuthStateChange((event, session) => {
-      console.log("[Auth] Auth state change:", event);
-      if (isMounted) {
-        setSession(session);
-        setUser(session?.user ?? null);
-        setLoading(false);
-      }
+      setSession(session);
+      setUser(session?.user ?? null);
+      setLoading(false);
     });
 
-    // Simple session check without complex Promise.race
-    supabase.auth.getSession()
-      .then(({ data: { session }, error }) => {
-        if (error) {
-          console.error("[Auth] Error getting session:", error);
-        }
-        if (isMounted) {
-          setSession(session);
-          setUser(session?.user ?? null);
-          setLoading(false);
-        }
-      })
-      .catch((err) => {
-        console.error("[Auth] Session check failed:", err);
-        if (isMounted) {
-          setLoading(false);
-        }
-      });
+    // Check for existing session
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      setSession(session);
+      setUser(session?.user ?? null);
+      setLoading(false);
+    });
 
-    return () => {
-      isMounted = false;
-      subscription.unsubscribe();
-    };
+    return () => subscription.unsubscribe();
   }, []);
 
   // Set up deep link listener for Electron OAuth callbacks
@@ -196,44 +171,35 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       lastName: string
     ) => {
       try {
-        console.info(`[Auth] signUp: start | origin: ${window.location.origin}`);
-
         const redirectUrl = `${window.location.origin}/`;
 
-        const { data, error } = await withTimeout(
-          supabase.auth.signUp({
-            email,
-            password,
-            options: {
-              emailRedirectTo: redirectUrl,
-              data: {
-                first_name: firstName,
-                last_name: lastName,
-              },
+        const { data, error } = await supabase.auth.signUp({
+          email,
+          password,
+          options: {
+            emailRedirectTo: redirectUrl,
+            data: {
+              first_name: firstName,
+              last_name: lastName,
             },
-          }),
-          15000,
-          "Sign up"
-        );
+          },
+        });
 
         if (error) {
-          console.error("[Auth] signUp: error", error.message);
-          logAuthEvent("sign_up", email, undefined, false, error.message).catch(console.error);
+          await logAuthEvent("sign_up", email, undefined, false, error.message);
           return { error };
         }
 
-        console.info("[Auth] signUp: success");
-        logAuthEvent("sign_up", email, data.user?.id, true).catch(console.error);
+        await logAuthEvent("sign_up", email, data.user?.id, true);
         return { error: null };
       } catch (error) {
-        console.error("[Auth] signUp: exception", error);
-        if (isNetworkError(error)) {
-          const networkErr = classifyNetworkError(error);
-          logAuthEvent("sign_up", email, undefined, false, networkErr.technicalDetails).catch(console.error);
-          return { error: new Error(networkErr.userMessage) };
-        }
-        
-        logAuthEvent("sign_up", email, undefined, false, (error as Error).message).catch(console.error);
+        await logAuthEvent(
+          "sign_up",
+          email,
+          undefined,
+          false,
+          (error as Error).message
+        );
         return { error: error as Error };
       }
     },
@@ -243,33 +209,27 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const signIn = useCallback(
     async (email: string, password: string) => {
       try {
-        console.info(`[Auth] signIn: start | origin: ${window.location.origin}`);
-
-        const { data, error } = await withTimeout(
-          supabase.auth.signInWithPassword({ email, password }),
-          15000,
-          "Sign in"
-        );
+        const { data, error } = await supabase.auth.signInWithPassword({
+          email,
+          password,
+        });
 
         if (error) {
-          console.error("[Auth] signIn: error", error.message);
-          logAuthEvent("sign_in", email, undefined, false, error.message).catch(console.error);
+          await logAuthEvent("sign_in", email, undefined, false, error.message);
           return { error };
         }
 
-        console.info("[Auth] signIn: success");
-        logAuthEvent("sign_in", email, data.user?.id, true).catch(console.error);
+        await logAuthEvent("sign_in", email, data.user?.id, true);
         navigate("/");
         return { error: null };
       } catch (error) {
-        console.error("[Auth] signIn: exception", error);
-        if (isNetworkError(error)) {
-          const networkErr = classifyNetworkError(error);
-          logAuthEvent("sign_in", email, undefined, false, networkErr.technicalDetails).catch(console.error);
-          return { error: new Error(networkErr.userMessage) };
-        }
-        
-        logAuthEvent("sign_in", email, undefined, false, (error as Error).message).catch(console.error);
+        await logAuthEvent(
+          "sign_in",
+          email,
+          undefined,
+          false,
+          (error as Error).message
+        );
         return { error: error as Error };
       }
     },
@@ -281,7 +241,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     const currentUserId = user?.id;
 
     await supabase.auth.signOut();
-    logAuthEvent("sign_out", currentEmail, currentUserId, true).catch(console.error);
+    await logAuthEvent("sign_out", currentEmail, currentUserId, true);
     navigate("/auth");
   }, [user, navigate]);
 
@@ -335,7 +295,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       console.log("[Auth] Using Lovable OAuth for web");
       // For web: use normal Lovable OAuth flow
       const { error } = await lovable.auth.signInWithOAuth("google", {
-        redirect_uri: `${window.location.origin}/auth/callback`,
+        redirect_uri: window.location.origin,
       });
 
       if (error) {
@@ -371,7 +331,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 
       // For web: use normal Lovable OAuth flow
       const { error } = await lovable.auth.signInWithOAuth("apple", {
-        redirect_uri: `${window.location.origin}/auth/callback`,
+        redirect_uri: window.location.origin,
       });
 
       if (error) {
