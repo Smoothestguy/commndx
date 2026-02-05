@@ -1,3 +1,4 @@
+import { useEffect } from "react";
 import { useSearchParams } from "react-router-dom";
 import { PageLayout } from "@/components/layout/PageLayout";
 import { MessagesInbox } from "@/components/messaging/MessagesInbox";
@@ -7,10 +8,14 @@ export default function Messages() {
   const [searchParams, setSearchParams] = useSearchParams();
   
   // Redirect from old tab param to clean URL
-  if (searchParams.get("tab") === "blasts") {
-    searchParams.delete("tab");
-    setSearchParams(searchParams, { replace: true });
-  }
+  // IMPORTANT: do this in an effect to avoid navigation/state updates during render (can cause loops)
+  useEffect(() => {
+    if (searchParams.get("tab") !== "blasts") return;
+
+    const next = new URLSearchParams(searchParams);
+    next.delete("tab");
+    setSearchParams(next, { replace: true });
+  }, [searchParams, setSearchParams]);
 
   return (
     <PageLayout title="Messages">
