@@ -263,8 +263,8 @@ const PersonnelOnboarding = () => {
           // For other: ITIN required
           if (formData.immigration_status === "other") {
             const hasITIN = formData.itin && formData.itin.length === 9 && formData.itin.startsWith("9");
-            const hasWorkAuthDoc = !!getDocumentByType("other");
-            return hasITIN && hasWorkAuthDoc;
+            // Work authorization document is optional
+            return hasITIN;
           } else {
             // Visa, Work Permit, Green Card all need SSN
             const hasSSN = formData.ssn_full && formData.ssn_full.length === 9;
