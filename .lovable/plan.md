@@ -1,199 +1,109 @@
 
 
-# Enhanced Work Authorization Flow for Personnel Registration
+# Fix: Update PersonnelOnboarding.tsx Work Authorization Flow
 
-## Overview
-Transform Step 3 of the Personnel Registration form (`PersonnelRegister.tsx`) to implement a comprehensive conditional workflow that collects appropriate identification and documents based on citizenship and immigration status.
+## Issue Identified
+The `PersonnelOnboarding.tsx` file (used for `/onboard/:token`) is **mostly correct** but has one key issue:
 
-## Requirements Summary
+**Currently**: SSN + SSN Card upload is shown to ALL users at the top of Step 3, regardless of their citizenship/immigration status.
 
-| Status | Identifier Required | Documents Required |
-|--------|---------------------|-------------------|
-| U.S. Citizen | SSN | Government ID (Driver's License or Passport) |
-| Non-Citizen: Visa | SSN | Visa documents |
-| Non-Citizen: Work Permit | SSN | Work Permit/EAD documents |
-| Non-Citizen: Green Card | SSN | Green Card (Front AND Back) |
-| Non-Citizen: Other | ITIN | Work Authorization document |
+**Required**: 
+- SSN should only be shown/required for U.S. Citizens + Visa/Work Permit/Green Card holders
+- ITIN should be shown for "Other" immigration status
+- SSN Card upload should not be required for "Other" status
 
-## User Flow Diagram
+## Changes Required
+
+### File: `src/pages/PersonnelOnboarding.tsx`
+
+1. **Import ITINInput component** (already exists in the project)
+   
+2. **Restructure Step 3 Logic**:
+   - Move SSN input INSIDE the citizenship/immigration conditional blocks
+   - Add ITIN input for "Other" immigration status
+   - Remove the standalone SSN section at the top
+
+### Updated Flow
 
 ```text
 Step 3: Work Authorization
-         |
-         v
-   "Are you a U.S. Citizen?"
-         |
-    +----+----+
-    |         |
-   Yes        No
-    |         |
-    v         v
-  +-------+  "Select Immigration Status"
-  |  SSN  |         |
-  | Input |    +----+----+----+----+
-  +-------+    |    |    |    |
-    |        Visa  WP   GC  Other
-    v          |    |    |    |
-+----------+   v    v    v    v
-| Gov ID   | SSN  SSN  SSN  ITIN
-| Upload   |  +    +    +    +
-+----------+ Visa  EAD  GC   Work Auth
-             Doc   Doc  F&B  Doc
+    |
+    v
+"Are you a U.S. Citizen?"
+    |
++---+---+
+|       |
+Yes     No
+|       |
+v       v
+SSN     "Immigration Status?"
++       |
+Gov ID  +----+----+----+----+
+        |    |    |    |
+      Visa  WP   GC  Other
+        |    |    |    |
+        v    v    v    v
+       SSN  SSN  SSN  ITIN
+        +    +    +    +
+      Visa  EAD  GC   Work Auth
+      Doc   Doc  F&B  Doc
 ```
 
-## Technical Implementation
+### Code Changes
 
-### 1. Update Form State
-
-Expand the `formData` state to include:
-- `citizenship_status`: "us_citizen" | "non_us_citizen"
-- `immigration_status`: "visa" | "work_permit" | "green_card" | "other"
-- `ssn`: string (9-digit SSN for citizens and visa/work_permit/green_card holders)
-- `itin`: string (9-digit ITIN for "other" immigration status)
-- `documents`: Array of uploaded documents with type tags
-
-### 2. Create ITIN Input Component
-
-Create `src/components/personnel/registration/ITINInput.tsx`:
-- Similar to `SSNInput` component but validates ITIN format
-- ITIN must be 9 digits and start with "9"
-- Format: 9XX-XX-XXXX
-- Include show/hide toggle for security
-
-### 3. Update Step 3 UI
-
-Replace the current single dropdown with a multi-section form:
-
-**Section A - Citizenship Question**
-- Radio group: "Yes, I am a U.S. Citizen" / "No, I am not a U.S. Citizen"
-
-**Section B - Conditional based on citizenship:**
-
-**If U.S. Citizen:**
-- SSN Input field (required)
-- Government ID upload (Driver's License or Passport) - required
-
-**If Non-U.S. Citizen:**
-- Immigration Status dropdown (Visa, Work Permit, Green Card, Other)
-- Based on selection:
-  - **Visa**: SSN input + Visa document upload
-  - **Work Permit**: SSN input + EAD document upload
-  - **Green Card**: SSN input + Green Card Front + Green Card Back uploads
-  - **Other**: ITIN input + Work Authorization document upload
-
-### 4. Validation Rules
-
-Update submit validation to require:
-- Citizenship status must be selected
-- If U.S. Citizen: SSN + Government ID document required
-- If Non-Citizen:
-  - Immigration status must be selected
-  - For Visa/Work Permit/Green Card: SSN required + appropriate document(s)
-  - For Other: ITIN required + Work Authorization document required
-
-### 5. Data Mapping on Submit
-
-Map the new fields to the database:
-- Store SSN in `ssn_full` column (existing)
-- Add ITIN to form data (will be stored appropriately)
-- Store `citizenship_status` and `immigration_status` 
-- Documents are uploaded to `personnel-documents` storage bucket
-
-## Files to Create/Modify
-
-| File | Action | Description |
-|------|--------|-------------|
-| `src/components/personnel/registration/ITINInput.tsx` | Create | ITIN input component with validation and masking |
-| `src/pages/PersonnelRegister.tsx` | Modify | Expand Step 3 with conditional citizenship/immigration flow |
-
-## UI Layout for Enhanced Step 3
-
-```text
-+--------------------------------------------------+
-|  Step 3: Work Authorization                      |
-+--------------------------------------------------+
-|                                                  |
-|  Are you a U.S. Citizen? *                       |
-|    ( ) Yes                ( ) No                 |
-|                                                  |
-+--------------------------------------------------+
-| [If "Yes" selected:]                             |
-|                                                  |
-|  Social Security Number (SSN) *                  |
-|  +--------------------------------------+        |
-|  | •••-••-1234                     [eye]|        |
-|  +--------------------------------------+        |
-|                                                  |
-|  Government-Issued ID *                          |
-|  +--------------------------------------+        |
-|  | [Upload icon] Driver's License or    |        |
-|  |               Passport               |        |
-|  +--------------------------------------+        |
-+--------------------------------------------------+
-| [If "No" selected:]                              |
-|                                                  |
-|  Immigration Status *                            |
-|  [Select status...                         v]    |
-|                                                  |
-+--------------------------------------------------+
-| [If Visa selected:]                              |
-|                                                  |
-|  Social Security Number (SSN) *                  |
-|  +--------------------------------------+        |
-|  | Enter 9-digit SSN                    |        |
-|  +--------------------------------------+        |
-|                                                  |
-|  Visa Documentation *                            |
-|  +--------------------------------------+        |
-|  | [Upload icon] Upload visa stamp/I-94 |        |
-|  +--------------------------------------+        |
-+--------------------------------------------------+
-| [If Work Permit selected:]                       |
-|                                                  |
-|  Social Security Number (SSN) *                  |
-|  +--------------------------------------+        |
-|  | Enter 9-digit SSN                    |        |
-|  +--------------------------------------+        |
-|                                                  |
-|  Employment Authorization Document (EAD) *       |
-|  +--------------------------------------+        |
-|  | [Upload icon] Upload EAD card        |        |
-|  +--------------------------------------+        |
-+--------------------------------------------------+
-| [If Green Card selected:]                        |
-|                                                  |
-|  Social Security Number (SSN) *                  |
-|  +--------------------------------------+        |
-|  | Enter 9-digit SSN                    |        |
-|  +--------------------------------------+        |
-|                                                  |
-|  Green Card (Front) *      Green Card (Back) *   |
-|  +----------------+        +------------------+  |
-|  | [Upload]       |        | [Upload]         |  |
-|  +----------------+        +------------------+  |
-+--------------------------------------------------+
-| [If Other selected:]                             |
-|                                                  |
-|  Individual Taxpayer ID Number (ITIN) *          |
-|  +--------------------------------------+        |
-|  | 9XX-XX-XXXX                          |        |
-|  +--------------------------------------+        |
-|  (ITIN must start with 9)                        |
-|                                                  |
-|  Work Authorization Document *                   |
-|  +--------------------------------------+        |
-|  | [Upload icon] Upload work auth docs  |        |
-|  +--------------------------------------+        |
-+--------------------------------------------------+
+**Before (current - lines 674-702)**:
+```jsx
+{/* Social Security Section - ALWAYS SHOWN */}
+<div className="space-y-4">
+  <h3>Social Security Information</h3>
+  <SSNInput ... />
+  <CategoryDocumentUpload documentType="ssn_card" ... />
+</div>
 ```
 
-## Validation Rules Summary
+**After (proposed)**:
+```jsx
+{/* Citizenship question shown first */}
+<div className="space-y-4">
+  <h3>Citizenship Status</h3>
+  <RadioGroup "Are you a U.S. Citizen?" ... />
+</div>
 
-| Status | SSN Required | ITIN Required | Documents Required |
-|--------|-------------|---------------|-------------------|
-| U.S. Citizen | Yes | No | Government ID |
-| Visa | Yes | No | Visa documentation |
-| Work Permit | Yes | No | EAD document |
-| Green Card | Yes | No | Green Card Front + Back |
-| Other | No | Yes | Work Authorization document |
+{/* US Citizen: SSN + Gov ID */}
+{citizenshipStatus === "us_citizen" && (
+  <SSNInput ... />
+  <CategoryDocumentUpload documentType="government_id" ... />
+)}
+
+{/* Non-US Citizen: Immigration dropdown */}
+{citizenshipStatus === "non_us_citizen" && (
+  <RadioGroup "Immigration Status" ... />
+  
+  {/* Visa/Work Permit/Green Card: SSN + specific docs */}
+  {["visa", "work_permit", "green_card"].includes(immigrationStatus) && (
+    <SSNInput ... />
+    {/* Conditional document uploads */}
+  )}
+  
+  {/* Other: ITIN + Work Auth doc */}
+  {immigrationStatus === "other" && (
+    <ITINInput ... />
+    <CategoryDocumentUpload documentType="work_authorization" ... />
+  )}
+)}
+```
+
+## Validation Updates
+
+Update `validateStep3` (or equivalent) to:
+- Require SSN for US citizens and visa/work_permit/green_card
+- Require ITIN for "other" immigration status
+- Require appropriate documents based on selection
+
+## Summary
+
+No need to resend the onboarding link. Once this fix is deployed:
+1. Your guy can refresh the page
+2. He'll see the corrected flow with citizenship question first
+3. Based on his selection, he'll see the appropriate identifier (SSN or ITIN) and document requirements
 
