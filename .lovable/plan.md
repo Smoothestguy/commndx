@@ -1,207 +1,129 @@
 
 
-# Admin Clock-In Time Adjustment Feature
+# Session Time Edit Feature for Session History
 
 ## Overview
-Add an admin-only feature to manually adjust clock-in times for time entries in the User Management section. This allows administrators to correct clock-in times when personnel clock in late or have timing issues.
+Add the ability for admins/managers to edit session start and end times directly in the Session History page for any user they're viewing. This includes:
+1. Adding a new session manually
+2. Editing existing session start time
+3. Editing existing session end time
 
 ## Current System Analysis
 
-### Relevant Data Structures
-The `time_entries` table already has all necessary fields:
-- `clock_in_at` (timestamp) - The clock-in timestamp to be edited
-- `clock_out_at` (timestamp) - Clock-out time (for validation)
-- `clock_in_lat`, `clock_in_lng`, `clock_in_accuracy` - Location data (to preserve)
-- `entry_source` (string) - Can be set to `admin_edit` after modification
-- `hours`, `regular_hours`, `overtime_hours` - Need recalculation
+### `user_work_sessions` Table Structure
+| Field | Type | Description |
+|-------|------|-------------|
+| `session_start` | timestamp | Start time (editable) |
+| `session_end` | timestamp | End time (editable) |
+| `total_active_seconds` | number | Needs recalculation on edit |
+| `total_idle_seconds` | number | Preserved on edit |
+| `is_active` | boolean | Set based on session_end |
+| `clock_in_type` | string | Set to 'admin_edit' on manual changes |
 
 ### Existing Components
-- `useTimeClock.ts` - Clock in/out mutations and queries
-- `useAuditLog.ts` - Audit logging with `computeChanges` helper
-- `UserManagement.tsx` - Target page for the feature (has tabs for Users, Invitations, Activity)
+- `SessionHistoryTable.tsx` - Displays sessions with edit capability needed
+- `EditClockInTimeDialog.tsx` - Pattern for time edit dialogs (for time_entries)
+- `useAdminClockEdit.ts` - Pattern for admin edit hooks
 
 ## Implementation Plan
 
-### 1. Create Clock-In Edit Dialog Component
+### 1. Create Session Edit Dialog Component
 
-**File**: `src/components/user-management/EditClockInTimeDialog.tsx`
+**File**: `src/components/session/EditSessionTimeDialog.tsx`
 
-A modal dialog that:
-- Shows the current clock-in time
-- Provides a datetime picker for the new clock-in time
-- Shows validation warnings (e.g., if new time would be after clock-out or in the future)
-- Requires confirmation before saving
-- Displays original location data (lat/lng) that will be preserved
+A modal dialog that allows editing both start and end times:
+- Shows current session start and end times
+- DateTime pickers for new start and end times
+- Validation:
+  - Start cannot be in the future
+  - Start cannot be after end
+  - End cannot be before start
+  - End cannot be in the future (unless marking as active)
+- Shows hours impact preview
+- Requires confirmation checkbox
+- Logs changes to audit trail
 
-**UI Elements**:
-- Entry details header (Personnel name, project, date)
-- Current clock-in time display
-- DateTime picker for new time
-- Warning banners for validation issues
-- Confirmation checkbox
-- Save/Cancel buttons
+### 2. Create Add Session Dialog Component
 
-### 2. Create Hook for Admin Clock-In Edits
+**File**: `src/components/session/AddSessionDialog.tsx`
 
-**File**: `src/integrations/supabase/hooks/useAdminClockEdit.ts`
+A modal dialog for creating a new session:
+- User selector (pre-filled with currently viewed user)
+- Date picker for session date
+- Start time picker
+- End time picker (optional - leave blank for active session)
+- Validation rules same as edit dialog
+- Sets `clock_in_type: 'admin_manual'`
 
-A custom hook that:
-- Fetches time entries with clock-in data for a date range
-- Provides mutation for updating `clock_in_at`
-- Automatically recalculates `hours`, `regular_hours`, `overtime_hours`
-- Sets `entry_source: 'admin_edit'` after modification
-- Logs changes to audit log
+### 3. Create Hook for Session Edits
+
+**File**: `src/hooks/useSessionEdit.ts`
+
+Custom hook providing:
+- `updateSessionTimes` mutation - Updates start/end times
+- `createSession` mutation - Creates new session
+- Automatic recalculation of `total_active_seconds`
+- Preserves `total_idle_seconds`
+- Audit logging for all changes
 
 **Key Logic**:
 ```typescript
-// Recalculate hours when clock_in_at changes
-const clockIn = new Date(newClockInAt);
-const clockOut = entry.clock_out_at ? new Date(entry.clock_out_at) : null;
-if (clockOut) {
-  const totalMs = clockOut.getTime() - clockIn.getTime();
-  const lunchMs = (entry.lunch_duration_minutes || 0) * 60 * 1000;
-  const workMs = totalMs - lunchMs;
-  const hoursWorked = Math.max(0, workMs / (1000 * 60 * 60));
-}
+// Recalculate active seconds when times change
+const start = new Date(newSessionStart);
+const end = newSessionEnd ? new Date(newSessionEnd) : new Date();
+const totalSeconds = Math.floor((end.getTime() - start.getTime()) / 1000);
+const idleSeconds = session.total_idle_seconds || 0;
+const activeSeconds = Math.max(0, totalSeconds - idleSeconds);
 ```
 
-### 3. Add Time Clock Management Tab to User Management
+### 4. Update SessionHistoryTable
 
-**File Modification**: `src/pages/UserManagement.tsx`
+**File Modification**: `src/components/session/SessionHistoryTable.tsx`
 
-Add a new tab "Time Clock Admin" (visible only to admins) that:
-- Shows recent clock entries (last 7 days by default)
-- Displays clock-in/out times with personnel and project info
-- Includes "Edit Clock-In" button (pencil icon) for each entry
-- Filters by date range and personnel
+Add to the table:
+- Edit (pencil) icons next to Start and End time columns
+- "Add Session" button in the card header
+- Pass `isAdmin` prop to control visibility
+- Connect to edit/add dialogs
 
-### 4. Update Audit Logging Types
+### 5. Update SessionHistory Page
 
-**File Modification**: `src/hooks/useAuditLog.ts`
+**File Modification**: `src/pages/SessionHistory.tsx`
 
-Add `clock_in_edit` action type to the existing types for proper categorization of these edits.
+- Pass `isAdmin` prop to `SessionHistoryTable`
+- Import and render the new dialogs
 
-## Technical Implementation Details
+## UI Design
 
-### Permission Check
-```typescript
-// Only admins can edit clock-in times
-if (!isAdmin) {
-  return null; // Don't show the tab/feature
-}
-```
-
-### Validation Rules
-1. New clock-in time cannot be in the future
-2. New clock-in time cannot be after clock-out time (if clocked out)
-3. New clock-in time must be on the same calendar day as the original entry
-4. Show warning if change results in negative or zero hours
-
-### Audit Log Entry Format
-```typescript
-{
-  actionType: "update",
-  resourceType: "time_entry",
-  resourceId: entry.id,
-  changesBefore: { 
-    clock_in_at: originalTime,
-    hours: originalHours,
-    entry_source: originalSource
-  },
-  changesAfter: { 
-    clock_in_at: newTime,
-    hours: recalculatedHours,
-    entry_source: "admin_edit"
-  },
-  metadata: {
-    edit_type: "clock_in_adjustment",
-    personnel_id: entry.personnel_id,
-    project_id: entry.project_id
-  }
-}
-```
-
-### Data Flow Diagram
+### Desktop Table View (Updated)
 ```text
-[User Management Page]
-        |
-        v
-[Time Clock Admin Tab] (admin only)
-        |
-        v
-[Clock Entry List]
-   - Shows entries with clock_in_at
-   - Edit button per entry
-        |
-        v
-[EditClockInTimeDialog]
-   - Current time display
-   - New time picker
-   - Validation warnings
-   - Confirmation required
-        |
-        v
-[useAdminClockEdit mutation]
-   - Update clock_in_at
-   - Recalculate hours
-   - Set entry_source: 'admin_edit'
-   - Preserve location data
-   - Log to audit_logs
-        |
-        v
-[Invalidate queries]
-   - time-entries
-   - clock-history
-   - admin-time-entries
++-------------------------------------------------------------------------+
+| Session History                                        [+ Add] [Export] |
++-------------------------------------------------------------------------+
+| Date       | Start      | End        | Active  | Idle   | Earnings | ...|
+|------------|------------|------------|---------|--------|----------|-----|
+| Feb 5, 2026| 9:00 AM ✏️ | 5:30 PM ✏️ | 8h 15m  | 15m    | $165.00  | ... |
+| Feb 4, 2026| 8:45 AM ✏️ | Active     | 2h 30m  | 5m     | $50.00   | ... |
++-------------------------------------------------------------------------+
 ```
 
-## Files to Create/Modify
-
-| File | Action | Description |
-|------|--------|-------------|
-| `src/components/user-management/EditClockInTimeDialog.tsx` | Create | Modal for editing clock-in time with validation |
-| `src/components/user-management/TimeClockAdminTab.tsx` | Create | New tab component showing clock entries with edit capabilities |
-| `src/integrations/supabase/hooks/useAdminClockEdit.ts` | Create | Hook for fetching/updating clock entries as admin |
-| `src/pages/UserManagement.tsx` | Modify | Add "Time Clock Admin" tab (admin-only) |
-| `src/hooks/useAuditLog.ts` | Modify | Add `clock_in_edit` action type |
-
-## UI Mockup
-
+### Edit Session Time Dialog
 ```text
-+------------------------------------------------------------------+
-|  User Management                                                  |
-+------------------------------------------------------------------+
-|  [Users] [Invitations] [Activity] [Time Clock Admin*]            |
-+------------------------------------------------------------------+
-|  * Admin only                                                     |
-|                                                                   |
-|  Time Clock Administration                                        |
-|  -----------------------------------------------------------------|
-|  Date Range: [Last 7 days v]  Personnel: [All v]  [Filter]       |
-|  -----------------------------------------------------------------|
-|  | Personnel       | Project     | Clock In      | Clock Out    ||
-|  |-----------------|-------------|---------------|---------------||
-|  | John Doe        | Site A      | 8:15 AM [✏️]  | 5:00 PM      ||
-|  | Jane Smith      | Site B      | 9:30 AM [✏️]  | Active       ||
-|  | Bob Wilson      | Site A      | 7:45 AM [✏️]  | 4:30 PM      ||
-+------------------------------------------------------------------+
-
-[Edit Clock-In Time Dialog]
 +--------------------------------------------------+
-|  Edit Clock-In Time                              |
+|  Edit Session Time                               |
 +--------------------------------------------------+
-|  Personnel: John Doe                             |
-|  Project: Site A                                 |
-|  Date: Jan 15, 2026                              |
+|  User: John Doe                                  |
+|  Date: February 5, 2026                          |
 |                                                  |
-|  Current Clock-In: 8:15:32 AM                    |
-|  Location: Preserved (lat: 34.05, lng: -118.24) |
+|  Session Start: *                                |
+|  [Date/Time Picker: 2026-02-05 09:00       ]     |
 |                                                  |
-|  New Clock-In Time:                              |
-|  [Date/Time Picker: 8:00:00 AM              ]    |
+|  Session End:                                    |
+|  [Date/Time Picker: 2026-02-05 17:30       ]     |
+|  [ ] Leave as Active (no end time)               |
 |                                                  |
-|  ⚠️ This will change total hours from 8.75h     |
-|     to 9.0h                                      |
+|  ⚠️ This will change total time from 8h 30m     |
+|     to 8h 15m                                    |
 |                                                  |
 |  [✓] I confirm this change is accurate          |
 |                                                  |
@@ -209,10 +131,101 @@ if (!isAdmin) {
 +--------------------------------------------------+
 ```
 
-## Security Considerations
+### Add Session Dialog
+```text
++--------------------------------------------------+
+|  Add Session                                     |
++--------------------------------------------------+
+|  User: John Doe (viewing)                        |
+|                                                  |
+|  Date: *                                         |
+|  [Date Picker: February 5, 2026          ]       |
+|                                                  |
+|  Start Time: *                                   |
+|  [Time Picker: 09:00 AM                  ]       |
+|                                                  |
+|  End Time:                                       |
+|  [Time Picker: 05:30 PM                  ]       |
+|  [ ] Mark as Active Session (no end time)        |
+|                                                  |
+|  [Cancel]                      [Add Session]     |
++--------------------------------------------------+
+```
 
-1. **Admin-only access**: Feature is gated behind `isAdmin` check using the existing `useUserRole` hook
-2. **Audit trail**: All changes are logged with before/after values, user who made the change, and timestamp
-3. **Entry source marking**: Modified entries are marked with `entry_source: 'admin_edit'` for transparency
-4. **Preserve location data**: Original clock-in location is preserved to maintain GPS verification history
+## Data Flow
+
+```text
+[SessionHistoryTable]
+        |
+   +----+----+
+   |         |
+[Edit ✏️]  [+ Add]
+   |         |
+   v         v
+[EditSessionTimeDialog]  [AddSessionDialog]
+        |                      |
+        v                      v
+   [useSessionEdit hook]
+        |
+        +---> Update session_start/session_end
+        +---> Recalculate total_active_seconds
+        +---> Set clock_in_type: 'admin_edit' or 'admin_manual'
+        +---> Log to audit_logs
+        |
+        v
+   [Invalidate queries]
+   - session-history
+   - session-stats
+   - today-sessions
+```
+
+## Files to Create/Modify
+
+| File | Action | Description |
+|------|--------|-------------|
+| `src/components/session/EditSessionTimeDialog.tsx` | Create | Modal for editing session start/end times |
+| `src/components/session/AddSessionDialog.tsx` | Create | Modal for adding new sessions |
+| `src/hooks/useSessionEdit.ts` | Create | Hook for session CRUD operations with audit logging |
+| `src/components/session/SessionHistoryTable.tsx` | Modify | Add edit icons, Add button, connect dialogs |
+| `src/pages/SessionHistory.tsx` | Modify | Pass isAdmin prop, render dialogs |
+
+## Validation Rules
+
+1. **Start Time**:
+   - Required
+   - Cannot be in the future
+   - Cannot be after end time (if end time set)
+
+2. **End Time**:
+   - Optional (if blank, session is marked active)
+   - Cannot be before start time
+   - Cannot be in the future
+
+3. **Hours Recalculation**:
+   - `total_active_seconds = (end - start) - total_idle_seconds`
+   - Preserve existing `total_idle_seconds`
+   - Active sessions use current time for calculation
+
+## Audit Trail
+
+All changes logged with:
+```typescript
+{
+  actionType: "update" | "create",
+  resourceType: "user_work_session",
+  resourceId: session.id,
+  changesBefore: { session_start, session_end, total_active_seconds },
+  changesAfter: { session_start, session_end, total_active_seconds },
+  metadata: {
+    edit_type: "session_time_adjustment" | "session_manual_add",
+    target_user_id: userId
+  }
+}
+```
+
+## Security
+
+- Edit/Add buttons only visible to admins (using `isAdmin` from `useUserRole`)
+- All mutations validate user has admin role
+- Changes are tracked in audit logs with the admin's user ID
 
