@@ -27,7 +27,6 @@ import { format, startOfWeek, endOfWeek } from "date-fns";
 import { supabase } from "@/integrations/supabase/client";
 import { useCompanySettings } from "@/integrations/supabase/hooks/useCompanySettings";
 import {
-  generateWH347PDF,
   organizeEntriesForWH347,
   type WH347ExportData,
 } from "@/utils/wh347ExportUtils";
@@ -289,25 +288,75 @@ export function WH347ExportDialog({
             .join(", ")
         : "";
 
-      // Generate PDF
-      const exportData: WH347ExportData = {
+      // Transform employee data for edge function
+      const formDataForBackend = {
         contractorName: companySettings?.company_name || "Company Name",
         contractorAddress,
+        isSubcontractor,
         payrollNumber: payrollNumber.trim(),
-        weekEnding: weekEnd,
+        weekEnding: format(weekEnd, "MM/dd/yyyy"),
         projectName: projectName || project?.name || "Project",
         projectLocation,
         contractNumber: project?.customer_po || "",
-        isSubcontractor,
-        employees: employeeRows,
-        certifierName: certifierName.trim() || undefined,
-        certifierTitle: certifierTitle.trim() || undefined,
-        certificationDate: new Date(),
-        fringePaidToPlan,
-        fringePaidInCash,
+        employees: employeeRows.map((emp) => ({
+          name: `${emp.personnel.lastName}, ${emp.personnel.firstName}`,
+          address: [emp.personnel.address, emp.personnel.city, emp.personnel.state, emp.personnel.zip]
+            .filter(Boolean)
+            .join(", "),
+          ssnLastFour: emp.personnel.ssnLastFour || "",
+          withholdingExemptions: emp.personnel.withholdingExemptions || 0,
+          workClassification: emp.personnel.workClassification || "",
+          dailyHours: emp.dailyHours.map((d) => ({
+            straight: d.straightHours,
+            overtime: d.overtimeHours,
+          })),
+          totalHours: {
+            straight: emp.regularHours,
+            overtime: emp.overtimeHours,
+          },
+          rateOfPay: {
+            straight: emp.straightRate,
+            overtime: emp.overtimeRate,
+          },
+          grossEarned: emp.grossEarned,
+          deductions: emp.deductions,
+          totalDeductions: emp.deductions.fica + emp.deductions.withholding + emp.deductions.other,
+          netWages: emp.netWages,
+        })),
+        signatory: {
+          name: certifierName.trim() || "",
+          title: certifierTitle.trim() || "",
+          date: format(new Date(), "MM/dd/yyyy"),
+        },
+        fringeBenefits: {
+          paidToPlans: fringePaidToPlan,
+          paidInCash: fringePaidInCash,
+        },
       };
 
-      generateWH347PDF(exportData);
+      // Call edge function to generate PDF
+      const { data: pdfData, error: pdfError } = await supabase.functions.invoke(
+        "generate-pdf",
+        {
+          body: {
+            type: "wh-347",
+            formData: formDataForBackend,
+          },
+        }
+      );
+
+      if (pdfError) {
+        throw new Error(pdfError.message || "Failed to generate PDF");
+      }
+
+      // Download the generated PDF
+      const blob = new Blob([pdfData], { type: "application/pdf" });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      link.href = url;
+      link.download = `WH-347_${(projectName || "Project").replace(/[^a-zA-Z0-9]/g, "_")}_${format(weekEnd, "yyyy-MM-dd")}.pdf`;
+      link.click();
+      URL.revokeObjectURL(url);
 
       toast.success("WH-347 form generated successfully");
       handleOpenChange(false);

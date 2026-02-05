@@ -8,6 +8,42 @@ const corsHeaders = {
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
 };
 
+interface WH347FormData {
+  contractorName: string;
+  contractorAddress: string;
+  isSubcontractor: boolean;
+  payrollNumber: string;
+  weekEnding: string;
+  projectName: string;
+  projectLocation: string;
+  contractNumber: string;
+  
+  employees: Array<{
+    name: string;
+    address: string;
+    ssnLastFour: string;
+    withholdingExemptions: number;
+    workClassification: string;
+    dailyHours: Array<{ straight: number; overtime: number }>;
+    totalHours: { straight: number; overtime: number };
+    rateOfPay: { straight: number; overtime: number };
+    grossEarned: number;
+    deductions: { fica: number; withholding: number; other: number };
+    totalDeductions: number;
+    netWages: number;
+  }>;
+  
+  signatory: {
+    name: string;
+    title: string;
+    date: string;
+  };
+  fringeBenefits: {
+    paidToPlans: boolean;
+    paidInCash: boolean;
+  };
+}
+
 interface W9FormData {
   name_on_return: string;
   business_name?: string | null;
@@ -65,7 +101,7 @@ serve(async (req) => {
 
   try {
     const { type, formData, ssnFull, ssnLastFour } = await req.json();
-    console.log(`Generating ${type} PDF...`);
+    console.log(`Generating ${type} PDF document...`);
 
     const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
     const supabaseServiceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
@@ -77,6 +113,8 @@ serve(async (req) => {
       pdfBytes = await generateW9PDF(supabase, formData as W9FormData, ssnFull, ssnLastFour);
     } else if (type === "1099-nec") {
       pdfBytes = await generate1099PDF(supabase, formData as Generate1099Data);
+    } else if (type === "wh-347") {
+      pdfBytes = await generateWH347PDF(supabase, formData as WH347FormData);
     } else {
       throw new Error(`Unknown form type: ${type}`);
     }
@@ -364,6 +402,204 @@ async function generate1099PDF(
   }
 
   // Flatten the form
+  form.flatten();
+  
+  return await pdfDoc.save();
+}
+
+async function generateWH347PDF(
+  supabase: any,
+  formData: WH347FormData
+): Promise<Uint8Array> {
+  // Download template from storage
+  const { data: templateData, error } = await supabase.storage
+    .from("form-templates")
+    .download("wh-347-348-fillable.pdf");
+
+  if (error) {
+    console.error("Error downloading template:", error);
+    throw new Error(`Failed to download WH-347 template: ${error.message}`);
+  }
+
+  const templateBytes = await templateData.arrayBuffer();
+  const pdfDoc = await PDFDocument.load(templateBytes);
+  
+  // Get form fields
+  const form = pdfDoc.getForm();
+  const fields = form.getFields();
+  
+  // Log all available field names for mapping
+  console.log("Available WH-347 form fields:", fields.map(f => f.getName()));
+
+  // Helper to safely set text field
+  const setTextField = (fieldName: string, value: string | undefined) => {
+    if (!value) return;
+    try {
+      const field = form.getTextField(fieldName);
+      field.setText(value);
+    } catch (e) {
+      // Field doesn't exist, skip silently
+    }
+  };
+
+  // Helper to safely set checkbox
+  const setCheckbox = (fieldName: string, checked: boolean) => {
+    if (!checked) return;
+    try {
+      const checkbox = form.getCheckBox(fieldName);
+      checkbox.check();
+    } catch (e) {
+      // Checkbox doesn't exist, skip silently
+    }
+  };
+
+  // Format currency
+  const formatCurrency = (amount: number): string => {
+    return amount.toFixed(2);
+  };
+
+  // Try multiple common field naming patterns for header fields
+  const headerMappings = [
+    // Pattern 1: Direct names
+    { contractor: "Name of Contractor", address: "Address", payroll: "Payroll No", weekEnding: "For Week Ending", project: "Project and Location", contract: "Project or Contract No" },
+    // Pattern 2: CamelCase
+    { contractor: "ContractorName", address: "ContractorAddress", payroll: "PayrollNo", weekEnding: "WeekEnding", project: "ProjectAndLocation", contract: "ProjectOrContractNo" },
+    // Pattern 3: With subform prefix
+    { contractor: "topmostSubform[0].Page1[0].ContractorName[0]", address: "topmostSubform[0].Page1[0].Address[0]", payroll: "topmostSubform[0].Page1[0].PayrollNo[0]", weekEnding: "topmostSubform[0].Page1[0].WeekEnding[0]", project: "topmostSubform[0].Page1[0].ProjectLocation[0]", contract: "topmostSubform[0].Page1[0].ContractNo[0]" },
+  ];
+
+  for (const mapping of headerMappings) {
+    setTextField(mapping.contractor, formData.contractorName);
+    setTextField(mapping.address, formData.contractorAddress);
+    setTextField(mapping.payroll, formData.payrollNumber);
+    setTextField(mapping.weekEnding, formData.weekEnding);
+    setTextField(mapping.project, `${formData.projectName}\n${formData.projectLocation}`);
+    setTextField(mapping.contract, formData.contractNumber);
+  }
+
+  // Contractor/Subcontractor checkboxes
+  const contractorCheckboxes = ["Contractor", "IsContractor", "topmostSubform[0].Page1[0].Contractor[0]"];
+  const subcontractorCheckboxes = ["Subcontractor", "IsSubcontractor", "topmostSubform[0].Page1[0].Subcontractor[0]"];
+  
+  if (formData.isSubcontractor) {
+    subcontractorCheckboxes.forEach(cb => setCheckbox(cb, true));
+  } else {
+    contractorCheckboxes.forEach(cb => setCheckbox(cb, true));
+  }
+
+  // Fill employee rows (up to 8 per page typically)
+  const maxEmployeesPerPage = 8;
+  const employees = formData.employees.slice(0, maxEmployeesPerPage);
+
+  employees.forEach((emp, i) => {
+    const rowNum = i + 1;
+    
+    // Try multiple common field naming patterns for employee rows
+    const prefixes = [
+      `Row${rowNum}`,
+      `Employee${rowNum}`,
+      `topmostSubform[0].Page1[0].Row${rowNum}[0]`,
+      `topmostSubform[0].Page1[0].Employee[${i}]`,
+    ];
+
+    for (const prefix of prefixes) {
+      // Name and address
+      setTextField(`${prefix}.Name`, emp.name);
+      setTextField(`${prefix}.Address`, emp.address);
+      setTextField(`${prefix}.SSN`, emp.ssnLastFour ? `XXX-XX-${emp.ssnLastFour}` : "");
+      
+      // Column 2: W/H Exemptions
+      setTextField(`${prefix}.WH`, String(emp.withholdingExemptions));
+      setTextField(`${prefix}.Exemptions`, String(emp.withholdingExemptions));
+      
+      // Column 3: Work Classification
+      setTextField(`${prefix}.Classification`, emp.workClassification);
+      setTextField(`${prefix}.WorkClass`, emp.workClassification);
+      
+      // Column 4: Daily hours (7 days, each with O and S rows)
+      const dayNames = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
+      emp.dailyHours.forEach((day, dayIdx) => {
+        if (day.overtime > 0) {
+          setTextField(`${prefix}.${dayNames[dayIdx]}.O`, day.overtime.toFixed(1));
+          setTextField(`${prefix}.Day${dayIdx + 1}.OT`, day.overtime.toFixed(1));
+        }
+        if (day.straight > 0) {
+          setTextField(`${prefix}.${dayNames[dayIdx]}.S`, day.straight.toFixed(1));
+          setTextField(`${prefix}.Day${dayIdx + 1}.ST`, day.straight.toFixed(1));
+        }
+      });
+      
+      // Column 5: Total Hours
+      if (emp.totalHours.overtime > 0) {
+        setTextField(`${prefix}.TotalOT`, emp.totalHours.overtime.toFixed(1));
+      }
+      setTextField(`${prefix}.TotalST`, emp.totalHours.straight.toFixed(1));
+      
+      // Column 6: Rate of Pay
+      if (emp.totalHours.overtime > 0) {
+        setTextField(`${prefix}.RateOT`, formatCurrency(emp.rateOfPay.overtime));
+      }
+      setTextField(`${prefix}.RateST`, formatCurrency(emp.rateOfPay.straight));
+      
+      // Column 7: Gross Amount Earned
+      setTextField(`${prefix}.Gross`, formatCurrency(emp.grossEarned));
+      setTextField(`${prefix}.GrossEarned`, formatCurrency(emp.grossEarned));
+      
+      // Column 8: Deductions
+      setTextField(`${prefix}.FICA`, formatCurrency(emp.deductions.fica));
+      setTextField(`${prefix}.Withholding`, formatCurrency(emp.deductions.withholding));
+      setTextField(`${prefix}.Other`, formatCurrency(emp.deductions.other));
+      
+      // Column 9: Net Wages
+      setTextField(`${prefix}.Net`, formatCurrency(emp.netWages));
+      setTextField(`${prefix}.NetWages`, formatCurrency(emp.netWages));
+    }
+
+    // Try flat field naming (common in government forms)
+    setTextField(`Name${rowNum}`, emp.name);
+    setTextField(`Address${rowNum}`, emp.address);
+    setTextField(`SSN${rowNum}`, emp.ssnLastFour ? `XXX-XX-${emp.ssnLastFour}` : "");
+    setTextField(`WH${rowNum}`, String(emp.withholdingExemptions));
+    setTextField(`Class${rowNum}`, emp.workClassification);
+    setTextField(`Gross${rowNum}`, formatCurrency(emp.grossEarned));
+    setTextField(`Net${rowNum}`, formatCurrency(emp.netWages));
+  });
+
+  // Page 2: WH-348 Statement of Compliance
+  const signatoryMappings = [
+    { name: "SignatoryName", title: "Title", date: "Date" },
+    { name: "Name of Signatory Party", title: "SignatoryTitle", date: "SignatureDate" },
+    { name: "topmostSubform[0].Page2[0].SignatoryName[0]", title: "topmostSubform[0].Page2[0].Title[0]", date: "topmostSubform[0].Page2[0].Date[0]" },
+  ];
+
+  for (const mapping of signatoryMappings) {
+    setTextField(mapping.name, formData.signatory.name);
+    setTextField(mapping.title, formData.signatory.title);
+    setTextField(mapping.date, formData.signatory.date);
+  }
+
+  // Fringe benefit checkboxes
+  if (formData.fringeBenefits.paidToPlans) {
+    setCheckbox("FringePlan", true);
+    setCheckbox("4a", true);
+    setCheckbox("topmostSubform[0].Page2[0].FringePlan[0]", true);
+  }
+  
+  if (formData.fringeBenefits.paidInCash) {
+    setCheckbox("FringeCash", true);
+    setCheckbox("4b", true);
+    setCheckbox("topmostSubform[0].Page2[0].FringeCash[0]", true);
+  }
+
+  // Contractor name in statement
+  setTextField("ContractorName2", formData.contractorName);
+  setTextField("topmostSubform[0].Page2[0].ContractorName[0]", formData.contractorName);
+  
+  // Project name in statement
+  setTextField("ProjectName2", formData.projectName);
+  setTextField("topmostSubform[0].Page2[0].ProjectName[0]", formData.projectName);
+
+  // Flatten the form to make fields non-editable
   form.flatten();
   
   return await pdfDoc.save();
