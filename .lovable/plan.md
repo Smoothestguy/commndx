@@ -1,132 +1,199 @@
 
-# Investigation Summary: Desktop Sign-In Failure
 
-## Root Cause Analysis
+# Enhanced Work Authorization Flow for Personnel Registration
 
-After thorough investigation, the issue is clear: **Email/password sign-in fails on BOTH desktop AND the published site (commndx.lovable.app)**, not just on the custom domain. This rules out CORS/custom domain misconfiguration as the primary cause.
+## Overview
+Transform Step 3 of the Personnel Registration form (`PersonnelRegister.tsx`) to implement a comprehensive conditional workflow that collects appropriate identification and documents based on citizenship and immigration status.
 
-### Key Findings
+## Requirements Summary
 
-1. **The `signInWithPassword` request itself is failing with `TypeError: Failed to fetch`** - this happens BEFORE any response is received from the Supabase backend.
+| Status | Identifier Required | Documents Required |
+|--------|---------------------|-------------------|
+| U.S. Citizen | SSN | Government ID (Driver's License or Passport) |
+| Non-Citizen: Visa | SSN | Visa documents |
+| Non-Citizen: Work Permit | SSN | Work Permit/EAD documents |
+| Non-Citizen: Green Card | SSN | Green Card (Front AND Back) |
+| Non-Citizen: Other | ITIN | Work Authorization document |
 
-2. **Mobile works, desktop doesn't** - This points to one of several desktop-specific issues:
-   - Desktop Chrome may have stricter security policies
-   - Browser extensions (ad blockers, privacy extensions) could be blocking Supabase API requests
-   - Corporate network/firewall restrictions on desktop
-   - Cached/stale service worker or DNS resolution issues
-   - Chrome's tracking prevention or enhanced privacy features
-
-3. **The Lovable OAuth flow uses `/~oauth/initiate`** which is a relative path that gets resolved against the current origin. For email/password, however, it uses the raw Supabase client which makes direct fetch requests to the Supabase backend.
-
-4. **No CORS issue per se** - Since the published site (`commndx.lovable.app`) also fails, and that's a Lovable-controlled domain with proper CORS headers, the issue is NOT about missing allowed origins.
-
----
-
-## Diagnosis Steps
-
-The failure pattern (mobile works, desktop fails, even on published site) strongly suggests:
-
-| Possibility | Likelihood | Evidence |
-|-------------|------------|----------|
-| Browser extension blocking | **High** | Extensions often target desktop only |
-| Network/firewall | Medium | Corporate environments often restrict desktop differently |
-| Chrome flags/settings | Medium | Some privacy features differ on desktop |
-| Stale cache/service worker | Medium | Desktop may have cached old broken state |
-| Supabase regional routing | Low | Would affect mobile too |
-
----
-
-## Recommended Fix Strategy
-
-### Phase 1: Quick Desktop Debugging (User-side)
-
-Ask the user to perform these quick tests on their desktop Chrome:
-
-1. **Incognito Window Test**
-   - Open Chrome incognito (Ctrl+Shift+N / Cmd+Shift+N)
-   - Try signing in at `commndx.lovable.app`
-   - If this works → an extension is blocking requests
-
-2. **DevTools Network Tab Check**
-   - Open DevTools (F12) → Network tab → filter "token"
-   - Attempt sign-in
-   - Look for the blocked/failed request to identify the exact endpoint
-
-3. **Try a different browser**
-   - Test in Firefox or Edge
-   - If these work → Chrome-specific issue (extensions, settings)
-
-### Phase 2: Code-Level Improvements (If User-Side Tests Don't Resolve)
-
-If the issue persists after user-side debugging:
-
-1. **Add Retry Logic with Exponential Backoff**
-   - Wrap `signInWithPassword` in a retry mechanism
-   - Some transient network issues resolve with a second attempt
-
-2. **Add Pre-flight Health Check (Optional)**
-   - Already partially implemented in `pingAuthHealth()` 
-   - Could be called before sign-in to give early warning
-
-3. **Enhanced Error Messaging**
-   - Show more specific guidance based on error type
-   - E.g., "If you're using an ad blocker, try disabling it for this site"
-
----
-
-## Technical Implementation Plan
-
-### File: `src/contexts/AuthContext.tsx`
-
-Add retry logic to `signIn` function:
+## User Flow Diagram
 
 ```text
-┌─────────────────────────────────────────────────────────┐
-│ signIn(email, password)                                 │
-├─────────────────────────────────────────────────────────┤
-│ 1. Log attempt with origin info                         │
-│ 2. First attempt: signInWithPassword                    │
-│ 3. If "Failed to fetch" error:                          │
-│    └─ Wait 1s, retry once                               │
-│ 4. If still fails:                                      │
-│    └─ Return error with diagnostic info                 │
-│ 5. On success:                                          │
-│    └─ Fire-and-forget audit log, navigate to /          │
-└─────────────────────────────────────────────────────────┘
+Step 3: Work Authorization
+         |
+         v
+   "Are you a U.S. Citizen?"
+         |
+    +----+----+
+    |         |
+   Yes        No
+    |         |
+    v         v
+  +-------+  "Select Immigration Status"
+  |  SSN  |         |
+  | Input |    +----+----+----+----+
+  +-------+    |    |    |    |
+    |        Visa  WP   GC  Other
+    v          |    |    |    |
++----------+   v    v    v    v
+| Gov ID   | SSN  SSN  SSN  ITIN
+| Upload   |  +    +    +    +
++----------+ Visa  EAD  GC   Work Auth
+             Doc   Doc  F&B  Doc
 ```
 
-### File: `src/pages/Auth.tsx` and `src/pages/portal/PortalLogin.tsx`
+## Technical Implementation
 
-Improve error banner to include troubleshooting hints:
+### 1. Update Form State
+
+Expand the `formData` state to include:
+- `citizenship_status`: "us_citizen" | "non_us_citizen"
+- `immigration_status`: "visa" | "work_permit" | "green_card" | "other"
+- `ssn`: string (9-digit SSN for citizens and visa/work_permit/green_card holders)
+- `itin`: string (9-digit ITIN for "other" immigration status)
+- `documents`: Array of uploaded documents with type tags
+
+### 2. Create ITIN Input Component
+
+Create `src/components/personnel/registration/ITINInput.tsx`:
+- Similar to `SSNInput` component but validates ITIN format
+- ITIN must be 9 digits and start with "9"
+- Format: 9XX-XX-XXXX
+- Include show/hide toggle for security
+
+### 3. Update Step 3 UI
+
+Replace the current single dropdown with a multi-section form:
+
+**Section A - Citizenship Question**
+- Radio group: "Yes, I am a U.S. Citizen" / "No, I am not a U.S. Citizen"
+
+**Section B - Conditional based on citizenship:**
+
+**If U.S. Citizen:**
+- SSN Input field (required)
+- Government ID upload (Driver's License or Passport) - required
+
+**If Non-U.S. Citizen:**
+- Immigration Status dropdown (Visa, Work Permit, Green Card, Other)
+- Based on selection:
+  - **Visa**: SSN input + Visa document upload
+  - **Work Permit**: SSN input + EAD document upload
+  - **Green Card**: SSN input + Green Card Front + Green Card Back uploads
+  - **Other**: ITIN input + Work Authorization document upload
+
+### 4. Validation Rules
+
+Update submit validation to require:
+- Citizenship status must be selected
+- If U.S. Citizen: SSN + Government ID document required
+- If Non-Citizen:
+  - Immigration status must be selected
+  - For Visa/Work Permit/Green Card: SSN required + appropriate document(s)
+  - For Other: ITIN required + Work Authorization document required
+
+### 5. Data Mapping on Submit
+
+Map the new fields to the database:
+- Store SSN in `ssn_full` column (existing)
+- Add ITIN to form data (will be stored appropriately)
+- Store `citizenship_status` and `immigration_status` 
+- Documents are uploaded to `personnel-documents` storage bucket
+
+## Files to Create/Modify
+
+| File | Action | Description |
+|------|--------|-------------|
+| `src/components/personnel/registration/ITINInput.tsx` | Create | ITIN input component with validation and masking |
+| `src/pages/PersonnelRegister.tsx` | Modify | Expand Step 3 with conditional citizenship/immigration flow |
+
+## UI Layout for Enhanced Step 3
 
 ```text
-┌─────────────────────────────────────────────────────────┐
-│ NetworkErrorBanner improvements                         │
-├─────────────────────────────────────────────────────────┤
-│ • Add "Try in incognito mode" suggestion                │
-│ • Add "Disable ad blocker" suggestion                   │
-│ • Keep existing retry + copy diagnostics buttons        │
-└─────────────────────────────────────────────────────────┘
++--------------------------------------------------+
+|  Step 3: Work Authorization                      |
++--------------------------------------------------+
+|                                                  |
+|  Are you a U.S. Citizen? *                       |
+|    ( ) Yes                ( ) No                 |
+|                                                  |
++--------------------------------------------------+
+| [If "Yes" selected:]                             |
+|                                                  |
+|  Social Security Number (SSN) *                  |
+|  +--------------------------------------+        |
+|  | •••-••-1234                     [eye]|        |
+|  +--------------------------------------+        |
+|                                                  |
+|  Government-Issued ID *                          |
+|  +--------------------------------------+        |
+|  | [Upload icon] Driver's License or    |        |
+|  |               Passport               |        |
+|  +--------------------------------------+        |
++--------------------------------------------------+
+| [If "No" selected:]                              |
+|                                                  |
+|  Immigration Status *                            |
+|  [Select status...                         v]    |
+|                                                  |
++--------------------------------------------------+
+| [If Visa selected:]                              |
+|                                                  |
+|  Social Security Number (SSN) *                  |
+|  +--------------------------------------+        |
+|  | Enter 9-digit SSN                    |        |
+|  +--------------------------------------+        |
+|                                                  |
+|  Visa Documentation *                            |
+|  +--------------------------------------+        |
+|  | [Upload icon] Upload visa stamp/I-94 |        |
+|  +--------------------------------------+        |
++--------------------------------------------------+
+| [If Work Permit selected:]                       |
+|                                                  |
+|  Social Security Number (SSN) *                  |
+|  +--------------------------------------+        |
+|  | Enter 9-digit SSN                    |        |
+|  +--------------------------------------+        |
+|                                                  |
+|  Employment Authorization Document (EAD) *       |
+|  +--------------------------------------+        |
+|  | [Upload icon] Upload EAD card        |        |
+|  +--------------------------------------+        |
++--------------------------------------------------+
+| [If Green Card selected:]                        |
+|                                                  |
+|  Social Security Number (SSN) *                  |
+|  +--------------------------------------+        |
+|  | Enter 9-digit SSN                    |        |
+|  +--------------------------------------+        |
+|                                                  |
+|  Green Card (Front) *      Green Card (Back) *   |
+|  +----------------+        +------------------+  |
+|  | [Upload]       |        | [Upload]         |  |
+|  +----------------+        +------------------+  |
++--------------------------------------------------+
+| [If Other selected:]                             |
+|                                                  |
+|  Individual Taxpayer ID Number (ITIN) *          |
+|  +--------------------------------------+        |
+|  | 9XX-XX-XXXX                          |        |
+|  +--------------------------------------+        |
+|  (ITIN must start with 9)                        |
+|                                                  |
+|  Work Authorization Document *                   |
+|  +--------------------------------------+        |
+|  | [Upload icon] Upload work auth docs  |        |
+|  +--------------------------------------+        |
++--------------------------------------------------+
 ```
 
----
+## Validation Rules Summary
 
-## Immediate Next Steps
+| Status | SSN Required | ITIN Required | Documents Required |
+|--------|-------------|---------------|-------------------|
+| U.S. Citizen | Yes | No | Government ID |
+| Visa | Yes | No | Visa documentation |
+| Work Permit | Yes | No | EAD document |
+| Green Card | Yes | No | Green Card Front + Back |
+| Other | No | Yes | Work Authorization document |
 
-Before implementing code changes, we need to confirm the root cause:
-
-1. **User action required**: Test in Chrome incognito to rule out extensions
-2. **User action required**: Check DevTools Network tab for the actual blocked request
-3. **User action required**: Try Firefox/Edge to confirm Chrome-specific issue
-
-Once we know the exact cause (extension, network, browser settings), we can either:
-- Guide the user to fix their browser config (if it's client-side)
-- Implement code-level mitigations (if it's a widespread issue)
-
----
-
-## Summary
-
-The fact that both the custom domain AND the published Lovable domain fail on desktop Chrome—but mobile works—strongly indicates a **desktop browser environment issue** (extensions, firewall, or Chrome settings) rather than a code bug or backend misconfiguration.
-
-The recommended first step is for the user to test in incognito mode to confirm this hypothesis.
