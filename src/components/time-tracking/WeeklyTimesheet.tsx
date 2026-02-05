@@ -18,6 +18,7 @@ import {
   FileType,
   Lock,
   Folder,
+  FileCheck,
 } from "lucide-react";
 import {
   DropdownMenu,
@@ -37,6 +38,7 @@ import {
 } from "@/utils/timeEntryExportUtils";
 import { ExportColumnsDialog } from "./ExportColumnsDialog";
 import { QuickRateEditDialog } from "./QuickRateEditDialog";
+import { WH347ExportDialog } from "./WH347ExportDialog";
 import { PersonnelAvatar } from "@/components/personnel/PersonnelAvatar";
 import {
   TimeEntry,
@@ -115,6 +117,7 @@ export function WeeklyTimesheet({
   const [exportDialogOpen, setExportDialogOpen] = useState(false);
   const [pendingExportFormat, setPendingExportFormat] = useState<"excel" | "pdf" | "csv" | "json" | null>(null);
   const [exportSelectedOnly, setExportSelectedOnly] = useState(false);
+  const [wh347DialogOpen, setWH347DialogOpen] = useState(false);
   
   
   // Track which project folders are expanded
@@ -840,6 +843,15 @@ export function WeeklyTimesheet({
                   <FileJson className="h-4 w-4 mr-2" />
                   Export to JSON
                 </DropdownMenuItem>
+                {(isAdmin || isManager) && projectFilter && (
+                  <>
+                    <div className="h-px bg-border my-1" />
+                    <DropdownMenuItem onClick={() => setWH347DialogOpen(true)}>
+                      <FileCheck className="h-4 w-4 mr-2" />
+                      Export WH-347
+                    </DropdownMenuItem>
+                  </>
+                )}
               </DropdownMenuContent>
             </DropdownMenu>
           </div>
@@ -1095,6 +1107,15 @@ export function WeeklyTimesheet({
                   <FileJson className="h-4 w-4 mr-2" />
                   Export to JSON
                 </DropdownMenuItem>
+                {(isAdmin || isManager) && projectFilter && (
+                  <>
+                    <div className="h-px bg-border my-1" />
+                    <DropdownMenuItem onClick={() => setWH347DialogOpen(true)}>
+                      <FileCheck className="h-4 w-4 mr-2" />
+                      Export WH-347 Certified Payroll
+                    </DropdownMenuItem>
+                  </>
+                )}
               </DropdownMenuContent>
             </DropdownMenu>
           </div>
@@ -1282,6 +1303,18 @@ export function WeeklyTimesheet({
         exportFormat={pendingExportFormat}
         onConfirm={handleExportWithColumns}
       />
+
+      {/* WH-347 Export Dialog */}
+      {projectFilter && (
+        <WH347ExportDialog
+          open={wh347DialogOpen}
+          onOpenChange={setWH347DialogOpen}
+          entries={entries}
+          weekStart={weekStart}
+          projectId={projectFilter}
+          projectName={rowsByProject.find(p => p.projectId === projectFilter)?.projectName}
+        />
+      )}
     </div>
   );
 }
