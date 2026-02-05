@@ -1,87 +1,131 @@
 
 
-# Fix WH-347 Export Option Not Visible
+# Use Official WH-347 Fillable PDF Template
 
-## Problem Identified
+## Overview
 
-The WH-347 export option is not visible in the Weekly View because:
+You've uploaded the official DOL WH-347/WH-348 fillable PDF form. Instead of generating a custom PDF layout with jsPDF (current approach), we'll use **pdf-lib** to fill in the actual fields of your official template - the same approach used for W-9 and 1099-NEC forms.
 
-1. The export option is conditionally rendered and only appears when a **project is selected** (`projectFilter` is set)
-2. The current Weekly View on `/time-tracking` uses `WeeklyTimesheet` **without** a project selector
-3. WH-347 is intentionally project-specific (certified payroll must be per-project for Davis-Bacon compliance)
+## Current vs Proposed Approach
 
-## Current Code Flow
+| Aspect | Current (jsPDF) | Proposed (pdf-lib + Template) |
+|--------|-----------------|-------------------------------|
+| Layout | Custom-drawn boxes and text | Official DOL form layout |
+| Compliance | Approximate match | Exact official form |
+| Method | Generate from scratch | Fill existing PDF fields |
+| Template Storage | None needed | `form-templates` bucket |
 
-| Component | Project Selection | WH-347 Visible |
-|-----------|------------------|----------------|
-| `TimeTracking.tsx` → `WeeklyTimesheet` | No | No |
-| `WeeklyTimesheetWithProject` | Yes (has dropdown) | Yes (when project selected) |
+## Implementation Steps
 
-## Solution
+### Step 1: Upload Template to Storage
 
-Replace `WeeklyTimesheet` with `WeeklyTimesheetWithProject` in the Weekly View tab. This component already has a project dropdown selector built in.
+Copy the uploaded PDF to the `form-templates` storage bucket:
+- Source: `user-uploads://WH-347-348-PayrollForm-StatmentComp-2.pdf`
+- Destination: `form-templates/wh-347-348-fillable.pdf`
 
-### File to Modify
+### Step 2: Create Edge Function for WH-347 Generation
 
-**`src/pages/TimeTracking.tsx`**
+Add a new handler to the `generate-pdf` edge function (or create a dedicated function) that:
+1. Downloads the template from storage
+2. Uses `pdf-lib` to fill in the form fields
+3. Returns the filled PDF
 
-Change this:
-```tsx
-import { WeeklyTimesheet } from "@/components/time-tracking/WeeklyTimesheet";
+### Step 3: Update Export Flow
+
+Modify `WH347ExportDialog.tsx` to call the backend function instead of the client-side jsPDF generator.
+
+## Technical Details
+
+### Edge Function: WH-347 Handler
+
+```typescript
+// Add to supabase/functions/generate-pdf/index.ts
+
+interface WH347FormData {
+  // Header info
+  contractorName: string;
+  contractorAddress: string;
+  isSubcontractor: boolean;
+  payrollNumber: string;
+  weekEnding: string;
+  projectName: string;
+  projectLocation: string;
+  contractNumber: string;
+  
+  // Employee rows (up to 8 per page)
+  employees: Array<{
+    name: string;
+    address: string;
+    ssnLastFour: string;
+    withholdingExemptions: number;
+    workClassification: string;
+    dailyHours: { straight: number; overtime: number }[];
+    totalHours: { straight: number; overtime: number };
+    rateOfPay: { straight: number; overtime: number };
+    grossEarned: number;
+    deductions: { fica: number; withholding: number; other: number };
+    totalDeductions: number;
+    netWages: number;
+  }>;
+  
+  // Page 2: Statement of Compliance
+  signatory: {
+    name: string;
+    title: string;
+    date: string;
+  };
+  fringeBenefits: {
+    paidToPlans: boolean;
+    paidInCash: boolean;
+  };
+}
 ```
 
-To:
-```tsx
-import { WeeklyTimesheetWithProject } from "@/components/time-tracking/WeeklyTimesheetWithProject";
+### Field Mapping Process
+
+1. Log all available field names from the template
+2. Map data to the correct PDF field names
+3. Fill text fields and check appropriate checkboxes
+4. Handle multiple employee rows with indexed field names
+5. Flatten the form for final output
+
+### Updated Client-Side Export
+
+```typescript
+// In WH347ExportDialog.tsx
+const handleGenerate = async () => {
+  const response = await supabase.functions.invoke('generate-pdf', {
+    body: { 
+      type: 'wh-347', 
+      formData: exportData 
+    }
+  });
+  
+  if (response.data) {
+    // Download the generated PDF
+    const blob = new Blob([response.data], { type: 'application/pdf' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = `WH-347_${projectName}_${weekEnding}.pdf`;
+    link.click();
+  }
+};
 ```
 
-And update the Weekly View tab content (around line 290):
+## Files to Modify/Create
 
-```tsx
-<TabsContent value="weekly" className="space-y-4 mt-4">
-  {/* Week Navigator */}
-  <div className="flex justify-center">
-    <WeekNavigator
-      currentWeek={weeklyViewWeek}
-      onWeekChange={setWeeklyViewWeek}
-    />
-  </div>
+| File | Action |
+|------|--------|
+| `form-templates/wh-347-348-fillable.pdf` | Upload template to storage |
+| `supabase/functions/generate-pdf/index.ts` | Add WH-347 handler |
+| `src/components/time-tracking/WH347ExportDialog.tsx` | Use edge function |
+| `src/utils/wh347ExportUtils.ts` | Keep for data organization, remove PDF generation |
 
-  {/* Weekly Timesheet with Project Selector */}
-  <WeeklyTimesheetWithProject
-    currentWeek={weeklyViewWeek}
-    onWeekChange={setWeeklyViewWeek}
-  />
-</TabsContent>
-```
+## Benefits
 
-## How to Export WH-347 After This Fix
-
-1. Go to **Time Tracking** page
-2. Click the **Weekly View** tab
-3. Select a **specific project** from the Project dropdown
-4. Click **Export Week** dropdown
-5. Select **Export WH-347 Certified Payroll**
-
-## Visual Flow After Fix
-
-```text
-/time-tracking
-     |
-     v
-[Weekly View Tab]
-     |
-     v
-[Project Dropdown: All Projects ▼]
-  → Select "Project XYZ"
-     |
-     v
-[Export Week ▼]
-  • Export to Excel
-  • Export to CSV
-  • Export to PDF
-  • Export to JSON
-  ─────────────────
-  • Export WH-347 ← NOW VISIBLE
-```
+- Uses the exact official DOL form layout
+- Ensures compliance with certified payroll requirements
+- Consistent approach with W-9 and 1099-NEC generation
+- Template can be updated without code changes
 
