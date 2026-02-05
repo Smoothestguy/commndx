@@ -12,11 +12,14 @@ export interface WH347PersonnelData {
   ssnLastFour?: string;
   workClassification?: string;
   hourlyRate: number;
+  withholdingExemptions?: number;
 }
 
 export interface WH347DailyHours {
   date: string; // yyyy-MM-dd
   hours: number;
+  straightHours: number;
+  overtimeHours: number;
 }
 
 export interface WH347EmployeeRow {
@@ -25,6 +28,8 @@ export interface WH347EmployeeRow {
   totalHours: number;
   regularHours: number;
   overtimeHours: number;
+  straightRate: number;
+  overtimeRate: number;
   grossEarned: number;
   deductions: {
     fica: number;
@@ -43,6 +48,7 @@ export interface WH347ExportData {
   projectName: string;
   projectLocation: string;
   contractNumber: string;
+  isSubcontractor?: boolean;
   
   // Employee rows
   employees: WH347EmployeeRow[];
@@ -51,6 +57,10 @@ export interface WH347ExportData {
   certifierName?: string;
   certifierTitle?: string;
   certificationDate?: Date;
+  
+  // Fringe benefits options
+  fringePaidToPlan?: boolean; // (a) option
+  fringePaidInCash?: boolean; // (b) option
 }
 
 // Calculate FICA deduction (7.65% for Social Security + Medicare)
@@ -64,19 +74,14 @@ export function calculateWithholding(grossPay: number): number {
   return grossPay * 0.10;
 }
 
-// Format SSN for display (last 4 only)
+// Format SSN for display (last 4 only with prefix)
 function formatSSN(lastFour?: string): string {
   if (!lastFour) return "XXX-XX-XXXX";
   return `XXX-XX-${lastFour}`;
 }
 
-// Get day abbreviation for WH-347 (S, M, T, W, T, F, S format)
-function getDayAbbr(dayIndex: number): string {
-  const abbrs = ["S", "M", "T", "W", "T", "F", "S"];
-  return abbrs[dayIndex];
-}
-
 // Organize time entries by personnel and date for WH-347
+// This now calculates daily O/S breakdown based on cumulative weekly threshold
 export function organizeEntriesForWH347(
   entries: Array<{
     entry_date: string;
@@ -101,6 +106,7 @@ export function organizeEntriesForWH347(
   assignments: Array<{
     personnel_id: string;
     work_classification?: string | null;
+    withholding_exemptions?: number | null;
   }>,
   overtimeMultiplier: number = 1.5,
   weeklyThreshold: number = 40
@@ -130,6 +136,7 @@ export function organizeEntriesForWH347(
           ssnLastFour: entry.personnel.ssn_last_four || undefined,
           workClassification: assignment?.work_classification || undefined,
           hourlyRate: entry.hourly_rate || entry.personnel.hourly_rate || 0,
+          withholdingExemptions: assignment?.withholding_exemptions || 0,
         },
         entries: [],
       });
@@ -150,20 +157,52 @@ export function organizeEntriesForWH347(
   const rows: WH347EmployeeRow[] = [];
 
   personnelMap.forEach(({ personnel, entries }) => {
-    // Build daily hours array (Sun-Sat)
-    const dailyHours: WH347DailyHours[] = weekDates.map((date) => ({
+    // First, get daily totals in order
+    const dailyTotals = weekDates.map((date) => ({
       date,
       hours: entries
         .filter((e) => e.date === date)
         .reduce((sum, e) => sum + e.hours, 0),
     }));
 
-    const totalHours = dailyHours.reduce((sum, d) => sum + d.hours, 0);
-    const regularHours = Math.min(totalHours, weeklyThreshold);
-    const overtimeHours = Math.max(0, totalHours - weeklyThreshold);
+    // Calculate daily S/O breakdown based on cumulative threshold
+    let cumulativeHours = 0;
+    const dailyHours: WH347DailyHours[] = dailyTotals.map((day) => {
+      const prevCumulative = cumulativeHours;
+      cumulativeHours += day.hours;
+      
+      let straightHours = 0;
+      let overtimeHours = 0;
+      
+      if (prevCumulative >= weeklyThreshold) {
+        // All hours are overtime
+        overtimeHours = day.hours;
+      } else if (cumulativeHours <= weeklyThreshold) {
+        // All hours are straight time
+        straightHours = day.hours;
+      } else {
+        // Split between straight and overtime
+        straightHours = weeklyThreshold - prevCumulative;
+        overtimeHours = day.hours - straightHours;
+      }
+      
+      return {
+        date: day.date,
+        hours: day.hours,
+        straightHours,
+        overtimeHours,
+      };
+    });
 
-    const regularPay = regularHours * personnel.hourlyRate;
-    const overtimePay = overtimeHours * personnel.hourlyRate * overtimeMultiplier;
+    const totalHours = dailyHours.reduce((sum, d) => sum + d.hours, 0);
+    const regularHours = dailyHours.reduce((sum, d) => sum + d.straightHours, 0);
+    const overtimeHours = dailyHours.reduce((sum, d) => sum + d.overtimeHours, 0);
+
+    const straightRate = personnel.hourlyRate;
+    const overtimeRate = personnel.hourlyRate * overtimeMultiplier;
+    
+    const regularPay = regularHours * straightRate;
+    const overtimePay = overtimeHours * overtimeRate;
     const grossEarned = regularPay + overtimePay;
 
     const fica = calculateFICA(grossEarned);
@@ -177,6 +216,8 @@ export function organizeEntriesForWH347(
       totalHours,
       regularHours,
       overtimeHours,
+      straightRate,
+      overtimeRate,
       grossEarned,
       deductions: { fica, withholding, other },
       netWages,
@@ -189,175 +230,239 @@ export function organizeEntriesForWH347(
   );
 }
 
-// Generate WH-347 PDF
+// Generate WH-347 PDF (Portrait, matching official DOL form)
 export function generateWH347PDF(data: WH347ExportData): void {
   const doc = new jsPDF({
-    orientation: "landscape",
+    orientation: "portrait",
     unit: "mm",
-    format: "letter",
+    format: "letter", // 8.5" x 11"
   });
 
-  const pageWidth = doc.internal.pageSize.getWidth();
-  const pageHeight = doc.internal.pageSize.getHeight();
-  const margin = 10;
+  const pageWidth = doc.internal.pageSize.getWidth(); // ~215.9mm
+  const pageHeight = doc.internal.pageSize.getHeight(); // ~279.4mm
+  const margin = 8;
   let y = margin;
 
-  // Colors
-  const headerBg = [240, 240, 240];
-  const borderColor = [0, 0, 0];
-
-  // Helper functions
-  const drawRect = (x: number, yPos: number, w: number, h: number, fill = false) => {
-    if (fill) {
-      doc.setFillColor(headerBg[0], headerBg[1], headerBg[2]);
-      doc.rect(x, yPos, w, h, "F");
+  // Draw checkbox
+  const drawCheckbox = (x: number, yPos: number, checked: boolean) => {
+    doc.setDrawColor(0, 0, 0);
+    doc.rect(x, yPos, 3, 3, "S");
+    if (checked) {
+      doc.setFont("helvetica", "bold");
+      doc.setFontSize(8);
+      doc.text("X", x + 0.5, yPos + 2.5);
     }
-    doc.setDrawColor(borderColor[0], borderColor[1], borderColor[2]);
-    doc.rect(x, yPos, w, h, "S");
   };
 
-  // Header Section
-  doc.setFontSize(10);
-  doc.setFont("helvetica", "bold");
-  doc.text("U.S. DEPARTMENT OF LABOR", margin, y + 5);
-  doc.setFontSize(8);
-  doc.setFont("helvetica", "normal");
-  doc.text("WAGE AND HOUR DIVISION", margin, y + 9);
+  // ========== PAGE 1: WH-347 PAYROLL FORM ==========
 
+  // Title Block
+  doc.setFontSize(8);
+  doc.setFont("helvetica", "bold");
+  doc.text("U.S. Department of Labor", margin, y + 3);
+  doc.setFont("helvetica", "normal");
+  doc.setFontSize(7);
+  doc.text("WAGE AND HOUR DIVISION", margin, y + 6);
+
+  // Center title
   doc.setFontSize(14);
   doc.setFont("helvetica", "bold");
   doc.text("PAYROLL", pageWidth / 2, y + 5, { align: "center" });
-  doc.setFontSize(8);
-  doc.text("(For Contractor's Optional Use; See Instructions at www.dol.gov/whd/forms/wh347instr.htm)", 
-    pageWidth / 2, y + 10, { align: "center" });
-
-  doc.setFontSize(10);
-  doc.text("WH-347", pageWidth - margin - 20, y + 5);
-  doc.setFontSize(8);
-  doc.text("OMB No.: 1235-0008", pageWidth - margin - 25, y + 9);
-  doc.text("Expires: 02/28/2027", pageWidth - margin - 25, y + 13);
-
-  y += 18;
-
-  // Contractor Info Box
-  const infoBoxHeight = 20;
-  drawRect(margin, y, pageWidth - 2 * margin, infoBoxHeight);
   
   doc.setFontSize(7);
   doc.setFont("helvetica", "normal");
-  doc.text("NAME OF CONTRACTOR OR SUBCONTRACTOR", margin + 2, y + 3);
+  doc.text("(For Contractor's Optional Use; See Instructions at www.dol.gov/whd/forms/wh347instr.htm)", 
+    pageWidth / 2, y + 9, { align: "center" });
+
+  // Right side - form number
+  doc.setFontSize(10);
   doc.setFont("helvetica", "bold");
-  doc.setFontSize(9);
+  doc.text("WH-347", pageWidth - margin - 15, y + 4);
+  doc.setFontSize(6);
+  doc.setFont("helvetica", "normal");
+  doc.text("OMB No.: 1235-0008", pageWidth - margin - 20, y + 7);
+  doc.text("Expires: 09/30/2026", pageWidth - margin - 20, y + 10);
+
+  y += 15;
+
+  // Main info box
+  const boxHeight = 25;
+  doc.setDrawColor(0, 0, 0);
+  doc.rect(margin, y, pageWidth - 2 * margin, boxHeight, "S");
+
+  // Left column - Contractor info
+  doc.setFontSize(6);
+  doc.text("NAME OF CONTRACTOR", margin + 2, y + 3);
+  drawCheckbox(margin + 32, y + 1, !data.isSubcontractor);
+  doc.text("OR SUBCONTRACTOR", margin + 37, y + 3);
+  drawCheckbox(margin + 56, y + 1, !!data.isSubcontractor);
+
+  doc.setFontSize(8);
+  doc.setFont("helvetica", "bold");
   doc.text(data.contractorName, margin + 2, y + 8);
   
   doc.setFont("helvetica", "normal");
-  doc.setFontSize(7);
+  doc.setFontSize(6);
   doc.text("ADDRESS", margin + 2, y + 12);
-  doc.setFontSize(8);
-  doc.text(data.contractorAddress, margin + 2, y + 17);
-
-  // Right side of info box
-  const midX = pageWidth / 2 + 20;
   doc.setFontSize(7);
-  doc.text("PAYROLL NO.", midX, y + 3);
+  doc.text(data.contractorAddress.substring(0, 60), margin + 2, y + 16);
+
+  // Vertical divider
+  const dividerX = pageWidth / 2 + 20;
+  doc.line(dividerX, y, dividerX, y + boxHeight);
+
+  // Right column - Payroll info
+  doc.setFontSize(6);
+  doc.text("PAYROLL NO.", dividerX + 2, y + 3);
   doc.setFont("helvetica", "bold");
   doc.setFontSize(10);
-  doc.text(data.payrollNumber, midX, y + 8);
+  doc.text(data.payrollNumber, dividerX + 2, y + 8);
 
   doc.setFont("helvetica", "normal");
-  doc.setFontSize(7);
-  doc.text("FOR WEEK ENDING", midX + 40, y + 3);
+  doc.setFontSize(6);
+  doc.text("FOR WEEK ENDING", dividerX + 30, y + 3);
   doc.setFont("helvetica", "bold");
   doc.setFontSize(10);
-  doc.text(format(data.weekEnding, "MM/dd/yyyy"), midX + 40, y + 8);
+  doc.text(format(data.weekEnding, "MM/dd/yyyy"), dividerX + 30, y + 8);
 
-  y += infoBoxHeight;
+  y += boxHeight;
 
-  // Project Info Box
-  drawRect(margin, y, pageWidth - 2 * margin, infoBoxHeight);
-  
+  // Project info box
+  doc.rect(margin, y, pageWidth - 2 * margin, 15, "S");
+  doc.line(dividerX, y, dividerX, y + 15);
+
   doc.setFont("helvetica", "normal");
-  doc.setFontSize(7);
+  doc.setFontSize(6);
   doc.text("PROJECT AND LOCATION", margin + 2, y + 3);
   doc.setFont("helvetica", "bold");
-  doc.setFontSize(9);
-  doc.text(`${data.projectName}`, margin + 2, y + 8);
-  doc.setFont("helvetica", "normal");
   doc.setFontSize(8);
-  doc.text(data.projectLocation, margin + 2, y + 13);
-
+  doc.text(data.projectName.substring(0, 50), margin + 2, y + 7);
+  doc.setFont("helvetica", "normal");
   doc.setFontSize(7);
-  doc.text("PROJECT OR CONTRACT NO.", midX, y + 3);
-  doc.setFont("helvetica", "bold");
-  doc.setFontSize(10);
-  doc.text(data.contractNumber || "N/A", midX, y + 8);
-
-  y += infoBoxHeight + 2;
-
-  // Table Header
-  const colWidths = {
-    name: 45,
-    classification: 25,
-    sun: 10, mon: 10, tue: 10, wed: 10, thu: 10, fri: 10, sat: 10,
-    total: 12,
-    rate: 15,
-    gross: 20,
-    fica: 15,
-    wh: 15,
-    other: 15,
-    net: 20,
-  };
-
-  const tableWidth = Object.values(colWidths).reduce((a, b) => a + b, 0);
-  const tableStartX = (pageWidth - tableWidth) / 2;
-  
-  const headerHeight = 12;
-  let x = tableStartX;
-
-  // Draw header background
-  drawRect(tableStartX, y, tableWidth, headerHeight, true);
+  doc.text(data.projectLocation.substring(0, 55), margin + 2, y + 11);
 
   doc.setFontSize(6);
+  doc.text("PROJECT OR CONTRACT NO.", dividerX + 2, y + 3);
+  doc.setFont("helvetica", "bold");
+  doc.setFontSize(9);
+  doc.text(data.contractNumber || "N/A", dividerX + 2, y + 8);
+
+  y += 17;
+
+  // ========== DATA TABLE ==========
+  
+  // Column definitions for the main table
+  const tableWidth = pageWidth - 2 * margin;
+  const col = {
+    name: 40,        // (1) Name, Address, SSN
+    wh: 8,          // (2) No. W/H Exemptions  
+    class: 22,       // (3) Work Classification
+    day: 10,         // Each day column (7 days)
+    total: 12,       // (5) Total Hours
+    rate: 14,        // (6) Rate of Pay
+    gross: 16,       // (7) Gross Earned
+    fica: 12,        // (8a) FICA
+    withhold: 12,    // (8b) Withholding
+    other: 12,       // (8c) Other
+    net: 16,         // (9) Net Wages
+  };
+
+  const tableStartX = margin;
+  const headerHeight = 16;
+
+  // Week dates for header
+  const weekStart = startOfWeek(data.weekEnding, { weekStartsOn: 0 });
+  const dayDates = Array.from({ length: 7 }, (_, i) => addDays(weekStart, i));
+  const dayLabels = ["S", "M", "T", "W", "T", "F", "S"];
+
+  // Draw header row
+  doc.setFillColor(240, 240, 240);
+  doc.rect(tableStartX, y, tableWidth, headerHeight, "FD");
+
+  let x = tableStartX;
+  doc.setFontSize(5);
   doc.setFont("helvetica", "bold");
 
-  // Header cells
+  // Column headers
   const headers = [
-    { text: "NAME, ADDRESS,\nSSN (Last 4)", width: colWidths.name },
-    { text: "WORK\nCLASS.", width: colWidths.classification },
-    { text: "S", width: colWidths.sun },
-    { text: "M", width: colWidths.mon },
-    { text: "T", width: colWidths.tue },
-    { text: "W", width: colWidths.wed },
-    { text: "T", width: colWidths.thu },
-    { text: "F", width: colWidths.fri },
-    { text: "S", width: colWidths.sat },
-    { text: "TOTAL\nHRS", width: colWidths.total },
-    { text: "RATE\nOF PAY", width: colWidths.rate },
-    { text: "GROSS\nEARNED", width: colWidths.gross },
-    { text: "FICA", width: colWidths.fica },
-    { text: "W/H", width: colWidths.wh },
-    { text: "OTHER", width: colWidths.other },
-    { text: "NET\nWAGES", width: colWidths.net },
+    { label: "(1)\nNAME, ADDRESS,\nAND SSN", width: col.name },
+    { label: "(2)\nNO.\nW/H\nEXEMP.", width: col.wh },
+    { label: "(3)\nWORK\nCLASS.", width: col.class },
   ];
 
-  headers.forEach((header) => {
-    drawRect(x, y, header.width, headerHeight);
-    const lines = header.text.split("\n");
+  headers.forEach((h) => {
+    doc.rect(x, y, h.width, headerHeight, "S");
+    const lines = h.label.split("\n");
     lines.forEach((line, i) => {
-      doc.text(line, x + header.width / 2, y + 4 + i * 3, { align: "center" });
+      doc.text(line, x + h.width / 2, y + 3 + i * 2.5, { align: "center" });
     });
-    x += header.width;
+    x += h.width;
   });
+
+  // Day columns with dates - "(4) DAY AND DATE"
+  doc.rect(x, y, col.day * 7, 5, "S");
+  doc.text("(4) DAY AND DATE", x + (col.day * 7) / 2, y + 3.5, { align: "center" });
+  
+  // Individual day headers with O/S rows
+  for (let i = 0; i < 7; i++) {
+    const dayX = x + i * col.day;
+    doc.rect(dayX, y + 5, col.day, 11, "S");
+    doc.text(dayLabels[i], dayX + col.day / 2, y + 8, { align: "center" });
+    doc.setFontSize(4);
+    doc.text(format(dayDates[i], "M/d"), dayX + col.day / 2, y + 11, { align: "center" });
+    // O and S labels
+    doc.text("O", dayX + 2, y + 14);
+    doc.text("S", dayX + col.day - 3, y + 14);
+    doc.setFontSize(5);
+  }
+  x += col.day * 7;
+
+  // Remaining headers
+  const headers2 = [
+    { label: "(5)\nTOTAL\nHOURS", width: col.total },
+    { label: "(6)\nRATE\nOF PAY", width: col.rate },
+    { label: "(7)\nGROSS\nEARNED", width: col.gross },
+  ];
+
+  headers2.forEach((h) => {
+    doc.rect(x, y, h.width, headerHeight, "S");
+    const lines = h.label.split("\n");
+    lines.forEach((line, i) => {
+      doc.text(line, x + h.width / 2, y + 3 + i * 3, { align: "center" });
+    });
+    x += h.width;
+  });
+
+  // Deductions header "(8) DEDUCTIONS"
+  doc.rect(x, y, col.fica + col.withhold + col.other, 5, "S");
+  doc.text("(8) DEDUCTIONS", x + (col.fica + col.withhold + col.other) / 2, y + 3.5, { align: "center" });
+  
+  // Sub-headers for deductions
+  doc.rect(x, y + 5, col.fica, 11, "S");
+  doc.text("FICA", x + col.fica / 2, y + 11, { align: "center" });
+  x += col.fica;
+  
+  doc.rect(x, y + 5, col.withhold, 11, "S");
+  doc.text("WITH-\nHOLD.", x + col.withhold / 2, y + 10, { align: "center" });
+  x += col.withhold;
+  
+  doc.rect(x, y + 5, col.other, 11, "S");
+  doc.text("OTHER", x + col.other / 2, y + 11, { align: "center" });
+  x += col.other;
+
+  // Net wages header
+  doc.rect(x, y, col.net, headerHeight, "S");
+  doc.text("(9)\nNET\nWAGES\nPAID", x + col.net / 2, y + 3, { align: "center" });
 
   y += headerHeight;
 
-  // Data rows
-  const rowHeight = 12;
+  // ========== EMPLOYEE ROWS ==========
+  const rowHeight = 14; // Each employee gets 2 sub-rows (O and S)
   doc.setFont("helvetica", "normal");
 
   data.employees.forEach((employee, rowIndex) => {
     // Check for page break
-    if (y + rowHeight > pageHeight - 40) {
+    if (y + rowHeight > pageHeight - 50) {
       doc.addPage();
       y = margin;
     }
@@ -365,111 +470,241 @@ export function generateWH347PDF(data: WH347ExportData): void {
     x = tableStartX;
     const p = employee.personnel;
     
-    // Name/Address/SSN cell
-    drawRect(x, y, colWidths.name, rowHeight);
+    // (1) Name, Address, SSN cell
+    doc.rect(x, y, col.name, rowHeight, "S");
     doc.setFontSize(6);
-    doc.text(`${p.firstName} ${p.lastName}`, x + 1, y + 3);
+    doc.text(`${p.lastName}, ${p.firstName}`, x + 1, y + 3);
     if (p.address) {
-      doc.text(p.address.substring(0, 25), x + 1, y + 6);
-    }
-    doc.text(formatSSN(p.ssnLastFour), x + 1, y + 9);
-    x += colWidths.name;
-
-    // Classification
-    drawRect(x, y, colWidths.classification, rowHeight);
-    doc.text((p.workClassification || "").substring(0, 10), x + 1, y + 6);
-    x += colWidths.classification;
-
-    // Daily hours (Sun-Sat)
-    employee.dailyHours.forEach((day) => {
-      drawRect(x, y, 10, rowHeight);
-      if (day.hours > 0) {
-        doc.text(day.hours.toFixed(1), x + 5, y + 6, { align: "center" });
+      doc.setFontSize(5);
+      doc.text(p.address.substring(0, 22), x + 1, y + 6);
+      if (p.city || p.state) {
+        doc.text(`${p.city || ""}, ${p.state || ""} ${p.zip || ""}`.substring(0, 22), x + 1, y + 9);
       }
-      x += 10;
+    }
+    doc.text(formatSSN(p.ssnLastFour), x + 1, y + 12);
+    x += col.name;
+
+    // (2) Withholding Exemptions
+    doc.rect(x, y, col.wh, rowHeight, "S");
+    doc.setFontSize(7);
+    doc.text(String(p.withholdingExemptions || 0), x + col.wh / 2, y + 8, { align: "center" });
+    x += col.wh;
+
+    // (3) Work Classification
+    doc.rect(x, y, col.class, rowHeight, "S");
+    doc.setFontSize(5);
+    doc.text((p.workClassification || "").substring(0, 12), x + 1, y + 8);
+    x += col.class;
+
+    // (4) Daily hours - O row and S row
+    const halfRow = rowHeight / 2;
+    employee.dailyHours.forEach((day) => {
+      doc.rect(x, y, col.day, rowHeight, "S");
+      doc.line(x, y + halfRow, x + col.day, y + halfRow); // Horizontal divider
+      
+      doc.setFontSize(6);
+      // O (overtime) row
+      if (day.overtimeHours > 0) {
+        doc.text(day.overtimeHours.toFixed(1), x + col.day / 2, y + 4, { align: "center" });
+      }
+      // S (straight) row
+      if (day.straightHours > 0) {
+        doc.text(day.straightHours.toFixed(1), x + col.day / 2, y + halfRow + 4, { align: "center" });
+      }
+      x += col.day;
     });
 
-    // Total hours
-    drawRect(x, y, colWidths.total, rowHeight);
-    doc.text(employee.totalHours.toFixed(1), x + colWidths.total / 2, y + 6, { align: "center" });
-    x += colWidths.total;
+    // (5) Total Hours - with O/S breakdown
+    doc.rect(x, y, col.total, rowHeight, "S");
+    doc.line(x, y + halfRow, x + col.total, y + halfRow);
+    doc.setFontSize(6);
+    if (employee.overtimeHours > 0) {
+      doc.text(employee.overtimeHours.toFixed(1), x + col.total / 2, y + 4, { align: "center" });
+    }
+    doc.text(employee.regularHours.toFixed(1), x + col.total / 2, y + halfRow + 4, { align: "center" });
+    x += col.total;
 
-    // Rate
-    drawRect(x, y, colWidths.rate, rowHeight);
-    doc.text(`$${p.hourlyRate.toFixed(2)}`, x + 1, y + 6);
-    x += colWidths.rate;
+    // (6) Rate of Pay - with O/S rates
+    doc.rect(x, y, col.rate, rowHeight, "S");
+    doc.line(x, y + halfRow, x + col.rate, y + halfRow);
+    doc.setFontSize(6);
+    if (employee.overtimeHours > 0) {
+      doc.text(`$${employee.overtimeRate.toFixed(2)}`, x + 1, y + 4);
+    }
+    doc.text(`$${employee.straightRate.toFixed(2)}`, x + 1, y + halfRow + 4);
+    x += col.rate;
 
-    // Gross earned
-    drawRect(x, y, colWidths.gross, rowHeight);
-    doc.text(`$${employee.grossEarned.toFixed(2)}`, x + 1, y + 6);
-    x += colWidths.gross;
+    // (7) Gross Earned
+    doc.rect(x, y, col.gross, rowHeight, "S");
+    doc.setFontSize(7);
+    doc.text(`$${employee.grossEarned.toFixed(2)}`, x + 1, y + 8);
+    x += col.gross;
 
-    // FICA
-    drawRect(x, y, colWidths.fica, rowHeight);
-    doc.text(`$${employee.deductions.fica.toFixed(2)}`, x + 1, y + 6);
-    x += colWidths.fica;
+    // (8a) FICA
+    doc.rect(x, y, col.fica, rowHeight, "S");
+    doc.setFontSize(6);
+    doc.text(`$${employee.deductions.fica.toFixed(2)}`, x + 1, y + 8);
+    x += col.fica;
 
-    // Withholding
-    drawRect(x, y, colWidths.wh, rowHeight);
-    doc.text(`$${employee.deductions.withholding.toFixed(2)}`, x + 1, y + 6);
-    x += colWidths.wh;
+    // (8b) Withholding
+    doc.rect(x, y, col.withhold, rowHeight, "S");
+    doc.text(`$${employee.deductions.withholding.toFixed(2)}`, x + 1, y + 8);
+    x += col.withhold;
 
-    // Other
-    drawRect(x, y, colWidths.other, rowHeight);
-    doc.text(`$${employee.deductions.other.toFixed(2)}`, x + 1, y + 6);
-    x += colWidths.other;
+    // (8c) Other
+    doc.rect(x, y, col.other, rowHeight, "S");
+    if (employee.deductions.other > 0) {
+      doc.text(`$${employee.deductions.other.toFixed(2)}`, x + 1, y + 8);
+    }
+    x += col.other;
 
-    // Net wages
-    drawRect(x, y, colWidths.net, rowHeight);
+    // (9) Net Wages
+    doc.rect(x, y, col.net, rowHeight, "S");
     doc.setFont("helvetica", "bold");
-    doc.text(`$${employee.netWages.toFixed(2)}`, x + 1, y + 6);
+    doc.setFontSize(7);
+    doc.text(`$${employee.netWages.toFixed(2)}`, x + 1, y + 8);
     doc.setFont("helvetica", "normal");
 
     y += rowHeight;
   });
 
-  y += 5;
+  // ========== PAGE 2: WH-348 STATEMENT OF COMPLIANCE ==========
+  doc.addPage();
+  y = margin;
 
-  // Certification Section
-  if (y + 35 > pageHeight - margin) {
-    doc.addPage();
-    y = margin;
-  }
-
-  doc.setFontSize(8);
+  // Header
+  doc.setFontSize(11);
   doc.setFont("helvetica", "bold");
-  doc.text("STATEMENT OF COMPLIANCE", margin, y);
-  y += 4;
-
+  doc.text("STATEMENT OF COMPLIANCE", pageWidth / 2, y + 5, { align: "center" });
+  
+  doc.setFontSize(6);
   doc.setFont("helvetica", "normal");
-  doc.setFontSize(7);
-  const complianceText = `I, ${data.certifierName || "_________________"}, ${data.certifierTitle || "(Title)"}, do hereby state:
-(1) That I pay or supervise the payment of the persons employed by ${data.contractorName} on the ${data.projectName};
-that during the payroll period commencing on the ${format(startOfWeek(data.weekEnding, { weekStartsOn: 0 }), "do")} day of ${format(data.weekEnding, "MMMM, yyyy")} and ending the ${format(data.weekEnding, "do")} day of ${format(data.weekEnding, "MMMM, yyyy")},
-all persons employed on said project have been paid the full weekly wages earned, that no rebates have been or will be made either directly or indirectly to or on behalf of said
-${data.contractorName} from the full weekly wages earned by any person and that no deductions have been made either directly or indirectly from the full wages earned by any person,
-other than permissible deductions as defined in Regulations, Part 3 (29 CFR Subtitle A), issued by the Secretary of Labor under the Copeland Act, as amended (48 Stat. 948, 63 Stat. 108, 72 Stat. 967; 76 Stat. 357; 40 U.S.C. 3145),
-and described below:`;
+  doc.text("Rev. Dec. 2008", pageWidth - margin - 15, y + 3);
 
-  const splitText = doc.splitTextToSize(complianceText, pageWidth - 2 * margin);
-  doc.text(splitText, margin, y);
-  y += splitText.length * 3 + 5;
+  y += 12;
 
-  // Signature line
-  doc.line(margin, y + 5, margin + 60, y + 5);
-  doc.text("Signature", margin, y + 8);
-
-  doc.line(margin + 70, y + 5, margin + 100, y + 5);
-  doc.text("Date", margin + 70, y + 8);
+  // Date field
+  doc.setFontSize(8);
+  doc.text("Date", margin, y);
+  doc.line(margin + 8, y, margin + 50, y);
   if (data.certificationDate) {
-    doc.text(format(data.certificationDate, "MM/dd/yyyy"), margin + 70, y + 3);
+    doc.text(format(data.certificationDate, "MM/dd/yyyy"), margin + 10, y - 1);
   }
 
-  doc.line(margin + 110, y + 5, margin + 180, y + 5);
-  doc.text("Title", margin + 110, y + 8);
-  if (data.certifierTitle) {
-    doc.text(data.certifierTitle, margin + 110, y + 3);
+  y += 8;
+
+  // Signatory info
+  doc.text(`I, ${data.certifierName || "_____________________________"}, `, margin, y);
+  doc.text(`${data.certifierTitle || "(Title)"}`, margin + 60, y);
+  
+  y += 6;
+  doc.setFontSize(7);
+  doc.text("(Name of Signatory Party)", margin + 5, y);
+  doc.text("(Title)", margin + 60, y);
+
+  y += 8;
+  doc.setFontSize(8);
+  doc.text("do hereby state:", margin, y);
+
+  y += 8;
+
+  // Compliance statements
+  const statements = [
+    `(1) That I pay or supervise the payment of the persons employed by ${data.contractorName} on the ${data.projectName}; that during the payroll period commencing on the ${format(startOfWeek(data.weekEnding, { weekStartsOn: 0 }), "do")} day of ${format(data.weekEnding, "MMMM, yyyy")} and ending the ${format(data.weekEnding, "do")} day of ${format(data.weekEnding, "MMMM, yyyy")} all persons employed on said project have been paid the full weekly wages earned, that no rebates have been or will be made either directly or indirectly to or on behalf of said ${data.contractorName} from the full weekly wages earned by any person and that no deductions have been made either directly or indirectly from the full wages earned by any person, other than permissible deductions as defined in Regulations, Part 3 (29 C.F.R. Subtitle A), issued by the Secretary of Labor under the Copeland Act, as amended (48 Stat. 948, 63 Stat. 108, 72 Stat. 967; 76 Stat. 357; 40 U.S.C. § 3145), and described below:`,
+    `(2) That any payrolls otherwise under this contract required to be submitted for the above period are correct and complete; that the wage rates for laborers or mechanics contained therein are not less than the applicable wage rates contained in any wage determination incorporated into the contract; that the classifications set forth therein for each laborer or mechanic conform with the work he performed.`,
+    `(3) That any apprentices employed in the above period are duly registered in a bona fide apprenticeship program registered with a State apprenticeship agency recognized by the Bureau of Apprenticeship and Training, United States Department of Labor, or if no such recognized agency exists in a State, are registered with the Bureau of Apprenticeship and Training, United States Department of Labor.`,
+    `(4) That:`
+  ];
+
+  doc.setFontSize(7);
+  statements.forEach((statement, index) => {
+    const lines = doc.splitTextToSize(statement, pageWidth - 2 * margin - 5);
+    lines.forEach((line: string) => {
+      if (y > pageHeight - 30) {
+        doc.addPage();
+        y = margin;
+      }
+      doc.text(line, margin + 3, y);
+      y += 3.5;
+    });
+    y += 2;
+  });
+
+  // Fringe benefit checkboxes
+  y += 2;
+  drawCheckbox(margin + 8, y - 2, !!data.fringePaidToPlan);
+  doc.text("(a) WHERE FRINGE BENEFITS ARE PAID TO APPROVED PLANS, FUNDS, OR PROGRAMS", margin + 14, y);
+  y += 5;
+  
+  const fringeTextA = "— in addition to the basic hourly wage rates paid to each laborer or mechanic listed in the above referenced payroll, payments of fringe benefits as listed in the contract have been or will be made to appropriate programs for the benefit of such employees, except as noted in section 4(c) below.";
+  const linesA = doc.splitTextToSize(fringeTextA, pageWidth - 2 * margin - 15);
+  linesA.forEach((line: string) => {
+    doc.text(line, margin + 14, y);
+    y += 3.5;
+  });
+
+  y += 3;
+  drawCheckbox(margin + 8, y - 2, !!data.fringePaidInCash);
+  doc.text("(b) WHERE FRINGE BENEFITS ARE PAID IN CASH", margin + 14, y);
+  y += 5;
+  
+  const fringeTextB = "— Each laborer or mechanic listed in the above referenced payroll has been paid, as indicated on the payroll, an amount not less than the sum of the applicable basic hourly wage rate plus the amount of the required fringe benefits as listed in the contract, except as noted in section 4(c) below.";
+  const linesB = doc.splitTextToSize(fringeTextB, pageWidth - 2 * margin - 15);
+  linesB.forEach((line: string) => {
+    doc.text(line, margin + 14, y);
+    y += 3.5;
+  });
+
+  y += 5;
+  doc.text("(c) EXCEPTIONS", margin + 8, y);
+  y += 8;
+
+  // Exceptions table
+  doc.rect(margin, y, (pageWidth - 2 * margin) / 2, 5, "S");
+  doc.rect(margin + (pageWidth - 2 * margin) / 2, y, (pageWidth - 2 * margin) / 2, 5, "S");
+  doc.setFontSize(6);
+  doc.text("EXCEPTION (CRAFT)", margin + 2, y + 3.5);
+  doc.text("EXPLANATION", margin + (pageWidth - 2 * margin) / 2 + 2, y + 3.5);
+  
+  // Empty rows for exceptions
+  for (let i = 0; i < 3; i++) {
+    y += 5;
+    doc.rect(margin, y, (pageWidth - 2 * margin) / 2, 5, "S");
+    doc.rect(margin + (pageWidth - 2 * margin) / 2, y, (pageWidth - 2 * margin) / 2, 5, "S");
   }
+
+  y += 10;
+
+  // Remarks
+  doc.setFontSize(7);
+  doc.text("REMARKS:", margin, y);
+  y += 3;
+  doc.rect(margin, y, pageWidth - 2 * margin, 15, "S");
+
+  y += 20;
+
+  // Signature section
+  doc.setFontSize(8);
+  doc.text("NAME AND TITLE", margin, y);
+  doc.line(margin + 25, y, margin + 90, y);
+  if (data.certifierName && data.certifierTitle) {
+    doc.text(`${data.certifierName}, ${data.certifierTitle}`, margin + 27, y - 1);
+  }
+
+  doc.text("SIGNATURE", margin + 100, y);
+  doc.line(margin + 120, y, pageWidth - margin, y);
+
+  y += 8;
+
+  // Legal warning
+  doc.setFontSize(6);
+  doc.setFont("helvetica", "italic");
+  const warningText = "THE WILLFUL FALSIFICATION OF ANY OF THE ABOVE STATEMENTS MAY SUBJECT THE CONTRACTOR OR SUBCONTRACTOR TO CIVIL OR CRIMINAL PROSECUTION. SEE SECTION 1001 OF TITLE 18 AND SECTION 231 OF TITLE 31 OF THE UNITED STATES CODE.";
+  const warningLines = doc.splitTextToSize(warningText, pageWidth - 2 * margin);
+  warningLines.forEach((line: string) => {
+    doc.text(line, margin, y);
+    y += 3;
+  });
 
   // Save
   const filename = `WH-347_${data.projectName.replace(/[^a-zA-Z0-9]/g, "_")}_${format(data.weekEnding, "yyyy-MM-dd")}.pdf`;
