@@ -1,131 +1,94 @@
 
 
-# Use Official WH-347 Fillable PDF Template
+# Fix WH-347 Export - Use Official Fillable Template
 
-## Overview
+## Problem Identified
 
-You've uploaded the official DOL WH-347/WH-348 fillable PDF form. Instead of generating a custom PDF layout with jsPDF (current approach), we'll use **pdf-lib** to fill in the actual fields of your official template - the same approach used for W-9 and 1099-NEC forms.
+The WH-347 export is not using the official DOL fillable PDF template because the **edge function deployment is timing out**. The new code that fills the official template has been written but never successfully deployed.
 
-## Current vs Proposed Approach
+**Evidence:**
+- When testing the edge function directly, it returns: `"Unknown form type: wh-347"`
+- This confirms the deployed version is outdated and doesn't include the WH-347 handler
+- The deployment attempts keep failing with: `"Bundle generation timed out"`
 
-| Aspect | Current (jsPDF) | Proposed (pdf-lib + Template) |
-|--------|-----------------|-------------------------------|
-| Layout | Custom-drawn boxes and text | Official DOL form layout |
-| Compliance | Approximate match | Exact official form |
-| Method | Generate from scratch | Fill existing PDF fields |
-| Template Storage | None needed | `form-templates` bucket |
+The exported PDF you uploaded is a custom jsPDF-generated layout (not the official form), likely from a previous version or cached data.
+
+## Solution
+
+Split the `generate-pdf` edge function into smaller, dedicated functions to avoid deployment timeouts. Create a dedicated `generate-wh347` edge function just for WH-347 generation.
+
+### Why This Fixes the Issue
+
+- Smaller function = faster bundling = no timeout
+- Isolated functionality = easier to deploy and test
+- The official fillable template is already uploaded to storage (`form-templates/wh-347-348-fillable.pdf`)
 
 ## Implementation Steps
 
-### Step 1: Upload Template to Storage
+### Step 1: Create Dedicated WH-347 Edge Function
 
-Copy the uploaded PDF to the `form-templates` storage bucket:
-- Source: `user-uploads://WH-347-348-PayrollForm-StatmentComp-2.pdf`
-- Destination: `form-templates/wh-347-348-fillable.pdf`
-
-### Step 2: Create Edge Function for WH-347 Generation
-
-Add a new handler to the `generate-pdf` edge function (or create a dedicated function) that:
-1. Downloads the template from storage
-2. Uses `pdf-lib` to fill in the form fields
+Create a new `generate-wh347` edge function that:
+1. Downloads the official template from `form-templates/wh-347-348-fillable.pdf`
+2. Uses `pdf-lib` to fill the form fields
 3. Returns the filled PDF
 
-### Step 3: Update Export Flow
+### Step 2: Update Frontend to Call New Function
 
-Modify `WH347ExportDialog.tsx` to call the backend function instead of the client-side jsPDF generator.
+Update `WH347ExportDialog.tsx` to invoke `generate-wh347` instead of `generate-pdf`.
 
-## Technical Details
+### Step 3: Log and Map Field Names
 
-### Edge Function: WH-347 Handler
+The edge function will log all available field names from the official PDF template to ensure proper field mapping. The official DOL forms use specific field naming conventions that need to be matched.
 
-```typescript
-// Add to supabase/functions/generate-pdf/index.ts
-
-interface WH347FormData {
-  // Header info
-  contractorName: string;
-  contractorAddress: string;
-  isSubcontractor: boolean;
-  payrollNumber: string;
-  weekEnding: string;
-  projectName: string;
-  projectLocation: string;
-  contractNumber: string;
-  
-  // Employee rows (up to 8 per page)
-  employees: Array<{
-    name: string;
-    address: string;
-    ssnLastFour: string;
-    withholdingExemptions: number;
-    workClassification: string;
-    dailyHours: { straight: number; overtime: number }[];
-    totalHours: { straight: number; overtime: number };
-    rateOfPay: { straight: number; overtime: number };
-    grossEarned: number;
-    deductions: { fica: number; withholding: number; other: number };
-    totalDeductions: number;
-    netWages: number;
-  }>;
-  
-  // Page 2: Statement of Compliance
-  signatory: {
-    name: string;
-    title: string;
-    date: string;
-  };
-  fringeBenefits: {
-    paidToPlans: boolean;
-    paidInCash: boolean;
-  };
-}
-```
-
-### Field Mapping Process
-
-1. Log all available field names from the template
-2. Map data to the correct PDF field names
-3. Fill text fields and check appropriate checkboxes
-4. Handle multiple employee rows with indexed field names
-5. Flatten the form for final output
-
-### Updated Client-Side Export
-
-```typescript
-// In WH347ExportDialog.tsx
-const handleGenerate = async () => {
-  const response = await supabase.functions.invoke('generate-pdf', {
-    body: { 
-      type: 'wh-347', 
-      formData: exportData 
-    }
-  });
-  
-  if (response.data) {
-    // Download the generated PDF
-    const blob = new Blob([response.data], { type: 'application/pdf' });
-    const url = URL.createObjectURL(blob);
-    const link = document.createElement('a');
-    link.href = url;
-    link.download = `WH-347_${projectName}_${weekEnding}.pdf`;
-    link.click();
-  }
-};
-```
-
-## Files to Modify/Create
+## Files to Create/Modify
 
 | File | Action |
 |------|--------|
-| `form-templates/wh-347-348-fillable.pdf` | Upload template to storage |
-| `supabase/functions/generate-pdf/index.ts` | Add WH-347 handler |
-| `src/components/time-tracking/WH347ExportDialog.tsx` | Use edge function |
-| `src/utils/wh347ExportUtils.ts` | Keep for data organization, remove PDF generation |
+| `supabase/functions/generate-wh347/index.ts` | **Create** - Dedicated WH-347 function |
+| `supabase/config.toml` | Update to include new function config |
+| `src/components/time-tracking/WH347ExportDialog.tsx` | Update function invocation |
 
-## Benefits
+## Technical Details
 
-- Uses the exact official DOL form layout
-- Ensures compliance with certified payroll requirements
-- Consistent approach with W-9 and 1099-NEC generation
-- Template can be updated without code changes
+### New Edge Function Structure
+
+```typescript
+// supabase/functions/generate-wh347/index.ts
+
+// 1. Download template from form-templates bucket
+const { data: templateData } = await supabase.storage
+  .from("form-templates")
+  .download("wh-347-348-fillable.pdf");
+
+// 2. Load with pdf-lib
+const pdfDoc = await PDFDocument.load(templateBytes);
+const form = pdfDoc.getForm();
+
+// 3. Log field names for mapping
+const fields = form.getFields();
+console.log("WH-347 Fields:", fields.map(f => f.getName()));
+
+// 4. Fill fields based on form structure
+// 5. Return filled PDF
+```
+
+### Frontend Update
+
+```typescript
+// WH347ExportDialog.tsx
+const { data: pdfData, error: pdfError } = await supabase.functions.invoke(
+  "generate-wh347",  // Changed from "generate-pdf"
+  {
+    body: { formData: formDataForBackend },
+  }
+);
+```
+
+## Expected Result
+
+After implementation:
+1. The export will use the **exact official DOL WH-347/WH-348 form**
+2. All fields will be properly filled using the PDF's native form fields
+3. The form will be compliant with Davis-Bacon requirements
+4. The deployment should succeed (smaller function size)
 
