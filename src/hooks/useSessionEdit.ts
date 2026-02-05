@@ -178,7 +178,7 @@ export function useSessionEdit() {
 
   return {
     updateSession: updateSessionMutation.mutate,
-    createSession: createSessionMutation.mutate,
+    createSession: createSessionMutation.mutateAsync,
     isUpdating: updateSessionMutation.isPending,
     isCreating: createSessionMutation.isPending,
   };
