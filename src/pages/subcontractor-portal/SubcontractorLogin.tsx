@@ -10,7 +10,7 @@ import { toast } from "sonner";
 import { Loader2, HardHat } from "lucide-react";
 import { GoogleIcon } from "@/components/icons/GoogleIcon";
 import { NetworkErrorBanner } from "@/components/auth/NetworkErrorBanner";
-import { withTimeout, isNetworkError, classifyNetworkError, pingAuthHealth } from "@/utils/authNetwork";
+import { withTimeout, isNetworkError, classifyNetworkError } from "@/utils/authNetwork";
 
 export default function SubcontractorLogin() {
   const navigate = useNavigate();
@@ -28,12 +28,6 @@ export default function SubcontractorLogin() {
 
     try {
       console.info(`[SubcontractorLogin] signIn: start | origin: ${window.location.origin}`);
-      
-      // Non-blocking health check - log but don't block sign-in
-      const health = await pingAuthHealth(5000);
-      if (!health.healthy) {
-        console.warn("[SubcontractorLogin] Health check failed, proceeding anyway:", health.error);
-      }
 
       const signInPromise = supabase.auth.signInWithPassword({
         email,
