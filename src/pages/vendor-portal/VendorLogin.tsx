@@ -19,7 +19,7 @@ import { AppleIcon } from "@/components/icons/AppleIcon";
 import { PortalSwitcherModal } from "@/components/PortalSwitcherModal";
 import { usePortalSwitcher } from "@/hooks/usePortalSwitcher";
 import { NetworkErrorBanner } from "@/components/auth/NetworkErrorBanner";
-import { withTimeout, isNetworkError, classifyNetworkError, pingAuthHealth } from "@/utils/authNetwork";
+import { withTimeout, isNetworkError, classifyNetworkError } from "@/utils/authNetwork";
 
 export default function VendorLogin() {
   const navigate = useNavigate();
@@ -42,12 +42,6 @@ export default function VendorLogin() {
 
     try {
       console.info(`[VendorLogin] signIn: start | origin: ${window.location.origin}`);
-      
-      // Non-blocking health check - log but don't block sign-in
-      const health = await pingAuthHealth(5000);
-      if (!health.healthy) {
-        console.warn("[VendorLogin] Health check failed, proceeding anyway:", health.error);
-      }
 
       const signInPromise = supabase.auth.signInWithPassword({
         email,
