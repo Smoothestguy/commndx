@@ -93,6 +93,11 @@ export default function SessionHistory() {
 
   const canSelectUser = isAdmin || isManager;
   const effectiveUserId = targetUserId || user?.id || null;
+  
+  // Get the email of the target user for session creation
+  const targetUserEmail = effectiveUserId === user?.id 
+    ? user?.email 
+    : sessionUsers?.find(u => u.id === effectiveUserId)?.email;
 
   return (
     <>
@@ -147,6 +152,8 @@ export default function SessionHistory() {
                   onSelectSession={setSelectedSessionId}
                   selectedSessionId={selectedSessionId}
                   targetUserId={effectiveUserId}
+                  targetUserEmail={targetUserEmail}
+                  isAdmin={isAdmin}
                 />
               </div>
             </TabsContent>

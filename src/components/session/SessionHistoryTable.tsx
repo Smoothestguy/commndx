@@ -15,10 +15,12 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { format } from "date-fns";
 import { DateRange } from "react-day-picker";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Download, Eye, Clock, DollarSign, RefreshCw } from "lucide-react";
+import { Download, Eye, Clock, DollarSign, RefreshCw, Pencil, Plus } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { useState } from "react";
+import { EditSessionTimeDialog } from "./EditSessionTimeDialog";
+import { AddSessionDialog } from "./AddSessionDialog";
 
 
 
@@ -27,10 +29,13 @@ interface SessionHistoryTableProps {
   onSelectSession: (sessionId: string | null) => void;
   selectedSessionId: string | null;
   targetUserId?: string | null;
+  targetUserEmail?: string;
+  isAdmin?: boolean;
 }
 
 interface Session {
   id: string;
+  user_id: string;
   session_start: string;
   session_end: string | null;
   total_active_seconds: number;
@@ -46,6 +51,8 @@ export function SessionHistoryTable({
   onSelectSession,
   selectedSessionId,
   targetUserId,
+  targetUserEmail,
+  isAdmin = false,
 }: SessionHistoryTableProps) {
   const { user } = useAuth();
   const { toast } = useToast();
@@ -53,6 +60,8 @@ export function SessionHistoryTable({
   const queryClient = useQueryClient();
   const userId = targetUserId || user?.id;
   const [recalculatingId, setRecalculatingId] = useState<string | null>(null);
+  const [editingSession, setEditingSession] = useState<Session | null>(null);
+  const [showAddDialog, setShowAddDialog] = useState(false);
 
   // Fetch hourly rate for the user
   const { data: hourlyRate = 0 } = useQuery({
@@ -290,11 +299,20 @@ export function SessionHistoryTable({
     <Card>
       <CardHeader className="flex flex-row items-center justify-between p-4 sm:p-6">
         <CardTitle className="text-base sm:text-lg">Session History</CardTitle>
-        <Button variant="outline" size="sm" onClick={exportToCSV} className="h-8 text-xs sm:text-sm">
-          <Download className="h-3.5 w-3.5 sm:h-4 sm:w-4 mr-1.5 sm:mr-2" />
-          <span className="hidden sm:inline">Export CSV</span>
-          <span className="sm:hidden">Export</span>
-        </Button>
+        <div className="flex items-center gap-2">
+          {isAdmin && (
+            <Button variant="outline" size="sm" onClick={() => setShowAddDialog(true)} className="h-8 text-xs sm:text-sm">
+              <Plus className="h-3.5 w-3.5 sm:h-4 sm:w-4 mr-1 sm:mr-1.5" />
+              <span className="hidden sm:inline">Add Session</span>
+              <span className="sm:hidden">Add</span>
+            </Button>
+          )}
+          <Button variant="outline" size="sm" onClick={exportToCSV} className="h-8 text-xs sm:text-sm">
+            <Download className="h-3.5 w-3.5 sm:h-4 sm:w-4 mr-1.5 sm:mr-2" />
+            <span className="hidden sm:inline">Export CSV</span>
+            <span className="sm:hidden">Export</span>
+          </Button>
+        </div>
       </CardHeader>
       <CardContent className="p-4 pt-0 sm:p-6 sm:pt-0">
         {sessions && sessions.length > 0 ? (
@@ -332,16 +350,48 @@ export function SessionHistoryTable({
                         {format(new Date(session.session_start), "MMM d, yyyy")}
                       </TableCell>
                       <TableCell>
-                        {format(new Date(session.session_start), "h:mm a")}
+                        <div className="flex items-center gap-1">
+                          {format(new Date(session.session_start), "h:mm a")}
+                          {isAdmin && (
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              className="h-6 w-6 p-0"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                setEditingSession(session);
+                              }}
+                              title="Edit session times"
+                            >
+                              <Pencil className="h-3 w-3" />
+                            </Button>
+                          )}
+                        </div>
                       </TableCell>
                       <TableCell>
-                        {session.session_end ? (
-                          format(new Date(session.session_end), "h:mm a")
-                        ) : (
-                          <Badge variant="default" className="bg-green-500">
-                            Active
-                          </Badge>
-                        )}
+                        <div className="flex items-center gap-1">
+                          {session.session_end ? (
+                            format(new Date(session.session_end), "h:mm a")
+                          ) : (
+                            <Badge variant="default" className="bg-green-500">
+                              Active
+                            </Badge>
+                          )}
+                          {isAdmin && (
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              className="h-6 w-6 p-0"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                setEditingSession(session);
+                              }}
+                              title="Edit session times"
+                            >
+                              <Pencil className="h-3 w-3" />
+                            </Button>
+                          )}
+                        </div>
                       </TableCell>
                       <TableCell className="font-mono">
                         {formatDuration(activeSeconds)}
@@ -391,6 +441,21 @@ export function SessionHistoryTable({
           </div>
         )}
       </CardContent>
+
+      {/* Edit Session Dialog */}
+      <EditSessionTimeDialog
+        open={!!editingSession}
+        onOpenChange={(open) => !open && setEditingSession(null)}
+        session={editingSession}
+      />
+
+      {/* Add Session Dialog */}
+      <AddSessionDialog
+        open={showAddDialog}
+        onOpenChange={setShowAddDialog}
+        targetUserId={userId || null}
+        targetUserEmail={targetUserEmail}
+      />
     </Card>
   );
 }
