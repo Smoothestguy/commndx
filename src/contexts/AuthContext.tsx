@@ -14,8 +14,7 @@ import { useNavigate } from "react-router-dom";
 import { 
   withTimeout, 
   isNetworkError, 
-  classifyNetworkError,
-  pingAuthHealth 
+  classifyNetworkError
 } from "@/utils/authNetwork";
 
 // Check if running in Electron - multiple detection methods for robustness
@@ -197,29 +196,25 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       lastName: string
     ) => {
       try {
-        console.info(`[Auth] signUp: start | origin: ${window.location.origin} | backend: ${!!import.meta.env.VITE_SUPABASE_URL}`);
-        
-        // Non-blocking health check - log but don't block sign-up
-        const health = await pingAuthHealth(5000);
-        if (!health.healthy) {
-          console.warn("[Auth] Health check failed before sign-up, proceeding anyway:", health.error);
-        }
+        console.info(`[Auth] signUp: start | origin: ${window.location.origin}`);
 
         const redirectUrl = `${window.location.origin}/`;
 
-        const signUpPromise = supabase.auth.signUp({
-          email,
-          password,
-          options: {
-            emailRedirectTo: redirectUrl,
-            data: {
-              first_name: firstName,
-              last_name: lastName,
+        const { data, error } = await withTimeout(
+          supabase.auth.signUp({
+            email,
+            password,
+            options: {
+              emailRedirectTo: redirectUrl,
+              data: {
+                first_name: firstName,
+                last_name: lastName,
+              },
             },
-          },
-        });
-
-        const { data, error } = await withTimeout(signUpPromise, 15000, "Sign up");
+          }),
+          15000,
+          "Sign up"
+        );
 
         if (error) {
           console.error("[Auth] signUp: error", error.message);
@@ -238,13 +233,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
           return { error: new Error(networkErr.userMessage) };
         }
         
-        logAuthEvent(
-          "sign_up",
-          email,
-          undefined,
-          false,
-          (error as Error).message
-        ).catch(console.error);
+        logAuthEvent("sign_up", email, undefined, false, (error as Error).message).catch(console.error);
         return { error: error as Error };
       }
     },
@@ -254,21 +243,13 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const signIn = useCallback(
     async (email: string, password: string) => {
       try {
-        console.info(`[Auth] signIn: start | origin: ${window.location.origin} | backend: ${!!import.meta.env.VITE_SUPABASE_URL}`);
-        
-        // Non-blocking health check - log but don't block sign-in
-        const health = await pingAuthHealth(5000);
-        if (!health.healthy) {
-          console.warn("[Auth] Health check failed before sign-in, proceeding anyway:", health.error);
-        }
+        console.info(`[Auth] signIn: start | origin: ${window.location.origin}`);
 
-        // Wrap sign-in with timeout
-        const signInPromise = supabase.auth.signInWithPassword({
-          email,
-          password,
-        });
-
-        const { data, error } = await withTimeout(signInPromise, 15000, "Sign in");
+        const { data, error } = await withTimeout(
+          supabase.auth.signInWithPassword({ email, password }),
+          15000,
+          "Sign in"
+        );
 
         if (error) {
           console.error("[Auth] signIn: error", error.message);
@@ -282,20 +263,13 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         return { error: null };
       } catch (error) {
         console.error("[Auth] signIn: exception", error);
-        // Check if this is a network error vs. auth error
         if (isNetworkError(error)) {
           const networkErr = classifyNetworkError(error);
           logAuthEvent("sign_in", email, undefined, false, networkErr.technicalDetails).catch(console.error);
           return { error: new Error(networkErr.userMessage) };
         }
         
-        logAuthEvent(
-          "sign_in",
-          email,
-          undefined,
-          false,
-          (error as Error).message
-        ).catch(console.error);
+        logAuthEvent("sign_in", email, undefined, false, (error as Error).message).catch(console.error);
         return { error: error as Error };
       }
     },
