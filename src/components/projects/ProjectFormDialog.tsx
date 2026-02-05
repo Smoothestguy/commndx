@@ -41,6 +41,7 @@ interface ProjectFormData {
   use_customer_address: boolean;
   time_clock_enabled: boolean;
   require_clock_location: boolean;
+  mandatory_payroll: boolean;
 }
 
 interface ProjectFormDialogProps {
@@ -360,6 +361,25 @@ export const ProjectFormDialog = ({
 
             <Separator />
 
+            {/* Payroll Settings */}
+            <div className="space-y-4">
+              <h4 className="text-sm font-medium text-muted-foreground">Payroll Settings</h4>
+              
+              <div className="flex items-center justify-between">
+                <div className="space-y-0.5">
+                  <Label htmlFor="mandatory_payroll">Mandatory Payroll</Label>
+                  <p className="text-xs text-muted-foreground">Personnel must be on payroll for this project</p>
+                </div>
+                <Switch
+                  id="mandatory_payroll"
+                  checked={formData.mandatory_payroll}
+                  onCheckedChange={(checked) => setFormData({ ...formData, mandatory_payroll: checked })}
+                />
+              </div>
+            </div>
+
+            <Separator />
+
             {/* Description */}
             <div className="space-y-4">
               <h4 className="text-sm font-medium text-muted-foreground">Description</h4>
@@ -419,6 +439,7 @@ export const initialProjectFormData: ProjectFormData = {
   use_customer_address: false,
   time_clock_enabled: false,
   require_clock_location: false,
+  mandatory_payroll: false,
 };
 
 export type { ProjectFormData };

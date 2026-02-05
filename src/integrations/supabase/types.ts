@@ -4920,6 +4920,7 @@ export type Database = {
           end_date: string | null
           geofence_radius_miles: number | null
           id: string
+          mandatory_payroll: boolean | null
           name: string
           poc_email: string | null
           poc_name: string | null
@@ -4949,6 +4950,7 @@ export type Database = {
           end_date?: string | null
           geofence_radius_miles?: number | null
           id?: string
+          mandatory_payroll?: boolean | null
           name: string
           poc_email?: string | null
           poc_name?: string | null
@@ -4978,6 +4980,7 @@ export type Database = {
           end_date?: string | null
           geofence_radius_miles?: number | null
           id?: string
+          mandatory_payroll?: boolean | null
           name?: string
           poc_email?: string | null
           poc_name?: string | null
