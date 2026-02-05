@@ -5,6 +5,28 @@ import type { Database } from "@/integrations/supabase/types";
 
 type AppRole = Database["public"]["Enums"]["app_role"];
 
+// Timeout wrapper for Supabase queries (which are PromiseLike but need .then() to become real Promises)
+const withTimeout = <T>(
+  queryBuilder: PromiseLike<T>,
+  ms: number
+): Promise<T> => {
+  const promise = Promise.resolve(queryBuilder);
+  const timeout = new Promise<never>((_, reject) =>
+    setTimeout(() => reject(new Error(`Query timed out after ${ms}ms`)), ms)
+  );
+  return Promise.race([promise, timeout]);
+};
+
+interface RoleQueryResult {
+  data: { role: AppRole } | null;
+  error: { code?: string; message?: string } | null;
+}
+
+interface IdQueryResult {
+  data: { id: string } | null;
+  error: { message?: string } | null;
+}
+
 export function useUserRole() {
   const { user, loading: authLoading } = useAuth();
   const [role, setRole] = useState<AppRole | null>(null);
@@ -13,6 +35,8 @@ export function useUserRole() {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
+    let mounted = true;
+
     // Don't fetch until auth is done loading
     if (authLoading) {
       return; // Keep loading = true while auth is loading
@@ -28,55 +52,71 @@ export function useUserRole() {
       }
 
       try {
-        // Check user_roles table for role
-        const { data: roleData, error: roleError } = await supabase
-          .from("user_roles")
-          .select("role")
-          .eq("user_id", user.id)
-          .single();
+        // Run all queries in parallel with timeout to prevent hanging
+        const [roleResult, vendorResult, personnelResult] = await Promise.all<
+          [Promise<RoleQueryResult>, Promise<IdQueryResult>, Promise<IdQueryResult>]
+        >([
+          withTimeout(
+            supabase.from("user_roles").select("role").eq("user_id", user.id).single(),
+            5000
+          ).catch((err) => {
+            console.warn("Role query failed:", err);
+            return { data: null, error: err } as RoleQueryResult;
+          }) as Promise<RoleQueryResult>,
+          withTimeout(
+            supabase.from("vendors").select("id").eq("user_id", user.id).maybeSingle(),
+            5000
+          ).catch((err) => {
+            console.warn("Vendor query failed:", err);
+            return { data: null, error: err } as IdQueryResult;
+          }) as Promise<IdQueryResult>,
+          withTimeout(
+            supabase.from("personnel").select("id").eq("user_id", user.id).maybeSingle(),
+            5000
+          ).catch((err) => {
+            console.warn("Personnel query failed:", err);
+            return { data: null, error: err } as IdQueryResult;
+          }) as Promise<IdQueryResult>,
+        ]);
 
-        if (roleError && roleError.code !== "PGRST116") {
-          console.error("Error fetching user role:", roleError);
+        if (!mounted) return;
+
+        // Process role result
+        if (roleResult.error && roleResult.error.code !== "PGRST116") {
+          console.error("Error fetching user role:", roleResult.error);
         }
-        
-        setRole(roleData?.role || null);
+        setRole(roleResult.data?.role || null);
 
-        // Check if user is linked to a vendor (vendors don't use user_roles)
-        const { data: vendorData, error: vendorError } = await supabase
-          .from("vendors")
-          .select("id")
-          .eq("user_id", user.id)
-          .maybeSingle();
-
-        if (vendorError) {
-          console.error("Error checking vendor link:", vendorError);
+        // Process vendor result
+        if (vendorResult.error) {
+          console.error("Error checking vendor link:", vendorResult.error);
         }
-        
-        setIsVendor(!!vendorData);
+        setIsVendor(!!vendorResult.data);
 
-        // Check if user is linked to personnel (personnel don't use user_roles)
-        const { data: personnelData, error: personnelError } = await supabase
-          .from("personnel")
-          .select("id")
-          .eq("user_id", user.id)
-          .maybeSingle();
-
-        if (personnelError) {
-          console.error("Error checking personnel link:", personnelError);
+        // Process personnel result
+        if (personnelResult.error) {
+          console.error("Error checking personnel link:", personnelResult.error);
         }
-        
-        setIsPersonnel(!!personnelData);
+        setIsPersonnel(!!personnelResult.data);
       } catch (error) {
         console.error("Error fetching user role:", error);
-        setRole(null);
-        setIsVendor(false);
-        setIsPersonnel(false);
+        if (mounted) {
+          setRole(null);
+          setIsVendor(false);
+          setIsPersonnel(false);
+        }
       } finally {
-        setLoading(false);
+        if (mounted) {
+          setLoading(false);
+        }
       }
     }
 
     fetchUserRole();
+
+    return () => {
+      mounted = false;
+    };
   }, [user, authLoading]);
 
   return {
