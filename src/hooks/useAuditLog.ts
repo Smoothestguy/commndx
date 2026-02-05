@@ -9,7 +9,8 @@ export type ActionType =
   | "payment" | "sync" | "upload" | "download"
   | "invite" | "status_change"
   | "bulk_unassign" | "bulk_sms" | "bulk_export" 
-  | "assign_asset" | "unassign_asset" | "transfer_asset";
+  | "assign_asset" | "unassign_asset" | "transfer_asset"
+  | "clock_in_edit";
 
 export type ResourceType = 
   | "estimate" | "invoice" | "purchase_order" | "job_order" 

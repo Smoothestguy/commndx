@@ -35,6 +35,7 @@ import { InvitationEmptyState } from "@/components/user-management/InvitationEmp
 import { ActivityLogCard } from "@/components/user-management/ActivityLogCard";
 import { ActivityEmptyState } from "@/components/user-management/ActivityEmptyState";
 import { ActivityFilters } from "@/components/user-management/ActivityFilters";
+import { TimeClockAdminTab } from "@/components/user-management/TimeClockAdminTab";
 import { Switch } from "@/components/ui/switch";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "@/components/ui/command";
@@ -759,7 +760,7 @@ export default function UserManagement() {
           <TabsList className={cn(
             isMobile 
               ? "flex w-full overflow-x-auto gap-1 -mx-4 px-4 pb-2 scrollbar-hide justify-start bg-transparent h-auto" 
-              : "grid w-full max-w-2xl grid-cols-4"
+              : isAdmin ? "grid w-full max-w-3xl grid-cols-5" : "grid w-full max-w-2xl grid-cols-4"
           )}>
             <TabsTrigger value="users" className={cn(isMobile && "min-h-[44px] px-4 shrink-0")}>
               Users
@@ -770,6 +771,11 @@ export default function UserManagement() {
             <TabsTrigger value="activity" className={cn(isMobile && "min-h-[44px] px-4 shrink-0")}>
               Activity
             </TabsTrigger>
+            {isAdmin && (
+              <TabsTrigger value="timeclock" className={cn(isMobile && "min-h-[44px] px-4 shrink-0")}>
+                {isMobile ? "Time Clock" : "Time Clock Admin"}
+              </TabsTrigger>
+            )}
             <TabsTrigger value="notifications" className={cn(isMobile && "min-h-[44px] px-4 shrink-0")}>
               {isMobile ? "Notifs" : "Notifications"}
             </TabsTrigger>
@@ -1599,6 +1605,12 @@ export default function UserManagement() {
                </CardContent>
             </Card>
           </TabsContent>
+
+          {isAdmin && (
+            <TabsContent value="timeclock" className="mt-6">
+              <TimeClockAdminTab />
+            </TabsContent>
+          )}
 
           <TabsContent value="notifications" className="mt-6">
             {currentUserId && (
