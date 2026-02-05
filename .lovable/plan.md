@@ -1,110 +1,132 @@
 
-## What’s actually broken (and what update likely caused it)
+# Investigation Summary: Desktop Sign-In Failure
 
-Right now the app can’t sign in on the **published web site** and shows a generic **“Failed to fetch”** for every sign-in method. Given the code we now have, the most likely regression is:
+## Root Cause Analysis
 
-- We added a **mandatory pre-flight “health check”** (`pingAuthHealth()`) that runs *before* attempting email/password sign-in (and also before sign-up and in the portal logins).
-- That health check currently does a **`HEAD` request** to `…/auth/v1/`.
-- In some hosting/CDN/backends, **`HEAD` responses don’t include the same CORS headers** as `GET/POST`, or they can be blocked/handled differently.
-- When a CORS header is missing, the browser reports it as **`TypeError: Failed to fetch`** (even if the server is reachable), which matches your symptom exactly.
-- Because we **return early** when the health check fails, the app never even gets to the real sign-in call, so *everything looks dead*.
+After thorough investigation, the issue is clear: **Email/password sign-in fails on BOTH desktop AND the published site (commndx.lovable.app)**, not just on the custom domain. This rules out CORS/custom domain misconfiguration as the primary cause.
 
-In other words: the “hardening” change accidentally introduced a new failure point that blocks sign-in.
+### Key Findings
 
-## Goal
+1. **The `signInWithPassword` request itself is failing with `TypeError: Failed to fetch`** - this happens BEFORE any response is received from the Supabase backend.
 
-Restore “sign in works like before” on the published site by:
-1) Removing the health check as a blocking dependency (so auth attempts always happen)
-2) Switching any remaining health check to an endpoint/method that is reliable under CORS
-3) Adding clear logging so we can confirm whether the failure is on the health check or the actual sign-in request
+2. **Mobile works, desktop doesn't** - This points to one of several desktop-specific issues:
+   - Desktop Chrome may have stricter security policies
+   - Browser extensions (ad blockers, privacy extensions) could be blocking Supabase API requests
+   - Corporate network/firewall restrictions on desktop
+   - Cached/stale service worker or DNS resolution issues
+   - Chrome's tracking prevention or enhanced privacy features
 
----
+3. **The Lovable OAuth flow uses `/~oauth/initiate`** which is a relative path that gets resolved against the current origin. For email/password, however, it uses the raw Supabase client which makes direct fetch requests to the Supabase backend.
 
-## Implementation plan (code changes)
-
-### 1) Change `pingAuthHealth()` to avoid `HEAD` and be CORS-safe
-**File:** `src/utils/authNetwork.ts`
-
-- Replace the `HEAD ${SUPABASE_URL}/auth/v1/` request with a `GET` request to a more CORS-consistent endpoint:
-  - Prefer: `GET ${SUPABASE_URL}/auth/v1/health`
-  - If that endpoint is not available, fallback to `GET ${SUPABASE_URL}/auth/v1/settings` (or another documented public auth endpoint)
-- Add:
-  - `cache: "no-store"` (avoid cached bad results)
-  - A short timeout (keep your AbortController)
-- Treat “any HTTP response” (even 4xx) as “reachable” (health check is about reachability, not authorization).
-
-**Why:** This removes the likely CORS/HEAD mismatch that is currently causing “Failed to fetch”.
+4. **No CORS issue per se** - Since the published site (`commndx.lovable.app`) also fails, and that's a Lovable-controlled domain with proper CORS headers, the issue is NOT about missing allowed origins.
 
 ---
 
-### 2) Make the health check non-blocking (never prevent sign-in)
-**Files:**
-- `src/contexts/AuthContext.tsx`
-- `src/pages/portal/PortalLogin.tsx`
-- `src/pages/vendor-portal/VendorLogin.tsx`
-- `src/pages/subcontractor-portal/SubcontractorLogin.tsx`
+## Diagnosis Steps
 
-Change the current pattern:
+The failure pattern (mobile works, desktop fails, even on published site) strongly suggests:
 
-```ts
-const health = await pingAuthHealth(...)
-if (!health.healthy) return { error: ... }
+| Possibility | Likelihood | Evidence |
+|-------------|------------|----------|
+| Browser extension blocking | **High** | Extensions often target desktop only |
+| Network/firewall | Medium | Corporate environments often restrict desktop differently |
+| Chrome flags/settings | Medium | Some privacy features differ on desktop |
+| Stale cache/service worker | Medium | Desktop may have cached old broken state |
+| Supabase regional routing | Low | Would affect mobile too |
+
+---
+
+## Recommended Fix Strategy
+
+### Phase 1: Quick Desktop Debugging (User-side)
+
+Ask the user to perform these quick tests on their desktop Chrome:
+
+1. **Incognito Window Test**
+   - Open Chrome incognito (Ctrl+Shift+N / Cmd+Shift+N)
+   - Try signing in at `commndx.lovable.app`
+   - If this works → an extension is blocking requests
+
+2. **DevTools Network Tab Check**
+   - Open DevTools (F12) → Network tab → filter "token"
+   - Attempt sign-in
+   - Look for the blocked/failed request to identify the exact endpoint
+
+3. **Try a different browser**
+   - Test in Firefox or Edge
+   - If these work → Chrome-specific issue (extensions, settings)
+
+### Phase 2: Code-Level Improvements (If User-Side Tests Don't Resolve)
+
+If the issue persists after user-side debugging:
+
+1. **Add Retry Logic with Exponential Backoff**
+   - Wrap `signInWithPassword` in a retry mechanism
+   - Some transient network issues resolve with a second attempt
+
+2. **Add Pre-flight Health Check (Optional)**
+   - Already partially implemented in `pingAuthHealth()` 
+   - Could be called before sign-in to give early warning
+
+3. **Enhanced Error Messaging**
+   - Show more specific guidance based on error type
+   - E.g., "If you're using an ad blocker, try disabling it for this site"
+
+---
+
+## Technical Implementation Plan
+
+### File: `src/contexts/AuthContext.tsx`
+
+Add retry logic to `signIn` function:
+
+```text
+┌─────────────────────────────────────────────────────────┐
+│ signIn(email, password)                                 │
+├─────────────────────────────────────────────────────────┤
+│ 1. Log attempt with origin info                         │
+│ 2. First attempt: signInWithPassword                    │
+│ 3. If "Failed to fetch" error:                          │
+│    └─ Wait 1s, retry once                               │
+│ 4. If still fails:                                      │
+│    └─ Return error with diagnostic info                 │
+│ 5. On success:                                          │
+│    └─ Fire-and-forget audit log, navigate to /          │
+└─────────────────────────────────────────────────────────┘
 ```
 
-To:
+### File: `src/pages/Auth.tsx` and `src/pages/portal/PortalLogin.tsx`
 
-- Run `pingAuthHealth()` in a **best-effort** way:
-  - If it fails, log it and optionally show the banner
-  - But still proceed to attempt the actual sign-in call
-- Only show the network banner when:
-  - The real sign-in attempt fails with a network error, OR
-  - The health check fails *and* the sign-in attempt fails, OR
-  - The user explicitly presses “Retry” after a failure
+Improve error banner to include troubleshooting hints:
 
-**Why:** Even if the health check is imperfect, it can’t be allowed to block all sign-ins again.
-
----
-
-### 3) Add one clear “where did it fail” marker (diagnostics you can trust)
-**Files:**
-- `src/contexts/AuthContext.tsx` (signIn + signUp)
-- Portal login pages (handleLogin)
-
-Add console markers like:
-- `[Auth] healthCheck: start/result`
-- `[Auth] signInWithPassword: start/result`
-- Include the current `window.location.origin` and whether `VITE_SUPABASE_URL` exists (boolean only, no secrets)
-
-**Why:** If it still fails after this, we’ll know whether the failure is before auth (health) or at auth (token request/CORS/blocked).
+```text
+┌─────────────────────────────────────────────────────────┐
+│ NetworkErrorBanner improvements                         │
+├─────────────────────────────────────────────────────────┤
+│ • Add "Try in incognito mode" suggestion                │
+│ • Add "Disable ad blocker" suggestion                   │
+│ • Keep existing retry + copy diagnostics buttons        │
+└─────────────────────────────────────────────────────────┘
+```
 
 ---
 
-### 4) Quick verification steps (published web)
-After changes are applied and republished:
+## Immediate Next Steps
 
-1) Open the **published** site in an incognito window.
-2) Attempt email/password sign-in.
-   - Expected outcomes:
-     - Wrong password: you should see “Invalid login credentials” (proves network works)
-     - Correct password: you should land in the dashboard
-3) Attempt Google/Apple:
-   - Should redirect back and land in the app (or show unauthorized if your authorization enforcement triggers).
+Before implementing code changes, we need to confirm the root cause:
 
-If it still fails, we will use the new console markers + the “Copy diagnostics” output to pinpoint the exact failing request and fix the underlying CORS/origin configuration accordingly.
+1. **User action required**: Test in Chrome incognito to rule out extensions
+2. **User action required**: Check DevTools Network tab for the actual blocked request
+3. **User action required**: Try Firefox/Edge to confirm Chrome-specific issue
 
----
-
-## Why this started happening “now”
-This isn’t random. It’s extremely consistent with the change we introduced:
-- Adding a **blocking pre-flight network call** (HEAD) before sign-in.
-If that call fails due to CORS/method handling on the published domain, the app will fail sign-in 100% of the time—exactly what you’re seeing.
+Once we know the exact cause (extension, network, browser settings), we can either:
+- Guide the user to fix their browser config (if it's client-side)
+- Implement code-level mitigations (if it's a widespread issue)
 
 ---
 
-## Files we’ll touch
-- `src/utils/authNetwork.ts` (fix health check method/endpoint)
-- `src/contexts/AuthContext.tsx` (make health check non-blocking + add markers)
-- `src/pages/portal/PortalLogin.tsx` (non-blocking + markers)
-- `src/pages/vendor-portal/VendorLogin.tsx` (non-blocking + markers)
-- `src/pages/subcontractor-portal/SubcontractorLogin.tsx` (non-blocking + markers)
+## Summary
 
+The fact that both the custom domain AND the published Lovable domain fail on desktop Chrome—but mobile works—strongly indicates a **desktop browser environment issue** (extensions, firewall, or Chrome settings) rather than a code bug or backend misconfiguration.
+
+The recommended first step is for the user to test in incognito mode to confirm this hypothesis.
