@@ -13,6 +13,7 @@ import { Label } from "@/components/ui/label";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Badge } from "@/components/ui/badge";
 import { Checkbox } from "@/components/ui/checkbox";
+import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import {
   Select,
   SelectContent,
@@ -87,6 +88,7 @@ interface PersonnelClassification {
   personnelId: string;
   personnelName: string;
   classification: string;
+  withholdingExemptions: number;
   selected: boolean;
 }
 
@@ -110,6 +112,9 @@ export function WH347ExportDialog({
   const [payrollNumber, setPayrollNumber] = useState("");
   const [certifierName, setCertifierName] = useState("");
   const [certifierTitle, setCertifierTitle] = useState("");
+  const [isSubcontractor, setIsSubcontractor] = useState(false);
+  const [fringePaidToPlan, setFringePaidToPlan] = useState(false);
+  const [fringePaidInCash, setFringePaidInCash] = useState(false);
   const [isGenerating, setIsGenerating] = useState(false);
   const [personnelClassifications, setPersonnelClassifications] = useState<
     PersonnelClassification[]
@@ -163,6 +168,7 @@ export function WH347ExportDialog({
             personnelId: p.id,
             personnelName: p.name,
             classification: classificationMap.get(p.id) || "",
+            withholdingExemptions: 0,
             selected: true,
           }))
         );
@@ -178,6 +184,9 @@ export function WH347ExportDialog({
       setPayrollNumber("");
       setCertifierName("");
       setCertifierTitle("");
+      setIsSubcontractor(false);
+      setFringePaidToPlan(false);
+      setFringePaidInCash(false);
       setPersonnelClassifications([]);
     }
     onOpenChange(newOpen);
@@ -187,6 +196,14 @@ export function WH347ExportDialog({
     setPersonnelClassifications((prev) =>
       prev.map((p) =>
         p.personnelId === personnelId ? { ...p, classification } : p
+      )
+    );
+  };
+
+  const handleWithholdingChange = (personnelId: string, exemptions: number) => {
+    setPersonnelClassifications((prev) =>
+      prev.map((p) =>
+        p.personnelId === personnelId ? { ...p, withholdingExemptions: exemptions } : p
       )
     );
   };
@@ -248,6 +265,7 @@ export function WH347ExportDialog({
       const assignments = personnelClassifications.map((pc) => ({
         personnel_id: pc.personnelId,
         work_classification: pc.classification,
+        withholding_exemptions: pc.withholdingExemptions,
       }));
 
       // Organize entries
@@ -280,10 +298,13 @@ export function WH347ExportDialog({
         projectName: projectName || project?.name || "Project",
         projectLocation,
         contractNumber: project?.customer_po || "",
+        isSubcontractor,
         employees: employeeRows,
         certifierName: certifierName.trim() || undefined,
         certifierTitle: certifierTitle.trim() || undefined,
         certificationDate: new Date(),
+        fringePaidToPlan,
+        fringePaidInCash,
       };
 
       generateWH347PDF(exportData);
@@ -315,6 +336,29 @@ export function WH347ExportDialog({
 
         <ScrollArea className="max-h-[60vh]">
           <div className="space-y-6 pr-4">
+            {/* Contractor/Subcontractor Toggle */}
+            <div className="space-y-3">
+              <Label>Type</Label>
+              <RadioGroup
+                value={isSubcontractor ? "subcontractor" : "contractor"}
+                onValueChange={(value) => setIsSubcontractor(value === "subcontractor")}
+                className="flex gap-6"
+              >
+                <div className="flex items-center space-x-2">
+                  <RadioGroupItem value="contractor" id="contractor" />
+                  <Label htmlFor="contractor" className="font-normal cursor-pointer">
+                    Contractor
+                  </Label>
+                </div>
+                <div className="flex items-center space-x-2">
+                  <RadioGroupItem value="subcontractor" id="subcontractor" />
+                  <Label htmlFor="subcontractor" className="font-normal cursor-pointer">
+                    Subcontractor
+                  </Label>
+                </div>
+              </RadioGroup>
+            </div>
+
             {/* Payroll Information */}
             <div className="space-y-4">
               <h3 className="text-sm font-medium">Payroll Information</h3>
@@ -373,7 +417,7 @@ export function WH347ExportDialog({
                       }
                     />
                     <div className="flex items-center gap-2 flex-1 min-w-0">
-                      <User className="h-4 w-4 text-muted-foreground" />
+                      <User className="h-4 w-4 text-muted-foreground shrink-0" />
                       <span className="font-medium truncate">{pc.personnelName}</span>
                     </div>
                     <Select
@@ -383,8 +427,8 @@ export function WH347ExportDialog({
                       }
                       disabled={!pc.selected}
                     >
-                      <SelectTrigger className="w-[180px]">
-                        <SelectValue placeholder="Select classification" />
+                      <SelectTrigger className="w-[140px]">
+                        <SelectValue placeholder="Classification" />
                       </SelectTrigger>
                       <SelectContent>
                         {WORK_CLASSIFICATIONS.map((classification) => (
@@ -394,17 +438,71 @@ export function WH347ExportDialog({
                         ))}
                       </SelectContent>
                     </Select>
+                    <div className="flex items-center gap-1">
+                      <Label htmlFor={`wh-${pc.personnelId}`} className="text-xs text-muted-foreground whitespace-nowrap">
+                        W/H:
+                      </Label>
+                      <Input
+                        id={`wh-${pc.personnelId}`}
+                        type="number"
+                        min="0"
+                        max="10"
+                        className="w-14 h-8 text-center"
+                        value={pc.withholdingExemptions}
+                        onChange={(e) =>
+                          handleWithholdingChange(pc.personnelId, parseInt(e.target.value) || 0)
+                        }
+                        disabled={!pc.selected}
+                      />
+                    </div>
                   </div>
                 ))}
               </div>
             </div>
 
+            {/* Fringe Benefits */}
+            <div className="space-y-4">
+              <h3 className="text-sm font-medium">Fringe Benefits (Statement of Compliance)</h3>
+              <div className="space-y-3">
+                <div className="flex items-start gap-2">
+                  <Checkbox
+                    id="fringe-plan"
+                    checked={fringePaidToPlan}
+                    onCheckedChange={(checked) => setFringePaidToPlan(!!checked)}
+                  />
+                  <div className="grid gap-1.5 leading-none">
+                    <Label htmlFor="fringe-plan" className="cursor-pointer">
+                      (a) Fringe benefits paid to approved plans/funds
+                    </Label>
+                    <p className="text-xs text-muted-foreground">
+                      Payments made to appropriate programs for employee benefit
+                    </p>
+                  </div>
+                </div>
+                <div className="flex items-start gap-2">
+                  <Checkbox
+                    id="fringe-cash"
+                    checked={fringePaidInCash}
+                    onCheckedChange={(checked) => setFringePaidInCash(!!checked)}
+                  />
+                  <div className="grid gap-1.5 leading-none">
+                    <Label htmlFor="fringe-cash" className="cursor-pointer">
+                      (b) Fringe benefits paid in cash
+                    </Label>
+                    <p className="text-xs text-muted-foreground">
+                      Included in the hourly wage rate shown
+                    </p>
+                  </div>
+                </div>
+              </div>
+            </div>
+
             {/* Certification Details */}
             <div className="space-y-4">
-              <h3 className="text-sm font-medium">Certification (Optional)</h3>
+              <h3 className="text-sm font-medium">Certification</h3>
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2">
-                  <Label htmlFor="certifier-name">Certifier Name</Label>
+                  <Label htmlFor="certifier-name">Name of Signatory</Label>
                   <Input
                     id="certifier-name"
                     placeholder="Full name"
