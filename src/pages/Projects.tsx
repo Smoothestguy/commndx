@@ -239,6 +239,7 @@ const Projects = () => {
       use_customer_address: false,
       time_clock_enabled: (project as any).time_clock_enabled || false,
       require_clock_location: (project as any).require_clock_location ?? true,
+      mandatory_payroll: project.mandatory_payroll || false,
     });
     setIsDialogOpen(true);
   };
@@ -263,6 +264,7 @@ const Projects = () => {
       poc_name: formData.poc_name || null,
       poc_phone: formData.poc_phone || null,
       poc_email: formData.poc_email || null,
+      mandatory_payroll: formData.mandatory_payroll,
     };
 
     if (editingProject) {

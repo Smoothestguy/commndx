@@ -23,6 +23,7 @@ export interface Project {
   poc_name: string | null;
   poc_phone: string | null;
   poc_email: string | null;
+  mandatory_payroll: boolean;
   created_at: string;
   updated_at: string;
 }
