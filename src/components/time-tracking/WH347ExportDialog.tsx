@@ -334,14 +334,11 @@ export function WH347ExportDialog({
         },
       };
 
-      // Call edge function to generate PDF
+      // Call dedicated WH-347 edge function to generate PDF using official template
       const { data: pdfData, error: pdfError } = await supabase.functions.invoke(
-        "generate-pdf",
+        "generate-wh347",
         {
-          body: {
-            type: "wh-347",
-            formData: formDataForBackend,
-          },
+          body: { formData: formDataForBackend },
         }
       );
 
