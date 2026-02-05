@@ -3783,6 +3783,7 @@ export type Database = {
           unassigned_notes: string | null
           unassigned_reason: string | null
           updated_at: string | null
+          work_classification: string | null
         }
         Insert: {
           assigned_at?: string
@@ -3801,6 +3802,7 @@ export type Database = {
           unassigned_notes?: string | null
           unassigned_reason?: string | null
           updated_at?: string | null
+          work_classification?: string | null
         }
         Update: {
           assigned_at?: string
@@ -3819,6 +3821,7 @@ export type Database = {
           unassigned_notes?: string | null
           unassigned_reason?: string | null
           updated_at?: string | null
+          work_classification?: string | null
         }
         Relationships: [
           {
