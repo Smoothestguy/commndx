@@ -117,10 +117,7 @@ const PersonnelRegister = () => {
           toast.error("Please enter a valid 9-digit ITIN (must start with 9)");
           return false;
         }
-        if (!documents.work_authorization) {
-          toast.error("Please upload your work authorization document");
-          return false;
-        }
+        // Work authorization document is optional
       } else {
         if (ssn.length !== 9) {
           toast.error("Please enter a valid 9-digit SSN");
