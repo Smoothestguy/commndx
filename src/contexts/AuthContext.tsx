@@ -335,7 +335,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       console.log("[Auth] Using Lovable OAuth for web");
       // For web: use normal Lovable OAuth flow
       const { error } = await lovable.auth.signInWithOAuth("google", {
-        redirect_uri: window.location.origin,
+        redirect_uri: `${window.location.origin}/auth/callback`,
       });
 
       if (error) {
@@ -371,7 +371,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 
       // For web: use normal Lovable OAuth flow
       const { error } = await lovable.auth.signInWithOAuth("apple", {
-        redirect_uri: window.location.origin,
+        redirect_uri: `${window.location.origin}/auth/callback`,
       });
 
       if (error) {
