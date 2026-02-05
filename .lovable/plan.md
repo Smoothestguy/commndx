@@ -1,110 +1,87 @@
 
 
-# WH-347 Form Update - Match Official DOL Layout
+# Fix WH-347 Export Option Not Visible
 
-## Analysis of Official Form vs Current Implementation
+## Problem Identified
 
-After reviewing the uploaded official DOL WH-347 form, I've identified several layout and data discrepancies that need to be corrected:
+The WH-347 export option is not visible in the Weekly View because:
 
-### Key Differences Found
+1. The export option is conditionally rendered and only appears when a **project is selected** (`projectFilter` is set)
+2. The current Weekly View on `/time-tracking` uses `WeeklyTimesheet` **without** a project selector
+3. WH-347 is intentionally project-specific (certified payroll must be per-project for Davis-Bacon compliance)
 
-| Element | Official Form | Current Implementation |
-|---------|--------------|------------------------|
-| **Checkbox** | "NAME OF CONTRACTOR ☐ OR SUBCONTRACTOR ☐" checkboxes | Not present |
-| **Column Headers** | Has "NO. OF WITHHOLDING EXEMPTIONS" column | Not present |
-| **Column Order** | Specific numbered columns (1)-(9) | Different order |
-| **Daily Hours Row** | Has "O" (overtime) and "S" (straight) sub-rows | Only shows total hours per day |
-| **Rate of Pay** | Shows both "O" (OT rate) and "S" (Straight rate) | Only shows one rate |
-| **Orientation** | Portrait format | Currently landscape |
-| **OMB Expiration** | "Expires 09/30/2026" | Shows "02/28/2027" |
-| **Page 2** | Full Statement of Compliance (WH-348) | Abbreviated certification section |
+## Current Code Flow
 
-### Implementation Plan
+| Component | Project Selection | WH-347 Visible |
+|-----------|------------------|----------------|
+| `TimeTracking.tsx` → `WeeklyTimesheet` | No | No |
+| `WeeklyTimesheetWithProject` | Yes (has dropdown) | Yes (when project selected) |
 
-#### 1. Update PDF Generation Layout (`src/utils/wh347ExportUtils.ts`)
+## Solution
 
-Major changes needed:
-- Change to portrait orientation to match official form
-- Add contractor/subcontractor checkboxes
-- Add "NO. OF WITHHOLDING EXEMPTIONS" column
-- Split daily hours into O (overtime) and S (straight time) sub-rows
-- Show both straight time and overtime rates
-- Update OMB expiration date to 09/30/2026
-- Add full WH-348 Statement of Compliance on page 2
+Replace `WeeklyTimesheet` with `WeeklyTimesheetWithProject` in the Weekly View tab. This component already has a project dropdown selector built in.
 
-#### 2. Data Structure Updates
+### File to Modify
 
-Add to `WH347PersonnelData` interface:
-```typescript
-withholdingExemptions?: number; // Number of withholding exemptions claimed
-isSubcontractor?: boolean;      // Contractor or subcontractor checkbox
+**`src/pages/TimeTracking.tsx`**
+
+Change this:
+```tsx
+import { WeeklyTimesheet } from "@/components/time-tracking/WeeklyTimesheet";
 ```
 
-Update `WH347EmployeeRow` to track daily O/S breakdown:
-```typescript
-dailyHours: WH347DailyHours[]; // Each day needs { straight: number, overtime: number }
+To:
+```tsx
+import { WeeklyTimesheetWithProject } from "@/components/time-tracking/WeeklyTimesheetWithProject";
 ```
 
-#### 3. Updated Column Layout (Portrait)
+And update the Weekly View tab content (around line 290):
 
-Match the official form's structure:
+```tsx
+<TabsContent value="weekly" className="space-y-4 mt-4">
+  {/* Week Navigator */}
+  <div className="flex justify-center">
+    <WeekNavigator
+      currentWeek={weeklyViewWeek}
+      onWeekChange={setWeeklyViewWeek}
+    />
+  </div>
+
+  {/* Weekly Timesheet with Project Selector */}
+  <WeeklyTimesheetWithProject
+    currentWeek={weeklyViewWeek}
+    onWeekChange={setWeeklyViewWeek}
+  />
+</TabsContent>
+```
+
+## How to Export WH-347 After This Fix
+
+1. Go to **Time Tracking** page
+2. Click the **Weekly View** tab
+3. Select a **specific project** from the Project dropdown
+4. Click **Export Week** dropdown
+5. Select **Export WH-347 Certified Payroll**
+
+## Visual Flow After Fix
 
 ```text
-| (1) NAME, IDENTIFYING NUMBER | (2) NO. W/H | (3) WORK CLASS | (4) DAY AND DATE | (5) TOTAL | (6) RATE | (7) GROSS | (8) DEDUCTIONS | (9) NET |
-|                              | EXEMPTIONS  |                | O|S rows per day | HOURS     | O|S      | EARNED    | FICA|W/H|OTHER| WAGES   |
+/time-tracking
+     |
+     v
+[Weekly View Tab]
+     |
+     v
+[Project Dropdown: All Projects ▼]
+  → Select "Project XYZ"
+     |
+     v
+[Export Week ▼]
+  • Export to Excel
+  • Export to CSV
+  • Export to PDF
+  • Export to JSON
+  ─────────────────
+  • Export WH-347 ← NOW VISIBLE
 ```
-
-#### 4. Add Full WH-348 Statement of Compliance (Page 2)
-
-Include:
-- Date field
-- Name of Signatory Party and Title
-- Full legal compliance text with all 4 points
-- Fringe benefits checkboxes (a) and (b)
-- Exceptions table
-- Remarks section
-- Name/Title and Signature fields
-- Legal warning about falsification
-
-### Files to Modify
-
-| File | Changes |
-|------|---------|
-| `src/utils/wh347ExportUtils.ts` | Major rewrite of PDF layout to match official form |
-| `src/components/time-tracking/WH347ExportDialog.tsx` | Add withholding exemptions input, contractor/subcontractor toggle |
-
-### UI Preview (Updated Dialog)
-
-Add a new field in the export dialog:
-
-```text
-+--------------------------------------------------+
-| Export WH-347 Certified Payroll                  |
-+--------------------------------------------------+
-| ○ Contractor  ○ Subcontractor                    |
-|                                                  |
-| Payroll Number: *          Week Period:          |
-| [   1   ]                  Feb 2 - Feb 8, 2026   |
-|                                                  |
-| Personnel & Work Classifications                 |
-| ┌──────────────────────────────────────────────┐ |
-| │ ☑ John Doe        [Electrician ▼]  W/H: [2] │ |
-| │ ☑ Jane Smith      [Laborer     ▼]  W/H: [1] │ |
-| └──────────────────────────────────────────────┘ |
-+--------------------------------------------------+
-```
-
-### Technical Details
-
-**PDF Layout Changes:**
-- Portrait orientation (8.5" x 11")
-- Smaller row heights to fit 8 personnel per page
-- Each employee row has two sub-rows: O (overtime) and S (straight time)
-- Column widths adjusted for portrait format
-- Second page for WH-348 Statement of Compliance
-
-**Calculation Changes:**
-- Daily hours split into straight (S) and overtime (O) based on cumulative weekly threshold
-- First 40 hours are straight time, hours beyond are overtime
-- Both rates displayed: straight rate and OT rate (1.5x multiplier)
 
