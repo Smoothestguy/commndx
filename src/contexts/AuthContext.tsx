@@ -11,6 +11,7 @@ import { User, Session } from "@supabase/supabase-js";
 import { supabase } from "@/integrations/supabase/client";
 import { lovable } from "@/integrations/lovable";
 import { useNavigate } from "react-router-dom";
+import { isNetworkError } from "@/utils/authNetwork";
 
 // Timeout wrapper for promises
 const withTimeout = <T,>(promise: Promise<T>, ms: number, message: string): Promise<T> => {
@@ -20,6 +21,29 @@ const withTimeout = <T,>(promise: Promise<T>, ms: number, message: string): Prom
       setTimeout(() => reject(new Error(`${message} timed out after ${ms}ms`)), ms)
     ),
   ]);
+};
+
+// Retry helper for network failures
+const retryOnNetworkError = async <T,>(
+  fn: () => Promise<T>,
+  maxRetries = 1,
+  delayMs = 1000
+): Promise<T> => {
+  let lastError: unknown;
+  for (let attempt = 0; attempt <= maxRetries; attempt++) {
+    try {
+      return await fn();
+    } catch (error) {
+      lastError = error;
+      if (attempt < maxRetries && isNetworkError(error)) {
+        console.info(`[Auth] Network error, retrying in ${delayMs}ms (attempt ${attempt + 1}/${maxRetries})`);
+        await new Promise(resolve => setTimeout(resolve, delayMs));
+      } else {
+        throw error;
+      }
+    }
+  }
+  throw lastError;
 };
 
 // Check if running in Electron - multiple detection methods for robustness
@@ -253,10 +277,11 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     async (email: string, password: string) => {
       console.info(`[Auth] signIn: start | email: ${email} | origin: ${window.location.origin}`);
       try {
-        const { data, error } = await supabase.auth.signInWithPassword({
-          email,
-          password,
-        });
+        const { data, error } = await retryOnNetworkError(
+          () => supabase.auth.signInWithPassword({ email, password }),
+          1, // Retry once on network failure
+          1000 // Wait 1 second before retry
+        );
 
         if (error) {
           console.error("[Auth] signIn error:", error.message);

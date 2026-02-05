@@ -28,9 +28,14 @@ export function NetworkErrorBanner({ onRetry, isRetrying }: NetworkErrorBannerPr
             Can't reach the sign-in service
           </p>
           <p className="text-xs text-muted-foreground">
-            Please check your internet connection and try again. If the problem persists, 
-            copy the diagnostics and contact support.
+            This may be caused by your browser settings or a network issue. Try these steps:
           </p>
+          <ul className="text-xs text-muted-foreground list-disc list-inside space-y-1 pl-1">
+            <li>Open an <strong>incognito/private window</strong> and try again</li>
+            <li>Disable ad blockers or privacy extensions for this site</li>
+            <li>Check your internet connection</li>
+            <li>Try a different browser (Firefox, Edge)</li>
+          </ul>
           <div className="flex flex-wrap gap-2 pt-1">
             <Button
               type="button"
