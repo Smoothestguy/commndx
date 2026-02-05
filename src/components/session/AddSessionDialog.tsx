@@ -67,20 +67,24 @@ export function AddSessionDialog({
     const sessionStart = startDateTime.toISOString();
     const sessionEnd = markActive ? null : endDateTime.toISOString();
 
-    createSession({
-      userId: targetUserId,
-      userEmail: targetUserEmail,
-      sessionStart,
-      sessionEnd,
-    });
-
-    onOpenChange(false);
-    
-    // Reset form
-    setSessionDate(format(new Date(), "yyyy-MM-dd"));
-    setStartTime("09:00");
-    setEndTime("17:00");
-    setMarkActive(false);
+    createSession(
+      {
+        userId: targetUserId,
+        userEmail: targetUserEmail,
+        sessionStart,
+        sessionEnd,
+      },
+      {
+        onSuccess: () => {
+          onOpenChange(false);
+          // Reset form
+          setSessionDate(format(new Date(), "yyyy-MM-dd"));
+          setStartTime("09:00");
+          setEndTime("17:00");
+          setMarkActive(false);
+        },
+      }
+    );
   };
 
   return (
