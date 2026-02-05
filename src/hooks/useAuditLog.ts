@@ -17,7 +17,8 @@ export type ResourceType =
   | "change_order" | "vendor_bill" | "personnel" | "vendor" 
   | "project" | "customer" | "auth" | "user" | "permission"
   | "file" | "quickbooks" | "tm_ticket" | "time_entry"
-  | "personnel_assignment" | "asset" | "asset_assignment";
+  | "personnel_assignment" | "asset" | "asset_assignment"
+  | "user_work_session";
 
 interface AuditLogParams {
   actionType: ActionType;
