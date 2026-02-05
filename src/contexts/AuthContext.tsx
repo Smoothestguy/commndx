@@ -12,6 +12,16 @@ import { supabase } from "@/integrations/supabase/client";
 import { lovable } from "@/integrations/lovable";
 import { useNavigate } from "react-router-dom";
 
+// Timeout wrapper for promises
+const withTimeout = <T,>(promise: Promise<T>, ms: number, message: string): Promise<T> => {
+  return Promise.race([
+    promise,
+    new Promise<never>((_, reject) =>
+      setTimeout(() => reject(new Error(`${message} timed out after ${ms}ms`)), ms)
+    ),
+  ]);
+};
+
 // Check if running in Electron - multiple detection methods for robustness
 const isElectron = () => {
   if (typeof window === "undefined") return false;
@@ -99,23 +109,50 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const deepLinkListenerSet = useRef(false);
 
   useEffect(() => {
+    let mounted = true;
+
     // Set up auth state listener
     const {
       data: { subscription },
     } = supabase.auth.onAuthStateChange((event, session) => {
+      if (!mounted) return;
       setSession(session);
       setUser(session?.user ?? null);
       setLoading(false);
     });
 
-    // Check for existing session
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      setSession(session);
-      setUser(session?.user ?? null);
-      setLoading(false);
-    });
+    // Check for existing session with timeout to prevent infinite loading
+    const initSession = async () => {
+      try {
+        const { data: { session } } = await withTimeout(
+          supabase.auth.getSession(),
+          5000,
+          "getSession"
+        );
+        if (!mounted) return;
+        setSession(session);
+        setUser(session?.user ?? null);
+      } catch (err) {
+        console.warn("[Auth] Session initialization failed:", err);
+        // Clear potentially corrupted auth state
+        try {
+          localStorage.removeItem("sb-" + import.meta.env.VITE_SUPABASE_PROJECT_ID + "-auth-token");
+        } catch {
+          // Ignore localStorage errors
+        }
+      } finally {
+        if (mounted) {
+          setLoading(false);
+        }
+      }
+    };
 
-    return () => subscription.unsubscribe();
+    initSession();
+
+    return () => {
+      mounted = false;
+      subscription.unsubscribe();
+    };
   }, []);
 
   // Set up deep link listener for Electron OAuth callbacks
