@@ -227,3 +227,6 @@ verify_jwt = false
 
 [functions.quickbooks-delete-bill-attachment]
 verify_jwt = false
+
+[functions.generate-wh347]
+verify_jwt = false
