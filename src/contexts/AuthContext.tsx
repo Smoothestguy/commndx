@@ -71,6 +71,7 @@ export const useAuth = () => {
 };
 
 // Audit log helper for auth events (doesn't use hook since we may not have user context)
+// IMPORTANT: Fire-and-forget - never await this in auth critical path
 const logAuthEvent = async (
   actionType: "sign_in" | "sign_out" | "sign_up",
   userEmail: string,
@@ -79,7 +80,8 @@ const logAuthEvent = async (
   errorMessage?: string
 ) => {
   try {
-    await supabase.from("audit_logs").insert([
+    // Fire-and-forget: don't await to avoid blocking auth flow
+    Promise.resolve(supabase.from("audit_logs").insert([
       {
         user_id: userId || null,
         user_email: userEmail,
@@ -95,7 +97,11 @@ const logAuthEvent = async (
         error_message: errorMessage || null,
         metadata: {},
       },
-    ]);
+    ])).then(() => {
+      // Log success silently
+    }).catch((err) => {
+      console.error("Failed to log auth event:", err);
+    });
   } catch (err) {
     console.error("Failed to log auth event:", err);
   }
@@ -245,6 +251,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 
   const signIn = useCallback(
     async (email: string, password: string) => {
+      console.info(`[Auth] signIn: start | email: ${email} | origin: ${window.location.origin}`);
       try {
         const { data, error } = await supabase.auth.signInWithPassword({
           email,
@@ -252,21 +259,18 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         });
 
         if (error) {
-          await logAuthEvent("sign_in", email, undefined, false, error.message);
+          console.error("[Auth] signIn error:", error.message);
+          logAuthEvent("sign_in", email, undefined, false, error.message);
           return { error };
         }
 
-        await logAuthEvent("sign_in", email, data.user?.id, true);
+        console.info("[Auth] signIn success");
+        logAuthEvent("sign_in", email, data.user?.id, true);
         navigate("/");
         return { error: null };
       } catch (error) {
-        await logAuthEvent(
-          "sign_in",
-          email,
-          undefined,
-          false,
-          (error as Error).message
-        );
+        console.error("[Auth] signIn exception:", error);
+        logAuthEvent("sign_in", email, undefined, false, (error as Error).message);
         return { error: error as Error };
       }
     },
