@@ -57,25 +57,28 @@ function setTextField(
       try {
         const field = form.getTextField(name);
         field.setText(value || "");
+        console.log(`Set field ${name} = "${value}"`);
         return true;
       } catch (e) {
         console.log(`Field ${name} exists but failed to set:`, e);
       }
     }
-    // Try partial match
+    // Try partial match (case-insensitive)
     const match = allFieldNames.find(
-      (f) => f.toLowerCase().includes(name.toLowerCase())
+      (f) => f.toLowerCase() === name.toLowerCase()
     );
     if (match) {
       try {
         const field = form.getTextField(match);
         field.setText(value || "");
+        console.log(`Set field ${match} (matched from ${name}) = "${value}"`);
         return true;
       } catch (e) {
         console.log(`Field ${match} exists but failed to set:`, e);
       }
     }
   }
+  console.log(`No match found for fields: ${fieldNames.join(", ")}`);
   return false;
 }
 
@@ -101,7 +104,7 @@ function setCheckbox(
       }
     }
     const match = allFieldNames.find(
-      (f) => f.toLowerCase().includes(name.toLowerCase())
+      (f) => f.toLowerCase() === name.toLowerCase()
     );
     if (match) {
       try {
@@ -171,196 +174,197 @@ serve(async (req) => {
     const allFieldNames = fields.map((f) => f.getName());
     console.log("Available PDF fields:", JSON.stringify(allFieldNames, null, 2));
 
-    // Fill header fields - try multiple naming patterns
+    // ============================================
+    // HEADER FIELDS - Using actual PDF field names
+    // ============================================
+    
+    // Contractor name
     setTextField(
       form,
-      ["PayrollNo", "Payroll No", "payrollno", "topmostSubform[0].Page1[0].PayrollNo[0]"],
-      formData.payrollNumber,
-      allFieldNames
-    );
-
-    setTextField(
-      form,
-      ["WeekEnding", "Week Ending", "weekending", "ForWeekEnding", "topmostSubform[0].Page1[0].WeekEnding[0]"],
-      formData.weekEnding,
-      allFieldNames
-    );
-
-    // Contractor or subcontractor name
-    const contractorLabel = formData.isSubcontractor ? "Subcontractor" : "Contractor";
-    setTextField(
-      form,
-      ["ContractorName", "Contractor", "Name1", "NameofContractor", "topmostSubform[0].Page1[0].Contractor[0]"],
+      ["contractor", "Contractor"],
       formData.contractorName,
       allFieldNames
     );
 
+    // Contractor address
     setTextField(
       form,
-      ["ContractorAddress", "Address1", "Address", "topmostSubform[0].Page1[0].Address[0]"],
+      ["address", "Address"],
       formData.contractorAddress,
       allFieldNames
     );
 
+    // Payroll number
     setTextField(
       form,
-      ["ProjectName", "Project", "ProjectandLocation", "topmostSubform[0].Page1[0].Project[0]"],
+      ["payrollNo", "PayrollNo", "payrollNumber"],
+      formData.payrollNumber,
+      allFieldNames
+    );
+
+    // Week ending date
+    setTextField(
+      form,
+      ["weekEnding", "WeekEnding", "forWeekEnding"],
+      formData.weekEnding,
+      allFieldNames
+    );
+
+    // Project and location (combined field)
+    setTextField(
+      form,
+      ["projectAndLocation", "ProjectAndLocation", "project"],
       `${formData.projectName} - ${formData.projectLocation}`,
       allFieldNames
     );
 
+    // Contract number (if field exists)
     setTextField(
       form,
-      ["ContractNo", "Contract", "ContractNumber", "topmostSubform[0].Page1[0].ContractNo[0]"],
+      ["contractNo", "ContractNo", "contractNumber"],
       formData.contractNumber,
       allFieldNames
     );
 
-    // Fill employee rows (up to 8 employees per page typically)
+    // ============================================
+    // EMPLOYEE ROWS - Using actual PDF field names
+    // ============================================
     const maxEmployees = Math.min(formData.employees.length, 8);
-    const dayNames = ["Sat", "Sun", "Mon", "Tue", "Wed", "Thu", "Fri"];
+    console.log(`Processing ${maxEmployees} employees...`);
 
     for (let i = 0; i < maxEmployees; i++) {
       const emp = formData.employees[i];
       const rowNum = i + 1;
+      
+      console.log(`\n--- Employee ${rowNum}: ${emp.name} ---`);
 
-      // Employee name and address
-      setTextField(
-        form,
-        [`Name${rowNum}`, `NameRow${rowNum}`, `Employee${rowNum}`, `topmostSubform[0].Page1[0].Name${rowNum}[0]`],
+      // Combined Name/Address/SSN field (nameAddrSSN1, nameAddrSSN2, etc.)
+      // Format: Name on first line, address on second, SSN on third
+      const ssnMasked = emp.ssnLastFour ? `XXX-XX-${emp.ssnLastFour}` : "";
+      const nameAddrSsnValue = [
         emp.name,
+        emp.address || "",
+        ssnMasked
+      ].filter(Boolean).join("\n");
+      
+      setTextField(
+        form,
+        [`nameAddrSSN${rowNum}`, `NameAddrSSN${rowNum}`],
+        nameAddrSsnValue,
         allFieldNames
       );
 
+      // Withholding exemptions (noWithholdingExemptions1, etc.)
       setTextField(
         form,
-        [`Address${rowNum}`, `AddressRow${rowNum}`, `topmostSubform[0].Page1[0].Address${rowNum}[0]`],
-        emp.address,
-        allFieldNames
-      );
-
-      // SSN last four (for identification)
-      setTextField(
-        form,
-        [`SSN${rowNum}`, `LastFour${rowNum}`, `NO${rowNum}`, `topmostSubform[0].Page1[0].NO${rowNum}[0]`],
-        emp.ssnLastFour ? `XXX-XX-${emp.ssnLastFour}` : "",
-        allFieldNames
-      );
-
-      // Withholding exemptions
-      setTextField(
-        form,
-        [`WH${rowNum}`, `Exemptions${rowNum}`, `WithholdingExemptions${rowNum}`, `topmostSubform[0].Page1[0].WH${rowNum}[0]`],
+        [`noWithholdingExemptions${rowNum}`, `NoWithholdingExemptions${rowNum}`, `wh${rowNum}`],
         emp.withholdingExemptions.toString(),
         allFieldNames
       );
 
-      // Work classification
+      // Work classification (workClassification1, etc.)
       setTextField(
         form,
-        [`Class${rowNum}`, `Classification${rowNum}`, `WorkClass${rowNum}`, `topmostSubform[0].Page1[0].Class${rowNum}[0]`],
+        [`workClassification${rowNum}`, `WorkClassification${rowNum}`],
         emp.workClassification,
         allFieldNames
       );
 
-      // Daily hours - WH-347 has separate O (overtime) and S (straight) rows
+      // Daily hours - PDF uses day numbers 1-7
+      // OT11 = Row 1, Day 1 Overtime; ST27 = Row 2, Day 7 Straight Time
       for (let d = 0; d < 7; d++) {
         const dayHours = emp.dailyHours[d] || { straight: 0, overtime: 0 };
+        const dayNum = d + 1;
 
-        // Straight time row (S)
-        if (dayHours.straight > 0) {
+        // Overtime hours (OT11, OT12, ... OT17 for row 1)
+        if (dayHours.overtime > 0) {
           setTextField(
             form,
-            [
-              `S${dayNames[d]}${rowNum}`,
-              `${dayNames[d]}S${rowNum}`,
-              `Straight${dayNames[d]}${rowNum}`,
-              `topmostSubform[0].Page1[0].S${dayNames[d]}${rowNum}[0]`,
-            ],
-            dayHours.straight.toString(),
+            [`OT${rowNum}${dayNum}`, `ot${rowNum}${dayNum}`],
+            dayHours.overtime.toString(),
             allFieldNames
           );
         }
 
-        // Overtime row (O)
-        if (dayHours.overtime > 0) {
+        // Straight time hours (ST11, ST12, ... ST17 for row 1)
+        if (dayHours.straight > 0) {
           setTextField(
             form,
-            [
-              `O${dayNames[d]}${rowNum}`,
-              `${dayNames[d]}O${rowNum}`,
-              `OT${dayNames[d]}${rowNum}`,
-              `topmostSubform[0].Page1[0].O${dayNames[d]}${rowNum}[0]`,
-            ],
-            dayHours.overtime.toString(),
+            [`ST${rowNum}${dayNum}`, `st${rowNum}${dayNum}`],
+            dayHours.straight.toString(),
             allFieldNames
           );
         }
       }
 
-      // Total hours
+      // Total hours - overtime
       setTextField(
         form,
-        [`TotalS${rowNum}`, `TotalStraight${rowNum}`, `topmostSubform[0].Page1[0].TotalS${rowNum}[0]`],
-        emp.totalHours.straight.toString(),
-        allFieldNames
-      );
-
-      setTextField(
-        form,
-        [`TotalO${rowNum}`, `TotalOT${rowNum}`, `topmostSubform[0].Page1[0].TotalO${rowNum}[0]`],
+        [`totalHoursOT${rowNum}`, `TotalHoursOT${rowNum}`],
         emp.totalHours.overtime.toString(),
         allFieldNames
       );
 
-      // Rate of pay
+      // Total hours - straight time
       setTextField(
         form,
-        [`RateS${rowNum}`, `StraightRate${rowNum}`, `topmostSubform[0].Page1[0].RateS${rowNum}[0]`],
-        emp.rateOfPay.straight.toFixed(2),
+        [`totalHoursST${rowNum}`, `TotalHoursST${rowNum}`],
+        emp.totalHours.straight.toString(),
         allFieldNames
       );
 
+      // Rate of pay - overtime
       setTextField(
         form,
-        [`RateO${rowNum}`, `OTRate${rowNum}`, `topmostSubform[0].Page1[0].RateO${rowNum}[0]`],
+        [`rateOfPayOT${rowNum}`, `RateOfPayOT${rowNum}`],
         emp.rateOfPay.overtime.toFixed(2),
+        allFieldNames
+      );
+
+      // Rate of pay - straight time
+      setTextField(
+        form,
+        [`rateOfPayST${rowNum}`, `RateOfPayST${rowNum}`],
+        emp.rateOfPay.straight.toFixed(2),
         allFieldNames
       );
 
       // Gross earned
       setTextField(
         form,
-        [`Gross${rowNum}`, `GrossEarned${rowNum}`, `topmostSubform[0].Page1[0].Gross${rowNum}[0]`],
+        [`gross${rowNum}`, `Gross${rowNum}`],
         emp.grossEarned.toFixed(2),
         allFieldNames
       );
 
-      // Deductions
+      // Deductions - FICA
       setTextField(
         form,
-        [`FICA${rowNum}`, `Fica${rowNum}`, `topmostSubform[0].Page1[0].FICA${rowNum}[0]`],
+        [`fica${rowNum}`, `FICA${rowNum}`],
         emp.deductions.fica.toFixed(2),
         allFieldNames
       );
 
+      // Deductions - Withholding
       setTextField(
         form,
-        [`WT${rowNum}`, `Withholding${rowNum}`, `topmostSubform[0].Page1[0].WT${rowNum}[0]`],
+        [`withholding${rowNum}`, `Withholding${rowNum}`],
         emp.deductions.withholding.toFixed(2),
         allFieldNames
       );
 
+      // Deductions - Other
       setTextField(
         form,
-        [`Other${rowNum}`, `OtherDed${rowNum}`, `topmostSubform[0].Page1[0].Other${rowNum}[0]`],
+        [`other${rowNum}`, `Other${rowNum}`],
         emp.deductions.other.toFixed(2),
         allFieldNames
       );
 
+      // Total deductions
       setTextField(
         form,
-        [`TotalDed${rowNum}`, `TotalDeductions${rowNum}`, `topmostSubform[0].Page1[0].TotalDed${rowNum}[0]`],
+        [`totalDeductions${rowNum}`, `TotalDeductions${rowNum}`],
         emp.totalDeductions.toFixed(2),
         allFieldNames
       );
@@ -368,45 +372,49 @@ serve(async (req) => {
       // Net wages
       setTextField(
         form,
-        [`Net${rowNum}`, `NetWages${rowNum}`, `topmostSubform[0].Page1[0].Net${rowNum}[0]`],
+        [`netWages${rowNum}`, `NetWages${rowNum}`],
         emp.netWages.toFixed(2),
         allFieldNames
       );
     }
 
-    // Fringe benefits checkboxes (Page 2 - Statement of Compliance WH-348)
+    // ============================================
+    // PAGE 2 - Statement of Compliance (WH-348)
+    // ============================================
+    
+    // Fringe benefits checkboxes
     setCheckbox(
       form,
-      ["FringePaidToPlans", "PaidToPlans", "FringePlans", "topmostSubform[0].Page2[0].FringePaidToPlans[0]"],
+      ["fringePaidToPlans", "FringePaidToPlans", "paidToPlans"],
       formData.fringeBenefits.paidToPlans,
       allFieldNames
     );
 
     setCheckbox(
       form,
-      ["FringePaidInCash", "PaidInCash", "FringeCash", "topmostSubform[0].Page2[0].FringePaidInCash[0]"],
+      ["fringePaidInCash", "FringePaidInCash", "paidInCash"],
       formData.fringeBenefits.paidInCash,
       allFieldNames
     );
 
-    // Signatory information (Page 2)
+    // Signatory information
     setTextField(
       form,
-      ["SignatoryName", "Signature", "Name", "topmostSubform[0].Page2[0].SignatoryName[0]"],
+      ["signatoryName", "SignatoryName", "signature", "name"],
       formData.signatory.name,
       allFieldNames
     );
 
     setTextField(
       form,
-      ["SignatoryTitle", "Title", "topmostSubform[0].Page2[0].SignatoryTitle[0]"],
+      ["signatoryTitle", "SignatoryTitle", "title"],
       formData.signatory.title,
       allFieldNames
     );
 
     setTextField(
       form,
-      ["SignatoryDate", "Date", "SignDate", "topmostSubform[0].Page2[0].SignatoryDate[0]"],
+      ["signatoryDate", "SignatoryDate", "signDate", "date"],
       formData.signatory.date,
       allFieldNames
     );
