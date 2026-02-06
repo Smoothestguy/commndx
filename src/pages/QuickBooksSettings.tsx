@@ -36,6 +36,7 @@ import {
   useToggleAutoSyncPersonnelToQB,
 } from "@/integrations/supabase/hooks/useIntegrationSettings";
 import { ProductConflictDialog } from "@/components/quickbooks/ProductConflictDialog";
+import { JournalEntriesViewer } from "@/components/quickbooks/JournalEntriesViewer";
 import { QuickBooksSyncBadge } from "@/components/quickbooks/QuickBooksSyncBadge";
 import {
   Cloud,
@@ -634,6 +635,9 @@ const QuickBooksSettings = () => {
                 </CardContent>
               </Card>
             </div>
+
+            {/* Journal Entries Viewer */}
+            <JournalEntriesViewer />
 
             {/* Conflicts */}
             {conflicts && conflicts.length > 0 && (

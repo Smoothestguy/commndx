@@ -230,3 +230,6 @@ verify_jwt = false
 
 [functions.generate-wh347]
 verify_jwt = false
+
+[functions.quickbooks-fetch-journal-entries]
+verify_jwt = false

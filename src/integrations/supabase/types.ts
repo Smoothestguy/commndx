@@ -5493,6 +5493,54 @@ export type Database = {
           },
         ]
       }
+      quickbooks_journal_entries: {
+        Row: {
+          created_at: string | null
+          currency_code: string | null
+          doc_number: string | null
+          fetched_at: string | null
+          id: string
+          is_adjustment: boolean | null
+          line_items: Json | null
+          private_note: string | null
+          quickbooks_id: string
+          raw_data: Json | null
+          total_amount: number | null
+          txn_date: string
+          updated_at: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          currency_code?: string | null
+          doc_number?: string | null
+          fetched_at?: string | null
+          id?: string
+          is_adjustment?: boolean | null
+          line_items?: Json | null
+          private_note?: string | null
+          quickbooks_id: string
+          raw_data?: Json | null
+          total_amount?: number | null
+          txn_date: string
+          updated_at?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          currency_code?: string | null
+          doc_number?: string | null
+          fetched_at?: string | null
+          id?: string
+          is_adjustment?: boolean | null
+          line_items?: Json | null
+          private_note?: string | null
+          quickbooks_id?: string
+          raw_data?: Json | null
+          total_amount?: number | null
+          txn_date?: string
+          updated_at?: string | null
+        }
+        Relationships: []
+      }
       quickbooks_po_mappings: {
         Row: {
           created_at: string
