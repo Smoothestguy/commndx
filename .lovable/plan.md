@@ -1,109 +1,194 @@
 
-# Export Dev Activities Logs
+# QuickBooks Journal Entry Read Access
 
 ## Overview
 
-Add export functionality to the Dev Activities Dashboard, allowing users to download their development activity logs in CSV or JSON format. This mirrors the existing export pattern used in the Session History table.
+Add read-only access to QuickBooks Journal Entries in Command X. This feature will allow users to view journal entries from QuickBooks without the ability to create or modify them, which is useful for reconciliation, audit purposes, and understanding adjustments made directly in QuickBooks.
 
-## Current State
+## QuickBooks API Reference
 
-- **Dev Activities Dashboard** (`src/components/session/DevActivityDashboard.tsx`) displays a timeline of dev activities with filtering and search
-- **Export utilities** already exist in `src/utils/exportUtils.ts` with `exportToCSV`, `exportToJSON`, and `downloadFile` helpers
-- **Session History table** has an existing CSV export button that can serve as a UI pattern reference
+The QuickBooks Online API supports querying journal entries via:
+- **Endpoint**: `GET /v3/company/{realmId}/query?query=SELECT * FROM JournalEntry`
+- **Entity**: `JournalEntry`
+- **Key Fields**:
+  - `Id` - QuickBooks ID
+  - `DocNumber` - Journal entry number
+  - `TxnDate` - Transaction date
+  - `PrivateNote` - Internal memo
+  - `Line[]` - Array of line items (debits/credits)
+  - `Adjustment` - Whether it's an adjusting entry
+  - `TotalAmt` - Total amount
+  - `MetaData.CreateTime`, `MetaData.LastUpdatedTime`
 
 ## Implementation
 
-### Changes to DevActivityDashboard.tsx
+### Step 1: Database Schema
 
-Add an export dropdown button next to the existing action buttons (Upload Screenshot, Add Manual, Select):
+Create a table to store fetched journal entries (read-only cache for viewing):
 
-**UI Elements:**
-- Add a "Download" dropdown button with CSV and JSON options
-- Place it in the action bar alongside existing buttons
-- Disable when no activities are available
+```sql
+-- Journal entries table (read-only cache from QuickBooks)
+CREATE TABLE quickbooks_journal_entries (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  quickbooks_id TEXT NOT NULL UNIQUE,
+  doc_number TEXT,
+  txn_date DATE NOT NULL,
+  private_note TEXT,
+  total_amount NUMERIC(12,2) DEFAULT 0,
+  is_adjustment BOOLEAN DEFAULT FALSE,
+  currency_code TEXT DEFAULT 'USD',
+  line_items JSONB DEFAULT '[]',
+  raw_data JSONB,
+  fetched_at TIMESTAMPTZ DEFAULT NOW(),
+  created_at TIMESTAMPTZ DEFAULT NOW(),
+  updated_at TIMESTAMPTZ DEFAULT NOW()
+);
 
-**Export Data Fields:**
-| Field | Description |
-|-------|-------------|
-| Date | Activity date (formatted) |
-| Time | Activity time (if set) |
-| Type | Activity type label (e.g., "Git Commit", "Bug Fix") |
-| Title | Activity title |
-| Description | Full description text |
-| Duration | Duration in minutes (or formatted) |
-| Project | Project name |
-| Technologies | Comma-separated list of technologies |
-| Tags | Comma-separated list of tags |
+-- Enable RLS - only admins and accounting can view
+ALTER TABLE quickbooks_journal_entries ENABLE ROW LEVEL SECURITY;
 
-### New Export Functions in exportUtils.ts
+CREATE POLICY "Admins and accounting can view journal entries"
+  ON quickbooks_journal_entries FOR SELECT
+  TO authenticated
+  USING (
+    public.has_role(auth.uid(), 'admin') OR 
+    public.has_role(auth.uid(), 'manager') OR
+    public.has_role(auth.uid(), 'accounting')
+  );
 
-Add dev activity-specific export functions:
+-- Index for date-based queries
+CREATE INDEX idx_qb_journal_entries_txn_date ON quickbooks_journal_entries(txn_date DESC);
+```
+
+### Step 2: Edge Function
+
+Create `supabase/functions/quickbooks-fetch-journal-entries/index.ts`:
 
 ```typescript
-export const exportDevActivitiesToCSV = (activities: DevActivity[], filename: string) => {
-  const headers = ['Date', 'Time', 'Type', 'Title', 'Description', 'Duration (min)', 'Project', 'Technologies', 'Tags'];
-  
-  const rows = activities.map(activity => [
-    activity.activity_date,
-    activity.activity_time || '',
-    getActivityTypeLabel(activity.activity_type),
-    activity.title,
-    activity.description || '',
-    activity.duration_minutes?.toString() || '',
-    activity.project_name || '',
-    activity.technologies.join('; '),
-    activity.tags.join('; ')
-  ]);
-  // ... CSV generation logic
-};
-
-export const exportDevActivitiesToJSON = (activities: DevActivity[], filename: string) => {
-  // Format activities with readable type labels
-  // ... JSON generation logic
-};
+// Key functionality:
+// 1. Query QuickBooks: SELECT * FROM JournalEntry WHERE TxnDate >= 'YYYY-MM-DD' MAXRESULTS 500
+// 2. Support date filtering (default: last 90 days, configurable)
+// 3. Upsert entries into quickbooks_journal_entries table
+// 4. Parse line items into readable format (account name, amount, type: Debit/Credit)
+// 5. Return summary: fetched count, updated count, date range
 ```
+
+**Line Item Structure (parsed from QuickBooks)**:
+```typescript
+interface JournalEntryLine {
+  lineId: string;
+  description: string | null;
+  accountId: string;
+  accountName: string;
+  amount: number;
+  postingType: 'Debit' | 'Credit';
+  entityType?: string; // Customer, Vendor, Employee
+  entityName?: string;
+}
+```
+
+### Step 3: React Hook
+
+Add to `src/integrations/supabase/hooks/useQuickBooks.ts`:
+
+```typescript
+// useFetchJournalEntriesFromQB - mutation to trigger fetch
+// useQuickBooksJournalEntries - query to list cached entries with pagination
+// Date range filter support (start/end date)
+```
+
+### Step 4: UI Component
+
+Create `src/components/quickbooks/JournalEntriesViewer.tsx`:
+
+| Feature | Description |
+|---------|-------------|
+| Fetch Button | "Fetch Journal Entries" with date range picker |
+| Table Display | Date, Number, Memo, Total, Debit/Credit breakdown |
+| Expandable Rows | Show line item details (accounts affected) |
+| Filters | Date range, adjustment entries only |
+| Export | CSV download of fetched entries |
+
+### Step 5: Add to QuickBooks Settings Page
+
+Add a new card in `src/pages/QuickBooksSettings.tsx`:
+
+```
+┌────────────────────────────────────────────────────┐
+│ 📒 Journal Entries (Read-Only)                     │
+│ View journal entries from QuickBooks              │
+│                                                    │
+│ [Fetch Last 90 Days]  [View All →]                │
+│                                                    │
+│ Last fetched: Feb 6, 2026 5:30 PM                 │
+│ 127 entries cached                                 │
+└────────────────────────────────────────────────────┘
+```
+
+## Files to Create
+
+| File | Purpose |
+|------|---------|
+| `supabase/functions/quickbooks-fetch-journal-entries/index.ts` | Edge function to query QB API |
+| `src/components/quickbooks/JournalEntriesViewer.tsx` | UI to display and filter entries |
+| `src/pages/JournalEntries.tsx` (optional) | Dedicated page for viewing entries |
 
 ## Files to Modify
 
 | File | Changes |
 |------|---------|
-| `src/utils/exportUtils.ts` | Add `exportDevActivitiesToCSV` and `exportDevActivitiesToJSON` functions |
-| `src/components/session/DevActivityDashboard.tsx` | Add export dropdown button with CSV/JSON options |
+| `src/integrations/supabase/hooks/useQuickBooks.ts` | Add fetch/query hooks |
+| `src/pages/QuickBooksSettings.tsx` | Add Journal Entries card |
+| `supabase/config.toml` | Add function config with verify_jwt = false |
+
+## Database Migration
+
+Add the `quickbooks_journal_entries` table with appropriate RLS policies limiting access to admin, manager, and accounting roles.
+
+## Security Considerations
+
+- **Read-Only**: No create/update/delete operations - this is purely a viewing feature
+- **RLS Protected**: Only admin, manager, and accounting roles can view entries
+- **No Sensitive Data Exposure**: Raw data stored but only summary shown to users
+- **Rate Limiting**: Fetch operations respect QuickBooks API limits (MAXRESULTS 500)
 
 ## Technical Details
 
-### Export Button Component
-
-```tsx
-// In the actions row, add:
-<DropdownMenu>
-  <DropdownMenuTrigger asChild>
-    <Button variant="outline" size="sm" disabled={activities.length === 0}>
-      <Download className="h-4 w-4 mr-2" />
-      Export
-    </Button>
-  </DropdownMenuTrigger>
-  <DropdownMenuContent>
-    <DropdownMenuItem onClick={handleExportCSV}>
-      Export as CSV
-    </DropdownMenuItem>
-    <DropdownMenuItem onClick={handleExportJSON}>
-      Export as JSON
-    </DropdownMenuItem>
-  </DropdownMenuContent>
-</DropdownMenu>
+### QuickBooks Query Pattern
+```sql
+SELECT * FROM JournalEntry 
+WHERE TxnDate >= '2025-11-01' 
+ORDER BY TxnDate DESC 
+MAXRESULTS 500
 ```
 
-### Export Behavior
+### Line Item Parsing
+QuickBooks journal entry lines have this structure:
+```json
+{
+  "Line": [
+    {
+      "Id": "0",
+      "Description": "Depreciation expense",
+      "Amount": 500.00,
+      "DetailType": "JournalEntryLineDetail",
+      "JournalEntryLineDetail": {
+        "PostingType": "Debit",
+        "AccountRef": { "value": "123", "name": "Depreciation Expense" }
+      }
+    }
+  ]
+}
+```
 
-- Exports the **filtered** activities (respects search, type filter, and project filter)
-- Filename format: `dev-activities-YYYY-MM-DD.csv` or `.json`
-- Shows toast notification on successful export
-- Shows error toast if no activities to export
+This will be parsed and stored as structured JSONB for easy display.
 
-### Activity Type Label Mapping
+## Testing Checklist
 
-Use the existing `ACTIVITY_TYPES` constant to map type values to human-readable labels:
-- `git_commit` → "Git Commit"
-- `bug_fix` → "Bug Fix"
-- etc.
+After implementation:
+- [ ] Fetch journal entries from QuickBooks
+- [ ] Verify entries display with correct debits/credits
+- [ ] Confirm date filtering works
+- [ ] Verify RLS blocks non-admin users
+- [ ] Test export to CSV
+- [ ] Confirm no write operations are exposed
