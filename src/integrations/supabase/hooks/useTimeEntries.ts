@@ -253,7 +253,7 @@ export const useAdminTimeEntriesByWeek = (
         .from("time_entries")
         .select(`
           *,
-          personnel:personnel_id(id, first_name, last_name, hourly_rate, photo_url),
+          personnel:personnel_id(id, first_name, last_name, hourly_rate, photo_url, address, city, state, zip, ssn_last_four),
           projects:project_id(id, name)
         `)
         .gte("entry_date", startDateStr)
