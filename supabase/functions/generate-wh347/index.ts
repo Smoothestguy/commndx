@@ -44,6 +44,8 @@ interface WH347FormData {
   };
 }
 
+const EMPLOYEES_PER_PAGE = 8;
+
 // Helper to safely set text field with multiple name pattern fallbacks
 function setTextField(
   form: any,
@@ -57,7 +59,7 @@ function setTextField(
       try {
         const field = form.getTextField(name);
         field.setText(value || "");
-        console.log(`Set field ${name} = "${value}"`);
+        console.log(`Set field ${name} = "${value?.substring(0, 30)}..."`);
         return true;
       } catch (e) {
         console.log(`Field ${name} exists but failed to set:`, e);
@@ -71,14 +73,13 @@ function setTextField(
       try {
         const field = form.getTextField(match);
         field.setText(value || "");
-        console.log(`Set field ${match} (matched from ${name}) = "${value}"`);
+        console.log(`Set field ${match} (matched from ${name}) = "${value?.substring(0, 30)}..."`);
         return true;
       } catch (e) {
         console.log(`Field ${match} exists but failed to set:`, e);
       }
     }
   }
-  console.log(`No match found for fields: ${fieldNames.join(", ")}`);
   return false;
 }
 
@@ -123,6 +124,257 @@ function setCheckbox(
   return false;
 }
 
+// Fill a single page of the WH-347 form
+function fillWH347Page(
+  form: any,
+  allFieldNames: string[],
+  formData: WH347FormData,
+  employees: Employee[],
+  pageNumber: number,
+  totalPages: number
+) {
+  console.log(`\n=== Filling page ${pageNumber} of ${totalPages} with ${employees.length} employees ===`);
+
+  // ============================================
+  // HEADER FIELDS - Using actual PDF field names
+  // ============================================
+  
+  // Contractor name
+  setTextField(
+    form,
+    ["contractor", "Contractor"],
+    formData.contractorName,
+    allFieldNames
+  );
+
+  // Contractor address
+  setTextField(
+    form,
+    ["address", "Address"],
+    formData.contractorAddress,
+    allFieldNames
+  );
+
+  // Payroll number - include page number if multi-page
+  const payrollDisplay = totalPages > 1 
+    ? `${formData.payrollNumber} (Page ${pageNumber} of ${totalPages})`
+    : formData.payrollNumber;
+  setTextField(
+    form,
+    ["payrollNo", "PayrollNo", "payrollNumber"],
+    payrollDisplay,
+    allFieldNames
+  );
+
+  // Week ending date
+  setTextField(
+    form,
+    ["weekEnding", "WeekEnding", "forWeekEnding"],
+    formData.weekEnding,
+    allFieldNames
+  );
+
+  // Project and location (combined field)
+  setTextField(
+    form,
+    ["projectAndLocation", "ProjectAndLocation", "project"],
+    `${formData.projectName} - ${formData.projectLocation}`,
+    allFieldNames
+  );
+
+  // Contract number (if field exists)
+  setTextField(
+    form,
+    ["contractNo", "ContractNo", "contractNumber"],
+    formData.contractNumber,
+    allFieldNames
+  );
+
+  // ============================================
+  // EMPLOYEE ROWS - Using actual PDF field names
+  // ============================================
+  console.log(`Processing ${employees.length} employees for this page...`);
+
+  for (let i = 0; i < employees.length; i++) {
+    const emp = employees[i];
+    const rowNum = i + 1; // Row number on THIS page (1-8)
+    
+    console.log(`\n--- Row ${rowNum}: ${emp.name} ---`);
+
+    // Combined Name/Address/SSN field (nameAddrSSN1, nameAddrSSN2, etc.)
+    const ssnMasked = emp.ssnLastFour ? `XXX-XX-${emp.ssnLastFour}` : "";
+    const nameAddrSsnValue = [
+      emp.name,
+      emp.address || "",
+      ssnMasked
+    ].filter(Boolean).join("\n");
+    
+    setTextField(
+      form,
+      [`nameAddrSSN${rowNum}`, `NameAddrSSN${rowNum}`],
+      nameAddrSsnValue,
+      allFieldNames
+    );
+
+    // Withholding exemptions
+    setTextField(
+      form,
+      [`noWithholdingExemptions${rowNum}`, `NoWithholdingExemptions${rowNum}`, `wh${rowNum}`],
+      emp.withholdingExemptions.toString(),
+      allFieldNames
+    );
+
+    // Work classification
+    setTextField(
+      form,
+      [`workClassification${rowNum}`, `WorkClassification${rowNum}`],
+      emp.workClassification,
+      allFieldNames
+    );
+
+    // Daily hours - PDF uses day numbers 1-7
+    for (let d = 0; d < 7; d++) {
+      const dayHours = emp.dailyHours[d] || { straight: 0, overtime: 0 };
+      const dayNum = d + 1;
+
+      // Overtime hours
+      if (dayHours.overtime > 0) {
+        setTextField(
+          form,
+          [`OT${rowNum}${dayNum}`, `ot${rowNum}${dayNum}`],
+          dayHours.overtime.toString(),
+          allFieldNames
+        );
+      }
+
+      // Straight time hours
+      if (dayHours.straight > 0) {
+        setTextField(
+          form,
+          [`ST${rowNum}${dayNum}`, `st${rowNum}${dayNum}`],
+          dayHours.straight.toString(),
+          allFieldNames
+        );
+      }
+    }
+
+    // Total hours
+    setTextField(
+      form,
+      [`totalHoursOT${rowNum}`, `TotalHoursOT${rowNum}`],
+      emp.totalHours.overtime.toString(),
+      allFieldNames
+    );
+
+    setTextField(
+      form,
+      [`totalHoursST${rowNum}`, `TotalHoursST${rowNum}`],
+      emp.totalHours.straight.toString(),
+      allFieldNames
+    );
+
+    // Rate of pay
+    setTextField(
+      form,
+      [`rateOfPayOT${rowNum}`, `RateOfPayOT${rowNum}`],
+      emp.rateOfPay.overtime.toFixed(2),
+      allFieldNames
+    );
+
+    setTextField(
+      form,
+      [`rateOfPayST${rowNum}`, `RateOfPayST${rowNum}`],
+      emp.rateOfPay.straight.toFixed(2),
+      allFieldNames
+    );
+
+    // Gross earned
+    setTextField(
+      form,
+      [`gross${rowNum}`, `Gross${rowNum}`],
+      emp.grossEarned.toFixed(2),
+      allFieldNames
+    );
+
+    // Deductions
+    setTextField(
+      form,
+      [`fica${rowNum}`, `FICA${rowNum}`],
+      emp.deductions.fica.toFixed(2),
+      allFieldNames
+    );
+
+    setTextField(
+      form,
+      [`withholding${rowNum}`, `Withholding${rowNum}`],
+      emp.deductions.withholding.toFixed(2),
+      allFieldNames
+    );
+
+    setTextField(
+      form,
+      [`other${rowNum}`, `Other${rowNum}`],
+      emp.deductions.other.toFixed(2),
+      allFieldNames
+    );
+
+    setTextField(
+      form,
+      [`totalDeductions${rowNum}`, `TotalDeductions${rowNum}`],
+      emp.totalDeductions.toFixed(2),
+      allFieldNames
+    );
+
+    setTextField(
+      form,
+      [`netWages${rowNum}`, `NetWages${rowNum}`],
+      emp.netWages.toFixed(2),
+      allFieldNames
+    );
+  }
+
+  // ============================================
+  // PAGE 2 - Statement of Compliance (WH-348)
+  // ============================================
+  
+  // Fringe benefits checkboxes
+  setCheckbox(
+    form,
+    ["fringePaidToPlans", "FringePaidToPlans", "paidToPlans"],
+    formData.fringeBenefits.paidToPlans,
+    allFieldNames
+  );
+
+  setCheckbox(
+    form,
+    ["fringePaidInCash", "FringePaidInCash", "paidInCash"],
+    formData.fringeBenefits.paidInCash,
+    allFieldNames
+  );
+
+  // Signatory information
+  setTextField(
+    form,
+    ["signatoryName", "SignatoryName", "signature", "name"],
+    formData.signatory.name,
+    allFieldNames
+  );
+
+  setTextField(
+    form,
+    ["signatoryTitle", "SignatoryTitle", "title"],
+    formData.signatory.title,
+    allFieldNames
+  );
+
+  setTextField(
+    form,
+    ["signatoryDate", "SignatoryDate", "signDate", "date"],
+    formData.signatory.date,
+    allFieldNames
+  );
+}
+
 serve(async (req) => {
   // Handle CORS preflight
   if (req.method === "OPTIONS") {
@@ -164,277 +416,79 @@ serve(async (req) => {
       );
     }
 
-    // Load the PDF template
     const templateBytes = await templateData.arrayBuffer();
-    const pdfDoc = await PDFDocument.load(templateBytes);
-    const form = pdfDoc.getForm();
-
-    // Get all field names for debugging and matching
-    const fields = form.getFields();
-    const allFieldNames = fields.map((f) => f.getName());
-    console.log("Available PDF fields:", JSON.stringify(allFieldNames, null, 2));
-
-    // ============================================
-    // HEADER FIELDS - Using actual PDF field names
-    // ============================================
     
-    // Contractor name
-    setTextField(
-      form,
-      ["contractor", "Contractor"],
-      formData.contractorName,
-      allFieldNames
-    );
+    // Calculate number of pages needed
+    const totalEmployees = formData.employees.length;
+    const totalPages = Math.ceil(totalEmployees / EMPLOYEES_PER_PAGE);
+    
+    console.log(`Total employees: ${totalEmployees}, Pages needed: ${totalPages}`);
 
-    // Contractor address
-    setTextField(
-      form,
-      ["address", "Address"],
-      formData.contractorAddress,
-      allFieldNames
-    );
+    if (totalPages === 1) {
+      // Single page - simple case
+      const pdfDoc = await PDFDocument.load(templateBytes);
+      const form = pdfDoc.getForm();
+      const fields = form.getFields();
+      const allFieldNames = fields.map((f) => f.getName());
+      console.log("Available PDF fields:", JSON.stringify(allFieldNames, null, 2));
 
-    // Payroll number
-    setTextField(
-      form,
-      ["payrollNo", "PayrollNo", "payrollNumber"],
-      formData.payrollNumber,
-      allFieldNames
-    );
+      fillWH347Page(form, allFieldNames, formData, formData.employees.slice(0, EMPLOYEES_PER_PAGE), 1, 1);
+      form.flatten();
 
-    // Week ending date
-    setTextField(
-      form,
-      ["weekEnding", "WeekEnding", "forWeekEnding"],
-      formData.weekEnding,
-      allFieldNames
-    );
+      const pdfBytes = await pdfDoc.save();
+      console.log("Single-page WH-347 PDF generated successfully");
 
-    // Project and location (combined field)
-    setTextField(
-      form,
-      ["projectAndLocation", "ProjectAndLocation", "project"],
-      `${formData.projectName} - ${formData.projectLocation}`,
-      allFieldNames
-    );
-
-    // Contract number (if field exists)
-    setTextField(
-      form,
-      ["contractNo", "ContractNo", "contractNumber"],
-      formData.contractNumber,
-      allFieldNames
-    );
-
-    // ============================================
-    // EMPLOYEE ROWS - Using actual PDF field names
-    // ============================================
-    const maxEmployees = Math.min(formData.employees.length, 8);
-    console.log(`Processing ${maxEmployees} employees...`);
-
-    for (let i = 0; i < maxEmployees; i++) {
-      const emp = formData.employees[i];
-      const rowNum = i + 1;
+      return new Response(pdfBytes, {
+        status: 200,
+        headers: {
+          ...corsHeaders,
+          "Content-Type": "application/pdf",
+          "Content-Disposition": `attachment; filename="WH-347.pdf"`,
+        },
+      });
+    } else {
+      // Multiple pages - merge multiple filled templates
+      const mergedPdf = await PDFDocument.create();
       
-      console.log(`\n--- Employee ${rowNum}: ${emp.name} ---`);
-
-      // Combined Name/Address/SSN field (nameAddrSSN1, nameAddrSSN2, etc.)
-      // Format: Name on first line, address on second, SSN on third
-      const ssnMasked = emp.ssnLastFour ? `XXX-XX-${emp.ssnLastFour}` : "";
-      const nameAddrSsnValue = [
-        emp.name,
-        emp.address || "",
-        ssnMasked
-      ].filter(Boolean).join("\n");
-      
-      setTextField(
-        form,
-        [`nameAddrSSN${rowNum}`, `NameAddrSSN${rowNum}`],
-        nameAddrSsnValue,
-        allFieldNames
-      );
-
-      // Withholding exemptions (noWithholdingExemptions1, etc.)
-      setTextField(
-        form,
-        [`noWithholdingExemptions${rowNum}`, `NoWithholdingExemptions${rowNum}`, `wh${rowNum}`],
-        emp.withholdingExemptions.toString(),
-        allFieldNames
-      );
-
-      // Work classification (workClassification1, etc.)
-      setTextField(
-        form,
-        [`workClassification${rowNum}`, `WorkClassification${rowNum}`],
-        emp.workClassification,
-        allFieldNames
-      );
-
-      // Daily hours - PDF uses day numbers 1-7
-      // OT11 = Row 1, Day 1 Overtime; ST27 = Row 2, Day 7 Straight Time
-      for (let d = 0; d < 7; d++) {
-        const dayHours = emp.dailyHours[d] || { straight: 0, overtime: 0 };
-        const dayNum = d + 1;
-
-        // Overtime hours (OT11, OT12, ... OT17 for row 1)
-        if (dayHours.overtime > 0) {
-          setTextField(
-            form,
-            [`OT${rowNum}${dayNum}`, `ot${rowNum}${dayNum}`],
-            dayHours.overtime.toString(),
-            allFieldNames
-          );
+      for (let page = 1; page <= totalPages; page++) {
+        const startIdx = (page - 1) * EMPLOYEES_PER_PAGE;
+        const endIdx = Math.min(startIdx + EMPLOYEES_PER_PAGE, totalEmployees);
+        const pageEmployees = formData.employees.slice(startIdx, endIdx);
+        
+        console.log(`\n=== Creating page ${page}: employees ${startIdx + 1} to ${endIdx} ===`);
+        
+        // Load fresh template for each page
+        const pagePdfDoc = await PDFDocument.load(templateBytes);
+        const form = pagePdfDoc.getForm();
+        const fields = form.getFields();
+        const allFieldNames = fields.map((f) => f.getName());
+        
+        if (page === 1) {
+          console.log("Available PDF fields:", JSON.stringify(allFieldNames, null, 2));
         }
-
-        // Straight time hours (ST11, ST12, ... ST17 for row 1)
-        if (dayHours.straight > 0) {
-          setTextField(
-            form,
-            [`ST${rowNum}${dayNum}`, `st${rowNum}${dayNum}`],
-            dayHours.straight.toString(),
-            allFieldNames
-          );
-        }
+        
+        fillWH347Page(form, allFieldNames, formData, pageEmployees, page, totalPages);
+        form.flatten();
+        
+        // Copy all pages from this filled template to merged PDF
+        const pageBytes = await pagePdfDoc.save();
+        const filledDoc = await PDFDocument.load(pageBytes);
+        const copiedPages = await mergedPdf.copyPages(filledDoc, filledDoc.getPageIndices());
+        copiedPages.forEach((copiedPage) => mergedPdf.addPage(copiedPage));
       }
+      
+      const pdfBytes = await mergedPdf.save();
+      console.log(`Multi-page WH-347 PDF generated successfully (${totalPages} pages)`);
 
-      // Total hours - overtime
-      setTextField(
-        form,
-        [`totalHoursOT${rowNum}`, `TotalHoursOT${rowNum}`],
-        emp.totalHours.overtime.toString(),
-        allFieldNames
-      );
-
-      // Total hours - straight time
-      setTextField(
-        form,
-        [`totalHoursST${rowNum}`, `TotalHoursST${rowNum}`],
-        emp.totalHours.straight.toString(),
-        allFieldNames
-      );
-
-      // Rate of pay - overtime
-      setTextField(
-        form,
-        [`rateOfPayOT${rowNum}`, `RateOfPayOT${rowNum}`],
-        emp.rateOfPay.overtime.toFixed(2),
-        allFieldNames
-      );
-
-      // Rate of pay - straight time
-      setTextField(
-        form,
-        [`rateOfPayST${rowNum}`, `RateOfPayST${rowNum}`],
-        emp.rateOfPay.straight.toFixed(2),
-        allFieldNames
-      );
-
-      // Gross earned
-      setTextField(
-        form,
-        [`gross${rowNum}`, `Gross${rowNum}`],
-        emp.grossEarned.toFixed(2),
-        allFieldNames
-      );
-
-      // Deductions - FICA
-      setTextField(
-        form,
-        [`fica${rowNum}`, `FICA${rowNum}`],
-        emp.deductions.fica.toFixed(2),
-        allFieldNames
-      );
-
-      // Deductions - Withholding
-      setTextField(
-        form,
-        [`withholding${rowNum}`, `Withholding${rowNum}`],
-        emp.deductions.withholding.toFixed(2),
-        allFieldNames
-      );
-
-      // Deductions - Other
-      setTextField(
-        form,
-        [`other${rowNum}`, `Other${rowNum}`],
-        emp.deductions.other.toFixed(2),
-        allFieldNames
-      );
-
-      // Total deductions
-      setTextField(
-        form,
-        [`totalDeductions${rowNum}`, `TotalDeductions${rowNum}`],
-        emp.totalDeductions.toFixed(2),
-        allFieldNames
-      );
-
-      // Net wages
-      setTextField(
-        form,
-        [`netWages${rowNum}`, `NetWages${rowNum}`],
-        emp.netWages.toFixed(2),
-        allFieldNames
-      );
+      return new Response(pdfBytes, {
+        status: 200,
+        headers: {
+          ...corsHeaders,
+          "Content-Type": "application/pdf",
+          "Content-Disposition": `attachment; filename="WH-347.pdf"`,
+        },
+      });
     }
-
-    // ============================================
-    // PAGE 2 - Statement of Compliance (WH-348)
-    // ============================================
-    
-    // Fringe benefits checkboxes
-    setCheckbox(
-      form,
-      ["fringePaidToPlans", "FringePaidToPlans", "paidToPlans"],
-      formData.fringeBenefits.paidToPlans,
-      allFieldNames
-    );
-
-    setCheckbox(
-      form,
-      ["fringePaidInCash", "FringePaidInCash", "paidInCash"],
-      formData.fringeBenefits.paidInCash,
-      allFieldNames
-    );
-
-    // Signatory information
-    setTextField(
-      form,
-      ["signatoryName", "SignatoryName", "signature", "name"],
-      formData.signatory.name,
-      allFieldNames
-    );
-
-    setTextField(
-      form,
-      ["signatoryTitle", "SignatoryTitle", "title"],
-      formData.signatory.title,
-      allFieldNames
-    );
-
-    setTextField(
-      form,
-      ["signatoryDate", "SignatoryDate", "signDate", "date"],
-      formData.signatory.date,
-      allFieldNames
-    );
-
-    // Flatten the form to make it non-editable
-    form.flatten();
-
-    // Save the filled PDF
-    const pdfBytes = await pdfDoc.save();
-
-    console.log("WH-347 PDF generated successfully");
-
-    return new Response(pdfBytes, {
-      status: 200,
-      headers: {
-        ...corsHeaders,
-        "Content-Type": "application/pdf",
-        "Content-Disposition": `attachment; filename="WH-347.pdf"`,
-      },
-    });
   } catch (error) {
     console.error("Error generating WH-347:", error);
     return new Response(
