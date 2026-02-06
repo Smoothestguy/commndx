@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { format } from "date-fns";
 import { parseLocalDate } from "@/lib/dateUtils";
-import { Plus, Upload, Search, Edit, Trash2, ChevronDown, ChevronUp, CheckSquare, Square, X } from "lucide-react";
+import { Plus, Upload, Search, Edit, Trash2, ChevronDown, ChevronUp, CheckSquare, Square, X, Download } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -15,6 +15,12 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -33,6 +39,8 @@ import { DevActivityManualForm } from "./DevActivityManualForm";
 import { DevActivityStats } from "./DevActivityStats";
 import { BulkEditModal } from "./BulkEditModal";
 import { getActivityTypeConfig, formatDuration, ACTIVITY_TYPES } from "./devActivityUtils";
+import { exportDevActivitiesToCSV, exportDevActivitiesToJSON } from "@/utils/exportUtils";
+import { toast } from "sonner";
 
 interface DevActivityDashboardProps {
   dateRange?: DateRange;
@@ -139,6 +147,27 @@ export function DevActivityDashboard({ dateRange, targetUserId }: DevActivityDas
 
   const allSelected = filteredActivities.length > 0 && selectedIds.size === filteredActivities.length;
 
+  // Export handlers
+  const handleExportCSV = () => {
+    try {
+      const filename = `dev-activities-${format(new Date(), 'yyyy-MM-dd')}`;
+      exportDevActivitiesToCSV(filteredActivities, filename);
+      toast.success(`Exported ${filteredActivities.length} activities to CSV`);
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : 'Failed to export');
+    }
+  };
+
+  const handleExportJSON = () => {
+    try {
+      const filename = `dev-activities-${format(new Date(), 'yyyy-MM-dd')}`;
+      exportDevActivitiesToJSON(filteredActivities, filename);
+      toast.success(`Exported ${filteredActivities.length} activities to JSON`);
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : 'Failed to export');
+    }
+  };
+
   if (isLoading) {
     return (
       <div className="space-y-4">
@@ -172,6 +201,22 @@ export function DevActivityDashboard({ dateRange, targetUserId }: DevActivityDas
               Select
             </Button>
           )}
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button variant="outline" size="sm" disabled={filteredActivities.length === 0} className="flex-1 sm:flex-none">
+                <Download className="h-4 w-4 mr-2" />
+                Export
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end">
+              <DropdownMenuItem onClick={handleExportCSV}>
+                Export as CSV
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={handleExportJSON}>
+                Export as JSON
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
         </div>
 
         <div className="flex flex-col sm:flex-row gap-2">
