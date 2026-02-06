@@ -1,3 +1,13 @@
+import { ACTIVITY_TYPES } from "@/components/session/devActivityUtils";
+
+/**
+ * Get activity type label from value
+ */
+const getActivityTypeLabel = (typeValue: string): string => {
+  const type = ACTIVITY_TYPES.find(t => t.value === typeValue);
+  return type?.label || typeValue;
+};
+
 /**
  * Export activity logs to CSV format
  */
@@ -57,6 +67,86 @@ export const exportToJSON = (data: any[], filename: string) => {
   const jsonContent = JSON.stringify(exportData, null, 2);
 
   // Create blob and download
+  const blob = new Blob([jsonContent], { type: 'application/json;charset=utf-8;' });
+  downloadFile(blob, `${filename}.json`);
+};
+
+/**
+ * Dev Activity interface for export functions
+ */
+interface DevActivityExport {
+  activity_date: string;
+  activity_time: string | null;
+  activity_type: string;
+  title: string;
+  description: string | null;
+  duration_minutes: number | null;
+  project_name: string | null;
+  technologies: string[];
+  tags: string[];
+}
+
+/**
+ * Escape CSV cell content
+ */
+const escapeCSVCell = (cell: string): string => {
+  // Replace double quotes with two double quotes and wrap in quotes
+  return `"${(cell || '').replace(/"/g, '""')}"`;
+};
+
+/**
+ * Export dev activities to CSV format
+ */
+export const exportDevActivitiesToCSV = (activities: DevActivityExport[], filename: string) => {
+  if (activities.length === 0) {
+    throw new Error('No activities to export');
+  }
+
+  const headers = ['Date', 'Time', 'Type', 'Title', 'Description', 'Duration (min)', 'Project', 'Technologies', 'Tags'];
+  
+  const rows = activities.map(activity => [
+    activity.activity_date,
+    activity.activity_time || '',
+    getActivityTypeLabel(activity.activity_type),
+    activity.title,
+    activity.description || '',
+    activity.duration_minutes?.toString() || '',
+    activity.project_name || '',
+    activity.technologies.join('; '),
+    activity.tags.join('; ')
+  ]);
+
+  const csvContent = [
+    headers.join(','),
+    ...rows.map(row => row.map(cell => escapeCSVCell(cell)).join(','))
+  ].join('\n');
+
+  const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+  downloadFile(blob, `${filename}.csv`);
+};
+
+/**
+ * Export dev activities to JSON format
+ */
+export const exportDevActivitiesToJSON = (activities: DevActivityExport[], filename: string) => {
+  if (activities.length === 0) {
+    throw new Error('No activities to export');
+  }
+
+  const exportData = activities.map(activity => ({
+    date: activity.activity_date,
+    time: activity.activity_time || null,
+    type: getActivityTypeLabel(activity.activity_type),
+    typeValue: activity.activity_type,
+    title: activity.title,
+    description: activity.description || null,
+    durationMinutes: activity.duration_minutes,
+    project: activity.project_name || null,
+    technologies: activity.technologies,
+    tags: activity.tags,
+  }));
+
+  const jsonContent = JSON.stringify(exportData, null, 2);
   const blob = new Blob([jsonContent], { type: 'application/json;charset=utf-8;' });
   downloadFile(blob, `${filename}.json`);
 };
