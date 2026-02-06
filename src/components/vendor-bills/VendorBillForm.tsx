@@ -8,7 +8,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Plus, Trash2, Save, X, Loader2 } from "lucide-react";
+import { Plus, Trash2, Save, X, Loader2, Lock } from "lucide-react";
 import { toast } from "sonner";
 import { useVendors, Vendor } from "@/integrations/supabase/hooks/useVendors";
 import { useProjects } from "@/integrations/supabase/hooks/useProjects";
@@ -34,6 +34,7 @@ import { finalizeAttachments, cleanupPendingAttachments } from "@/utils/attachme
 import { VendorBillAttachments } from "@/components/vendor-bills/VendorBillAttachments";
 import { VendorBillSyncErrorDialog } from "@/components/vendor-bills/VendorBillSyncErrorDialog";
 import { useSyncPendingAttachments } from "@/integrations/supabase/hooks/useVendorBillAttachments";
+import { useLockedPeriod } from "@/hooks/useLockedPeriod";
 
 interface VendorBillFormProps {
   bill?: VendorBill;
@@ -74,7 +75,7 @@ export function VendorBillForm({ bill, isEditing = false }: VendorBillFormProps)
   const updateBill = useUpdateVendorBill();
   const syncToQB = useSyncVendorBillToQB();
   const syncPendingAttachments = useSyncPendingAttachments();
-
+  const { isDateLocked, validateDate, minAllowedDate } = useLockedPeriod();
   const [isSyncing, setIsSyncing] = useState(false);
   const [vendorOpen, setVendorOpen] = useState(false);
   const [selectedVendor, setSelectedVendor] = useState<Vendor | null>(null);
@@ -232,6 +233,14 @@ export function VendorBillForm({ bill, isEditing = false }: VendorBillFormProps)
     if (parseLocalDate(dueDate) < parseLocalDate(billDate)) {
       toast.error("Due date cannot be before bill date");
       throw new Error("Invalid dates");
+    }
+
+    // Validate locked period
+    const dateValidation = validateDate(billDate, "vendor bill");
+    if (!dateValidation.valid) {
+      const errorMsg = "message" in dateValidation ? dateValidation.message : "Date is in locked period";
+      toast.error(errorMsg);
+      throw new Error(errorMsg);
     }
 
     const billData = {
@@ -458,12 +467,20 @@ export function VendorBillForm({ bill, isEditing = false }: VendorBillFormProps)
             </div>
 
             <div className="space-y-2">
-              <Label>Bill Date *</Label>
+              <Label className="flex items-center gap-2">
+                Bill Date *
+                {isDateLocked(billDate) && <Lock className="h-3 w-3 text-destructive" />}
+              </Label>
               <Input
                 type="date"
                 value={billDate}
                 onChange={(e) => setBillDate(e.target.value)}
+                min={minAllowedDate ? format(minAllowedDate, "yyyy-MM-dd") : undefined}
+                className={isDateLocked(billDate) ? "border-destructive" : ""}
               />
+              {isDateLocked(billDate) && (
+                <p className="text-xs text-destructive">This date is in a locked accounting period</p>
+              )}
             </div>
 
             <div className="space-y-2">

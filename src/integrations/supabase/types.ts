@@ -1299,6 +1299,8 @@ export type Database = {
           id: string
           invoice_footer: string | null
           legal_name: string | null
+          locked_period_date: string | null
+          locked_period_enabled: boolean | null
           logo_url: string | null
           overtime_multiplier: number | null
           overtime_threshold: number | null
@@ -1322,6 +1324,8 @@ export type Database = {
           id?: string
           invoice_footer?: string | null
           legal_name?: string | null
+          locked_period_date?: string | null
+          locked_period_enabled?: boolean | null
           logo_url?: string | null
           overtime_multiplier?: number | null
           overtime_threshold?: number | null
@@ -1345,6 +1349,8 @@ export type Database = {
           id?: string
           invoice_footer?: string | null
           legal_name?: string | null
+          locked_period_date?: string | null
+          locked_period_enabled?: boolean | null
           logo_url?: string | null
           overtime_multiplier?: number | null
           overtime_threshold?: number | null
@@ -2873,6 +2879,45 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      locked_period_violations: {
+        Row: {
+          action: string
+          attempted_date: string
+          blocked: boolean | null
+          created_at: string | null
+          details: Json | null
+          entity_id: string | null
+          entity_type: string
+          id: string
+          locked_period_date: string
+          user_id: string | null
+        }
+        Insert: {
+          action: string
+          attempted_date: string
+          blocked?: boolean | null
+          created_at?: string | null
+          details?: Json | null
+          entity_id?: string | null
+          entity_type: string
+          id?: string
+          locked_period_date: string
+          user_id?: string | null
+        }
+        Update: {
+          action?: string
+          attempted_date?: string
+          blocked?: boolean | null
+          created_at?: string | null
+          details?: Json | null
+          entity_id?: string | null
+          entity_type?: string
+          id?: string
+          locked_period_date?: string
+          user_id?: string | null
+        }
+        Relationships: []
       }
       messages: {
         Row: {

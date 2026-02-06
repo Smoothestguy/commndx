@@ -22,6 +22,9 @@ export interface CompanySettings {
   holiday_multiplier: number;
   invoice_footer: string | null;
   estimate_footer: string | null;
+  // Locked period fields
+  locked_period_date: string | null;
+  locked_period_enabled: boolean;
   created_at: string;
   updated_at: string;
 }
