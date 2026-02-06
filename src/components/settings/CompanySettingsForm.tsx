@@ -6,8 +6,11 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
+import { Switch } from "@/components/ui/switch";
+import { Alert, AlertDescription } from "@/components/ui/alert";
 import { useCompanySettings, useUpdateCompanySettings, useUploadLogo } from "@/integrations/supabase/hooks/useCompanySettings";
-import { Building2, Loader2, ChevronDown } from "lucide-react";
+import { Building2, Loader2, ChevronDown, Lock, AlertTriangle } from "lucide-react";
+import { format } from "date-fns";
 
 export const CompanySettingsForm = () => {
   const { data: settings, isLoading } = useCompanySettings();
@@ -216,22 +219,75 @@ export const CompanySettingsForm = () => {
               </div>
             </div>
 
-            <div className="space-y-2">
-              <Label htmlFor="invoice_footer">Invoice Footer</Label>
-              <Textarea
-                id="invoice_footer"
-                {...register("invoice_footer")}
-                placeholder="Thank you for your business!"
-              />
+            {/* Locked Period Settings Section */}
+            <div className="border-t pt-6 mt-6">
+              <div className="flex items-center gap-2 mb-4">
+                <Lock className="h-5 w-5 text-muted-foreground" />
+                <h3 className="text-lg font-medium">Accounting Period Lock</h3>
+              </div>
+              
+              <Alert className="mb-4">
+                <AlertTriangle className="h-4 w-4" />
+                <AlertDescription>
+                  When enabled, transactions dated on or before the locked period date cannot be created, edited, or synced to QuickBooks. This protects reconciled accounting data.
+                </AlertDescription>
+              </Alert>
+
+              <div className="space-y-4">
+                <div className="flex items-center justify-between">
+                  <div className="space-y-0.5">
+                    <Label htmlFor="locked_period_enabled">Enable Locked Period</Label>
+                    <p className="text-sm text-muted-foreground">
+                      Block transactions before the cutoff date
+                    </p>
+                  </div>
+                  <Switch
+                    id="locked_period_enabled"
+                    checked={settings?.locked_period_enabled || false}
+                    onCheckedChange={(checked) => {
+                      updateSettings.mutate({ locked_period_enabled: checked });
+                    }}
+                  />
+                </div>
+
+                {settings?.locked_period_enabled && (
+                  <div className="space-y-2">
+                    <Label htmlFor="locked_period_date">Lock Transactions Through</Label>
+                    <Input
+                      id="locked_period_date"
+                      type="date"
+                      value={settings?.locked_period_date || ""}
+                      onChange={(e) => {
+                        updateSettings.mutate({ locked_period_date: e.target.value || null });
+                      }}
+                      max={format(new Date(), "yyyy-MM-dd")}
+                    />
+                    <p className="text-sm text-muted-foreground">
+                      All transactions dated on or before this date will be locked
+                    </p>
+                  </div>
+                )}
+              </div>
             </div>
 
-            <div className="space-y-2">
-              <Label htmlFor="estimate_footer">Estimate Footer</Label>
-              <Textarea
-                id="estimate_footer"
-                {...register("estimate_footer")}
-                placeholder="We look forward to working with you!"
-              />
+            <div className="border-t pt-6 mt-6 space-y-4">
+              <div className="space-y-2">
+                <Label htmlFor="invoice_footer">Invoice Footer</Label>
+                <Textarea
+                  id="invoice_footer"
+                  {...register("invoice_footer")}
+                  placeholder="Thank you for your business!"
+                />
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="estimate_footer">Estimate Footer</Label>
+                <Textarea
+                  id="estimate_footer"
+                  {...register("estimate_footer")}
+                  placeholder="We look forward to working with you!"
+                />
+              </div>
             </div>
           </div>
 

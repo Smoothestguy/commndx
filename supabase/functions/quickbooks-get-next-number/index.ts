@@ -141,66 +141,49 @@ async function qbQuery(query: string, accessToken: string, realmId: string) {
 }
 
 function extractNextNumber(docNumbers: string[], prefix: string): string {
-  // Log sample for debugging
+  // Get current year suffix (e.g., "26" for 2026)
+  const currentYear = new Date().getFullYear().toString().slice(-2);
+  const yearPrefix = `${prefix}${currentYear}`; // e.g., "INV-26", "BILL-26", "EST-26", "PO-26"
+  
+  console.log(`Looking for year-aware prefix: ${yearPrefix}`);
   console.log("Sample doc numbers from QB:", docNumbers.slice(0, 10));
   
-  // Extract numbers from ALL document numbers, regardless of prefix
-  const allNumbers = docNumbers
+  // Filter to only current year numbers with matching prefix
+  const currentYearNumbers = docNumbers
+    .filter(num => num && num.startsWith(yearPrefix))
     .map(num => {
-      if (!num) return { original: num, value: 0 };
-      // Extract any trailing number from the string
-      const match = num.match(/(\d+)$/);
-      return { 
-        original: num, 
-        value: match ? parseInt(match[1], 10) : 0 
-      };
+      // Extract the sequence number after the year prefix (e.g., "INV-2600001" -> 1)
+      const afterPrefix = num.substring(yearPrefix.length);
+      const seqNum = parseInt(afterPrefix, 10);
+      return { original: num, value: isNaN(seqNum) ? 0 : seqNum };
     })
     .filter(item => item.value > 0);
 
-  if (allNumbers.length === 0) {
-    // No valid numbers found, start fresh with our format
-    return `${prefix}0001`;
+  console.log(`Found ${currentYearNumbers.length} numbers with prefix ${yearPrefix}`);
+  
+  if (currentYearNumbers.length === 0) {
+    // No current year numbers found, start fresh with sequence 1
+    console.log(`No ${yearPrefix} numbers found, starting fresh sequence`);
+    return `${yearPrefix}00001`;
   }
 
-  // Find the highest number
-  const maxItem = allNumbers.reduce((max, item) => 
+  // Find the highest sequence number
+  const maxItem = currentYearNumbers.reduce((max, item) => 
     item.value > max.value ? item : max
   );
   
-  console.log(`Highest number found: ${maxItem.original} (value: ${maxItem.value})`);
+  console.log(`Highest ${yearPrefix} number found: ${maxItem.original} (sequence: ${maxItem.value})`);
   
   const nextNum = maxItem.value + 1;
   
-  // Check if the highest number uses the expected prefix format
-  if (maxItem.original.startsWith(prefix)) {
-    // Match the existing format with proper padding
-    const paddingMatch = maxItem.original.match(new RegExp(`^${prefix}(\\d+)$`));
-    if (paddingMatch) {
-      const paddingLength = paddingMatch[1].length;
-      return `${prefix}${nextNum.toString().padStart(paddingLength, '0')}`;
-    }
-    return `${prefix}${nextNum.toString().padStart(4, '0')}`;
-  }
+  // Determine padding length from highest existing number
+  const highestNumStr = maxItem.original.substring(yearPrefix.length);
+  const paddingLength = Math.max(highestNumStr.length, 5); // Minimum 5 digits
   
-  // QB uses a different format - detect and match it
-  const sampleNum = maxItem.original;
+  const result = `${yearPrefix}${nextNum.toString().padStart(paddingLength, '0')}`;
+  console.log(`Next number: ${result}`);
   
-  // Check if it's a plain number (possibly with leading zeros)
-  if (/^\d+$/.test(sampleNum)) {
-    return nextNum.toString().padStart(sampleNum.length, '0');
-  }
-  
-  // Check for any prefix pattern (e.g., "Invoice-", "Inv", etc.)
-  const prefixMatch = sampleNum.match(/^([A-Za-z-]+)(\d+)$/);
-  if (prefixMatch) {
-    const detectedPrefix = prefixMatch[1];
-    const numberPart = prefixMatch[2];
-    console.log(`Detected QB prefix: "${detectedPrefix}", padding: ${numberPart.length}`);
-    return `${detectedPrefix}${nextNum.toString().padStart(numberPart.length, '0')}`;
-  }
-  
-  // Fallback: use our standard format
-  return `${prefix}${nextNum.toString().padStart(4, '0')}`;
+  return result;
 }
 
 serve(async (req) => {
@@ -235,8 +218,8 @@ serve(async (req) => {
     let localDocNumbers: string[] = [];
 
     if (type === "invoice") {
-      // Query QuickBooks
-      const query = "SELECT DocNumber FROM Invoice ORDERBY MetaData.CreateTime DESC MAXRESULTS 100";
+      // Query QuickBooks - increased limit for better coverage
+      const query = "SELECT DocNumber FROM Invoice ORDERBY MetaData.CreateTime DESC MAXRESULTS 500";
       const result = await qbQuery(query, accessToken, realmId);
       qbDocNumbers = result.QueryResponse?.Invoice?.map((inv: any) => inv.DocNumber) || [];
       
@@ -253,8 +236,8 @@ serve(async (req) => {
       const allNumbers = [...qbDocNumbers, ...localDocNumbers];
       nextNumber = extractNextNumber(allNumbers, "INV-");
     } else if (type === "estimate") {
-      // Query QuickBooks
-      const query = "SELECT DocNumber FROM Estimate ORDERBY MetaData.CreateTime DESC MAXRESULTS 100";
+      // Query QuickBooks - increased limit for better coverage
+      const query = "SELECT DocNumber FROM Estimate ORDERBY MetaData.CreateTime DESC MAXRESULTS 500";
       const result = await qbQuery(query, accessToken, realmId);
       qbDocNumbers = result.QueryResponse?.Estimate?.map((est: any) => est.DocNumber) || [];
       
@@ -271,8 +254,8 @@ serve(async (req) => {
       const allNumbers = [...qbDocNumbers, ...localDocNumbers];
       nextNumber = extractNextNumber(allNumbers, "EST-");
     } else if (type === "purchase_order") {
-      // Query QuickBooks
-      const query = "SELECT DocNumber FROM PurchaseOrder ORDERBY MetaData.CreateTime DESC MAXRESULTS 100";
+      // Query QuickBooks - increased limit for better coverage
+      const query = "SELECT DocNumber FROM PurchaseOrder ORDERBY MetaData.CreateTime DESC MAXRESULTS 500";
       const result = await qbQuery(query, accessToken, realmId);
       qbDocNumbers = result.QueryResponse?.PurchaseOrder?.map((po: any) => po.DocNumber) || [];
       
@@ -289,8 +272,8 @@ serve(async (req) => {
       const allNumbers = [...qbDocNumbers, ...localDocNumbers];
       nextNumber = extractNextNumber(allNumbers, "PO-");
     } else {
-      // vendor_bill
-      const query = "SELECT DocNumber FROM Bill ORDERBY MetaData.CreateTime DESC MAXRESULTS 100";
+      // vendor_bill - increased limit for better coverage
+      const query = "SELECT DocNumber FROM Bill ORDERBY MetaData.CreateTime DESC MAXRESULTS 500";
       const result = await qbQuery(query, accessToken, realmId);
       qbDocNumbers = result.QueryResponse?.Bill?.map((bill: any) => bill.DocNumber) || [];
       

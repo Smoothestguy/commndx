@@ -1,6 +1,6 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
-
+import { validateLockedPeriod } from "../_shared/lockedPeriodValidator.ts";
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
@@ -608,6 +608,28 @@ serve(async (req) => {
 
     if (billError || !bill) {
       throw new Error(`Vendor bill not found: ${billId}`);
+    }
+
+    // Validate locked period BEFORE syncing to QuickBooks
+    const periodCheck = await validateLockedPeriod(
+      supabase,
+      bill.bill_date,
+      'vendor_bill',
+      billId,
+      authResult.userId,
+      'create'
+    );
+
+    if (!periodCheck.allowed) {
+      console.warn('Locked period violation:', periodCheck.message);
+      return new Response(
+        JSON.stringify({ 
+          success: false, 
+          error: periodCheck.message,
+          blocked_by: 'locked_period'
+        }),
+        { status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
     }
 
     // Get line items

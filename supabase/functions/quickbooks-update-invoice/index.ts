@@ -1,5 +1,6 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { validateLockedPeriod } from "../_shared/lockedPeriodValidator.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -173,6 +174,29 @@ serve(async (req) => {
 
     if (invoiceError || !invoice) {
       throw new Error("Invoice not found");
+    }
+
+    // Validate locked period BEFORE syncing to QuickBooks
+    const periodCheck = await validateLockedPeriod(
+      supabase,
+      invoice.date || invoice.created_at?.split('T')[0],
+      'invoice',
+      invoiceId,
+      "system",
+      'update'
+    );
+
+    if (!periodCheck.allowed) {
+      console.warn('Locked period violation:', periodCheck.message);
+      return new Response(
+        JSON.stringify({ 
+          success: false, 
+          error: periodCheck.message,
+          blocked_by: 'locked_period',
+          updated: false
+        }),
+        { status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
     }
 
     const { data: lineItems, error: lineItemsError } = await supabase
