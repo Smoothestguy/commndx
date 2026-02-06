@@ -82,6 +82,9 @@ async function getValidToken(supabase: ReturnType<typeof createClient>) {
 
   if (tokenExpires < fiveMinutesFromNow) {
     // Refresh the token
+    console.log('Token expired or expiring soon, attempting refresh...');
+    console.log('Token expires at:', config.token_expires_at);
+    
     const response = await fetch(`${SUPABASE_URL}/functions/v1/quickbooks-oauth`, {
       method: 'POST',
       headers: {
@@ -92,11 +95,16 @@ async function getValidToken(supabase: ReturnType<typeof createClient>) {
     });
 
     if (!response.ok) {
-      throw new Error('Failed to refresh token');
+      const errorText = await response.text();
+      console.error('Token refresh failed:', response.status, errorText);
+      
+      // If refresh fails, the user needs to re-authorize
+      throw new Error(`Token refresh failed (${response.status}): ${errorText}. QuickBooks may need to be re-connected.`);
     }
 
-    const { access_token, realm_id } = await response.json();
-    return { accessToken: access_token, realmId: realm_id };
+    const refreshResult = await response.json();
+    console.log('Token refreshed successfully');
+    return { accessToken: refreshResult.access_token, realmId: refreshResult.realm_id };
   }
 
   return { accessToken: config.access_token, realmId: config.realm_id };
