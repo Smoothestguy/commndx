@@ -1,194 +1,118 @@
 
-# QuickBooks Journal Entry Read Access
+# Fix WH-347 Export - Personnel Names Not Captured Correctly
 
-## Overview
+## Problem Summary
 
-Add read-only access to QuickBooks Journal Entries in Command X. This feature will allow users to view journal entries from QuickBooks without the ability to create or modify them, which is useful for reconciliation, audit purposes, and understanding adjustments made directly in QuickBooks.
+The WH-347 export is only showing "chris" for all employee rows instead of each individual employee's name. This is caused by two issues:
 
-## QuickBooks API Reference
+1. **PDF Field Name Mismatch**: The edge function uses incorrect field name patterns that don't match the actual PDF template field names
+2. **Missing Personnel Data**: The `useAdminTimeEntriesByWeek` hook doesn't fetch all required fields (`address`, `city`, `state`, `zip`, `ssn_last_four`) from personnel
 
-The QuickBooks Online API supports querying journal entries via:
-- **Endpoint**: `GET /v3/company/{realmId}/query?query=SELECT * FROM JournalEntry`
-- **Entity**: `JournalEntry`
-- **Key Fields**:
-  - `Id` - QuickBooks ID
-  - `DocNumber` - Journal entry number
-  - `TxnDate` - Transaction date
-  - `PrivateNote` - Internal memo
-  - `Line[]` - Array of line items (debits/credits)
-  - `Adjustment` - Whether it's an adjusting entry
-  - `TotalAmt` - Total amount
-  - `MetaData.CreateTime`, `MetaData.LastUpdatedTime`
+## Root Cause Analysis
 
-## Implementation
+### Issue 1: PDF Field Names
 
-### Step 1: Database Schema
+**Actual PDF Template Fields (from logs):**
+| Field Type | Actual Name Pattern |
+|------------|-------------------|
+| Name/Address/SSN | `nameAddrSSN1`, `nameAddrSSN2`, ... |
+| Classification | `workClassification1`, `workClassification2`, ... |
+| Overtime Hours Day 1-7 | `OT11`-`OT17`, `OT21`-`OT27`, ... |
+| Straight Time Hours | `ST11`-`ST17`, `ST21`-`ST27`, ... |
+| Total OT Hours | `totalHoursOT1`, `totalHoursOT2`, ... |
+| Total ST Hours | `totalHoursST1`, `totalHoursST2`, ... |
+| Gross | `gross1`, `gross2`, ... |
+| FICA | `fica1`, `fica2`, ... |
+| Withholding | `withholding1`, `withholding2`, ... |
+| Net Wages | `netWages1`, `netWages2`, ... |
+| Contractor | `contractor` |
+| Address | `address` |
+| Payroll No | `payrollNo` |
+| Week Ending | `weekEnding` |
+| Project/Location | `projectAndLocation` |
 
-Create a table to store fetched journal entries (read-only cache for viewing):
-
-```sql
--- Journal entries table (read-only cache from QuickBooks)
-CREATE TABLE quickbooks_journal_entries (
-  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  quickbooks_id TEXT NOT NULL UNIQUE,
-  doc_number TEXT,
-  txn_date DATE NOT NULL,
-  private_note TEXT,
-  total_amount NUMERIC(12,2) DEFAULT 0,
-  is_adjustment BOOLEAN DEFAULT FALSE,
-  currency_code TEXT DEFAULT 'USD',
-  line_items JSONB DEFAULT '[]',
-  raw_data JSONB,
-  fetched_at TIMESTAMPTZ DEFAULT NOW(),
-  created_at TIMESTAMPTZ DEFAULT NOW(),
-  updated_at TIMESTAMPTZ DEFAULT NOW()
-);
-
--- Enable RLS - only admins and accounting can view
-ALTER TABLE quickbooks_journal_entries ENABLE ROW LEVEL SECURITY;
-
-CREATE POLICY "Admins and accounting can view journal entries"
-  ON quickbooks_journal_entries FOR SELECT
-  TO authenticated
-  USING (
-    public.has_role(auth.uid(), 'admin') OR 
-    public.has_role(auth.uid(), 'manager') OR
-    public.has_role(auth.uid(), 'accounting')
-  );
-
--- Index for date-based queries
-CREATE INDEX idx_qb_journal_entries_txn_date ON quickbooks_journal_entries(txn_date DESC);
-```
-
-### Step 2: Edge Function
-
-Create `supabase/functions/quickbooks-fetch-journal-entries/index.ts`:
-
+**Current Code (Incorrect):**
 ```typescript
-// Key functionality:
-// 1. Query QuickBooks: SELECT * FROM JournalEntry WHERE TxnDate >= 'YYYY-MM-DD' MAXRESULTS 500
-// 2. Support date filtering (default: last 90 days, configurable)
-// 3. Upsert entries into quickbooks_journal_entries table
-// 4. Parse line items into readable format (account name, amount, type: Debit/Credit)
-// 5. Return summary: fetched count, updated count, date range
+setTextField(form, [`Name${rowNum}`, `NameRow${rowNum}`, ...], emp.name, allFieldNames);
 ```
 
-**Line Item Structure (parsed from QuickBooks)**:
+**Should Be:**
 ```typescript
-interface JournalEntryLine {
-  lineId: string;
-  description: string | null;
-  accountId: string;
-  accountName: string;
-  amount: number;
-  postingType: 'Debit' | 'Credit';
-  entityType?: string; // Customer, Vendor, Employee
-  entityName?: string;
-}
+setTextField(form, [`nameAddrSSN${rowNum}`], emp.name + '\n' + emp.address + '\n' + ssnMasked, allFieldNames);
 ```
 
-### Step 3: React Hook
+### Issue 2: Missing Personnel Fields
 
-Add to `src/integrations/supabase/hooks/useQuickBooks.ts`:
-
+**Current Query (in useTimeEntries.ts line 256):**
 ```typescript
-// useFetchJournalEntriesFromQB - mutation to trigger fetch
-// useQuickBooksJournalEntries - query to list cached entries with pagination
-// Date range filter support (start/end date)
+personnel:personnel_id(id, first_name, last_name, hourly_rate, photo_url)
 ```
 
-### Step 4: UI Component
-
-Create `src/components/quickbooks/JournalEntriesViewer.tsx`:
-
-| Feature | Description |
-|---------|-------------|
-| Fetch Button | "Fetch Journal Entries" with date range picker |
-| Table Display | Date, Number, Memo, Total, Debit/Credit breakdown |
-| Expandable Rows | Show line item details (accounts affected) |
-| Filters | Date range, adjustment entries only |
-| Export | CSV download of fetched entries |
-
-### Step 5: Add to QuickBooks Settings Page
-
-Add a new card in `src/pages/QuickBooksSettings.tsx`:
-
-```
-┌────────────────────────────────────────────────────┐
-│ 📒 Journal Entries (Read-Only)                     │
-│ View journal entries from QuickBooks              │
-│                                                    │
-│ [Fetch Last 90 Days]  [View All →]                │
-│                                                    │
-│ Last fetched: Feb 6, 2026 5:30 PM                 │
-│ 127 entries cached                                 │
-└────────────────────────────────────────────────────┘
+**Should Include:**
+```typescript
+personnel:personnel_id(id, first_name, last_name, hourly_rate, photo_url, address, city, state, zip, ssn_last_four)
 ```
 
-## Files to Create
+## Implementation Plan
 
-| File | Purpose |
-|------|---------|
-| `supabase/functions/quickbooks-fetch-journal-entries/index.ts` | Edge function to query QB API |
-| `src/components/quickbooks/JournalEntriesViewer.tsx` | UI to display and filter entries |
-| `src/pages/JournalEntries.tsx` (optional) | Dedicated page for viewing entries |
+### Step 1: Update Personnel Query
+
+**File:** `src/integrations/supabase/hooks/useTimeEntries.ts`
+
+Add missing fields to the personnel select in `useAdminTimeEntriesByWeek`:
+- `address`
+- `city`  
+- `state`
+- `zip`
+- `ssn_last_four`
+
+### Step 2: Rewrite Edge Function Field Mapping
+
+**File:** `supabase/functions/generate-wh347/index.ts`
+
+Update the field name patterns to match actual PDF template:
+
+| Data | Old Pattern | New Pattern |
+|------|------------|-------------|
+| Employee Name/Address/SSN | `Name${row}`, `Address${row}` | `nameAddrSSN${row}` (combined field) |
+| Work Classification | `Class${row}` | `workClassification${row}` |
+| OT Hours Day X | `O${dayName}${row}` | `OT${row}${dayNum}` |
+| ST Hours Day X | `S${dayName}${row}` | `ST${row}${dayNum}` |
+| Total OT Hours | `TotalO${row}` | `totalHoursOT${row}` |
+| Total ST Hours | `TotalS${row}` | `totalHoursST${row}` |
+| OT Rate | `RateO${row}` | `rateOfPayOT${row}` |
+| ST Rate | `RateS${row}` | `rateOfPayST${row}` |
+| Gross | `Gross${row}` | `gross${row}` |
+| FICA | `FICA${row}` | `fica${row}` |
+| Withholding | `WT${row}` | `withholding${row}` |
+| Total Deductions | `TotalDed${row}` | `totalDeductions${row}` |
+| Net Wages | `Net${row}` | `netWages${row}` |
+| Contractor | `ContractorName` | `contractor` |
+| Address | `ContractorAddress` | `address` |
+| Payroll No | `PayrollNo` | `payrollNo` |
+| Week Ending | `WeekEnding` | `weekEnding` |
+| Project | `ProjectName` | `projectAndLocation` |
+| W/H Exemptions | `WH${row}` | `noWithholdingExemptions${row}` |
+
+### Step 3: Update Day Column Mapping
+
+The PDF uses day numbers 1-7 rather than day names:
+- Day 1 = first day column (corresponds to days in order from the form)
+- `OT11` = Row 1, Day 1 Overtime
+- `ST27` = Row 2, Day 7 Straight Time
 
 ## Files to Modify
 
 | File | Changes |
 |------|---------|
-| `src/integrations/supabase/hooks/useQuickBooks.ts` | Add fetch/query hooks |
-| `src/pages/QuickBooksSettings.tsx` | Add Journal Entries card |
-| `supabase/config.toml` | Add function config with verify_jwt = false |
+| `src/integrations/supabase/hooks/useTimeEntries.ts` | Add missing personnel fields to select |
+| `supabase/functions/generate-wh347/index.ts` | Fix all field name patterns to match PDF template |
 
-## Database Migration
-
-Add the `quickbooks_journal_entries` table with appropriate RLS policies limiting access to admin, manager, and accounting roles.
-
-## Security Considerations
-
-- **Read-Only**: No create/update/delete operations - this is purely a viewing feature
-- **RLS Protected**: Only admin, manager, and accounting roles can view entries
-- **No Sensitive Data Exposure**: Raw data stored but only summary shown to users
-- **Rate Limiting**: Fetch operations respect QuickBooks API limits (MAXRESULTS 500)
-
-## Technical Details
-
-### QuickBooks Query Pattern
-```sql
-SELECT * FROM JournalEntry 
-WHERE TxnDate >= '2025-11-01' 
-ORDER BY TxnDate DESC 
-MAXRESULTS 500
-```
-
-### Line Item Parsing
-QuickBooks journal entry lines have this structure:
-```json
-{
-  "Line": [
-    {
-      "Id": "0",
-      "Description": "Depreciation expense",
-      "Amount": 500.00,
-      "DetailType": "JournalEntryLineDetail",
-      "JournalEntryLineDetail": {
-        "PostingType": "Debit",
-        "AccountRef": { "value": "123", "name": "Depreciation Expense" }
-      }
-    }
-  ]
-}
-```
-
-This will be parsed and stored as structured JSONB for easy display.
-
-## Testing Checklist
+## Testing
 
 After implementation:
-- [ ] Fetch journal entries from QuickBooks
-- [ ] Verify entries display with correct debits/credits
-- [ ] Confirm date filtering works
-- [ ] Verify RLS blocks non-admin users
-- [ ] Test export to CSV
-- [ ] Confirm no write operations are exposed
+1. Export WH-347 for a project with multiple personnel
+2. Verify all employee names appear correctly in Column 1
+3. Verify addresses and SSN (last 4) appear in name column
+4. Verify hours populate correctly in day columns
+5. Verify totals and calculations are correct
