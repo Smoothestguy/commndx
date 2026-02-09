@@ -122,49 +122,48 @@ async function qbQuery(query: string, accessToken: string, realmId: string) {
 }
 
 function extractNextNumber(docNumbers: string[], prefix: string): string {
-  // Get current year suffix (e.g., "26" for 2026)
   const currentYear = new Date().getFullYear().toString().slice(-2);
-  const yearPrefix = `${prefix}${currentYear}`; // e.g., "INV-26", "BILL-26", "EST-26", "PO-26"
-  
+  const yearPrefix = `${prefix}${currentYear}`;
+
   console.log(`Looking for year-aware prefix: ${yearPrefix}`);
   console.log("Sample doc numbers from QB:", docNumbers.slice(0, 10));
-  
-  // Filter to only current year numbers with matching prefix
-  const currentYearNumbers = docNumbers
+
+  // Strategy 1: Check for year-prefixed numbers (e.g., "INV-26XXXXX")
+  const prefixedNumbers = docNumbers
     .filter(num => num && num.startsWith(yearPrefix))
     .map(num => {
-      // Extract the sequence number after the year prefix (e.g., "INV-2600001" -> 1)
       const afterPrefix = num.substring(yearPrefix.length);
       const seqNum = parseInt(afterPrefix, 10);
       return { original: num, value: isNaN(seqNum) ? 0 : seqNum };
     })
     .filter(item => item.value > 0);
 
-  console.log(`Found ${currentYearNumbers.length} numbers with prefix ${yearPrefix}`);
-  
-  if (currentYearNumbers.length === 0) {
-    // No current year numbers found, start fresh with sequence 1
-    console.log(`No ${yearPrefix} numbers found, starting fresh sequence`);
-    return `${yearPrefix}00001`;
+  if (prefixedNumbers.length > 0) {
+    const maxItem = prefixedNumbers.reduce((max, item) => item.value > max.value ? item : max);
+    const nextNum = maxItem.value + 1;
+    const highestNumStr = maxItem.original.substring(yearPrefix.length);
+    const paddingLength = Math.max(highestNumStr.length, 5);
+    const result = `${yearPrefix}${nextNum.toString().padStart(paddingLength, '0')}`;
+    console.log(`Found prefixed numbers. Highest: ${maxItem.original}, next: ${result}`);
+    return result;
   }
 
-  // Find the highest sequence number
-  const maxItem = currentYearNumbers.reduce((max, item) => 
-    item.value > max.value ? item : max
-  );
-  
-  console.log(`Highest ${yearPrefix} number found: ${maxItem.original} (sequence: ${maxItem.value})`);
-  
-  const nextNum = maxItem.value + 1;
-  
-  // Determine padding length from highest existing number
-  const highestNumStr = maxItem.original.substring(yearPrefix.length);
-  const paddingLength = Math.max(highestNumStr.length, 5); // Minimum 5 digits
-  
-  const result = `${yearPrefix}${nextNum.toString().padStart(paddingLength, '0')}`;
-  console.log(`Next number: ${result}`);
-  
-  return result;
+  // Strategy 2: Check for plain numeric numbers (e.g., "3328", "3327")
+  const plainNumbers = docNumbers
+    .filter(num => num && /^\d+$/.test(num))
+    .map(num => parseInt(num, 10))
+    .filter(n => !isNaN(n) && n > 0);
+
+  if (plainNumbers.length > 0) {
+    const max = Math.max(...plainNumbers);
+    const result = String(max + 1);
+    console.log(`Found plain numeric numbers. Highest: ${max}, next: ${result}`);
+    return result;
+  }
+
+  // Strategy 3: No numbers found at all, start new prefixed sequence
+  console.log(`No existing numbers found, starting fresh: ${yearPrefix}00001`);
+  return `${yearPrefix}00001`;
 }
 
 serve(async (req) => {
