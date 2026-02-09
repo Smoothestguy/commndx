@@ -362,114 +362,6 @@ async function uploadAttachmentToQB(
   }
 }
 
-// Cache for QuickBooks service items to avoid repeated API calls
-const itemCache: Map<string, string> = new Map();
-
-// Get or create a Service Item in QuickBooks for ItemBasedExpenseLineDetail
-async function getOrCreateQBServiceItem(
-  description: string,
-  accessToken: string,
-  realmId: string,
-  expenseAccountRef: { value: string; name: string }
-): Promise<string> {
-  // Use a unique name that won't conflict with existing categories
-  const itemName = "Contract Labor Expense";
-  
-  // Check cache first
-  if (itemCache.has(itemName)) {
-    console.log(`Using cached Service item: ${itemName}`);
-    return itemCache.get(itemName)!;
-  }
-  
-  // Search for existing item in QuickBooks - must be Service or NonInventory type
-  console.log(`Searching QuickBooks for purchasable Service item: ${itemName}`);
-  
-  try {
-    // Search for items - explicitly filter out Category type in query
-    const searchQuery = encodeURIComponent(`SELECT * FROM Item WHERE Name = '${itemName}' MAXRESULTS 10`);
-    const result = await qbRequest('GET', `/query?query=${searchQuery}&minorversion=65`, accessToken, realmId);
-    
-    if (result.QueryResponse?.Item?.length > 0) {
-      // Filter out Category and Bundle items - they cannot be used in transactions
-      const validItem = result.QueryResponse.Item.find(
-        (item: any) => item.Type !== 'Category' && item.Type !== 'Bundle' && item.ExpenseAccountRef?.value
-      );
-      
-      if (validItem) {
-        console.log(`Found existing purchasable Service item: ${validItem.Name} (ID: ${validItem.Id}, Type: ${validItem.Type})`);
-        itemCache.set(itemName, validItem.Id);
-        return validItem.Id;
-      }
-      
-      // Check if we only found Category items
-      const categoryItems = result.QueryResponse.Item.filter((item: any) => item.Type === 'Category');
-      if (categoryItems.length > 0) {
-        console.log(`Found item "${itemName}" but it's a Category type (cannot be used in transactions), will create new Service item`);
-      } else {
-        console.log(`Found item "${itemName}" but it lacks ExpenseAccountRef, will create new`);
-      }
-    }
-  } catch (e) {
-    console.log(`Error searching for Service item: ${e}, will try to create`);
-  }
-  
-  // Create a new Service item with expense account configured
-  console.log(`Creating new purchasable Service item in QuickBooks: ${itemName}`);
-  
-  const newItem = {
-    Name: itemName,
-    Type: "Service",
-    ExpenseAccountRef: expenseAccountRef,
-  };
-  
-  try {
-    const createResult = await qbRequest('POST', '/item?minorversion=65', accessToken, realmId, newItem);
-    const itemId = createResult.Item.Id;
-    console.log(`Created Service item: ${itemName} (ID: ${itemId})`);
-    itemCache.set(itemName, itemId);
-    return itemId;
-  } catch (createError: any) {
-    // Handle duplicate name error
-    if (createError.message?.includes('Duplicate Name Exists') || createError.message?.includes('6240')) {
-      console.log(`Duplicate name exists, trying to find a valid purchasable Service item...`);
-      
-      // Search for any Service/NonInventory item with an expense account
-      const allItemsQuery = encodeURIComponent(`SELECT * FROM Item WHERE Type IN ('Service', 'NonInventory') MAXRESULTS 50`);
-      const allItemsResult = await qbRequest('GET', `/query?query=${allItemsQuery}&minorversion=65`, accessToken, realmId);
-      
-      if (allItemsResult.QueryResponse?.Item?.length > 0) {
-        // Find an item that has ExpenseAccountRef (is purchasable)
-        const purchasableItem = allItemsResult.QueryResponse.Item.find(
-          (item: any) => item.ExpenseAccountRef?.value && !item.Name.includes(':')
-        );
-        
-        if (purchasableItem) {
-          console.log(`Found purchasable item: ${purchasableItem.Name} (ID: ${purchasableItem.Id})`);
-          itemCache.set(itemName, purchasableItem.Id);
-          return purchasableItem.Id;
-        }
-      }
-      
-      // Create with timestamp suffix to ensure unique name
-      const uniqueName = `Contract Labor ${Date.now()}`;
-      console.log(`Creating unique Service item: ${uniqueName}`);
-      
-      const uniqueItem = {
-        Name: uniqueName,
-        Type: "Service",
-        ExpenseAccountRef: expenseAccountRef,
-      };
-      
-      const uniqueResult = await qbRequest('POST', '/item?minorversion=65', accessToken, realmId, uniqueItem);
-      const uniqueItemId = uniqueResult.Item.Id;
-      console.log(`Created unique Service item: ${uniqueName} (ID: ${uniqueItemId})`);
-      itemCache.set(itemName, uniqueItemId);
-      return uniqueItemId;
-    }
-    
-    throw createError;
-  }
-}
 
 // Get expense account reference - tries to match by category name first
 async function getExpenseAccountRef(
@@ -574,7 +466,6 @@ async function getExpenseAccountRef(
 serve(async (req) => {
   // Clear caches for each request to ensure fresh data
   accountCache.clear();
-  itemCache.clear();
   
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders });
@@ -710,22 +601,18 @@ serve(async (req) => {
         // Get the appropriate expense account based on category
         const expenseAccountRef = await getExpenseAccountRef(categoryName, accessToken, realmId);
         
-        // Get or create a Service item for ItemBasedExpenseLineDetail
-        const qbItemId = await getOrCreateQBServiceItem(item.description, accessToken, realmId, expenseAccountRef);
-        
         const qty = Number(item.quantity) || 1;
         const unitPrice = Number(item.unit_cost) || Number(item.total);
+        const desc = `${item.description} - ${qty} x $${unitPrice.toFixed(2)}`;
         
-        console.log(`Line item "${item.description}" -> Qty: ${qty}, Unit Price: ${unitPrice} -> QB Account: ${expenseAccountRef.name}`);
+        console.log(`Line item "${desc}" -> Amount: ${item.total} -> QB Account: ${expenseAccountRef.name}`);
         
         qbLineItems.push({
-          DetailType: 'ItemBasedExpenseLineDetail',
+          DetailType: 'AccountBasedExpenseLineDetail',
           Amount: Number(item.total),
-          Description: item.description,
-          ItemBasedExpenseLineDetail: {
-            ItemRef: { value: qbItemId },
-            Qty: qty,
-            UnitPrice: unitPrice,
+          Description: desc,
+          AccountBasedExpenseLineDetail: {
+            AccountRef: expenseAccountRef,
             BillableStatus: 'NotBillable',
           },
         });
@@ -733,15 +620,12 @@ serve(async (req) => {
     } else {
       // If no line items, create one with the total using default account
       const defaultAccountRef = await getExpenseAccountRef(null, accessToken, realmId);
-      const qbItemId = await getOrCreateQBServiceItem(`Bill ${bill.number}`, accessToken, realmId, defaultAccountRef);
       qbLineItems.push({
-        DetailType: 'ItemBasedExpenseLineDetail',
+        DetailType: 'AccountBasedExpenseLineDetail',
         Amount: Number(bill.subtotal),
         Description: `Bill ${bill.number}`,
-        ItemBasedExpenseLineDetail: {
-          ItemRef: { value: qbItemId },
-          Qty: 1,
-          UnitPrice: Number(bill.subtotal),
+        AccountBasedExpenseLineDetail: {
+          AccountRef: defaultAccountRef,
           BillableStatus: 'NotBillable',
         },
       });
