@@ -2,8 +2,10 @@ import { useState, useRef } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Dialog, DialogContent } from "@/components/ui/dialog";
+import { ImageLightbox } from "@/components/ui/image-lightbox";
 import { supabase } from "@/integrations/supabase/client";
-import { FileText, Loader2, Trash2, Upload, Download, Paperclip, X, RefreshCw, CloudDownload } from "lucide-react";
+import { FileText, Loader2, Trash2, Upload, Download, Paperclip, X, RefreshCw, CloudDownload, Eye } from "lucide-react";
 import { format } from "date-fns";
 import { toast } from "sonner";
 import { useAuth } from "@/contexts/AuthContext";
@@ -73,6 +75,8 @@ export const FileAttachmentUpload = ({
   const [deleting, setDeleting] = useState<string | null>(null);
   const [retrying, setRetrying] = useState<string | null>(null);
   const [dragOver, setDragOver] = useState(false);
+  const [previewUrl, setPreviewUrl] = useState<string | null>(null);
+  const [previewType, setPreviewType] = useState<'image' | 'pdf' | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const handleFileChange = async (files: FileList | null) => {
@@ -175,6 +179,35 @@ export const FileAttachmentUpload = ({
     }
   };
 
+  const handlePreview = async (attachment: Attachment) => {
+    try {
+      const { data, error } = await supabase.storage
+        .from("document-attachments")
+        .createSignedUrl(attachment.file_path, 300);
+      if (error) throw error;
+
+      const ext = attachment.file_name.split(".").pop()?.toLowerCase();
+      const imageExts = ["jpg", "jpeg", "png", "webp", "gif", "bmp", "svg"];
+      if (imageExts.includes(ext || "") || attachment.file_type?.startsWith("image/")) {
+        setPreviewType('image');
+        setPreviewUrl(data.signedUrl);
+      } else if (ext === "pdf" || attachment.file_type === "application/pdf") {
+        setPreviewType('pdf');
+        setPreviewUrl(data.signedUrl);
+      } else {
+        window.open(data.signedUrl, "_blank");
+      }
+    } catch (error) {
+      console.error("Preview error:", error);
+      toast.error("Failed to preview file");
+    }
+  };
+
+  const closePreview = () => {
+    setPreviewUrl(null);
+    setPreviewType(null);
+  };
+
   const handleDrop = (e: React.DragEvent) => {
     e.preventDefault();
     setDragOver(false);
@@ -223,6 +256,7 @@ export const FileAttachmentUpload = ({
   };
 
   return (
+    <>
     <Card>
       <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
         <CardTitle className="flex items-center gap-2">
@@ -327,6 +361,14 @@ export const FileAttachmentUpload = ({
                   <Button
                     variant="ghost"
                     size="icon"
+                    onClick={() => handlePreview(attachment)}
+                    title="Preview"
+                  >
+                    <Eye className="h-4 w-4" />
+                  </Button>
+                  <Button
+                    variant="ghost"
+                    size="icon"
                     onClick={() => handleDownload(attachment)}
                     title="Download"
                   >
@@ -378,5 +420,26 @@ export const FileAttachmentUpload = ({
         )}
       </CardContent>
     </Card>
+
+    {/* Image Preview Lightbox */}
+    <ImageLightbox 
+      imageUrl={previewType === 'image' ? previewUrl : null} 
+      onClose={closePreview}
+      alt="Attachment preview"
+    />
+
+    {/* PDF Preview Dialog */}
+    <Dialog open={previewType === 'pdf' && !!previewUrl} onOpenChange={closePreview}>
+      <DialogContent className="max-w-[90vw] max-h-[90vh] p-0 overflow-hidden">
+        {previewUrl && (
+          <iframe 
+            src={previewUrl} 
+            className="w-full h-[85vh] border-0" 
+            title="PDF Preview"
+          />
+        )}
+      </DialogContent>
+    </Dialog>
+    </>
   );
 };
