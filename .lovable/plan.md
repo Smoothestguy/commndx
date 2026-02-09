@@ -1,105 +1,43 @@
 
 
-# Switch Vendor Bill Sync to Category Details (AccountBasedExpenseLineDetail)
+# Fix: Time Tracking "Invoice Customer" Not Using QuickBooks Numbering
 
-## Problem
+## Root Cause
 
-When vendor bills sync to QuickBooks, line items currently appear under **Item details** using `ItemBasedExpenseLineDetail`. You want them to appear under **Category details** instead, with the description combining the item description, quantity, and rate into a single text field (e.g., "doodie calls reg hrs 12 x $19 and overtime hrs 20 x $28.50").
+The `quickbooks-get-next-number` edge function requires **admin or manager role** to return a number. When a user without that role creates an invoice from time tracking, the call returns a 403 error, and `getNextInvoiceNumber()` silently falls back to the local database sequence (plain numbers like "3328" instead of QuickBooks-style "INV-2600001").
 
-## What Changes
+The code in `CreateCustomerInvoiceFromTimeDialog.tsx` already calls `getNextInvoiceNumber()`, so the logic is in place -- the issue is the role gate on the backend function blocking it.
 
-The QuickBooks Bill API supports two line detail types:
-- **ItemBasedExpenseLineDetail** (current) -- requires a Product/Service item reference, shows in "Item details" section
-- **AccountBasedExpenseLineDetail** (desired) -- uses an expense account directly, shows in "Category details" section
+## Fix
 
-Switching to `AccountBasedExpenseLineDetail` is actually **simpler** because it removes the need to create/manage Service Items in QuickBooks entirely.
+### 1. Remove role restriction from `quickbooks-get-next-number` for number generation
 
-## Implementation
+**File:** `supabase/functions/quickbooks-get-next-number/index.ts`
 
-### Files to Modify
+The role check (lines 43-61) will be relaxed to allow any authenticated user to fetch the next document number. Generating a sequential number is not a sensitive operation -- it doesn't modify QuickBooks data, it only reads existing document numbers to calculate the next one.
 
-| File | Change |
-|------|--------|
-| `supabase/functions/quickbooks-create-bill/index.ts` | Switch line items from `ItemBasedExpenseLineDetail` to `AccountBasedExpenseLineDetail` |
-| `supabase/functions/quickbooks-update-bill/index.ts` | Same change for bill updates |
+Change the authentication to verify the user is logged in but NOT require admin/manager role specifically for this function.
 
-### Line Item Format Change
+### 2. Improve error visibility in `getNextInvoiceNumber()`
 
-**Current (Item details):**
-```json
-{
-  "DetailType": "ItemBasedExpenseLineDetail",
-  "Amount": 798.00,
-  "Description": "doodie calls",
-  "ItemBasedExpenseLineDetail": {
-    "ItemRef": { "value": "123" },
-    "Qty": 12,
-    "UnitPrice": 19.00,
-    "BillableStatus": "NotBillable"
-  }
-}
-```
+**File:** `src/utils/invoiceNumberGenerator.ts`
 
-**New (Category details):**
-```json
-{
-  "DetailType": "AccountBasedExpenseLineDetail",
-  "Amount": 798.00,
-  "Description": "doodie calls reg hrs 12 x $19.00",
-  "AccountBasedExpenseLineDetail": {
-    "AccountRef": { "value": "456", "name": "Contract labor" },
-    "BillableStatus": "NotBillable"
-  }
-}
-```
+Add a visible warning (toast or console) when QuickBooks number generation fails so the fallback is not silent. This helps diagnose future issues.
 
-### Description Format
-
-The description will combine the original description with quantity and rate:
-- Format: `{description} - {quantity} x ${rate}`
-- Example: `"Concrete work - 5 x $150.00"` with Amount = $750.00
-
-### Code Cleanup
-
-Since `AccountBasedExpenseLineDetail` uses an Account reference directly (which we already resolve via `getExpenseAccountRef`), the `getOrCreateQBServiceItem` function and related item cache logic can be **removed entirely** from both files. This simplifies the sync significantly.
-
-### Changes in Detail
-
-**In both edge functions, the line item building loop changes from:**
 ```typescript
-const qbItemId = await getOrCreateQBServiceItem(...);
-qbLineItems.push({
-  DetailType: 'ItemBasedExpenseLineDetail',
-  Amount: Number(item.total),
-  Description: item.description,
-  ItemBasedExpenseLineDetail: {
-    ItemRef: { value: qbItemId },
-    Qty: qty,
-    UnitPrice: unitPrice,
-    BillableStatus: 'NotBillable',
-  },
-});
+if (!qbError && qbData?.nextNumber) {
+  return { number: qbData.nextNumber, source: 'quickbooks' };
+}
+// Log clearly so we know fallback happened
+console.warn('QuickBooks number generation failed, using local:', qbError || qbData?.error);
 ```
 
-**To:**
-```typescript
-const desc = `${item.description} - ${qty} x $${unitPrice.toFixed(2)}`;
-qbLineItems.push({
-  DetailType: 'AccountBasedExpenseLineDetail',
-  Amount: Number(item.total),
-  Description: desc,
-  AccountBasedExpenseLineDetail: {
-    AccountRef: expenseAccountRef,
-    BillableStatus: 'NotBillable',
-  },
-});
-```
+## Summary
 
-## Result
+| Change | File | What |
+|--------|------|------|
+| Remove role gate | `supabase/functions/quickbooks-get-next-number/index.ts` | Allow any authenticated user to get next number |
+| Better fallback logging | `src/utils/invoiceNumberGenerator.ts` | Warn visibly when QB numbering fails |
 
-After this change, synced vendor bills in QuickBooks will show line items under **Category details** with:
-- **Category** column mapped to the expense account (e.g., "Contract labor")
-- **Description** column containing the combined description with qty and rate
-- **Amount** column with the total
+After this fix, all invoice creation paths (including "Invoice Customer" from time tracking) will use QuickBooks numbering consistently, regardless of the user's role.
 
-The "Item details" section will remain empty, matching the reference screenshot.
