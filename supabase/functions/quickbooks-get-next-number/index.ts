@@ -39,28 +39,9 @@ async function authenticateRequest(req: Request): Promise<{ userId: string; erro
     };
   }
 
-  // Check user role - only admin and manager can use QuickBooks functions
-  const { data: roleData, error: roleError } = await supabaseClient
-    .from("user_roles")
-    .select("role")
-    .eq("user_id", user.id)
-    .single();
-
-  if (roleError) {
-    console.error("Error fetching user role:", roleError);
-  }
-
-  if (!roleData || !['admin', 'manager'].includes(roleData.role)) {
-    console.error("User does not have admin/manager role:", user.id);
-    return {
-      error: new Response(JSON.stringify({ error: "Insufficient permissions. Only admins and managers can access QuickBooks functions." }), {
-        status: 403,
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-      })
-    };
-  }
-
-  console.log(`Authenticated user ${user.id} with role ${roleData.role}`);
+  // Any authenticated user can fetch next document numbers
+  // This is a read-only operation that doesn't modify QuickBooks data
+  console.log(`Authenticated user ${user.id} for next number generation`);
   return { userId: user.id };
 }
 
