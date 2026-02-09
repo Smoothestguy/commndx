@@ -27,7 +27,7 @@ export async function getNextInvoiceNumber(): Promise<{ number: string; source: 
       return { number: qbData.nextNumber, source: 'quickbooks' };
     }
 
-    console.error('QuickBooks number generation failed, falling back to local:', qbError || qbData?.error);
+    console.warn('⚠️ QuickBooks number generation failed, falling back to local numbering:', qbError || qbData?.error);
     // Fall through to local generation
   }
 
