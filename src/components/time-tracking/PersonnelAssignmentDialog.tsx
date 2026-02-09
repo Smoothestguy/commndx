@@ -4,6 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { SearchInput } from "@/components/ui/search-input";
 import { useProjects } from "@/integrations/supabase/hooks/useProjects";
 import { usePersonnel } from "@/integrations/supabase/hooks/usePersonnel";
 import { 
@@ -37,6 +38,7 @@ export function PersonnelAssignmentDialog({
   const [selectedProject, setSelectedProject] = useState(defaultProjectId || "");
   const [selectedPersonnel, setSelectedPersonnel] = useState<Set<string>>(new Set());
   const [rateBracketSelections, setRateBracketSelections] = useState<Record<string, string>>({});
+  const [personnelSearch, setPersonnelSearch] = useState("");
   const [editingAssignmentId, setEditingAssignmentId] = useState<string | null>(null);
   const [editingRateBracketId, setEditingRateBracketId] = useState<string>("");
   
@@ -86,6 +88,14 @@ export function PersonnelAssignmentDialog({
     activePersonnel.filter(p => !assignedIds.has(p.id)),
     [activePersonnel, assignedIds]
   );
+
+  const filteredUnassigned = useMemo(() => {
+    if (!personnelSearch) return unassignedPersonnel;
+    const q = personnelSearch.toLowerCase();
+    return unassignedPersonnel.filter(p =>
+      `${p.first_name} ${p.last_name}`.toLowerCase().includes(q)
+    );
+  }, [unassignedPersonnel, personnelSearch]);
 
   const togglePersonnel = (personnelId: string) => {
     const newSelected = new Set(selectedPersonnel);
@@ -381,8 +391,13 @@ export function PersonnelAssignmentDialog({
                   </div>
                 ) : (
                   <>
+                    <SearchInput
+                      value={personnelSearch}
+                      onChange={setPersonnelSearch}
+                      placeholder="Search personnel..."
+                    />
                     <div className="max-h-64 overflow-y-auto border rounded-lg divide-y">
-                      {unassignedPersonnel.map((person) => {
+                      {filteredUnassigned.map((person) => {
                         const isSelected = selectedPersonnel.has(person.id);
                         const payRate = (person as any).pay_rate;
                         return (
@@ -445,6 +460,11 @@ export function PersonnelAssignmentDialog({
                           </div>
                         );
                       })}
+                      {filteredUnassigned.length === 0 && (
+                        <div className="py-4 text-sm text-muted-foreground text-center">
+                          No personnel found
+                        </div>
+                      )}
                     </div>
                     <Button
                       onClick={handleAssign}
