@@ -100,6 +100,7 @@ interface ProjectGroup {
   personnelGroups: PersonnelGroup[];
   entries: TimeEntryWithDetails[];
   isLocked: boolean;
+  invoiceStatus: 'invoiced' | 'partial' | 'uninvoiced';
 }
 
 interface ProjectTimeEntriesTableProps {
@@ -214,6 +215,7 @@ export function ProjectTimeEntriesTable({
           personnelGroups: [],
           entries: [],
           isLocked: closedProjectIds.has(projectId),
+          invoiceStatus: 'uninvoiced',
         });
       }
 
@@ -319,6 +321,17 @@ export function ProjectTimeEntriesTable({
       project.personnelGroups = Array.from(personnelMap.values()).sort((a, b) =>
         a.personnelName.localeCompare(b.personnelName)
       );
+
+      // Calculate invoice status
+      const invoicedCount = project.entries.filter(e => e.invoice_id).length;
+      const totalCount = project.entries.length;
+      project.invoiceStatus = totalCount === 0
+        ? 'uninvoiced'
+        : invoicedCount === totalCount
+          ? 'invoiced'
+          : invoicedCount > 0
+            ? 'partial'
+            : 'uninvoiced';
     });
 
     return Array.from(projects.values()).sort((a, b) =>
@@ -623,6 +636,20 @@ export function ProjectTimeEntriesTable({
                         <Badge variant="secondary" className="text-xs">
                           {project.personnelGroups.length} personnel
                         </Badge>
+                        {project.invoiceStatus === 'invoiced' ? (
+                          <Badge className="text-xs bg-success/10 text-success border-success/20 border">
+                            <Check className="h-3 w-3 mr-1" />
+                            Invoiced
+                          </Badge>
+                        ) : project.invoiceStatus === 'partial' ? (
+                          <Badge className="text-xs bg-warning/10 text-warning border-warning/20 border">
+                            Partially Invoiced
+                          </Badge>
+                        ) : (
+                          <Badge className="text-xs bg-amber-500/10 text-amber-600 border-amber-500/20 border">
+                            Uninvoiced
+                          </Badge>
+                        )}
                       </div>
                     </div>
                     <div className="shrink-0 pt-1">
@@ -1000,7 +1027,22 @@ export function ProjectTimeEntriesTable({
                       {project.totalCost.toFixed(2)}
                     </div>
                   </TableCell>
-                  <TableCell></TableCell>
+                  <TableCell>
+                    {project.invoiceStatus === 'invoiced' ? (
+                      <Badge className="text-xs bg-success/10 text-success border-success/20 border">
+                        <Check className="h-3 w-3 mr-1" />
+                        Invoiced
+                      </Badge>
+                    ) : project.invoiceStatus === 'partial' ? (
+                      <Badge className="text-xs bg-warning/10 text-warning border-warning/20 border">
+                        Partially Invoiced
+                      </Badge>
+                    ) : (
+                      <Badge className="text-xs bg-amber-500/10 text-amber-600 border-amber-500/20 border">
+                        Uninvoiced
+                      </Badge>
+                    )}
+                  </TableCell>
                   <TableCell>
                     <Button variant="ghost" size="icon" className="h-8 w-8">
                       {expandedProjects.has(project.projectId) ? (
