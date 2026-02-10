@@ -381,9 +381,42 @@ export function VendorBillTable({ bills }: VendorBillTableProps) {
       if (error) throw error;
     }
 
+    // Sync to QuickBooks if connected (non-blocking, like bulk sync)
+    if (qbConfig?.is_connected) {
+      const billsToSync = bills.filter(b => 
+        ids.includes(b.id) && b.status !== 'draft'
+      );
+      
+      if (billsToSync.length > 0) {
+        let syncSuccess = 0;
+        let syncFail = 0;
+        
+        for (const bill of billsToSync) {
+          try {
+            await syncToQB.mutateAsync(bill.id);
+            syncSuccess++;
+          } catch (error) {
+            console.error("QB sync failed for bill:", bill.id, error);
+            syncFail++;
+          }
+        }
+        
+        if (syncFail > 0) {
+          toast.warning(`Updated ${ids.length} bill${ids.length !== 1 ? "s" : ""}. QB sync: ${syncSuccess} synced, ${syncFail} failed.`);
+        } else {
+          toast.success(`Updated and synced ${ids.length} bill${ids.length !== 1 ? "s" : ""} to QuickBooks`);
+        }
+      } else {
+        toast.success(`Updated ${ids.length} bill${ids.length !== 1 ? "s" : ""}`);
+      }
+    } else {
+      toast.success(`Updated ${ids.length} bill${ids.length !== 1 ? "s" : ""}`);
+    }
+
     queryClient.invalidateQueries({ queryKey: ["vendor-bills"] });
+    queryClient.invalidateQueries({ queryKey: ["quickbooks-sync-logs"] });
+    queryClient.invalidateQueries({ queryKey: ["quickbooks-bill-mappings"] });
     setSelectedIds(new Set());
-    toast.success(`Updated ${ids.length} bill${ids.length !== 1 ? "s" : ""}`);
   };
 
   const selectedBillsList = useMemo(
