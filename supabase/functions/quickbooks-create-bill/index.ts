@@ -23,11 +23,12 @@ async function authenticateRequest(req: Request): Promise<{ userId: string; erro
     };
   }
 
+  const token = authHeader.replace("Bearer ", "");
   const supabaseClient = createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
     global: { headers: { Authorization: authHeader } }
   });
 
-  const { data: { user }, error: userError } = await supabaseClient.auth.getUser();
+  const { data: { user }, error: userError } = await supabaseClient.auth.getUser(token);
   if (userError || !user) {
     console.error("User authentication failed:", userError);
     return {
