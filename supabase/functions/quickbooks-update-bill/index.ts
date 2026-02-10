@@ -492,12 +492,33 @@ serve(async (req) => {
       });
     }
 
-    // Build updated QB bill
+    // Remove any existing ItemBasedExpenseLineDetail lines from the QB bill
+    // This converts bills from "Item details" to "Category details" format
+    const existingLines = qbBillData.Bill.Line || [];
+    const itemLinesToRemove = existingLines
+      .filter((line: any) => line.DetailType === 'ItemBasedExpenseLineDetail' && line.Id)
+      .map((line: any) => ({
+        Id: line.Id,
+        DetailType: 'ItemBasedExpenseLineDetail',
+        Amount: 0,
+        ItemBasedExpenseLineDetail: {
+          ItemRef: line.ItemBasedExpenseLineDetail?.ItemRef || { value: "1" },
+          BillableStatus: 'NotBillable',
+        },
+      }));
+
+    if (itemLinesToRemove.length > 0) {
+      console.log(`Removing ${itemLinesToRemove.length} old ItemBasedExpenseLineDetail lines from QB bill`);
+    }
+
+    // Build updated QB bill - include zeroed-out item lines to remove them
+    const allLines = [...qbLineItems, ...itemLinesToRemove];
+
     const qbBill: any = {
       Id: qbBillId,
       SyncToken: syncToken,
       VendorRef: { value: qbVendorId },
-      Line: qbLineItems,
+      Line: allLines,
       TxnDate: bill.bill_date,
       DueDate: bill.due_date,
       DocNumber: bill.number,
