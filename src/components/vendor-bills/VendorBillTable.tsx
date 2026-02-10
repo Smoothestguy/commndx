@@ -318,11 +318,8 @@ export function VendorBillTable({ bills }: VendorBillTableProps) {
     let successCount = 0;
     let errorCount = 0;
     
-    // Get selected bills that can be synced (not draft)
-    const billsToSync = bills.filter(b => 
-      selectedIds.has(b.id) && 
-      b.status !== 'draft'
-    );
+    // Get selected bills to sync
+    const billsToSync = bills.filter(b => selectedIds.has(b.id));
     
     for (const bill of billsToSync) {
       try {
@@ -383,9 +380,7 @@ export function VendorBillTable({ bills }: VendorBillTableProps) {
 
     // Sync to QuickBooks if connected (non-blocking, like bulk sync)
     if (qbConfig?.is_connected) {
-      const billsToSync = bills.filter(b => 
-        ids.includes(b.id) && b.status !== 'draft'
-      );
+      const billsToSync = bills.filter(b => ids.includes(b.id));
       
       if (billsToSync.length > 0) {
         let syncSuccess = 0;
