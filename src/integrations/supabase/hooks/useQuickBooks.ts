@@ -541,6 +541,7 @@ export const useSyncVendorBillToQB = () => {
 
   return useMutation({
     mutationFn: async (billId: string): Promise<VendorBillSyncResult> => {
+      // First try to create (for unsynced bills)
       const { data, error } = await supabase.functions.invoke('quickbooks-create-bill', {
         body: { billId },
       });
@@ -551,6 +552,20 @@ export const useSyncVendorBillToQB = () => {
       if (data.error) {
         return { success: false, error: data.error };
       }
+
+      // If bill was already synced, trigger an update to push latest changes
+      if (data.message === 'Bill already synced' && data.quickbooksBillId) {
+        const { data: updateData, error: updateError } = await supabase.functions.invoke('quickbooks-update-bill', {
+          body: { billId },
+        });
+        if (updateError) {
+          return { success: false, error: updateError.message };
+        }
+        if (updateData?.error) {
+          return { success: false, error: updateData.error };
+        }
+      }
+
       return { 
         success: true, 
         quickbooksBillId: data.quickbooksBillId,
