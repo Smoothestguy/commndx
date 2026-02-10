@@ -1,7 +1,7 @@
 import { useState, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
 import { formatLocalDate, parseLocalDate } from "@/lib/dateUtils";
-import { Eye, MoreHorizontal, Edit, Trash2, DollarSign, RefreshCw, CheckCircle2, AlertCircle, Loader2 } from "lucide-react";
+import { Eye, MoreHorizontal, Edit, Trash2, DollarSign, RefreshCw, CheckCircle2, AlertCircle, Loader2, Pencil } from "lucide-react";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -14,10 +14,13 @@ import { VendorBill, useDeleteVendorBill, useHardDeleteVendorBill } from "@/inte
 import { useQuickBooksConfig, useQuickBooksBillMapping, useSyncVendorBillToQB } from "@/integrations/supabase/hooks/useQuickBooks";
 import { VendorBillPaymentDialog } from "./VendorBillPaymentDialog";
 import { BulkBillPaymentDialog } from "./BulkBillPaymentDialog";
+import { VendorBillBulkEditModal } from "./VendorBillBulkEditModal";
 import { VendorBillCard } from "./VendorBillCard";
 import { VendorBillSyncErrorDialog } from "./VendorBillSyncErrorDialog";
 import { useIsMobile, useIsTablet } from "@/hooks/use-mobile";
 import { toast } from "sonner";
+import { supabase } from "@/integrations/supabase/client";
+import { useQueryClient } from "@tanstack/react-query";
 
 interface VendorBillTableProps {
   bills: VendorBill[];
@@ -227,6 +230,7 @@ export function VendorBillTable({ bills }: VendorBillTableProps) {
   const [hardDeleteId, setHardDeleteId] = useState<string | null>(null);
   const [bulkDeleteOpen, setBulkDeleteOpen] = useState(false);
   const [bulkPaymentOpen, setBulkPaymentOpen] = useState(false);
+  const [bulkEditOpen, setBulkEditOpen] = useState(false);
   const [paymentBillId, setPaymentBillId] = useState<string | null>(null);
   const [isBulkSyncing, setIsBulkSyncing] = useState(false);
   
@@ -240,6 +244,7 @@ export function VendorBillTable({ bills }: VendorBillTableProps) {
   const isMobile = useIsMobile();
   const isTablet = useIsTablet();
   const navigate = useNavigate();
+  const queryClient = useQueryClient();
   const { data: qbConfig } = useQuickBooksConfig();
   const deleteBill = useDeleteVendorBill();
   const hardDeleteBill = useHardDeleteVendorBill();
@@ -342,6 +347,50 @@ export function VendorBillTable({ bills }: VendorBillTableProps) {
     setSelectedIds(new Set());
   };
 
+  const handleBulkEdit = async (updates: Record<string, any>) => {
+    const ids = Array.from(selectedIds);
+    const billUpdates: Record<string, any> = {};
+    
+    // Bill-level fields
+    if (updates.vendor_id) billUpdates.vendor_id = updates.vendor_id;
+    if (updates.vendor_name) billUpdates.vendor_name = updates.vendor_name;
+    if (updates.account !== undefined) billUpdates.account = updates.account || null;
+    if (updates.class !== undefined) billUpdates.class = updates.class || null;
+    if (updates.location !== undefined) billUpdates.location = updates.location || null;
+    if (updates.memo !== undefined) billUpdates.memo = updates.memo || null;
+    if (updates.notes !== undefined) billUpdates.notes = updates.notes || null;
+    if (updates.status) billUpdates.status = updates.status;
+
+    // Update bill-level fields
+    if (Object.keys(billUpdates).length > 0) {
+      const { error } = await supabase
+        .from("vendor_bills")
+        .update(billUpdates)
+        .in("id", ids);
+      if (error) throw error;
+    }
+
+    // Update line item category if specified
+    if (updates.category_id !== undefined) {
+      const categoryValue = updates.category_id || null;
+      // Get all line item IDs for selected bills
+      const { error } = await supabase
+        .from("vendor_bill_line_items")
+        .update({ category_id: categoryValue })
+        .in("bill_id", ids);
+      if (error) throw error;
+    }
+
+    queryClient.invalidateQueries({ queryKey: ["vendor-bills"] });
+    setSelectedIds(new Set());
+    toast.success(`Updated ${ids.length} bill${ids.length !== 1 ? "s" : ""}`);
+  };
+
+  const selectedBillsList = useMemo(
+    () => bills.filter((b) => selectedIds.has(b.id)),
+    [bills, selectedIds]
+  );
+
   const paymentBill = bills.find(b => b.id === paymentBillId);
 
   return (
@@ -356,6 +405,14 @@ export function VendorBillTable({ bills }: VendorBillTableProps) {
               Total: {formatCurrency(selectionSummary.total)}
             </span>
           </div>
+          <Button 
+            variant="secondary" 
+            size="sm"
+            onClick={() => setBulkEditOpen(true)}
+          >
+            <Pencil className="h-4 w-4 mr-1" />
+            Bulk Edit
+          </Button>
           <Button 
             variant="default" 
             size="sm"
@@ -563,6 +620,14 @@ export function VendorBillTable({ bills }: VendorBillTableProps) {
         vendorName={syncErrorVendorName}
         billId={syncErrorBillId || undefined}
         onRetrySync={handleRetrySyncFromDialog}
+      />
+
+      {/* Bulk Edit Modal */}
+      <VendorBillBulkEditModal
+        open={bulkEditOpen}
+        onOpenChange={setBulkEditOpen}
+        selectedBills={selectedBillsList}
+        onApply={handleBulkEdit}
       />
     </>
   );

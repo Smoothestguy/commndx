@@ -7016,12 +7016,16 @@ export type Database = {
       }
       vendor_bills: {
         Row: {
+          account: string | null
           bill_date: string
+          class: string | null
           created_at: string
           deleted_at: string | null
           deleted_by: string | null
           due_date: string
           id: string
+          location: string | null
+          memo: string | null
           notes: string | null
           number: string
           paid_amount: number
@@ -7040,12 +7044,16 @@ export type Database = {
           vendor_name: string
         }
         Insert: {
+          account?: string | null
           bill_date: string
+          class?: string | null
           created_at?: string
           deleted_at?: string | null
           deleted_by?: string | null
           due_date: string
           id?: string
+          location?: string | null
+          memo?: string | null
           notes?: string | null
           number: string
           paid_amount?: number
@@ -7064,12 +7072,16 @@ export type Database = {
           vendor_name: string
         }
         Update: {
+          account?: string | null
           bill_date?: string
+          class?: string | null
           created_at?: string
           deleted_at?: string | null
           deleted_by?: string | null
           due_date?: string
           id?: string
+          location?: string | null
+          memo?: string | null
           notes?: string | null
           number?: string
           paid_amount?: number
