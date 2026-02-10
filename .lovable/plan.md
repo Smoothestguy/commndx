@@ -1,59 +1,61 @@
 
-# Show Invoice Status per Project in Time Tracking
 
-## Overview
+## Fix Bulk Edit QuickBooks Sync - Data Mapping Issues
 
-Add an invoice status indicator to each project row in the Time Tracking table. If all time entries for that project/week are already invoiced, show an "Invoiced" badge. If some or none are invoiced, show an "Uninvoiced" alert badge to remind you to invoice.
+### Problem Summary
 
-## How It Works
+When bulk editing vendor bills, the QuickBooks sync produces incorrect data:
+1. "labor:contract labor" product entries appear in Item Details (should not exist)
+2. A $0 amount category entry is created (should not exist)  
+3. qty, rate, and amount values appear in Item Details instead of Category Details
 
-Each time entry already has an `invoice_id` field that gets set when an invoice is created. The logic will check all entries within a project group:
+### Root Cause
 
-- **All entries have `invoice_id`** -- Show a green "Invoiced" badge
-- **Some entries have `invoice_id`** -- Show an orange "Partially Invoiced" badge  
-- **No entries have `invoice_id`** -- Show a yellow/amber "Uninvoiced" badge as a reminder
+In `quickbooks-update-bill/index.ts` (lines 498-508), when converting from Item Details to Category Details, the code includes old `ItemBasedExpenseLineDetail` lines with Amount set to `0` to "clear" them. However, QuickBooks does NOT actually delete these lines -- it keeps them as $0 entries with their original product references (e.g., "labor:contract labor"). This is the wrong approach for QuickBooks' Bill update API.
 
-## Changes
+### Solution
 
-### File: `src/components/time-tracking/ProjectTimeEntriesTable.tsx`
+**Fix 1: Remove the zeroing-out approach for old Item lines**
 
-1. **Add invoice status calculation to ProjectGroup interface** -- Add an `invoiceStatus` field (`'invoiced' | 'partial' | 'uninvoiced'`) computed during the grouping logic based on whether entries have `invoice_id` set.
+Instead of including old ItemBasedExpenseLineDetail lines with Amount=0, we should send ONLY the new AccountBasedExpenseLineDetail lines in the update payload. QuickBooks' sparse update for Bills replaces ALL lines when the `Line` array is provided -- old lines not included in the payload are automatically removed. The zeroing-out approach is unnecessary and creates ghost entries.
 
-2. **Replace the empty Status `<TableCell>` on line 1003** with a badge showing the invoice status:
-   - Invoiced: Green badge with checkmark icon
-   - Partially Invoiced: Orange badge  
-   - Uninvoiced: Amber/yellow badge to alert you
+Changes in `supabase/functions/quickbooks-update-bill/index.ts`:
+- Remove lines 495-515 (the `itemLinesToRemove` logic and the `allLines` merge)
+- Set `Line: qbLineItems` directly in the QB bill payload instead of `Line: allLines`
 
-3. **Add the same status to the mobile card view** (around line 623) so it appears on both desktop and mobile.
+**Fix 2: Filter out zero-amount line items**
 
-### Visual Design
+Add a safety filter to exclude any line items with a total of 0 from the QB payload, preventing empty category entries from appearing.
+
+Changes in `supabase/functions/quickbooks-update-bill/index.ts`:
+- After building `qbLineItems`, filter out any entries where `Amount <= 0`
+
+**Fix 3: Apply the same fix to `quickbooks-create-bill/index.ts`**
+
+Ensure the create function also filters out zero-amount lines for consistency.
+
+### Technical Details
 
 ```text
-Desktop table Status column:
-  [check] Invoiced        (green badge)
-  [!] Partially Invoiced  (orange badge)  
-  [!] Uninvoiced          (amber badge, acts as reminder)
+Current flow (broken):
+  Local line items --> AccountBasedExpenseLineDetail lines (correct)
+  + Old QB ItemBasedExpenseLineDetail lines with Amount=0 (BUG: creates ghost entries)
+  = QB sees both Category Details AND Item Details with $0 "labor:contract labor"
+
+Fixed flow:
+  Local line items --> AccountBasedExpenseLineDetail lines ONLY
+  Filter out Amount <= 0
+  = QB replaces all lines cleanly with Category Details only
 ```
 
-### Technical Detail
+### Files to Change
 
-The calculation in the `projectGroups` useMemo:
+1. `supabase/functions/quickbooks-update-bill/index.ts`
+   - Remove the `itemLinesToRemove` logic (lines 495-515)
+   - Use `qbLineItems` directly (filtered for Amount > 0)
+   
+2. `supabase/functions/quickbooks-create-bill/index.ts`
+   - Add zero-amount filter for safety
 
-```typescript
-// After building project entries
-const invoicedCount = project.entries.filter(e => e.invoice_id).length;
-const totalCount = project.entries.length;
-project.invoiceStatus = invoicedCount === totalCount 
-  ? 'invoiced' 
-  : invoicedCount > 0 
-    ? 'partial' 
-    : 'uninvoiced';
-```
+Both edge functions will be redeployed after changes.
 
-No new database queries needed -- the `invoice_id` field is already fetched with time entries.
-
-## Files to Modify
-
-| File | Change |
-|------|--------|
-| `src/components/time-tracking/ProjectTimeEntriesTable.tsx` | Add `invoiceStatus` to ProjectGroup, render status badge in both desktop and mobile views |
