@@ -633,9 +633,13 @@ serve(async (req) => {
     }
 
     // Create QB bill
+    // Filter out any zero-amount line items to prevent empty category entries
+    const filteredLineItems = qbLineItems.filter((line: any) => line.Amount > 0);
+    console.log(`Filtered line items: ${qbLineItems.length} -> ${filteredLineItems.length} (removed ${qbLineItems.length - filteredLineItems.length} zero-amount lines)`);
+
     const qbBill = {
       VendorRef: { value: qbVendorId },
-      Line: qbLineItems,
+      Line: filteredLineItems,
       TxnDate: bill.bill_date,
       DueDate: bill.due_date,
       DocNumber: bill.number,

@@ -492,33 +492,17 @@ serve(async (req) => {
       });
     }
 
-    // Remove any existing ItemBasedExpenseLineDetail lines from the QB bill
-    // This converts bills from "Item details" to "Category details" format
-    const existingLines = qbBillData.Bill.Line || [];
-    const itemLinesToRemove = existingLines
-      .filter((line: any) => line.DetailType === 'ItemBasedExpenseLineDetail' && line.Id)
-      .map((line: any) => ({
-        Id: line.Id,
-        DetailType: 'ItemBasedExpenseLineDetail',
-        Amount: 0,
-        ItemBasedExpenseLineDetail: {
-          ItemRef: line.ItemBasedExpenseLineDetail?.ItemRef || { value: "1" },
-          BillableStatus: 'NotBillable',
-        },
-      }));
+    // Filter out any zero-amount line items to prevent empty category entries
+    const filteredLineItems = qbLineItems.filter((line: any) => line.Amount > 0);
+    console.log(`Filtered line items: ${qbLineItems.length} -> ${filteredLineItems.length} (removed ${qbLineItems.length - filteredLineItems.length} zero-amount lines)`);
 
-    if (itemLinesToRemove.length > 0) {
-      console.log(`Removing ${itemLinesToRemove.length} old ItemBasedExpenseLineDetail lines from QB bill`);
-    }
-
-    // Build updated QB bill - include zeroed-out item lines to remove them
-    const allLines = [...qbLineItems, ...itemLinesToRemove];
-
+    // QB's Bill update replaces ALL lines when the Line array is provided.
+    // No need to include old ItemBasedExpenseLineDetail lines - they are automatically removed.
     const qbBill: any = {
       Id: qbBillId,
       SyncToken: syncToken,
       VendorRef: { value: qbVendorId },
-      Line: allLines,
+      Line: filteredLineItems,
       TxnDate: bill.bill_date,
       DueDate: bill.due_date,
       DocNumber: bill.number,
