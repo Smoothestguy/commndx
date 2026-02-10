@@ -344,7 +344,7 @@ export function VendorBillTable({ bills }: VendorBillTableProps) {
     setSelectedIds(new Set());
   };
 
-  const handleBulkEdit = async (updates: Record<string, any>) => {
+  const handleBulkEdit = async (updates: Record<string, any>, onProgress: (p: { current: number; total: number; phase: "updating" | "syncing" }) => void): Promise<{ success: number; failed: number }> => {
     const ids = Array.from(selectedIds);
     const billUpdates: Record<string, any> = {};
     
@@ -358,60 +358,72 @@ export function VendorBillTable({ bills }: VendorBillTableProps) {
     if (updates.notes !== undefined) billUpdates.notes = updates.notes || null;
     if (updates.status) billUpdates.status = updates.status;
 
-    // Update bill-level fields
-    if (Object.keys(billUpdates).length > 0) {
-      const { error } = await supabase
-        .from("vendor_bills")
-        .update(billUpdates)
-        .in("id", ids);
-      if (error) throw error;
-    }
+    const hasBillUpdates = Object.keys(billUpdates).length > 0;
+    const hasCategoryUpdate = updates.category_id !== undefined;
+    const categoryValue = hasCategoryUpdate ? (updates.category_id || null) : null;
+    const shouldSync = qbConfig?.is_connected;
 
-    // Update line item category if specified
-    if (updates.category_id !== undefined) {
-      const categoryValue = updates.category_id || null;
-      // Get all line item IDs for selected bills
-      const { error } = await supabase
-        .from("vendor_bill_line_items")
-        .update({ category_id: categoryValue })
-        .in("bill_id", ids);
-      if (error) throw error;
-    }
+    let successCount = 0;
+    let failCount = 0;
 
-    // Sync to QuickBooks if connected (non-blocking, like bulk sync)
-    if (qbConfig?.is_connected) {
-      const billsToSync = bills.filter(b => ids.includes(b.id));
-      
-      if (billsToSync.length > 0) {
-        let syncSuccess = 0;
-        let syncFail = 0;
-        
-        for (const bill of billsToSync) {
+    // Process each bill sequentially
+    for (let i = 0; i < ids.length; i++) {
+      const id = ids[i];
+      onProgress({ current: i + 1, total: ids.length, phase: "updating" });
+
+      try {
+        // 1. Update bill-level fields
+        if (hasBillUpdates) {
+          const { error } = await supabase
+            .from("vendor_bills")
+            .update(billUpdates)
+            .eq("id", id);
+          if (error) throw error;
+        }
+
+        // 2. Update line item category
+        if (hasCategoryUpdate) {
+          const { error } = await supabase
+            .from("vendor_bill_line_items")
+            .update({ category_id: categoryValue })
+            .eq("bill_id", id);
+          if (error) throw error;
+        }
+
+        // 3. Sync to QuickBooks if connected
+        if (shouldSync) {
+          onProgress({ current: i + 1, total: ids.length, phase: "syncing" });
           try {
-            await syncToQB.mutateAsync(bill.id);
-            syncSuccess++;
+            await syncToQB.mutateAsync(id);
           } catch (error) {
-            console.error("QB sync failed for bill:", bill.id, error);
-            syncFail++;
+            console.error("QB sync failed for bill:", id, error);
+            // Don't count as failure - DB update succeeded
           }
         }
-        
-        if (syncFail > 0) {
-          toast.warning(`Updated ${ids.length} bill${ids.length !== 1 ? "s" : ""}. QB sync: ${syncSuccess} synced, ${syncFail} failed.`);
-        } else {
-          toast.success(`Updated and synced ${ids.length} bill${ids.length !== 1 ? "s" : ""} to QuickBooks`);
-        }
-      } else {
-        toast.success(`Updated ${ids.length} bill${ids.length !== 1 ? "s" : ""}`);
+
+        successCount++;
+      } catch (error) {
+        console.error("Failed to update bill:", id, error);
+        failCount++;
       }
+
+      // Yield to UI thread
+      await new Promise(r => setTimeout(r, 50));
+    }
+
+    // Show summary toast
+    if (failCount === 0) {
+      toast.success(`Updated ${successCount} bill${successCount !== 1 ? "s" : ""}${shouldSync ? " and synced to QuickBooks" : ""}`);
     } else {
-      toast.success(`Updated ${ids.length} bill${ids.length !== 1 ? "s" : ""}`);
+      toast.warning(`${successCount} updated, ${failCount} failed`);
     }
 
     queryClient.invalidateQueries({ queryKey: ["vendor-bills"] });
     queryClient.invalidateQueries({ queryKey: ["quickbooks-sync-logs"] });
     queryClient.invalidateQueries({ queryKey: ["quickbooks-bill-mappings"] });
     setSelectedIds(new Set());
+
+    return { success: successCount, failed: failCount };
   };
 
   const selectedBillsList = useMemo(

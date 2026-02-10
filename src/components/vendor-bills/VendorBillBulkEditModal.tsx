@@ -18,7 +18,8 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Loader2, Pencil } from "lucide-react";
+import { Loader2, Pencil, CheckCircle2, AlertTriangle } from "lucide-react";
+import { Progress } from "@/components/ui/progress";
 import { useVendors } from "@/integrations/supabase/hooks/useVendors";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
@@ -36,11 +37,17 @@ interface BulkEditUpdates {
   status?: string;
 }
 
+export interface BulkEditProgress {
+  current: number;
+  total: number;
+  phase: "updating" | "syncing";
+}
+
 interface VendorBillBulkEditModalProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   selectedBills: VendorBill[];
-  onApply: (updates: BulkEditUpdates) => Promise<void>;
+  onApply: (updates: BulkEditUpdates, onProgress: (p: BulkEditProgress) => void) => Promise<{ success: number; failed: number }>;
 }
 
 const CLEAR_VALUE = "__clear__";
@@ -60,6 +67,8 @@ export function VendorBillBulkEditModal({
   const [memo, setMemo] = useState("");
   const [notes, setNotes] = useState("");
   const [status, setStatus] = useState("");
+  const [progress, setProgress] = useState<BulkEditProgress | null>(null);
+  const [result, setResult] = useState<{ success: number; failed: number } | null>(null);
 
   const { data: vendors } = useVendors();
   const { data: categories } = useQuery({
@@ -110,10 +119,12 @@ export function VendorBillBulkEditModal({
     if (Object.keys(updates).length === 0) return;
 
     setIsLoading(true);
+    setProgress({ current: 0, total: selectedBills.length, phase: "updating" });
+    setResult(null);
+
     try {
-      await onApply(updates);
-      resetForm();
-      onOpenChange(false);
+      const res = await onApply(updates, setProgress);
+      setResult(res);
     } finally {
       setIsLoading(false);
     }
@@ -128,10 +139,79 @@ export function VendorBillBulkEditModal({
     setMemo("");
     setNotes("");
     setStatus("");
+    setProgress(null);
+    setResult(null);
+  };
+
+  const handleClose = () => {
+    if (isLoading) return;
+    resetForm();
+    onOpenChange(false);
   };
 
   const hasChanges = !!(vendorId || categoryId || account || billClass || location || memo || notes || status);
 
+  const progressPercent = progress ? Math.round((progress.current / progress.total) * 100) : 0;
+
+  // Show result summary view
+  if (result) {
+    return (
+      <Dialog open={open} onOpenChange={handleClose}>
+        <DialogContent className="sm:max-w-[420px]">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              {result.failed === 0 ? (
+                <CheckCircle2 className="h-5 w-5 text-green-600" />
+              ) : (
+                <AlertTriangle className="h-5 w-5 text-yellow-600" />
+              )}
+              Bulk Edit Complete
+            </DialogTitle>
+          </DialogHeader>
+          <div className="py-4 space-y-2">
+            <p className="text-sm">
+              <span className="font-medium text-green-700 dark:text-green-400">{result.success}</span> bill{result.success !== 1 ? "s" : ""} updated successfully
+            </p>
+            {result.failed > 0 && (
+              <p className="text-sm">
+                <span className="font-medium text-red-700 dark:text-red-400">{result.failed}</span> bill{result.failed !== 1 ? "s" : ""} failed
+              </p>
+            )}
+          </div>
+          <DialogFooter>
+            <Button onClick={handleClose}>Done</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+    );
+  }
+
+  // Show progress view while processing
+  if (isLoading && progress) {
+    return (
+      <Dialog open={open} onOpenChange={() => {}}>
+        <DialogContent className="sm:max-w-[420px]" onPointerDownOutside={(e) => e.preventDefault()}>
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Loader2 className="h-5 w-5 animate-spin" />
+              Processing Bills...
+            </DialogTitle>
+          </DialogHeader>
+          <div className="py-4 space-y-4">
+            <Progress value={progressPercent} className="h-3" />
+            <p className="text-sm text-muted-foreground text-center">
+              {progress.phase === "updating" ? "Updating" : "Syncing to QuickBooks"} record {progress.current} of {progress.total}...
+            </p>
+            <p className="text-xs text-muted-foreground text-center">
+              {progressPercent}% complete — please don't close this window
+            </p>
+          </div>
+        </DialogContent>
+      </Dialog>
+    );
+  }
+
+  // Normal form view
   return (
     <Dialog open={open} onOpenChange={(o) => { if (!o) resetForm(); onOpenChange(o); }}>
       <DialogContent className="sm:max-w-[520px] max-h-[85vh] overflow-y-auto">
