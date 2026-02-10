@@ -499,6 +499,7 @@ serve(async (req) => {
     // QB's Bill update replaces ALL lines when the Line array is provided.
     // No need to include old ItemBasedExpenseLineDetail lines - they are automatically removed.
     const qbBill: any = {
+      sparse: false, // Force full update to remove old Item Detail lines
       Id: qbBillId,
       SyncToken: syncToken,
       VendorRef: { value: qbVendorId },
