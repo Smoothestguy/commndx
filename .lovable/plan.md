@@ -1,110 +1,86 @@
 
 
-## Safeguard Historical Data, Rework Category Structure, and Build Sync Mapping Logic
+## Restructure Products "Add New Item" Dialog Around QB Umbrella Categories
 
-This is a significant architectural change that touches the database schema, the product/category management UI, and the QuickBooks sync pipeline. Here is the breakdown:
+### What Changes
 
----
+The "Add New Item" dialog on the Products & Services page will be reworked so you **first pick a QB umbrella category** (e.g., "Subcontract Labor Flooring", "Temp Labor RT", "Temp Labor OT") instead of picking Product/Service/Labor. The selected umbrella determines the context for the new item, and every product created gets linked to its parent QB category.
 
-### Part 1: Safeguard Historical Data
+### How It Will Work
 
-**Problem**: When a product or expense category is deleted/inactivated in either QuickBooks or Command X, historical records (vendor bill line items, invoice line items, PO line items, etc.) that reference those items could lose their context or break.
+1. Open "Add New Item" -- first thing you see is a searchable list/dropdown of QB umbrella categories (from `qb_product_service_mappings`)
+2. Select an umbrella (e.g., "Subcontract Labor - Flooring")
+3. The rest of the form appears: Name, Description, Cost, Margin, Unit, Taxable -- same fields as today, minus the old Item Type selector and the old Category dropdown (those are replaced by the umbrella)
+4. On save, the product is created and linked to the selected QB umbrella via a new `qb_product_mapping_id` column on the `products` table
+5. If no QB umbrellas exist yet, a "Create New" option lets you add one inline (with optional QB sync)
+6. The Item Type (Product/Service/Labor) is kept as a secondary field or auto-derived based on the umbrella's `quickbooks_item_type`
 
-**Current State**:
-- Products use soft-delete (`deleted_at` column) -- good, but 10+ tables have foreign keys to `products` (invoices, estimates, job orders, POs, change orders, TM tickets)
-- Expense categories use soft-delete (`is_active = false`) -- good
-- The webhook hard-deletes vendor bills when QB deletes them (lines 1620-1671) -- this destroys history
-- No protection exists to prevent cascading issues when a referenced product/category is deactivated
+### Database Changes
 
-**Changes**:
+**Migration**: Add `qb_product_mapping_id` column to `products` table
 
-1. **Database**: Add `ON DELETE SET NULL` or `RESTRICT` behavior review -- currently vendor_bill_line_items.category_id references expense_categories. If a category is hard-deleted, line items would break. Verify all FK constraints use safe deletion behavior.
+```text
+ALTER TABLE public.products
+  ADD COLUMN qb_product_mapping_id uuid REFERENCES public.qb_product_service_mappings(id) ON DELETE SET NULL;
+```
 
-2. **Webhook (quickbooks-webhook/index.ts)**: Change vendor bill "Delete" handling from hard-delete to soft-delete (set `deleted_at` instead of removing rows). This preserves payment history, line items, and attachments.
+This links each product to its parent QB umbrella category. Existing products with category "General" will have this as NULL initially.
 
-3. **Product deletion safeguard**: Before allowing product deletion (soft or hard), check if the product is referenced by any historical line items. If so, only allow soft-delete (already the case for `useDeleteProduct`, but `useDeleteProducts` does hard-delete via `.delete()` -- this needs to be changed to soft-delete).
+### UI Changes
 
-4. **Webhook product/item handling**: When QuickBooks inactivates an item, soft-delete the local product rather than removing it.
+**File: `src/pages/Products.tsx`**
 
----
+1. Replace the 3-button Item Type selector (Product/Service/Labor) with a QB Umbrella Category selector as the **first step** in the dialog
+   - Searchable dropdown showing all active entries from `qb_product_service_mappings`
+   - Option to "+ Create new umbrella" inline (name + type)
+2. Keep Item Type as a smaller secondary toggle (since QB items have a type -- Service, NonInventory -- this can be auto-filled from the umbrella's `quickbooks_item_type`)
+3. Remove the old "Category" dropdown (the umbrella IS the category now)
+4. The product's `category` field (string) gets auto-populated from the umbrella name for backward compatibility with existing code that reads `product.category`
+5. Add `qb_product_mapping_id` to the form data and pass it on save
 
-### Part 2: Rework Product/Category Structure to Mirror QuickBooks
+**File: `src/integrations/supabase/hooks/useProducts.ts`**
 
-**Problem**: Most products are categorized as "General" (123 products, 124 services). The dropdown needs to mirror QuickBooks Products and Services structure with specific umbrella names like "Temp Labor RT", "Subcontract Labor - Flooring", etc.
+- Update `useAddProduct` and `useUpdateProduct` to include `qb_product_mapping_id` in the insert/update payload
 
-**Current State**:
-- `product_categories` table has basic entries (General, Roofing, Flooring, Materials, etc.)
-- `expense_categories` table has ~50+ detailed accounting categories (Contract Labor, Equipment, etc.)
-- Vendor bill line items use `expense_categories` (via `category_id` FK), NOT `product_categories`
-- The bill sync maps line items to QB expense accounts via category name matching
+**File: `src/integrations/supabase/hooks/useQBProductMappings.ts`**
 
-**Changes**:
+- Add `useCreateQBProductMapping` mutation for inline creation of new umbrellas
+- Add `useDeleteQBProductMapping` for soft-delete (set `is_active = false`)
 
-1. **Database**: Add a new `qb_product_mapping_id` column to `vendor_bill_line_items` to optionally link a line item to a QuickBooks product/service for sync purposes, while keeping the expense category for accounting.
+**File: New `src/components/products/CreateQBUmbrellaDialog.tsx`**
 
-2. **New table**: `qb_product_service_mappings` -- stores the QuickBooks Products and Services list as parent umbrella categories:
-   - `id` (uuid)
-   - `name` (text) -- e.g., "Subcontract Labor Flooring"
-   - `quickbooks_item_id` (text) -- the QB Item ID
-   - `quickbooks_item_type` (text) -- Service, NonInventory, etc.
-   - `is_active` (boolean)
-   - Timestamps
+- Small inline dialog/section within the Add Item form for creating a new QB umbrella on the fly
+- Fields: Name, Type (Service / Non-Inventory Product)
+- On create: inserts into `qb_product_service_mappings`, and if QB is connected, syncs to QuickBooks via the edge function
 
-3. **UI (VendorBillForm.tsx)**: Add a "QB Product/Service" dropdown on each line item that lets users select the parent QuickBooks umbrella category. This is separate from the expense category (accounting account).
+**File: `supabase/functions/quickbooks-sync-products/index.ts`**
 
-4. **Seed data**: Fetch and cache the QuickBooks Products and Services list into the new mapping table, either on-demand or via a sync button.
+- Add a `create-qb-product-mapping` action that creates the Item in QuickBooks and returns the QB Item ID
 
----
+### Data Flow
 
-### Part 3: Build Sync Mapping Logic
-
-**Problem**: When a bill has multiple detailed line items (wall tile, floor tile, mudbed), they should all map to a single parent QuickBooks product/service (e.g., "Subcontract Labor Flooring") while preserving individual descriptions, quantities, and rates.
-
-**Current State**: The `quickbooks-update-bill` edge function maps each line item individually to an expense account via `AccountBasedExpenseLineDetail`. There is no concept of grouping line items under a QB product.
-
-**Changes**:
-
-1. **Update `quickbooks-update-bill/index.ts`**: When a line item has a `qb_product_mapping_id`, use `ItemBasedExpenseLineDetail` instead of `AccountBasedExpenseLineDetail`:
-   ```text
-   {
-     DetailType: "ItemBasedExpenseLineDetail",
-     Amount: lineTotal,
-     Description: "wall tile - 100 x $2.50",  // preserved detail
-     ItemBasedExpenseLineDetail: {
-       ItemRef: { value: qbItemId },  // parent QB product
-       Qty: quantity,
-       UnitPrice: unitCost,
-       BillableStatus: "NotBillable"
-     }
-   }
-   ```
-
-2. **Fallback**: Line items without a QB product mapping continue using `AccountBasedExpenseLineDetail` (current behavior), ensuring backward compatibility.
-
-3. **Webhook inbound**: When processing incoming QB bill updates, detect `ItemBasedExpenseLineDetail` lines and try to match them back to the local `qb_product_service_mappings` table.
-
----
+```text
+User picks umbrella "Subcontract Labor - Flooring"
+  -> Form auto-fills: Item Type = "Service", Category = "Subcontract Labor - Flooring"
+  -> User enters: Name = "Floor Tile Installation", Cost = $45, Margin = 30%
+  -> On save:
+     -> products row created with qb_product_mapping_id = [umbrella ID], category = "Subcontract Labor - Flooring"
+     -> When this product is used on a vendor bill, the umbrella's QB Item ID is used for ItemBasedExpenseLineDetail sync
+```
 
 ### Files to Create/Modify
 
 | File | Action | Purpose |
 |------|--------|---------|
-| Database migration | Create | Add `qb_product_service_mappings` table; add `qb_product_mapping_id` to `vendor_bill_line_items`; RLS policies |
-| `supabase/functions/quickbooks-webhook/index.ts` | Modify | Change bill Delete from hard-delete to soft-delete; handle product inactivation |
-| `src/integrations/supabase/hooks/useProducts.ts` | Modify | Change `useDeleteProducts` from hard-delete to soft-delete |
-| `src/integrations/supabase/hooks/useQBProductMappings.ts` | Create | Hook to fetch/manage QB product-service mappings |
-| `supabase/functions/quickbooks-sync-products/index.ts` | Modify | Add logic to populate `qb_product_service_mappings` when syncing |
-| `supabase/functions/quickbooks-update-bill/index.ts` | Modify | Support `ItemBasedExpenseLineDetail` when QB product mapping exists |
-| `src/components/vendor-bills/VendorBillForm.tsx` | Modify | Add QB Product/Service dropdown per line item |
+| Database migration | Create | Add `qb_product_mapping_id` to `products` table |
+| `src/pages/Products.tsx` | Modify | Restructure Add/Edit dialog: umbrella-first flow |
+| `src/integrations/supabase/hooks/useProducts.ts` | Modify | Include `qb_product_mapping_id` in product CRUD |
+| `src/integrations/supabase/hooks/useQBProductMappings.ts` | Modify | Add create/delete mutations |
+| `src/components/products/CreateQBUmbrellaDialog.tsx` | Create | Inline dialog for creating new QB umbrellas |
+| `supabase/functions/quickbooks-sync-products/index.ts` | Modify | Add `create-qb-product-mapping` action to push new items to QB |
 
----
+### Backward Compatibility
 
-### Implementation Order
-
-1. Database migration (new table + column + RLS)
-2. Safeguard changes (soft-delete fixes in webhook and hooks)
-3. QB product mappings hook and sync function updates
-4. Bill form UI updates (QB product dropdown)
-5. Bill sync logic updates (ItemBasedExpenseLineDetail support)
-6. Edge function redeployments
-
+- Existing products with `qb_product_mapping_id = NULL` continue to work as before
+- The `category` string field is kept and auto-populated from the umbrella name, so existing code that reads `product.category` (invoices, estimates, etc.) remains unaffected
+- The Item Type enum (product/service/labor) is preserved and auto-derived from the umbrella type when possible
