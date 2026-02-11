@@ -684,11 +684,52 @@ export function W9TaxForm({ data, onChange, personnelData }: W9TaxFormProps) {
             <div className="w9-tin-left">
               <div className="w9-tin-label">Social security number</div>
               <div className="w9-tin-inputs">
-                <div className={cn("w9-tin-box ssn-1", !needsEIN && "bg-muted")}>{ssnParts.part1}</div>
+                <Input
+                  className={cn("w9-tin-box ssn-1", needsEIN && "opacity-50")}
+                  value={ssnParts.part1}
+                  onChange={(e) => {
+                    const val = e.target.value.replace(/\D/g, "").slice(0, 3);
+                    const full = val + ssnParts.part2 + ssnParts.part3;
+                    onChange("ssn_full", full);
+                    if (val.length === 3) {
+                      const next = e.target.closest(".w9-tin-inputs")?.querySelector<HTMLInputElement>(".ssn-2 input, input.ssn-2-input");
+                      if (next) next.focus();
+                    }
+                  }}
+                  maxLength={3}
+                  disabled={needsEIN}
+                  style={{ fontFamily: "'Courier New', Courier, monospace" }}
+                />
                 <span>–</span>
-                <div className={cn("w9-tin-box ssn-2", !needsEIN && "bg-muted")}>{ssnParts.part2}</div>
+                <Input
+                  className={cn("w9-tin-box ssn-2", needsEIN && "opacity-50")}
+                  value={ssnParts.part2}
+                  onChange={(e) => {
+                    const val = e.target.value.replace(/\D/g, "").slice(0, 2);
+                    const full = ssnParts.part1 + val + ssnParts.part3;
+                    onChange("ssn_full", full);
+                    if (val.length === 2) {
+                      const next = e.target.closest(".w9-tin-inputs")?.querySelector<HTMLInputElement>(".ssn-3 input, input.ssn-3-input");
+                      if (next) next.focus();
+                    }
+                  }}
+                  maxLength={2}
+                  disabled={needsEIN}
+                  style={{ fontFamily: "'Courier New', Courier, monospace" }}
+                />
                 <span>–</span>
-                <div className={cn("w9-tin-box ssn-3", !needsEIN && "bg-muted")}>{ssnParts.part3}</div>
+                <Input
+                  className={cn("w9-tin-box ssn-3", needsEIN && "opacity-50")}
+                  value={ssnParts.part3}
+                  onChange={(e) => {
+                    const val = e.target.value.replace(/\D/g, "").slice(0, 4);
+                    const full = ssnParts.part1 + ssnParts.part2 + val;
+                    onChange("ssn_full", full);
+                  }}
+                  maxLength={4}
+                  disabled={needsEIN}
+                  style={{ fontFamily: "'Courier New', Courier, monospace" }}
+                />
               </div>
             </div>
             <div className="w9-tin-right">
