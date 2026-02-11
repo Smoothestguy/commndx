@@ -118,16 +118,23 @@ export const useDeleteProducts = () => {
 
   return useMutation({
     mutationFn: async (ids: string[]) => {
+      const { data: { user } } = await supabase.auth.getUser();
+      
+      // Soft delete instead of hard delete to preserve historical references
       const { error } = await supabase
         .from("products")
-        .delete()
+        .update({
+          deleted_at: new Date().toISOString(),
+          deleted_by: user?.id,
+        })
         .in("id", ids);
 
       if (error) throw error;
     },
     onSuccess: (_, ids) => {
       queryClient.invalidateQueries({ queryKey: ["products"] });
-      toast.success(`${ids.length} item(s) deleted successfully`);
+      queryClient.invalidateQueries({ queryKey: ["deleted_items"] });
+      toast.success(`${ids.length} item(s) moved to trash`);
     },
     onError: (error: Error) => {
       toast.error(`Failed to delete items: ${error.message}`);
