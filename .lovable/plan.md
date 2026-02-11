@@ -1,86 +1,104 @@
 
+## Improve Umbrella/Category Management Workflow
 
-## Restructure Products "Add New Item" Dialog Around QB Umbrella Categories
+### Overview
+Three improvements to how QB umbrella categories are managed and how products are added to line item builders across the app.
 
-### What Changes
+---
 
-The "Add New Item" dialog on the Products & Services page will be reworked so you **first pick a QB umbrella category** (e.g., "Subcontract Labor Flooring", "Temp Labor RT", "Temp Labor OT") instead of picking Product/Service/Labor. The selected umbrella determines the context for the new item, and every product created gets linked to its parent QB category.
+### 1. Create Umbrella Outside the "Add New Item" Modal
 
-### How It Will Work
+**Current state**: The "Create QB Umbrella" dialog can only be triggered from within the Add/Edit Item modal via the dropdown's "+ Create new umbrella..." option.
 
-1. Open "Add New Item" -- first thing you see is a searchable list/dropdown of QB umbrella categories (from `qb_product_service_mappings`)
-2. Select an umbrella (e.g., "Subcontract Labor - Flooring")
-3. The rest of the form appears: Name, Description, Cost, Margin, Unit, Taxable -- same fields as today, minus the old Item Type selector and the old Category dropdown (those are replaced by the umbrella)
-4. On save, the product is created and linked to the selected QB umbrella via a new `qb_product_mapping_id` column on the `products` table
-5. If no QB umbrellas exist yet, a "Create New" option lets you add one inline (with optional QB sync)
-6. The Item Type (Product/Service/Labor) is kept as a secondary field or auto-derived based on the umbrella's `quickbooks_item_type`
+**Change**: Add a dedicated "Manage Umbrellas" button on the main Products & Services page toolbar (next to "Add Item"). This opens a management panel/dialog showing all umbrellas with the ability to create new ones.
 
-### Database Changes
+**Files to modify**:
+- `src/pages/Products.tsx` -- Add a "Manage Umbrellas" button in the page actions area that opens a new management dialog
 
-**Migration**: Add `qb_product_mapping_id` column to `products` table
+**Files to create**:
+- `src/components/products/ManageUmbrellasDialog.tsx` -- A dialog listing all active QB umbrella categories with:
+  - A list/table of existing umbrellas (name, type, active status)
+  - A "Create New" button at the top
+  - Delete buttons on each row (see item 2 below)
+  - Inline create form at the top (reuses existing `useCreateQBProductMapping`)
 
-```text
-ALTER TABLE public.products
-  ADD COLUMN qb_product_mapping_id uuid REFERENCES public.qb_product_service_mappings(id) ON DELETE SET NULL;
-```
+---
 
-This links each product to its parent QB umbrella category. Existing products with category "General" will have this as NULL initially.
+### 2. Delete Umbrella Categories
 
-### UI Changes
+**Current state**: `useDeleteQBProductMapping` exists in the hooks file (soft-deletes by setting `is_active = false`) but there is no UI to trigger it.
 
-**File: `src/pages/Products.tsx`**
+**Change**: Add a delete button on each umbrella row in the new Manage Umbrellas dialog.
 
-1. Replace the 3-button Item Type selector (Product/Service/Labor) with a QB Umbrella Category selector as the **first step** in the dialog
-   - Searchable dropdown showing all active entries from `qb_product_service_mappings`
-   - Option to "+ Create new umbrella" inline (name + type)
-2. Keep Item Type as a smaller secondary toggle (since QB items have a type -- Service, NonInventory -- this can be auto-filled from the umbrella's `quickbooks_item_type`)
-3. Remove the old "Category" dropdown (the umbrella IS the category now)
-4. The product's `category` field (string) gets auto-populated from the umbrella name for backward compatibility with existing code that reads `product.category`
-5. Add `qb_product_mapping_id` to the form data and pass it on save
+**Details**:
+- Each umbrella row gets a trash icon button
+- Clicking it shows a confirmation dialog warning that products linked to this umbrella will keep their data but the umbrella will be deactivated
+- Uses the existing `useDeleteQBProductMapping` hook (already does soft-delete)
+- Products with `qb_product_mapping_id` pointing to the deleted umbrella will still work -- the FK has `ON DELETE SET NULL` and the umbrella is only soft-deleted anyway
 
-**File: `src/integrations/supabase/hooks/useProducts.ts`**
+**Files to modify**:
+- `src/components/products/ManageUmbrellasDialog.tsx` (new file from item 1) -- Include delete action per row
 
-- Update `useAddProduct` and `useUpdateProduct` to include `qb_product_mapping_id` in the insert/update payload
+---
 
-**File: `src/integrations/supabase/hooks/useQBProductMappings.ts`**
+### 3. Bulk Add Products by Umbrella
 
-- Add `useCreateQBProductMapping` mutation for inline creation of new umbrellas
-- Add `useDeleteQBProductMapping` for soft-delete (set `is_active = false`)
+**Current state**: In the LineItemBuilder and other line item forms (PO, Estimate, Invoice, Vendor Bill), products are added one at a time via a product selector dropdown.
 
-**File: New `src/components/products/CreateQBUmbrellaDialog.tsx`**
+**Change**: Add a "Bulk Add by Category" action in the line item interfaces. When triggered:
+1. User selects an umbrella category from a dropdown
+2. All products that belong to that umbrella (matching `qb_product_mapping_id`) are fetched
+3. All matching products are added as line items in a single batch operation with default quantity of 1
 
-- Small inline dialog/section within the Add Item form for creating a new QB umbrella on the fly
-- Fields: Name, Type (Service / Non-Inventory Product)
-- On create: inserts into `qb_product_service_mappings`, and if QB is connected, syncs to QuickBooks via the edge function
+**Implementation approach**:
+- Create a reusable `BulkAddByUmbrellaPopover` component that can be dropped into any line item section
+- The component shows a button ("Add by Category") that opens a popover/dropdown of umbrella categories
+- Selecting one immediately adds all products under that umbrella as new line items
+- Optimized: single state update with all new items at once (no individual re-renders)
 
-**File: `supabase/functions/quickbooks-sync-products/index.ts`**
+**Files to create**:
+- `src/components/products/BulkAddByUmbrellaPopover.tsx` -- Reusable popover component with umbrella selector and bulk-add logic
 
-- Add a `create-qb-product-mapping` action that creates the Item in QuickBooks and returns the QB Item ID
+**Files to modify**:
+- `src/components/ai-assistant/forms/LineItemBuilder.tsx` -- Add the bulk-add button next to the existing "Add Item" button
+- `src/components/purchase-orders/PurchaseOrderForm.tsx` -- Add bulk-add button in the line items section
+- `src/components/vendor-bills/VendorBillForm.tsx` -- Add bulk-add button in the line items section
 
-### Data Flow
+For each form, the bulk-add button will:
+- Fetch products where `qb_product_mapping_id` matches the selected umbrella
+- Map each product to a new line item with pre-filled description, quantity (1), and price/cost
+- Append all new line items to the existing list in one state update
 
-```text
-User picks umbrella "Subcontract Labor - Flooring"
-  -> Form auto-fills: Item Type = "Service", Category = "Subcontract Labor - Flooring"
-  -> User enters: Name = "Floor Tile Installation", Cost = $45, Margin = 30%
-  -> On save:
-     -> products row created with qb_product_mapping_id = [umbrella ID], category = "Subcontract Labor - Flooring"
-     -> When this product is used on a vendor bill, the umbrella's QB Item ID is used for ItemBasedExpenseLineDetail sync
-```
+---
 
-### Files to Create/Modify
+### Technical Details
+
+**New component: `ManageUmbrellasDialog.tsx`**
+- Uses `useQBProductMappings()` to list umbrellas
+- Uses `useCreateQBProductMapping()` for inline creation
+- Uses `useDeleteQBProductMapping()` for soft-delete with confirmation
+- Shows count of products per umbrella (by filtering products data)
+
+**New component: `BulkAddByUmbrellaPopover.tsx`**
+- Props: `onAddItems(items: Array<{ product_id, description, quantity, unit_price }>)` callback
+- Internally uses `useQBProductMappings()` and `useProducts()` 
+- Filters products by `qb_product_mapping_id` matching selected umbrella
+- Calls the callback with all matching products in one batch
+- Shows a count badge next to each umbrella name (e.g., "Subcontract Labor - Flooring (5 items)")
+
+**Database**: No schema changes needed. All data already exists (`qb_product_service_mappings`, `products.qb_product_mapping_id`).
+
+**Hooks**: No new hooks needed. Existing `useQBProductMappings`, `useCreateQBProductMapping`, `useDeleteQBProductMapping`, and `useProducts` cover all operations.
+
+---
+
+### Files Summary
 
 | File | Action | Purpose |
 |------|--------|---------|
-| Database migration | Create | Add `qb_product_mapping_id` to `products` table |
-| `src/pages/Products.tsx` | Modify | Restructure Add/Edit dialog: umbrella-first flow |
-| `src/integrations/supabase/hooks/useProducts.ts` | Modify | Include `qb_product_mapping_id` in product CRUD |
-| `src/integrations/supabase/hooks/useQBProductMappings.ts` | Modify | Add create/delete mutations |
-| `src/components/products/CreateQBUmbrellaDialog.tsx` | Create | Inline dialog for creating new QB umbrellas |
-| `supabase/functions/quickbooks-sync-products/index.ts` | Modify | Add `create-qb-product-mapping` action to push new items to QB |
-
-### Backward Compatibility
-
-- Existing products with `qb_product_mapping_id = NULL` continue to work as before
-- The `category` string field is kept and auto-populated from the umbrella name, so existing code that reads `product.category` (invoices, estimates, etc.) remains unaffected
-- The Item Type enum (product/service/labor) is preserved and auto-derived from the umbrella type when possible
+| `src/components/products/ManageUmbrellasDialog.tsx` | Create | Full umbrella management UI with create + delete |
+| `src/components/products/BulkAddByUmbrellaPopover.tsx` | Create | Reusable bulk-add-by-category popover |
+| `src/pages/Products.tsx` | Modify | Add "Manage Umbrellas" button to page toolbar |
+| `src/components/ai-assistant/forms/LineItemBuilder.tsx` | Modify | Add bulk-add button |
+| `src/components/purchase-orders/PurchaseOrderForm.tsx` | Modify | Add bulk-add button in line items section |
+| `src/components/vendor-bills/VendorBillForm.tsx` | Modify | Add bulk-add button in line items section |
