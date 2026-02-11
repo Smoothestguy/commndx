@@ -11,6 +11,7 @@ import {
 } from "@/components/ui/select";
 import { useProducts, Product } from "@/integrations/supabase/hooks/useProducts";
 import { cn } from "@/lib/utils";
+import { BulkAddByUmbrellaPopover, BulkLineItem } from "@/components/products/BulkAddByUmbrellaPopover";
 
 export interface LineItem {
   id: string;
@@ -191,16 +192,30 @@ export function LineItemBuilder({ items, onChange, className }: LineItemBuilderP
         ))}
       </div>
 
-      <Button
-        type="button"
-        variant="outline"
-        size="default"
-        className="w-full h-11 text-sm"
-        onClick={addItem}
-      >
-        <Plus className="h-4 w-4 mr-2" />
-        Add Item
-      </Button>
+      <div className="flex gap-2">
+        <Button
+          type="button"
+          variant="outline"
+          size="default"
+          className="flex-1 h-11 text-sm"
+          onClick={addItem}
+        >
+          <Plus className="h-4 w-4 mr-2" />
+          Add Item
+        </Button>
+        <BulkAddByUmbrellaPopover
+          onAddItems={(bulkItems) => {
+            const newItems: LineItem[] = bulkItems.map((bi) => ({
+              id: bi.id,
+              product_id: bi.product_id,
+              description: bi.description,
+              quantity: bi.quantity,
+              unit_price: bi.unit_price,
+            }));
+            onChange([...items, ...newItems]);
+          }}
+        />
+      </div>
 
       <div className="flex justify-between items-center pt-3 border-t border-border/50">
         <span className="text-sm font-medium text-muted-foreground">Subtotal</span>
