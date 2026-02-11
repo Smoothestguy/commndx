@@ -1,52 +1,46 @@
 
+## Fix: Allow SSN Entry in W9 Tax Form When "Individual" Is Selected
 
-## Sequential Bulk Edit with Progress Tracking
+### Problem
+In the personnel onboarding W9 Tax Form (Step 5), when the tax classification is set to "Individual," the Social Security Number boxes are read-only `<div>` elements that only display the SSN from earlier steps. If the SSN was not captured in Step 3 (Work Authorization), these boxes appear empty and the user has no way to enter their TIN on the W9 form.
 
-### What Changes
+### Root Cause
+In `src/components/personnel/onboarding/W9TaxForm.tsx` (lines 684-692), the SSN section uses plain `<div>` elements to display SSN parts from `personnelData.ssn_full`. Unlike the EIN fields (which use `<Input>` components and are editable when a non-individual classification is selected), the SSN fields are never editable.
 
-Refactor the vendor bill bulk edit to process records one at a time (like manual editing) instead of in a single batch, with a visible progress bar showing real-time status.
+```text
+Current SSN boxes (read-only divs):
+  <div className="w9-tin-box ssn-1">{ssnParts.part1}</div>  -- NOT editable
+  <div className="w9-tin-box ssn-2">{ssnParts.part2}</div>  -- NOT editable
+  <div className="w9-tin-box ssn-3">{ssnParts.part3}</div>  -- NOT editable
 
-### How It Will Work
+EIN boxes (editable inputs):
+  <Input className="w9-tin-box ein-1" ... />  -- Editable when needsEIN
+  <Input className="w9-tin-box ein-2" ... />  -- Editable when needsEIN
+```
 
-1. User clicks "Bulk Edit" and applies changes in the modal
-2. The modal stays open and shows a progress bar: "Processing 45/158 records..."
-3. Each record is updated individually in the database, then synced to QuickBooks if connected
-4. If one record fails, it is skipped and processing continues
-5. When complete, a summary toast shows successes and failures
+### Solution
+
+**File: `src/components/personnel/onboarding/W9TaxForm.tsx`**
+
+1. Replace the three SSN `<div>` elements (lines 687-691) with `<Input>` components that are editable when "Individual" is selected (i.e., when `needsEIN` is false)
+2. Add an `onChange` handler that updates `personnelData.ssn_full` through the existing `onChange` prop -- this requires calling `onChange("ssn_full", newValue)` to propagate the value back
+3. When "Individual" is NOT selected (e.g., C Corporation), the SSN inputs should be disabled/dimmed (same behavior as EIN inputs when Individual is selected)
+4. The inputs will be pre-filled from `personnelData.ssn_full` if it already has a value from Step 3
 
 ### Technical Details
 
-**File 1: `src/components/vendor-bills/VendorBillBulkEditModal.tsx`**
+The three SSN `<div>` boxes will become `<Input>` fields:
+- SSN Part 1 (3 digits): editable, `maxLength={3}`, updates first 3 chars of ssn_full
+- SSN Part 2 (2 digits): editable, `maxLength={2}`, updates chars 3-5 of ssn_full
+- SSN Part 3 (4 digits): editable, `maxLength={4}`, updates chars 5-9 of ssn_full
 
-- Add progress state (`current`, `total`, `percent`, `phase`) to track sequential processing
-- When processing, replace the form content with a progress view showing:
-  - A `Progress` bar component (already exists in the project)
-  - Text like "Updating record 45 of 158..." or "Syncing to QuickBooks 12 of 158..."
-  - Disable the Cancel/Close button during processing
-- Change the `onApply` callback signature to accept a progress setter, or move the sequential logic into the modal itself
+Each input will:
+- Strip non-digit characters
+- Be disabled when `needsEIN` is true (non-individual classification)
+- Use monospace font to match the EIN inputs
+- Auto-advance focus to the next box when filled (for better UX)
 
-**File 2: `src/components/vendor-bills/VendorBillTable.tsx`**
+Additionally, the `W9TaxFormProps` interface and the parent `PersonnelOnboarding.tsx` need to support writing back to `ssn_full` through the `onChange` callback. The current `onChange` prop already accepts any field string, so calling `onChange("ssn_full", value)` should propagate correctly as long as the parent handles it -- which it does via the generic `updateField` pattern.
 
-- Refactor `handleBulkEdit` (lines 347-415) to process records sequentially:
-  - Instead of `supabase.from("vendor_bills").update(billUpdates).in("id", ids)` (batch), loop through each ID and call `.update(billUpdates).eq("id", id)` individually
-  - Same for line item category updates: loop per bill instead of `.in("bill_id", ids)`
-  - After each DB update, if QB is connected, immediately sync that bill
-  - After each record, call a progress callback and yield to the UI thread with `await new Promise(r => setTimeout(r, 50))`
-  - Track successes and failures separately
-  - On completion, show summary toast and clear selection
-
-The `handleBulkEdit` function will be restructured to accept a progress callback from the modal:
-
-```text
-For each bill (1 to N):
-  1. Update vendor_bills row for this bill
-  2. Update vendor_bill_line_items category for this bill (if needed)
-  3. Sync to QuickBooks (if connected)
-  4. Report progress (current/total)
-  5. Yield to UI thread (50ms delay)
-```
-
-**Files to modify:**
-1. `src/components/vendor-bills/VendorBillTable.tsx` - Refactor `handleBulkEdit` to sequential processing with progress callback
-2. `src/components/vendor-bills/VendorBillBulkEditModal.tsx` - Add progress bar UI and pass progress state
-
+### Files to Change
+1. `src/components/personnel/onboarding/W9TaxForm.tsx` -- Replace SSN `<div>` boxes with editable `<Input>` fields
