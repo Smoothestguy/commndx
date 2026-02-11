@@ -382,13 +382,66 @@ const [showBulkDeleteDialog, setShowBulkDeleteDialog] = useState(false);
         id: editingProduct.id,
         ...productData,
       });
+      setIsDialogOpen(false);
+      setEditingProduct(null);
+      resetForm();
     } else {
       await addProduct.mutateAsync(productData);
+      setIsDialogOpen(false);
+      setEditingProduct(null);
+      resetForm();
     }
+  };
 
-    setIsDialogOpen(false);
+  const handleSubmitAndContinue = async (e: React.FormEvent) => {
+    e.preventDefault();
+    const cost = parseFloat(formData.cost);
+    const margin = parseFloat(formData.margin);
+
+    if (margin >= 100) return;
+    const price = margin > 0 ? cost / (1 - margin / 100) : cost;
+
+    const productData = {
+      item_type: formData.item_type,
+      sku: formData.sku || null,
+      name: formData.name,
+      description: formData.description,
+      category: formData.category,
+      unit: formData.unit,
+      cost,
+      markup: margin,
+      price,
+      is_taxable: formData.is_taxable,
+      qb_product_mapping_id: formData.qb_product_mapping_id || null,
+    };
+
+    await addProduct.mutateAsync(productData);
+    // Keep umbrella, margin, unit, taxable — clear item-specific fields
+    setFormData((prev) => ({
+      ...prev,
+      name: "",
+      description: "",
+      cost: "",
+      sku: "",
+    }));
+  };
+
+  const openNewDialogWithUmbrella = (umbrellaId: string) => {
     setEditingProduct(null);
     resetForm();
+    const selected = qbMappings?.find((m) => m.id === umbrellaId);
+    if (selected) {
+      const derivedType: ItemType =
+        selected.quickbooks_item_type === "NonInventory" ? "product" : "service";
+      setFormData((prev) => ({
+        ...prev,
+        qb_product_mapping_id: umbrellaId,
+        category: selected.name,
+        item_type: derivedType,
+        unit: derivedType === "product" ? prev.unit : "each",
+      }));
+    }
+    setIsDialogOpen(true);
   };
 
   const resetForm = () => {
@@ -1008,6 +1061,17 @@ const [showBulkDeleteDialog, setShowBulkDeleteDialog] = useState(false);
                 >
                   Cancel
                 </Button>
+                {!editingProduct && (
+                  <Button
+                    type="button"
+                    variant="outline"
+                    onClick={handleSubmitAndContinue}
+                    disabled={!formData.name || !formData.cost || addProduct.isPending}
+                  >
+                    {addProduct.isPending ? <Loader2 className="h-4 w-4 animate-spin mr-1" /> : null}
+                    Add &amp; Add Another
+                  </Button>
+                )}
                 <Button type="submit" variant="glow">
                   {editingProduct
                     ? "Save Changes"
@@ -1086,6 +1150,8 @@ const [showBulkDeleteDialog, setShowBulkDeleteDialog] = useState(false);
         <ManageUmbrellasDialog
           open={showManageUmbrellasDialog}
           onOpenChange={setShowManageUmbrellasDialog}
+          onAddItem={openNewDialogWithUmbrella}
+          onEditItem={handleEdit}
         />
       </PageLayout>
     </>
