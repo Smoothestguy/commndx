@@ -1,74 +1,79 @@
 
 
-## Enhance Umbrella-First Product Management: Multi-Add and Umbrella Drill-Down
+## Batch Item Staging: Review Before Saving
 
 ### Problem
-1. The "Add New Item" dialog closes after each product is saved -- you have to reopen it and reselect the umbrella every time
-2. There is no way to click on an existing umbrella to view its products or add new items to it
-3. The Manage Umbrellas dialog only shows umbrella names and counts -- it does not let you drill into them
+Currently, "Add & Add Another" immediately saves each item to the database. You cannot see a running list of what you have added, and there is no way to review or remove items before committing them.
 
 ### Solution
+Replace the immediate-save behavior with a **staging list** inside the Add Item dialog. Items are accumulated in a local list as you fill them in. You can review, remove, or edit staged items before clicking a single "Save All" button that commits them all at once.
 
-Transform the Manage Umbrellas dialog into a full umbrella management hub where you can:
-- See all umbrellas
-- Click into an umbrella to see its products
-- Add multiple products to an umbrella in rapid succession
-- Keep the "Add & Continue" flow so the form stays open after each save
+### How It Will Work
 
----
-
-### Change 1: Add "Add Another" / "Add & Continue" to the Add Item Dialog
-
-**File: `src/pages/Products.tsx`**
-
-- Change `handleSubmit` so that instead of always closing the dialog, it has two submit paths:
-  - **"Add & Close"** (current behavior) -- saves and closes
-  - **"Add & Add Another"** -- saves, clears name/description/cost fields but keeps the umbrella and margin selected, so you can immediately type the next item
-- Add a second button "Add & Add Another" next to the existing submit button
-- After "Add & Add Another", show a brief success toast and reset only the item-specific fields (name, description, cost, SKU) while preserving umbrella, margin, unit, and taxable settings
-
-### Change 2: Add Drill-Down to Manage Umbrellas Dialog
-
-**File: `src/components/products/ManageUmbrellasDialog.tsx`**
-
-- When you click on an umbrella row (not the delete button), drill into a detail view showing:
-  - The umbrella name as a header with a back arrow
-  - A list of all products linked to that umbrella (filtered by `qb_product_mapping_id`)
-  - An "Add Item" button that opens the Add Item dialog with the umbrella pre-selected
-  - Each product row shows name, cost, price, with edit/delete actions
-- This turns the dialog into a two-level navigation: umbrella list -> umbrella detail
-
-### Change 3: Pre-Select Umbrella When Adding From Drill-Down
-
-**File: `src/pages/Products.tsx`** and **`src/components/products/ManageUmbrellasDialog.tsx`**
-
-- Add an `onAddItem` callback prop to ManageUmbrellasDialog that passes the selected umbrella ID
-- When triggered, the Products page opens the Add Item dialog with that umbrella pre-selected
-- Combined with "Add & Add Another", this lets you rapidly add multiple items under one umbrella
-
----
+1. Open "Add New Item" and select an umbrella category
+2. Fill in Name, Cost, etc. and click "Add to List"
+3. The item appears in a scrollable staged list at the bottom of the dialog (showing name, cost, price)
+4. The form clears (keeping umbrella, margin, unit, taxable) so you can immediately enter the next item
+5. Repeat as many times as needed
+6. Click "Save All (X items)" to commit everything to the database in one batch
+7. Each staged item has an "X" button to remove it before saving
+8. "Cancel" discards all unsaved staged items
 
 ### Technical Details
 
-**`src/pages/Products.tsx`**
+**File: `src/pages/Products.tsx`**
 
-1. Add a `handleSubmitAndContinue` function that saves the product, resets name/description/cost/SKU but keeps umbrella, margin, unit, and taxable
-2. Add a second button in the form footer: "Add & Add Another" (only shown when creating, not editing)
-3. Add an `openNewDialogWithUmbrella(umbrellaId: string)` function that pre-fills the umbrella selection and opens the dialog
-4. Pass `onAddItem={openNewDialogWithUmbrella}` and `onEditItem={handleEdit}` to `ManageUmbrellasDialog`
+1. Add a `stagedItems` state array: `useState<Array<{...formFields, id: string}>>([])`
+   - Each staged item gets a temporary `crypto.randomUUID()` for keying
+2. Replace `handleSubmitAndContinue` with `handleAddToList`:
+   - Instead of calling `addProduct.mutateAsync`, push the computed product data into `stagedItems`
+   - Clear item-specific fields (name, description, cost, SKU) but keep umbrella/margin/unit/taxable
+   - Show a brief inline confirmation (not a toast, since nothing is saved yet)
+3. Add `handleSaveAll`:
+   - Loops through `stagedItems` and calls `addProduct.mutateAsync` for each (or batch insert via a single Supabase `.insert()` call for speed)
+   - On success: clears `stagedItems`, closes dialog, shows toast "X items added"
+   - On error: shows which items failed, keeps them in the list
+4. Rename the existing "Add & Add Another" button to "Add to List"
+5. Replace "Add [Type]" button with "Save All (X items)" when staged items exist, or keep it as a single-save when no staging is happening
+6. Render the staged items list between the form and the action buttons:
+   - Compact rows: Name | Cost | Price | Remove button
+   - Scrollable area (max-height ~200px)
+   - Item count badge
+7. On dialog close/cancel: clear `stagedItems`
+8. When editing an existing product (editingProduct is set), hide the staging UI entirely -- editing remains single-item as before
 
-**`src/components/products/ManageUmbrellasDialog.tsx`**
+**File: `src/integrations/supabase/hooks/useProducts.ts`**
 
-1. Add `selectedUmbrella` state to track which umbrella is drilled into (null = list view, string = detail view)
-2. In detail view, filter products by `qb_product_mapping_id === selectedUmbrella` and display them
-3. Add "Add Item" button in detail view that calls `onAddItem(umbrellaId)`
-4. Add edit button per product row that calls `onEditItem(product)`
-5. Add back button to return to umbrella list
-6. New props: `onAddItem?: (umbrellaId: string) => void` and `onEditItem?: (product: Product) => void`
+- Add a `useAddProducts` (plural) mutation that does a batch `.insert()` for multiple products at once, invalidating the query cache once. This avoids N separate round-trips.
+
+### UI Layout Inside Dialog (when staging)
+
+```text
++----------------------------------+
+| Add New Item                     |
++----------------------------------+
+| [Umbrella selector]              |
+| [Name] [SKU]                     |
+| [Description]                    |
+| [Cost] [Margin]                  |
+| [Unit] [Taxable toggle]          |
+| Calculated Price: $XX.XX         |
++----------------------------------+
+| Staged Items (3)                 |
+| +------------------------------+|
+| | Floor Tile   $45  $64.29  [x]||
+| | Grout        $12  $17.14  [x]||
+| | Sealant      $8   $11.43  [x]||
+| +------------------------------+|
++----------------------------------+
+| [Cancel] [Add to List] [Save All]|
++----------------------------------+
+```
 
 ### Files to Modify
 
 | File | Purpose |
 |------|---------|
-| `src/pages/Products.tsx` | Add "Add & Add Another" button, add `openNewDialogWithUmbrella` function, pass callbacks to ManageUmbrellasDialog |
-| `src/components/products/ManageUmbrellasDialog.tsx` | Add drill-down detail view with product list, add item button, edit actions |
+| `src/pages/Products.tsx` | Add `stagedItems` state, `handleAddToList`, `handleSaveAll`, render staged list, update button labels |
+| `src/integrations/supabase/hooks/useProducts.ts` | Add `useAddProducts` batch insert mutation |
+
