@@ -75,6 +75,8 @@ import {
 import { ProductConflictDialog } from "@/components/quickbooks/ProductConflictDialog";
 import { Badge } from "@/components/ui/badge";
 import { TablePagination } from "@/components/shared/TablePagination";
+import { useQBProductMappings } from "@/integrations/supabase/hooks/useQBProductMappings";
+import { CreateQBUmbrellaDialog } from "@/components/products/CreateQBUmbrellaDialog";
 
 const typeConfig: Record<
   ItemType,
@@ -131,6 +133,9 @@ const Products = () => {
   const [sortDirection, setSortDirection] = useState<"asc" | "desc">("asc");
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [editingProduct, setEditingProduct] = useState<Product | null>(null);
+  const { data: qbMappings } = useQBProductMappings();
+  const [showCreateUmbrellaDialog, setShowCreateUmbrellaDialog] = useState(false);
+
   const [formData, setFormData] = useState({
     item_type: "product" as ItemType,
     sku: "",
@@ -141,6 +146,7 @@ const Products = () => {
     unit: "each",
     category: "",
     is_taxable: true,
+    qb_product_mapping_id: "" as string,
   });
   const [showCustomMargin, setShowCustomMargin] = useState(false);
   const [showNewUnitInput, setShowNewUnitInput] = useState(false);
@@ -313,6 +319,7 @@ const [showBulkDeleteDialog, setShowBulkDeleteDialog] = useState(false);
       unit: product.unit,
       category: product.category,
       is_taxable: product.is_taxable ?? true,
+      qb_product_mapping_id: (product as any).qb_product_mapping_id || "",
     });
     setShowCustomMargin(!marginPresets.includes(marginStr));
     setIsDialogOpen(true);
@@ -364,6 +371,7 @@ const [showBulkDeleteDialog, setShowBulkDeleteDialog] = useState(false);
       markup: margin,
       price,
       is_taxable: formData.is_taxable,
+      qb_product_mapping_id: formData.qb_product_mapping_id || null,
     };
 
     if (editingProduct) {
@@ -391,6 +399,7 @@ const [showBulkDeleteDialog, setShowBulkDeleteDialog] = useState(false);
       unit: "each",
       category: "",
       is_taxable: true,
+      qb_product_mapping_id: "",
     });
     setShowNewCategoryInput(false);
     setNewCategoryName("");
@@ -647,35 +656,64 @@ const [showBulkDeleteDialog, setShowBulkDeleteDialog] = useState(false);
               </DialogTitle>
             </DialogHeader>
             <form onSubmit={handleSubmit} className="space-y-5">
-              {/* Item Type Selector */}
+              {/* QB Umbrella Category Selector */}
               <div className="space-y-2">
-                <Label>Item Type</Label>
-                <div className="grid grid-cols-3 gap-2">
-                  {(Object.keys(typeConfig) as ItemType[]).map((type) => {
-                    const config = typeConfig[type];
-                    const Icon = config.icon;
-                    const isSelected = formData.item_type === type;
-                    return (
-                      <button
-                        key={type}
-                        type="button"
-                        onClick={() =>
-                          setFormData({ ...formData, item_type: type })
-                        }
-                        className={`flex flex-col items-center gap-2 p-4 rounded-lg border-2 transition-all ${
-                          isSelected
-                            ? "border-primary bg-primary/10 text-primary"
-                            : "border-border bg-secondary hover:border-primary/50"
-                        }`}
+                <Label>QB Umbrella Category *</Label>
+                <div className="flex gap-2">
+                  <Select
+                    value={formData.qb_product_mapping_id}
+                    onValueChange={(value) => {
+                      if (value === "__new__") {
+                        setShowCreateUmbrellaDialog(true);
+                        return;
+                      }
+                      const selected = qbMappings?.find((m) => m.id === value);
+                      if (selected) {
+                      const derivedType: ItemType =
+                          selected.quickbooks_item_type === "NonInventory"
+                            ? "product"
+                            : "service";
+                        setFormData({
+                          ...formData,
+                          qb_product_mapping_id: value,
+                          category: selected.name,
+                          item_type: derivedType,
+                          unit: derivedType === "product" ? formData.unit : "each",
+                        });
+                      }
+                    }}
+                  >
+                    <SelectTrigger className="bg-secondary border-border">
+                      <SelectValue placeholder="Select umbrella category" />
+                    </SelectTrigger>
+                    <SelectContent className="bg-popover border-border">
+                      {qbMappings?.map((mapping) => (
+                        <SelectItem key={mapping.id} value={mapping.id}>
+                          {mapping.name}
+                          {mapping.quickbooks_item_type && (
+                            <span className="text-muted-foreground ml-1 text-xs">
+                              ({mapping.quickbooks_item_type})
+                            </span>
+                          )}
+                        </SelectItem>
+                      ))}
+                      <SelectItem
+                        value="__new__"
+                        className="text-primary font-medium"
                       >
-                        <Icon className="h-6 w-6" />
-                        <span className="text-sm font-medium">
-                          {config.label}
-                        </span>
-                      </button>
-                    );
-                  })}
+                        + Create new umbrella...
+                      </SelectItem>
+                    </SelectContent>
+                  </Select>
                 </div>
+                {formData.qb_product_mapping_id && (
+                  <p className="text-xs text-muted-foreground">
+                    Auto-derived type:{" "}
+                    <span className="capitalize font-medium">
+                      {formData.item_type}
+                    </span>
+                  </p>
+                )}
               </div>
 
               <div className="grid gap-4 sm:grid-cols-2">
@@ -713,101 +751,17 @@ const [showBulkDeleteDialog, setShowBulkDeleteDialog] = useState(false);
               </div>
 
               <div className="grid gap-4 sm:grid-cols-2">
-                <div className="space-y-2">
-                  <Label htmlFor="category">Category *</Label>
-                  {!showNewCategoryInput ? (
-                    <Select
+                {/* Category is auto-populated from umbrella - show as read-only */}
+                {formData.category && (
+                  <div className="space-y-2">
+                    <Label>Category</Label>
+                    <Input
                       value={formData.category}
-                      onValueChange={(value) => {
-                        if (value === "__new__") {
-                          setShowNewCategoryInput(true);
-                          setNewCategoryName("");
-                        } else {
-                          setFormData({ ...formData, category: value });
-                        }
-                      }}
-                    >
-                      <SelectTrigger className="bg-secondary border-border">
-                        <SelectValue placeholder="Select category" />
-                      </SelectTrigger>
-                      <SelectContent className="bg-popover border-border">
-                        {categoriesForType.map((cat) => (
-                          <SelectItem key={cat} value={cat}>
-                            {cat}
-                          </SelectItem>
-                        ))}
-                        <SelectItem
-                          value="__new__"
-                          className="text-primary font-medium"
-                        >
-                          + Add new category...
-                        </SelectItem>
-                      </SelectContent>
-                    </Select>
-                  ) : (
-                    <div className="space-y-2">
-                      <Input
-                        autoFocus
-                        value={newCategoryName}
-                        placeholder="Enter new category name"
-                        className="bg-secondary border-border"
-                        onChange={(e) => setNewCategoryName(e.target.value)}
-                        onKeyDown={async (e) => {
-                          if (e.key === "Enter" && newCategoryName.trim()) {
-                            e.preventDefault();
-                            await addCategory.mutateAsync({
-                              name: newCategoryName.trim(),
-                              item_type: formData.item_type,
-                            });
-                            setFormData({
-                              ...formData,
-                              category: newCategoryName.trim(),
-                            });
-                            setShowNewCategoryInput(false);
-                            setNewCategoryName("");
-                          } else if (e.key === "Escape") {
-                            setShowNewCategoryInput(false);
-                            setNewCategoryName("");
-                          }
-                        }}
-                      />
-                      <div className="flex gap-2">
-                        <Button
-                          type="button"
-                          size="sm"
-                          variant="outline"
-                          onClick={() => {
-                            setShowNewCategoryInput(false);
-                            setNewCategoryName("");
-                          }}
-                        >
-                          Cancel
-                        </Button>
-                        <Button
-                          type="button"
-                          size="sm"
-                          disabled={!newCategoryName.trim()}
-                          onClick={async () => {
-                            if (newCategoryName.trim()) {
-                              await addCategory.mutateAsync({
-                                name: newCategoryName.trim(),
-                                item_type: formData.item_type,
-                              });
-                              setFormData({
-                                ...formData,
-                                category: newCategoryName.trim(),
-                              });
-                              setShowNewCategoryInput(false);
-                              setNewCategoryName("");
-                            }
-                          }}
-                        >
-                          Save
-                        </Button>
-                      </div>
-                    </div>
-                  )}
-                </div>
+                      readOnly
+                      className="bg-muted border-border text-muted-foreground"
+                    />
+                  </div>
+                )}
                 <div className="space-y-2">
                   <Label htmlFor="unit">Unit</Label>
                   {!showNewUnitInput ? (
@@ -1100,6 +1054,23 @@ const [showBulkDeleteDialog, setShowBulkDeleteDialog] = useState(false);
           selectedIds={Array.from(selectedProductIds)}
           products={products || []}
           onSuccess={() => setSelectedProductIds(new Set())}
+        />
+
+        {/* Create QB Umbrella Dialog */}
+        <CreateQBUmbrellaDialog
+          open={showCreateUmbrellaDialog}
+          onOpenChange={setShowCreateUmbrellaDialog}
+          onCreated={(id, name, type) => {
+            const derivedType: ItemType =
+              type === "NonInventory" ? "product" : "service";
+            setFormData({
+              ...formData,
+              qb_product_mapping_id: id,
+              category: name,
+              item_type: derivedType,
+              unit: derivedType === "product" ? formData.unit : "each",
+            });
+          }}
         />
       </PageLayout>
     </>
