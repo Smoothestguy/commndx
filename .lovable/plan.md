@@ -1,46 +1,110 @@
 
-## Fix: Allow SSN Entry in W9 Tax Form When "Individual" Is Selected
 
-### Problem
-In the personnel onboarding W9 Tax Form (Step 5), when the tax classification is set to "Individual," the Social Security Number boxes are read-only `<div>` elements that only display the SSN from earlier steps. If the SSN was not captured in Step 3 (Work Authorization), these boxes appear empty and the user has no way to enter their TIN on the W9 form.
+## Safeguard Historical Data, Rework Category Structure, and Build Sync Mapping Logic
 
-### Root Cause
-In `src/components/personnel/onboarding/W9TaxForm.tsx` (lines 684-692), the SSN section uses plain `<div>` elements to display SSN parts from `personnelData.ssn_full`. Unlike the EIN fields (which use `<Input>` components and are editable when a non-individual classification is selected), the SSN fields are never editable.
+This is a significant architectural change that touches the database schema, the product/category management UI, and the QuickBooks sync pipeline. Here is the breakdown:
 
-```text
-Current SSN boxes (read-only divs):
-  <div className="w9-tin-box ssn-1">{ssnParts.part1}</div>  -- NOT editable
-  <div className="w9-tin-box ssn-2">{ssnParts.part2}</div>  -- NOT editable
-  <div className="w9-tin-box ssn-3">{ssnParts.part3}</div>  -- NOT editable
+---
 
-EIN boxes (editable inputs):
-  <Input className="w9-tin-box ein-1" ... />  -- Editable when needsEIN
-  <Input className="w9-tin-box ein-2" ... />  -- Editable when needsEIN
-```
+### Part 1: Safeguard Historical Data
 
-### Solution
+**Problem**: When a product or expense category is deleted/inactivated in either QuickBooks or Command X, historical records (vendor bill line items, invoice line items, PO line items, etc.) that reference those items could lose their context or break.
 
-**File: `src/components/personnel/onboarding/W9TaxForm.tsx`**
+**Current State**:
+- Products use soft-delete (`deleted_at` column) -- good, but 10+ tables have foreign keys to `products` (invoices, estimates, job orders, POs, change orders, TM tickets)
+- Expense categories use soft-delete (`is_active = false`) -- good
+- The webhook hard-deletes vendor bills when QB deletes them (lines 1620-1671) -- this destroys history
+- No protection exists to prevent cascading issues when a referenced product/category is deactivated
 
-1. Replace the three SSN `<div>` elements (lines 687-691) with `<Input>` components that are editable when "Individual" is selected (i.e., when `needsEIN` is false)
-2. Add an `onChange` handler that updates `personnelData.ssn_full` through the existing `onChange` prop -- this requires calling `onChange("ssn_full", newValue)` to propagate the value back
-3. When "Individual" is NOT selected (e.g., C Corporation), the SSN inputs should be disabled/dimmed (same behavior as EIN inputs when Individual is selected)
-4. The inputs will be pre-filled from `personnelData.ssn_full` if it already has a value from Step 3
+**Changes**:
 
-### Technical Details
+1. **Database**: Add `ON DELETE SET NULL` or `RESTRICT` behavior review -- currently vendor_bill_line_items.category_id references expense_categories. If a category is hard-deleted, line items would break. Verify all FK constraints use safe deletion behavior.
 
-The three SSN `<div>` boxes will become `<Input>` fields:
-- SSN Part 1 (3 digits): editable, `maxLength={3}`, updates first 3 chars of ssn_full
-- SSN Part 2 (2 digits): editable, `maxLength={2}`, updates chars 3-5 of ssn_full
-- SSN Part 3 (4 digits): editable, `maxLength={4}`, updates chars 5-9 of ssn_full
+2. **Webhook (quickbooks-webhook/index.ts)**: Change vendor bill "Delete" handling from hard-delete to soft-delete (set `deleted_at` instead of removing rows). This preserves payment history, line items, and attachments.
 
-Each input will:
-- Strip non-digit characters
-- Be disabled when `needsEIN` is true (non-individual classification)
-- Use monospace font to match the EIN inputs
-- Auto-advance focus to the next box when filled (for better UX)
+3. **Product deletion safeguard**: Before allowing product deletion (soft or hard), check if the product is referenced by any historical line items. If so, only allow soft-delete (already the case for `useDeleteProduct`, but `useDeleteProducts` does hard-delete via `.delete()` -- this needs to be changed to soft-delete).
 
-Additionally, the `W9TaxFormProps` interface and the parent `PersonnelOnboarding.tsx` need to support writing back to `ssn_full` through the `onChange` callback. The current `onChange` prop already accepts any field string, so calling `onChange("ssn_full", value)` should propagate correctly as long as the parent handles it -- which it does via the generic `updateField` pattern.
+4. **Webhook product/item handling**: When QuickBooks inactivates an item, soft-delete the local product rather than removing it.
 
-### Files to Change
-1. `src/components/personnel/onboarding/W9TaxForm.tsx` -- Replace SSN `<div>` boxes with editable `<Input>` fields
+---
+
+### Part 2: Rework Product/Category Structure to Mirror QuickBooks
+
+**Problem**: Most products are categorized as "General" (123 products, 124 services). The dropdown needs to mirror QuickBooks Products and Services structure with specific umbrella names like "Temp Labor RT", "Subcontract Labor - Flooring", etc.
+
+**Current State**:
+- `product_categories` table has basic entries (General, Roofing, Flooring, Materials, etc.)
+- `expense_categories` table has ~50+ detailed accounting categories (Contract Labor, Equipment, etc.)
+- Vendor bill line items use `expense_categories` (via `category_id` FK), NOT `product_categories`
+- The bill sync maps line items to QB expense accounts via category name matching
+
+**Changes**:
+
+1. **Database**: Add a new `qb_product_mapping_id` column to `vendor_bill_line_items` to optionally link a line item to a QuickBooks product/service for sync purposes, while keeping the expense category for accounting.
+
+2. **New table**: `qb_product_service_mappings` -- stores the QuickBooks Products and Services list as parent umbrella categories:
+   - `id` (uuid)
+   - `name` (text) -- e.g., "Subcontract Labor Flooring"
+   - `quickbooks_item_id` (text) -- the QB Item ID
+   - `quickbooks_item_type` (text) -- Service, NonInventory, etc.
+   - `is_active` (boolean)
+   - Timestamps
+
+3. **UI (VendorBillForm.tsx)**: Add a "QB Product/Service" dropdown on each line item that lets users select the parent QuickBooks umbrella category. This is separate from the expense category (accounting account).
+
+4. **Seed data**: Fetch and cache the QuickBooks Products and Services list into the new mapping table, either on-demand or via a sync button.
+
+---
+
+### Part 3: Build Sync Mapping Logic
+
+**Problem**: When a bill has multiple detailed line items (wall tile, floor tile, mudbed), they should all map to a single parent QuickBooks product/service (e.g., "Subcontract Labor Flooring") while preserving individual descriptions, quantities, and rates.
+
+**Current State**: The `quickbooks-update-bill` edge function maps each line item individually to an expense account via `AccountBasedExpenseLineDetail`. There is no concept of grouping line items under a QB product.
+
+**Changes**:
+
+1. **Update `quickbooks-update-bill/index.ts`**: When a line item has a `qb_product_mapping_id`, use `ItemBasedExpenseLineDetail` instead of `AccountBasedExpenseLineDetail`:
+   ```text
+   {
+     DetailType: "ItemBasedExpenseLineDetail",
+     Amount: lineTotal,
+     Description: "wall tile - 100 x $2.50",  // preserved detail
+     ItemBasedExpenseLineDetail: {
+       ItemRef: { value: qbItemId },  // parent QB product
+       Qty: quantity,
+       UnitPrice: unitCost,
+       BillableStatus: "NotBillable"
+     }
+   }
+   ```
+
+2. **Fallback**: Line items without a QB product mapping continue using `AccountBasedExpenseLineDetail` (current behavior), ensuring backward compatibility.
+
+3. **Webhook inbound**: When processing incoming QB bill updates, detect `ItemBasedExpenseLineDetail` lines and try to match them back to the local `qb_product_service_mappings` table.
+
+---
+
+### Files to Create/Modify
+
+| File | Action | Purpose |
+|------|--------|---------|
+| Database migration | Create | Add `qb_product_service_mappings` table; add `qb_product_mapping_id` to `vendor_bill_line_items`; RLS policies |
+| `supabase/functions/quickbooks-webhook/index.ts` | Modify | Change bill Delete from hard-delete to soft-delete; handle product inactivation |
+| `src/integrations/supabase/hooks/useProducts.ts` | Modify | Change `useDeleteProducts` from hard-delete to soft-delete |
+| `src/integrations/supabase/hooks/useQBProductMappings.ts` | Create | Hook to fetch/manage QB product-service mappings |
+| `supabase/functions/quickbooks-sync-products/index.ts` | Modify | Add logic to populate `qb_product_service_mappings` when syncing |
+| `supabase/functions/quickbooks-update-bill/index.ts` | Modify | Support `ItemBasedExpenseLineDetail` when QB product mapping exists |
+| `src/components/vendor-bills/VendorBillForm.tsx` | Modify | Add QB Product/Service dropdown per line item |
+
+---
+
+### Implementation Order
+
+1. Database migration (new table + column + RLS)
+2. Safeguard changes (soft-delete fixes in webhook and hooks)
+3. QB product mappings hook and sync function updates
+4. Bill form UI updates (QB product dropdown)
+5. Bill sync logic updates (ItemBasedExpenseLineDetail support)
+6. Edge function redeployments
+
