@@ -57,6 +57,7 @@ import { InlineProductDialog } from "@/components/products/InlineProductDialog";
 import { ImportDocumentDialog } from "./ImportDocumentDialog";
 import { ExtractedItem } from "@/components/job-orders/ExtractedItemsTable";
 import { Upload } from "lucide-react";
+import { BulkAddByUmbrellaPopover, BulkLineItem } from "@/components/products/BulkAddByUmbrellaPopover";
 
 const lineItemSchema = z.object({
   description: z.string().min(1, "Description is required").max(2000),
@@ -908,10 +909,28 @@ export const EstimateForm = ({ initialData }: EstimateFormProps) => {
               </SortableContext>
             </DndContext>
             
-            <Button type="button" variant="outline" className="w-full" onClick={addLineItem}>
-              <Plus className="h-4 w-4 mr-2" />
-              Add Item
-            </Button>
+            <div className="flex gap-2">
+              <Button type="button" variant="outline" className="flex-1" onClick={addLineItem}>
+                <Plus className="h-4 w-4 mr-2" />
+                Add Item
+              </Button>
+              <BulkAddByUmbrellaPopover
+                onAddItems={(bulkItems) => {
+                  const newItems: LineItem[] = bulkItems.map((bi) => ({
+                    id: bi.id,
+                    product_id: bi.product_id,
+                    description: bi.description,
+                    quantity: bi.quantity.toString(),
+                    unit_price: bi.unit_price.toString(),
+                    margin: "0",
+                    pricing_type: 'margin' as const,
+                    is_taxable: true,
+                    total: bi.quantity * bi.unit_price,
+                  }));
+                  setLineItems((prev) => [...prev, ...newItems]);
+                }}
+              />
+            </div>
           </CardContent>
         </Card>
 

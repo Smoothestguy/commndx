@@ -7,6 +7,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "@/components/ui/command";
 import { Trash2, Plus, Check, ChevronsUpDown, Package, Wrench, HardHat } from "lucide-react";
+import { BulkAddByUmbrellaPopover } from "@/components/products/BulkAddByUmbrellaPopover";
 import { useAddJobOrder } from "@/integrations/supabase/hooks/useJobOrders";
 import { useProducts } from "@/integrations/supabase/hooks/useProducts";
 import { cn } from "@/lib/utils";
@@ -244,10 +245,26 @@ export function CreateJobOrderDialog({
             <div className="space-y-4">
               <div className="flex items-center justify-between">
                 <Label className="text-base font-semibold">Line Items</Label>
+              <div className="flex gap-2">
                 <Button type="button" variant="outline" size="sm" onClick={addLineItem}>
                   <Plus className="h-4 w-4 mr-1" />
                   Add Item
                 </Button>
+                <BulkAddByUmbrellaPopover
+                  onAddItems={(bulkItems) => {
+                    const newItems: LineItem[] = bulkItems.map((bi) => ({
+                      id: bi.id,
+                      product_id: bi.product_id,
+                      description: bi.description,
+                      quantity: bi.quantity.toString(),
+                      unit_price: bi.unit_price.toString(),
+                      markup: "0",
+                      total: bi.quantity * bi.unit_price,
+                    }));
+                    setLineItems((prev) => [...prev, ...newItems]);
+                  }}
+                />
+              </div>
               </div>
 
               <div className="space-y-3">

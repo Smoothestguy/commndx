@@ -14,6 +14,7 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "@/components/ui/command";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Plus, Trash2, Check, ChevronsUpDown, Package, Wrench, HardHat } from "lucide-react";
+import { BulkAddByUmbrellaPopover, BulkLineItem } from "@/components/products/BulkAddByUmbrellaPopover";
 import { useProducts } from "@/integrations/supabase/hooks/useProducts";
 import { cn } from "@/lib/utils";
 import { z } from "zod";
@@ -511,10 +512,26 @@ export const JobOrderForm = ({
             </div>
           ))}
           
-          <Button type="button" variant="outline" className="w-full" onClick={addLineItem}>
-            <Plus className="h-4 w-4 mr-2" />
-            Add Item
-          </Button>
+          <div className="flex gap-2">
+            <Button type="button" variant="outline" className="flex-1" onClick={addLineItem}>
+              <Plus className="h-4 w-4 mr-2" />
+              Add Item
+            </Button>
+            <BulkAddByUmbrellaPopover
+              onAddItems={(bulkItems) => {
+                const newItems: LineItem[] = bulkItems.map((bi) => ({
+                  id: bi.id,
+                  product_id: bi.product_id,
+                  description: bi.description,
+                  quantity: bi.quantity.toString(),
+                  unit_price: bi.unit_price.toString(),
+                  margin: "0",
+                  total: bi.quantity * bi.unit_price,
+                }));
+                setLineItems((prev) => [...prev, ...newItems]);
+              }}
+            />
+          </div>
         </CardContent>
       </Card>
 

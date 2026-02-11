@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
 import { toast } from "sonner";
+import { BulkAddByUmbrellaPopover } from "@/components/products/BulkAddByUmbrellaPopover";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { CalculatorInput } from "@/components/ui/calculator-input";
@@ -866,10 +867,30 @@ export function ChangeOrderForm({
             )}
           </CardTitle>
           {canEditLineItems && (
-            <Button type="button" variant="outline" size="sm" onClick={addLineItem} disabled={isReadOnly}>
-              <Plus className="mr-2 h-4 w-4" />
-              Add Item
-            </Button>
+            <div className="flex gap-2">
+              <Button type="button" variant="outline" size="sm" onClick={addLineItem} disabled={isReadOnly}>
+                <Plus className="mr-2 h-4 w-4" />
+                Add Item
+              </Button>
+              <BulkAddByUmbrellaPopover
+                onAddItems={(bulkItems) => {
+                  const newItems: LineItem[] = bulkItems.map((bi, idx) => ({
+                    id: bi.id,
+                    product_id: bi.product_id,
+                    description: bi.description,
+                    quantity: bi.quantity,
+                    unit_price: bi.unit_price,
+                    vendor_cost: 0,
+                    markup: 0,
+                    total: bi.quantity * bi.unit_price,
+                    is_taxable: true,
+                    sort_order: lineItems.length + idx,
+                    calculation_mode: 'forward' as const,
+                  }));
+                  setLineItems((prev) => [...prev, ...newItems]);
+                }}
+              />
+            </div>
           )}
         </CardHeader>
         <CardContent>
