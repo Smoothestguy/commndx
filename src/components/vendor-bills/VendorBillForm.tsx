@@ -14,6 +14,7 @@ import { useVendors, Vendor } from "@/integrations/supabase/hooks/useVendors";
 import { useProjects } from "@/integrations/supabase/hooks/useProjects";
 import { useExpenseCategories } from "@/integrations/supabase/hooks/useExpenseCategories";
 import { useCompanySettings } from "@/integrations/supabase/hooks/useCompanySettings";
+import { useQBProductMappings } from "@/integrations/supabase/hooks/useQBProductMappings";
 import { 
   VendorBill, 
   VendorBillLineItem, 
@@ -45,6 +46,7 @@ interface LineItem {
   id: string;
   project_id: string | null;
   category_id: string | null;
+  qb_product_mapping_id: string | null;
   description: string;
   quantity: number;
   unit_cost: number;
@@ -69,6 +71,7 @@ export function VendorBillForm({ bill, isEditing = false }: VendorBillFormProps)
   const { data: vendors } = useVendors();
   const { data: projects } = useProjects();
   const { data: categories } = useExpenseCategories("vendor");
+  const { data: qbProductMappings } = useQBProductMappings();
   const { data: companySettings } = useCompanySettings();
   const { data: qbConfig } = useQuickBooksConfig();
   const addBill = useAddVendorBill();
@@ -85,7 +88,7 @@ export function VendorBillForm({ bill, isEditing = false }: VendorBillFormProps)
   const [taxRate, setTaxRate] = useState(0);
   const [notes, setNotes] = useState("");
   const [lineItems, setLineItems] = useState<LineItem[]>([
-    { id: crypto.randomUUID(), project_id: null, category_id: null, description: "", quantity: 1, unit_cost: 0, total: 0 }
+    { id: crypto.randomUUID(), project_id: null, category_id: null, qb_product_mapping_id: null, description: "", quantity: 1, unit_cost: 0, total: 0 }
   ]);
 
   // Pending attachments state (for new bills)
@@ -115,6 +118,7 @@ export function VendorBillForm({ bill, isEditing = false }: VendorBillFormProps)
           id: li.id || crypto.randomUUID(),
           project_id: li.project_id,
           category_id: li.category_id,
+          qb_product_mapping_id: (li as any).qb_product_mapping_id || null,
           description: li.description,
           quantity: Number(li.quantity),
           unit_cost: Number(li.unit_cost),
@@ -198,6 +202,7 @@ export function VendorBillForm({ bill, isEditing = false }: VendorBillFormProps)
       id: crypto.randomUUID(),
       project_id: null,
       category_id: null,
+      qb_product_mapping_id: null,
       description: "",
       quantity: 1,
       unit_cost: 0,
@@ -263,10 +268,11 @@ export function VendorBillForm({ bill, isEditing = false }: VendorBillFormProps)
       .map(li => ({
         project_id: li.project_id,
         category_id: li.category_id,
+        qb_product_mapping_id: li.qb_product_mapping_id,
         description: li.description,
         quantity: li.quantity,
         unit_cost: li.unit_cost,
-        total: Math.round(li.total * 100) / 100, // Round to proper cents
+        total: Math.round(li.total * 100) / 100,
       }));
 
     let savedBillId: string;
@@ -515,15 +521,16 @@ export function VendorBillForm({ bill, isEditing = false }: VendorBillFormProps)
           <div className="overflow-x-auto">
             <Table>
               <TableHeader>
-                <TableRow>
-                  <TableHead className="w-[200px]">Description</TableHead>
-                  <TableHead>Project</TableHead>
-                  <TableHead>Category</TableHead>
-                  <TableHead className="w-[80px]">Qty</TableHead>
-                  <TableHead className="w-[120px]">Unit Cost</TableHead>
-                  <TableHead className="w-[120px]">Total</TableHead>
-                  <TableHead className="w-[50px]"></TableHead>
-                </TableRow>
+                 <TableRow>
+                   <TableHead className="w-[200px]">Description</TableHead>
+                   <TableHead>Project</TableHead>
+                   <TableHead>Category</TableHead>
+                   <TableHead>QB Product/Service</TableHead>
+                   <TableHead className="w-[80px]">Qty</TableHead>
+                   <TableHead className="w-[120px]">Unit Cost</TableHead>
+                   <TableHead className="w-[120px]">Total</TableHead>
+                   <TableHead className="w-[50px]"></TableHead>
+                 </TableRow>
               </TableHeader>
               <TableBody>
                 {lineItems.map((item) => (
@@ -577,16 +584,32 @@ export function VendorBillForm({ bill, isEditing = false }: VendorBillFormProps)
                           ))}
                         </SelectContent>
                       </Select>
-                    </TableCell>
-                    <TableCell>
-                      <Input
+                     </TableCell>
+                     <TableCell>
+                       <Select
+                         value={item.qb_product_mapping_id || "none"}
+                         onValueChange={(v) => updateLineItem(item.id, "qb_product_mapping_id", v === "none" ? null : v)}
+                       >
+                         <SelectTrigger className="w-[180px]">
+                           <SelectValue placeholder="Select" />
+                         </SelectTrigger>
+                         <SelectContent>
+                           <SelectItem value="none">None</SelectItem>
+                           {qbProductMappings?.map((m) => (
+                             <SelectItem key={m.id} value={m.id}>{m.name}</SelectItem>
+                           ))}
+                         </SelectContent>
+                       </Select>
+                     </TableCell>
+                     <TableCell>
+                       <Input
                         type="number"
                         min="0"
                         step="any"
                         value={item.quantity}
                         onChange={(e) => updateLineItem(item.id, "quantity", Number(e.target.value))}
                         className="w-[80px]"
-                      />
+                       />
                     </TableCell>
                     <TableCell>
                       <div className="relative">

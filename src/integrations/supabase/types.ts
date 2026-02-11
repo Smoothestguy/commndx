@@ -5234,6 +5234,36 @@ export type Database = {
         }
         Relationships: []
       }
+      qb_product_service_mappings: {
+        Row: {
+          created_at: string
+          id: string
+          is_active: boolean
+          name: string
+          quickbooks_item_id: string | null
+          quickbooks_item_type: string | null
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          is_active?: boolean
+          name: string
+          quickbooks_item_id?: string | null
+          quickbooks_item_type?: string | null
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          is_active?: boolean
+          name?: string
+          quickbooks_item_id?: string | null
+          quickbooks_item_type?: string | null
+          updated_at?: string
+        }
+        Relationships: []
+      }
       quickbooks_account_mappings: {
         Row: {
           created_at: string | null
@@ -6861,6 +6891,7 @@ export type Database = {
           po_addendum_line_item_id: string | null
           po_line_item_id: string | null
           project_id: string | null
+          qb_product_mapping_id: string | null
           quantity: number
           total: number
           unit_cost: number
@@ -6874,6 +6905,7 @@ export type Database = {
           po_addendum_line_item_id?: string | null
           po_line_item_id?: string | null
           project_id?: string | null
+          qb_product_mapping_id?: string | null
           quantity?: number
           total?: number
           unit_cost?: number
@@ -6887,6 +6919,7 @@ export type Database = {
           po_addendum_line_item_id?: string | null
           po_line_item_id?: string | null
           project_id?: string | null
+          qb_product_mapping_id?: string | null
           quantity?: number
           total?: number
           unit_cost?: number
@@ -6925,6 +6958,13 @@ export type Database = {
             columns: ["project_id"]
             isOneToOne: false
             referencedRelation: "projects"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "vendor_bill_line_items_qb_product_mapping_id_fkey"
+            columns: ["qb_product_mapping_id"]
+            isOneToOne: false
+            referencedRelation: "qb_product_service_mappings"
             referencedColumns: ["id"]
           },
         ]
