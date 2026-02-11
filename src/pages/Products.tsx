@@ -77,6 +77,8 @@ import { Badge } from "@/components/ui/badge";
 import { TablePagination } from "@/components/shared/TablePagination";
 import { useQBProductMappings } from "@/integrations/supabase/hooks/useQBProductMappings";
 import { CreateQBUmbrellaDialog } from "@/components/products/CreateQBUmbrellaDialog";
+import { ManageUmbrellasDialog } from "@/components/products/ManageUmbrellasDialog";
+import { Settings2 } from "lucide-react";
 
 const typeConfig: Record<
   ItemType,
@@ -135,6 +137,7 @@ const Products = () => {
   const [editingProduct, setEditingProduct] = useState<Product | null>(null);
   const { data: qbMappings } = useQBProductMappings();
   const [showCreateUmbrellaDialog, setShowCreateUmbrellaDialog] = useState(false);
+  const [showManageUmbrellasDialog, setShowManageUmbrellasDialog] = useState(false);
 
   const [formData, setFormData] = useState({
     item_type: "product" as ItemType,
@@ -427,10 +430,16 @@ const [showBulkDeleteDialog, setShowBulkDeleteDialog] = useState(false);
         title="Products & Services"
         description="Manage your products, services, and labor items"
         actions={
-          <Button variant="glow" onClick={openNewDialog} className="whitespace-nowrap">
-            <Plus className="h-4 w-4" />
-            <span className={isTablet ? "sr-only" : undefined}>Add Item</span>
-          </Button>
+          <div className="flex items-center gap-2">
+            <Button variant="outline" onClick={() => setShowManageUmbrellasDialog(true)} className="whitespace-nowrap">
+              <Settings2 className="h-4 w-4" />
+              <span className={isTablet ? "sr-only" : undefined}>Umbrellas</span>
+            </Button>
+            <Button variant="glow" onClick={openNewDialog} className="whitespace-nowrap">
+              <Plus className="h-4 w-4" />
+              <span className={isTablet ? "sr-only" : undefined}>Add Item</span>
+            </Button>
+          </div>
         }
       >
         <PullToRefreshWrapper onRefresh={refetch} isRefreshing={isFetching}>
@@ -1071,6 +1080,12 @@ const [showBulkDeleteDialog, setShowBulkDeleteDialog] = useState(false);
               unit: derivedType === "product" ? formData.unit : "each",
             });
           }}
+        />
+
+        {/* Manage Umbrellas Dialog */}
+        <ManageUmbrellasDialog
+          open={showManageUmbrellasDialog}
+          onOpenChange={setShowManageUmbrellasDialog}
         />
       </PageLayout>
     </>

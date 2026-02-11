@@ -8,7 +8,8 @@ import { Textarea } from "@/components/ui/textarea";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "@/components/ui/command";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Plus, Trash2, Loader2, AlertCircle, Info, Check, ChevronsUpDown, Package, Wrench, HardHat } from "lucide-react";
+import { Plus, Trash2, Loader2, AlertCircle, Info, Check, ChevronsUpDown, Package, Wrench, HardHat, Layers } from "lucide-react";
+import { BulkAddByUmbrellaPopover, BulkLineItem } from "@/components/products/BulkAddByUmbrellaPopover";
 import { useJobOrders, useJobOrder } from "@/integrations/supabase/hooks/useJobOrders";
 import { useVendors } from "@/integrations/supabase/hooks/useVendors";
 import { useAddPurchaseOrder, usePurchaseOrder } from "@/integrations/supabase/hooks/usePurchaseOrders";
@@ -672,10 +673,26 @@ export const PurchaseOrderForm = () => {
             </div>
           ))}
           
-          <Button type="button" variant="outline" className="w-full" onClick={addLineItem}>
-            <Plus className="h-4 w-4 mr-2" />
-            Add Item
-          </Button>
+          <div className="flex gap-2">
+            <Button type="button" variant="outline" className="flex-1" onClick={addLineItem}>
+              <Plus className="h-4 w-4 mr-2" />
+              Add Item
+            </Button>
+            <BulkAddByUmbrellaPopover
+              priceField="cost"
+              onAddItems={(bulkItems) => {
+                const newItems: LineItem[] = bulkItems.map((bi) => ({
+                  id: bi.id,
+                  product_id: bi.product_id,
+                  description: bi.description,
+                  quantity: bi.quantity.toString(),
+                  unit_price: bi.unit_price.toString(),
+                  total: bi.quantity * bi.unit_price,
+                }));
+                setLineItems((prev) => [...prev, ...newItems]);
+              }}
+            />
+          </div>
         </CardContent>
       </Card>
 

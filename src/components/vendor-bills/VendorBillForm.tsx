@@ -9,6 +9,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Plus, Trash2, Save, X, Loader2, Lock } from "lucide-react";
+import { BulkAddByUmbrellaPopover, BulkLineItem } from "@/components/products/BulkAddByUmbrellaPopover";
 import { toast } from "sonner";
 import { useVendors, Vendor } from "@/integrations/supabase/hooks/useVendors";
 import { useProjects } from "@/integrations/supabase/hooks/useProjects";
@@ -641,10 +642,28 @@ export function VendorBillForm({ bill, isEditing = false }: VendorBillFormProps)
             </Table>
           </div>
           
-          <Button variant="outline" className="w-full mt-4" onClick={addLineItem}>
-            <Plus className="h-4 w-4 mr-2" />
-            Add Line
-          </Button>
+          <div className="flex gap-2 mt-4">
+            <Button variant="outline" className="flex-1" onClick={addLineItem}>
+              <Plus className="h-4 w-4 mr-2" />
+              Add Line
+            </Button>
+            <BulkAddByUmbrellaPopover
+              priceField="cost"
+              onAddItems={(bulkItems) => {
+                const newItems: LineItem[] = bulkItems.map((bi) => ({
+                  id: bi.id,
+                  project_id: null,
+                  category_id: null,
+                  qb_product_mapping_id: null,
+                  description: bi.description,
+                  quantity: bi.quantity,
+                  unit_cost: bi.unit_price,
+                  total: bi.quantity * bi.unit_price,
+                }));
+                setLineItems((prev) => [...prev, ...newItems]);
+              }}
+            />
+          </div>
 
           <div className="mt-4 flex justify-end">
             <div className="w-64 space-y-2">
