@@ -9,7 +9,6 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Card } from "@/components/ui/card";
 import { Trash2, Plus, Copy, Loader2, Check, ChevronsUpDown, Receipt, Package, FileText } from "lucide-react";
-import { BulkAddByUmbrellaPopover, BulkLineItem } from "@/components/products/BulkAddByUmbrellaPopover";
 import { useState, useEffect, useMemo } from "react";
 import { useJobOrders, useJobOrder } from "@/integrations/supabase/hooks/useJobOrders";
 import { useCustomers } from "@/integrations/supabase/hooks/useCustomers";
@@ -1053,28 +1052,10 @@ export function InvoiceForm({ onSubmit, onSubmitMultiItem, initialData, jobOrder
             </Card>
           ))}
           
-          <div className="flex gap-2">
-            <Button type="button" variant="outline" className="flex-1" onClick={addLineItem}>
-              <Plus className="w-4 h-4 mr-2" />
-              Add Item
-            </Button>
-            <BulkAddByUmbrellaPopover
-              onAddItems={(bulkItems) => {
-                const newItems: LineItem[] = bulkItems.map((bi) => ({
-                  id: bi.id,
-                  productId: bi.product_id,
-                  productName: bi.description,
-                  description: bi.description,
-                  quantity: bi.quantity,
-                  unitPrice: bi.unit_price,
-                  margin: 0,
-                  total: bi.quantity * bi.unit_price,
-                  isTaxable: true,
-                }));
-                setLineItems((prev) => [...prev, ...newItems]);
-              }}
-            />
-          </div>
+          <Button type="button" variant="outline" className="w-full" onClick={addLineItem}>
+            <Plus className="w-4 h-4 mr-2" />
+            Add Item
+          </Button>
         </div>
       )}
 
