@@ -201,3 +201,26 @@ export const useBulkUpdateProducts = () => {
     },
   });
 };
+
+export const useAddProducts = () => {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async (products: Omit<Product, "id" | "created_at" | "updated_at">[]) => {
+      const { data, error } = await supabase
+        .from("products")
+        .insert(products)
+        .select();
+
+      if (error) throw error;
+      return data;
+    },
+    onSuccess: (data) => {
+      queryClient.invalidateQueries({ queryKey: ["products"] });
+      toast.success(`${data.length} item(s) added successfully`);
+    },
+    onError: (error: Error) => {
+      toast.error(`Failed to add items: ${error.message}`);
+    },
+  });
+};

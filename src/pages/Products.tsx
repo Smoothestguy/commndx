@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect, useMemo, useCallback } from "react";
 import { SEO } from "@/components/SEO";
 import { PageLayout } from "@/components/layout/PageLayout";
 import { DataTable } from "@/components/shared/DataTable";
@@ -36,6 +36,7 @@ import { Switch } from "@/components/ui/switch";
 import {
   useProducts,
   useAddProduct,
+  useAddProducts,
   useUpdateProduct,
   useDeleteProduct,
   useDeleteProducts,
@@ -112,6 +113,7 @@ const Products = () => {
   const { data: categories } = useProductCategories();
   const { data: units } = useProductUnits();
   const addProduct = useAddProduct();
+  const addProducts = useAddProducts();
   const updateProduct = useUpdateProduct();
   const deleteProduct = useDeleteProduct();
   const deleteProducts = useDeleteProducts();
@@ -119,6 +121,23 @@ const Products = () => {
   const addUnit = useAddProductUnit();
   const isMobile = useIsMobile();
   const isTablet = useIsTablet();
+
+  // Staging list for batch add
+  interface StagedItem {
+    tempId: string;
+    item_type: ItemType;
+    sku: string | null;
+    name: string;
+    description: string;
+    category: string;
+    unit: string;
+    cost: number;
+    markup: number;
+    price: number;
+    is_taxable: boolean;
+    qb_product_mapping_id: string | null;
+  }
+  const [stagedItems, setStagedItems] = useState<StagedItem[]>([]);
 
   // QuickBooks hooks
   const { data: qbConfig } = useQuickBooksConfig();
@@ -393,15 +412,16 @@ const [showBulkDeleteDialog, setShowBulkDeleteDialog] = useState(false);
     }
   };
 
-  const handleSubmitAndContinue = async (e: React.FormEvent) => {
+  const handleAddToList = (e: React.FormEvent) => {
     e.preventDefault();
     const cost = parseFloat(formData.cost);
     const margin = parseFloat(formData.margin);
 
-    if (margin >= 100) return;
+    if (margin >= 100 || !formData.name || !formData.cost) return;
     const price = margin > 0 ? cost / (1 - margin / 100) : cost;
 
-    const productData = {
+    const stagedItem: StagedItem = {
+      tempId: crypto.randomUUID(),
       item_type: formData.item_type,
       sku: formData.sku || null,
       name: formData.name,
@@ -415,8 +435,8 @@ const [showBulkDeleteDialog, setShowBulkDeleteDialog] = useState(false);
       qb_product_mapping_id: formData.qb_product_mapping_id || null,
     };
 
-    await addProduct.mutateAsync(productData);
-    // Keep umbrella, margin, unit, taxable — clear item-specific fields
+    setStagedItems((prev) => [...prev, stagedItem]);
+    // Clear item-specific fields, keep umbrella/margin/unit/taxable
     setFormData((prev) => ({
       ...prev,
       name: "",
@@ -424,6 +444,19 @@ const [showBulkDeleteDialog, setShowBulkDeleteDialog] = useState(false);
       cost: "",
       sku: "",
     }));
+  };
+
+  const handleSaveAll = async () => {
+    if (stagedItems.length === 0) return;
+    const productsToInsert = stagedItems.map(({ tempId, ...rest }) => rest);
+    await addProducts.mutateAsync(productsToInsert);
+    setStagedItems([]);
+    setIsDialogOpen(false);
+    resetForm();
+  };
+
+  const removeStagedItem = (tempId: string) => {
+    setStagedItems((prev) => prev.filter((item) => item.tempId !== tempId));
   };
 
   const openNewDialogWithUmbrella = (umbrellaId: string) => {
@@ -710,7 +743,14 @@ const [showBulkDeleteDialog, setShowBulkDeleteDialog] = useState(false);
         </PullToRefreshWrapper>
 
         {/* Add/Edit Dialog */}
-        <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
+        <Dialog open={isDialogOpen} onOpenChange={(open) => {
+          setIsDialogOpen(open);
+          if (!open) {
+            setStagedItems([]);
+            setEditingProduct(null);
+            resetForm();
+          }
+        }}>
           <DialogContent className="bg-card border-border max-w-lg">
             <DialogHeader>
               <DialogTitle className="font-heading">
@@ -1053,11 +1093,41 @@ const [showBulkDeleteDialog, setShowBulkDeleteDialog] = useState(false);
                 </p>
               )}
 
+              {/* Staged Items List */}
+              {!editingProduct && stagedItems.length > 0 && (
+                <div className="border border-border rounded-lg overflow-hidden">
+                  <div className="px-3 py-2 bg-muted flex items-center justify-between">
+                    <span className="text-sm font-medium">Staged Items ({stagedItems.length})</span>
+                  </div>
+                  <div className="max-h-[200px] overflow-y-auto divide-y divide-border">
+                    {stagedItems.map((item) => (
+                      <div key={item.tempId} className="flex items-center justify-between px-3 py-2 text-sm">
+                        <span className="font-medium truncate flex-1 mr-2">{item.name}</span>
+                        <span className="text-muted-foreground mr-3">${item.cost.toFixed(2)}</span>
+                        <span className="text-primary font-medium mr-3">${item.price.toFixed(2)}</span>
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="icon"
+                          className="h-6 w-6 shrink-0"
+                          onClick={() => removeStagedItem(item.tempId)}
+                        >
+                          <X className="h-3 w-3" />
+                        </Button>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
               <div className="flex justify-end gap-3 pt-2">
                 <Button
                   type="button"
                   variant="outline"
-                  onClick={() => setIsDialogOpen(false)}
+                  onClick={() => {
+                    setIsDialogOpen(false);
+                    setStagedItems([]);
+                  }}
                 >
                   Cancel
                 </Button>
@@ -1065,18 +1135,29 @@ const [showBulkDeleteDialog, setShowBulkDeleteDialog] = useState(false);
                   <Button
                     type="button"
                     variant="outline"
-                    onClick={handleSubmitAndContinue}
-                    disabled={!formData.name || !formData.cost || addProduct.isPending}
+                    onClick={handleAddToList}
+                    disabled={!formData.name || !formData.cost}
                   >
-                    {addProduct.isPending ? <Loader2 className="h-4 w-4 animate-spin mr-1" /> : null}
-                    Add &amp; Add Another
+                    Add to List
                   </Button>
                 )}
-                <Button type="submit" variant="glow">
-                  {editingProduct
-                    ? "Save Changes"
-                    : `Add ${currentTypeConfig.label}`}
-                </Button>
+                {!editingProduct && stagedItems.length > 0 ? (
+                  <Button
+                    type="button"
+                    variant="glow"
+                    onClick={handleSaveAll}
+                    disabled={addProducts.isPending}
+                  >
+                    {addProducts.isPending ? <Loader2 className="h-4 w-4 animate-spin mr-1" /> : null}
+                    Save All ({stagedItems.length} items)
+                  </Button>
+                ) : (
+                  <Button type="submit" variant="glow">
+                    {editingProduct
+                      ? "Save Changes"
+                      : `Add ${currentTypeConfig.label}`}
+                  </Button>
+                )}
               </div>
             </form>
           </DialogContent>
