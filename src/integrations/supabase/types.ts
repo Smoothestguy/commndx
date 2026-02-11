@@ -4503,6 +4503,7 @@ export type Database = {
           markup: number
           name: string
           price: number
+          qb_product_mapping_id: string | null
           sku: string | null
           unit: string
           updated_at: string
@@ -4520,6 +4521,7 @@ export type Database = {
           markup: number
           name: string
           price: number
+          qb_product_mapping_id?: string | null
           sku?: string | null
           unit: string
           updated_at?: string
@@ -4537,11 +4539,20 @@ export type Database = {
           markup?: number
           name?: string
           price?: number
+          qb_product_mapping_id?: string | null
           sku?: string | null
           unit?: string
           updated_at?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "products_qb_product_mapping_id_fkey"
+            columns: ["qb_product_mapping_id"]
+            isOneToOne: false
+            referencedRelation: "qb_product_service_mappings"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       profiles: {
         Row: {

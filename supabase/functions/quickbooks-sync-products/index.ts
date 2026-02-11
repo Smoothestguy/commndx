@@ -722,6 +722,80 @@ serve(async (req) => {
       });
     }
 
+    if (action === 'create-qb-product-mapping') {
+      // Create a new QB Item from Command X and store the mapping
+      const { mappingName, mappingItemType } = body;
+      console.log(`Creating QB product mapping: "${mappingName}" (${mappingItemType})`);
+
+      if (!mappingName) {
+        throw new Error('mappingName is required');
+      }
+
+      const itemType = mappingItemType || 'Service';
+
+      // Get income accounts
+      const accounts = await getIncomeAccounts(accessToken, realmId);
+      const incomeAccountId = itemType === 'NonInventory'
+        ? (accounts.productIncomeAccountId || accounts.serviceIncomeAccountId || '1')
+        : (accounts.serviceIncomeAccountId || accounts.productIncomeAccountId || '1');
+
+      const qbItem: any = {
+        Name: mappingName.substring(0, 100),
+        Type: itemType === 'NonInventory' ? 'NonInventory' : 'Service',
+        IncomeAccountRef: { value: incomeAccountId },
+      };
+
+      if (accounts.expenseAccountId) {
+        qbItem.ExpenseAccountRef = { value: accounts.expenseAccountId };
+      }
+
+      let qbItemId: string | null = null;
+
+      try {
+        const result = await qbRequest('POST', '/item?minorversion=65', accessToken, realmId, qbItem);
+        qbItemId = result.Item.Id;
+        console.log(`Created QB item: ${qbItemId}`);
+      } catch (createError: unknown) {
+        const errorMessage = createError instanceof Error ? createError.message : '';
+        
+        // Handle duplicate name
+        if (errorMessage.includes('6240') || errorMessage.toLowerCase().includes('name supplied already exists')) {
+          console.log(`Item "${mappingName}" already exists in QB, finding it...`);
+          const existingItem = await findQBItemByName(mappingName, accessToken, realmId);
+          if (existingItem) {
+            qbItemId = existingItem.Id;
+            console.log(`Found existing QB item: ${qbItemId}`);
+          } else {
+            throw createError;
+          }
+        } else {
+          throw createError;
+        }
+      }
+
+      // Update the local mapping with the QB item ID
+      if (qbItemId && body.mappingId) {
+        await supabase
+          .from('qb_product_service_mappings')
+          .update({
+            quickbooks_item_id: qbItemId,
+            updated_at: new Date().toISOString(),
+          })
+          .eq('id', body.mappingId);
+      }
+
+      await supabase.from('quickbooks_sync_log').insert({
+        entity_type: 'qb_product_mapping',
+        action: 'create',
+        status: 'success',
+        details: { name: mappingName, itemType, qbItemId },
+      });
+
+      return new Response(JSON.stringify({ success: true, qbItemId }), {
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+    }
+
     throw new Error('Invalid action');
   } catch (error: unknown) {
     console.error('QuickBooks product sync error:', error);
