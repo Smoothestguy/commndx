@@ -124,6 +124,57 @@ Deno.serve(async (req) => {
       console.error("Error deleting notification preferences:", prefsError);
     }
 
+    // Nullify foreign key references in other tables
+    const nullifyOps = [
+      { table: "estimate_versions", column: "created_by" },
+      { table: "activities", column: "created_by" },
+      { table: "appointments", column: "assigned_to" },
+      { table: "audit_logs", column: "user_id" },
+      { table: "time_entries", column: "user_id" },
+      { table: "personnel_project_assignments", column: "assigned_by" },
+    ];
+
+    for (const { table, column } of nullifyOps) {
+      const { error } = await adminClient
+        .from(table)
+        .update({ [column]: null })
+        .eq(column, userId);
+      if (error) console.error(`Error nullifying ${table}.${column}:`, error);
+    }
+
+    // Purchase orders has two columns referencing profiles
+    const { error: poApprovedErr } = await adminClient
+      .from("purchase_orders")
+      .update({ approved_by: null })
+      .eq("approved_by", userId);
+    if (poApprovedErr) console.error("Error nullifying purchase_orders.approved_by:", poApprovedErr);
+
+    const { error: poSubmittedErr } = await adminClient
+      .from("purchase_orders")
+      .update({ submitted_by: null })
+      .eq("submitted_by", userId);
+    if (poSubmittedErr) console.error("Error nullifying purchase_orders.submitted_by:", poSubmittedErr);
+
+    // Tasks has two columns
+    const { error: tasksAssignedErr } = await adminClient
+      .from("tasks")
+      .update({ assigned_to: null })
+      .eq("assigned_to", userId);
+    if (tasksAssignedErr) console.error("Error nullifying tasks.assigned_to:", tasksAssignedErr);
+
+    const { error: tasksCreatedErr } = await adminClient
+      .from("tasks")
+      .update({ created_by: null })
+      .eq("created_by", userId);
+    if (tasksCreatedErr) console.error("Error nullifying tasks.created_by:", tasksCreatedErr);
+
+    // Delete project assignments (row deletion, not nullify)
+    const { error: projAssignErr } = await adminClient
+      .from("project_assignments")
+      .delete()
+      .eq("user_id", userId);
+    if (projAssignErr) console.error("Error deleting project_assignments:", projAssignErr);
+
     // Delete the profile
     const { error: profileError } = await adminClient
       .from("profiles")
