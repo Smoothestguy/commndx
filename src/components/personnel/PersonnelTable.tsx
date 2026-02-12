@@ -34,12 +34,14 @@ import {
   RefreshCw,
   UserX,
   Briefcase,
+  RotateCcw,
 } from "lucide-react";
 import { useVendors } from "@/integrations/supabase/hooks/useVendors";
 import {
   useDeletePersonnel,
   useToggleDoNotHire,
   useHardDeletePersonnel,
+  useReactivatePersonnel,
 } from "@/integrations/supabase/hooks/usePersonnel";
 import { useQuickBooksConfig, useSyncPersonnelToQB } from "@/integrations/supabase/hooks/useQuickBooks";
 import { ComplianceBadge } from "./ComplianceBadge";
@@ -90,7 +92,7 @@ export function PersonnelTable({
   const toggleDoNotHire = useToggleDoNotHire();
   const hardDeletePersonnel = useHardDeletePersonnel();
   const syncPersonnelToQB = useSyncPersonnelToQB();
-
+  const reactivatePersonnel = useReactivatePersonnel();
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [personToDelete, setPersonToDelete] = useState<Personnel | null>(null);
   const [hardDeleteDialogOpen, setHardDeleteDialogOpen] = useState(false);
@@ -470,6 +472,21 @@ export function PersonnelTable({
               >
                 <RefreshCw className={`mr-2 h-4 w-4 ${syncingId === person.id ? 'animate-spin' : ''}`} />
                 {syncingId === person.id ? "Syncing..." : "Sync to QuickBooks"}
+              </DropdownMenuItem>
+            )}
+            {person.status !== "active" && (
+              <DropdownMenuItem
+                onClick={async (e) => {
+                  e.stopPropagation();
+                  try {
+                    await reactivatePersonnel.mutateAsync(person.id);
+                  } catch {
+                    // Error handled in hook
+                  }
+                }}
+              >
+                <RotateCcw className="mr-2 h-4 w-4" />
+                Reactivate
               </DropdownMenuItem>
             )}
             <DropdownMenuSeparator />

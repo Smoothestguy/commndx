@@ -540,6 +540,54 @@ export const useResendOnboardingEmail = () => {
   });
 };
 
+export const useReactivatePersonnel = () => {
+  const queryClient = useQueryClient();
+  const { logAction } = useAuditLog();
+
+  return useMutation({
+    mutationFn: async (id: string) => {
+      const { data: originalData } = await supabase
+        .from("personnel")
+        .select("*")
+        .eq("id", id)
+        .single();
+
+      const { data, error } = await supabase
+        .from("personnel")
+        .update({ status: "active" })
+        .eq("id", id)
+        .select()
+        .single();
+
+      if (error) throw error;
+
+      await logAction({
+        actionType: "update",
+        resourceType: "personnel",
+        resourceId: id,
+        resourceNumber: data.personnel_number || `${data.first_name} ${data.last_name}`,
+        changesBefore: { status: originalData?.status } as Json,
+        changesAfter: { status: "active" } as Json,
+        metadata: { action: "reactivated" } as Json,
+      });
+
+      return data;
+    },
+    onSuccess: (_, id) => {
+      queryClient.invalidateQueries({ queryKey: ["personnel"] });
+      queryClient.invalidateQueries({ queryKey: ["personnel", id] });
+      queryClient.invalidateQueries({ queryKey: ["personnel-stats"] });
+      queryClient.invalidateQueries({ queryKey: ["personnel-project-assignments"] });
+      queryClient.invalidateQueries({ queryKey: ["personnel-by-project"] });
+      queryClient.invalidateQueries({ queryKey: ["personnel-by-vendor"] });
+      toast.success("Personnel reactivated successfully");
+    },
+    onError: (error: Error) => {
+      toast.error(`Failed to reactivate personnel: ${error.message}`);
+    },
+  });
+};
+
 export const useHardDeletePersonnel = () => {
   const queryClient = useQueryClient();
 
