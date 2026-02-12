@@ -41,11 +41,13 @@ import {
   Printer,
   Trash2,
   UserX,
+  RotateCcw,
 } from "lucide-react";
 import { useVendors } from "@/integrations/supabase/hooks/useVendors";
 import {
   useDeletePersonnel,
   useToggleDoNotHire,
+  useReactivatePersonnel,
 } from "@/integrations/supabase/hooks/usePersonnel";
 import { ComplianceBadge } from "./ComplianceBadge";
 import { toast } from "sonner";
@@ -72,6 +74,7 @@ export const MobilePersonnelCard = ({
   const { data: vendors } = useVendors();
   const deletePersonnel = useDeletePersonnel();
   const toggleDoNotHire = useToggleDoNotHire();
+  const reactivatePersonnel = useReactivatePersonnel();
 
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
 
@@ -226,6 +229,20 @@ export const MobilePersonnelCard = ({
                       Print Badge
                     </DropdownMenuItem>
                     <DropdownMenuSeparator />
+                    {personnel.status !== "active" && (
+                      <DropdownMenuItem
+                        onClick={async () => {
+                          try {
+                            await reactivatePersonnel.mutateAsync(personnel.id);
+                          } catch {
+                            // Error handled in hook
+                          }
+                        }}
+                      >
+                        <RotateCcw className="mr-2 h-4 w-4" />
+                        Reactivate
+                      </DropdownMenuItem>
+                    )}
                     <DropdownMenuItem
                       onClick={handleToggleDNH}
                       className={
@@ -323,6 +340,20 @@ export const MobilePersonnelCard = ({
         Print Badge
       </ContextMenuItem>
       <ContextMenuSeparator />
+      {personnel.status !== "active" && (
+        <ContextMenuItem
+          onClick={async () => {
+            try {
+              await reactivatePersonnel.mutateAsync(personnel.id);
+            } catch {
+              // Error handled in hook
+            }
+          }}
+        >
+          <RotateCcw className="mr-2 h-4 w-4" />
+          Reactivate
+        </ContextMenuItem>
+      )}
       <ContextMenuItem
         onClick={handleToggleDNH}
         className={personnel.status === "do_not_hire" ? "" : "text-destructive focus:text-destructive"}
