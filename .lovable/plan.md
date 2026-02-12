@@ -1,79 +1,71 @@
 
 
-## Batch Item Staging: Review Before Saving
+## Reactivate Deactivated Personnel and Remove from User Management
 
-### Problem
-Currently, "Add & Add Another" immediately saves each item to the database. You cannot see a running list of what you have added, and there is no way to review or remove items before committing them.
+### Overview
+Two changes: (1) add the ability to reactivate deactivated personnel, and (2) ensure deactivated personnel are fully excluded from the User Management page.
 
-### Solution
-Replace the immediate-save behavior with a **staging list** inside the Add Item dialog. Items are accumulated in a local list as you fill them in. You can review, remove, or edit staged items before clicking a single "Save All" button that commits them all at once.
+---
 
-### How It Will Work
+### 1. Add Reactivate Personnel Hook
 
-1. Open "Add New Item" and select an umbrella category
-2. Fill in Name, Cost, etc. and click "Add to List"
-3. The item appears in a scrollable staged list at the bottom of the dialog (showing name, cost, price)
-4. The form clears (keeping umbrella, margin, unit, taxable) so you can immediately enter the next item
-5. Repeat as many times as needed
-6. Click "Save All (X items)" to commit everything to the database in one batch
-7. Each staged item has an "X" button to remove it before saving
-8. "Cancel" discards all unsaved staged items
+**File: `src/integrations/supabase/hooks/usePersonnel.ts`**
+
+Create a new `useReactivatePersonnel` mutation that sets `status` back to `"active"` for a given personnel ID, with audit logging.
+
+---
+
+### 2. Add Reactivate Button to Personnel Table and Mobile Card
+
+**File: `src/components/personnel/PersonnelTable.tsx`**
+
+- Import `useReactivatePersonnel`
+- For personnel with status `"inactive"` or `"do_not_hire"`, show a "Reactivate" action in the dropdown/actions area (RotateCcw icon)
+- On click, call `reactivatePersonnel.mutateAsync(id)` to set status back to `"active"`
+
+**File: `src/components/personnel/MobilePersonnelCard.tsx`**
+
+- Same change: add a Reactivate button for inactive personnel
+
+---
+
+### 3. Ensure Deactivated Personnel Are Excluded from User Management
+
+**File: `src/pages/UserManagement.tsx`** (lines 265-271)
+
+The current code already excludes personnel-linked users from the user list. However, it excludes ALL personnel (active and inactive). This is already correct behavior per the user's request -- personnel should not appear in user management at all regardless of status.
+
+No change needed here since the existing filter already removes all personnel-linked users. The user's request is "remove them entirely from the user management page" which is already implemented.
+
+---
 
 ### Technical Details
 
-**File: `src/pages/Products.tsx`**
+**New hook: `useReactivatePersonnel`** in `src/integrations/supabase/hooks/usePersonnel.ts`
 
-1. Add a `stagedItems` state array: `useState<Array<{...formFields, id: string}>>([])`
-   - Each staged item gets a temporary `crypto.randomUUID()` for keying
-2. Replace `handleSubmitAndContinue` with `handleAddToList`:
-   - Instead of calling `addProduct.mutateAsync`, push the computed product data into `stagedItems`
-   - Clear item-specific fields (name, description, cost, SKU) but keep umbrella/margin/unit/taxable
-   - Show a brief inline confirmation (not a toast, since nothing is saved yet)
-3. Add `handleSaveAll`:
-   - Loops through `stagedItems` and calls `addProduct.mutateAsync` for each (or batch insert via a single Supabase `.insert()` call for speed)
-   - On success: clears `stagedItems`, closes dialog, shows toast "X items added"
-   - On error: shows which items failed, keeps them in the list
-4. Rename the existing "Add & Add Another" button to "Add to List"
-5. Replace "Add [Type]" button with "Save All (X items)" when staged items exist, or keep it as a single-save when no staging is happening
-6. Render the staged items list between the form and the action buttons:
-   - Compact rows: Name | Cost | Price | Remove button
-   - Scrollable area (max-height ~200px)
-   - Item count badge
-7. On dialog close/cancel: clear `stagedItems`
-8. When editing an existing product (editingProduct is set), hide the staging UI entirely -- editing remains single-item as before
-
-**File: `src/integrations/supabase/hooks/useProducts.ts`**
-
-- Add a `useAddProducts` (plural) mutation that does a batch `.insert()` for multiple products at once, invalidating the query cache once. This avoids N separate round-trips.
-
-### UI Layout Inside Dialog (when staging)
-
-```text
-+----------------------------------+
-| Add New Item                     |
-+----------------------------------+
-| [Umbrella selector]              |
-| [Name] [SKU]                     |
-| [Description]                    |
-| [Cost] [Margin]                  |
-| [Unit] [Taxable toggle]          |
-| Calculated Price: $XX.XX         |
-+----------------------------------+
-| Staged Items (3)                 |
-| +------------------------------+|
-| | Floor Tile   $45  $64.29  [x]||
-| | Grout        $12  $17.14  [x]||
-| | Sealant      $8   $11.43  [x]||
-| +------------------------------+|
-+----------------------------------+
-| [Cancel] [Add to List] [Save All]|
-+----------------------------------+
+```typescript
+export const useReactivatePersonnel = () => {
+  // mutation: update status from 'inactive'/'do_not_hire' back to 'active'
+  // audit log the reactivation
+  // invalidate personnel queries
+  // toast success
+};
 ```
+
+**PersonnelTable.tsx changes:**
+- Add a "Reactivate" dropdown menu item that appears only when `person.status !== "active"`
+- Uses `useReactivatePersonnel` hook
+- Shows RotateCcw icon with "Reactivate" label
+
+**MobilePersonnelCard.tsx changes:**
+- Add a "Reactivate" button in the action area for inactive personnel
+- Same hook usage
 
 ### Files to Modify
 
 | File | Purpose |
 |------|---------|
-| `src/pages/Products.tsx` | Add `stagedItems` state, `handleAddToList`, `handleSaveAll`, render staged list, update button labels |
-| `src/integrations/supabase/hooks/useProducts.ts` | Add `useAddProducts` batch insert mutation |
+| `src/integrations/supabase/hooks/usePersonnel.ts` | Add `useReactivatePersonnel` mutation hook |
+| `src/components/personnel/PersonnelTable.tsx` | Add Reactivate action in dropdown for inactive personnel |
+| `src/components/personnel/MobilePersonnelCard.tsx` | Add Reactivate button for inactive personnel |
 
