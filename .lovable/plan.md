@@ -1,71 +1,53 @@
 
 
-## Reactivate Deactivated Personnel and Remove from User Management
+## Fix: User Deletion Failing Due to Foreign Key References
 
-### Overview
-Two changes: (1) add the ability to reactivate deactivated personnel, and (2) ensure deactivated personnel are fully excluded from the User Management page.
+### Problem
+When trying to delete user "Christina Flores", the edge function fails because the `profiles` table has foreign key references from multiple other tables that aren't being cleaned up before the profile deletion. Specifically, the `estimate_versions.created_by` column still points to her profile, blocking the delete.
 
----
+### Root Cause
+The `delete-user` edge function only cleans up `personnel`, `vendors`, `user_permissions`, `user_roles`, and `notification_preferences` before deleting the profile. But there are 8 additional tables with foreign keys referencing `profiles` that are not handled:
 
-### 1. Add Reactivate Personnel Hook
+- `estimate_versions.created_by`
+- `purchase_orders.approved_by`
+- `purchase_orders.submitted_by`
+- `project_assignments.user_id`
+- `time_entries.user_id`
+- `personnel_project_assignments.assigned_by`
+- `activities.created_by`
+- `appointments.assigned_to`
+- `tasks.assigned_to`
+- `tasks.created_by`
+- `audit_logs.user_id`
 
-**File: `src/integrations/supabase/hooks/usePersonnel.ts`**
-
-Create a new `useReactivatePersonnel` mutation that sets `status` back to `"active"` for a given personnel ID, with audit logging.
-
----
-
-### 2. Add Reactivate Button to Personnel Table and Mobile Card
-
-**File: `src/components/personnel/PersonnelTable.tsx`**
-
-- Import `useReactivatePersonnel`
-- For personnel with status `"inactive"` or `"do_not_hire"`, show a "Reactivate" action in the dropdown/actions area (RotateCcw icon)
-- On click, call `reactivatePersonnel.mutateAsync(id)` to set status back to `"active"`
-
-**File: `src/components/personnel/MobilePersonnelCard.tsx`**
-
-- Same change: add a Reactivate button for inactive personnel
-
----
-
-### 3. Ensure Deactivated Personnel Are Excluded from User Management
-
-**File: `src/pages/UserManagement.tsx`** (lines 265-271)
-
-The current code already excludes personnel-linked users from the user list. However, it excludes ALL personnel (active and inactive). This is already correct behavior per the user's request -- personnel should not appear in user management at all regardless of status.
-
-No change needed here since the existing filter already removes all personnel-linked users. The user's request is "remove them entirely from the user management page" which is already implemented.
-
----
+### Solution
+Update the `delete-user` edge function to nullify all foreign key references to the user's profile before deleting it. This preserves historical data (estimates, POs, audit logs) while allowing the user record to be removed.
 
 ### Technical Details
 
-**New hook: `useReactivatePersonnel`** in `src/integrations/supabase/hooks/usePersonnel.ts`
+**File: `supabase/functions/delete-user/index.ts`**
 
-```typescript
-export const useReactivatePersonnel = () => {
-  // mutation: update status from 'inactive'/'do_not_hire' back to 'active'
-  // audit log the reactivation
-  // invalidate personnel queries
-  // toast success
-};
+Add nullification steps for all referencing tables before the profile delete, setting the referencing columns to `null`:
+
+```
+estimate_versions.created_by -> null
+purchase_orders.approved_by -> null
+purchase_orders.submitted_by -> null
+activities.created_by -> null
+appointments.assigned_to -> null
+tasks.assigned_to -> null
+tasks.created_by -> null
+audit_logs.user_id -> null
+time_entries.user_id -> null
+project_assignments -> delete rows
+personnel_project_assignments.assigned_by -> null
 ```
 
-**PersonnelTable.tsx changes:**
-- Add a "Reactivate" dropdown menu item that appears only when `person.status !== "active"`
-- Uses `useReactivatePersonnel` hook
-- Shows RotateCcw icon with "Reactivate" label
-
-**MobilePersonnelCard.tsx changes:**
-- Add a "Reactivate" button in the action area for inactive personnel
-- Same hook usage
+Each update will use the admin client and log any errors without stopping the deletion flow, consistent with the existing pattern in the function.
 
 ### Files to Modify
 
 | File | Purpose |
 |------|---------|
-| `src/integrations/supabase/hooks/usePersonnel.ts` | Add `useReactivatePersonnel` mutation hook |
-| `src/components/personnel/PersonnelTable.tsx` | Add Reactivate action in dropdown for inactive personnel |
-| `src/components/personnel/MobilePersonnelCard.tsx` | Add Reactivate button for inactive personnel |
+| `supabase/functions/delete-user/index.ts` | Add cleanup for all 11 additional foreign key references before profile deletion |
 
