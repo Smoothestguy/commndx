@@ -1,71 +1,100 @@
 
 
-## ERP-Style Compact Collapsible Line Items
+## Inline-Editable Table with Drag-to-Reorder Line Items
 
 ### Overview
-Restyle the existing collapsible line items from padded card-style rows to a dense, spreadsheet-like table while keeping the expand/collapse functionality. The collapsed state becomes a tight table row; expanding inserts a compact inline edit section below.
+Make Qty, Price, and Margin directly editable as inline inputs in the table rows (no expand needed), keep the collapsible dropdown only for the product selector and description, and add drag handles to reorder line items.
 
-### File to Modify
-`src/components/job-orders/JobOrderForm.tsx`
+### Changes to `src/components/job-orders/JobOrderForm.tsx`
 
-### Changes
+**1. Make Qty, Price, Margin inline-editable in the collapsed row**
 
-**1. Replace the Card wrapper with a Table**
-- Import `Table, TableHeader, TableBody, TableRow, TableHead, TableCell` from `@/components/ui/table`
-- Remove the `Card/CardHeader/CardContent` wrapper around line items
-- Add a simple heading + "Add Item" button above the table
+Replace the read-only text cells for Qty, Price, and Margin (lines 396-398) with small inline `<Input>` elements that users can type into directly without expanding:
 
-**2. Collapsed row becomes a dense table row**
-Each line item renders as a compact `TableRow` with these columns:
+- Qty: `<Input type="number" step="0.01" />` styled as `h-7 w-[60px] text-xs text-right bg-transparent border-transparent hover:border-border focus:border-primary`
+- Price: Same style, `w-[75px]`
+- Margin: Same style, `w-[65px]` with `%` suffix
+- Each input calls `updateLineItem()` on change and uses `e.stopPropagation()` to prevent toggling the collapsible
+- Total remains read-only text (auto-calculated)
 
-| # | Description | Qty | Unit Price | Margin % | Total | Actions |
-|---|------------|-----|-----------|---------|-------|---------|
+**2. Slim down the collapsible expanded section**
 
-- Styling: `text-xs`, minimal padding, cursor-pointer, hover highlight
-- Chevron icon in the `#` column (e.g., `> 1` or `v 1`)
-- Description truncated with CSS `truncate max-w-[200px]`
-- Delete button (trash icon only, compact) in Actions column with `e.stopPropagation()`
-- Clicking the row calls `toggleExpand(item.id)`
+The expanded section (lines 417-586) now only needs:
+- Product selector (combobox) -- keep as-is
+- Description input -- keep as-is
+- Remove the Qty/Price/Margin/Total fields from the expanded section since they're now inline
 
-**3. Expanded row is a full-width detail row below**
-- When expanded, render a second `TableRow` with a single `TableCell colSpan={7}`
-- Contains the edit form in a compact `grid grid-cols-2 sm:grid-cols-3 gap-2` layout
-- Light background (`bg-secondary/30`) to visually separate from data rows
-- Compact padding (`p-3`), smaller labels (`text-xs`)
-- All existing fields: Product selector, Description, Quantity, Unit Price, Margin, Total (read-only)
-- Validation errors shown inline
+**3. Add drag handle for reordering**
 
-**4. Keep Collapsible component for animation**
-- Wrap the expanded `TableRow` content in `CollapsibleContent` for smooth open/close transitions
-- The `Collapsible` wraps both rows (collapsed + expanded) using a `Fragment` approach
+- Import `GripVertical` from lucide-react
+- Add a drag handle column as the first column (before `#`)
+- Use HTML5 drag-and-drop (simpler than dnd-kit for this table context):
+  - Add `draggable` attribute to each `TableRow`
+  - Track `draggedIndex` and `dragOverIndex` in state
+  - On `onDragEnd`, reorder the `lineItems` array
+  - Visual indicator: highlight the drop target row
 
-**5. Table header styling**
-- Dark header background matching existing table patterns (`bg-[hsl(var(--table-header-bg))] text-[hsl(var(--table-header-fg))]`)
-- Compact `h-8 text-xs font-semibold` headers
+**4. Update table header**
+
+Add a narrow drag handle column header (empty, ~30px wide) before `#`.
 
 ### Technical Details
 
-```text
-Before (current):
-+------------------------------------------+
-| > Item 1 — Wood Floor Labor...   $893.75 |
-+------------------------------------------+
-| v Item 2 — Tile Installation...  $450.00 |
-|  [Product: ___________]                  |
-|  [Description: ___________]              |
-|  [Qty: ___] [Price: ___] [Margin: ___]   |
-|  [Total: $450.00]                        |
-+------------------------------------------+
-
-After (ERP-style):
-+---+-------------------+-----+--------+--------+--------+----+
-| # | Description       | Qty | Price  | Margin | Total  |    |
-+---+-------------------+-----+--------+--------+--------+----+
-|>1 | Wood Floor Labor  | 5   | 150.00 | 19.17% | 893.75 | x  |
-|v2 | Tile Installation | 10  | 40.00  | 12.50% | 450.00 | x  |
-|   [Compact inline edit form with product, desc, qty...]      |
-|>3 | Drywall Repair    | 2   | 200.00 | 10.00% | 400.00 | x  |
-+---+-------------------+-----+--------+--------+--------+----+
+**Inline input styling** (borderless until hover/focus):
+```tsx
+<Input
+  type="number"
+  value={item.quantity}
+  onChange={(e) => updateLineItem(item.id, "quantity", e.target.value)}
+  onClick={(e) => e.stopPropagation()}
+  className="h-7 w-[60px] text-xs text-right bg-transparent border-transparent hover:border-border focus:border-primary tabular-nums px-1"
+/>
 ```
 
-The result: significantly denser rows, still collapsible, matching the ERP/spreadsheet style from the personnel table.
+**Drag reorder state and handlers:**
+```typescript
+const [draggedIndex, setDraggedIndex] = useState<number | null>(null);
+const [dragOverIndex, setDragOverIndex] = useState<number | null>(null);
+
+const handleDragStart = (index: number) => setDraggedIndex(index);
+const handleDragOver = (e: React.DragEvent, index: number) => {
+  e.preventDefault();
+  setDragOverIndex(index);
+};
+const handleDrop = (index: number) => {
+  if (draggedIndex === null || draggedIndex === index) return;
+  const reordered = [...lineItems];
+  const [moved] = reordered.splice(draggedIndex, 1);
+  reordered.splice(index, 0, moved);
+  setLineItems(reordered);
+  setDraggedIndex(null);
+  setDragOverIndex(null);
+};
+```
+
+**Row with drag handle:**
+```tsx
+<TableRow
+  draggable
+  onDragStart={() => handleDragStart(index)}
+  onDragOver={(e) => handleDragOver(e, index)}
+  onDrop={() => handleDrop(index)}
+  onDragEnd={() => { setDraggedIndex(null); setDragOverIndex(null); }}
+  className={cn(
+    "cursor-pointer text-xs hover:bg-muted/50",
+    dragOverIndex === index && "border-t-2 border-primary"
+  )}
+>
+  <TableCell className="py-1.5 px-1 cursor-grab">
+    <GripVertical className="h-3 w-3 text-muted-foreground" />
+  </TableCell>
+  ...
+</TableRow>
+```
+
+### Result
+- Qty, Price, Margin are directly editable in each row -- no expand needed
+- Clicking the chevron/description area still expands to show the product selector and description editor
+- Drag handle on the left lets users reorder rows by dragging
+- Much more efficient workflow for quick edits
+
