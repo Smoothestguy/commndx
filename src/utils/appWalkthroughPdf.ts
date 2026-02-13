@@ -734,7 +734,7 @@ export const generateAppWalkthroughPDF = async () => {
           y = PDF_MARGIN;
         }
 
-        const bulletLines = doc.splitTextToSize(bullet, contentWidth - 8);
+        const bulletLines = doc.splitTextToSize(bullet, contentWidth - 15);
         // Draw bullet dot
         setFillColor(doc, PDF_COLORS.gray600);
         doc.circle(PDF_MARGIN + 3, y - 1.2, 0.8, "F");
