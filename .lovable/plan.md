@@ -1,61 +1,41 @@
 
 
-## Download Application Walkthrough as PDF
+## Add "How to Use Command X" Step-by-Step Guide to Walkthrough PDF
 
 ### Overview
-Create a new utility function that generates a comprehensive, professionally formatted PDF document covering the entire Fairfield Construction Management ERP system -- all modules, workflows, and features -- using the existing `jsPDF` and `pdfHelpers` infrastructure. A button will be added to trigger the download.
+Add a new introductory section (before the current 18 modules) to the walkthrough PDF that provides a practical, step-by-step guide on **how to use Command X** -- what it is, when to use each module, and the typical daily/weekly workflows for different roles.
 
-### New File: `src/utils/appWalkthroughPdf.ts`
+### Changes to `src/utils/appWalkthroughPdf.ts`
 
-A standalone function `generateAppWalkthroughPDF()` that builds a multi-page PDF covering every section from the walkthrough:
+Insert new sections into the `SECTIONS` array at the beginning, shifting existing section numbers up. The new content will cover:
 
-1. **Cover Page** -- Title "Fairfield Construction Management ERP", subtitle "Complete Application Walkthrough", generation date, company branding using `drawDocumentHeader`
-2. **Table of Contents** -- Numbered section list with page references
-3. **Sections** (each using `checkAddPage` for proper pagination):
-   - System Architecture and Layout (3-panel layout, role-based access)
-   - Authentication and User Management (login, roles: Admin/Manager/User)
-   - Dashboard and Navigation (sidebar, quick actions, recent activity)
-   - Customer Management (CRUD, contact info, project linking)
-   - Project Hub (project creation, status tracking, milestones, financial summary)
-   - Estimates (line items, PDF generation, approval workflow, convert to job order)
-   - Job Orders (inline-editable table, drag reorder, margin calculations, status flow)
-   - Purchase Orders (vendor selection, approval, receiving)
-   - Invoices (generation from job orders, payment tracking, aging)
-   - Personnel Management (assignments, rate brackets, assets, export)
-   - Time Tracking (GPS geofencing, idle detection, approval workflow)
-   - Payroll (WH-347 certified payroll, pay period management)
-   - Vendor and Subcontractor Management (portals, compliance, W-9)
-   - Document Management (file uploads, storage, organization)
-   - QuickBooks Integration (bidirectional sync, mapping)
-   - Reports and Analytics (project reports, financial summaries)
-   - Administrative Tools (audit logs, recycle bin, entity merging, permissions)
-   - PDF Generation System (estimates, invoices, work orders, W-9)
+**New Section: "Getting Started with Command X"**
+- What Command X is (construction management ERP for Fairfield Group)
+- How to log in and set up your profile
+- Understanding the interface layout (sidebar, main area, detail pane)
+- Keyboard shortcuts (Cmd+K search, Cmd+Shift+P portal switcher)
 
-4. **Footer** on every page -- page numbers, generation timestamp, company branding
+**New Section: "Step-by-Step Daily Workflows"**
+- **For Field Workers**: Clock in with GPS, log time to project, submit for approval
+- **For Project Managers**: Review dashboard, approve time entries, check project financials, generate invoices
+- **For Admins**: Manage users, review audit logs, run payroll, handle vendor compliance
+- **For Office Staff**: Create estimates, manage customers, process vendor bills, generate POs
 
-### Styling Approach
-- Uses existing `PDF_COLORS`, `PDF_FONTS`, `PDF_MARGIN`, `setColor`, `drawSeparatorLine` from `pdfHelpers.ts`
-- Section headers: bold, blue (`PDF_COLORS.primary`), 14pt
-- Sub-sections: bold, black, 11pt
-- Body text: normal, 10pt with `splitTextToSize` for wrapping
-- Bullet points for feature lists with proper indentation
-- Page breaks managed via `createPageBreakChecker`
+**New Section: "When to Use Each Module"**
+- A guide mapping business scenarios to the right module (e.g., "New client inquiry? Go to Customers", "Need materials? Create a Purchase Order", "Worker needs to get paid? Go to Payroll")
+- Common task flows: Estimate-to-Invoice lifecycle, Hire-to-Payroll lifecycle, PO-to-Payment lifecycle
 
-### Trigger: Button in the Chat or a dedicated page
-
-Add a simple helper component or use a toast action. The simplest approach: create a small component `AppWalkthroughDownload` with a single button that calls `generateAppWalkthroughPDF()` and triggers the browser download. This can be placed wherever makes sense (e.g., Settings page, Help section, or called directly from a command).
+**New Section: "Tips, Shortcuts & Best Practices"**
+- Search and navigation tips
+- PDF generation and export tips
+- Data entry best practices
+- Common pitfalls and how to avoid them
 
 ### Technical Details
 
-```text
-File structure:
-src/utils/appWalkthroughPdf.ts    -- NEW: PDF generation logic (~300 lines)
-src/components/AppWalkthroughDownload.tsx -- NEW: Simple button component
+- Add 4 new `Section` objects to the beginning of the `SECTIONS` array (before "System Architecture")
+- Renumber all existing sections from 5-22 (instead of 1-18)
+- Update the cover page description text to mention the step-by-step guide
+- Update the section count display on cover page (will auto-update since it uses `SECTIONS.length`)
+- No new files needed -- all changes in `src/utils/appWalkthroughPdf.ts`
 
-Pattern:
-- Same pattern as generateProjectReportPDF() in pdfExport.ts
-- Uses jsPDF directly (client-side, no edge function needed)
-- Downloads immediately as "Fairfield_ERP_Walkthrough_YYYY-MM-DD.pdf"
-```
-
-The PDF will be a static reference document (not pulling live data) that describes all features, workflows, and capabilities of the system in detail -- essentially the walkthrough from the previous conversation formatted as a professional PDF.
