@@ -14,7 +14,7 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "@/components/ui/command";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from "@/components/ui/table";
-import { Plus, Trash2, Check, ChevronsUpDown, Package, Wrench, HardHat, ChevronDown, ChevronRight } from "lucide-react";
+import { Plus, Trash2, Check, ChevronsUpDown, Package, Wrench, HardHat, ChevronDown, ChevronRight, GripVertical } from "lucide-react";
 import { Collapsible, CollapsibleContent } from "@/components/ui/collapsible";
 import { useProducts } from "@/integrations/supabase/hooks/useProducts";
 import { cn } from "@/lib/utils";
@@ -92,6 +92,23 @@ export const JobOrderForm = ({
   const [expandedItems, setExpandedItems] = useState<Set<string>>(new Set());
   const [productComboboxOpen, setProductComboboxOpen] = useState<Record<string, boolean>>({});
   const [productSearch, setProductSearch] = useState<Record<string, string>>({});
+  const [draggedIndex, setDraggedIndex] = useState<number | null>(null);
+  const [dragOverIndex, setDragOverIndex] = useState<number | null>(null);
+
+  const handleDragStart = (index: number) => setDraggedIndex(index);
+  const handleDragOver = (e: React.DragEvent, index: number) => {
+    e.preventDefault();
+    setDragOverIndex(index);
+  };
+  const handleDrop = (index: number) => {
+    if (draggedIndex === null || draggedIndex === index) return;
+    const reordered = [...lineItems];
+    const [moved] = reordered.splice(draggedIndex, 1);
+    reordered.splice(index, 0, moved);
+    setLineItems(reordered);
+    setDraggedIndex(null);
+    setDragOverIndex(null);
+  };
 
   const toggleExpand = (id: string) => {
     setExpandedItems(prev => {
@@ -359,11 +376,12 @@ export const JobOrderForm = ({
           <Table>
             <TableHeader>
               <TableRow className="bg-[hsl(var(--table-header-bg))] hover:bg-[hsl(var(--table-header-bg))]">
+                <TableHead className="h-8 text-xs font-semibold text-[hsl(var(--table-header-fg))] w-[30px]"></TableHead>
                 <TableHead className="h-8 text-xs font-semibold text-[hsl(var(--table-header-fg))] w-[50px]">#</TableHead>
                 <TableHead className="h-8 text-xs font-semibold text-[hsl(var(--table-header-fg))]">Description</TableHead>
-                <TableHead className="h-8 text-xs font-semibold text-[hsl(var(--table-header-fg))] w-[70px] text-right">Qty</TableHead>
-                <TableHead className="h-8 text-xs font-semibold text-[hsl(var(--table-header-fg))] w-[90px] text-right">Price</TableHead>
-                <TableHead className="h-8 text-xs font-semibold text-[hsl(var(--table-header-fg))] w-[80px] text-right">Margin</TableHead>
+                <TableHead className="h-8 text-xs font-semibold text-[hsl(var(--table-header-fg))] w-[80px] text-right">Qty</TableHead>
+                <TableHead className="h-8 text-xs font-semibold text-[hsl(var(--table-header-fg))] w-[95px] text-right">Price</TableHead>
+                <TableHead className="h-8 text-xs font-semibold text-[hsl(var(--table-header-fg))] w-[85px] text-right">Margin</TableHead>
                 <TableHead className="h-8 text-xs font-semibold text-[hsl(var(--table-header-fg))] w-[100px] text-right">Total</TableHead>
                 <TableHead className="h-8 text-xs font-semibold text-[hsl(var(--table-header-fg))] w-[40px]"></TableHead>
               </TableRow>
@@ -375,9 +393,20 @@ export const JobOrderForm = ({
                   <Collapsible key={item.id} open={isExpanded} onOpenChange={() => toggleExpand(item.id)} asChild>
                     <>
                       <TableRow
-                        className="cursor-pointer text-xs hover:bg-muted/50 transition-colors"
+                        draggable
+                        onDragStart={() => handleDragStart(index)}
+                        onDragOver={(e) => handleDragOver(e, index)}
+                        onDrop={() => handleDrop(index)}
+                        onDragEnd={() => { setDraggedIndex(null); setDragOverIndex(null); }}
+                        className={cn(
+                          "cursor-pointer text-xs hover:bg-muted/50 transition-colors",
+                          dragOverIndex === index && "border-t-2 border-primary"
+                        )}
                         onClick={() => toggleExpand(item.id)}
                       >
+                        <TableCell className="py-1.5 px-1 cursor-grab" onClick={(e) => e.stopPropagation()}>
+                          <GripVertical className="h-3 w-3 text-muted-foreground" />
+                        </TableCell>
                         <TableCell className="py-1.5 px-2">
                           <div className="flex items-center gap-1">
                             {isExpanded ? (
@@ -393,9 +422,37 @@ export const JobOrderForm = ({
                             {item.description || <span className="text-muted-foreground italic">No description</span>}
                           </span>
                         </TableCell>
-                        <TableCell className="py-1.5 px-2 text-right tabular-nums">{parseFloat(item.quantity) || 0}</TableCell>
-                        <TableCell className="py-1.5 px-2 text-right tabular-nums">{(parseFloat(item.unit_price) || 0).toFixed(2)}</TableCell>
-                        <TableCell className="py-1.5 px-2 text-right tabular-nums">{(parseFloat(item.margin) || 0).toFixed(2)}%</TableCell>
+                        <TableCell className="py-1.5 px-1 text-right" onClick={(e) => e.stopPropagation()}>
+                          <Input
+                            type="number"
+                            step="0.01"
+                            value={item.quantity}
+                            onChange={(e) => updateLineItem(item.id, "quantity", e.target.value)}
+                            className="h-7 w-[60px] text-xs text-right bg-transparent border-transparent hover:border-border focus:border-primary tabular-nums px-1 ml-auto"
+                          />
+                        </TableCell>
+                        <TableCell className="py-1.5 px-1 text-right" onClick={(e) => e.stopPropagation()}>
+                          <Input
+                            type="number"
+                            step="0.01"
+                            value={item.unit_price}
+                            onChange={(e) => updateLineItem(item.id, "unit_price", e.target.value)}
+                            className="h-7 w-[75px] text-xs text-right bg-transparent border-transparent hover:border-border focus:border-primary tabular-nums px-1 ml-auto"
+                          />
+                        </TableCell>
+                        <TableCell className="py-1.5 px-1 text-right" onClick={(e) => e.stopPropagation()}>
+                          <div className="flex items-center justify-end gap-0.5">
+                            <Input
+                              type="number"
+                              step="0.01"
+                              max="99.99"
+                              value={item.margin}
+                              onChange={(e) => updateLineItem(item.id, "margin", e.target.value)}
+                              className="h-7 w-[55px] text-xs text-right bg-transparent border-transparent hover:border-border focus:border-primary tabular-nums px-1"
+                            />
+                            <span className="text-xs text-muted-foreground">%</span>
+                          </div>
+                        </TableCell>
                         <TableCell className="py-1.5 px-2 text-right font-semibold tabular-nums">${item.total.toFixed(2)}</TableCell>
                         <TableCell className="py-1.5 px-2">
                           {lineItems.length > 1 && (
@@ -416,7 +473,7 @@ export const JobOrderForm = ({
                       </TableRow>
                       <CollapsibleContent asChild>
                         <tr>
-                          <td colSpan={7} className="p-0 border-b">
+                          <td colSpan={8} className="p-0 border-b">
                             <div className="bg-secondary/30 p-3 space-y-3">
                               {/* Product Selector */}
                               <div className="space-y-1">
@@ -515,70 +572,18 @@ export const JobOrderForm = ({
                                 </Popover>
                               </div>
 
-                              <div className="grid gap-2 grid-cols-2 sm:grid-cols-3">
-                                <div className="space-y-1 col-span-2 sm:col-span-3">
-                                  <Label className="text-xs">Description *</Label>
-                                  <Input
-                                    value={item.description}
-                                    onChange={(e) => updateLineItem(item.id, "description", e.target.value)}
-                                    placeholder="Item description"
-                                    className="bg-secondary border-border h-8 text-xs"
-                                  />
-                                  {errors[`line_${index}_description`] && (
-                                    <p className="text-xs text-destructive">{errors[`line_${index}_description`]}</p>
-                                  )}
-                                </div>
-
-                                <div className="space-y-1">
-                                  <Label className="text-xs">Quantity *</Label>
-                                  <Input
-                                    type="number"
-                                    step="0.01"
-                                    value={item.quantity}
-                                    onChange={(e) => updateLineItem(item.id, "quantity", e.target.value)}
-                                    className="bg-secondary border-border h-8 text-xs"
-                                  />
-                                  {errors[`line_${index}_quantity`] && (
-                                    <p className="text-xs text-destructive">{errors[`line_${index}_quantity`]}</p>
-                                  )}
-                                </div>
-
-                                <div className="space-y-1">
-                                  <Label className="text-xs">Unit Price *</Label>
-                                  <CalculatorInput
-                                    value={item.unit_price}
-                                    onValueChange={(value) => updateLineItem(item.id, "unit_price", value.toString())}
-                                    placeholder="0.00"
-                                    className="bg-secondary border-border h-8 text-xs"
-                                  />
-                                  {errors[`line_${index}_unit_price`] && (
-                                    <p className="text-xs text-destructive">{errors[`line_${index}_unit_price`]}</p>
-                                  )}
-                                </div>
-
-                                <div className="space-y-1">
-                                  <Label className="text-xs">Margin (%)</Label>
-                                  <Input
-                                    type="number"
-                                    step="0.01"
-                                    max="99.99"
-                                    value={item.margin}
-                                    onChange={(e) => updateLineItem(item.id, "margin", e.target.value)}
-                                    className="bg-secondary border-border h-8 text-xs"
-                                  />
-                                  {errors[`line_${index}_margin`] && (
-                                    <p className="text-xs text-destructive">{errors[`line_${index}_margin`]}</p>
-                                  )}
-                                </div>
-
-                                <div className="space-y-1">
-                                  <Label className="text-xs">Total</Label>
-                                  <Input
-                                    value={`$${item.total.toFixed(2)}`}
-                                    readOnly
-                                    className="bg-muted border-border font-semibold h-8 text-xs"
-                                  />
-                                </div>
+                              {/* Description */}
+                              <div className="space-y-1">
+                                <Label className="text-xs">Description *</Label>
+                                <Input
+                                  value={item.description}
+                                  onChange={(e) => updateLineItem(item.id, "description", e.target.value)}
+                                  placeholder="Item description"
+                                  className="bg-secondary border-border h-8 text-xs"
+                                />
+                                {errors[`line_${index}_description`] && (
+                                  <p className="text-xs text-destructive">{errors[`line_${index}_description`]}</p>
+                                )}
                               </div>
                             </div>
                           </td>
