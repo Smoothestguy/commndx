@@ -107,35 +107,24 @@ export const ProjectUnitsSection = ({ projectId }: ProjectUnitsSectionProps) => 
       const data = await file.arrayBuffer();
       const workbook = XLSX.read(data);
       const sheet = workbook.Sheets[workbook.SheetNames[0]];
-
-      // Try standard parsing first
-      const rows: any[] = XLSX.utils.sheet_to_json(sheet);
       let unitsToAdd: Array<{ unit_number: string; unit_name?: string; floor?: string }> = [];
 
-      if (rows.length > 0) {
-        unitsToAdd = rows.map(row => ({
-          unit_number: String(row["Unit Number"] || row["unit_number"] || row["Unit"] || row["Room"] || "").trim(),
-          unit_name: String(row["Unit Name"] || row["unit_name"] || row["Name"] || "").trim() || undefined,
-          floor: String(row["Floor"] || row["floor"] || "").trim() || undefined,
-        })).filter(u => u.unit_number);
-      }
+      // Step 1: Try smart detection FIRST (raw arrays - handles non-standard layouts)
+      const rawRows = XLSX.utils.sheet_to_json(sheet, { header: 1 }) as any[][];
+      let headerRowIdx = -1;
+      const colMap: Record<string, number> = {};
 
-      // Fallback: smart detection for non-standard layouts (e.g., "Unit No." header)
-      if (unitsToAdd.length === 0) {
-        const rawRows = XLSX.utils.sheet_to_json(sheet, { header: 1 }) as any[][];
-        let headerRowIdx = -1;
-        const colMap: Record<string, number> = {};
-
-        for (let i = 0; i < Math.min(rawRows.length, 10); i++) {
-          const row = rawRows[i];
-          if (!row) continue;
-          const unitColIdx = row.findIndex((cell: any) =>
-            String(cell || "").toLowerCase().includes("unit no")
-          );
-          if (unitColIdx >= 0) {
+      for (let i = 0; i < Math.min(rawRows.length, 15); i++) {
+        const row = rawRows[i];
+        if (!Array.isArray(row)) continue;
+        for (let j = 0; j < row.length; j++) {
+          const cellVal = String(row[j] ?? "").toLowerCase().trim();
+          if (cellVal.includes("unit no")) {
             headerRowIdx = i;
+            colMap.unit_number = j;
+            // Map remaining columns from this header row
             row.forEach((cell: any, idx: number) => {
-              const label = String(cell || "").toLowerCase();
+              const label = String(cell ?? "").toLowerCase().trim();
               if (label.includes("unit no")) colMap.unit_number = idx;
               if (label.includes("shower size")) colMap.shower_size = idx;
               if (label.includes("ceiling")) colMap.ceiling = idx;
@@ -147,41 +136,57 @@ export const ProjectUnitsSection = ({ projectId }: ProjectUnitsSectionProps) => 
               if (label.includes("bath thresh")) colMap.bath_threshold = idx;
               if (label.includes("entry thresh")) colMap.entry_threshold = idx;
               if (label.includes("shower curb") || label.includes("curbs")) colMap.shower_curbs = idx;
-              // Also detect a generic "floor" column with "(floor)" in the header
               if (label.includes("(floor)") && !colMap.floor_col) colMap.floor_col = idx;
             });
             break;
           }
         }
-
-        if (headerRowIdx >= 0 && colMap.unit_number !== undefined) {
-          for (let i = headerRowIdx + 1; i < rawRows.length; i++) {
-            const row = rawRows[i];
-            if (!row) continue;
-            const unitNum = String(row[colMap.unit_number] || "").trim();
-            if (!unitNum || isNaN(Number(unitNum))) continue;
-
-            const floor = unitNum.length === 3 ? unitNum[0] : undefined;
-            const showerSize = colMap.shower_size !== undefined ? String(row[colMap.shower_size] || "").trim() : undefined;
-            const ceilingHeight = colMap.ceiling !== undefined ? String(row[colMap.ceiling] || "").trim() : undefined;
-            const notes = ceilingHeight ? `Ceiling: ${ceilingHeight}'` : undefined;
-
-            unitsToAdd.push({
-              unit_number: unitNum,
-              unit_name: showerSize || undefined,
-              floor,
-            });
-          }
-        }
-
-        if (unitsToAdd.length === 0) {
-          toast.error("No valid units found. Expected column: 'Unit Number', 'Unit', 'Room', or 'Unit No.'");
-          return;
-        }
-
-        const floors = [...new Set(unitsToAdd.map(u => u.floor).filter(Boolean))];
-        toast.info(`Found ${unitsToAdd.length} units across ${floors.length} floor(s). Importing...`);
+        if (headerRowIdx >= 0) break;
       }
+
+      if (headerRowIdx >= 0 && colMap.unit_number !== undefined) {
+        for (let i = headerRowIdx + 1; i < rawRows.length; i++) {
+          const row = rawRows[i];
+          if (!Array.isArray(row)) continue;
+          const rawVal = row[colMap.unit_number];
+          const unitNum = String(rawVal ?? "").trim();
+          if (!unitNum || !Number.isFinite(Number(unitNum))) continue;
+
+          const floor = unitNum.length === 3 ? unitNum[0] : undefined;
+          const showerSize = colMap.shower_size !== undefined ? String(row[colMap.shower_size] ?? "").trim() : undefined;
+
+          unitsToAdd.push({
+            unit_number: unitNum,
+            unit_name: showerSize || undefined,
+            floor,
+          });
+        }
+        console.log("[CSV Import] Smart detection found", unitsToAdd.length, "units from header row", headerRowIdx);
+      }
+
+      // Step 2: Fall back to standard parsing if smart detection found nothing
+      if (unitsToAdd.length === 0) {
+        const rows: any[] = XLSX.utils.sheet_to_json(sheet);
+        if (rows.length > 0) {
+          unitsToAdd = rows.map(row => ({
+            unit_number: String(
+              row["Unit Number"] || row["unit_number"] || row["Unit"] ||
+              row["Room"] || row["Unit No."] || row["Unit No"] || ""
+            ).trim(),
+            unit_name: String(row["Unit Name"] || row["unit_name"] || row["Name"] || "").trim() || undefined,
+            floor: String(row["Floor"] || row["floor"] || "").trim() || undefined,
+          })).filter(u => u.unit_number);
+        }
+        console.log("[CSV Import] Standard parsing found", unitsToAdd.length, "units");
+      }
+
+      if (unitsToAdd.length === 0) {
+        toast.error("No valid units found. Expected column: 'Unit Number', 'Unit', 'Room', or 'Unit No.'");
+        return;
+      }
+
+      const floors = [...new Set(unitsToAdd.map(u => u.floor).filter(Boolean))];
+      toast.info(`Found ${unitsToAdd.length} units across ${floors.length} floor(s). Importing...`);
 
       await bulkAdd.mutateAsync({ project_id: projectId, units: unitsToAdd });
     } catch (error: any) {
