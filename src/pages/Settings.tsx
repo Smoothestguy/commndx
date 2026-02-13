@@ -39,6 +39,7 @@ import { useUserDisplayPreferences } from "@/hooks/useUserDisplayPreferences";
 import { useSessionAccess } from "@/hooks/useSessionAccess";
 import { CheckForUpdatesButton } from "@/components/electron/UpdateNotification";
 import { DeleteAccountSection } from "@/components/settings/DeleteAccountSection";
+import AppWalkthroughDownload from "@/components/AppWalkthroughDownload";
 
 export default function Settings() {
   const { user, signOut } = useAuth();
@@ -418,6 +419,19 @@ export default function Settings() {
 
           {/* Company Settings - Full Width (Admin Only) */}
           {role === "admin" && <CompanySettingsForm />}
+
+          {/* Documentation */}
+          <div className="border-t pt-6">
+            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+              <div>
+                <p className="font-medium text-sm">Application Documentation</p>
+                <p className="text-xs text-muted-foreground">
+                  Download a complete walkthrough of all features and modules
+                </p>
+              </div>
+              <AppWalkthroughDownload />
+            </div>
+          </div>
 
           {/* Account Actions Footer */}
           <div className="border-t pt-6">
