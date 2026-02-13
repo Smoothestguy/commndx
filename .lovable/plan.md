@@ -1,52 +1,91 @@
 
-## Add Manual Entry Mode to Import Work Order Dialog
 
-### Overview
-Add a toggle at the top of the Import Work Order Dialog so users can choose between extracting items from a document or manually entering line items. Both paths lead to the same editing table and job order creation flow.
+## Fix: Snowballing Job Order Numbers
 
-### UI Changes
+### Problem
+The `generate_job_order_number()` function has a **parsing bug** that causes numbers to snowball. Current data shows numbers like `JO-2626262`, `JO-2626260`, `JO-2626000` instead of the intended `JO-26NNNNN` format.
 
-**File: `src/components/job-orders/ImportWorkOrderDialog.tsx`**
+### Root Cause
+The function uses `SUBSTRING(number FROM 4)` to extract the sequence number. This skips only `JO-` (3 characters) but leaves the 2-digit year prefix attached:
 
-1. **Add an `entryMode` state** (`"extract"` | `"manual"`) defaulting to `"extract"`.
+```
+JO-2600001 → SUBSTRING FROM 4 → "2600001" → integer 2600001
+```
 
-2. **Add a tab-style toggle** at the top of the dialog body (before the file upload area) using the existing `Tabs` component with two options:
-   - "Extract from Document" (FileText icon) -- existing upload flow
-   - "Manual Entry" (Plus icon) -- skip upload, go straight to editing
+So `MAX(2600001) + 1 = 2600002`, then formatted as `JO-26` + `LPAD(2600002, 5, '0')` = `JO-262600002` (LPAD does not truncate, only pads). Each generation produces a longer number, and the MAX keeps climbing.
 
-3. **Show customer/project selection immediately** in both modes (move it above the items table, always visible once a mode is selected). Currently it only appears after extraction; in manual mode there's no extraction step.
+The correct extraction should start at position 6 to skip `JO-YY`:
 
-4. **Manual Entry mode behavior**:
-   - Hide the file upload and "Extract" button
-   - Show the `ExtractedItemsTable` immediately (empty)
-   - Show an "Add Line Item" button below the table that appends a blank item with default values (empty description, qty 1, price 0, unit "EA")
+```
+JO-2600001 → SUBSTRING FROM 6 → "00001" → integer 1
+```
 
-5. **Extract mode** stays exactly as-is (upload file, extract, then edit).
+### Solution
 
-6. **Shared state**: Both modes use the same `extractedItems` state, same editing handlers, same totals calculation, and same "Create Job Order" button.
+**Database migration** -- fix the function and clean up existing bad data:
+
+1. **Update existing malformed numbers** to the correct `JO-26NNNNN` format by re-sequencing them
+2. **Fix the function** to use `SUBSTRING(number FROM 6)` instead of `SUBSTRING(number FROM 4)`
 
 ### Technical Details
 
-**State additions:**
+```sql
+-- Step 1: Re-sequence existing JO-26xxx numbers to proper format
+WITH ranked AS (
+  SELECT id, number,
+    ROW_NUMBER() OVER (ORDER BY created_at) as rn
+  FROM job_orders
+  WHERE number LIKE 'JO-26%'
+)
+UPDATE job_orders
+SET number = 'JO-26' || LPAD(ranked.rn::TEXT, 5, '0')
+FROM ranked
+WHERE job_orders.id = ranked.id;
+
+-- Step 2: Also fix JO-25xxx numbers if they have the same issue
+WITH ranked AS (
+  SELECT id, number,
+    ROW_NUMBER() OVER (ORDER BY created_at) as rn
+  FROM job_orders
+  WHERE number LIKE 'JO-25%'
+    AND number != 'JO-2500001'
+    AND LENGTH(number) > 10
+)
+UPDATE job_orders
+SET number = 'JO-25' || LPAD(ranked.rn::TEXT, 5, '0')
+FROM ranked
+WHERE job_orders.id = ranked.id;
+
+-- Step 3: Fix the function
+CREATE OR REPLACE FUNCTION public.generate_job_order_number()
+  RETURNS text
+  LANGUAGE plpgsql
+  SECURITY DEFINER
+  SET search_path TO 'public'
+AS $$
+DECLARE
+  current_year TEXT;
+  seq_number INTEGER;
+  lock_key BIGINT := 123456789;
+BEGIN
+  PERFORM pg_advisory_xact_lock(lock_key);
+
+  current_year := TO_CHAR(NOW(), 'YY');
+  -- Extract only the 5-digit sequence AFTER 'JO-YY' (position 6 onward)
+  SELECT COALESCE(MAX(CAST(SUBSTRING(number FROM 6) AS INTEGER)), 0) + 1
+  INTO seq_number
+  FROM public.job_orders
+  WHERE number LIKE 'JO-' || current_year || '%'
+    AND LENGTH(number) = 10;  -- Only match properly formatted numbers (JO-YYNNNNN)
+  RETURN 'JO-' || current_year || LPAD(seq_number::TEXT, 5, '0');
+END;
+$$;
 ```
-entryMode: "extract" | "manual" (default: "extract")
-```
-
-**New helper -- `handleAddItem`:**
-Generates a new `ExtractedItem` with a unique id (`manual-{timestamp}`), empty description, qty 1, price 0, unit "EA", total 0, and appends it to `extractedItems`.
-
-**Conditional rendering logic:**
-- `entryMode === "extract"` and no items yet: show file upload area + process button (existing)
-- `entryMode === "manual"` or items exist: show customer/project selectors, items table, "Add Line Item" button, totals, and "Create Job Order" button
-- The "Add Line Item" button is shown in both modes once the table is visible
-
-**Reset behavior:**
-`resetDialog` also resets `entryMode` to `"extract"`.
 
 ### Files to Modify
 
 | File | Change |
 |------|--------|
-| `src/components/job-orders/ImportWorkOrderDialog.tsx` | Add entry mode toggle, manual entry flow, "Add Line Item" button |
+| Database migration (SQL) | Fix substring offset, add LENGTH guard, clean up existing bad numbers |
 
-No database or backend changes needed.
+No application code changes needed.
