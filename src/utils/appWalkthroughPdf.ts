@@ -20,7 +20,165 @@ interface Section {
 
 const SECTIONS: Section[] = [
   {
-    title: "1. System Architecture & Layout",
+    title: "1. Getting Started with Command X",
+    subsections: [
+      {
+        heading: "What is Command X?",
+        bullets: [
+          "Command X is the construction management ERP platform built for Fairfield Group.",
+          "It centralizes every aspect of construction operations — CRM, estimating, job costing, workforce management, payroll, vendor compliance, and financials — in a single system.",
+          "Designed for field workers, project managers, office staff, and administrators to collaborate in real time.",
+        ],
+      },
+      {
+        heading: "How to Log In & Set Up Your Profile",
+        bullets: [
+          "Step 1: Navigate to the Command X login page and enter your email and password.",
+          "Step 2: If this is your first time, check your email for a verification link and click it to activate your account.",
+          "Step 3: After logging in, click your avatar in the top-right corner and select 'Profile' to add your display name, phone, and photo.",
+          "Step 4: Your role (Admin, Manager, or User) is assigned by an administrator — contact your admin if you need elevated access.",
+        ],
+      },
+      {
+        heading: "Understanding the Interface Layout",
+        bullets: [
+          "Left Sidebar: Collapsible navigation organized by category (CRM, Projects, Financial, Workforce, Admin). Click any module to navigate.",
+          "Center Panel: The main workspace where lists, tables, forms, and dashboards are displayed.",
+          "Right Detail Pane: Opens when you select a record — view and edit details without leaving the list view.",
+          "Top Bar: Contains search, notifications, portal switcher, and your profile menu.",
+        ],
+      },
+      {
+        heading: "Keyboard Shortcuts",
+        bullets: [
+          "Cmd+K (or Ctrl+K): Open the command palette to quickly search and navigate to any module, record, or action.",
+          "Cmd+Shift+P (or Ctrl+Shift+P): Open the portal switcher to jump between Admin, Personnel, Vendor, and Subcontractor portals.",
+          "Escape: Close any open dialog, modal, or detail pane.",
+        ],
+      },
+    ],
+  },
+  {
+    title: "2. Step-by-Step Daily Workflows",
+    subsections: [
+      {
+        heading: "For Field Workers",
+        bullets: [
+          "Step 1: Open Command X on your mobile device and tap 'Clock In'. Your GPS location is captured automatically.",
+          "Step 2: Select your assigned project from the list. If geofencing is enabled, you'll be alerted if you're outside the project boundary.",
+          "Step 3: Work your shift. The system tracks your active time automatically.",
+          "Step 4: When done, tap 'Clock Out'. Your GPS location is captured again.",
+          "Step 5: Review your daily time entry and add any notes (e.g., weather delays, equipment issues).",
+          "Step 6: Submit your time entries for supervisor approval at the end of each day or week.",
+        ],
+      },
+      {
+        heading: "For Project Managers",
+        bullets: [
+          "Step 1: Log in and review your Dashboard — check KPI cards for active projects, open estimates, and pending invoices.",
+          "Step 2: Navigate to Time Tracking → Approvals to review and approve/reject submitted time entries.",
+          "Step 3: Go to your Project Hub to check project financials — compare budget vs actual costs and review margin.",
+          "Step 4: If work is complete, go to Invoices and generate an invoice from the job order line items.",
+          "Step 5: Review any pending Change Orders and approve or reject them with notes.",
+          "Step 6: Check the Notifications bell for any alerts requiring your attention (e.g., overdue invoices, expiring certs).",
+        ],
+      },
+      {
+        heading: "For Administrators",
+        bullets: [
+          "Step 1: Review the Admin Dashboard for system-wide alerts and pending items.",
+          "Step 2: Go to User Management to add new users, assign roles, and manage permissions.",
+          "Step 3: Navigate to Audit Logs to review recent system activity and ensure compliance.",
+          "Step 4: Process payroll: Go to Payroll, select the pay period, review approved time entries, and generate WH-347 reports.",
+          "Step 5: Check Vendor Compliance — review expiring insurance certificates and send reminders.",
+          "Step 6: Run financial reports: Revenue summaries, AR aging, and project profitability analysis.",
+        ],
+      },
+      {
+        heading: "For Office Staff",
+        bullets: [
+          "Step 1: Start with customer inquiries — go to Customers to create or look up client records.",
+          "Step 2: Create an Estimate: Select the customer, add line items from the product catalog, set markup, and save as draft.",
+          "Step 3: Send the estimate to the customer for approval. Track status in the Estimates list.",
+          "Step 4: Once approved, convert the Estimate to a Job Order with one click.",
+          "Step 5: When materials are needed, create a Purchase Order linked to the project and vendor.",
+          "Step 6: Process incoming Vendor Bills — match them against POs and approve for payment.",
+        ],
+      },
+    ],
+  },
+  {
+    title: "3. When to Use Each Module",
+    subsections: [
+      {
+        heading: "Scenario-to-Module Guide",
+        bullets: [
+          "New client inquiry? → Go to Customers to create a record and log the interaction.",
+          "Need to price a job? → Go to Estimates to build a detailed proposal with line items and markup.",
+          "Estimate approved by customer? → Convert it to a Job Order to begin tracking costs.",
+          "Need materials or supplies? → Create a Purchase Order linked to the project and vendor.",
+          "Work is complete and ready to bill? → Go to Invoices to generate from job order line items.",
+          "Customer requests a change? → Create a Change Order to document scope additions or deductions.",
+          "Worker needs to get paid? → Go to Payroll to process approved time entries for the pay period.",
+          "Vendor insurance expiring? → Check Vendor Management for compliance alerts and send reminders.",
+          "Need to check profitability? → Go to Reports for project financial summaries and margin analysis.",
+        ],
+      },
+      {
+        heading: "Common Task Flows",
+        bullets: [
+          "Estimate-to-Invoice Lifecycle: Create Estimate → Send to Customer → Customer Approves → Convert to Job Order → Track Costs → Generate Invoice → Record Payment.",
+          "Hire-to-Payroll Lifecycle: Add Personnel → Assign to Project → Set Rate Brackets → Worker Clocks In/Out → Supervisor Approves Time → Run Payroll → Generate WH-347.",
+          "PO-to-Payment Lifecycle: Create Purchase Order → Send to Vendor → Receive Materials → Match Vendor Bill → Approve Payment → Sync to QuickBooks.",
+          "Change Order Flow: Customer/PM Requests Change → Create Change Order → Add/Remove Line Items → Approve → Update Job Order Totals → Invoice the Change.",
+        ],
+      },
+    ],
+  },
+  {
+    title: "4. Tips, Shortcuts & Best Practices",
+    subsections: [
+      {
+        heading: "Search & Navigation Tips",
+        bullets: [
+          "Use Cmd+K to search across all modules instantly — type a customer name, project number, or estimate number to jump directly to the record.",
+          "Pin your most-used modules to the sidebar favorites for quick access.",
+          "Use filters and column sorting on list views to quickly find records — filters persist across sessions.",
+          "Click any record in a list to open the detail pane on the right — no need to navigate away from the list.",
+        ],
+      },
+      {
+        heading: "PDF Generation & Export Tips",
+        bullets: [
+          "All PDFs (estimates, invoices, POs, etc.) use your company branding from Settings → Company Info.",
+          "Make sure your company logo, address, and contact info are set up before generating PDFs for clients.",
+          "Use the 'Export to Excel' buttons on list views for bulk data analysis in spreadsheets.",
+          "Walkthrough and report PDFs can be downloaded from Settings → Application Documentation.",
+        ],
+      },
+      {
+        heading: "Data Entry Best Practices",
+        bullets: [
+          "Always link estimates, job orders, and invoices to a Project — this ensures accurate financial tracking.",
+          "Use the Product Catalog when adding line items to estimates and job orders for consistency.",
+          "Set markup percentages at the line-item level for precise margin control.",
+          "Add notes to time entries, change orders, and invoices — they provide critical context for audits and disputes.",
+        ],
+      },
+      {
+        heading: "Common Pitfalls to Avoid",
+        bullets: [
+          "Don't skip email verification — unverified accounts cannot log in.",
+          "Don't create duplicate customers or vendors — use Search first, then Entity Merge if duplicates exist.",
+          "Don't forget to lock pay periods after processing payroll — this prevents retroactive edits.",
+          "Don't send estimates or invoices as 'Draft' — always change status to 'Sent' so tracking works correctly.",
+          "Don't ignore compliance alerts — expired insurance or certifications can create liability issues.",
+        ],
+      },
+    ],
+  },
+  {
+    title: "5. System Architecture & Layout",
     subsections: [
       {
         heading: "Three-Panel Layout",
@@ -42,7 +200,7 @@ const SECTIONS: Section[] = [
     ],
   },
   {
-    title: "2. Authentication & User Management",
+    title: "6. Authentication & User Management",
     subsections: [
       {
         heading: "Authentication Flow",
@@ -64,7 +222,7 @@ const SECTIONS: Section[] = [
     ],
   },
   {
-    title: "3. Dashboard & Navigation",
+    title: "7. Dashboard & Navigation",
     subsections: [
       {
         heading: "Main Dashboard",
@@ -87,7 +245,7 @@ const SECTIONS: Section[] = [
     ],
   },
   {
-    title: "4. Customer Management (CRM)",
+    title: "8. Customer Management (CRM)",
     subsections: [
       {
         heading: "Customer Records",
@@ -109,7 +267,7 @@ const SECTIONS: Section[] = [
     ],
   },
   {
-    title: "5. Project Hub",
+    title: "9. Project Hub",
     subsections: [
       {
         heading: "Project Lifecycle",
@@ -132,7 +290,7 @@ const SECTIONS: Section[] = [
     ],
   },
   {
-    title: "6. Estimates",
+    title: "10. Estimates",
     subsections: [
       {
         heading: "Estimate Creation",
@@ -155,7 +313,7 @@ const SECTIONS: Section[] = [
     ],
   },
   {
-    title: "7. Job Orders",
+    title: "11. Job Orders",
     subsections: [
       {
         heading: "Inline-Editable Table",
@@ -178,7 +336,7 @@ const SECTIONS: Section[] = [
     ],
   },
   {
-    title: "8. Purchase Orders",
+    title: "12. Purchase Orders",
     subsections: [
       {
         heading: "PO Management",
@@ -201,7 +359,7 @@ const SECTIONS: Section[] = [
     ],
   },
   {
-    title: "9. Invoices",
+    title: "13. Invoices",
     subsections: [
       {
         heading: "Invoice Generation",
@@ -224,7 +382,7 @@ const SECTIONS: Section[] = [
     ],
   },
   {
-    title: "10. Personnel Management",
+    title: "14. Personnel Management",
     subsections: [
       {
         heading: "Personnel Records",
@@ -247,7 +405,7 @@ const SECTIONS: Section[] = [
     ],
   },
   {
-    title: "11. Time Tracking",
+    title: "15. Time Tracking",
     subsections: [
       {
         heading: "GPS-Enabled Clock In/Out",
@@ -270,7 +428,7 @@ const SECTIONS: Section[] = [
     ],
   },
   {
-    title: "12. Payroll",
+    title: "16. Payroll",
     subsections: [
       {
         heading: "WH-347 Certified Payroll",
@@ -293,7 +451,7 @@ const SECTIONS: Section[] = [
     ],
   },
   {
-    title: "13. Vendor & Subcontractor Management",
+    title: "17. Vendor & Subcontractor Management",
     subsections: [
       {
         heading: "Vendor Registry",
@@ -316,7 +474,7 @@ const SECTIONS: Section[] = [
     ],
   },
   {
-    title: "14. Document Management",
+    title: "18. Document Management",
     subsections: [
       {
         heading: "File Storage",
@@ -339,7 +497,7 @@ const SECTIONS: Section[] = [
     ],
   },
   {
-    title: "15. QuickBooks Integration",
+    title: "19. QuickBooks Integration",
     subsections: [
       {
         heading: "Bidirectional Sync",
@@ -362,7 +520,7 @@ const SECTIONS: Section[] = [
     ],
   },
   {
-    title: "16. Reports & Analytics",
+    title: "20. Reports & Analytics",
     subsections: [
       {
         heading: "Project Reports",
@@ -385,7 +543,7 @@ const SECTIONS: Section[] = [
     ],
   },
   {
-    title: "17. Administrative Tools",
+    title: "21. Administrative Tools",
     subsections: [
       {
         heading: "Audit & Compliance",
@@ -408,7 +566,7 @@ const SECTIONS: Section[] = [
     ],
   },
   {
-    title: "18. PDF Generation System",
+    title: "22. PDF Generation System",
     subsections: [
       {
         heading: "Document Types",
@@ -491,7 +649,7 @@ export const generateAppWalkthroughPDF = async () => {
   doc.setFont("helvetica", "normal");
   doc.setFontSize(PDF_FONTS.body);
   const descText = doc.splitTextToSize(
-    "This document provides a comprehensive overview of every module, workflow, and feature in the Fairfield Construction Management ERP system. It covers the full lifecycle from customer acquisition through project delivery, including financial management, workforce tracking, compliance, and administrative tools.",
+    "This document provides a step-by-step guide on how to use Command X, including getting started, daily workflows by role, when to use each module, and best practices — followed by a comprehensive overview of every module, workflow, and feature in the system.",
     contentWidth - 10
   );
   descText.forEach((line: string, i: number) => {
