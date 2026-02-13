@@ -17,6 +17,7 @@ import { Plus, Trash2, Check, ChevronsUpDown, Package, Wrench, HardHat } from "l
 import { useProducts } from "@/integrations/supabase/hooks/useProducts";
 import { cn } from "@/lib/utils";
 import { z } from "zod";
+import { toast } from "sonner";
 
 const lineItemSchema = z.object({
   description: z.string().min(1, "Description is required").max(2000),
@@ -197,6 +198,9 @@ export const JobOrderForm = ({
     });
 
     setErrors(newErrors);
+    if (Object.keys(newErrors).length > 0) {
+      toast.error("Please fix the validation errors before saving.");
+    }
     return Object.keys(newErrors).length === 0;
   };
 
@@ -475,6 +479,11 @@ export const JobOrderForm = ({
                     onChange={(e) => updateLineItem(item.id, "quantity", e.target.value)}
                     className="bg-secondary border-border"
                   />
+                  {errors[`line_${index}_quantity`] && (
+                    <p className="text-sm text-destructive">
+                      {errors[`line_${index}_quantity`]}
+                    </p>
+                  )}
                 </div>
 
                 <div className="space-y-2">
@@ -485,6 +494,11 @@ export const JobOrderForm = ({
                     placeholder="0.00"
                     className="bg-secondary border-border"
                   />
+                  {errors[`line_${index}_unit_price`] && (
+                    <p className="text-sm text-destructive">
+                      {errors[`line_${index}_unit_price`]}
+                    </p>
+                  )}
                 </div>
 
                 <div className="space-y-2">
@@ -497,6 +511,11 @@ export const JobOrderForm = ({
                     onChange={(e) => updateLineItem(item.id, "margin", e.target.value)}
                     className="bg-secondary border-border"
                   />
+                  {errors[`line_${index}_margin`] && (
+                    <p className="text-sm text-destructive">
+                      {errors[`line_${index}_margin`]}
+                    </p>
+                  )}
                 </div>
 
                 <div className="space-y-2">
