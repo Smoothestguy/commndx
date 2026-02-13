@@ -13,7 +13,8 @@ import {
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "@/components/ui/command";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Plus, Trash2, Check, ChevronsUpDown, Package, Wrench, HardHat } from "lucide-react";
+import { Plus, Trash2, Check, ChevronsUpDown, Package, Wrench, HardHat, ChevronDown, ChevronRight } from "lucide-react";
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { useProducts } from "@/integrations/supabase/hooks/useProducts";
 import { cn } from "@/lib/utils";
 import { z } from "zod";
@@ -87,8 +88,18 @@ export const JobOrderForm = ({
   });
 
   const [errors, setErrors] = useState<Record<string, string>>({});
+  const [expandedItems, setExpandedItems] = useState<Set<string>>(new Set());
   const [productComboboxOpen, setProductComboboxOpen] = useState<Record<string, boolean>>({});
   const [productSearch, setProductSearch] = useState<Record<string, string>>({});
+
+  const toggleExpand = (id: string) => {
+    setExpandedItems(prev => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  };
 
   // Group products by type
   const getProductsByType = (type: 'product' | 'service' | 'labor') => {
@@ -141,10 +152,12 @@ export const JobOrderForm = ({
   };
 
   const addLineItem = () => {
+    const newId = crypto.randomUUID();
     setLineItems([
       ...lineItems,
-      { id: crypto.randomUUID(), description: "", quantity: "1", unit_price: "", margin: "0", total: 0 },
+      { id: newId, description: "", quantity: "1", unit_price: "", margin: "0", total: 0 },
     ]);
+    setExpandedItems(prev => new Set(prev).add(newId));
   };
 
   const removeLineItem = (id: string) => {
@@ -338,197 +351,227 @@ export const JobOrderForm = ({
           <CardTitle className="font-heading">Line Items</CardTitle>
         </CardHeader>
         <CardContent className="space-y-4">
-          {lineItems.map((item, index) => (
-            <div
-              key={item.id}
-              className="p-4 rounded-lg bg-secondary/50 border border-border space-y-3"
-            >
-              <div className="flex items-center justify-between mb-2">
-                <span className="text-sm font-medium">Item {index + 1}</span>
-                {lineItems.length > 1 && (
-                  <Button
-                    type="button"
-                    variant="ghost"
-                    size="sm"
-                    onClick={() => removeLineItem(item.id)}
-                  >
-                    <Trash2 className="h-4 w-4 text-destructive" />
-                  </Button>
-                )}
-              </div>
-
-              {/* Product Selector */}
-              <div className="space-y-2">
-                <Label className="text-xs text-muted-foreground">Product (Optional)</Label>
-                <Popover
-                  open={productComboboxOpen[item.id] || false}
-                  onOpenChange={(open) => setProductComboboxOpen(prev => ({ ...prev, [item.id]: open }))}
-                >
-                  <PopoverTrigger asChild>
-                    <Button
-                      variant="outline"
-                      role="combobox"
-                      className={cn(
-                        "w-full justify-between bg-secondary border-border",
-                        !item.product_id && "text-muted-foreground"
-                      )}
-                    >
-                      {item.product_id
-                        ? products?.find(p => p.id === item.product_id)?.name
-                        : "Select product..."}
-                      <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
-                    </Button>
-                  </PopoverTrigger>
-                  <PopoverContent className="w-[400px] p-0" align="start">
-                    <Command>
-                      <CommandInput
-                        placeholder="Search products..."
-                        value={productSearch[item.id] || ""}
-                        onValueChange={(value) => setProductSearch(prev => ({ ...prev, [item.id]: value }))}
-                      />
-                      <CommandList>
-                        <CommandEmpty>No products found.</CommandEmpty>
-                        
-                        {getProductsByType('product').length > 0 && (
-                          <CommandGroup heading={<span className="flex items-center gap-1"><Package className="h-3 w-3" /> Products</span>}>
-                            {getProductsByType('product').map((product) => (
-                              <CommandItem
-                                key={product.id}
-                                value={`${product.name} ${product.sku || ''} ${product.category || ''}`}
-                                onSelect={() => selectProduct(item.id, product.id)}
-                              >
-                                <Check className={cn("mr-2 h-4 w-4", item.product_id === product.id ? "opacity-100" : "opacity-0")} />
-                                <div className="flex flex-col">
-                                  <span>{product.name}</span>
-                                  <span className="text-xs text-muted-foreground">
-                                    ${product.cost?.toFixed(2)} • {product.category || 'Uncategorized'}
-                                  </span>
-                                </div>
-                              </CommandItem>
-                            ))}
-                          </CommandGroup>
+          {lineItems.map((item, index) => {
+            const isExpanded = expandedItems.has(item.id);
+            return (
+              <Collapsible
+                key={item.id}
+                open={isExpanded}
+                onOpenChange={() => toggleExpand(item.id)}
+              >
+                <div className="rounded-lg bg-secondary/50 border border-border overflow-hidden">
+                  {/* Collapsed header row */}
+                  <CollapsibleTrigger asChild>
+                    <div className="flex items-center justify-between p-4 cursor-pointer hover:bg-secondary/80 transition-colors">
+                      <div className="flex items-center gap-3 min-w-0">
+                        {isExpanded ? (
+                          <ChevronDown className="h-4 w-4 shrink-0 text-muted-foreground" />
+                        ) : (
+                          <ChevronRight className="h-4 w-4 shrink-0 text-muted-foreground" />
                         )}
-
-                        {getProductsByType('service').length > 0 && (
-                          <CommandGroup heading={<span className="flex items-center gap-1"><Wrench className="h-3 w-3" /> Services</span>}>
-                            {getProductsByType('service').map((product) => (
-                              <CommandItem
-                                key={product.id}
-                                value={`${product.name} ${product.sku || ''} ${product.category || ''}`}
-                                onSelect={() => selectProduct(item.id, product.id)}
-                              >
-                                <Check className={cn("mr-2 h-4 w-4", item.product_id === product.id ? "opacity-100" : "opacity-0")} />
-                                <div className="flex flex-col">
-                                  <span>{product.name}</span>
-                                  <span className="text-xs text-muted-foreground">
-                                    ${product.cost?.toFixed(2)} • {product.category || 'Uncategorized'}
-                                  </span>
-                                </div>
-                              </CommandItem>
-                            ))}
-                          </CommandGroup>
+                        <span className="text-sm font-medium shrink-0">Item {index + 1}</span>
+                        <span className="text-sm text-muted-foreground truncate max-w-[300px]">
+                          {item.description || "No description"}
+                        </span>
+                      </div>
+                      <div className="flex items-center gap-3 shrink-0">
+                        <span className="text-sm font-semibold">${item.total.toFixed(2)}</span>
+                        {lineItems.length > 1 && (
+                          <Button
+                            type="button"
+                            variant="ghost"
+                            size="sm"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              removeLineItem(item.id);
+                            }}
+                          >
+                            <Trash2 className="h-4 w-4 text-destructive" />
+                          </Button>
                         )}
+                      </div>
+                    </div>
+                  </CollapsibleTrigger>
 
-                        {getProductsByType('labor').length > 0 && (
-                          <CommandGroup heading={<span className="flex items-center gap-1"><HardHat className="h-3 w-3" /> Labor</span>}>
-                            {getProductsByType('labor').map((product) => (
-                              <CommandItem
-                                key={product.id}
-                                value={`${product.name} ${product.sku || ''} ${product.category || ''}`}
-                                onSelect={() => selectProduct(item.id, product.id)}
-                              >
-                                <Check className={cn("mr-2 h-4 w-4", item.product_id === product.id ? "opacity-100" : "opacity-0")} />
-                                <div className="flex flex-col">
-                                  <span>{product.name}</span>
-                                  <span className="text-xs text-muted-foreground">
-                                    ${product.cost?.toFixed(2)}/hr
-                                  </span>
-                                </div>
-                              </CommandItem>
-                            ))}
-                          </CommandGroup>
-                        )}
-                      </CommandList>
-                    </Command>
-                  </PopoverContent>
-                </Popover>
-              </div>
+                  {/* Expanded content */}
+                  <CollapsibleContent>
+                    <div className="px-4 pb-4 pt-0 space-y-3 border-t border-border">
+                      {/* Product Selector */}
+                      <div className="space-y-2 pt-3">
+                        <Label className="text-xs text-muted-foreground">Product (Optional)</Label>
+                        <Popover
+                          open={productComboboxOpen[item.id] || false}
+                          onOpenChange={(open) => setProductComboboxOpen(prev => ({ ...prev, [item.id]: open }))}
+                        >
+                          <PopoverTrigger asChild>
+                            <Button
+                              variant="outline"
+                              role="combobox"
+                              className={cn(
+                                "w-full justify-between bg-secondary border-border",
+                                !item.product_id && "text-muted-foreground"
+                              )}
+                            >
+                              {item.product_id
+                                ? products?.find(p => p.id === item.product_id)?.name
+                                : "Select product..."}
+                              <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                            </Button>
+                          </PopoverTrigger>
+                          <PopoverContent className="w-[400px] p-0" align="start">
+                            <Command>
+                              <CommandInput
+                                placeholder="Search products..."
+                                value={productSearch[item.id] || ""}
+                                onValueChange={(value) => setProductSearch(prev => ({ ...prev, [item.id]: value }))}
+                              />
+                              <CommandList>
+                                <CommandEmpty>No products found.</CommandEmpty>
+                                
+                                {getProductsByType('product').length > 0 && (
+                                  <CommandGroup heading={<span className="flex items-center gap-1"><Package className="h-3 w-3" /> Products</span>}>
+                                    {getProductsByType('product').map((product) => (
+                                      <CommandItem
+                                        key={product.id}
+                                        value={`${product.name} ${product.sku || ''} ${product.category || ''}`}
+                                        onSelect={() => selectProduct(item.id, product.id)}
+                                      >
+                                        <Check className={cn("mr-2 h-4 w-4", item.product_id === product.id ? "opacity-100" : "opacity-0")} />
+                                        <div className="flex flex-col">
+                                          <span>{product.name}</span>
+                                          <span className="text-xs text-muted-foreground">
+                                            ${product.cost?.toFixed(2)} • {product.category || 'Uncategorized'}
+                                          </span>
+                                        </div>
+                                      </CommandItem>
+                                    ))}
+                                  </CommandGroup>
+                                )}
 
-              <div className="grid gap-3 sm:grid-cols-2">
-                <div className="space-y-2 sm:col-span-2">
-                  <Label>Description *</Label>
-                  <Input
-                    value={item.description}
-                    onChange={(e) => updateLineItem(item.id, "description", e.target.value)}
-                    placeholder="Item description"
-                    className="bg-secondary border-border"
-                  />
-                  {errors[`line_${index}_description`] && (
-                    <p className="text-sm text-destructive">
-                      {errors[`line_${index}_description`]}
-                    </p>
-                  )}
+                                {getProductsByType('service').length > 0 && (
+                                  <CommandGroup heading={<span className="flex items-center gap-1"><Wrench className="h-3 w-3" /> Services</span>}>
+                                    {getProductsByType('service').map((product) => (
+                                      <CommandItem
+                                        key={product.id}
+                                        value={`${product.name} ${product.sku || ''} ${product.category || ''}`}
+                                        onSelect={() => selectProduct(item.id, product.id)}
+                                      >
+                                        <Check className={cn("mr-2 h-4 w-4", item.product_id === product.id ? "opacity-100" : "opacity-0")} />
+                                        <div className="flex flex-col">
+                                          <span>{product.name}</span>
+                                          <span className="text-xs text-muted-foreground">
+                                            ${product.cost?.toFixed(2)} • {product.category || 'Uncategorized'}
+                                          </span>
+                                        </div>
+                                      </CommandItem>
+                                    ))}
+                                  </CommandGroup>
+                                )}
+
+                                {getProductsByType('labor').length > 0 && (
+                                  <CommandGroup heading={<span className="flex items-center gap-1"><HardHat className="h-3 w-3" /> Labor</span>}>
+                                    {getProductsByType('labor').map((product) => (
+                                      <CommandItem
+                                        key={product.id}
+                                        value={`${product.name} ${product.sku || ''} ${product.category || ''}`}
+                                        onSelect={() => selectProduct(item.id, product.id)}
+                                      >
+                                        <Check className={cn("mr-2 h-4 w-4", item.product_id === product.id ? "opacity-100" : "opacity-0")} />
+                                        <div className="flex flex-col">
+                                          <span>{product.name}</span>
+                                          <span className="text-xs text-muted-foreground">
+                                            ${product.cost?.toFixed(2)}/hr
+                                          </span>
+                                        </div>
+                                      </CommandItem>
+                                    ))}
+                                  </CommandGroup>
+                                )}
+                              </CommandList>
+                            </Command>
+                          </PopoverContent>
+                        </Popover>
+                      </div>
+
+                      <div className="grid gap-3 sm:grid-cols-2">
+                        <div className="space-y-2 sm:col-span-2">
+                          <Label>Description *</Label>
+                          <Input
+                            value={item.description}
+                            onChange={(e) => updateLineItem(item.id, "description", e.target.value)}
+                            placeholder="Item description"
+                            className="bg-secondary border-border"
+                          />
+                          {errors[`line_${index}_description`] && (
+                            <p className="text-sm text-destructive">
+                              {errors[`line_${index}_description`]}
+                            </p>
+                          )}
+                        </div>
+
+                        <div className="space-y-2">
+                          <Label>Quantity *</Label>
+                          <Input
+                            type="number"
+                            step="0.01"
+                            value={item.quantity}
+                            onChange={(e) => updateLineItem(item.id, "quantity", e.target.value)}
+                            className="bg-secondary border-border"
+                          />
+                          {errors[`line_${index}_quantity`] && (
+                            <p className="text-sm text-destructive">
+                              {errors[`line_${index}_quantity`]}
+                            </p>
+                          )}
+                        </div>
+
+                        <div className="space-y-2">
+                          <Label>Unit Price *</Label>
+                          <CalculatorInput
+                            value={item.unit_price}
+                            onValueChange={(value) => updateLineItem(item.id, "unit_price", value.toString())}
+                            placeholder="0.00"
+                            className="bg-secondary border-border"
+                          />
+                          {errors[`line_${index}_unit_price`] && (
+                            <p className="text-sm text-destructive">
+                              {errors[`line_${index}_unit_price`]}
+                            </p>
+                          )}
+                        </div>
+
+                        <div className="space-y-2">
+                          <Label>Margin (%)</Label>
+                          <Input
+                            type="number"
+                            step="0.01"
+                            max="99.99"
+                            value={item.margin}
+                            onChange={(e) => updateLineItem(item.id, "margin", e.target.value)}
+                            className="bg-secondary border-border"
+                          />
+                          {errors[`line_${index}_margin`] && (
+                            <p className="text-sm text-destructive">
+                              {errors[`line_${index}_margin`]}
+                            </p>
+                          )}
+                        </div>
+
+                        <div className="space-y-2">
+                          <Label>Total</Label>
+                          <Input
+                            value={`$${item.total.toFixed(2)}`}
+                            readOnly
+                            className="bg-muted border-border font-semibold"
+                          />
+                        </div>
+                      </div>
+                    </div>
+                  </CollapsibleContent>
                 </div>
-
-                <div className="space-y-2">
-                  <Label>Quantity *</Label>
-                  <Input
-                    type="number"
-                    step="0.01"
-                    value={item.quantity}
-                    onChange={(e) => updateLineItem(item.id, "quantity", e.target.value)}
-                    className="bg-secondary border-border"
-                  />
-                  {errors[`line_${index}_quantity`] && (
-                    <p className="text-sm text-destructive">
-                      {errors[`line_${index}_quantity`]}
-                    </p>
-                  )}
-                </div>
-
-                <div className="space-y-2">
-                  <Label>Unit Price *</Label>
-                  <CalculatorInput
-                    value={item.unit_price}
-                    onValueChange={(value) => updateLineItem(item.id, "unit_price", value.toString())}
-                    placeholder="0.00"
-                    className="bg-secondary border-border"
-                  />
-                  {errors[`line_${index}_unit_price`] && (
-                    <p className="text-sm text-destructive">
-                      {errors[`line_${index}_unit_price`]}
-                    </p>
-                  )}
-                </div>
-
-                <div className="space-y-2">
-                  <Label>Margin (%)</Label>
-                  <Input
-                    type="number"
-                    step="0.01"
-                    max="99.99"
-                    value={item.margin}
-                    onChange={(e) => updateLineItem(item.id, "margin", e.target.value)}
-                    className="bg-secondary border-border"
-                  />
-                  {errors[`line_${index}_margin`] && (
-                    <p className="text-sm text-destructive">
-                      {errors[`line_${index}_margin`]}
-                    </p>
-                  )}
-                </div>
-
-                <div className="space-y-2">
-                  <Label>Total</Label>
-                  <Input
-                    value={`$${item.total.toFixed(2)}`}
-                    readOnly
-                    className="bg-muted border-border font-semibold"
-                  />
-                </div>
-              </div>
-            </div>
-          ))}
+              </Collapsible>
+            );
+          })}
           
           <Button type="button" variant="outline" className="w-full" onClick={addLineItem}>
             <Plus className="h-4 w-4 mr-2" />
