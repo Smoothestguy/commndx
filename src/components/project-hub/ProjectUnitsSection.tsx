@@ -107,23 +107,80 @@ export const ProjectUnitsSection = ({ projectId }: ProjectUnitsSectionProps) => 
       const data = await file.arrayBuffer();
       const workbook = XLSX.read(data);
       const sheet = workbook.Sheets[workbook.SheetNames[0]];
-      const rows: any[] = XLSX.utils.sheet_to_json(sheet);
 
-      if (rows.length === 0) {
-        toast.error("No data found in the file");
-        return;
+      // Try standard parsing first
+      const rows: any[] = XLSX.utils.sheet_to_json(sheet);
+      let unitsToAdd: Array<{ unit_number: string; unit_name?: string; floor?: string }> = [];
+
+      if (rows.length > 0) {
+        unitsToAdd = rows.map(row => ({
+          unit_number: String(row["Unit Number"] || row["unit_number"] || row["Unit"] || row["Room"] || "").trim(),
+          unit_name: String(row["Unit Name"] || row["unit_name"] || row["Name"] || "").trim() || undefined,
+          floor: String(row["Floor"] || row["floor"] || "").trim() || undefined,
+        })).filter(u => u.unit_number);
       }
 
-      // Map rows to units - expected columns: Unit Number, Unit Name, Floor
-      const unitsToAdd = rows.map(row => ({
-        unit_number: String(row["Unit Number"] || row["unit_number"] || row["Unit"] || row["Room"] || "").trim(),
-        unit_name: String(row["Unit Name"] || row["unit_name"] || row["Name"] || "").trim() || undefined,
-        floor: String(row["Floor"] || row["floor"] || "").trim() || undefined,
-      })).filter(u => u.unit_number);
-
+      // Fallback: smart detection for non-standard layouts (e.g., "Unit No." header)
       if (unitsToAdd.length === 0) {
-        toast.error("No valid units found. Expected column: 'Unit Number' or 'Unit' or 'Room'");
-        return;
+        const rawRows = XLSX.utils.sheet_to_json(sheet, { header: 1 }) as any[][];
+        let headerRowIdx = -1;
+        const colMap: Record<string, number> = {};
+
+        for (let i = 0; i < Math.min(rawRows.length, 10); i++) {
+          const row = rawRows[i];
+          if (!row) continue;
+          const unitColIdx = row.findIndex((cell: any) =>
+            String(cell || "").toLowerCase().includes("unit no")
+          );
+          if (unitColIdx >= 0) {
+            headerRowIdx = i;
+            row.forEach((cell: any, idx: number) => {
+              const label = String(cell || "").toLowerCase();
+              if (label.includes("unit no")) colMap.unit_number = idx;
+              if (label.includes("shower size")) colMap.shower_size = idx;
+              if (label.includes("ceiling")) colMap.ceiling = idx;
+              if (label.includes("carpet")) colMap.carpet = idx;
+              if (label.includes("shower floor") || label.includes("s.f")) colMap.shower_floor = idx;
+              if (label.includes("shower wall") || label.includes("s.w")) colMap.shower_wall = idx;
+              if (label.includes("trim top")) colMap.trim_top = idx;
+              if (label.includes("trim side")) colMap.trim_side = idx;
+              if (label.includes("bath thresh")) colMap.bath_threshold = idx;
+              if (label.includes("entry thresh")) colMap.entry_threshold = idx;
+              if (label.includes("shower curb") || label.includes("curbs")) colMap.shower_curbs = idx;
+              // Also detect a generic "floor" column with "(floor)" in the header
+              if (label.includes("(floor)") && !colMap.floor_col) colMap.floor_col = idx;
+            });
+            break;
+          }
+        }
+
+        if (headerRowIdx >= 0 && colMap.unit_number !== undefined) {
+          for (let i = headerRowIdx + 1; i < rawRows.length; i++) {
+            const row = rawRows[i];
+            if (!row) continue;
+            const unitNum = String(row[colMap.unit_number] || "").trim();
+            if (!unitNum || isNaN(Number(unitNum))) continue;
+
+            const floor = unitNum.length === 3 ? unitNum[0] : undefined;
+            const showerSize = colMap.shower_size !== undefined ? String(row[colMap.shower_size] || "").trim() : undefined;
+            const ceilingHeight = colMap.ceiling !== undefined ? String(row[colMap.ceiling] || "").trim() : undefined;
+            const notes = ceilingHeight ? `Ceiling: ${ceilingHeight}'` : undefined;
+
+            unitsToAdd.push({
+              unit_number: unitNum,
+              unit_name: showerSize || undefined,
+              floor,
+            });
+          }
+        }
+
+        if (unitsToAdd.length === 0) {
+          toast.error("No valid units found. Expected column: 'Unit Number', 'Unit', 'Room', or 'Unit No.'");
+          return;
+        }
+
+        const floors = [...new Set(unitsToAdd.map(u => u.floor).filter(Boolean))];
+        toast.info(`Found ${unitsToAdd.length} units across ${floors.length} floor(s). Importing...`);
       }
 
       await bulkAdd.mutateAsync({ project_id: projectId, units: unitsToAdd });
