@@ -28,13 +28,15 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import { ArrowLeft, Receipt, ShoppingCart, Plus, Briefcase, Pencil, MoreVertical, Trash2 } from "lucide-react";
+import { ArrowLeft, Receipt, ShoppingCart, Plus, Briefcase, Pencil, MoreVertical, Trash2, Building2 } from "lucide-react";
 import { useJobOrder, useDeleteJobOrder } from "@/integrations/supabase/hooks/useJobOrders";
 import { useInvoicesByJobOrder } from "@/integrations/supabase/hooks/useInvoices";
 import { usePurchaseOrders } from "@/integrations/supabase/hooks/usePurchaseOrders";
+import { useJOLineItemAllocations } from "@/integrations/supabase/hooks/useProjectUnits";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { CreateInvoiceFromJODialog } from "@/components/invoices/CreateInvoiceFromJODialog";
 import { formatCurrency } from "@/lib/utils";
+import { cn } from "@/lib/utils";
 
 const JobOrderDetail = () => {
   const { id } = useParams();
@@ -47,7 +49,8 @@ const JobOrderDetail = () => {
   const { data: jobOrder, isLoading: loadingJobOrder, error: errorJobOrder } = useJobOrder(id || "");
   const { data: allInvoices = [], isLoading: loadingInvoices } = useInvoicesByJobOrder(id || "");
   const { data: allPOs = [], isLoading: loadingPOs } = usePurchaseOrders();
-  
+  const { data: allocations } = useJOLineItemAllocations(jobOrder?.project_id);
+
   const relatedPOs = allPOs.filter((po: any) => po.job_order_id === id);
   const relatedInvoices = allInvoices;
 
@@ -290,6 +293,47 @@ const JobOrderDetail = () => {
           </div>
         </CardContent>
       </Card>
+
+      {/* Unit Allocation Summary */}
+      {allocations && allocations.length > 0 && (
+        <Card className="glass border-border/50 mt-6">
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <Building2 className="h-5 w-5 text-primary" />
+              Unit Allocation Summary
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <Table>
+              <TableHeader>
+                <TableRow className="border-border/50">
+                  <TableHead>Line Item</TableHead>
+                  <TableHead className="text-right">Total Qty</TableHead>
+                  <TableHead className="text-right">Assigned</TableHead>
+                  <TableHead className="text-right">Remaining</TableHead>
+                  <TableHead className="text-right">%</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {allocations
+                  .filter(a => jobOrder.line_items.some((li: any) => li.id === a.id))
+                  .map((a) => {
+                    const pct = a.total_quantity > 0 ? Math.round((a.assigned_quantity / a.total_quantity) * 100) : 0;
+                    return (
+                      <TableRow key={a.id} className="border-border/30">
+                        <TableCell className="truncate max-w-[250px]">{a.description}</TableCell>
+                        <TableCell className="text-right tabular-nums">{a.total_quantity.toLocaleString()}</TableCell>
+                        <TableCell className="text-right tabular-nums font-medium text-primary">{a.assigned_quantity.toLocaleString()}</TableCell>
+                        <TableCell className={cn("text-right tabular-nums font-medium", a.remaining_quantity <= 0 ? "text-success" : "text-warning")}>{a.remaining_quantity.toLocaleString()}</TableCell>
+                        <TableCell className="text-right tabular-nums">{pct}%</TableCell>
+                      </TableRow>
+                    );
+                  })}
+              </TableBody>
+            </Table>
+          </CardContent>
+        </Card>
+      )}
 
       {/* Related Purchase Orders */}
       <Card className="glass border-border/50 mt-6">
