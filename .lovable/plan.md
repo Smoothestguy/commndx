@@ -1,86 +1,71 @@
 
 
-## Collapsible Line Items in Job Order Edit Form
+## ERP-Style Compact Collapsible Line Items
 
 ### Overview
-Replace the always-expanded line item cards with a collapsible design. Each item shows a compact summary row (item number, description, total) that expands on click to reveal all editable fields.
+Restyle the existing collapsible line items from padded card-style rows to a dense, spreadsheet-like table while keeping the expand/collapse functionality. The collapsed state becomes a tight table row; expanding inserts a compact inline edit section below.
 
 ### File to Modify
 `src/components/job-orders/JobOrderForm.tsx`
 
 ### Changes
 
-**1. Add expand/collapse state tracking**
-- Add `expandedItems` state as a `Set<string>` to track which line item IDs are expanded
-- Add a `toggleExpand(id)` helper function
-- Newly added items auto-expand (update `addLineItem` to add the new item's ID to the set)
+**1. Replace the Card wrapper with a Table**
+- Import `Table, TableHeader, TableBody, TableRow, TableHead, TableCell` from `@/components/ui/table`
+- Remove the `Card/CardHeader/CardContent` wrapper around line items
+- Add a simple heading + "Add Item" button above the table
 
-**2. Import additional icons**
-- Add `ChevronDown` and `ChevronRight` from lucide-react for the expand/collapse indicator
+**2. Collapsed row becomes a dense table row**
+Each line item renders as a compact `TableRow` with these columns:
 
-**3. Restructure each line item's JSX (lines ~341-531)**
+| # | Description | Qty | Unit Price | Margin % | Total | Actions |
+|---|------------|-----|-----------|---------|-------|---------|
 
-Replace the current flat card layout with a two-part structure:
+- Styling: `text-xs`, minimal padding, cursor-pointer, hover highlight
+- Chevron icon in the `#` column (e.g., `> 1` or `v 1`)
+- Description truncated with CSS `truncate max-w-[200px]`
+- Delete button (trash icon only, compact) in Actions column with `e.stopPropagation()`
+- Clicking the row calls `toggleExpand(item.id)`
 
-**Collapsed header row** (always visible, clickable):
-```
-[ChevronRight/Down] Item 1 — "Wood Floor Labor..." (truncated) ........... $893.75 [Delete]
-```
-- Clicking the row toggles expand/collapse
-- Description truncated to ~40 characters with ellipsis
-- Total shown on the right side
-- Delete button stays in the header (with stopPropagation so it doesn't toggle)
-
-**Expanded content** (conditionally rendered when item is in `expandedItems`):
+**3. Expanded row is a full-width detail row below**
+- When expanded, render a second `TableRow` with a single `TableCell colSpan={7}`
+- Contains the edit form in a compact `grid grid-cols-2 sm:grid-cols-3 gap-2` layout
+- Light background (`bg-secondary/30`) to visually separate from data rows
+- Compact padding (`p-3`), smaller labels (`text-xs`)
 - All existing fields: Product selector, Description, Quantity, Unit Price, Margin, Total (read-only)
-- Same validation error messages
-- Wrapped with a smooth transition (using Collapsible component from `@radix-ui/react-collapsible` already available in the project)
+- Validation errors shown inline
 
-**4. Use the existing Collapsible component**
-The project already has `src/components/ui/collapsible.tsx` wrapping `@radix-ui/react-collapsible`. Use `Collapsible`, `CollapsibleTrigger`, and `CollapsibleContent` for the expand/collapse behavior.
+**4. Keep Collapsible component for animation**
+- Wrap the expanded `TableRow` content in `CollapsibleContent` for smooth open/close transitions
+- The `Collapsible` wraps both rows (collapsed + expanded) using a `Fragment` approach
+
+**5. Table header styling**
+- Dark header background matching existing table patterns (`bg-[hsl(var(--table-header-bg))] text-[hsl(var(--table-header-fg))]`)
+- Compact `h-8 text-xs font-semibold` headers
 
 ### Technical Details
 
-```typescript
-// New state
-const [expandedItems, setExpandedItems] = useState<Set<string>>(new Set());
+```text
+Before (current):
++------------------------------------------+
+| > Item 1 — Wood Floor Labor...   $893.75 |
++------------------------------------------+
+| v Item 2 — Tile Installation...  $450.00 |
+|  [Product: ___________]                  |
+|  [Description: ___________]              |
+|  [Qty: ___] [Price: ___] [Margin: ___]   |
+|  [Total: $450.00]                        |
++------------------------------------------+
 
-const toggleExpand = (id: string) => {
-  setExpandedItems(prev => {
-    const next = new Set(prev);
-    if (next.has(id)) next.delete(id);
-    else next.add(id);
-    return next;
-  });
-};
-
-// In addLineItem, auto-expand the new item:
-setExpandedItems(prev => new Set(prev).add(newItem.id));
+After (ERP-style):
++---+-------------------+-----+--------+--------+--------+----+
+| # | Description       | Qty | Price  | Margin | Total  |    |
++---+-------------------+-----+--------+--------+--------+----+
+|>1 | Wood Floor Labor  | 5   | 150.00 | 19.17% | 893.75 | x  |
+|v2 | Tile Installation | 10  | 40.00  | 12.50% | 450.00 | x  |
+|   [Compact inline edit form with product, desc, qty...]      |
+|>3 | Drywall Repair    | 2   | 200.00 | 10.00% | 400.00 | x  |
++---+-------------------+-----+--------+--------+--------+----+
 ```
 
-**Collapsed row structure:**
-```
-<CollapsibleTrigger className="w-full">
-  <div className="flex items-center justify-between p-4 cursor-pointer hover:bg-secondary/80">
-    <div className="flex items-center gap-3 min-w-0">
-      <ChevronRight/ChevronDown icon (based on expanded state)
-      <span>Item {index + 1}</span>
-      <span className="text-muted-foreground truncate max-w-[300px]">
-        {item.description || "No description"}
-      </span>
-    </div>
-    <div className="flex items-center gap-3">
-      <span className="font-semibold">${item.total.toFixed(2)}</span>
-      <Delete button (with e.stopPropagation)>
-    </div>
-  </div>
-</CollapsibleTrigger>
-```
-
-**Expanded content** wraps the existing product selector, description, quantity, unit price, margin, and total fields inside `<CollapsibleContent>` with padding.
-
-### Visual Result
-- Default view: Clean list of compact rows showing item number, description snippet, and total
-- Click to expand: Full editing form slides open below the summary row
-- Multiple items can be open at once
-- New items open automatically for immediate editing
+The result: significantly denser rows, still collapsible, matching the ERP/spreadsheet style from the personnel table.
