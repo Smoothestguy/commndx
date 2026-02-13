@@ -734,7 +734,7 @@ export const generateAppWalkthroughPDF = async () => {
           y = PDF_MARGIN;
         }
 
-        const bulletLines = doc.splitTextToSize(bullet, contentWidth - 12);
+        const bulletLines = doc.splitTextToSize(bullet, contentWidth - 8);
         // Draw bullet dot
         setFillColor(doc, PDF_COLORS.gray600);
         doc.circle(PDF_MARGIN + 3, y - 1.2, 0.8, "F");
@@ -758,6 +758,6 @@ export const generateAppWalkthroughPDF = async () => {
   }
 
   // ===== SAVE =====
-  const fileName = `Fairfield_ERP_Walkthrough_${new Date().toISOString().split("T")[0]}.pdf`;
+  const fileName = `Command_X_Walkthrough_${new Date().toISOString().split("T")[0]}.pdf`;
   doc.save(fileName);
 };
