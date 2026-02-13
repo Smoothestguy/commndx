@@ -211,9 +211,9 @@ export const ExtractedItemsTable = ({
           ))}
         </TableBody>
       </Table>
-      {items.length === 0 && (
+    {items.length === 0 && (
         <div className="p-8 text-center text-muted-foreground">
-          No items extracted. Upload a work order to get started.
+          No items yet. Add line items to get started.
         </div>
       )}
     </div>

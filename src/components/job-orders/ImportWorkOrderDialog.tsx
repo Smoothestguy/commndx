@@ -8,7 +8,7 @@ import {
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
-import { Upload, Loader2, FileText, X } from "lucide-react";
+import { Upload, Loader2, FileText, X, Plus } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { useCustomers } from "@/integrations/supabase/hooks/useCustomers";
@@ -25,6 +25,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { SearchInput } from "@/components/ui/search-input";
+import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
 interface ImportWorkOrderDialogProps {
   open: boolean;
@@ -36,6 +37,7 @@ export const ImportWorkOrderDialog = ({
   onOpenChange,
 }: ImportWorkOrderDialogProps) => {
   const navigate = useNavigate();
+  const [entryMode, setEntryMode] = useState<"extract" | "manual">("extract");
   const [file, setFile] = useState<File | null>(null);
   const [isProcessing, setIsProcessing] = useState(false);
   const [extractedItems, setExtractedItems] = useState<ExtractedItem[]>([]);
@@ -56,6 +58,23 @@ export const ImportWorkOrderDialog = ({
     c.name.toLowerCase().includes(customerSearch.toLowerCase()) ||
     c.company?.toLowerCase().includes(customerSearch.toLowerCase())
   );
+
+  const showItemsTable = entryMode === "manual" || extractedItems.length > 0;
+
+  const handleAddItem = () => {
+    const newItem: ExtractedItem = {
+      id: `manual-${Date.now()}`,
+      originalDescription: "",
+      productCode: "",
+      matchedProductId: null,
+      description: "",
+      quantity: 1,
+      unitPrice: 0,
+      unit: "EA",
+      total: 0,
+    };
+    setExtractedItems((items) => [...items, newItem]);
+  };
 
   const handleFileChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
     const selectedFile = e.target.files?.[0];
@@ -243,6 +262,7 @@ export const ImportWorkOrderDialog = ({
   };
 
   const resetDialog = () => {
+    setEntryMode("extract");
     setFile(null);
     setExtractedItems([]);
     setCustomerId("");
@@ -266,8 +286,22 @@ export const ImportWorkOrderDialog = ({
         </DialogHeader>
 
         <div className="space-y-6">
-          {/* File Upload */}
-          {!extractedItems.length && (
+          {/* Entry Mode Toggle */}
+          <Tabs value={entryMode} onValueChange={(v) => setEntryMode(v as "extract" | "manual")}>
+            <TabsList className="w-full">
+              <TabsTrigger value="extract" className="flex-1 gap-2">
+                <FileText className="h-4 w-4" />
+                Extract from Document
+              </TabsTrigger>
+              <TabsTrigger value="manual" className="flex-1 gap-2">
+                <Plus className="h-4 w-4" />
+                Manual Entry
+              </TabsTrigger>
+            </TabsList>
+          </Tabs>
+
+          {/* File Upload -- only in extract mode when no items yet */}
+          {entryMode === "extract" && !extractedItems.length && (
             <div
               onDrop={handleDrop}
               onDragOver={(e) => e.preventDefault()}
@@ -310,8 +344,8 @@ export const ImportWorkOrderDialog = ({
             </div>
           )}
 
-          {/* Process Button */}
-          {file && !extractedItems.length && (
+          {/* Process Button -- only in extract mode */}
+          {entryMode === "extract" && file && !extractedItems.length && (
             <Button
               onClick={processFile}
               disabled={isProcessing}
@@ -331,65 +365,63 @@ export const ImportWorkOrderDialog = ({
             </Button>
           )}
 
-          {/* Customer & Project Selection */}
-          {extractedItems.length > 0 && (
-            <div className="grid grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <Label>Customer</Label>
-                <Select value={customerId} onValueChange={(val) => {
-                  setCustomerId(val);
-                  setProjectId("");
-                }}>
-                  <SelectTrigger>
-                    <SelectValue placeholder="Select customer" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <div className="p-2">
-                      <SearchInput
-                        placeholder="Search customers..."
-                        value={customerSearch}
-                        onChange={setCustomerSearch}
-                        className="mb-2"
-                      />
-                    </div>
-                    {filteredCustomers?.map((customer) => (
-                      <SelectItem key={customer.id} value={customer.id}>
-                        {customer.name}
-                        {customer.company && ` - ${customer.company}`}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-              <div className="space-y-2">
-                <Label>Project</Label>
-                <Select
-                  value={projectId}
-                  onValueChange={setProjectId}
-                  disabled={!customerId}
-                >
-                  <SelectTrigger>
-                    <SelectValue
-                      placeholder={
-                        customerId ? "Select project" : "Select customer first"
-                      }
-                    />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {projects?.map((project) => (
-                      <SelectItem key={project.id} value={project.id}>
-                        {project.name}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-            </div>
-          )}
-
-          {/* Extracted Items Table */}
-          {extractedItems.length > 0 && (
+          {/* Customer & Project Selection -- visible when items table is shown */}
+          {showItemsTable && (
             <>
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label>Customer</Label>
+                  <Select value={customerId} onValueChange={(val) => {
+                    setCustomerId(val);
+                    setProjectId("");
+                  }}>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Select customer" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <div className="p-2">
+                        <SearchInput
+                          placeholder="Search customers..."
+                          value={customerSearch}
+                          onChange={setCustomerSearch}
+                          className="mb-2"
+                        />
+                      </div>
+                      {filteredCustomers?.map((customer) => (
+                        <SelectItem key={customer.id} value={customer.id}>
+                          {customer.name}
+                          {customer.company && ` - ${customer.company}`}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="space-y-2">
+                  <Label>Project</Label>
+                  <Select
+                    value={projectId}
+                    onValueChange={setProjectId}
+                    disabled={!customerId}
+                  >
+                    <SelectTrigger>
+                      <SelectValue
+                        placeholder={
+                          customerId ? "Select project" : "Select customer first"
+                        }
+                      />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {projects?.map((project) => (
+                        <SelectItem key={project.id} value={project.id}>
+                          {project.name}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
+
+              {/* Items Table */}
               <ExtractedItemsTable
                 items={extractedItems}
                 products={products || []}
@@ -397,6 +429,16 @@ export const ImportWorkOrderDialog = ({
                 onItemDelete={handleItemDelete}
                 onProductMatch={handleProductMatch}
               />
+
+              {/* Add Line Item Button */}
+              <Button
+                variant="outline"
+                onClick={handleAddItem}
+                className="w-full"
+              >
+                <Plus className="h-4 w-4 mr-2" />
+                Add Line Item
+              </Button>
 
               {/* Totals */}
               <div className="flex justify-end">
@@ -431,7 +473,7 @@ export const ImportWorkOrderDialog = ({
                 </Button>
                 <Button
                   onClick={handleCreateJobOrder}
-                  disabled={!customerId || !projectId || addJobOrder.isPending}
+                  disabled={!customerId || !projectId || extractedItems.length === 0 || addJobOrder.isPending}
                 >
                   {addJobOrder.isPending ? (
                     <>
