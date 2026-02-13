@@ -602,7 +602,7 @@ const addPageFooter = (doc: jsPDF, pageNum: number, totalPages: number, dateStr:
   setColor(doc, PDF_COLORS.gray500);
   doc.setFontSize(PDF_FONTS.xsmall);
   doc.setFont("helvetica", "normal");
-  doc.text("Fairfield Construction Management ERP — Application Walkthrough", PDF_MARGIN, footerY);
+  doc.text("Command X — Application Walkthrough", PDF_MARGIN, footerY);
   doc.text(`Page ${pageNum} of ${totalPages}`, pageWidth - PDF_MARGIN, footerY, { align: "right" });
   doc.text(`Generated ${dateStr}`, pageWidth / 2, footerY, { align: "center" });
 };
@@ -626,9 +626,7 @@ export const generateAppWalkthroughPDF = async () => {
   setColor(doc, PDF_COLORS.white);
   doc.setFont("helvetica", "bold");
   doc.setFontSize(24);
-  doc.text("Fairfield Construction", pageWidth / 2, 28, { align: "center" });
-  doc.setFontSize(18);
-  doc.text("Management ERP", pageWidth / 2, 40, { align: "center" });
+  doc.text("Command X", pageWidth / 2, 35, { align: "center" });
 
   // Subtitle
   setColor(doc, PDF_COLORS.gray600);
