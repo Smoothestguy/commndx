@@ -4966,50 +4966,6 @@ export type Database = {
           },
         ]
       }
-      project_units: {
-        Row: {
-          created_at: string
-          created_by: string | null
-          floor: string | null
-          id: string
-          notes: string | null
-          project_id: string
-          unit_name: string | null
-          unit_number: string
-          updated_at: string
-        }
-        Insert: {
-          created_at?: string
-          created_by?: string | null
-          floor?: string | null
-          id?: string
-          notes?: string | null
-          project_id: string
-          unit_name?: string | null
-          unit_number: string
-          updated_at?: string
-        }
-        Update: {
-          created_at?: string
-          created_by?: string | null
-          floor?: string | null
-          id?: string
-          notes?: string | null
-          project_id?: string
-          unit_name?: string | null
-          unit_number?: string
-          updated_at?: string
-        }
-        Relationships: [
-          {
-            foreignKeyName: "project_units_project_id_fkey"
-            columns: ["project_id"]
-            isOneToOne: false
-            referencedRelation: "projects"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
       projects: {
         Row: {
           address: string | null
@@ -6725,64 +6681,6 @@ export type Database = {
           },
         ]
       }
-      unit_scope_items: {
-        Row: {
-          assigned_vendor_id: string | null
-          created_at: string
-          id: string
-          jo_line_item_id: string
-          notes: string | null
-          quantity: number
-          status: Database["public"]["Enums"]["unit_status"]
-          unit_id: string
-          updated_at: string
-        }
-        Insert: {
-          assigned_vendor_id?: string | null
-          created_at?: string
-          id?: string
-          jo_line_item_id: string
-          notes?: string | null
-          quantity?: number
-          status?: Database["public"]["Enums"]["unit_status"]
-          unit_id: string
-          updated_at?: string
-        }
-        Update: {
-          assigned_vendor_id?: string | null
-          created_at?: string
-          id?: string
-          jo_line_item_id?: string
-          notes?: string | null
-          quantity?: number
-          status?: Database["public"]["Enums"]["unit_status"]
-          unit_id?: string
-          updated_at?: string
-        }
-        Relationships: [
-          {
-            foreignKeyName: "unit_scope_items_assigned_vendor_id_fkey"
-            columns: ["assigned_vendor_id"]
-            isOneToOne: false
-            referencedRelation: "vendors"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "unit_scope_items_jo_line_item_id_fkey"
-            columns: ["jo_line_item_id"]
-            isOneToOne: false
-            referencedRelation: "job_order_line_items"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "unit_scope_items_unit_id_fkey"
-            columns: ["unit_id"]
-            isOneToOne: false
-            referencedRelation: "project_units"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
       user_display_preferences: {
         Row: {
           created_at: string
@@ -8025,7 +7923,6 @@ export type Database = {
         | "approved"
         | "invoiced"
         | "void"
-      unit_status: "not_started" | "in_progress" | "complete" | "verified"
       vendor_bill_status: "draft" | "open" | "paid" | "partially_paid" | "void"
       vendor_status: "active" | "inactive"
       vendor_type: "contractor" | "personnel" | "supplier"
@@ -8288,7 +8185,6 @@ export const Constants = {
         "invoiced",
         "void",
       ],
-      unit_status: ["not_started", "in_progress", "complete", "verified"],
       vendor_bill_status: ["draft", "open", "paid", "partially_paid", "void"],
       vendor_status: ["active", "inactive"],
       vendor_type: ["contractor", "personnel", "supplier"],

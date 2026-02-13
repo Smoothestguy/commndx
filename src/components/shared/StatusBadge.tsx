@@ -21,11 +21,7 @@ type Status =
   | "closed"
   | "open"
   | "partially_paid"
-  | "void"
-  | "not_started"
-  | "in_progress"
-  | "complete"
-  | "verified";
+  | "void";
 
 // Badge styles (outlined/subtle)
 const badgeStyles: Record<Status, string> = {
@@ -50,10 +46,6 @@ const badgeStyles: Record<Status, string> = {
   open: "bg-primary/10 text-primary border-primary/20",
   partially_paid: "bg-warning/10 text-warning border-warning/20",
   void: "bg-destructive/10 text-destructive border-destructive/20",
-  not_started: "bg-muted text-muted-foreground border-muted-foreground/20",
-  in_progress: "bg-primary/10 text-primary border-primary/20",
-  complete: "bg-success/10 text-success border-success/20",
-  verified: "bg-success/10 text-success border-success/20",
 };
 
 // Cell styles (solid background for table cells)
@@ -79,10 +71,6 @@ const cellStyles: Record<Status, string> = {
   open: "bg-primary text-white",
   partially_paid: "bg-warning text-white",
   void: "bg-destructive text-white",
-  not_started: "bg-muted-foreground text-white",
-  in_progress: "bg-primary text-white",
-  complete: "bg-success text-white",
-  verified: "bg-success text-white",
 };
 
 const statusLabels: Record<Status, string> = {
@@ -107,10 +95,6 @@ const statusLabels: Record<Status, string> = {
   open: "Open",
   partially_paid: "Partially Paid",
   void: "Void",
-  not_started: "Not Started",
-  in_progress: "In Progress",
-  complete: "Complete",
-  verified: "Verified",
 };
 
 interface StatusBadgeProps {

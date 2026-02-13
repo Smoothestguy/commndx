@@ -1,124 +1,100 @@
 
 
-## Fix CSV Import - Debug and Robustify Parsing
+## Inline-Editable Table with Drag-to-Reorder Line Items
 
-### Root Cause Analysis
-The import function has a logic flow issue with this specific CSV format. The CSV has:
-- Row 1: all empty (commas only)
-- Row 2: some numbers scattered
-- Row 3: actual headers ("Unit No.", "Carpet", etc.)
-- Row 4: empty
-- Rows 5+: unit data
+### Overview
+Make Qty, Price, and Margin directly editable as inline inputs in the table rows (no expand needed), keep the collapsible dropdown only for the product selector and description, and add drag handles to reorder line items.
 
-The XLSX library's `sheet_to_json()` with defaults uses row 1 as headers (all empty), producing objects with `__EMPTY_X` keys. The standard mapping correctly produces 0 valid units, and the fallback smart detection should run. However, there may be subtle issues with how XLSX handles sparse CSV rows in the raw array mode that prevent proper detection.
+### Changes to `src/components/job-orders/JobOrderForm.tsx`
 
-### Fix Strategy
-Improve the `handleImportCSV` function in `ProjectUnitsSection.tsx` with:
+**1. Make Qty, Price, Margin inline-editable in the collapsed row**
 
-1. **Add console logging** at each stage for debugging
-2. **Always try smart detection** regardless of standard parsing results -- run it first since the standard approach is too fragile for non-standard layouts
-3. **More robust cell checking** -- handle cases where XLSX returns `undefined` for empty cells in sparse arrays by using optional chaining
-4. **Better number detection** -- the current `isNaN(Number(unitNum))` check may fail if the unit number has whitespace or is parsed as a number by XLSX (already a number type, not a string)
+Replace the read-only text cells for Qty, Price, and Margin (lines 396-398) with small inline `<Input>` elements that users can type into directly without expanding:
 
-### Changes to `src/components/project-hub/ProjectUnitsSection.tsx`
+- Qty: `<Input type="number" step="0.01" />` styled as `h-7 w-[60px] text-xs text-right bg-transparent border-transparent hover:border-border focus:border-primary`
+- Price: Same style, `w-[75px]`
+- Margin: Same style, `w-[65px]` with `%` suffix
+- Each input calls `updateLineItem()` on change and uses `e.stopPropagation()` to prevent toggling the collapsible
+- Total remains read-only text (auto-calculated)
 
-Rewrite the `handleImportCSV` function to:
+**2. Slim down the collapsible expanded section**
 
-1. **Try smart detection FIRST** (scan raw arrays for "Unit No." header)
-2. **Fall back to standard parsing** only if smart detection finds nothing
-3. Add robust type coercion: `String(row[colMap.unit_number] ?? "")` instead of `String(row[colMap.unit_number] || "")`
-4. Use `Number.isFinite(Number(unitNum))` instead of `!isNaN(Number(unitNum))` for more reliable number checking (rejects empty strings and NaN)
-5. Add a `console.log` for debugging that shows the parsed units before inserting
-6. Ensure the toast messages fire correctly
+The expanded section (lines 417-586) now only needs:
+- Product selector (combobox) -- keep as-is
+- Description input -- keep as-is
+- Remove the Qty/Price/Margin/Total fields from the expanded section since they're now inline
+
+**3. Add drag handle for reordering**
+
+- Import `GripVertical` from lucide-react
+- Add a drag handle column as the first column (before `#`)
+- Use HTML5 drag-and-drop (simpler than dnd-kit for this table context):
+  - Add `draggable` attribute to each `TableRow`
+  - Track `draggedIndex` and `dragOverIndex` in state
+  - On `onDragEnd`, reorder the `lineItems` array
+  - Visual indicator: highlight the drop target row
+
+**4. Update table header**
+
+Add a narrow drag handle column header (empty, ~30px wide) before `#`.
 
 ### Technical Details
 
+**Inline input styling** (borderless until hover/focus):
+```tsx
+<Input
+  type="number"
+  value={item.quantity}
+  onChange={(e) => updateLineItem(item.id, "quantity", e.target.value)}
+  onClick={(e) => e.stopPropagation()}
+  className="h-7 w-[60px] text-xs text-right bg-transparent border-transparent hover:border-border focus:border-primary tabular-nums px-1"
+/>
+```
+
+**Drag reorder state and handlers:**
 ```typescript
-const handleImportCSV = async (e) => {
-  const file = e.target.files?.[0];
-  if (!file) return;
+const [draggedIndex, setDraggedIndex] = useState<number | null>(null);
+const [dragOverIndex, setDragOverIndex] = useState<number | null>(null);
 
-  try {
-    const data = await file.arrayBuffer();
-    const workbook = XLSX.read(data);
-    const sheet = workbook.Sheets[workbook.SheetNames[0]];
-    let unitsToAdd = [];
-
-    // Step 1: Try smart detection first (raw arrays)
-    const rawRows = XLSX.utils.sheet_to_json(sheet, { header: 1 });
-    let headerRowIdx = -1;
-    const colMap = {};
-
-    for (let i = 0; i < Math.min(rawRows.length, 15); i++) {
-      const row = rawRows[i];
-      if (!Array.isArray(row)) continue;
-      for (let j = 0; j < row.length; j++) {
-        const cellVal = String(row[j] ?? "").toLowerCase().trim();
-        if (cellVal.includes("unit no")) {
-          headerRowIdx = i;
-          colMap.unit_number = j;
-          // Map remaining columns from this header row
-          row.forEach((cell, idx) => {
-            const label = String(cell ?? "").toLowerCase().trim();
-            // ... same column mapping logic
-          });
-          break;
-        }
-      }
-      if (headerRowIdx >= 0) break;
-    }
-
-    if (headerRowIdx >= 0 && colMap.unit_number !== undefined) {
-      for (let i = headerRowIdx + 1; i < rawRows.length; i++) {
-        const row = rawRows[i];
-        if (!Array.isArray(row)) continue;
-        const rawVal = row[colMap.unit_number];
-        const unitNum = String(rawVal ?? "").trim();
-        if (!unitNum || !Number.isFinite(Number(unitNum))) continue;
-        // ... build unit object
-      }
-    }
-
-    // Step 2: Fall back to standard parsing if smart detection found nothing
-    if (unitsToAdd.length === 0) {
-      const rows = XLSX.utils.sheet_to_json(sheet);
-      unitsToAdd = rows.map(row => ({
-        unit_number: String(
-          row["Unit Number"] || row["unit_number"] || row["Unit"] || 
-          row["Room"] || row["Unit No."] || row["Unit No"] || ""
-        ).trim(),
-        // ... other fields
-      })).filter(u => u.unit_number);
-    }
-
-    if (unitsToAdd.length === 0) {
-      toast.error("No valid units found...");
-      return;
-    }
-
-    const floors = [...new Set(unitsToAdd.map(u => u.floor).filter(Boolean))];
-    toast.info(`Found ${unitsToAdd.length} units across ${floors.length} floor(s). Importing...`);
-    
-    await bulkAdd.mutateAsync({ project_id: projectId, units: unitsToAdd });
-  } catch (error) {
-    toast.error(`Import failed: ${error.message}`);
-  }
-  e.target.value = "";
+const handleDragStart = (index: number) => setDraggedIndex(index);
+const handleDragOver = (e: React.DragEvent, index: number) => {
+  e.preventDefault();
+  setDragOverIndex(index);
+};
+const handleDrop = (index: number) => {
+  if (draggedIndex === null || draggedIndex === index) return;
+  const reordered = [...lineItems];
+  const [moved] = reordered.splice(draggedIndex, 1);
+  reordered.splice(index, 0, moved);
+  setLineItems(reordered);
+  setDraggedIndex(null);
+  setDragOverIndex(null);
 };
 ```
 
-Key improvements:
-- Smart detection runs FIRST, not as a fallback
-- Added `"Unit No."` and `"Unit No"` to the standard key checks
-- Using `?? ""` instead of `|| ""` for null/undefined coercion
-- Using `Number.isFinite()` for more reliable numeric checks
-- Scanning 15 rows instead of 10 for header detection
-- Using `Array.isArray(row)` guard for sparse data
-- Always showing the info toast with count before importing
+**Row with drag handle:**
+```tsx
+<TableRow
+  draggable
+  onDragStart={() => handleDragStart(index)}
+  onDragOver={(e) => handleDragOver(e, index)}
+  onDrop={() => handleDrop(index)}
+  onDragEnd={() => { setDraggedIndex(null); setDragOverIndex(null); }}
+  className={cn(
+    "cursor-pointer text-xs hover:bg-muted/50",
+    dragOverIndex === index && "border-t-2 border-primary"
+  )}
+>
+  <TableCell className="py-1.5 px-1 cursor-grab">
+    <GripVertical className="h-3 w-3 text-muted-foreground" />
+  </TableCell>
+  ...
+</TableRow>
+```
 
-### Files to Modify
-
-| File | Action |
-|------|--------|
-| `src/components/project-hub/ProjectUnitsSection.tsx` | Modify - fix import parsing order and robustness |
+### Result
+- Qty, Price, Margin are directly editable in each row -- no expand needed
+- Clicking the chevron/description area still expands to show the product selector and description editor
+- Drag handle on the left lets users reorder rows by dragging
+- Much more efficient workflow for quick edits
 
