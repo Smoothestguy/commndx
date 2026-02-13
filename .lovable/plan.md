@@ -1,53 +1,53 @@
 
 
-## Fix: User Deletion Failing Due to Foreign Key References
+## Fix: Duplicate Key Error When Creating Job Orders
 
 ### Problem
-When trying to delete user "Christina Flores", the edge function fails because the `profiles` table has foreign key references from multiple other tables that aren't being cleaned up before the profile deletion. Specifically, the `estimate_versions.created_by` column still points to her profile, blocking the delete.
+When creating a job order, the `generate_job_order_number()` database function sometimes generates a number that already exists, causing a "duplicate key value violates unique constraint 'job_orders_number_key'" error.
 
 ### Root Cause
-The `delete-user` edge function only cleans up `personnel`, `vendors`, `user_permissions`, `user_roles`, and `notification_preferences` before deleting the profile. But there are 8 additional tables with foreign keys referencing `profiles` that are not handled:
-
-- `estimate_versions.created_by`
-- `purchase_orders.approved_by`
-- `purchase_orders.submitted_by`
-- `project_assignments.user_id`
-- `time_entries.user_id`
-- `personnel_project_assignments.assigned_by`
-- `activities.created_by`
-- `appointments.assigned_to`
-- `tasks.assigned_to`
-- `tasks.created_by`
-- `audit_logs.user_id`
+The function uses `MAX()` to find the next sequence number but:
+1. Has no advisory lock, so two concurrent inserts can get the same number
+2. Does not account for soft-deleted job orders (rows with `deleted_at` set) that still occupy numbers in the table
 
 ### Solution
-Update the `delete-user` edge function to nullify all foreign key references to the user's profile before deleting it. This preserves historical data (estimates, POs, audit logs) while allowing the user record to be removed.
+Update the `generate_job_order_number()` function to add a `pg_advisory_xact_lock` (same pattern already used by `generate_personnel_payment_number`). This prevents concurrent transactions from generating the same number.
 
 ### Technical Details
 
-**File: `supabase/functions/delete-user/index.ts`**
+**Database migration** -- Replace the function:
 
-Add nullification steps for all referencing tables before the profile delete, setting the referencing columns to `null`:
+```sql
+CREATE OR REPLACE FUNCTION public.generate_job_order_number()
+  RETURNS text
+  LANGUAGE plpgsql
+  SECURITY DEFINER
+  SET search_path TO 'public'
+AS $$
+DECLARE
+  current_year TEXT;
+  seq_number INTEGER;
+  lock_key BIGINT := 123456789;
+BEGIN
+  PERFORM pg_advisory_xact_lock(lock_key);
 
+  current_year := TO_CHAR(NOW(), 'YY');
+  SELECT COALESCE(MAX(CAST(SUBSTRING(number FROM 4) AS INTEGER)), 0) + 1
+  INTO seq_number
+  FROM public.job_orders
+  WHERE number LIKE 'JO-' || current_year || '%';
+  RETURN 'JO-' || current_year || LPAD(seq_number::TEXT, 5, '0');
+END;
+$$;
 ```
-estimate_versions.created_by -> null
-purchase_orders.approved_by -> null
-purchase_orders.submitted_by -> null
-activities.created_by -> null
-appointments.assigned_to -> null
-tasks.assigned_to -> null
-tasks.created_by -> null
-audit_logs.user_id -> null
-time_entries.user_id -> null
-project_assignments -> delete rows
-personnel_project_assignments.assigned_by -> null
-```
 
-Each update will use the admin client and log any errors without stopping the deletion flow, consistent with the existing pattern in the function.
+The `pg_advisory_xact_lock` serializes all concurrent calls to this function within the same transaction scope, ensuring no two inserts generate the same number.
 
 ### Files to Modify
 
 | File | Purpose |
 |------|---------|
-| `supabase/functions/delete-user/index.ts` | Add cleanup for all 11 additional foreign key references before profile deletion |
+| Database migration (SQL) | Add advisory lock to `generate_job_order_number()` function |
+
+No application code changes needed -- the function is called automatically by the existing `set_job_order_number` trigger.
 
