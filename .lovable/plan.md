@@ -1,100 +1,107 @@
 
 
-## Inline-Editable Table with Drag-to-Reorder Line Items
+## Visual Floor Plan Map for Room/Unit Tracking
 
 ### Overview
-Make Qty, Price, and Margin directly editable as inline inputs in the table rows (no expand needed), keep the collapsible dropdown only for the product selector and description, and add drag handles to reorder line items.
+Build a visual, interactive floor plan map component that renders rooms as labeled boxes organized by floor, using the data extracted from the uploaded PDF spreadsheet. This replaces (or supplements) the current table-only view with a spatial grid layout.
 
-### Changes to `src/components/job-orders/JobOrderForm.tsx`
+### Data from PDF
+The uploaded document contains **~65 rooms** across 3 floors:
+- **Floor 2**: Units 251, 252
+- **Floor 4**: Units 412-447
+- **Floor 5**: Units 512-547
 
-**1. Make Qty, Price, Margin inline-editable in the collapsed row**
+Each room has scope quantities for: Carpet, Shower Floor, Shower Wall, Trim Top, Trim Side, Bath Threshold, Entry Threshold, Shower Curbs.
 
-Replace the read-only text cells for Qty, Price, and Margin (lines 396-398) with small inline `<Input>` elements that users can type into directly without expanding:
+### Changes
 
-- Qty: `<Input type="number" step="0.01" />` styled as `h-7 w-[60px] text-xs text-right bg-transparent border-transparent hover:border-border focus:border-primary`
-- Price: Same style, `w-[75px]`
-- Margin: Same style, `w-[65px]` with `%` suffix
-- Each input calls `updateLineItem()` on change and uses `e.stopPropagation()` to prevent toggling the collapsible
-- Total remains read-only text (auto-calculated)
+**1. New Component: `src/components/project-hub/ProjectUnitsFloorPlan.tsx`**
 
-**2. Slim down the collapsible expanded section**
+A visual floor plan component that:
+- Groups units by floor (derived from unit number: 2xx = Floor 2, 4xx = Floor 4, 5xx = Floor 5)
+- Renders each room as a clickable card/box in a responsive grid layout
+- Color-codes rooms by status (gray = Not Started, blue = In Progress, green = Complete, purple = Verified)
+- Shows the unit number prominently inside each box
+- Clicking a room opens a detail panel/dialog showing all scope items, quantities, assigned contractors, and status
+- Includes a floor selector (tabs) to switch between floors
 
-The expanded section (lines 417-586) now only needs:
-- Product selector (combobox) -- keep as-is
-- Description input -- keep as-is
-- Remove the Qty/Price/Margin/Total fields from the expanded section since they're now inline
+**2. Update `src/components/project-hub/ProjectUnitsSection.tsx`**
 
-**3. Add drag handle for reordering**
+- Add a toggle between "Table View" and "Floor Plan View" using icon buttons (List / LayoutGrid)
+- Default to Floor Plan view
+- Both views share the same data hooks and dialogs
 
-- Import `GripVertical` from lucide-react
-- Add a drag handle column as the first column (before `#`)
-- Use HTML5 drag-and-drop (simpler than dnd-kit for this table context):
-  - Add `draggable` attribute to each `TableRow`
-  - Track `draggedIndex` and `dragOverIndex` in state
-  - On `onDragEnd`, reorder the `lineItems` array
-  - Visual indicator: highlight the drop target row
+**3. Auto-import PDF data**
 
-**4. Update table header**
+- Enhance the existing CSV/Excel import to also parse the specific column format from this PDF (Unit No., Carpet, Shower Floor, etc.)
+- Map the PDF columns to JO line item descriptions for automatic scope item creation during import
 
-Add a narrow drag handle column header (empty, ~30px wide) before `#`.
+### Visual Layout
+
+```text
++---------------------------+
+| Floor 4                   |
++---------------------------+
+| [412] [414] [415] [416]   |
+| [418] [419] [420] [421]   |
+| [422] [423] [424] [425]   |
+| [426] [427] [428] [429]   |
+| [430] [431] [432] [433]   |
+| [435] [436] [437] [438]   |
+| [439] [440] [441] [442]   |
+| [444] [445] [446] [447]   |
++---------------------------+
+```
+
+Each room box shows:
+- Unit number (large, centered)
+- Status color indicator (border or background tint)
+- Small progress indicator (e.g., "3/7 scopes done")
+- Hover tooltip with scope summary
+
+Clicking a room opens a side panel or dialog with full scope details, contractor assignments, and status controls.
 
 ### Technical Details
 
-**Inline input styling** (borderless until hover/focus):
+**Floor Plan Component structure:**
 ```tsx
-<Input
-  type="number"
-  value={item.quantity}
-  onChange={(e) => updateLineItem(item.id, "quantity", e.target.value)}
-  onClick={(e) => e.stopPropagation()}
-  className="h-7 w-[60px] text-xs text-right bg-transparent border-transparent hover:border-border focus:border-primary tabular-nums px-1"
-/>
+// ProjectUnitsFloorPlan.tsx
+- FloorTabs (Floor 2 | Floor 4 | Floor 5)
+- Grid of RoomCard components
+  - Each RoomCard: unit_number, status color, scope progress
+  - onClick: opens detail dialog with scope items table
 ```
 
-**Drag reorder state and handlers:**
+**Floor derivation logic:**
 ```typescript
-const [draggedIndex, setDraggedIndex] = useState<number | null>(null);
-const [dragOverIndex, setDragOverIndex] = useState<number | null>(null);
-
-const handleDragStart = (index: number) => setDraggedIndex(index);
-const handleDragOver = (e: React.DragEvent, index: number) => {
-  e.preventDefault();
-  setDragOverIndex(index);
-};
-const handleDrop = (index: number) => {
-  if (draggedIndex === null || draggedIndex === index) return;
-  const reordered = [...lineItems];
-  const [moved] = reordered.splice(draggedIndex, 1);
-  reordered.splice(index, 0, moved);
-  setLineItems(reordered);
-  setDraggedIndex(null);
-  setDragOverIndex(null);
+const getFloor = (unitNumber: string) => {
+  const num = parseInt(unitNumber);
+  if (num >= 200 && num < 300) return "2";
+  if (num >= 400 && num < 500) return "4";
+  if (num >= 500 && num < 600) return "5";
+  return "Other";
 };
 ```
 
-**Row with drag handle:**
-```tsx
-<TableRow
-  draggable
-  onDragStart={() => handleDragStart(index)}
-  onDragOver={(e) => handleDragOver(e, index)}
-  onDrop={() => handleDrop(index)}
-  onDragEnd={() => { setDraggedIndex(null); setDragOverIndex(null); }}
-  className={cn(
-    "cursor-pointer text-xs hover:bg-muted/50",
-    dragOverIndex === index && "border-t-2 border-primary"
-  )}
->
-  <TableCell className="py-1.5 px-1 cursor-grab">
-    <GripVertical className="h-3 w-3 text-muted-foreground" />
-  </TableCell>
-  ...
-</TableRow>
+**Room card styling (status-based):**
+```typescript
+const statusColors = {
+  not_started: "bg-muted border-border",
+  in_progress: "bg-blue-500/10 border-blue-500",
+  complete: "bg-green-500/10 border-green-500",
+  verified: "bg-purple-500/10 border-purple-500",
+};
 ```
 
-### Result
-- Qty, Price, Margin are directly editable in each row -- no expand needed
-- Clicking the chevron/description area still expands to show the product selector and description editor
-- Drag handle on the left lets users reorder rows by dragging
-- Much more efficient workflow for quick edits
+**View toggle in ProjectUnitsSection:**
+- Add state: `const [viewMode, setViewMode] = useState<"table" | "floorplan">("floorplan")`
+- Render either the existing table or the new FloorPlan component based on toggle
+- Both views share the same `useProjectUnits` data
+
+### Files to Create/Modify
+
+| File | Action |
+|------|--------|
+| `src/components/project-hub/ProjectUnitsFloorPlan.tsx` | Create -- visual grid floor plan component |
+| `src/components/project-hub/ProjectUnitsSection.tsx` | Modify -- add view toggle between table and floor plan |
 
