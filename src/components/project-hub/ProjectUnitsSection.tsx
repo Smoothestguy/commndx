@@ -7,7 +7,8 @@ import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from "@
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { StatusBadge } from "@/components/shared/StatusBadge";
-import { Plus, Trash2, Upload, Building2, ChevronDown, ChevronRight, Edit } from "lucide-react";
+import { Plus, Trash2, Upload, Building2, ChevronDown, ChevronRight, Edit, LayoutGrid, List } from "lucide-react";
+import { ProjectUnitsFloorPlan } from "./ProjectUnitsFloorPlan";
 import { Collapsible, CollapsibleContent } from "@/components/ui/collapsible";
 import { 
   useProjectUnits, 
@@ -40,6 +41,7 @@ export const ProjectUnitsSection = ({ projectId }: ProjectUnitsSectionProps) => 
   const updateStatus = useUpdateScopeItemStatus();
   const bulkAdd = useBulkAddUnits();
 
+  const [viewMode, setViewMode] = useState<"table" | "floorplan">("floorplan");
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
   const [expandedUnits, setExpandedUnits] = useState<Set<string>>(new Set());
   const [isAssignDialogOpen, setIsAssignDialogOpen] = useState(false);
@@ -150,7 +152,27 @@ export const ProjectUnitsSection = ({ projectId }: ProjectUnitsSectionProps) => 
             Units / Rooms ({units?.length || 0})
           </h3>
         </div>
-        <div className="flex gap-2">
+        <div className="flex gap-2 items-center">
+          <div className="flex border border-border rounded-md overflow-hidden">
+            <Button
+              type="button"
+              variant={viewMode === "floorplan" ? "default" : "ghost"}
+              size="icon"
+              className="h-7 w-7 rounded-none"
+              onClick={() => setViewMode("floorplan")}
+            >
+              <LayoutGrid className="h-3.5 w-3.5" />
+            </Button>
+            <Button
+              type="button"
+              variant={viewMode === "table" ? "default" : "ghost"}
+              size="icon"
+              className="h-7 w-7 rounded-none"
+              onClick={() => setViewMode("table")}
+            >
+              <List className="h-3.5 w-3.5" />
+            </Button>
+          </div>
           <label>
             <input type="file" accept=".xlsx,.xls,.csv" className="hidden" onChange={handleImportCSV} />
             <Button type="button" variant="outline" size="sm" asChild>
@@ -203,7 +225,7 @@ export const ProjectUnitsSection = ({ projectId }: ProjectUnitsSectionProps) => 
         </Card>
       )}
 
-      {/* Units Table */}
+      {/* Units View */}
       {isLoading ? (
         <Card className="glass border-border">
           <CardContent className="py-8 text-center text-muted-foreground">Loading units...</CardContent>
@@ -214,6 +236,17 @@ export const ProjectUnitsSection = ({ projectId }: ProjectUnitsSectionProps) => 
             No units yet. Add units to start tracking room-level scope allocations.
           </CardContent>
         </Card>
+      ) : viewMode === "floorplan" ? (
+        <ProjectUnitsFloorPlan
+          units={units}
+          projectId={projectId}
+          allocations={allocations}
+          activeVendors={activeVendors}
+          onAssignScope={(unitId) => openAssignDialog(unitId)}
+          onDeleteUnit={(unitId) => deleteUnit.mutate({ id: unitId, project_id: projectId })}
+          onUpdateStatus={(id, status) => updateStatus.mutate({ id, project_id: projectId, status })}
+          onDeleteScopeItem={(id) => deleteScopeItem.mutate({ id, project_id: projectId })}
+        />
       ) : (
         <div className="rounded-md border border-border overflow-hidden">
           <Table>
