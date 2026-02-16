@@ -568,6 +568,8 @@ const Vendors = () => {
         ...vendorData,
         rating: null,
         user_id: null,
+        onboarding_status: null,
+        onboarding_completed_at: null,
       });
 
       // Auto-sync to QuickBooks if connected

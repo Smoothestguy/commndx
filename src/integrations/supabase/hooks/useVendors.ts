@@ -38,6 +38,8 @@ export interface Vendor {
   notes: string | null;
   // Portal access
   user_id: string | null;
+  onboarding_status: string | null;
+  onboarding_completed_at: string | null;
   created_at: string;
   updated_at: string;
 }

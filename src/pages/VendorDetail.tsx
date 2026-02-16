@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
+import { SendVendorOnboardingDialog } from "@/components/vendors/SendVendorOnboardingDialog";
 import { PageLayout } from "@/components/layout/PageLayout";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -35,7 +36,7 @@ import {
 import { 
   ArrowLeft, Building2, Mail, Phone, FileText, AlertCircle, Users, 
   MapPin, DollarSign, Receipt, CreditCard, ShoppingCart, ClipboardList,
-  LayoutDashboard, Loader2, ExternalLink, UserCheck, UserPlus, UserMinus, Clock, Edit
+  LayoutDashboard, Loader2, ExternalLink, UserCheck, UserPlus, UserMinus, Clock, Edit, Send
 } from "lucide-react";
 import { format } from "date-fns";
 
@@ -52,6 +53,7 @@ export default function VendorDetail() {
   const navigate = useNavigate();
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
   const [isInviteDialogOpen, setIsInviteDialogOpen] = useState(false);
+  const [isOnboardingDialogOpen, setIsOnboardingDialogOpen] = useState(false);
   const { data: vendors, isLoading } = useVendors();
   const { data: expenseCategories } = useExpenseCategories("vendor");
   const { data: purchaseOrders } = usePurchaseOrders();
@@ -128,6 +130,12 @@ export default function VendorDetail() {
             <Edit className="mr-2 h-4 w-4" />
             Edit Vendor
           </Button>
+          {vendor.onboarding_status !== "completed" && (
+            <Button variant="outline" onClick={() => setIsOnboardingDialogOpen(true)}>
+              <Send className="mr-2 h-4 w-4" />
+              {vendor.onboarding_status === "invited" ? "Resend Onboarding" : "Send Onboarding"}
+            </Button>
+          )}
         </div>
         {/* Basic Information Card */}
         <Card>
@@ -657,6 +665,15 @@ export default function VendorDetail() {
           vendorId={vendor.id}
           vendorEmail={vendor.email}
           vendorName={vendor.name}
+        />
+
+        {/* Send Onboarding Dialog */}
+        <SendVendorOnboardingDialog
+          open={isOnboardingDialogOpen}
+          onOpenChange={setIsOnboardingDialogOpen}
+          vendorId={vendor.id}
+          vendorName={vendor.name}
+          vendorEmail={vendor.email}
         />
       </div>
     </PageLayout>
