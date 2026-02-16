@@ -1,52 +1,92 @@
 
 
-## Fix: Create Missing `vendor-documents` Storage Bucket
+## QuickBooks Bill Sync: Billable Items to Item Details, Expenses to Category Details
 
 ### Problem
-When uploading a document on the vendor detail page, the upload fails with "Bucket not found" because the `vendor-documents` storage bucket has never been created in the database.
+Currently, `quickbooks-create-bill` sends ALL line items as **Category details** (`AccountBasedExpenseLineDetail`), regardless of whether they are billable or not. The `quickbooks-update-bill` function already has logic to use **Item details** (`ItemBasedExpenseLineDetail`) when a line item has a `qb_product_mapping_id`, but the create function does not.
 
-### Fix
-Create the `vendor-documents` storage bucket and add RLS policies so authenticated users can upload, read, and delete files.
+The desired behavior (matching the QuickBooks screenshot):
+- **Billable line items** (those with a QB product mapping) should sync as **Item details** with `BillableStatus: 'Billable'`
+- **Non-billable line items** (personnel expenses, general expenses without product mapping) should sync as **Category details** with `BillableStatus: 'NotBillable'`
+
+### Changes
+
+#### 1. Update `quickbooks-create-bill/index.ts`
+
+Port the same `qb_product_mapping_id` lookup logic from `quickbooks-update-bill` into `quickbooks-create-bill`:
+
+- After building the category map (line ~559), add a QB product mapping lookup (same as update-bill lines 460-478)
+- In the line item loop (lines 597-620), check if the line has a `qb_product_mapping_id` with a valid QB item:
+  - **If yes**: Use `ItemBasedExpenseLineDetail` with `BillableStatus: 'Billable'`, including `ItemRef`, `Qty`, and `UnitPrice`
+  - **If no**: Use `AccountBasedExpenseLineDetail` with `BillableStatus: 'NotBillable'` (current behavior)
+
+#### 2. Update `quickbooks-update-bill/index.ts`
+
+The update function already uses `ItemBasedExpenseLineDetail` for mapped items, but sets `BillableStatus: 'NotBillable'` on all lines. Update mapped Item detail lines to use `BillableStatus: 'Billable'` so they appear as billable in QuickBooks (matching the green checkmarks in the screenshot).
 
 ### Technical Details
 
-**Database migration** -- single SQL file:
+**In `quickbooks-create-bill/index.ts`** (after line 558, before building line items):
 
-1. Create the `vendor-documents` bucket (private, since it may contain sensitive documents like EIN letters, W-9s, insurance certs)
-2. Add RLS policies on `storage.objects` for this bucket:
-   - Authenticated users can upload files (`INSERT`)
-   - Authenticated users can read files (`SELECT`)
-   - Authenticated users can delete files (`DELETE`)
-
-Since the bucket is private, the existing `VendorDocumentUpload` component calls `getPublicUrl()` which won't work for private buckets. Two options:
-- **Option A**: Make the bucket public (simpler, matches current code using `getPublicUrl`)
-- **Option B**: Make the bucket private and switch to signed URLs
-
-Given that vendor documents (W-9s, insurance certs, EIN letters) are sensitive, the bucket should be **private**. However, the current code uses `getPublicUrl` and stores that URL. To keep changes minimal and get uploads working immediately, we will make the bucket **public** -- matching how `form-uploads` works. A future enhancement can migrate to signed URLs.
-
-**Migration SQL:**
-```sql
-INSERT INTO storage.buckets (id, name, public)
-VALUES ('vendor-documents', 'vendor-documents', true)
-ON CONFLICT (id) DO NOTHING;
-
-CREATE POLICY "Authenticated users can upload vendor documents"
-ON storage.objects FOR INSERT TO authenticated
-WITH CHECK (bucket_id = 'vendor-documents');
-
-CREATE POLICY "Authenticated users can read vendor documents"
-ON storage.objects FOR SELECT TO authenticated
-USING (bucket_id = 'vendor-documents');
-
-CREATE POLICY "Authenticated users can delete vendor documents"
-ON storage.objects FOR DELETE TO authenticated
-USING (bucket_id = 'vendor-documents');
+```typescript
+// Fetch QB product mappings for line items that have them
+const qbProductMap = new Map();
+if (lineItems && lineItems.length > 0) {
+  const qbMappingIds = lineItems
+    .map((item: any) => item.qb_product_mapping_id)
+    .filter((id: string | null) => id !== null);
+  
+  if (qbMappingIds.length > 0) {
+    const { data: mappings } = await supabase
+      .from('qb_product_service_mappings')
+      .select('id, name, quickbooks_item_id')
+      .in('id', qbMappingIds);
+    
+    if (mappings) {
+      for (const m of mappings) {
+        if (m.quickbooks_item_id) {
+          qbProductMap.set(m.id, { qb_item_id: m.quickbooks_item_id, name: m.name });
+        }
+      }
+    }
+  }
+}
 ```
 
-### Files Changed
-| File | Action |
-|------|--------|
-| Database migration | Create bucket + RLS policies |
+Then in the line item loop, replace the current always-Category logic with:
 
-No code changes needed -- the existing upload component will work once the bucket exists.
+```typescript
+const qbProduct = item.qb_product_mapping_id 
+  ? qbProductMap.get(item.qb_product_mapping_id) 
+  : null;
+
+if (qbProduct) {
+  // Billable: Use ItemBasedExpenseLineDetail
+  qbLineItems.push({
+    DetailType: 'ItemBasedExpenseLineDetail',
+    Amount: Number(item.total),
+    Description: desc,
+    ItemBasedExpenseLineDetail: {
+      ItemRef: { value: qbProduct.qb_item_id },
+      Qty: qty,
+      UnitPrice: unitPrice,
+      BillableStatus: 'Billable',
+    },
+  });
+} else {
+  // Non-billable: Use AccountBasedExpenseLineDetail
+  // (existing category-based logic)
+}
+```
+
+**In `quickbooks-update-bill/index.ts`** (line 505):
+
+Change `BillableStatus: 'NotBillable'` to `BillableStatus: 'Billable'` inside the `ItemBasedExpenseLineDetail` block.
+
+### Files to Modify
+
+| File | Change |
+|------|--------|
+| `supabase/functions/quickbooks-create-bill/index.ts` | Add QB product mapping lookup + use Item details for billable lines |
+| `supabase/functions/quickbooks-update-bill/index.ts` | Change BillableStatus to 'Billable' for Item detail lines |
 
