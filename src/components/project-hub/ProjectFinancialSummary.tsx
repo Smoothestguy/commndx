@@ -22,6 +22,9 @@ interface FinancialData {
   totalOtherExpenses: number;
   netProfit: number;
   netMargin: number;
+  // Supervision fields (optional)
+  supervisionLaborCost?: number;
+  fieldLaborCost?: number;
 }
 
 interface ProjectFinancialSummaryProps {
@@ -155,6 +158,36 @@ export function ProjectFinancialSummary({ data }: ProjectFinancialSummaryProps) 
             </p>
           </div>
         </div>
+
+        {/* Supervision Cost Impact */}
+        {(data.supervisionLaborCost !== undefined && data.supervisionLaborCost > 0) && (
+          <div className="pt-4 border-t border-border">
+            <div className="flex items-center gap-2 mb-3">
+              <Users className="h-4 w-4 text-blue-500" />
+              <p className="text-sm font-medium">Supervision Cost Impact</p>
+            </div>
+            <div className="grid gap-4 sm:grid-cols-3">
+              <div className="space-y-1">
+                <p className="text-xs text-muted-foreground">Supervision / Internal Labor</p>
+                <p className="text-lg font-bold text-blue-500">{formatCurrency(data.supervisionLaborCost)}</p>
+              </div>
+              <div className="space-y-1">
+                <p className="text-xs text-muted-foreground">Margin Before Supervision</p>
+                <p className="text-lg font-bold text-green-500">
+                  {data.totalContractValue > 0
+                    ? ((data.totalContractValue - (data.totalPOValue + data.totalOtherExpenses + (data.fieldLaborCost || 0))) / data.totalContractValue * 100).toFixed(1)
+                    : "0.0"}%
+                </p>
+              </div>
+              <div className="space-y-1">
+                <p className="text-xs text-muted-foreground">Margin After Supervision</p>
+                <p className={`text-lg font-bold ${data.netMargin >= 0 ? 'text-green-500' : 'text-red-500'}`}>
+                  {data.netMargin.toFixed(1)}%
+                </p>
+              </div>
+            </div>
+          </div>
+        )}
 
         {/* Progress Bars */}
         <div className="space-y-4 pt-4 border-t border-border">

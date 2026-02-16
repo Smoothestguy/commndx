@@ -68,6 +68,14 @@ import { useUserRole } from "@/hooks/useUserRole";
 import { format, addDays, startOfWeek } from "date-fns";
 import { cn } from "@/lib/utils";
 
+const OVERHEAD_CATEGORIES = [
+  { value: "admin", label: "Administration" },
+  { value: "travel", label: "Travel" },
+  { value: "training", label: "Training" },
+  { value: "payroll", label: "Payroll Processing" },
+  { value: "other", label: "Other" },
+];
+
 const dailyFormSchema = z.object({
   project_id: z.string().min(1, "Project is required"),
   entry_date: z.string().min(1, "Date is required"),
@@ -75,6 +83,8 @@ const dailyFormSchema = z.object({
   description: z.string().optional(),
   billable: z.boolean().default(true),
   is_holiday: z.boolean().default(false),
+  is_overhead: z.boolean().default(false),
+  overhead_category: z.string().optional(),
 });
 
 interface EnhancedTimeEntryFormProps {
@@ -159,6 +169,8 @@ export function EnhancedTimeEntryForm({
       description: "",
       billable: true,
       is_holiday: false,
+      is_overhead: false,
+      overhead_category: "",
     },
   });
 
@@ -298,6 +310,8 @@ export function EnhancedTimeEntryForm({
         description: entry.description || "",
         billable: entry.billable,
         is_holiday: entry.is_holiday || false,
+        is_overhead: (entry as any).is_overhead || false,
+        overhead_category: (entry as any).overhead_category || "",
       });
       setEntryType("daily");
     } else {
@@ -308,6 +322,8 @@ export function EnhancedTimeEntryForm({
         description: "",
         billable: true,
         is_holiday: false,
+        is_overhead: false,
+        overhead_category: "",
       });
     }
   }, [entry, defaultDate, defaultProjectId, form]);
@@ -425,7 +441,7 @@ export function EnhancedTimeEntryForm({
 
   const handleDailySubmit = async (values: z.infer<typeof dailyFormSchema>) => {
     try {
-      const { project_id, entry_date, hours, description, billable, is_holiday } = values;
+      const { project_id, entry_date, hours, description, billable, is_holiday, is_overhead, overhead_category } = values;
       
       // If editing an existing entry, use update instead of insert
       if (entry) {
@@ -437,7 +453,9 @@ export function EnhancedTimeEntryForm({
           description: description || null,
           billable,
           is_holiday,
-        });
+          is_overhead,
+          overhead_category: is_overhead ? (overhead_category || 'other') : null,
+        } as any);
         onOpenChange(false);
         form.reset();
         return;
@@ -757,7 +775,7 @@ export function EnhancedTimeEntryForm({
                   </div>
                 )}
 
-                <div className="grid grid-cols-2 gap-3">
+                <div className="grid grid-cols-3 gap-3">
                   <FormField
                     control={form.control}
                     name="billable"
@@ -790,7 +808,53 @@ export function EnhancedTimeEntryForm({
                       </FormItem>
                     )}
                   />
+
+                  <FormField
+                    control={form.control}
+                    name="is_overhead"
+                    render={({ field }) => (
+                      <FormItem className="flex items-center justify-between rounded-lg border p-3 bg-orange-500/5 border-orange-500/20">
+                        <div className="space-y-0.5">
+                          <FormLabel className="flex items-center gap-1">
+                            <AlertTriangle className="h-4 w-4 text-orange-500" />
+                            Overhead
+                          </FormLabel>
+                        </div>
+                        <FormControl>
+                          <Switch checked={field.value} onCheckedChange={field.onChange} />
+                        </FormControl>
+                      </FormItem>
+                    )}
+                  />
                 </div>
+
+                {/* Overhead Category Selector */}
+                {form.watch("is_overhead") && (
+                  <FormField
+                    control={form.control}
+                    name="overhead_category"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Overhead Category</FormLabel>
+                        <Select onValueChange={field.onChange} value={field.value || ""}>
+                          <FormControl>
+                            <SelectTrigger>
+                              <SelectValue placeholder="Select category" />
+                            </SelectTrigger>
+                          </FormControl>
+                          <SelectContent>
+                            {OVERHEAD_CATEGORIES.map((cat) => (
+                              <SelectItem key={cat.value} value={cat.value}>
+                                {cat.label}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                )}
 
                 <div className="flex gap-2">
                   <Button

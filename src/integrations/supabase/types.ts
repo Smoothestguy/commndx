@@ -6700,6 +6700,7 @@ export type Database = {
           is_holiday: boolean | null
           is_locked: boolean | null
           is_on_lunch: boolean | null
+          is_overhead: boolean | null
           job_order_id: string | null
           last_location_check_at: string | null
           last_location_lat: number | null
@@ -6707,6 +6708,7 @@ export type Database = {
           lunch_duration_minutes: number | null
           lunch_end_at: string | null
           lunch_start_at: string | null
+          overhead_category: string | null
           overtime_hours: number | null
           personnel_id: string | null
           project_id: string
@@ -6742,6 +6744,7 @@ export type Database = {
           is_holiday?: boolean | null
           is_locked?: boolean | null
           is_on_lunch?: boolean | null
+          is_overhead?: boolean | null
           job_order_id?: string | null
           last_location_check_at?: string | null
           last_location_lat?: number | null
@@ -6749,6 +6752,7 @@ export type Database = {
           lunch_duration_minutes?: number | null
           lunch_end_at?: string | null
           lunch_start_at?: string | null
+          overhead_category?: string | null
           overtime_hours?: number | null
           personnel_id?: string | null
           project_id: string
@@ -6784,6 +6788,7 @@ export type Database = {
           is_holiday?: boolean | null
           is_locked?: boolean | null
           is_on_lunch?: boolean | null
+          is_overhead?: boolean | null
           job_order_id?: string | null
           last_location_check_at?: string | null
           last_location_lat?: number | null
@@ -6791,6 +6796,7 @@ export type Database = {
           lunch_duration_minutes?: number | null
           lunch_end_at?: string | null
           lunch_start_at?: string | null
+          overhead_category?: string | null
           overtime_hours?: number | null
           personnel_id?: string | null
           project_id?: string
