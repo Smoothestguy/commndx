@@ -233,3 +233,9 @@ verify_jwt = false
 
 [functions.quickbooks-fetch-journal-entries]
 verify_jwt = false
+
+[functions.send-co-approval]
+verify_jwt = false
+
+[functions.process-co-signature]
+verify_jwt = false
