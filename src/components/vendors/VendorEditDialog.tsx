@@ -4,7 +4,9 @@ import { Input } from "@/components/ui/input";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
-import { Loader2, ChevronDown, ChevronUp, Link2, X } from "lucide-react";
+import { Loader2, ChevronDown, ChevronUp, Link2, X, Shield, Upload } from "lucide-react";
+import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
+import { VendorDocumentUpload } from "@/components/vendors/VendorDocumentUpload";
 import {
   Dialog,
   DialogContent,
@@ -60,6 +62,9 @@ interface VendorFormData {
   opening_balance: string;
   notes: string;
   user_id: string;
+  citizenship_status: string;
+  immigration_status: string;
+  itin: string;
 }
 
 interface VendorEditDialogProps {
@@ -98,6 +103,9 @@ export function VendorEditDialog({ vendor, open, onOpenChange }: VendorEditDialo
     opening_balance: "",
     notes: "",
     user_id: "",
+    citizenship_status: "",
+    immigration_status: "",
+    itin: "",
   });
 
   // Populate form when dialog opens
@@ -127,6 +135,9 @@ export function VendorEditDialog({ vendor, open, onOpenChange }: VendorEditDialo
         opening_balance: vendor.opening_balance?.toString() || "",
         notes: vendor.notes || "",
         user_id: vendor.user_id || "",
+        citizenship_status: vendor.citizenship_status || "",
+        immigration_status: vendor.immigration_status || "",
+        itin: vendor.itin || "",
       });
       const hasAdditionalInfo = vendor.tax_id || vendor.track_1099 || vendor.billing_rate ||
         vendor.payment_terms || vendor.account_number || vendor.default_expense_category_id ||
@@ -162,6 +173,9 @@ export function VendorEditDialog({ vendor, open, onOpenChange }: VendorEditDialo
       opening_balance: formData.opening_balance ? parseFloat(formData.opening_balance) : null,
       notes: formData.notes || null,
       user_id: formData.user_id || null,
+      citizenship_status: formData.citizenship_status || null,
+      immigration_status: formData.immigration_status || null,
+      itin: formData.itin || null,
     };
 
     await updateVendor.mutateAsync({
@@ -434,6 +448,76 @@ export function VendorEditDialog({ vendor, open, onOpenChange }: VendorEditDialo
                   onChange={(e) => setFormData({ ...formData, notes: e.target.value })}
                   rows={3}
                 />
+              </div>
+
+              {/* Work Authorization Section */}
+              <div className="space-y-4 pt-4 border-t">
+                <h4 className="text-sm font-medium flex items-center gap-2">
+                  <Shield className="h-4 w-4" />
+                  Work Authorization
+                </h4>
+                <div className="space-y-3">
+                  <Label>Citizenship Status</Label>
+                  <RadioGroup
+                    value={formData.citizenship_status}
+                    onValueChange={(value) => setFormData({ ...formData, citizenship_status: value, immigration_status: value === "us_citizen" ? "" : formData.immigration_status })}
+                    className="flex gap-4"
+                  >
+                    <div className="flex items-center space-x-2">
+                      <RadioGroupItem value="us_citizen" id="edit_us_citizen" />
+                      <Label htmlFor="edit_us_citizen" className="cursor-pointer">U.S. Citizen</Label>
+                    </div>
+                    <div className="flex items-center space-x-2">
+                      <RadioGroupItem value="non_us_citizen" id="edit_non_us_citizen" />
+                      <Label htmlFor="edit_non_us_citizen" className="cursor-pointer">Non-U.S. Citizen</Label>
+                    </div>
+                  </RadioGroup>
+                </div>
+
+                {formData.citizenship_status === "non_us_citizen" && (
+                  <div className="space-y-3">
+                    <div className="space-y-2">
+                      <Label htmlFor="immigration_status">Immigration Status</Label>
+                      <Select
+                        value={formData.immigration_status}
+                        onValueChange={(value) => setFormData({ ...formData, immigration_status: value })}
+                      >
+                        <SelectTrigger>
+                          <SelectValue placeholder="Select status" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="visa">Visa</SelectItem>
+                          <SelectItem value="work_permit">Work Permit</SelectItem>
+                          <SelectItem value="green_card">Green Card</SelectItem>
+                          <SelectItem value="other">Other</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    {formData.immigration_status === "other" && (
+                      <div className="space-y-2">
+                        <Label htmlFor="itin">ITIN</Label>
+                        <Input
+                          id="itin"
+                          value={formData.itin}
+                          onChange={(e) => setFormData({ ...formData, itin: e.target.value })}
+                          placeholder="9XX-XX-XXXX"
+                        />
+                      </div>
+                    )}
+                  </div>
+                )}
+
+                {/* Document Upload for Work Authorization */}
+                <div className="space-y-2">
+                  <Label className="flex items-center gap-2">
+                    <Upload className="h-4 w-4" />
+                    Upload Work Authorization Documents
+                  </Label>
+                  <p className="text-xs text-muted-foreground">
+                    Upload visa, EAD card, green card, or other work authorization documents below.
+                  </p>
+                  <VendorDocumentUpload vendorId={vendor.id} />
+                </div>
               </div>
 
               {/* Portal Access Section */}
