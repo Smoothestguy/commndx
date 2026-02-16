@@ -4913,67 +4913,6 @@ export type Database = {
           },
         ]
       }
-      project_rooms: {
-        Row: {
-          assigned_contractor_id: string | null
-          assigned_vendor_id: string | null
-          created_at: string
-          floor_number: number | null
-          id: string
-          notes: string | null
-          project_id: string
-          status: Database["public"]["Enums"]["room_status"]
-          unit_number: string
-          updated_at: string
-        }
-        Insert: {
-          assigned_contractor_id?: string | null
-          assigned_vendor_id?: string | null
-          created_at?: string
-          floor_number?: number | null
-          id?: string
-          notes?: string | null
-          project_id: string
-          status?: Database["public"]["Enums"]["room_status"]
-          unit_number: string
-          updated_at?: string
-        }
-        Update: {
-          assigned_contractor_id?: string | null
-          assigned_vendor_id?: string | null
-          created_at?: string
-          floor_number?: number | null
-          id?: string
-          notes?: string | null
-          project_id?: string
-          status?: Database["public"]["Enums"]["room_status"]
-          unit_number?: string
-          updated_at?: string
-        }
-        Relationships: [
-          {
-            foreignKeyName: "project_rooms_assigned_contractor_id_fkey"
-            columns: ["assigned_contractor_id"]
-            isOneToOne: false
-            referencedRelation: "personnel"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "project_rooms_assigned_vendor_id_fkey"
-            columns: ["assigned_vendor_id"]
-            isOneToOne: false
-            referencedRelation: "vendors"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "project_rooms_project_id_fkey"
-            columns: ["project_id"]
-            isOneToOne: false
-            referencedRelation: "projects"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
       project_task_orders: {
         Row: {
           created_at: string
@@ -6217,57 +6156,6 @@ export type Database = {
             columns: ["project_id"]
             isOneToOne: false
             referencedRelation: "projects"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
-      room_scope_items: {
-        Row: {
-          allocated_quantity: number
-          completed_quantity: number
-          created_at: string
-          id: string
-          job_order_line_item_id: string
-          room_id: string
-          status: Database["public"]["Enums"]["room_scope_status"]
-          unit: string | null
-          updated_at: string
-        }
-        Insert: {
-          allocated_quantity: number
-          completed_quantity?: number
-          created_at?: string
-          id?: string
-          job_order_line_item_id: string
-          room_id: string
-          status?: Database["public"]["Enums"]["room_scope_status"]
-          unit?: string | null
-          updated_at?: string
-        }
-        Update: {
-          allocated_quantity?: number
-          completed_quantity?: number
-          created_at?: string
-          id?: string
-          job_order_line_item_id?: string
-          room_id?: string
-          status?: Database["public"]["Enums"]["room_scope_status"]
-          unit?: string | null
-          updated_at?: string
-        }
-        Relationships: [
-          {
-            foreignKeyName: "room_scope_items_job_order_line_item_id_fkey"
-            columns: ["job_order_line_item_id"]
-            isOneToOne: false
-            referencedRelation: "job_order_line_items"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "room_scope_items_room_id_fkey"
-            columns: ["room_id"]
-            isOneToOne: false
-            referencedRelation: "project_rooms"
             referencedColumns: ["id"]
           },
         ]
@@ -8139,8 +8027,6 @@ export type Database = {
         | "gambrel"
         | "shed"
         | "combination"
-      room_scope_status: "pending" | "in_progress" | "complete" | "verified"
-      room_status: "not_started" | "in_progress" | "complete" | "verified"
       task_order_status: "draft" | "open" | "filled" | "closed"
       task_priority: "low" | "medium" | "high" | "urgent"
       task_status: "pending" | "in_progress" | "completed" | "cancelled"
@@ -8403,8 +8289,6 @@ export const Constants = {
         "shed",
         "combination",
       ],
-      room_scope_status: ["pending", "in_progress", "complete", "verified"],
-      room_status: ["not_started", "in_progress", "complete", "verified"],
       task_order_status: ["draft", "open", "filled", "closed"],
       task_priority: ["low", "medium", "high", "urgent"],
       task_status: ["pending", "in_progress", "completed", "cancelled"],

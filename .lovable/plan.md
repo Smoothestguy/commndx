@@ -1,120 +1,92 @@
 
 
-## Room/Unit Tracking System for Project Hub
+## QuickBooks Bill Sync: Billable Items to Item Details, Expenses to Category Details
 
-### Overview
-Add a Room/Unit Tracking sub-module to each project that manages granular work allocations against a master Job Order budget. Rooms are created with scope items pulled from Job Order line items, and allocated quantities deduct from the remaining balance.
+### Problem
+Currently, `quickbooks-create-bill` sends ALL line items as **Category details** (`AccountBasedExpenseLineDetail`), regardless of whether they are billable or not. The `quickbooks-update-bill` function already has logic to use **Item details** (`ItemBasedExpenseLineDetail`) when a line item has a `qb_product_mapping_id`, but the create function does not.
 
-### Database Changes
+The desired behavior (matching the QuickBooks screenshot):
+- **Billable line items** (those with a QB product mapping) should sync as **Item details** with `BillableStatus: 'Billable'`
+- **Non-billable line items** (personnel expenses, general expenses without product mapping) should sync as **Category details** with `BillableStatus: 'NotBillable'`
 
-#### 1. New Enums
-- `room_status`: `not_started`, `in_progress`, `complete`, `verified`
-- `room_scope_status`: `pending`, `in_progress`, `complete`, `verified`
+### Changes
 
-#### 2. New Table: `project_rooms`
-| Column | Type | Notes |
-|--------|------|-------|
-| id | uuid PK | default gen_random_uuid() |
-| project_id | uuid FK(projects) NOT NULL | |
-| unit_number | text NOT NULL | e.g. '251' |
-| floor_number | integer | derived from unit prefix |
-| status | room_status | default 'not_started' |
-| assigned_contractor_id | uuid FK(personnel) | nullable |
-| assigned_vendor_id | uuid FK(vendors) | nullable |
-| notes | text | |
-| created_at / updated_at | timestamptz | auto-managed |
+#### 1. Update `quickbooks-create-bill/index.ts`
 
-Indexes: `project_id`, `(project_id, unit_number)` unique.
+Port the same `qb_product_mapping_id` lookup logic from `quickbooks-update-bill` into `quickbooks-create-bill`:
 
-#### 3. New Table: `room_scope_items`
-| Column | Type | Notes |
-|--------|------|-------|
-| id | uuid PK | |
-| room_id | uuid FK(project_rooms) ON DELETE CASCADE | |
-| job_order_line_item_id | uuid FK(job_order_line_items) | |
-| allocated_quantity | numeric NOT NULL | validated against remaining |
-| completed_quantity | numeric default 0 | |
-| unit | text | e.g. 'sq ft', 'lf', 'yards' |
-| status | room_scope_status default 'pending' | |
-| created_at / updated_at | timestamptz | |
+- After building the category map (line ~559), add a QB product mapping lookup (same as update-bill lines 460-478)
+- In the line item loop (lines 597-620), check if the line has a `qb_product_mapping_id` with a valid QB item:
+  - **If yes**: Use `ItemBasedExpenseLineDetail` with `BillableStatus: 'Billable'`, including `ItemRef`, `Qty`, and `UnitPrice`
+  - **If no**: Use `AccountBasedExpenseLineDetail` with `BillableStatus: 'NotBillable'` (current behavior)
 
-Index: `room_id`, `job_order_line_item_id`.
+#### 2. Update `quickbooks-update-bill/index.ts`
 
-#### 4. RLS Policies
-Following the existing staff-access pattern (admin/manager/user roles can access):
-- SELECT, INSERT, UPDATE, DELETE for authenticated staff users on both tables
-- Uses `has_role()` helper function consistent with other project-related tables
+The update function already uses `ItemBasedExpenseLineDetail` for mapped items, but sets `BillableStatus: 'NotBillable'` on all lines. Update mapped Item detail lines to use `BillableStatus: 'Billable'` so they appear as billable in QuickBooks (matching the green checkmarks in the screenshot).
 
-#### 5. Validation Trigger
-A BEFORE INSERT/UPDATE trigger on `room_scope_items` that checks:
+### Technical Details
+
+**In `quickbooks-create-bill/index.ts`** (after line 558, before building line items):
+
+```typescript
+// Fetch QB product mappings for line items that have them
+const qbProductMap = new Map();
+if (lineItems && lineItems.length > 0) {
+  const qbMappingIds = lineItems
+    .map((item: any) => item.qb_product_mapping_id)
+    .filter((id: string | null) => id !== null);
+  
+  if (qbMappingIds.length > 0) {
+    const { data: mappings } = await supabase
+      .from('qb_product_service_mappings')
+      .select('id, name, quickbooks_item_id')
+      .in('id', qbMappingIds);
+    
+    if (mappings) {
+      for (const m of mappings) {
+        if (m.quickbooks_item_id) {
+          qbProductMap.set(m.id, { qb_item_id: m.quickbooks_item_id, name: m.name });
+        }
+      }
+    }
+  }
+}
 ```
-allocated_quantity <= (job_order_line_item.quantity - SUM(other allocated quantities for same line item))
+
+Then in the line item loop, replace the current always-Category logic with:
+
+```typescript
+const qbProduct = item.qb_product_mapping_id 
+  ? qbProductMap.get(item.qb_product_mapping_id) 
+  : null;
+
+if (qbProduct) {
+  // Billable: Use ItemBasedExpenseLineDetail
+  qbLineItems.push({
+    DetailType: 'ItemBasedExpenseLineDetail',
+    Amount: Number(item.total),
+    Description: desc,
+    ItemBasedExpenseLineDetail: {
+      ItemRef: { value: qbProduct.qb_item_id },
+      Qty: qty,
+      UnitPrice: unitPrice,
+      BillableStatus: 'Billable',
+    },
+  });
+} else {
+  // Non-billable: Use AccountBasedExpenseLineDetail
+  // (existing category-based logic)
+}
 ```
-This prevents over-allocation beyond the master Job Order balance.
 
-### UI Components
+**In `quickbooks-update-bill/index.ts`** (line 505):
 
-#### 1. ProjectRoomsSection (new component in `src/components/project-hub/`)
-- Renders inside ProjectDetail page after the Asset Assignments section
-- **Summary Cards** at top showing per-line-item totals:
-  - "Floor Tile: 9,100 total | 3,000 allocated | 6,100 remaining"
-  - Color coding: Green (>20% remaining), Yellow (5-20%), Red (<5%)
-- **Rooms Table** below:
-  - Columns: Unit Number, Floor, Status, Assigned Contractor, Scope Summary, Actions
-  - Click to expand/view detail pane with all scope items and quantities
-- **"New Room" button** opens a dialog
-
-#### 2. AddRoomDialog (new component)
-- Unit number input
-- Optional floor number (auto-derived from 3-digit unit prefix if applicable)
-- Select scope items from master Job Order line items (multi-select with checkboxes)
-- For each selected item: enter allocated quantity (shows remaining balance inline)
-- Assign contractor dropdown (personnel list)
-- Validates quantities against remaining balances before submission
-
-#### 3. RoomDetailPane (new component)
-- Shows all scope items with allocated/completed quantities
-- Status badges per scope item
-- Edit/update completed quantities
-- Change room status
-
-#### 4. BulkImportRoomsDialog (new component)
-- Accepts CSV/Excel upload (using existing xlsx library)
-- Expected columns: unit_number, carpet_yards, floor_tile_sqft, wall_tile_sqft, shower_floor_sqft, base_lf, thresholds
-- Maps columns to matching Job Order line items by keyword matching (e.g., "carpet" -> Carpet line item, "floor tile" -> Floor Tile line item)
-- Preview table before import
-- Validates total allocations against remaining balances
-
-### Data Hooks
-
-#### `useProjectRooms.ts` (new file in `src/integrations/supabase/hooks/`)
-- `useProjectRooms(projectId)` - fetch all rooms with scope items for a project
-- `useAddRoom()` - create room + scope items in a transaction
-- `useUpdateRoom()` - update room details
-- `useDeleteRoom()` - soft or hard delete
-- `useUpdateScopeItemProgress()` - update completed_quantity on scope items
-- `useJobOrderRemainingQuantities(projectId)` - compute remaining quantities per JO line item
-
-### Integration with ProjectDetail.tsx
-- Add the `ProjectRoomsSection` component between Asset Assignments and Milestones sections
-- Pass `projectId` and `projectJobOrders` as props
-- No tabs needed -- follows the existing scrollable section pattern used by all other sub-modules
-
-### Files to Create
-| File | Purpose |
-|------|---------|
-| DB Migration | Create enums, tables, indexes, RLS, validation trigger |
-| `src/integrations/supabase/hooks/useProjectRooms.ts` | Data hooks |
-| `src/components/project-hub/ProjectRoomsSection.tsx` | Main rooms section with summary cards + table |
-| `src/components/project-hub/AddRoomDialog.tsx` | New room creation dialog |
-| `src/components/project-hub/RoomDetailPane.tsx` | Expandable room detail view |
-| `src/components/project-hub/BulkImportRoomsDialog.tsx` | CSV/Excel import dialog |
+Change `BillableStatus: 'NotBillable'` to `BillableStatus: 'Billable'` inside the `ItemBasedExpenseLineDetail` block.
 
 ### Files to Modify
+
 | File | Change |
 |------|--------|
-| `src/pages/ProjectDetail.tsx` | Add ProjectRoomsSection between assets and milestones |
-
-### No Existing Data Affected
-All changes are additive -- new tables, new components. No modifications to existing tables or past project data.
+| `supabase/functions/quickbooks-create-bill/index.ts` | Add QB product mapping lookup + use Item details for billable lines |
+| `supabase/functions/quickbooks-update-bill/index.ts` | Change BillableStatus to 'Billable' for Item detail lines |
 
