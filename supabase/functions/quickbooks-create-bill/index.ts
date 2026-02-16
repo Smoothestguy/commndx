@@ -536,6 +536,17 @@ serve(async (req) => {
 
     console.log(`Found ${lineItems?.length || 0} line items for bill ${bill.number}`);
 
+    // Resolve vendor in QuickBooks
+    const qbVendorId = await getOrCreateQBVendor(supabase, bill.vendor_id, accessToken, realmId);
+    console.log(`Resolved QB Vendor ID: ${qbVendorId}`);
+
+    // Check for existing bill mapping
+    const { data: existingMapping } = await supabase
+      .from('quickbooks_bill_mappings')
+      .select('*')
+      .eq('bill_id', billId)
+      .maybeSingle();
+
     // Build a map of category IDs to category names
     const categoryMap: Map<string, string> = new Map();
     if (lineItems && lineItems.length > 0) {
