@@ -3,13 +3,67 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
+  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version",
 };
 
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
 const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
+const SUPABASE_ANON_KEY = Deno.env.get("SUPABASE_ANON_KEY")!;
 const QUICKBOOKS_CLIENT_ID = Deno.env.get("QUICKBOOKS_CLIENT_ID");
 const QUICKBOOKS_CLIENT_SECRET = Deno.env.get("QUICKBOOKS_CLIENT_SECRET");
+
+// Authentication helper - validates user and checks admin/manager role
+async function authenticateRequest(req: Request): Promise<{ userId: string; error?: never } | { userId?: never; error: Response }> {
+  const authHeader = req.headers.get("Authorization");
+  if (!authHeader) {
+    console.error("[void-bill] No authorization header provided");
+    return {
+      error: new Response(JSON.stringify({ success: false, error: "Unauthorized - no auth header" }), {
+        status: 401,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      })
+    };
+  }
+
+  const token = authHeader.replace("Bearer ", "");
+  const supabaseClient = createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
+    global: { headers: { Authorization: authHeader } }
+  });
+
+  const { data: claimsData, error: claimsError } = await supabaseClient.auth.getClaims(token);
+  if (claimsError || !claimsData?.claims) {
+    console.error("[void-bill] Auth claims failed:", claimsError);
+    return {
+      error: new Response(JSON.stringify({ success: false, error: "Unauthorized" }), {
+        status: 401,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      })
+    };
+  }
+
+  const userId = claimsData.claims.sub as string;
+
+  // Check user role
+  const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
+  const { data: roleData } = await supabase
+    .from("user_roles")
+    .select("role")
+    .eq("user_id", userId)
+    .single();
+
+  const role = roleData?.role;
+  if (role !== "admin" && role !== "manager") {
+    console.error("[void-bill] Insufficient role:", role);
+    return {
+      error: new Response(JSON.stringify({ success: false, error: "Forbidden - admin/manager required" }), {
+        status: 403,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      })
+    };
+  }
+
+  return { userId };
+}
 
 async function getValidToken(supabase: any) {
   const { data: config, error } = await supabase
@@ -27,7 +81,7 @@ async function getValidToken(supabase: any) {
   const fiveMinutesFromNow = new Date(now.getTime() + 5 * 60 * 1000);
 
   if (tokenExpires < fiveMinutesFromNow) {
-    console.log("Refreshing QuickBooks token...");
+    console.log("[void-bill] Refreshing QuickBooks token...");
     const tokenResponse = await fetch(
       "https://oauth.platform.intuit.com/oauth2/v1/tokens/bearer",
       {
@@ -86,26 +140,26 @@ async function qbRequest(
     options.body = JSON.stringify(body);
   }
 
-  console.log(`QB API ${method} ${endpoint}`);
+  console.log(`[void-bill] QB API ${method} ${endpoint}`);
   const response = await fetch(url, options);
 
   let responseText: string;
   try {
     responseText = await response.text();
   } catch (textError) {
-    console.error("Failed to read response body:", textError);
+    console.error("[void-bill] Failed to read response body:", textError);
     throw new Error(`QuickBooks API response read error: ${textError}`);
   }
 
   if (!response.ok) {
-    console.error(`QuickBooks API error response: ${responseText}`);
+    console.error(`[void-bill] QuickBooks API error response: ${responseText}`);
     throw new Error(`QuickBooks API error: ${response.status} - ${responseText.substring(0, 200)}`);
   }
 
   try {
     return JSON.parse(responseText);
   } catch (parseError) {
-    console.error("Failed to parse QB response as JSON:", responseText.substring(0, 500));
+    console.error("[void-bill] Failed to parse QB response as JSON:", responseText.substring(0, 500));
     throw new Error(`QuickBooks API returned invalid JSON: ${parseError}`);
   }
 }
@@ -116,8 +170,15 @@ serve(async (req) => {
   }
 
   try {
+    // Authenticate request
+    const authResult = await authenticateRequest(req);
+    if ("error" in authResult) {
+      return authResult.error;
+    }
+    console.log("[void-bill] Authenticated user:", authResult.userId);
+
     const { billId } = await req.json();
-    console.log("Voiding/deleting QuickBooks bill for local bill:", billId);
+    console.log("[void-bill] Voiding/deleting QuickBooks bill for local bill:", billId);
 
     const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
 
@@ -129,12 +190,12 @@ serve(async (req) => {
       .maybeSingle();
 
     if (mappingError) {
-      console.error("Mapping fetch error:", mappingError);
+      console.error("[void-bill] Mapping fetch error:", mappingError);
       throw new Error("Failed to check QuickBooks mapping");
     }
 
     if (!mapping) {
-      console.log("Bill not synced to QuickBooks, nothing to void");
+      console.log("[void-bill] Bill not synced to QuickBooks, nothing to void");
       return new Response(
         JSON.stringify({
           success: true,
@@ -147,7 +208,7 @@ serve(async (req) => {
 
     // Skip if already voided
     if (mapping.sync_status === "voided") {
-      console.log("Bill already voided in QuickBooks");
+      console.log("[void-bill] Bill already voided in QuickBooks");
       return new Response(
         JSON.stringify({
           success: true,
@@ -162,7 +223,7 @@ serve(async (req) => {
     
     // Check for empty/invalid QB bill ID
     if (!qbBillId || qbBillId === '') {
-      console.log("No valid QuickBooks bill ID found in mapping, marking as voided");
+      console.log("[void-bill] No valid QuickBooks bill ID found in mapping, marking as voided");
       await supabase
         .from("quickbooks_bill_mappings")
         .update({
@@ -181,13 +242,13 @@ serve(async (req) => {
       );
     }
 
-    console.log("Found QB bill mapping:", qbBillId);
+    console.log("[void-bill] Found QB bill mapping:", qbBillId);
 
     // Get valid token
     const { accessToken, realmId } = await getValidToken(supabase);
 
     // Fetch the current QB bill to get SyncToken
-    console.log("Fetching QB bill to get SyncToken...");
+    console.log("[void-bill] Fetching QB bill to get SyncToken...");
     const qbBillData = await qbRequest(
       "GET",
       `/bill/${qbBillId}`,
@@ -196,11 +257,10 @@ serve(async (req) => {
     );
 
     const syncToken = qbBillData.Bill.SyncToken;
-    console.log("Got SyncToken:", syncToken);
+    console.log("[void-bill] Got SyncToken:", syncToken);
 
     // Delete the bill in QuickBooks
-    // QuickBooks bills can be deleted (unlike invoices which must be voided)
-    console.log("Deleting bill in QuickBooks...");
+    console.log("[void-bill] Deleting bill in QuickBooks...");
     
     const deletePayload = {
       Id: qbBillId,
@@ -215,7 +275,7 @@ serve(async (req) => {
       deletePayload
     );
 
-    console.log("Bill deleted successfully in QuickBooks");
+    console.log("[void-bill] Bill deleted successfully in QuickBooks");
 
     // Update mapping to reflect voided/deleted status
     await supabase
@@ -246,7 +306,7 @@ serve(async (req) => {
       { headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );
   } catch (error: unknown) {
-    console.error("QuickBooks bill void/delete error:", error);
+    console.error("[void-bill] QuickBooks bill void/delete error:", error);
     const errorMessage = error instanceof Error ? error.message : "Unknown error";
 
     return new Response(

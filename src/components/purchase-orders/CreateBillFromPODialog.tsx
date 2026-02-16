@@ -176,7 +176,7 @@ export function CreateBillFromPODialog({
   const handleSubmit = async () => {
     if (!hasValidItems || hasExceededQuantity) return;
 
-    // Resolve jo_line_item_id for each PO line item by matching via job_order_id
+    // Resolve jo_line_item_id and qb_product_mapping_id for each line item
     let joLineItems: any[] = [];
     if (purchaseOrder.job_order_id) {
       const { data } = await supabase
@@ -186,17 +186,44 @@ export function CreateBillFromPODialog({
       joLineItems = data || [];
     }
 
+    // Fetch product -> qb_product_mapping_id lookups for matched JO products
+    const productIds = joLineItems
+      .map((j: any) => j.product_id)
+      .filter(Boolean);
+    
+    let productMappings: Record<string, string | null> = {};
+    if (productIds.length > 0) {
+      const { data: products } = await supabase
+        .from("products")
+        .select("id, qb_product_mapping_id")
+        .in("id", productIds);
+      
+      if (products) {
+        products.forEach((p: any) => {
+          productMappings[p.id] = p.qb_product_mapping_id;
+        });
+      }
+    }
+
     const findJoLineItemId = (description: string, productId?: string | null): string | null => {
       if (!joLineItems.length) return null;
-      // Try matching by product_id first
       if (productId) {
         const match = joLineItems.find((j: any) => j.product_id === productId);
         if (match) return match.id;
       }
-      // Fuzzy match by description
       const descLower = description.toLowerCase().trim();
       const match = joLineItems.find((j: any) => j.description.toLowerCase().trim() === descLower);
       return match?.id || null;
+    };
+
+    const findQbProductMappingId = (description: string): string | null => {
+      if (!joLineItems.length) return null;
+      const descLower = description.toLowerCase().trim();
+      const joMatch = joLineItems.find((j: any) => j.description.toLowerCase().trim() === descLower);
+      if (joMatch?.product_id && productMappings[joMatch.product_id]) {
+        return productMappings[joMatch.product_id];
+      }
+      return null;
     };
 
     const billLineItems = lineItems
@@ -205,6 +232,7 @@ export function CreateBillFromPODialog({
         po_line_item_id: item.source === 'po' ? item.id : null,
         po_addendum_line_item_id: item.source === 'addendum' ? item.id : null,
         jo_line_item_id: item.source === 'po' ? findJoLineItemId(item.description) : null,
+        qb_product_mapping_id: findQbProductMappingId(item.description),
         project_id: purchaseOrder.project_id,
         category_id: categoryId,
         description: item.source === 'addendum' 
