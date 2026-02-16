@@ -1,162 +1,192 @@
 
 
-## Room-Level Completion and Auto-Billing Workflow
+## Change Order Workflow with E-Signature Approval and Work Authorization Enforcement
 
-This is a major feature extending the Subcontractor Portal with structured room completion, auto-generated bills, duplicate prevention, and a multi-step approval pipeline.
+This extends the existing Change Order system with an e-signature approval chain, strict no-work-before-approval enforcement, and full document storage/audit trail.
 
-### Overview
+### Important Note on DocuSign
 
-Contractors will see their assigned rooms grouped by project, select completed scope items per room, and submit completions. The system auto-calculates the bill from pre-set rates -- contractors never enter amounts. Each bill routes through Field Superintendent verification, PM approval, and Accounting processing before payment. Items already billed cannot be re-billed, solving the historical duplicate billing problem.
+DocuSign requires a paid developer account and API credentials. There is no pre-built connector available. Instead, we will use the **existing email + e-signature infrastructure** already in place (Resend for email, `react-signature-canvas` for signing, token-based approval links) -- the same pattern used for PO addendum approvals (`send-change-order-approval` edge function and `/approve-change-order/:token` page). This approach:
+- Requires no additional API keys or third-party accounts
+- Uses the proven approval flow already in the codebase
+- Delivers the same result: email sent, recipient clicks link, reviews document, signs electronically, countersigned copy stored
+
+If you specifically want DocuSign integration in the future, it can be added as a separate enhancement once you have a DocuSign developer account.
+
+---
 
 ### 1. Database Changes
 
-**New table: `contractor_completion_bills`**
+**Add customer contact fields to `projects` table:**
 
-Tracks room-level completion submissions with approval workflow status.
+| Column | Type |
+|--------|------|
+| customer_field_supervisor_name | text |
+| customer_field_supervisor_email | text |
+| customer_field_supervisor_phone | text |
+| customer_pm_name | text |
+| customer_pm_email | text |
+| customer_pm_phone | text |
+| our_field_superintendent_id | uuid FK -> personnel |
 
-| Column | Type | Notes |
-|--------|------|-------|
-| id | uuid PK | |
-| room_id | uuid FK -> project_rooms | The room being billed |
-| contractor_id | uuid FK -> vendors | The subcontractor (vendor) |
-| project_id | uuid FK -> projects | |
-| total_amount | numeric | Auto-calculated sum |
-| status | enum | submitted, field_verified, pm_approved, accounting_approved, paid, rejected |
-| rejection_notes | text | Reason if rejected |
-| submitted_at | timestamptz | When contractor submitted |
-| verified_at | timestamptz | When field superintendent verified |
-| verified_by | uuid FK -> profiles | |
-| approved_at | timestamptz | When PM approved |
-| approved_by | uuid FK -> profiles | |
-| accounting_approved_at | timestamptz | |
-| accounting_approved_by | uuid FK -> profiles | |
-| paid_at | timestamptz | |
-| created_at / updated_at | timestamptz | |
-
-**New table: `contractor_completion_bill_items`**
-
-Individual scope items on each completion bill.
+**Add workflow columns to `change_orders` table:**
 
 | Column | Type | Notes |
 |--------|------|-------|
-| id | uuid PK | |
-| bill_id | uuid FK -> contractor_completion_bills | |
-| room_scope_item_id | uuid FK -> room_scope_items | Links to exact scope item |
-| job_order_line_item_id | uuid FK -> job_order_line_items | For rate lookup |
-| description | text | Scope description |
-| quantity | numeric | Completed quantity |
-| unit_cost | numeric | From PO line item unit_price |
-| total | numeric | quantity x unit_cost |
+| work_authorized | boolean, default false | Only true when approved AND customer WO received |
+| customer_wo_number | text | Customer's formal Work Order / CO number |
+| customer_wo_file_path | text | Uploaded WO document path |
+| customer_wo_uploaded_at | timestamptz | |
+| field_supervisor_approval_token | uuid | For email signing link |
+| field_supervisor_signed_at | timestamptz | |
+| field_supervisor_signature | text | Signature data |
+| customer_pm_approval_token | uuid | |
+| customer_pm_signed_at | timestamptz | |
+| customer_pm_signature | text | |
+| sent_for_approval_at | timestamptz | When emails started going out |
+| photos | text[] | Array of storage paths for uploaded photos |
 
-**New enum: `contractor_bill_status`**
-Values: submitted, field_verified, pm_approved, accounting_approved, paid, rejected
+**Add new enum values to `change_order_status`:**
 
-**Add column to `room_scope_items`:**
-- `billed_quantity` (numeric, default 0) -- tracks how much of allocated_quantity has been billed to prevent duplicates
+Add: `pending_field_supervisor`, `pending_customer_pm`, `approved_pending_wo`
 
-**RLS Policies:**
-- Contractors (vendors) can SELECT their own bills and INSERT completions for rooms assigned to them
-- Staff (admin/manager) can SELECT/UPDATE all bills
-- Accounting role users can SELECT/UPDATE bills in `pm_approved` status
-- All policies use existing `has_role()` and `get_vendor_id_for_user()` helper functions
+Full flow: `draft` -> `pending_field_supervisor` -> `pending_customer_pm` -> `approved_pending_wo` -> `approved` -> `invoiced`
 
-### 2. Contractor Portal UI Changes
+**New table: `change_order_approval_log`**
 
-**New page: `/subcontractor/completions`** -- "My Rooms" view
+| Column | Type |
+|--------|------|
+| id | uuid PK |
+| change_order_id | uuid FK |
+| action | text (submitted, field_supervisor_signed, customer_pm_signed, wo_received, rejected) |
+| actor_name | text |
+| actor_email | text |
+| notes | text |
+| created_at | timestamptz |
 
-- Queries `project_rooms` where `assigned_vendor_id` matches the current subcontractor's vendor ID
-- Groups rooms by project (project name as section headers)
-- Each room card shows:
-  - Unit number, floor, status
-  - List of scope items with: description, allocated qty, already-billed qty, remaining qty
-  - Items fully billed show a green checkmark and "Paid on [date]" label (non-selectable)
-  - Items with remaining quantity show checkboxes
-- Contractor checks items they completed (partial completion supported)
-- For each checked item, optionally enter completed quantity (defaults to remaining)
-- "Submit Completion" button generates the bill
+RLS: Staff (admin/manager/user) can SELECT; system inserts via edge function (service role).
 
-**New page: `/subcontractor/completions/:id`** -- Bill detail view
+---
 
-- Shows the auto-generated bill with line items and amounts
-- Displays current approval status with timeline (submitted -> verified -> approved -> paid)
-- Read-only for the contractor
+### 2. Project Contact Fields UI
 
-**Dashboard update:**
-- Add a "My Rooms" stat card and quick-access link on `SubcontractorDashboard.tsx`
-- Add navigation link in `SubcontractorPortalLayout`
+**Modify:** `src/components/projects/ProjectForm.tsx` (or the project edit form)
 
-### 3. Auto-Bill Generation Logic
+Add a "Customer Contacts" section with fields for:
+- Customer Field Supervisor (name, email, phone)
+- Customer Project Manager (name, email, phone)
+- Our Field Superintendent (dropdown from personnel table)
 
-When contractor clicks "Submit Completion":
+These fields are optional but required before a CO can be submitted for approval from that project.
 
-1. For each selected scope item, look up the `unit_price` from the linked `po_line_items` (via `job_order_line_items` -> `po_line_items` where the PO belongs to this vendor)
-2. Calculate: `completed_quantity x unit_price = line total`
-3. Sum all line totals = bill `total_amount`
-4. Insert into `contractor_completion_bills` with status = `submitted`
-5. Insert line items into `contractor_completion_bill_items`
-6. Update `room_scope_items.billed_quantity += completed_quantity`
-7. Send notification to Field Superintendent
+---
 
-### 4. Duplicate Prevention
+### 3. Change Order Creation Updates
 
-- Before submission, query `room_scope_items.billed_quantity` for each selected item
-- If `billed_quantity >= allocated_quantity`, the item is fully billed -- show "Already billed on [date], paid on [date]" and disable the checkbox
-- If `completed_quantity > (allocated_quantity - billed_quantity)`, block submission with error: "Quantity exceeds remaining balance"
-- A database trigger validates on INSERT to `contractor_completion_bill_items` that the cumulative `billed_quantity` does not exceed `allocated_quantity`
+**Modify:** `src/components/change-orders/ChangeOrderForm.tsx`
 
-### 5. Approval Routing (Admin Side)
+- Add photo upload section (multiple photos using existing storage bucket)
+- Photos stored in `form-uploads` bucket under `change-orders/{co_id}/`
+- Photos array saved to `change_orders.photos`
 
-**New page: `/completion-reviews`** -- Completion Review Queue
+No changes to line item structure -- existing quantity/pricing fields remain.
 
-Three tab views filtered by role:
+---
 
-- **Field Superintendent tab**: Shows bills with status = `submitted` for projects where the user is assigned as field superintendent (via `project_assignments` with a role field or a new `project_role` column)
-  - Actions: "Verify" (moves to `field_verified`) or "Reject" (with notes, moves to `rejected`)
+### 4. Approval Submission Flow
 
-- **Project Manager tab**: Shows bills with status = `field_verified` for their assigned projects
-  - Actions: "Approve" (moves to `pm_approved`) or "Reject"
+**New edge function:** `supabase/functions/send-co-approval/index.ts`
 
-- **Accounting tab**: Shows bills with status = `pm_approved` (visible to all users with `accounting` role)
-  - Actions: "Process Payment" (moves to `accounting_approved`, then `paid`) or "Reject"
+When a field rep clicks "Submit for Approval" on a draft CO:
 
-Each action updates the corresponding timestamp and `*_by` fields.
+1. Validates the project has customer_field_supervisor_email set
+2. Generates approval tokens for both signers
+3. Updates CO status to `pending_field_supervisor`
+4. Sends email to Customer Field Supervisor via Resend with a link to review and sign
+5. Sends notification emails to Customer PM and our Field Superintendent (FYI -- CO has been created)
+6. Creates in-app notifications for internal team
+7. Logs action in `change_order_approval_log`
 
-**Rule enforcement**: Bills only appear in a queue when they have reached that status. "It hasn't hit my portal" is valid at any stage.
+**Approval chain email flow:**
+- Step 1: Customer Field Supervisor receives email -> clicks link -> reviews CO -> signs -> status moves to `pending_customer_pm`
+- Step 2: Customer PM auto-receives next email -> reviews -> signs -> status moves to `approved_pending_wo`
+- Step 3: Internal team notified that both signatures received. CO stays `approved_pending_wo` until customer WO number is entered/uploaded.
+- Step 4: When WO document uploaded and number entered -> `work_authorized = true`, status -> `approved`
 
-### 6. Notifications
+---
 
-At each status transition, insert into `admin_notifications`:
+### 5. E-Signature Approval Pages
 
-| Transition | Recipient | Title |
-|------------|-----------|-------|
-| Submitted | Field Superintendent(s) on project | "Completion submitted for Unit [X] - [Project]" |
-| Field Verified | Project Manager(s) on project | "Completion verified for Unit [X] - [Project]" |
-| PM Approved | All Accounting role users | "Completion approved - ready for payment" |
-| Rejected (any stage) | Contractor (if has user account) | "Completion rejected for Unit [X]" |
+**New page:** `src/pages/ApproveChangeOrder.tsx` (route: `/approve-co/:token`)
 
-Each notification includes `link_url` pointing to the review page and `metadata` with project name, unit number, contractor name, and bill amount.
+- Public page (no login required), same pattern as existing `/approve-change-order/:token`
+- Displays: CO number, project name, description, scope of work, photos, line items with pricing, total
+- Signature canvas at bottom
+- "Approve & Sign" button
+- On sign: edge function validates token, records signature and timestamp, advances status, sends next email in chain
 
-### 7. Files to Create/Modify
+---
+
+### 6. Work Authorization Enforcement
+
+**Modify:** `src/components/project-hub/ProjectChangeOrdersList.tsx`
+- COs where `work_authorized = false` show a red "NOT AUTHORIZED" badge
+- COs where status is `approved_pending_wo` show an amber "AWAITING WORK ORDER" badge
+
+**Modify:** Change Order detail page
+- Show upload section for Customer Work Order document
+- Field for Customer WO/CO number
+- "Authorize Work" button (only enabled when WO uploaded AND both signatures present)
+
+**Modify:** Subcontractor Portal (`SubcontractorCompletions.tsx`)
+- Scope items linked to an unauthorized CO are shown with "Pending Approval -- Do Not Begin" label
+- These items cannot be checked/selected for completion submission
+- Enforced at UI level and validated in the submission mutation
+
+---
+
+### 7. Document Storage and Audit Trail
+
+- CO submission PDF, signed copies, and customer WO stored in `form-uploads` bucket under `change-orders/{co_id}/`
+- File references stored on the `change_orders` record
+- `change_order_approval_log` table provides full audit trail
+- CO detail page shows approval timeline with who signed what and when
+
+---
+
+### 8. Notifications
+
+Using existing `admin_notifications` table and Resend email:
+
+| Event | In-App Notification | Email |
+|-------|---------------------|-------|
+| CO created/submitted | Our Field Superintendent | Customer Field Supervisor, Customer PM, Our Field Superintendent |
+| Field Supervisor signs | Internal team | Customer PM (with sign link) |
+| Customer PM signs | Project Manager, Field Superintendent | Internal team |
+| CO fully approved | All assigned staff | - |
+| CO rejected at any stage | Creator, PM | Creator |
+
+---
+
+### 9. Files to Create/Modify
 
 **New files:**
-- `src/pages/subcontractor-portal/SubcontractorCompletions.tsx` -- room listing with completion form
-- `src/pages/subcontractor-portal/SubcontractorCompletionDetail.tsx` -- bill detail view
-- `src/integrations/supabase/hooks/useContractorCompletions.ts` -- queries and mutations
-- `src/pages/CompletionReviews.tsx` -- admin review queue
-- `src/components/completion-reviews/CompletionReviewCard.tsx` -- review card component
+- `supabase/functions/send-co-approval/index.ts` -- email + token generation
+- `supabase/functions/process-co-signature/index.ts` -- validate token, record signature, advance chain
+- `src/pages/ApproveChangeOrderPublic.tsx` -- public e-signature page
+- `src/components/change-orders/ChangeOrderApprovalTimeline.tsx` -- approval status timeline
+- `src/components/change-orders/ChangeOrderPhotoUpload.tsx` -- multi-photo upload
+- `src/components/change-orders/CustomerWorkOrderUpload.tsx` -- WO upload + number entry
 
 **Modified files:**
-- `src/App.tsx` -- add new routes
-- `src/pages/subcontractor-portal/SubcontractorDashboard.tsx` -- add rooms stat + link
-- `src/components/subcontractor-portal/SubcontractorPortalLayout.tsx` -- add nav link
+- `src/App.tsx` -- add routes
+- `src/integrations/supabase/hooks/useChangeOrders.ts` -- add new status types, work_authorized field
+- `src/components/change-orders/ChangeOrderForm.tsx` -- add photo upload
+- `src/components/project-hub/ProjectChangeOrdersList.tsx` -- NOT AUTHORIZED badge
+- `src/pages/ChangeOrderDetail.tsx` -- approval timeline, WO upload, submit for approval button
+- Project form -- customer contact fields
+- Subcontractor completions -- enforce work authorization check
+- Database migration for all schema changes
 
-**Database migration:**
-- Create enum, tables, RLS policies, validation trigger, and `billed_quantity` column
-
-### 8. Key Design Decisions
-
-- **Pricing source**: Uses `po_line_items.unit_price` from the vendor's Purchase Order (not job order markup price), ensuring the contractor is paid at their contracted rate
-- **No modification of existing bills**: This system is separate from the existing `vendor_bills` table. The `contractor_completion_bills` table is purpose-built for room-level completion workflow
-- **Backward compatible**: No changes to existing subcontractor portal pages or data. Everything is additive
-- **Project role assignment**: Will use `project_assignments` table with a new `role` text column (e.g., 'field_superintendent', 'project_manager') to determine who reviews at each stage
+**No existing data affected** -- all changes are additive. Existing COs keep their current status. The new workflow columns default to null/false.
 
