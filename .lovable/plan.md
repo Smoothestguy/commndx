@@ -1,192 +1,162 @@
 
 
-## Change Order Workflow with E-Signature Approval and Work Authorization Enforcement
+## Time Tracking -- Project Allocation and Overhead Analysis
 
-This extends the existing Change Order system with an e-signature approval chain, strict no-work-before-approval enforcement, and full document storage/audit trail.
+This extends the existing time tracking module with an "Overhead" option, admin manual entry for field superintendents, per-project labor allocation views, supervision cost impact on margins, a company-wide overhead dashboard, and daily logging reminders.
 
-### Important Note on DocuSign
+### Current State
 
-DocuSign requires a paid developer account and API credentials. There is no pre-built connector available. Instead, we will use the **existing email + e-signature infrastructure** already in place (Resend for email, `react-signature-canvas` for signing, token-based approval links) -- the same pattern used for PO addendum approvals (`send-change-order-approval` edge function and `/approve-change-order/:token` page). This approach:
-- Requires no additional API keys or third-party accounts
-- Uses the proven approval flow already in the codebase
-- Delivers the same result: email sent, recipient clicks link, reviews document, signs electronically, countersigned copy stored
-
-If you specifically want DocuSign integration in the future, it can be added as a separate enhancement once you have a DocuSign developer account.
+- `time_entries.project_id` already exists as a **NOT NULL** FK to projects. Workers select a project when clocking in or logging time.
+- Labor costs already flow into the Project Financial Summary via `timeEntryCosts` (hours x pay_rate).
+- The `EnhancedTimeEntryForm` already supports Admin/Manager logging time for selected personnel (daily and weekly modes with personnel multi-select).
+- There is **no** concept of "overhead" -- every time entry must be tied to a project.
+- There is **no** supervision cost breakout on the financial summary.
+- There is **no** company-wide utilization/overhead report.
+- There is **no** missing time entry reminder system.
 
 ---
 
 ### 1. Database Changes
 
-**Add customer contact fields to `projects` table:**
+**Add `is_overhead` column to `time_entries`:**
+- `is_overhead` boolean, default false
+- When true, the entry represents non-project work (admin, travel, payroll processing, etc.)
+- `project_id` remains required (for overhead entries, use a designated "Overhead" project or keep the field as-is with the worker's primary project)
 
-| Column | Type |
-|--------|------|
-| customer_field_supervisor_name | text |
-| customer_field_supervisor_email | text |
-| customer_field_supervisor_phone | text |
-| customer_pm_name | text |
-| customer_pm_email | text |
-| customer_pm_phone | text |
-| our_field_superintendent_id | uuid FK -> personnel |
+**Better approach -- make `project_id` NULLABLE:**
+- ALTER `time_entries` to allow `project_id` to be NULL
+- Add `is_overhead` boolean default false
+- Add `overhead_category` text nullable (values: 'admin', 'travel', 'training', 'payroll', 'other')
+- When `project_id` is NULL and `is_overhead` is true, the entry is overhead
+- Existing entries remain unchanged (all have project_id set)
 
-**Add workflow columns to `change_orders` table:**
+**Add `entry_type` column to `time_entries`:**
+- `entry_type` text default 'project' (values: 'project', 'overhead')
+- Simpler than nullable project_id -- keeps existing constraints intact
+- Overhead entries still have a project_id (the project they were nominally on) but are flagged separately
 
-| Column | Type | Notes |
-|--------|------|-------|
-| work_authorized | boolean, default false | Only true when approved AND customer WO received |
-| customer_wo_number | text | Customer's formal Work Order / CO number |
-| customer_wo_file_path | text | Uploaded WO document path |
-| customer_wo_uploaded_at | timestamptz | |
-| field_supervisor_approval_token | uuid | For email signing link |
-| field_supervisor_signed_at | timestamptz | |
-| field_supervisor_signature | text | Signature data |
-| customer_pm_approval_token | uuid | |
-| customer_pm_signed_at | timestamptz | |
-| customer_pm_signature | text | |
-| sent_for_approval_at | timestamptz | When emails started going out |
-| photos | text[] | Array of storage paths for uploaded photos |
+**Decision: Use `is_overhead` boolean + `overhead_category` text, keep `project_id` NOT NULL**
+- This is the safest approach -- no existing constraints break
+- For overhead entries, admin selects a project OR we create a system "Overhead / Internal" project
+- The `is_overhead` flag excludes these hours from project margin calculations but still tracks them
 
-**Add new enum values to `change_order_status`:**
+**No new tables needed.**
 
-Add: `pending_field_supervisor`, `pending_customer_pm`, `approved_pending_wo`
+**Migration summary:**
+```sql
+ALTER TABLE time_entries ADD COLUMN is_overhead boolean DEFAULT false;
+ALTER TABLE time_entries ADD COLUMN overhead_category text;
+```
 
-Full flow: `draft` -> `pending_field_supervisor` -> `pending_customer_pm` -> `approved_pending_wo` -> `approved` -> `invoiced`
-
-**New table: `change_order_approval_log`**
-
-| Column | Type |
-|--------|------|
-| id | uuid PK |
-| change_order_id | uuid FK |
-| action | text (submitted, field_supervisor_signed, customer_pm_signed, wo_received, rejected) |
-| actor_name | text |
-| actor_email | text |
-| notes | text |
-| created_at | timestamptz |
-
-RLS: Staff (admin/manager/user) can SELECT; system inserts via edge function (service role).
+RLS: No new policies needed -- existing policies cover time_entries.
 
 ---
 
-### 2. Project Contact Fields UI
+### 2. "Overhead" Option in Time Entry Forms
 
-**Modify:** `src/components/projects/ProjectForm.tsx` (or the project edit form)
+**Modify:** `src/components/time-tracking/EnhancedTimeEntryForm.tsx`
 
-Add a "Customer Contacts" section with fields for:
-- Customer Field Supervisor (name, email, phone)
-- Customer Project Manager (name, email, phone)
-- Our Field Superintendent (dropdown from personnel table)
+- Add an "Overhead / Non-Project" toggle or a special entry in the project dropdown
+- When selected, set `is_overhead = true` and show a category dropdown (Admin, Travel, Training, Payroll, Other)
+- Project dropdown becomes optional (or auto-selects a placeholder)
 
-These fields are optional but required before a CO can be submitted for approval from that project.
-
----
-
-### 3. Change Order Creation Updates
-
-**Modify:** `src/components/change-orders/ChangeOrderForm.tsx`
-
-- Add photo upload section (multiple photos using existing storage bucket)
-- Photos stored in `form-uploads` bucket under `change-orders/{co_id}/`
-- Photos array saved to `change_orders.photos`
-
-No changes to line item structure -- existing quantity/pricing fields remain.
+**Modify:** Clock-in flow (`src/components/portal/InlineClockControls.tsx`)
+- Currently requires a project. Add an "Overhead" option alongside project selection.
 
 ---
 
-### 4. Approval Submission Flow
+### 3. Admin Manual Entry (Already Exists -- Enhance)
 
-**New edge function:** `supabase/functions/send-co-approval/index.ts`
+The `EnhancedTimeEntryForm` already allows Admin/Manager to select personnel and log time on their behalf (daily and weekly modes with multi-personnel support). This covers George's use case.
 
-When a field rep clicks "Submit for Approval" on a draft CO:
-
-1. Validates the project has customer_field_supervisor_email set
-2. Generates approval tokens for both signers
-3. Updates CO status to `pending_field_supervisor`
-4. Sends email to Customer Field Supervisor via Resend with a link to review and sign
-5. Sends notification emails to Customer PM and our Field Superintendent (FYI -- CO has been created)
-6. Creates in-app notifications for internal team
-7. Logs action in `change_order_approval_log`
-
-**Approval chain email flow:**
-- Step 1: Customer Field Supervisor receives email -> clicks link -> reviews CO -> signs -> status moves to `pending_customer_pm`
-- Step 2: Customer PM auto-receives next email -> reviews -> signs -> status moves to `approved_pending_wo`
-- Step 3: Internal team notified that both signatures received. CO stays `approved_pending_wo` until customer WO number is entered/uploaded.
-- Step 4: When WO document uploaded and number entered -> `work_authorized = true`, status -> `approved`
+**Minor enhancements:**
+- Add a prominent "Log Time for Field Personnel" quick action on the Manager dashboard
+- Ensure the form's personnel selector is easy to find and use
+- Add the overhead option to the admin manual entry form
 
 ---
 
-### 5. E-Signature Approval Pages
+### 4. Project Dashboard -- Labor Allocation Section
 
-**New page:** `src/pages/ApproveChangeOrder.tsx` (route: `/approve-co/:token`)
+**New component:** `src/components/project-hub/ProjectLaborAllocation.tsx`
 
-- Public page (no login required), same pattern as existing `/approve-change-order/:token`
-- Displays: CO number, project name, description, scope of work, photos, line items with pricing, total
-- Signature canvas at bottom
-- "Approve & Sign" button
-- On sign: edge function validates token, records signature and timestamp, advances status, sends next email in chain
+Displays on the Project Detail page (Financial tab area):
+- Total hours logged to this project (excluding overhead)
+- Breakdown by personnel: name, total hours, regular/OT split, estimated cost (hours x pay_rate)
+- Subtotals for supervision vs. field labor (based on personnel role/title)
+- Data sourced from existing `time_entries` query filtered by project_id
 
----
-
-### 6. Work Authorization Enforcement
-
-**Modify:** `src/components/project-hub/ProjectChangeOrdersList.tsx`
-- COs where `work_authorized = false` show a red "NOT AUTHORIZED" badge
-- COs where status is `approved_pending_wo` show an amber "AWAITING WORK ORDER" badge
-
-**Modify:** Change Order detail page
-- Show upload section for Customer Work Order document
-- Field for Customer WO/CO number
-- "Authorize Work" button (only enabled when WO uploaded AND both signatures present)
-
-**Modify:** Subcontractor Portal (`SubcontractorCompletions.tsx`)
-- Scope items linked to an unauthorized CO are shown with "Pending Approval -- Do Not Begin" label
-- These items cannot be checked/selected for completion submission
-- Enforced at UI level and validated in the submission mutation
+**Modify:** `src/pages/ProjectDetail.tsx`
+- Add the Labor Allocation component below or alongside the Financial Summary
 
 ---
 
-### 7. Document Storage and Audit Trail
+### 5. Supervision Cost Impact on Financial Summary
 
-- CO submission PDF, signed copies, and customer WO stored in `form-uploads` bucket under `change-orders/{co_id}/`
-- File references stored on the `change_orders` record
-- `change_order_approval_log` table provides full audit trail
-- CO detail page shows approval timeline with who signed what and when
+**Modify:** `src/components/project-hub/ProjectFinancialSummary.tsx`
 
----
+Add a new section showing:
+- "Supervision / Internal Labor" line item (hours from personnel flagged as supervisors, e.g., George)
+- "Margin before supervision: X%" vs "Margin after supervision: Y%"
+- This uses the existing `totalLaborCost` data but splits it by personnel type
 
-### 8. Notifications
+**Modify:** `src/pages/ProjectDetail.tsx` (financialData calculation)
+- Split labor cost into `fieldLaborCost` and `supervisionLaborCost`
+- Pass both to `ProjectFinancialSummary`
 
-Using existing `admin_notifications` table and Resend email:
-
-| Event | In-App Notification | Email |
-|-------|---------------------|-------|
-| CO created/submitted | Our Field Superintendent | Customer Field Supervisor, Customer PM, Our Field Superintendent |
-| Field Supervisor signs | Internal team | Customer PM (with sign link) |
-| Customer PM signs | Project Manager, Field Superintendent | Internal team |
-| CO fully approved | All assigned staff | - |
-| CO rejected at any stage | Creator, PM | Creator |
+To identify supervision personnel, use the `project_assignments.project_role` column (added in previous prompt) or personnel title/role.
 
 ---
 
-### 9. Files to Create/Modify
+### 6. Company-Wide Overhead and Utilization Report
+
+**New page:** `src/pages/OverheadAnalysis.tsx` (route: `/overhead-analysis`)
+
+Dashboard showing:
+- **Hours by Project** bar chart (recharts) -- all projects ranked by total hours
+- **Total Overhead Hours** -- sum of `is_overhead = true` entries
+- **Personnel Utilization** -- project hours / (project hours + overhead hours) as percentage per person
+- **Top Overhead Categories** -- breakdown of overhead_category values
+- Date range filter (week, month, quarter, custom)
+
+**Modify:** `src/App.tsx` -- add route
+**Modify:** Dashboard navigation -- add link to Overhead Analysis
+
+---
+
+### 7. Daily Logging Enforcement -- Missing Time Entry Alerts
+
+**New edge function:** `supabase/functions/check-missing-time-entries/index.ts`
+
+- Designed to run on a schedule (or triggered manually)
+- Queries all active field personnel
+- For each, checks if they have a time entry for today
+- If not, sends an in-app notification via `admin_notifications`
+- Also sends an SMS reminder via existing `send-sms` edge function
+
+**New component:** `src/components/dashboard/MissingTimeEntriesAlert.tsx`
+
+- Shows on the Manager/Admin dashboard
+- Lists personnel who have not logged time today
+- Clickable to open their time entry form
+
+---
+
+### 8. Files to Create/Modify
 
 **New files:**
-- `supabase/functions/send-co-approval/index.ts` -- email + token generation
-- `supabase/functions/process-co-signature/index.ts` -- validate token, record signature, advance chain
-- `src/pages/ApproveChangeOrderPublic.tsx` -- public e-signature page
-- `src/components/change-orders/ChangeOrderApprovalTimeline.tsx` -- approval status timeline
-- `src/components/change-orders/ChangeOrderPhotoUpload.tsx` -- multi-photo upload
-- `src/components/change-orders/CustomerWorkOrderUpload.tsx` -- WO upload + number entry
+- `src/components/project-hub/ProjectLaborAllocation.tsx` -- per-project labor breakdown
+- `src/pages/OverheadAnalysis.tsx` -- company-wide overhead report
+- `src/components/dashboard/MissingTimeEntriesAlert.tsx` -- missing entry widget
+- `supabase/functions/check-missing-time-entries/index.ts` -- daily check function
 
 **Modified files:**
-- `src/App.tsx` -- add routes
-- `src/integrations/supabase/hooks/useChangeOrders.ts` -- add new status types, work_authorized field
-- `src/components/change-orders/ChangeOrderForm.tsx` -- add photo upload
-- `src/components/project-hub/ProjectChangeOrdersList.tsx` -- NOT AUTHORIZED badge
-- `src/pages/ChangeOrderDetail.tsx` -- approval timeline, WO upload, submit for approval button
-- Project form -- customer contact fields
-- Subcontractor completions -- enforce work authorization check
-- Database migration for all schema changes
+- `src/components/time-tracking/EnhancedTimeEntryForm.tsx` -- add overhead toggle + category
+- `src/components/portal/InlineClockControls.tsx` -- add overhead option
+- `src/components/project-hub/ProjectFinancialSummary.tsx` -- supervision cost impact line
+- `src/pages/ProjectDetail.tsx` -- add labor allocation component, split supervision costs
+- `src/App.tsx` -- add overhead analysis route
+- Database migration -- add `is_overhead` and `overhead_category` columns
 
-**No existing data affected** -- all changes are additive. Existing COs keep their current status. The new workflow columns default to null/false.
+**No existing data affected** -- new columns default to false/null. All existing time entries remain as project-allocated entries.
 
