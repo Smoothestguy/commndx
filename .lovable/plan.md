@@ -1,85 +1,68 @@
 
 
-## Fix: Bills Syncing to Category Details Instead of Item Details
+## Fix: All Labor/Subcontractor Bills Should Use Item Details
 
-### Root Cause
+### Root Cause Found
 
-The system has a chain of missing data that prevents Item Details from being used:
+The bill BILL-2625550 for "MARIELA GAMEZ" has:
+- `purchase_order_id = NULL` (not created from a PO)
+- `vendor_type = 'personnel'`
+- Category = "Contract Labor"
+- `qb_product_mapping_id = NULL` on all line items
 
-1. **`qb_product_service_mappings`** entries exist locally but have `quickbooks_item_id = NULL` -- they were never synced to QuickBooks to get actual QB Item IDs
-2. **Most products** don't have `qb_product_mapping_id` set, so even the lookup chain from the `CreateBillFromPODialog` finds nothing
-3. **The edge function** correctly checks `qb_product_mapping_id` -> `quickbooks_item_id`, but since both are null, every line falls back to `AccountBasedExpenseLineDetail` (Category Details)
+The current edge function logic ONLY uses Item Details when `purchase_order_id` is set. Since this bill was created directly (not from a PO), it falls through to Category Details every time.
 
-The current approach of relying on pre-existing mappings is fragile. The fix should make the edge functions smart enough to auto-resolve QB Items at sync time.
+### The Fix
 
-### Solution
+Change the "billable" detection logic in both `quickbooks-create-bill` and `quickbooks-update-bill` to be smarter. A bill should use **Item Details** if ANY of these conditions are true:
 
-Modify both `quickbooks-create-bill` and `quickbooks-update-bill` edge functions to:
+1. It has a `purchase_order_id` (PO-linked) -- existing logic
+2. Its line items have a `qb_product_mapping_id` set -- existing logic
+3. Its expense category is a labor/subcontractor type (e.g., "Contract Labor", "Contract labor") -- NEW
+4. The vendor is of type `personnel` -- NEW (backup check)
 
-1. **Detect billable bills**: If a bill has a `purchase_order_id`, treat ALL its line items as billable (Item Details)
-2. **Auto-find or create QB Items**: For billable line items without a valid `quickbooks_item_id`, search QuickBooks for a matching Service item (e.g., "Labor:Temp Labor - Reg Time"). If not found, create one
-3. **Cache resolved items**: Store the resolved `quickbooks_item_id` back to `qb_product_service_mappings` for future syncs
-4. **Non-PO bills stay as Category Details**: Personnel payments, fuel, general expenses (bills without a `purchase_order_id`) continue using `AccountBasedExpenseLineDetail`
+Only bills that are truly general expenses (fuel, office supplies, etc.) with non-labor categories and no product mappings should remain as Category Details.
 
-### Technical Details
+### Technical Changes
 
-#### Edge Function Changes (both create and update)
+**Files to modify:**
+- `supabase/functions/quickbooks-create-bill/index.ts`
+- `supabase/functions/quickbooks-update-bill/index.ts`
 
-In the line item building section, add logic BEFORE the existing `qbProduct` check:
+**Logic change in the `isBillable` determination (around line 597):**
 
-```text
-For each line item:
-  1. If bill has purchase_order_id (billable):
-     a. Try existing qb_product_mapping_id -> quickbooks_item_id path
-     b. If no mapping or no QB item ID:
-        - Look up the PO line item's product via po_line_item_id
-        - Check if product has a qb_product_mapping with quickbooks_item_id
-        - If still no QB item: search QB for a default "Subcontract Labor" item
-        - If none exists: create a "Subcontract Labor" Service item in QB
-        - Use the resolved QB item ID for ItemBasedExpenseLineDetail
-  2. If bill has NO purchase_order_id (expense):
-     - Use AccountBasedExpenseLineDetail (current behavior)
+Replace:
+```
+const isBillable = !!bill.purchase_order_id;
 ```
 
-The key insight from the user's screenshots: the "Item details" section shows "Labor:Temp Labor - Reg Time" and "Labor:Temp Labor - OT" as the PRODUCT/SERVICE. These are existing QuickBooks items. The edge function needs to find these items by name or use a configurable default.
+With expanded detection:
+```
+// A bill is "billable" (Item Details) if:
+// 1. Linked to a PO, OR
+// 2. Any line item has a qb_product_mapping_id, OR
+// 3. The category is labor-related (Contract Labor, Subcontract, etc.), OR
+// 4. The vendor type is 'personnel'
 
-#### Default Item Resolution Strategy
+// Check vendor type
+const vendorData = await supabase.from('vendors').select('vendor_type').eq('id', bill.vendor_id).single();
+const isPersonnelVendor = vendorData?.data?.vendor_type === 'personnel';
 
-1. Query `qb_product_service_mappings` for any mapping with a valid `quickbooks_item_id`
-2. If found, use it as the default billable item
-3. If not found, search QuickBooks for items named like "Labor" or "Subcontract"
-4. If still not found, create a "Subcontract Labor" Service item
-5. Cache the result for all subsequent line items in the same bill
+// Check if any line item has a labor-type category
+const laborCategoryNames = ['contract labor', 'subcontract', 'labor', 'temp labor'];
+const hasLaborCategory = lineItems?.some(item => {
+  const catName = categoryMap.get(item.category_id)?.toLowerCase() || '';
+  return laborCategoryNames.some(l => catName.includes(l));
+});
 
-#### VendorBillLineItem Interface Update
+const hasProductMapping = lineItems?.some(item => item.qb_product_mapping_id != null);
 
-Add missing fields to the TypeScript interface so they flow through properly:
-
-```typescript
-export interface VendorBillLineItem {
-  // ...existing fields...
-  qb_product_mapping_id?: string | null;
-  jo_line_item_id?: string | null;
-}
+const isBillable = !!bill.purchase_order_id || hasProductMapping || hasLaborCategory || isPersonnelVendor;
 ```
 
-### Files to Modify
+This ensures that labor bills like the one for MARIELA GAMEZ (personnel vendor, "Contract Labor" category) will automatically use Item Details and get the auto-resolved QB Service Item, even without a PO link.
 
-| File | Change |
-|------|--------|
-| `supabase/functions/quickbooks-create-bill/index.ts` | Add auto-resolve QB Item logic for PO-linked bills |
-| `supabase/functions/quickbooks-update-bill/index.ts` | Same auto-resolve logic for consistency |
-| `src/integrations/supabase/hooks/useVendorBills.ts` | Add `qb_product_mapping_id` and `jo_line_item_id` to `VendorBillLineItem` interface |
-
-### Decision Logic Summary
-
-```text
-Is bill linked to a Purchase Order?
-  YES -> ALL line items use ItemBasedExpenseLineDetail (Item Details)
-         Auto-resolve QB Item ID from mappings or create one
-  NO  -> ALL line items use AccountBasedExpenseLineDetail (Category Details)
-         Use expense category for account mapping
-```
-
-This matches the user's requirement: "billable bills go under Item Details, personal/expense bills go under Category Details."
-
+### What Won't Change
+- Bills for truly non-labor expenses (fuel, office supplies, general overhead) will continue using Category Details
+- The auto-resolve logic for finding/creating QB Service Items stays the same
+- The existing PO-linked detection still works as before
