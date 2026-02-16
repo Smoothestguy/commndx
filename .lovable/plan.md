@@ -1,41 +1,25 @@
 
 
-## Add "How to Use Command X" Step-by-Step Guide to Walkthrough PDF
+## Add "Send Onboarding" Button to Vendor Detail Page
 
-### Overview
-Add a new introductory section (before the current 18 modules) to the walkthrough PDF that provides a practical, step-by-step guide on **how to use Command X** -- what it is, when to use each module, and the typical daily/weekly workflows for different roles.
+### What This Does
+Adds a "Send Onboarding" button directly on the vendor detail page so you can send an onboarding link to any vendor -- no need for them to apply as personnel first. The vendor receives an email with a link to complete their registration (company info, W-9, banking, insurance, agreement).
 
-### Changes to `src/utils/appWalkthroughPdf.ts`
+### Changes
 
-Insert new sections into the `SECTIONS` array at the beginning, shifting existing section numbers up. The new content will cover:
-
-**New Section: "Getting Started with Command X"**
-- What Command X is (construction management ERP for Fairfield Group)
-- How to log in and set up your profile
-- Understanding the interface layout (sidebar, main area, detail pane)
-- Keyboard shortcuts (Cmd+K search, Cmd+Shift+P portal switcher)
-
-**New Section: "Step-by-Step Daily Workflows"**
-- **For Field Workers**: Clock in with GPS, log time to project, submit for approval
-- **For Project Managers**: Review dashboard, approve time entries, check project financials, generate invoices
-- **For Admins**: Manage users, review audit logs, run payroll, handle vendor compliance
-- **For Office Staff**: Create estimates, manage customers, process vendor bills, generate POs
-
-**New Section: "When to Use Each Module"**
-- A guide mapping business scenarios to the right module (e.g., "New client inquiry? Go to Customers", "Need materials? Create a Purchase Order", "Worker needs to get paid? Go to Payroll")
-- Common task flows: Estimate-to-Invoice lifecycle, Hire-to-Payroll lifecycle, PO-to-Payment lifecycle
-
-**New Section: "Tips, Shortcuts & Best Practices"**
-- Search and navigation tips
-- PDF generation and export tips
-- Data entry best practices
-- Common pitfalls and how to avoid them
+**File: `src/pages/VendorDetail.tsx`**
+- Import `SendVendorOnboardingDialog` and the `Send` icon
+- Add `isOnboardingDialogOpen` state
+- Add a "Send Onboarding" button in the header actions row (next to "Edit Vendor")
+- Conditionally show/hide or relabel the button based on `vendor.onboarding_status` (e.g., show "Resend Onboarding" if already invited, hide if completed)
+- Render the `SendVendorOnboardingDialog` at the bottom of the component
 
 ### Technical Details
+No database or backend changes needed. The full onboarding pipeline already exists:
+- `SendVendorOnboardingDialog` component collects the email
+- `useSendVendorOnboardingInvitation` hook calls the `send-vendor-onboarding-email` backend function
+- That function creates a token in `vendor_onboarding_tokens`, updates vendor status to "invited", and sends the email via Resend
+- The vendor clicks the link to `/vendor-onboarding/:token` and completes the multi-step form
 
-- Add 4 new `Section` objects to the beginning of the `SECTIONS` array (before "System Architecture")
-- Renumber all existing sections from 5-22 (instead of 1-18)
-- Update the cover page description text to mention the step-by-step guide
-- Update the section count display on cover page (will auto-update since it uses `SECTIONS.length`)
-- No new files needed -- all changes in `src/utils/appWalkthroughPdf.ts`
+This is purely a UI wiring task -- one file change.
 
