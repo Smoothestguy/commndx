@@ -502,7 +502,7 @@ serve(async (req) => {
               ItemRef: { value: qbProduct.qb_item_id },
               Qty: qty,
               UnitPrice: unitPrice,
-              BillableStatus: 'NotBillable',
+              BillableStatus: 'Billable',
             },
           });
         } else {
