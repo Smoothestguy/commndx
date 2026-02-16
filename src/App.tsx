@@ -130,6 +130,10 @@ import SubcontractorPODetail from "./pages/subcontractor-portal/SubcontractorPOD
 import SubcontractorBillsList from "./pages/subcontractor-portal/SubcontractorBillsList";
 import SubcontractorBillDetail from "./pages/subcontractor-portal/SubcontractorBillDetail";
 import SubcontractorNewBill from "./pages/subcontractor-portal/SubcontractorNewBill";
+import SubcontractorCompletions from "./pages/subcontractor-portal/SubcontractorCompletions";
+import SubcontractorCompletionDetail from "./pages/subcontractor-portal/SubcontractorCompletionDetail";
+import SubcontractorCompletionHistory from "./pages/subcontractor-portal/SubcontractorCompletionHistory";
+import CompletionReviews from "./pages/CompletionReviews";
 
 import NewChangeOrder from "./pages/NewChangeOrder";
 import EditChangeOrder from "./pages/EditChangeOrder";
@@ -673,6 +677,40 @@ const App = () => {
                         <SubcontractorProtectedRoute>
                           <SubcontractorBillDetail />
                         </SubcontractorProtectedRoute>
+                      }
+                    />
+                    <Route
+                      path="/subcontractor/completions"
+                      element={
+                        <SubcontractorProtectedRoute>
+                          <SubcontractorCompletions />
+                        </SubcontractorProtectedRoute>
+                      }
+                    />
+                    <Route
+                      path="/subcontractor/completions/history"
+                      element={
+                        <SubcontractorProtectedRoute>
+                          <SubcontractorCompletionHistory />
+                        </SubcontractorProtectedRoute>
+                      }
+                    />
+                    <Route
+                      path="/subcontractor/completions/:id"
+                      element={
+                        <SubcontractorProtectedRoute>
+                          <SubcontractorCompletionDetail />
+                        </SubcontractorProtectedRoute>
+                      }
+                    />
+
+                    {/* Admin: Completion Reviews */}
+                    <Route
+                      path="/completion-reviews"
+                      element={
+                        <ProtectedRoute>
+                          <CompletionReviews />
+                        </ProtectedRoute>
                       }
                     />
 
