@@ -153,6 +153,8 @@ import DocumentCenter from "./pages/DocumentCenter";
 import { UpdateNotification } from "./components/electron/UpdateNotification";
 import NetworkMapDemo from "./pages/NetworkMapDemo";
 import USANetworkMapDemo from "./pages/USANetworkMapDemo";
+import VendorOnboarding from "./pages/VendorOnboarding";
+import VendorOnboardingComplete from "./pages/VendorOnboardingComplete";
 
 const queryClient = new QueryClient();
 
@@ -226,6 +228,15 @@ const App = () => {
                     <Route
                       path="/onboarding-complete/:token"
                       element={<OnboardingComplete />}
+                    />
+                    {/* Vendor Onboarding Routes */}
+                    <Route
+                      path="/vendor-onboarding/:token"
+                      element={<VendorOnboarding />}
+                    />
+                    <Route
+                      path="/vendor-onboarding-complete"
+                      element={<VendorOnboardingComplete />}
                     />
                     {/* Public Contractor Routes */}
                     <Route path="/contractor" element={<ContractorPortal />} />
