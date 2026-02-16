@@ -15,6 +15,7 @@ import {
   DollarSign,
   ClipboardList,
   AlertTriangle,
+  Building2,
 } from "lucide-react";
 import {
   useSubcontractorPurchaseOrders,
@@ -23,6 +24,7 @@ import {
   SubcontractorPurchaseOrder,
   SubcontractorBill,
 } from "@/integrations/supabase/hooks/useSubcontractorPortal";
+import { useContractorRooms } from "@/integrations/supabase/hooks/useContractorCompletions";
 
 export default function SubcontractorDashboard() {
   const navigate = useNavigate();
@@ -48,6 +50,8 @@ export default function SubcontractorDashboard() {
     refetch: refetchBackCharges,
     isFetching: isFetchingBackCharges,
   } = useSubcontractorBackCharges();
+
+  const { data: rooms, isLoading: roomsLoading } = useContractorRooms();
 
   const handleRefresh = async () => {
     await Promise.all([refetchPOs(), refetchBills(), refetchBackCharges()]);
@@ -190,7 +194,16 @@ export default function SubcontractorDashboard() {
             isRefreshing={isRefreshing}
           >
             {/* Stats */}
-            <div className="grid gap-3 sm:gap-6 grid-cols-2 md:grid-cols-4 mb-4 sm:mb-8">
+            <div className="grid gap-3 sm:gap-6 grid-cols-2 md:grid-cols-5 mb-4 sm:mb-8">
+              <div className="cursor-pointer" onClick={() => navigate("/subcontractor/completions")}>
+                <StatCard
+                  title="My Rooms"
+                  value={roomsLoading ? "..." : rooms?.length ?? 0}
+                  change="Assigned units"
+                  changeType="neutral"
+                  icon={Building2}
+                />
+              </div>
               <StatCard
                 title="Open POs"
                 value={isLoading ? "..." : stats.openPOs}

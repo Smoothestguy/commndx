@@ -16,6 +16,7 @@ import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
 
 const navItems = [
   { href: "/subcontractor", label: "Dashboard", icon: Home },
+  { href: "/subcontractor/completions", label: "My Rooms", icon: HardHat },
   { href: "/subcontractor/purchase-orders", label: "My POs", icon: ClipboardList },
   { href: "/subcontractor/bills", label: "My Bills", icon: FileText },
 ];

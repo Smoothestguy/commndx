@@ -1364,6 +1364,167 @@ export type Database = {
         }
         Relationships: []
       }
+      contractor_completion_bill_items: {
+        Row: {
+          bill_id: string
+          created_at: string
+          description: string
+          id: string
+          job_order_line_item_id: string
+          quantity: number
+          room_scope_item_id: string
+          total: number
+          unit_cost: number
+        }
+        Insert: {
+          bill_id: string
+          created_at?: string
+          description?: string
+          id?: string
+          job_order_line_item_id: string
+          quantity?: number
+          room_scope_item_id: string
+          total?: number
+          unit_cost?: number
+        }
+        Update: {
+          bill_id?: string
+          created_at?: string
+          description?: string
+          id?: string
+          job_order_line_item_id?: string
+          quantity?: number
+          room_scope_item_id?: string
+          total?: number
+          unit_cost?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "contractor_completion_bill_items_bill_id_fkey"
+            columns: ["bill_id"]
+            isOneToOne: false
+            referencedRelation: "contractor_completion_bills"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "contractor_completion_bill_items_job_order_line_item_id_fkey"
+            columns: ["job_order_line_item_id"]
+            isOneToOne: false
+            referencedRelation: "job_order_line_items"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "contractor_completion_bill_items_room_scope_item_id_fkey"
+            columns: ["room_scope_item_id"]
+            isOneToOne: false
+            referencedRelation: "room_scope_items"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      contractor_completion_bills: {
+        Row: {
+          accounting_approved_at: string | null
+          accounting_approved_by: string | null
+          approved_at: string | null
+          approved_by: string | null
+          contractor_id: string
+          created_at: string
+          id: string
+          paid_at: string | null
+          project_id: string
+          rejection_notes: string | null
+          room_id: string
+          status: Database["public"]["Enums"]["contractor_bill_status"]
+          submitted_at: string
+          total_amount: number
+          updated_at: string
+          verified_at: string | null
+          verified_by: string | null
+        }
+        Insert: {
+          accounting_approved_at?: string | null
+          accounting_approved_by?: string | null
+          approved_at?: string | null
+          approved_by?: string | null
+          contractor_id: string
+          created_at?: string
+          id?: string
+          paid_at?: string | null
+          project_id: string
+          rejection_notes?: string | null
+          room_id: string
+          status?: Database["public"]["Enums"]["contractor_bill_status"]
+          submitted_at?: string
+          total_amount?: number
+          updated_at?: string
+          verified_at?: string | null
+          verified_by?: string | null
+        }
+        Update: {
+          accounting_approved_at?: string | null
+          accounting_approved_by?: string | null
+          approved_at?: string | null
+          approved_by?: string | null
+          contractor_id?: string
+          created_at?: string
+          id?: string
+          paid_at?: string | null
+          project_id?: string
+          rejection_notes?: string | null
+          room_id?: string
+          status?: Database["public"]["Enums"]["contractor_bill_status"]
+          submitted_at?: string
+          total_amount?: number
+          updated_at?: string
+          verified_at?: string | null
+          verified_by?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "contractor_completion_bills_accounting_approved_by_fkey"
+            columns: ["accounting_approved_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "contractor_completion_bills_approved_by_fkey"
+            columns: ["approved_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "contractor_completion_bills_contractor_id_fkey"
+            columns: ["contractor_id"]
+            isOneToOne: false
+            referencedRelation: "vendors"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "contractor_completion_bills_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "projects"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "contractor_completion_bills_room_id_fkey"
+            columns: ["room_id"]
+            isOneToOne: false
+            referencedRelation: "project_rooms"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "contractor_completion_bills_verified_by_fkey"
+            columns: ["verified_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       contractor_form_configurations: {
         Row: {
           created_at: string | null
@@ -4595,6 +4756,7 @@ export type Database = {
           id: string
           last_time_entry_at: string | null
           project_id: string
+          project_role: string | null
           status: string
           updated_at: string
           user_id: string
@@ -4606,6 +4768,7 @@ export type Database = {
           id?: string
           last_time_entry_at?: string | null
           project_id: string
+          project_role?: string | null
           status?: string
           updated_at?: string
           user_id: string
@@ -4617,6 +4780,7 @@ export type Database = {
           id?: string
           last_time_entry_at?: string | null
           project_id?: string
+          project_role?: string | null
           status?: string
           updated_at?: string
           user_id?: string
@@ -6233,6 +6397,7 @@ export type Database = {
       room_scope_items: {
         Row: {
           allocated_quantity: number
+          billed_quantity: number
           completed_quantity: number
           created_at: string
           id: string
@@ -6246,6 +6411,7 @@ export type Database = {
         }
         Insert: {
           allocated_quantity: number
+          billed_quantity?: number
           completed_quantity?: number
           created_at?: string
           id?: string
@@ -6259,6 +6425,7 @@ export type Database = {
         }
         Update: {
           allocated_quantity?: number
+          billed_quantity?: number
           completed_quantity?: number
           created_at?: string
           id?: string
@@ -8115,6 +8282,13 @@ export type Database = {
         | "denied"
         | "in_progress"
         | "completed"
+      contractor_bill_status:
+        | "submitted"
+        | "field_verified"
+        | "pm_approved"
+        | "accounting_approved"
+        | "paid"
+        | "rejected"
       customer_type:
         | "residential"
         | "commercial"
@@ -8373,6 +8547,14 @@ export const Constants = {
         "denied",
         "in_progress",
         "completed",
+      ],
+      contractor_bill_status: [
+        "submitted",
+        "field_verified",
+        "pm_approved",
+        "accounting_approved",
+        "paid",
+        "rejected",
       ],
       customer_type: [
         "residential",
