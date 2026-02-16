@@ -40,6 +40,26 @@ export interface Vendor {
   user_id: string | null;
   onboarding_status: string | null;
   onboarding_completed_at: string | null;
+  // Banking
+  bank_name: string | null;
+  bank_account_type: string | null;
+  bank_routing_number: string | null;
+  bank_account_number: string | null;
+  // Signatures
+  w9_signature: string | null;
+  w9_signed_at: string | null;
+  vendor_agreement_signature: string | null;
+  vendor_agreement_signed_at: string | null;
+  // Work authorization
+  citizenship_status: string | null;
+  immigration_status: string | null;
+  itin: string | null;
+  // Additional fields
+  business_type: string | null;
+  contact_name: string | null;
+  contact_title: string | null;
+  years_in_business: number | null;
+  website: string | null;
   created_at: string;
   updated_at: string;
 }

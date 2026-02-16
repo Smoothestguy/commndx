@@ -214,69 +214,127 @@ export default function VendorDetail() {
         )}
 
         {/* Financial Information Card */}
-        {(vendor.tax_id || vendor.track_1099 || vendor.billing_rate || vendor.payment_terms || 
-          vendor.account_number || vendor.default_expense_category_id || vendor.opening_balance) && (
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2 text-base">
-                <DollarSign className="h-5 w-5" />
-                Financial Information
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
-              {vendor.tax_id && (
-                <div>
-                  <p className="text-sm text-muted-foreground">Tax ID</p>
-                  <p className="font-medium font-mono">
-                    {vendor.tax_id.slice(0, -4).replace(/./g, "•") + vendor.tax_id.slice(-4)}
-                  </p>
-                </div>
-              )}
-              {vendor.track_1099 && (
-                <div>
-                  <p className="text-sm text-muted-foreground">1099 Tracking</p>
-                  <Badge variant="secondary">Enabled</Badge>
-                </div>
-              )}
-              {vendor.billing_rate && (
-                <div>
-                  <p className="text-sm text-muted-foreground flex items-center gap-2">
-                    <Receipt className="h-4 w-4" />
-                    Billing Rate
-                  </p>
-                  <p className="font-medium">${vendor.billing_rate.toFixed(2)}/hr</p>
-                </div>
-              )}
-              {vendor.payment_terms && (
-                <div>
-                  <p className="text-sm text-muted-foreground flex items-center gap-2">
-                    <CreditCard className="h-4 w-4" />
-                    Payment Terms
-                  </p>
-                  <p className="font-medium">{PAYMENT_TERMS_LABELS[vendor.payment_terms] || vendor.payment_terms}</p>
-                </div>
-              )}
-              {vendor.account_number && (
-                <div>
-                  <p className="text-sm text-muted-foreground">Account Number</p>
-                  <p className="font-medium font-mono">{vendor.account_number}</p>
-                </div>
-              )}
-              {expenseCategory && (
-                <div>
-                  <p className="text-sm text-muted-foreground">Default Expense Category</p>
-                  <p className="font-medium">{expenseCategory.name}</p>
-                </div>
-              )}
-              {vendor.opening_balance != null && vendor.opening_balance > 0 && (
-                <div>
-                  <p className="text-sm text-muted-foreground">Opening Balance</p>
-                  <p className="font-medium">${vendor.opening_balance.toFixed(2)}</p>
-                </div>
-              )}
-            </CardContent>
-          </Card>
-        )}
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2 text-base">
+              <DollarSign className="h-5 w-5" />
+              Financial Information
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
+            <div>
+              <p className="text-sm text-muted-foreground">Tax ID</p>
+              <p className="font-medium font-mono">
+                {vendor.tax_id
+                  ? vendor.tax_id.slice(0, -4).replace(/./g, "•") + vendor.tax_id.slice(-4)
+                  : "N/A"}
+              </p>
+            </div>
+            <div>
+              <p className="text-sm text-muted-foreground">1099 Tracking</p>
+              <Badge variant={vendor.track_1099 ? "secondary" : "outline"}>
+                {vendor.track_1099 ? "Enabled" : "Disabled"}
+              </Badge>
+            </div>
+            <div>
+              <p className="text-sm text-muted-foreground flex items-center gap-2">
+                <Receipt className="h-4 w-4" />
+                Billing Rate
+              </p>
+              <p className="font-medium">{vendor.billing_rate ? `$${vendor.billing_rate.toFixed(2)}/hr` : "N/A"}</p>
+            </div>
+            <div>
+              <p className="text-sm text-muted-foreground flex items-center gap-2">
+                <CreditCard className="h-4 w-4" />
+                Payment Terms
+              </p>
+              <p className="font-medium">{vendor.payment_terms ? (PAYMENT_TERMS_LABELS[vendor.payment_terms] || vendor.payment_terms) : "N/A"}</p>
+            </div>
+            {vendor.account_number && (
+              <div>
+                <p className="text-sm text-muted-foreground">Account Number</p>
+                <p className="font-medium font-mono">{vendor.account_number}</p>
+              </div>
+            )}
+            {expenseCategory && (
+              <div>
+                <p className="text-sm text-muted-foreground">Default Expense Category</p>
+                <p className="font-medium">{expenseCategory.name}</p>
+              </div>
+            )}
+            {vendor.opening_balance != null && vendor.opening_balance > 0 && (
+              <div>
+                <p className="text-sm text-muted-foreground">Opening Balance</p>
+                <p className="font-medium">${vendor.opening_balance.toFixed(2)}</p>
+              </div>
+            )}
+            {/* Banking Information */}
+            <div>
+              <p className="text-sm text-muted-foreground">Bank Name</p>
+              <p className="font-medium">{vendor.bank_name || "N/A"}</p>
+            </div>
+            <div>
+              <p className="text-sm text-muted-foreground">Bank Account Type</p>
+              <p className="font-medium capitalize">{vendor.bank_account_type || "N/A"}</p>
+            </div>
+            <div>
+              <p className="text-sm text-muted-foreground">Routing Number</p>
+              <p className="font-medium font-mono">
+                {vendor.bank_routing_number
+                  ? "•••••" + vendor.bank_routing_number.slice(-4)
+                  : "N/A"}
+              </p>
+            </div>
+            <div>
+              <p className="text-sm text-muted-foreground">Account Number</p>
+              <p className="font-medium font-mono">
+                {vendor.bank_account_number
+                  ? "•••••" + vendor.bank_account_number.slice(-4)
+                  : "N/A"}
+              </p>
+            </div>
+            {/* Signatures */}
+            <div>
+              <p className="text-sm text-muted-foreground">W-9 Signature</p>
+              <p className="font-medium">
+                {vendor.w9_signed_at
+                  ? `Signed ${format(new Date(vendor.w9_signed_at), "MMM d, yyyy")}`
+                  : "Not signed"}
+              </p>
+            </div>
+            <div>
+              <p className="text-sm text-muted-foreground">Vendor Agreement</p>
+              <p className="font-medium">
+                {vendor.vendor_agreement_signed_at
+                  ? `Signed ${format(new Date(vendor.vendor_agreement_signed_at), "MMM d, yyyy")}`
+                  : "Not signed"}
+              </p>
+            </div>
+            {/* Work Authorization */}
+            {vendor.citizenship_status && (
+              <div>
+                <p className="text-sm text-muted-foreground">Citizenship Status</p>
+                <p className="font-medium capitalize">
+                  {vendor.citizenship_status === "us_citizen" ? "U.S. Citizen" : "Non-U.S. Citizen"}
+                </p>
+              </div>
+            )}
+            {vendor.immigration_status && (
+              <div>
+                <p className="text-sm text-muted-foreground">Immigration Status</p>
+                <p className="font-medium capitalize">{vendor.immigration_status.replace(/_/g, " ")}</p>
+              </div>
+            )}
+            {vendor.itin && (
+              <div>
+                <p className="text-sm text-muted-foreground">ITIN</p>
+                <p className="font-medium font-mono">
+                  {"•••••" + vendor.itin.slice(-4)}
+                </p>
+              </div>
+            )}
+          </CardContent>
+        </Card>
 
         {/* Notes Card */}
         {vendor.notes && (

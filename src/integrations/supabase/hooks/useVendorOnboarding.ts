@@ -71,6 +71,11 @@ export interface VendorOnboardingFormData {
   billing_rate: string;
   // Insurance
   insurance_expiry: string;
+  // Work authorization
+  citizenship_status: string;
+  immigration_status: string;
+  itin: string;
+  documents: { type: string; name: string; path: string; fileType: string; fileSize: number }[];
 }
 
 export interface OnboardingValidationResult {
@@ -181,6 +186,9 @@ export function useCompleteVendorOnboarding() {
         p_vendor_agreement_signature: formData.vendor_agreement_signature,
         p_payment_terms: formData.payment_terms || null,
         p_billing_rate: formData.billing_rate ? parseFloat(formData.billing_rate) : null,
+        p_citizenship_status: formData.citizenship_status || null,
+        p_immigration_status: formData.immigration_status || null,
+        p_itin: formData.itin || null,
       });
 
       if (error) {
