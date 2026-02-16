@@ -11,6 +11,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Textarea } from "@/components/ui/textarea";
 import { Plus, Edit, Trash2, Loader2, Tag, X, ChevronDown, ChevronUp, MapPin, DollarSign, RefreshCw, Send } from "lucide-react";
 import { SendVendorOnboardingDialog } from "@/components/vendors/SendVendorOnboardingDialog";
+import { SendOnboardingSearchDialog } from "@/components/vendors/SendOnboardingSearchDialog";
 import { SearchInput } from "@/components/ui/search-input";
 import { PullToRefreshWrapper } from "@/components/shared/PullToRefreshWrapper";
 import { VendorCard } from "@/components/vendors/VendorCard";
@@ -171,6 +172,7 @@ const Vendors = () => {
   const [isOnboardingDialogOpen, setIsOnboardingDialogOpen] = useState(false);
   const [onboardingVendor, setOnboardingVendor] = useState<Vendor | null>(null);
   const [additionalInfoOpen, setAdditionalInfoOpen] = useState(false);
+  const [isSendOnboardingSearchOpen, setIsSendOnboardingSearchOpen] = useState(false);
 
   // Batch selection state
   const [selectedVendors, setSelectedVendors] = useState<string[]>([]);
@@ -641,6 +643,10 @@ const Vendors = () => {
                   {importVendorsFromQB.isPending ? "Syncing..." : "Sync from QuickBooks"}
                 </Button>
               )}
+              <Button variant="outline" onClick={() => setIsSendOnboardingSearchOpen(true)}>
+                <Send className="h-4 w-4" />
+                Send Onboarding
+              </Button>
               <Button variant="glow" onClick={openNewDialog}>
                 <Plus className="h-4 w-4" />
                 Add Vendor
@@ -1155,6 +1161,12 @@ const Vendors = () => {
             </form>
           </DialogContent>
         </Dialog>
+
+        <SendOnboardingSearchDialog
+          open={isSendOnboardingSearchOpen}
+          onOpenChange={setIsSendOnboardingSearchOpen}
+          vendors={vendors || []}
+        />
 
         {onboardingVendor && (
           <SendVendorOnboardingDialog
