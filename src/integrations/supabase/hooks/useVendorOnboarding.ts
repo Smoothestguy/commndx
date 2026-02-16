@@ -205,7 +205,42 @@ export function useCompleteVendorOnboarding() {
   });
 }
 
-// Hook to send vendor onboarding invitation
+// Hook to send vendor onboarding invitation via SMS
+export function useSendVendorOnboardingSMS() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async ({
+      vendorId,
+      vendorName,
+      phone,
+    }: {
+      vendorId: string;
+      vendorName: string;
+      phone: string;
+    }) => {
+      const { data, error } = await supabase.functions.invoke("send-vendor-onboarding-sms", {
+        body: { vendorId, vendorName, phone },
+      });
+
+      if (error) {
+        throw error;
+      }
+
+      return data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["vendors"] });
+      toast.success("Vendor onboarding SMS sent successfully!");
+    },
+    onError: (error: Error) => {
+      console.error("Error sending vendor onboarding SMS:", error);
+      toast.error(error.message || "Failed to send SMS");
+    },
+  });
+}
+
+// Hook to send vendor onboarding invitation via email
 export function useSendVendorOnboardingInvitation() {
   const queryClient = useQueryClient();
 
