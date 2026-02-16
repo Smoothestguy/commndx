@@ -17,6 +17,8 @@ export interface VendorBillLineItem {
   total: number;
   po_line_item_id?: string | null;
   po_addendum_line_item_id?: string | null;
+  qb_product_mapping_id?: string | null;
+  jo_line_item_id?: string | null;
 }
 
 export interface VendorBillPayment {
