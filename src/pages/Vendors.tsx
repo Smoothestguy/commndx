@@ -12,6 +12,8 @@ import { Textarea } from "@/components/ui/textarea";
 import { Plus, Edit, Trash2, Loader2, Tag, X, ChevronDown, ChevronUp, MapPin, DollarSign, RefreshCw, Send } from "lucide-react";
 import { SendVendorOnboardingDialog } from "@/components/vendors/SendVendorOnboardingDialog";
 import { SendOnboardingSearchDialog } from "@/components/vendors/SendOnboardingSearchDialog";
+import { AddVendorChoiceDialog } from "@/components/vendors/AddVendorChoiceDialog";
+import { SendOnboardingInviteDialog } from "@/components/vendors/SendOnboardingInviteDialog";
 import { SearchInput } from "@/components/ui/search-input";
 import { PullToRefreshWrapper } from "@/components/shared/PullToRefreshWrapper";
 import { VendorCard } from "@/components/vendors/VendorCard";
@@ -173,6 +175,8 @@ const Vendors = () => {
   const [onboardingVendor, setOnboardingVendor] = useState<Vendor | null>(null);
   const [additionalInfoOpen, setAdditionalInfoOpen] = useState(false);
   const [isSendOnboardingSearchOpen, setIsSendOnboardingSearchOpen] = useState(false);
+  const [isChoiceDialogOpen, setIsChoiceDialogOpen] = useState(false);
+  const [isInviteDialogOpen, setIsInviteDialogOpen] = useState(false);
 
   // Batch selection state
   const [selectedVendors, setSelectedVendors] = useState<string[]>([]);
@@ -616,6 +620,10 @@ const Vendors = () => {
     setIsDialogOpen(true);
   };
 
+  const handleAddVendorClick = () => {
+    setIsChoiceDialogOpen(true);
+  };
+
   return (
     <>
       <SEO
@@ -647,7 +655,7 @@ const Vendors = () => {
                 <Send className="h-4 w-4" />
                 Send Onboarding
               </Button>
-              <Button variant="glow" onClick={openNewDialog}>
+              <Button variant="glow" onClick={handleAddVendorClick}>
                 <Plus className="h-4 w-4" />
                 Add Vendor
               </Button>
@@ -1180,6 +1188,18 @@ const Vendors = () => {
             vendorEmail={onboardingVendor.email}
           />
         )}
+
+        <AddVendorChoiceDialog
+          open={isChoiceDialogOpen}
+          onOpenChange={setIsChoiceDialogOpen}
+          onManualEntry={openNewDialog}
+          onSendInvite={() => setIsInviteDialogOpen(true)}
+        />
+
+        <SendOnboardingInviteDialog
+          open={isInviteDialogOpen}
+          onOpenChange={setIsInviteDialogOpen}
+        />
       </PageLayout>
     </>
   );
