@@ -1,118 +1,52 @@
 
 
-## Vendor Onboarding: Work Authorization + Admin Financial Visibility
+## Fix: Create Missing `vendor-documents` Storage Bucket
 
-### Overview
-Two changes are needed:
-1. **Vendor Onboarding** - Add a "Work Authorization" step (similar to personnel onboarding) so vendors without a Social Security Number can provide a TIN/ITIN and upload work authorization documents
-2. **Vendor Detail Page** - Show banking/financial details (bank name, account type, routing/account numbers masked) and signature statuses so admins can view the submitted financial information
+### Problem
+When uploading a document on the vendor detail page, the upload fails with "Bucket not found" because the `vendor-documents` storage bucket has never been created in the database.
 
-### Changes
-
-#### 1. Add Work Authorization Step to Vendor Onboarding (`src/pages/VendorOnboarding.tsx`)
-
-Insert a new step between "Address" (step 2) and "W-9 Tax Form" (step 3), shifting all subsequent steps. The new flow becomes:
-
-1. Company Info
-2. Address
-3. **Work Authorization (NEW)**
-4. W-9 Tax Form
-5. Banking
-6. Agreement
-7. Review
-
-**Work Authorization step logic** (mirrors personnel onboarding):
-- Ask: "Are you a U.S. Citizen?" (Yes/No radio)
-- **U.S. Citizen**: Require TIN (SSN/EIN) entry -- this pre-fills the W-9 step
-- **Non-U.S. Citizen**: Show immigration status dropdown (Visa, Work Permit, Green Card, Other)
-  - Visa/Work Permit/Green Card: Require TIN entry + document upload (visa docs, EAD card, or green card front/back)
-  - Other: Require ITIN entry (9 digits starting with 9) + optional work authorization document upload
-- Documents uploaded to the existing `vendor-documents` or `form-uploads` storage bucket
-
-**Form data additions** to `VendorOnboardingFormData`:
-- `citizenship_status`: "us_citizen" | "non_us_citizen"
-- `immigration_status`: "visa" | "work_permit" | "green_card" | "other" | undefined
-- `itin`: string (for non-citizen "other" status)
-- `documents`: array of uploaded document references
-
-#### 2. New Component: `src/components/vendors/onboarding/VendorWorkAuthorizationForm.tsx`
-
-A dedicated form component for the work authorization step. Reuses existing components:
-- `SSNInput` or standard `Input` for TIN/ITIN
-- `ITINInput` from personnel registration for ITIN formatting
-- `CategoryDocumentUpload` for document uploads
-- `RadioGroup` for citizenship/immigration status selection
-
-#### 3. Update `VendorOnboardingFormData` interface (`src/integrations/supabase/hooks/useVendorOnboarding.ts`)
-
-Add fields:
-```
-citizenship_status: string;
-immigration_status: string;
-itin: string;
-documents: { type: string; name: string; path: string; fileType: string; fileSize: number }[];
-```
-
-#### 4. Update `complete_vendor_onboarding` RPC (database migration)
-
-Add parameters for the new fields:
-- `p_citizenship_status text`
-- `p_immigration_status text`
-- `p_itin text`
-
-This requires adding columns to the `vendors` table:
-- `citizenship_status text`
-- `immigration_status text`
-- `itin text`
-
-And updating the RPC function to save these values.
-
-#### 5. Vendor Detail Page - Banking/Financial Info (`src/pages/VendorDetail.tsx`)
-
-The existing "Financial Information" card (lines 216-279) already shows tax_id, 1099, billing_rate, payment_terms. Enhance it to **always show** (not conditionally) and add:
-- Bank Name
-- Bank Account Type
-- Bank Routing Number (masked: show last 4 digits only)
-- Bank Account Number (masked: show last 4 digits only)
-- W-9 Signature status (signed date or "Not signed")
-- Vendor Agreement Signature status (signed date or "Not signed")
-- Citizenship/Immigration Status (new fields)
-
-This requires updating the `Vendor` interface in `useVendors.ts` to include the new columns and the banking fields that are already in the DB but not fetched.
-
-#### 6. Update `useVendors.ts` Vendor interface
-
-Add missing fields that already exist in DB:
-- `bank_name`, `bank_account_type`, `bank_routing_number`, `bank_account_number`
-- `w9_signature`, `w9_signed_at`
-- `vendor_agreement_signature`, `vendor_agreement_signed_at`
-- `citizenship_status`, `immigration_status`, `itin` (after migration)
-- `business_type`, `contact_name`, `contact_title`, `years_in_business`, `website`
+### Fix
+Create the `vendor-documents` storage bucket and add RLS policies so authenticated users can upload, read, and delete files.
 
 ### Technical Details
 
-**Database Migration:**
+**Database migration** -- single SQL file:
+
+1. Create the `vendor-documents` bucket (private, since it may contain sensitive documents like EIN letters, W-9s, insurance certs)
+2. Add RLS policies on `storage.objects` for this bucket:
+   - Authenticated users can upload files (`INSERT`)
+   - Authenticated users can read files (`SELECT`)
+   - Authenticated users can delete files (`DELETE`)
+
+Since the bucket is private, the existing `VendorDocumentUpload` component calls `getPublicUrl()` which won't work for private buckets. Two options:
+- **Option A**: Make the bucket public (simpler, matches current code using `getPublicUrl`)
+- **Option B**: Make the bucket private and switch to signed URLs
+
+Given that vendor documents (W-9s, insurance certs, EIN letters) are sensitive, the bucket should be **private**. However, the current code uses `getPublicUrl` and stores that URL. To keep changes minimal and get uploads working immediately, we will make the bucket **public** -- matching how `form-uploads` works. A future enhancement can migrate to signed URLs.
+
+**Migration SQL:**
 ```sql
-ALTER TABLE public.vendors 
-  ADD COLUMN IF NOT EXISTS citizenship_status text,
-  ADD COLUMN IF NOT EXISTS immigration_status text,
-  ADD COLUMN IF NOT EXISTS itin text;
+INSERT INTO storage.buckets (id, name, public)
+VALUES ('vendor-documents', 'vendor-documents', true)
+ON CONFLICT (id) DO NOTHING;
+
+CREATE POLICY "Authenticated users can upload vendor documents"
+ON storage.objects FOR INSERT TO authenticated
+WITH CHECK (bucket_id = 'vendor-documents');
+
+CREATE POLICY "Authenticated users can read vendor documents"
+ON storage.objects FOR SELECT TO authenticated
+USING (bucket_id = 'vendor-documents');
+
+CREATE POLICY "Authenticated users can delete vendor documents"
+ON storage.objects FOR DELETE TO authenticated
+USING (bucket_id = 'vendor-documents');
 ```
 
-Then drop and recreate `complete_vendor_onboarding` with the 3 additional parameters.
-
-**Document Storage:** Use the existing `form-uploads` public bucket for work authorization document uploads during onboarding (same pattern as personnel registration).
-
-**Security:** The existing anon SELECT policy on vendors (via valid onboarding token) already covers access. The RPC runs as SECURITY DEFINER so updates are handled server-side.
-
-### Files to Create/Modify
-
+### Files Changed
 | File | Action |
 |------|--------|
-| `src/components/vendors/onboarding/VendorWorkAuthorizationForm.tsx` | Create |
-| `src/pages/VendorOnboarding.tsx` | Modify (add step, update step count) |
-| `src/integrations/supabase/hooks/useVendorOnboarding.ts` | Modify (add fields to form data + RPC call) |
-| `src/integrations/supabase/hooks/useVendors.ts` | Modify (add fields to Vendor interface) |
-| `src/pages/VendorDetail.tsx` | Modify (show banking + signature info) |
-| Database migration | Add columns + update RPC |
+| Database migration | Create bucket + RLS policies |
+
+No code changes needed -- the existing upload component will work once the bucket exists.
 
