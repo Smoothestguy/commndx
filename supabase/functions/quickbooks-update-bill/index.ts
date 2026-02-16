@@ -500,6 +500,53 @@ serve(async (req) => {
     
     const isBillable = !!bill.purchase_order_id || hasProductMapping || hasLaborCategory || isPersonnelVendor;
     let resolvedQBItemId: string | null = null;
+
+    // Resolve QB Customer for billable lines (required by QuickBooks when BillableStatus = 'Billable')
+    let qbCustomerRef: { value: string } | null = null;
+    if (isBillable && lineItems?.length > 0) {
+      const projectIds = [...new Set(lineItems.map((i: any) => i.project_id).filter(Boolean))];
+      if (projectIds.length > 0) {
+        const { data: project } = await supabase
+          .from('projects')
+          .select('customer_id')
+          .eq('id', projectIds[0])
+          .single();
+        if (project?.customer_id) {
+          const { data: custMapping } = await supabase
+            .from('quickbooks_customer_mappings')
+            .select('quickbooks_customer_id')
+            .eq('customer_id', project.customer_id)
+            .single();
+          if (custMapping?.quickbooks_customer_id) {
+            qbCustomerRef = { value: custMapping.quickbooks_customer_id };
+            console.log(`Resolved QB CustomerRef: ${custMapping.quickbooks_customer_id} for project ${projectIds[0]}`);
+          }
+        }
+      }
+      if (!qbCustomerRef) {
+        if (bill.project_id) {
+          const { data: project } = await supabase
+            .from('projects')
+            .select('customer_id')
+            .eq('id', bill.project_id)
+            .single();
+          if (project?.customer_id) {
+            const { data: custMapping } = await supabase
+              .from('quickbooks_customer_mappings')
+              .select('quickbooks_customer_id')
+              .eq('customer_id', project.customer_id)
+              .single();
+            if (custMapping?.quickbooks_customer_id) {
+              qbCustomerRef = { value: custMapping.quickbooks_customer_id };
+              console.log(`Resolved QB CustomerRef from bill project: ${custMapping.quickbooks_customer_id}`);
+            }
+          }
+        }
+      }
+      if (!qbCustomerRef) {
+        console.warn('Could not resolve QB CustomerRef - billable lines will fall back to NotBillable');
+      }
+    }
     
     console.log(`isBillable determination: PO=${!!bill.purchase_order_id}, hasProductMapping=${hasProductMapping}, hasLaborCategory=${hasLaborCategory}, isPersonnelVendor=${isPersonnelVendor} => isBillable=${isBillable}`);
     
@@ -614,7 +661,8 @@ serve(async (req) => {
               ItemRef: { value: itemId },
               Qty: qty,
               UnitPrice: unitPrice,
-              BillableStatus: 'Billable',
+              BillableStatus: qbCustomerRef ? 'Billable' : 'NotBillable',
+              ...(qbCustomerRef ? { CustomerRef: qbCustomerRef } : {}),
             },
           });
         } else {
