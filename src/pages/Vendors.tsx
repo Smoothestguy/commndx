@@ -9,7 +9,8 @@ import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Textarea } from "@/components/ui/textarea";
-import { Plus, Edit, Trash2, Loader2, Tag, X, ChevronDown, ChevronUp, MapPin, DollarSign, RefreshCw } from "lucide-react";
+import { Plus, Edit, Trash2, Loader2, Tag, X, ChevronDown, ChevronUp, MapPin, DollarSign, RefreshCw, Send } from "lucide-react";
+import { SendVendorOnboardingDialog } from "@/components/vendors/SendVendorOnboardingDialog";
 import { SearchInput } from "@/components/ui/search-input";
 import { PullToRefreshWrapper } from "@/components/shared/PullToRefreshWrapper";
 import { VendorCard } from "@/components/vendors/VendorCard";
@@ -167,6 +168,8 @@ const Vendors = () => {
   const [sortOrder, setSortOrder] = useState<"asc" | "desc">("asc");
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [editingVendor, setEditingVendor] = useState<Vendor | null>(null);
+  const [isOnboardingDialogOpen, setIsOnboardingDialogOpen] = useState(false);
+  const [onboardingVendor, setOnboardingVendor] = useState<Vendor | null>(null);
   const [additionalInfoOpen, setAdditionalInfoOpen] = useState(false);
 
   // Batch selection state
@@ -372,6 +375,20 @@ const Vendors = () => {
       filterable: false,
       render: (item) => (
         <div className="flex items-center gap-2">
+          {item.onboarding_status !== "completed" && (
+            <Button
+              variant="ghost"
+              size="icon"
+              title={item.onboarding_status === "invited" ? "Resend Onboarding" : "Send Onboarding"}
+              onClick={(e) => {
+                e.stopPropagation();
+                setOnboardingVendor(item);
+                setIsOnboardingDialogOpen(true);
+              }}
+            >
+              <Send className="h-4 w-4" />
+            </Button>
+          )}
           <Button
             variant="ghost"
             size="icon"
@@ -1138,6 +1155,19 @@ const Vendors = () => {
             </form>
           </DialogContent>
         </Dialog>
+
+        {onboardingVendor && (
+          <SendVendorOnboardingDialog
+            open={isOnboardingDialogOpen}
+            onOpenChange={(open) => {
+              setIsOnboardingDialogOpen(open);
+              if (!open) setOnboardingVendor(null);
+            }}
+            vendorId={onboardingVendor.id}
+            vendorName={onboardingVendor.name}
+            vendorEmail={onboardingVendor.email}
+          />
+        )}
       </PageLayout>
     </>
   );
