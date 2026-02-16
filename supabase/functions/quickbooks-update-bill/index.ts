@@ -478,12 +478,33 @@ serve(async (req) => {
       }
     }
 
-    // AUTO-RESOLVE: For PO-linked (billable) bills, find or create a QB Item
-    const isBillable = !!bill.purchase_order_id;
+    // AUTO-RESOLVE: Determine if bill should use Item Details (billable) or Category Details
+    // A bill is "billable" if ANY of these are true:
+    // 1. Linked to a PO
+    // 2. Any line item has a qb_product_mapping_id
+    // 3. The expense category is labor-related
+    // 4. The vendor type is 'personnel'
+    
+    const hasProductMapping = lineItems?.some((item: any) => item.qb_product_mapping_id != null);
+    
+    // Check vendor type
+    const { data: vendorData } = await supabase.from('vendors').select('vendor_type').eq('id', bill.vendor_id).single();
+    const isPersonnelVendor = vendorData?.vendor_type === 'personnel';
+    
+    // Check if any line item has a labor-type category
+    const laborCategoryNames = ['contract labor', 'subcontract', 'labor', 'temp labor'];
+    const hasLaborCategory = lineItems?.some((item: any) => {
+      const catName = (categoryMap.get(item.category_id) || '').toLowerCase();
+      return laborCategoryNames.some((l: string) => catName.includes(l));
+    });
+    
+    const isBillable = !!bill.purchase_order_id || hasProductMapping || hasLaborCategory || isPersonnelVendor;
     let resolvedQBItemId: string | null = null;
     
+    console.log(`isBillable determination: PO=${!!bill.purchase_order_id}, hasProductMapping=${hasProductMapping}, hasLaborCategory=${hasLaborCategory}, isPersonnelVendor=${isPersonnelVendor} => isBillable=${isBillable}`);
+    
     if (isBillable) {
-      console.log(`Bill is PO-linked (purchase_order_id: ${bill.purchase_order_id}) - will use Item Details`);
+      console.log(`Bill is billable - will use Item Details`);
       
       // Step 1: Check if any existing mapping has a valid quickbooks_item_id
       const { data: existingMappingsWithQBId } = await supabase
