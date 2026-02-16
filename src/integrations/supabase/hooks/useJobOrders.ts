@@ -14,6 +14,7 @@ export interface JobOrderLineItem {
   markup: number;
   total: number;
   invoiced_quantity?: number;
+  billed_quantity?: number;
   is_taxable?: boolean;
 }
 
