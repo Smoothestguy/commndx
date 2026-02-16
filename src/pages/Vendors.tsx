@@ -593,6 +593,22 @@ const Vendors = () => {
         user_id: null,
         onboarding_status: null,
         onboarding_completed_at: null,
+        bank_name: null,
+        bank_account_type: null,
+        bank_routing_number: null,
+        bank_account_number: null,
+        w9_signature: null,
+        w9_signed_at: null,
+        vendor_agreement_signature: null,
+        vendor_agreement_signed_at: null,
+        citizenship_status: null,
+        immigration_status: null,
+        itin: null,
+        business_type: null,
+        contact_name: null,
+        contact_title: null,
+        years_in_business: null,
+        website: null,
       });
 
       // Auto-sync to QuickBooks if connected

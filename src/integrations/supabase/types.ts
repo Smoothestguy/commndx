@@ -7446,6 +7446,7 @@ export type Database = {
           bank_routing_number: string | null
           billing_rate: number | null
           business_type: string | null
+          citizenship_status: string | null
           city: string | null
           company: string | null
           contact_name: string | null
@@ -7456,8 +7457,10 @@ export type Database = {
           deleted_by: string | null
           email: string
           id: string
+          immigration_status: string | null
           insurance_expiry: string | null
           is_active: boolean | null
+          itin: string | null
           license_number: string | null
           merge_reason: string | null
           merged_at: string | null
@@ -7497,6 +7500,7 @@ export type Database = {
           bank_routing_number?: string | null
           billing_rate?: number | null
           business_type?: string | null
+          citizenship_status?: string | null
           city?: string | null
           company?: string | null
           contact_name?: string | null
@@ -7507,8 +7511,10 @@ export type Database = {
           deleted_by?: string | null
           email: string
           id?: string
+          immigration_status?: string | null
           insurance_expiry?: string | null
           is_active?: boolean | null
+          itin?: string | null
           license_number?: string | null
           merge_reason?: string | null
           merged_at?: string | null
@@ -7548,6 +7554,7 @@ export type Database = {
           bank_routing_number?: string | null
           billing_rate?: number | null
           business_type?: string | null
+          citizenship_status?: string | null
           city?: string | null
           company?: string | null
           contact_name?: string | null
@@ -7558,8 +7565,10 @@ export type Database = {
           deleted_by?: string | null
           email?: string
           id?: string
+          immigration_status?: string | null
           insurance_expiry?: string | null
           is_active?: boolean | null
+          itin?: string | null
           license_number?: string | null
           merge_reason?: string | null
           merged_at?: string | null
@@ -7799,11 +7808,14 @@ export type Database = {
           p_bank_routing_number?: string
           p_billing_rate?: number
           p_business_type?: string
+          p_citizenship_status?: string
           p_city?: string
           p_company?: string
           p_contact_name?: string
           p_contact_title?: string
           p_email?: string
+          p_immigration_status?: string
+          p_itin?: string
           p_license_number?: string
           p_name: string
           p_payment_terms?: string

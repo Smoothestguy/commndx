@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -23,6 +23,7 @@ import {
 import { VendorW9Form } from "@/components/vendors/onboarding/VendorW9Form";
 import { VendorBankingForm } from "@/components/vendors/onboarding/VendorBankingForm";
 import { VendorAgreementForm } from "@/components/vendors/onboarding/VendorAgreementForm";
+import { VendorWorkAuthorizationForm } from "@/components/vendors/onboarding/VendorWorkAuthorizationForm";
 import {
   ChevronLeft,
   ChevronRight,
@@ -34,15 +35,17 @@ import {
   CheckCircle,
   Loader2,
   AlertTriangle,
+  Shield,
 } from "lucide-react";
 
 const STEPS = [
   { id: 1, title: "Company Info", icon: Building2 },
   { id: 2, title: "Address", icon: MapPin },
-  { id: 3, title: "W-9 Tax Form", icon: FileText },
-  { id: 4, title: "Banking", icon: CreditCard },
-  { id: 5, title: "Agreement", icon: FileSignature },
-  { id: 6, title: "Review", icon: CheckCircle },
+  { id: 3, title: "Work Auth", icon: Shield },
+  { id: 4, title: "W-9 Tax Form", icon: FileText },
+  { id: 5, title: "Banking", icon: CreditCard },
+  { id: 6, title: "Agreement", icon: FileSignature },
+  { id: 7, title: "Review", icon: CheckCircle },
 ];
 
 const US_STATES = [
@@ -62,6 +65,9 @@ export default function VendorOnboarding() {
   const [agreedToTerms, setAgreedToTerms] = useState(false);
   const [initialized, setInitialized] = useState(false);
 
+  // Generate a session ID for document uploads
+  const sessionId = useMemo(() => crypto.randomUUID(), []);
+
   const [formData, setFormData] = useState<VendorOnboardingFormData>({
     name: "", company: "", email: "", phone: "", contact_name: "", contact_title: "",
     business_type: "", years_in_business: "", website: "", specialty: "", license_number: "",
@@ -69,6 +75,7 @@ export default function VendorOnboarding() {
     bank_name: "", bank_account_type: "", bank_routing_number: "", bank_account_number: "",
     w9_signature: null, vendor_agreement_signature: null, payment_terms: "net_30", billing_rate: "",
     insurance_expiry: "",
+    citizenship_status: "", immigration_status: "", itin: "", documents: [],
   });
 
   // Initialize from vendor data
@@ -95,11 +102,34 @@ export default function VendorOnboarding() {
     switch (currentStep) {
       case 1: return formData.name.trim() !== "" && formData.email.trim() !== "";
       case 2: return true;
-      case 3: return formData.tax_id.trim() !== "" && !!formData.w9_signature;
-      case 4: return formData.bank_name !== "" && formData.bank_account_type !== "" && 
+      case 3: {
+        // Work authorization validation
+        if (!formData.citizenship_status) return false;
+        if (formData.citizenship_status === "us_citizen") {
+          return formData.tax_id.replace(/\D/g, "").length === 9;
+        }
+        if (formData.citizenship_status === "non_us_citizen") {
+          if (!formData.immigration_status) return false;
+          if (formData.immigration_status === "other") {
+            return formData.itin.replace(/\D/g, "").length === 9;
+          }
+          // visa, work_permit, green_card require TIN + documents
+          const hasTin = formData.tax_id.replace(/\D/g, "").length === 9;
+          if (formData.immigration_status === "green_card") {
+            const hasFront = formData.documents?.some(d => d.type === "green_card_front");
+            const hasBack = formData.documents?.some(d => d.type === "green_card_back");
+            return hasTin && !!hasFront && !!hasBack;
+          }
+          const hasDoc = formData.documents?.some(d => d.type === formData.immigration_status);
+          return hasTin && !!hasDoc;
+        }
+        return false;
+      }
+      case 4: return formData.tax_id.trim() !== "" && !!formData.w9_signature;
+      case 5: return formData.bank_name !== "" && formData.bank_account_type !== "" && 
                formData.bank_routing_number.length === 9 && formData.bank_account_number.length >= 4;
-      case 5: return !!formData.vendor_agreement_signature;
-      case 6: return agreedToTerms;
+      case 6: return !!formData.vendor_agreement_signature;
+      case 7: return agreedToTerms;
       default: return true;
     }
   };
@@ -211,10 +241,11 @@ export default function VendorOnboarding() {
                 </div>
               </div>
             )}
-            {currentStep === 3 && <VendorW9Form formData={formData} onUpdate={updateField} />}
-            {currentStep === 4 && <VendorBankingForm formData={formData} onUpdate={updateField} />}
-            {currentStep === 5 && <VendorAgreementForm vendorName={formData.name} signature={formData.vendor_agreement_signature} onUpdate={(sig) => updateField("vendor_agreement_signature", sig)} />}
-            {currentStep === 6 && (
+            {currentStep === 3 && <VendorWorkAuthorizationForm formData={formData} onUpdate={updateField} sessionId={sessionId} />}
+            {currentStep === 4 && <VendorW9Form formData={formData} onUpdate={updateField} />}
+            {currentStep === 5 && <VendorBankingForm formData={formData} onUpdate={updateField} />}
+            {currentStep === 6 && <VendorAgreementForm vendorName={formData.name} signature={formData.vendor_agreement_signature} onUpdate={(sig) => updateField("vendor_agreement_signature", sig)} />}
+            {currentStep === 7 && (
               <div className="space-y-4">
                 <Alert><AlertDescription>Please review your information before submitting.</AlertDescription></Alert>
                 <div className="flex items-center space-x-2">
