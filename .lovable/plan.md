@@ -1,45 +1,22 @@
 
 
-## Map Regular/Overtime Hours to Correct QuickBooks Service Items
+## Change: Set All Bill Lines to "Not Billable"
 
-### Current Behavior
-All labor bill line items (both regular and overtime) are mapped to the same generic QB service item (e.g., "Subcontract Labor Flooring") because the code resolves a single `resolvedQBItemId` and applies it to every line.
+### What Changes
+Currently, labor bill line items are marked as "Billable" in QuickBooks when a customer mapping is found. You want them to always be "Not Billable" instead.
 
-### Desired Behavior
-- **Regular Hours** lines (description contains "Regular Hours") should map to **"Temp Labor - Reg Time"**
-- **Overtime Hours** lines (description contains "Overtime Hours") should map to **"Temp Labor - OT"**
-
-### Technical Changes
+### Technical Details
 
 **Files to modify:**
 - `supabase/functions/quickbooks-create-bill/index.ts`
 - `supabase/functions/quickbooks-update-bill/index.ts`
 
-**Changes (same in both files):**
+**Changes in both files:**
 
-1. **Replace single-item resolution with dual-item resolution** -- Instead of resolving one `resolvedQBItemId` for all lines, resolve two:
-   - `regTimeQBItemId` -- searched/cached as "Temp Labor - Reg Time"
-   - `otQBItemId` -- searched/cached as "Temp Labor - OT"
+1. **Remove the customer resolution block** -- The code that looks up the QuickBooks Customer ID (via project -> customer -> customer mapping) is only needed for "Billable" lines. Since all lines will now be "NotBillable", this lookup is no longer necessary.
 
-2. **QB Item lookup logic** -- For each of the two items:
-   - First check `qb_product_service_mappings` for a cached mapping with matching name
-   - Then search QuickBooks: `SELECT * FROM Item WHERE Name = 'Temp Labor - Reg Time' AND Type = 'Service'`
-   - If not found, create it in QuickBooks as a new Service item
-   - Cache the QB Item ID back to mappings for future use
+2. **Hardcode `BillableStatus: 'NotBillable'`** -- On the `ItemBasedExpenseLineDetail` lines (where reg time / OT items are mapped), change from the conditional `qbCustomerRef ? 'Billable' : 'NotBillable'` to simply `'NotBillable'`, and remove the `CustomerRef` field entirely.
 
-3. **Per-line-item mapping** -- In the line item loop (around line 769), determine which QB item to use based on description:
-   ```
-   if description contains "Overtime Hours" -> use otQBItemId
-   else if description contains "Regular Hours" -> use regTimeQBItemId
-   else -> use regTimeQBItemId as default fallback
-   ```
-
-4. **Keep existing PO/product-mapping logic intact** -- If a line item already has a specific `qb_product_mapping_id` with a resolved QB item, that still takes priority over the reg/OT auto-detection.
-
-### Example Result in QuickBooks
-
-| # | PRODUCT/SERVICE | DESCRIPTION |
-|---|----------------|-------------|
-| 1 | Temp Labor - Reg Time | MARIELA GAMEZ - Regular Hours - 40 x $27.00 |
-| 2 | Temp Labor - OT | MARIELA GAMEZ - Overtime Hours - 44 x $40.50 |
+### Result
+All bill line items synced to QuickBooks will appear under Item Details with the correct product/service (Temp Labor - Reg Time / Temp Labor - OT), but the "Billable" checkbox will NOT be selected.
 
