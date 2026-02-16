@@ -139,6 +139,7 @@ import NewChangeOrder from "./pages/NewChangeOrder";
 import EditChangeOrder from "./pages/EditChangeOrder";
 import ChangeOrderDetail from "./pages/ChangeOrderDetail";
 import ApproveChangeOrder from "./pages/ApproveChangeOrder";
+import ApproveChangeOrderPublic from "./pages/ApproveChangeOrderPublic";
 import AuditLogs from "./pages/AuditLogs";
 import StaffingApplications from "./pages/StaffingApplications";
 import JobPostingEntries from "./pages/JobPostingEntries";
@@ -201,6 +202,10 @@ const App = () => {
                     <Route
                       path="/approve-change-order/:token"
                       element={<ApproveChangeOrder />}
+                    />
+                    <Route
+                      path="/approve-co/:token"
+                      element={<ApproveChangeOrderPublic />}
                     />
                     <Route
                       path="/personnel/register"

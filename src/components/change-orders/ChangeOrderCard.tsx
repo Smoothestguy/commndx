@@ -29,6 +29,9 @@ interface ChangeOrderCardProps {
 const statusConfig: Record<ChangeOrderStatus, { label: string; variant: "default" | "secondary" | "destructive" | "outline" }> = {
   draft: { label: "Draft", variant: "secondary" },
   pending_approval: { label: "Pending Approval", variant: "outline" },
+  pending_field_supervisor: { label: "Pending Field Supervisor", variant: "outline" },
+  pending_customer_pm: { label: "Pending Customer PM", variant: "outline" },
+  approved_pending_wo: { label: "Approved — Awaiting WO", variant: "outline" },
   approved: { label: "Approved", variant: "default" },
   rejected: { label: "Rejected", variant: "destructive" },
   invoiced: { label: "Invoiced", variant: "default" },

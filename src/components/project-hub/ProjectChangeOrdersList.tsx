@@ -2,7 +2,7 @@ import { useNavigate } from "react-router-dom";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { StatusBadge } from "@/components/shared/StatusBadge";
-import { FileText, Plus, ExternalLink } from "lucide-react";
+import { FileText, Plus, ExternalLink, ShieldAlert, Clock } from "lucide-react";
 import { format } from "date-fns";
 import { formatCurrency } from "@/lib/utils";
 import { ChangeOrder } from "@/integrations/supabase/hooks/useChangeOrders";
@@ -23,7 +23,7 @@ export function ProjectChangeOrdersList({
   const approvedTotal = changeOrders
     .filter(co => co.status === 'approved')
     .reduce((sum, co) => {
-      const changeType = (co as any).change_type || 'additive';
+      const changeType = co.change_type || 'additive';
       return changeType === 'deductive' ? sum - co.total : sum + co.total;
     }, 0);
 
@@ -60,12 +60,25 @@ export function ProjectChangeOrdersList({
                 onClick={() => navigate(`/change-orders/${co.id}`)}
               >
                 <div className="flex-1 min-w-0">
-                  <div className="flex items-center gap-2">
+                  <div className="flex items-center gap-2 flex-wrap">
                     <span className="font-medium">{co.number}</span>
                     <StatusBadge status={co.status as any} />
-                    {(co as any).change_type === 'deductive' && (
+                    {co.change_type === 'deductive' && (
                       <span className="text-xs bg-destructive/20 text-destructive px-2 py-0.5 rounded">
                         Credit
+                      </span>
+                    )}
+                    {/* Work Authorization Badges */}
+                    {!co.work_authorized && co.status !== 'draft' && co.status !== 'rejected' && (
+                      <span className="inline-flex items-center gap-1 text-xs bg-destructive/15 text-destructive px-2 py-0.5 rounded font-semibold">
+                        <ShieldAlert className="h-3 w-3" />
+                        NOT AUTHORIZED
+                      </span>
+                    )}
+                    {co.status === 'approved_pending_wo' && (
+                      <span className="inline-flex items-center gap-1 text-xs bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400 px-2 py-0.5 rounded font-semibold">
+                        <Clock className="h-3 w-3" />
+                        AWAITING WORK ORDER
                       </span>
                     )}
                   </div>
@@ -77,8 +90,8 @@ export function ProjectChangeOrdersList({
                   </p>
                 </div>
                 <div className="flex items-center gap-4">
-                  <span className={`font-bold ${(co as any).change_type === 'deductive' ? 'text-destructive' : 'text-primary'}`}>
-                    {(co as any).change_type === 'deductive' ? '-' : ''}{formatCurrency(co.total)}
+                  <span className={`font-bold ${co.change_type === 'deductive' ? 'text-destructive' : 'text-primary'}`}>
+                    {co.change_type === 'deductive' ? '-' : ''}{formatCurrency(co.total)}
                   </span>
                   <ExternalLink className="h-4 w-4 text-muted-foreground" />
                 </div>

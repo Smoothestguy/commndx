@@ -962,6 +962,44 @@ export type Database = {
           },
         ]
       }
+      change_order_approval_log: {
+        Row: {
+          action: string
+          actor_email: string | null
+          actor_name: string | null
+          change_order_id: string
+          created_at: string
+          id: string
+          notes: string | null
+        }
+        Insert: {
+          action: string
+          actor_email?: string | null
+          actor_name?: string | null
+          change_order_id: string
+          created_at?: string
+          id?: string
+          notes?: string | null
+        }
+        Update: {
+          action?: string
+          actor_email?: string | null
+          actor_name?: string | null
+          change_order_id?: string
+          created_at?: string
+          id?: string
+          notes?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "change_order_approval_log_change_order_id_fkey"
+            columns: ["change_order_id"]
+            isOneToOne: false
+            referencedRelation: "change_orders"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       change_order_line_items: {
         Row: {
           change_order_id: string
@@ -1070,9 +1108,18 @@ export type Database = {
           created_by: string | null
           customer_id: string
           customer_name: string
+          customer_pm_approval_token: string | null
+          customer_pm_signature: string | null
+          customer_pm_signed_at: string | null
+          customer_wo_file_path: string | null
+          customer_wo_number: string | null
+          customer_wo_uploaded_at: string | null
           deleted_at: string | null
           deleted_by: string | null
           description: string | null
+          field_supervisor_approval_token: string | null
+          field_supervisor_signature: string | null
+          field_supervisor_signed_at: string | null
           file_name: string | null
           file_path: string | null
           file_size: number | null
@@ -1081,11 +1128,13 @@ export type Database = {
           invoiced_amount: number
           job_order_id: string | null
           number: string
+          photos: string[] | null
           project_id: string
           purchase_order_id: string | null
           reason: string
           remaining_amount: number
           scope_reference: string | null
+          sent_for_approval_at: string | null
           source_estimate_id: string | null
           source_job_order_id: string | null
           status: Database["public"]["Enums"]["change_order_status"]
@@ -1096,6 +1145,7 @@ export type Database = {
           updated_at: string
           vendor_id: string | null
           vendor_name: string | null
+          work_authorized: boolean
         }
         Insert: {
           approved_at?: string | null
@@ -1105,9 +1155,18 @@ export type Database = {
           created_by?: string | null
           customer_id: string
           customer_name: string
+          customer_pm_approval_token?: string | null
+          customer_pm_signature?: string | null
+          customer_pm_signed_at?: string | null
+          customer_wo_file_path?: string | null
+          customer_wo_number?: string | null
+          customer_wo_uploaded_at?: string | null
           deleted_at?: string | null
           deleted_by?: string | null
           description?: string | null
+          field_supervisor_approval_token?: string | null
+          field_supervisor_signature?: string | null
+          field_supervisor_signed_at?: string | null
           file_name?: string | null
           file_path?: string | null
           file_size?: number | null
@@ -1116,11 +1175,13 @@ export type Database = {
           invoiced_amount?: number
           job_order_id?: string | null
           number: string
+          photos?: string[] | null
           project_id: string
           purchase_order_id?: string | null
           reason: string
           remaining_amount?: number
           scope_reference?: string | null
+          sent_for_approval_at?: string | null
           source_estimate_id?: string | null
           source_job_order_id?: string | null
           status?: Database["public"]["Enums"]["change_order_status"]
@@ -1131,6 +1192,7 @@ export type Database = {
           updated_at?: string
           vendor_id?: string | null
           vendor_name?: string | null
+          work_authorized?: boolean
         }
         Update: {
           approved_at?: string | null
@@ -1140,9 +1202,18 @@ export type Database = {
           created_by?: string | null
           customer_id?: string
           customer_name?: string
+          customer_pm_approval_token?: string | null
+          customer_pm_signature?: string | null
+          customer_pm_signed_at?: string | null
+          customer_wo_file_path?: string | null
+          customer_wo_number?: string | null
+          customer_wo_uploaded_at?: string | null
           deleted_at?: string | null
           deleted_by?: string | null
           description?: string | null
+          field_supervisor_approval_token?: string | null
+          field_supervisor_signature?: string | null
+          field_supervisor_signed_at?: string | null
           file_name?: string | null
           file_path?: string | null
           file_size?: number | null
@@ -1151,11 +1222,13 @@ export type Database = {
           invoiced_amount?: number
           job_order_id?: string | null
           number?: string
+          photos?: string[] | null
           project_id?: string
           purchase_order_id?: string | null
           reason?: string
           remaining_amount?: number
           scope_reference?: string | null
+          sent_for_approval_at?: string | null
           source_estimate_id?: string | null
           source_job_order_id?: string | null
           status?: Database["public"]["Enums"]["change_order_status"]
@@ -1166,6 +1239,7 @@ export type Database = {
           updated_at?: string
           vendor_id?: string | null
           vendor_name?: string | null
+          work_authorized?: boolean
         }
         Relationships: [
           {
@@ -5249,7 +5323,13 @@ export type Database = {
           address: string | null
           city: string | null
           created_at: string
+          customer_field_supervisor_email: string | null
+          customer_field_supervisor_name: string | null
+          customer_field_supervisor_phone: string | null
           customer_id: string
+          customer_pm_email: string | null
+          customer_pm_name: string | null
+          customer_pm_phone: string | null
           customer_po: string | null
           deleted_at: string | null
           deleted_by: string | null
@@ -5259,6 +5339,7 @@ export type Database = {
           id: string
           mandatory_payroll: boolean | null
           name: string
+          our_field_superintendent_id: string | null
           poc_email: string | null
           poc_name: string | null
           poc_phone: string | null
@@ -5279,7 +5360,13 @@ export type Database = {
           address?: string | null
           city?: string | null
           created_at?: string
+          customer_field_supervisor_email?: string | null
+          customer_field_supervisor_name?: string | null
+          customer_field_supervisor_phone?: string | null
           customer_id: string
+          customer_pm_email?: string | null
+          customer_pm_name?: string | null
+          customer_pm_phone?: string | null
           customer_po?: string | null
           deleted_at?: string | null
           deleted_by?: string | null
@@ -5289,6 +5376,7 @@ export type Database = {
           id?: string
           mandatory_payroll?: boolean | null
           name: string
+          our_field_superintendent_id?: string | null
           poc_email?: string | null
           poc_name?: string | null
           poc_phone?: string | null
@@ -5309,7 +5397,13 @@ export type Database = {
           address?: string | null
           city?: string | null
           created_at?: string
+          customer_field_supervisor_email?: string | null
+          customer_field_supervisor_name?: string | null
+          customer_field_supervisor_phone?: string | null
           customer_id?: string
+          customer_pm_email?: string | null
+          customer_pm_name?: string | null
+          customer_pm_phone?: string | null
           customer_po?: string | null
           deleted_at?: string | null
           deleted_by?: string | null
@@ -5319,6 +5413,7 @@ export type Database = {
           id?: string
           mandatory_payroll?: boolean | null
           name?: string
+          our_field_superintendent_id?: string | null
           poc_email?: string | null
           poc_name?: string | null
           poc_phone?: string | null
@@ -5341,6 +5436,13 @@ export type Database = {
             columns: ["customer_id"]
             isOneToOne: false
             referencedRelation: "customers"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "projects_our_field_superintendent_id_fkey"
+            columns: ["our_field_superintendent_id"]
+            isOneToOne: false
+            referencedRelation: "personnel"
             referencedColumns: ["id"]
           },
         ]
@@ -8273,6 +8375,9 @@ export type Database = {
         | "approved"
         | "rejected"
         | "invoiced"
+        | "pending_field_supervisor"
+        | "pending_customer_pm"
+        | "approved_pending_wo"
       change_type: "additive" | "deductive"
       claim_status:
         | "filed"
@@ -8537,6 +8642,9 @@ export const Constants = {
         "approved",
         "rejected",
         "invoiced",
+        "pending_field_supervisor",
+        "pending_customer_pm",
+        "approved_pending_wo",
       ],
       change_type: ["additive", "deductive"],
       claim_status: [

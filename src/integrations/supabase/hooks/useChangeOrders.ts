@@ -4,7 +4,7 @@ import { toast } from "sonner";
 import { useAuditLog, computeChanges } from "@/hooks/useAuditLog";
 import type { Json } from "../types";
 
-export type ChangeOrderStatus = 'draft' | 'pending_approval' | 'approved' | 'rejected' | 'invoiced';
+export type ChangeOrderStatus = 'draft' | 'pending_approval' | 'pending_field_supervisor' | 'pending_customer_pm' | 'approved_pending_wo' | 'approved' | 'rejected' | 'invoiced';
 export type ChangeType = 'additive' | 'deductive';
 
 export interface ChangeOrderLineItem {
@@ -50,12 +50,24 @@ export interface ChangeOrder {
   approved_at: string | null;
   created_at: string;
   updated_at: string;
-  // Audit trail fields for deductive change orders
   scope_reference: string | null;
   source_estimate_id: string | null;
   source_job_order_id: string | null;
   invoiced_amount: number;
   remaining_amount: number;
+  // Workflow fields
+  work_authorized: boolean;
+  customer_wo_number: string | null;
+  customer_wo_file_path: string | null;
+  customer_wo_uploaded_at: string | null;
+  field_supervisor_approval_token: string | null;
+  field_supervisor_signed_at: string | null;
+  field_supervisor_signature: string | null;
+  customer_pm_approval_token: string | null;
+  customer_pm_signed_at: string | null;
+  customer_pm_signature: string | null;
+  sent_for_approval_at: string | null;
+  photos: string[] | null;
 }
 
 export interface ChangeOrderWithLineItems extends ChangeOrder {
@@ -472,6 +484,9 @@ export function useUpdateChangeOrderStatus() {
       const statusMessages: Record<ChangeOrderStatus, string> = {
         draft: "Change order moved to draft",
         pending_approval: "Change order submitted for approval",
+        pending_field_supervisor: "Sent to field supervisor for approval",
+        pending_customer_pm: "Sent to customer PM for approval",
+        approved_pending_wo: "Approved — awaiting work order",
         approved: "Change order approved",
         rejected: "Change order rejected",
         invoiced: "Change order marked as invoiced",
