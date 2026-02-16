@@ -1,32 +1,38 @@
 
 
-## Fix: Add Missing Vendor Onboarding Route
+## Fix: Vendor Onboarding Links Showing "Expired" 
 
-### Problem
-The vendor onboarding link (`/vendor-onboarding/{token}`) leads to a 404 page because the route was never added to the router in `App.tsx`. The `VendorOnboarding` page component exists and works, but React Router doesn't know about it.
+### Root Cause
+The onboarding links are NOT actually expired -- the tokens are valid until March 2026. The real problem is a **missing database access policy**. 
+
+When Bryan or Chris click their link, they are unauthenticated (anonymous) users. The system can read the onboarding token (that table allows anonymous reads), but it **cannot read the vendor record** because the `vendors` table only allows access to logged-in staff or portal users. Since the vendor data fetch fails silently, the page interprets it as "invalid link."
+
+This is the same issue that was previously fixed for personnel onboarding.
 
 ### Fix
 
-**File: `src/App.tsx`**
+**Add an RLS policy on the `vendors` table** that allows anonymous users to read a vendor record ONLY if a valid, unexpired, and unused onboarding token exists for that vendor. This is a tightly scoped policy -- it does not expose vendor data broadly.
 
-1. Add the import for `VendorOnboarding` at the top (around line 30, with other page imports):
-   ```
-   import VendorOnboarding from "./pages/VendorOnboarding";
-   ```
+```sql
+CREATE POLICY "Anon can read vendor during onboarding"
+ON public.vendors
+FOR SELECT
+TO anon
+USING (
+  EXISTS (
+    SELECT 1 FROM public.vendor_onboarding_tokens
+    WHERE vendor_onboarding_tokens.vendor_id = vendors.id
+      AND vendor_onboarding_tokens.used_at IS NULL
+      AND vendor_onboarding_tokens.expires_at > now()
+  )
+);
+```
 
-2. Add the route as a public (non-protected) route, right after the Vendor Portal Routes section (around line 613):
-   ```
-   <Route path="/vendor-onboarding/:token" element={<VendorOnboarding />} />
-   <Route path="/vendor-onboarding-complete" element={...} />
-   ```
+We also need an anon UPDATE policy so the `complete_vendor_onboarding` RPC (which runs as SECURITY DEFINER) can work, but since it already uses SECURITY DEFINER, no additional policy is needed for submission -- only the SELECT is required.
 
-3. Create a simple completion page (`src/pages/VendorOnboardingComplete.tsx`) since the onboarding form navigates to `/vendor-onboarding-complete` on success -- or add an inline element for that route.
+### What Changes
+- **1 database migration**: Add anon SELECT policy to `vendors` table
+- **No code changes needed** -- the existing `useVendorOnboardingToken` hook and `VendorOnboarding.tsx` page will work correctly once the vendor data is accessible
 
-### Why This Happened
-The `VendorOnboarding.tsx` page was created but the corresponding route definition in `App.tsx` was missed.
-
-### Technical Notes
-- The route must be outside any `ProtectedRoute` wrapper since vendors accessing the link are unauthenticated
-- The existing RLS policies on `vendor_onboarding_tokens` and `vendors` tables already support anonymous access (similar to personnel onboarding)
-- A simple "Registration Complete" page will be added for the `/vendor-onboarding-complete` route
-
+### After This Fix
+Bryan and Chris can re-click their existing links and the onboarding form will load properly. No new links need to be sent.
