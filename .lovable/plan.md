@@ -1,64 +1,85 @@
 
 
-## Fix: Bill Sync, Deletion, and Item/Category Mapping Issues
+## Fix: Bills Syncing to Category Details Instead of Item Details
 
-### Issues Identified
+### Root Cause
 
-**Issue 1: Bills created on Command X don't sync correctly to QuickBooks**
-The sync itself IS working (sync logs show successful creates). However, the line items are ALL going under **Category Details** (AccountBasedExpenseLineDetail) because `qb_product_mapping_id` is `null` on every single line item in the database. The "billable = Item Details, non-billable = Category Details" logic is correct in the code, but the mapping is never being set. The `qb_product_mapping_id` field on line items is only populated when users manually select a product mapping in the bill form -- but personnel/time-entry bills and most manually created bills never set this field, so everything defaults to Category Details.
+The system has a chain of missing data that prevents Item Details from being used:
 
-**Root Cause**: The system relies on `qb_product_mapping_id` being manually set per line item. There is no automatic detection of whether a bill line item should be "billable" (Item Details) vs "non-billable" (Category Details). For bills created from POs or linked to job orders with products, the product mapping should be auto-populated.
+1. **`qb_product_service_mappings`** entries exist locally but have `quickbooks_item_id = NULL` -- they were never synced to QuickBooks to get actual QB Item IDs
+2. **Most products** don't have `qb_product_mapping_id` set, so even the lookup chain from the `CreateBillFromPODialog` finds nothing
+3. **The edge function** correctly checks `qb_product_mapping_id` -> `quickbooks_item_id`, but since both are null, every line falls back to `AccountBasedExpenseLineDetail` (Category Details)
 
-**Issue 2: Deleting a bill from Command X does NOT delete it from QuickBooks**
-The `quickbooks-void-bill` function IS being called and the logic looks correct. However, there are no recent logs showing it fired. The likely issue is that the function call is wrapped in a try-catch that swallows errors silently. Since there are no logs at all, the function may not be deploying or the call is failing before reaching the function.
+The current approach of relying on pre-existing mappings is fragile. The fix should make the edge functions smart enough to auto-resolve QB Items at sync time.
 
-**Issue 3: Deleting bills from QuickBooks changes status to "void" instead of deleting from Command X**
-This is by design -- the webhook performs a soft-delete (sets `deleted_at` and `status = 'void'`). But the user expects it to be fully removed from the active bills list. The bill IS soft-deleted (`deleted_at` is set), but if the bills list query doesn't filter out soft-deleted records, they'll still show as "void".
+### Solution
 
-### Fixes
+Modify both `quickbooks-create-bill` and `quickbooks-update-bill` edge functions to:
 
-#### Fix 1: Auto-populate `qb_product_mapping_id` for billable line items
+1. **Detect billable bills**: If a bill has a `purchase_order_id`, treat ALL its line items as billable (Item Details)
+2. **Auto-find or create QB Items**: For billable line items without a valid `quickbooks_item_id`, search QuickBooks for a matching Service item (e.g., "Labor:Temp Labor - Reg Time"). If not found, create one
+3. **Cache resolved items**: Store the resolved `quickbooks_item_id` back to `qb_product_service_mappings` for future syncs
+4. **Non-PO bills stay as Category Details**: Personnel payments, fuel, general expenses (bills without a `purchase_order_id`) continue using `AccountBasedExpenseLineDetail`
 
-When creating bill line items (in `CreateBillFromPODialog.tsx` and `VendorBillForm.tsx`), auto-match line items to QB product mappings:
+### Technical Details
 
-- In `CreateBillFromPODialog.tsx`: When creating a bill from a PO, look up the PO line item's product and find its corresponding `qb_product_service_mappings` entry. Set `qb_product_mapping_id` on the vendor bill line item.
-- In `VendorBillForm.tsx`: When a line item has a `product_id` or is linked to a JO line item that has a product, auto-set the `qb_product_mapping_id`.
-- For personnel/time-entry bills (no product mapping): These should remain as Category Details (non-billable), which is the current default behavior -- so no change needed there.
+#### Edge Function Changes (both create and update)
 
-**Key logic**: A line item is "billable" if it has a matching entry in `qb_product_service_mappings`. Personnel expenses and general overhead should NOT have a mapping and will correctly go under Category Details.
+In the line item building section, add logic BEFORE the existing `qbProduct` check:
 
-#### Fix 2: Ensure `quickbooks-void-bill` is properly called and deployed
+```text
+For each line item:
+  1. If bill has purchase_order_id (billable):
+     a. Try existing qb_product_mapping_id -> quickbooks_item_id path
+     b. If no mapping or no QB item ID:
+        - Look up the PO line item's product via po_line_item_id
+        - Check if product has a qb_product_mapping with quickbooks_item_id
+        - If still no QB item: search QB for a default "Subcontract Labor" item
+        - If none exists: create a "Subcontract Labor" Service item in QB
+        - Use the resolved QB item ID for ItemBasedExpenseLineDetail
+  2. If bill has NO purchase_order_id (expense):
+     - Use AccountBasedExpenseLineDetail (current behavior)
+```
 
-- Redeploy the `quickbooks-void-bill` edge function
-- Add better error logging in `useDeleteVendorBill` and `useHardDeleteVendorBill` hooks
-- Ensure the void function is awaited properly and errors surface in the UI
+The key insight from the user's screenshots: the "Item details" section shows "Labor:Temp Labor - Reg Time" and "Labor:Temp Labor - OT" as the PRODUCT/SERVICE. These are existing QuickBooks items. The edge function needs to find these items by name or use a configurable default.
 
-#### Fix 3: Webhook bill deletion -- keep soft-delete but ensure bills are hidden
+#### Default Item Resolution Strategy
 
-The webhook's soft-delete approach is correct for data integrity. Verify the vendor bills query filters out soft-deleted records (`deleted_at IS NULL`). If the "void" status bills are still appearing in the list, add explicit filtering.
+1. Query `qb_product_service_mappings` for any mapping with a valid `quickbooks_item_id`
+2. If found, use it as the default billable item
+3. If not found, search QuickBooks for items named like "Labor" or "Subcontract"
+4. If still not found, create a "Subcontract Labor" Service item
+5. Cache the result for all subsequent line items in the same bill
+
+#### VendorBillLineItem Interface Update
+
+Add missing fields to the TypeScript interface so they flow through properly:
+
+```typescript
+export interface VendorBillLineItem {
+  // ...existing fields...
+  qb_product_mapping_id?: string | null;
+  jo_line_item_id?: string | null;
+}
+```
 
 ### Files to Modify
 
 | File | Change |
 |------|--------|
-| `src/components/purchase-orders/CreateBillFromPODialog.tsx` | Auto-set `qb_product_mapping_id` from PO line item product mapping |
-| `src/integrations/supabase/hooks/useVendorBills.ts` | Improve QB void error handling in delete hooks; verify deleted_at filtering |
-| `supabase/functions/quickbooks-void-bill/index.ts` | Add authentication + better logging |
-| `supabase/functions/quickbooks-create-bill/index.ts` | No changes needed (Item/Category logic is correct) |
-| `supabase/functions/quickbooks-update-bill/index.ts` | No changes needed (Item/Category logic is correct) |
+| `supabase/functions/quickbooks-create-bill/index.ts` | Add auto-resolve QB Item logic for PO-linked bills |
+| `supabase/functions/quickbooks-update-bill/index.ts` | Same auto-resolve logic for consistency |
+| `src/integrations/supabase/hooks/useVendorBills.ts` | Add `qb_product_mapping_id` and `jo_line_item_id` to `VendorBillLineItem` interface |
 
-### Technical Details
+### Decision Logic Summary
 
-**Auto-matching product mappings** (Fix 1):
 ```text
-When creating bill from PO:
-  1. For each PO line item, get its product_id
-  2. Query qb_product_service_mappings WHERE product_id matches
-  3. If found, set qb_product_mapping_id on the vendor bill line item
-  4. Result: line syncs as ItemBasedExpenseLineDetail (billable)
-  5. If not found, leave null -> syncs as AccountBasedExpenseLineDetail (category)
+Is bill linked to a Purchase Order?
+  YES -> ALL line items use ItemBasedExpenseLineDetail (Item Details)
+         Auto-resolve QB Item ID from mappings or create one
+  NO  -> ALL line items use AccountBasedExpenseLineDetail (Category Details)
+         Use expense category for account mapping
 ```
 
-**Void bill authentication** (Fix 2):
-The `quickbooks-void-bill` function currently has no authentication check (unlike `quickbooks-create-bill` which validates admin/manager role). Add the same auth pattern to ensure the function can be called properly from the client.
+This matches the user's requirement: "billable bills go under Item Details, personal/expense bills go under Category Details."
 
