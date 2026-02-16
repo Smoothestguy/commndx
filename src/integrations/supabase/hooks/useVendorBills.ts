@@ -99,6 +99,7 @@ export const useVendorBills = (filters?: VendorBillFilters) => {
       let query = supabase
         .from("vendor_bills")
         .select("*")
+        .is("deleted_at", null)
         .order("created_at", { ascending: false });
 
       if (filters?.status) {
@@ -413,21 +414,32 @@ export const useDeleteVendorBill = () => {
     mutationFn: async (id: string) => {
       const { data: { user } } = await supabase.auth.getUser();
       
-      // Void/delete in QuickBooks first (non-blocking)
+      // Void/delete in QuickBooks first
+      let qbVoidResult: { success: boolean; error?: string } = { success: true };
       try {
         const qbConnected = await isQuickBooksConnected();
         if (qbConnected) {
-          console.log("QuickBooks connected - voiding vendor bill:", id);
-          await supabase.functions.invoke("quickbooks-void-bill", {
+          console.log("[VendorBill] QuickBooks connected - voiding vendor bill:", id);
+          const { data, error } = await supabase.functions.invoke("quickbooks-void-bill", {
             body: { billId: id },
           });
+          
+          if (error) {
+            console.error("[VendorBill] QB void function invocation error:", error);
+            qbVoidResult = { success: false, error: error.message };
+          } else if (data && !data.success) {
+            console.error("[VendorBill] QB void returned failure:", data.error);
+            qbVoidResult = { success: false, error: data.error };
+          } else {
+            console.log("[VendorBill] QB void successful:", data);
+          }
         }
       } catch (qbError) {
-        console.error("QuickBooks void error (non-blocking):", qbError);
-        // Don't throw - QB sync failure shouldn't prevent deletion
+        console.error("[VendorBill] QuickBooks void error:", qbError);
+        qbVoidResult = { success: false, error: qbError instanceof Error ? qbError.message : "Unknown error" };
       }
       
-      // Soft delete instead of hard delete
+      // Soft delete
       const { error } = await supabase
         .from("vendor_bills")
         .update({
@@ -437,15 +449,22 @@ export const useDeleteVendorBill = () => {
         .eq("id", id);
 
       if (error) throw error;
+      
+      return qbVoidResult;
     },
-    onSuccess: () => {
+    onSuccess: (result) => {
       queryClient.invalidateQueries({ queryKey: ["vendor-bills"] });
       queryClient.invalidateQueries({ queryKey: ["vendor-bills-by-po"] });
       queryClient.invalidateQueries({ queryKey: ["purchase_orders"] });
       queryClient.invalidateQueries({ queryKey: ["deleted_items"] });
       queryClient.invalidateQueries({ queryKey: ["quickbooks-sync-logs"] });
       queryClient.invalidateQueries({ queryKey: ["quickbooks-bill-mappings"] });
-      toast.success("Vendor bill moved to trash");
+      
+      if (result && !result.success) {
+        toast.warning(`Bill deleted locally, but QuickBooks void failed: ${result.error}`);
+      } else {
+        toast.success("Vendor bill moved to trash");
+      }
     },
     onError: (error: Error) => {
       toast.error(`Failed to delete vendor bill: ${error.message}`);
@@ -604,24 +623,22 @@ export const useHardDeleteVendorBill = () => {
 
       // Check if QuickBooks is connected and try to void there first
       try {
-        const { data: settings } = await supabase
-          .from("integration_settings")
-          .select("setting_value")
-          .eq("setting_key", "quickbooks_config")
-          .maybeSingle();
-
-        const isQBConnected = settings?.setting_value && 
-          typeof settings.setting_value === 'object' && 
-          'is_connected' in settings.setting_value &&
-          settings.setting_value.is_connected;
-
-        if (isQBConnected) {
-          await supabase.functions.invoke("quickbooks-void-bill", {
+        const qbConnected = await isQuickBooksConnected();
+        if (qbConnected) {
+          console.log("[VendorBill] QB connected - voiding bill before hard delete:", id);
+          const { data, error } = await supabase.functions.invoke("quickbooks-void-bill", {
             body: { billId: id },
           });
+          if (error) {
+            console.error("[VendorBill] QB void invocation error during hard delete:", error);
+          } else if (data && !data.success) {
+            console.error("[VendorBill] QB void returned failure during hard delete:", data.error);
+          } else {
+            console.log("[VendorBill] QB void successful during hard delete:", data);
+          }
         }
       } catch (qbError) {
-        console.error("QuickBooks void error (non-blocking):", qbError);
+        console.error("[VendorBill] QuickBooks void error (non-blocking):", qbError);
       }
 
       // 1. Get all payment IDs for this bill to delete their attachments
