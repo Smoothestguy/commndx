@@ -1,4 +1,6 @@
 import { useState, useMemo } from "react";
+import { useQuery } from "@tanstack/react-query";
+import { supabase } from "@/integrations/supabase/client";
 import { useParams, Navigate, useNavigate } from "react-router-dom";
 import { useProjects } from "@/integrations/supabase/hooks/useProjects";
 import { useCustomers } from "@/integrations/supabase/hooks/useCustomers";
@@ -28,6 +30,7 @@ import { ProjectDocuments } from "@/components/projects/ProjectDocuments";
 import { format } from "date-fns";
 import { generateProjectReportPDF } from "@/utils/pdfExport";
 import { ProjectFinancialSummary } from "@/components/project-hub/ProjectFinancialSummary";
+import { ProjectLaborAllocation } from "@/components/project-hub/ProjectLaborAllocation";
 import { ProjectChangeOrdersList } from "@/components/project-hub/ProjectChangeOrdersList";
 import { ProjectTMTicketsList } from "@/components/project-hub/ProjectTMTicketsList";
 import { ProjectPurchaseOrdersList } from "@/components/project-hub/ProjectPurchaseOrdersList";
@@ -60,6 +63,45 @@ const ProjectDetail = () => {
   const { data: projectVendorBills } = useVendorBills({ project_id: id });
   const { data: projectExpenses } = useExpensesByProject(id);
   const { data: timeEntryCosts } = useProjectTimeEntryCosts(id);
+  
+  // Fetch supervision cost breakdown
+  const { data: supervisionBreakdown } = useQuery({
+    queryKey: ["project-supervision-costs", id],
+    queryFn: async () => {
+      if (!id) return { supervisionCost: 0, fieldCost: 0 };
+      
+      const { data, error } = await supabase
+        .from("time_entries")
+        .select(`
+          hours,
+          hourly_rate,
+          is_overhead,
+          personnel:personnel_id (hourly_rate, title)
+        `)
+        .eq("project_id", id)
+        .not("personnel_id", "is", null);
+      
+      if (error) throw error;
+      
+      let supervisionCost = 0;
+      let fieldCost = 0;
+      
+      for (const entry of data || []) {
+        if ((entry as any).is_overhead) continue;
+        const p = entry.personnel as any;
+        const rate = (entry as any).hourly_rate ?? p?.hourly_rate ?? 0;
+        const cost = (entry.hours || 0) * rate;
+        const title = (p?.title || "").toLowerCase();
+        const isSupervision = title.includes("superintendent") || title.includes("supervisor") || title.includes("foreman");
+        
+        if (isSupervision) supervisionCost += cost;
+        else fieldCost += cost;
+      }
+      
+      return { supervisionCost, fieldCost };
+    },
+    enabled: !!id,
+  });
 
   const addMilestone = useAddMilestone();
   const updateMilestone = useUpdateMilestone();
@@ -186,8 +228,10 @@ const ProjectDetail = () => {
       totalOtherExpenses,
       netProfit,
       netMargin,
+      supervisionLaborCost: supervisionBreakdown?.supervisionCost || 0,
+      fieldLaborCost: supervisionBreakdown?.fieldCost || 0,
     };
-  }, [projectJobOrders, changeOrders, tmTickets, projectPurchaseOrders, projectInvoices, projectVendorBills, projectExpenses, timeEntryCosts]);
+  }, [projectJobOrders, changeOrders, tmTickets, projectPurchaseOrders, projectInvoices, projectVendorBills, projectExpenses, timeEntryCosts, supervisionBreakdown]);
 
   // Calculate overall project completion
   const overallCompletion = useMemo(() => {
@@ -422,6 +466,11 @@ const ProjectDetail = () => {
       {/* Financial Summary */}
       <div className="mb-6">
         <ProjectFinancialSummary data={financialData} />
+      </div>
+
+      {/* Labor Allocation */}
+      <div className="mb-6">
+        <ProjectLaborAllocation projectId={id!} />
       </div>
 
       {/* Project Info */}
