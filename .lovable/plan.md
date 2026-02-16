@@ -1,78 +1,45 @@
 
 
-## Fix: "Select a customer for each billable split line" Error
+## Map Regular/Overtime Hours to Correct QuickBooks Service Items
 
-### Root Cause
+### Current Behavior
+All labor bill line items (both regular and overtime) are mapped to the same generic QB service item (e.g., "Subcontract Labor Flooring") because the code resolves a single `resolvedQBItemId` and applies it to every line.
 
-QuickBooks requires a `CustomerRef` on every line item that has `BillableStatus: "Billable"`. The current code sets `BillableStatus: "Billable"` but never includes a `CustomerRef`, causing the validation error.
-
-### Data Path (Already Available)
-
-The data chain to resolve the customer exists:
-1. `vendor_bill_line_items` has a `project_id` column
-2. `projects` has a `customer_id` column
-3. `quickbooks_customer_mappings` maps `customer_id` to `quickbooks_customer_id`
-
-For the failing bill (BILL-2625552), the line items point to project "EM-228 DOODIE CALLS", which belongs to customer `da445690...`, which is mapped to QuickBooks Customer ID `70`.
-
-### Fix
-
-In both edge functions, BEFORE building the line items, resolve the QuickBooks Customer ID from the line items' project:
-
-1. Get all unique `project_id` values from line items
-2. Look up those projects to get `customer_id`
-3. Look up `quickbooks_customer_mappings` to get `quickbooks_customer_id`
-4. Add `CustomerRef: { value: qbCustomerId }` to every `ItemBasedExpenseLineDetail` that has `BillableStatus: "Billable"`
+### Desired Behavior
+- **Regular Hours** lines (description contains "Regular Hours") should map to **"Temp Labor - Reg Time"**
+- **Overtime Hours** lines (description contains "Overtime Hours") should map to **"Temp Labor - OT"**
 
 ### Technical Changes
 
-**Both `quickbooks-create-bill/index.ts` and `quickbooks-update-bill/index.ts`:**
+**Files to modify:**
+- `supabase/functions/quickbooks-create-bill/index.ts`
+- `supabase/functions/quickbooks-update-bill/index.ts`
 
-Add customer resolution (before line item building):
+**Changes (same in both files):**
 
-```typescript
-// Resolve QB Customer for billable lines
-let qbCustomerRef = null;
-if (isBillable && lineItems?.length > 0) {
-  const projectIds = [...new Set(lineItems.map((i: any) => i.project_id).filter(Boolean))];
-  if (projectIds.length > 0) {
-    const { data: project } = await supabase
-      .from('projects')
-      .select('customer_id')
-      .eq('id', projectIds[0])
-      .single();
-    if (project?.customer_id) {
-      const { data: custMapping } = await supabase
-        .from('quickbooks_customer_mappings')
-        .select('quickbooks_customer_id')
-        .eq('customer_id', project.customer_id)
-        .single();
-      if (custMapping?.quickbooks_customer_id) {
-        qbCustomerRef = { value: custMapping.quickbooks_customer_id };
-      }
-    }
-  }
-}
-```
+1. **Replace single-item resolution with dual-item resolution** -- Instead of resolving one `resolvedQBItemId` for all lines, resolve two:
+   - `regTimeQBItemId` -- searched/cached as "Temp Labor - Reg Time"
+   - `otQBItemId` -- searched/cached as "Temp Labor - OT"
 
-Then in the billable line item section, add `CustomerRef`:
+2. **QB Item lookup logic** -- For each of the two items:
+   - First check `qb_product_service_mappings` for a cached mapping with matching name
+   - Then search QuickBooks: `SELECT * FROM Item WHERE Name = 'Temp Labor - Reg Time' AND Type = 'Service'`
+   - If not found, create it in QuickBooks as a new Service item
+   - Cache the QB Item ID back to mappings for future use
 
-```typescript
-ItemBasedExpenseLineDetail: {
-  ItemRef: { value: itemId },
-  Qty: qty,
-  UnitPrice: unitPrice,
-  BillableStatus: 'Billable',
-  CustomerRef: qbCustomerRef,  // <-- ADD THIS
-},
-```
+3. **Per-line-item mapping** -- In the line item loop (around line 769), determine which QB item to use based on description:
+   ```
+   if description contains "Overtime Hours" -> use otQBItemId
+   else if description contains "Regular Hours" -> use regTimeQBItemId
+   else -> use regTimeQBItemId as default fallback
+   ```
 
-If no customer mapping is found, fall back to `BillableStatus: 'NotBillable'` to avoid the same error.
+4. **Keep existing PO/product-mapping logic intact** -- If a line item already has a specific `qb_product_mapping_id` with a resolved QB item, that still takes priority over the reg/OT auto-detection.
 
-### Files to Modify
+### Example Result in QuickBooks
 
-| File | Change |
-|------|--------|
-| `supabase/functions/quickbooks-create-bill/index.ts` | Add customer resolution + `CustomerRef` on billable lines |
-| `supabase/functions/quickbooks-update-bill/index.ts` | Same changes for consistency |
+| # | PRODUCT/SERVICE | DESCRIPTION |
+|---|----------------|-------------|
+| 1 | Temp Labor - Reg Time | MARIELA GAMEZ - Regular Hours - 40 x $27.00 |
+| 2 | Temp Labor - OT | MARIELA GAMEZ - Overtime Hours - 44 x $40.50 |
 
