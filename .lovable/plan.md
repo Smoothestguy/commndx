@@ -1,68 +1,78 @@
 
 
-## Fix: All Labor/Subcontractor Bills Should Use Item Details
+## Fix: "Select a customer for each billable split line" Error
 
-### Root Cause Found
+### Root Cause
 
-The bill BILL-2625550 for "MARIELA GAMEZ" has:
-- `purchase_order_id = NULL` (not created from a PO)
-- `vendor_type = 'personnel'`
-- Category = "Contract Labor"
-- `qb_product_mapping_id = NULL` on all line items
+QuickBooks requires a `CustomerRef` on every line item that has `BillableStatus: "Billable"`. The current code sets `BillableStatus: "Billable"` but never includes a `CustomerRef`, causing the validation error.
 
-The current edge function logic ONLY uses Item Details when `purchase_order_id` is set. Since this bill was created directly (not from a PO), it falls through to Category Details every time.
+### Data Path (Already Available)
 
-### The Fix
+The data chain to resolve the customer exists:
+1. `vendor_bill_line_items` has a `project_id` column
+2. `projects` has a `customer_id` column
+3. `quickbooks_customer_mappings` maps `customer_id` to `quickbooks_customer_id`
 
-Change the "billable" detection logic in both `quickbooks-create-bill` and `quickbooks-update-bill` to be smarter. A bill should use **Item Details** if ANY of these conditions are true:
+For the failing bill (BILL-2625552), the line items point to project "EM-228 DOODIE CALLS", which belongs to customer `da445690...`, which is mapped to QuickBooks Customer ID `70`.
 
-1. It has a `purchase_order_id` (PO-linked) -- existing logic
-2. Its line items have a `qb_product_mapping_id` set -- existing logic
-3. Its expense category is a labor/subcontractor type (e.g., "Contract Labor", "Contract labor") -- NEW
-4. The vendor is of type `personnel` -- NEW (backup check)
+### Fix
 
-Only bills that are truly general expenses (fuel, office supplies, etc.) with non-labor categories and no product mappings should remain as Category Details.
+In both edge functions, BEFORE building the line items, resolve the QuickBooks Customer ID from the line items' project:
+
+1. Get all unique `project_id` values from line items
+2. Look up those projects to get `customer_id`
+3. Look up `quickbooks_customer_mappings` to get `quickbooks_customer_id`
+4. Add `CustomerRef: { value: qbCustomerId }` to every `ItemBasedExpenseLineDetail` that has `BillableStatus: "Billable"`
 
 ### Technical Changes
 
-**Files to modify:**
-- `supabase/functions/quickbooks-create-bill/index.ts`
-- `supabase/functions/quickbooks-update-bill/index.ts`
+**Both `quickbooks-create-bill/index.ts` and `quickbooks-update-bill/index.ts`:**
 
-**Logic change in the `isBillable` determination (around line 597):**
+Add customer resolution (before line item building):
 
-Replace:
-```
-const isBillable = !!bill.purchase_order_id;
-```
-
-With expanded detection:
-```
-// A bill is "billable" (Item Details) if:
-// 1. Linked to a PO, OR
-// 2. Any line item has a qb_product_mapping_id, OR
-// 3. The category is labor-related (Contract Labor, Subcontract, etc.), OR
-// 4. The vendor type is 'personnel'
-
-// Check vendor type
-const vendorData = await supabase.from('vendors').select('vendor_type').eq('id', bill.vendor_id).single();
-const isPersonnelVendor = vendorData?.data?.vendor_type === 'personnel';
-
-// Check if any line item has a labor-type category
-const laborCategoryNames = ['contract labor', 'subcontract', 'labor', 'temp labor'];
-const hasLaborCategory = lineItems?.some(item => {
-  const catName = categoryMap.get(item.category_id)?.toLowerCase() || '';
-  return laborCategoryNames.some(l => catName.includes(l));
-});
-
-const hasProductMapping = lineItems?.some(item => item.qb_product_mapping_id != null);
-
-const isBillable = !!bill.purchase_order_id || hasProductMapping || hasLaborCategory || isPersonnelVendor;
+```typescript
+// Resolve QB Customer for billable lines
+let qbCustomerRef = null;
+if (isBillable && lineItems?.length > 0) {
+  const projectIds = [...new Set(lineItems.map((i: any) => i.project_id).filter(Boolean))];
+  if (projectIds.length > 0) {
+    const { data: project } = await supabase
+      .from('projects')
+      .select('customer_id')
+      .eq('id', projectIds[0])
+      .single();
+    if (project?.customer_id) {
+      const { data: custMapping } = await supabase
+        .from('quickbooks_customer_mappings')
+        .select('quickbooks_customer_id')
+        .eq('customer_id', project.customer_id)
+        .single();
+      if (custMapping?.quickbooks_customer_id) {
+        qbCustomerRef = { value: custMapping.quickbooks_customer_id };
+      }
+    }
+  }
+}
 ```
 
-This ensures that labor bills like the one for MARIELA GAMEZ (personnel vendor, "Contract Labor" category) will automatically use Item Details and get the auto-resolved QB Service Item, even without a PO link.
+Then in the billable line item section, add `CustomerRef`:
 
-### What Won't Change
-- Bills for truly non-labor expenses (fuel, office supplies, general overhead) will continue using Category Details
-- The auto-resolve logic for finding/creating QB Service Items stays the same
-- The existing PO-linked detection still works as before
+```typescript
+ItemBasedExpenseLineDetail: {
+  ItemRef: { value: itemId },
+  Qty: qty,
+  UnitPrice: unitPrice,
+  BillableStatus: 'Billable',
+  CustomerRef: qbCustomerRef,  // <-- ADD THIS
+},
+```
+
+If no customer mapping is found, fall back to `BillableStatus: 'NotBillable'` to avoid the same error.
+
+### Files to Modify
+
+| File | Change |
+|------|--------|
+| `supabase/functions/quickbooks-create-bill/index.ts` | Add customer resolution + `CustomerRef` on billable lines |
+| `supabase/functions/quickbooks-update-bill/index.ts` | Same changes for consistency |
+
