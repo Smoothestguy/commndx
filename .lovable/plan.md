@@ -1,23 +1,28 @@
 
 
-## Add "Send Onboarding" to Vendors List Page
+## Add "Send Onboarding" Button to Vendors Page Header with Vendor Search
 
 ### What This Does
-Adds a "Send Onboarding" button to each vendor row in the main Vendors table, right alongside the existing Edit and Delete buttons. This lets you send onboarding links without having to open the vendor detail page first.
+Adds a "Send Onboarding" button at the top of the Vendors page (next to "Add Vendor"). Clicking it opens a dialog where you can search for a vendor by name, email, or phone number, select them, and send the onboarding invitation -- all from one place.
 
 ### Changes
 
-**File: `src/pages/Vendors.tsx`**
+**New File: `src/components/vendors/SendOnboardingSearchDialog.tsx`**
+- A dialog with a search input at the top
+- Fetches all vendors and filters them in real-time by name, email, or phone (with phone number normalization so searching "904-534" matches stored digits)
+- Shows matching vendors as a selectable list with name, email, and phone displayed
+- Vendors with `onboarding_status === "completed"` are excluded or shown as "already onboarded"
+- Selecting a vendor opens the existing `SendVendorOnboardingDialog` pre-filled with that vendor's info
 
-1. **Import** `SendVendorOnboardingDialog` and the `Send` icon
-2. **Add state** for `isOnboardingDialogOpen` and `onboardingVendor` (to track which vendor is being onboarded)
-3. **Add a Send button** in the actions column (next to Edit and Delete) -- shows a send icon that opens the onboarding dialog for that vendor row
-4. **Render** `SendVendorOnboardingDialog` at the bottom of the component, passing the selected vendor's id, name, and email
+**File: `src/pages/Vendors.tsx`**
+- Import and render the new `SendOnboardingSearchDialog`
+- Add a "Send Onboarding" button in the header actions row (between QuickBooks sync and Add Vendor)
+- Add state (`isSendOnboardingSearchOpen`) to control the dialog
 
 ### Technical Details
 
-- The actions column at lines 368-397 gets a third button with the `Send` icon
-- The button will be hidden if the vendor's `onboarding_status` is `"completed"`
-- Clicking the button sets `onboardingVendor` state and opens the existing `SendVendorOnboardingDialog`
-- No database or backend changes needed -- reuses existing infrastructure
+- The search dialog reuses the existing `useVendors` hook data already loaded on the page
+- Phone search strips non-digit characters before comparing (matching existing search normalization pattern)
+- Once a vendor is selected, it opens the existing `SendVendorOnboardingDialog` which handles the actual invitation flow
+- No database or backend changes needed
 
