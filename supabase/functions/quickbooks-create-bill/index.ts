@@ -614,7 +614,7 @@ serve(async (req) => {
     });
     
     const isBillable = !!bill.purchase_order_id || hasProductMapping || hasLaborCategory || isPersonnelVendor;
-    let resolvedQBItemId: string | null = null;
+    // (regTimeQBItemId and otQBItemId resolved below for billable lines)
 
     // Resolve QB Customer for billable lines (required by QuickBooks when BillableStatus = 'Billable')
     let qbCustomerRef: { value: string } | null = null;
@@ -666,93 +666,92 @@ serve(async (req) => {
     
     console.log(`isBillable determination: PO=${!!bill.purchase_order_id}, hasProductMapping=${hasProductMapping}, hasLaborCategory=${hasLaborCategory}, isPersonnelVendor=${isPersonnelVendor} => isBillable=${isBillable}`);
     
-    if (isBillable) {
-      console.log(`Bill is billable - will use Item Details`);
-      
-      // Step 1: Check if any existing mapping has a valid quickbooks_item_id
-      const { data: existingMappingsWithQBId } = await supabase
+    // Helper: resolve or create a QB Service item by exact name, with caching in qb_product_service_mappings
+    async function resolveOrCreateQBServiceItem(itemName: string): Promise<string | null> {
+      // Step 1: Check cached mapping by name
+      const { data: cachedMapping } = await supabase
         .from('qb_product_service_mappings')
-        .select('id, name, quickbooks_item_id')
-        .not('quickbooks_item_id', 'is', null)
+        .select('id, quickbooks_item_id')
+        .eq('name', itemName)
         .eq('is_active', true)
-        .limit(1);
+        .maybeSingle();
       
-      if (existingMappingsWithQBId && existingMappingsWithQBId.length > 0) {
-        resolvedQBItemId = existingMappingsWithQBId[0].quickbooks_item_id;
-        console.log(`Found existing QB Item from mappings: ${existingMappingsWithQBId[0].name} (${resolvedQBItemId})`);
+      if (cachedMapping?.quickbooks_item_id) {
+        console.log(`Found cached QB Item for "${itemName}": ${cachedMapping.quickbooks_item_id}`);
+        return cachedMapping.quickbooks_item_id;
       }
-      
-      // Step 2: If no cached mapping, search QuickBooks for a Service item
-      if (!resolvedQBItemId) {
-        console.log('No cached QB Item found, searching QuickBooks for Service items...');
-        const searchNames = ['Subcontract Labor', 'Labor', 'Contract Labor', 'Services'];
+
+      // Step 2: Search QuickBooks by exact name
+      try {
+        const searchQuery = encodeURIComponent(
+          `SELECT * FROM Item WHERE Name = '${itemName.replace(/'/g, "\\'")}' AND Type = 'Service'`
+        );
+        const searchResult = await qbRequest('GET', `/query?query=${searchQuery}&minorversion=65`, accessToken, realmId);
+        if (searchResult.QueryResponse?.Item?.length > 0) {
+          const foundItem = searchResult.QueryResponse.Item[0];
+          console.log(`Found QB Item "${itemName}" in QuickBooks: ID ${foundItem.Id}`);
+          // Cache it
+          if (cachedMapping) {
+            await supabase.from('qb_product_service_mappings').update({ quickbooks_item_id: foundItem.Id }).eq('id', cachedMapping.id);
+          } else {
+            await supabase.from('qb_product_service_mappings').insert({ name: itemName, quickbooks_item_id: foundItem.Id, quickbooks_item_type: 'Service', is_active: true });
+          }
+          return foundItem.Id;
+        }
+      } catch (e) {
+        console.log(`Search for QB Item "${itemName}" failed: ${e}`);
+      }
+
+      // Step 3: Create it in QuickBooks
+      try {
+        console.log(`Creating QB Service Item: "${itemName}"...`);
+        const incomeQuery = encodeURIComponent("SELECT * FROM Account WHERE AccountType = 'Income' MAXRESULTS 1");
+        const incomeResult = await qbRequest('GET', `/query?query=${incomeQuery}&minorversion=65`, accessToken, realmId);
+        const incomeAccountId = incomeResult.QueryResponse?.Account?.[0]?.Id;
         
-        for (const searchName of searchNames) {
-          try {
-            const itemQuery = encodeURIComponent(
-              `SELECT * FROM Item WHERE Name LIKE '%${searchName}%' AND Type = 'Service' MAXRESULTS 5`
-            );
-            const itemResult = await qbRequest('GET', `/query?query=${itemQuery}&minorversion=65`, accessToken, realmId);
-            
-            if (itemResult.QueryResponse?.Item?.length > 0) {
-              // Filter out Category and Bundle types, only use Service/NonInventory
-              const validItems = itemResult.QueryResponse.Item.filter(
-                (i: any) => i.Type === 'Service' || i.Type === 'NonInventory'
-              );
-              if (validItems.length > 0) {
-                resolvedQBItemId = validItems[0].Id;
-                console.log(`Found QB Service Item: "${validItems[0].FullyQualifiedName}" (${resolvedQBItemId})`);
-                
-                // Cache it back to a mapping for future use
-                await supabase
-                  .from('qb_product_service_mappings')
-                  .update({ quickbooks_item_id: resolvedQBItemId })
-                  .eq('is_active', true)
-                  .is('quickbooks_item_id', null)
-                  .limit(1);
-                
-                break;
-              }
-            }
-          } catch (e) {
-            console.log(`Search for "${searchName}" failed: ${e}`);
-          }
+        const expQuery = encodeURIComponent("SELECT * FROM Account WHERE AccountType = 'Cost of Goods Sold' MAXRESULTS 1");
+        const expResult = await qbRequest('GET', `/query?query=${expQuery}&minorversion=65`, accessToken, realmId);
+        let expenseAccountId = expResult.QueryResponse?.Account?.[0]?.Id;
+        if (!expenseAccountId) {
+          const expQuery2 = encodeURIComponent("SELECT * FROM Account WHERE AccountType = 'Expense' MAXRESULTS 1");
+          const expResult2 = await qbRequest('GET', `/query?query=${expQuery2}&minorversion=65`, accessToken, realmId);
+          expenseAccountId = expResult2.QueryResponse?.Account?.[0]?.Id;
         }
+        
+        const newItem: any = { Name: itemName, Type: 'Service' };
+        if (incomeAccountId) newItem.IncomeAccountRef = { value: incomeAccountId };
+        if (expenseAccountId) newItem.ExpenseAccountRef = { value: expenseAccountId };
+        
+        const createResult = await qbRequest('POST', '/item?minorversion=65', accessToken, realmId, newItem);
+        const newId = createResult.Item.Id;
+        console.log(`Created QB Service Item "${itemName}": ID ${newId}`);
+        // Cache it
+        if (cachedMapping) {
+          await supabase.from('qb_product_service_mappings').update({ quickbooks_item_id: newId }).eq('id', cachedMapping.id);
+        } else {
+          await supabase.from('qb_product_service_mappings').insert({ name: itemName, quickbooks_item_id: newId, quickbooks_item_type: 'Service', is_active: true });
+        }
+        return newId;
+      } catch (createErr) {
+        console.error(`Failed to create QB Service Item "${itemName}":`, createErr);
+        return null;
       }
+    }
+
+    // Resolve dual QB Items for labor: Reg Time and OT
+    let regTimeQBItemId: string | null = null;
+    let otQBItemId: string | null = null;
+
+    if (isBillable) {
+      console.log(`Bill is billable - resolving Temp Labor items...`);
+      regTimeQBItemId = await resolveOrCreateQBServiceItem('Temp Labor - Reg Time');
+      otQBItemId = await resolveOrCreateQBServiceItem('Temp Labor - OT');
+      console.log(`Resolved QB Items: RegTime=${regTimeQBItemId}, OT=${otQBItemId}`);
       
-      // Step 3: If still nothing, create a "Subcontract Labor" Service item in QB
-      if (!resolvedQBItemId) {
-        console.log('No existing QB Item found, creating "Subcontract Labor" Service item...');
-        try {
-          // First find an income account for the item
-          const incomeQuery = encodeURIComponent("SELECT * FROM Account WHERE AccountType = 'Income' MAXRESULTS 1");
-          const incomeResult = await qbRequest('GET', `/query?query=${incomeQuery}&minorversion=65`, accessToken, realmId);
-          const incomeAccountId = incomeResult.QueryResponse?.Account?.[0]?.Id;
-          
-          // Find an expense account
-          const expQuery = encodeURIComponent("SELECT * FROM Account WHERE AccountType = 'Cost of Goods Sold' MAXRESULTS 1");
-          const expResult = await qbRequest('GET', `/query?query=${expQuery}&minorversion=65`, accessToken, realmId);
-          let expenseAccountId = expResult.QueryResponse?.Account?.[0]?.Id;
-          
-          if (!expenseAccountId) {
-            const expQuery2 = encodeURIComponent("SELECT * FROM Account WHERE AccountType = 'Expense' MAXRESULTS 1");
-            const expResult2 = await qbRequest('GET', `/query?query=${expQuery2}&minorversion=65`, accessToken, realmId);
-            expenseAccountId = expResult2.QueryResponse?.Account?.[0]?.Id;
-          }
-          
-          const newItem: any = {
-            Name: `Subcontract Labor ${Date.now()}`,
-            Type: 'Service',
-          };
-          if (incomeAccountId) newItem.IncomeAccountRef = { value: incomeAccountId };
-          if (expenseAccountId) newItem.ExpenseAccountRef = { value: expenseAccountId };
-          
-          const createResult = await qbRequest('POST', '/item?minorversion=65', accessToken, realmId, newItem);
-          resolvedQBItemId = createResult.Item.Id;
-          console.log(`Created QB Service Item: "${createResult.Item.Name}" (${resolvedQBItemId})`);
-        } catch (createErr) {
-          console.error('Failed to create QB Service Item, falling back to Category Details:', createErr);
-        }
+      // Fallback: if neither resolved, try generic resolution
+      if (!regTimeQBItemId && !otQBItemId) {
+        regTimeQBItemId = await resolveOrCreateQBServiceItem('Subcontract Labor');
+        otQBItemId = regTimeQBItemId; // Use same as fallback
       }
     }
 
@@ -765,13 +764,25 @@ serve(async (req) => {
         const unitPrice = Number(item.unit_cost) || Number(item.total);
         const desc = `${item.description} - ${qty} x $${unitPrice.toFixed(2)}`;
         
-        // For PO-linked bills, use Item Details with resolved QB Item
-        if (isBillable && resolvedQBItemId) {
-          // Check if this specific line item has its own mapping first
+        // For billable bills, use Item Details with per-line QB Item (reg/OT)
+        if (isBillable && (regTimeQBItemId || otQBItemId)) {
+          // Check if this specific line item has its own mapping first (takes priority)
           const specificProduct = item.qb_product_mapping_id 
             ? qbProductMap.get(item.qb_product_mapping_id) 
             : null;
-          const itemId = specificProduct?.qb_item_id || resolvedQBItemId;
+          
+          let itemId: string;
+          if (specificProduct?.qb_item_id) {
+            itemId = specificProduct.qb_item_id;
+          } else {
+            // Auto-detect reg/OT based on description
+            const descLower = (item.description || '').toLowerCase();
+            if (descLower.includes('overtime hours') && otQBItemId) {
+              itemId = otQBItemId;
+            } else {
+              itemId = regTimeQBItemId || otQBItemId!;
+            }
+          }
           
           console.log(`Line item "${desc}" -> Amount: ${item.total} -> QB Item ID: ${itemId} [BILLABLE - Item Details]`);
           
