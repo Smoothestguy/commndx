@@ -58,7 +58,11 @@ function getScopeValueByLineItem(room: ProjectRoom, summaryItems: RoomScopeSumma
 }
 
 export function RoomsDataTable({ rooms, summaryItems, onDeleteRoom, isDeleting, projectId }: RoomsDataTableProps) {
-  const [expandedFloors, setExpandedFloors] = useState<Set<number>>(new Set());
+  const [expandedFloors, setExpandedFloors] = useState<Set<number>>(() => {
+    const initial = new Set<number>();
+    rooms.forEach(room => initial.add(room.floor_number || 0));
+    return initial;
+  });
 
   // Group rooms by floor
   const floorGroups = rooms.reduce<Record<number, ProjectRoom[]>>((acc, room) => {
@@ -80,10 +84,6 @@ export function RoomsDataTable({ rooms, summaryItems, onDeleteRoom, isDeleting, 
     });
   };
 
-  // Start with all floors expanded
-  if (expandedFloors.size === 0 && floors.length > 0) {
-    floors.forEach(f => expandedFloors.add(f));
-  }
 
   const renderRoomRow = (room: ProjectRoom) => (
     <TableRow key={room.id}>
