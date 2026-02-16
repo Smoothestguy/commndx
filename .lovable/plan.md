@@ -1,156 +1,64 @@
 
 
-## Product Line Matching and Quantity Tracking System
+## Fix: Bill Sync, Deletion, and Item/Category Mapping Issues
 
-### Current State Analysis
+### Issues Identified
 
-The existing architecture already has several pieces in place:
-- **Import Work Order** dialog already supports product matching via `ExtractedItemsTable` with a "Match Product" dropdown
-- **PO line items** already track `billed_quantity` with an auto-update trigger when vendor bill line items reference them
-- **Vendor bill line items** link to PO line items via `po_line_item_id`
-- **Invoice line items** link to JO line items via `jo_line_item_id`
+**Issue 1: Bills created on Command X don't sync correctly to QuickBooks**
+The sync itself IS working (sync logs show successful creates). However, the line items are ALL going under **Category Details** (AccountBasedExpenseLineDetail) because `qb_product_mapping_id` is `null` on every single line item in the database. The "billable = Item Details, non-billable = Category Details" logic is correct in the code, but the mapping is never being set. The `qb_product_mapping_id` field on line items is only populated when users manually select a product mapping in the bill form -- but personnel/time-entry bills and most manually created bills never set this field, so everything defaults to Category Details.
 
-**What's missing:**
-1. Vendor bill line items have NO direct link to JO line items -- so vendor billing does not cascade up to the job order level
-2. JO line items have `invoiced_quantity` (customer-facing) but no `billed_quantity` (vendor-facing)
-3. The JO detail page does not show billed/remaining quantities per line item
-4. There is no visual tracking of "how much of this job order has been billed by vendors"
+**Root Cause**: The system relies on `qb_product_mapping_id` being manually set per line item. There is no automatic detection of whether a bill line item should be "billable" (Item Details) vs "non-billable" (Category Details). For bills created from POs or linked to job orders with products, the product mapping should be auto-populated.
 
-### Plan
+**Issue 2: Deleting a bill from Command X does NOT delete it from QuickBooks**
+The `quickbooks-void-bill` function IS being called and the logic looks correct. However, there are no recent logs showing it fired. The likely issue is that the function call is wrapped in a try-catch that swallows errors silently. Since there are no logs at all, the function may not be deploying or the call is failing before reaching the function.
 
-#### 1. Database Migration
+**Issue 3: Deleting bills from QuickBooks changes status to "void" instead of deleting from Command X**
+This is by design -- the webhook performs a soft-delete (sets `deleted_at` and `status = 'void'`). But the user expects it to be fully removed from the active bills list. The bill IS soft-deleted (`deleted_at` is set), but if the bills list query doesn't filter out soft-deleted records, they'll still show as "void".
 
-Add a `billed_quantity` column to `job_order_line_items`:
-```sql
-ALTER TABLE public.job_order_line_items 
-ADD COLUMN billed_quantity numeric DEFAULT 0;
-```
+### Fixes
 
-Add a `jo_line_item_id` column to `vendor_bill_line_items`:
-```sql
-ALTER TABLE public.vendor_bill_line_items 
-ADD COLUMN jo_line_item_id uuid REFERENCES public.job_order_line_items(id);
-```
+#### Fix 1: Auto-populate `qb_product_mapping_id` for billable line items
 
-Create a trigger function `update_jo_billing_on_vendor_bill_change()` that auto-updates `job_order_line_items.billed_quantity` whenever a `vendor_bill_line_items` row is inserted, updated, or deleted -- mirroring the existing `update_po_billing_on_bill_line_item_change` pattern.
+When creating bill line items (in `CreateBillFromPODialog.tsx` and `VendorBillForm.tsx`), auto-match line items to QB product mappings:
 
-Backfill existing data: For vendor bill line items that already have a `po_line_item_id`, derive the `jo_line_item_id` by matching via the PO's `job_order_id` and matching product descriptions.
+- In `CreateBillFromPODialog.tsx`: When creating a bill from a PO, look up the PO line item's product and find its corresponding `qb_product_service_mappings` entry. Set `qb_product_mapping_id` on the vendor bill line item.
+- In `VendorBillForm.tsx`: When a line item has a `product_id` or is linked to a JO line item that has a product, auto-set the `qb_product_mapping_id`.
+- For personnel/time-entry bills (no product mapping): These should remain as Category Details (non-billable), which is the current default behavior -- so no change needed there.
 
-#### 2. Auto-Link Vendor Bills to JO Line Items
+**Key logic**: A line item is "billable" if it has a matching entry in `qb_product_service_mappings`. Personnel expenses and general overhead should NOT have a mapping and will correctly go under Category Details.
 
-When creating a vendor bill from a PO (via `CreateBillFromPODialog`), the system already knows the `po_line_item_id`. Since the PO is linked to a JO (`purchase_orders.job_order_id`), auto-populate `jo_line_item_id` by matching the PO line item description/product to the corresponding JO line item.
+#### Fix 2: Ensure `quickbooks-void-bill` is properly called and deployed
 
-Update the `CreateBillFromPODialog` and vendor bill creation flow to include `jo_line_item_id` when creating bill line items.
+- Redeploy the `quickbooks-void-bill` edge function
+- Add better error logging in `useDeleteVendorBill` and `useHardDeleteVendorBill` hooks
+- Ensure the void function is awaited properly and errors surface in the UI
 
-#### 3. JO Detail Page - Billed Quantity Tracking
+#### Fix 3: Webhook bill deletion -- keep soft-delete but ensure bills are hidden
 
-Update the Job Line Items table on the JO detail page to show:
-- **Qty** (original)
-- **Billed** (from vendor bills) 
-- **Remaining** (qty - billed)
-- Visual progress bar per line item
-- Color coding: green when fully billed, yellow when partially billed, default when unbilled
+The webhook's soft-delete approach is correct for data integrity. Verify the vendor bills query filters out soft-deleted records (`deleted_at IS NULL`). If the "void" status bills are still appearing in the list, add explicit filtering.
 
-#### 4. JO Detail Page - Vendor Cost Summary
-
-Add a "Vendor Billing" summary card to the JO detail page showing:
-- Total JO Amount
-- Total Billed by Vendors (sum of linked vendor bill line items)
-- Remaining to Bill
-- Progress percentage
-
-#### 5. Product Matching Enhancement
-
-The existing `ExtractedItemsTable` already has product matching UI. Enhance it by:
-- Adding a "Match All by Name" button that auto-matches all items using fuzzy matching
-- Showing match confidence indicators (exact match vs partial match)
-- When a product is matched, auto-fill the `product_id` and `product_name` on the JO line item for future tracking
-
-### Technical Details
-
-#### Database Changes
-
-```sql
--- Add billed_quantity to job_order_line_items
-ALTER TABLE public.job_order_line_items 
-ADD COLUMN IF NOT EXISTS billed_quantity numeric DEFAULT 0;
-
--- Add jo_line_item_id to vendor_bill_line_items
-ALTER TABLE public.vendor_bill_line_items 
-ADD COLUMN IF NOT EXISTS jo_line_item_id uuid REFERENCES public.job_order_line_items(id);
-
--- Create index for performance
-CREATE INDEX IF NOT EXISTS idx_vbli_jo_line_item_id 
-ON public.vendor_bill_line_items(jo_line_item_id);
-
--- Trigger to auto-update JO billed_quantity
-CREATE OR REPLACE FUNCTION public.update_jo_billing_on_vendor_bill_change()
-RETURNS trigger AS $$
-DECLARE
-  v_jo_line_item_id uuid;
-BEGIN
-  IF TG_OP = 'DELETE' THEN
-    v_jo_line_item_id := OLD.jo_line_item_id;
-  ELSE
-    v_jo_line_item_id := NEW.jo_line_item_id;
-  END IF;
-
-  IF v_jo_line_item_id IS NULL THEN
-    IF TG_OP = 'DELETE' THEN RETURN OLD; ELSE RETURN NEW; END IF;
-  END IF;
-
-  UPDATE public.job_order_line_items
-  SET billed_quantity = COALESCE((
-    SELECT SUM(quantity) FROM public.vendor_bill_line_items
-    WHERE jo_line_item_id = v_jo_line_item_id
-  ), 0)
-  WHERE id = v_jo_line_item_id;
-
-  -- Handle old jo_line_item_id on UPDATE if changed
-  IF TG_OP = 'UPDATE' AND OLD.jo_line_item_id IS DISTINCT FROM NEW.jo_line_item_id 
-     AND OLD.jo_line_item_id IS NOT NULL THEN
-    UPDATE public.job_order_line_items
-    SET billed_quantity = COALESCE((
-      SELECT SUM(quantity) FROM public.vendor_bill_line_items
-      WHERE jo_line_item_id = OLD.jo_line_item_id
-    ), 0)
-    WHERE id = OLD.jo_line_item_id;
-  END IF;
-
-  IF TG_OP = 'DELETE' THEN RETURN OLD; ELSE RETURN NEW; END IF;
-END;
-$$ LANGUAGE plpgsql SECURITY DEFINER SET search_path TO 'public';
-
-CREATE TRIGGER trigger_update_jo_billing_on_vendor_bill
-  AFTER INSERT OR UPDATE OR DELETE ON public.vendor_bill_line_items
-  FOR EACH ROW EXECUTE FUNCTION public.update_jo_billing_on_vendor_bill_change();
-```
-
-#### Frontend Changes
+### Files to Modify
 
 | File | Change |
 |------|--------|
-| `src/pages/JobOrderDetail.tsx` | Add Billed/Remaining columns to line items table, add Vendor Billing summary card |
-| `src/components/purchase-orders/CreateBillFromPODialog.tsx` | Auto-populate `jo_line_item_id` when creating bill from PO |
-| `src/components/vendor-bills/VendorBillForm.tsx` | Support `jo_line_item_id` in line item creation |
-| `src/integrations/supabase/hooks/useJobOrders.ts` | Include `billed_quantity` in JO line item type |
-| `src/components/job-orders/ExtractedItemsTable.tsx` | Add "Auto-Match All" button for bulk product matching |
+| `src/components/purchase-orders/CreateBillFromPODialog.tsx` | Auto-set `qb_product_mapping_id` from PO line item product mapping |
+| `src/integrations/supabase/hooks/useVendorBills.ts` | Improve QB void error handling in delete hooks; verify deleted_at filtering |
+| `supabase/functions/quickbooks-void-bill/index.ts` | Add authentication + better logging |
+| `supabase/functions/quickbooks-create-bill/index.ts` | No changes needed (Item/Category logic is correct) |
+| `supabase/functions/quickbooks-update-bill/index.ts` | No changes needed (Item/Category logic is correct) |
 
-### Workflow Summary
+### Technical Details
 
+**Auto-matching product mappings** (Fix 1):
 ```text
-Work Order (PDF) --> Import --> Job Order (master quantities)
-                                    |
-                                    v
-                              Purchase Orders (subcontractor assignments)
-                                    |
-                                    v
-                              Vendor Bills (actual billing)
-                                    |
-                              jo_line_item_id links back to JO
-                                    |
-                                    v
-                              JO billed_quantity auto-updates
-                              JO detail shows remaining quantities
+When creating bill from PO:
+  1. For each PO line item, get its product_id
+  2. Query qb_product_service_mappings WHERE product_id matches
+  3. If found, set qb_product_mapping_id on the vendor bill line item
+  4. Result: line syncs as ItemBasedExpenseLineDetail (billable)
+  5. If not found, leave null -> syncs as AccountBasedExpenseLineDetail (category)
 ```
+
+**Void bill authentication** (Fix 2):
+The `quickbooks-void-bill` function currently has no authentication check (unlike `quickbooks-create-bill` which validates admin/manager role). Add the same auth pattern to ensure the function can be called properly from the client.
 
