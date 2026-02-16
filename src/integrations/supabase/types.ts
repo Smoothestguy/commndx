@@ -2689,6 +2689,7 @@ export type Database = {
       }
       job_order_line_items: {
         Row: {
+          billed_quantity: number | null
           created_at: string
           description: string
           id: string
@@ -2703,6 +2704,7 @@ export type Database = {
           unit_price: number
         }
         Insert: {
+          billed_quantity?: number | null
           created_at?: string
           description: string
           id?: string
@@ -2717,6 +2719,7 @@ export type Database = {
           unit_price: number
         }
         Update: {
+          billed_quantity?: number | null
           created_at?: string
           description?: string
           id?: string
@@ -7125,6 +7128,7 @@ export type Database = {
           created_at: string
           description: string
           id: string
+          jo_line_item_id: string | null
           po_addendum_line_item_id: string | null
           po_line_item_id: string | null
           project_id: string | null
@@ -7139,6 +7143,7 @@ export type Database = {
           created_at?: string
           description: string
           id?: string
+          jo_line_item_id?: string | null
           po_addendum_line_item_id?: string | null
           po_line_item_id?: string | null
           project_id?: string | null
@@ -7153,6 +7158,7 @@ export type Database = {
           created_at?: string
           description?: string
           id?: string
+          jo_line_item_id?: string | null
           po_addendum_line_item_id?: string | null
           po_line_item_id?: string | null
           project_id?: string | null
@@ -7174,6 +7180,13 @@ export type Database = {
             columns: ["category_id"]
             isOneToOne: false
             referencedRelation: "expense_categories"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "vendor_bill_line_items_jo_line_item_id_fkey"
+            columns: ["jo_line_item_id"]
+            isOneToOne: false
+            referencedRelation: "job_order_line_items"
             referencedColumns: ["id"]
           },
           {

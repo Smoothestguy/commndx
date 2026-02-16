@@ -28,13 +28,14 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import { ArrowLeft, Receipt, ShoppingCart, Plus, Briefcase, Pencil, MoreVertical, Trash2 } from "lucide-react";
+import { ArrowLeft, Receipt, ShoppingCart, Plus, Briefcase, Pencil, MoreVertical, Trash2, TrendingDown } from "lucide-react";
 import { useJobOrder, useDeleteJobOrder } from "@/integrations/supabase/hooks/useJobOrders";
 import { useInvoicesByJobOrder } from "@/integrations/supabase/hooks/useInvoices";
 import { usePurchaseOrders } from "@/integrations/supabase/hooks/usePurchaseOrders";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { CreateInvoiceFromJODialog } from "@/components/invoices/CreateInvoiceFromJODialog";
 import { formatCurrency } from "@/lib/utils";
+import { Progress } from "@/components/ui/progress";
 
 const JobOrderDetail = () => {
   const { id } = useParams();
@@ -226,26 +227,38 @@ const JobOrderDetail = () => {
         <CardContent>
           {isMobile ? (
             <div className="space-y-3">
-              {jobOrder.line_items.map((item: any) => (
-                <Card key={item.id} className="p-4 bg-secondary/30">
-                  <div className="flex justify-between items-start mb-2">
-                    <span className="font-medium text-sm">{item.description}</span>
-                    <span className="text-primary font-semibold ml-2 shrink-0">
-                      {formatCurrency(item.total)}
-                    </span>
-                  </div>
-                  <div className="grid grid-cols-2 gap-2 text-sm text-muted-foreground">
-                    <div>
-                      <span className="block text-xs mb-0.5">Quantity</span>
-                      <span>{item.quantity}</span>
+              {jobOrder.line_items.map((item: any) => {
+                const billed = Number(item.billed_quantity || 0);
+                const remaining = Math.max(0, Number(item.quantity) - billed);
+                const billedPct = item.quantity > 0 ? (billed / item.quantity) * 100 : 0;
+                return (
+                  <Card key={item.id} className="p-4 bg-secondary/30">
+                    <div className="flex justify-between items-start mb-2">
+                      <span className="font-medium text-sm">{item.description}</span>
+                      <span className="text-primary font-semibold ml-2 shrink-0">
+                        {formatCurrency(item.total)}
+                      </span>
                     </div>
+                    <div className="grid grid-cols-3 gap-2 text-sm text-muted-foreground mb-2">
                       <div>
-                        <span className="block text-xs mb-0.5">Unit Price</span>
-                        <span>{formatCurrency(item.unit_price)}</span>
+                        <span className="block text-xs mb-0.5">Qty</span>
+                        <span>{item.quantity}</span>
+                      </div>
+                      <div>
+                        <span className="block text-xs mb-0.5">Billed</span>
+                        <span className={billed > 0 ? "text-success" : ""}>{billed}</span>
+                      </div>
+                      <div>
+                        <span className="block text-xs mb-0.5">Remaining</span>
+                        <span className={remaining === 0 ? "text-muted-foreground" : "text-warning"}>{remaining}</span>
+                      </div>
                     </div>
-                  </div>
-                </Card>
-              ))}
+                    {billed > 0 && (
+                      <Progress value={billedPct} className="h-1.5" />
+                    )}
+                  </Card>
+                );
+              })}
             </div>
           ) : (
             <Table>
@@ -253,23 +266,40 @@ const JobOrderDetail = () => {
                 <TableRow className="border-border/50">
                   <TableHead>Description</TableHead>
                   <TableHead className="text-right">Qty</TableHead>
+                  <TableHead className="text-right">Billed</TableHead>
+                  <TableHead className="text-right">Remaining</TableHead>
                   <TableHead className="text-right">Unit Price</TableHead>
                   <TableHead className="text-right">Total</TableHead>
+                  <TableHead className="w-[100px]">Progress</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {jobOrder.line_items.map((item: any) => (
-                  <TableRow key={item.id} className="border-border/30">
-                    <TableCell>{item.description}</TableCell>
-                    <TableCell className="text-right">{item.quantity}</TableCell>
-                    <TableCell className="text-right">
-                      {formatCurrency(item.unit_price)}
-                    </TableCell>
-                    <TableCell className="text-right font-medium">
-                      {formatCurrency(item.total)}
-                    </TableCell>
-                  </TableRow>
-                ))}
+                {jobOrder.line_items.map((item: any) => {
+                  const billed = Number(item.billed_quantity || 0);
+                  const remaining = Math.max(0, Number(item.quantity) - billed);
+                  const billedPct = item.quantity > 0 ? (billed / item.quantity) * 100 : 0;
+                  return (
+                    <TableRow key={item.id} className="border-border/30">
+                      <TableCell>{item.description}</TableCell>
+                      <TableCell className="text-right">{item.quantity}</TableCell>
+                      <TableCell className="text-right">
+                        <span className={billed > 0 ? "text-success font-medium" : "text-muted-foreground"}>{billed}</span>
+                      </TableCell>
+                      <TableCell className="text-right">
+                        <span className={remaining === 0 ? "text-muted-foreground" : "text-warning font-medium"}>{remaining}</span>
+                      </TableCell>
+                      <TableCell className="text-right">
+                        {formatCurrency(item.unit_price)}
+                      </TableCell>
+                      <TableCell className="text-right font-medium">
+                        {formatCurrency(item.total)}
+                      </TableCell>
+                      <TableCell>
+                        <Progress value={billedPct} className="h-2" />
+                      </TableCell>
+                    </TableRow>
+                  );
+                })}
               </TableBody>
             </Table>
           )}
@@ -290,6 +320,46 @@ const JobOrderDetail = () => {
           </div>
         </CardContent>
       </Card>
+
+      {/* Vendor Billing Summary */}
+      {(() => {
+        const totalBilled = jobOrder.line_items.reduce((sum: number, item: any) => 
+          sum + (Number(item.billed_quantity || 0) * Number(item.unit_price)), 0);
+        const vendorBillingPct = jobOrder.subtotal > 0 ? (totalBilled / jobOrder.subtotal) * 100 : 0;
+        return (
+          <Card className="glass border-border/50 mt-6">
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <TrendingDown className="h-5 w-5 text-primary" />
+                Vendor Billing Summary
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-4">
+                <div className="text-center p-4 rounded-lg bg-secondary/50">
+                  <p className="text-sm text-muted-foreground">JO Subtotal</p>
+                  <p className="text-2xl font-heading font-bold">{formatCurrency(jobOrder.subtotal)}</p>
+                </div>
+                <div className="text-center p-4 rounded-lg bg-secondary/50">
+                  <p className="text-sm text-muted-foreground">Vendor Billed</p>
+                  <p className="text-2xl font-heading font-bold text-success">{formatCurrency(totalBilled)}</p>
+                </div>
+                <div className="text-center p-4 rounded-lg bg-secondary/50">
+                  <p className="text-sm text-muted-foreground">Remaining to Bill</p>
+                  <p className="text-2xl font-heading font-bold text-warning">{formatCurrency(jobOrder.subtotal - totalBilled)}</p>
+                </div>
+              </div>
+              <div className="space-y-2">
+                <div className="flex justify-between text-sm">
+                  <span className="text-muted-foreground">Vendor Billing Progress</span>
+                  <span className="font-medium">{vendorBillingPct.toFixed(1)}%</span>
+                </div>
+                <Progress value={Math.min(vendorBillingPct, 100)} className="h-3" />
+              </div>
+            </CardContent>
+          </Card>
+        );
+      })()}
 
       {/* Related Purchase Orders */}
       <Card className="glass border-border/50 mt-6">

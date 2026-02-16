@@ -17,9 +17,10 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Trash2, Check, Link2 } from "lucide-react";
+import { Trash2, Check, Link2, Wand2 } from "lucide-react";
 import { Product } from "@/integrations/supabase/hooks/useProducts";
 import { SearchInput } from "@/components/ui/search-input";
+import { toast } from "sonner";
 
 export interface ExtractedItem {
   id: string;
@@ -50,6 +51,35 @@ export const ExtractedItemsTable = ({
 }: ExtractedItemsTableProps) => {
   const [productSearches, setProductSearches] = useState<Record<string, string>>({});
 
+  const handleAutoMatchAll = () => {
+    let matchCount = 0;
+    items.forEach((item) => {
+      if (item.matchedProductId) return; // Already matched
+      const descLower = item.description.toLowerCase().trim();
+      // Try exact name match first
+      let match = products.find(
+        (p) => p.name.toLowerCase().trim() === descLower
+      );
+      // Try partial/fuzzy match
+      if (!match) {
+        match = products.find(
+          (p) =>
+            descLower.includes(p.name.toLowerCase().trim()) ||
+            p.name.toLowerCase().trim().includes(descLower)
+        );
+      }
+      if (match) {
+        onProductMatch(item.id, match.id);
+        matchCount++;
+      }
+    });
+    if (matchCount > 0) {
+      toast.success(`Auto-matched ${matchCount} item(s) to products`);
+    } else {
+      toast.info("No matches found. Try matching items manually.");
+    }
+  };
+
   const getFilteredProducts = (itemId: string) => {
     const search = productSearches[itemId]?.toLowerCase() || "";
     if (!search) return products.slice(0, 10);
@@ -67,6 +97,18 @@ export const ExtractedItemsTable = ({
 
   return (
     <div className="border rounded-lg overflow-hidden bg-card">
+      <div className="flex items-center justify-between p-3 bg-muted/50 border-b">
+        <span className="text-sm font-medium text-muted-foreground">{items.length} line item(s)</span>
+        <Button
+          variant="outline"
+          size="sm"
+          onClick={handleAutoMatchAll}
+          disabled={items.length === 0 || products.length === 0}
+        >
+          <Wand2 className="h-4 w-4 mr-1.5" />
+          Auto-Match All
+        </Button>
+      </div>
       <Table>
         <TableHeader>
           <TableRow className="bg-muted">

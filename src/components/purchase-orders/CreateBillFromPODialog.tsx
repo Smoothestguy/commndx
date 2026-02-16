@@ -176,11 +176,35 @@ export function CreateBillFromPODialog({
   const handleSubmit = async () => {
     if (!hasValidItems || hasExceededQuantity) return;
 
+    // Resolve jo_line_item_id for each PO line item by matching via job_order_id
+    let joLineItems: any[] = [];
+    if (purchaseOrder.job_order_id) {
+      const { data } = await supabase
+        .from("job_order_line_items")
+        .select("id, description, product_id")
+        .eq("job_order_id", purchaseOrder.job_order_id);
+      joLineItems = data || [];
+    }
+
+    const findJoLineItemId = (description: string, productId?: string | null): string | null => {
+      if (!joLineItems.length) return null;
+      // Try matching by product_id first
+      if (productId) {
+        const match = joLineItems.find((j: any) => j.product_id === productId);
+        if (match) return match.id;
+      }
+      // Fuzzy match by description
+      const descLower = description.toLowerCase().trim();
+      const match = joLineItems.find((j: any) => j.description.toLowerCase().trim() === descLower);
+      return match?.id || null;
+    };
+
     const billLineItems = lineItems
       .filter((item) => item.quantityToBill > 0)
       .map((item) => ({
         po_line_item_id: item.source === 'po' ? item.id : null,
         po_addendum_line_item_id: item.source === 'addendum' ? item.id : null,
+        jo_line_item_id: item.source === 'po' ? findJoLineItemId(item.description) : null,
         project_id: purchaseOrder.project_id,
         category_id: categoryId,
         description: item.source === 'addendum' 
