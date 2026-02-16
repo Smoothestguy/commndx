@@ -558,6 +558,30 @@ serve(async (req) => {
       }
     }
 
+    // Fetch QB product mappings for line items that have them
+    const qbProductMap = new Map();
+    if (lineItems && lineItems.length > 0) {
+      const qbMappingIds = lineItems
+        .map((item: any) => item.qb_product_mapping_id)
+        .filter((id: string | null) => id !== null);
+      
+      if (qbMappingIds.length > 0) {
+        const { data: mappings } = await supabase
+          .from('qb_product_service_mappings')
+          .select('id, name, quickbooks_item_id')
+          .in('id', qbMappingIds);
+        
+        if (mappings) {
+          for (const m of mappings) {
+            if (m.quickbooks_item_id) {
+              qbProductMap.set(m.id, { qb_item_id: m.quickbooks_item_id, name: m.name });
+            }
+          }
+        }
+        console.log(`Loaded ${qbProductMap.size} QB product mappings for billable items`);
+      }
+    }
+
     // Check if already synced - also check if we have a QB bill ID (handles stuck 'syncing' status)
     const { data: existingMapping } = await supabase
       .from('quickbooks_bill_mappings')
@@ -596,27 +620,47 @@ serve(async (req) => {
 
     if (lineItems && lineItems.length > 0) {
       for (const item of lineItems) {
-        // Get category name for this line item
-        const categoryName = item.category_id ? categoryMap.get(item.category_id) || null : null;
-        
-        // Get the appropriate expense account based on category
-        const expenseAccountRef = await getExpenseAccountRef(categoryName, accessToken, realmId);
-        
         const qty = Number(item.quantity) || 1;
         const unitPrice = Number(item.unit_cost) || Number(item.total);
         const desc = `${item.description} - ${qty} x $${unitPrice.toFixed(2)}`;
         
-        console.log(`Line item "${desc}" -> Amount: ${item.total} -> QB Account: ${expenseAccountRef.name}`);
+        // Check if this line item has a QB product mapping (billable)
+        const qbProduct = item.qb_product_mapping_id 
+          ? qbProductMap.get(item.qb_product_mapping_id) 
+          : null;
         
-        qbLineItems.push({
-          DetailType: 'AccountBasedExpenseLineDetail',
-          Amount: Number(item.total),
-          Description: desc,
-          AccountBasedExpenseLineDetail: {
-            AccountRef: expenseAccountRef,
-            BillableStatus: 'NotBillable',
-          },
-        });
+        if (qbProduct) {
+          // Billable: Use ItemBasedExpenseLineDetail
+          console.log(`Line item "${desc}" -> Amount: ${item.total} -> QB Item: ${qbProduct.name} (${qbProduct.qb_item_id}) [BILLABLE]`);
+          
+          qbLineItems.push({
+            DetailType: 'ItemBasedExpenseLineDetail',
+            Amount: Number(item.total),
+            Description: desc,
+            ItemBasedExpenseLineDetail: {
+              ItemRef: { value: qbProduct.qb_item_id },
+              Qty: qty,
+              UnitPrice: unitPrice,
+              BillableStatus: 'Billable',
+            },
+          });
+        } else {
+          // Non-billable: Use AccountBasedExpenseLineDetail
+          const categoryName = item.category_id ? categoryMap.get(item.category_id) || null : null;
+          const expenseAccountRef = await getExpenseAccountRef(categoryName, accessToken, realmId);
+          
+          console.log(`Line item "${desc}" -> Amount: ${item.total} -> QB Account: ${expenseAccountRef.name} [NOT BILLABLE]`);
+          
+          qbLineItems.push({
+            DetailType: 'AccountBasedExpenseLineDetail',
+            Amount: Number(item.total),
+            Description: desc,
+            AccountBasedExpenseLineDetail: {
+              AccountRef: expenseAccountRef,
+              BillableStatus: 'NotBillable',
+            },
+          });
+        }
       }
     } else {
       // If no line items, create one with the total using default account
