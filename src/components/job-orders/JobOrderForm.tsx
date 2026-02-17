@@ -24,7 +24,7 @@ import { toast } from "sonner";
 const lineItemSchema = z.object({
   description: z.string().min(1, "Description is required").max(2000),
   quantity: z.number().min(0, "Quantity cannot be negative"),
-  unit_price: z.number(),
+  unit_price: z.number().min(0, "Unit price cannot be negative"),
   margin: z.number().min(0, "Margin cannot be negative").max(99.99, "Margin must be less than 100%"),
 });
 
@@ -426,6 +426,7 @@ export const JobOrderForm = ({
                           <Input
                             type="number"
                             step="0.01"
+                            min="0"
                             value={item.quantity}
                             onChange={(e) => updateLineItem(item.id, "quantity", e.target.value)}
                             className="h-7 w-[60px] text-xs text-right bg-transparent border-transparent hover:border-border focus:border-primary tabular-nums px-1 ml-auto"
@@ -435,6 +436,7 @@ export const JobOrderForm = ({
                           <Input
                             type="number"
                             step="0.01"
+                            min="0"
                             value={item.unit_price}
                             onChange={(e) => updateLineItem(item.id, "unit_price", e.target.value)}
                             className="h-7 w-[75px] text-xs text-right bg-transparent border-transparent hover:border-border focus:border-primary tabular-nums px-1 ml-auto"
@@ -445,6 +447,7 @@ export const JobOrderForm = ({
                             <Input
                               type="number"
                               step="0.01"
+                              min="0"
                               max="99.99"
                               value={item.margin}
                               onChange={(e) => updateLineItem(item.id, "margin", e.target.value)}

@@ -239,10 +239,14 @@ const JobOrderDetail = () => {
                         {formatCurrency(item.total)}
                       </span>
                     </div>
-                    <div className="grid grid-cols-3 gap-2 text-sm text-muted-foreground mb-2">
+                    <div className="grid grid-cols-4 gap-2 text-sm text-muted-foreground mb-2">
                       <div>
                         <span className="block text-xs mb-0.5">Qty</span>
                         <span>{item.quantity}</span>
+                      </div>
+                      <div>
+                        <span className="block text-xs mb-0.5">Margin</span>
+                        <span>{item.markup ?? 0}%</span>
                       </div>
                       <div>
                         <span className="block text-xs mb-0.5">Billed</span>
@@ -269,6 +273,7 @@ const JobOrderDetail = () => {
                   <TableHead className="text-right">Billed</TableHead>
                   <TableHead className="text-right">Remaining</TableHead>
                   <TableHead className="text-right">Unit Price</TableHead>
+                  <TableHead className="text-right">Margin %</TableHead>
                   <TableHead className="text-right">Total</TableHead>
                   <TableHead className="w-[100px]">Progress</TableHead>
                 </TableRow>
@@ -290,6 +295,9 @@ const JobOrderDetail = () => {
                       </TableCell>
                       <TableCell className="text-right">
                         {formatCurrency(item.unit_price)}
+                      </TableCell>
+                      <TableCell className="text-right">
+                        <span className="text-muted-foreground">{item.markup ?? 0}%</span>
                       </TableCell>
                       <TableCell className="text-right font-medium">
                         {formatCurrency(item.total)}

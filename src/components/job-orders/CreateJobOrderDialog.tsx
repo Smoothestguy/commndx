@@ -380,6 +380,7 @@ export function CreateJobOrderDialog({
                           <Input
                             type="number"
                             step="0.01"
+                            min="0"
                             value={item.unit_price}
                             onChange={(e) => updateLineItem(item.id, "unit_price", e.target.value)}
                             className="pl-7"
@@ -391,9 +392,10 @@ export function CreateJobOrderDialog({
                         <Input
                           type="number"
                           step="0.01"
+                          min="0"
+                          max="99"
                           value={item.markup}
                           onChange={(e) => updateLineItem(item.id, "markup", e.target.value)}
-                          max="99"
                         />
                       </div>
                       <div className="col-span-1 space-y-1">
