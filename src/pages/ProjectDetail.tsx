@@ -196,19 +196,20 @@ const ProjectDetail = () => {
     const grossProfit = totalContractValue - totalPOValue;
     const grossMargin = totalContractValue > 0 ? (grossProfit / totalContractValue) * 100 : 0;
 
-    // Net profit calculations - labor costs from multiple sources
+    // Net profit calculations - labor costs from internal sources only
     // Time entry labor (real-time as hours are logged)
     const timeEntryLaborCost = timeEntryCosts?.totalLaborCost || 0;
-    // Personnel payment allocations (finalized payroll)
+    // Personnel payment allocations (finalized payroll - non-PO labor costs)
     const personnelPaymentCost = projectExpenses?.personnel_total || 0;
-    // Vendor labor bills (Contract Labor, Direct Labor, Admin Labor categories)
-    const vendorLaborCost = projectExpenses?.vendor_labor_total || 0;
+    // NOTE: vendorLaborCost and vendorOtherTotal are EXCLUDED from cost calculation
+    // because vendor bills are payments AGAINST POs already counted in totalPOValue.
+    // Including them would double-count sub costs.
     
-    // Total labor = time entries + personnel payments + vendor labor bills
-    const totalLaborCost = timeEntryLaborCost + personnelPaymentCost + vendorLaborCost;
-    // Other expenses = only non-labor vendor bills
-    const totalOtherExpenses = projectExpenses?.vendor_other_total || 0;
-    const totalAllCosts = totalPOValue + totalLaborCost + totalOtherExpenses;
+    // Total labor = time entries + personnel payments (no vendor bills)
+    const totalLaborCost = timeEntryLaborCost + personnelPaymentCost;
+    // Other expenses = 0 (vendor bill line items are PO payments, not separate expenses)
+    const totalOtherExpenses = 0;
+    const totalAllCosts = totalPOValue + totalLaborCost;
     const netProfit = totalContractValue - totalAllCosts;
     const netMargin = totalContractValue > 0 ? (netProfit / totalContractValue) * 100 : 0;
 

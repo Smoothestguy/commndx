@@ -1,6 +1,7 @@
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
-import { DollarSign, TrendingUp, TrendingDown, FileText, Receipt, Truck, Users, Minus, Package } from "lucide-react";
+import { Alert, AlertTitle, AlertDescription } from "@/components/ui/alert";
+import { DollarSign, TrendingUp, TrendingDown, FileText, Receipt, Truck, Users, AlertTriangle, Package } from "lucide-react";
 import { formatCurrency } from "@/lib/utils";
 
 interface FinancialData {
@@ -15,14 +16,12 @@ interface FinancialData {
   totalPaid: number;
   grossProfit: number;
   grossMargin: number;
-  // Net profit fields
   totalLaborCost: number;
   billableLaborCost?: number;
   nonBillableLaborCost?: number;
   totalOtherExpenses: number;
   netProfit: number;
   netMargin: number;
-  // Supervision fields (optional)
   supervisionLaborCost?: number;
   fieldLaborCost?: number;
 }
@@ -31,7 +30,32 @@ interface ProjectFinancialSummaryProps {
   data: FinancialData;
 }
 
+function getMarginColor(margin: number) {
+  if (margin >= 30) return 'text-green-500';
+  if (margin >= 15) return 'text-yellow-500';
+  return 'text-red-500';
+}
+
+function StatCard({ label, value, icon, highlight, colorClass }: {
+  label: string;
+  value: string;
+  icon?: React.ReactNode;
+  highlight?: boolean;
+  colorClass?: string;
+}) {
+  return (
+    <div className={`space-y-1 p-3 rounded-lg ${highlight ? 'bg-primary/10' : 'bg-secondary/30'}`}>
+      <p className="text-xs text-muted-foreground flex items-center gap-1">
+        {icon} {label}
+      </p>
+      <p className={`text-lg font-bold ${colorClass || ''}`}>{value}</p>
+    </div>
+  );
+}
+
 export function ProjectFinancialSummary({ data }: ProjectFinancialSummaryProps) {
+  const totalCosts = data.totalPOValue + data.totalLaborCost;
+  
   const invoiceProgress = data.totalContractValue > 0 
     ? (data.totalInvoiced / data.totalContractValue) * 100 
     : 0;
@@ -44,6 +68,8 @@ export function ProjectFinancialSummary({ data }: ProjectFinancialSummaryProps) 
     ? (data.totalVendorPaid / data.totalVendorBilled) * 100
     : 0;
 
+  const marginColor = getMarginColor(data.netMargin);
+
   return (
     <Card className="glass border-border">
       <CardHeader>
@@ -53,110 +79,67 @@ export function ProjectFinancialSummary({ data }: ProjectFinancialSummaryProps) 
         </CardTitle>
       </CardHeader>
       <CardContent className="space-y-6">
-        {/* Contract Value Breakdown */}
-        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-          <div className="space-y-1">
-            <p className="text-sm text-muted-foreground">Original Contract</p>
-            <p className="text-2xl font-bold">{formatCurrency(data.originalContractValue)}</p>
-          </div>
-          <div className="space-y-1">
-            <p className="text-sm text-muted-foreground flex items-center gap-1">
-              <FileText className="h-3 w-3" /> Change Orders
-            </p>
-            <p className="text-2xl font-bold text-blue-500">
-              +{formatCurrency(data.changeOrdersTotal)}
-            </p>
-          </div>
-          <div className="space-y-1">
-            <p className="text-sm text-muted-foreground flex items-center gap-1">
-              <Receipt className="h-3 w-3" /> T&M Tickets
-            </p>
-            <p className="text-2xl font-bold text-orange-500">
-              +{formatCurrency(data.tmTicketsTotal)}
-            </p>
-          </div>
-          <div className="space-y-1 p-3 bg-primary/10 rounded-lg">
-            <p className="text-sm text-muted-foreground font-medium">Total Contract Value</p>
-            <p className="text-2xl font-bold text-primary">{formatCurrency(data.totalContractValue)}</p>
-          </div>
-        </div>
+        {/* Negative Profit Alert */}
+        {data.netProfit < 0 && (
+          <Alert variant="destructive">
+            <AlertTriangle className="h-4 w-4" />
+            <AlertTitle>Project Loss Alert</AlertTitle>
+            <AlertDescription>
+              This project is currently showing a loss of {formatCurrency(Math.abs(data.netProfit))}. Review costs and billing.
+            </AlertDescription>
+          </Alert>
+        )}
 
-        {/* Cost Breakdown */}
-        <div className="grid gap-4 sm:grid-cols-2 pt-4 border-t border-border">
-          <div className="space-y-3">
-            <p className="text-sm text-muted-foreground flex items-center gap-1">
-              <Truck className="h-3 w-3" /> Total Costs
-            </p>
-            <p className="text-2xl font-bold">
-              {formatCurrency(data.totalPOValue + data.totalLaborCost + data.totalOtherExpenses)}
-            </p>
-            
-            {/* Itemized breakdown */}
-            <div className="pl-4 border-l-2 border-muted space-y-2 mt-2">
-              <div className="flex justify-between items-center text-sm">
-                <span className="text-muted-foreground flex items-center gap-1">
-                  <Users className="h-3 w-3" /> Labor Costs
-                </span>
-                <span className="font-medium">{formatCurrency(data.totalLaborCost)}</span>
-              </div>
-              {/* Show billable/non-billable breakdown if available */}
-              {(data.billableLaborCost !== undefined || data.nonBillableLaborCost !== undefined) && (
-                <div className="pl-4 space-y-1">
-                  {data.billableLaborCost !== undefined && data.billableLaborCost > 0 && (
-                    <div className="flex justify-between items-center text-xs">
-                      <span className="text-muted-foreground">Billable</span>
-                      <span>{formatCurrency(data.billableLaborCost)}</span>
-                    </div>
-                  )}
-                  {data.nonBillableLaborCost !== undefined && data.nonBillableLaborCost > 0 && (
-                    <div className="flex justify-between items-center text-xs">
-                      <span className="text-muted-foreground">Non-Billable</span>
-                      <span>{formatCurrency(data.nonBillableLaborCost)}</span>
-                    </div>
-                  )}
-                </div>
-              )}
-              <div className="flex justify-between items-center text-sm">
-                <span className="text-muted-foreground flex items-center gap-1">
-                  <Minus className="h-3 w-3" /> Other Expenses
-                </span>
-                <span className="font-medium">{formatCurrency(data.totalOtherExpenses)}</span>
-              </div>
-            </div>
-          </div>
-          
-          {/* Total Costs - Separate highlighted card */}
-          <div className="space-y-1 p-3 bg-primary/10 rounded-lg">
-            <p className="text-sm text-muted-foreground font-medium">Total Costs</p>
-            <p className="text-2xl font-bold text-orange-500">
-              {formatCurrency(data.totalPOValue + data.totalLaborCost + data.totalOtherExpenses)}
-            </p>
-          </div>
-        </div>
-
-        {/* Net Profit Analysis */}
-        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 pt-4 border-t border-border">
-          <div className="space-y-1">
-            <p className="text-sm text-muted-foreground">Gross Profit</p>
-            <p className={`text-2xl font-bold ${data.grossProfit >= 0 ? 'text-green-500' : 'text-red-500'}`}>
-              {formatCurrency(data.grossProfit)}
-            </p>
-            <p className="text-xs text-muted-foreground">Before labor & expenses</p>
-          </div>
-          <div className="space-y-1 p-3 bg-primary/10 rounded-lg">
-            <p className="text-sm text-muted-foreground font-medium">Net Profit</p>
-            <p className={`text-2xl font-bold flex items-center gap-2 ${data.netProfit >= 0 ? 'text-green-500' : 'text-red-500'}`}>
-              {data.netProfit >= 0 ? <TrendingUp className="h-5 w-5" /> : <TrendingDown className="h-5 w-5" />}
-              {formatCurrency(data.netProfit)}
-            </p>
-            <p className="text-xs text-muted-foreground">After all deductions</p>
-          </div>
-          <div className="space-y-1 p-3 bg-primary/10 rounded-lg">
-            <p className="text-sm text-muted-foreground font-medium">Net Margin</p>
-            <p className={`text-2xl font-bold ${data.netMargin >= 0 ? 'text-green-500' : 'text-red-500'}`}>
-              {data.netMargin.toFixed(1)}%
-            </p>
-          </div>
+        {/* Stat Cards Grid */}
+        <div className="grid gap-3 grid-cols-2 sm:grid-cols-4">
+          <StatCard
+            label="Original Contract"
+            value={formatCurrency(data.originalContractValue)}
+            icon={<FileText className="h-3 w-3" />}
+          />
+          <StatCard
+            label="Change Orders (net)"
+            value={`${data.changeOrdersTotal >= 0 ? '+' : ''}${formatCurrency(data.changeOrdersTotal)}`}
+            icon={<Receipt className="h-3 w-3" />}
+            colorClass={data.changeOrdersTotal >= 0 ? 'text-blue-500' : 'text-red-500'}
+          />
+          <StatCard
+            label="Total Contract Value"
+            value={formatCurrency(data.totalContractValue)}
+            icon={<DollarSign className="h-3 w-3" />}
+            highlight
+            colorClass="text-primary"
+          />
+          <StatCard
+            label="WO / Sub Costs"
+            value={formatCurrency(data.totalPOValue)}
+            icon={<Truck className="h-3 w-3" />}
+          />
+          <StatCard
+            label="Internal Labor"
+            value={formatCurrency(data.totalLaborCost)}
+            icon={<Users className="h-3 w-3" />}
+          />
+          <StatCard
+            label="Total Costs"
+            value={formatCurrency(totalCosts)}
+            icon={<Package className="h-3 w-3" />}
+            highlight
+            colorClass="text-orange-500"
+          />
+          <StatCard
+            label="Net Profit"
+            value={formatCurrency(data.netProfit)}
+            icon={data.netProfit >= 0 ? <TrendingUp className="h-3 w-3" /> : <TrendingDown className="h-3 w-3" />}
+            highlight
+            colorClass={data.netProfit >= 0 ? 'text-green-500' : 'text-red-500'}
+          />
+          <StatCard
+            label="Margin %"
+            value={`${data.netMargin.toFixed(1)}%`}
+            highlight
+            colorClass={marginColor}
+          />
         </div>
 
         {/* Supervision Cost Impact */}
@@ -175,7 +158,7 @@ export function ProjectFinancialSummary({ data }: ProjectFinancialSummaryProps) 
                 <p className="text-xs text-muted-foreground">Margin Before Supervision</p>
                 <p className="text-lg font-bold text-green-500">
                   {data.totalContractValue > 0
-                    ? ((data.totalContractValue - (data.totalPOValue + data.totalOtherExpenses + (data.fieldLaborCost || 0))) / data.totalContractValue * 100).toFixed(1)
+                    ? ((data.totalContractValue - (data.totalPOValue + (data.fieldLaborCost || 0))) / data.totalContractValue * 100).toFixed(1)
                     : "0.0"}%
                 </p>
               </div>
