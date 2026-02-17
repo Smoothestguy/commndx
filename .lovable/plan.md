@@ -1,48 +1,96 @@
 
+## Project Financial Dashboard Cleanup
 
-## Fix Margin Percentage Display, Negative Values, and Permission Denied
-
-Three issues to fix, all related to Job Orders.
-
----
-
-### Issue 1: Margin Percentage Not Displaying on Job Order Detail Page
-
-**Root Cause:** The `JobOrderDetail.tsx` page does not include a "Margin" or "Markup" column in its line items table. The `markup` field is stored in the database and editable in `JobOrderForm.tsx`, but the read-only detail view never renders it. This affects all job orders equally (old and new), though the user may be comparing the project-level financial summary (which does show margin) with individual line item views.
-
-**Fix:**
-- Add a "Margin %" column to the line items table in `JobOrderDetail.tsx` (both desktop table and mobile card views)
-- Display each line item's `markup` value with a `%` suffix
-- Also display the calculated selling price vs cost spread for clarity
+Fix the double-counting issue in the Project Financial Summary and add margin color coding, negative profit alerts, and drill-down capability.
 
 ---
 
-### Issue 2: Negative Values Allowed in Price/Quantity Fields
+### Root Cause: Double-Counting
 
-**Root Cause:** The `JobOrderForm.tsx` uses standard `<Input type="number">` for quantity and unit_price fields with no `min` attribute. The margin field has a `max="99.99"` but no `min="0"`.
+The current cost formula in `ProjectDetail.tsx` (line 211) is:
 
-**Fix:**
-- Add `min="0"` to quantity, unit_price, and margin input fields in `JobOrderForm.tsx`
-- Update the Zod validation schema: add `.min(0)` to `unit_price`
-- In the `CreateJobOrderDialog.tsx`, apply the same `min="0"` constraints
+```
+totalAllCosts = totalPOValue + totalLaborCost + totalOtherExpenses
+```
+
+Where:
+- `totalPOValue` = sum of all PO face values (committed WO amounts to subs)
+- `totalLaborCost` = time entry costs + personnel payment allocations + vendor labor bills
+- `totalOtherExpenses` = non-labor vendor bill line items
+
+The problem: **vendor bills are payments AGAINST POs**. So the same sub cost is counted twice -- once via the PO committed value (`totalPOValue`) and again via the vendor bill line items (`vendorLaborCost + vendorOtherTotal`). This causes inflated costs and false negative profit.
 
 ---
 
-### Issue 3: "Permission Denied" Error When Admin Edits Job Order
+### Fix: Single Source of Truth Formula
 
-**Root Cause:** The RLS policies on both `job_orders` and `job_order_line_items` tables use `ALL` command policies but are missing the `WITH CHECK` clause. PostgreSQL requires `WITH CHECK` for INSERT and UPDATE operations under an ALL policy. Without it, writes are denied even though reads succeed.
+**REVENUE:**
+- Job Order totals (original contract)
+- + Approved Change Orders (net additive/deductive)
+- + Approved T&M Tickets (net)
+- = **Total Contract Value**
 
-Current policy:
+**COSTS:**
+- Work Order (PO) committed value + addendums (what we owe subs) -- this already includes all sub costs
+- + Internal Labor (time entry costs only -- direct hours x rate from time tracking)
+- + Other Expenses (non-PO expenses from `personnel_payment_allocations` only, NOT vendor bill line items which are PO payments)
+- = **Total Costs**
+
+**PROFIT** = Revenue - Costs
+**MARGIN** = Profit / Revenue x 100
+
+The key change: **remove vendor bill line item totals from the cost calculation** since they represent payments against POs already counted via `totalPOValue`. Personnel payment allocations stay if they represent non-PO labor costs (payroll).
+
+---
+
+### Changes
+
+#### 1. Fix Cost Calculation in `ProjectDetail.tsx`
+
+Modify the `financialData` useMemo (lines 167-234):
+- Remove `vendorLaborCost` and `vendorOtherTotal` from cost calculation
+- Keep `totalPOValue` as the sub cost source (WO committed value)
+- Keep `timeEntryLaborCost` as internal labor (supervision + field)
+- Keep `personnelPaymentCost` as additional labor cost (payroll allocations not tied to POs)
+- `totalOtherExpenses` = personnel payments only (not vendor bills)
+- Add `totalSubCost` field (= totalPOValue) for clarity in display
+
+Updated formula:
 ```
-USING (has_role(auth.uid(), 'admin') OR has_role(auth.uid(), 'manager'))
--- WITH CHECK is NULL
+totalCosts = totalPOValue + timeEntryLaborCost + personnelPaymentCost
+netProfit = totalContractValue - totalCosts
 ```
 
-**Fix:** Drop and recreate both ALL policies with explicit `WITH CHECK` clauses matching the `USING` clause:
-```sql
-USING (has_role(..., 'admin') OR has_role(..., 'manager'))
-WITH CHECK (has_role(..., 'admin') OR has_role(..., 'manager'))
-```
+#### 2. Redesign Financial Summary Display in `ProjectFinancialSummary.tsx`
+
+Replace the current layout with clear stat cards at top:
+
+**Top cards row (color-coded):**
+- Contract Value (original JO total)
+- Change Orders (net)
+- Total Contract Value
+- WO Costs (sub commitments)
+- Internal Labor
+- Total Costs
+- Net Profit
+- Margin % -- color: green if > 30%, yellow if 15-30%, red if < 15%
+
+**Negative profit alert:**
+- Red banner when `netProfit < 0`: "This project is currently showing a loss of $X. Review costs and billing."
+
+**Supervision impact section** (existing, keep as-is)
+
+**Progress bars** (existing, keep as-is)
+
+#### 3. Add Drill-Down Capability
+
+Add collapsible detail sections under each summary card:
+- "WO Costs" expands to show each PO with number, vendor, and amount
+- "Internal Labor" expands to show personnel breakdown from time entries
+- "Contract Value" expands to show each JO
+- "Change Orders" expands to show each approved CO
+
+This uses existing list components already on the page (`ProjectPurchaseOrdersList`, `ProjectChangeOrdersList`, etc.) -- the drill-down links will scroll to or navigate to those sections.
 
 ---
 
@@ -50,30 +98,49 @@ WITH CHECK (has_role(..., 'admin') OR has_role(..., 'manager'))
 
 | File | Change |
 |------|--------|
-| `src/pages/JobOrderDetail.tsx` | Add Margin % column to line items table (desktop + mobile) |
-| `src/components/job-orders/JobOrderForm.tsx` | Add `min="0"` to price/qty/margin inputs; update Zod schema for `unit_price` |
-| `src/components/job-orders/CreateJobOrderDialog.tsx` | Add `min="0"` to price/qty/margin inputs |
-| Database migration | Fix `WITH CHECK` on `job_orders` and `job_order_line_items` ALL policies |
+| `src/pages/ProjectDetail.tsx` | Fix `financialData` cost calculation to remove vendor bill double-counting; pass additional drill-down data |
+| `src/components/project-hub/ProjectFinancialSummary.tsx` | Redesign with stat cards, margin color coding, negative profit alert, drill-down links |
+
+### Files NOT Modified
+
+- No database changes
+- No hook changes (data sources remain the same, just used differently)
+- No changes to existing list components
 
 ### Technical Details
 
-**Margin display formula** (for the detail page):
-- The `markup` field in `job_order_line_items` represents margin percentage
-- Display format: `{item.markup}%` in the table cell
-- Total = `qty * unit_price / (1 - markup/100)` -- this is already calculated and stored
+**Cost formula change (ProjectDetail.tsx lines 196-213):**
 
-**RLS migration SQL:**
-```sql
-DROP POLICY IF EXISTS "Admins and managers can manage job orders" ON job_orders;
-CREATE POLICY "Admins and managers can manage job orders" ON job_orders
-  FOR ALL USING (has_role(auth.uid(), 'admin') OR has_role(auth.uid(), 'manager'))
-  WITH CHECK (has_role(auth.uid(), 'admin') OR has_role(auth.uid(), 'manager'));
-
-DROP POLICY IF EXISTS "Admins and managers can manage job order line items" ON job_order_line_items;
-CREATE POLICY "Admins and managers can manage job order line items" ON job_order_line_items
-  FOR ALL USING (has_role(auth.uid(), 'admin') OR has_role(auth.uid(), 'manager'))
-  WITH CHECK (has_role(auth.uid(), 'admin') OR has_role(auth.uid(), 'manager'));
+Before:
+```typescript
+const totalLaborCost = timeEntryLaborCost + personnelPaymentCost + vendorLaborCost;
+const totalOtherExpenses = projectExpenses?.vendor_other_total || 0;
+const totalAllCosts = totalPOValue + totalLaborCost + totalOtherExpenses;
 ```
 
-No existing data is affected. All changes are additive or policy corrections.
+After:
+```typescript
+const totalLaborCost = timeEntryLaborCost + personnelPaymentCost;
+const totalOtherExpenses = 0; // Vendor bills are PO payments, not separate expenses
+const totalAllCosts = totalPOValue + totalLaborCost;
+```
 
+**Margin color coding logic:**
+```typescript
+const marginColor = netMargin >= 30 ? 'text-green-500' 
+  : netMargin >= 15 ? 'text-yellow-500' 
+  : 'text-red-500';
+```
+
+**Negative profit alert:**
+```tsx
+{data.netProfit < 0 && (
+  <Alert variant="destructive">
+    <AlertTitle>Project Loss Alert</AlertTitle>
+    <AlertDescription>
+      This project is currently showing a loss of {formatCurrency(Math.abs(data.netProfit))}. 
+      Review costs and billing.
+    </AlertDescription>
+  </Alert>
+)}
+```
