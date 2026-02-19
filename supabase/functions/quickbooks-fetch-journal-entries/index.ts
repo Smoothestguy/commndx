@@ -63,17 +63,28 @@ async function authenticateRequest(req: Request): Promise<{ userId: string; erro
   return { userId: user.id };
 }
 
+interface QBConfig {
+  id: string;
+  access_token: string;
+  refresh_token: string;
+  realm_id: string;
+  token_expires_at: string;
+  is_connected: boolean;
+}
+
 // Helper to get valid access token
-async function getValidToken(supabase: ReturnType<typeof createClient>) {
-  const { data: config, error } = await supabase
+async function getValidToken(supabase: any) {
+  const { data, error } = await supabase
     .from('quickbooks_config')
     .select('*')
     .eq('is_connected', true)
     .single();
 
-  if (error || !config) {
+  if (error || !data) {
     throw new Error('QuickBooks not connected');
   }
+
+  const config = data as QBConfig;
 
   // Check if token is expired or will expire in next 5 minutes
   const tokenExpires = new Date(config.token_expires_at);
@@ -98,7 +109,6 @@ async function getValidToken(supabase: ReturnType<typeof createClient>) {
       const errorText = await response.text();
       console.error('Token refresh failed:', response.status, errorText);
       
-      // If refresh fails, the user needs to re-authorize
       throw new Error(`Token refresh failed (${response.status}): ${errorText}. QuickBooks may need to be re-connected.`);
     }
 

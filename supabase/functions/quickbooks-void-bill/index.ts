@@ -314,4 +314,10 @@ serve(async (req) => {
       { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );
   }
+
+  // Fallback response (should never reach here)
+  return new Response(
+    JSON.stringify({ success: false, error: "Unexpected execution path", voided: false }),
+    { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+  );
 });
