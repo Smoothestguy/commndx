@@ -1,96 +1,88 @@
 
-## Project Financial Dashboard Cleanup
 
-Fix the double-counting issue in the Project Financial Summary and add margin color coding, negative profit alerts, and drill-down capability.
+## Step 1: Fix Build Errors + Security Hardening
 
----
-
-### Root Cause: Double-Counting
-
-The current cost formula in `ProjectDetail.tsx` (line 211) is:
-
-```
-totalAllCosts = totalPOValue + totalLaborCost + totalOtherExpenses
-```
-
-Where:
-- `totalPOValue` = sum of all PO face values (committed WO amounts to subs)
-- `totalLaborCost` = time entry costs + personnel payment allocations + vendor labor bills
-- `totalOtherExpenses` = non-labor vendor bill line items
-
-The problem: **vendor bills are payments AGAINST POs**. So the same sub cost is counted twice -- once via the PO committed value (`totalPOValue`) and again via the vendor bill line items (`vendorLaborCost + vendorOtherTotal`). This causes inflated costs and false negative profit.
+This plan addresses the 11 build errors in edge functions and implements the security lockdown items that are actionable within Lovable.
 
 ---
 
-### Fix: Single Source of Truth Formula
+### Part A: Fix Build Errors (5 edge functions)
 
-**REVENUE:**
-- Job Order totals (original contract)
-- + Approved Change Orders (net additive/deductive)
-- + Approved T&M Tickets (net)
-- = **Total Contract Value**
+**1. `check-missing-time-entries/index.ts` (line 78)**
+- Error: `'error' is of type 'unknown'`
+- Fix: Cast error before accessing `.message`
+```typescript
+} catch (error: unknown) {
+  const msg = error instanceof Error ? error.message : "Unknown error";
+  return new Response(JSON.stringify({ error: msg }), { ... });
+}
+```
 
-**COSTS:**
-- Work Order (PO) committed value + addendums (what we owe subs) -- this already includes all sub costs
-- + Internal Labor (time entry costs only -- direct hours x rate from time tracking)
-- + Other Expenses (non-PO expenses from `personnel_payment_allocations` only, NOT vendor bill line items which are PO payments)
-- = **Total Costs**
+**2. `generate-wh347/index.ts` (lines 441, 483)**
+- Error: `Uint8Array` not assignable to `BodyInit`
+- Fix: Wrap `pdfBytes` in a `Blob` or convert to `ArrayBuffer`:
+```typescript
+return new Response(new Uint8Array(pdfBytes).buffer, { ... });
+```
+Applied to both the single-page (line 441) and multi-page (line 483) response.
 
-**PROFIT** = Revenue - Costs
-**MARGIN** = Profit / Revenue x 100
+**3. `process-co-signature/index.ts` (line 257)**
+- Error: `'error' is of type 'unknown'`
+- Fix: Same pattern as #1 -- add `error: unknown` annotation and use `instanceof Error` check.
 
-The key change: **remove vendor bill line item totals from the cost calculation** since they represent payments against POs already counted via `totalPOValue`. Personnel payment allocations stay if they represent non-PO labor costs (payroll).
+**4. `quickbooks-fetch-journal-entries/index.ts` (lines 79, 86, 110, 215)**
+- Root cause: `.single()` returns `never` type because TypeScript cannot infer the table schema in the edge function context.
+- Fix: Add an explicit type for the config object and cast the query result:
+```typescript
+interface QBConfig {
+  id: string;
+  access_token: string;
+  refresh_token: string;
+  realm_id: string;
+  token_expires_at: string;
+  is_connected: boolean;
+}
+```
+Then cast: `const config = data as QBConfig;`
+Also fix the `getValidToken` function signature to accept `any` supabase client type to resolve the TS2345 error on line 215.
+
+**5. `quickbooks-void-bill/index.ts` (line 167)**
+- Error: Handler returns `Promise<Response | undefined>`
+- Fix: Ensure every code path returns a `Response`. Add a fallback `return new Response(...)` at the end of the handler.
+
+**6. `send-co-approval/index.ts` (line 222)**
+- Error: `'error' is of type 'unknown'`
+- Fix: Same `instanceof Error` pattern.
 
 ---
 
-### Changes
+### Part B: Security Hardening
 
-#### 1. Fix Cost Calculation in `ProjectDetail.tsx`
-
-Modify the `financialData` useMemo (lines 167-234):
-- Remove `vendorLaborCost` and `vendorOtherTotal` from cost calculation
-- Keep `totalPOValue` as the sub cost source (WO committed value)
-- Keep `timeEntryLaborCost` as internal labor (supervision + field)
-- Keep `personnelPaymentCost` as additional labor cost (payroll allocations not tied to POs)
-- `totalOtherExpenses` = personnel payments only (not vendor bills)
-- Add `totalSubCost` field (= totalPOValue) for clarity in display
-
-Updated formula:
+**1. Update `.gitignore`**
+Add rules for environment files and secrets:
 ```
-totalCosts = totalPOValue + timeEntryLaborCost + personnelPaymentCost
-netProfit = totalContractValue - totalCosts
+# Environment files
+.env
+.env.local
+.env.*.local
+.env.production
+.env.development
+
+# Secrets and keys
+*.keystore
+*.jks
 ```
 
-#### 2. Redesign Financial Summary Display in `ProjectFinancialSummary.tsx`
+**2. Create `.env.example`**
+A safe template with placeholder values (no real keys):
+```
+VITE_SUPABASE_URL=https://your-project.supabase.co
+VITE_SUPABASE_PUBLISHABLE_KEY=your-anon-key-here
+```
 
-Replace the current layout with clear stat cards at top:
+**Note on `.env` file**: The `.env` file is auto-managed by Lovable Cloud and cannot be removed or edited. The `.gitignore` addition ensures it won't be committed if the project is connected to GitHub. The anon key in `.env` is a publishable key (safe for client-side use) -- it is not a service role key.
 
-**Top cards row (color-coded):**
-- Contract Value (original JO total)
-- Change Orders (net)
-- Total Contract Value
-- WO Costs (sub commitments)
-- Internal Labor
-- Total Costs
-- Net Profit
-- Margin % -- color: green if > 30%, yellow if 15-30%, red if < 15%
-
-**Negative profit alert:**
-- Red banner when `netProfit < 0`: "This project is currently showing a loss of $X. Review costs and billing."
-
-**Supervision impact section** (existing, keep as-is)
-
-**Progress bars** (existing, keep as-is)
-
-#### 3. Add Drill-Down Capability
-
-Add collapsible detail sections under each summary card:
-- "WO Costs" expands to show each PO with number, vendor, and amount
-- "Internal Labor" expands to show personnel breakdown from time entries
-- "Contract Value" expands to show each JO
-- "Change Orders" expands to show each approved CO
-
-This uses existing list components already on the page (`ProjectPurchaseOrdersList`, `ProjectChangeOrdersList`, etc.) -- the drill-down links will scroll to or navigate to those sections.
+**3. Edge Function JWT audit** -- already complete. All functions in `config.toml` have `verify_jwt = false` because they use the signing-keys approach and validate auth in code where needed. No service-role keys are exposed in client-side code (`client.ts` uses only the anon/publishable key).
 
 ---
 
@@ -98,49 +90,17 @@ This uses existing list components already on the page (`ProjectPurchaseOrdersLi
 
 | File | Change |
 |------|--------|
-| `src/pages/ProjectDetail.tsx` | Fix `financialData` cost calculation to remove vendor bill double-counting; pass additional drill-down data |
-| `src/components/project-hub/ProjectFinancialSummary.tsx` | Redesign with stat cards, margin color coding, negative profit alert, drill-down links |
+| `supabase/functions/check-missing-time-entries/index.ts` | Fix `unknown` error type |
+| `supabase/functions/generate-wh347/index.ts` | Fix `Uint8Array` response body (2 locations) |
+| `supabase/functions/process-co-signature/index.ts` | Fix `unknown` error type |
+| `supabase/functions/quickbooks-fetch-journal-entries/index.ts` | Add QB config interface, fix type casting, fix function signature |
+| `supabase/functions/quickbooks-void-bill/index.ts` | Ensure all paths return Response |
+| `supabase/functions/send-co-approval/index.ts` | Fix `unknown` error type |
+| `.gitignore` | Add env/secrets rules |
 
-### Files NOT Modified
+### Files to Create
 
-- No database changes
-- No hook changes (data sources remain the same, just used differently)
-- No changes to existing list components
+| File | Purpose |
+|------|---------|
+| `.env.example` | Safe placeholder template |
 
-### Technical Details
-
-**Cost formula change (ProjectDetail.tsx lines 196-213):**
-
-Before:
-```typescript
-const totalLaborCost = timeEntryLaborCost + personnelPaymentCost + vendorLaborCost;
-const totalOtherExpenses = projectExpenses?.vendor_other_total || 0;
-const totalAllCosts = totalPOValue + totalLaborCost + totalOtherExpenses;
-```
-
-After:
-```typescript
-const totalLaborCost = timeEntryLaborCost + personnelPaymentCost;
-const totalOtherExpenses = 0; // Vendor bills are PO payments, not separate expenses
-const totalAllCosts = totalPOValue + totalLaborCost;
-```
-
-**Margin color coding logic:**
-```typescript
-const marginColor = netMargin >= 30 ? 'text-green-500' 
-  : netMargin >= 15 ? 'text-yellow-500' 
-  : 'text-red-500';
-```
-
-**Negative profit alert:**
-```tsx
-{data.netProfit < 0 && (
-  <Alert variant="destructive">
-    <AlertTitle>Project Loss Alert</AlertTitle>
-    <AlertDescription>
-      This project is currently showing a loss of {formatCurrency(Math.abs(data.netProfit))}. 
-      Review costs and billing.
-    </AlertDescription>
-  </Alert>
-)}
-```
