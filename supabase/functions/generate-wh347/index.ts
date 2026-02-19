@@ -438,7 +438,7 @@ serve(async (req) => {
       const pdfBytes = await pdfDoc.save();
       console.log("Single-page WH-347 PDF generated successfully");
 
-      return new Response(pdfBytes, {
+      return new Response(new Uint8Array(pdfBytes).buffer, {
         status: 200,
         headers: {
           ...corsHeaders,
@@ -480,7 +480,7 @@ serve(async (req) => {
       const pdfBytes = await mergedPdf.save();
       console.log(`Multi-page WH-347 PDF generated successfully (${totalPages} pages)`);
 
-      return new Response(pdfBytes, {
+      return new Response(new Uint8Array(pdfBytes).buffer, {
         status: 200,
         headers: {
           ...corsHeaders,
