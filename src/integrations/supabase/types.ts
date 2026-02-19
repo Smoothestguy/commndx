@@ -8328,6 +8328,10 @@ export type Database = {
         }
         Returns: undefined
       }
+      is_assigned_to_project: {
+        Args: { _project_id: string; _user_id: string }
+        Returns: boolean
+      }
       is_personnel: { Args: { _user_id: string }; Returns: boolean }
       is_vendor: { Args: { _user_id: string }; Returns: boolean }
       reset_vendor_bill_sequence_for_new_year: {
