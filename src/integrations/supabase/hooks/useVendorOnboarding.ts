@@ -189,6 +189,7 @@ export function useCompleteVendorOnboarding() {
         p_citizenship_status: formData.citizenship_status || null,
         p_immigration_status: formData.immigration_status || null,
         p_itin: formData.itin || null,
+        p_documents: formData.documents && formData.documents.length > 0 ? JSON.stringify(formData.documents) : null,
       });
 
       if (error) {

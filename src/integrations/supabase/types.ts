@@ -8225,6 +8225,7 @@ export type Database = {
           p_company?: string
           p_contact_name?: string
           p_contact_title?: string
+          p_documents?: Json
           p_email?: string
           p_immigration_status?: string
           p_itin?: string
