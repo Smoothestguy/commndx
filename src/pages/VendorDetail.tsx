@@ -36,7 +36,8 @@ import {
 import { 
   ArrowLeft, Building2, Mail, Phone, FileText, AlertCircle, Users, 
   MapPin, DollarSign, Receipt, CreditCard, ShoppingCart, ClipboardList,
-  LayoutDashboard, Loader2, ExternalLink, UserCheck, UserPlus, UserMinus, Clock, Edit, Send
+  LayoutDashboard, Loader2, ExternalLink, UserCheck, UserPlus, UserMinus, Clock, Edit, Send,
+  Eye, EyeOff
 } from "lucide-react";
 import { format } from "date-fns";
 
@@ -54,6 +55,11 @@ export default function VendorDetail() {
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
   const [isInviteDialogOpen, setIsInviteDialogOpen] = useState(false);
   const [isOnboardingDialogOpen, setIsOnboardingDialogOpen] = useState(false);
+  const [revealedFields, setRevealedFields] = useState<Record<string, boolean>>({});
+
+  const toggleReveal = (field: string) => {
+    setRevealedFields(prev => ({ ...prev, [field]: !prev[field] }));
+  };
   const { data: vendors, isLoading } = useVendors();
   const { data: expenseCategories } = useExpenseCategories("vendor");
   const { data: purchaseOrders } = usePurchaseOrders();
@@ -224,11 +230,20 @@ export default function VendorDetail() {
           <CardContent className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
             <div>
               <p className="text-sm text-muted-foreground">Tax ID</p>
-              <p className="font-medium font-mono">
-                {vendor.tax_id
-                  ? vendor.tax_id.slice(0, -4).replace(/./g, "•") + vendor.tax_id.slice(-4)
-                  : "N/A"}
-              </p>
+              <div className="flex items-center gap-2">
+                <p className="font-medium font-mono">
+                  {vendor.tax_id
+                    ? revealedFields.tax_id
+                      ? vendor.tax_id
+                      : vendor.tax_id.slice(0, -4).replace(/./g, "•") + vendor.tax_id.slice(-4)
+                    : "N/A"}
+                </p>
+                {vendor.tax_id && (
+                  <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => toggleReveal("tax_id")}>
+                    {revealedFields.tax_id ? <EyeOff className="h-3.5 w-3.5" /> : <Eye className="h-3.5 w-3.5" />}
+                  </Button>
+                )}
+              </div>
             </div>
             <div>
               <p className="text-sm text-muted-foreground">1099 Tracking</p>
@@ -279,19 +294,37 @@ export default function VendorDetail() {
             </div>
             <div>
               <p className="text-sm text-muted-foreground">Routing Number</p>
-              <p className="font-medium font-mono">
-                {vendor.bank_routing_number
-                  ? "•••••" + vendor.bank_routing_number.slice(-4)
-                  : "N/A"}
-              </p>
+              <div className="flex items-center gap-2">
+                <p className="font-medium font-mono">
+                  {vendor.bank_routing_number
+                    ? revealedFields.routing
+                      ? vendor.bank_routing_number
+                      : "•••••" + vendor.bank_routing_number.slice(-4)
+                    : "N/A"}
+                </p>
+                {vendor.bank_routing_number && (
+                  <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => toggleReveal("routing")}>
+                    {revealedFields.routing ? <EyeOff className="h-3.5 w-3.5" /> : <Eye className="h-3.5 w-3.5" />}
+                  </Button>
+                )}
+              </div>
             </div>
             <div>
               <p className="text-sm text-muted-foreground">Account Number</p>
-              <p className="font-medium font-mono">
-                {vendor.bank_account_number
-                  ? "•••••" + vendor.bank_account_number.slice(-4)
-                  : "N/A"}
-              </p>
+              <div className="flex items-center gap-2">
+                <p className="font-medium font-mono">
+                  {vendor.bank_account_number
+                    ? revealedFields.account
+                      ? vendor.bank_account_number
+                      : "•••••" + vendor.bank_account_number.slice(-4)
+                    : "N/A"}
+                </p>
+                {vendor.bank_account_number && (
+                  <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => toggleReveal("account")}>
+                    {revealedFields.account ? <EyeOff className="h-3.5 w-3.5" /> : <Eye className="h-3.5 w-3.5" />}
+                  </Button>
+                )}
+              </div>
             </div>
             {/* Signatures */}
             <div>
@@ -328,9 +361,14 @@ export default function VendorDetail() {
             {vendor.itin && (
               <div>
                 <p className="text-sm text-muted-foreground">ITIN</p>
-                <p className="font-medium font-mono">
-                  {"•••••" + vendor.itin.slice(-4)}
-                </p>
+                <div className="flex items-center gap-2">
+                  <p className="font-medium font-mono">
+                    {revealedFields.itin ? vendor.itin : "•••••" + vendor.itin.slice(-4)}
+                  </p>
+                  <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => toggleReveal("itin")}>
+                    {revealedFields.itin ? <EyeOff className="h-3.5 w-3.5" /> : <Eye className="h-3.5 w-3.5" />}
+                  </Button>
+                </div>
               </div>
             )}
           </CardContent>
