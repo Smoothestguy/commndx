@@ -1,57 +1,39 @@
 
 
-## Fix Vendor Detail: Reveal Financial Info + Save Onboarding Documents
+## Fix: Personnel Onboarding Form Data Getting Erased
 
-Two issues to fix:
+### Root Cause
 
----
+The onboarding form stores all data in React `useState` — purely in-memory. When people fill out the form on their phones (which is most common), their data gets wiped whenever:
 
-### Issue 1: Can't View Full Financial Data
+1. **They switch apps** (e.g., to take a photo of their ID, check email for info, open their banking app for routing numbers) — mobile browsers often kill the background tab to save memory, and when they come back the page reloads from scratch.
+2. **The phone screen locks/unlocks** — same effect on many devices.
+3. **They accidentally swipe back** or the browser refreshes.
 
-Currently the Tax ID, Routing Number, Account Number, and ITIN are permanently masked (e.g. "-----1234"). There's no way for an admin to reveal the actual values.
+Since the form has 8 steps with sensitive data entry, document uploads, and signatures, it's very likely people are switching apps mid-form and coming back to a blank form.
 
-**Fix:** Add a "Show/Hide" toggle (eye icon button) next to each masked financial field. When clicked, it reveals the full value. Clicking again re-masks it.
+### The Fix
+
+**Persist form data to `sessionStorage`** keyed by the onboarding token. Every time the user updates a field or changes steps, save the current form state. When the component mounts, restore from `sessionStorage` if data exists.
 
 **Files to change:**
-- `src/pages/VendorDetail.tsx` -- Add toggle state and eye icon buttons for Tax ID, Routing Number, Account Number, and ITIN fields
+- `src/pages/PersonnelOnboarding.tsx`
 
----
-
-### Issue 2: Onboarding Documents Not Saved to Database
-
-When a vendor completes onboarding and uploads documents (visa, green card, work permit, etc.), the files are uploaded to storage but **no records are created in the `vendor_documents` table**. The `complete_vendor_onboarding` RPC function has no document-handling logic.
-
-**Fix (two parts):**
-
-**A. Update the database function** to accept a documents parameter and insert rows into `vendor_documents` for each uploaded file.
-
-- Add a new migration that drops and recreates `complete_vendor_onboarding` with a `p_documents jsonb DEFAULT NULL` parameter
-- Inside the function, loop through the JSON array and insert each document into `vendor_documents`
-
-**B. Update the frontend onboarding hook** to pass the documents array to the RPC call.
-
-- `src/integrations/supabase/hooks/useVendorOnboarding.ts` -- Add `p_documents` parameter to the `supabase.rpc()` call, serializing `formData.documents` as JSON
-
----
+**What changes:**
+1. Add a `useEffect` that saves `formData` and `currentStep` to `sessionStorage` whenever they change (debounced to avoid excessive writes).
+2. On component mount, check `sessionStorage` for saved data for this token and restore it — including the step they were on.
+3. Exclude signatures from `sessionStorage` (they're large base64 strings) — users will need to re-sign if the page reloads, but all text fields, selections, and step progress will be preserved.
+4. Clear `sessionStorage` on successful submission.
+5. Show a subtle toast when restoring saved progress so users know their data wasn't lost.
 
 ### Technical Details
 
-**Reveal toggle implementation:**
-- Add a `revealedFields` state object tracking which fields are visible
-- Wrap each masked value with a conditional: show full value when revealed, masked when hidden
-- Add an `Eye`/`EyeOff` icon button inline with each field
-
-**Database migration SQL (simplified):**
 ```text
-ALTER FUNCTION complete_vendor_onboarding -- add p_documents jsonb param
--- Inside function body, after vendor update:
-IF p_documents IS NOT NULL THEN
-  INSERT INTO vendor_documents (vendor_id, document_type, document_name, document_url)
-  SELECT p_vendor_id, doc->>'type', doc->>'name', doc->>'path'
-  FROM jsonb_array_elements(p_documents) AS doc;
-END IF;
+Storage key: `onboarding-progress-${token}`
+Stored data: { formData (minus signatures), currentStep, agreedToTerms, timestamp }
+Restore logic: On mount, if saved data exists and is < 24 hours old, restore it
+Clear: On successful submit or if token is invalid/expired
 ```
 
-**Hook change:**
-- Add `p_documents: JSON.stringify(formData.documents)` to the RPC parameters
+The `initialized` flag logic (line 176-193) will also be updated to not overwrite restored `sessionStorage` data — currently it only pre-fills from the personnel record, but if the user already typed new values those should take priority.
 
