@@ -1,4 +1,4 @@
-import { useState, useMemo, useEffect } from "react";
+import { useState, useMemo, useEffect, useRef, useCallback } from "react";
 import { toast } from "sonner";
 import { useParams, useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
@@ -121,8 +121,51 @@ const PersonnelOnboarding = () => {
     []
   );
 
-  const [currentStep, setCurrentStep] = useState(1);
-  const [agreedToTerms, setAgreedToTerms] = useState(false);
+  // --- sessionStorage persistence helpers ---
+  const storageKey = `onboarding-progress-${token}`;
+  const restoredFromStorage = useRef(false);
+  const saveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  const SIGNATURE_FIELDS = ["direct_deposit_signature", "w9_signature", "ica_signature"] as const;
+
+  const stripSignatures = (data: ExtendedOnboardingFormData) => {
+    const copy = { ...data };
+    for (const field of SIGNATURE_FIELDS) {
+      (copy as any)[field] = null;
+    }
+    return copy;
+  };
+
+  // Try to restore saved progress from sessionStorage
+  const restoreSavedProgress = useCallback((): {
+    formData: ExtendedOnboardingFormData;
+    currentStep: number;
+    agreedToTerms: boolean;
+  } | null => {
+    try {
+      const raw = sessionStorage.getItem(storageKey);
+      if (!raw) return null;
+      const saved = JSON.parse(raw);
+      // Only restore if < 24 hours old
+      if (saved.timestamp && Date.now() - saved.timestamp > 24 * 60 * 60 * 1000) {
+        sessionStorage.removeItem(storageKey);
+        return null;
+      }
+      return {
+        formData: saved.formData,
+        currentStep: saved.currentStep || 1,
+        agreedToTerms: saved.agreedToTerms || false,
+      };
+    } catch {
+      return null;
+    }
+  }, [storageKey]);
+
+  // Restore from sessionStorage on initial render
+  const savedProgress = useMemo(() => restoreSavedProgress(), [restoreSavedProgress]);
+
+  const [currentStep, setCurrentStep] = useState(savedProgress?.currentStep ?? 1);
+  const [agreedToTerms, setAgreedToTerms] = useState(savedProgress?.agreedToTerms ?? false);
 
   // Cache validation data to prevent loss during React Query refetches
   const [cachedValidation, setCachedValidation] = useState<{
@@ -140,54 +183,90 @@ const PersonnelOnboarding = () => {
     }
   }, [validationResult?.isValid, validationResult?.token, validationResult?.personnel]);
 
-  // Initialize form data from personnel record
-  const [formData, setFormData] = useState<ExtendedOnboardingFormData>({
-    first_name: "",
-    last_name: "",
-    email: "",
-    phone: "",
-    date_of_birth: "",
-    photo_url: "",
-    address: "",
-    city: "",
-    state: "",
-    zip: "",
-    ssn_full: "",
-    itin: "",
-    citizenship_status: undefined,
-    immigration_status: undefined,
-    emergency_contacts: [],
-    documents: [],
-    // New fields
-    bank_name: "",
-    bank_account_type: "",
-    bank_routing_number: "",
-    bank_account_number: "",
-    direct_deposit_signature: null,
-    tax_classification: "",
-    tax_ein: "",
-    tax_business_name: "",
-    w9_signature: null,
-    w9_certification: false,
-    ica_signature: null,
+  // Initialize form data — restored sessionStorage data takes priority
+  const [formData, setFormData] = useState<ExtendedOnboardingFormData>(() => {
+    const defaults: ExtendedOnboardingFormData = {
+      first_name: "",
+      last_name: "",
+      email: "",
+      phone: "",
+      date_of_birth: "",
+      photo_url: "",
+      address: "",
+      city: "",
+      state: "",
+      zip: "",
+      ssn_full: "",
+      itin: "",
+      citizenship_status: undefined,
+      immigration_status: undefined,
+      emergency_contacts: [],
+      documents: [],
+      bank_name: "",
+      bank_account_type: "",
+      bank_routing_number: "",
+      bank_account_number: "",
+      direct_deposit_signature: null,
+      tax_classification: "",
+      tax_ein: "",
+      tax_business_name: "",
+      w9_signature: null,
+      w9_certification: false,
+      ica_signature: null,
+    };
+    if (savedProgress?.formData) {
+      restoredFromStorage.current = true;
+      return { ...defaults, ...savedProgress.formData };
+    }
+    return defaults;
   });
 
+  // Show toast when progress was restored
+  useEffect(() => {
+    if (restoredFromStorage.current) {
+      toast.info("Your saved progress has been restored.", { duration: 4000 });
+    }
+  }, []);
+
+  // Debounced save to sessionStorage whenever formData, currentStep, or agreedToTerms change
+  useEffect(() => {
+    if (saveTimerRef.current) clearTimeout(saveTimerRef.current);
+    saveTimerRef.current = setTimeout(() => {
+      try {
+        const payload = {
+          formData: stripSignatures(formData),
+          currentStep,
+          agreedToTerms,
+          timestamp: Date.now(),
+        };
+        sessionStorage.setItem(storageKey, JSON.stringify(payload));
+      } catch {
+        // Storage full or unavailable — silent fail
+      }
+    }, 500);
+    return () => {
+      if (saveTimerRef.current) clearTimeout(saveTimerRef.current);
+    };
+  }, [formData, currentStep, agreedToTerms, storageKey]);
+
   // Sync form data when personnel data loads
+  // If we restored from sessionStorage, only fill in empty fields (user-typed values take priority)
   const [initialized, setInitialized] = useState(false);
   if (validationResult?.personnel && !initialized) {
     const p = validationResult.personnel;
+    const wasRestored = restoredFromStorage.current;
     setFormData((prev) => ({
       ...prev,
-      first_name: p.first_name || prev.first_name,
-      last_name: p.last_name || prev.last_name,
-      email: p.email || prev.email,
-      phone: p.phone || prev.phone,
-      date_of_birth: p.date_of_birth || prev.date_of_birth,
-      photo_url: p.photo_url || prev.photo_url,
-      address: p.address || prev.address,
-      city: p.city || prev.city,
-      state: p.state || prev.state,
-      zip: p.zip || prev.zip,
+      first_name: (wasRestored && prev.first_name) ? prev.first_name : (p.first_name || prev.first_name),
+      last_name: (wasRestored && prev.last_name) ? prev.last_name : (p.last_name || prev.last_name),
+      email: (wasRestored && prev.email) ? prev.email : (p.email || prev.email),
+      phone: (wasRestored && prev.phone) ? prev.phone : (p.phone || prev.phone),
+      date_of_birth: (wasRestored && prev.date_of_birth) ? prev.date_of_birth : (p.date_of_birth || prev.date_of_birth),
+      photo_url: (wasRestored && prev.photo_url) ? prev.photo_url : (p.photo_url || prev.photo_url),
+      address: (wasRestored && prev.address) ? prev.address : (p.address || prev.address),
+      city: (wasRestored && prev.city) ? prev.city : (p.city || prev.city),
+      state: (wasRestored && prev.state) ? prev.state : (p.state || prev.state),
+      zip: (wasRestored && prev.zip) ? prev.zip : (p.zip || prev.zip),
     }));
     setInitialized(true);
   }
@@ -384,6 +463,9 @@ const PersonnelOnboarding = () => {
         w9Certification: formData.w9_certification,
         icaSignature: formData.ica_signature,
       });
+      
+      // Clear saved progress on successful submit
+      try { sessionStorage.removeItem(storageKey); } catch {}
       
       // Redirect to personalized thank you page
       navigate(`/onboarding-complete/${token}`, { replace: true });
