@@ -223,11 +223,22 @@ export const VendorWorkAuthorizationForm = ({
               </div>
               <CategoryDocumentUpload
                 documentType="other"
-                label="Work Authorization Document (Optional)"
+                label="Work Authorization Document *"
                 helperText="Upload any work authorization document"
+                required
                 existingDocument={getExistingDoc("other")}
                 onUpload={handleDocUpload}
                 onRemove={() => handleDocRemove("other")}
+                sessionId={sessionId}
+              />
+              <CategoryDocumentUpload
+                documentType="government_id"
+                label="Government-Issued Photo ID *"
+                helperText="Upload a valid photo ID (passport, driver's license, etc.)"
+                required
+                existingDocument={getExistingDoc("government_id")}
+                onUpload={handleDocUpload}
+                onRemove={() => handleDocRemove("government_id")}
                 sessionId={sessionId}
               />
             </div>
