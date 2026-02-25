@@ -111,7 +111,10 @@ export default function VendorOnboarding() {
         if (formData.citizenship_status === "non_us_citizen") {
           if (!formData.immigration_status) return false;
           if (formData.immigration_status === "other") {
-            return formData.itin.replace(/\D/g, "").length === 9;
+            const hasItin = formData.itin.replace(/\D/g, "").length === 9;
+            const hasDoc = formData.documents?.some(d => d.type === "other");
+            const hasPhotoId = formData.documents?.some(d => d.type === "government_id");
+            return hasItin && !!hasDoc && !!hasPhotoId;
           }
           // visa, work_permit, green_card require TIN + documents
           const hasTin = formData.tax_id.replace(/\D/g, "").length === 9;
