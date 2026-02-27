@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useMemo } from "react";
 import { useSearchParams } from "react-router-dom";
 import { PageLayout } from "@/components/layout/PageLayout";
 import {
@@ -31,6 +31,17 @@ import {
   useImportAccountsFromQB,
 } from "@/integrations/supabase/hooks/useQuickBooks";
 import { useImportEstimatesFromQuickBooks } from "@/integrations/supabase/hooks/useEstimates";
+import { useQuery } from "@tanstack/react-query";
+import { supabase } from "@/integrations/supabase/client";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
+import { Check, BarChart3 } from "lucide-react";
 import {
   useAutoSyncPersonnelToQB,
   useToggleAutoSyncPersonnelToQB,
@@ -60,6 +71,123 @@ import {
 } from "lucide-react";
 import { format } from "date-fns";
 import { toast } from "sonner";
+
+const SyncMappingsOverview = () => {
+  const { data: mappingCounts, isLoading } = useQuery({
+    queryKey: ["qb-sync-mappings-overview"],
+    queryFn: async () => {
+      const [
+        vendors,
+        vendorMappings,
+        customers,
+        customerMappings,
+        invoices,
+        invoiceMappings,
+        estimates,
+        estimateMappings,
+        vendorBills,
+        billMappings,
+        expenseCategories,
+        accountMappings,
+        products,
+        productsMapped,
+      ] = await Promise.all([
+        supabase.from("vendors").select("id", { count: "exact", head: true }).is("merged_into_id", null),
+        supabase.from("quickbooks_vendor_mappings").select("id", { count: "exact", head: true }),
+        supabase.from("customers").select("id", { count: "exact", head: true }).is("merged_into_id", null),
+        supabase.from("quickbooks_customer_mappings").select("id", { count: "exact", head: true }),
+        supabase.from("invoices").select("id", { count: "exact", head: true }),
+        supabase.from("quickbooks_invoice_mappings").select("id", { count: "exact", head: true }),
+        supabase.from("estimates").select("id", { count: "exact", head: true }),
+        supabase.from("quickbooks_estimate_mappings").select("id", { count: "exact", head: true }),
+        supabase.from("vendor_bills").select("id", { count: "exact", head: true }),
+        supabase.from("quickbooks_bill_mappings").select("id", { count: "exact", head: true }),
+        supabase.from("expense_categories").select("id", { count: "exact", head: true }).eq("is_active", true),
+        supabase.from("quickbooks_account_mappings").select("id", { count: "exact", head: true }),
+        supabase.from("qb_product_service_mappings").select("id", { count: "exact", head: true }).eq("is_active", true),
+        supabase.from("qb_product_service_mappings").select("id", { count: "exact", head: true }).eq("is_active", true).not("quickbooks_item_id", "is", null),
+      ]);
+
+      return [
+        { entity: "Vendors", total: vendors.count ?? 0, synced: vendorMappings.count ?? 0 },
+        { entity: "Customers", total: customers.count ?? 0, synced: customerMappings.count ?? 0 },
+        { entity: "Invoices", total: invoices.count ?? 0, synced: invoiceMappings.count ?? 0 },
+        { entity: "Estimates", total: estimates.count ?? 0, synced: estimateMappings.count ?? 0 },
+        { entity: "Vendor Bills", total: vendorBills.count ?? 0, synced: billMappings.count ?? 0 },
+        { entity: "Expense Categories", total: expenseCategories.count ?? 0, synced: accountMappings.count ?? 0 },
+        { entity: "Products (Umbrellas)", total: products.count ?? 0, synced: productsMapped.count ?? 0 },
+      ];
+    },
+  });
+
+  const getSyncColor = (pct: number) => {
+    if (pct >= 100) return "text-green-600";
+    if (pct >= 50) return "text-yellow-600";
+    return "text-red-600";
+  };
+
+  const getBgColor = (pct: number) => {
+    if (pct >= 100) return "bg-green-500/10";
+    if (pct >= 50) return "bg-yellow-500/10";
+    return "bg-red-500/10";
+  };
+
+  return (
+    <Card>
+      <CardHeader className="p-4 sm:p-6">
+        <CardTitle className="flex items-center gap-2 text-base sm:text-lg">
+          <BarChart3 className="h-4 w-4 sm:h-5 sm:w-5 shrink-0" />
+          Sync Mappings Overview
+        </CardTitle>
+        <CardDescription className="text-xs sm:text-sm">
+          Summary of all entity mappings between CommandX and QuickBooks
+        </CardDescription>
+      </CardHeader>
+      <CardContent className="p-4 sm:p-6 pt-0 sm:pt-0">
+        {isLoading ? (
+          <div className="flex items-center gap-2 text-sm text-muted-foreground py-4">
+            <RefreshCw className="h-4 w-4 animate-spin" />
+            Loading mapping counts...
+          </div>
+        ) : (
+          <div className="overflow-x-auto">
+            <Table className="text-xs sm:text-sm">
+              <TableHeader>
+                <TableRow className="bg-muted/50">
+                  <TableHead className="font-semibold">Entity Type</TableHead>
+                  <TableHead className="font-semibold text-right">Total</TableHead>
+                  <TableHead className="font-semibold text-right">Synced</TableHead>
+                  <TableHead className="font-semibold text-right">Not Synced</TableHead>
+                  <TableHead className="font-semibold text-right">Sync %</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {mappingCounts?.map((row) => {
+                  const notSynced = Math.max(0, row.total - row.synced);
+                  const pct = row.total > 0 ? Math.round((row.synced / row.total) * 100) : 100;
+                  return (
+                    <TableRow key={row.entity}>
+                      <TableCell className="font-medium">{row.entity}</TableCell>
+                      <TableCell className="text-right">{row.total.toLocaleString()}</TableCell>
+                      <TableCell className="text-right">{row.synced.toLocaleString()}</TableCell>
+                      <TableCell className="text-right">{notSynced.toLocaleString()}</TableCell>
+                      <TableCell className="text-right">
+                        <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-semibold ${getSyncColor(pct)} ${getBgColor(pct)}`}>
+                          {pct === 100 && <Check className="h-3 w-3" />}
+                          {pct}%
+                        </span>
+                      </TableCell>
+                    </TableRow>
+                  );
+                })}
+              </TableBody>
+            </Table>
+          </div>
+        )}
+      </CardContent>
+    </Card>
+  );
+};
 
 const QuickBooksSettings = () => {
   const [searchParams] = useSearchParams();
@@ -635,6 +763,9 @@ const QuickBooksSettings = () => {
                 </CardContent>
               </Card>
             </div>
+
+            {/* Sync Mappings Overview */}
+            <SyncMappingsOverview />
 
             {/* Journal Entries Viewer */}
             <JournalEntriesViewer />
