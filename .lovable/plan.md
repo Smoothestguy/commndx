@@ -1,41 +1,34 @@
 
 
-## Plan: SMS Notification Toggle + Onboarding Duplicate Check
+## Plan: Onboarding Badge + Active Assignment Indicator on Approved Applicants
 
-### 1. Add SMS Notification Toggle to Personnel Assignment Dialog
+### Overview
+1. Add "Onboarded" badge to Assigned Personnel rows
+2. For approved applicants, show which project they're currently assigned to (instead of hiding them)
+3. On unassignment, invalidate applications query so the applicant's active project indicator updates automatically
 
-**File: `src/components/time-tracking/PersonnelAssignmentDialog.tsx`**
-- Add `sendNotification` state, defaulting to `false`
-- Add a Switch toggle in the schedule section with label "Send SMS Notification" (default OFF)
-- Pass `sendNotification` to the `handleAssign` call
+### Changes
 
-**File: `src/integrations/supabase/hooks/usePersonnelProjectAssignments.ts`**
-- Add `sendNotification?: boolean` to the mutation input type (lines 242-248)
-- Wrap the SMS sending loop (lines 343-361) in `if (sendNotification) { ... }`
+**File 1: `src/integrations/supabase/hooks/usePersonnelWithAssets.ts`**
+- Add `onboarding_status` to the personnel select query (line 73-82)
+- Add `onboardingStatus` to the returned data shape and interface
 
-### 2. Add Onboarding Duplicate Check to Applicant Approval Flow
+**File 2: `src/components/project-hub/ProjectPersonnelSection.tsx`**
+- Show a green "Onboarded" badge next to personnel name when `onboardingStatus === "completed"` in both desktop table rows (around line 764-772) and mobile cards (around line 620-628)
 
-When approving an applicant, before creating a personnel/vendor record, check if a profile already exists with completed onboarding and show a warning dialog.
+**File 3: `src/components/project-hub/ProjectApplicantsSection.tsx`**
+- In the approved tab, for each approved applicant, cross-reference against `personnel_project_assignments` to check if their linked personnel record has an active assignment on any project
+- If actively assigned, show an info badge/indicator like: "Assigned to [Project Name]" — the applicant stays visible (sliding puzzle concept), not hidden
+- Fetch active assignments by querying `personnel` table via `applicant_id` to get `personnel_id`, then check `personnel_project_assignments` for active status, joining with `projects` to get the project name
+- Add a new query hook inline or a small helper that fetches active project assignments for approved applicants' personnel records
 
-**File: `src/integrations/supabase/hooks/useStaffingApplications.ts`**
-- Expand the existing personnel duplicate check (line 634-638) to also select `first_name, last_name, onboarding_status, status`
-- If an existing personnel record is found with `onboarding_status === "completed"`, throw a descriptive error like `"A personnel profile for [Name] ([email]) already exists and has completed onboarding. The existing profile will be linked instead of creating a duplicate."`
-- Same pattern for vendor duplicate check (line 683-687) — select `name, onboarding_status, status` and warn if already onboarded
+**File 4: `src/components/project-hub/UnassignPersonnelDialog.tsx`**
+- After successful unassignment (line 280-283), also invalidate `["applications"]` and `["staffing-applications"]` query keys so the applicant pool refreshes and the "Assigned to X" indicator disappears
 
-Actually, we should NOT throw an error (that would block the approval). Instead, the existing behavior of linking is correct. The user wants a **visible notification** rather than silent linking.
-
-**Revised approach:** 
-- In `useApproveApplicationWithType`, return metadata about whether an existing profile was found: `{ linkedExisting: true, existingPersonnelName: "..." }`
-- In the three approval handlers (`StaffingApplications.tsx`, `ProjectApplicantsSection.tsx`, `ApplicationDetailDialog.tsx`), check the result and show an info toast like: "Profile already exists for [Name] — linked to existing record instead of creating a duplicate."
-
-### Files to Change
-
-| File | Change |
-|------|--------|
-| `src/components/time-tracking/PersonnelAssignmentDialog.tsx` | Add Switch toggle for SMS notifications (default OFF) |
-| `src/integrations/supabase/hooks/usePersonnelProjectAssignments.ts` | Add `sendNotification` param, conditionally send SMS |
-| `src/integrations/supabase/hooks/useStaffingApplications.ts` | Return `linkedExisting` flag when existing profile found |
-| `src/pages/StaffingApplications.tsx` | Show info toast when linked to existing profile |
-| `src/components/project-hub/ProjectApplicantsSection.tsx` | Show info toast when linked to existing profile |
-| `src/components/staffing/ApplicationDetailDialog.tsx` | Show info toast when linked to existing profile |
+### Technical approach for the assignment indicator
+- After fetching approved applications, collect all `applicant_id`s
+- Query `personnel` where `applicant_id` is in that list → get `personnel_id`s  
+- Query `personnel_project_assignments` where `personnel_id` in that list and `status = 'active'`, joining `projects(name)`
+- Build a map: `applicant_id → { projectName, projectId }`
+- In the approved applicant row/card, if the applicant has an active assignment, show a badge like `"Currently on: [Project Name]"`
 
