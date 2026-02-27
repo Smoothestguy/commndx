@@ -50,6 +50,7 @@ import { ProductConflictDialog } from "@/components/quickbooks/ProductConflictDi
 import { JournalEntriesViewer } from "@/components/quickbooks/JournalEntriesViewer";
 import { QuickBooksSyncBadge } from "@/components/quickbooks/QuickBooksSyncBadge";
 import { SyncMappingDrilldown } from "@/components/quickbooks/SyncMappingDrilldown";
+import { MappingAdvisor } from "@/components/quickbooks/MappingAdvisor";
 import {
   Cloud,
   CloudOff,
@@ -136,10 +137,13 @@ const SyncMappingsOverview = ({ onEntityClick }: { onEntityClick: (entity: strin
   return (
     <Card>
       <CardHeader className="p-4 sm:p-6">
-        <CardTitle className="flex items-center gap-2 text-base sm:text-lg">
-          <BarChart3 className="h-4 w-4 sm:h-5 sm:w-5 shrink-0" />
-          Sync Mappings Overview
-        </CardTitle>
+        <div className="flex items-center justify-between">
+          <CardTitle className="flex items-center gap-2 text-base sm:text-lg">
+            <BarChart3 className="h-4 w-4 sm:h-5 sm:w-5 shrink-0" />
+            Sync Mappings Overview
+          </CardTitle>
+          <MappingAdvisor />
+        </div>
         <CardDescription className="text-xs sm:text-sm">
           Summary of all entity mappings between CommandX and QuickBooks
         </CardDescription>
