@@ -1,34 +1,38 @@
 
 
-## Plan: Onboarding Badge + Active Assignment Indicator on Approved Applicants
+## Plan: Add Sync Mappings Overview Table to QuickBooks Settings
 
-### Overview
-1. Add "Onboarded" badge to Assigned Personnel rows
-2. For approved applicants, show which project they're currently assigned to (instead of hiding them)
-3. On unassignment, invalidate applications query so the applicant's active project indicator updates automatically
+Add a new "Sync Mappings Overview" card to `QuickBooksSettings.tsx` that shows a clear table of all mapping types with their counts (total records, mapped/synced, unmapped).
 
-### Changes
+### Current Data (from database)
+| Entity | Total | Mapped | Unmapped |
+|--------|-------|--------|----------|
+| Vendors | 1,010 | 997 | 13 |
+| Customers | 68 | 68 | 0 |
+| Invoices | 261 | 13 | 248 |
+| Estimates | 74 | 72 | 2 |
+| Vendor Bills | 215 | 215 | 0 |
+| Expense Categories | 104 | 92 | 12 |
+| Products (Umbrellas) | 3 | 3 | 0 |
 
-**File 1: `src/integrations/supabase/hooks/usePersonnelWithAssets.ts`**
-- Add `onboarding_status` to the personnel select query (line 73-82)
-- Add `onboardingStatus` to the returned data shape and interface
+### Implementation
 
-**File 2: `src/components/project-hub/ProjectPersonnelSection.tsx`**
-- Show a green "Onboarded" badge next to personnel name when `onboardingStatus === "completed"` in both desktop table rows (around line 764-772) and mobile cards (around line 620-628)
+**File: `src/pages/QuickBooksSettings.tsx`**
+- Add a new Card section titled "Sync Mappings Overview" between the sync action cards and the Journal Entries viewer
+- Create a query hook (inline `useQuery`) that fetches counts from all 7 mapping tables:
+  - `vendors` ↔ `quickbooks_vendor_mappings`
+  - `customers` ↔ `quickbooks_customer_mappings`
+  - `invoices` ↔ `quickbooks_invoice_mappings`
+  - `estimates` ↔ `quickbooks_estimate_mappings`
+  - `vendor_bills` ↔ `quickbooks_bill_mappings`
+  - `expense_categories` ↔ `quickbooks_account_mappings`
+  - `qb_product_service_mappings` (self-contained, check `quickbooks_item_id` not null)
+- Display as a responsive table with columns: Entity Type, Total Records, Synced to QB, Not Synced, Sync %
+- Color-code the sync percentage: green (100%), yellow (50-99%), red (<50%)
+- Show a green checkmark icon for fully synced entities
 
-**File 3: `src/components/project-hub/ProjectApplicantsSection.tsx`**
-- In the approved tab, for each approved applicant, cross-reference against `personnel_project_assignments` to check if their linked personnel record has an active assignment on any project
-- If actively assigned, show an info badge/indicator like: "Assigned to [Project Name]" — the applicant stays visible (sliding puzzle concept), not hidden
-- Fetch active assignments by querying `personnel` table via `applicant_id` to get `personnel_id`, then check `personnel_project_assignments` for active status, joining with `projects` to get the project name
-- Add a new query hook inline or a small helper that fetches active project assignments for approved applicants' personnel records
-
-**File 4: `src/components/project-hub/UnassignPersonnelDialog.tsx`**
-- After successful unassignment (line 280-283), also invalidate `["applications"]` and `["staffing-applications"]` query keys so the applicant pool refreshes and the "Assigned to X" indicator disappears
-
-### Technical approach for the assignment indicator
-- After fetching approved applications, collect all `applicant_id`s
-- Query `personnel` where `applicant_id` is in that list → get `personnel_id`s  
-- Query `personnel_project_assignments` where `personnel_id` in that list and `status = 'active'`, joining `projects(name)`
-- Build a map: `applicant_id → { projectName, projectId }`
-- In the approved applicant row/card, if the applicant has an active assignment, show a badge like `"Currently on: [Project Name]"`
+### Files to Change
+| File | Change |
+|------|--------|
+| `src/pages/QuickBooksSettings.tsx` | Add "Sync Mappings Overview" card with table after sync action cards grid |
 
