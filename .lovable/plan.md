@@ -1,38 +1,40 @@
 
 
-## Plan: Add Sync Mappings Overview Table to QuickBooks Settings
+## Plan: Add Drill-Down Detail Dialog to Sync Mappings Overview
 
-Add a new "Sync Mappings Overview" card to `QuickBooksSettings.tsx` that shows a clear table of all mapping types with their counts (total records, mapped/synced, unmapped).
-
-### Current Data (from database)
-| Entity | Total | Mapped | Unmapped |
-|--------|-------|--------|----------|
-| Vendors | 1,010 | 997 | 13 |
-| Customers | 68 | 68 | 0 |
-| Invoices | 261 | 13 | 248 |
-| Estimates | 74 | 72 | 2 |
-| Vendor Bills | 215 | 215 | 0 |
-| Expense Categories | 104 | 92 | 12 |
-| Products (Umbrellas) | 3 | 3 | 0 |
+Make each row in the Sync Mappings Overview table clickable. Clicking opens a dialog/sheet showing the actual records — split into "Synced" and "Not Synced" tabs — with key identifying info for each record.
 
 ### Implementation
 
-**File: `src/pages/QuickBooksSettings.tsx`**
-- Add a new Card section titled "Sync Mappings Overview" between the sync action cards and the Journal Entries viewer
-- Create a query hook (inline `useQuery`) that fetches counts from all 7 mapping tables:
-  - `vendors` ↔ `quickbooks_vendor_mappings`
-  - `customers` ↔ `quickbooks_customer_mappings`
-  - `invoices` ↔ `quickbooks_invoice_mappings`
-  - `estimates` ↔ `quickbooks_estimate_mappings`
-  - `vendor_bills` ↔ `quickbooks_bill_mappings`
-  - `expense_categories` ↔ `quickbooks_account_mappings`
-  - `qb_product_service_mappings` (self-contained, check `quickbooks_item_id` not null)
-- Display as a responsive table with columns: Entity Type, Total Records, Synced to QB, Not Synced, Sync %
-- Color-code the sync percentage: green (100%), yellow (50-99%), red (<50%)
-- Show a green checkmark icon for fully synced entities
+**New component: `src/components/quickbooks/SyncMappingDrilldown.tsx`**
+- A `Sheet` (side panel) that receives the entity type as a prop
+- Two tabs: "Synced" and "Not Synced"
+- For each entity type, fetches the relevant records with a LEFT JOIN approach:
+  - **Vendors**: `vendors` LEFT JOIN `quickbooks_vendor_mappings` → show name, company, sync_status, last_synced_at, quickbooks_vendor_id
+  - **Customers**: `customers` LEFT JOIN `quickbooks_customer_mappings` → show name, company, email, sync_status
+  - **Invoices**: `invoices` LEFT JOIN `quickbooks_invoice_mappings` → show number, customer_name, total, status, sync_status
+  - **Estimates**: `estimates` LEFT JOIN `quickbooks_estimate_mappings` → show number, customer_name, total, sync_status
+  - **Vendor Bills**: `vendor_bills` LEFT JOIN `quickbooks_bill_mappings` → show number, vendor_name, total, status, sync_status
+  - **Expense Categories**: `expense_categories` LEFT JOIN `quickbooks_account_mappings` → show name, type, mapped QB account
+  - **Products (Umbrellas)**: `qb_product_service_mappings` → show name, quickbooks_item_id, quickbooks_item_type
+- Each tab shows a scrollable table with a search filter
+- Synced records show QB ID, sync status, and last synced timestamp
+- Not Synced records show the local record info so user can identify what's missing
 
-### Files to Change
+**Edit: `src/pages/QuickBooksSettings.tsx`**
+- Add state for selected entity (`useState<string | null>`)
+- Make each `TableRow` in SyncMappingsOverview clickable with `cursor-pointer` and `hover:bg-muted/50`
+- On click, open the `SyncMappingDrilldown` sheet with the entity type
+- Import and render the new component
+
+### Query strategy
+- Use Supabase's embedded select syntax for joins (e.g., `vendors` select `*, quickbooks_vendor_mappings(*)`)
+- Filter by whether the mapping relation is null (not synced) or present (synced) based on active tab
+- Limit to 200 records per tab with search filtering to keep it performant
+
+### Files
 | File | Change |
 |------|--------|
-| `src/pages/QuickBooksSettings.tsx` | Add "Sync Mappings Overview" card with table after sync action cards grid |
+| `src/components/quickbooks/SyncMappingDrilldown.tsx` | New — drill-down sheet component |
+| `src/pages/QuickBooksSettings.tsx` | Add click handlers to rows, state for selected entity, render drilldown |
 
