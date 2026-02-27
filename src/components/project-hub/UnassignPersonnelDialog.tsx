@@ -280,6 +280,9 @@ export function UnassignPersonnelDialog({
       queryClient.invalidateQueries({ queryKey: ["asset-assignments"] });
       queryClient.invalidateQueries({ queryKey: ["assets"] });
       queryClient.invalidateQueries({ queryKey: ["personnel-with-assets"] });
+      queryClient.invalidateQueries({ queryKey: ["applications"] });
+      queryClient.invalidateQueries({ queryKey: ["staffing-applications"] });
+      queryClient.invalidateQueries({ queryKey: ["applicant-active-assignments"] });
 
       toast.success(`${personnelName} has been unassigned`);
       onOpenChange(false);

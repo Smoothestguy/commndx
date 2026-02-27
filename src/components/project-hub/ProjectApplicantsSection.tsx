@@ -1,4 +1,6 @@
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
+import { useQuery } from "@tanstack/react-query";
+import { supabase } from "@/integrations/supabase/client";
 import { format } from "date-fns";
 import {
   Users,
@@ -128,6 +130,52 @@ export function ProjectApplicantsSection({
 
   const approveWithType = useApproveApplicationWithType();
   const rejectApplication = useRejectApplication();
+
+  // Fetch active project assignments for approved applicants
+  const approvedApplicantIds = useMemo(() => {
+    return applications
+      .filter((app) => app.status === "approved")
+      .map((app) => app.applicant_id);
+  }, [applications]);
+
+  const { data: applicantAssignmentMap = {} } = useQuery({
+    queryKey: ["applicant-active-assignments", approvedApplicantIds],
+    queryFn: async (): Promise<Record<string, { projectName: string; projectId: string }>> => {
+      if (approvedApplicantIds.length === 0) return {};
+
+      // Get personnel records linked to these applicants
+      const { data: personnelRecords, error: pError } = await supabase
+        .from("personnel")
+        .select("id, applicant_id")
+        .in("applicant_id", approvedApplicantIds)
+        .eq("status", "active");
+
+      if (pError || !personnelRecords?.length) return {};
+
+      const personnelIds = personnelRecords.map((p) => p.id);
+      const applicantToPersonnel = new Map(personnelRecords.map((p) => [p.id, p.applicant_id]));
+
+      // Get active assignments with project names
+      const { data: assignments, error: aError } = await supabase
+        .from("personnel_project_assignments")
+        .select("personnel_id, projects(id, name)")
+        .in("personnel_id", personnelIds)
+        .eq("status", "active");
+
+      if (aError || !assignments?.length) return {};
+
+      const result: Record<string, { projectName: string; projectId: string }> = {};
+      for (const a of assignments) {
+        const applicantId = applicantToPersonnel.get(a.personnel_id);
+        const project = a.projects as { id: string; name: string } | null;
+        if (applicantId && project) {
+          result[applicantId] = { projectName: project.name, projectId: project.id };
+        }
+      }
+      return result;
+    },
+    enabled: approvedApplicantIds.length > 0,
+  });
 
   // Split applications into pending and approved, then sort
   const { pendingApplications, approvedApplications } = useMemo(() => {
@@ -343,9 +391,16 @@ export function ProjectApplicantsSection({
               fallback={<span className="text-xs">{initials}</span>}
               alt={`${applicant.first_name} ${applicant.last_name}`}
             />
-            <p className="font-medium">
-              {applicant.first_name} {applicant.last_name}
-            </p>
+            <div>
+              <p className="font-medium">
+                {applicant.first_name} {applicant.last_name}
+              </p>
+              {applicantAssignmentMap[application.applicant_id] && (
+                <Badge className="bg-primary/10 text-primary border-primary/20 text-xs mt-1">
+                  Assigned to: {applicantAssignmentMap[application.applicant_id].projectName}
+                </Badge>
+              )}
+            </div>
           </div>
         </TableCell>
         <TableCell>
@@ -446,6 +501,11 @@ export function ProjectApplicantsSection({
               <p className="font-medium truncate">
                 {applicant.first_name} {applicant.last_name}
               </p>
+              {applicantAssignmentMap[application.applicant_id] && (
+                <Badge className="bg-primary/10 text-primary border-primary/20 text-xs">
+                  Assigned to: {applicantAssignmentMap[application.applicant_id].projectName}
+                </Badge>
+              )}
               <p className="text-sm text-muted-foreground truncate">
                 {positionTitle}
               </p>

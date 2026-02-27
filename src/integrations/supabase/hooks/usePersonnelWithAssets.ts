@@ -27,6 +27,7 @@ export interface PersonnelWithAssets {
   rateBracketId: string | null;
   billRate: number | null;
   assignedAt: string | null;
+  onboardingStatus: string | null;
   assets: PersonnelAsset[];
 }
 
@@ -79,7 +80,8 @@ export function usePersonnelWithAssets(
             city,
             state,
             pay_rate,
-            status
+            status,
+            onboarding_status
           ),
           project_rate_brackets (
             id,
@@ -158,6 +160,7 @@ export function usePersonnelWithAssets(
           state: string | null;
           pay_rate: number | null;
           status: string;
+          onboarding_status: string | null;
         };
         const rateBracket = a.project_rate_brackets as {
           id: string;
@@ -183,6 +186,7 @@ export function usePersonnelWithAssets(
           rateBracketId: a.rate_bracket_id,
           billRate: a.bill_rate ?? rateBracket?.bill_rate ?? null,
           assignedAt: a.assigned_at,
+          onboardingStatus: personnel.onboarding_status,
           assets: personnelAssetsMap.get(a.personnel_id) || [],
           status: a.status,
           unassignedAt: a.unassigned_at,
@@ -221,7 +225,8 @@ export function usePersonnelWithAssetsForExport(projectId: string | undefined, i
             city,
             state,
             pay_rate,
-            status
+            status,
+            onboarding_status
           ),
           project_rate_brackets (
             id,
@@ -322,6 +327,7 @@ export function usePersonnelWithAssetsForExport(projectId: string | undefined, i
           state: string | null;
           pay_rate: number | null;
           status: string;
+          onboarding_status: string | null;
         };
         const rateBracket = a.project_rate_brackets as {
           id: string;
@@ -347,6 +353,7 @@ export function usePersonnelWithAssetsForExport(projectId: string | undefined, i
           rateBracketId: a.rate_bracket_id,
           billRate: a.bill_rate ?? rateBracket?.bill_rate ?? null,
           assignedAt: a.assigned_at,
+          onboardingStatus: personnel.onboarding_status,
           assets: personnelAssetsMap.get(a.personnel_id) || [],
         };
       });
