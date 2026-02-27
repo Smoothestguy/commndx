@@ -1,42 +1,41 @@
 
 
-## Fix: Make "Other" Immigration Status Require Documents + Photo ID (Vendor Onboarding)
+## Plan: SMS Notification Toggle + Onboarding Duplicate Check
 
-Currently, when a vendor selects "Other" immigration status, the work authorization document is labeled "Optional" and no photo ID is required. This needs to match the expectation that **all** non-US citizen statuses require supporting documents.
+### 1. Add SMS Notification Toggle to Personnel Assignment Dialog
 
-### Changes
+**File: `src/components/time-tracking/PersonnelAssignmentDialog.tsx`**
+- Add `sendNotification` state, defaulting to `false`
+- Add a Switch toggle in the schedule section with label "Send SMS Notification" (default OFF)
+- Pass `sendNotification` to the `handleAssign` call
 
-**File 1: `src/pages/VendorOnboarding.tsx`** — Update `canProceed()` validation for step 3
+**File: `src/integrations/supabase/hooks/usePersonnelProjectAssignments.ts`**
+- Add `sendNotification?: boolean` to the mutation input type (lines 242-248)
+- Wrap the SMS sending loop (lines 343-361) in `if (sendNotification) { ... }`
 
-Change the "other" immigration status validation (lines 113-114) from only requiring ITIN to also requiring:
-- A work authorization document (`type: "other"`)
-- A photo ID document (`type: "government_id"`)
+### 2. Add Onboarding Duplicate Check to Applicant Approval Flow
 
-```
-// Before
-if (formData.immigration_status === "other") {
-  return formData.itin.replace(/\D/g, "").length === 9;
-}
+When approving an applicant, before creating a personnel/vendor record, check if a profile already exists with completed onboarding and show a warning dialog.
 
-// After
-if (formData.immigration_status === "other") {
-  const hasItin = formData.itin.replace(/\D/g, "").length === 9;
-  const hasDoc = formData.documents?.some(d => d.type === "other");
-  const hasPhotoId = formData.documents?.some(d => d.type === "government_id");
-  return hasItin && !!hasDoc && !!hasPhotoId;
-}
-```
+**File: `src/integrations/supabase/hooks/useStaffingApplications.ts`**
+- Expand the existing personnel duplicate check (line 634-638) to also select `first_name, last_name, onboarding_status, status`
+- If an existing personnel record is found with `onboarding_status === "completed"`, throw a descriptive error like `"A personnel profile for [Name] ([email]) already exists and has completed onboarding. The existing profile will be linked instead of creating a duplicate."`
+- Same pattern for vendor duplicate check (line 683-687) — select `name, onboarding_status, status` and warn if already onboarded
 
-**File 2: `src/components/vendors/onboarding/VendorWorkAuthorizationForm.tsx`** — Update the "other" section (lines 218-234)
+Actually, we should NOT throw an error (that would block the approval). Instead, the existing behavior of linking is correct. The user wants a **visible notification** rather than silent linking.
 
-- Change document upload label from "Work Authorization Document (Optional)" to "Work Authorization Document *" and set `required` prop
-- Add a new `CategoryDocumentUpload` for photo ID (government-issued ID) with `documentType="government_id"`
+**Revised approach:** 
+- In `useApproveApplicationWithType`, return metadata about whether an existing profile was found: `{ linkedExisting: true, existingPersonnelName: "..." }`
+- In the three approval handlers (`StaffingApplications.tsx`, `ProjectApplicantsSection.tsx`, `ApplicationDetailDialog.tsx`), check the result and show an info toast like: "Profile already exists for [Name] — linked to existing record instead of creating a duplicate."
 
-The updated "other" section will include:
-1. ITIN input (already there)
-2. Work Authorization Document — **required**
-3. Government-Issued Photo ID — **required** (new)
+### Files to Change
 
-### No database changes needed
-The `documents` array already supports any document type, and the `complete_vendor_onboarding` function already persists all documents in the array to `vendor_documents`.
+| File | Change |
+|------|--------|
+| `src/components/time-tracking/PersonnelAssignmentDialog.tsx` | Add Switch toggle for SMS notifications (default OFF) |
+| `src/integrations/supabase/hooks/usePersonnelProjectAssignments.ts` | Add `sendNotification` param, conditionally send SMS |
+| `src/integrations/supabase/hooks/useStaffingApplications.ts` | Return `linkedExisting` flag when existing profile found |
+| `src/pages/StaffingApplications.tsx` | Show info toast when linked to existing profile |
+| `src/components/project-hub/ProjectApplicantsSection.tsx` | Show info toast when linked to existing profile |
+| `src/components/staffing/ApplicationDetailDialog.tsx` | Show info toast when linked to existing profile |
 
