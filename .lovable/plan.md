@@ -1,40 +1,38 @@
 
 
-## Plan: Add Drill-Down Detail Dialog to Sync Mappings Overview
+## Plan: AI Mapping Advisor for QuickBooks
 
-Make each row in the Sync Mappings Overview table clickable. Clicking opens a dialog/sheet showing the actual records — split into "Synced" and "Not Synced" tabs — with key identifying info for each record.
+### Overview
+Add an "AI Mapping Advisor" button to the Sync Mappings Overview card that gathers all mapping data (counts + sample unmapped records) and sends it to Lovable AI for analysis using the detailed system prompt provided.
 
-### Implementation
+### Files to Create/Edit
 
-**New component: `src/components/quickbooks/SyncMappingDrilldown.tsx`**
-- A `Sheet` (side panel) that receives the entity type as a prop
-- Two tabs: "Synced" and "Not Synced"
-- For each entity type, fetches the relevant records with a LEFT JOIN approach:
-  - **Vendors**: `vendors` LEFT JOIN `quickbooks_vendor_mappings` → show name, company, sync_status, last_synced_at, quickbooks_vendor_id
-  - **Customers**: `customers` LEFT JOIN `quickbooks_customer_mappings` → show name, company, email, sync_status
-  - **Invoices**: `invoices` LEFT JOIN `quickbooks_invoice_mappings` → show number, customer_name, total, status, sync_status
-  - **Estimates**: `estimates` LEFT JOIN `quickbooks_estimate_mappings` → show number, customer_name, total, sync_status
-  - **Vendor Bills**: `vendor_bills` LEFT JOIN `quickbooks_bill_mappings` → show number, vendor_name, total, status, sync_status
-  - **Expense Categories**: `expense_categories` LEFT JOIN `quickbooks_account_mappings` → show name, type, mapped QB account
-  - **Products (Umbrellas)**: `qb_product_service_mappings` → show name, quickbooks_item_id, quickbooks_item_type
-- Each tab shows a scrollable table with a search filter
-- Synced records show QB ID, sync status, and last synced timestamp
-- Not Synced records show the local record info so user can identify what's missing
-
-**Edit: `src/pages/QuickBooksSettings.tsx`**
-- Add state for selected entity (`useState<string | null>`)
-- Make each `TableRow` in SyncMappingsOverview clickable with `cursor-pointer` and `hover:bg-muted/50`
-- On click, open the `SyncMappingDrilldown` sheet with the entity type
-- Import and render the new component
-
-### Query strategy
-- Use Supabase's embedded select syntax for joins (e.g., `vendors` select `*, quickbooks_vendor_mappings(*)`)
-- Filter by whether the mapping relation is null (not synced) or present (synced) based on active tab
-- Limit to 200 records per tab with search filtering to keep it performant
-
-### Files
 | File | Change |
 |------|--------|
-| `src/components/quickbooks/SyncMappingDrilldown.tsx` | New — drill-down sheet component |
-| `src/pages/QuickBooksSettings.tsx` | Add click handlers to rows, state for selected entity, render drilldown |
+| `supabase/functions/quickbooks-mapping-advisor/index.ts` | New edge function |
+| `src/components/quickbooks/MappingAdvisor.tsx` | New UI component (Dialog) |
+| `src/pages/QuickBooksSettings.tsx` | Add advisor button to SyncMappingsOverview header |
+| `supabase/config.toml` | Add function config (auto-managed) |
+
+### Edge Function: `quickbooks-mapping-advisor`
+- Queries all 7 entity tables + mapping tables to get counts
+- Fetches up to 20 sample unmapped records per entity with key fields (amount, status, date, name)
+- Sends the full context to Lovable AI (`google/gemini-2.5-flash`) with the user's system prompt (tax-aware accounting advisor)
+- Uses tool calling to extract structured JSON output matching the schema (summary, entity_overview, critical_items, recommendations, warnings)
+- Returns structured JSON to the client
+
+### Component: `MappingAdvisor.tsx`
+- Dialog triggered by a "Sparkles" button in the SyncMappingsOverview card header
+- Loading state with progress message while AI analyzes
+- Renders AI response in sections:
+  - **Summary** — high-level risk overview
+  - **Critical Items** — cards with priority badges (high/medium/low), impact amounts, root causes, and next actions
+  - **Recommendations** — ordered steps with rationale and risk-if-ignored
+  - **Warnings** — color-coded alerts (tax, accounting, data, permissions)
+- Error handling for 429/402 rate limit responses with user-friendly messages
+
+### Integration in QuickBooksSettings
+- Add Sparkles icon button next to "Sync Mappings Overview" title
+- Opens the MappingAdvisor dialog
+- No new state needed beyond the dialog's internal open/close
 
