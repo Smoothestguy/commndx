@@ -250,10 +250,18 @@ export function ProjectApplicantsSection({
       });
 
       setIsApprovalDialogOpen(false);
-      setPendingApprovalApp(null);
+      
+      // Check if an existing profile was linked instead of creating new
+      const linkedPersonnel = (result as any)?.personnel?._linkedExisting;
+      const linkedVendor = (result as any)?.vendor?._linkedExisting;
+      
+      if (linkedPersonnel || linkedVendor) {
+        const name = pendingApprovalApp.applicants ? `${pendingApprovalApp.applicants.first_name} ${pendingApprovalApp.applicants.last_name}` : "Applicant";
+        toast.info(`Profile already exists for ${name} — linked to existing record instead of creating a duplicate.`);
+      }
 
       // Get the created personnel ID from the result if available
-      const personnelId = (result as any)?.createdPersonnel?.id;
+      const personnelId = (result as any)?.personnel?.id;
 
       if (personnelId && (recordType === "personnel" || recordType === "personnel_vendor")) {
         // Show success toast with action to assign to project
@@ -273,6 +281,8 @@ export function ProjectApplicantsSection({
       } else {
         toast.success("Application approved successfully");
       }
+      
+      setPendingApprovalApp(null);
     } catch (error: any) {
       toast.error(error.message || "Failed to approve application");
     }

@@ -261,11 +261,20 @@ export function ApplicationDetailDialog({
   const handleApproveWithType = async (recordType: RecordType) => {
     if (!application) return;
     try {
-      await approveApplicationWithType.mutateAsync({
+      const result = await approveApplicationWithType.mutateAsync({
         applicationId: application.id,
         recordType: recordType as ApprovalRecordType,
         notes: actionNotes,
       });
+      
+      // Check if an existing profile was linked instead of creating new
+      const linkedPersonnel = (result as any)?.personnel?._linkedExisting;
+      const linkedVendor = (result as any)?.vendor?._linkedExisting;
+      
+      if (linkedPersonnel || linkedVendor) {
+        const name = `${application.applicants?.first_name} ${application.applicants?.last_name}`;
+        toast.info(`Profile already exists for ${name} — linked to existing record instead of creating a duplicate.`);
+      }
       
       const typeLabel = recordType === 'personnel_vendor' 
         ? 'Personnel + Vendor' 
