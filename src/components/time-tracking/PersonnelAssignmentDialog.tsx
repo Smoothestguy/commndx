@@ -15,7 +15,8 @@ import {
   useResendAssignmentSMS
 } from "@/integrations/supabase/hooks/usePersonnelProjectAssignments";
 import { useActiveProjectRateBrackets } from "@/integrations/supabase/hooks/useProjectRateBrackets";
-import { Users, UserPlus, X, Briefcase, Pencil, Check, AlertCircle, MessageSquare, Calendar, Clock } from "lucide-react";
+import { Users, UserPlus, X, Briefcase, Pencil, Check, AlertCircle, MessageSquare, Calendar, Clock, Bell } from "lucide-react";
+import { Switch } from "@/components/ui/switch";
 import { Badge } from "@/components/ui/badge";
 import { formatCurrency } from "@/lib/utils";
 import { Alert, AlertDescription } from "@/components/ui/alert";
@@ -46,6 +47,7 @@ export function PersonnelAssignmentDialog({
   const [scheduleDate, setScheduleDate] = useState<string>("");
   const [scheduleStartTime, setScheduleStartTime] = useState<string>("08:00");
   const [scheduleEndTime, setScheduleEndTime] = useState<string>("17:00");
+  const [sendNotification, setSendNotification] = useState(false);
 
   const { data: projects = [] } = useProjects();
   const { data: allPersonnel = [] } = usePersonnel();
@@ -131,6 +133,7 @@ export function PersonnelAssignmentDialog({
       scheduledDate: scheduleDate || undefined,
       scheduledStartTime: scheduleStartTime || undefined,
       scheduledEndTime: scheduleEndTime || undefined,
+      sendNotification,
     }, {
       onSuccess: () => {
         setSelectedPersonnel(new Set());
@@ -373,6 +376,19 @@ export function PersonnelAssignmentDialog({
                   <Clock className="h-3 w-3" />
                   Personnel will be notified to arrive by the scheduled start time
                 </p>
+
+                {/* SMS Notification Toggle */}
+                <div className="flex items-center justify-between pt-2 border-t">
+                  <Label htmlFor="send-notification" className="flex items-center gap-2 text-sm cursor-pointer">
+                    <Bell className="h-4 w-4" />
+                    Send SMS Notification
+                  </Label>
+                  <Switch
+                    id="send-notification"
+                    checked={sendNotification}
+                    onCheckedChange={setSendNotification}
+                  />
+                </div>
               </div>
 
               {/* Add Personnel */}

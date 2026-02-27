@@ -209,6 +209,15 @@ export default function StaffingApplications() {
         personnel_vendor: "Personnel + Vendor",
       };
       
+      // Check if an existing profile was linked instead of creating new
+      const linkedPersonnel = (result as any)?.personnel?._linkedExisting;
+      const linkedVendor = (result as any)?.vendor?._linkedExisting;
+      
+      if (linkedPersonnel || linkedVendor) {
+        const name = appToApprove.applicants ? `${appToApprove.applicants.first_name} ${appToApprove.applicants.last_name}` : "Applicant";
+        toast.info(`Profile already exists for ${name} — linked to existing record instead of creating a duplicate.`);
+      }
+      
       toast.success(`Application approved! Created as ${typeLabels[recordType]}.`);
     } catch (error) {
       toast.error("Failed to approve application");

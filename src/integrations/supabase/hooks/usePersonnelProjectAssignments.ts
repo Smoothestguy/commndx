@@ -239,6 +239,7 @@ export function useBulkAssignPersonnelToProject() {
       scheduledDate,
       scheduledStartTime,
       scheduledEndTime,
+      sendNotification = false,
     }: {
       personnelIds: string[];
       projectId: string;
@@ -246,6 +247,7 @@ export function useBulkAssignPersonnelToProject() {
       scheduledDate?: string;
       scheduledStartTime?: string;
       scheduledEndTime?: string;
+      sendNotification?: boolean;
     }) => {
       const { data: { user } } = await supabase.auth.getUser();
       
@@ -340,23 +342,24 @@ export function useBulkAssignPersonnelToProject() {
         }
       }
       
-      // Send SMS notifications for each assignment
-      for (const assignment of data) {
-        try {
-          await supabase.functions.invoke('send-assignment-sms', {
-            body: {
-              personnelId: assignment.personnel_id,
-              projectId: assignment.project_id,
-              assignmentId: assignment.id,
-              scheduledDate,
-              scheduledStartTime,
-              force: true
-            }
-          });
-          console.log(`Assignment SMS sent for personnel ${assignment.personnel_id}`);
-        } catch (smsError) {
-          console.error(`Failed to send assignment SMS for personnel ${assignment.personnel_id}:`, smsError);
-          // Don't fail the assignment if SMS fails
+      // Send SMS notifications for each assignment (only if toggle is ON)
+      if (sendNotification) {
+        for (const assignment of data) {
+          try {
+            await supabase.functions.invoke('send-assignment-sms', {
+              body: {
+                personnelId: assignment.personnel_id,
+                projectId: assignment.project_id,
+                assignmentId: assignment.id,
+                scheduledDate,
+                scheduledStartTime,
+                force: true
+              }
+            });
+            console.log(`Assignment SMS sent for personnel ${assignment.personnel_id}`);
+          } catch (smsError) {
+            console.error(`Failed to send assignment SMS for personnel ${assignment.personnel_id}:`, smsError);
+          }
         }
       }
       

@@ -637,13 +637,13 @@ export const useApproveApplicationWithType = () => {
           .eq("email", applicant.email)
           .maybeSingle();
 
-        if (existingPersonnel) {
+      if (existingPersonnel) {
           // Update existing personnel with applicant_id if not set
           await supabase
             .from("personnel")
             .update({ applicant_id: applicant.id } as any)
             .eq("id", existingPersonnel.id);
-          createdPersonnel = existingPersonnel;
+          createdPersonnel = { ...existingPersonnel, _linkedExisting: true };
         } else {
           // Create personnel record
           const { data: personnel, error: personnelError } = await supabase
@@ -686,7 +686,9 @@ export const useApproveApplicationWithType = () => {
           .eq("email", applicant.email)
           .maybeSingle();
 
-        if (!existingVendor) {
+        if (existingVendor) {
+          createdVendor = { ...existingVendor, _linkedExisting: true };
+        } else if (!existingVendor) {
           const { data: vendor, error: vendorError } = await supabase
             .from("vendors")
             .insert({
@@ -711,8 +713,6 @@ export const useApproveApplicationWithType = () => {
               .update({ vendor_id: createdVendor.id } as any)
               .eq("id", createdPersonnel.id);
           }
-        } else {
-          createdVendor = existingVendor;
         }
       }
 
