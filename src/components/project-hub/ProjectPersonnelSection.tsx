@@ -621,6 +621,11 @@ export function ProjectPersonnelSection({ projectId, projectName = "this project
                                 <p className="font-medium truncate">
                                   {person.name}
                                 </p>
+                                {person.onboardingStatus === "completed" && (
+                                  <Badge className="bg-success/10 text-success border-success/20 text-xs">
+                                    Onboarded
+                                  </Badge>
+                                )}
                                 {isUnassigned && (
                                   <Badge variant="outline" className="text-xs">
                                     Unassigned
@@ -762,9 +767,16 @@ export function ProjectPersonnelSection({ projectId, projectName = "this project
                                     alt={person.name}
                                   />
                                   <div>
-                                    <p className="font-medium">
-                                      {person.name}
-                                    </p>
+                                    <div className="flex items-center gap-2">
+                                      <p className="font-medium">
+                                        {person.name}
+                                      </p>
+                                      {person.onboardingStatus === "completed" && (
+                                        <Badge className="bg-success/10 text-success border-success/20 text-xs">
+                                          Onboarded
+                                        </Badge>
+                                      )}
+                                    </div>
                                     {visibleColumns.some(c => c.key === "email") && (
                                       <p className="text-sm text-muted-foreground">
                                         {person.email}

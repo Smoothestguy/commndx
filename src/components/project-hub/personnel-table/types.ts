@@ -36,6 +36,7 @@ export interface PersonnelRowData {
   rateBracket: string | null;
   rateBracketId: string | null;
   assignedAt: string | null;
+  onboardingStatus: string | null;
   assets: PersonnelAsset[];
   status: string;
   unassignedAt: string | null;
