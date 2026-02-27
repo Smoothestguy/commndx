@@ -49,6 +49,7 @@ import {
 import { ProductConflictDialog } from "@/components/quickbooks/ProductConflictDialog";
 import { JournalEntriesViewer } from "@/components/quickbooks/JournalEntriesViewer";
 import { QuickBooksSyncBadge } from "@/components/quickbooks/QuickBooksSyncBadge";
+import { SyncMappingDrilldown } from "@/components/quickbooks/SyncMappingDrilldown";
 import {
   Cloud,
   CloudOff,
@@ -72,7 +73,7 @@ import {
 import { format } from "date-fns";
 import { toast } from "sonner";
 
-const SyncMappingsOverview = () => {
+const SyncMappingsOverview = ({ onEntityClick }: { onEntityClick: (entity: string) => void }) => {
   const { data: mappingCounts, isLoading } = useQuery({
     queryKey: ["qb-sync-mappings-overview"],
     queryFn: async () => {
@@ -166,7 +167,7 @@ const SyncMappingsOverview = () => {
                   const notSynced = Math.max(0, row.total - row.synced);
                   const pct = row.total > 0 ? Math.round((row.synced / row.total) * 100) : 100;
                   return (
-                    <TableRow key={row.entity}>
+                    <TableRow key={row.entity} className="cursor-pointer hover:bg-muted/50" onClick={() => onEntityClick(row.entity)}>
                       <TableCell className="font-medium">{row.entity}</TableCell>
                       <TableCell className="text-right">{row.total.toLocaleString()}</TableCell>
                       <TableCell className="text-right">{row.synced.toLocaleString()}</TableCell>
@@ -192,6 +193,7 @@ const SyncMappingsOverview = () => {
 const QuickBooksSettings = () => {
   const [searchParams] = useSearchParams();
   const [selectedConflict, setSelectedConflict] = useState<any>(null);
+  const [drilldownEntity, setDrilldownEntity] = useState<string | null>(null);
   const [vendorImportProgress, setVendorImportProgress] = useState<{
     processed: number;
     total: number;
@@ -765,7 +767,12 @@ const QuickBooksSettings = () => {
             </div>
 
             {/* Sync Mappings Overview */}
-            <SyncMappingsOverview />
+            <SyncMappingsOverview onEntityClick={setDrilldownEntity} />
+            <SyncMappingDrilldown
+              entityType={drilldownEntity}
+              open={!!drilldownEntity}
+              onOpenChange={(open) => { if (!open) setDrilldownEntity(null); }}
+            />
 
             {/* Journal Entries Viewer */}
             <JournalEntriesViewer />
