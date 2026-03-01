@@ -95,7 +95,7 @@ export function AssignAssetDialog({
     resolver: zodResolver(assignmentSchema),
     defaultValues: {
       assetId: "",
-      personnelId: "",
+      personnelId: "project-wide",
       startAt: new Date(),
       notes: "",
     },
@@ -131,7 +131,7 @@ export function AssignAssetDialog({
     await assignMutation.mutateAsync({
       projectId: projectId,
       assetId: values.assetId,
-      personnelId: values.personnelId || undefined,
+      personnelId: values.personnelId && values.personnelId !== "project-wide" ? values.personnelId : undefined,
       startAt: values.startAt.toISOString(),
       endAt: values.endAt?.toISOString(),
       notes: values.notes,
@@ -218,7 +218,7 @@ export function AssignAssetDialog({
                           </SelectTrigger>
                         </FormControl>
                         <SelectContent>
-                          <SelectItem value="">Project-wide</SelectItem>
+                          <SelectItem value="project-wide">Project-wide</SelectItem>
                           {personnel
                             .filter(p => p.personnel)
                             .map((assignment) => (
