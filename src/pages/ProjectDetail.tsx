@@ -40,6 +40,7 @@ import { ProjectRateBracketsSection } from "@/components/project-hub/ProjectRate
 import { ProjectPersonnelSection } from "@/components/project-hub/ProjectPersonnelSection";
 import { ProjectApplicantsSection } from "@/components/project-hub/ProjectApplicantsSection";
 import { ProjectAssetAssignmentsSection } from "@/components/project-hub/ProjectAssetAssignmentsSection";
+import { ProjectHotelAssignmentsSection } from "@/components/project-hub/ProjectHotelAssignmentsSection";
 import { ProjectRoomsSection } from "@/components/project-hub/rooms/ProjectRoomsSection";
 
 import { ProjectActivityTimeline } from "@/components/project-hub/ProjectActivityTimeline";
@@ -615,6 +616,11 @@ const ProjectDetail = () => {
       {/* Asset Assignments */}
       <div className="mb-8">
         <ProjectAssetAssignmentsSection projectId={id!} projectName={project.name} />
+      </div>
+
+      {/* Hotel Assignments */}
+      <div className="mb-8">
+        <ProjectHotelAssignmentsSection projectId={id!} projectName={project.name} />
       </div>
 
       {/* Rooms / Units */}

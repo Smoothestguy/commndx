@@ -3729,6 +3729,97 @@ export type Database = {
           },
         ]
       }
+      personnel_hotel_assignments: {
+        Row: {
+          check_in: string
+          check_out: string | null
+          confirmation_number: string | null
+          created_at: string
+          created_by: string | null
+          hotel_address: string | null
+          hotel_city: string | null
+          hotel_name: string
+          hotel_phone: string | null
+          hotel_state: string | null
+          hotel_zip: string | null
+          id: string
+          nightly_rate: number | null
+          notes: string | null
+          personnel_id: string
+          personnel_project_assignment_id: string | null
+          project_id: string
+          room_number: string | null
+          status: string
+          updated_at: string
+        }
+        Insert: {
+          check_in: string
+          check_out?: string | null
+          confirmation_number?: string | null
+          created_at?: string
+          created_by?: string | null
+          hotel_address?: string | null
+          hotel_city?: string | null
+          hotel_name: string
+          hotel_phone?: string | null
+          hotel_state?: string | null
+          hotel_zip?: string | null
+          id?: string
+          nightly_rate?: number | null
+          notes?: string | null
+          personnel_id: string
+          personnel_project_assignment_id?: string | null
+          project_id: string
+          room_number?: string | null
+          status?: string
+          updated_at?: string
+        }
+        Update: {
+          check_in?: string
+          check_out?: string | null
+          confirmation_number?: string | null
+          created_at?: string
+          created_by?: string | null
+          hotel_address?: string | null
+          hotel_city?: string | null
+          hotel_name?: string
+          hotel_phone?: string | null
+          hotel_state?: string | null
+          hotel_zip?: string | null
+          id?: string
+          nightly_rate?: number | null
+          notes?: string | null
+          personnel_id?: string
+          personnel_project_assignment_id?: string | null
+          project_id?: string
+          room_number?: string | null
+          status?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "personnel_hotel_assignments_personnel_id_fkey"
+            columns: ["personnel_id"]
+            isOneToOne: false
+            referencedRelation: "personnel"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "personnel_hotel_assignments_personnel_project_assignment_i_fkey"
+            columns: ["personnel_project_assignment_id"]
+            isOneToOne: false
+            referencedRelation: "personnel_project_assignments"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "personnel_hotel_assignments_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "projects"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       personnel_invitations: {
         Row: {
           accepted_at: string | null
