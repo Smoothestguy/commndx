@@ -12,6 +12,7 @@ import { useExpenseCategories } from "@/integrations/supabase/hooks/useExpenseCa
 import { usePurchaseOrders } from "@/integrations/supabase/hooks/usePurchaseOrders";
 import { useVendorBills } from "@/integrations/supabase/hooks/useVendorBills";
 import { VendorDocumentUpload } from "@/components/vendors/VendorDocumentUpload";
+import { VendorDocumentsList } from "@/components/vendors/VendorDocumentsList";
 import { VendorPersonnelSection } from "@/components/vendors/VendorPersonnelSection";
 import { VendorEditDialog } from "@/components/vendors/VendorEditDialog";
 import { InviteVendorDialog } from "@/components/vendors/InviteVendorDialog";
@@ -265,12 +266,6 @@ export default function VendorDetail() {
               </p>
               <p className="font-medium">{vendor.payment_terms ? (PAYMENT_TERMS_LABELS[vendor.payment_terms] || vendor.payment_terms) : "N/A"}</p>
             </div>
-            {vendor.account_number && (
-              <div>
-                <p className="text-sm text-muted-foreground">Account Number</p>
-                <p className="font-medium font-mono">{vendor.account_number}</p>
-              </div>
-            )}
             {expenseCategory && (
               <div>
                 <p className="text-sm text-muted-foreground">Default Expense Category</p>
@@ -283,13 +278,24 @@ export default function VendorDetail() {
                 <p className="font-medium">${vendor.opening_balance.toFixed(2)}</p>
               </div>
             )}
-            {/* Banking Information */}
+          </CardContent>
+        </Card>
+
+        {/* Banking Information Card */}
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2 text-base">
+              <CreditCard className="h-5 w-5" />
+              Banking Information
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
             <div>
               <p className="text-sm text-muted-foreground">Bank Name</p>
               <p className="font-medium">{vendor.bank_name || "N/A"}</p>
             </div>
             <div>
-              <p className="text-sm text-muted-foreground">Bank Account Type</p>
+              <p className="text-sm text-muted-foreground">Account Type</p>
               <p className="font-medium capitalize">{vendor.bank_account_type || "N/A"}</p>
             </div>
             <div>
@@ -326,7 +332,6 @@ export default function VendorDetail() {
                 )}
               </div>
             </div>
-            {/* Signatures */}
             <div>
               <p className="text-sm text-muted-foreground">W-9 Signature</p>
               <p className="font-medium">
@@ -343,34 +348,6 @@ export default function VendorDetail() {
                   : "Not signed"}
               </p>
             </div>
-            {/* Work Authorization */}
-            {vendor.citizenship_status && (
-              <div>
-                <p className="text-sm text-muted-foreground">Citizenship Status</p>
-                <p className="font-medium capitalize">
-                  {vendor.citizenship_status === "us_citizen" ? "U.S. Citizen" : "Non-U.S. Citizen"}
-                </p>
-              </div>
-            )}
-            {vendor.immigration_status && (
-              <div>
-                <p className="text-sm text-muted-foreground">Immigration Status</p>
-                <p className="font-medium capitalize">{vendor.immigration_status.replace(/_/g, " ")}</p>
-              </div>
-            )}
-            {vendor.itin && (
-              <div>
-                <p className="text-sm text-muted-foreground">ITIN</p>
-                <div className="flex items-center gap-2">
-                  <p className="font-medium font-mono">
-                    {revealedFields.itin ? vendor.itin : "•••••" + vendor.itin.slice(-4)}
-                  </p>
-                  <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => toggleReveal("itin")}>
-                    {revealedFields.itin ? <EyeOff className="h-3.5 w-3.5" /> : <Eye className="h-3.5 w-3.5" />}
-                  </Button>
-                </div>
-              </div>
-            )}
           </CardContent>
         </Card>
 
@@ -480,7 +457,7 @@ export default function VendorDetail() {
         </Card>
 
         <Tabs defaultValue="all" className="w-full">
-          <TabsList className="grid w-full grid-cols-5">
+          <TabsList className="grid w-full grid-cols-6">
             <TabsTrigger value="all">
               <LayoutDashboard className="mr-2 h-4 w-4" />
               All
@@ -496,6 +473,10 @@ export default function VendorDetail() {
             <TabsTrigger value="bills">
               <ClipboardList className="mr-2 h-4 w-4" />
               Bills
+            </TabsTrigger>
+            <TabsTrigger value="banking">
+              <CreditCard className="mr-2 h-4 w-4" />
+              Banking
             </TabsTrigger>
             <TabsTrigger value="documents">
               <FileText className="mr-2 h-4 w-4" />
@@ -649,17 +630,7 @@ export default function VendorDetail() {
             </Card>
 
             {/* Documents Section */}
-            <Card>
-              <CardHeader className="pb-3">
-                <CardTitle className="flex items-center gap-2 text-lg">
-                  <FileText className="h-5 w-5" />
-                  Documents ({documentsCount})
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                <VendorDocumentUpload vendorId={vendor.id} />
-              </CardContent>
-            </Card>
+            <VendorDocumentsList vendorId={vendor.id} />
           </TabsContent>
           <TabsContent value="personnel" className="mt-6">
             <VendorPersonnelSection vendorId={vendor.id} vendorName={vendor.name} />
@@ -742,8 +713,143 @@ export default function VendorDetail() {
               </div>
             )}
           </TabsContent>
+          <TabsContent value="banking" className="mt-6">
+            <div className="space-y-6">
+              {/* Banking Details */}
+              <Card>
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2 text-lg">
+                    <CreditCard className="h-5 w-5" />
+                    Banking Details
+                  </CardTitle>
+                </CardHeader>
+                <CardContent className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
+                  <div>
+                    <p className="text-sm text-muted-foreground">Bank Name</p>
+                    <p className="font-medium">{vendor.bank_name || "N/A"}</p>
+                  </div>
+                  <div>
+                    <p className="text-sm text-muted-foreground">Account Type</p>
+                    <p className="font-medium capitalize">{vendor.bank_account_type || "N/A"}</p>
+                  </div>
+                  <div>
+                    <p className="text-sm text-muted-foreground">Routing Number</p>
+                    <div className="flex items-center gap-2">
+                      <p className="font-medium font-mono">
+                        {vendor.bank_routing_number
+                          ? revealedFields.routing
+                            ? vendor.bank_routing_number
+                            : "•••••" + vendor.bank_routing_number.slice(-4)
+                          : "N/A"}
+                      </p>
+                      {vendor.bank_routing_number && (
+                        <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => toggleReveal("routing")}>
+                          {revealedFields.routing ? <EyeOff className="h-3.5 w-3.5" /> : <Eye className="h-3.5 w-3.5" />}
+                        </Button>
+                      )}
+                    </div>
+                  </div>
+                  <div>
+                    <p className="text-sm text-muted-foreground">Account Number</p>
+                    <div className="flex items-center gap-2">
+                      <p className="font-medium font-mono">
+                        {vendor.bank_account_number
+                          ? revealedFields.account
+                            ? vendor.bank_account_number
+                            : "•••••" + vendor.bank_account_number.slice(-4)
+                          : "N/A"}
+                      </p>
+                      {vendor.bank_account_number && (
+                        <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => toggleReveal("account")}>
+                          {revealedFields.account ? <EyeOff className="h-3.5 w-3.5" /> : <Eye className="h-3.5 w-3.5" />}
+                        </Button>
+                      )}
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+
+              {/* Work Authorization */}
+              {(vendor.citizenship_status || vendor.immigration_status || vendor.itin) && (
+                <Card>
+                  <CardHeader>
+                    <CardTitle className="flex items-center gap-2 text-lg">
+                      <Users className="h-5 w-5" />
+                      Work Authorization
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
+                    {vendor.citizenship_status && (
+                      <div>
+                        <p className="text-sm text-muted-foreground">Citizenship Status</p>
+                        <p className="font-medium capitalize">
+                          {vendor.citizenship_status === "us_citizen" ? "U.S. Citizen" : "Non-U.S. Citizen"}
+                        </p>
+                      </div>
+                    )}
+                    {vendor.immigration_status && (
+                      <div>
+                        <p className="text-sm text-muted-foreground">Immigration Status</p>
+                        <p className="font-medium capitalize">{vendor.immigration_status.replace(/_/g, " ")}</p>
+                      </div>
+                    )}
+                    {vendor.itin && (
+                      <div>
+                        <p className="text-sm text-muted-foreground">ITIN</p>
+                        <div className="flex items-center gap-2">
+                          <p className="font-medium font-mono">
+                            {revealedFields.itin ? vendor.itin : "•••••" + vendor.itin.slice(-4)}
+                          </p>
+                          <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => toggleReveal("itin")}>
+                            {revealedFields.itin ? <EyeOff className="h-3.5 w-3.5" /> : <Eye className="h-3.5 w-3.5" />}
+                          </Button>
+                        </div>
+                      </div>
+                    )}
+                  </CardContent>
+                </Card>
+              )}
+
+              {/* Signatures */}
+              <Card>
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2 text-lg">
+                    <FileText className="h-5 w-5" />
+                    Signatures
+                  </CardTitle>
+                </CardHeader>
+                <CardContent className="grid gap-6 md:grid-cols-2">
+                  <div>
+                    <p className="text-sm text-muted-foreground">W-9 Signature</p>
+                    <p className="font-medium">
+                      {vendor.w9_signed_at
+                        ? `Signed ${format(new Date(vendor.w9_signed_at), "MMM d, yyyy")}`
+                        : "Not signed"}
+                    </p>
+                    {vendor.w9_signature && (
+                      <img src={vendor.w9_signature} alt="W-9 Signature" className="mt-2 max-h-20 border rounded p-1" />
+                    )}
+                  </div>
+                  <div>
+                    <p className="text-sm text-muted-foreground">Vendor Agreement</p>
+                    <p className="font-medium">
+                      {vendor.vendor_agreement_signed_at
+                        ? `Signed ${format(new Date(vendor.vendor_agreement_signed_at), "MMM d, yyyy")}`
+                        : "Not signed"}
+                    </p>
+                    {vendor.vendor_agreement_signature && (
+                      <img src={vendor.vendor_agreement_signature} alt="Vendor Agreement Signature" className="mt-2 max-h-20 border rounded p-1" />
+                    )}
+                  </div>
+                </CardContent>
+              </Card>
+            </div>
+          </TabsContent>
           <TabsContent value="documents" className="mt-6">
-            <VendorDocumentUpload vendorId={vendor.id} />
+            <div className="space-y-6">
+              <VendorDocumentUpload vendorId={vendor.id} />
+              <VendorDocumentsList vendorId={vendor.id} />
+            </div>
           </TabsContent>
         </Tabs>
 
