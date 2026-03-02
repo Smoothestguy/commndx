@@ -98,6 +98,16 @@ export const VendorWorkAuthorizationForm = ({
               This will be used on your W-9 form.
             </p>
           </div>
+          <CategoryDocumentUpload
+            documentType="government_id"
+            label="Government-Issued Photo ID *"
+            helperText="Upload a valid photo ID (passport, driver's license, etc.)"
+            required
+            existingDocument={getExistingDoc("government_id")}
+            onUpload={handleDocUpload}
+            onRemove={() => handleDocRemove("government_id")}
+            sessionId={sessionId}
+          />
         </div>
       )}
 
