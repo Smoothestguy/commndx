@@ -1,26 +1,21 @@
 
 
-## Fix: Vendor Banking Tab — Authorization Status Shows "Not Signed" Despite Signed Forms
+## Plan: Show Full W-9 Form Preview for Vendors
 
 ### Problem
-On the Vendor Detail Banking tab (e.g., Yicel Alcala), the Direct Deposit card's "Authorization Status" always shows **"Not Signed"** because `signature={null}` and `signedAt={null}` are hardcoded on lines 733-734 of `VendorDetail.tsx`. The vendor *does* have a `vendor_agreement_signature` that serves as banking authorization, but it's not being passed through.
+When clicking "View W-9 Form" on the vendor page, you see a simple list of fields (name, company, address, masked tax ID). On the Personnel page, you see an actual replica of the IRS W-9 form with proper layout — header, checkboxes, TIN boxes, certification section, and signature.
 
 ### Fix
-In `src/pages/VendorDetail.tsx`, change the `DirectDepositView` props from:
-```tsx
-signature={null}
-signedAt={null}
-```
-to:
-```tsx
-signature={vendor.vendor_agreement_signature}
-signedAt={vendor.vendor_agreement_signed_at}
-```
+Replace the vendor's custom W-9 dialog content with the existing `W9FormPreview` component (from `src/components/personnel/W9FormPreview.tsx`), constructing a `W9Form`-compatible object from vendor fields.
 
-This single change will make the Authorization Status section show "Authorization Signed" with the signature image, date, and "View Full Form" button — matching how Personnel displays it.
+### File to Edit
 
-### Files
 | File | Change |
 |------|--------|
-| `src/pages/VendorDetail.tsx` | Pass vendor agreement signature to DirectDepositView instead of null |
+| `src/components/vendors/VendorAgreementSignatureView.tsx` | Import `W9FormPreview`, build a `W9Form` object from vendor props, replace the simple field list dialog with `<W9FormPreview />` |
+
+### Details
+- Map vendor fields to W9Form: `name_on_return` = vendorName, `business_name` = companyName, `address` = vendorAddress, `tin_type` = "ein", `ein` = taxId, `signature_data` = w9Signature, `signature_date` = w9SignedAt, `federal_tax_classification` = federalTaxClassification or "individual"
+- Fields the vendor doesn't capture (llc_tax_classification, exempt_payee_code, city/state/zip separately, etc.) will be empty/default — the form will render with those boxes blank, which is correct
+- Remove the custom download handler since `W9FormPreview` has its own download button built in
 
