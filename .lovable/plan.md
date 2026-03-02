@@ -1,52 +1,45 @@
 
 
-## Plan: Personnel Hotel Assignments
+## Plan: Enhance Vendor Detail — Dedicated Banking & Documents Sections
 
-A separate `personnel_hotel_assignments` table is the right approach. It keeps hotel logistics cleanly separated from project assignments while linking to both the personnel and the project. This supports multiple hotel stays per person per project (common for long-duration jobs with mid-project hotel changes).
+### Current State
 
-### Database Table: `personnel_hotel_assignments`
+The VendorDetail page already displays banking info (bank name, account type, routing/account numbers with Eye toggle masking) and documents, but they're buried:
+- **Banking** is embedded within the large "Financial Information" card alongside tax, billing, signatures, and work authorization fields
+- **Documents** are only shown in the Documents tab via `VendorDocumentUpload`, which is a basic upload/list component without preview capability
 
-| Column | Type | Notes |
-|--------|------|-------|
-| `id` | uuid PK | |
-| `personnel_project_assignment_id` | uuid FK → personnel_project_assignments | Links to the active assignment |
-| `personnel_id` | uuid FK → personnel | Direct link for easier querying |
-| `project_id` | uuid FK → projects | Direct link for easier querying |
-| `hotel_name` | text NOT NULL | |
-| `hotel_address` | text | Full address |
-| `hotel_city` | text | |
-| `hotel_state` | text | |
-| `hotel_zip` | text | |
-| `hotel_phone` | text | |
-| `room_number` | text | |
-| `confirmation_number` | text | |
-| `check_in` | date NOT NULL | |
-| `check_out` | date | Nullable for open-ended stays |
-| `nightly_rate` | numeric | Optional cost tracking |
-| `notes` | text | |
-| `status` | text DEFAULT 'active' | active, checked_out, cancelled |
-| `created_at` | timestamptz | |
-| `updated_at` | timestamptz | |
-| `created_by` | uuid | |
+### What To Change
 
-RLS: Authenticated users with appropriate permissions can read/write.
+**1. Extract Banking into a dedicated Card** (between Financial Info and Notes cards)
+- Separate `CreditCard`-icon Card titled "Banking Information"
+- Fields: Bank Name, Account Type, Routing Number (masked with Eye toggle), Account Number (masked with Eye toggle)
+- Show W-9 signature date and Vendor Agreement signature date
+- Remove these fields from the Financial Information card to avoid duplication
 
-### UI Components
+**2. Add a dedicated "Banking" tab** to the tabs section (alongside Personnel, POs, Bills, Documents)
+- Reuse the same banking card content plus work authorization details (citizenship, immigration, ITIN)
+- Add signature previews if available (W-9 signature image, vendor agreement signature image)
 
-**New section on the Project Hub page** (collapsible, like the existing Asset Assignments section):
-- `ProjectHotelAssignmentsSection.tsx` — table/card view showing active hotel assignments for the project
-- `AssignHotelDialog.tsx` — form dialog to create/edit a hotel assignment (select personnel from assigned list, enter hotel details)
-- Mobile-responsive with card view on small screens, table on desktop
-
-**New hook**: `useHotelAssignments.ts` — CRUD operations for hotel assignments
+**3. Upgrade the Documents tab** to match PersonnelDocumentsList quality
+- Create `VendorDocumentsList.tsx` component modeled after `PersonnelDocumentsList`
+- Add preview dialog (image inline, PDF in iframe, fallback download prompt)
+- Add "Download All" button
+- Add delete confirmation dialog (currently uses raw `confirm()`)
+- Keep the upload form at the top, document list below with improved styling
+- Show expiry status with color coding (red for expired)
 
 ### Files to Create/Edit
 
 | File | Change |
 |------|--------|
-| Migration | New `personnel_hotel_assignments` table + RLS policies |
-| `src/integrations/supabase/hooks/useHotelAssignments.ts` | New — query/mutation hooks |
-| `src/components/project-hub/ProjectHotelAssignmentsSection.tsx` | New — collapsible section with table/cards |
-| `src/components/project-hub/AssignHotelDialog.tsx` | New — form dialog for hotel assignment |
-| `src/pages/ProjectHub.tsx` | Add hotel assignments section |
+| `src/components/vendors/VendorDocumentsList.tsx` | New — document list with preview/download-all/delete-confirm, modeled after PersonnelDocumentsList |
+| `src/pages/VendorDetail.tsx` | Extract banking into dedicated Card; add Banking tab; replace `VendorDocumentUpload` list portion with `VendorDocumentsList`; keep upload form |
+| `src/components/vendors/VendorDocumentUpload.tsx` | Simplify to upload-only (the list display moves to VendorDocumentsList) |
+
+### Technical Details
+
+- Vendor documents use public URLs via `getPublicUrl` (per memory context), so no signed URL needed — direct `window.open` for preview/download
+- Banking fields already exist on the `vendors` table — no database changes needed
+- The reveal/mask toggle pattern (`revealedFields` state + Eye/EyeOff) is already implemented in VendorDetail and will be reused in the new Banking card
+- The new VendorDocumentsList will adapt PersonnelDocumentsList patterns but use `VendorDocument` type (which has `document_url` instead of `file_path`, and `document_name` instead of `file_name`)
 
