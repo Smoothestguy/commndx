@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -9,11 +9,11 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import { FileText, Check, X, Eye, Download, Loader2 } from "lucide-react";
+import { FileText, Check, X, Eye, Download } from "lucide-react";
 import { format } from "date-fns";
 import { downloadVendorAgreement } from "@/lib/generateVendorAgreement";
-import { downloadW9PDF, W9PDFFormData } from "@/lib/pdfGenerator";
-import { toast } from "sonner";
+import { W9FormPreview } from "@/components/personnel/W9FormPreview";
+import { W9Form } from "@/integrations/supabase/hooks/useW9Forms";
 
 interface VendorAgreementSignatureViewProps {
   vendorName: string;
@@ -40,10 +40,44 @@ export function VendorAgreementSignatureView({
 }: VendorAgreementSignatureViewProps) {
   const [showAgreement, setShowAgreement] = useState(false);
   const [showW9, setShowW9] = useState(false);
-  const [isDownloadingW9, setIsDownloadingW9] = useState(false);
 
   const hasAgreementSigned = !!vendorAgreementSignature && !!vendorAgreementSignedAt;
   const hasW9Signed = !!w9Signature && !!w9SignedAt;
+
+  const w9FormData = useMemo<W9Form>(() => ({
+    id: "vendor-w9",
+    personnel_id: "",
+    name_on_return: vendorName,
+    business_name: companyName || null,
+    federal_tax_classification: federalTaxClassification || "individual",
+    llc_tax_classification: null,
+    other_classification: null,
+    has_foreign_partners: false,
+    exempt_payee_code: null,
+    fatca_exemption_code: null,
+    address: vendorAddress || "",
+    city: "",
+    state: "",
+    zip: "",
+    account_numbers: null,
+    tin_type: "ein" as const,
+    ein: taxId || null,
+    signature_data: w9Signature || null,
+    signature_date: w9SignedAt || new Date().toISOString(),
+    certified_us_person: true,
+    certified_correct_tin: true,
+    certified_not_subject_backup_withholding: true,
+    certified_fatca_exempt: false,
+    document_url: null,
+    status: "completed" as const,
+    verified_by: null,
+    verified_at: null,
+    rejection_reason: null,
+    edit_allowed: false,
+    edit_allowed_until: null,
+    created_at: w9SignedAt || new Date().toISOString(),
+    updated_at: w9SignedAt || new Date().toISOString(),
+  }), [vendorName, companyName, federalTaxClassification, vendorAddress, taxId, w9Signature, w9SignedAt]);
 
   const handleDownloadAgreement = () => {
     downloadVendorAgreement({
@@ -53,30 +87,6 @@ export function VendorAgreementSignatureView({
       signature: vendorAgreementSignature,
       signedAt: vendorAgreementSignedAt,
     });
-  };
-
-  const handleDownloadW9 = async () => {
-    setIsDownloadingW9(true);
-    try {
-      const formData: W9PDFFormData = {
-        name: vendorName,
-        businessName: companyName || undefined,
-        taxClassification: federalTaxClassification || "individual",
-        address: vendorAddress || "",
-        cityStateZip: "",
-        tinType: "ein",
-        tin: taxId || "",
-        signatureData: w9Signature || undefined,
-        signatureDate: w9SignedAt ? new Date(w9SignedAt).toLocaleDateString() : undefined,
-      };
-      await downloadW9PDF(formData, `W-9_${vendorName.replace(/\s+/g, "_")}.pdf`);
-      toast.success("W-9 downloaded successfully");
-    } catch (error) {
-      console.error("Error downloading W-9:", error);
-      toast.error("Failed to download W-9");
-    } finally {
-      setIsDownloadingW9(false);
-    }
   };
 
   const renderSignature = (signature: string | null | undefined, label: string) => {
@@ -262,87 +272,16 @@ export function VendorAgreementSignatureView({
         </DialogContent>
       </Dialog>
 
-      {/* W-9 Preview Dialog */}
+      {/* W-9 Form Preview Dialog */}
       <Dialog open={showW9} onOpenChange={setShowW9}>
-        <DialogContent className="max-w-3xl max-h-[90vh] overflow-hidden">
+        <DialogContent className="max-w-4xl max-h-[90vh] overflow-hidden">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
               <FileText className="h-5 w-5" />
               Form W-9 (Request for Taxpayer Identification Number)
             </DialogTitle>
           </DialogHeader>
-          <div className="w-full">
-            <div className="flex justify-end mb-4">
-              <Button onClick={handleDownloadW9} size="sm" disabled={isDownloadingW9}>
-                {isDownloadingW9 ? (
-                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                ) : (
-                  <Download className="h-4 w-4 mr-2" />
-                )}
-                {isDownloadingW9 ? "Generating..." : "Download PDF"}
-              </Button>
-            </div>
-            <ScrollArea className="h-[65vh]">
-              <div className="space-y-4 py-4">
-                <p className="text-sm text-muted-foreground">
-                  The W-9 (Request for Taxpayer Identification Number and Certification) form was signed by the vendor to provide their TIN for tax reporting purposes.
-                </p>
-
-                <div className="bg-muted/30 p-4 rounded-lg space-y-4">
-                  <div>
-                    <p className="text-xs text-muted-foreground">Vendor Name</p>
-                    <p className="font-medium">{vendorName}</p>
-                  </div>
-
-                  {companyName && (
-                    <div>
-                      <p className="text-xs text-muted-foreground">Business Name</p>
-                      <p className="font-medium">{companyName}</p>
-                    </div>
-                  )}
-
-                  {vendorAddress && (
-                    <div>
-                      <p className="text-xs text-muted-foreground">Address</p>
-                      <p className="font-medium">{vendorAddress}</p>
-                    </div>
-                  )}
-
-                  {taxId && (
-                    <div>
-                      <p className="text-xs text-muted-foreground">Tax ID (EIN/SSN)</p>
-                      <p className="font-medium font-mono">
-                        {taxId.length > 4
-                          ? taxId.slice(0, -4).replace(/./g, "•") + taxId.slice(-4)
-                          : taxId}
-                      </p>
-                    </div>
-                  )}
-
-                  {federalTaxClassification && (
-                    <div>
-                      <p className="text-xs text-muted-foreground">Federal Tax Classification</p>
-                      <p className="font-medium capitalize">{federalTaxClassification.replace(/_/g, " ")}</p>
-                    </div>
-                  )}
-
-                  <div className="border-t pt-4">
-                    <p className="text-xs text-muted-foreground mb-2">Signature</p>
-                    {w9Signature?.startsWith("data:image") ? (
-                      <img src={w9Signature} alt="W-9 Signature" className="max-h-16 object-contain" />
-                    ) : (
-                      <p className="font-signature text-xl italic">{w9Signature}</p>
-                    )}
-                    {w9SignedAt && (
-                      <p className="text-xs text-muted-foreground mt-2">
-                        Signed on {format(new Date(w9SignedAt), "MMMM dd, yyyy 'at' h:mm a")}
-                      </p>
-                    )}
-                  </div>
-                </div>
-              </div>
-            </ScrollArea>
-          </div>
+          <W9FormPreview w9Form={w9FormData} />
         </DialogContent>
       </Dialog>
     </>
