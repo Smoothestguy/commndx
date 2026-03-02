@@ -730,8 +730,8 @@ export default function VendorDetail() {
                 accountType={vendor.bank_account_type}
                 routingNumber={vendor.bank_routing_number}
                 accountNumber={vendor.bank_account_number}
-                signature={null}
-                signedAt={null}
+                signature={vendor.vendor_agreement_signature}
+                signedAt={vendor.vendor_agreement_signed_at}
               />
 
               {/* Agreement Signatures with View/Download */}
