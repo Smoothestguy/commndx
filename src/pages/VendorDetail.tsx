@@ -1,6 +1,8 @@
 import { useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { SendVendorOnboardingDialog } from "@/components/vendors/SendVendorOnboardingDialog";
+import { DirectDepositView } from "@/components/personnel/DirectDepositView";
+import { VendorAgreementSignatureView } from "@/components/vendors/VendorAgreementSignatureView";
 import { PageLayout } from "@/components/layout/PageLayout";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -715,59 +717,35 @@ export default function VendorDetail() {
           </TabsContent>
           <TabsContent value="banking" className="mt-6">
             <div className="space-y-6">
-              {/* Banking Details */}
-              <Card>
-                <CardHeader>
-                  <CardTitle className="flex items-center gap-2 text-lg">
-                    <CreditCard className="h-5 w-5" />
-                    Banking Details
-                  </CardTitle>
-                </CardHeader>
-                <CardContent className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
-                  <div>
-                    <p className="text-sm text-muted-foreground">Bank Name</p>
-                    <p className="font-medium">{vendor.bank_name || "N/A"}</p>
-                  </div>
-                  <div>
-                    <p className="text-sm text-muted-foreground">Account Type</p>
-                    <p className="font-medium capitalize">{vendor.bank_account_type || "N/A"}</p>
-                  </div>
-                  <div>
-                    <p className="text-sm text-muted-foreground">Routing Number</p>
-                    <div className="flex items-center gap-2">
-                      <p className="font-medium font-mono">
-                        {vendor.bank_routing_number
-                          ? revealedFields.routing
-                            ? vendor.bank_routing_number
-                            : "•••••" + vendor.bank_routing_number.slice(-4)
-                          : "N/A"}
-                      </p>
-                      {vendor.bank_routing_number && (
-                        <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => toggleReveal("routing")}>
-                          {revealedFields.routing ? <EyeOff className="h-3.5 w-3.5" /> : <Eye className="h-3.5 w-3.5" />}
-                        </Button>
-                      )}
-                    </div>
-                  </div>
-                  <div>
-                    <p className="text-sm text-muted-foreground">Account Number</p>
-                    <div className="flex items-center gap-2">
-                      <p className="font-medium font-mono">
-                        {vendor.bank_account_number
-                          ? revealedFields.account
-                            ? vendor.bank_account_number
-                            : "•••••" + vendor.bank_account_number.slice(-4)
-                          : "N/A"}
-                      </p>
-                      {vendor.bank_account_number && (
-                        <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => toggleReveal("account")}>
-                          {revealedFields.account ? <EyeOff className="h-3.5 w-3.5" /> : <Eye className="h-3.5 w-3.5" />}
-                        </Button>
-                      )}
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
+              {/* Direct Deposit / Banking Details */}
+              <DirectDepositView
+                name={vendor.name}
+                address={vendor.address}
+                city={vendor.city}
+                state={vendor.state}
+                zip={vendor.zip}
+                phone={vendor.phone}
+                email={vendor.email}
+                bankName={vendor.bank_name}
+                accountType={vendor.bank_account_type}
+                routingNumber={vendor.bank_routing_number}
+                accountNumber={vendor.bank_account_number}
+                signature={null}
+                signedAt={null}
+              />
+
+              {/* Agreement Signatures with View/Download */}
+              <VendorAgreementSignatureView
+                vendorName={vendor.name}
+                companyName={vendor.company}
+                vendorAddress={formattedAddress}
+                vendorAgreementSignature={vendor.vendor_agreement_signature}
+                vendorAgreementSignedAt={vendor.vendor_agreement_signed_at}
+                w9Signature={vendor.w9_signature}
+                w9SignedAt={vendor.w9_signed_at}
+                taxId={vendor.tax_id}
+                federalTaxClassification={(vendor as any).federal_tax_classification}
+              />
 
               {/* Work Authorization */}
               {(vendor.citizenship_status || vendor.immigration_status || vendor.itin) && (
@@ -809,40 +787,6 @@ export default function VendorDetail() {
                   </CardContent>
                 </Card>
               )}
-
-              {/* Signatures */}
-              <Card>
-                <CardHeader>
-                  <CardTitle className="flex items-center gap-2 text-lg">
-                    <FileText className="h-5 w-5" />
-                    Signatures
-                  </CardTitle>
-                </CardHeader>
-                <CardContent className="grid gap-6 md:grid-cols-2">
-                  <div>
-                    <p className="text-sm text-muted-foreground">W-9 Signature</p>
-                    <p className="font-medium">
-                      {vendor.w9_signed_at
-                        ? `Signed ${format(new Date(vendor.w9_signed_at), "MMM d, yyyy")}`
-                        : "Not signed"}
-                    </p>
-                    {vendor.w9_signature && (
-                      <img src={vendor.w9_signature} alt="W-9 Signature" className="mt-2 max-h-20 border rounded p-1" />
-                    )}
-                  </div>
-                  <div>
-                    <p className="text-sm text-muted-foreground">Vendor Agreement</p>
-                    <p className="font-medium">
-                      {vendor.vendor_agreement_signed_at
-                        ? `Signed ${format(new Date(vendor.vendor_agreement_signed_at), "MMM d, yyyy")}`
-                        : "Not signed"}
-                    </p>
-                    {vendor.vendor_agreement_signature && (
-                      <img src={vendor.vendor_agreement_signature} alt="Vendor Agreement Signature" className="mt-2 max-h-20 border rounded p-1" />
-                    )}
-                  </div>
-                </CardContent>
-              </Card>
             </div>
           </TabsContent>
           <TabsContent value="documents" className="mt-6">
