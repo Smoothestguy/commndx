@@ -17,6 +17,7 @@ export type DocumentType =
   | 'work_permit' 
   | 'green_card_front' 
   | 'green_card_back' 
+  | 'itin_letter'
   | 'other';
 
 export interface RegistrationDocument {

@@ -232,6 +232,16 @@ export const VendorWorkAuthorizationForm = ({
                 </p>
               </div>
               <CategoryDocumentUpload
+                documentType="itin_letter"
+                label="IRS ITIN Assignment Letter (CP565/CP567) *"
+                helperText="Upload your official IRS ITIN assignment letter"
+                required
+                existingDocument={getExistingDoc("itin_letter")}
+                onUpload={handleDocUpload}
+                onRemove={() => handleDocRemove("itin_letter")}
+                sessionId={sessionId}
+              />
+              <CategoryDocumentUpload
                 documentType="other"
                 label="Work Authorization Document *"
                 helperText="Upload any work authorization document"
