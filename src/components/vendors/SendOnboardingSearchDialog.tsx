@@ -121,6 +121,7 @@ export function SendOnboardingSearchDialog({
           vendorId={selectedVendor.id}
           vendorName={selectedVendor.name}
           vendorEmail={selectedVendor.email}
+          vendorPhone={selectedVendor.phone || ""}
         />
       )}
     </>

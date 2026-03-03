@@ -820,6 +820,7 @@ export default function VendorDetail() {
           vendorId={vendor.id}
           vendorName={vendor.name}
           vendorEmail={vendor.email}
+          vendorPhone={vendor.phone || ""}
         />
       </div>
     </PageLayout>

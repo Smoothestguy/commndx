@@ -1202,6 +1202,7 @@ const Vendors = () => {
             vendorId={onboardingVendor.id}
             vendorName={onboardingVendor.name}
             vendorEmail={onboardingVendor.email}
+            vendorPhone={onboardingVendor.phone || ""}
           />
         )}
 
