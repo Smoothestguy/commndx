@@ -1,27 +1,23 @@
 
 
-## Plan: Add Email/SMS delivery option to Vendor Onboarding Dialog
+## Add IRS ITIN Assignment Letter Upload Requirement
 
 ### Problem
-The `SendVendorOnboardingDialog` (used from vendor detail page, vendor list row actions, and the search dialog) only sends via email. The `SendOnboardingInviteDialog` (used from "Add Vendor" flow) already has email/SMS radio buttons. These should match.
+When a vendor selects "Other" immigration status and enters an ITIN, they are not currently required to upload their IRS ITIN Assignment Letter (CP565/CP567). This letter is the official proof that the IRS issued the ITIN and should be a mandatory upload alongside the ITIN number.
 
 ### Fix
-Update `SendVendorOnboardingDialog` to add a delivery method picker (email or SMS), similar to the existing pattern in `SendOnboardingInviteDialog`. The dialog will also need the vendor's phone number passed in.
+Add a dedicated `CategoryDocumentUpload` field for the IRS ITIN Assignment Letter in the "Other" immigration status section, between the ITIN input and the existing work authorization document upload.
 
-### Files to Change
+### File to Change
 
 | File | Change |
 |------|--------|
-| `src/components/vendors/SendVendorOnboardingDialog.tsx` | Add `vendorPhone` prop, delivery method radio group (email/SMS), phone input field when SMS selected, and call the appropriate hook |
-| `src/pages/Vendors.tsx` | Pass `vendorPhone` to `SendVendorOnboardingDialog` |
-| `src/pages/VendorDetail.tsx` | Pass `vendorPhone` to `SendVendorOnboardingDialog` |
-| `src/components/vendors/SendOnboardingSearchDialog.tsx` | Pass `vendorPhone` to `SendVendorOnboardingDialog` |
+| `src/components/vendors/onboarding/VendorWorkAuthorizationForm.tsx` | Add a `CategoryDocumentUpload` with `documentType="itin_letter"`, label "IRS ITIN Assignment Letter (CP565/CP567) *" after the ITIN input field (around line 233) |
 
-### Details
-- Import `useSendVendorOnboardingSMS` alongside the existing email hook
-- Add `RadioGroup` with Email/SMS options styled identically to `SendOnboardingInviteDialog`
-- When SMS is selected, show a phone input pre-filled with `vendorPhone`
-- When Email is selected, show the existing email input
-- On submit, call `sendEmail` or `sendSMS` based on selection
-- All callers already have access to vendor phone data, just need to pass it through
+### Result
+The "Other" immigration status section will require:
+1. ITIN number (already exists)
+2. **IRS ITIN Assignment Letter** (new)
+3. Work Authorization Document (already exists)
+4. Government-Issued Photo ID (already exists)
 
