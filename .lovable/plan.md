@@ -1,26 +1,27 @@
 
 
-## Problem
+## Plan: Add Email/SMS delivery option to Vendor Onboarding Dialog
 
-Yicel (a US citizen vendor) has no documents on her vendor profile because the vendor onboarding form **does not ask US citizens to upload any documents** (like a government ID). In contrast, the personnel onboarding form requires a Government ID upload for **all** personnel regardless of citizenship status.
+### Problem
+The `SendVendorOnboardingDialog` (used from vendor detail page, vendor list row actions, and the search dialog) only sends via email. The `SendOnboardingInviteDialog` (used from "Add Vendor" flow) already has email/SMS radio buttons. These should match.
 
-Currently, the vendor onboarding Work Authorization step only shows document upload fields for non-US citizens (visa, work permit, green card holders). US citizens only enter their TIN/SSN — no ID documents are collected.
-
-## Fix
-
-Add a **Government-Issued Photo ID** upload field to the vendor onboarding Work Authorization form for **US citizens**, matching the personnel onboarding flow.
+### Fix
+Update `SendVendorOnboardingDialog` to add a delivery method picker (email or SMS), similar to the existing pattern in `SendOnboardingInviteDialog`. The dialog will also need the vendor's phone number passed in.
 
 ### Files to Change
 
 | File | Change |
 |------|--------|
-| `src/components/vendors/onboarding/VendorWorkAuthorizationForm.tsx` | Add a `CategoryDocumentUpload` for `government_id` inside the `us_citizen` section, after the TIN input |
+| `src/components/vendors/SendVendorOnboardingDialog.tsx` | Add `vendorPhone` prop, delivery method radio group (email/SMS), phone input field when SMS selected, and call the appropriate hook |
+| `src/pages/Vendors.tsx` | Pass `vendorPhone` to `SendVendorOnboardingDialog` |
+| `src/pages/VendorDetail.tsx` | Pass `vendorPhone` to `SendVendorOnboardingDialog` |
+| `src/components/vendors/SendOnboardingSearchDialog.tsx` | Pass `vendorPhone` to `SendVendorOnboardingDialog` |
 
 ### Details
-- Add `CategoryDocumentUpload` with `documentType="government_id"` and label "Government-Issued Photo ID *" below the TIN input for US citizens
-- This matches the personnel onboarding pattern where all personnel upload a government ID regardless of citizenship
-- Documents uploaded will flow through the existing `handleDocUpload` → `formData.documents` → `complete_vendor_onboarding` → `vendor_documents` table pipeline
-
-### Note
-This fix only affects **future** onboardings. To add Yicel's documents now, you can use the "Upload Document" form on her Documents tab to manually upload her ID and any other documents.
+- Import `useSendVendorOnboardingSMS` alongside the existing email hook
+- Add `RadioGroup` with Email/SMS options styled identically to `SendOnboardingInviteDialog`
+- When SMS is selected, show a phone input pre-filled with `vendorPhone`
+- When Email is selected, show the existing email input
+- On submit, call `sendEmail` or `sendSMS` based on selection
+- All callers already have access to vendor phone data, just need to pass it through
 
