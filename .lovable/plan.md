@@ -1,23 +1,32 @@
+## Plan: Dump all portal code in chat
 
+You asked for every portal file (pages + components + hooks + edge functions) pasted inline. That is **~55 files / ~15,000+ lines**, which will not fit in a single response. I'll deliver it across multiple sequential messages (no code changes — read-only dump).
 
-## Add IRS ITIN Assignment Letter Upload Requirement
+### Files I'll paste (grouped by batch)
 
-### Problem
-When a vendor selects "Other" immigration status and enters an ITIN, they are not currently required to upload their IRS ITIN Assignment Letter (CP565/CP567). This letter is the official proof that the IRS issued the ITIN and should be a mandatory upload alongside the ITIN number.
+**Batch 1 — Personnel Portal pages (13 files)**
+`src/pages/portal/`: AcceptPortalInvitation, PortalLogin, PortalDashboard, PortalProjects, PortalProjectDetail, PortalTimeClock, PortalHours, PortalAssets, PortalDocuments, PortalReimbursements, PortalTaxForms, PortalNotifications, PortalSettings
 
-### Fix
-Add a dedicated `CategoryDocumentUpload` field for the IRS ITIN Assignment Letter in the "Other" immigration status section, between the ITIN input and the existing work authorization document upload.
+**Batch 2 — Personnel Portal components (12 files)**
+`src/components/portal/`: PortalLayout, PortalProtectedRoute, PhotoUploadRequired, ClockInModal, ClockStatusCard, ClockHistoryTable, InlineClockControls, ProjectClockCard, ProjectWeeklyPayHistory, LocationPermissionDialog, PortalAssetCard, ReceiptUpload
 
-### File to Change
+**Batch 3 — Vendor Portal (11 files)**
+Pages: AcceptVendorInvitation, VendorLogin, VendorDashboard, VendorPOsList, VendorPODetail, VendorBillsList, VendorBillDetail, VendorNewBill, VendorSettings
+Components: VendorPortalLayout, VendorProtectedRoute
 
-| File | Change |
-|------|--------|
-| `src/components/vendors/onboarding/VendorWorkAuthorizationForm.tsx` | Add a `CategoryDocumentUpload` with `documentType="itin_letter"`, label "IRS ITIN Assignment Letter (CP565/CP567) *" after the ITIN input field (around line 233) |
+**Batch 4 — Subcontractor Portal (13 files)**
+Pages: SubcontractorLogin, SubcontractorDashboard, SubcontractorPOList, SubcontractorPODetail, SubcontractorBillsList, SubcontractorBillDetail, SubcontractorNewBill, SubcontractorCompletions, SubcontractorCompletionDetail, SubcontractorCompletionHistory
+Components: SubcontractorPortalLayout, SubcontractorProtectedRoute, POBackChargesDisplay
 
-### Result
-The "Other" immigration status section will require:
-1. ITIN number (already exists)
-2. **IRS ITIN Assignment Letter** (new)
-3. Work Authorization Document (already exists)
-4. Government-Issued Photo ID (already exists)
+**Batch 5 — Portal hooks (6 files)**
+`src/integrations/supabase/hooks/`: usePortal.ts, usePortalAssets.ts, useVendorPortal.ts, useSubcontractorPortal.ts, useTimeClock.ts, useVendorOnboarding.ts
 
+**Batch 6 — Edge functions (5 files)**
+`supabase/functions/`: accept-portal-invitation, accept-vendor-invitation, send-portal-invitation, send-vendor-portal-invitation, notify-invitation-accepted
+
+### Notes
+- I'll paste each file with its full path as a header and a fenced code block.
+- No edits — read-only export.
+- If you'd rather have it as a **single downloadable markdown file** in the project (e.g., `docs/portal-code-dump.md`), say so and I'll switch — that's far more practical than 6 long chat messages.
+
+Approve to start with Batch 1, or tell me to switch to the single-file export instead.
