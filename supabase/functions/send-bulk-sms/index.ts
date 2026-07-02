@@ -156,6 +156,64 @@ Deno.serve(async (req) => {
         continue;
       }
 
+      // Also thread this into the user↔personnel conversation so it shows in message history
+      try {
+        // Find existing conversation between this user and this personnel
+        const { data: existingConv } = await supabaseClient
+          .from("conversations")
+          .select("id")
+          .or(
+            `and(participant_1_type.eq.user,participant_1_id.eq.${user.id},participant_2_type.eq.personnel,participant_2_id.eq.${person.id}),` +
+            `and(participant_1_type.eq.personnel,participant_1_id.eq.${person.id},participant_2_type.eq.user,participant_2_id.eq.${user.id})`
+          )
+          .maybeSingle();
+
+        let conversationId = existingConv?.id as string | undefined;
+
+        if (!conversationId) {
+          const { data: newConv, error: convErr } = await supabaseClient
+            .from("conversations")
+            .insert({
+              participant_1_type: "user",
+              participant_1_id: user.id,
+              participant_2_type: "personnel",
+              participant_2_id: person.id,
+            })
+            .select("id")
+            .single();
+
+          if (convErr) throw convErr;
+          conversationId = newConv.id;
+
+          // Seed participants
+          await supabaseClient.from("conversation_participants").insert([
+            { conversation_id: conversationId, participant_type: "user", participant_id: user.id },
+            { conversation_id: conversationId, participant_type: "personnel", participant_id: person.id },
+          ]);
+        }
+
+        await supabaseClient.from("conversation_messages").insert({
+          conversation_id: conversationId,
+          sender_type: "user",
+          sender_id: user.id,
+          content,
+          message_type: "sms",
+          status: "sent",
+          delivered_at: new Date().toISOString(),
+          metadata: {
+            is_blast: true,
+            bulk_batch_id: batchId,
+            project_id: projectId || null,
+            project_name: projectName || null,
+            recipient_count: recipientIds.length,
+          },
+        });
+      } catch (threadErr) {
+        console.error("Failed to thread blast into conversation:", threadErr);
+        // Non-fatal — SMS record already created above
+      }
+
+
       // Send via Twilio if configured
       if (hasTwilioConfig) {
         try {
