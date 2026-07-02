@@ -130,7 +130,7 @@ export function useConversations() {
     if (!user) return;
 
     const channel = supabase
-      .channel("conversations-changes")
+      .channel(`conversations-changes-${user.id}-${Math.random().toString(36).slice(2)}`)
       .on(
         "postgres_changes",
         {
