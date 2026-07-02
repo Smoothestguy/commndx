@@ -810,6 +810,15 @@ export default function StaffingApplications() {
         application={selectedApp}
       />
 
+      {/* Invite Nearby Applicants Dialog */}
+      {invitePosting && (
+        <InviteNearbyApplicantsDialog
+          open={!!invitePosting}
+          onOpenChange={(open) => !open && setInvitePosting(null)}
+          posting={invitePosting}
+        />
+      )}
+
       {/* Edit Job Posting Dialog */}
       <Dialog open={showEditPostingDialog} onOpenChange={setShowEditPostingDialog}>
         <DialogContent>
