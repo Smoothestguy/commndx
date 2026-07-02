@@ -196,8 +196,9 @@ export function RowBasedDashboard() {
     return () => {
       pageHeaderActions.setRightActions(null);
     };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [
-    pageHeaderActions,
+    pageHeaderActions?.setRightActions,
     canCustomize,
     isEditMode,
     hasCustomConfig,
