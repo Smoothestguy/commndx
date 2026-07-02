@@ -368,48 +368,38 @@ export const useSubmitApplication = () => {
       console.log("[Application] Starting submission for posting:", posting_id);
       console.log("[Application] Applicant data:", applicantData);
       
-      // First, check if applicant exists
-      console.log("[Application] Checking for existing applicant by email:", applicantData.email);
-      const { data: existingApplicant, error: fetchError } = await supabase
-        .from("applicants")
-        .select("id")
-        .eq("email", applicantData.email)
-        .maybeSingle();
+      // Look up existing applicant by email via SECURITY DEFINER RPC.
+      // Anon users have no direct SELECT on applicants, so a normal query would
+      // always return null and cause a unique-email conflict on insert below.
+      console.log("[Application] Looking up existing applicant by email via RPC:", applicantData.email);
+      const { data: existingApplicantId, error: fetchError } = await supabase
+        .rpc("find_applicant_id_by_email", { _email: applicantData.email });
 
       if (fetchError) {
         console.error("[Application] Error checking existing applicant:", fetchError);
         throw fetchError;
       }
-      console.log("[Application] Existing applicant result:", existingApplicant);
-
-      // Allow repeat applications - existing personnel/applicants can apply to new positions
-      // or re-apply to the same position (creates a new application each time)
-      console.log("[Application] Allowing application regardless of existing applications");
+      console.log("[Application] Existing applicant id:", existingApplicantId);
 
       let applicantId: string;
 
-      if (existingApplicant) {
-        // Use existing applicant ID - don't attempt to update (would fail RLS for public users)
-        // Applicant info updates can happen during admin review if needed
-        applicantId = existingApplicant.id;
+      if (existingApplicantId) {
+        applicantId = existingApplicantId as string;
         console.log("[Application] Using existing applicant:", applicantId);
-        
-        // Check if this applicant has an ACTIVE (non-rejected) application for this job posting
-        // Allow re-application if previous application was rejected/removed
-        const { data: existingApplication, error: checkError } = await supabase
-          .from("applications")
-          .select("id")
-          .eq("applicant_id", applicantId)
-          .eq("job_posting_id", posting_id)
-          .neq("status", "rejected")
-          .maybeSingle();
-        
+
+        // Check active (non-rejected) application via SECURITY DEFINER RPC.
+        const { data: hasActive, error: checkError } = await supabase
+          .rpc("has_active_application_for_posting", {
+            _applicant_id: applicantId,
+            _job_posting_id: posting_id,
+          });
+
         if (checkError) {
           console.error("[Application] Error checking existing application:", checkError);
           throw checkError;
         }
-        
-        if (existingApplication) {
+
+        if (hasActive) {
           console.log("[Application] Duplicate application detected for same job posting");
           throw new Error("DUPLICATE_APPLICATION");
         }
