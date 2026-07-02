@@ -43,9 +43,9 @@ export function useSessionTracking(externalHasAccess?: boolean, externalAccessCh
   const clockedInAtRef = useRef<number | null>(null);
   const lastActivityTimeRef = useRef<number>(Date.now());
   const isIdleRef = useRef(false);
-  const idleTimeoutRef = useRef<NodeJS.Timeout | null>(null);
-  const syncIntervalRef = useRef<NodeJS.Timeout | null>(null);
-  const displayIntervalRef = useRef<NodeJS.Timeout | null>(null);
+  const idleTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const syncIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const displayIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const idleStartTimeRef = useRef<number | null>(null);
   const idleCorrectionVersionRef = useRef<number>(0);
   

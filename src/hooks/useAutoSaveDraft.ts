@@ -48,7 +48,7 @@ export function useAutoSaveDraft({
   const [isSaving, setIsSaving] = useState(false);
   const [lastSaved, setLastSaved] = useState<Date | null>(null);
   const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
-  const timeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const timeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const initialDataRef = useRef<string>("");
   const queryClient = useQueryClient();
   const navigate = useNavigate();
