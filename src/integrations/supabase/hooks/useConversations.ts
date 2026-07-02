@@ -453,7 +453,7 @@ export function useTotalUnreadCount() {
     if (!user) return;
     
     const channel = supabase
-      .channel('unread-count-realtime')
+      .channel(`unread-count-realtime-${user.id}-${Math.random().toString(36).slice(2)}`)
       .on('postgres_changes', {
         event: '*',
         schema: 'public',
