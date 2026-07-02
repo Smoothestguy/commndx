@@ -8532,6 +8532,16 @@ export type Database = {
       }
       show_limit: { Args: never; Returns: number }
       show_trgm: { Args: { "": string }; Returns: string[] }
+      update_applicant_geo: {
+        Args: {
+          _applicant_id: string
+          _geocode_source?: string
+          _is_geocodable: boolean
+          _lat: number
+          _lng: number
+        }
+        Returns: undefined
+      }
     }
     Enums: {
       activity_priority: "low" | "medium" | "high" | "urgent"
