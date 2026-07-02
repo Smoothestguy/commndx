@@ -207,6 +207,58 @@ export default function PublicApplicationForm() {
     },
   });
 
+  // ---------------------------------------------------------------------------
+  // Auto-save partial applicant info (name + phone + email) so we never lose a
+  // lead if the user abandons or hits an error before submitting.
+  // Uses a per-browser session id stored in sessionStorage and upserts via the
+  // save_application_attempt RPC (anon-safe, cannot read anyone else's data).
+  // ---------------------------------------------------------------------------
+  const watchedFirst = form.watch("first_name");
+  const watchedLast = form.watch("last_name");
+  const watchedPhone = form.watch("phone");
+  const watchedEmail = form.watch("email");
+
+  useEffect(() => {
+    if (!posting?.id || submitted) return;
+
+    // Require at least a name-start OR a partial phone/email to be worth saving
+    const hasSomething =
+      (watchedFirst && watchedFirst.trim().length >= 2) ||
+      (watchedLast && watchedLast.trim().length >= 2) ||
+      (watchedPhone && watchedPhone.replace(/\D/g, "").length >= 3) ||
+      (watchedEmail && watchedEmail.includes("@"));
+    if (!hasSomething) return;
+
+    // Stable per-session id (per posting) so repeated edits update one row.
+    const storageKey = `application_attempt_session:${posting.id}`;
+    let sessionId = sessionStorage.getItem(storageKey);
+    if (!sessionId) {
+      sessionId =
+        (crypto as any)?.randomUUID?.() ??
+        `sess_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 10)}`;
+      sessionStorage.setItem(storageKey, sessionId);
+    }
+
+    const timeout = setTimeout(() => {
+      supabase
+        .rpc("save_application_attempt" as any, {
+          _session_id: sessionId,
+          _job_posting_id: posting.id,
+          _first_name: watchedFirst || null,
+          _last_name: watchedLast || null,
+          _phone: watchedPhone || null,
+          _email: watchedEmail || null,
+          _user_agent: navigator.userAgent.slice(0, 300),
+        })
+        .then(({ error }) => {
+          if (error) console.warn("[Attempt] auto-save failed (non-fatal)", error);
+        });
+    }, 800);
+
+    return () => clearTimeout(timeout);
+  }, [posting?.id, submitted, watchedFirst, watchedLast, watchedPhone, watchedEmail]);
+
+
   // Helper to check if answer is compatible with field options
   const isAnswerCompatible = (answer: any, field: FormFieldType): boolean => {
     if (field.type === "radio" || field.type === "dropdown") {
