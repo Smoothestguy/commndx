@@ -162,7 +162,7 @@ export function useAddReimbursement() {
     mutationFn: async (reimbursement: Omit<Reimbursement, "id" | "created_at" | "updated_at" | "submitted_at" | "reviewed_by" | "reviewed_at" | "paid_at">) => {
       const { data, error } = await supabase
         .from("reimbursements")
-        .insert(reimbursement)
+        .insert(reimbursement as never)
         .select()
         .single();
       
@@ -466,7 +466,7 @@ export function useUpdateReimbursementStatus() {
       
       const { error } = await supabase
         .from("reimbursements")
-        .update(updateData)
+        .update(updateData as never)
         .eq("id", id);
       
       if (error) throw error;

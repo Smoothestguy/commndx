@@ -219,7 +219,7 @@ export function useUpdateRoom() {
     mutationFn: async ({ id, ...updates }: Partial<ProjectRoom> & { id: string }) => {
       const { data, error } = await supabase
         .from('project_rooms')
-        .update(updates)
+        .update(updates as never)
         .eq('id', id)
         .select()
         .single();
