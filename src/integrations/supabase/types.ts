@@ -8388,6 +8388,39 @@ export type Database = {
         }
         Returns: Json
       }
+      create_applicant_return_id: {
+        Args: {
+          _address?: string
+          _city?: string
+          _email: string
+          _first_name: string
+          _home_zip?: string
+          _last_name: string
+          _phone?: string
+          _photo_url?: string
+          _state?: string
+        }
+        Returns: string
+      }
+      create_application_return_id: {
+        Args: {
+          _answers?: Json
+          _applicant_id: string
+          _client_submitted_at?: string
+          _geo_accuracy?: number
+          _geo_captured_at?: string
+          _geo_error?: string
+          _geo_lat?: number
+          _geo_lng?: number
+          _geo_source?: string
+          _job_posting_id: string
+          _sms_consent?: boolean
+          _sms_consent_phone?: string
+          _sms_consent_text_version?: string
+          _user_agent?: string
+        }
+        Returns: string
+      }
       create_personnel_vendor: {
         Args: { p_personnel_id: string }
         Returns: string
