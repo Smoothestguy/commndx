@@ -449,35 +449,35 @@ export const useSubmitApplication = () => {
       console.log("[Application] Creating application record for applicant:", applicantId);
       console.log("[Application] Geo data:", geo);
       
-      const { data: application, error: appError } = await supabase
-        .from("applications")
-        .insert({
-          job_posting_id: posting_id,
-          applicant_id: applicantId,
-          answers: processedAnswers,
-          status: 'submitted' as const,
-          submitted_at: new Date().toISOString(),
-          client_submitted_at: clientSubmittedAt || null,
-          geo_lat: geo?.lat || null,
-          geo_lng: geo?.lng || null,
-          geo_accuracy: geo?.accuracy || null,
-          geo_source: geo?.source || null,
-          geo_captured_at: geo?.capturedAt || null,
-          geo_error: geo?.error || null,
-          user_agent: userAgent || null,
-          sms_consent: smsConsent || false,
-          sms_consent_phone: smsConsent ? smsConsentPhone : null,
-          sms_consent_at: smsConsent ? new Date().toISOString() : null,
-          sms_consent_method: smsConsent ? 'web_form' : null,
-          sms_consent_text_version: smsConsent ? (smsConsentTextVersion || 'v1.0') : null,
-        } as any)
-        .select()
-        .single();
+      // Create the application via SECURITY DEFINER RPC — anon has no SELECT
+      // on `applications`, so a direct .insert().select() fails with an RLS
+      // error when PostgREST tries to return the inserted row.
+      console.log("[Application] Creating application record for applicant:", applicantId);
+      console.log("[Application] Geo data:", geo);
+
+      const { data: newApplicationId, error: appError } = await supabase
+        .rpc("create_application_return_id", {
+          _job_posting_id: posting_id,
+          _applicant_id: applicantId,
+          _answers: processedAnswers as any,
+          _client_submitted_at: clientSubmittedAt || null,
+          _geo_lat: geo?.lat ?? null,
+          _geo_lng: geo?.lng ?? null,
+          _geo_accuracy: geo?.accuracy ?? null,
+          _geo_source: geo?.source ?? null,
+          _geo_captured_at: geo?.capturedAt ?? null,
+          _geo_error: geo?.error ?? null,
+          _user_agent: userAgent ?? null,
+          _sms_consent: !!smsConsent,
+          _sms_consent_phone: smsConsent ? (smsConsentPhone ?? null) : null,
+          _sms_consent_text_version: smsConsent ? (smsConsentTextVersion ?? 'v1.0') : null,
+        });
 
       if (appError) {
         console.error("[Application] Error creating application:", appError);
         throw appError;
       }
+      const application = { id: newApplicationId as string };
       console.log("[Application] Application created successfully:", application.id);
 
       // Send SMS confirmation if consent was given
