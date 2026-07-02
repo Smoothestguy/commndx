@@ -15,7 +15,9 @@ import {
   Check,
   MapPin,
   ChevronDown,
+  Send,
 } from "lucide-react";
+import { InviteNearbyApplicantsDialog } from "@/components/staffing/InviteNearbyApplicantsDialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -131,6 +133,9 @@ export default function StaffingApplications() {
   // Reverse approval dialog state
   const [appToReverse, setAppToReverse] = useState<Application | null>(null);
   const [showReverseDialog, setShowReverseDialog] = useState(false);
+
+  // Invite nearby applicants dialog state
+  const [invitePosting, setInvitePosting] = useState<any | null>(null);
   
   // New task order form state
   const [newTaskOrder, setNewTaskOrder] = useState({
@@ -517,6 +522,17 @@ export default function StaffingApplications() {
                         variant="outline"
                         size="sm"
                         className="h-9 px-2 text-xs sm:px-3 sm:text-sm"
+                        onClick={() => setInvitePosting(posting)}
+                        title="Invite nearby applicants"
+                      >
+                        <Send className="h-4 w-4 sm:mr-1" />
+                        <span className="hidden sm:inline">Invite Nearby</span>
+                        <span className="sm:hidden ml-1">Invite</span>
+                      </Button>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        className="h-9 px-2 text-xs sm:px-3 sm:text-sm"
                         onClick={() => copyApplicationLink(posting.public_token)}
                       >
                         <Copy className="h-4 w-4 sm:mr-1" />
@@ -793,6 +809,15 @@ export default function StaffingApplications() {
         onOpenChange={setShowDetailDialog}
         application={selectedApp}
       />
+
+      {/* Invite Nearby Applicants Dialog */}
+      {invitePosting && (
+        <InviteNearbyApplicantsDialog
+          open={!!invitePosting}
+          onOpenChange={(open) => !open && setInvitePosting(null)}
+          posting={invitePosting}
+        />
+      )}
 
       {/* Edit Job Posting Dialog */}
       <Dialog open={showEditPostingDialog} onOpenChange={setShowEditPostingDialog}>

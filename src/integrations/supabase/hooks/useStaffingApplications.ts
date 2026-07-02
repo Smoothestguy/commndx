@@ -154,7 +154,7 @@ export const useJobPostings = (taskOrderId?: string) => {
           *,
           project_task_orders (
             *,
-            projects:project_id (name)
+            projects:project_id (name, city, state, zip, site_lat, site_lng, address)
           )
         `)
         .order("created_at", { ascending: false });
