@@ -8346,6 +8346,7 @@ export type Database = {
         Returns: string
       }
       expire_old_invitations: { Args: never; Returns: undefined }
+      find_applicant_id_by_email: { Args: { _email: string }; Returns: string }
       find_duplicate_customers: {
         Args: { p_customer_id: string }
         Returns: {
@@ -8404,6 +8405,10 @@ export type Database = {
       generate_vendor_bill_number: { Args: never; Returns: string }
       get_personnel_id_for_user: { Args: { _user_id: string }; Returns: string }
       get_vendor_id_for_user: { Args: { _user_id: string }; Returns: string }
+      has_active_application_for_posting: {
+        Args: { _applicant_id: string; _job_posting_id: string }
+        Returns: boolean
+      }
       has_permission: {
         Args: { _action: string; _module: string; _user_id: string }
         Returns: boolean
