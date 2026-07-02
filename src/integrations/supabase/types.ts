@@ -1682,6 +1682,7 @@ export type Database = {
           failed_at: string | null
           id: string
           message_type: string | null
+          metadata: Json | null
           read_at: string | null
           retry_count: number | null
           sender_id: string
@@ -1698,6 +1699,7 @@ export type Database = {
           failed_at?: string | null
           id?: string
           message_type?: string | null
+          metadata?: Json | null
           read_at?: string | null
           retry_count?: number | null
           sender_id: string
@@ -1714,6 +1716,7 @@ export type Database = {
           failed_at?: string | null
           id?: string
           message_type?: string | null
+          metadata?: Json | null
           read_at?: string | null
           retry_count?: number | null
           sender_id?: string

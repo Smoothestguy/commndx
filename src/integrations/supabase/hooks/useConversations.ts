@@ -29,6 +29,14 @@ export interface ConversationMessage {
   read_at: string | null;
   delivered_at: string | null;
   created_at: string;
+  metadata?: {
+    is_blast?: boolean;
+    bulk_batch_id?: string;
+    project_id?: string | null;
+    project_name?: string | null;
+    recipient_count?: number;
+    [key: string]: unknown;
+  } | null;
   // Joined data
   sender_name?: string;
 }

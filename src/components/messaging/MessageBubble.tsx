@@ -45,6 +45,9 @@ interface MessageBubbleProps {
   isRetrying?: boolean;
   // Translation props
   defaultTranslationLanguage?: LanguageCode;
+  // Blast (broadcast) props
+  isBlast?: boolean;
+  blastRecipientCount?: number;
 }
 
 export function MessageBubble({
@@ -64,6 +67,8 @@ export function MessageBubble({
   onRetry,
   isRetrying,
   defaultTranslationLanguage = "en",
+  isBlast = false,
+  blastRecipientCount,
 }: MessageBubbleProps) {
   const [translatedText, setTranslatedText] = useState<string | null>(null);
   const [detectedLanguage, setDetectedLanguage] = useState<string | null>(null);
@@ -233,6 +238,22 @@ export function MessageBubble({
             "h-3 w-3",
             isFailed ? "text-destructive" : "text-muted-foreground"
           )} />
+        )}
+        {isBlast && (
+          <TooltipProvider>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <span className="text-[10px] font-medium uppercase tracking-wide text-muted-foreground/80 border border-muted-foreground/30 rounded px-1 leading-none py-0.5 cursor-help">
+                  Blast
+                </span>
+              </TooltipTrigger>
+              <TooltipContent side="top">
+                <p className="text-xs">
+                  Sent as a broadcast{blastRecipientCount ? ` to ${blastRecipientCount} recipients` : " to multiple recipients"}
+                </p>
+              </TooltipContent>
+            </Tooltip>
+          </TooltipProvider>
         )}
         {isOwnMessage && (
           <span className="text-muted-foreground">
