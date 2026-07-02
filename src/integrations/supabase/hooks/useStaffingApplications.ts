@@ -404,30 +404,30 @@ export const useSubmitApplication = () => {
           throw new Error("DUPLICATE_APPLICATION");
         }
       } else {
-        // Create new applicant
-        console.log("[Application] Creating new applicant");
-        const { data: newApplicant, error: insertError } = await supabase
-          .from("applicants")
-          .insert({
-            first_name: applicantData.first_name,
-            last_name: applicantData.last_name,
-            phone: applicantData.phone,
-            email: applicantData.email,
-            address: applicantData.address || null,
-            city: applicantData.city || null,
-            state: applicantData.state || null,
-            home_zip: applicantData.home_zip || null,
-            photo_url: applicantData.photo_url || null,
-            status: 'new' as const,
-          } as any)
-          .select("id")
-          .single();
+        // Create new applicant via SECURITY DEFINER RPC.
+        // Anon users have no SELECT on `applicants` (PII protection), so a
+        // direct .insert().select() from PostgREST fails with an RLS error
+        // when it tries to return the inserted row. The RPC bypasses that
+        // by inserting on the caller's behalf and returning just the id.
+        console.log("[Application] Creating new applicant via RPC");
+        const { data: newApplicantId, error: insertError } = await supabase
+          .rpc("create_applicant_return_id", {
+            _first_name: applicantData.first_name,
+            _last_name: applicantData.last_name,
+            _email: applicantData.email,
+            _phone: applicantData.phone ?? null,
+            _address: applicantData.address ?? null,
+            _city: applicantData.city ?? null,
+            _state: applicantData.state ?? null,
+            _home_zip: applicantData.home_zip ?? null,
+            _photo_url: applicantData.photo_url ?? null,
+          });
 
         if (insertError) {
           console.error("[Application] Error creating applicant:", insertError);
           throw insertError;
         }
-        applicantId = newApplicant.id;
+        applicantId = newApplicantId as string;
         console.log("[Application] New applicant created:", applicantId);
       }
 
