@@ -8388,6 +8388,20 @@ export type Database = {
         }
         Returns: Json
       }
+      create_applicant_return_id: {
+        Args: {
+          _address?: string
+          _city?: string
+          _email: string
+          _first_name: string
+          _home_zip?: string
+          _last_name: string
+          _phone?: string
+          _photo_url?: string
+          _state?: string
+        }
+        Returns: string
+      }
       create_personnel_vendor: {
         Args: { p_personnel_id: string }
         Returns: string
