@@ -5,6 +5,8 @@ import { SidebarInset } from "@/components/ui/sidebar";
 import { BackgroundMediaLayer } from "./BackgroundMediaLayer";
 import { DashboardDraftProvider } from "@/contexts/DashboardDraftContext";
 import { useBackgroundMedia } from "./useBackgroundMedia";
+import { NavBar } from "./NavBar";
+import { TabsBar } from "./TabsBar";
 import { cn } from "@/lib/utils";
 
 interface SidebarLayoutProps {
@@ -33,6 +35,8 @@ export function SidebarLayout({ children }: SidebarLayoutProps) {
             shouldShowBackground && "bg-transparent"
           )}
         >
+          <NavBar />
+          <TabsBar />
           {children ?? <Outlet />}
         </SidebarInset>
       </div>

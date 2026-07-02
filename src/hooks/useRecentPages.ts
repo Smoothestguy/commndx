@@ -11,7 +11,7 @@ const STORAGE_KEY = 'recentPages';
 const MAX_PAGES = 10;
 
 // Map paths to readable names
-const getPageName = (pathname: string): string => {
+export const getPageName = (pathname: string): string => {
   const pathMap: Record<string, string> = {
     '/': 'Dashboard',
     '/estimates': 'Estimates',
