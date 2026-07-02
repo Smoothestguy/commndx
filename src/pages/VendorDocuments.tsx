@@ -405,15 +405,15 @@ export default function VendorDocuments() {
                       <Button
                         variant="ghost"
                         size="icon"
-                        asChild
+                        onClick={async () => {
+                          const { getVendorDocumentSignedUrl } = await import(
+                            "@/integrations/supabase/hooks/useVendorDocuments"
+                          );
+                          const url = await getVendorDocumentSignedUrl(doc.document_url);
+                          if (url) window.open(url, "_blank", "noopener,noreferrer");
+                        }}
                       >
-                        <a
-                          href={doc.document_url}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                        >
-                          <Download className="h-4 w-4" />
-                        </a>
+                        <Download className="h-4 w-4" />
                       </Button>
                     </TableCell>
                   </TableRow>

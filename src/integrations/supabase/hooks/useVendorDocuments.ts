@@ -2,6 +2,27 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "../client";
 import { toast } from "sonner";
 
+/**
+ * Vendor documents live in a PRIVATE storage bucket. Rows store the object path
+ * in `document_url`. Legacy rows may still have full public URLs; extract the
+ * object path from them before signing.
+ */
+export const getVendorDocumentSignedUrl = async (
+  documentUrl: string | null | undefined,
+  expiresInSeconds = 3600
+): Promise<string | null> => {
+  if (!documentUrl) return null;
+  let path = documentUrl;
+  const marker = "/vendor-documents/";
+  const idx = documentUrl.indexOf(marker);
+  if (idx >= 0) path = documentUrl.slice(idx + marker.length);
+  const { data, error } = await supabase.storage
+    .from("vendor-documents")
+    .createSignedUrl(path, expiresInSeconds);
+  if (error) return null;
+  return data?.signedUrl ?? null;
+};
+
 export interface VendorDocument {
   id: string;
   vendor_id: string;
