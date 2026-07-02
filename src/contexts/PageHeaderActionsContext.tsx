@@ -1,4 +1,4 @@
-import { createContext, useContext, useState, ReactNode, useCallback } from "react";
+import { createContext, useContext, useState, ReactNode, useCallback, useMemo } from "react";
 
 interface PageHeaderActionsContextType {
   rightActions: ReactNode | null;
@@ -14,8 +14,13 @@ export function PageHeaderActionsProvider({ children }: { children: ReactNode })
     setRightActionsState(actions);
   }, []);
 
+  const value = useMemo(
+    () => ({ rightActions, setRightActions }),
+    [rightActions, setRightActions]
+  );
+
   return (
-    <PageHeaderActionsContext.Provider value={{ rightActions, setRightActions }}>
+    <PageHeaderActionsContext.Provider value={value}>
       {children}
     </PageHeaderActionsContext.Provider>
   );
