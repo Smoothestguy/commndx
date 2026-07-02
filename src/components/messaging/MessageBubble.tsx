@@ -45,6 +45,9 @@ interface MessageBubbleProps {
   isRetrying?: boolean;
   // Translation props
   defaultTranslationLanguage?: LanguageCode;
+  // Blast (broadcast) props
+  isBlast?: boolean;
+  blastRecipientCount?: number;
 }
 
 export function MessageBubble({
