@@ -239,6 +239,22 @@ export function MessageBubble({
             isFailed ? "text-destructive" : "text-muted-foreground"
           )} />
         )}
+        {isBlast && (
+          <TooltipProvider>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <span className="text-[10px] font-medium uppercase tracking-wide text-muted-foreground/80 border border-muted-foreground/30 rounded px-1 leading-none py-0.5 cursor-help">
+                  Blast
+                </span>
+              </TooltipTrigger>
+              <TooltipContent side="top">
+                <p className="text-xs">
+                  Sent as a broadcast{blastRecipientCount ? ` to ${blastRecipientCount} recipients` : " to multiple recipients"}
+                </p>
+              </TooltipContent>
+            </Tooltip>
+          </TooltipProvider>
+        )}
         {isOwnMessage && (
           <span className="text-muted-foreground">
             {renderStatusIcon()}
