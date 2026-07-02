@@ -128,7 +128,7 @@ export const useUpdateTaskOrder = () => {
     mutationFn: async ({ id, ...updates }: Partial<TaskOrder> & { id: string }) => {
       const { data, error } = await supabase
         .from("project_task_orders")
-        .update(updates)
+        .update(updates as never)
         .eq("id", id)
         .select()
         .single();
@@ -1048,7 +1048,7 @@ export const useUpdateApplicant = () => {
 
       const { data, error } = await supabase
         .from("applicants")
-        .update(updates)
+        .update(updates as never)
         .eq("id", id)
         .select()
         .single();
@@ -1090,7 +1090,7 @@ export const useUpdateApplication = () => {
 
       const { data, error } = await supabase
         .from("applications")
-        .update(updates)
+        .update(updates as never)
         .eq("id", id)
         .select()
         .single();

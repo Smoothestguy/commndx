@@ -100,7 +100,7 @@ export function useDashboardConfig() {
         // Update existing config
         const { error } = await supabase
           .from("dashboard_configurations")
-          .update(jsonUpdates)
+          .update(jsonUpdates as never)
           .eq("user_id", user.id);
 
         if (error) throw error;

@@ -127,7 +127,7 @@ export function useUpdateProjectGeofence() {
 
       const { error } = await supabase
         .from("projects")
-        .update(updates)
+        .update(updates as never)
         .eq("id", projectId);
 
       if (error) throw error;

@@ -376,7 +376,7 @@ export function VendorBillTable({ bills }: VendorBillTableProps) {
         if (hasBillUpdates) {
           const { error } = await supabase
             .from("vendor_bills")
-            .update(billUpdates)
+            .update(billUpdates as never)
             .eq("id", id);
           if (error) throw error;
         }
