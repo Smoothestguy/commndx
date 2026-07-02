@@ -235,7 +235,7 @@ const EditEstimate = () => {
   }, [selectedCustomerId, selectedProjectId, taxRate, validUntil, notes, status, lineItems]);
 
   // Autosave to localStorage (debounced) - must be after hasUnsavedChanges is defined
-  const autosaveTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const autosaveTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   
   useEffect(() => {
     if (!isInitialized || !id || !hasUnsavedChanges) return;

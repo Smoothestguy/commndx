@@ -58,9 +58,12 @@ const isElectron = () => {
   if (userAgent.includes("electron")) return true;
 
   // Check for Electron-specific properties
+  const browserWindow = window as Window & {
+    process?: { type?: string };
+  };
   if (
-    typeof window.process !== "undefined" &&
-    (window.process as { type?: string })?.type === "renderer"
+    typeof browserWindow.process !== "undefined" &&
+    browserWindow.process?.type === "renderer"
   )
     return true;
 

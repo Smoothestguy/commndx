@@ -36,7 +36,7 @@ export function useApplicantLookup() {
   const [previousAnswers, setPreviousAnswers] = useState<Record<string, any> | null>(null);
   const [previousSmsConsent, setPreviousSmsConsent] = useState(false);
   const [hasLookedUp, setHasLookedUp] = useState(false);
-  const debounceRef = useRef<NodeJS.Timeout | null>(null);
+  const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const lookupApplicant = useCallback(async (email?: string, phone?: string): Promise<LookupResult | null> => {
     // Clear any pending debounce

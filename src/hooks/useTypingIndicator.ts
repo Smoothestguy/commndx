@@ -4,7 +4,7 @@ import { useAuth } from "@/contexts/AuthContext";
 
 export function useTypingIndicator(conversationId: string | null) {
   const { user } = useAuth();
-  const timeoutRef = useRef<NodeJS.Timeout>();
+  const timeoutRef = useRef<ReturnType<typeof setTimeout>>();
 
   const setTyping = useCallback(async () => {
     if (!conversationId || !user) return;

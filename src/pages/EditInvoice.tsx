@@ -381,7 +381,7 @@ const EditInvoice = () => {
   }, [selectedCustomerId, selectedProjectId, taxRate, dueDate, notes, customerPo, lineItems]);
 
   // Autosave to localStorage
-  const autosaveTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const autosaveTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   
   useEffect(() => {
     if (!isInitialized || !id || !hasUnsavedChanges) return;
