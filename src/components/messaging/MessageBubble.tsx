@@ -67,6 +67,8 @@ export function MessageBubble({
   onRetry,
   isRetrying,
   defaultTranslationLanguage = "en",
+  isBlast = false,
+  blastRecipientCount,
 }: MessageBubbleProps) {
   const [translatedText, setTranslatedText] = useState<string | null>(null);
   const [detectedLanguage, setDetectedLanguage] = useState<string | null>(null);
