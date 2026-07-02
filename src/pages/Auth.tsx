@@ -31,6 +31,7 @@ const Auth = () => {
   const [isLoading, setIsLoading] = useState(false);
   const [isOAuthLoading, setIsOAuthLoading] = useState(false);
   const [showNetworkError, setShowNetworkError] = useState(false);
+  const [showAuthFallback, setShowAuthFallback] = useState(false);
   const {
     isOpen: isPortalSwitcherOpen,
     setIsOpen: setPortalSwitcherOpen,
@@ -50,6 +51,19 @@ const Auth = () => {
       navigate("/");
     }
   }, [user, authLoading, navigate]);
+
+  useEffect(() => {
+    if (!authLoading) {
+      setShowAuthFallback(false);
+      return;
+    }
+
+    const timeout = window.setTimeout(() => {
+      setShowAuthFallback(true);
+    }, 3500);
+
+    return () => window.clearTimeout(timeout);
+  }, [authLoading]);
 
 
   const handleLogin = async (e?: React.FormEvent) => {
@@ -116,7 +130,7 @@ const Auth = () => {
     }
   };
 
-  if (authLoading) {
+  if (authLoading && !showAuthFallback) {
     return (
       <div className="flex min-h-screen items-center justify-center bg-background p-6">
         <div className="flex flex-col items-center gap-5 text-center">
