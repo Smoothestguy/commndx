@@ -133,6 +133,9 @@ export default function StaffingApplications() {
   // Reverse approval dialog state
   const [appToReverse, setAppToReverse] = useState<Application | null>(null);
   const [showReverseDialog, setShowReverseDialog] = useState(false);
+
+  // Invite nearby applicants dialog state
+  const [invitePosting, setInvitePosting] = useState<any | null>(null);
   
   // New task order form state
   const [newTaskOrder, setNewTaskOrder] = useState({
