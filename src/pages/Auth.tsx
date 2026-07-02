@@ -118,8 +118,18 @@ const Auth = () => {
 
   if (authLoading) {
     return (
-      <div className="flex h-screen items-center justify-center">
-        <Loader2 className="h-8 w-8 animate-spin text-primary" />
+      <div className="flex min-h-screen items-center justify-center bg-background p-6">
+        <div className="flex flex-col items-center gap-5 text-center">
+          <img
+            src={currentTheme === "light" ? logoDark : logo}
+            alt="Fairfield"
+            className="h-16 w-auto max-w-[280px] object-contain"
+          />
+          <div className="flex items-center gap-3 text-muted-foreground">
+            <Loader2 className="h-6 w-6 animate-spin text-primary" />
+            <span className="text-sm font-medium">Loading Command X</span>
+          </div>
+        </div>
       </div>
     );
   }
