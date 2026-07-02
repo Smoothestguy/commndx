@@ -70,17 +70,14 @@ export const useUploadVendorDocument = () => {
 
       if (uploadError) throw uploadError;
 
-      const { data: { publicUrl } } = supabase.storage
-        .from('vendor-documents')
-        .getPublicUrl(fileName);
-
+      // Bucket is private — store the object path; consumers generate signed URLs on demand.
       const { data, error } = await supabase
         .from("vendor_documents")
         .insert([{
           vendor_id: vendorId,
           document_type: documentType,
           document_name: file.name,
-          document_url: publicUrl,
+          document_url: fileName,
           expiry_date: expiryDate || null,
         }])
         .select()
