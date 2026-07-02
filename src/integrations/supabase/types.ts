@@ -260,6 +260,53 @@ export type Database = {
         }
         Relationships: []
       }
+      application_attempts: {
+        Row: {
+          created_at: string
+          email: string | null
+          first_name: string | null
+          id: string
+          job_posting_id: string | null
+          last_name: string | null
+          phone: string | null
+          session_id: string
+          updated_at: string
+          user_agent: string | null
+        }
+        Insert: {
+          created_at?: string
+          email?: string | null
+          first_name?: string | null
+          id?: string
+          job_posting_id?: string | null
+          last_name?: string | null
+          phone?: string | null
+          session_id: string
+          updated_at?: string
+          user_agent?: string | null
+        }
+        Update: {
+          created_at?: string
+          email?: string | null
+          first_name?: string | null
+          id?: string
+          job_posting_id?: string | null
+          last_name?: string | null
+          phone?: string | null
+          session_id?: string
+          updated_at?: string
+          user_agent?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "application_attempts_job_posting_id_fkey"
+            columns: ["job_posting_id"]
+            isOneToOne: false
+            referencedRelation: "job_postings"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       application_form_templates: {
         Row: {
           category: string | null
@@ -8436,6 +8483,18 @@ export type Database = {
       is_vendor: { Args: { _user_id: string }; Returns: boolean }
       reset_vendor_bill_sequence_for_new_year: {
         Args: never
+        Returns: undefined
+      }
+      save_application_attempt: {
+        Args: {
+          _email: string
+          _first_name: string
+          _job_posting_id: string
+          _last_name: string
+          _phone: string
+          _session_id: string
+          _user_agent?: string
+        }
         Returns: undefined
       }
       show_limit: { Args: never; Returns: number }
