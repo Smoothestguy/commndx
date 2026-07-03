@@ -96,6 +96,12 @@ const staffingNavigation = [
     requiresManager: true,
   },
   {
+    name: "Master Applicants",
+    href: "/staffing/applicants",
+    icon: ClipboardList,
+    requiresManager: true,
+  },
+  {
     name: "Badge Templates",
     href: "/badge-templates",
     icon: IdCard,
