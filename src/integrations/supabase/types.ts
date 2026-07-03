@@ -5796,6 +5796,76 @@ export type Database = {
         }
         Relationships: []
       }
+      quick_apply_invites: {
+        Row: {
+          applicant_id: string
+          application_id: string | null
+          created_at: string
+          created_by: string | null
+          expires_at: string
+          id: string
+          job_posting_id: string
+          message: string | null
+          phone: string | null
+          sent_at: string | null
+          token: string
+          updated_at: string
+          used_at: string | null
+        }
+        Insert: {
+          applicant_id: string
+          application_id?: string | null
+          created_at?: string
+          created_by?: string | null
+          expires_at?: string
+          id?: string
+          job_posting_id: string
+          message?: string | null
+          phone?: string | null
+          sent_at?: string | null
+          token?: string
+          updated_at?: string
+          used_at?: string | null
+        }
+        Update: {
+          applicant_id?: string
+          application_id?: string | null
+          created_at?: string
+          created_by?: string | null
+          expires_at?: string
+          id?: string
+          job_posting_id?: string
+          message?: string | null
+          phone?: string | null
+          sent_at?: string | null
+          token?: string
+          updated_at?: string
+          used_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "quick_apply_invites_applicant_id_fkey"
+            columns: ["applicant_id"]
+            isOneToOne: false
+            referencedRelation: "applicants"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "quick_apply_invites_application_id_fkey"
+            columns: ["application_id"]
+            isOneToOne: false
+            referencedRelation: "applications"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "quick_apply_invites_job_posting_id_fkey"
+            columns: ["job_posting_id"]
+            isOneToOne: false
+            referencedRelation: "job_postings"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       quickbooks_account_mappings: {
         Row: {
           created_at: string | null
@@ -8388,6 +8458,10 @@ export type Database = {
         }
         Returns: Json
       }
+      confirm_quick_apply: {
+        Args: { _email?: string; _phone?: string; _token: string }
+        Returns: Json
+      }
       create_applicant_return_id: {
         Args: {
           _address?: string
@@ -8478,12 +8552,27 @@ export type Database = {
         Returns: string
       }
       generate_purchase_order_number: { Args: never; Returns: string }
+      generate_quick_apply_invites: {
+        Args: {
+          _applicant_ids: string[]
+          _created_by?: string
+          _expires_days?: number
+          _job_posting_id: string
+          _message?: string
+        }
+        Returns: {
+          already_applied: boolean
+          applicant_id: string
+          token: string
+        }[]
+      }
       generate_tm_ticket_number: {
         Args: { p_project_id: string }
         Returns: string
       }
       generate_vendor_bill_number: { Args: never; Returns: string }
       get_personnel_id_for_user: { Args: { _user_id: string }; Returns: string }
+      get_quick_apply_invite: { Args: { _token: string }; Returns: Json }
       get_vendor_id_for_user: { Args: { _user_id: string }; Returns: string }
       has_active_application_for_posting: {
         Args: { _applicant_id: string; _job_posting_id: string }
