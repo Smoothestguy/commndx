@@ -16,8 +16,10 @@ export interface Conversation {
   // Joined data
   other_participant_name?: string;
   other_participant_type?: string;
+  other_participant_photo_url?: string | null;
   unread_count?: number;
 }
+
 
 export interface ConversationMessage {
   id: string;
@@ -75,6 +77,7 @@ export function useConversations() {
           const otherId = isParticipant1 ? conv.participant_2_id : conv.participant_1_id;
 
           let otherName = "Unknown";
+          let otherPhotoUrl: string | null = null;
 
           if (otherType === "user") {
             const { data: profile } = await supabase
@@ -88,11 +91,12 @@ export function useConversations() {
           } else if (otherType === "personnel") {
             const { data: personnel } = await supabase
               .from("personnel")
-              .select("first_name, last_name")
+              .select("first_name, last_name, photo_url")
               .eq("id", otherId)
               .single();
             if (personnel) {
               otherName = `${personnel.first_name} ${personnel.last_name}`.trim();
+              otherPhotoUrl = personnel.photo_url || null;
             }
           } else if (otherType === "customer") {
             const { data: customer } = await supabase
@@ -106,11 +110,12 @@ export function useConversations() {
           } else if (otherType === "applicant") {
             const { data: applicant } = await supabase
               .from("applicants")
-              .select("first_name, last_name")
+              .select("first_name, last_name, photo_url")
               .eq("id", otherId)
               .single();
             if (applicant) {
               otherName = `${applicant.first_name} ${applicant.last_name}`.trim();
+              otherPhotoUrl = applicant.photo_url || null;
             }
           }
 
@@ -123,9 +128,11 @@ export function useConversations() {
             ...conv,
             other_participant_name: otherName,
             other_participant_type: otherType,
+            other_participant_photo_url: otherPhotoUrl,
             unread_count: participantRecord?.unread_count || 0,
           };
         })
+
       );
 
       return enrichedConversations as Conversation[];
