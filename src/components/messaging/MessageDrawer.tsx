@@ -71,22 +71,18 @@ export function MessageDrawer({
         className="w-full sm:max-w-lg p-0 flex flex-col gap-0"
         onOpenAutoFocus={(e) => e.preventDefault()}
       >
-        {/* Custom header row with open-in-tab; hides default close via absolute positioning */}
-        <div className="flex items-center justify-end gap-1 px-3 py-2 border-b bg-background">
-          <Button
-            variant="ghost"
-            size="icon"
-            onClick={openFullPage}
-            title="Open in new tab"
-            disabled={!conversationId}
-          >
-            <ExternalLink className="h-4 w-4" />
-          </Button>
-          <Button variant="ghost" size="icon" onClick={() => onOpenChange(false)} title="Close">
-            <X className="h-4 w-4" />
-          </Button>
-        </div>
-        <div className="flex-1 min-h-0">
+        {/* Open-in-new-tab sits to the left of Sheet's built-in close button */}
+        <button
+          type="button"
+          onClick={openFullPage}
+          disabled={!conversationId}
+          title="Open in new tab"
+          aria-label="Open in new tab"
+          className="absolute right-12 top-4 z-10 rounded-sm opacity-70 hover:opacity-100 focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 disabled:opacity-30"
+        >
+          <ExternalLink className="h-4 w-4" />
+        </button>
+        <div className="flex-1 min-h-0 pt-2">
           <ConversationThread
             conversation={conversation}
             recipientPhone={phone}
