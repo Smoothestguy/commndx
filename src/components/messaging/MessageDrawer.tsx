@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useMemo } from "react";
 import { Sheet, SheetContent } from "@/components/ui/sheet";
 import { ExternalLink } from "lucide-react";
 import { ConversationThread } from "./ConversationThread";
