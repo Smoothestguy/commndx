@@ -14,7 +14,7 @@ import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from "@/components/ui/select";
 import { InviteToJobDialog } from "@/components/staffing/InviteToJobDialog";
-import { PageHeader } from "@/components/ui/page-header";
+
 import { Search, Send, Users } from "lucide-react";
 import { formatDistanceToNow } from "date-fns";
 
