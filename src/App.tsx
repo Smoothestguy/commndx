@@ -20,6 +20,7 @@ import { AuthProvider } from "@/contexts/AuthContext";
 import { AIAssistantProvider } from "@/contexts/AIAssistantContext";
 import { LocationTrackingProvider } from "@/contexts/LocationTrackingContext";
 import { UIDensityProvider } from "@/contexts/UIDensityContext";
+import { MessageDrawerProvider } from "@/contexts/MessageDrawerContext";
 import { ProtectedRoute } from "@/components/ProtectedRoute";
 import { ThemeProvider } from "@/components/ThemeProvider";
 import { BottomNav } from "@/components/layout/BottomNav";
