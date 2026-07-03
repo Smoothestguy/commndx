@@ -108,6 +108,7 @@ export function ProjectApplicantsSection({
   const queryClient = useQueryClient();
   const navigate = useNavigate();
   const getOrCreateConversation = useGetOrCreateConversation();
+  const { openConversationWith } = useMessageDrawer();
 
   const [isOpen, setIsOpen] = useState(false);
   const [activeTab, setActiveTab] = useState<"pending" | "approved">("pending");
