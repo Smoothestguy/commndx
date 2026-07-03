@@ -486,6 +486,7 @@ export default function StaffingApplications() {
                             {formTemplates?.find(t => t.id === posting.form_template_id)?.name || "Custom Form"}
                           </Badge>
                         )}
+                        <QuickApplyStats postingId={posting.id} />
                       </div>
                     </div>
                     <div 
