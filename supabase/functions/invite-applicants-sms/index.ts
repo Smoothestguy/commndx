@@ -11,6 +11,7 @@ interface InviteRequest {
   applicantIds: string[];
   message: string; // may include {link} placeholder
   postingId: string;
+  useQuickApply?: boolean; // when true, generates per-applicant quick-apply tokens
 }
 
 interface RecipientResult {
