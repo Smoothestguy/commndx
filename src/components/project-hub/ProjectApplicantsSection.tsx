@@ -54,6 +54,7 @@ import {
 } from "@/components/personnel/ApprovalTypeSelectionDialog";
 import { PersonnelAssignmentDialog } from "@/components/time-tracking/PersonnelAssignmentDialog";
 import { useGetOrCreateConversation } from "@/integrations/supabase/hooks/useConversations";
+import { useMessageDrawer } from "@/contexts/MessageDrawerContext";
 import { useNavigate } from "react-router-dom";
 import { toast } from "sonner";
 import { useQueryClient } from "@tanstack/react-query";
