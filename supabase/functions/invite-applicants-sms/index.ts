@@ -87,12 +87,34 @@ Deno.serve(async (req) => {
     }
 
     const origin = req.headers.get("origin") || "https://commndx.com";
-    const link = `${origin}/apply/${posting.public_token}`;
+    const fallbackLink = `${origin}/apply/${posting.public_token}`;
 
     const { data: applicants } = await client
       .from("applicants")
       .select("id, first_name, last_name, phone")
       .in("id", body.applicantIds);
+
+    // If quick apply requested, generate per-applicant tokens in one call
+    let tokenMap = new Map<string, string>();
+    let alreadyAppliedSet = new Set<string>();
+    if (body.useQuickApply) {
+      const { data: rows, error: genErr } = await client.rpc("generate_quick_apply_invites", {
+        _applicant_ids: body.applicantIds,
+        _job_posting_id: body.postingId,
+        _message: body.message,
+        _created_by: user.id,
+        _expires_days: 14,
+      });
+      if (genErr) {
+        return new Response(JSON.stringify({ error: "Failed to generate invites: " + genErr.message }), {
+          status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+      for (const r of rows ?? []) {
+        if (r.already_applied) alreadyAppliedSet.add(r.applicant_id);
+        else if (r.token) tokenMap.set(r.applicant_id, r.token);
+      }
+    }
 
     const sid = Deno.env.get("TWILIO_ACCOUNT_SID");
     const authToken = Deno.env.get("TWILIO_AUTH_TOKEN");
@@ -107,6 +129,10 @@ Deno.serve(async (req) => {
     const results: RecipientResult[] = [];
     for (const a of applicants ?? []) {
       const name = `${a.first_name ?? ""} ${a.last_name ?? ""}`.trim();
+      if (alreadyAppliedSet.has(a.id)) {
+        results.push({ applicantId: a.id, name, phone: a.phone, status: "skipped", error: "already applied" });
+        continue;
+      }
       if (!a.phone) {
         results.push({ applicantId: a.id, name, phone: null, status: "skipped", error: "no phone" });
         continue;
@@ -118,11 +144,16 @@ Deno.serve(async (req) => {
         else to = "+" + to;
       }
 
+      const perLink = body.useQuickApply && tokenMap.has(a.id)
+        ? `${origin}/quick-apply/${tokenMap.get(a.id)}`
+        : fallbackLink;
+
       const personalized = body.message
-        .replaceAll("{link}", link)
+        .replaceAll("{link}", perLink)
         .replaceAll("{first_name}", a.first_name ?? "")
         .replaceAll("{last_name}", a.last_name ?? "");
-      const finalMsg = personalized.includes(link) ? personalized : `${personalized}\n${link}`;
+      const finalMsg = personalized.includes(perLink) ? personalized : `${personalized}\n${perLink}`;
+
 
       try {
         const twRes = await fetch(
