@@ -93,6 +93,7 @@ const reportsMenu: NavSection[] = [
       { name: "Time Tracking", href: "/time-tracking", icon: Clock, description: "Track and manage time entries" },
       { name: "Project Assignments", href: "/project-assignments", icon: UserCog, description: "Manage personnel assignments", requiresManager: true },
       { name: "Applications", href: "/staffing/applications", icon: ClipboardList, description: "Review job applications", requiresManager: true },
+      { name: "Master Applicants", href: "/staffing/applicants", icon: ClipboardList, description: "All applicants — bulk invite to new jobs", requiresManager: true },
     ],
   },
   {
