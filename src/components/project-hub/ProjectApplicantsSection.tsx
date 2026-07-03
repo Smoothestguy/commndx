@@ -265,22 +265,19 @@ export function ProjectApplicantsSection({
 
   const handleMessageApplicant = async (application: Application, e: React.MouseEvent) => {
     e.stopPropagation();
-    
+
     if (!application.applicants?.phone) {
       toast.error("This applicant doesn't have a phone number");
       return;
     }
-    
-    try {
-      const conversation = await getOrCreateConversation.mutateAsync({
-        participantType: "applicant",
-        participantId: application.applicant_id,
-      });
-      
-      navigate(`/messages?conversation=${conversation.id}`);
-    } catch (error) {
-      toast.error("Failed to start conversation");
-    }
+
+    const a = application.applicants;
+    await openConversationWith({
+      participantType: "applicant",
+      participantId: application.applicant_id,
+      participantName: `${a.first_name ?? ""} ${a.last_name ?? ""}`.trim() || "Applicant",
+      participantPhone: a.phone,
+    });
   };
 
   const handleApproveClick = (application: Application) => {
