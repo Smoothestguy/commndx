@@ -54,6 +54,7 @@ import {
 } from "@/components/personnel/ApprovalTypeSelectionDialog";
 import { PersonnelAssignmentDialog } from "@/components/time-tracking/PersonnelAssignmentDialog";
 import { useGetOrCreateConversation } from "@/integrations/supabase/hooks/useConversations";
+import { useMessageDrawer } from "@/contexts/MessageDrawerContext";
 import { useNavigate } from "react-router-dom";
 import { toast } from "sonner";
 import { useQueryClient } from "@tanstack/react-query";
@@ -108,6 +109,7 @@ export function ProjectApplicantsSection({
   const queryClient = useQueryClient();
   const navigate = useNavigate();
   const getOrCreateConversation = useGetOrCreateConversation();
+  const { openConversationWith } = useMessageDrawer();
 
   const [isOpen, setIsOpen] = useState(false);
   const [activeTab, setActiveTab] = useState<"pending" | "approved">("pending");
@@ -265,22 +267,19 @@ export function ProjectApplicantsSection({
 
   const handleMessageApplicant = async (application: Application, e: React.MouseEvent) => {
     e.stopPropagation();
-    
+
     if (!application.applicants?.phone) {
       toast.error("This applicant doesn't have a phone number");
       return;
     }
-    
-    try {
-      const conversation = await getOrCreateConversation.mutateAsync({
-        participantType: "applicant",
-        participantId: application.applicant_id,
-      });
-      
-      navigate(`/messages?conversation=${conversation.id}`);
-    } catch (error) {
-      toast.error("Failed to start conversation");
-    }
+
+    const a = application.applicants;
+    await openConversationWith({
+      participantType: "applicant",
+      participantId: application.applicant_id,
+      participantName: `${a.first_name ?? ""} ${a.last_name ?? ""}`.trim() || "Applicant",
+      participantPhone: a.phone,
+    });
   };
 
   const handleApproveClick = (application: Application) => {

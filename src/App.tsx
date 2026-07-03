@@ -20,6 +20,7 @@ import { AuthProvider } from "@/contexts/AuthContext";
 import { AIAssistantProvider } from "@/contexts/AIAssistantContext";
 import { LocationTrackingProvider } from "@/contexts/LocationTrackingContext";
 import { UIDensityProvider } from "@/contexts/UIDensityContext";
+import { MessageDrawerProvider } from "@/contexts/MessageDrawerContext";
 import { ProtectedRoute } from "@/components/ProtectedRoute";
 import { ThemeProvider } from "@/components/ThemeProvider";
 import { BottomNav } from "@/components/layout/BottomNav";
@@ -184,6 +185,7 @@ const App = () => {
             <AuthProvider>
               <LocationTrackingProvider>
                 <AIAssistantProvider>
+                  <MessageDrawerProvider>
                   <Routes>
                     <Route path="/auth" element={<Auth />} />
                     <Route path="/auth/callback" element={<AuthCallback />} />
@@ -730,6 +732,7 @@ const App = () => {
                   />
                   <ChatInterface />
                   <UpdateNotification />
+                  </MessageDrawerProvider>
                 </AIAssistantProvider>
               </LocationTrackingProvider>
             </AuthProvider>

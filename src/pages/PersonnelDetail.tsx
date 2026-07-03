@@ -22,6 +22,7 @@ import { BadgeGenerator } from "@/components/badges/BadgeGenerator";
 import { PersonnelForm } from "@/components/personnel/PersonnelForm";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { useGetOrCreateConversation } from "@/integrations/supabase/hooks/useConversations";
+import { useMessageDrawer } from "@/contexts/MessageDrawerContext";
 import { InviteToPortalDialog } from "@/components/personnel/InviteToPortalDialog";
 import { PersonnelProjectsList } from "@/components/personnel/PersonnelProjectsList";
 import { PersonnelCommunicationLog } from "@/components/personnel/PersonnelCommunicationLog";
@@ -66,6 +67,7 @@ const PersonnelDetail = () => {
   const [badgeDialogOpen, setBadgeDialogOpen] = useState(false);
   const [editDialogOpen, setEditDialogOpen] = useState(false);
   const getOrCreateConversation = useGetOrCreateConversation();
+  const { openConversationWith } = useMessageDrawer();
   const [generate1099Open, setGenerate1099Open] = useState(false);
   const [defaultEditTab, setDefaultEditTab] = useState("personal");
   const [vendorMergeOpen, setVendorMergeOpen] = useState(false);
@@ -407,11 +409,12 @@ const PersonnelDetail = () => {
                     size="sm" 
                     onClick={async () => {
                       if (!personnel) return;
-                      const conversation = await getOrCreateConversation.mutateAsync({
+                      await openConversationWith({
                         participantType: "personnel",
                         participantId: personnel.id,
+                        participantName: `${personnel.first_name ?? ""} ${personnel.last_name ?? ""}`.trim() || "Personnel",
+                        participantPhone: personnel.phone,
                       });
-                      navigate(`/messages?conversation=${conversation.id}`);
                     }}
                     disabled={!personnel.phone || getOrCreateConversation.isPending}
                   >
@@ -809,11 +812,12 @@ const PersonnelDetail = () => {
                   size="sm" 
                   onClick={async () => {
                     if (!personnel) return;
-                    const conversation = await getOrCreateConversation.mutateAsync({
+                    await openConversationWith({
                       participantType: "personnel",
                       participantId: personnel.id,
+                      participantName: `${personnel.first_name ?? ""} ${personnel.last_name ?? ""}`.trim() || "Personnel",
+                      participantPhone: personnel.phone,
                     });
-                    navigate(`/messages?conversation=${conversation.id}`);
                   }}
                   disabled={!personnel.phone || getOrCreateConversation.isPending}
                 >
