@@ -13,7 +13,7 @@ import { toast } from "sonner";
 import { MessageBubble } from "./MessageBubble";
 import { MessageInput } from "./MessageInput";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Users, Building2, User, ArrowLeft, PanelLeftClose, PanelLeftOpen, ClipboardList } from "lucide-react";
@@ -163,10 +163,17 @@ export function ConversationThread({ conversation, onBack, recipientPhone, onTog
           </Button>
         )}
         <Avatar className="h-10 w-10">
+          {conversation.other_participant_photo_url && (
+            <AvatarImage
+              src={conversation.other_participant_photo_url}
+              alt={conversation.other_participant_name || ""}
+            />
+          )}
           <AvatarFallback className="bg-primary/10 text-primary">
             {getInitials(conversation.other_participant_name)}
           </AvatarFallback>
         </Avatar>
+
         <div className="flex-1 min-w-0">
           <h2 className="font-semibold truncate">{conversation.other_participant_name}</h2>
           <div className="flex items-center gap-1.5 text-xs text-muted-foreground">

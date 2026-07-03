@@ -3,7 +3,7 @@ import { format, isToday, isYesterday } from "date-fns";
 import { cn } from "@/lib/utils";
 import { useConversations, useDeleteConversation, Conversation } from "@/integrations/supabase/hooks/useConversations";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { MessageSquare, User, Users, Building2, Trash2, Search, ClipboardList } from "lucide-react";
 import { ScrollArea } from "@/components/ui/scroll-area";
@@ -161,10 +161,17 @@ export function ConversationList({
             >
               {/* Column 1: Avatar - fixed 48px */}
               <Avatar className="h-12 w-12">
+                {conversation.other_participant_photo_url && (
+                  <AvatarImage
+                    src={conversation.other_participant_photo_url}
+                    alt={conversation.other_participant_name || ""}
+                  />
+                )}
                 <AvatarFallback className="bg-[#007AFF]/10 text-[#007AFF] text-sm font-medium">
                   {getInitials(conversation.other_participant_name)}
                 </AvatarFallback>
               </Avatar>
+
 
               {/* Column 2: Name + Preview - takes remaining space, truncates */}
               <div className="min-w-0">
