@@ -1,7 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { Sheet, SheetContent } from "@/components/ui/sheet";
-import { Button } from "@/components/ui/button";
-import { ExternalLink, X } from "lucide-react";
+import { ExternalLink } from "lucide-react";
 import { ConversationThread } from "./ConversationThread";
 import {
   Conversation,
