@@ -812,11 +812,12 @@ const PersonnelDetail = () => {
                   size="sm" 
                   onClick={async () => {
                     if (!personnel) return;
-                    const conversation = await getOrCreateConversation.mutateAsync({
+                    await openConversationWith({
                       participantType: "personnel",
                       participantId: personnel.id,
+                      participantName: `${personnel.first_name ?? ""} ${personnel.last_name ?? ""}`.trim() || "Personnel",
+                      participantPhone: personnel.phone,
                     });
-                    navigate(`/messages?conversation=${conversation.id}`);
                   }}
                   disabled={!personnel.phone || getOrCreateConversation.isPending}
                 >
