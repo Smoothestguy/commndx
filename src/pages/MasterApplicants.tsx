@@ -148,11 +148,13 @@ export default function MasterApplicants() {
 
   return (
     <div className="p-4 sm:p-6 space-y-4">
-      <PageHeader
-        title="Master Applicants"
-        description="Everyone who's ever applied. Bulk-invite them to new job postings in one tap."
-        icon={Users}
-      />
+      <div className="flex items-center gap-3">
+        <Users className="h-6 w-6 text-primary" />
+        <div>
+          <h1 className="text-2xl font-semibold tracking-tight">Master Applicants</h1>
+          <p className="text-sm text-muted-foreground">Everyone who's ever applied. Bulk-invite them to new job postings in one tap.</p>
+        </div>
+      </div>
 
       <Card>
         <CardHeader className="pb-3">
