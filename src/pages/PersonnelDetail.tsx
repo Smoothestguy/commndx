@@ -67,6 +67,7 @@ const PersonnelDetail = () => {
   const [badgeDialogOpen, setBadgeDialogOpen] = useState(false);
   const [editDialogOpen, setEditDialogOpen] = useState(false);
   const getOrCreateConversation = useGetOrCreateConversation();
+  const { openConversationWith } = useMessageDrawer();
   const [generate1099Open, setGenerate1099Open] = useState(false);
   const [defaultEditTab, setDefaultEditTab] = useState("personal");
   const [vendorMergeOpen, setVendorMergeOpen] = useState(false);
