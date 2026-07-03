@@ -22,6 +22,7 @@ import { BadgeGenerator } from "@/components/badges/BadgeGenerator";
 import { PersonnelForm } from "@/components/personnel/PersonnelForm";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { useGetOrCreateConversation } from "@/integrations/supabase/hooks/useConversations";
+import { useMessageDrawer } from "@/contexts/MessageDrawerContext";
 import { InviteToPortalDialog } from "@/components/personnel/InviteToPortalDialog";
 import { PersonnelProjectsList } from "@/components/personnel/PersonnelProjectsList";
 import { PersonnelCommunicationLog } from "@/components/personnel/PersonnelCommunicationLog";
