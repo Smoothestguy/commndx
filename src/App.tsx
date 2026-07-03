@@ -234,6 +234,7 @@ const App = () => {
                       path="/apply/edit/:editToken"
                       element={<EditApplication />}
                     />
+                    <Route path="/quick-apply/:token" element={<QuickApply />} />
                     {/* Onboarding Routes */}
                     <Route
                       path="/onboard/:token"
