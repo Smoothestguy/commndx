@@ -195,7 +195,7 @@ Deno.serve(async (req) => {
     const skipped = results.filter((r) => r.status === "skipped").length;
 
     return new Response(
-      JSON.stringify({ sent, failed, skipped, link, results }),
+      JSON.stringify({ sent, failed, skipped, link: fallbackLink, results }),
       { headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );
   } catch (e) {
