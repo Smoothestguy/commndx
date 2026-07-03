@@ -185,6 +185,7 @@ const App = () => {
             <AuthProvider>
               <LocationTrackingProvider>
                 <AIAssistantProvider>
+                  <MessageDrawerProvider>
                   <Routes>
                     <Route path="/auth" element={<Auth />} />
                     <Route path="/auth/callback" element={<AuthCallback />} />
