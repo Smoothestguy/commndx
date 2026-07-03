@@ -732,6 +732,7 @@ const App = () => {
                   />
                   <ChatInterface />
                   <UpdateNotification />
+                  </MessageDrawerProvider>
                 </AIAssistantProvider>
               </LocationTrackingProvider>
             </AuthProvider>
