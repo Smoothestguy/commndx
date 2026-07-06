@@ -938,6 +938,17 @@ const PersonnelOnboarding = () => {
                             required
                           />
                         </div>
+                        <CategoryDocumentUpload
+                          documentType="ssn_card"
+                          label="Social Security Card *"
+                          helperText="Upload a clear photo of your Social Security card"
+                          required
+                          expectedSSN={formData.ssn_full}
+                          existingDocument={getDocumentByType("ssn_card")}
+                          onUpload={handleDocumentUpload}
+                          onRemove={() => handleDocumentRemove("ssn_card")}
+                          sessionId={sessionId}
+                        />
                         <div className="grid sm:grid-cols-2 gap-4">
                           <CategoryDocumentUpload
                             documentType="green_card_front"
