@@ -283,11 +283,17 @@ export default function StaffingApplications() {
         return false;
       }
       
-      // Search filter
+      // Search filter (name, email, phone)
       const fullName = `${applicant.first_name} ${applicant.last_name}`.toLowerCase();
-      const email = applicant.email.toLowerCase();
-      const searchLower = search.toLowerCase();
-      const matchesSearch = fullName.includes(searchLower) || email.includes(searchLower);
+      const email = (applicant.email || "").toLowerCase();
+      const searchLower = search.toLowerCase().trim();
+      const searchDigits = search.replace(/\D/g, "");
+      const phoneDigits = (applicant.phone || "").replace(/\D/g, "");
+      const matchesSearch =
+        !searchLower ||
+        fullName.includes(searchLower) ||
+        email.includes(searchLower) ||
+        (searchDigits.length > 0 && phoneDigits.includes(searchDigits));
       if (!matchesSearch) return false;
       
       // Experience filter
