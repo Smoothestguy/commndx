@@ -1,42 +1,39 @@
-## Goal
-Require a Social Security card photo upload during personnel onboarding for anyone whose work authorization is:
-- US Citizen
-- Green Card holder
-- Work Permit (EAD) holder
+## Diagnosis
 
-Visa holders and ITIN filers are unchanged.
+Uziel Garcia's onboarding link is valid and he has successfully opened it multiple times today. The real failure is downstream:
 
-## Where
-`src/pages/PersonnelOnboarding.tsx` — Step 3 (Identification / Work Authorization).
+- Token `03d2e783-7b39-48b1-9dc1-09ace12b45e8` — unused, unrevoked, expires 2026-07-13. Working.
+- Edge function `verify-document` (called when he uploads his SSN card) is returning:
+  ```
+  AI API error: 403
+  "LOVABLE_API_KEY is not registered for this project"
+  ```
+- Since we just made the SSN card **required** for US citizens / green card / work permit holders, this AI verification step now blocks the entire flow. To Uziel, it looks like "the link doesn't work."
 
-The page already uses `CategoryDocumentUpload` with `documentType="ssn_card"` support (OCR verifies the uploaded card against the entered SSN — see `CategoryDocumentUpload.tsx`), but no section currently asks for it. We'll add it to the three sections above and gate step 3 completion on it.
+This affects **every** personnel currently onboarding, not just Uziel.
 
-## Changes
+## Fix
 
-1. **UI — add SSN card upload block** to each of the three sections, placed right under the SSN input:
-   ```
-   <CategoryDocumentUpload
-     documentType="ssn_card"
-     label="Social Security Card *"
-     helperText="Upload a clear photo of your Social Security card"
-     required
-     expectedSSN={formData.ssn_full}
-     existingDocument={getDocumentByType("ssn_card")}
-     onUpload={handleDocumentUpload}
-     onRemove={() => handleDocumentRemove("ssn_card")}
-     sessionId={sessionId}
-   />
-   ```
-   Added inside: US Citizen block, Work Permit block, Green Card block. Visa block left as-is.
+1. **Re-provision the Lovable AI Gateway key** for this project so `verify-document` stops 403-ing. This is a project-level backend fix — no code change needed.
+2. **Add a graceful fallback in `verify-document`**: if the AI gateway returns 403 / key-not-registered, log the failure, mark the document as `verification_status = 'pending_manual_review'` instead of hard-failing, and let onboarding continue. An admin notification is created for manual review.
+3. **Client-side (`CategoryDocumentUpload.tsx`)**: when verification returns `pending_manual_review`, show "Uploaded — pending review" instead of an error, and treat it as satisfying the required-doc gate so the applicant is not blocked by an infra outage.
 
-2. **Step 3 validation (`canProceed` case 3)** — require `getDocumentByType("ssn_card")` (and `isDocumentVerified("ssn_card")`, matching how govt ID is treated for US citizens) for:
-   - `us_citizen`
-   - `immigration_status === "green_card"`
-   - `immigration_status === "work_permit"`
+## Immediate action for Uziel
 
-3. No DB/schema changes — `ssn_card` is already a valid `DocumentType` in `usePersonnelRegistrations.ts` and storage flows already handle it.
+After the fix ships, he can reopen the same link he already has:
+`https://commndx.com/onboard/03d2e783-7b39-48b1-9dc1-09ace12b45e8`
+
+No need to resend.
+
+## Files to change
+
+- `supabase/functions/verify-document/index.ts` — catch 403 / key-not-registered, return `{ status: "pending_manual_review" }`.
+- `src/components/personnel/onboarding/CategoryDocumentUpload.tsx` — handle the new status (badge + treat as satisfied).
+- `src/pages/PersonnelOnboarding.tsx` — in Step 3 `canProceed`, accept `pending_manual_review` as valid for the SSN card requirement.
+- Backend: re-provision Lovable AI Gateway key (done via the Cloud settings, not a code file).
 
 ## Out of scope
-- Visa holders (still SSN + visa doc only).
-- ITIN / "other" status (no SSN card).
-- Admin review UI — it already renders any uploaded doc type generically.
+
+- No DB migration.
+- No change to token generation, expiry, or the email templates.
+- No change to which categories require the SSN card.
