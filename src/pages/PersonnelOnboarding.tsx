@@ -904,6 +904,17 @@ const PersonnelOnboarding = () => {
                           />
                         </div>
                         <CategoryDocumentUpload
+                          documentType="ssn_card"
+                          label="Social Security Card *"
+                          helperText="Upload a clear photo of your Social Security card"
+                          required
+                          expectedSSN={formData.ssn_full}
+                          existingDocument={getDocumentByType("ssn_card")}
+                          onUpload={handleDocumentUpload}
+                          onRemove={() => handleDocumentRemove("ssn_card")}
+                          sessionId={sessionId}
+                        />
+                        <CategoryDocumentUpload
                           documentType="work_permit"
                           label="Employment Authorization Document (EAD) *"
                           helperText="Upload your EAD card"
