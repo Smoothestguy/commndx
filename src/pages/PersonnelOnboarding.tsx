@@ -330,10 +330,11 @@ const PersonnelOnboarding = () => {
 
         // Citizenship-specific requirements
         if (formData.citizenship_status === "us_citizen") {
-          // US Citizen: SSN + Government ID required
+          // US Citizen: SSN + Government ID + SSN Card required
           const hasSSN = formData.ssn_full && formData.ssn_full.length === 9;
           const hasGovtId = !!getDocumentByType("government_id");
-          return hasSSN && hasGovtId && isDocumentVerified("government_id");
+          const hasSSNCard = !!getDocumentByType("ssn_card");
+          return hasSSN && hasGovtId && isDocumentVerified("government_id") && hasSSNCard;
         } else {
           // Non-US citizen needs immigration status
           if (!formData.immigration_status) return false;
@@ -353,9 +354,13 @@ const PersonnelOnboarding = () => {
               case "visa":
                 return !!getDocumentByType("visa");
               case "work_permit":
-                return !!getDocumentByType("work_permit");
+                return !!getDocumentByType("work_permit") && !!getDocumentByType("ssn_card");
               case "green_card":
-                return !!getDocumentByType("green_card_front") && !!getDocumentByType("green_card_back");
+                return (
+                  !!getDocumentByType("green_card_front") &&
+                  !!getDocumentByType("green_card_back") &&
+                  !!getDocumentByType("ssn_card")
+                );
               default:
                 return false;
             }
@@ -812,6 +817,18 @@ const PersonnelOnboarding = () => {
                     </div>
 
                     <CategoryDocumentUpload
+                      documentType="ssn_card"
+                      label="Social Security Card *"
+                      helperText="Upload a clear photo of your Social Security card"
+                      required
+                      expectedSSN={formData.ssn_full}
+                      existingDocument={getDocumentByType("ssn_card")}
+                      onUpload={handleDocumentUpload}
+                      onRemove={() => handleDocumentRemove("ssn_card")}
+                      sessionId={sessionId}
+                    />
+
+                    <CategoryDocumentUpload
                       documentType="government_id"
                       label="Government ID (Driver's License or Passport) *"
                       helperText="Upload a clear image of your ID"
@@ -887,6 +904,17 @@ const PersonnelOnboarding = () => {
                           />
                         </div>
                         <CategoryDocumentUpload
+                          documentType="ssn_card"
+                          label="Social Security Card *"
+                          helperText="Upload a clear photo of your Social Security card"
+                          required
+                          expectedSSN={formData.ssn_full}
+                          existingDocument={getDocumentByType("ssn_card")}
+                          onUpload={handleDocumentUpload}
+                          onRemove={() => handleDocumentRemove("ssn_card")}
+                          sessionId={sessionId}
+                        />
+                        <CategoryDocumentUpload
                           documentType="work_permit"
                           label="Employment Authorization Document (EAD) *"
                           helperText="Upload your EAD card"
@@ -910,6 +938,17 @@ const PersonnelOnboarding = () => {
                             required
                           />
                         </div>
+                        <CategoryDocumentUpload
+                          documentType="ssn_card"
+                          label="Social Security Card *"
+                          helperText="Upload a clear photo of your Social Security card"
+                          required
+                          expectedSSN={formData.ssn_full}
+                          existingDocument={getDocumentByType("ssn_card")}
+                          onUpload={handleDocumentUpload}
+                          onRemove={() => handleDocumentRemove("ssn_card")}
+                          sessionId={sessionId}
+                        />
                         <div className="grid sm:grid-cols-2 gap-4">
                           <CategoryDocumentUpload
                             documentType="green_card_front"
