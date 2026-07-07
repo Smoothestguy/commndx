@@ -239,9 +239,12 @@ const PersonnelOnboarding = () => {
           agreedToTerms,
           timestamp: Date.now(),
         };
-        sessionStorage.setItem(storageKey, JSON.stringify(payload));
-      } catch {
-        // Storage full or unavailable — silent fail
+        const serialized = JSON.stringify(payload);
+        sessionStorage.setItem(storageKey, serialized);
+      } catch (err) {
+        // Storage full, unavailable, or payload not serializable — silent fail
+        // eslint-disable-next-line no-console
+        console.warn("[Onboarding] Failed to persist draft:", err);
       }
     }, 500);
     return () => {
@@ -252,7 +255,8 @@ const PersonnelOnboarding = () => {
   // Sync form data when personnel data loads
   // If we restored from sessionStorage, only fill in empty fields (user-typed values take priority)
   const [initialized, setInitialized] = useState(false);
-  if (validationResult?.personnel && !initialized) {
+  useEffect(() => {
+    if (!validationResult?.personnel || initialized) return;
     const p = validationResult.personnel;
     const wasRestored = restoredFromStorage.current;
     setFormData((prev) => ({
@@ -269,7 +273,7 @@ const PersonnelOnboarding = () => {
       zip: (wasRestored && prev.zip) ? prev.zip : (p.zip || prev.zip),
     }));
     setInitialized(true);
-  }
+  }, [validationResult?.personnel, initialized]);
 
   const updateField = (field: keyof ExtendedOnboardingFormData, value: string | boolean | CitizenshipStatus | ImmigrationStatus | undefined | null) => {
     setFormData((prev) => ({ ...prev, [field]: value }));

@@ -152,6 +152,7 @@ import EditApplication from "./pages/EditApplication";
 import ApplicationFormTemplates from "./pages/ApplicationFormTemplates";
 import ApplicationFormBuilder from "./pages/ApplicationFormBuilder";
 import PersonnelOnboarding from "./pages/PersonnelOnboarding";
+import { ErrorBoundary } from "./components/ErrorBoundary";
 import OnboardingComplete from "./pages/OnboardingComplete";
 import AdminNotifications from "./pages/AdminNotifications";
 import SessionHistory from "./pages/SessionHistory";
@@ -239,7 +240,14 @@ const App = () => {
                     {/* Onboarding Routes */}
                     <Route
                       path="/onboard/:token"
-                      element={<PersonnelOnboarding />}
+                      element={
+                        <ErrorBoundary
+                          fallbackTitle="Onboarding hit a snag"
+                          fallbackMessage="Your progress is saved. Tap Try Again to keep going."
+                        >
+                          <PersonnelOnboarding />
+                        </ErrorBoundary>
+                      }
                     />
                     <Route
                       path="/onboarding-complete/:token"
