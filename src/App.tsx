@@ -239,7 +239,14 @@ const App = () => {
                     {/* Onboarding Routes */}
                     <Route
                       path="/onboard/:token"
-                      element={<PersonnelOnboarding />}
+                      element={
+                        <ErrorBoundary
+                          fallbackTitle="Onboarding hit a snag"
+                          fallbackMessage="Your progress is saved. Tap Try Again to keep going."
+                        >
+                          <PersonnelOnboarding />
+                        </ErrorBoundary>
+                      }
                     />
                     <Route
                       path="/onboarding-complete/:token"
