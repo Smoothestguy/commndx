@@ -289,7 +289,7 @@ export function VendorAgreementSignatureView({
           </DialogHeader>
           <W9FormPreview
             w9Form={w9FormData}
-            ssnFull={w9FormData.tin_type === "ssn" ? taxId : null}
+            ssnFull={(w9FormData as W9Form & { __ssnFull: string | null }).__ssnFull}
           />
         </DialogContent>
       </Dialog>
