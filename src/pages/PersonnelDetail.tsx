@@ -1210,6 +1210,26 @@ const PersonnelDetail = () => {
         personnelId={personnel.id}
         personnelName={`${personnel.first_name} ${personnel.last_name}`}
       />
+
+      {/* Resend Onboarding Email — warns that the previous link is revoked */}
+      <AlertDialog open={resendConfirmOpen} onOpenChange={setResendConfirmOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Send a new onboarding link?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Generating a new link will <strong>revoke the previous onboarding link</strong>{" "}
+              for {personnel.first_name} {personnel.last_name}. Any tab they still have open on the
+              old link will stop working and they'll need to use the new email.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction onClick={handleResendOnboardingEmail}>
+              Send new link
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </DetailPageLayout>
   );
 };
