@@ -373,7 +373,7 @@ const PersonnelOnboarding = () => {
     }));
   };
 
-  const progress = (currentStep / STEPS.length) * 100;
+  const progress = (clampStep(currentStep) / STEPS.length) * 100;
   const activeStep = STEPS[clampStep(currentStep) - 1] ?? STEPS[0];
 
   // Helper to check if a document passed AI verification (or wasn't verified)
@@ -744,10 +744,10 @@ const PersonnelOnboarding = () => {
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
               {(() => {
-                const Icon = STEPS[currentStep - 1].icon;
+                const Icon = activeStep.icon;
                 return <Icon className="h-5 w-5" />;
               })()}
-              Step {currentStep}: {STEPS[currentStep - 1].title}
+              Step {clampStep(currentStep)}: {activeStep.title}
             </CardTitle>
             <CardDescription>{getStepDescription()}</CardDescription>
           </CardHeader>
@@ -1176,7 +1176,7 @@ const PersonnelOnboarding = () => {
                   Please provide at least one emergency contact.
                 </p>
                 <EmergencyContactForm
-                  contacts={formData.emergency_contacts}
+                  contacts={toSafeArray<EmergencyContact>(formData.emergency_contacts)}
                   onChange={(contacts) =>
                     setFormData((prev) => ({ ...prev, emergency_contacts: contacts }))
                   }
@@ -1227,7 +1227,7 @@ const PersonnelOnboarding = () => {
                       </>
                     )}
                     <span className="text-muted-foreground">Documents:</span>
-                    <span>{formData.documents.length} uploaded</span>
+                    <span>{toSafeArray<RegistrationDocument>(formData.documents).length} uploaded</span>
                   </div>
                 </div>
 
@@ -1275,7 +1275,7 @@ const PersonnelOnboarding = () => {
 
                 <div className="space-y-4">
                   <h3 className="font-medium">Emergency Contacts</h3>
-                  {formData.emergency_contacts.map((contact, idx) => (
+                  {toSafeArray<EmergencyContact>(formData.emergency_contacts).map((contact, idx) => (
                     <div key={idx} className="text-sm p-3 bg-muted rounded-lg">
                       <p className="font-medium">{contact.name} ({contact.relationship})</p>
                       <p className="text-muted-foreground">{contact.phone}</p>
