@@ -1221,6 +1221,27 @@ const PersonnelOnboarding = () => {
               </div>
             )}
 
+            {/* Inline validation errors — surfaces which fields block Next/Submit */}
+            {(() => {
+              const stepErrors = getStepErrors();
+              if (stepErrors.length === 0) return null;
+              return (
+                <Alert variant="destructive" className="mt-6">
+                  <AlertTriangle className="h-4 w-4" />
+                  <AlertDescription>
+                    <p className="font-medium mb-1">
+                      Please complete the following before continuing:
+                    </p>
+                    <ul className="list-disc ml-5 space-y-0.5 text-sm">
+                      {stepErrors.map((e) => (
+                        <li key={e}>{e}</li>
+                      ))}
+                    </ul>
+                  </AlertDescription>
+                </Alert>
+              );
+            })()}
+
             {/* Navigation */}
             <div className="flex justify-between mt-6 pt-4 border-t">
               <Button
