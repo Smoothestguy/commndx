@@ -284,14 +284,14 @@ export function useCompleteOnboarding() {
 
       if (error) {
         console.error("[Onboarding] RPC error:", error);
-        throw error;
+        throw new Error(translateOnboardingError(error.message));
       }
 
       const result = data as { success: boolean; error?: string; message?: string };
 
       if (!result.success) {
         console.error("[Onboarding] Function returned error:", result.error);
-        throw new Error(result.error || "Failed to complete onboarding");
+        throw new Error(translateOnboardingError(result.error || "Failed to complete onboarding"));
       }
 
       console.log("[Onboarding] Completed successfully:", result.message);
