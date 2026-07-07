@@ -96,6 +96,7 @@ function translateOnboardingError(raw: string): string {
   return raw || "Something went wrong while submitting your onboarding.";
 }
 
+/**
  * Hook to validate an onboarding token and fetch associated personnel data
  */
 export function useOnboardingToken(token: string | undefined) {
