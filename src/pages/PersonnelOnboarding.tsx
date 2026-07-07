@@ -121,34 +121,44 @@ const PersonnelOnboarding = () => {
     []
   );
 
-  // --- sessionStorage persistence helpers ---
+  // --- localStorage persistence helpers ---
+  // Persist wizard progress keyed by token so a page reload/close resumes cleanly.
+  // Signatures, SSN/ITIN, and bank account numbers are intentionally excluded.
   const storageKey = `onboarding-progress-${token}`;
   const restoredFromStorage = useRef(false);
   const saveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  const SIGNATURE_FIELDS = ["direct_deposit_signature", "w9_signature", "ica_signature"] as const;
+  const SENSITIVE_FIELDS = [
+    "direct_deposit_signature",
+    "w9_signature",
+    "ica_signature",
+    "ssn_full",
+    "itin",
+    "bank_routing_number",
+    "bank_account_number",
+  ] as const;
 
-  const stripSignatures = (data: ExtendedOnboardingFormData) => {
-    const copy = { ...data };
-    for (const field of SIGNATURE_FIELDS) {
-      (copy as any)[field] = null;
+  const stripSensitive = (data: ExtendedOnboardingFormData) => {
+    const copy: any = { ...data };
+    for (const field of SENSITIVE_FIELDS) {
+      copy[field] = field.endsWith("signature") ? null : "";
     }
-    return copy;
+    return copy as ExtendedOnboardingFormData;
   };
 
-  // Try to restore saved progress from sessionStorage
+  // Try to restore saved progress from localStorage
   const restoreSavedProgress = useCallback((): {
     formData: ExtendedOnboardingFormData;
     currentStep: number;
     agreedToTerms: boolean;
   } | null => {
     try {
-      const raw = sessionStorage.getItem(storageKey);
+      const raw = localStorage.getItem(storageKey);
       if (!raw) return null;
       const saved = JSON.parse(raw);
       // Only restore if < 24 hours old
       if (saved.timestamp && Date.now() - saved.timestamp > 24 * 60 * 60 * 1000) {
-        sessionStorage.removeItem(storageKey);
+        localStorage.removeItem(storageKey);
         return null;
       }
       return {
