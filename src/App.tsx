@@ -169,6 +169,16 @@ import VendorOnboardingComplete from "./pages/VendorOnboardingComplete";
 
 const queryClient = new QueryClient();
 
+const clearOnboardingDrafts = () => {
+  try {
+    Object.keys(sessionStorage)
+      .filter((key) => key.startsWith("onboarding-progress-"))
+      .forEach((key) => sessionStorage.removeItem(key));
+  } catch (error) {
+    console.warn("[Onboarding] Failed to clear local onboarding draft:", error);
+  }
+};
+
 // Wrapper component to use status bar hook inside ThemeProvider
 const NativeStatusBarManager = () => {
   useNativeStatusBar();
@@ -243,7 +253,8 @@ const App = () => {
                       element={
                         <ErrorBoundary
                           fallbackTitle="Onboarding hit a snag"
-                          fallbackMessage="Your progress is saved. Tap Try Again to keep going."
+                          fallbackMessage="Tap Try Again to reset the local draft and continue."
+                          onBeforeRetry={clearOnboardingDrafts}
                         >
                           <PersonnelOnboarding />
                         </ErrorBoundary>

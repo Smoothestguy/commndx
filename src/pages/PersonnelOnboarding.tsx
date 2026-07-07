@@ -62,6 +62,28 @@ const STEPS = [
   { id: 8, title: "Review & Submit", icon: CheckCircle },
 ];
 
+const MIN_STEP = 1;
+const MAX_STEP = STEPS.length;
+
+const clampStep = (step: unknown) => {
+  const numericStep = typeof step === "number" ? step : Number(step);
+  if (!Number.isFinite(numericStep)) return MIN_STEP;
+  return Math.min(MAX_STEP, Math.max(MIN_STEP, Math.trunc(numericStep)));
+};
+
+const isRecord = (value: unknown): value is Record<string, unknown> =>
+  typeof value === "object" && value !== null && !Array.isArray(value);
+
+const toSafeString = (value: unknown) => {
+  if (typeof value === "string") return value;
+  if (value === null || value === undefined) return "";
+  return String(value);
+};
+
+const toSafeBoolean = (value: unknown) => value === true;
+
+const toSafeArray = <T,>(value: unknown): T[] => (Array.isArray(value) ? (value as T[]) : []);
+
 const IMMIGRATION_STATUS_OPTIONS = [
   { value: "visa", label: "Visa" },
   { value: "work_permit", label: "Work Permit (EAD - Employment Authorization Document)" },
@@ -107,6 +129,84 @@ interface ExtendedOnboardingFormData extends OnboardingFormData {
   w9_certification: boolean;
   ica_signature: string | null;
 }
+
+const createDefaultFormData = (): ExtendedOnboardingFormData => ({
+  first_name: "",
+  last_name: "",
+  email: "",
+  phone: "",
+  date_of_birth: "",
+  photo_url: "",
+  address: "",
+  city: "",
+  state: "",
+  zip: "",
+  ssn_full: "",
+  itin: "",
+  citizenship_status: undefined,
+  immigration_status: undefined,
+  emergency_contacts: [],
+  documents: [],
+  bank_name: "",
+  bank_account_type: "",
+  bank_routing_number: "",
+  bank_account_number: "",
+  direct_deposit_signature: null,
+  tax_classification: "",
+  tax_ein: "",
+  tax_business_name: "",
+  w9_signature: null,
+  w9_certification: false,
+  ica_signature: null,
+});
+
+const normalizeFormData = (raw: unknown): ExtendedOnboardingFormData => {
+  const defaults = createDefaultFormData();
+  if (!isRecord(raw)) return defaults;
+
+  const citizenship = raw.citizenship_status;
+  const immigration = raw.immigration_status;
+
+  return {
+    ...defaults,
+    first_name: toSafeString(raw.first_name),
+    last_name: toSafeString(raw.last_name),
+    email: toSafeString(raw.email),
+    phone: toSafeString(raw.phone),
+    date_of_birth: toSafeString(raw.date_of_birth),
+    photo_url: toSafeString(raw.photo_url),
+    address: toSafeString(raw.address),
+    city: toSafeString(raw.city),
+    state: toSafeString(raw.state),
+    zip: toSafeString(raw.zip),
+    ssn_full: toSafeString(raw.ssn_full),
+    itin: toSafeString(raw.itin),
+    citizenship_status:
+      citizenship === "us_citizen" || citizenship === "non_us_citizen"
+        ? citizenship
+        : undefined,
+    immigration_status:
+      immigration === "visa" ||
+      immigration === "work_permit" ||
+      immigration === "green_card" ||
+      immigration === "other"
+        ? immigration
+        : undefined,
+    emergency_contacts: toSafeArray<EmergencyContact>(raw.emergency_contacts),
+    documents: toSafeArray<RegistrationDocument>(raw.documents),
+    bank_name: toSafeString(raw.bank_name),
+    bank_account_type: toSafeString(raw.bank_account_type),
+    bank_routing_number: toSafeString(raw.bank_routing_number),
+    bank_account_number: toSafeString(raw.bank_account_number),
+    direct_deposit_signature: typeof raw.direct_deposit_signature === "string" ? raw.direct_deposit_signature : null,
+    tax_classification: toSafeString(raw.tax_classification),
+    tax_ein: toSafeString(raw.tax_ein),
+    tax_business_name: toSafeString(raw.tax_business_name),
+    w9_signature: typeof raw.w9_signature === "string" ? raw.w9_signature : null,
+    w9_certification: toSafeBoolean(raw.w9_certification),
+    ica_signature: typeof raw.ica_signature === "string" ? raw.ica_signature : null,
+  };
+};
 
 const PersonnelOnboarding = () => {
   const { token } = useParams<{ token: string }>();
