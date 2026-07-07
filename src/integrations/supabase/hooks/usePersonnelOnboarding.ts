@@ -71,6 +71,32 @@ export interface OnboardingValidationResult {
 }
 
 /**
+ * Translate backend / RPC error messages into human-friendly copy for the wizard.
+ */
+function translateOnboardingError(raw: string): string {
+  const msg = (raw || "").toLowerCase();
+  if (msg.includes("invalid, expired, or already used") || msg.includes("invalid_or_expired_token") || msg.includes("token")) {
+    return "This onboarding link was replaced or expired — contact your administrator for a new one.";
+  }
+  if (msg.includes("ssn") || msg.includes("invalid_ssn")) {
+    return "SSN must be 9 digits.";
+  }
+  if (msg.includes("direct deposit signature")) {
+    return "Your Direct Deposit signature is missing. Please re-sign step 4.";
+  }
+  if (msg.includes("w-9 signature") || msg.includes("w9 signature")) {
+    return "Your W-9 signature is missing. Please re-sign step 5.";
+  }
+  if (msg.includes("independent contractor agreement")) {
+    return "Your Independent Contractor Agreement signature is missing. Please re-sign step 6.";
+  }
+  if (msg.includes("network") || msg.includes("failed to fetch")) {
+    return "Network error — check your connection and try again.";
+  }
+  return raw || "Something went wrong while submitting your onboarding.";
+}
+
+/**
  * Hook to validate an onboarding token and fetch associated personnel data
  */
 export function useOnboardingToken(token: string | undefined) {
@@ -284,14 +310,14 @@ export function useCompleteOnboarding() {
 
       if (error) {
         console.error("[Onboarding] RPC error:", error);
-        throw error;
+        throw new Error(translateOnboardingError(error.message));
       }
 
       const result = data as { success: boolean; error?: string; message?: string };
 
       if (!result.success) {
         console.error("[Onboarding] Function returned error:", result.error);
-        throw new Error(result.error || "Failed to complete onboarding");
+        throw new Error(translateOnboardingError(result.error || "Failed to complete onboarding"));
       }
 
       console.log("[Onboarding] Completed successfully:", result.message);
