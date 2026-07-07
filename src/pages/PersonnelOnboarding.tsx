@@ -487,6 +487,8 @@ const PersonnelOnboarding = () => {
         w9Signature: formData.w9_signature,
         w9Certification: formData.w9_certification,
         icaSignature: formData.ica_signature,
+        itin: formData.itin,
+
       });
       
       // Clear saved progress on successful submit
