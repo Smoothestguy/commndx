@@ -194,7 +194,9 @@ export function useCompleteOnboarding() {
       w9Signature?: string | null;
       w9Certification?: boolean;
       icaSignature?: string | null;
+      itin?: string;
     }) => {
+
       console.log("[Onboarding] Starting onboarding completion for personnel:", personnelId);
 
       // Prepare documents array for the RPC function
