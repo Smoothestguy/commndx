@@ -62,6 +62,28 @@ const STEPS = [
   { id: 8, title: "Review & Submit", icon: CheckCircle },
 ];
 
+const MIN_STEP = 1;
+const MAX_STEP = STEPS.length;
+
+const clampStep = (step: unknown) => {
+  const numericStep = typeof step === "number" ? step : Number(step);
+  if (!Number.isFinite(numericStep)) return MIN_STEP;
+  return Math.min(MAX_STEP, Math.max(MIN_STEP, Math.trunc(numericStep)));
+};
+
+const isRecord = (value: unknown): value is Record<string, unknown> =>
+  typeof value === "object" && value !== null && !Array.isArray(value);
+
+const toSafeString = (value: unknown) => {
+  if (typeof value === "string") return value;
+  if (value === null || value === undefined) return "";
+  return String(value);
+};
+
+const toSafeBoolean = (value: unknown) => value === true;
+
+const toSafeArray = <T,>(value: unknown): T[] => (Array.isArray(value) ? (value as T[]) : []);
+
 const IMMIGRATION_STATUS_OPTIONS = [
   { value: "visa", label: "Visa" },
   { value: "work_permit", label: "Work Permit (EAD - Employment Authorization Document)" },
@@ -108,6 +130,84 @@ interface ExtendedOnboardingFormData extends OnboardingFormData {
   ica_signature: string | null;
 }
 
+const createDefaultFormData = (): ExtendedOnboardingFormData => ({
+  first_name: "",
+  last_name: "",
+  email: "",
+  phone: "",
+  date_of_birth: "",
+  photo_url: "",
+  address: "",
+  city: "",
+  state: "",
+  zip: "",
+  ssn_full: "",
+  itin: "",
+  citizenship_status: undefined,
+  immigration_status: undefined,
+  emergency_contacts: [],
+  documents: [],
+  bank_name: "",
+  bank_account_type: "",
+  bank_routing_number: "",
+  bank_account_number: "",
+  direct_deposit_signature: null,
+  tax_classification: "",
+  tax_ein: "",
+  tax_business_name: "",
+  w9_signature: null,
+  w9_certification: false,
+  ica_signature: null,
+});
+
+const normalizeFormData = (raw: unknown): ExtendedOnboardingFormData => {
+  const defaults = createDefaultFormData();
+  if (!isRecord(raw)) return defaults;
+
+  const citizenship = raw.citizenship_status;
+  const immigration = raw.immigration_status;
+
+  return {
+    ...defaults,
+    first_name: toSafeString(raw.first_name),
+    last_name: toSafeString(raw.last_name),
+    email: toSafeString(raw.email),
+    phone: toSafeString(raw.phone),
+    date_of_birth: toSafeString(raw.date_of_birth),
+    photo_url: toSafeString(raw.photo_url),
+    address: toSafeString(raw.address),
+    city: toSafeString(raw.city),
+    state: toSafeString(raw.state),
+    zip: toSafeString(raw.zip),
+    ssn_full: toSafeString(raw.ssn_full),
+    itin: toSafeString(raw.itin),
+    citizenship_status:
+      citizenship === "us_citizen" || citizenship === "non_us_citizen"
+        ? citizenship
+        : undefined,
+    immigration_status:
+      immigration === "visa" ||
+      immigration === "work_permit" ||
+      immigration === "green_card" ||
+      immigration === "other"
+        ? immigration
+        : undefined,
+    emergency_contacts: toSafeArray<EmergencyContact>(raw.emergency_contacts),
+    documents: toSafeArray<RegistrationDocument>(raw.documents),
+    bank_name: toSafeString(raw.bank_name),
+    bank_account_type: toSafeString(raw.bank_account_type),
+    bank_routing_number: toSafeString(raw.bank_routing_number),
+    bank_account_number: toSafeString(raw.bank_account_number),
+    direct_deposit_signature: typeof raw.direct_deposit_signature === "string" ? raw.direct_deposit_signature : null,
+    tax_classification: toSafeString(raw.tax_classification),
+    tax_ein: toSafeString(raw.tax_ein),
+    tax_business_name: toSafeString(raw.tax_business_name),
+    w9_signature: typeof raw.w9_signature === "string" ? raw.w9_signature : null,
+    w9_certification: toSafeBoolean(raw.w9_certification),
+    ica_signature: typeof raw.ica_signature === "string" ? raw.ica_signature : null,
+  };
+};
+
 const PersonnelOnboarding = () => {
   const { token } = useParams<{ token: string }>();
   const navigate = useNavigate();
@@ -152,11 +252,13 @@ const PersonnelOnboarding = () => {
         return null;
       }
       return {
-        formData: saved.formData,
-        currentStep: saved.currentStep || 1,
-        agreedToTerms: saved.agreedToTerms || false,
+        formData: normalizeFormData(saved.formData),
+        currentStep: clampStep(saved.currentStep),
+        agreedToTerms: saved.agreedToTerms === true,
       };
-    } catch {
+    } catch (err) {
+      try { sessionStorage.removeItem(storageKey); } catch {}
+      console.warn("[Onboarding] Discarded invalid saved progress:", err);
       return null;
     }
   }, [storageKey]);
@@ -185,40 +287,11 @@ const PersonnelOnboarding = () => {
 
   // Initialize form data — restored sessionStorage data takes priority
   const [formData, setFormData] = useState<ExtendedOnboardingFormData>(() => {
-    const defaults: ExtendedOnboardingFormData = {
-      first_name: "",
-      last_name: "",
-      email: "",
-      phone: "",
-      date_of_birth: "",
-      photo_url: "",
-      address: "",
-      city: "",
-      state: "",
-      zip: "",
-      ssn_full: "",
-      itin: "",
-      citizenship_status: undefined,
-      immigration_status: undefined,
-      emergency_contacts: [],
-      documents: [],
-      bank_name: "",
-      bank_account_type: "",
-      bank_routing_number: "",
-      bank_account_number: "",
-      direct_deposit_signature: null,
-      tax_classification: "",
-      tax_ein: "",
-      tax_business_name: "",
-      w9_signature: null,
-      w9_certification: false,
-      ica_signature: null,
-    };
     if (savedProgress?.formData) {
       restoredFromStorage.current = true;
-      return { ...defaults, ...savedProgress.formData };
+      return normalizeFormData(savedProgress.formData);
     }
-    return defaults;
+    return createDefaultFormData();
   });
 
   // Show toast when progress was restored
@@ -281,14 +354,14 @@ const PersonnelOnboarding = () => {
 
   // Helper to get document by type
   const getDocumentByType = (docType: RegistrationDocument["document_type"]) => {
-    return formData.documents.find((d) => d.document_type === docType);
+    return toSafeArray<RegistrationDocument>(formData.documents).find((d) => d?.document_type === docType);
   };
 
   // Helper to add/update document
   const handleDocumentUpload = (doc: RegistrationDocument) => {
     setFormData((prev) => ({
       ...prev,
-      documents: [...prev.documents.filter((d) => d.document_type !== doc.document_type), doc],
+      documents: [...toSafeArray<RegistrationDocument>(prev.documents).filter((d) => d?.document_type !== doc.document_type), doc],
     }));
   };
 
@@ -296,11 +369,12 @@ const PersonnelOnboarding = () => {
   const handleDocumentRemove = (docType: RegistrationDocument["document_type"]) => {
     setFormData((prev) => ({
       ...prev,
-      documents: prev.documents.filter((d) => d.document_type !== docType),
+      documents: toSafeArray<RegistrationDocument>(prev.documents).filter((d) => d?.document_type !== docType),
     }));
   };
 
-  const progress = (currentStep / STEPS.length) * 100;
+  const progress = (clampStep(currentStep) / STEPS.length) * 100;
+  const activeStep = STEPS[clampStep(currentStep) - 1] ?? STEPS[0];
 
   // Helper to check if a document passed AI verification (or wasn't verified)
   const isDocumentVerified = (docType: RegistrationDocument["document_type"]): boolean => {
@@ -406,12 +480,12 @@ const PersonnelOnboarding = () => {
       }
       case 7:
         return (
-          formData.emergency_contacts.length > 0 &&
-          formData.emergency_contacts.every(
+          toSafeArray<EmergencyContact>(formData.emergency_contacts).length > 0 &&
+          toSafeArray<EmergencyContact>(formData.emergency_contacts).every(
             (c) =>
-              c.name.trim() !== "" &&
-              c.relationship.trim() !== "" &&
-              c.phone.trim() !== ""
+              toSafeString(c.name).trim() !== "" &&
+              toSafeString(c.relationship).trim() !== "" &&
+              toSafeString(c.phone).trim() !== ""
           )
         );
       case 8:
@@ -423,13 +497,13 @@ const PersonnelOnboarding = () => {
 
   const handleNext = () => {
     if (currentStep < STEPS.length && canProceed()) {
-      setCurrentStep((prev) => prev + 1);
+      setCurrentStep((prev) => clampStep(prev + 1));
     }
   };
 
   const handleBack = () => {
     if (currentStep > 1) {
-      setCurrentStep((prev) => prev - 1);
+      setCurrentStep((prev) => clampStep(prev - 1));
     }
   };
 
@@ -670,10 +744,10 @@ const PersonnelOnboarding = () => {
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
               {(() => {
-                const Icon = STEPS[currentStep - 1].icon;
+                const Icon = activeStep.icon;
                 return <Icon className="h-5 w-5" />;
               })()}
-              Step {currentStep}: {STEPS[currentStep - 1].title}
+              Step {clampStep(currentStep)}: {activeStep.title}
             </CardTitle>
             <CardDescription>{getStepDescription()}</CardDescription>
           </CardHeader>
@@ -1102,7 +1176,7 @@ const PersonnelOnboarding = () => {
                   Please provide at least one emergency contact.
                 </p>
                 <EmergencyContactForm
-                  contacts={formData.emergency_contacts}
+                  contacts={toSafeArray<EmergencyContact>(formData.emergency_contacts)}
                   onChange={(contacts) =>
                     setFormData((prev) => ({ ...prev, emergency_contacts: contacts }))
                   }
@@ -1153,7 +1227,7 @@ const PersonnelOnboarding = () => {
                       </>
                     )}
                     <span className="text-muted-foreground">Documents:</span>
-                    <span>{formData.documents.length} uploaded</span>
+                    <span>{toSafeArray<RegistrationDocument>(formData.documents).length} uploaded</span>
                   </div>
                 </div>
 
@@ -1201,7 +1275,7 @@ const PersonnelOnboarding = () => {
 
                 <div className="space-y-4">
                   <h3 className="font-medium">Emergency Contacts</h3>
-                  {formData.emergency_contacts.map((contact, idx) => (
+                  {toSafeArray<EmergencyContact>(formData.emergency_contacts).map((contact, idx) => (
                     <div key={idx} className="text-sm p-3 bg-muted rounded-lg">
                       <p className="font-medium">{contact.name} ({contact.relationship})</p>
                       <p className="text-muted-foreground">{contact.phone}</p>

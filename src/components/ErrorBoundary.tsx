@@ -7,6 +7,7 @@ interface ErrorBoundaryProps {
   children: React.ReactNode;
   fallbackTitle?: string;
   fallbackMessage?: string;
+  onBeforeRetry?: () => void;
 }
 
 interface ErrorBoundaryState {
@@ -28,6 +29,12 @@ export class ErrorBoundary extends React.Component<ErrorBoundaryProps, ErrorBoun
   }
 
   handleReload = () => {
+    try {
+      this.props.onBeforeRetry?.();
+    } catch (error) {
+      // eslint-disable-next-line no-console
+      console.warn("[ErrorBoundary] Retry cleanup failed:", error);
+    }
     this.setState({ hasError: false, error: null });
     window.location.reload();
   };
