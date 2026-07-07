@@ -179,6 +179,8 @@ export function useCompleteOnboarding() {
       w9Signature,
       w9Certification,
       icaSignature,
+      itin,
+
     }: {
       token: string;
       personnelId: string;
