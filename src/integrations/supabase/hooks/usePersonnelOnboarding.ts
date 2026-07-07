@@ -95,7 +95,7 @@ export function useOnboardingToken(token: string | undefined) {
 
       if (error) throw error;
 
-      const result = (data ?? {}) as {
+      const result = (data ?? {}) as unknown as {
         status: "valid" | "expired" | "used" | "revoked" | "not_found";
         token?: OnboardingTokenData;
         personnel?: PersonnelOnboardingData;
