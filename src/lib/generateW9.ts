@@ -25,7 +25,8 @@ function buildW9FormData(options: GenerateW9Options): W9PDFFormData {
     tinType = "ssn";
   }
   
-  const cityStateZip = [w9Form.city, w9Form.state, w9Form.zip].filter(Boolean).join(", ");
+  const normalizedState = w9Form.state ? w9Form.state.toUpperCase() : w9Form.state;
+  const cityStateZip = [w9Form.city, normalizedState, w9Form.zip].filter(Boolean).join(", ");
   
   return {
     name: w9Form.name_on_return || "",

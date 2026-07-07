@@ -44,40 +44,46 @@ export function VendorAgreementSignatureView({
   const hasAgreementSigned = !!vendorAgreementSignature && !!vendorAgreementSignedAt;
   const hasW9Signed = !!w9Signature && !!w9SignedAt;
 
-  const w9FormData = useMemo<W9Form>(() => ({
-    id: "vendor-w9",
-    personnel_id: "",
-    name_on_return: vendorName,
-    business_name: companyName || null,
-    federal_tax_classification: federalTaxClassification || "individual",
-    llc_tax_classification: null,
-    other_classification: null,
-    has_foreign_partners: false,
-    exempt_payee_code: null,
-    fatca_exemption_code: null,
-    address: vendorAddress || "",
-    city: "",
-    state: "",
-    zip: "",
-    account_numbers: null,
-    tin_type: "ein" as const,
-    ein: taxId || null,
-    signature_data: w9Signature || null,
-    signature_date: w9SignedAt || new Date().toISOString(),
-    certified_us_person: true,
-    certified_correct_tin: true,
-    certified_not_subject_backup_withholding: true,
-    certified_fatca_exempt: false,
-    document_url: null,
-    status: "completed" as const,
-    verified_by: null,
-    verified_at: null,
-    rejection_reason: null,
-    edit_allowed: false,
-    edit_allowed_until: null,
-    created_at: w9SignedAt || new Date().toISOString(),
-    updated_at: w9SignedAt || new Date().toISOString(),
-  }), [vendorName, companyName, federalTaxClassification, vendorAddress, taxId, w9Signature, w9SignedAt]);
+  const w9FormData = useMemo<W9Form>(() => {
+    const cls = (federalTaxClassification || "individual").toLowerCase();
+    const usesSsn = cls === "individual" || cls === "sole_proprietor";
+    const cleanId = (taxId || "").replace(/\D/g, "");
+    return {
+      id: "vendor-w9",
+      personnel_id: "",
+      name_on_return: vendorName,
+      business_name: companyName || null,
+      federal_tax_classification: federalTaxClassification || "individual",
+      llc_tax_classification: null,
+      other_classification: null,
+      has_foreign_partners: false,
+      exempt_payee_code: null,
+      fatca_exemption_code: null,
+      address: vendorAddress || "",
+      city: "",
+      state: "",
+      zip: "",
+      account_numbers: null,
+      tin_type: (usesSsn ? "ssn" : "ein") as "ssn" | "ein",
+      ein: !usesSsn ? (taxId || null) : null,
+      signature_data: w9Signature || null,
+      signature_date: w9SignedAt || new Date().toISOString(),
+      certified_us_person: true,
+      certified_correct_tin: true,
+      certified_not_subject_backup_withholding: true,
+      certified_fatca_exempt: false,
+      document_url: null,
+      status: "completed" as const,
+      verified_by: null,
+      verified_at: null,
+      rejection_reason: null,
+      edit_allowed: false,
+      edit_allowed_until: null,
+      created_at: w9SignedAt || new Date().toISOString(),
+      updated_at: w9SignedAt || new Date().toISOString(),
+      __ssnFull: usesSsn && cleanId.length === 9 ? cleanId : null,
+    } as W9Form & { __ssnFull: string | null };
+  }, [vendorName, companyName, federalTaxClassification, vendorAddress, taxId, w9Signature, w9SignedAt]);
 
   const handleDownloadAgreement = () => {
     downloadVendorAgreement({
@@ -281,7 +287,10 @@ export function VendorAgreementSignatureView({
               Form W-9 (Request for Taxpayer Identification Number)
             </DialogTitle>
           </DialogHeader>
-          <W9FormPreview w9Form={w9FormData} />
+          <W9FormPreview
+            w9Form={w9FormData}
+            ssnFull={(w9FormData as W9Form & { __ssnFull: string | null }).__ssnFull}
+          />
         </DialogContent>
       </Dialog>
     </>
