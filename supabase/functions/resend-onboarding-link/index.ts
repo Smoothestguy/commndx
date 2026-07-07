@@ -111,7 +111,7 @@ const handler = async (req: Request): Promise<Response> => {
     // Generate a new token
     const token = crypto.randomUUID();
     const expiresAt = new Date();
-    expiresAt.setDate(expiresAt.getDate() + 7); // 7 days expiry
+    expiresAt.setDate(expiresAt.getDate() + 21); // 7 days expiry
 
     const { error: tokenError } = await supabase
       .from("personnel_onboarding_tokens")
@@ -129,7 +129,7 @@ const handler = async (req: Request): Promise<Response> => {
     console.log("[Resend Onboarding] Token created for:", personnel.id);
 
     // Build onboarding URL
-    const siteUrl = (Deno.env.get("SITE_URL") || "https://command-x.lovable.app").trim();
+    const siteUrl = (Deno.env.get("SITE_URL") || "https://fairfieldrg.com").trim();
     const onboardingUrl = encodeURI(`${siteUrl}/onboard/${token}`);
 
     // Send the email
@@ -158,7 +158,7 @@ const handler = async (req: Request): Promise<Response> => {
               <a href="${onboardingUrl}" target="_blank" rel="noopener noreferrer" style="display: inline-block; background: #3b82f6; color: white; padding: 14px 28px; text-decoration: none; border-radius: 8px; font-weight: 600; font-size: 16px;">Complete Onboarding</a>
             </div>
             
-            <p style="color: #6b7280; font-size: 14px;">This link will expire in 7 days. If you did not request this link, please ignore this email.</p>
+            <p style="color: #6b7280; font-size: 14px;">This link will expire in 21 days. If you did not request this link, please ignore this email.</p>
             
             <hr style="border: none; border-top: 1px solid #e5e7eb; margin: 24px 0;">
             
@@ -183,7 +183,7 @@ const handler = async (req: Request): Promise<Response> => {
     await supabase.from("admin_notifications").insert({
       notification_type: "onboarding_link_resent",
       title: `Onboarding Link Resent: ${personnel.first_name} ${personnel.last_name}`,
-      message: `A new onboarding link was sent to ${personnel.email} at their request. Link expires in 7 days.`,
+      message: `A new onboarding link was sent to ${personnel.email} at their request. Link expires in 21 days.`,
       user_id: "00000000-0000-0000-0000-000000000000",
       link_url: `/personnel/${personnel.id}`,
       related_id: personnel.id,

@@ -88,65 +88,45 @@ export function useOnboardingToken(token: string | undefined) {
         };
       }
 
-      // Fetch the token record
-      const { data: tokenData, error: tokenError } = await supabase
-        .from("personnel_onboarding_tokens")
-        .select("*")
-        .eq("token", token)
-        .maybeSingle();
+      // Use SECURITY DEFINER RPC — anon cannot read the tokens/personnel tables directly.
+      const { data, error } = await supabase.rpc("validate_onboarding_token", {
+        p_token: token,
+      });
 
-      if (tokenError) throw tokenError;
+      if (error) throw error;
 
-      if (!tokenData) {
+      const result = (data ?? {}) as unknown as {
+        status: "valid" | "expired" | "used" | "revoked" | "not_found";
+        token?: OnboardingTokenData;
+        personnel?: PersonnelOnboardingData;
+        application_answers?: Record<string, unknown> | null;
+      };
+
+      if (result.status !== "valid") {
         return {
           isValid: false,
-          isExpired: false,
-          isUsed: false,
-          token: null,
+          isExpired: result.status === "expired",
+          isUsed: result.status === "used" || result.status === "revoked",
+          token: result.token ?? null,
           personnel: null,
           applicationAnswers: null,
         };
       }
 
-      // Check if token is used
-      const isUsed = !!tokenData.used_at;
-
-      // Check if token is expired
-      const isExpired = new Date(tokenData.expires_at) < new Date();
-
-      if (isUsed || isExpired) {
-        return {
-          isValid: false,
-          isExpired,
-          isUsed,
-          token: tokenData as OnboardingTokenData,
-          personnel: null,
-          applicationAnswers: null,
-        };
-      }
-
-      // Fetch the personnel record
-      // Also notify admins that someone started onboarding (fire and forget)
+      // Fire-and-forget: notify admins that this token was opened.
       try {
-        const { data: personnelPreview } = await supabase
-          .from("personnel")
-          .select("first_name, last_name, email")
-          .eq("id", tokenData.personnel_id)
-          .maybeSingle();
-
+        const personnelPreview = result.personnel;
         if (personnelPreview) {
-          // Check if we've already notified for this token to avoid duplicates
           const notifiedKey = `onboarding_started_${token}`;
           if (!sessionStorage.getItem(notifiedKey)) {
             sessionStorage.setItem(notifiedKey, "true");
-            
             supabase.functions.invoke("create-admin-notification", {
               body: {
                 notification_type: "onboarding_started",
                 title: `Onboarding Started: ${personnelPreview.first_name} ${personnelPreview.last_name}`,
                 message: `${personnelPreview.first_name} ${personnelPreview.last_name} has opened their onboarding link and started the process.`,
-                link_url: `/personnel/${tokenData.personnel_id}`,
-                related_id: tokenData.personnel_id,
+                link_url: `/personnel/${personnelPreview.id}`,
+                related_id: personnelPreview.id,
                 metadata: {
                   personnel_name: `${personnelPreview.first_name} ${personnelPreview.last_name}`,
                   personnel_email: personnelPreview.email,
@@ -160,44 +140,22 @@ export function useOnboardingToken(token: string | undefined) {
       } catch (notifError) {
         console.error("[Onboarding] Error sending started notification:", notifError);
       }
-      const { data: personnelData, error: personnelError } = await supabase
-        .from("personnel")
-        .select("id, first_name, last_name, email, phone, date_of_birth, address, city, state, zip, photo_url, applicant_id, onboarding_status, onboarding_completed_at")
-        .eq("id", tokenData.personnel_id)
-        .maybeSingle();
-
-      if (personnelError) throw personnelError;
-
-      // If personnel has applicant_id, try to fetch application answers
-      let applicationAnswers: Record<string, unknown> | null = null;
-      if (personnelData?.applicant_id) {
-        const { data: applicationData } = await supabase
-          .from("applications")
-          .select("answers")
-          .eq("applicant_id", personnelData.applicant_id)
-          .order("created_at", { ascending: false })
-          .limit(1)
-          .maybeSingle();
-
-        if (applicationData?.answers) {
-          applicationAnswers = applicationData.answers as Record<string, unknown>;
-        }
-      }
 
       return {
         isValid: true,
         isExpired: false,
         isUsed: false,
-        token: tokenData as OnboardingTokenData,
-        personnel: personnelData as PersonnelOnboardingData,
-        applicationAnswers,
+        token: result.token ?? null,
+        personnel: result.personnel ?? null,
+        applicationAnswers: result.application_answers ?? null,
       };
     },
     enabled: !!token,
-    staleTime: 5 * 60 * 1000, // Cache for 5 minutes (user is filling out form)
-    refetchOnWindowFocus: false, // Don't refetch when user switches back to tab (common on mobile)
+    staleTime: 5 * 60 * 1000,
+    refetchOnWindowFocus: false,
   });
 }
+
 
 /**
  * Hook to complete onboarding - updates personnel record and marks token as used
@@ -221,6 +179,8 @@ export function useCompleteOnboarding() {
       w9Signature,
       w9Certification,
       icaSignature,
+      itin,
+
     }: {
       token: string;
       personnelId: string;
@@ -236,7 +196,9 @@ export function useCompleteOnboarding() {
       w9Signature?: string | null;
       w9Certification?: boolean;
       icaSignature?: string | null;
+      itin?: string;
     }) => {
+
       console.log("[Onboarding] Starting onboarding completion for personnel:", personnelId);
 
       // Prepare documents array for the RPC function
@@ -280,6 +242,8 @@ export function useCompleteOnboarding() {
         p_w9_certification: w9Certification || false,
         p_ica_signature: icaSignature || null,
         p_documents: JSON.parse(JSON.stringify(documentsPayload)),
+        p_itin: itin || null,
+
       });
 
       if (error) {
