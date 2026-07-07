@@ -114,6 +114,8 @@ const PersonnelDetail = () => {
 
   const handleResendOnboardingEmail = () => {
     if (!personnel) return;
+    // Staff explicitly confirmed the warning — proceed with revoke-and-reissue.
+    setResendConfirmOpen(false);
     resendOnboardingEmail.mutate({
       personnelId: personnel.id,
       email: personnel.email,
