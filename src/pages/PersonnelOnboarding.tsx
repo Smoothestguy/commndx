@@ -244,7 +244,7 @@ const PersonnelOnboarding = () => {
     saveTimerRef.current = setTimeout(() => {
       try {
         const payload = {
-          formData: stripSignatures(formData),
+          formData: stripSensitive(formData),
           currentStep,
           agreedToTerms,
           timestamp: Date.now(),
