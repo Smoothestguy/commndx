@@ -218,11 +218,23 @@ export function W9TaxForm({ data, onChange, personnelData }: W9TaxFormProps) {
           gap: 4px;
         }
 
-        .w9-checkbox-item input[type="radio"] {
+        .w9-tax-radio {
+          appearance: none;
+          -webkit-appearance: none;
           width: 12px;
           height: 12px;
           margin: 0;
-          accent-color: black;
+          border: 1pt solid black;
+          border-radius: 50%;
+          background: white !important;
+          display: inline-block;
+          flex: 0 0 12px;
+          position: relative;
+          cursor: pointer;
+        }
+
+        .w9-tax-radio:checked {
+          background: radial-gradient(circle, black 0 42%, white 46%) !important;
         }
 
         .w9-checkbox-item label {
@@ -546,6 +558,7 @@ export function W9TaxForm({ data, onChange, personnelData }: W9TaxFormProps) {
                   <div key={option.value} className="w9-checkbox-item">
                     <input
                       type="radio"
+                      className="w9-tax-radio"
                       id={option.value}
                       name="tax_classification"
                       checked={data.tax_classification === option.value}
@@ -559,6 +572,7 @@ export function W9TaxForm({ data, onChange, personnelData }: W9TaxFormProps) {
               <div className="w9-llc-row">
                 <input
                   type="radio"
+                  className="w9-tax-radio"
                   id="llc"
                   name="tax_classification"
                   checked={isLLC}
