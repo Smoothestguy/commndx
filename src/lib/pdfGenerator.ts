@@ -99,15 +99,24 @@ export async function generateW9PDF(formData: W9PDFFormData): Promise<Blob> {
     safeSetTextField(form, "topmostSubform[0].Page1[0].f1_09[0]", formData.accountNumbers);
   }
 
-  // TIN (SSN or EIN) - fill each field separately
-  const tinClean = formData.tin.replace(/\D/g, "");
-  if (formData.tinType === "ssn" && tinClean.length === 9) {
-    // SSN fields: f1_11 (3 digits), f1_12 (2 digits), f1_13 (4 digits)
-    safeSetTextField(form, "topmostSubform[0].Page1[0].f1_11[0]", tinClean.substring(0, 3));
-    safeSetTextField(form, "topmostSubform[0].Page1[0].f1_12[0]", tinClean.substring(3, 5));
-    safeSetTextField(form, "topmostSubform[0].Page1[0].f1_13[0]", tinClean.substring(5, 9));
+  // TIN (SSN or EIN) - fill each field separately.
+  // For SSN, `formData.tin` may include literal 'X' masking chars when only the
+  // last four are known — preserve them so the boxes aren't left blank.
+  const rawTin = formData.tin || "";
+  const tinClean = rawTin.replace(/\D/g, "");
+  if (formData.tinType === "ssn") {
+    const ssnChars = rawTin.replace(/[^0-9Xx]/g, "").toUpperCase();
+    if (ssnChars.length === 9) {
+      safeSetTextField(form, "topmostSubform[0].Page1[0].f1_11[0]", ssnChars.substring(0, 3));
+      safeSetTextField(form, "topmostSubform[0].Page1[0].f1_12[0]", ssnChars.substring(3, 5));
+      safeSetTextField(form, "topmostSubform[0].Page1[0].f1_13[0]", ssnChars.substring(5, 9));
+    } else if (tinClean.length === 4) {
+      // Last-four-only fallback: still show something in the SSN row
+      safeSetTextField(form, "topmostSubform[0].Page1[0].f1_11[0]", "XXX");
+      safeSetTextField(form, "topmostSubform[0].Page1[0].f1_12[0]", "XX");
+      safeSetTextField(form, "topmostSubform[0].Page1[0].f1_13[0]", tinClean);
+    }
   } else if (formData.tinType === "ein" && tinClean.length >= 9) {
-    // EIN fields: f1_14 (2 digits), f1_15 (7 digits)
     safeSetTextField(form, "topmostSubform[0].Page1[0].f1_14[0]", tinClean.substring(0, 2));
     safeSetTextField(form, "topmostSubform[0].Page1[0].f1_15[0]", tinClean.substring(2, 9));
   }
