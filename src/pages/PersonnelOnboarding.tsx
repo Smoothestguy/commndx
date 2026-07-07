@@ -450,6 +450,26 @@ const PersonnelOnboarding = () => {
       return;
     }
 
+    // Guard against sessionStorage restore stripping signatures:
+    // re-validate every required signature and bounce the user back to re-sign.
+    const missingSignatureStep = (() => {
+      if (!formData.direct_deposit_signature) return 4;
+      if (!formData.w9_signature) return 5;
+      if (!formData.ica_signature) return 6;
+      return null;
+    })();
+    if (missingSignatureStep !== null) {
+      const label =
+        missingSignatureStep === 4 ? "Direct Deposit"
+        : missingSignatureStep === 5 ? "W-9"
+        : "Independent Contractor Agreement";
+      toast.error(
+        `Your ${label} signature was cleared when this page reloaded. Please re-sign to continue.`
+      );
+      setCurrentStep(missingSignatureStep);
+      return;
+    }
+
     try {
       await completeOnboarding.mutateAsync({
         token: tokenData.token,
