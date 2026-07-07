@@ -53,8 +53,10 @@ const handler = async (req: Request): Promise<Response> => {
 
     console.log("[Onboarding Email] Token created successfully, expires:", expiresAt.toISOString());
 
-    // Build onboarding URL - ensure no whitespace
-    const siteUrl = (Deno.env.get("SITE_URL") || "https://command-x.lovable.app").trim();
+    // Build onboarding URL from the production site (env override for staging).
+    // Never derived from the caller's Origin, so links generated inside the Lovable preview
+    // still point at the real customer domain.
+    const siteUrl = (Deno.env.get("SITE_URL") || "https://fairfieldrg.com").trim();
     const onboardingUrl = encodeURI(`${siteUrl}/onboard/${token}`);
 
     console.log("[Onboarding Email] Onboarding URL:", onboardingUrl);
