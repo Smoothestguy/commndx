@@ -1,39 +1,19 @@
-## Diagnosis
+## Add Isolated W-9 Preview Route
 
-Uziel Garcia's onboarding link is valid and he has successfully opened it multiple times today. The real failure is downstream:
+Add a standalone admin-only route that renders the W-9 form components with sample data so you can review the W-9 without walking through the full onboarding flow.
 
-- Token `03d2e783-7b39-48b1-9dc1-09ace12b45e8` — unused, unrevoked, expires 2026-07-13. Working.
-- Edge function `verify-document` (called when he uploads his SSN card) is returning:
-  ```
-  AI API error: 403
-  "LOVABLE_API_KEY is not registered for this project"
-  ```
-- Since we just made the SSN card **required** for US citizens / green card / work permit holders, this AI verification step now blocks the entire flow. To Uziel, it looks like "the link doesn't work."
+### New route
+`/admin/preview/w9` — renders a page with two tabs:
+1. **Onboarding W-9 (blank/fillable)** — the `W9TaxForm` component from `src/components/personnel/onboarding/`, prefilled with sample "Jane Doe" personnel data, using local React state (no DB writes).
+2. **Completed W-9 (review view)** — the `W9FormPreview` component, fed a mock completed `W9Form` object showing the IRS-styled populated form.
 
-This affects **every** personnel currently onboarding, not just Uziel.
+Toggle buttons on the page switch between the two views. Nothing writes to the database.
 
-## Fix
+### Wiring
+- New file: `src/pages/admin/W9Preview.tsx`
+- Register the route in `src/App.tsx` alongside other `/admin/*` routes, wrapped in the existing `ProtectedRoute` so only admins can access it.
 
-1. **Re-provision the Lovable AI Gateway key** for this project so `verify-document` stops 403-ing. This is a project-level backend fix — no code change needed.
-2. **Add a graceful fallback in `verify-document`**: if the AI gateway returns 403 / key-not-registered, log the failure, mark the document as `verification_status = 'pending_manual_review'` instead of hard-failing, and let onboarding continue. An admin notification is created for manual review.
-3. **Client-side (`CategoryDocumentUpload.tsx`)**: when verification returns `pending_manual_review`, show "Uploaded — pending review" instead of an error, and treat it as satisfying the required-doc gate so the applicant is not blocked by an infra outage.
+### How you'd use it
+Navigate to `/admin/preview/w9` in the preview to review the W-9 look/feel instantly — no token, no filling out prior steps.
 
-## Immediate action for Uziel
-
-After the fix ships, he can reopen the same link he already has:
-`https://commndx.com/onboard/03d2e783-7b39-48b1-9dc1-09ace12b45e8`
-
-No need to resend.
-
-## Files to change
-
-- `supabase/functions/verify-document/index.ts` — catch 403 / key-not-registered, return `{ status: "pending_manual_review" }`.
-- `src/components/personnel/onboarding/CategoryDocumentUpload.tsx` — handle the new status (badge + treat as satisfied).
-- `src/pages/PersonnelOnboarding.tsx` — in Step 3 `canProceed`, accept `pending_manual_review` as valid for the SSN card requirement.
-- Backend: re-provision Lovable AI Gateway key (done via the Cloud settings, not a code file).
-
-## Out of scope
-
-- No DB migration.
-- No change to token generation, expiry, or the email templates.
-- No change to which categories require the SSN card.
+No DB, RLS, or onboarding flow changes.

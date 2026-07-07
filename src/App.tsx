@@ -158,6 +158,7 @@ import SessionHistory from "./pages/SessionHistory";
 import ActivityHistory from "./pages/ActivityHistory";
 import AiDevAssistant from "./pages/admin/AiDevAssistant";
 import Trash from "./pages/admin/Trash";
+import W9Preview from "./pages/admin/W9Preview";
 import DocumentCenter from "./pages/DocumentCenter";
 import { UpdateNotification } from "./components/electron/UpdateNotification";
 import NetworkMapDemo from "./pages/NetworkMapDemo";
@@ -533,6 +534,10 @@ const App = () => {
                       <Route
                         path="/admin/preview/personnel-portal"
                         element={<PersonnelPortalPreview />}
+                      />
+                      <Route
+                        path="/admin/preview/w9"
+                        element={<W9Preview />}
                       />
                       <Route path="/admin/audit-logs" element={<AuditLogs />} />
                       <Route
