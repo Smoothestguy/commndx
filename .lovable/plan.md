@@ -1,42 +1,40 @@
-## Problem
+## Findings from the deep check
 
-JESUS PABON reports that after filling in phone + date of birth on step 1 of his onboarding form and clicking **Next**, the entire screen goes black. His personnel record (`95bacd76-…`) has all address fields null, so step 2 is rendering with empty values — nothing obvious in the JSX explains a crash.
+- Jesus Pabon's active onboarding link is valid, unused, not revoked, and expires later this month.
+- His personnel record itself looks clean: status is pending, address fields are blank, and onboarding has not been completed.
+- The app no longer goes fully black because the new error boundary is catching the crash, but the underlying onboarding render error still needs to be fixed.
+- The most likely failure point is the onboarding form restoring a malformed/stale mobile draft from session storage, then rendering the next step with unsafe assumptions about `currentStep` and `formData` field types. If that draft is corrupt, pressing “Next” can immediately re-render into the error boundary, and “Try Again” can reload the same bad draft again.
 
-The reason we can't see *why* it crashes:
-- There is **no ErrorBoundary anywhere in the app** (`rg ErrorBoundary` returns nothing).
-- When any React render throws, the whole tree unmounts → dark theme shows the black `bg-background` with no content = "black screen".
-- Jesus is on his phone, so we have no console access.
+## Plan to fix
 
-## Fix (2 parts)
+1. **Reproduce the Jesus flow directly**
+   - Open Jesus Pabon's current active onboarding link in a controlled browser run.
+   - Fill phone/date of birth, click “Next,” and capture the exact thrown error if it appears.
+   - Confirm whether it is caused by restored draft state, step index, field shape, or another component.
 
-### 1. Add a global ErrorBoundary so users never see a black screen again
+2. **Harden `PersonnelOnboarding.tsx` against bad saved progress**
+   - Normalize restored form data instead of spreading raw session storage over defaults.
+   - Force all text fields to safe strings, booleans to booleans, and arrays like `documents` / `emergency_contacts` to arrays.
+   - Clamp restored `currentStep` to the valid range of steps.
+   - If saved progress cannot be parsed safely, discard only that local draft and continue with a clean form instead of crashing.
 
-New file `src/components/ErrorBoundary.tsx` — class component that catches render errors and shows a friendly recovery card (title, short message, "Try again" reload button, and the error message in a collapsible for support). Wrap `<App />` in `src/main.tsx` (and additionally wrap the onboarding route content in `App.tsx` with a second boundary so a crash there doesn't blow up the whole shell).
+3. **Make step rendering crash-safe**
+   - Replace direct `STEPS[currentStep - 1]` access with a safe `activeStep` value.
+   - Prevent `canProceed()` from calling `.trim()`, `.find()`, or `.length` on invalid restored values.
+   - Add a safe `goToStep`/`handleNext` path so double taps or stale state cannot push the form outside steps 1–8.
 
-This alone converts "black screen" into a visible, actionable error and lets Jesus continue after a reload with his session-restored progress.
+4. **Fix the recovery loop**
+   - Update the onboarding error boundary behavior so “Try Again” clears the corrupt onboarding draft before reloading.
+   - Keep this scoped to onboarding draft keys only, not the rest of the app/session.
+   - Adjust the fallback message so it does not promise progress is preserved when the recovery action must reset a bad local draft.
 
-### 2. Harden `src/pages/PersonnelOnboarding.tsx` against the two most likely step-1→step-2 crash sources
+5. **Validate after the fix**
+   - Re-run Jesus Pabon's onboarding route on the active token.
+   - Verify phone/date of birth entry and “Next” lands on Step 2 Address without the error card.
+   - Check console/runtime signals for any remaining onboarding errors.
 
-- **`setState-during-render` block (lines 255–272)**: currently `if (validationResult?.personnel && !initialized) { setFormData(...); setInitialized(true); }` runs unconditionally on every render. Move this into a `useEffect` keyed on `validationResult?.personnel?.id` so it can't cause an update loop when step changes.
-- **sessionStorage save (lines 232–250)**: wrap the whole payload build (not just the `setItem`) in try/catch, and skip saving if `formData.documents` contains any non-serializable value (e.g. a `File` object). Circular/non-JSON values would throw synchronously in the effect and unmount the tree.
-- Add a `console.error` on caught errors so if Jesus tries again from a device we can inspect, we get a stack.
+## Technical notes
 
-## Files touched
-
-```text
-src/components/ErrorBoundary.tsx      (new)
-src/main.tsx                          (wrap <App/>)
-src/App.tsx                           (wrap /onboarding/:token route)
-src/pages/PersonnelOnboarding.tsx     (move init to useEffect, harden save)
-```
-
-## Out of scope
-
-- No visual/design changes to the onboarding steps.
-- No DB or RLS changes — Jesus's record is fine, `onboarding_status = pending`, token is valid.
-
-## Verification
-
-- Load `/onboarding/<token>` on desktop, fill step 1, click Next → step 2 renders (regression check).
-- Force a throw inside step 2 render temporarily → confirm the ErrorBoundary card appears instead of a black screen.
-- Ask Jesus to retry; if it still fails, the ErrorBoundary will now show the actual message and we can pinpoint it in one more pass.
+- No database migration should be needed based on the current evidence.
+- This is a frontend state-hardening fix for the public onboarding route.
+- The backend token/data for Jesus appears valid, so issuing another link alone would likely not solve the phone's local crash if a bad draft remains on that device.
