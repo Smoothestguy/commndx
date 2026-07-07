@@ -242,6 +242,8 @@ export function useCompleteOnboarding() {
         p_w9_certification: w9Certification || false,
         p_ica_signature: icaSignature || null,
         p_documents: JSON.parse(JSON.stringify(documentsPayload)),
+        p_itin: itin || null,
+
       });
 
       if (error) {
