@@ -314,100 +314,97 @@ const PersonnelOnboarding = () => {
     return verification.verified === true;
   };
 
-  const canProceed = () => {
+  const getStepErrors = (): string[] => {
+    const errors: string[] = [];
     switch (currentStep) {
-      case 1:
-        return (
-          formData.first_name.trim() !== "" &&
-          formData.last_name.trim() !== "" &&
-          formData.email.trim() !== ""
-        );
+      case 1: {
+        if (formData.first_name.trim() === "") errors.push("First name is required");
+        if (formData.last_name.trim() === "") errors.push("Last name is required");
+        if (formData.email.trim() === "") errors.push("Email is required");
+        else if (!/^\S+@\S+\.\S+$/.test(formData.email.trim())) errors.push("Email format is invalid");
+        const digits = (formData.phone || "").replace(/\D/g, "");
+        if (digits.length < 10) errors.push("Phone number is required (10 digits)");
+        if (!formData.date_of_birth) errors.push("Date of birth is required");
+        break;
+      }
       case 2:
-        return true; // Address is optional
+        break; // Address is optional
       case 3: {
-        // Citizenship status is always required
-        if (!formData.citizenship_status) return false;
-
-        // Citizenship-specific requirements
+        if (!formData.citizenship_status) {
+          errors.push("Select your citizenship status");
+          break;
+        }
         if (formData.citizenship_status === "us_citizen") {
-          // US Citizen: SSN + Government ID + SSN Card required
-          const hasSSN = formData.ssn_full && formData.ssn_full.length === 9;
-          const hasGovtId = !!getDocumentByType("government_id");
-          const hasSSNCard = !!getDocumentByType("ssn_card");
-          return hasSSN && hasGovtId && isDocumentVerified("government_id") && hasSSNCard;
+          if (!formData.ssn_full || formData.ssn_full.length !== 9)
+            errors.push("SSN must be 9 digits");
+          if (!getDocumentByType("government_id")) errors.push("Upload a Government ID");
+          else if (!isDocumentVerified("government_id"))
+            errors.push("Government ID could not be verified — re-upload a clearer image");
+          if (!getDocumentByType("ssn_card")) errors.push("Upload your Social Security card");
         } else {
-          // Non-US citizen needs immigration status
-          if (!formData.immigration_status) return false;
-
-          // For visa, work_permit, green_card: SSN required
-          // For other: ITIN required
+          if (!formData.immigration_status) {
+            errors.push("Select your immigration status");
+            break;
+          }
           if (formData.immigration_status === "other") {
-            const hasITIN = formData.itin && formData.itin.length === 9 && formData.itin.startsWith("9");
-            // Work authorization document is optional
-            return hasITIN;
+            if (!formData.itin || formData.itin.length !== 9 || !formData.itin.startsWith("9"))
+              errors.push("ITIN must be 9 digits starting with 9");
           } else {
-            // Visa, Work Permit, Green Card all need SSN
-            const hasSSN = formData.ssn_full && formData.ssn_full.length === 9;
-            if (!hasSSN) return false;
-
+            if (!formData.ssn_full || formData.ssn_full.length !== 9)
+              errors.push("SSN must be 9 digits");
             switch (formData.immigration_status) {
               case "visa":
-                return !!getDocumentByType("visa");
+                if (!getDocumentByType("visa")) errors.push("Upload your visa document");
+                break;
               case "work_permit":
-                return !!getDocumentByType("work_permit") && !!getDocumentByType("ssn_card");
+                if (!getDocumentByType("work_permit")) errors.push("Upload your work permit (EAD)");
+                if (!getDocumentByType("ssn_card")) errors.push("Upload your Social Security card");
+                break;
               case "green_card":
-                return (
-                  !!getDocumentByType("green_card_front") &&
-                  !!getDocumentByType("green_card_back") &&
-                  !!getDocumentByType("ssn_card")
-                );
-              default:
-                return false;
+                if (!getDocumentByType("green_card_front")) errors.push("Upload the front of your green card");
+                if (!getDocumentByType("green_card_back")) errors.push("Upload the back of your green card");
+                if (!getDocumentByType("ssn_card")) errors.push("Upload your Social Security card");
+                break;
             }
           }
         }
+        break;
       }
       case 4: {
-        // Direct Deposit: bank info and signature required
-        return (
-          formData.bank_name.trim() !== "" &&
-          formData.bank_account_type !== "" &&
-          formData.bank_routing_number.length === 9 &&
-          formData.bank_account_number.length >= 4 &&
-          !!formData.direct_deposit_signature
-        );
+        if (formData.bank_name.trim() === "") errors.push("Bank name is required");
+        if (formData.bank_account_type === "") errors.push("Select an account type");
+        if (formData.bank_routing_number.length !== 9) errors.push("Routing number must be 9 digits");
+        if (formData.bank_account_number.length < 4) errors.push("Enter your account number");
+        if (!formData.direct_deposit_signature) errors.push("Sign the direct deposit authorization");
+        break;
       }
       case 5: {
-        // W-9: classification, certification, and signature required
+        if (formData.tax_classification === "") errors.push("Select a tax classification");
         const needsEIN = formData.tax_classification && !["individual"].includes(formData.tax_classification);
-        const hasEIN = !needsEIN || (formData.tax_ein && formData.tax_ein.length >= 9);
-        return (
-          formData.tax_classification !== "" &&
-          formData.w9_certification &&
-          !!formData.w9_signature &&
-          hasEIN
-        );
+        if (needsEIN && (!formData.tax_ein || formData.tax_ein.length < 9))
+          errors.push("EIN must be 9 digits");
+        if (!formData.w9_certification) errors.push("Check the W-9 certification box");
+        if (!formData.w9_signature) errors.push("Sign the W-9 form");
+        break;
       }
-      case 6: {
-        // ICA: signature required
-        return !!formData.ica_signature;
-      }
+      case 6:
+        if (!formData.ica_signature) errors.push("Sign the Independent Contractor Agreement");
+        break;
       case 7:
-        return (
-          formData.emergency_contacts.length > 0 &&
-          formData.emergency_contacts.every(
-            (c) =>
-              c.name.trim() !== "" &&
-              c.relationship.trim() !== "" &&
-              c.phone.trim() !== ""
-          )
-        );
+        if (formData.emergency_contacts.length === 0)
+          errors.push("Add at least one emergency contact");
+        else if (!formData.emergency_contacts.every(
+          (c) => c.name.trim() !== "" && c.relationship.trim() !== "" && c.phone.trim() !== ""
+        )) errors.push("Each emergency contact needs a name, relationship, and phone");
+        break;
       case 8:
-        return agreedToTerms;
-      default:
-        return true;
+        if (!agreedToTerms) errors.push("Confirm the certification before submitting");
+        break;
     }
+    return errors;
   };
+
+  const canProceed = () => getStepErrors().length === 0;
 
   const handleNext = () => {
     if (currentStep < STEPS.length && canProceed()) {
