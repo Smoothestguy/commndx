@@ -252,11 +252,13 @@ const PersonnelOnboarding = () => {
         return null;
       }
       return {
-        formData: saved.formData,
-        currentStep: saved.currentStep || 1,
-        agreedToTerms: saved.agreedToTerms || false,
+        formData: normalizeFormData(saved.formData),
+        currentStep: clampStep(saved.currentStep),
+        agreedToTerms: saved.agreedToTerms === true,
       };
-    } catch {
+    } catch (err) {
+      try { sessionStorage.removeItem(storageKey); } catch {}
+      console.warn("[Onboarding] Discarded invalid saved progress:", err);
       return null;
     }
   }, [storageKey]);
@@ -285,40 +287,11 @@ const PersonnelOnboarding = () => {
 
   // Initialize form data — restored sessionStorage data takes priority
   const [formData, setFormData] = useState<ExtendedOnboardingFormData>(() => {
-    const defaults: ExtendedOnboardingFormData = {
-      first_name: "",
-      last_name: "",
-      email: "",
-      phone: "",
-      date_of_birth: "",
-      photo_url: "",
-      address: "",
-      city: "",
-      state: "",
-      zip: "",
-      ssn_full: "",
-      itin: "",
-      citizenship_status: undefined,
-      immigration_status: undefined,
-      emergency_contacts: [],
-      documents: [],
-      bank_name: "",
-      bank_account_type: "",
-      bank_routing_number: "",
-      bank_account_number: "",
-      direct_deposit_signature: null,
-      tax_classification: "",
-      tax_ein: "",
-      tax_business_name: "",
-      w9_signature: null,
-      w9_certification: false,
-      ica_signature: null,
-    };
     if (savedProgress?.formData) {
       restoredFromStorage.current = true;
-      return { ...defaults, ...savedProgress.formData };
+      return normalizeFormData(savedProgress.formData);
     }
-    return defaults;
+    return createDefaultFormData();
   });
 
   // Show toast when progress was restored
@@ -381,14 +354,14 @@ const PersonnelOnboarding = () => {
 
   // Helper to get document by type
   const getDocumentByType = (docType: RegistrationDocument["document_type"]) => {
-    return formData.documents.find((d) => d.document_type === docType);
+    return toSafeArray<RegistrationDocument>(formData.documents).find((d) => d?.document_type === docType);
   };
 
   // Helper to add/update document
   const handleDocumentUpload = (doc: RegistrationDocument) => {
     setFormData((prev) => ({
       ...prev,
-      documents: [...prev.documents.filter((d) => d.document_type !== doc.document_type), doc],
+      documents: [...toSafeArray<RegistrationDocument>(prev.documents).filter((d) => d?.document_type !== doc.document_type), doc],
     }));
   };
 
@@ -396,11 +369,12 @@ const PersonnelOnboarding = () => {
   const handleDocumentRemove = (docType: RegistrationDocument["document_type"]) => {
     setFormData((prev) => ({
       ...prev,
-      documents: prev.documents.filter((d) => d.document_type !== docType),
+      documents: toSafeArray<RegistrationDocument>(prev.documents).filter((d) => d?.document_type !== docType),
     }));
   };
 
   const progress = (currentStep / STEPS.length) * 100;
+  const activeStep = STEPS[clampStep(currentStep) - 1] ?? STEPS[0];
 
   // Helper to check if a document passed AI verification (or wasn't verified)
   const isDocumentVerified = (docType: RegistrationDocument["document_type"]): boolean => {
@@ -506,12 +480,12 @@ const PersonnelOnboarding = () => {
       }
       case 7:
         return (
-          formData.emergency_contacts.length > 0 &&
-          formData.emergency_contacts.every(
+          toSafeArray<EmergencyContact>(formData.emergency_contacts).length > 0 &&
+          toSafeArray<EmergencyContact>(formData.emergency_contacts).every(
             (c) =>
-              c.name.trim() !== "" &&
-              c.relationship.trim() !== "" &&
-              c.phone.trim() !== ""
+              toSafeString(c.name).trim() !== "" &&
+              toSafeString(c.relationship).trim() !== "" &&
+              toSafeString(c.phone).trim() !== ""
           )
         );
       case 8:
@@ -523,13 +497,13 @@ const PersonnelOnboarding = () => {
 
   const handleNext = () => {
     if (currentStep < STEPS.length && canProceed()) {
-      setCurrentStep((prev) => prev + 1);
+      setCurrentStep((prev) => clampStep(prev + 1));
     }
   };
 
   const handleBack = () => {
     if (currentStep > 1) {
-      setCurrentStep((prev) => prev - 1);
+      setCurrentStep((prev) => clampStep(prev - 1));
     }
   };
 
