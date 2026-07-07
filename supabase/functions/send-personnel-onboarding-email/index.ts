@@ -55,7 +55,7 @@ const handler = async (req: Request): Promise<Response> => {
     console.log("[Onboarding Email] Token created successfully, expires:", expiresAt.toISOString());
 
     // Build onboarding URL - ensure no whitespace
-    const siteUrl = (Deno.env.get("SITE_URL") || "https://command-x.lovable.app").trim();
+    const siteUrl = (Deno.env.get("SITE_URL") || "https://fairfieldrg.com").trim();
     const onboardingUrl = encodeURI(`${siteUrl}/onboard/${token}`);
 
     console.log("[Onboarding Email] Onboarding URL:", onboardingUrl);
