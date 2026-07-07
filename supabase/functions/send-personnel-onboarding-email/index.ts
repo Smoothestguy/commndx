@@ -36,7 +36,8 @@ const handler = async (req: Request): Promise<Response> => {
     // Generate a unique token and store it
     const token = crypto.randomUUID();
     const expiresAt = new Date();
-    expiresAt.setDate(expiresAt.getDate() + 7); // 7 days expiry
+    expiresAt.setDate(expiresAt.getDate() + 21); // 21 days expiry
+
 
     const { error: tokenError } = await supabase
       .from("personnel_onboarding_tokens")
