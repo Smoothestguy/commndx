@@ -38,23 +38,6 @@ const handler = async (req: Request): Promise<Response> => {
     const expiresAt = new Date();
     expiresAt.setDate(expiresAt.getDate() + 7); // 7 days expiry
 
-    // Revoke any previously-issued, still-active tokens for this personnel so re-sending
-    // truly invalidates the old link (matches the warning shown to staff before generating).
-    const { error: revokeError } = await supabase
-      .from("personnel_onboarding_tokens")
-      .update({
-        revoked_at: new Date().toISOString(),
-        revoke_reason: "Superseded by newly issued onboarding link",
-      })
-      .eq("personnel_id", personnelId)
-      .is("used_at", null)
-      .is("revoked_at", null);
-
-    if (revokeError) {
-      console.error("[Onboarding Email] Error revoking prior tokens:", revokeError);
-      // Non-fatal — continue issuing the new token
-    }
-
     const { error: tokenError } = await supabase
       .from("personnel_onboarding_tokens")
       .insert({
@@ -70,10 +53,8 @@ const handler = async (req: Request): Promise<Response> => {
 
     console.log("[Onboarding Email] Token created successfully, expires:", expiresAt.toISOString());
 
-    // Build onboarding URL from the production site (env override for staging).
-    // Never derived from the caller's Origin, so links generated inside the Lovable preview
-    // still point at the real customer domain.
-    const siteUrl = (Deno.env.get("SITE_URL") || "https://fairfieldrg.com").trim();
+    // Build onboarding URL - ensure no whitespace
+    const siteUrl = (Deno.env.get("SITE_URL") || "https://command-x.lovable.app").trim();
     const onboardingUrl = encodeURI(`${siteUrl}/onboard/${token}`);
 
     console.log("[Onboarding Email] Onboarding URL:", onboardingUrl);

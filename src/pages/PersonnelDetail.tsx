@@ -21,7 +21,6 @@ import { useState } from "react";
 import { BadgeGenerator } from "@/components/badges/BadgeGenerator";
 import { PersonnelForm } from "@/components/personnel/PersonnelForm";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { useGetOrCreateConversation } from "@/integrations/supabase/hooks/useConversations";
 import { useMessageDrawer } from "@/contexts/MessageDrawerContext";
 import { InviteToPortalDialog } from "@/components/personnel/InviteToPortalDialog";
@@ -75,7 +74,6 @@ const PersonnelDetail = () => {
   const [receiptPreviewUrl, setReceiptPreviewUrl] = useState<string | null>(null);
   const [convertDialogOpen, setConvertDialogOpen] = useState(false);
   const [revokeOnboardingOpen, setRevokeOnboardingOpen] = useState(false);
-  const [resendConfirmOpen, setResendConfirmOpen] = useState(false);
   const [reverseApprovalOpen, setReverseApprovalOpen] = useState(false);
   const [rolesDialogOpen, setRolesDialogOpen] = useState(false);
   const { data: linkedApplication } = useApplicationByPersonnelId(id);
@@ -114,8 +112,6 @@ const PersonnelDetail = () => {
 
   const handleResendOnboardingEmail = () => {
     if (!personnel) return;
-    // Staff explicitly confirmed the warning — proceed with revoke-and-reissue.
-    setResendConfirmOpen(false);
     resendOnboardingEmail.mutate({
       personnelId: personnel.id,
       email: personnel.email,
@@ -430,7 +426,7 @@ const PersonnelDetail = () => {
                       <Button
                         variant="outline"
                         size="sm"
-                        onClick={() => setResendConfirmOpen(true)}
+                        onClick={handleResendOnboardingEmail}
                         disabled={resendOnboardingEmail.isPending}
                       >
                         <Send className="mr-2 h-4 w-4" />
@@ -1210,26 +1206,6 @@ const PersonnelDetail = () => {
         personnelId={personnel.id}
         personnelName={`${personnel.first_name} ${personnel.last_name}`}
       />
-
-      {/* Resend Onboarding Email — warns that the previous link is revoked */}
-      <AlertDialog open={resendConfirmOpen} onOpenChange={setResendConfirmOpen}>
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>Send a new onboarding link?</AlertDialogTitle>
-            <AlertDialogDescription>
-              Generating a new link will <strong>revoke the previous onboarding link</strong>{" "}
-              for {personnel.first_name} {personnel.last_name}. Any tab they still have open on the
-              old link will stop working and they'll need to use the new email.
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel>Cancel</AlertDialogCancel>
-            <AlertDialogAction onClick={handleResendOnboardingEmail}>
-              Send new link
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
     </DetailPageLayout>
   );
 };

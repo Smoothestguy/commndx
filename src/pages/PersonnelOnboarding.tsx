@@ -121,44 +121,34 @@ const PersonnelOnboarding = () => {
     []
   );
 
-  // --- localStorage persistence helpers ---
-  // Persist wizard progress keyed by token so a page reload/close resumes cleanly.
-  // Signatures, SSN/ITIN, and bank account numbers are intentionally excluded.
+  // --- sessionStorage persistence helpers ---
   const storageKey = `onboarding-progress-${token}`;
   const restoredFromStorage = useRef(false);
   const saveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  const SENSITIVE_FIELDS = [
-    "direct_deposit_signature",
-    "w9_signature",
-    "ica_signature",
-    "ssn_full",
-    "itin",
-    "bank_routing_number",
-    "bank_account_number",
-  ] as const;
+  const SIGNATURE_FIELDS = ["direct_deposit_signature", "w9_signature", "ica_signature"] as const;
 
-  const stripSensitive = (data: ExtendedOnboardingFormData) => {
-    const copy: any = { ...data };
-    for (const field of SENSITIVE_FIELDS) {
-      copy[field] = field.endsWith("signature") ? null : "";
+  const stripSignatures = (data: ExtendedOnboardingFormData) => {
+    const copy = { ...data };
+    for (const field of SIGNATURE_FIELDS) {
+      (copy as any)[field] = null;
     }
-    return copy as ExtendedOnboardingFormData;
+    return copy;
   };
 
-  // Try to restore saved progress from localStorage
+  // Try to restore saved progress from sessionStorage
   const restoreSavedProgress = useCallback((): {
     formData: ExtendedOnboardingFormData;
     currentStep: number;
     agreedToTerms: boolean;
   } | null => {
     try {
-      const raw = localStorage.getItem(storageKey);
+      const raw = sessionStorage.getItem(storageKey);
       if (!raw) return null;
       const saved = JSON.parse(raw);
       // Only restore if < 24 hours old
       if (saved.timestamp && Date.now() - saved.timestamp > 24 * 60 * 60 * 1000) {
-        localStorage.removeItem(storageKey);
+        sessionStorage.removeItem(storageKey);
         return null;
       }
       return {
@@ -244,12 +234,12 @@ const PersonnelOnboarding = () => {
     saveTimerRef.current = setTimeout(() => {
       try {
         const payload = {
-          formData: stripSensitive(formData),
+          formData: stripSignatures(formData),
           currentStep,
           agreedToTerms,
           timestamp: Date.now(),
         };
-        localStorage.setItem(storageKey, JSON.stringify(payload));
+        sessionStorage.setItem(storageKey, JSON.stringify(payload));
       } catch {
         // Storage full or unavailable — silent fail
       }
@@ -324,97 +314,100 @@ const PersonnelOnboarding = () => {
     return verification.verified === true;
   };
 
-  const getStepErrors = (): string[] => {
-    const errors: string[] = [];
+  const canProceed = () => {
     switch (currentStep) {
-      case 1: {
-        if (formData.first_name.trim() === "") errors.push("First name is required");
-        if (formData.last_name.trim() === "") errors.push("Last name is required");
-        if (formData.email.trim() === "") errors.push("Email is required");
-        else if (!/^\S+@\S+\.\S+$/.test(formData.email.trim())) errors.push("Email format is invalid");
-        const digits = (formData.phone || "").replace(/\D/g, "");
-        if (digits.length < 10) errors.push("Phone number is required (10 digits)");
-        if (!formData.date_of_birth) errors.push("Date of birth is required");
-        break;
-      }
+      case 1:
+        return (
+          formData.first_name.trim() !== "" &&
+          formData.last_name.trim() !== "" &&
+          formData.email.trim() !== ""
+        );
       case 2:
-        break; // Address is optional
+        return true; // Address is optional
       case 3: {
-        if (!formData.citizenship_status) {
-          errors.push("Select your citizenship status");
-          break;
-        }
+        // Citizenship status is always required
+        if (!formData.citizenship_status) return false;
+
+        // Citizenship-specific requirements
         if (formData.citizenship_status === "us_citizen") {
-          if (!formData.ssn_full || formData.ssn_full.length !== 9)
-            errors.push("SSN must be 9 digits");
-          if (!getDocumentByType("government_id")) errors.push("Upload a Government ID");
-          else if (!isDocumentVerified("government_id"))
-            errors.push("Government ID could not be verified — re-upload a clearer image");
-          if (!getDocumentByType("ssn_card")) errors.push("Upload your Social Security card");
+          // US Citizen: SSN + Government ID + SSN Card required
+          const hasSSN = formData.ssn_full && formData.ssn_full.length === 9;
+          const hasGovtId = !!getDocumentByType("government_id");
+          const hasSSNCard = !!getDocumentByType("ssn_card");
+          return hasSSN && hasGovtId && isDocumentVerified("government_id") && hasSSNCard;
         } else {
-          if (!formData.immigration_status) {
-            errors.push("Select your immigration status");
-            break;
-          }
+          // Non-US citizen needs immigration status
+          if (!formData.immigration_status) return false;
+
+          // For visa, work_permit, green_card: SSN required
+          // For other: ITIN required
           if (formData.immigration_status === "other") {
-            if (!formData.itin || formData.itin.length !== 9 || !formData.itin.startsWith("9"))
-              errors.push("ITIN must be 9 digits starting with 9");
+            const hasITIN = formData.itin && formData.itin.length === 9 && formData.itin.startsWith("9");
+            // Work authorization document is optional
+            return hasITIN;
           } else {
-            if (!formData.ssn_full || formData.ssn_full.length !== 9)
-              errors.push("SSN must be 9 digits");
+            // Visa, Work Permit, Green Card all need SSN
+            const hasSSN = formData.ssn_full && formData.ssn_full.length === 9;
+            if (!hasSSN) return false;
+
             switch (formData.immigration_status) {
               case "visa":
-                if (!getDocumentByType("visa")) errors.push("Upload your visa document");
-                break;
+                return !!getDocumentByType("visa");
               case "work_permit":
-                if (!getDocumentByType("work_permit")) errors.push("Upload your work permit (EAD)");
-                if (!getDocumentByType("ssn_card")) errors.push("Upload your Social Security card");
-                break;
+                return !!getDocumentByType("work_permit") && !!getDocumentByType("ssn_card");
               case "green_card":
-                if (!getDocumentByType("green_card_front")) errors.push("Upload the front of your green card");
-                if (!getDocumentByType("green_card_back")) errors.push("Upload the back of your green card");
-                if (!getDocumentByType("ssn_card")) errors.push("Upload your Social Security card");
-                break;
+                return (
+                  !!getDocumentByType("green_card_front") &&
+                  !!getDocumentByType("green_card_back") &&
+                  !!getDocumentByType("ssn_card")
+                );
+              default:
+                return false;
             }
           }
         }
-        break;
       }
       case 4: {
-        if (formData.bank_name.trim() === "") errors.push("Bank name is required");
-        if (formData.bank_account_type === "") errors.push("Select an account type");
-        if (formData.bank_routing_number.length !== 9) errors.push("Routing number must be 9 digits");
-        if (formData.bank_account_number.length < 4) errors.push("Enter your account number");
-        if (!formData.direct_deposit_signature) errors.push("Sign the direct deposit authorization");
-        break;
+        // Direct Deposit: bank info and signature required
+        return (
+          formData.bank_name.trim() !== "" &&
+          formData.bank_account_type !== "" &&
+          formData.bank_routing_number.length === 9 &&
+          formData.bank_account_number.length >= 4 &&
+          !!formData.direct_deposit_signature
+        );
       }
       case 5: {
-        if (formData.tax_classification === "") errors.push("Select a tax classification");
+        // W-9: classification, certification, and signature required
         const needsEIN = formData.tax_classification && !["individual"].includes(formData.tax_classification);
-        if (needsEIN && (!formData.tax_ein || formData.tax_ein.length < 9))
-          errors.push("EIN must be 9 digits");
-        if (!formData.w9_certification) errors.push("Check the W-9 certification box");
-        if (!formData.w9_signature) errors.push("Sign the W-9 form");
-        break;
+        const hasEIN = !needsEIN || (formData.tax_ein && formData.tax_ein.length >= 9);
+        return (
+          formData.tax_classification !== "" &&
+          formData.w9_certification &&
+          !!formData.w9_signature &&
+          hasEIN
+        );
       }
-      case 6:
-        if (!formData.ica_signature) errors.push("Sign the Independent Contractor Agreement");
-        break;
+      case 6: {
+        // ICA: signature required
+        return !!formData.ica_signature;
+      }
       case 7:
-        if (formData.emergency_contacts.length === 0)
-          errors.push("Add at least one emergency contact");
-        else if (!formData.emergency_contacts.every(
-          (c) => c.name.trim() !== "" && c.relationship.trim() !== "" && c.phone.trim() !== ""
-        )) errors.push("Each emergency contact needs a name, relationship, and phone");
-        break;
+        return (
+          formData.emergency_contacts.length > 0 &&
+          formData.emergency_contacts.every(
+            (c) =>
+              c.name.trim() !== "" &&
+              c.relationship.trim() !== "" &&
+              c.phone.trim() !== ""
+          )
+        );
       case 8:
-        if (!agreedToTerms) errors.push("Confirm the certification before submitting");
-        break;
+        return agreedToTerms;
+      default:
+        return true;
     }
-    return errors;
   };
-
-  const canProceed = () => getStepErrors().length === 0;
 
   const handleNext = () => {
     if (currentStep < STEPS.length && canProceed()) {
@@ -497,7 +490,7 @@ const PersonnelOnboarding = () => {
       });
       
       // Clear saved progress on successful submit
-      try { localStorage.removeItem(storageKey); } catch {}
+      try { sessionStorage.removeItem(storageKey); } catch {}
       
       // Redirect to personalized thank you page
       navigate(`/onboarding-complete/${token}`, { replace: true });
@@ -1220,27 +1213,6 @@ const PersonnelOnboarding = () => {
                 </div>
               </div>
             )}
-
-            {/* Inline validation errors — surfaces which fields block Next/Submit */}
-            {(() => {
-              const stepErrors = getStepErrors();
-              if (stepErrors.length === 0) return null;
-              return (
-                <Alert variant="destructive" className="mt-6">
-                  <AlertTriangle className="h-4 w-4" />
-                  <AlertDescription>
-                    <p className="font-medium mb-1">
-                      Please complete the following before continuing:
-                    </p>
-                    <ul className="list-disc ml-5 space-y-0.5 text-sm">
-                      {stepErrors.map((e) => (
-                        <li key={e}>{e}</li>
-                      ))}
-                    </ul>
-                  </AlertDescription>
-                </Alert>
-              );
-            })()}
 
             {/* Navigation */}
             <div className="flex justify-between mt-6 pt-4 border-t">
