@@ -21,6 +21,7 @@ import { useState } from "react";
 import { BadgeGenerator } from "@/components/badges/BadgeGenerator";
 import { PersonnelForm } from "@/components/personnel/PersonnelForm";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { useGetOrCreateConversation } from "@/integrations/supabase/hooks/useConversations";
 import { useMessageDrawer } from "@/contexts/MessageDrawerContext";
 import { InviteToPortalDialog } from "@/components/personnel/InviteToPortalDialog";
