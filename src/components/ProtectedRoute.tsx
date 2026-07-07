@@ -6,7 +6,7 @@ import { Loader2 } from "lucide-react";
 
 export const ProtectedRoute = ({ children }: { children: ReactNode }) => {
   const { user, loading: authLoading } = useAuth();
-  const { isPersonnel, isVendor, isAdmin, isManager, isUser, role, loading: roleLoading } = useUserRole();
+  const { isPersonnel, isVendor, isAdmin, isManager, isUser, role, loading: roleLoading, hasError } = useUserRole();
 
   if (authLoading || roleLoading) {
     return (
@@ -35,8 +35,11 @@ export const ProtectedRoute = ({ children }: { children: ReactNode }) => {
 
   // Check if user is authorized (has a valid role or is personnel/vendor)
   const isAuthorized = hasAdminAccess || isUser || isPersonnel || isVendor || role !== null;
-  
-  if (!isAuthorized) {
+
+  // Only redirect to /unauthorized on a CONFIRMED lack of permissions.
+  // If role/vendor/personnel lookups errored, let the user through and let
+  // downstream pages surface the real error instead of a false "unauthorized".
+  if (!isAuthorized && !hasError) {
     return <Navigate to="/unauthorized" replace />;
   }
 
