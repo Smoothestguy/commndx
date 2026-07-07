@@ -249,7 +249,7 @@ const PersonnelOnboarding = () => {
           agreedToTerms,
           timestamp: Date.now(),
         };
-        sessionStorage.setItem(storageKey, JSON.stringify(payload));
+        localStorage.setItem(storageKey, JSON.stringify(payload));
       } catch {
         // Storage full or unavailable — silent fail
       }
