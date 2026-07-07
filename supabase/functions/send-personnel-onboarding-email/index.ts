@@ -96,7 +96,7 @@ const handler = async (req: Request): Promise<Response> => {
               <a href="${onboardingUrl}" target="_blank" rel="noopener noreferrer" style="display: inline-block; background: #3b82f6; color: white; padding: 14px 28px; text-decoration: none; border-radius: 8px; font-weight: 600; font-size: 16px;">Complete Onboarding</a>
             </div>
             
-            <p style="color: #6b7280; font-size: 14px;">This link will expire in 7 days. If you have any questions, please contact your supervisor.</p>
+            <p style="color: #6b7280; font-size: 14px;">This link will expire in 21 days. If you have any questions, please contact your supervisor.</p>
             
             <hr style="border: none; border-top: 1px solid #e5e7eb; margin: 24px 0;">
             
