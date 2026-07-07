@@ -497,7 +497,7 @@ const PersonnelOnboarding = () => {
       });
       
       // Clear saved progress on successful submit
-      try { sessionStorage.removeItem(storageKey); } catch {}
+      try { localStorage.removeItem(storageKey); } catch {}
       
       // Redirect to personalized thank you page
       navigate(`/onboarding-complete/${token}`, { replace: true });
