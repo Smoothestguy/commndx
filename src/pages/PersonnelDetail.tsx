@@ -430,7 +430,7 @@ const PersonnelDetail = () => {
                       <Button
                         variant="outline"
                         size="sm"
-                        onClick={handleResendOnboardingEmail}
+                        onClick={() => setResendConfirmOpen(true)}
                         disabled={resendOnboardingEmail.isPending}
                       >
                         <Send className="mr-2 h-4 w-4" />
