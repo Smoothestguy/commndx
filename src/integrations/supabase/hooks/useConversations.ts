@@ -84,7 +84,7 @@ export function useConversations() {
               .from("profiles")
               .select("first_name, last_name")
               .eq("id", otherId)
-              .single();
+              .maybeSingle();
             if (profile) {
               otherName = `${profile.first_name} ${profile.last_name}`.trim() || "Unknown User";
             }
@@ -93,7 +93,7 @@ export function useConversations() {
               .from("personnel")
               .select("first_name, last_name, photo_url")
               .eq("id", otherId)
-              .single();
+              .maybeSingle();
             if (personnel) {
               otherName = `${personnel.first_name} ${personnel.last_name}`.trim();
               otherPhotoUrl = personnel.photo_url || null;
@@ -103,7 +103,7 @@ export function useConversations() {
               .from("customers")
               .select("name")
               .eq("id", otherId)
-              .single();
+              .maybeSingle();
             if (customer) {
               otherName = customer.name;
             }
@@ -112,7 +112,7 @@ export function useConversations() {
               .from("applicants")
               .select("first_name, last_name, photo_url")
               .eq("id", otherId)
-              .single();
+              .maybeSingle();
             if (applicant) {
               otherName = `${applicant.first_name} ${applicant.last_name}`.trim();
               otherPhotoUrl = applicant.photo_url || null;
@@ -205,7 +205,7 @@ export function useConversationMessages(conversationId: string | null) {
               .from("profiles")
               .select("first_name, last_name")
               .eq("id", msg.sender_id)
-              .single();
+              .maybeSingle();
             if (profile) {
               senderName = `${profile.first_name} ${profile.last_name}`.trim() || "Unknown User";
             }
@@ -214,7 +214,7 @@ export function useConversationMessages(conversationId: string | null) {
               .from("personnel")
               .select("first_name, last_name")
               .eq("id", msg.sender_id)
-              .single();
+              .maybeSingle();
             if (personnel) {
               senderName = `${personnel.first_name} ${personnel.last_name}`.trim();
             }
@@ -223,7 +223,7 @@ export function useConversationMessages(conversationId: string | null) {
               .from("customers")
               .select("name")
               .eq("id", msg.sender_id)
-              .single();
+              .maybeSingle();
             if (customer) {
               senderName = customer.name;
             }
@@ -232,7 +232,7 @@ export function useConversationMessages(conversationId: string | null) {
               .from("applicants")
               .select("first_name, last_name")
               .eq("id", msg.sender_id)
-              .single();
+              .maybeSingle();
             if (applicant) {
               senderName = `${applicant.first_name} ${applicant.last_name}`.trim();
             }

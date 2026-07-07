@@ -42,7 +42,7 @@ export const useBadgeTemplateById = (id: string | undefined) => {
         `
         )
         .eq("id", id)
-        .single();
+        .maybeSingle();
 
       if (error) throw error;
       return data;
@@ -64,10 +64,11 @@ export const useDefaultBadgeTemplate = () => {
         `
         )
         .eq("is_default", true)
-        .single();
+        .order("created_at", { ascending: false })
+        .limit(1);
 
       if (error) throw error;
-      return data;
+      return data?.[0] ?? null;
     },
   });
 };
