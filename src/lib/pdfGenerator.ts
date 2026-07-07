@@ -143,6 +143,23 @@ export async function generateW9PDF(formData: W9PDFFormData): Promise<Blob> {
     }
   }
 
+  // Draw signature date next to the signature line (no form field exists for it)
+  if (formData.signatureDate) {
+    try {
+      const pages = pdfDoc.getPages();
+      const firstPage = pages[0];
+      const dateFont = await pdfDoc.embedFont(StandardFonts.Helvetica);
+      firstPage.drawText(formData.signatureDate, {
+        x: 430,
+        y: 205,
+        size: 10,
+        font: dateFont,
+      });
+    } catch (error) {
+      console.warn("Could not draw signature date:", error);
+    }
+  }
+
   const helveticaFont = await pdfDoc.embedFont(StandardFonts.Helvetica);
   form.updateFieldAppearances(helveticaFont);
   form.flatten();
