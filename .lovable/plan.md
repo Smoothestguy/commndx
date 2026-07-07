@@ -1,31 +1,42 @@
-# Fix W-9 PDF Generation Issues
+## Problem
 
-Jeison Vivas's generated W-9 shows two real bugs plus cosmetic issues.
+JESUS PABON reports that after filling in phone + date of birth on step 1 of his onboarding form and clicking **Next**, the entire screen goes black. His personnel record (`95bacd76-…`) has all address fields null, so step 2 is rendering with empty values — nothing obvious in the JSX explains a crash.
 
-## Bugs to fix
+The reason we can't see *why* it crashes:
+- There is **no ErrorBoundary anywhere in the app** (`rg ErrorBoundary` returns nothing).
+- When any React render throws, the whole tree unmounts → dark theme shows the black `bg-background` with no content = "black screen".
+- Jesus is on his phone, so we have no console access.
 
-### 1. SSN missing from Part I
-The SSN boxes render empty even though the personnel record has an SSN on file. `src/lib/generateW9.ts` (or the W-9 rendering path used at signing/download time) is not writing `ssnFull` (or the 9 individual digits) into the TIN grid.
+## Fix (2 parts)
 
-**Fix:** In the W-9 PDF generator, read the SSN from the `personnel_w9_forms` row (`ssn_full`, falling back to `ssn_last_four` only if full is unavailable) and place each digit into its box in Part I. If only last-four is stored, leave the first 5 boxes blank rather than silently rendering an all-empty TIN.
+### 1. Add a global ErrorBoundary so users never see a black screen again
 
-### 2. Line 2 "Business name" wrongly populated with "Fairfield"
-For an Individual/sole proprietor with no DBA, line 2 must be blank. "Fairfield" is the *requester's* company name — it's leaking from company settings into the payee's DBA field.
+New file `src/components/ErrorBoundary.tsx` — class component that catches render errors and shows a friendly recovery card (title, short message, "Try again" reload button, and the error message in a collapsible for support). Wrap `<App />` in `src/main.tsx` (and additionally wrap the onboarding route content in `App.tsx` with a second boundary so a crash there doesn't blow up the whole shell).
 
-**Fix:** In `W9TaxForm` / `generateW9.ts`, source line 2 exclusively from the personnel W-9 record's `business_name` field. Never fall back to `company_settings.name` or the requester name. If `business_name` is null/empty, render an empty line 2.
+This alone converts "black screen" into a visible, actionable error and lets Jesus continue after a reload with his session-restored progress.
 
-### 3. Signature + Date
-- Signature captured only "Jeison" — either the input truncated on mobile or only first name was pulled. Confirm the signature field stores full typed name; if it's a drawn signature this is user-side.
-- Date field is empty on the generated PDF even though signing has a timestamp. Wire `signed_at` → the Date cell next to the signature.
+### 2. Harden `src/pages/PersonnelOnboarding.tsx` against the two most likely step-1→step-2 crash sources
 
-### 4. Cosmetic
-- Normalize state to uppercase (`FL`) when composing line 6.
+- **`setState-during-render` block (lines 255–272)**: currently `if (validationResult?.personnel && !initialized) { setFormData(...); setInitialized(true); }` runs unconditionally on every render. Move this into a `useEffect` keyed on `validationResult?.personnel?.id` so it can't cause an update loop when step changes.
+- **sessionStorage save (lines 232–250)**: wrap the whole payload build (not just the `setItem`) in try/catch, and skip saving if `formData.documents` contains any non-serializable value (e.g. a `File` object). Circular/non-JSON values would throw synchronously in the effect and unmount the tree.
+- Add a `console.error` on caught errors so if Jesus tries again from a device we can inspect, we get a stack.
 
-## Files likely involved
-- `src/lib/generateW9.ts` — PDF rendering (TIN boxes, line 2, date, state)
-- `src/components/personnel/onboarding/W9TaxForm.tsx` — capture (business_name should not default to company)
-- `personnel_w9_forms` table — verify `ssn_full` is being persisted at signing
+## Files touched
+
+```text
+src/components/ErrorBoundary.tsx      (new)
+src/main.tsx                          (wrap <App/>)
+src/App.tsx                           (wrap /onboarding/:token route)
+src/pages/PersonnelOnboarding.tsx     (move init to useEffect, harden save)
+```
+
+## Out of scope
+
+- No visual/design changes to the onboarding steps.
+- No DB or RLS changes — Jesus's record is fine, `onboarding_status = pending`, token is valid.
 
 ## Verification
-- Regenerate Jeison's W-9 and confirm: SSN digits appear in all 9 boxes, line 2 is blank, date populated, state is "FL".
-- Spot-check one LLC personnel to confirm line 2 still shows their DBA (regression check).
+
+- Load `/onboarding/<token>` on desktop, fill step 1, click Next → step 2 renders (regression check).
+- Force a throw inside step 2 render temporarily → confirm the ErrorBoundary card appears instead of a black screen.
+- Ask Jesus to retry; if it still fails, the ErrorBoundary will now show the actual message and we can pinpoint it in one more pass.
