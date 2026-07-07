@@ -320,10 +320,18 @@ const PersonnelOnboarding = () => {
         return (
           formData.first_name.trim() !== "" &&
           formData.last_name.trim() !== "" &&
-          formData.email.trim() !== ""
+          formData.email.trim() !== "" &&
+          !!formData.phone && formData.phone.trim() !== "" &&
+          !!formData.date_of_birth && formData.date_of_birth.trim() !== ""
         );
       case 2:
-        return true; // Address is optional
+        return (
+          !!formData.address && formData.address.trim() !== "" &&
+          !!formData.city && formData.city.trim() !== "" &&
+          !!formData.state && formData.state.trim() !== "" &&
+          !!formData.zip && formData.zip.trim() !== ""
+        );
+
       case 3: {
         // Citizenship status is always required
         if (!formData.citizenship_status) return false;
