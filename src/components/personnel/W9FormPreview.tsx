@@ -162,29 +162,29 @@ export function W9FormPreview({ w9Form, ssnLastFour, ssnFull }: W9FormPreviewPro
                 </div>
                 <div className="flex flex-wrap gap-x-4 gap-y-1 text-[10px]">
                   <label className="flex items-center gap-1">
-                    <input type="checkbox" checked={taxClass.individual} readOnly className="w-3 h-3" />
+                    <input type="checkbox" checked={taxClass.individual} readOnly className="w-3 h-3 appearance-none border border-black bg-white rounded-none accent-black checked:bg-black checked:border-black relative shrink-0" />
                     Individual/sole proprietor
                   </label>
                   <label className="flex items-center gap-1">
-                    <input type="checkbox" checked={taxClass.cCorp} readOnly className="w-3 h-3" />
+                    <input type="checkbox" checked={taxClass.cCorp} readOnly className="w-3 h-3 appearance-none border border-black bg-white rounded-none accent-black checked:bg-black checked:border-black relative shrink-0" />
                     C corporation
                   </label>
                   <label className="flex items-center gap-1">
-                    <input type="checkbox" checked={taxClass.sCorp} readOnly className="w-3 h-3" />
+                    <input type="checkbox" checked={taxClass.sCorp} readOnly className="w-3 h-3 appearance-none border border-black bg-white rounded-none accent-black checked:bg-black checked:border-black relative shrink-0" />
                     S corporation
                   </label>
                   <label className="flex items-center gap-1">
-                    <input type="checkbox" checked={taxClass.partnership} readOnly className="w-3 h-3" />
+                    <input type="checkbox" checked={taxClass.partnership} readOnly className="w-3 h-3 appearance-none border border-black bg-white rounded-none accent-black checked:bg-black checked:border-black relative shrink-0" />
                     Partnership
                   </label>
                   <label className="flex items-center gap-1">
-                    <input type="checkbox" checked={taxClass.trustEstate} readOnly className="w-3 h-3" />
+                    <input type="checkbox" checked={taxClass.trustEstate} readOnly className="w-3 h-3 appearance-none border border-black bg-white rounded-none accent-black checked:bg-black checked:border-black relative shrink-0" />
                     Trust/estate
                   </label>
                 </div>
                 <div className="flex items-center gap-2 mt-2 text-[10px]">
                   <label className="flex items-center gap-1">
-                    <input type="checkbox" checked={taxClass.llc} readOnly className="w-3 h-3" />
+                    <input type="checkbox" checked={taxClass.llc} readOnly className="w-3 h-3 appearance-none border border-black bg-white rounded-none accent-black checked:bg-black checked:border-black relative shrink-0" />
                     LLC. Enter the tax classification (C = C corporation, S = S corporation, P = Partnership)
                   </label>
                   <span className="border-b border-black px-2 min-w-[20px] text-center font-medium">
@@ -196,7 +196,7 @@ export function W9FormPreview({ w9Form, ssnLastFour, ssnFull }: W9FormPreviewPro
                 </div>
                 <div className="flex items-center gap-2 mt-2 text-[10px]">
                   <label className="flex items-center gap-1">
-                    <input type="checkbox" checked={taxClass.other} readOnly className="w-3 h-3" />
+                    <input type="checkbox" checked={taxClass.other} readOnly className="w-3 h-3 appearance-none border border-black bg-white rounded-none accent-black checked:bg-black checked:border-black relative shrink-0" />
                     Other (see instructions) ▶
                   </label>
                   <span className="flex-1 border-b border-black px-1 min-h-[16px]">
@@ -230,7 +230,7 @@ export function W9FormPreview({ w9Form, ssnLastFour, ssnFull }: W9FormPreviewPro
             <div className="border-b border-black p-2 text-[10px]">
               <span className="font-bold">3b</span> If on line 3a you checked "Partnership" or "Trust/estate," or checked "LLC" and entered "P" as its tax classification, and you are providing this form to a partnership, trust, or estate in which you have an ownership interest, check this box if you have any foreign partners, owners, or beneficiaries. See instructions
               <label className="ml-4 inline-flex items-center gap-1">
-                <input type="checkbox" checked={w9Form.has_foreign_partners} readOnly className="w-3 h-3" />
+                <input type="checkbox" checked={w9Form.has_foreign_partners} readOnly className="w-3 h-3 appearance-none border border-black bg-white rounded-none accent-black checked:bg-black checked:border-black relative shrink-0" />
                 Check if applicable
               </label>
             </div>
@@ -352,19 +352,19 @@ export function W9FormPreview({ w9Form, ssnLastFour, ssnFull }: W9FormPreviewPro
             {/* Certification Checkboxes */}
             <div className="mt-4 space-y-2 text-[10px]">
               <label className="flex items-center gap-2">
-                <input type="checkbox" checked={w9Form.certified_correct_tin} readOnly className="w-3 h-3" />
+                <input type="checkbox" checked={w9Form.certified_correct_tin} readOnly className="w-3 h-3 appearance-none border border-black bg-white rounded-none accent-black checked:bg-black checked:border-black relative shrink-0" />
                 I certify the TIN provided is correct
               </label>
               <label className="flex items-center gap-2">
-                <input type="checkbox" checked={w9Form.certified_not_subject_backup_withholding} readOnly className="w-3 h-3" />
+                <input type="checkbox" checked={w9Form.certified_not_subject_backup_withholding} readOnly className="w-3 h-3 appearance-none border border-black bg-white rounded-none accent-black checked:bg-black checked:border-black relative shrink-0" />
                 I am not subject to backup withholding
               </label>
               <label className="flex items-center gap-2">
-                <input type="checkbox" checked={w9Form.certified_us_person} readOnly className="w-3 h-3" />
+                <input type="checkbox" checked={w9Form.certified_us_person} readOnly className="w-3 h-3 appearance-none border border-black bg-white rounded-none accent-black checked:bg-black checked:border-black relative shrink-0" />
                 I am a U.S. citizen or other U.S. person
               </label>
               <label className="flex items-center gap-2">
-                <input type="checkbox" checked={w9Form.certified_fatca_exempt} readOnly className="w-3 h-3" />
+                <input type="checkbox" checked={w9Form.certified_fatca_exempt} readOnly className="w-3 h-3 appearance-none border border-black bg-white rounded-none accent-black checked:bg-black checked:border-black relative shrink-0" />
                 The FATCA code(s) entered are correct
               </label>
             </div>
