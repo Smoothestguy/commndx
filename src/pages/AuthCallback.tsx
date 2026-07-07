@@ -17,6 +17,7 @@ const AuthCallback = () => {
     try {
       const user = session.user;
       const userEmail = user.email;
+      const normalizedEmail = userEmail?.trim().toLowerCase() || "";
 
       // Check for existing profile and create if needed
       const { data: existingProfile } = await supabase
@@ -45,7 +46,7 @@ const AuthCallback = () => {
       const { data: personnel } = await supabase
         .from("personnel")
         .select("id, user_id")
-        .eq("email", userEmail || "")
+        .ilike("email", normalizedEmail)
         .maybeSingle();
 
       if (personnel && !personnel.user_id) {
@@ -69,7 +70,7 @@ const AuthCallback = () => {
       const { data: vendor } = await supabase
         .from("vendors")
         .select("id, user_id")
-        .eq("email", userEmail || "")
+        .ilike("email", normalizedEmail)
         .maybeSingle();
 
       if (vendor && !vendor.user_id) {
