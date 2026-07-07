@@ -75,6 +75,7 @@ const PersonnelDetail = () => {
   const [receiptPreviewUrl, setReceiptPreviewUrl] = useState<string | null>(null);
   const [convertDialogOpen, setConvertDialogOpen] = useState(false);
   const [revokeOnboardingOpen, setRevokeOnboardingOpen] = useState(false);
+  const [resendConfirmOpen, setResendConfirmOpen] = useState(false);
   const [reverseApprovalOpen, setReverseApprovalOpen] = useState(false);
   const [rolesDialogOpen, setRolesDialogOpen] = useState(false);
   const { data: linkedApplication } = useApplicationByPersonnelId(id);
