@@ -131,7 +131,7 @@ const handler = async (req: Request): Promise<Response> => {
         body: JSON.stringify({
           notification_type: "onboarding_email_sent",
           title: `Onboarding Email Sent: ${firstName} ${lastName}`,
-          message: `Onboarding documentation link sent to ${email}. Link expires in 7 days.`,
+          message: `Onboarding documentation link sent to ${email}. Link expires in 21 days.`,
           link_url: `/personnel/${personnelId}`,
           related_id: personnelId,
           metadata: {
