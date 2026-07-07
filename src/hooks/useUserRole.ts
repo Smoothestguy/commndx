@@ -5,14 +5,23 @@ import type { Database } from "@/integrations/supabase/types";
 
 type AppRole = Database["public"]["Enums"]["app_role"];
 
-// Timeout wrapper for Supabase queries (which are PromiseLike but need .then() to become real Promises)
+// Timeout wrapper that PRESERVES the underlying error instead of masking it as a timeout.
+// If the query resolves (even with an error payload) we always return that. The timeout is
+// only used as a last-resort fallback for a truly hung network request.
 const withTimeout = <T>(
   queryBuilder: PromiseLike<T>,
   ms: number
-): Promise<T> => {
-  const promise = Promise.resolve(queryBuilder);
-  const timeout = new Promise<never>((_, reject) =>
-    setTimeout(() => reject(new Error(`Query timed out after ${ms}ms`)), ms)
+): Promise<{ value: T | null; timedOut: boolean; error: unknown | null }> => {
+  const promise = Promise.resolve(queryBuilder).then(
+    (value) => ({ value, timedOut: false, error: null as unknown | null }),
+    (error) => ({ value: null as T | null, timedOut: false, error })
+  );
+  const timeout = new Promise<{ value: T | null; timedOut: boolean; error: unknown | null }>(
+    (resolve) =>
+      setTimeout(
+        () => resolve({ value: null, timedOut: true, error: new Error(`Query timed out after ${ms}ms`) }),
+        ms
+      )
   );
   return Promise.race([promise, timeout]);
 };
@@ -33,13 +42,13 @@ export function useUserRole() {
   const [isVendor, setIsVendor] = useState(false);
   const [isPersonnel, setIsPersonnel] = useState(false);
   const [loading, setLoading] = useState(true);
+  const [hasError, setHasError] = useState(false);
 
   useEffect(() => {
     let mounted = true;
 
-    // Don't fetch until auth is done loading
     if (authLoading) {
-      return; // Keep loading = true while auth is loading
+      return;
     }
 
     async function fetchUserRole() {
@@ -47,69 +56,67 @@ export function useUserRole() {
         setRole(null);
         setIsVendor(false);
         setIsPersonnel(false);
-        setLoading(false); // Safe to set false now - auth is done and no user
+        setHasError(false);
+        setLoading(false);
         return;
       }
 
-      try {
-        // Run all queries in parallel with timeout to prevent hanging
-        const [roleResult, vendorResult, personnelResult] = await Promise.all<
-          [Promise<RoleQueryResult>, Promise<IdQueryResult>, Promise<IdQueryResult>]
-        >([
-          withTimeout(
-            supabase.from("user_roles").select("role").eq("user_id", user.id).single(),
-            5000
-          ).catch((err) => {
-            console.warn("Role query failed:", err);
-            return { data: null, error: err } as RoleQueryResult;
-          }) as Promise<RoleQueryResult>,
-          withTimeout(
-            supabase.from("vendors").select("id").eq("user_id", user.id).maybeSingle(),
-            5000
-          ).catch((err) => {
-            console.warn("Vendor query failed:", err);
-            return { data: null, error: err } as IdQueryResult;
-          }) as Promise<IdQueryResult>,
-          withTimeout(
-            supabase.from("personnel").select("id").eq("user_id", user.id).maybeSingle(),
-            5000
-          ).catch((err) => {
-            console.warn("Personnel query failed:", err);
-            return { data: null, error: err } as IdQueryResult;
-          }) as Promise<IdQueryResult>,
-        ]);
+      // Longer ceiling so slow-but-successful queries aren't nuked at 5s.
+      const TIMEOUT_MS = 15000;
+      let sawError = false;
 
-        if (!mounted) return;
+      const [roleWrapped, vendorWrapped, personnelWrapped] = await Promise.all([
+        withTimeout(
+          supabase.from("user_roles").select("role").eq("user_id", user.id).maybeSingle(),
+          TIMEOUT_MS
+        ),
+        withTimeout(
+          supabase.from("vendors").select("id").eq("user_id", user.id).maybeSingle(),
+          TIMEOUT_MS
+        ),
+        withTimeout(
+          supabase.from("personnel").select("id").eq("user_id", user.id).maybeSingle(),
+          TIMEOUT_MS
+        ),
+      ]);
 
-        // Process role result
-        if (roleResult.error && roleResult.error.code !== "PGRST116") {
-          console.error("Error fetching user role:", roleResult.error);
-        }
-        setRole(roleResult.data?.role || null);
+      if (!mounted) return;
 
-        // Process vendor result
-        if (vendorResult.error) {
-          console.error("Error checking vendor link:", vendorResult.error);
-        }
-        setIsVendor(!!vendorResult.data);
-
-        // Process personnel result
-        if (personnelResult.error) {
-          console.error("Error checking personnel link:", personnelResult.error);
-        }
-        setIsPersonnel(!!personnelResult.data);
-      } catch (error) {
-        console.error("Error fetching user role:", error);
-        if (mounted) {
-          setRole(null);
-          setIsVendor(false);
-          setIsPersonnel(false);
-        }
-      } finally {
-        if (mounted) {
-          setLoading(false);
-        }
+      // Role
+      const roleRes = roleWrapped.value as RoleQueryResult | null;
+      if (roleWrapped.timedOut) {
+        console.error("[useUserRole] user_roles query timed out", roleWrapped.error);
+        sawError = true;
+      } else if (roleRes?.error && roleRes.error.code !== "PGRST116") {
+        console.error("[useUserRole] user_roles query error:", roleRes.error);
+        sawError = true;
       }
+      setRole(roleRes?.data?.role ?? null);
+
+      // Vendor
+      const vendorRes = vendorWrapped.value as IdQueryResult | null;
+      if (vendorWrapped.timedOut) {
+        console.error("[useUserRole] vendors query timed out", vendorWrapped.error);
+        sawError = true;
+      } else if (vendorRes?.error) {
+        console.error("[useUserRole] vendors query error:", vendorRes.error);
+        sawError = true;
+      }
+      setIsVendor(!!vendorRes?.data);
+
+      // Personnel
+      const personnelRes = personnelWrapped.value as IdQueryResult | null;
+      if (personnelWrapped.timedOut) {
+        console.error("[useUserRole] personnel query timed out", personnelWrapped.error);
+        sawError = true;
+      } else if (personnelRes?.error) {
+        console.error("[useUserRole] personnel query error:", personnelRes.error);
+        sawError = true;
+      }
+      setIsPersonnel(!!personnelRes?.data);
+
+      setHasError(sawError);
+      setLoading(false);
     }
 
     fetchUserRole();
@@ -122,11 +129,12 @@ export function useUserRole() {
   return {
     role,
     loading,
+    hasError,
     isAdmin: role === "admin",
     isManager: role === "manager",
     isUser: role === "user",
     isAccounting: role === "accounting",
-    isPersonnel, // Now checks personnel table directly, not user_roles
-    isVendor, // Now checks vendors table directly, not user_roles
+    isPersonnel,
+    isVendor,
   };
 }
