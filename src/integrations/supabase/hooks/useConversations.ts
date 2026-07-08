@@ -52,7 +52,8 @@ export function useConversations() {
     queryFn: async () => {
       if (!user) return [];
 
-      // Get conversations where user is a participant
+      // Get conversations where the user has a participant row. This supports
+      // shared inbox conversations routed to multiple internal users.
       const { data: conversations, error } = await supabase
         .from("conversations")
         .select(`
@@ -63,7 +64,8 @@ export function useConversations() {
             participant_id
           )
         `)
-        .or(`and(participant_1_type.eq.user,participant_1_id.eq.${user.id}),and(participant_2_type.eq.user,participant_2_id.eq.${user.id})`)
+        .eq("conversation_participants.participant_type", "user")
+        .eq("conversation_participants.participant_id", user.id)
         .order("last_message_at", { ascending: false, nullsFirst: false });
 
       if (error) throw error;
@@ -73,8 +75,19 @@ export function useConversations() {
         (conversations || []).map(async (conv) => {
           // Determine the "other" participant
           const isParticipant1 = conv.participant_1_type === "user" && conv.participant_1_id === user.id;
-          const otherType = isParticipant1 ? conv.participant_2_type : conv.participant_1_type;
-          const otherId = isParticipant1 ? conv.participant_2_id : conv.participant_1_id;
+          const isParticipant2 = conv.participant_2_type === "user" && conv.participant_2_id === user.id;
+          let otherType = isParticipant1 ? conv.participant_2_type : conv.participant_1_type;
+          let otherId = isParticipant1 ? conv.participant_2_id : conv.participant_1_id;
+
+          if (!isParticipant1 && !isParticipant2) {
+            if (conv.participant_1_type !== "user") {
+              otherType = conv.participant_1_type;
+              otherId = conv.participant_1_id;
+            } else if (conv.participant_2_type !== "user") {
+              otherType = conv.participant_2_type;
+              otherId = conv.participant_2_id;
+            }
+          }
 
           let otherName = "Unknown";
           let otherPhotoUrl: string | null = null;

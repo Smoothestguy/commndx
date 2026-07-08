@@ -142,14 +142,51 @@ Deno.serve(async (req: Request) => {
 
       console.log(`No existing conversation. Creating new for ${senderName}`);
 
-      // Find any user to be the other participant
-      const { data: adminUser } = await supabase
-        .from("profiles")
-        .select("id")
-        .limit(1)
-        .maybeSingle();
+      // Route new inbound-only conversations to admin/manager inboxes.
+      // Existing conversations still preserve the original assigned user.
+      const { data: adminRoles, error: adminRolesError } = await supabase
+        .from("user_roles")
+        .select("user_id, role, created_at")
+        .in("role", ["admin", "manager"])
+        .order("created_at", { ascending: true });
 
-      if (!adminUser) {
+      if (adminRolesError) {
+        console.error("Error finding admin/manager users:", adminRolesError);
+      }
+
+      const adminUserIds = Array.from(new Set((adminRoles || []).map((role) => role.user_id).filter(Boolean)));
+      let internalUsers: { id: string }[] = [];
+
+      if (adminUserIds.length > 0) {
+        const { data: adminProfiles, error: adminProfilesError } = await supabase
+          .from("profiles")
+          .select("id")
+          .in("id", adminUserIds);
+
+        if (adminProfilesError) {
+          console.error("Error finding admin/manager profiles:", adminProfilesError);
+        }
+
+        internalUsers = adminUserIds
+          .map((id) => adminProfiles?.find((profile) => profile.id === id))
+          .filter((profile): profile is { id: string } => Boolean(profile));
+      }
+
+      if (internalUsers.length === 0) {
+        const { data: fallbackUser } = await supabase
+          .from("profiles")
+          .select("id")
+          .limit(1)
+          .maybeSingle();
+
+        if (fallbackUser) {
+          internalUsers = [fallbackUser];
+        }
+      }
+
+      const primaryUser = internalUsers[0];
+
+      if (!primaryUser) {
         console.error("No user found to create conversation");
         return new Response(
           '<?xml version="1.0" encoding="UTF-8"?><Response></Response>',
@@ -162,7 +199,7 @@ Deno.serve(async (req: Request) => {
         .from("conversations")
         .insert({
           participant_1_type: "user",
-          participant_1_id: adminUser.id,
+          participant_1_id: primaryUser.id,
           participant_2_type: senderType,
           participant_2_id: senderId,
           last_message_at: new Date().toISOString(),
@@ -184,12 +221,12 @@ Deno.serve(async (req: Request) => {
 
       // Create participant records
       await supabase.from("conversation_participants").insert([
-        {
+        ...internalUsers.map((user) => ({
           conversation_id: conversationId,
           participant_type: "user",
-          participant_id: adminUser.id,
+          participant_id: user.id,
           unread_count: 1,
-        },
+        })),
         {
           conversation_id: conversationId,
           participant_type: senderType,
