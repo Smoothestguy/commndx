@@ -258,6 +258,24 @@ export default function PublicApplicationForm() {
     return () => clearTimeout(timeout);
   }, [posting?.id, submitted, watchedFirst, watchedLast, watchedPhone, watchedEmail]);
 
+  // Log silent failures (e.g. photo upload failures) against the current
+  // session's attempt row so we can see them in the DB going forward.
+  const logAttemptError = useCallback((reason: string) => {
+    if (!posting?.id) return;
+    const storageKey = `application_attempt_session:${posting.id}`;
+    const sessionId = sessionStorage.getItem(storageKey);
+    if (!sessionId) return;
+    supabase
+      .rpc("log_application_attempt_error" as any, {
+        _session_id: sessionId,
+        _job_posting_id: posting.id,
+        _last_error: reason,
+      })
+      .then(({ error }) => {
+        if (error) console.warn("[Attempt] log_application_attempt_error failed (non-fatal)", error);
+      });
+  }, [posting?.id]);
+
 
   // Helper to check if answer is compatible with field options
   const isAnswerCompatible = (answer: any, field: FormFieldType): boolean => {
