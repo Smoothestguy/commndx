@@ -88,6 +88,7 @@ export function NetSuiteLayout({ children }: NetSuiteLayoutProps) {
           )}
         </div>
       </div>
+      </MessageBannerProvider>
     </DashboardDraftProvider>
   );
 }
