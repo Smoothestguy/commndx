@@ -884,6 +884,7 @@ export default function PublicApplicationForm() {
               value={value as string | null}
               onChange={(url) => !isFieldLocked && updateCustomAnswer(field.id, url)}
               onUploadStateChange={(isUploading) => handleFileUploadStateChange(field.id, isUploading)}
+              onUploadError={logAttemptError}
               label={translated.label}
               required={field.required}
               helpText={translated.helpText}
