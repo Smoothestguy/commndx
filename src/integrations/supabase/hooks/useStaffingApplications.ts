@@ -382,10 +382,31 @@ export const useSubmitApplication = () => {
       console.log("[Application] Existing applicant id:", existingApplicantId);
 
       let applicantId: string;
+      let isResubmission = false;
 
       if (existingApplicantId) {
         applicantId = existingApplicantId as string;
         console.log("[Application] Using existing applicant:", applicantId);
+
+        // Refresh profile fields (photo, address, phone, ...) — only fills gaps,
+        // never overwrites existing values with blanks.
+        const { error: profileError } = await supabase.rpc(
+          "update_applicant_profile_on_submit",
+          {
+            _applicant_id: applicantId,
+            _first_name: applicantData.first_name ?? null,
+            _last_name: applicantData.last_name ?? null,
+            _phone: applicantData.phone ?? null,
+            _address: applicantData.address ?? null,
+            _city: applicantData.city ?? null,
+            _state: applicantData.state ?? null,
+            _home_zip: applicantData.home_zip ?? null,
+            _photo_url: applicantData.photo_url ?? null,
+          }
+        );
+        if (profileError) {
+          console.error("[Application] Error refreshing applicant profile (non-fatal):", profileError);
+        }
 
         // Check active (non-rejected) application via SECURITY DEFINER RPC.
         const { data: hasActive, error: checkError } = await supabase
@@ -400,8 +421,8 @@ export const useSubmitApplication = () => {
         }
 
         if (hasActive) {
-          console.log("[Application] Duplicate application detected for same job posting");
-          throw new Error("DUPLICATE_APPLICATION");
+          console.log("[Application] Active application exists — resubmitting in place");
+          isResubmission = true;
         }
       } else {
         // Create new applicant via SECURITY DEFINER RPC.
