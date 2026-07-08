@@ -43,10 +43,12 @@ export function FormFileUpload({
   // Check if value is a URL string (already uploaded)
   const isUrlValue = typeof value === "string" && value.length > 0;
 
-  // Notify parent of upload state changes
-  useEffect(() => {
-    onUploadStateChange?.(uploading);
-  }, [uploading, onUploadStateChange]);
+  // Notify parent of upload state changes.
+  // Hold callback in a ref so effect only fires on `uploading` change,
+  // avoiding infinite loops when parent passes an inline arrow.
+  const cbRef = useRef(onUploadStateChange);
+  useEffect(() => { cbRef.current = onUploadStateChange; });
+  useEffect(() => { cbRef.current?.(uploading); }, [uploading]);
 
   const validateFile = useCallback((file: File): string | null => {
     console.log("[FormFileUpload] Validating file:", file.name, "Size:", file.size, "Type:", file.type);
