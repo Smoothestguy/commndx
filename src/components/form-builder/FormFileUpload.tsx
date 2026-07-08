@@ -100,7 +100,7 @@ export function FormFileUpload({
     // doesn't leave the form spinning forever.
     const uploadPromise = supabase.storage
       .from(storageBucket)
-      .upload(uniqueFileName, file, { cacheControl: "3600", upsert: true });
+      .upload(uniqueFileName, file, { cacheControl: "3600", upsert: false });
 
     const timeoutPromise = new Promise<{ error: { message: string } }>((resolve) => {
       setTimeout(
