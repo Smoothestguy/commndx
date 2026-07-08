@@ -10,6 +10,14 @@ import { DashboardDraftProvider } from "@/contexts/DashboardDraftContext";
 import { useBackgroundMedia } from "../useBackgroundMedia";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { useDashboardConfig } from "@/hooks/useDashboardConfig";
+import { MessageBannerProvider } from "@/contexts/MessageBannerContext";
+import { MessageBanner } from "@/components/messaging/MessageBanner";
+import { useIncomingMessageListener } from "@/hooks/useIncomingMessageListener";
+
+function IncomingMessageListenerMount() {
+  useIncomingMessageListener();
+  return null;
+}
 
 interface NetSuiteLayoutProps {
   children?: ReactNode;
@@ -32,6 +40,9 @@ export function NetSuiteLayout({ children }: NetSuiteLayoutProps) {
 
   return (
     <DashboardDraftProvider>
+      <MessageBannerProvider>
+      <IncomingMessageListenerMount />
+      <MessageBanner />
       <div className="min-h-screen flex flex-col w-full bg-background overflow-x-hidden max-w-full">
         {/* Global Background Media Layer */}
         <BackgroundMediaLayer />
@@ -77,6 +88,7 @@ export function NetSuiteLayout({ children }: NetSuiteLayoutProps) {
           )}
         </div>
       </div>
+      </MessageBannerProvider>
     </DashboardDraftProvider>
   );
 }
