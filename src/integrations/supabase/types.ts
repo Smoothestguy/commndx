@@ -8645,6 +8645,25 @@ export type Database = {
         Args: never
         Returns: undefined
       }
+      resubmit_application: {
+        Args: {
+          _answers?: Json
+          _applicant_id: string
+          _client_submitted_at?: string
+          _geo_accuracy?: number
+          _geo_captured_at?: string
+          _geo_error?: string
+          _geo_lat?: number
+          _geo_lng?: number
+          _geo_source?: string
+          _job_posting_id: string
+          _sms_consent?: boolean
+          _sms_consent_phone?: string
+          _sms_consent_text_version?: string
+          _user_agent?: string
+        }
+        Returns: string
+      }
       save_application_attempt: {
         Args: {
           _email: string
@@ -8666,6 +8685,20 @@ export type Database = {
           _is_geocodable: boolean
           _lat: number
           _lng: number
+        }
+        Returns: undefined
+      }
+      update_applicant_profile_on_submit: {
+        Args: {
+          _address?: string
+          _applicant_id: string
+          _city?: string
+          _first_name?: string
+          _home_zip?: string
+          _last_name?: string
+          _phone?: string
+          _photo_url?: string
+          _state?: string
         }
         Returns: undefined
       }
