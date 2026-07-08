@@ -476,8 +476,9 @@ export const useSubmitApplication = () => {
       console.log("[Application] Creating application record for applicant:", applicantId);
       console.log("[Application] Geo data:", geo);
 
+      const rpcName = isResubmission ? "resubmit_application" : "create_application_return_id";
       const { data: newApplicationId, error: appError } = await supabase
-        .rpc("create_application_return_id", {
+        .rpc(rpcName as any, {
           _job_posting_id: posting_id,
           _applicant_id: applicantId,
           _answers: processedAnswers as any,
@@ -495,11 +496,11 @@ export const useSubmitApplication = () => {
         });
 
       if (appError) {
-        console.error("[Application] Error creating application:", appError);
+        console.error(`[Application] Error running ${rpcName}:`, appError);
         throw appError;
       }
       const application = { id: newApplicationId as string };
-      console.log("[Application] Application created successfully:", application.id);
+      console.log(`[Application] ${isResubmission ? 'Resubmitted' : 'Created'} application:`, application.id);
 
       // Send SMS confirmation if consent was given
       if (smsConsent && smsConsentPhone) {
