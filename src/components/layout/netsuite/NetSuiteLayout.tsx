@@ -40,6 +40,9 @@ export function NetSuiteLayout({ children }: NetSuiteLayoutProps) {
 
   return (
     <DashboardDraftProvider>
+      <MessageBannerProvider>
+      <IncomingMessageListenerMount />
+      <MessageBanner />
       <div className="min-h-screen flex flex-col w-full bg-background overflow-x-hidden max-w-full">
         {/* Global Background Media Layer */}
         <BackgroundMediaLayer />
