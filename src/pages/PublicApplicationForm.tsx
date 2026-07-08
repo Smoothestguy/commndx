@@ -420,6 +420,8 @@ export default function PublicApplicationForm() {
 
   const handleFileUploadStateChange = useCallback((fieldId: string, isUploading: boolean) => {
     setUploadingFields(prev => {
+      const has = prev.has(fieldId);
+      if (isUploading === has) return prev;
       const next = new Set(prev);
       if (isUploading) {
         next.add(fieldId);
