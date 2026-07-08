@@ -10,6 +10,14 @@ import { DashboardDraftProvider } from "@/contexts/DashboardDraftContext";
 import { useBackgroundMedia } from "../useBackgroundMedia";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { useDashboardConfig } from "@/hooks/useDashboardConfig";
+import { MessageBannerProvider } from "@/contexts/MessageBannerContext";
+import { MessageBanner } from "@/components/messaging/MessageBanner";
+import { useIncomingMessageListener } from "@/hooks/useIncomingMessageListener";
+
+function IncomingMessageListenerMount() {
+  useIncomingMessageListener();
+  return null;
+}
 
 interface NetSuiteLayoutProps {
   children?: ReactNode;
