@@ -1130,15 +1130,16 @@ export default function PublicApplicationForm() {
                         setPhotoError(null);
                       }}
                       onUploadStateChange={(isUploading) => handleFileUploadStateChange("core_photo", isUploading)}
+                      onUploadError={logAttemptError}
                       label={`${getCoreLabel('profilePicture')}${formSettings.requireProfilePhoto !== false ? ' *' : ''}`}
                       required={formSettings.requireProfilePhoto !== false}
                       helpText={coreFieldsLocked && foundApplicant?.photo_url
                         ? "Using your existing photo from previous application"
                         : formSettings.requireProfilePhoto !== false 
-                          ? "A clear photo is required for your application (max 10MB)" 
-                          : "Upload a clear photo of yourself (optional)"
+                          ? "A clear photo is required — JPG or PNG only (no HEIC, max 10MB)" 
+                          : "Upload a clear photo of yourself (JPG or PNG, optional)"
                       }
-                      acceptedFileTypes={["image/jpeg", "image/jpg", "image/png", "image/heic"]}
+                      acceptedFileTypes={["image/jpeg", "image/jpg", "image/png"]}
                       maxFileSize={10}
                       storageBucket="application-files"
                       storagePath="profile-photos"
