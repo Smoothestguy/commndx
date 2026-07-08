@@ -267,6 +267,7 @@ export type Database = {
           first_name: string | null
           id: string
           job_posting_id: string | null
+          last_error: string | null
           last_name: string | null
           phone: string | null
           session_id: string
@@ -279,6 +280,7 @@ export type Database = {
           first_name?: string | null
           id?: string
           job_posting_id?: string | null
+          last_error?: string | null
           last_name?: string | null
           phone?: string | null
           session_id: string
@@ -291,6 +293,7 @@ export type Database = {
           first_name?: string | null
           id?: string
           job_posting_id?: string | null
+          last_error?: string | null
           last_name?: string | null
           phone?: string | null
           session_id?: string
@@ -8641,6 +8644,14 @@ export type Database = {
       }
       is_personnel: { Args: { _user_id: string }; Returns: boolean }
       is_vendor: { Args: { _user_id: string }; Returns: boolean }
+      log_application_attempt_error: {
+        Args: {
+          _job_posting_id: string
+          _last_error: string
+          _session_id: string
+        }
+        Returns: undefined
+      }
       reset_vendor_bill_sequence_for_new_year: {
         Args: never
         Returns: undefined

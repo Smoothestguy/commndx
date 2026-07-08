@@ -258,6 +258,24 @@ export default function PublicApplicationForm() {
     return () => clearTimeout(timeout);
   }, [posting?.id, submitted, watchedFirst, watchedLast, watchedPhone, watchedEmail]);
 
+  // Log silent failures (e.g. photo upload failures) against the current
+  // session's attempt row so we can see them in the DB going forward.
+  const logAttemptError = useCallback((reason: string) => {
+    if (!posting?.id) return;
+    const storageKey = `application_attempt_session:${posting.id}`;
+    const sessionId = sessionStorage.getItem(storageKey);
+    if (!sessionId) return;
+    supabase
+      .rpc("log_application_attempt_error" as any, {
+        _session_id: sessionId,
+        _job_posting_id: posting.id,
+        _last_error: reason,
+      })
+      .then(({ error }) => {
+        if (error) console.warn("[Attempt] log_application_attempt_error failed (non-fatal)", error);
+      });
+  }, [posting?.id]);
+
 
   // Helper to check if answer is compatible with field options
   const isAnswerCompatible = (answer: any, field: FormFieldType): boolean => {
@@ -866,6 +884,7 @@ export default function PublicApplicationForm() {
               value={value as string | null}
               onChange={(url) => !isFieldLocked && updateCustomAnswer(field.id, url)}
               onUploadStateChange={(isUploading) => handleFileUploadStateChange(field.id, isUploading)}
+              onUploadError={logAttemptError}
               label={translated.label}
               required={field.required}
               helpText={translated.helpText}
@@ -1111,15 +1130,16 @@ export default function PublicApplicationForm() {
                         setPhotoError(null);
                       }}
                       onUploadStateChange={(isUploading) => handleFileUploadStateChange("core_photo", isUploading)}
+                      onUploadError={logAttemptError}
                       label={`${getCoreLabel('profilePicture')}${formSettings.requireProfilePhoto !== false ? ' *' : ''}`}
                       required={formSettings.requireProfilePhoto !== false}
                       helpText={coreFieldsLocked && foundApplicant?.photo_url
                         ? "Using your existing photo from previous application"
                         : formSettings.requireProfilePhoto !== false 
-                          ? "A clear photo is required for your application (max 10MB)" 
-                          : "Upload a clear photo of yourself (optional)"
+                          ? "A clear photo is required — JPG or PNG only (no HEIC, max 10MB)" 
+                          : "Upload a clear photo of yourself (JPG or PNG, optional)"
                       }
-                      acceptedFileTypes={["image/jpeg", "image/jpg", "image/png", "image/heic"]}
+                      acceptedFileTypes={["image/jpeg", "image/jpg", "image/png"]}
                       maxFileSize={10}
                       storageBucket="application-files"
                       storagePath="profile-photos"
