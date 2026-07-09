@@ -292,6 +292,26 @@ export function MegaMenu({ menuBackground, menuTextColor }: MegaMenuProps) {
           </NavigationMenuContent>
         </NavigationMenuItem>
 
+        {/* Recruiting */}
+        <NavigationMenuItem>
+          <NavigationMenuTrigger
+            className={cn(
+              "bg-transparent text-header-foreground hover:bg-black/10 dark:hover:bg-white/10 hover:text-header-foreground data-[state=open]:bg-black/10 dark:data-[state=open]:bg-white/10",
+              ["/staffing"].some(
+                (p) => location.pathname.startsWith(p)
+              ) && "bg-black/10 dark:bg-white/10"
+            )}
+          >
+            <Briefcase className="h-4 w-4 mr-2" />
+            Recruiting
+          </NavigationMenuTrigger>
+          <NavigationMenuContent>
+            <div style={menuContentStyle} className={cn(!menuBackground && "bg-popover")}>
+              <MegaMenuSection sections={recruitingMenu} isOpen menuTextColor={menuTextColor} />
+            </div>
+          </NavigationMenuContent>
+        </NavigationMenuItem>
+
         {/* Reports */}
         <NavigationMenuItem>
           <NavigationMenuTrigger
