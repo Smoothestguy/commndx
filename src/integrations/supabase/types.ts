@@ -3412,10 +3412,15 @@ export type Database = {
         Row: {
           address: string | null
           applicant_id: string | null
+          bank_account_last4: string | null
           bank_account_number: string | null
+          bank_account_number_encrypted: string | null
           bank_account_type: string | null
           bank_name: string | null
           bank_routing_number: string | null
+          bank_routing_number_encrypted: string | null
+          banking_info_updated_at: string | null
+          banking_info_updated_by: string | null
           bill_rate: number | null
           citizenship_status: string | null
           city: string | null
@@ -3482,10 +3487,15 @@ export type Database = {
         Insert: {
           address?: string | null
           applicant_id?: string | null
+          bank_account_last4?: string | null
           bank_account_number?: string | null
+          bank_account_number_encrypted?: string | null
           bank_account_type?: string | null
           bank_name?: string | null
           bank_routing_number?: string | null
+          bank_routing_number_encrypted?: string | null
+          banking_info_updated_at?: string | null
+          banking_info_updated_by?: string | null
           bill_rate?: number | null
           citizenship_status?: string | null
           city?: string | null
@@ -3552,10 +3562,15 @@ export type Database = {
         Update: {
           address?: string | null
           applicant_id?: string | null
+          bank_account_last4?: string | null
           bank_account_number?: string | null
+          bank_account_number_encrypted?: string | null
           bank_account_type?: string | null
           bank_name?: string | null
           bank_routing_number?: string | null
+          bank_routing_number_encrypted?: string | null
+          banking_info_updated_at?: string | null
+          banking_info_updated_by?: string | null
           bill_rate?: number | null
           citizenship_status?: string | null
           city?: string | null
@@ -8395,6 +8410,17 @@ export type Database = {
         Args: { _invitation_id: string; _user_id: string }
         Returns: Json
       }
+      admin_get_personnel_banking: {
+        Args: { _personnel_id: string }
+        Returns: {
+          bank_account_last4: string
+          bank_account_number: string
+          bank_account_type: string
+          bank_name: string
+          bank_routing_number: string
+          banking_info_updated_at: string
+        }[]
+      }
       complete_personnel_onboarding:
         | {
             Args: {
@@ -8612,6 +8638,15 @@ export type Database = {
         Returns: string
       }
       generate_vendor_bill_number: { Args: never; Returns: string }
+      get_my_banking_info: {
+        Args: never
+        Returns: {
+          bank_account_last4: string
+          bank_account_type: string
+          bank_name: string
+          banking_info_updated_at: string
+        }[]
+      }
       get_personnel_id_for_user: { Args: { _user_id: string }; Returns: string }
       get_quick_apply_invite: { Args: { _token: string }; Returns: Json }
       get_vendor_id_for_user: { Args: { _user_id: string }; Returns: string }
@@ -8712,6 +8747,15 @@ export type Database = {
           _state?: string
         }
         Returns: undefined
+      }
+      update_my_banking_info: {
+        Args: {
+          _account: string
+          _account_type: string
+          _bank_name: string
+          _routing: string
+        }
+        Returns: Json
       }
       validate_onboarding_token: { Args: { p_token: string }; Returns: Json }
     }

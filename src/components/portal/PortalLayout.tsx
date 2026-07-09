@@ -13,6 +13,7 @@ import {
   FolderOpen,
   Timer,
   Package,
+  Landmark,
   ChevronLeft,
   ChevronRight
 } from "lucide-react";
@@ -34,6 +35,7 @@ const navItems = [
   { href: "/portal/documents", label: "My Documents", icon: FolderOpen },
   { href: "/portal/reimbursements", label: "Reimbursements", icon: Receipt },
   { href: "/portal/tax-forms", label: "Tax Forms", icon: FileText },
+  { href: "/portal/banking", label: "Banking", icon: Landmark },
   { href: "/portal/notifications", label: "Notifications", icon: Bell },
   { href: "/portal/settings", label: "Settings", icon: Settings },
 ];

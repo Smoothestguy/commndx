@@ -1,10 +1,11 @@
+import { Link } from "react-router-dom";
 import { PortalLayout } from "@/components/portal/PortalLayout";
 import { useCurrentPersonnel, usePersonnelNotificationPreferences, useUpdateNotificationPreferences } from "@/integrations/supabase/hooks/usePortal";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Settings, Bell, Mail, Smartphone, Briefcase, DollarSign, UserPlus } from "lucide-react";
+import { Settings, Bell, Mail, Smartphone, Briefcase, DollarSign, UserPlus, Landmark, ChevronRight } from "lucide-react";
 import { DeleteAccountSection } from "@/components/settings/DeleteAccountSection";
 
 export default function PortalSettings() {
@@ -204,6 +205,20 @@ export default function PortalSettings() {
             </CardContent>
           </Card>
         )}
+
+        {/* Banking info shortcut */}
+        <Link to="/portal/banking" className="block">
+          <Card className="hover:bg-accent/50 transition-colors">
+            <CardContent className="flex items-center gap-3 py-4">
+              <Landmark className="h-5 w-5 text-primary" />
+              <div className="flex-1">
+                <p className="font-medium">Banking Information</p>
+                <p className="text-sm text-muted-foreground">Manage the account where your direct deposits go</p>
+              </div>
+              <ChevronRight className="h-5 w-5 text-muted-foreground" />
+            </CardContent>
+          </Card>
+        </Link>
 
         {/* Danger Zone - Account Deletion */}
         <DeleteAccountSection />
