@@ -384,6 +384,14 @@ const App = () => {
                         </PortalProtectedRoute>
                       }
                     />
+                    <Route
+                      path="/portal/banking"
+                      element={
+                        <PortalProtectedRoute>
+                          <PortalBanking />
+                        </PortalProtectedRoute>
+                      }
+                    />
                     {/* Protected Routes with NetSuite Layout */}
                     <Route
                       element={
