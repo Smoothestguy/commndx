@@ -34,6 +34,7 @@ import {
   Link2,
   Eye,
   Send,
+  Map,
 } from "lucide-react";
 
 interface NavItem {
@@ -86,14 +87,36 @@ const listsMenu: NavSection[] = [
   },
 ];
 
+const recruitingMenu: NavSection[] = [
+  {
+    title: "Pipeline",
+    items: [
+      { name: "Applications", href: "/staffing/applications", icon: ClipboardList, description: "Review job applications", requiresManager: true },
+      { name: "Master Applicants", href: "/staffing/applicants", icon: Users, description: "All applicants — bulk invite to new jobs", requiresManager: true },
+    ],
+  },
+  {
+    title: "Setup",
+    items: [
+      { name: "Form Templates", href: "/staffing/form-templates", icon: FileText, description: "Manage application form templates", requiresManager: true },
+      { name: "Staffing Map", href: "/staffing/map", icon: Map, description: "Geographic view of staffing", requiresManager: true },
+    ],
+  },
+  {
+    title: "People",
+    items: [
+      { name: "Personnel", href: "/personnel", icon: Users, description: "Manage staff and workers" },
+      { name: "Messages", href: "/messages", icon: Send, description: "Internal messaging" },
+    ],
+  },
+];
+
 const reportsMenu: NavSection[] = [
   {
     title: "Operations",
     items: [
       { name: "Time Tracking", href: "/time-tracking", icon: Clock, description: "Track and manage time entries" },
       { name: "Project Assignments", href: "/project-assignments", icon: UserCog, description: "Manage personnel assignments", requiresManager: true },
-      { name: "Applications", href: "/staffing/applications", icon: ClipboardList, description: "Review job applications", requiresManager: true },
-      { name: "Master Applicants", href: "/staffing/applicants", icon: ClipboardList, description: "All applicants — bulk invite to new jobs", requiresManager: true },
     ],
   },
   {
@@ -264,6 +287,25 @@ export function MegaMenu({ menuBackground, menuTextColor }: MegaMenuProps) {
           <NavigationMenuContent>
             <div style={menuContentStyle} className={cn(!menuBackground && "bg-popover")}>
               <MegaMenuSection sections={listsMenu} isOpen menuTextColor={menuTextColor} />
+            </div>
+          </NavigationMenuContent>
+        </NavigationMenuItem>
+
+        {/* Recruiting */}
+        <NavigationMenuItem>
+          <NavigationMenuTrigger
+            className={cn(
+              "bg-transparent text-header-foreground hover:bg-black/10 dark:hover:bg-white/10 hover:text-header-foreground data-[state=open]:bg-black/10 dark:data-[state=open]:bg-white/10",
+              ["/staffing"].some(
+                (p) => location.pathname.startsWith(p)
+              ) && "bg-black/10 dark:bg-white/10"
+            )}
+          >
+            Recruiting
+          </NavigationMenuTrigger>
+          <NavigationMenuContent>
+            <div style={menuContentStyle} className={cn(!menuBackground && "bg-popover")}>
+              <MegaMenuSection sections={recruitingMenu} isOpen menuTextColor={menuTextColor} />
             </div>
           </NavigationMenuContent>
         </NavigationMenuItem>
