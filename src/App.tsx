@@ -97,6 +97,7 @@ import PortalDocuments from "./pages/portal/PortalDocuments";
 import PortalReimbursements from "./pages/portal/PortalReimbursements";
 import PortalNotifications from "./pages/portal/PortalNotifications";
 import PortalSettings from "./pages/portal/PortalSettings";
+import PortalBanking from "./pages/portal/PortalBanking";
 import PortalTaxForms from "./pages/portal/PortalTaxForms";
 import PortalTimeClock from "./pages/portal/PortalTimeClock";
 import PortalLogin from "./pages/portal/PortalLogin";
