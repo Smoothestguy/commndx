@@ -1,10 +1,11 @@
+import { Link } from "react-router-dom";
 import { PortalLayout } from "@/components/portal/PortalLayout";
 import { useCurrentPersonnel, usePersonnelNotificationPreferences, useUpdateNotificationPreferences } from "@/integrations/supabase/hooks/usePortal";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Settings, Bell, Mail, Smartphone, Briefcase, DollarSign, UserPlus } from "lucide-react";
+import { Settings, Bell, Mail, Smartphone, Briefcase, DollarSign, UserPlus, Landmark, ChevronRight } from "lucide-react";
 import { DeleteAccountSection } from "@/components/settings/DeleteAccountSection";
 
 export default function PortalSettings() {
