@@ -302,7 +302,6 @@ export function MegaMenu({ menuBackground, menuTextColor }: MegaMenuProps) {
               ) && "bg-black/10 dark:bg-white/10"
             )}
           >
-            <Briefcase className="h-4 w-4 mr-2" />
             Recruiting
           </NavigationMenuTrigger>
           <NavigationMenuContent>
