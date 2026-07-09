@@ -206,6 +206,20 @@ export default function PortalSettings() {
           </Card>
         )}
 
+        {/* Banking info shortcut */}
+        <Link to="/portal/banking" className="block">
+          <Card className="hover:bg-accent/50 transition-colors">
+            <CardContent className="flex items-center gap-3 py-4">
+              <Landmark className="h-5 w-5 text-primary" />
+              <div className="flex-1">
+                <p className="font-medium">Banking Information</p>
+                <p className="text-sm text-muted-foreground">Manage the account where your direct deposits go</p>
+              </div>
+              <ChevronRight className="h-5 w-5 text-muted-foreground" />
+            </CardContent>
+          </Card>
+        </Link>
+
         {/* Danger Zone - Account Deletion */}
         <DeleteAccountSection />
       </div>
