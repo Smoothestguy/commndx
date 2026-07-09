@@ -34,6 +34,8 @@ import {
   Link2,
   Eye,
   Send,
+  Map,
+  Briefcase,
 } from "lucide-react";
 
 interface NavItem {
