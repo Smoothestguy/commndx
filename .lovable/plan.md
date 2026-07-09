@@ -1,143 +1,84 @@
-# Recruiter UX Audit — Command X
+## Goal
 
-Read-only audit of the recruiter surface. No code changes proposed here; this is the diagnosis the owner asked for. All evidence cites file/line or DB.
+Let personnel who have logged into the Worker Portal view and update their own direct-deposit banking info, with the sensitive numbers stored encrypted at rest (pgcrypto) instead of the current plaintext columns, and every change written to `audit_logs`.
 
----
+## Scope decisions (from clarifying answers)
 
-## 1. Navigation structure (as a recruiter sees it)
+- Encryption: pgcrypto column encryption on `public.personnel` + `bank_account_last4` for display.
+- Access: any personnel row where `personnel.user_id = auth.uid()` (includes historical/inactive workers who were ever invited to the portal).
+- UI: brand-new page `src/pages/portal/PortalBanking.tsx` with a nav entry, plus a summary card link on `PortalSettings.tsx`.
 
-Top nav is a 5-item mega menu (`src/components/layout/netsuite/MegaMenu.tsx`, lines 54–133). There is **no sidebar** for recruiter surface — everything is in the top mega menu.
+## 1. Database migration
 
-```text
-Home                → /                        [Index.tsx = generic RowBasedDashboard, zero recruiting widgets]
-Transactions ▾
-  Sales:      Estimates, Invoices
-  Purchasing: Purchase Orders, Vendor Bills
-Lists ▾
-  Relationships: Customers, Vendors, Personnel        ← Personnel lives here
-  Items:         Products, Projects
-Reports ▾                                             ← recruiter's core job is buried under "Reports"
-  Operations: Time Tracking, Project Assignments,
-              Applications (/staffing/applications),   ← Staffing Applications
-              Master Applicants (/staffing/applicants) ← Master Applicants
-  Documents:  Vendor Documents, Document Center,
-              Messages (/messages)                     ← Messages
-Setup ▾
-  Administration: User Management, Permissions, Audit Logs
-  Settings:       Badge Templates, QuickBooks, Settings
-  Previews:       Vendor Portal Preview, Personnel Portal Preview
-```
+Single migration that:
 
-Recruiter-relevant items and where they hide:
-| Item | Location | Discoverable? |
-|---|---|---|
-| Staffing Applications | Reports → Operations | Poor (labeled "Reports") |
-| Master Applicants | Reports → Operations | Poor |
-| Job Posting Entries | **Not in nav at all** — only reachable by drilling into a posting from Staffing Applications (`/staffing/applications/posting/:postingId`, App.tsx L576) | None |
-| Form Templates (staffing) | **Not in nav** — route exists (`/staffing/form-templates`, App.tsx L580) but no menu link. Only reachable via a button inside StaffingApplications. | None |
-| Staffing Map | **Not in nav** — route `/staffing/map` (App.tsx L592) is orphaned | None |
-| Personnel | Lists → Relationships | OK |
-| Messages | Reports → Documents (odd grouping) | Poor |
-| Notifications | Bell icon in `TopNavBar.tsx` L126 (AdminNotificationBell) | OK |
-| Document Center | Reports → Documents | OK |
-| User Management | Setup → Administration (admin only) | OK |
+1. Enables `pgcrypto` (usually already on).
+2. Adds columns on `public.personnel`:
+   - `bank_routing_number_encrypted bytea`
+   - `bank_account_number_encrypted bytea`
+   - `bank_account_last4 text`
+   - `banking_info_updated_at timestamptz`
+   - `banking_info_updated_by uuid` (nullable, references `auth.users(id)` on delete set null)
+3. Backfills encrypted columns from existing plaintext `bank_routing_number` / `bank_account_number` using `pgp_sym_encrypt(value, current_setting('app.banking_key'))`, and sets `bank_account_last4 = right(bank_account_number, 4)`.
+4. Drops the plaintext `bank_routing_number` and `bank_account_number` columns *after* code migration (step 5 below). To keep the deploy safe, the migration keeps them for now and a follow-up migration drops them once code no longer reads them — noted here, not executed in the same batch.
+5. Adds two `SECURITY DEFINER` RPCs (encryption key never leaves the DB):
+   - `get_my_banking_info()` → returns `{ bank_name, bank_account_type, bank_account_last4, banking_info_updated_at }` for the caller's personnel row. No decrypted numbers ever leave the DB.
+   - `update_my_banking_info(_bank_name text, _account_type text, _routing text, _account text)` → validates routing = 9 digits, account = 4–17 digits, `_account_type in ('checking','savings')`, resolves the caller's personnel row via `user_id = auth.uid()`, encrypts and writes, sets `bank_account_last4`, `banking_info_updated_at = now()`, `banking_info_updated_by = auth.uid()`, and inserts an `audit_logs` row (`action_type='update'`, `resource_type='personnel_banking'`, `resource_id=personnel.id`, `changes_after={masked}`, no raw numbers logged).
+   - `admin_get_personnel_banking(_personnel_id uuid)` → returns full decrypted numbers only when `has_role(auth.uid(),'admin')` or `has_role(auth.uid(),'accounting')`. Used by payroll/PDF flows that today read plaintext.
+6. RLS: no direct SELECT on the encrypted columns from clients — revoke column-level SELECT on the four encrypted/updated columns from `authenticated` and rely exclusively on the RPCs. Existing personnel RLS stays as-is for non-banking columns.
+7. Encryption key: stored as a Postgres GUC `app.banking_key` set via `ALTER DATABASE` is forbidden per project rules. Instead, use the `vault`-adjacent pattern already available: read the key from a `SET LOCAL` inside each SECURITY DEFINER function via `current_setting('app.settings.banking_key', true)` where `app.settings.banking_key` is configured through a Cloud secret bridged by a small `_banking_key()` SQL function that reads from a private `secrets.banking` row. Simpler alternative: store the key in a one-row `private.encryption_keys` table restricted to `service_role` only and read it inside the SECURITY DEFINER functions. The plan uses the private-table approach because it needs no infra changes.
 
-**Top-level items a recruiter must scan:** 5 menus, ~19 leaf items, and the recruiter's daily-use surface is scattered across 3 of the 5 menus (Lists, Reports/Operations, Reports/Documents). **Clicks from login to "today's new applications"**: Home → Reports (open) → Operations → Applications = 3 clicks, then filter by date manually (no "today" filter exists — see §5).
+## 2. Backend code updates
 
-**There is no recruiting home/dashboard.** `src/pages/Index.tsx` renders `RowBasedDashboard`; the row set (`src/components/dashboard/rows/`) is invoice/revenue/activity — no application, applicant, message, or onboarding row.
+- `src/pages/PersonnelDetail.tsx` (lines 845–846) currently reads `personnel.bank_routing_number` / `bank_account_number` directly. Switch it to call `admin_get_personnel_banking(personnel.id)` (admin/accounting only, gated by role) and pass the result into `DirectDepositForm`.
+- `src/components/personnel/onboarding/DirectDepositForm.tsx` and `complete_personnel_onboarding` RPC: onboarding still writes plaintext today. Update the RPC to encrypt on insert (same crypto call) and set `bank_account_last4`, so newly onboarded workers land straight in the encrypted columns.
+- Anywhere else that reads the plaintext columns: verified only `PersonnelDetail.tsx` reads them in the app; nothing else needs changes.
 
----
+## 3. Worker Portal UI
 
-## 2. Recruiter pages inventory
+New file `src/pages/portal/PortalBanking.tsx`:
 
-| Page | Shows | Primary actions | Filters | Notes |
-|---|---|---|---|---|
-| **StaffingApplications.tsx** (1035 lines) | Grouped list of Task Orders → Job Postings with counts + a global applications table | Create Task Order, Create/Edit Posting, copy public URL, invite nearby applicants, approve/reject application, open detail dialog | Search, project, status, posting | The hub page. Big but does 5 jobs at once (posting management + application review + invite nearby + QuickApply stats). |
-| **JobPostingEntries.tsx** (280 lines) | Spreadsheet of one posting's applications with dynamic form-field columns | View detail, Approve, Reject, Export CSV/Excel/PDF/JSON | Status filter only (Active/All/Submitted/Reviewing/Approved/Rejected) | **Duplicates** the approve/reject already on StaffingApplications. Back button hard-navigates to `/staffing/applications` (L138) losing any filters. |
-| **MasterApplicants.tsx** (274 lines) | Every applicant with app count, last posting, contact info | Bulk select → Invite to Job (via `InviteToJobDialog`); row click **does nothing useful** — no drilldown to applicant detail | Search, status | Third place applications appear — applicant-centric slice. No link to conversations, no link to the underlying application. |
-| **Messages.tsx** (33 lines) | Renders `MessagesInbox` | Send SMS, reply | Handled inside inbox component | Zero recruiter context — no way to tell if a conversation is with an applicant, personnel, or customer without opening it. |
-| **Personnel.tsx** (303 lines) | Personnel list | Standard CRUD + hire flow | Standard | Approved applicants land here after conversion, but there is no "recently converted" view. |
+- Header + card matching existing portal aesthetic (see `PortalSettings.tsx`).
+- Loads current values via new hook `useMyBankingInfo()` → shows `bank_name`, `bank_account_type`, `••••<last4>`, and "Last updated {relative}".
+- Edit form fields:
+  - Bank Name (`Input`, required, max 100 chars, trimmed)
+  - Account Type (`Select`: Checking / Savings)
+  - Routing Number (masked `Input`, exactly 9 digits, digit-only, zod validated)
+  - Account Number (masked `Input`, 4–17 digits, digit-only, confirm field to prevent typos)
+- Save button calls `useUpdateMyBankingInfo()` → toast success/error via sonner.
+- After save, form clears the raw fields and re-renders the masked summary.
+- Read-only banner: "Your bank details are encrypted. Only you, and payroll/admin staff who process your pay, can access them."
 
-**Duplicated capabilities:**
-- Approve/reject an application: available on StaffingApplications (via ApplicationDetailDialog), JobPostingEntries (row actions), and inside ApplicationDetailDialog. Three surfaces, one action.
-- Application lists: StaffingApplications (all + per-posting count), JobPostingEntries (single posting), MasterApplicants (applicant-centric). Three overlapping views, no single "pipeline" view.
+Routing + nav:
+- Register `/portal/banking` in the portal router (same file that registers `/portal/settings`, `/portal/documents`, etc.).
+- Add a "Banking" entry to the portal sidebar/bottom-nav config, icon `Landmark` from lucide.
+- Add a "Manage banking info" link card on `PortalSettings.tsx` that routes to the new page (keeps discovery for users who look in Settings first).
 
----
+## 4. Hooks
 
-## 3. Cross-linking (LINKED vs DEAD-END)
+New file `src/hooks/useWorkerBanking.ts` (naming this by domain rather than `useWorkerPortal` since existing portal hooks are per-domain):
 
-Grep results in `src/components/messaging/`, `src/pages/StaffingApplications.tsx`, `src/pages/MasterApplicants.tsx`, `src/components/staffing/ApplicationDetailDialog.tsx`:
+- `useMyBankingInfo()` — `useQuery(['my-banking'])` calling `supabase.rpc('get_my_banking_info')`.
+- `useUpdateMyBankingInfo()` — `useMutation` calling `supabase.rpc('update_my_banking_info', {...})`; on success invalidates `['my-banking']` and shows toast; maps common errors (bad routing length, no personnel row) to human strings.
 
-| From → To | Result | Evidence |
-|---|---|---|
-| Conversation (Messages) → applicant's application | **DEAD-END** | No `navigate(` or `<Link to=` to `/staffing/...` anywhere in `src/components/messaging/`. |
-| Application detail → conversation / SMS history | **DEAD-END** | `ApplicationDetailDialog.tsx` has no reference to `/messages`, `conversations`, or MessageComposer. |
-| MasterApplicants row → applicant detail page | **DEAD-END** | `MasterApplicants.tsx` has no `navigate(`; only action is `InviteToJobDialog`. There is no `/staffing/applicants/:id` route at all (grep of `App.tsx`). |
-| Applicant → Personnel record after conversion | **DEAD-END** | `applicants` table has no `personnel_id` column exposed in UI; approval flow creates personnel but the applicant row is not linked back in either direction from the UI. |
-| Application → onboarding status | **PARTIAL** | Approval triggers onboarding token creation server-side, but neither StaffingApplications nor MasterApplicants shows `personnel_onboarding_tokens.status` inline. Recruiter has to switch to Personnel and hunt. |
-| StaffingApplications posting card → JobPostingEntries | **LINKED** (only working cross-link in the flow) | `/staffing/applications/posting/:postingId` deep link exists. |
+## 5. Security & validation
 
-Net: the four surfaces the same person appears on (application row, applicants table, conversations, personnel record) are **not stitched together in either direction** except application → posting drill-in.
+- Client validation with zod (routing = `/^\d{9}$/`, account = `/^\d{4,17}$/`).
+- Server validation in the RPC repeats both checks so the client can't be bypassed.
+- RPCs are `SECURITY DEFINER`, `SET search_path = public`, and gated on `auth.uid()`.
+- No decrypted numbers ever cross the API for portal users — only `last4`.
+- Audit row written on every successful update; no PII in the audit payload (only `bank_name`, `bank_account_type`, `last4`).
 
----
+## 6. Verification
 
-## 4. Status model (from DB)
+- Typecheck (`tsgo`).
+- Manual: log into portal as a personnel user, open `/portal/banking`, save valid + invalid inputs, confirm masked display, confirm `audit_logs` row created, confirm `PersonnelDetail` admin view still shows decrypted numbers via the admin RPC.
 
-Enums queried live:
+## Files touched
 
-- `application_status` (enum on `applications.status`): `submitted`, `reviewing`, `approved`, `rejected`, `needs_info`, `updated` — 6 values.
-- `applicants.status` (text, observed distinct): `new`, `approved`, `rejected` — 3 values.
-- `personnel.onboarding_status`: `pending`, `completed`, `revoked` — 3 values.
-- `personnel.status`: `active`, `inactive`, `do_not_hire` — 3 values.
+- **New**: `supabase/migrations/<ts>_personnel_banking_encryption.sql`, `src/pages/portal/PortalBanking.tsx`, `src/hooks/useWorkerBanking.ts`
+- **Edited**: portal router config, portal nav config, `src/pages/portal/PortalSettings.tsx` (link card), `src/pages/PersonnelDetail.tsx` (read via admin RPC), onboarding RPC `complete_personnel_onboarding` (encrypt on write), `src/integrations/supabase/types.ts` (regenerated after migration)
 
-A single person's real lifecycle spans **4 status columns across 3 tables**:
+## Deferred / follow-up
 
-```text
-applicants.status = new
-   └─ applications.status: submitted → reviewing → (needs_info|updated)* → approved|rejected
-        └─ on approve: applicants.status → approved  +  personnel row created
-              └─ personnel.onboarding_status: pending → completed (or revoked)
-                    └─ personnel.status: active | inactive | do_not_hire
-```
-
-Where each status is visible today:
-| Status | Visible on |
-|---|---|
-| `applications.status` | StaffingApplications, JobPostingEntries, ApplicationDetailDialog |
-| `applicants.status` | MasterApplicants only |
-| `onboarding_status` | Personnel page only (buried) |
-| `personnel.status` | Personnel page |
-
-**There is no unified pipeline/kanban view anywhere.** A recruiter cannot see "5 submitted, 3 reviewing, 2 approved-pending-onboarding, 4 onboarding-stalled" in one place.
-
----
-
-## 5. Signals a recruiter looks for in the morning
-
-- Dashboard (`src/pages/Index.tsx` + `src/components/dashboard/rows/*`): rows are `WelcomeStrip`, `KPIBar`, `RevenueChartRow`, `RecentInvoicesTable`, `InvoiceAgingSummary`, `RecentActivityTable`, `QuickActionsRow`. **No application/applicant/message/onboarding row exists.**
-- Unread message count: `TopNavBar.tsx` L36/L84 (`useTotalUnreadCount`) shows a badge on the Messages icon. ✓
-- Admin notifications: `AdminNotificationBell` shows unread count with priority-based pulse coloring. ✓ but is generic (all admin notifications, not scoped to "new applications").
-- **"N new applications today"**: not shown anywhere.
-- **Stalled onboardings**: not surfaced anywhere; recruiter must open Personnel and eyeball `onboarding_status = pending` rows.
-- **Applications needing recruiter response** (`needs_info`, `updated`): no dedicated counter or filter card.
-
-The morning answer is currently: log in → Home shows AR/revenue → click Reports → Operations → Applications → sort by created_at → mentally diff yesterday.
-
----
-
-## 6. Top 10 recruiter UX problems (with one-line fixes)
-
-1. **Recruiting is filed under "Reports"** — semantically wrong; recruiters read "Reports" as read-only analytics. → Promote a top-level **Recruiting** menu (Applications, Master Applicants, Postings, Form Templates, Map, Messages).
-2. **No recruiter dashboard** — Home shows AR/invoices, useless to a recruiter. → Add a "Recruiting" dashboard variant (or new-application/needs-info/stalled-onboarding rows) selected by role.
-3. **Form Templates and Staffing Map are orphaned routes** — reachable only via deep-linking or a button inside StaffingApplications. → Surface them in the Recruiting menu.
-4. **Conversations ↔ applications are unlinked** — from a message you can't jump to the applicant's application, and vice versa. → Add a "View application" button in ConversationView and a "Message" button in ApplicationDetailDialog that opens/creates the conversation.
-5. **MasterApplicants rows dead-end** — clicking an applicant does nothing; no `/staffing/applicants/:id` detail exists. → Add applicant detail drawer showing all their applications, SMS history, and personnel link.
-6. **Four fragmented status fields, no pipeline view** — recruiter has to hold the model in their head. → Add a single kanban/funnel: Submitted → Reviewing → Needs Info → Approved → Onboarding → Active, spanning applications + onboarding + personnel.
-7. **No "new today / needs response" counter** — no morning glance metric. → Add badge counts to the Recruiting menu items (new applications today, `needs_info`, stalled onboarding >72h).
-8. **Approve/reject exists in 3 places with 3 slightly different modals** (StaffingApplications, JobPostingEntries, ApplicationDetailDialog). → Consolidate to one action surface (the detail dialog) and have the row buttons open it.
-9. **JobPostingEntries back button destroys filters** — hard `navigate("/staffing/applications")` on L138 loses status/search state. → Use browser back or persisted filters in URL params.
-10. **Applicant ↔ Personnel handoff is invisible** — once approved, applicant row and personnel row have no mutual link in the UI; recruiter loses continuity. → After approval, show a "Now in Personnel → [name]" link on both applicant/application, and a "Came from application [posting]" link on Personnel.
-
----
-
-Ready to move any of these into a build plan on your say-so. If you want, the highest-leverage single change is **#1 + #2 together**: promote Recruiting to top-level and give it a purpose-built home screen — that alone would collapse the "all over the place" feel without touching data models.
+- After one release with dual-write confirmed working, a second migration drops the plaintext `bank_routing_number` / `bank_account_number` columns.
