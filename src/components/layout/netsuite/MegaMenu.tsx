@@ -88,6 +88,30 @@ const listsMenu: NavSection[] = [
   },
 ];
 
+const recruitingMenu: NavSection[] = [
+  {
+    title: "Pipeline",
+    items: [
+      { name: "Applications", href: "/staffing/applications", icon: ClipboardList, description: "Review job applications", requiresManager: true },
+      { name: "Master Applicants", href: "/staffing/applicants", icon: Users, description: "All applicants — bulk invite to new jobs", requiresManager: true },
+    ],
+  },
+  {
+    title: "Setup",
+    items: [
+      { name: "Form Templates", href: "/staffing/form-templates", icon: FileText, description: "Manage application form templates", requiresManager: true },
+      { name: "Staffing Map", href: "/staffing/map", icon: Map, description: "Geographic view of staffing", requiresManager: true },
+    ],
+  },
+  {
+    title: "People",
+    items: [
+      { name: "Personnel", href: "/personnel", icon: Users, description: "Manage staff and workers" },
+      { name: "Messages", href: "/messages", icon: Send, description: "Internal messaging" },
+    ],
+  },
+];
+
 const reportsMenu: NavSection[] = [
   {
     title: "Operations",
