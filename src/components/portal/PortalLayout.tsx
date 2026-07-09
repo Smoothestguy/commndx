@@ -13,6 +13,7 @@ import {
   FolderOpen,
   Timer,
   Package,
+  Landmark,
   ChevronLeft,
   ChevronRight
 } from "lucide-react";
