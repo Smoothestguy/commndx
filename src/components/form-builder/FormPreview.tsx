@@ -26,6 +26,8 @@ interface FormPreviewProps {
   theme: FormTheme;
   successMessage?: string;
   coreFields?: CoreFieldsConfig;
+  requirePhone?: boolean;
+  requireHomeZip?: boolean;
 }
 
 // Helper function to render fields based on layout
