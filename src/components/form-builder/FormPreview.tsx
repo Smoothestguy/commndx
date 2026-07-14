@@ -71,7 +71,7 @@ function renderFieldsWithLayout(
   ));
 }
 
-export function FormPreview({ name, description, fields, layout, theme, successMessage, coreFields }: FormPreviewProps) {
+export function FormPreview({ name, description, fields, layout, theme, successMessage, coreFields, requirePhone, requireHomeZip }: FormPreviewProps) {
   // Merge provided coreFields with defaults
   const activeCoreFields: CoreFieldsConfig = {
     ...DEFAULT_CORE_FIELDS,
