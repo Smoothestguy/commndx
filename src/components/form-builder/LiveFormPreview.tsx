@@ -12,6 +12,8 @@ interface LiveFormPreviewProps {
   theme: FormTheme;
   successMessage: string;
   coreFields: CoreFieldsConfig;
+  requirePhone?: boolean;
+  requireHomeZip?: boolean;
   onExpandClick?: () => void;
 }
 
@@ -23,6 +25,8 @@ export function LiveFormPreview({
   theme,
   successMessage,
   coreFields,
+  requirePhone,
+  requireHomeZip,
   onExpandClick,
 }: LiveFormPreviewProps) {
   return (
@@ -56,6 +60,8 @@ export function LiveFormPreview({
             theme={theme}
             successMessage={successMessage}
             coreFields={coreFields}
+            requirePhone={requirePhone}
+            requireHomeZip={requireHomeZip}
           />
         </div>
       </CardContent>
