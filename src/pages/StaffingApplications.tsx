@@ -138,24 +138,6 @@ export default function StaffingApplications() {
   // Invite nearby applicants dialog state
   const [invitePosting, setInvitePosting] = useState<any | null>(null);
   
-  // New task order form state
-  const [newTaskOrder, setNewTaskOrder] = useState({
-    project_id: "",
-    title: "",
-    job_description: "",
-    headcount_needed: 1,
-    location_address: "",
-    form_template_id: "",
-  });
-
-  // Edit task order form state
-  const [editTaskOrderForm, setEditTaskOrderForm] = useState({
-    title: "",
-    job_description: "",
-    headcount_needed: 1,
-    location_address: "",
-  });
-
   const { data: projects } = useProjects();
   const { data: applications, isLoading } = useApplications({
     status: statusFilter !== "all" ? statusFilter : undefined,
@@ -165,10 +147,8 @@ export default function StaffingApplications() {
   const { data: jobPostings } = useJobPostings();
   const { data: formTemplates } = useApplicationFormTemplates();
 
-  const createTaskOrder = useCreateTaskOrder();
   const createJobPosting = useCreateJobPosting();
   const updateJobPosting = useUpdateJobPosting();
-  const updateTaskOrder = useUpdateTaskOrder();
   const approveApplicationWithType = useApproveApplicationWithType();
   const rejectApplication = useRejectApplication();
   const revokeApproval = useRevokeApproval();
