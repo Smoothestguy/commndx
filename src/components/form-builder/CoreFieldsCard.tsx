@@ -43,6 +43,13 @@ export function CoreFieldsCard({ coreFields, onChange, settings, onSettingsChang
         requireProfilePhoto: false,
       });
     }
+    // If disabling phone or homeZip, clear the required flag so it doesn't linger
+    if (key === "phone" && !newValue && onSettingsChange && settings) {
+      onSettingsChange({ ...settings, requirePhone: false });
+    }
+    if (key === "homeZip" && !newValue && onSettingsChange && settings) {
+      onSettingsChange({ ...settings, requireHomeZip: false });
+    }
   };
 
   const handleRequiredToggle = (key: string) => {
@@ -53,12 +60,28 @@ export function CoreFieldsCard({ coreFields, onChange, settings, onSettingsChang
         ...settings,
         requireProfilePhoto: !settings.requireProfilePhoto,
       });
+    } else if (key === "phone") {
+      onSettingsChange({
+        ...settings,
+        requirePhone: !settings.requirePhone,
+      });
+    } else if (key === "homeZip") {
+      onSettingsChange({
+        ...settings,
+        requireHomeZip: !settings.requireHomeZip,
+      });
     }
   };
 
   const isFieldRequired = (key: string): boolean => {
     if (key === "profilePicture") {
       return settings?.requireProfilePhoto ?? true; // Default to true when enabled
+    }
+    if (key === "phone") {
+      return settings?.requirePhone ?? false;
+    }
+    if (key === "homeZip") {
+      return settings?.requireHomeZip ?? false;
     }
     // firstName, lastName, email are always required
     const field = CORE_FIELD_OPTIONS.find(f => f.key === key);
@@ -78,7 +101,7 @@ export function CoreFieldsCard({ coreFields, onChange, settings, onSettingsChang
           const Icon = field.icon;
           const isEnabled = coreFields[field.key];
           const isRequired = isFieldRequired(field.key);
-          const showRequiredToggle = field.canBeRequired && isEnabled && field.key === "profilePicture";
+          const showRequiredToggle = field.canBeRequired && isEnabled;
           
           return (
             <div
