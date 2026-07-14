@@ -784,165 +784,23 @@ export default function StaffingApplications() {
         </DialogContent>
       </Dialog>
 
-      {/* Create Task Order Dialog */}
-      <Dialog open={showCreateDialog} onOpenChange={setShowCreateDialog}>
-        <DialogContent className="max-h-[90vh] sm:max-h-[85vh] flex flex-col">
-          <DialogHeader>
-            <DialogTitle>Create Task Order</DialogTitle>
-            <DialogDescription>
-              Create a staffing request and generate an application link
-            </DialogDescription>
-          </DialogHeader>
-          <div className="flex-1 overflow-y-auto space-y-4 pr-1">
-            <div>
-              <Label>Project *</Label>
-              <Select
-                value={newTaskOrder.project_id}
-                onValueChange={(v) => setNewTaskOrder({ ...newTaskOrder, project_id: v })}
-              >
-                <SelectTrigger>
-                  <SelectValue placeholder="Select project" />
-                </SelectTrigger>
-                <SelectContent>
-                  {projects?.map((project) => (
-                    <SelectItem key={project.id} value={project.id}>
-                      {project.name}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-            <div>
-              <Label>Position Title *</Label>
-              <Input
-                value={newTaskOrder.title}
-                onChange={(e) => setNewTaskOrder({ ...newTaskOrder, title: e.target.value })}
-                placeholder="e.g., General Laborer, Foreman"
-              />
-            </div>
-            <div>
-              <Label>Job Description</Label>
-              <Textarea
-                value={newTaskOrder.job_description}
-                onChange={(e) => setNewTaskOrder({ ...newTaskOrder, job_description: e.target.value })}
-                placeholder="Describe the role and requirements..."
-              />
-            </div>
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              <div>
-                <Label>Headcount Needed</Label>
-                <Input
-                  type="number"
-                  min={1}
-                  value={newTaskOrder.headcount_needed}
-                  onChange={(e) => setNewTaskOrder({ ...newTaskOrder, headcount_needed: parseInt(e.target.value) || 1 })}
-                />
-              </div>
-              <div>
-                <Label>Location</Label>
-                <Input
-                  value={newTaskOrder.location_address}
-                  onChange={(e) => setNewTaskOrder({ ...newTaskOrder, location_address: e.target.value })}
-                  placeholder="Job site address"
-                />
-              </div>
-            </div>
-            <div>
-              <Label>Application Form Template</Label>
-              <Select
-                value={newTaskOrder.form_template_id || "none"}
-                onValueChange={(v) => setNewTaskOrder({ ...newTaskOrder, form_template_id: v === "none" ? "" : v })}
-              >
-                <SelectTrigger>
-                  <SelectValue placeholder="No custom form (basic fields only)" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="none">No custom form (basic fields only)</SelectItem>
-                  {formTemplates?.filter(t => t.is_active).map((template) => (
-                    <SelectItem key={template.id} value={template.id}>
-                      {template.name} ({template.fields.length} fields)
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-              <p className="text-xs text-muted-foreground mt-1">
-                Select a form template to add custom fields to the application
-              </p>
-            </div>
-          </div>
-          <DialogFooter className="flex-shrink-0">
-            <Button variant="outline" onClick={() => setShowCreateDialog(false)}>
-              Cancel
-            </Button>
-            <Button
-              onClick={handleCreateTaskOrder}
-              disabled={createTaskOrder.isPending}
-            >
-              Create & Copy Link
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+      {/* Create Task Order Wizard */}
+      <TaskOrderWizard
+        open={showCreateDialog}
+        onOpenChange={setShowCreateDialog}
+        mode="create"
+      />
 
-      {/* Edit Task Order Dialog */}
-      <Dialog open={showEditTaskOrderDialog} onOpenChange={setShowEditTaskOrderDialog}>
-        <DialogContent className="max-h-[90vh] sm:max-h-[85vh] flex flex-col">
-          <DialogHeader>
-            <DialogTitle>Edit Task Order</DialogTitle>
-            <DialogDescription>
-              Update the task order details
-            </DialogDescription>
-          </DialogHeader>
-          <div className="flex-1 overflow-y-auto space-y-4 pr-1">
-            <div>
-              <Label>Position Title *</Label>
-              <Input
-                value={editTaskOrderForm.title}
-                onChange={(e) => setEditTaskOrderForm({ ...editTaskOrderForm, title: e.target.value })}
-                placeholder="e.g., General Laborer, Foreman"
-              />
-            </div>
-            <div>
-              <Label>Job Description</Label>
-              <Textarea
-                value={editTaskOrderForm.job_description}
-                onChange={(e) => setEditTaskOrderForm({ ...editTaskOrderForm, job_description: e.target.value })}
-                placeholder="Describe the role and requirements..."
-              />
-            </div>
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              <div>
-                <Label>Headcount Needed</Label>
-                <Input
-                  type="number"
-                  min={1}
-                  value={editTaskOrderForm.headcount_needed}
-                  onChange={(e) => setEditTaskOrderForm({ ...editTaskOrderForm, headcount_needed: parseInt(e.target.value) || 1 })}
-                />
-              </div>
-              <div>
-                <Label>Location</Label>
-                <Input
-                  value={editTaskOrderForm.location_address}
-                  onChange={(e) => setEditTaskOrderForm({ ...editTaskOrderForm, location_address: e.target.value })}
-                  placeholder="Job site address"
-                />
-              </div>
-            </div>
-          </div>
-          <DialogFooter className="flex-shrink-0">
-            <Button variant="outline" onClick={() => setShowEditTaskOrderDialog(false)}>
-              Cancel
-            </Button>
-            <Button
-              onClick={handleSaveTaskOrderEdit}
-              disabled={updateTaskOrder.isPending}
-            >
-              Save Changes
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+      {/* Edit Task Order Wizard */}
+      <TaskOrderWizard
+        open={showEditTaskOrderDialog}
+        onOpenChange={(open) => {
+          setShowEditTaskOrderDialog(open);
+          if (!open) setEditingTaskOrder(null);
+        }}
+        mode="edit"
+        taskOrder={editingTaskOrder}
+      />
     </div>
   );
 }
