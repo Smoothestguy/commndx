@@ -56,6 +56,8 @@ export default function JobPostingEntries() {
   const projectName = taskOrder?.projects?.name;
   const formTemplate = formTemplates?.find((t) => t.id === currentPosting?.form_template_id);
 
+  const { data: taskOrderPositions } = useTaskOrderPositions(taskOrder?.id);
+
   // Fetch applications for this specific posting
   // Filter by status - "active" means non-rejected, "all" includes rejected
   const { data: applications, isLoading } = useApplications({
