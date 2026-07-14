@@ -232,26 +232,40 @@ export function TaskOrderWizard({
 
   const handleBracketSelect = (key: string, val: string) => {
     if (val === NEW_BRACKET_VALUE) {
-      updatePos(key, {
-        rate_bracket_id: null,
-        _isNewBracket: true,
-        _newBracketName: "",
-        position_label: "",
-      });
+      setPositions((prev) =>
+        prev.map((p) =>
+          p._key === key
+            ? {
+                ...p,
+                rate_bracket_id: null,
+                _isNewBracket: true,
+                _newBracketName: "",
+                position_label: "",
+              }
+            : p
+        )
+      );
       return;
     }
     const bracket = rateBrackets?.find((b) => b.id === val);
-    updatePos(key, {
-      rate_bracket_id: val,
-      _isNewBracket: false,
-      _newBracketName: undefined,
-      position_label: bracket?.name || "",
-      // Prefill pay from bracket default if user hasn't typed one
-      advertised_pay_rate:
-        bracket?.default_pay_rate ??
-        // preserve any manually-set pay rate that wasn't from bracket
-        undefined as unknown as number | null,
-    });
+    setPositions((prev) =>
+      prev.map((p) => {
+        if (p._key !== key) return p;
+        // Prefill pay from bracket default only when current pay is empty
+        const nextPay =
+          p.advertised_pay_rate == null && bracket?.default_pay_rate != null
+            ? bracket.default_pay_rate
+            : p.advertised_pay_rate;
+        return {
+          ...p,
+          rate_bracket_id: val,
+          _isNewBracket: false,
+          _newBracketName: undefined,
+          position_label: bracket?.name || p.position_label,
+          advertised_pay_rate: nextPay ?? null,
+        };
+      })
+    );
   };
 
   const canGoNext = () => {
