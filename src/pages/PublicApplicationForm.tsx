@@ -202,8 +202,9 @@ export default function PublicApplicationForm() {
     }
   }, [posting]);
 
+  const activeSchema = formSettings.requireHomeZip ? schemaWithHomeZipRequired : baseSchema;
   const form = useForm({
-    resolver: zodResolver(baseSchema),
+    resolver: zodResolver(activeSchema),
     defaultValues: {
       first_name: "",
       last_name: "",
