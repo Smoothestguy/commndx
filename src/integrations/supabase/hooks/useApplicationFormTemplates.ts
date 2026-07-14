@@ -117,6 +117,8 @@ export interface FormSettings {
   // New settings for photo and location requirements
   requireProfilePhoto?: boolean;
   requireLocation?: boolean;
+  requirePhone?: boolean;
+  requireHomeZip?: boolean;
   // SMS consent requirement (TCPA compliant)
   requireSmsConsent?: boolean;
   smsConsentTextVersion?: string;
