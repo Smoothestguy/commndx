@@ -407,6 +407,12 @@ export default function StaffingApplications() {
                         )}
                         <QuickApplyStats postingId={posting.id} />
                       </div>
+                      {posting.project_task_orders && (
+                        <TaskOrderFacts
+                          className="mt-2"
+                          taskOrder={posting.project_task_orders as any}
+                        />
+                      )}
                     </div>
                     <div 
                       className="flex flex-wrap items-center gap-1 sm:gap-2 pt-2 sm:pt-0 border-t sm:border-t-0 border-border/50 justify-end shrink-0" 
