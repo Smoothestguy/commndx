@@ -420,7 +420,7 @@ export function FormPreview({ name, description, fields, layout, theme, successM
                 )}
                 {activeCoreFields.phone && (
                   <FormattedPhoneInput
-                    label="Phone *"
+                    label={requirePhone ? "Phone *" : "Phone"}
                     disabled
                     showIcon
                   />
@@ -429,7 +429,9 @@ export function FormPreview({ name, description, fields, layout, theme, successM
             )}
             {activeCoreFields.homeZip && (
               <div className="space-y-2">
-                <Label className="text-sm font-medium">Home ZIP Code</Label>
+                <Label className="text-sm font-medium">
+                  Home ZIP Code{requireHomeZip ? " *" : ""}
+                </Label>
                 <Input placeholder="12345" disabled className="w-1/3 min-w-[120px]" />
               </div>
             )}
