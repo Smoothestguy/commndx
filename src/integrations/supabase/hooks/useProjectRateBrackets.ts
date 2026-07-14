@@ -10,6 +10,7 @@ export interface ProjectRateBracket {
   overtime_multiplier: number;
   is_active: boolean;
   is_billable: boolean;
+  default_pay_rate: number | null;
   created_at: string;
   updated_at: string;
 }
@@ -17,10 +18,11 @@ export interface ProjectRateBracket {
 export interface RateBracketInsert {
   project_id: string;
   name: string;
-  bill_rate: number;
+  bill_rate?: number;
   overtime_multiplier?: number;
   is_active?: boolean;
   is_billable?: boolean;
+  default_pay_rate?: number | null;
 }
 
 export interface RateBracketUpdate {
@@ -30,6 +32,7 @@ export interface RateBracketUpdate {
   overtime_multiplier?: number;
   is_active?: boolean;
   is_billable?: boolean;
+  default_pay_rate?: number | null;
 }
 
 // Fetch all rate brackets for a project
