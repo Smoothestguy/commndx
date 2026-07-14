@@ -87,10 +87,11 @@ export function useAddRateBracket() {
         .insert({
           project_id: bracket.project_id,
           name: bracket.name,
-          bill_rate: bracket.is_billable === false ? 0 : bracket.bill_rate,
+          bill_rate: bracket.is_billable === false ? 0 : (bracket.bill_rate ?? 0),
           overtime_multiplier: bracket.overtime_multiplier ?? 1.5,
           is_active: bracket.is_active ?? true,
           is_billable: bracket.is_billable ?? true,
+          default_pay_rate: bracket.default_pay_rate ?? null,
         })
         .select()
         .single();
