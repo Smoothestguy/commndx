@@ -88,6 +88,13 @@ const baseSchema = z.object({
   photo_url: z.string().optional(),
 });
 
+// Schema variant used when Home ZIP is marked required in the template settings.
+const schemaWithHomeZipRequired = baseSchema.extend({
+  home_zip: z.string()
+    .min(1, "Home ZIP Code is required")
+    .regex(/^\d{5}(-\d{4})?$/, "Enter a valid ZIP code (5 digits or 5+4)"),
+});
+
 export default function PublicApplicationForm() {
   const { token } = useParams<{ token: string }>();
   const [submitted, setSubmitted] = useState(false);
@@ -195,8 +202,9 @@ export default function PublicApplicationForm() {
     }
   }, [posting]);
 
+  const activeSchema = formSettings.requireHomeZip ? schemaWithHomeZipRequired : baseSchema;
   const form = useForm({
-    resolver: zodResolver(baseSchema),
+    resolver: zodResolver(activeSchema),
     defaultValues: {
       first_name: "",
       last_name: "",
@@ -1266,7 +1274,7 @@ export default function PublicApplicationForm() {
                     name="home_zip"
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel>Home ZIP Code</FormLabel>
+                        <FormLabel>Home ZIP Code{formSettings.requireHomeZip ? " *" : ""}</FormLabel>
                         <FormControl>
                           <Input 
                             placeholder="12345" 

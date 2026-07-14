@@ -428,6 +428,8 @@ export default function ApplicationFormBuilder() {
                 theme={theme}
                 successMessage={successMessage}
                 coreFields={coreFields}
+                requirePhone={settings.requirePhone}
+                requireHomeZip={settings.requireHomeZip}
                 onExpandClick={() => setActiveTab("preview")}
               />
             </div>
@@ -485,6 +487,8 @@ export default function ApplicationFormBuilder() {
                   theme={theme}
                   successMessage={successMessage}
                   coreFields={coreFields}
+                  requirePhone={settings.requirePhone}
+                  requireHomeZip={settings.requireHomeZip}
                 />
               </CardContent>
             </Card>
@@ -560,6 +564,8 @@ export default function ApplicationFormBuilder() {
                 theme={theme}
                 successMessage={successMessage}
                 coreFields={coreFields}
+                requirePhone={settings.requirePhone}
+                requireHomeZip={settings.requireHomeZip}
               />
             </CardContent>
           </Card>
