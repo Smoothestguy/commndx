@@ -155,6 +155,13 @@ export default function JobPostingEntries() {
                 </Badge>
               )}
             </div>
+            {taskOrder && (
+              <TaskOrderFacts
+                className="mt-3"
+                taskOrder={taskOrder as any}
+                positions={taskOrderPositions}
+              />
+            )}
           </div>
         </div>
         <div className="flex gap-2">
