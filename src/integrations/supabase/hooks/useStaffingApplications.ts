@@ -13,12 +13,45 @@ export interface TaskOrder {
   location_lat: number | null;
   location_lng: number | null;
   status: 'draft' | 'open' | 'filled' | 'closed';
+  approx_duration?: string | null;
+  days_per_week?: number | null;
+  hours_per_day?: number | null;
+  schedule_notes?: string | null;
+  per_diem_amount?: number | null;
+  per_diem_notes?: string | null;
+  lodging_status?: 'provided' | 'stipend' | 'not_provided' | null;
+  lodging_notes?: string | null;
+  meals_provided?: boolean | null;
+  meals_notes?: string | null;
+  mob_demob_paid?: boolean | null;
+  mob_demob_notes?: string | null;
   created_at: string;
   updated_at: string;
   projects?: {
     name: string;
     customer_id?: string;
   };
+}
+
+export interface TaskOrderPosition {
+  id: string;
+  task_order_id: string;
+  rate_bracket_id: string | null;
+  position_label: string;
+  headcount: number;
+  advertised_pay_rate: number | null;
+  show_pay_publicly: boolean;
+  notes: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface PublicTaskOrderPosition {
+  id: string;
+  task_order_id: string;
+  position_label: string;
+  headcount: number;
+  advertised_pay_rate: number | null;
 }
 
 export interface JobPosting {
