@@ -280,7 +280,11 @@ export function TaskOrderWizard({
       per_diem_amount:
         perDiemNum != null && !isNaN(perDiemNum) ? perDiemNum : null,
       per_diem_notes: perDiemNotes.trim() || null,
-      lodging_status: lodgingStatus || null,
+      lodging_status: (lodgingStatus || null) as
+        | "provided"
+        | "stipend"
+        | "not_provided"
+        | null,
       lodging_notes: lodgingNotes.trim() || null,
       meals_provided:
         mealsProvided === "" ? null : mealsProvided === "yes",
