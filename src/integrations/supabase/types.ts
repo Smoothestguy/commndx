@@ -5276,6 +5276,7 @@ export type Database = {
         Row: {
           bill_rate: number
           created_at: string
+          default_pay_rate: number | null
           id: string
           is_active: boolean
           is_billable: boolean
@@ -5287,6 +5288,7 @@ export type Database = {
         Insert: {
           bill_rate?: number
           created_at?: string
+          default_pay_rate?: number | null
           id?: string
           is_active?: boolean
           is_billable?: boolean
@@ -5298,6 +5300,7 @@ export type Database = {
         Update: {
           bill_rate?: number
           created_at?: string
+          default_pay_rate?: number | null
           id?: string
           is_active?: boolean
           is_billable?: boolean
@@ -5385,42 +5388,78 @@ export type Database = {
       }
       project_task_orders: {
         Row: {
+          approx_duration: string | null
           created_at: string
+          days_per_week: number | null
           headcount_needed: number
+          hours_per_day: number | null
           id: string
           job_description: string | null
           location_address: string | null
           location_lat: number | null
           location_lng: number | null
+          lodging_notes: string | null
+          lodging_status: string | null
+          meals_notes: string | null
+          meals_provided: boolean | null
+          mob_demob_notes: string | null
+          mob_demob_paid: boolean | null
+          per_diem_amount: number | null
+          per_diem_notes: string | null
           project_id: string
+          schedule_notes: string | null
           start_at: string | null
           status: Database["public"]["Enums"]["task_order_status"]
           title: string
           updated_at: string
         }
         Insert: {
+          approx_duration?: string | null
           created_at?: string
+          days_per_week?: number | null
           headcount_needed?: number
+          hours_per_day?: number | null
           id?: string
           job_description?: string | null
           location_address?: string | null
           location_lat?: number | null
           location_lng?: number | null
+          lodging_notes?: string | null
+          lodging_status?: string | null
+          meals_notes?: string | null
+          meals_provided?: boolean | null
+          mob_demob_notes?: string | null
+          mob_demob_paid?: boolean | null
+          per_diem_amount?: number | null
+          per_diem_notes?: string | null
           project_id: string
+          schedule_notes?: string | null
           start_at?: string | null
           status?: Database["public"]["Enums"]["task_order_status"]
           title: string
           updated_at?: string
         }
         Update: {
+          approx_duration?: string | null
           created_at?: string
+          days_per_week?: number | null
           headcount_needed?: number
+          hours_per_day?: number | null
           id?: string
           job_description?: string | null
           location_address?: string | null
           location_lat?: number | null
           location_lng?: number | null
+          lodging_notes?: string | null
+          lodging_status?: string | null
+          meals_notes?: string | null
+          meals_provided?: boolean | null
+          mob_demob_notes?: string | null
+          mob_demob_paid?: boolean | null
+          per_diem_amount?: number | null
+          per_diem_notes?: string | null
           project_id?: string
+          schedule_notes?: string | null
           start_at?: string | null
           status?: Database["public"]["Enums"]["task_order_status"]
           title?: string
@@ -6825,6 +6864,60 @@ export type Database = {
             columns: ["session_id"]
             isOneToOne: false
             referencedRelation: "user_work_sessions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      task_order_positions: {
+        Row: {
+          advertised_pay_rate: number | null
+          created_at: string
+          headcount: number
+          id: string
+          notes: string | null
+          position_label: string
+          rate_bracket_id: string | null
+          show_pay_publicly: boolean
+          task_order_id: string
+          updated_at: string
+        }
+        Insert: {
+          advertised_pay_rate?: number | null
+          created_at?: string
+          headcount: number
+          id?: string
+          notes?: string | null
+          position_label: string
+          rate_bracket_id?: string | null
+          show_pay_publicly?: boolean
+          task_order_id: string
+          updated_at?: string
+        }
+        Update: {
+          advertised_pay_rate?: number | null
+          created_at?: string
+          headcount?: number
+          id?: string
+          notes?: string | null
+          position_label?: string
+          rate_bracket_id?: string | null
+          show_pay_publicly?: boolean
+          task_order_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "task_order_positions_rate_bracket_id_fkey"
+            columns: ["rate_bracket_id"]
+            isOneToOne: false
+            referencedRelation: "project_rate_brackets"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "task_order_positions_task_order_id_fkey"
+            columns: ["task_order_id"]
+            isOneToOne: false
+            referencedRelation: "project_task_orders"
             referencedColumns: ["id"]
           },
         ]
@@ -8403,7 +8496,38 @@ export type Database = {
       }
     }
     Views: {
-      [_ in never]: never
+      public_task_order_positions: {
+        Row: {
+          advertised_pay_rate: number | null
+          headcount: number | null
+          id: string | null
+          position_label: string | null
+          task_order_id: string | null
+        }
+        Insert: {
+          advertised_pay_rate?: never
+          headcount?: number | null
+          id?: string | null
+          position_label?: string | null
+          task_order_id?: string | null
+        }
+        Update: {
+          advertised_pay_rate?: never
+          headcount?: number | null
+          id?: string | null
+          position_label?: string | null
+          task_order_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "task_order_positions_task_order_id_fkey"
+            columns: ["task_order_id"]
+            isOneToOne: false
+            referencedRelation: "project_task_orders"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
     }
     Functions: {
       accept_invitation: {

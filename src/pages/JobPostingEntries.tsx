@@ -25,6 +25,8 @@ import {
   Application,
 } from "@/integrations/supabase/hooks/useStaffingApplications";
 import { useApplicationFormTemplates, FormField } from "@/integrations/supabase/hooks/useApplicationFormTemplates";
+import { useTaskOrderPositions } from "@/integrations/supabase/hooks/useStaffingApplications";
+import { TaskOrderFacts } from "@/components/staffing/TaskOrderFacts";
 import { toast } from "sonner";
 import { PostingEntriesTable } from "@/components/staffing/PostingEntriesTable";
 import { ApplicationDetailDialog } from "@/components/staffing/ApplicationDetailDialog";
@@ -53,6 +55,8 @@ export default function JobPostingEntries() {
   const taskOrder = currentPosting?.project_task_orders;
   const projectName = taskOrder?.projects?.name;
   const formTemplate = formTemplates?.find((t) => t.id === currentPosting?.form_template_id);
+
+  const { data: taskOrderPositions } = useTaskOrderPositions(taskOrder?.id);
 
   // Fetch applications for this specific posting
   // Filter by status - "active" means non-rejected, "all" includes rejected
@@ -151,6 +155,13 @@ export default function JobPostingEntries() {
                 </Badge>
               )}
             </div>
+            {taskOrder && (
+              <TaskOrderFacts
+                className="mt-3"
+                taskOrder={taskOrder as any}
+                positions={taskOrderPositions}
+              />
+            )}
           </div>
         </div>
         <div className="flex gap-2">

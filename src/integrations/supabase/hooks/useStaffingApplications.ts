@@ -13,12 +13,45 @@ export interface TaskOrder {
   location_lat: number | null;
   location_lng: number | null;
   status: 'draft' | 'open' | 'filled' | 'closed';
+  approx_duration?: string | null;
+  days_per_week?: number | null;
+  hours_per_day?: number | null;
+  schedule_notes?: string | null;
+  per_diem_amount?: number | null;
+  per_diem_notes?: string | null;
+  lodging_status?: 'provided' | 'stipend' | 'not_provided' | null;
+  lodging_notes?: string | null;
+  meals_provided?: boolean | null;
+  meals_notes?: string | null;
+  mob_demob_paid?: boolean | null;
+  mob_demob_notes?: string | null;
   created_at: string;
   updated_at: string;
   projects?: {
     name: string;
     customer_id?: string;
   };
+}
+
+export interface TaskOrderPosition {
+  id: string;
+  task_order_id: string;
+  rate_bracket_id: string | null;
+  position_label: string;
+  headcount: number;
+  advertised_pay_rate: number | null;
+  show_pay_publicly: boolean;
+  notes: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface PublicTaskOrderPosition {
+  id: string;
+  task_order_id: string;
+  position_label: string;
+  headcount: number;
+  advertised_pay_rate: number | null;
 }
 
 export interface JobPosting {
@@ -142,6 +175,103 @@ export const useUpdateTaskOrder = () => {
   });
 };
 
+// ============ TASK ORDER POSITIONS ============
+
+export const useTaskOrderPositions = (taskOrderId?: string) => {
+  return useQuery({
+    queryKey: ["task-order-positions", taskOrderId],
+    queryFn: async () => {
+      if (!taskOrderId) return [] as TaskOrderPosition[];
+      const { data, error } = await supabase
+        .from("task_order_positions")
+        .select("*")
+        .eq("task_order_id", taskOrderId)
+        .order("created_at", { ascending: true });
+      if (error) throw error;
+      return data as TaskOrderPosition[];
+    },
+    enabled: !!taskOrderId,
+  });
+};
+
+export interface TaskOrderPositionInput {
+  id?: string;
+  rate_bracket_id: string | null;
+  position_label: string;
+  headcount: number;
+  advertised_pay_rate: number | null;
+  show_pay_publicly: boolean;
+  notes: string | null;
+}
+
+// Replace all positions for a task order (add/update/remove via diff)
+export const useReplaceTaskOrderPositions = () => {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async ({
+      taskOrderId,
+      positions,
+    }: {
+      taskOrderId: string;
+      positions: TaskOrderPositionInput[];
+    }) => {
+      // Fetch existing
+      const { data: existing, error: fetchErr } = await supabase
+        .from("task_order_positions")
+        .select("id")
+        .eq("task_order_id", taskOrderId);
+      if (fetchErr) throw fetchErr;
+
+      const keepIds = new Set(positions.filter((p) => p.id).map((p) => p.id as string));
+      const toDelete = (existing || []).filter((r) => !keepIds.has(r.id)).map((r) => r.id);
+
+      if (toDelete.length > 0) {
+        const { error: delErr } = await supabase
+          .from("task_order_positions")
+          .delete()
+          .in("id", toDelete);
+        if (delErr) throw delErr;
+      }
+
+      for (const p of positions) {
+        if (p.id) {
+          const { error: updErr } = await supabase
+            .from("task_order_positions")
+            .update({
+              rate_bracket_id: p.rate_bracket_id,
+              position_label: p.position_label,
+              headcount: p.headcount,
+              advertised_pay_rate: p.advertised_pay_rate,
+              show_pay_publicly: p.show_pay_publicly,
+              notes: p.notes,
+            })
+            .eq("id", p.id);
+          if (updErr) throw updErr;
+        } else {
+          const { error: insErr } = await supabase
+            .from("task_order_positions")
+            .insert({
+              task_order_id: taskOrderId,
+              rate_bracket_id: p.rate_bracket_id,
+              position_label: p.position_label,
+              headcount: p.headcount,
+              advertised_pay_rate: p.advertised_pay_rate,
+              show_pay_publicly: p.show_pay_publicly,
+              notes: p.notes,
+            });
+          if (insErr) throw insErr;
+        }
+      }
+      return true;
+    },
+    onSuccess: (_data, variables) => {
+      queryClient.invalidateQueries({ queryKey: ["task-order-positions", variables.taskOrderId] });
+      queryClient.invalidateQueries({ queryKey: ["task-orders"] });
+    },
+  });
+};
+
 // ============ JOB POSTINGS ============
 
 export const useJobPostings = (taskOrderId?: string) => {
@@ -188,7 +318,30 @@ export const useJobPostingByToken = (token: string) => {
         .maybeSingle();
 
       if (error) throw error;
-      return data as (JobPosting & { project_task_orders: TaskOrder & { projects: { name: string } } }) | null;
+      if (!data) return null;
+
+      // Fetch public-safe positions from the view (pay is nulled server-side when show_pay_publicly=false)
+      let positions: PublicTaskOrderPosition[] = [];
+      const taskOrderId = (data as any).task_order_id as string | undefined;
+      if (taskOrderId) {
+        const { data: posData, error: posErr } = await supabase
+          .from("public_task_order_positions" as any)
+          .select("*")
+          .eq("task_order_id", taskOrderId);
+        if (posErr) {
+          console.warn("[useJobPostingByToken] positions fetch error (non-fatal):", posErr);
+        } else if (posData) {
+          positions = posData as unknown as PublicTaskOrderPosition[];
+        }
+      }
+
+      return {
+        ...(data as any),
+        positions,
+      } as (JobPosting & {
+        project_task_orders: TaskOrder & { projects: { name: string } };
+        positions: PublicTaskOrderPosition[];
+      });
     },
     enabled: !!token,
   });

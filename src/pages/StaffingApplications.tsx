@@ -51,10 +51,8 @@ import {
   useApplications,
   useTaskOrders,
   useJobPostings,
-  useCreateTaskOrder,
   useCreateJobPosting,
   useUpdateJobPosting,
-  useUpdateTaskOrder,
   useApproveApplicationWithType,
   useRejectApplication,
   useRevokeApproval,
@@ -75,6 +73,8 @@ import {
 } from "@/utils/applicationExportUtils";
 import { ApprovalTypeSelectionDialog, RecordType } from "@/components/personnel/ApprovalTypeSelectionDialog";
 import { ReverseApprovalDialog } from "@/components/personnel/ReverseApprovalDialog";
+import { TaskOrderWizard } from "@/components/staffing/TaskOrderWizard";
+import { TaskOrderFacts } from "@/components/staffing/TaskOrderFacts";
 
 const EXPERIENCE_OPTIONS = [
   { key: "all", label: "All Experience" },
@@ -138,24 +138,6 @@ export default function StaffingApplications() {
   // Invite nearby applicants dialog state
   const [invitePosting, setInvitePosting] = useState<any | null>(null);
   
-  // New task order form state
-  const [newTaskOrder, setNewTaskOrder] = useState({
-    project_id: "",
-    title: "",
-    job_description: "",
-    headcount_needed: 1,
-    location_address: "",
-    form_template_id: "",
-  });
-
-  // Edit task order form state
-  const [editTaskOrderForm, setEditTaskOrderForm] = useState({
-    title: "",
-    job_description: "",
-    headcount_needed: 1,
-    location_address: "",
-  });
-
   const { data: projects } = useProjects();
   const { data: applications, isLoading } = useApplications({
     status: statusFilter !== "all" ? statusFilter : undefined,
@@ -165,10 +147,8 @@ export default function StaffingApplications() {
   const { data: jobPostings } = useJobPostings();
   const { data: formTemplates } = useApplicationFormTemplates();
 
-  const createTaskOrder = useCreateTaskOrder();
   const createJobPosting = useCreateJobPosting();
   const updateJobPosting = useUpdateJobPosting();
-  const updateTaskOrder = useUpdateTaskOrder();
   const approveApplicationWithType = useApproveApplicationWithType();
   const rejectApplication = useRejectApplication();
   const revokeApproval = useRevokeApproval();
@@ -324,49 +304,6 @@ export default function StaffingApplications() {
     setCurrentPage(1);
   }, [search, projectFilter, statusFilter, experienceFilter, postingFilter]);
 
-  const handleCreateTaskOrder = async () => {
-    if (!newTaskOrder.project_id || !newTaskOrder.title) {
-      toast.error("Please fill in required fields");
-      return;
-    }
-
-    try {
-      const taskOrder = await createTaskOrder.mutateAsync({
-        project_id: newTaskOrder.project_id,
-        title: newTaskOrder.title,
-        job_description: newTaskOrder.job_description || null,
-        headcount_needed: newTaskOrder.headcount_needed,
-        location_address: newTaskOrder.location_address || null,
-        location_lat: null,
-        location_lng: null,
-        start_at: null,
-        status: 'open',
-      });
-
-      // Automatically create a job posting
-      const posting = await createJobPosting.mutateAsync({
-        taskOrderId: taskOrder.id,
-        formTemplateId: newTaskOrder.form_template_id || undefined,
-      });
-      
-      const publicUrl = `${window.location.origin}/apply/${posting.public_token}`;
-      await navigator.clipboard.writeText(publicUrl);
-      
-      toast.success("Task order created! Application link copied to clipboard.");
-      setShowCreateDialog(false);
-      setNewTaskOrder({
-        project_id: "",
-        title: "",
-        job_description: "",
-        headcount_needed: 1,
-        location_address: "",
-        form_template_id: "",
-      });
-    } catch (error) {
-      toast.error("Failed to create task order");
-    }
-  };
-
   const copyApplicationLink = (token: string) => {
     const url = `${window.location.origin}/apply/${token}`;
     navigator.clipboard.writeText(url);
@@ -385,31 +322,7 @@ export default function StaffingApplications() {
     const taskOrder = posting.project_task_orders;
     if (!taskOrder) return;
     setEditingTaskOrder(taskOrder);
-    setEditTaskOrderForm({
-      title: taskOrder.title || "",
-      job_description: taskOrder.job_description || "",
-      headcount_needed: taskOrder.headcount_needed || 1,
-      location_address: taskOrder.location_address || "",
-    });
     setShowEditTaskOrderDialog(true);
-  };
-
-  const handleSaveTaskOrderEdit = async () => {
-    if (!editingTaskOrder) return;
-    try {
-      await updateTaskOrder.mutateAsync({
-        id: editingTaskOrder.id,
-        title: editTaskOrderForm.title,
-        job_description: editTaskOrderForm.job_description || null,
-        headcount_needed: editTaskOrderForm.headcount_needed,
-        location_address: editTaskOrderForm.location_address || null,
-      });
-      toast.success("Task order updated");
-      setShowEditTaskOrderDialog(false);
-      setEditingTaskOrder(null);
-    } catch (error) {
-      toast.error("Failed to update task order");
-    }
   };
 
   const handleSavePostingEdit = async () => {
@@ -494,6 +407,12 @@ export default function StaffingApplications() {
                         )}
                         <QuickApplyStats postingId={posting.id} />
                       </div>
+                      {posting.project_task_orders && (
+                        <TaskOrderFacts
+                          className="mt-2"
+                          taskOrder={posting.project_task_orders as any}
+                        />
+                      )}
                     </div>
                     <div 
                       className="flex flex-wrap items-center gap-1 sm:gap-2 pt-2 sm:pt-0 border-t sm:border-t-0 border-border/50 justify-end shrink-0" 
@@ -871,165 +790,23 @@ export default function StaffingApplications() {
         </DialogContent>
       </Dialog>
 
-      {/* Create Task Order Dialog */}
-      <Dialog open={showCreateDialog} onOpenChange={setShowCreateDialog}>
-        <DialogContent className="max-h-[90vh] sm:max-h-[85vh] flex flex-col">
-          <DialogHeader>
-            <DialogTitle>Create Task Order</DialogTitle>
-            <DialogDescription>
-              Create a staffing request and generate an application link
-            </DialogDescription>
-          </DialogHeader>
-          <div className="flex-1 overflow-y-auto space-y-4 pr-1">
-            <div>
-              <Label>Project *</Label>
-              <Select
-                value={newTaskOrder.project_id}
-                onValueChange={(v) => setNewTaskOrder({ ...newTaskOrder, project_id: v })}
-              >
-                <SelectTrigger>
-                  <SelectValue placeholder="Select project" />
-                </SelectTrigger>
-                <SelectContent>
-                  {projects?.map((project) => (
-                    <SelectItem key={project.id} value={project.id}>
-                      {project.name}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-            <div>
-              <Label>Position Title *</Label>
-              <Input
-                value={newTaskOrder.title}
-                onChange={(e) => setNewTaskOrder({ ...newTaskOrder, title: e.target.value })}
-                placeholder="e.g., General Laborer, Foreman"
-              />
-            </div>
-            <div>
-              <Label>Job Description</Label>
-              <Textarea
-                value={newTaskOrder.job_description}
-                onChange={(e) => setNewTaskOrder({ ...newTaskOrder, job_description: e.target.value })}
-                placeholder="Describe the role and requirements..."
-              />
-            </div>
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              <div>
-                <Label>Headcount Needed</Label>
-                <Input
-                  type="number"
-                  min={1}
-                  value={newTaskOrder.headcount_needed}
-                  onChange={(e) => setNewTaskOrder({ ...newTaskOrder, headcount_needed: parseInt(e.target.value) || 1 })}
-                />
-              </div>
-              <div>
-                <Label>Location</Label>
-                <Input
-                  value={newTaskOrder.location_address}
-                  onChange={(e) => setNewTaskOrder({ ...newTaskOrder, location_address: e.target.value })}
-                  placeholder="Job site address"
-                />
-              </div>
-            </div>
-            <div>
-              <Label>Application Form Template</Label>
-              <Select
-                value={newTaskOrder.form_template_id || "none"}
-                onValueChange={(v) => setNewTaskOrder({ ...newTaskOrder, form_template_id: v === "none" ? "" : v })}
-              >
-                <SelectTrigger>
-                  <SelectValue placeholder="No custom form (basic fields only)" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="none">No custom form (basic fields only)</SelectItem>
-                  {formTemplates?.filter(t => t.is_active).map((template) => (
-                    <SelectItem key={template.id} value={template.id}>
-                      {template.name} ({template.fields.length} fields)
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-              <p className="text-xs text-muted-foreground mt-1">
-                Select a form template to add custom fields to the application
-              </p>
-            </div>
-          </div>
-          <DialogFooter className="flex-shrink-0">
-            <Button variant="outline" onClick={() => setShowCreateDialog(false)}>
-              Cancel
-            </Button>
-            <Button
-              onClick={handleCreateTaskOrder}
-              disabled={createTaskOrder.isPending}
-            >
-              Create & Copy Link
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+      {/* Create Task Order Wizard */}
+      <TaskOrderWizard
+        open={showCreateDialog}
+        onOpenChange={setShowCreateDialog}
+        mode="create"
+      />
 
-      {/* Edit Task Order Dialog */}
-      <Dialog open={showEditTaskOrderDialog} onOpenChange={setShowEditTaskOrderDialog}>
-        <DialogContent className="max-h-[90vh] sm:max-h-[85vh] flex flex-col">
-          <DialogHeader>
-            <DialogTitle>Edit Task Order</DialogTitle>
-            <DialogDescription>
-              Update the task order details
-            </DialogDescription>
-          </DialogHeader>
-          <div className="flex-1 overflow-y-auto space-y-4 pr-1">
-            <div>
-              <Label>Position Title *</Label>
-              <Input
-                value={editTaskOrderForm.title}
-                onChange={(e) => setEditTaskOrderForm({ ...editTaskOrderForm, title: e.target.value })}
-                placeholder="e.g., General Laborer, Foreman"
-              />
-            </div>
-            <div>
-              <Label>Job Description</Label>
-              <Textarea
-                value={editTaskOrderForm.job_description}
-                onChange={(e) => setEditTaskOrderForm({ ...editTaskOrderForm, job_description: e.target.value })}
-                placeholder="Describe the role and requirements..."
-              />
-            </div>
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              <div>
-                <Label>Headcount Needed</Label>
-                <Input
-                  type="number"
-                  min={1}
-                  value={editTaskOrderForm.headcount_needed}
-                  onChange={(e) => setEditTaskOrderForm({ ...editTaskOrderForm, headcount_needed: parseInt(e.target.value) || 1 })}
-                />
-              </div>
-              <div>
-                <Label>Location</Label>
-                <Input
-                  value={editTaskOrderForm.location_address}
-                  onChange={(e) => setEditTaskOrderForm({ ...editTaskOrderForm, location_address: e.target.value })}
-                  placeholder="Job site address"
-                />
-              </div>
-            </div>
-          </div>
-          <DialogFooter className="flex-shrink-0">
-            <Button variant="outline" onClick={() => setShowEditTaskOrderDialog(false)}>
-              Cancel
-            </Button>
-            <Button
-              onClick={handleSaveTaskOrderEdit}
-              disabled={updateTaskOrder.isPending}
-            >
-              Save Changes
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+      {/* Edit Task Order Wizard */}
+      <TaskOrderWizard
+        open={showEditTaskOrderDialog}
+        onOpenChange={(open) => {
+          setShowEditTaskOrderDialog(open);
+          if (!open) setEditingTaskOrder(null);
+        }}
+        mode="edit"
+        taskOrder={editingTaskOrder}
+      />
     </div>
   );
 }
