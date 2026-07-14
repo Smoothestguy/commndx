@@ -25,6 +25,8 @@ import {
   Application,
 } from "@/integrations/supabase/hooks/useStaffingApplications";
 import { useApplicationFormTemplates, FormField } from "@/integrations/supabase/hooks/useApplicationFormTemplates";
+import { useTaskOrderPositions } from "@/integrations/supabase/hooks/useStaffingApplications";
+import { TaskOrderFacts } from "@/components/staffing/TaskOrderFacts";
 import { toast } from "sonner";
 import { PostingEntriesTable } from "@/components/staffing/PostingEntriesTable";
 import { ApplicationDetailDialog } from "@/components/staffing/ApplicationDetailDialog";
