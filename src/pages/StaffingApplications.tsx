@@ -304,49 +304,6 @@ export default function StaffingApplications() {
     setCurrentPage(1);
   }, [search, projectFilter, statusFilter, experienceFilter, postingFilter]);
 
-  const handleCreateTaskOrder = async () => {
-    if (!newTaskOrder.project_id || !newTaskOrder.title) {
-      toast.error("Please fill in required fields");
-      return;
-    }
-
-    try {
-      const taskOrder = await createTaskOrder.mutateAsync({
-        project_id: newTaskOrder.project_id,
-        title: newTaskOrder.title,
-        job_description: newTaskOrder.job_description || null,
-        headcount_needed: newTaskOrder.headcount_needed,
-        location_address: newTaskOrder.location_address || null,
-        location_lat: null,
-        location_lng: null,
-        start_at: null,
-        status: 'open',
-      });
-
-      // Automatically create a job posting
-      const posting = await createJobPosting.mutateAsync({
-        taskOrderId: taskOrder.id,
-        formTemplateId: newTaskOrder.form_template_id || undefined,
-      });
-      
-      const publicUrl = `${window.location.origin}/apply/${posting.public_token}`;
-      await navigator.clipboard.writeText(publicUrl);
-      
-      toast.success("Task order created! Application link copied to clipboard.");
-      setShowCreateDialog(false);
-      setNewTaskOrder({
-        project_id: "",
-        title: "",
-        job_description: "",
-        headcount_needed: 1,
-        location_address: "",
-        form_template_id: "",
-      });
-    } catch (error) {
-      toast.error("Failed to create task order");
-    }
-  };
-
   const copyApplicationLink = (token: string) => {
     const url = `${window.location.origin}/apply/${token}`;
     navigator.clipboard.writeText(url);
@@ -365,31 +322,7 @@ export default function StaffingApplications() {
     const taskOrder = posting.project_task_orders;
     if (!taskOrder) return;
     setEditingTaskOrder(taskOrder);
-    setEditTaskOrderForm({
-      title: taskOrder.title || "",
-      job_description: taskOrder.job_description || "",
-      headcount_needed: taskOrder.headcount_needed || 1,
-      location_address: taskOrder.location_address || "",
-    });
     setShowEditTaskOrderDialog(true);
-  };
-
-  const handleSaveTaskOrderEdit = async () => {
-    if (!editingTaskOrder) return;
-    try {
-      await updateTaskOrder.mutateAsync({
-        id: editingTaskOrder.id,
-        title: editTaskOrderForm.title,
-        job_description: editTaskOrderForm.job_description || null,
-        headcount_needed: editTaskOrderForm.headcount_needed,
-        location_address: editTaskOrderForm.location_address || null,
-      });
-      toast.success("Task order updated");
-      setShowEditTaskOrderDialog(false);
-      setEditingTaskOrder(null);
-    } catch (error) {
-      toast.error("Failed to update task order");
-    }
   };
 
   const handleSavePostingEdit = async () => {
