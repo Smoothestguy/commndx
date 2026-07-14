@@ -1274,7 +1274,7 @@ export default function PublicApplicationForm() {
                     name="home_zip"
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel>Home ZIP Code</FormLabel>
+                        <FormLabel>Home ZIP Code{formSettings.requireHomeZip ? " *" : ""}</FormLabel>
                         <FormControl>
                           <Input 
                             placeholder="12345" 
