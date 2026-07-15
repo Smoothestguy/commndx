@@ -453,6 +453,43 @@ export default function PublicApplicationForm() {
     toast.info("You can now enter new information.");
   }, [clearApplicant, form, customFields]);
 
+  // Express apply: check if the contact matches any existing applicant/personnel record.
+  // The RPC returns ONLY a boolean — no stored profile data is fetched or rendered.
+  const handleExpressCheck = useCallback(async () => {
+    const contact = expressContact.trim();
+    if (!contact) {
+      toast.error("Enter your email or phone number");
+      return;
+    }
+    setExpressChecking(true);
+    try {
+      const { data, error } = await supabase.rpc("check_returning_contact", { _contact: contact });
+      if (error) throw error;
+      if (data === true) {
+        setExpressPath("returning");
+        // Prefill the matching field so they don't have to retype it.
+        const isEmail = contact.includes("@");
+        if (isEmail) {
+          form.setValue("email", contact.toLowerCase());
+        } else {
+          const digits = contact.replace(/\D/g, "").slice(-10);
+          if (digits.length === 10) form.setValue("phone", digits);
+        }
+        toast.success("Welcome back — we already have your file on record.");
+      } else {
+        setExpressPath("new");
+        toast.info("No prior record found — please fill out the full application.");
+      }
+    } catch (err) {
+      console.error("[Express] check_returning_contact failed:", err);
+      toast.error("Couldn't check your record right now. Continuing with full application.");
+      setExpressPath("new");
+    } finally {
+      setExpressChecking(false);
+    }
+  }, [expressContact, form]);
+
+
   const handleFileUploadStateChange = useCallback((fieldId: string, isUploading: boolean) => {
     setUploadingFields(prev => {
       const has = prev.has(fieldId);
