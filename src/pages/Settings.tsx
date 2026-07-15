@@ -397,6 +397,56 @@ export default function Settings() {
                 </CardContent>
               </Card>
 
+              {/* Recruiting Card (admin) */}
+              {role === "admin" && (
+                <Card className="overflow-hidden">
+                  <CardHeader className="border-b bg-muted/30">
+                    <div className="flex items-center gap-3">
+                      <div className="h-10 w-10 rounded-full bg-indigo-500/10 flex items-center justify-center shrink-0">
+                        <FileText className="h-5 w-5 text-indigo-500" />
+                      </div>
+                      <div>
+                        <CardTitle className="text-base">Recruiting</CardTitle>
+                        <CardDescription>Defaults for new job postings</CardDescription>
+                      </div>
+                    </div>
+                  </CardHeader>
+                  <CardContent className="pt-5 space-y-3">
+                    <div>
+                      <Label className="text-sm">Default application form template</Label>
+                      <Select
+                        value={
+                          (companySettings as any)?.default_form_template_id ?? "none"
+                        }
+                        onValueChange={(v) =>
+                          updateCompany.mutate({
+                            default_form_template_id: v === "none" ? null : v,
+                          } as any)
+                        }
+                      >
+                        <SelectTrigger className="mt-1.5">
+                          <SelectValue placeholder="No default" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="none">No default</SelectItem>
+                          {(formTemplates ?? [])
+                            .filter((t) => t.is_active)
+                            .map((t) => (
+                              <SelectItem key={t.id} value={t.id}>
+                                {t.name}
+                              </SelectItem>
+                            ))}
+                        </SelectContent>
+                      </Select>
+                      <p className="text-xs text-muted-foreground mt-1">
+                        Automatically attached to new job postings.
+                      </p>
+                    </div>
+                  </CardContent>
+                </Card>
+              )}
+
+
               {/* Application Section - Only show in Electron */}
               {isElectron && (
                 <Card className="overflow-hidden">
