@@ -133,7 +133,7 @@ export default function Reports() {
   })).filter((g) => g.items.length > 0);
 
   return (
-    <PageLayout>
+    <PageLayout title="Reports Hub">
       <SEO
         title="Reports Hub | Fairfield"
         description="Central launchpad for reports, analytics and exports across operations, financials and recruiting."
