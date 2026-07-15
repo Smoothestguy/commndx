@@ -232,6 +232,21 @@ export function MobileDrawer({ open, onClose }: MobileDrawerProps) {
               </Collapsible>
             </div>
 
+            {/* Reports */}
+            <div className="mt-2 px-2">
+              <Collapsible open={reportsOpen} onOpenChange={setReportsOpen}>
+                <CollapsibleTrigger className="flex w-full items-center justify-between rounded-md px-3 py-2 text-sm font-medium text-muted-foreground hover:bg-muted">
+                  <span>Reports</span>
+                  <ChevronDown className={cn("h-4 w-4 transition-transform", reportsOpen && "rotate-180")} />
+                </CollapsibleTrigger>
+                <CollapsibleContent className="mt-1 space-y-1">
+                  {reportsNavigation.map((item) => (
+                    <NavLink key={item.href} item={item} />
+                  ))}
+                </CollapsibleContent>
+              </Collapsible>
+            </div>
+
             {/* Setup Section */}
             <div className="mt-2 px-2">
               <Collapsible open={setupOpen} onOpenChange={setSetupOpen}>
