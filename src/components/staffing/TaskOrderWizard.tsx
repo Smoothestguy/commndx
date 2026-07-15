@@ -205,6 +205,75 @@ export function TaskOrderWizard({
     [positions]
   );
 
+  const sortedTemplates = useMemo(() => {
+    const list = (formTemplates ?? []).filter((t) => t.is_active);
+    return [...list].sort((a, b) => {
+      const af = a.name.toLowerCase().startsWith("frg standard") ? 0 : 1;
+      const bf = b.name.toLowerCase().startsWith("frg standard") ? 0 : 1;
+      if (af !== bf) return af - bf;
+      return a.name.localeCompare(b.name);
+    });
+  }, [formTemplates]);
+
+  const selectedTemplate = sortedTemplates.find((t) => t.id === formTemplateId);
+
+  const buildDescription = () => {
+    const parts: string[] = [];
+    const loc = locationAddress.trim();
+    parts.push(
+      `${title.trim() || "Task Order"}${loc ? ` in ${loc}` : ""}.`
+    );
+    const sched: string[] = [];
+    if (startAt) {
+      try {
+        const d = new Date(startAt);
+        sched.push(`Starts ${d.toLocaleDateString(undefined, { month: "long", day: "numeric", year: "numeric" })}`);
+      } catch { /* ignore */ }
+    }
+    if (approxDuration.trim()) sched.push(`runs approximately ${approxDuration.trim()}`);
+    const dpw = daysPerWeek ? parseInt(daysPerWeek, 10) : null;
+    const hpd = hoursPerDay ? parseFloat(hoursPerDay) : null;
+    if (dpw) sched.push(`${dpw} day${dpw === 1 ? "" : "s"}/week`);
+    if (hpd) sched.push(`${hpd} hrs/day`);
+    if (sched.length) parts.push(sched.join(", ") + ".");
+    if (scheduleNotes.trim()) parts.push(scheduleNotes.trim());
+
+    const comp: string[] = [];
+    const publicPositions = positions.filter(
+      (p) => p.show_pay_publicly && p.advertised_pay_rate != null && p.position_label
+    );
+    if (publicPositions.length) {
+      comp.push(
+        "Positions: " +
+          publicPositions
+            .map((p) => `${p.position_label} ($${p.advertised_pay_rate}/hr${p.headcount > 1 ? `, x${p.headcount}` : ""})`)
+            .join("; ")
+      );
+    }
+    const perDiemNum = perDiemAmount ? parseFloat(perDiemAmount) : null;
+    if (perDiemNum) comp.push(`Per diem $${perDiemNum}/day${perDiemNotes.trim() ? ` (${perDiemNotes.trim()})` : ""}`);
+    if (lodgingStatus === "provided") comp.push(`Lodging provided${lodgingNotes.trim() ? ` (${lodgingNotes.trim()})` : ""}`);
+    else if (lodgingStatus === "stipend") comp.push(`Lodging stipend${lodgingNotes.trim() ? ` (${lodgingNotes.trim()})` : ""}`);
+    else if (lodgingStatus === "not_provided") comp.push("Lodging not provided");
+    if (mealsProvided === "yes") comp.push(`Meals provided${mealsNotes.trim() ? ` (${mealsNotes.trim()})` : ""}`);
+    else if (mealsProvided === "no") comp.push("Meals not provided");
+    if (mobDemobPaid === "yes") comp.push(`Mob/demob time paid${mobDemobNotes.trim() ? ` (${mobDemobNotes.trim()})` : ""}`);
+    else if (mobDemobPaid === "no") comp.push("Mob/demob time not paid");
+    if (comp.length) parts.push(comp.join(". ") + ".");
+
+    parts.push("Apply below — it takes about 2 minutes.");
+    return parts.filter(Boolean).join("\n\n");
+  };
+
+  const handleGenerateDescription = () => {
+    if (jobDescription.trim().length > 0) {
+      if (!window.confirm("Replace the existing Job Description?")) return;
+    }
+    setJobDescription(buildDescription());
+    toast.success("Description generated. Edit as needed.");
+  };
+
+
   const addPositionRow = () => {
     setPositions((prev) => [
       ...prev,
