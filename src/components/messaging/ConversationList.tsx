@@ -195,6 +195,14 @@ export function ConversationList({
                 <p className="text-sm text-muted-foreground truncate mt-0.5">
                   {conversation.last_message_preview || "No messages yet"}
                 </p>
+                {mode === "all" && !conversation.is_owned_by_me && conversation.owner_name && (
+                  <div className="mt-1">
+                    <Badge variant="outline" className="h-4 px-1.5 text-[10px] font-normal gap-1">
+                      <UserCircle2 className="h-2.5 w-2.5" />
+                      via {conversation.owner_name}
+                    </Badge>
+                  </div>
+                )}
               </div>
 
               {/* Column 3: Time + Delete + Badge - auto width, never clips */}
