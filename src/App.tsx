@@ -583,6 +583,10 @@ const App = () => {
                         element={<MasterApplicants />}
                       />
                       <Route
+                        path="/staffing/duplicates"
+                        element={<Duplicates />}
+                      />
+                      <Route
                         path="/staffing/applications/posting/:postingId"
                         element={<JobPostingEntries />}
                       />
