@@ -214,10 +214,6 @@ export function InvitePastWorkersDialog({ open, onOpenChange, posting }: Props) 
   };
   const clearAll = () => setSelected(new Set());
 
-  const buildMessage = () => {
-    const payBit = publicPay != null ? ` - $${publicPay}/hr` : "";
-    return `Fairfield Response Group: We're hiring for ${taskTitle}${payBit}. You've worked with us before — applying takes 2 minutes: {link} Reply STOP to opt out.`;
-  };
 
   const resolvedMessage = useMemo(() => {
     const resolved = renderMergeTags(messageTemplate, {
