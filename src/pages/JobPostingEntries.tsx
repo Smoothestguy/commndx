@@ -46,6 +46,7 @@ export default function JobPostingEntries() {
   const [selectedApp, setSelectedApp] = useState<Application | null>(null);
   const [showDetailDialog, setShowDetailDialog] = useState(false);
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+  const [showInvitePast, setShowInvitePast] = useState(false);
 
   const { data: jobPostings } = useJobPostings();
   const { data: formTemplates } = useApplicationFormTemplates();
