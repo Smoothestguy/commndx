@@ -96,9 +96,11 @@ export function MobileDrawer({ open, onClose }: MobileDrawerProps) {
   const location = useLocation();
   const { signOut } = useAuth();
   const { isAdmin, isManager } = useUserRole();
-  const [transactionsOpen, setTransactionsOpen] = useState(false);
+  const [salesOpen, setSalesOpen] = useState(false);
+  const [operationsOpen, setOperationsOpen] = useState(false);
+  const [recruitingOpen, setRecruitingOpen] = useState(false);
+  const [workforceOpen, setWorkforceOpen] = useState(false);
   const [vendorsOpen, setVendorsOpen] = useState(false);
-  const [staffingOpen, setStaffingOpen] = useState(false);
   const [setupOpen, setSetupOpen] = useState(false);
 
   const handleNavigate = () => {
