@@ -1,6 +1,7 @@
 import { useState, useMemo } from "react";
 import { useParams, useNavigate } from "react-router-dom";
-import { ArrowLeft, Download, FileText, FileSpreadsheet, File, Code } from "lucide-react";
+import { ArrowLeft, Download, FileText, FileSpreadsheet, File, Code, Send } from "lucide-react";
+import { InvitePastWorkersDialog } from "@/components/staffing/InvitePastWorkersDialog";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
