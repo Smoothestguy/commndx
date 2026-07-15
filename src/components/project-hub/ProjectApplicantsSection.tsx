@@ -617,16 +617,18 @@ export function ProjectApplicantsSection({
                 </div>
               </button>
             </CollapsibleTrigger>
-            <Button
-              size="sm"
-              onClick={(e) => {
-                e.stopPropagation();
-                setIsTaskOrderWizardOpen(true);
-              }}
-            >
-              <Plus className="h-4 w-4 mr-1" />
-              Add Crew / Scope
-            </Button>
+            {!hideAddButton && (
+              <Button
+                size="sm"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setIsTaskOrderWizardOpen(true);
+                }}
+              >
+                <Plus className="h-4 w-4 mr-1" />
+                Add Crew / Scope
+              </Button>
+            )}
           </CardHeader>
           <CollapsibleContent>
             <CardContent>
