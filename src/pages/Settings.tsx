@@ -40,6 +40,13 @@ import { useSessionAccess } from "@/hooks/useSessionAccess";
 import { CheckForUpdatesButton } from "@/components/electron/UpdateNotification";
 import { DeleteAccountSection } from "@/components/settings/DeleteAccountSection";
 import AppWalkthroughDownload from "@/components/AppWalkthroughDownload";
+import {
+  useCompanySettings,
+  useUpdateCompanySettings,
+} from "@/integrations/supabase/hooks/useCompanySettings";
+import { useApplicationFormTemplates } from "@/integrations/supabase/hooks/useApplicationFormTemplates";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { FileText } from "lucide-react";
 
 export default function Settings() {
   const { user, signOut } = useAuth();
