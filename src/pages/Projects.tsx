@@ -50,6 +50,7 @@ const Projects = () => {
   const [filterCategory, setFilterCategory] = useState<ProjectCategory>("all");
   
   const [isDialogOpen, setIsDialogOpen] = useState(false);
+  const [isWizardOpen, setIsWizardOpen] = useState(false);
   const [editingProject, setEditingProject] = useState<Project | null>(null);
   const [formData, setFormData] = useState<ProjectFormData>(initialProjectFormData);
 
