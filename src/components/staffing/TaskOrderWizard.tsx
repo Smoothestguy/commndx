@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { Plus, Trash2, ChevronLeft, ChevronRight, Sparkles } from "lucide-react";
+import { ChevronLeft, ChevronRight, Sparkles } from "lucide-react";
 import {
   Dialog,
   DialogContent,
@@ -19,12 +19,6 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import {
-  RadioGroup,
-  RadioGroupItem,
-} from "@/components/ui/radio-group";
-import { Switch } from "@/components/ui/switch";
-import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
 import { useProjects } from "@/integrations/supabase/hooks/useProjects";
 import {
@@ -34,7 +28,6 @@ import {
   useProjectRateBrackets,
   useAddRateBracket,
   useUpdateRateBracket,
-  ProjectRateBracket,
 } from "@/integrations/supabase/hooks/useProjectRateBrackets";
 import {
   useCreateTaskOrder,
@@ -43,14 +36,19 @@ import {
   useTaskOrderPositions,
   useReplaceTaskOrderPositions,
   TaskOrder,
-  TaskOrderPositionInput,
 } from "@/integrations/supabase/hooks/useStaffingApplications";
-
-interface PositionDraft extends TaskOrderPositionInput {
-  _key: string;
-  _isNewBracket?: boolean;
-  _newBracketName?: string;
-}
+import { useCompanySettings } from "@/integrations/supabase/hooks/useCompanySettings";
+import {
+  TaskOrderStepSchedule,
+  ScheduleValue,
+  emptySchedule,
+} from "./TaskOrderStepSchedule";
+import {
+  TaskOrderStepPositions,
+  PositionDraft,
+} from "./TaskOrderStepPositions";
+import { buildTaskOrderDescription } from "@/lib/taskOrderDescription";
+import { resolvePositionDrafts } from "@/lib/resolvePositions";
 
 interface Props {
   open: boolean;
@@ -60,8 +58,6 @@ interface Props {
   defaultProjectId?: string;
   onCreated?: (taskOrder: TaskOrder, applicationUrl?: string) => void;
 }
-
-const NEW_BRACKET_VALUE = "__new__";
 
 export function TaskOrderWizard({
   open,
