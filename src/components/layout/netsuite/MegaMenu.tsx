@@ -365,7 +365,7 @@ export function MegaMenu({ menuBackground, menuTextColor }: MegaMenuProps) {
           <NavigationMenuTrigger
             className={cn(
               "bg-transparent text-header-foreground hover:bg-black/10 dark:hover:bg-white/10 hover:text-header-foreground data-[state=open]:bg-black/10 dark:data-[state=open]:bg-white/10",
-              ["/time-tracking", "/project-assignments", "/staffing", "/vendor-documents", "/document-center", "/messages"].some(
+              ["/reports", "/overhead-analysis", "/document-center"].some(
                 (p) => location.pathname.startsWith(p)
               ) && "bg-black/10 dark:bg-white/10"
             )}
