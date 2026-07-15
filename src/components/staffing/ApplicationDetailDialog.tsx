@@ -839,32 +839,39 @@ export function ApplicationDetailDialog({
               <>
                 {(application.status === "submitted" ||
                   application.status === "updated") && (
-                  <div className="flex flex-wrap gap-2 w-full justify-end">
-                    <Button
-                      variant="outline"
-                      onClick={() => setRequestInfoDialogOpen(true)}
-                      className="flex-1 sm:flex-none"
-                    >
-                      <AlertCircle className="h-4 w-4 sm:mr-1" />
-                      <span className="hidden sm:inline">Request Info</span>
-                      <span className="sm:hidden">Info</span>
-                    </Button>
-                    <Button
-                      variant="destructive"
-                      onClick={handleReject}
-                      disabled={rejectApplication.isPending}
-                      className="flex-1 sm:flex-none"
-                    >
-                      Reject
-                    </Button>
-                    <Button
-                      onClick={handleApprove}
-                      disabled={approveApplication.isPending}
-                      className="flex-1 sm:flex-none"
-                    >
-                      <span className="hidden lg:inline">Approve & Add to Personnel</span>
-                      <span className="lg:hidden">Approve</span>
-                    </Button>
+                  <div className="flex flex-col gap-2 w-full">
+                    {isAlreadyOnboarded && (
+                      <p className="text-xs text-green-700 dark:text-green-400 text-right">
+                        This applicant is already an onboarded personnel record — no onboarding email needed on approval.
+                      </p>
+                    )}
+                    <div className="flex flex-wrap gap-2 w-full justify-end">
+                      <Button
+                        variant="outline"
+                        onClick={() => setRequestInfoDialogOpen(true)}
+                        className="flex-1 sm:flex-none"
+                      >
+                        <AlertCircle className="h-4 w-4 sm:mr-1" />
+                        <span className="hidden sm:inline">Request Info</span>
+                        <span className="sm:hidden">Info</span>
+                      </Button>
+                      <Button
+                        variant="destructive"
+                        onClick={handleReject}
+                        disabled={rejectApplication.isPending}
+                        className="flex-1 sm:flex-none"
+                      >
+                        Reject
+                      </Button>
+                      <Button
+                        onClick={handleApprove}
+                        disabled={approveApplication.isPending}
+                        className="flex-1 sm:flex-none"
+                      >
+                        <span className="hidden lg:inline">Approve & Add to Personnel</span>
+                        <span className="lg:hidden">Approve</span>
+                      </Button>
+                    </div>
                   </div>
                 )}
                 {application.status === "needs_info" && (
