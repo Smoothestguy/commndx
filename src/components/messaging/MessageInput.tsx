@@ -131,6 +131,19 @@ export function MessageInput({
     setTranslatedText(text);
   };
 
+  const handleInsertTemplate = (content: string) => {
+    const current = message.trim();
+    const next = current ? `${message}\n${content}` : content;
+    setMessage(next);
+    setTimeout(() => {
+      if (textareaRef.current) {
+        textareaRef.current.style.height = "auto";
+        textareaRef.current.style.height = `${Math.min(textareaRef.current.scrollHeight, 120)}px`;
+        textareaRef.current.focus();
+      }
+    }, 0);
+  };
+
   return (
     <div className="space-y-2">
       {/* Translation preview */}
