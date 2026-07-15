@@ -134,43 +134,39 @@ const handler = async (req: Request): Promise<Response> => {
     const onboardingUrl = encodeURI(`${siteUrl}/onboard/${token}`);
 
     // Send the email
+    const html = `<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+</head>
+<body style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif; line-height: 1.6; color: #333; max-width: 600px; margin: 0 auto; padding: 20px; background:#ffffff;">
+  ${preheader("Complete your Fairfield onboarding — takes about 10 minutes.")}
+  <div style="background: #ffffff; padding: 30px 20px; border: 1px solid #e5e7eb; border-radius: 12px;">
+    <h1 style="color:#1d4ed8; margin:0 0 16px; font-size:22px;">Your new onboarding link</h1>
+    <p style="font-size: 16px;">Hi ${personnel.first_name},</p>
+    <p>You requested a new onboarding link. Use the button below to complete your Fairfield onboarding.</p>
+    ${ctaButton(onboardingUrl, "Start Onboarding →")}
+    <p style="color: #6b7280; font-size: 14px;">This link is valid for 21 days. If you did not request it, you can ignore this email.</p>
+  </div>
+</body>
+</html>`;
+
+    const text = `Hi ${personnel.first_name},
+
+You requested a new onboarding link. Complete your Fairfield onboarding here:
+
+${onboardingUrl}
+
+This link is valid for 21 days. If you did not request it, you can ignore this email.`;
+
     const emailResponse = await resend.emails.send({
       from: "Fairfield <admin@fairfieldrg.com>",
       to: [personnel.email],
-      subject: "Your New Onboarding Link",
-      html: `
-        <!DOCTYPE html>
-        <html>
-        <head>
-          <meta charset="utf-8">
-          <meta name="viewport" content="width=device-width, initial-scale=1.0">
-        </head>
-        <body style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif; line-height: 1.6; color: #333; max-width: 600px; margin: 0 auto; padding: 20px;">
-          <div style="background: linear-gradient(135deg, #3b82f6 0%, #1d4ed8 100%); padding: 30px 20px; text-align: center; border-radius: 12px 12px 0 0;">
-            <h1 style="color: white; margin: 0; font-size: 24px;">New Onboarding Link</h1>
-          </div>
-          
-          <div style="background: #ffffff; padding: 30px 20px; border: 1px solid #e5e7eb; border-top: none; border-radius: 0 0 12px 12px;">
-            <p style="font-size: 16px;">Hi ${personnel.first_name},</p>
-            
-            <p>You requested a new onboarding link. Please use the button below to complete your onboarding documentation.</p>
-            
-            <div style="text-align: center; margin: 30px 0;">
-              <a href="${onboardingUrl}" target="_blank" rel="noopener noreferrer" style="display: inline-block; background: #3b82f6; color: white; padding: 14px 28px; text-decoration: none; border-radius: 8px; font-weight: 600; font-size: 16px;">Complete Onboarding</a>
-            </div>
-            
-            <p style="color: #6b7280; font-size: 14px;">This link will expire in 21 days. If you did not request this link, please ignore this email.</p>
-            
-            <hr style="border: none; border-top: 1px solid #e5e7eb; margin: 24px 0;">
-            
-            <p style="color: #9ca3af; font-size: 12px; margin-bottom: 0; word-break: break-all;">
-              If the button doesn't work, copy and paste this link into your browser:<br>
-              <a href="${onboardingUrl}" target="_blank" rel="noopener noreferrer" style="color: #3b82f6; word-break: break-all;">${onboardingUrl}</a>
-            </p>
-          </div>
-        </body>
-        </html>
-      `,
+      reply_to: "admin@fairfieldrg.com",
+      subject: "Your Fairfield onboarding link — action needed",
+      html,
+      text,
     });
 
     if (emailResponse.error) {
