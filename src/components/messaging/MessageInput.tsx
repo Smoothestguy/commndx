@@ -17,6 +17,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { useMessageTranslation, SUPPORTED_LANGUAGES, LanguageCode } from "@/hooks/useMessageTranslation";
 import { MessageTranslationPreview } from "./MessageTranslationPreview";
+import { MessageTemplatePicker } from "./MessageTemplatePicker";
 
 interface MessageInputProps {
   onSend: (content: string, sendViaSMS?: boolean) => Promise<void>;
