@@ -109,6 +109,7 @@ export function MobileDrawer({ open, onClose }: MobileDrawerProps) {
   const [recruitingOpen, setRecruitingOpen] = useState(false);
   const [workforceOpen, setWorkforceOpen] = useState(false);
   const [vendorsOpen, setVendorsOpen] = useState(false);
+  const [reportsOpen, setReportsOpen] = useState(false);
   const [setupOpen, setSetupOpen] = useState(false);
 
   const handleNavigate = () => {
