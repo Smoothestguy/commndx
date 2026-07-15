@@ -170,6 +170,13 @@ export function MessageInput({
           rows={1}
           disabled={isLoading || isTranslationMode}
         />
+
+        <MessageTemplatePicker
+          onInsert={handleInsertTemplate}
+          disabled={isLoading || isTranslationMode}
+        />
+
+        
         
         {/* Translation dropdown */}
         {showTranslation && (
