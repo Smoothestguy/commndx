@@ -256,6 +256,7 @@ export function PostingEntriesTable({
                 <TableHead className="min-w-[150px]">Name</TableHead>
                 <TableHead className="min-w-[180px]">Email</TableHead>
                 <TableHead className="min-w-[120px]">Phone</TableHead>
+                <TableHead className="min-w-[140px]">Position</TableHead>
                 {limitedDisplayFields.map((field) => (
                   <TableHead key={field.id} className="min-w-[120px] max-w-[200px]">
                     {field.label}
