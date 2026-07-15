@@ -122,6 +122,7 @@ export function ProjectApplicantsSection({
   const [pendingApprovalApp, setPendingApprovalApp] =
     useState<Application | null>(null);
   const [isAssignDialogOpen, setIsAssignDialogOpen] = useState(false);
+  const [isTaskOrderWizardOpen, setIsTaskOrderWizardOpen] = useState(false);
   const [newlyCreatedPersonnelId, setNewlyCreatedPersonnelId] = useState<
     string | null
   >(null);
