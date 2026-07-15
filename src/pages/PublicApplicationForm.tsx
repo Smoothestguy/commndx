@@ -1175,6 +1175,7 @@ export default function PublicApplicationForm() {
 
 
         {/* Application Form */}
+        {expressPath !== null && (
         <Card 
           className={cn(theme.backgroundImage && "backdrop-blur-sm")}
           style={theme.backgroundImage ? { 
@@ -1182,8 +1183,12 @@ export default function PublicApplicationForm() {
           } : undefined}
         >
           <CardHeader>
-            <CardTitle>Apply for this Position</CardTitle>
-            <CardDescription>Fill out the form below to submit your application</CardDescription>
+            <CardTitle>{isExpressMode ? "Confirm and Submit" : "Apply for this Position"}</CardTitle>
+            <CardDescription>
+              {isExpressMode
+                ? "Welcome back — we already have your file. Just confirm your details and submit."
+                : "Fill out the form below to submit your application"}
+            </CardDescription>
           </CardHeader>
           <CardContent>
             <Form {...form}>
