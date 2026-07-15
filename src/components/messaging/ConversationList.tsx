@@ -1,11 +1,11 @@
 import { useState } from "react";
 import { format, isToday, isYesterday } from "date-fns";
 import { cn } from "@/lib/utils";
-import { useConversations, useDeleteConversation, Conversation } from "@/integrations/supabase/hooks/useConversations";
+import { useDeleteConversation, Conversation } from "@/integrations/supabase/hooks/useConversations";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
-import { MessageSquare, User, Users, Building2, Trash2, Search, ClipboardList } from "lucide-react";
+import { MessageSquare, User, Users, Building2, Trash2, Search, ClipboardList, UserCircle2 } from "lucide-react";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Input } from "@/components/ui/input";
 import {
@@ -20,24 +20,33 @@ import {
 } from "@/components/ui/alert-dialog";
 import { useToast } from "@/hooks/use-toast";
 
+type ConversationWithOwner = Conversation & {
+  owner_id?: string;
+  owner_name?: string;
+  is_owned_by_me?: boolean;
+};
+
 interface ConversationListProps {
+  conversations: ConversationWithOwner[] | undefined;
+  mode?: "my" | "all";
   selectedConversationId: string | null;
   onSelectConversation: (conversation: Conversation) => void;
   onConversationDeleted?: (conversationId: string) => void;
 }
 
-export function ConversationList({ 
-  selectedConversationId, 
+export function ConversationList({
+  conversations,
+  mode = "my",
+  selectedConversationId,
   onSelectConversation,
-  onConversationDeleted 
+  onConversationDeleted,
 }: ConversationListProps) {
-  const { data: conversations, isLoading } = useConversations();
+  const isLoading = conversations === undefined;
   const deleteConversation = useDeleteConversation();
   const { toast } = useToast();
   const [conversationToDelete, setConversationToDelete] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
 
-  // Filter conversations based on search
   const filteredConversations = conversations?.filter((conv) =>
     conv.other_participant_name?.toLowerCase().includes(searchQuery.toLowerCase())
   ) || [];
