@@ -35,6 +35,8 @@ import {
   Eye,
   Send,
   Map,
+  BarChart3,
+  TrendingDown,
 } from "lucide-react";
 
 interface NavItem {
