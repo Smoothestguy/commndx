@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { Plus, Trash2, ChevronLeft, ChevronRight, Sparkles } from "lucide-react";
+import { ChevronLeft, ChevronRight, Sparkles } from "lucide-react";
 import {
   Dialog,
   DialogContent,
@@ -19,22 +19,13 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import {
-  RadioGroup,
-  RadioGroupItem,
-} from "@/components/ui/radio-group";
-import { Switch } from "@/components/ui/switch";
-import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
 import { useProjects } from "@/integrations/supabase/hooks/useProjects";
-import {
-  useApplicationFormTemplates,
-} from "@/integrations/supabase/hooks/useApplicationFormTemplates";
+import { useApplicationFormTemplates } from "@/integrations/supabase/hooks/useApplicationFormTemplates";
 import {
   useProjectRateBrackets,
   useAddRateBracket,
   useUpdateRateBracket,
-  ProjectRateBracket,
 } from "@/integrations/supabase/hooks/useProjectRateBrackets";
 import {
   useCreateTaskOrder,
@@ -43,25 +34,28 @@ import {
   useTaskOrderPositions,
   useReplaceTaskOrderPositions,
   TaskOrder,
-  TaskOrderPositionInput,
 } from "@/integrations/supabase/hooks/useStaffingApplications";
-
-interface PositionDraft extends TaskOrderPositionInput {
-  _key: string;
-  _isNewBracket?: boolean;
-  _newBracketName?: string;
-}
+import { useCompanySettings } from "@/integrations/supabase/hooks/useCompanySettings";
+import {
+  TaskOrderStepSchedule,
+  ScheduleValue,
+  emptySchedule,
+} from "./TaskOrderStepSchedule";
+import {
+  TaskOrderStepPositions,
+  PositionDraft,
+} from "./TaskOrderStepPositions";
+import { buildTaskOrderDescription } from "@/lib/taskOrderDescription";
+import { resolvePositionDrafts } from "@/lib/resolvePositions";
 
 interface Props {
   open: boolean;
   onOpenChange: (v: boolean) => void;
   mode: "create" | "edit";
-  taskOrder?: TaskOrder | null; // required in edit mode
+  taskOrder?: TaskOrder | null;
   defaultProjectId?: string;
   onCreated?: (taskOrder: TaskOrder, applicationUrl?: string) => void;
 }
-
-const NEW_BRACKET_VALUE = "__new__";
 
 export function TaskOrderWizard({
   open,
@@ -74,33 +68,19 @@ export function TaskOrderWizard({
   const [step, setStep] = useState(1);
   const isEdit = mode === "edit";
 
-  // Basics
   const [projectId, setProjectId] = useState<string>("");
   const [title, setTitle] = useState("");
   const [jobDescription, setJobDescription] = useState("");
   const [locationAddress, setLocationAddress] = useState("");
-  const [startAt, setStartAt] = useState<string>(""); // datetime-local
+  const [startAt, setStartAt] = useState<string>("");
   const [approxDuration, setApproxDuration] = useState("");
   const [formTemplateId, setFormTemplateId] = useState<string>("");
-
-  // Schedule & Site
-  const [daysPerWeek, setDaysPerWeek] = useState<string>("");
-  const [hoursPerDay, setHoursPerDay] = useState<string>("");
-  const [scheduleNotes, setScheduleNotes] = useState("");
-  const [perDiemAmount, setPerDiemAmount] = useState<string>("");
-  const [perDiemNotes, setPerDiemNotes] = useState("");
-  const [lodgingStatus, setLodgingStatus] = useState<string>("");
-  const [lodgingNotes, setLodgingNotes] = useState("");
-  const [mealsProvided, setMealsProvided] = useState<string>(""); // "yes"|"no"|""
-  const [mealsNotes, setMealsNotes] = useState("");
-  const [mobDemobPaid, setMobDemobPaid] = useState<string>(""); // "yes"|"no"|""
-  const [mobDemobNotes, setMobDemobNotes] = useState("");
-
-  // Positions
+  const [schedule, setSchedule] = useState<ScheduleValue>(emptySchedule);
   const [positions, setPositions] = useState<PositionDraft[]>([]);
 
   const { data: projects } = useProjects();
   const { data: formTemplates } = useApplicationFormTemplates();
+  const { data: companySettings } = useCompanySettings();
   const { data: rateBrackets } = useProjectRateBrackets(projectId || undefined);
   const { data: existingPositions } = useTaskOrderPositions(
     isEdit ? taskOrder?.id : undefined
@@ -113,7 +93,30 @@ export function TaskOrderWizard({
   const updateRateBracket = useUpdateRateBracket();
   const replacePositions = useReplaceTaskOrderPositions();
 
-  // Initialize state when opening / when task order or existing positions load
+  const sortedTemplates = useMemo(() => {
+    const list = (formTemplates ?? []).filter((t) => t.is_active);
+    return [...list].sort((a, b) => {
+      const af = a.name.toLowerCase().startsWith("frg standard") ? 0 : 1;
+      const bf = b.name.toLowerCase().startsWith("frg standard") ? 0 : 1;
+      if (af !== bf) return af - bf;
+      return a.name.localeCompare(b.name);
+    });
+  }, [formTemplates]);
+
+  const defaultTemplateId = useMemo(() => {
+    const preferred = (companySettings as any)?.default_form_template_id as
+      | string
+      | null
+      | undefined;
+    if (preferred && sortedTemplates.some((t) => t.id === preferred)) return preferred;
+    const frg = sortedTemplates.find((t) =>
+      t.name.toLowerCase().startsWith("frg standard")
+    );
+    return frg?.id || "";
+  }, [companySettings, sortedTemplates]);
+
+  const selectedTemplate = sortedTemplates.find((t) => t.id === formTemplateId);
+
   useEffect(() => {
     if (!open) return;
     if (isEdit && taskOrder) {
@@ -127,37 +130,34 @@ export function TaskOrderWizard({
           : ""
       );
       setApproxDuration(taskOrder.approx_duration || "");
-      setDaysPerWeek(
-        taskOrder.days_per_week != null ? String(taskOrder.days_per_week) : ""
-      );
-      setHoursPerDay(
-        taskOrder.hours_per_day != null ? String(taskOrder.hours_per_day) : ""
-      );
-      setScheduleNotes(taskOrder.schedule_notes || "");
-      setPerDiemAmount(
-        taskOrder.per_diem_amount != null
-          ? String(taskOrder.per_diem_amount)
-          : ""
-      );
-      setPerDiemNotes(taskOrder.per_diem_notes || "");
-      setLodgingStatus(taskOrder.lodging_status || "");
-      setLodgingNotes(taskOrder.lodging_notes || "");
-      setMealsProvided(
-        taskOrder.meals_provided == null
-          ? ""
-          : taskOrder.meals_provided
-          ? "yes"
-          : "no"
-      );
-      setMealsNotes(taskOrder.meals_notes || "");
-      setMobDemobPaid(
-        taskOrder.mob_demob_paid == null
-          ? ""
-          : taskOrder.mob_demob_paid
-          ? "yes"
-          : "no"
-      );
-      setMobDemobNotes(taskOrder.mob_demob_notes || "");
+      setSchedule({
+        daysPerWeek:
+          taskOrder.days_per_week != null ? String(taskOrder.days_per_week) : "",
+        hoursPerDay:
+          taskOrder.hours_per_day != null ? String(taskOrder.hours_per_day) : "",
+        scheduleNotes: taskOrder.schedule_notes || "",
+        perDiemAmount:
+          taskOrder.per_diem_amount != null
+            ? String(taskOrder.per_diem_amount)
+            : "",
+        perDiemNotes: taskOrder.per_diem_notes || "",
+        lodgingStatus: taskOrder.lodging_status || "",
+        lodgingNotes: taskOrder.lodging_notes || "",
+        mealsProvided:
+          taskOrder.meals_provided == null
+            ? ""
+            : taskOrder.meals_provided
+            ? "yes"
+            : "no",
+        mealsNotes: taskOrder.meals_notes || "",
+        mobDemobPaid:
+          taskOrder.mob_demob_paid == null
+            ? ""
+            : taskOrder.mob_demob_paid
+            ? "yes"
+            : "no",
+        mobDemobNotes: taskOrder.mob_demob_notes || "",
+      });
     } else {
       setProjectId(defaultProjectId || "");
       setTitle("");
@@ -165,22 +165,17 @@ export function TaskOrderWizard({
       setLocationAddress("");
       setStartAt("");
       setApproxDuration("");
-      setFormTemplateId("");
-      setDaysPerWeek("");
-      setHoursPerDay("");
-      setScheduleNotes("");
-      setPerDiemAmount("");
-      setPerDiemNotes("");
-      setLodgingStatus("");
-      setLodgingNotes("");
-      setMealsProvided("");
-      setMealsNotes("");
-      setMobDemobPaid("");
-      setMobDemobNotes("");
+      setSchedule(emptySchedule);
       setPositions([]);
     }
     setStep(1);
   }, [open, isEdit, taskOrder, defaultProjectId]);
+
+  // Default template selection on new creates
+  useEffect(() => {
+    if (!open || isEdit) return;
+    if (!formTemplateId && defaultTemplateId) setFormTemplateId(defaultTemplateId);
+  }, [open, isEdit, defaultTemplateId, formTemplateId]);
 
   useEffect(() => {
     if (!open || !isEdit) return;
@@ -200,249 +195,75 @@ export function TaskOrderWizard({
     }
   }, [open, isEdit, existingPositions]);
 
-  const totalHeadcount = useMemo(
-    () => positions.reduce((sum, p) => sum + (Number(p.headcount) || 0), 0),
-    [positions]
-  );
-
-  const sortedTemplates = useMemo(() => {
-    const list = (formTemplates ?? []).filter((t) => t.is_active);
-    return [...list].sort((a, b) => {
-      const af = a.name.toLowerCase().startsWith("frg standard") ? 0 : 1;
-      const bf = b.name.toLowerCase().startsWith("frg standard") ? 0 : 1;
-      if (af !== bf) return af - bf;
-      return a.name.localeCompare(b.name);
-    });
-  }, [formTemplates]);
-
-  const selectedTemplate = sortedTemplates.find((t) => t.id === formTemplateId);
-
-  const buildDescription = () => {
-    const parts: string[] = [];
-    const loc = locationAddress.trim();
-    parts.push(
-      `${title.trim() || "Task Order"}${loc ? ` in ${loc}` : ""}.`
-    );
-    const sched: string[] = [];
-    if (startAt) {
-      try {
-        const d = new Date(startAt);
-        sched.push(`Starts ${d.toLocaleDateString(undefined, { month: "long", day: "numeric", year: "numeric" })}`);
-      } catch { /* ignore */ }
-    }
-    if (approxDuration.trim()) sched.push(`runs approximately ${approxDuration.trim()}`);
-    const dpw = daysPerWeek ? parseInt(daysPerWeek, 10) : null;
-    const hpd = hoursPerDay ? parseFloat(hoursPerDay) : null;
-    if (dpw) sched.push(`${dpw} day${dpw === 1 ? "" : "s"}/week`);
-    if (hpd) sched.push(`${hpd} hrs/day`);
-    if (sched.length) parts.push(sched.join(", ") + ".");
-    if (scheduleNotes.trim()) parts.push(scheduleNotes.trim());
-
-    const comp: string[] = [];
-    const publicPositions = positions.filter(
-      (p) => p.show_pay_publicly && p.advertised_pay_rate != null && p.position_label
-    );
-    if (publicPositions.length) {
-      comp.push(
-        "Positions: " +
-          publicPositions
-            .map((p) => `${p.position_label} ($${p.advertised_pay_rate}/hr${p.headcount > 1 ? `, x${p.headcount}` : ""})`)
-            .join("; ")
-      );
-    }
-    const perDiemNum = perDiemAmount ? parseFloat(perDiemAmount) : null;
-    if (perDiemNum) comp.push(`Per diem $${perDiemNum}/day${perDiemNotes.trim() ? ` (${perDiemNotes.trim()})` : ""}`);
-    if (lodgingStatus === "provided") comp.push(`Lodging provided${lodgingNotes.trim() ? ` (${lodgingNotes.trim()})` : ""}`);
-    else if (lodgingStatus === "stipend") comp.push(`Lodging stipend${lodgingNotes.trim() ? ` (${lodgingNotes.trim()})` : ""}`);
-    else if (lodgingStatus === "not_provided") comp.push("Lodging not provided");
-    if (mealsProvided === "yes") comp.push(`Meals provided${mealsNotes.trim() ? ` (${mealsNotes.trim()})` : ""}`);
-    else if (mealsProvided === "no") comp.push("Meals not provided");
-    if (mobDemobPaid === "yes") comp.push(`Mob/demob time paid${mobDemobNotes.trim() ? ` (${mobDemobNotes.trim()})` : ""}`);
-    else if (mobDemobPaid === "no") comp.push("Mob/demob time not paid");
-    if (comp.length) parts.push(comp.join(". ") + ".");
-
-    parts.push("Apply below — it takes about 2 minutes.");
-    return parts.filter(Boolean).join("\n\n");
-  };
-
   const handleGenerateDescription = () => {
     if (jobDescription.trim().length > 0) {
       if (!window.confirm("Replace the existing Job Description?")) return;
     }
-    setJobDescription(buildDescription());
+    setJobDescription(
+      buildTaskOrderDescription({
+        title,
+        locationAddress,
+        startAt: startAt || null,
+        approxDuration,
+        daysPerWeek: schedule.daysPerWeek,
+        hoursPerDay: schedule.hoursPerDay,
+        scheduleNotes: schedule.scheduleNotes,
+        perDiemAmount: schedule.perDiemAmount,
+        perDiemNotes: schedule.perDiemNotes,
+        lodgingStatus: schedule.lodgingStatus,
+        lodgingNotes: schedule.lodgingNotes,
+        mealsProvided: schedule.mealsProvided,
+        mealsNotes: schedule.mealsNotes,
+        mobDemobPaid: schedule.mobDemobPaid,
+        mobDemobNotes: schedule.mobDemobNotes,
+        positions: positions.map((p) => ({
+          position_label: p.position_label,
+          headcount: p.headcount,
+          advertised_pay_rate: p.advertised_pay_rate,
+          show_pay_publicly: p.show_pay_publicly,
+        })),
+      })
+    );
     toast.success("Description generated. Edit as needed.");
   };
 
-
-  const addPositionRow = () => {
-    setPositions((prev) => [
-      ...prev,
-      {
-        _key: `new-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
-        rate_bracket_id: null,
-        position_label: "",
-        headcount: 1,
-        advertised_pay_rate: null,
-        show_pay_publicly: true,
-        notes: null,
-      },
-    ]);
-  };
-
-  const removePositionRow = (key: string) => {
-    setPositions((prev) => prev.filter((p) => p._key !== key));
-  };
-
-  const updatePos = (key: string, patch: Partial<PositionDraft>) => {
-    setPositions((prev) =>
-      prev.map((p) => (p._key === key ? { ...p, ...patch } : p))
-    );
-  };
-
-  const handleBracketSelect = (key: string, val: string) => {
-    if (val === NEW_BRACKET_VALUE) {
-      setPositions((prev) =>
-        prev.map((p) =>
-          p._key === key
-            ? {
-                ...p,
-                rate_bracket_id: null,
-                _isNewBracket: true,
-                _newBracketName: "",
-                position_label: "",
-              }
-            : p
-        )
-      );
-      return;
-    }
-    const bracket = rateBrackets?.find((b) => b.id === val);
-    setPositions((prev) =>
-      prev.map((p) => {
-        if (p._key !== key) return p;
-        // Prefill pay from bracket default only when current pay is empty
-        const nextPay =
-          p.advertised_pay_rate == null && bracket?.default_pay_rate != null
-            ? bracket.default_pay_rate
-            : p.advertised_pay_rate;
-        return {
-          ...p,
-          rate_bracket_id: val,
-          _isNewBracket: false,
-          _newBracketName: undefined,
-          position_label: bracket?.name || p.position_label,
-          advertised_pay_rate: nextPay ?? null,
-        };
-      })
-    );
-  };
-
   const canGoNext = () => {
-    if (step === 1) {
-      return !!projectId && title.trim().length > 0;
-    }
+    if (step === 1) return !!projectId && title.trim().length > 0;
     return true;
   };
 
   const buildTaskOrderPayload = () => {
-    const daysNum = daysPerWeek === "" ? null : parseInt(daysPerWeek, 10);
-    const hoursNum = hoursPerDay === "" ? null : parseFloat(hoursPerDay);
+    const daysNum =
+      schedule.daysPerWeek === "" ? null : parseInt(schedule.daysPerWeek, 10);
+    const hoursNum =
+      schedule.hoursPerDay === "" ? null : parseFloat(schedule.hoursPerDay);
     const perDiemNum =
-      perDiemAmount === "" ? null : parseFloat(perDiemAmount);
+      schedule.perDiemAmount === "" ? null : parseFloat(schedule.perDiemAmount);
     return {
       title: title.trim(),
       job_description: jobDescription.trim() || null,
       location_address: locationAddress.trim() || null,
       start_at: startAt ? new Date(startAt).toISOString() : null,
       approx_duration: approxDuration.trim() || null,
-      days_per_week:
-        daysNum != null && !isNaN(daysNum) ? daysNum : null,
-      hours_per_day:
-        hoursNum != null && !isNaN(hoursNum) ? hoursNum : null,
-      schedule_notes: scheduleNotes.trim() || null,
+      days_per_week: daysNum != null && !isNaN(daysNum) ? daysNum : null,
+      hours_per_day: hoursNum != null && !isNaN(hoursNum) ? hoursNum : null,
+      schedule_notes: schedule.scheduleNotes.trim() || null,
       per_diem_amount:
         perDiemNum != null && !isNaN(perDiemNum) ? perDiemNum : null,
-      per_diem_notes: perDiemNotes.trim() || null,
-      lodging_status: (lodgingStatus || null) as
+      per_diem_notes: schedule.perDiemNotes.trim() || null,
+      lodging_status: (schedule.lodgingStatus || null) as
         | "provided"
         | "stipend"
         | "not_provided"
         | null,
-      lodging_notes: lodgingNotes.trim() || null,
+      lodging_notes: schedule.lodgingNotes.trim() || null,
       meals_provided:
-        mealsProvided === "" ? null : mealsProvided === "yes",
-      meals_notes: mealsNotes.trim() || null,
+        schedule.mealsProvided === "" ? null : schedule.mealsProvided === "yes",
+      meals_notes: schedule.mealsNotes.trim() || null,
       mob_demob_paid:
-        mobDemobPaid === "" ? null : mobDemobPaid === "yes",
-      mob_demob_notes: mobDemobNotes.trim() || null,
+        schedule.mobDemobPaid === "" ? null : schedule.mobDemobPaid === "yes",
+      mob_demob_notes: schedule.mobDemobNotes.trim() || null,
     };
-  };
-
-  const resolvePositions = async (
-    projectIdForBrackets: string
-  ): Promise<TaskOrderPositionInput[]> => {
-    // Resolve inline "new" brackets first, and write back default_pay_rate when appropriate
-    const resolved: TaskOrderPositionInput[] = [];
-    for (const p of positions) {
-      let bracketId = p.rate_bracket_id;
-      let label = p.position_label.trim();
-      const payRate = p.advertised_pay_rate;
-
-      if (p._isNewBracket) {
-        const name = (p._newBracketName || label || "").trim();
-        if (!name) {
-          throw new Error("Please name each new position bracket.");
-        }
-        const created = await addRateBracket.mutateAsync({
-          project_id: projectIdForBrackets,
-          name,
-          default_pay_rate: payRate ?? null,
-        });
-        bracketId = created.id;
-        label = name;
-      } else if (bracketId) {
-        // If bracket has no default_pay_rate yet but user typed one, save it back
-        const bracket = rateBrackets?.find((b) => b.id === bracketId) as
-          | ProjectRateBracket
-          | undefined;
-        if (
-          bracket &&
-          (bracket.default_pay_rate == null ||
-            Number(bracket.default_pay_rate) === 0) &&
-          payRate != null &&
-          !Number.isNaN(payRate)
-        ) {
-          try {
-            await updateRateBracket.mutateAsync({
-              id: bracket.id,
-              default_pay_rate: payRate,
-            });
-          } catch (e) {
-            console.warn("Could not backfill default_pay_rate", e);
-          }
-        }
-        if (!label) label = bracket?.name || "";
-      }
-
-      if (!label) {
-        throw new Error("Each position needs a label.");
-      }
-      if (!p.headcount || p.headcount < 1) {
-        throw new Error("Each position needs a headcount of 1 or more.");
-      }
-
-      resolved.push({
-        id: p.id,
-        rate_bracket_id: bracketId,
-        position_label: label,
-        headcount: Math.floor(p.headcount),
-        advertised_pay_rate:
-          payRate != null && !Number.isNaN(payRate) ? payRate : null,
-        show_pay_publicly: p.show_pay_publicly,
-        notes: p.notes && p.notes.trim() ? p.notes.trim() : null,
-      });
-    }
-    return resolved;
   };
 
   const handleSave = async () => {
@@ -455,11 +276,16 @@ export function TaskOrderWizard({
     try {
       const payload = buildTaskOrderPayload();
       const resolvedPositions =
-        positions.length > 0 ? await resolvePositions(projectId) : [];
-      const headcountSum = resolvedPositions.reduce(
-        (s, p) => s + p.headcount,
-        0
-      );
+        positions.length > 0
+          ? await resolvePositionDrafts({
+              projectId,
+              positions,
+              rateBrackets,
+              addRateBracket,
+              updateRateBracket,
+            })
+          : [];
+      const headcountSum = resolvedPositions.reduce((s, p) => s + p.headcount, 0);
 
       if (isEdit && taskOrder) {
         await updateTaskOrder.mutateAsync({
@@ -481,8 +307,7 @@ export function TaskOrderWizard({
         const created = await createTaskOrder.mutateAsync({
           project_id: projectId,
           status: "open",
-          headcount_needed:
-            resolvedPositions.length > 0 ? headcountSum : 1,
+          headcount_needed: resolvedPositions.length > 0 ? headcountSum : 1,
           location_lat: null,
           location_lng: null,
           ...payload,
@@ -516,7 +341,7 @@ export function TaskOrderWizard({
   };
 
   const stepLabels = ["Basics", "Schedule & Site", "Positions"];
-  const projectLocked = isEdit || (!isEdit && !!defaultProjectId); // lock in edit, or when launched from a project context
+  const projectLocked = isEdit || (!isEdit && !!defaultProjectId);
 
   const saving =
     createTaskOrder.isPending ||
@@ -679,328 +504,19 @@ export function TaskOrderWizard({
           )}
 
           {step === 2 && (
-            <div className="space-y-5">
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                <div>
-                  <Label>Days per Week</Label>
-                  <Input
-                    type="number"
-                    min={1}
-                    max={7}
-                    value={daysPerWeek}
-                    onChange={(e) => setDaysPerWeek(e.target.value)}
-                    placeholder="e.g., 5"
-                  />
-                </div>
-                <div>
-                  <Label>Hours per Day</Label>
-                  <Input
-                    type="number"
-                    min={0}
-                    step="0.25"
-                    value={hoursPerDay}
-                    onChange={(e) => setHoursPerDay(e.target.value)}
-                    placeholder="e.g., 10"
-                  />
-                </div>
-              </div>
-              <div>
-                <Label>Schedule Notes</Label>
-                <Textarea
-                  value={scheduleNotes}
-                  onChange={(e) => setScheduleNotes(e.target.value)}
-                  placeholder="Shift times, days off, overtime expectations…"
-                />
-              </div>
-
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                <div>
-                  <Label>Per Diem ($/day)</Label>
-                  <Input
-                    type="number"
-                    min={0}
-                    step="0.01"
-                    value={perDiemAmount}
-                    onChange={(e) => setPerDiemAmount(e.target.value)}
-                    placeholder="e.g., 60"
-                  />
-                </div>
-                <div>
-                  <Label>Per Diem Notes</Label>
-                  <Input
-                    value={perDiemNotes}
-                    onChange={(e) => setPerDiemNotes(e.target.value)}
-                    placeholder="Paid daily, receipts required, etc."
-                  />
-                </div>
-              </div>
-
-              <div>
-                <Label>Lodging</Label>
-                <RadioGroup
-                  value={lodgingStatus || "none"}
-                  onValueChange={(v) =>
-                    setLodgingStatus(v === "none" ? "" : v)
-                  }
-                  className="flex flex-wrap gap-4 pt-1"
-                >
-                  <label className="flex items-center gap-2 text-sm">
-                    <RadioGroupItem value="none" />
-                    Unspecified
-                  </label>
-                  <label className="flex items-center gap-2 text-sm">
-                    <RadioGroupItem value="provided" />
-                    Provided
-                  </label>
-                  <label className="flex items-center gap-2 text-sm">
-                    <RadioGroupItem value="stipend" />
-                    Stipend
-                  </label>
-                  <label className="flex items-center gap-2 text-sm">
-                    <RadioGroupItem value="not_provided" />
-                    Not provided
-                  </label>
-                </RadioGroup>
-                <Input
-                  className="mt-2"
-                  value={lodgingNotes}
-                  onChange={(e) => setLodgingNotes(e.target.value)}
-                  placeholder="Lodging notes"
-                />
-              </div>
-
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                <div>
-                  <Label>Meals Provided</Label>
-                  <RadioGroup
-                    value={mealsProvided || "unset"}
-                    onValueChange={(v) =>
-                      setMealsProvided(v === "unset" ? "" : v)
-                    }
-                    className="flex gap-4 pt-1"
-                  >
-                    <label className="flex items-center gap-2 text-sm">
-                      <RadioGroupItem value="unset" />
-                      Unspecified
-                    </label>
-                    <label className="flex items-center gap-2 text-sm">
-                      <RadioGroupItem value="yes" />
-                      Yes
-                    </label>
-                    <label className="flex items-center gap-2 text-sm">
-                      <RadioGroupItem value="no" />
-                      No
-                    </label>
-                  </RadioGroup>
-                  <Input
-                    className="mt-2"
-                    value={mealsNotes}
-                    onChange={(e) => setMealsNotes(e.target.value)}
-                    placeholder="Meals notes"
-                  />
-                </div>
-                <div>
-                  <Label>Mob/Demob Time Paid</Label>
-                  <RadioGroup
-                    value={mobDemobPaid || "unset"}
-                    onValueChange={(v) =>
-                      setMobDemobPaid(v === "unset" ? "" : v)
-                    }
-                    className="flex gap-4 pt-1"
-                  >
-                    <label className="flex items-center gap-2 text-sm">
-                      <RadioGroupItem value="unset" />
-                      Unspecified
-                    </label>
-                    <label className="flex items-center gap-2 text-sm">
-                      <RadioGroupItem value="yes" />
-                      Yes
-                    </label>
-                    <label className="flex items-center gap-2 text-sm">
-                      <RadioGroupItem value="no" />
-                      No
-                    </label>
-                  </RadioGroup>
-                  <Input
-                    className="mt-2"
-                    value={mobDemobNotes}
-                    onChange={(e) => setMobDemobNotes(e.target.value)}
-                    placeholder="Mob/demob notes"
-                  />
-                </div>
-              </div>
-            </div>
+            <TaskOrderStepSchedule
+              value={schedule}
+              onChange={(patch) => setSchedule((s) => ({ ...s, ...patch }))}
+            />
           )}
 
           {step === 3 && (
-            <div className="space-y-4">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-sm font-medium">Positions</p>
-                  <p className="text-xs text-muted-foreground">
-                    Add each role needed for this task order. Total headcount:{" "}
-                    <span className="font-semibold">{totalHeadcount}</span>
-                  </p>
-                </div>
-                <Button
-                  type="button"
-                  variant="outline"
-                  size="sm"
-                  onClick={addPositionRow}
-                  disabled={!projectId}
-                >
-                  <Plus className="h-4 w-4 mr-1" />
-                  Add Position
-                </Button>
-              </div>
-
-              {!projectId && (
-                <p className="text-xs text-muted-foreground">
-                  Select a project on Step 1 before adding positions.
-                </p>
-              )}
-
-              {positions.length === 0 && projectId && (
-                <div className="border border-dashed rounded-md p-4 text-center text-sm text-muted-foreground">
-                  No positions yet — positions are optional but recommended.
-                </div>
-              )}
-
-              <div className="space-y-3">
-                {positions.map((p) => {
-                  const currentBracket = rateBrackets?.find(
-                    (b) => b.id === p.rate_bracket_id
-                  );
-                  return (
-                    <div
-                      key={p._key}
-                      className="rounded-md border p-3 space-y-3 bg-muted/20"
-                    >
-                      <div className="grid grid-cols-1 sm:grid-cols-12 gap-3">
-                        <div className="sm:col-span-5">
-                          <Label className="text-xs">Position</Label>
-                          <Select
-                            value={
-                              p._isNewBracket
-                                ? NEW_BRACKET_VALUE
-                                : p.rate_bracket_id || ""
-                            }
-                            onValueChange={(v) =>
-                              handleBracketSelect(p._key, v)
-                            }
-                          >
-                            <SelectTrigger>
-                              <SelectValue placeholder="Choose position…" />
-                            </SelectTrigger>
-                            <SelectContent>
-                              {(rateBrackets || []).map((b) => (
-                                <SelectItem key={b.id} value={b.id}>
-                                  {b.name}
-                                </SelectItem>
-                              ))}
-                              <SelectItem value={NEW_BRACKET_VALUE}>
-                                + New position…
-                              </SelectItem>
-                            </SelectContent>
-                          </Select>
-                          {p._isNewBracket && (
-                            <Input
-                              className="mt-2"
-                              placeholder="New position name (required)"
-                              value={p._newBracketName || ""}
-                              onChange={(e) =>
-                                updatePos(p._key, {
-                                  _newBracketName: e.target.value,
-                                  position_label: e.target.value,
-                                })
-                              }
-                            />
-                          )}
-                          {currentBracket &&
-                            currentBracket.default_pay_rate == null && (
-                              <p className="mt-1 text-[11px] text-muted-foreground">
-                                No default pay saved for this bracket — the
-                                rate you enter will be saved as its default.
-                              </p>
-                            )}
-                        </div>
-                        <div className="sm:col-span-2">
-                          <Label className="text-xs">Headcount</Label>
-                          <Input
-                            type="number"
-                            min={1}
-                            value={p.headcount}
-                            onChange={(e) =>
-                              updatePos(p._key, {
-                                headcount: parseInt(e.target.value, 10) || 1,
-                              })
-                            }
-                          />
-                        </div>
-                        <div className="sm:col-span-3">
-                          <Label className="text-xs">Pay Rate ($/hr)</Label>
-                          <Input
-                            type="number"
-                            min={0}
-                            step="0.01"
-                            value={
-                              p.advertised_pay_rate == null
-                                ? ""
-                                : String(p.advertised_pay_rate)
-                            }
-                            onChange={(e) => {
-                              const v = e.target.value;
-                              updatePos(p._key, {
-                                advertised_pay_rate:
-                                  v === "" ? null : parseFloat(v),
-                              });
-                            }}
-                            placeholder="—"
-                          />
-                        </div>
-                        <div className="sm:col-span-2 flex flex-col justify-between">
-                          <Label className="text-xs">Show Pay</Label>
-                          <div className="flex items-center justify-between h-10">
-                            <Switch
-                              checked={p.show_pay_publicly}
-                              onCheckedChange={(v) =>
-                                updatePos(p._key, { show_pay_publicly: v })
-                              }
-                            />
-                            <Button
-                              type="button"
-                              variant="ghost"
-                              size="icon"
-                              className="text-destructive"
-                              onClick={() => removePositionRow(p._key)}
-                              title="Remove"
-                            >
-                              <Trash2 className="h-4 w-4" />
-                            </Button>
-                          </div>
-                        </div>
-                      </div>
-                      <div>
-                        <Label className="text-xs">Notes</Label>
-                        <Input
-                          value={p.notes || ""}
-                          onChange={(e) =>
-                            updatePos(p._key, { notes: e.target.value })
-                          }
-                          placeholder="Optional notes visible to admin only"
-                        />
-                      </div>
-                    </div>
-                  );
-                })}
-              </div>
-
-              {positions.length > 0 && (
-                <Badge variant="secondary" className="text-xs">
-                  Task order headcount will be set to {totalHeadcount}
-                </Badge>
-              )}
-            </div>
+            <TaskOrderStepPositions
+              positions={positions}
+              onChange={setPositions}
+              rateBrackets={rateBrackets}
+              projectSelected={!!projectId}
+            />
           )}
         </div>
 

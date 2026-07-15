@@ -25,6 +25,8 @@ export interface CompanySettings {
   // Locked period fields
   locked_period_date: string | null;
   locked_period_enabled: boolean;
+  // Recruiting
+  default_form_template_id: string | null;
   created_at: string;
   updated_at: string;
 }

@@ -1416,6 +1416,7 @@ export type Database = {
           city: string | null
           company_name: string
           created_at: string | null
+          default_form_template_id: string | null
           default_tax_rate: number | null
           email: string | null
           estimate_footer: string | null
@@ -1441,6 +1442,7 @@ export type Database = {
           city?: string | null
           company_name?: string
           created_at?: string | null
+          default_form_template_id?: string | null
           default_tax_rate?: number | null
           email?: string | null
           estimate_footer?: string | null
@@ -1466,6 +1468,7 @@ export type Database = {
           city?: string | null
           company_name?: string
           created_at?: string | null
+          default_form_template_id?: string | null
           default_tax_rate?: number | null
           email?: string | null
           estimate_footer?: string | null
@@ -1486,7 +1489,15 @@ export type Database = {
           weekly_overtime_threshold?: number | null
           zip?: string | null
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "company_settings_default_form_template_id_fkey"
+            columns: ["default_form_template_id"]
+            isOneToOne: false
+            referencedRelation: "application_form_templates"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       contractor_completion_bill_items: {
         Row: {

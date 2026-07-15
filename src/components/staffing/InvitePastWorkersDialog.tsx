@@ -10,11 +10,13 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Badge } from "@/components/ui/badge";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Progress } from "@/components/ui/progress";
+import { Textarea } from "@/components/ui/textarea";
 import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from "@/components/ui/select";
 import { Loader2, Send, Search, MapPin } from "lucide-react";
 import { toast } from "sonner";
+import { renderMergeTags, AVAILABLE_MERGE_TAGS } from "@/lib/mergeTags";
 
 interface Props {
   open: boolean;
@@ -77,11 +79,15 @@ export function InvitePastWorkersDialog({ open, onOpenChange, posting }: Props) 
   const [sending, setSending] = useState(false);
   const [progress, setProgress] = useState(0);
   const [result, setResult] = useState<{ sent: number; failed: number; skipped: number } | null>(null);
+  const [messageTemplate, setMessageTemplate] = useState("");
 
   useEffect(() => {
     if (!open) return;
     setSelected(new Set()); setSearch(""); setRadius("any"); setPersonnelOnly(false);
     setResult(null); setProgress(0);
+    setMessageTemplate(
+      `Fairfield Response Group: We're hiring for {{project_name}} — {{pay_rate}}. Applying takes 2 minutes: {link} Reply STOP to opt out.`
+    );
     (async () => {
       setLoading(true);
       try {
@@ -208,17 +214,22 @@ export function InvitePastWorkersDialog({ open, onOpenChange, posting }: Props) 
   };
   const clearAll = () => setSelected(new Set());
 
-  const buildMessage = () => {
-    const payBit = publicPay != null ? ` - $${publicPay}/hr` : "";
-    return `Fairfield Response Group: We're hiring for ${taskTitle}${payBit}. You've worked with us before — applying takes 2 minutes: {link} Reply STOP to opt out.`;
-  };
+
+  const resolvedMessage = useMemo(() => {
+    const resolved = renderMergeTags(messageTemplate, {
+      project: project ?? null,
+      taskOrder: taskOrder ?? null,
+      positions,
+    });
+    return resolved;
+  }, [messageTemplate, project, taskOrder, positions]);
 
   const send = async () => {
     if (selected.size === 0) return;
     setSending(true); setProgress(0); setResult(null);
     try {
       const chosen = filtered.filter(c => selected.has(c.key));
-      const message = buildMessage();
+      const message = resolvedMessage;
 
       // Send in small batches sequentially for progress
       const batchSize = 10;
@@ -253,7 +264,7 @@ export function InvitePastWorkersDialog({ open, onOpenChange, posting }: Props) 
     }
   };
 
-  const previewMsg = buildMessage().replace("{link}", link);
+  const previewMsg = resolvedMessage.replace("{link}", link);
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -332,9 +343,22 @@ export function InvitePastWorkersDialog({ open, onOpenChange, posting }: Props) 
             )}
           </ScrollArea>
 
-          <div>
-            <Label className="text-xs text-muted-foreground">Message preview</Label>
-            <div className="text-xs bg-muted/40 rounded p-2 whitespace-pre-wrap">{previewMsg}</div>
+          <div className="space-y-2">
+            <div className="flex items-center justify-between">
+              <Label className="text-xs">Message</Label>
+              <span className="text-[11px] text-muted-foreground">
+                Available: {AVAILABLE_MERGE_TAGS.map((t) => `{{${t}}}`).join(" ")} {"{link}"}
+              </span>
+            </div>
+            <Textarea
+              rows={3}
+              value={messageTemplate}
+              onChange={(e) => setMessageTemplate(e.target.value)}
+            />
+            <div className="text-xs bg-muted/40 rounded p-2 whitespace-pre-wrap">
+              <span className="text-muted-foreground">Preview: </span>
+              {previewMsg}
+            </div>
           </div>
 
           {sending && (

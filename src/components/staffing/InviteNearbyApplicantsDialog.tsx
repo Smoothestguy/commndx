@@ -18,6 +18,7 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { toast } from "sonner";
 import { Loader2, Send, MapPin, Search } from "lucide-react";
 import { useNearbyApplicants } from "@/integrations/supabase/hooks/useNearbyApplicants";
+import { renderMergeTags, AVAILABLE_MERGE_TAGS } from "@/lib/mergeTags";
 
 interface Props {
   open: boolean;
@@ -45,11 +46,22 @@ export const InviteNearbyApplicantsDialog = ({ open, onOpenChange, posting }: Pr
   useEffect(() => {
     if (!open) return;
     setMessage(
-      `Hi {first_name}, we have a new opportunity on ${projectName} (${taskTitle}) near you. Apply here: {link}`
+      `Hi {first_name}, we have a new opportunity on {{project_name}} near {{location}}. Apply here: {link}`
     );
     setSelected(new Set());
     setSearch("");
   }, [open, projectName, taskTitle]);
+
+  const positions: any[] = (posting as any)?.positions ?? [];
+  const resolvedMessage = useMemo(
+    () =>
+      renderMergeTags(message, {
+        project: project ?? null,
+        taskOrder: posting?.project_task_orders ?? null,
+        positions,
+      }),
+    [message, project, posting, positions]
+  );
 
   const filtered = useMemo(() => {
     if (!candidates) return [];
@@ -93,7 +105,7 @@ export const InviteNearbyApplicantsDialog = ({ open, onOpenChange, posting }: Pr
       const { data, error } = await supabase.functions.invoke("invite-applicants-sms", {
         body: {
           applicantIds: Array.from(selected),
-          message,
+          message: resolvedMessage,
           postingId: posting.id,
         },
       });
@@ -225,17 +237,21 @@ export const InviteNearbyApplicantsDialog = ({ open, onOpenChange, posting }: Pr
           </ScrollArea>
 
           <div>
-            <Label className="text-xs">
-              Message (use {"{first_name}"} and {"{link}"} as placeholders)
-            </Label>
+            <div className="flex items-center justify-between">
+              <Label className="text-xs">Message</Label>
+              <span className="text-[11px] text-muted-foreground">
+                Available: {AVAILABLE_MERGE_TAGS.map((t) => `{{${t}}}`).join(" ")} {"{first_name}"} {"{link}"}
+              </span>
+            </div>
             <Textarea
               rows={4}
               value={message}
               onChange={(e) => setMessage(e.target.value)}
               placeholder="Hi {first_name}, we have a new opportunity near you…"
             />
-            <div className="text-xs text-muted-foreground mt-1 break-all">
-              Link appended if missing: {link}
+            <div className="text-xs bg-muted/40 rounded p-2 mt-2 whitespace-pre-wrap">
+              <span className="text-muted-foreground">Preview: </span>
+              {resolvedMessage.replace("{link}", link)}
             </div>
           </div>
         </div>

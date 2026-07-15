@@ -623,7 +623,7 @@ export function ProjectApplicantsSection({
               }}
             >
               <Plus className="h-4 w-4 mr-1" />
-              New Task Order
+              Add Crew / Scope
             </Button>
           </CardHeader>
           <CollapsibleContent>

@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback } from "react";
+import { renderMergeTags } from "@/lib/mergeTags";
 import { useParams } from "react-router-dom";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -1091,7 +1092,11 @@ export default function PublicApplicationForm() {
           <CardContent className="space-y-4">
             {taskOrder.job_description && (
               <p className="text-sm text-muted-foreground whitespace-pre-wrap">
-                {taskOrder.job_description}
+                {renderMergeTags(taskOrder.job_description, {
+                  project: (taskOrder as any).projects ?? null,
+                  taskOrder,
+                  positions: ((posting as any).positions ?? []) as any,
+                })}
               </p>
             )}
             <div className="flex flex-wrap gap-4 text-sm">

@@ -13,6 +13,7 @@ import { ProjectStats } from "@/components/projects/ProjectStats";
 import { ProjectFilters } from "@/components/projects/ProjectFilters";
 import { ProjectEmptyState } from "@/components/projects/ProjectEmptyState";
 import { ProjectFormDialog, initialProjectFormData, type ProjectFormData } from "@/components/projects/ProjectFormDialog";
+import { ProjectCreateWizard } from "@/components/projects/ProjectCreateWizard";
 import { ProjectSection } from "@/components/projects/ProjectSection";
 import { FloatingActionButton } from "@/components/shared/FloatingActionButton";
 import { useIsMobile, useIsTablet } from "@/hooks/use-mobile";
@@ -49,6 +50,7 @@ const Projects = () => {
   const [filterCategory, setFilterCategory] = useState<ProjectCategory>("all");
   
   const [isDialogOpen, setIsDialogOpen] = useState(false);
+  const [isWizardOpen, setIsWizardOpen] = useState(false);
   const [editingProject, setEditingProject] = useState<Project | null>(null);
   const [formData, setFormData] = useState<ProjectFormData>(initialProjectFormData);
 
@@ -284,7 +286,7 @@ const Projects = () => {
   const openNewDialog = () => {
     setEditingProject(null);
     setFormData(initialProjectFormData);
-    setIsDialogOpen(true);
+    setIsWizardOpen(true);
   };
 
   // Handle ?action=add query param to open dialog
@@ -461,7 +463,7 @@ const Projects = () => {
         )}
       </PullToRefreshWrapper>
 
-      {/* Add/Edit Dialog */}
+      {/* Edit Dialog (existing form) */}
       <ProjectFormDialog
         isOpen={isDialogOpen}
         onClose={() => setIsDialogOpen(false)}
@@ -472,6 +474,13 @@ const Projects = () => {
         editingProject={editingProject}
         isSubmitting={addProject.isPending || updateProject.isPending}
       />
+
+      {/* New Project multi-step wizard */}
+      <ProjectCreateWizard
+        open={isWizardOpen}
+        onOpenChange={setIsWizardOpen}
+      />
+
 
       {/* Mobile FAB */}
       <FloatingActionButton
