@@ -1502,6 +1502,7 @@ export default function PublicApplicationForm() {
             </Form>
           </CardContent>
         </Card>
+        )}
       </div>
     </div>
     </>
