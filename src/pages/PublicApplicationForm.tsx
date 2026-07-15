@@ -119,6 +119,14 @@ export default function PublicApplicationForm() {
   const [lockedAnswerIds, setLockedAnswerIds] = useState<Set<string>>(new Set());
   const { lookupApplicant, isLookingUp, foundApplicant, clearApplicant } = useApplicantLookup();
 
+  // Express apply gate
+  type ExpressPath = null | "returning" | "new";
+  const [expressPath, setExpressPath] = useState<ExpressPath>(null);
+  const [expressContact, setExpressContact] = useState("");
+  const [expressChecking, setExpressChecking] = useState(false);
+  const [positionApplyingFor, setPositionApplyingFor] = useState<string>("");
+  const isExpressMode = expressPath === "returning";
+
   const { data: posting, isLoading, error } = useJobPostingByToken(token || "");
   const submitApplication = useSubmitApplication();
   
