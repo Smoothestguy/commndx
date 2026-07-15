@@ -630,7 +630,10 @@ export default function PublicApplicationForm() {
           home_zip: extractedZip || data.home_zip,
           photo_url: data.photo_url,
         },
-        answers: customAnswers,
+        answers: {
+          ...customAnswers,
+          ...(positionApplyingFor ? { position_applying_for: positionApplyingFor } : {}),
+        },
         geo: geoData,
         clientSubmittedAt: new Date().toISOString(),
         userAgent: navigator.userAgent,
