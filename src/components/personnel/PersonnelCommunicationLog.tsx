@@ -174,7 +174,9 @@ export function PersonnelCommunicationLog({ personnelId }: PersonnelCommunicatio
                     </div>
                   </TableCell>
                   <TableCell className="font-medium text-sm">
-                    {msg.sender_name}
+                    {msg.direction === "outbound"
+                      ? `Sent by ${msg.sender_name || "System"}`
+                      : msg.sender_name}
                   </TableCell>
                   <TableCell className="text-sm">
                     {msg.recipient_name}
