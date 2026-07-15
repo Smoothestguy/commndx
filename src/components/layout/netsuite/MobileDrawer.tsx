@@ -148,22 +148,67 @@ export function MobileDrawer({ open, onClose }: MobileDrawerProps) {
               ))}
             </div>
 
-            {/* Transactions Section */}
+            {/* Sales */}
             <div className="mt-4 px-2">
-              <Collapsible open={transactionsOpen} onOpenChange={setTransactionsOpen}>
+              <Collapsible open={salesOpen} onOpenChange={setSalesOpen}>
                 <CollapsibleTrigger className="flex w-full items-center justify-between rounded-md px-3 py-2 text-sm font-medium text-muted-foreground hover:bg-muted">
-                  <span>Transactions</span>
-                  <ChevronDown className={cn("h-4 w-4 transition-transform", transactionsOpen && "rotate-180")} />
+                  <span>Sales</span>
+                  <ChevronDown className={cn("h-4 w-4 transition-transform", salesOpen && "rotate-180")} />
                 </CollapsibleTrigger>
                 <CollapsibleContent className="mt-1 space-y-1">
-                  {transactionsNavigation.map((item) => (
+                  {salesNavigation.map((item) => (
                     <NavLink key={item.href} item={item} />
                   ))}
                 </CollapsibleContent>
               </Collapsible>
             </div>
 
-            {/* Vendors Section */}
+            {/* Operations */}
+            <div className="mt-2 px-2">
+              <Collapsible open={operationsOpen} onOpenChange={setOperationsOpen}>
+                <CollapsibleTrigger className="flex w-full items-center justify-between rounded-md px-3 py-2 text-sm font-medium text-muted-foreground hover:bg-muted">
+                  <span>Operations</span>
+                  <ChevronDown className={cn("h-4 w-4 transition-transform", operationsOpen && "rotate-180")} />
+                </CollapsibleTrigger>
+                <CollapsibleContent className="mt-1 space-y-1">
+                  {operationsNavigation.map((item) => (
+                    <NavLink key={item.href} item={item} />
+                  ))}
+                </CollapsibleContent>
+              </Collapsible>
+            </div>
+
+            {/* Recruiting */}
+            <div className="mt-2 px-2">
+              <Collapsible open={recruitingOpen} onOpenChange={setRecruitingOpen}>
+                <CollapsibleTrigger className="flex w-full items-center justify-between rounded-md px-3 py-2 text-sm font-medium text-muted-foreground hover:bg-muted">
+                  <span>Recruiting</span>
+                  <ChevronDown className={cn("h-4 w-4 transition-transform", recruitingOpen && "rotate-180")} />
+                </CollapsibleTrigger>
+                <CollapsibleContent className="mt-1 space-y-1">
+                  {recruitingNavigation.map((item) => (
+                    <NavLink key={item.href} item={item} />
+                  ))}
+                </CollapsibleContent>
+              </Collapsible>
+            </div>
+
+            {/* Workforce */}
+            <div className="mt-2 px-2">
+              <Collapsible open={workforceOpen} onOpenChange={setWorkforceOpen}>
+                <CollapsibleTrigger className="flex w-full items-center justify-between rounded-md px-3 py-2 text-sm font-medium text-muted-foreground hover:bg-muted">
+                  <span>Workforce</span>
+                  <ChevronDown className={cn("h-4 w-4 transition-transform", workforceOpen && "rotate-180")} />
+                </CollapsibleTrigger>
+                <CollapsibleContent className="mt-1 space-y-1">
+                  {workforceNavigation.map((item) => (
+                    <NavLink key={item.href} item={item} />
+                  ))}
+                </CollapsibleContent>
+              </Collapsible>
+            </div>
+
+            {/* Vendors */}
             <div className="mt-2 px-2">
               <Collapsible open={vendorsOpen} onOpenChange={setVendorsOpen}>
                 <CollapsibleTrigger className="flex w-full items-center justify-between rounded-md px-3 py-2 text-sm font-medium text-muted-foreground hover:bg-muted">
@@ -172,21 +217,6 @@ export function MobileDrawer({ open, onClose }: MobileDrawerProps) {
                 </CollapsibleTrigger>
                 <CollapsibleContent className="mt-1 space-y-1">
                   {vendorsNavigation.map((item) => (
-                    <NavLink key={item.href} item={item} />
-                  ))}
-                </CollapsibleContent>
-              </Collapsible>
-            </div>
-
-            {/* Staffing Section */}
-            <div className="mt-2 px-2">
-              <Collapsible open={staffingOpen} onOpenChange={setStaffingOpen}>
-                <CollapsibleTrigger className="flex w-full items-center justify-between rounded-md px-3 py-2 text-sm font-medium text-muted-foreground hover:bg-muted">
-                  <span>Staffing</span>
-                  <ChevronDown className={cn("h-4 w-4 transition-transform", staffingOpen && "rotate-180")} />
-                </CollapsibleTrigger>
-                <CollapsibleContent className="mt-1 space-y-1">
-                  {staffingNavigation.map((item) => (
                     <NavLink key={item.href} item={item} />
                   ))}
                 </CollapsibleContent>
