@@ -1112,8 +1112,67 @@ export default function PublicApplicationForm() {
                 <span>{taskOrder.headcount_needed} position(s) available</span>
               </div>
             </div>
+            <PublicJobFactsPanel
+              taskOrder={taskOrder as any}
+              positions={((posting as any).positions ?? []) as any}
+            />
           </CardContent>
         </Card>
+
+        {/* Express Apply gate */}
+        {expressPath === null && (
+          <Card
+            className={cn(theme.backgroundImage && "backdrop-blur-sm")}
+            style={theme.backgroundImage ? {
+              backgroundColor: `hsl(var(--background) / ${(theme.cardOpacity ?? 90) / 100})`
+            } : undefined}
+          >
+            <CardHeader>
+              <CardTitle className="text-lg">Have you worked with Fairfield before or applied previously?</CardTitle>
+              <CardDescription>
+                If yes, we can skip the long form — just enter your email or phone.
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-3">
+              <Input
+                placeholder="Email or phone number"
+                value={expressContact}
+                onChange={(e) => setExpressContact(e.target.value)}
+                inputMode="email"
+                autoComplete="off"
+                onKeyDown={(e) => {
+                  if (e.key === "Enter") { e.preventDefault(); handleExpressCheck(); }
+                }}
+              />
+              <div className="flex flex-col sm:flex-row gap-2">
+                <Button
+                  type="button"
+                  onClick={handleExpressCheck}
+                  disabled={expressChecking || !expressContact.trim()}
+                  className="flex-1"
+                >
+                  {expressChecking ? (
+                    <><Loader2 className="mr-2 h-4 w-4 animate-spin" /> Checking...</>
+                  ) : (
+                    <>Yes — check my record</>
+                  )}
+                </Button>
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={() => setExpressPath("new")}
+                  className="flex-1"
+                >
+                  I'm new — start full application
+                </Button>
+              </div>
+              <p className="text-xs text-muted-foreground">
+                Your record is never shown here — we only confirm whether we can shorten the form.
+              </p>
+            </CardContent>
+          </Card>
+        )}
+
 
         {/* Application Form */}
         <Card 
