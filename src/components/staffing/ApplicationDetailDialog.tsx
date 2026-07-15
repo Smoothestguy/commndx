@@ -606,13 +606,19 @@ export function ApplicationDetailDialog({
                       </div>
                     ) : (
                       <>
-                        <div className="flex items-center gap-2">
+                        <div className="flex items-center gap-2 flex-wrap">
                           <h3 className="text-lg font-semibold">
                             {applicant?.first_name} {applicant?.last_name}
                           </h3>
                           <Badge className={statusColors[application.status]}>
                             {application.status}
                           </Badge>
+                          {isAlreadyOnboarded && (
+                            <Badge className="bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-300 flex items-center gap-1">
+                              <ShieldCheck className="h-3 w-3" />
+                              Already onboarded
+                            </Badge>
+                          )}
                         </div>
                         <div className="grid grid-cols-2 gap-2 text-sm">
                           <div>
