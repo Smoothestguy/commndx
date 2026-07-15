@@ -479,6 +479,22 @@ export default function StaffingApplications() {
                         <span className="hidden sm:inline">Copy Link</span>
                         <span className="sm:hidden ml-1">Copy</span>
                       </Button>
+                      {posting.project_task_orders?.project_id && (
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          className="h-9 px-2 text-xs sm:px-3 sm:text-sm"
+                          onClick={() =>
+                            navigate(
+                              `/projects/${posting.project_task_orders!.project_id}#recruiting`
+                            )
+                          }
+                          title="Open project"
+                        >
+                          <span className="hidden sm:inline">Open project</span>
+                          <span className="sm:hidden">Project</span>
+                        </Button>
+                      )}
                       <Button
                         variant="ghost"
                         size="sm"
