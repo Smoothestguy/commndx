@@ -105,7 +105,7 @@ export const InviteNearbyApplicantsDialog = ({ open, onOpenChange, posting }: Pr
       const { data, error } = await supabase.functions.invoke("invite-applicants-sms", {
         body: {
           applicantIds: Array.from(selected),
-          message,
+          message: resolvedMessage,
           postingId: posting.id,
         },
       });
