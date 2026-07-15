@@ -24,6 +24,7 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
 import { useSendBulkSMS } from "@/integrations/supabase/hooks/useBulkSMS";
+import { MessageTemplatePicker } from "./MessageTemplatePicker";
 
 interface Recipient {
   id: string;
@@ -170,7 +171,17 @@ export function BulkSMSDialog({
 
             {/* Message Input */}
             <div className="space-y-2">
-              <label className="text-sm font-medium">Message</label>
+              <div className="flex items-center justify-between">
+                <label className="text-sm font-medium">Message</label>
+                <MessageTemplatePicker
+                  size="sm"
+                  onInsert={(content) => {
+                    const current = message.trim();
+                    setMessage(current ? `${message}\n${content}` : content);
+                  }}
+                  disabled={sendBulkSMS.isPending}
+                />
+              </div>
               <Textarea
                 placeholder="Type your message here..."
                 value={message}

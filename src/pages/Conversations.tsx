@@ -102,6 +102,7 @@ export default function Conversations() {
           )}
         >
           <ConversationList
+            conversations={conversations}
             selectedConversationId={selectedConversation?.id || null}
             onSelectConversation={handleSelectConversation}
           />

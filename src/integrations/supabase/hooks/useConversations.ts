@@ -191,6 +191,113 @@ export function useConversations() {
   return query;
 }
 
+/**
+ * Admin/manager view of ALL conversations (no participant filter).
+ * RLS gates access; only render for admin/manager.
+ */
+export function useAllConversations(enabled: boolean = true) {
+  const { user } = useAuth();
+  const queryClient = useQueryClient();
+
+  const query = useQuery({
+    queryKey: ["conversations", "all"],
+    queryFn: async () => {
+      const { data: conversations, error } = await supabase
+        .from("conversations")
+        .select("*")
+        .order("last_message_at", { ascending: false, nullsFirst: false });
+
+      if (error) throw error;
+
+      const userIds = new Set<string>();
+      const personnelIds = new Set<string>();
+      const customerIds = new Set<string>();
+      const applicantIds = new Set<string>();
+      (conversations || []).forEach((c) => {
+        [
+          [c.participant_1_type, c.participant_1_id],
+          [c.participant_2_type, c.participant_2_id],
+        ].forEach(([t, id]) => {
+          if (!id) return;
+          if (t === "user") userIds.add(id as string);
+          else if (t === "personnel") personnelIds.add(id as string);
+          else if (t === "customer") customerIds.add(id as string);
+          else if (t === "applicant") applicantIds.add(id as string);
+        });
+      });
+
+      const [profilesRes, personnelRes, customersRes, applicantsRes] = await Promise.all([
+        userIds.size
+          ? supabase.from("profiles").select("id, first_name, last_name").in("id", Array.from(userIds))
+          : Promise.resolve({ data: [] as any[] }),
+        personnelIds.size
+          ? supabase.from("personnel").select("id, first_name, last_name, photo_url").in("id", Array.from(personnelIds))
+          : Promise.resolve({ data: [] as any[] }),
+        customerIds.size
+          ? supabase.from("customers").select("id, name").in("id", Array.from(customerIds))
+          : Promise.resolve({ data: [] as any[] }),
+        applicantIds.size
+          ? supabase.from("applicants").select("id, first_name, last_name, photo_url").in("id", Array.from(applicantIds))
+          : Promise.resolve({ data: [] as any[] }),
+      ]);
+
+      const profileMap = new Map<string, string>((profilesRes.data || []).map((p: any) => [p.id, `${p.first_name ?? ""} ${p.last_name ?? ""}`.trim() || "Unknown User"]));
+      const personnelMap = new Map<string, { name: string; photo: string | null }>((personnelRes.data || []).map((p: any) => [p.id, { name: `${p.first_name ?? ""} ${p.last_name ?? ""}`.trim(), photo: p.photo_url || null }]));
+      const customerMap = new Map<string, string>((customersRes.data || []).map((c: any) => [c.id, c.name]));
+      const applicantMap = new Map<string, { name: string; photo: string | null }>((applicantsRes.data || []).map((a: any) => [a.id, { name: `${a.first_name ?? ""} ${a.last_name ?? ""}`.trim(), photo: a.photo_url || null }]));
+
+      const resolve = (type: string, id: string): { name: string; photo: string | null } => {
+        if (type === "user") return { name: profileMap.get(id) || "Unknown User", photo: null };
+        if (type === "personnel") return personnelMap.get(id) || { name: "Unknown", photo: null };
+        if (type === "customer") return { name: customerMap.get(id) || "Unknown", photo: null };
+        if (type === "applicant") return applicantMap.get(id) || { name: "Unknown", photo: null };
+        return { name: "Unknown", photo: null };
+      };
+
+      return (conversations || []).map((conv) => {
+        const isMineP1 = conv.participant_1_type === "user" && conv.participant_1_id === user?.id;
+        let otherType = conv.participant_2_type;
+        let otherId = conv.participant_2_id;
+        if (conv.participant_1_type !== "user") {
+          otherType = conv.participant_1_type;
+          otherId = conv.participant_1_id;
+        }
+        const other = resolve(otherType, otherId);
+        const owner = resolve(conv.participant_1_type, conv.participant_1_id);
+        return {
+          ...conv,
+          other_participant_name: other.name,
+          other_participant_type: otherType,
+          other_participant_photo_url: other.photo,
+          unread_count: 0,
+          owner_id: conv.participant_1_id,
+          owner_name: owner.name,
+          is_owned_by_me: isMineP1,
+        } as Conversation & { owner_id: string; owner_name: string; is_owned_by_me: boolean };
+      });
+    },
+    enabled: enabled && !!user,
+  });
+
+  useEffect(() => {
+    if (!enabled || !user) return;
+    const channel = supabase
+      .channel(`all-conversations-${user.id}-${Math.random().toString(36).slice(2)}`)
+      .on("postgres_changes", { event: "*", schema: "public", table: "conversations" }, () => {
+        queryClient.invalidateQueries({ queryKey: ["conversations", "all"] });
+      })
+      .on("postgres_changes", { event: "*", schema: "public", table: "conversation_messages" }, () => {
+        queryClient.invalidateQueries({ queryKey: ["conversations", "all"] });
+      })
+      .subscribe();
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [enabled, user, queryClient]);
+
+  return query;
+}
+
 export function useConversationMessages(conversationId: string | null) {
   const { user } = useAuth();
   const queryClient = useQueryClient();

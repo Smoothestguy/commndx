@@ -5,7 +5,13 @@ import { ConversationThread } from "@/components/messaging/ConversationThread";
 import { NewConversationDialog } from "@/components/messaging/NewConversationDialog";
 import { OnboardingReminderDialog } from "@/components/messaging/OnboardingReminderDialog";
 import { Button } from "@/components/ui/button";
-import { useConversations, Conversation } from "@/integrations/supabase/hooks/useConversations";
+import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import {
+  useConversations,
+  useAllConversations,
+  Conversation,
+} from "@/integrations/supabase/hooks/useConversations";
+import { useUserRole } from "@/hooks/useUserRole";
 import { Plus, MessageCircle, ClipboardList } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useQuery } from "@tanstack/react-query";
@@ -18,16 +24,20 @@ export function MessagesInbox() {
   const [newConversationOpen, setNewConversationOpen] = useState(false);
   const [onboardingReminderOpen, setOnboardingReminderOpen] = useState(false);
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
+  const { isAdmin, isManager } = useUserRole();
+  const canSeeAll = isAdmin || isManager;
+  const [mode, setMode] = useState<"my" | "all">("my");
 
-  const { data: conversations } = useConversations();
+  const { data: myConversations } = useConversations();
+  const { data: allConversations } = useAllConversations(canSeeAll);
+
+  const activeList = mode === "all" && canSeeAll ? allConversations : myConversations;
 
   // Fetch recipient phone number when a conversation is selected
   const { data: recipientPhone } = useQuery({
     queryKey: ["recipient-phone", selectedConversation?.id],
     queryFn: async () => {
       if (!selectedConversation) return null;
-
-      // Determine who the other participant is
       const otherType = selectedConversation.other_participant_type;
       const isParticipant1 = selectedConversation.participant_1_type === "user";
       const otherId = isParticipant1
@@ -49,42 +59,40 @@ export function MessagesInbox() {
           .single();
         return customer?.phone || null;
       }
-
       return null;
     },
     enabled: !!selectedConversation,
   });
 
-  // Sync selected conversation with URL parameter
+  // Sync selected conversation with URL parameter — search both lists
   useEffect(() => {
-    if (conversationId && conversations) {
-      const found = conversations.find(c => c.id === conversationId);
-      if (found) {
-        setSelectedConversation(found);
-      }
-    }
-  }, [conversationId, conversations]);
+    if (!conversationId) return;
+    const found =
+      myConversations?.find((c) => c.id === conversationId) ||
+      allConversations?.find((c) => c.id === conversationId);
+    if (found) setSelectedConversation(found);
+  }, [conversationId, myConversations, allConversations]);
 
   const handleSelectConversation = (conversation: Conversation) => {
     setSelectedConversation(conversation);
-    setSearchParams(prev => {
+    setSearchParams((prev) => {
       prev.set("conversation", conversation.id);
-      prev.delete("tab"); // Clean up old tab param
+      prev.delete("tab");
       return prev;
     });
   };
 
   const handleConversationCreated = (conversationId: string) => {
-    setSearchParams(prev => {
+    setSearchParams((prev) => {
       prev.set("conversation", conversationId);
-      prev.delete("tab"); // Clean up old tab param
+      prev.delete("tab");
       return prev;
     });
   };
 
   const handleBack = () => {
     setSelectedConversation(null);
-    setSearchParams(prev => {
+    setSearchParams((prev) => {
       prev.delete("conversation");
       return prev;
     });
@@ -98,7 +106,6 @@ export function MessagesInbox() {
 
   return (
     <div className="flex flex-col h-[calc(100vh-10rem)]">
-      {/* Header with New Message button */}
       <div className="flex items-center justify-between mb-4">
         <div className="flex items-center gap-2">
           <MessageCircle className="h-5 w-5 text-muted-foreground" />
@@ -120,9 +127,7 @@ export function MessagesInbox() {
         </div>
       </div>
 
-      {/* Main content */}
       <div className="flex-1 flex overflow-hidden border rounded-lg bg-background">
-        {/* Conversation list - hidden on mobile when a conversation is selected */}
         <div
           className={cn(
             "border-r bg-background flex-shrink-0 flex flex-col overflow-hidden transition-all duration-200",
@@ -130,18 +135,26 @@ export function MessagesInbox() {
             isSidebarCollapsed ? "md:w-0 md:border-r-0" : "md:w-80"
           )}
         >
+          {canSeeAll && (
+            <div className="p-2 border-b flex-shrink-0">
+              <Tabs value={mode} onValueChange={(v) => setMode(v as "my" | "all")}>
+                <TabsList className="grid w-full grid-cols-2 h-8">
+                  <TabsTrigger value="my" className="text-xs">My Messages</TabsTrigger>
+                  <TabsTrigger value="all" className="text-xs">All Messages</TabsTrigger>
+                </TabsList>
+              </Tabs>
+            </div>
+          )}
           <ConversationList
+            conversations={activeList}
+            mode={mode}
             selectedConversationId={selectedConversation?.id || null}
             onSelectConversation={handleSelectConversation}
             onConversationDeleted={handleConversationDeleted}
           />
         </div>
 
-        {/* Conversation thread */}
-        <div className={cn(
-          "flex-1 flex flex-col min-w-0",
-          !selectedConversation && "hidden md:flex"
-        )}>
+        <div className={cn("flex-1 flex flex-col min-w-0", !selectedConversation && "hidden md:flex")}>
           <ConversationThread
             conversation={selectedConversation}
             onBack={handleBack}

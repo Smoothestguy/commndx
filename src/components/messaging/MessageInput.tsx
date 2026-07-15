@@ -17,6 +17,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { useMessageTranslation, SUPPORTED_LANGUAGES, LanguageCode } from "@/hooks/useMessageTranslation";
 import { MessageTranslationPreview } from "./MessageTranslationPreview";
+import { MessageTemplatePicker } from "./MessageTemplatePicker";
 
 interface MessageInputProps {
   onSend: (content: string, sendViaSMS?: boolean) => Promise<void>;
@@ -130,6 +131,19 @@ export function MessageInput({
     setTranslatedText(text);
   };
 
+  const handleInsertTemplate = (content: string) => {
+    const current = message.trim();
+    const next = current ? `${message}\n${content}` : content;
+    setMessage(next);
+    setTimeout(() => {
+      if (textareaRef.current) {
+        textareaRef.current.style.height = "auto";
+        textareaRef.current.style.height = `${Math.min(textareaRef.current.scrollHeight, 120)}px`;
+        textareaRef.current.focus();
+      }
+    }, 0);
+  };
+
   return (
     <div className="space-y-2">
       {/* Translation preview */}
@@ -156,6 +170,13 @@ export function MessageInput({
           rows={1}
           disabled={isLoading || isTranslationMode}
         />
+
+        <MessageTemplatePicker
+          onInsert={handleInsertTemplate}
+          disabled={isLoading || isTranslationMode}
+        />
+
+        
         
         {/* Translation dropdown */}
         {showTranslation && (
