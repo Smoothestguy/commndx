@@ -85,6 +85,12 @@ const vendorsNavigation = [
   { name: "Submissions", href: "/admin/contractor-submissions", icon: FolderSearch, requiresAdmin: true },
 ];
 
+const reportsNavigation = [
+  { name: "Reports Hub", href: "/reports", icon: BarChart3 },
+  { name: "Overhead Analysis", href: "/overhead-analysis", icon: TrendingDown, requiresManager: true },
+  { name: "Document Center", href: "/document-center", icon: FolderSearch },
+];
+
 const setupNavigation = [
   { name: "User Management", href: "/user-management", icon: Shield, requiresAdmin: true },
   { name: "Permissions", href: "/permissions", icon: KeyRound, requiresAdmin: true },
