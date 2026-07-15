@@ -67,6 +67,7 @@ type SortDirection = "asc" | "desc";
 
 interface ProjectApplicantsSectionProps {
   projectId: string;
+  hideAddButton?: boolean;
 }
 
 const statusColors: Record<string, string> = {
