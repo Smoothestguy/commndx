@@ -14,6 +14,126 @@ export type Database = {
   }
   public: {
     Tables: {
+      _backup_conversation_messages_20260715: {
+        Row: {
+          content: string | null
+          conversation_id: string | null
+          created_at: string | null
+          delivered_at: string | null
+          error_code: string | null
+          error_message: string | null
+          failed_at: string | null
+          id: string | null
+          message_type: string | null
+          metadata: Json | null
+          read_at: string | null
+          retry_count: number | null
+          sender_id: string | null
+          sender_type: string | null
+          status: string | null
+        }
+        Insert: {
+          content?: string | null
+          conversation_id?: string | null
+          created_at?: string | null
+          delivered_at?: string | null
+          error_code?: string | null
+          error_message?: string | null
+          failed_at?: string | null
+          id?: string | null
+          message_type?: string | null
+          metadata?: Json | null
+          read_at?: string | null
+          retry_count?: number | null
+          sender_id?: string | null
+          sender_type?: string | null
+          status?: string | null
+        }
+        Update: {
+          content?: string | null
+          conversation_id?: string | null
+          created_at?: string | null
+          delivered_at?: string | null
+          error_code?: string | null
+          error_message?: string | null
+          failed_at?: string | null
+          id?: string | null
+          message_type?: string | null
+          metadata?: Json | null
+          read_at?: string | null
+          retry_count?: number | null
+          sender_id?: string | null
+          sender_type?: string | null
+          status?: string | null
+        }
+        Relationships: []
+      }
+      _backup_conversation_participants_20260715: {
+        Row: {
+          conversation_id: string | null
+          created_at: string | null
+          id: string | null
+          last_read_at: string | null
+          participant_id: string | null
+          participant_type: string | null
+          unread_count: number | null
+        }
+        Insert: {
+          conversation_id?: string | null
+          created_at?: string | null
+          id?: string | null
+          last_read_at?: string | null
+          participant_id?: string | null
+          participant_type?: string | null
+          unread_count?: number | null
+        }
+        Update: {
+          conversation_id?: string | null
+          created_at?: string | null
+          id?: string | null
+          last_read_at?: string | null
+          participant_id?: string | null
+          participant_type?: string | null
+          unread_count?: number | null
+        }
+        Relationships: []
+      }
+      _backup_conversations_20260715: {
+        Row: {
+          created_at: string | null
+          id: string | null
+          last_message_at: string | null
+          last_message_preview: string | null
+          participant_1_id: string | null
+          participant_1_type: string | null
+          participant_2_id: string | null
+          participant_2_type: string | null
+          updated_at: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          id?: string | null
+          last_message_at?: string | null
+          last_message_preview?: string | null
+          participant_1_id?: string | null
+          participant_1_type?: string | null
+          participant_2_id?: string | null
+          participant_2_type?: string | null
+          updated_at?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          id?: string | null
+          last_message_at?: string | null
+          last_message_preview?: string | null
+          participant_1_id?: string | null
+          participant_1_type?: string | null
+          participant_2_id?: string | null
+          participant_2_type?: string | null
+          updated_at?: string | null
+        }
+        Relationships: []
+      }
       activities: {
         Row: {
           activity_date: string

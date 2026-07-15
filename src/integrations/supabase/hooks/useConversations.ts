@@ -439,6 +439,28 @@ export function useSendConversationMessage() {
 
       if (error) throw error;
 
+      // Ensure current user has a participant row on this conversation
+      // (covers admins replying inside threads they don't own).
+      try {
+        const { data: existingParticipant } = await supabase
+          .from("conversation_participants")
+          .select("id")
+          .eq("conversation_id", conversationId)
+          .eq("participant_type", "user")
+          .eq("participant_id", user.id)
+          .maybeSingle();
+        if (!existingParticipant) {
+          await supabase.from("conversation_participants").insert({
+            conversation_id: conversationId,
+            participant_type: "user",
+            participant_id: user.id,
+            unread_count: 0,
+          });
+        }
+      } catch (e) {
+        // Ignore duplicate-key or race errors
+      }
+
       // If SMS delivery requested, send via edge function
       if (sendViaSMS && recipientPhone && recipientType && recipientId && recipientName) {
         try {
@@ -470,9 +492,11 @@ export function useSendConversationMessage() {
     onSuccess: (_, variables) => {
       queryClient.invalidateQueries({ queryKey: ["conversation-messages", variables.conversationId] });
       queryClient.invalidateQueries({ queryKey: ["conversations"] });
+      queryClient.invalidateQueries({ queryKey: ["conversations", "all"] });
     },
   });
 }
+
 
 export function useGetOrCreateConversation() {
   const { user } = useAuth();
@@ -488,20 +512,46 @@ export function useGetOrCreateConversation() {
     }) => {
       if (!user) throw new Error("Not authenticated");
 
-      // Check if conversation already exists (in either direction)
+      // Contact-scoped lookup: find ANY conversation for this contact,
+      // regardless of which user opened it originally.
       const { data: existingConv } = await supabase
         .from("conversations")
         .select("*")
         .or(
-          `and(participant_1_type.eq.user,participant_1_id.eq.${user.id},participant_2_type.eq.${participantType},participant_2_id.eq.${participantId}),and(participant_1_type.eq.${participantType},participant_1_id.eq.${participantId},participant_2_type.eq.user,participant_2_id.eq.${user.id})`
+          `and(participant_2_type.eq.${participantType},participant_2_id.eq.${participantId}),and(participant_1_type.eq.${participantType},participant_1_id.eq.${participantId})`
         )
+        .order("last_message_at", { ascending: false, nullsFirst: false })
+        .limit(1)
         .maybeSingle();
 
+      const ensureCurrentUserParticipant = async (conversationId: string) => {
+        try {
+          const { data: existingParticipant } = await supabase
+            .from("conversation_participants")
+            .select("id")
+            .eq("conversation_id", conversationId)
+            .eq("participant_type", "user")
+            .eq("participant_id", user.id)
+            .maybeSingle();
+          if (!existingParticipant) {
+            await supabase.from("conversation_participants").insert({
+              conversation_id: conversationId,
+              participant_type: "user",
+              participant_id: user.id,
+              unread_count: 0,
+            });
+          }
+        } catch (e) {
+          // Ignore duplicate-key or race errors
+        }
+      };
+
       if (existingConv) {
+        await ensureCurrentUserParticipant(existingConv.id);
         return existingConv;
       }
 
-      // Create new conversation
+      // Create new conversation (current user becomes participant_1)
       const { data: newConv, error: convError } = await supabase
         .from("conversations")
         .insert({
@@ -531,13 +581,17 @@ export function useGetOrCreateConversation() {
         },
       ]);
 
+      await ensureCurrentUserParticipant(newConv.id);
+
       return newConv;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["conversations"] });
+      queryClient.invalidateQueries({ queryKey: ["conversations", "all"] });
     },
   });
 }
+
 
 export function useMarkConversationAsRead() {
   const { user } = useAuth();
