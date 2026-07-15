@@ -201,8 +201,21 @@ export default function JobPostingEntries() {
               </DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>
+          <Button variant="outline" onClick={() => setShowInvitePast(true)} disabled={!currentPosting}>
+            <Send className="h-4 w-4 mr-2" />
+            Invite past workers
+          </Button>
         </div>
       </div>
+
+      {currentPosting && (
+        <InvitePastWorkersDialog
+          open={showInvitePast}
+          onOpenChange={setShowInvitePast}
+          posting={currentPosting}
+        />
+      )}
+
 
       {/* Stats + Filters Row */}
       <Card>
