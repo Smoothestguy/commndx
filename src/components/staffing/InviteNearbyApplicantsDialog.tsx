@@ -46,11 +46,22 @@ export const InviteNearbyApplicantsDialog = ({ open, onOpenChange, posting }: Pr
   useEffect(() => {
     if (!open) return;
     setMessage(
-      `Hi {first_name}, we have a new opportunity on ${projectName} (${taskTitle}) near you. Apply here: {link}`
+      `Hi {first_name}, we have a new opportunity on {{project_name}} near {{location}}. Apply here: {link}`
     );
     setSelected(new Set());
     setSearch("");
   }, [open, projectName, taskTitle]);
+
+  const positions: any[] = (posting as any)?.positions ?? [];
+  const resolvedMessage = useMemo(
+    () =>
+      renderMergeTags(message, {
+        project: project ?? null,
+        taskOrder: posting?.project_task_orders ?? null,
+        positions,
+      }),
+    [message, project, posting, positions]
+  );
 
   const filtered = useMemo(() => {
     if (!candidates) return [];
