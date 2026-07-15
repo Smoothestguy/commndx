@@ -18,6 +18,7 @@ import {
   Send,
 } from "lucide-react";
 import { InviteNearbyApplicantsDialog } from "@/components/staffing/InviteNearbyApplicantsDialog";
+import { InvitePastWorkersDialog } from "@/components/staffing/InvitePastWorkersDialog";
 import { QuickApplyStats } from "@/components/staffing/QuickApplyStats";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
