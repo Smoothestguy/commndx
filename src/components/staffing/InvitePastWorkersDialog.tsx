@@ -264,7 +264,7 @@ export function InvitePastWorkersDialog({ open, onOpenChange, posting }: Props) 
     }
   };
 
-  const previewMsg = buildMessage().replace("{link}", link);
+  const previewMsg = resolvedMessage.replace("{link}", link);
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
