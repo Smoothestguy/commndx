@@ -754,6 +754,14 @@ export function ProjectApplicantsSection({
         defaultProjectId={projectId}
         onAssignmentChange={handleAssignmentChange}
       />
+
+      {/* Task Order Wizard (project-scoped) */}
+      <TaskOrderWizard
+        open={isTaskOrderWizardOpen}
+        onOpenChange={setIsTaskOrderWizardOpen}
+        mode="create"
+        defaultProjectId={projectId}
+      />
     </>
   );
 }
