@@ -150,12 +150,13 @@ export function ProjectCreateWizard({ open, onOpenChange, onProjectCreated }: Pr
 
   useEffect(() => {
     if (basics.use_customer_address && selectedCustomer) {
+      const c = selectedCustomer as any;
       setBasics((b) => ({
         ...b,
-        address: selectedCustomer.address || "",
-        city: selectedCustomer.city || "",
-        state: selectedCustomer.state || "",
-        zip: selectedCustomer.zip || "",
+        address: c.address || "",
+        city: c.city || "",
+        state: c.state || "",
+        zip: c.zip || "",
       }));
     }
   }, [basics.use_customer_address, selectedCustomer]);
