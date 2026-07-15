@@ -35,6 +35,8 @@ import {
   Eye,
   Send,
   Map,
+  BarChart3,
+  TrendingDown,
 } from "lucide-react";
 
 interface NavItem {
@@ -126,21 +128,14 @@ const vendorsMenu: NavSection[] = [
   },
 ];
 
-// Reports (unchanged)
+// Reports — only real report/analytics pages. Everything else lives on the Reports Hub.
 const reportsMenu: NavSection[] = [
   {
-    title: "Operations",
+    title: "Reports",
     items: [
-      { name: "Time Tracking", href: "/time-tracking", icon: Clock, description: "Track and manage time entries" },
-      { name: "Project Assignments", href: "/project-assignments", icon: UserCog, description: "Manage personnel assignments", requiresManager: true },
-    ],
-  },
-  {
-    title: "Documents",
-    items: [
-      { name: "Vendor Documents", href: "/vendor-documents", icon: FileText, description: "Vendor document management" },
+      { name: "Reports Hub", href: "/reports", icon: BarChart3, description: "Launchpad for all reports and exports" },
+      { name: "Overhead Analysis", href: "/overhead-analysis", icon: TrendingDown, description: "Non-project labor utilization and margin", requiresManager: true },
       { name: "Document Center", href: "/document-center", icon: FolderSearch, description: "Central document repository" },
-      { name: "Messages", href: "/messages", icon: Send, description: "Internal messaging" },
     ],
   },
 ];
@@ -370,7 +365,7 @@ export function MegaMenu({ menuBackground, menuTextColor }: MegaMenuProps) {
           <NavigationMenuTrigger
             className={cn(
               "bg-transparent text-header-foreground hover:bg-black/10 dark:hover:bg-white/10 hover:text-header-foreground data-[state=open]:bg-black/10 dark:data-[state=open]:bg-white/10",
-              ["/time-tracking", "/project-assignments", "/staffing", "/vendor-documents", "/document-center", "/messages"].some(
+              ["/reports", "/overhead-analysis", "/document-center"].some(
                 (p) => location.pathname.startsWith(p)
               ) && "bg-black/10 dark:bg-white/10"
             )}

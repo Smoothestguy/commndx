@@ -516,7 +516,7 @@ export function TaskOrderWizard({
   };
 
   const stepLabels = ["Basics", "Schedule & Site", "Positions"];
-  const projectLocked = isEdit; // don't allow moving between projects on edit
+  const projectLocked = isEdit || (!isEdit && !!defaultProjectId); // lock in edit, or when launched from a project context
 
   const saving =
     createTaskOrder.isPending ||

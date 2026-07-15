@@ -36,6 +36,8 @@ import {
   ScrollText,
   FolderSearch,
   Send,
+  BarChart3,
+  TrendingDown,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import logo from "@/assets/logo.png";
@@ -83,6 +85,12 @@ const vendorsNavigation = [
   { name: "Submissions", href: "/admin/contractor-submissions", icon: FolderSearch, requiresAdmin: true },
 ];
 
+const reportsNavigation = [
+  { name: "Reports Hub", href: "/reports", icon: BarChart3 },
+  { name: "Overhead Analysis", href: "/overhead-analysis", icon: TrendingDown, requiresManager: true },
+  { name: "Document Center", href: "/document-center", icon: FolderSearch },
+];
+
 const setupNavigation = [
   { name: "User Management", href: "/user-management", icon: Shield, requiresAdmin: true },
   { name: "Permissions", href: "/permissions", icon: KeyRound, requiresAdmin: true },
@@ -101,6 +109,7 @@ export function MobileDrawer({ open, onClose }: MobileDrawerProps) {
   const [recruitingOpen, setRecruitingOpen] = useState(false);
   const [workforceOpen, setWorkforceOpen] = useState(false);
   const [vendorsOpen, setVendorsOpen] = useState(false);
+  const [reportsOpen, setReportsOpen] = useState(false);
   const [setupOpen, setSetupOpen] = useState(false);
 
   const handleNavigate = () => {
@@ -217,6 +226,21 @@ export function MobileDrawer({ open, onClose }: MobileDrawerProps) {
                 </CollapsibleTrigger>
                 <CollapsibleContent className="mt-1 space-y-1">
                   {vendorsNavigation.map((item) => (
+                    <NavLink key={item.href} item={item} />
+                  ))}
+                </CollapsibleContent>
+              </Collapsible>
+            </div>
+
+            {/* Reports */}
+            <div className="mt-2 px-2">
+              <Collapsible open={reportsOpen} onOpenChange={setReportsOpen}>
+                <CollapsibleTrigger className="flex w-full items-center justify-between rounded-md px-3 py-2 text-sm font-medium text-muted-foreground hover:bg-muted">
+                  <span>Reports</span>
+                  <ChevronDown className={cn("h-4 w-4 transition-transform", reportsOpen && "rotate-180")} />
+                </CollapsibleTrigger>
+                <CollapsibleContent className="mt-1 space-y-1">
+                  {reportsNavigation.map((item) => (
                     <NavLink key={item.href} item={item} />
                   ))}
                 </CollapsibleContent>

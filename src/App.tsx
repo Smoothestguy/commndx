@@ -65,6 +65,7 @@ import InvoiceDetail from "./pages/InvoiceDetail";
 import EditInvoice from "./pages/EditInvoice";
 import TimeTracking from "./pages/TimeTracking";
 import OverheadAnalysis from "./pages/OverheadAnalysis";
+import Reports from "./pages/Reports";
 import TeamTimesheet from "./pages/TeamTimesheet";
 import Reimbursements from "./pages/Reimbursements";
 import ProjectAssignments from "./pages/ProjectAssignments";
@@ -493,6 +494,7 @@ const App = () => {
                       />
                       <Route path="/time-tracking" element={<TimeTracking />} />
                       <Route path="/overhead-analysis" element={<OverheadAnalysis />} />
+                      <Route path="/reports" element={<Reports />} />
                       <Route
                         path="/team-timesheet"
                         element={<TeamTimesheet />}

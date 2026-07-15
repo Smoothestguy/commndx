@@ -13,7 +13,9 @@ import {
   ClipboardList,
   MessageSquare,
   ArrowUpDown,
+  Plus,
 } from "lucide-react";
+import { TaskOrderWizard } from "@/components/staffing/TaskOrderWizard";
 import { cn } from "@/lib/utils";
 import {
   Collapsible,
@@ -120,6 +122,7 @@ export function ProjectApplicantsSection({
   const [pendingApprovalApp, setPendingApprovalApp] =
     useState<Application | null>(null);
   const [isAssignDialogOpen, setIsAssignDialogOpen] = useState(false);
+  const [isTaskOrderWizardOpen, setIsTaskOrderWizardOpen] = useState(false);
   const [newlyCreatedPersonnelId, setNewlyCreatedPersonnelId] = useState<
     string | null
   >(null);
@@ -583,31 +586,46 @@ export function ProjectApplicantsSection({
     <>
       <Collapsible open={isOpen} onOpenChange={setIsOpen}>
         <Card>
-          <CollapsibleTrigger asChild>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-4 cursor-pointer hover:bg-accent/50 transition-colors rounded-t-lg">
-              <div className="space-y-1">
-                <CardTitle className="flex items-center gap-2 text-lg">
-                  <ClipboardList className="h-5 w-5 text-primary" />
-                  Project Applicants
-                  {totalApplicants > 0 && (
-                    <Badge variant="secondary" className="ml-1">
-                      {totalApplicants}
-                    </Badge>
-                  )}
-                  <ChevronDown
-                    className={cn(
-                      "h-4 w-4 text-muted-foreground transition-transform duration-200",
-                      isOpen && "rotate-180"
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-4">
+            <CollapsibleTrigger asChild>
+              <button
+                type="button"
+                className="flex-1 text-left cursor-pointer hover:opacity-80 transition-opacity"
+              >
+                <div className="space-y-1">
+                  <CardTitle className="flex items-center gap-2 text-lg">
+                    <ClipboardList className="h-5 w-5 text-primary" />
+                    Project Applicants
+                    {totalApplicants > 0 && (
+                      <Badge variant="secondary" className="ml-1">
+                        {totalApplicants}
+                      </Badge>
                     )}
-                  />
-                </CardTitle>
-                <CardDescription>
-                  {pendingApplications.length} pending •{" "}
-                  {approvedApplications.length} approved
-                </CardDescription>
-              </div>
-            </CardHeader>
-          </CollapsibleTrigger>
+                    <ChevronDown
+                      className={cn(
+                        "h-4 w-4 text-muted-foreground transition-transform duration-200",
+                        isOpen && "rotate-180"
+                      )}
+                    />
+                  </CardTitle>
+                  <CardDescription>
+                    {pendingApplications.length} pending •{" "}
+                    {approvedApplications.length} approved
+                  </CardDescription>
+                </div>
+              </button>
+            </CollapsibleTrigger>
+            <Button
+              size="sm"
+              onClick={(e) => {
+                e.stopPropagation();
+                setIsTaskOrderWizardOpen(true);
+              }}
+            >
+              <Plus className="h-4 w-4 mr-1" />
+              New Task Order
+            </Button>
+          </CardHeader>
           <CollapsibleContent>
             <CardContent>
               {totalApplicants === 0 ? (
@@ -735,6 +753,14 @@ export function ProjectApplicantsSection({
         onOpenChange={setIsAssignDialogOpen}
         defaultProjectId={projectId}
         onAssignmentChange={handleAssignmentChange}
+      />
+
+      {/* Task Order Wizard (project-scoped) */}
+      <TaskOrderWizard
+        open={isTaskOrderWizardOpen}
+        onOpenChange={setIsTaskOrderWizardOpen}
+        mode="create"
+        defaultProjectId={projectId}
       />
     </>
   );
