@@ -121,9 +121,16 @@ export function PostingEntryCard({
                 {application.applicants?.email}
               </p>
             </div>
-            <Badge className={`shrink-0 ${statusColors[application.status]}`}>
-              {application.status.charAt(0).toUpperCase() + application.status.slice(1)}
-            </Badge>
+            <div className="flex flex-col items-end gap-1 shrink-0">
+              <Badge className={statusColors[application.status]}>
+                {application.status.charAt(0).toUpperCase() + application.status.slice(1)}
+              </Badge>
+              {typeof answers?.position_applying_for === "string" && answers.position_applying_for && (
+                <Badge variant="outline" className="text-xs max-w-[160px] truncate">
+                  {answers.position_applying_for as string}
+                </Badge>
+              )}
+            </div>
           </div>
 
           {/* Phone & Date */}
