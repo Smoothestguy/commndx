@@ -494,6 +494,7 @@ const App = () => {
                       />
                       <Route path="/time-tracking" element={<TimeTracking />} />
                       <Route path="/overhead-analysis" element={<OverheadAnalysis />} />
+                      <Route path="/reports" element={<Reports />} />
                       <Route
                         path="/team-timesheet"
                         element={<TeamTimesheet />}
