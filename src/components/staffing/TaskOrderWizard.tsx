@@ -661,15 +661,18 @@ export function TaskOrderWizard({
                       <SelectItem value="none">
                         No custom form (basic fields only)
                       </SelectItem>
-                      {formTemplates
-                        ?.filter((t) => t.is_active)
-                        .map((t) => (
-                          <SelectItem key={t.id} value={t.id}>
-                            {t.name} ({t.fields.length} fields)
-                          </SelectItem>
-                        ))}
+                      {sortedTemplates.map((t) => (
+                        <SelectItem key={t.id} value={t.id}>
+                          {t.name} ({t.fields.length} fields)
+                        </SelectItem>
+                      ))}
                     </SelectContent>
                   </Select>
+                  {selectedTemplate?.description && (
+                    <p className="text-xs text-muted-foreground mt-1">
+                      {selectedTemplate.description}
+                    </p>
+                  )}
                 </div>
               )}
             </div>
