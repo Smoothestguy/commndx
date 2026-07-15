@@ -269,40 +269,40 @@ export function MegaMenu({ menuBackground, menuTextColor }: MegaMenuProps) {
           </NavigationMenuLink>
         </NavigationMenuItem>
 
-        {/* Transactions */}
+        {/* Sales */}
         <NavigationMenuItem>
           <NavigationMenuTrigger
             className={cn(
               "bg-transparent text-header-foreground hover:bg-black/10 dark:hover:bg-white/10 hover:text-header-foreground data-[state=open]:bg-black/10 dark:data-[state=open]:bg-white/10",
-              ["/estimates", "/invoices", "/purchase-orders", "/vendor-bills", "/change-orders"].some(
+              ["/customers", "/estimates", "/invoices", "/products"].some(
                 (p) => location.pathname.startsWith(p)
               ) && "bg-black/10 dark:bg-white/10"
             )}
           >
-            Transactions
+            Sales
           </NavigationMenuTrigger>
           <NavigationMenuContent>
             <div style={menuContentStyle} className={cn(!menuBackground && "bg-popover")}>
-              <MegaMenuSection sections={transactionsMenu} isOpen menuTextColor={menuTextColor} />
+              <MegaMenuSection sections={salesMenu} isOpen menuTextColor={menuTextColor} />
             </div>
           </NavigationMenuContent>
         </NavigationMenuItem>
 
-        {/* Lists */}
+        {/* Operations */}
         <NavigationMenuItem>
           <NavigationMenuTrigger
             className={cn(
               "bg-transparent text-header-foreground hover:bg-black/10 dark:hover:bg-white/10 hover:text-header-foreground data-[state=open]:bg-black/10 dark:data-[state=open]:bg-white/10",
-              ["/customers", "/vendors", "/personnel", "/products", "/projects"].some(
+              ["/projects", "/project-assignments", "/time-tracking", "/staffing/map"].some(
                 (p) => location.pathname.startsWith(p)
               ) && "bg-black/10 dark:bg-white/10"
             )}
           >
-            Lists
+            Operations
           </NavigationMenuTrigger>
           <NavigationMenuContent>
             <div style={menuContentStyle} className={cn(!menuBackground && "bg-popover")}>
-              <MegaMenuSection sections={listsMenu} isOpen menuTextColor={menuTextColor} />
+              <MegaMenuSection sections={operationsMenu} isOpen menuTextColor={menuTextColor} />
             </div>
           </NavigationMenuContent>
         </NavigationMenuItem>
