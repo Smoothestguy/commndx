@@ -759,6 +759,15 @@ export default function StaffingApplications() {
         />
       )}
 
+      {/* Invite Past Workers Dialog */}
+      {invitePastPosting && (
+        <InvitePastWorkersDialog
+          open={!!invitePastPosting}
+          onOpenChange={(open) => !open && setInvitePastPosting(null)}
+          posting={invitePastPosting}
+        />
+      )}
+
       {/* Edit Job Posting Dialog */}
       <Dialog open={showEditPostingDialog} onOpenChange={setShowEditPostingDialog}>
         <DialogContent>
