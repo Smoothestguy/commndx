@@ -331,6 +331,15 @@ export function PostingEntriesTable({
                     <TableCell className="text-sm text-muted-foreground">
                       {app.applicants?.phone || "—"}
                     </TableCell>
+                    <TableCell>
+                      {typeof answers?.position_applying_for === "string" && answers.position_applying_for ? (
+                        <Badge variant="outline" className="text-xs">
+                          {answers.position_applying_for as string}
+                        </Badge>
+                      ) : (
+                        <span className="text-muted-foreground text-xs">—</span>
+                      )}
+                    </TableCell>
                     {limitedDisplayFields.map((field) => (
                       <TableCell key={field.id}>
                         {formatFieldValue(answers?.[field.id], field)}
