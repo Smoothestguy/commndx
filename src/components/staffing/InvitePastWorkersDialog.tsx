@@ -219,12 +219,21 @@ export function InvitePastWorkersDialog({ open, onOpenChange, posting }: Props) 
     return `Fairfield Response Group: We're hiring for ${taskTitle}${payBit}. You've worked with us before — applying takes 2 minutes: {link} Reply STOP to opt out.`;
   };
 
+  const resolvedMessage = useMemo(() => {
+    const resolved = renderMergeTags(messageTemplate, {
+      project: project ?? null,
+      taskOrder: taskOrder ?? null,
+      positions,
+    });
+    return resolved;
+  }, [messageTemplate, project, taskOrder, positions]);
+
   const send = async () => {
     if (selected.size === 0) return;
     setSending(true); setProgress(0); setResult(null);
     try {
       const chosen = filtered.filter(c => selected.has(c.key));
-      const message = buildMessage();
+      const message = resolvedMessage;
 
       // Send in small batches sequentially for progress
       const batchSize = 10;
