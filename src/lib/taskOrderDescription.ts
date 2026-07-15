@@ -30,24 +30,15 @@ export interface BuildDescriptionInput {
 export function buildTaskOrderDescription(i: BuildDescriptionInput): string {
   const parts: string[] = [];
   const loc = i.locationAddress.trim();
-  parts.push(`${i.title.trim() || "Task Order"}${loc ? ` in ${loc}` : ""}.`);
+  // Emit a merge tag rather than the literal address so the rendered
+  // description stays in sync when the project location changes.
+  parts.push(`${i.title.trim() || "Task Order"}${loc ? ` in {{location}}` : ""}.`);
 
   const sched: string[] = [];
   if (i.startAt) {
-    try {
-      const d = new Date(i.startAt);
-      if (!isNaN(d.getTime())) {
-        sched.push(
-          `Starts ${d.toLocaleDateString(undefined, {
-            month: "long",
-            day: "numeric",
-            year: "numeric",
-          })}`
-        );
-      }
-    } catch {
-      /* ignore */
-    }
+    // Emit a merge tag rather than a formatted literal so the rendered
+    // description stays in sync when the project/task-order start date changes.
+    sched.push(`Starts {{start_date}}`);
   }
   if (i.approxDuration.trim()) sched.push(`runs approximately ${i.approxDuration.trim()}`);
   const dpw = i.daysPerWeek ? parseInt(i.daysPerWeek, 10) : null;
