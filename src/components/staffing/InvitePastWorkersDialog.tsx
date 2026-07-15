@@ -343,9 +343,22 @@ export function InvitePastWorkersDialog({ open, onOpenChange, posting }: Props) 
             )}
           </ScrollArea>
 
-          <div>
-            <Label className="text-xs text-muted-foreground">Message preview</Label>
-            <div className="text-xs bg-muted/40 rounded p-2 whitespace-pre-wrap">{previewMsg}</div>
+          <div className="space-y-2">
+            <div className="flex items-center justify-between">
+              <Label className="text-xs">Message</Label>
+              <span className="text-[11px] text-muted-foreground">
+                Available: {AVAILABLE_MERGE_TAGS.map((t) => `{{${t}}}`).join(" ")} {"{link}"}
+              </span>
+            </div>
+            <Textarea
+              rows={3}
+              value={messageTemplate}
+              onChange={(e) => setMessageTemplate(e.target.value)}
+            />
+            <div className="text-xs bg-muted/40 rounded p-2 whitespace-pre-wrap">
+              <span className="text-muted-foreground">Preview: </span>
+              {previewMsg}
+            </div>
           </div>
 
           {sending && (
