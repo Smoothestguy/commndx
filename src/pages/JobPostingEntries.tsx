@@ -41,6 +41,7 @@ export default function JobPostingEntries() {
   const { postingId } = useParams<{ postingId: string }>();
   const navigate = useNavigate();
   const [statusFilter, setStatusFilter] = useState<string>("active");
+  const [positionFilter, setPositionFilter] = useState<string>("all");
   const [selectedApp, setSelectedApp] = useState<Application | null>(null);
   const [showDetailDialog, setShowDetailDialog] = useState(false);
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
