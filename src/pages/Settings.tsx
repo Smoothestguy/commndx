@@ -56,6 +56,9 @@ export default function Settings() {
   const { canView: hasUserMgmtPermission } =
     usePermissionCheck("user_management");
   const { data: qbConfig } = useQuickBooksConfig();
+  const { data: companySettings } = useCompanySettings();
+  const { data: formTemplates } = useApplicationFormTemplates();
+  const updateCompany = useUpdateCompanySettings();
   const { hasAccess: hasSessionAccess } = useSessionAccess();
   const {
     showSessionEarnings,
