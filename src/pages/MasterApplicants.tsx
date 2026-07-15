@@ -151,7 +151,7 @@ export default function MasterApplicants() {
       <div className="flex items-center gap-3">
         <Users className="h-6 w-6 text-primary" />
         <div>
-          <h1 className="text-2xl font-semibold tracking-tight">Master Applicants</h1>
+          <h1 className="text-2xl font-semibold tracking-tight">Applicant Pool</h1>
           <p className="text-sm text-muted-foreground">Everyone who's ever applied. Bulk-invite them to new job postings in one tap.</p>
         </div>
       </div>

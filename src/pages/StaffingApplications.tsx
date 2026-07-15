@@ -18,6 +18,7 @@ import {
   Send,
 } from "lucide-react";
 import { InviteNearbyApplicantsDialog } from "@/components/staffing/InviteNearbyApplicantsDialog";
+import { InvitePastWorkersDialog } from "@/components/staffing/InvitePastWorkersDialog";
 import { QuickApplyStats } from "@/components/staffing/QuickApplyStats";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -137,6 +138,7 @@ export default function StaffingApplications() {
 
   // Invite nearby applicants dialog state
   const [invitePosting, setInvitePosting] = useState<any | null>(null);
+  const [invitePastPosting, setInvitePastPosting] = useState<any | null>(null);
   
   const { data: projects } = useProjects();
   const { data: applications, isLoading } = useApplications({
@@ -344,7 +346,7 @@ export default function StaffingApplications() {
     <div className="container mx-auto py-6 px-4 space-y-6">
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-bold text-foreground">Staffing Applications</h1>
+          <h1 className="text-2xl font-bold text-foreground">Job Postings</h1>
           <p className="text-muted-foreground">Review and manage job applications</p>
         </div>
         <div className="flex flex-wrap gap-2">
@@ -455,6 +457,17 @@ export default function StaffingApplications() {
                         <Send className="h-4 w-4 sm:mr-1" />
                         <span className="hidden sm:inline">Invite Nearby</span>
                         <span className="sm:hidden ml-1">Invite</span>
+                      </Button>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        className="h-9 px-2 text-xs sm:px-3 sm:text-sm"
+                        onClick={() => setInvitePastPosting(posting)}
+                        title="Invite past workers (applicants + personnel)"
+                      >
+                        <Send className="h-4 w-4 sm:mr-1" />
+                        <span className="hidden sm:inline">Invite Past Workers</span>
+                        <span className="sm:hidden ml-1">Past</span>
                       </Button>
                       <Button
                         variant="outline"
@@ -743,6 +756,15 @@ export default function StaffingApplications() {
           open={!!invitePosting}
           onOpenChange={(open) => !open && setInvitePosting(null)}
           posting={invitePosting}
+        />
+      )}
+
+      {/* Invite Past Workers Dialog */}
+      {invitePastPosting && (
+        <InvitePastWorkersDialog
+          open={!!invitePastPosting}
+          onOpenChange={(open) => !open && setInvitePastPosting(null)}
+          posting={invitePastPosting}
         />
       )}
 

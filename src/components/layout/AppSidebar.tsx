@@ -44,70 +44,76 @@ import {
   ClipboardCheck,
   IdCard,
   Link2,
-  Send,
   KeyRound,
   Eye,
   ScrollText,
-  ClipboardList,
   FolderSearch,
   History,
   MessageCircle,
   Trash2,
+  Copy as CopyIcon,
 } from "lucide-react";
 import logo from "@/assets/logo.png";
 import logoDark from "@/assets/logo-dark.png";
 
-const navigation = [
-  { name: "Dashboard", href: "/", icon: LayoutDashboard },
-  { name: "Products", href: "/products", icon: Package },
+type NavItem = {
+  name: string;
+  href: string;
+  icon: any;
+  requiresManager?: boolean;
+};
+
+const salesNav: NavItem[] = [
   { name: "Customers", href: "/customers", icon: Users },
-  { name: "Projects", href: "/projects", icon: FolderKanban },
-  { name: "Personnel", href: "/personnel", icon: Users },
   { name: "Estimates", href: "/estimates", icon: FileText },
-  { name: "Purchase Orders", href: "/purchase-orders", icon: ShoppingCart },
   { name: "Invoices", href: "/invoices", icon: Receipt },
-  { name: "Messages", href: "/messages", icon: MessageCircle },
-  { name: "QuickBooks", href: "/settings/quickbooks", icon: Link2 },
+  { name: "Products & Services", href: "/products", icon: Package },
 ];
 
-const vendorsNavigation = [
-  { name: "All Vendors", href: "/vendors", icon: Truck },
-  { name: "Vendor Bills", href: "/vendor-bills", icon: Receipt },
-  { name: "Vendor Documents", href: "/vendor-documents", icon: FileText },
-  {
-    name: "Contractor Submissions",
-    href: "/admin/contractor-submissions",
-    icon: ClipboardCheck,
-  },
-];
-
-const staffingNavigation = [
+const operationsNav: NavItem[] = [
+  { name: "Projects", href: "/projects", icon: FolderKanban },
+  { name: "Crew Assignments", href: "/project-assignments", icon: UserCog },
   { name: "Time Tracking", href: "/time-tracking", icon: Clock },
-  {
-    name: "Project Assignments",
-    href: "/project-assignments",
-    icon: UserCog,
-    requiresManager: true,
-  },
-  {
-    name: "Applications",
-    href: "/staffing/applications",
-    icon: ClipboardList,
-    requiresManager: true,
-  },
-  {
-    name: "Master Applicants",
-    href: "/staffing/applicants",
-    icon: ClipboardList,
-    requiresManager: true,
-  },
-  {
-    name: "Badge Templates",
-    href: "/badge-templates",
-    icon: IdCard,
-    requiresManager: true,
-  },
 ];
+
+const recruitingNav: NavItem[] = [
+  { name: "Job Postings", href: "/staffing/applications", icon: Briefcase, requiresManager: true },
+  { name: "Applicant Pool", href: "/staffing/applicants", icon: Users, requiresManager: true },
+  { name: "Duplicates", href: "/staffing/duplicates", icon: CopyIcon, requiresManager: true },
+  { name: "Form Templates", href: "/staffing/form-templates", icon: FileText, requiresManager: true },
+  { name: "Badges", href: "/badge-templates", icon: IdCard, requiresManager: true },
+];
+
+const workforceNav: NavItem[] = [
+  { name: "Personnel", href: "/personnel", icon: Users },
+  { name: "Messages", href: "/messages", icon: MessageCircle },
+];
+
+const vendorsNav: NavItem[] = [
+  { name: "Vendors", href: "/vendors", icon: Truck },
+  { name: "Purchase Orders", href: "/purchase-orders", icon: ShoppingCart },
+  { name: "Bills", href: "/vendor-bills", icon: Receipt },
+  { name: "Documents", href: "/vendor-documents", icon: FileText },
+  { name: "Submissions", href: "/admin/contractor-submissions", icon: ClipboardCheck },
+];
+
+type GroupKey = "sales" | "operations" | "recruiting" | "workforce" | "vendors" | "administration";
+
+const readGroupOpen = (key: GroupKey, fallback: boolean) => {
+  if (typeof window === "undefined") return fallback;
+  try {
+    const v = window.localStorage.getItem(`sidebar-group-${key}`);
+    if (v === "true") return true;
+    if (v === "false") return false;
+  } catch { /* ignore */ }
+  return fallback;
+};
+
+const writeGroupOpen = (key: GroupKey, value: boolean) => {
+  try {
+    window.localStorage.setItem(`sidebar-group-${key}`, String(value));
+  } catch { /* ignore */ }
+};
 
 export function AppSidebar() {
   const location = useLocation();
@@ -115,35 +121,36 @@ export function AppSidebar() {
   const { isAdmin, isManager, isAccounting } = useUserRole();
   const { state } = useSidebar();
   const isCollapsed = state === "collapsed";
-  const { isSpreadsheetMode, is2K1Mode, isCompactMode } = useUIDensity();
+  const { isSpreadsheetMode, is2K1Mode } = useUIDensity();
   const { resolvedTheme } = useTheme();
 
-  // Permission checks for admin modules
   const userMgmtPerms = usePermissionCheck('user_management');
   const permsMgmtPerms = usePermissionCheck('permissions_management');
   const auditLogsPerms = usePermissionCheck('audit_logs');
   const documentCenterPerms = usePermissionCheck('document_center');
 
-  // Collapsible state for sections
-  const [vendorsOpen, setVendorsOpen] = useState(false);
-  const [staffingOpen, setStaffingOpen] = useState(false);
-  const [accountOpen, setAccountOpen] = useState(false);
-  
-  // Compact mode class helpers
-  // Spreadsheet: Ultra compact (h-7, text-xs, py-1)
-  // 2K1: Condensed (~30% tighter than normal, h-8, text-[13px])
+  const [salesOpen, setSalesOpen] = useState(() => readGroupOpen("sales", true));
+  const [operationsOpen, setOperationsOpen] = useState(() => readGroupOpen("operations", true));
+  const [recruitingOpen, setRecruitingOpen] = useState(() => readGroupOpen("recruiting", false));
+  const [workforceOpen, setWorkforceOpen] = useState(() => readGroupOpen("workforce", false));
+  const [vendorsOpen, setVendorsOpen] = useState(() => readGroupOpen("vendors", false));
+  const [adminOpen, setAdminOpen] = useState(() => readGroupOpen("administration", false));
+
+  const setGroup = (key: GroupKey, setter: (v: boolean) => void) => (v: boolean) => {
+    setter(v);
+    writeGroupOpen(key, v);
+  };
+
   const getMenuButtonClass = () => {
     if (isSpreadsheetMode) return "h-7 text-xs py-1";
     if (is2K1Mode) return "h-8 text-[13px] py-1";
     return "";
   };
-  
   const getIconClass = () => {
     if (isSpreadsheetMode) return "h-3.5 w-3.5";
     if (is2K1Mode) return "h-3.5 w-3.5";
     return "h-4 w-4";
   };
-  
   const getGroupLabelClass = () => {
     if (isSpreadsheetMode) return "text-[10px] py-1";
     if (is2K1Mode) return "text-[11px] py-1";
@@ -154,31 +161,81 @@ export function AppSidebar() {
   const iconClass = getIconClass();
   const groupLabelClass = getGroupLabelClass();
 
-  // Auto-expand section if current route is within it
+  // Auto-expand group containing active route
   useEffect(() => {
-    const vendorsRoutes = vendorsNavigation.map((item) => item.href);
-    const staffingRoutes = staffingNavigation.map((item) => item.href);
-    const accountRoutes = ["/user-management", "/settings", "/permissions", "/admin/preview", "/document-center"];
-
-    if (
-      vendorsRoutes.some(
-        (r) => location.pathname === r || location.pathname.startsWith(r)
-      )
-    )
-      setVendorsOpen(true);
-    if (staffingRoutes.some((r) => location.pathname === r) || location.pathname.startsWith("/staffing/"))
-      setStaffingOpen(true);
-    if (
-      accountRoutes.some(
-        (r) => location.pathname === r || location.pathname.startsWith(r)
-      )
-    )
-      setAccountOpen(true);
+    const match = (items: NavItem[]) =>
+      items.some(i => location.pathname === i.href || location.pathname.startsWith(i.href + "/"));
+    if (match(salesNav)) { setSalesOpen(true); writeGroupOpen("sales", true); }
+    if (match(operationsNav)) { setOperationsOpen(true); writeGroupOpen("operations", true); }
+    if (match(recruitingNav) || location.pathname.startsWith("/staffing/")) {
+      setRecruitingOpen(true); writeGroupOpen("recruiting", true);
+    }
+    if (match(workforceNav)) { setWorkforceOpen(true); writeGroupOpen("workforce", true); }
+    if (match(vendorsNav)) { setVendorsOpen(true); writeGroupOpen("vendors", true); }
+    const adminRoutes = ["/user-management", "/settings", "/permissions", "/admin/preview", "/admin/audit-logs", "/admin/trash", "/document-center", "/activity-history"];
+    if (adminRoutes.some(r => location.pathname === r || location.pathname.startsWith(r))) {
+      setAdminOpen(true); writeGroupOpen("administration", true);
+    }
   }, [location.pathname]);
+
+  const renderGroup = (
+    label: string,
+    open: boolean,
+    setOpen: (v: boolean) => void,
+    items: NavItem[]
+  ) => {
+    const visible = items.filter(i => !i.requiresManager || isAdmin || isManager);
+    if (visible.length === 0) return null;
+    return (
+      <SidebarGroup>
+        <Collapsible open={open} onOpenChange={setOpen}>
+          <SidebarGroupLabel asChild className={groupLabelClass}>
+            <CollapsibleTrigger className="flex w-full items-center justify-between">
+              <span>{label}</span>
+              <ChevronDown
+                className={cn(
+                  "transition-transform duration-200",
+                  isSpreadsheetMode ? "h-3 w-3" : "h-4 w-4",
+                  open && "rotate-180"
+                )}
+              />
+            </CollapsibleTrigger>
+          </SidebarGroupLabel>
+          <CollapsibleContent>
+            <SidebarGroupContent>
+              <SidebarMenu>
+                {visible.map((item) => {
+                  const isActive =
+                    location.pathname === item.href ||
+                    location.pathname.startsWith(item.href + "/");
+                  return (
+                    <SidebarMenuItem key={item.name}>
+                      <SidebarMenuButton
+                        asChild
+                        isActive={isActive}
+                        tooltip={item.name}
+                        className={cn(isActive && "bg-primary/15 text-primary", menuButtonClass)}
+                      >
+                        <Link to={item.href}>
+                          <item.icon className={iconClass} />
+                          <span>{item.name}</span>
+                        </Link>
+                      </SidebarMenuButton>
+                    </SidebarMenuItem>
+                  );
+                })}
+              </SidebarMenu>
+            </SidebarGroupContent>
+          </CollapsibleContent>
+        </Collapsible>
+      </SidebarGroup>
+    );
+  };
+
+  const dashActive = location.pathname === "/";
 
   return (
     <Sidebar collapsible="icon" className="border-r border-sidebar-border">
-      {/* Header with Logo */}
       <SidebarHeader className="border-b border-sidebar-border">
         <div
           className={cn(
@@ -195,136 +252,46 @@ export function AppSidebar() {
       </SidebarHeader>
 
       <SidebarContent>
-        {/* Main Navigation */}
+        {/* Dashboard - ungrouped */}
         <SidebarGroup>
           <SidebarGroupContent>
             <SidebarMenu>
-              {navigation.map((item) => {
-                const isActive = location.pathname === item.href;
-                return (
-                  <SidebarMenuItem key={item.name}>
-                    <SidebarMenuButton
-                      asChild
-                      isActive={isActive}
-                      tooltip={item.name}
-                      className={cn(
-                        isActive && "bg-primary/15 text-primary",
-                        menuButtonClass
-                      )}
-                    >
-                      <Link to={item.href}>
-                        <item.icon className={iconClass} />
-                        <span>{item.name}</span>
-                      </Link>
-                    </SidebarMenuButton>
-                  </SidebarMenuItem>
-                );
-              })}
+              <SidebarMenuItem>
+                <SidebarMenuButton
+                  asChild
+                  isActive={dashActive}
+                  tooltip="Dashboard"
+                  className={cn(dashActive && "bg-primary/15 text-primary", menuButtonClass)}
+                >
+                  <Link to="/">
+                    <LayoutDashboard className={iconClass} />
+                    <span>Dashboard</span>
+                  </Link>
+                </SidebarMenuButton>
+              </SidebarMenuItem>
             </SidebarMenu>
           </SidebarGroupContent>
         </SidebarGroup>
 
-        {/* Vendors Section */}
-        <SidebarGroup>
-          <Collapsible open={vendorsOpen} onOpenChange={setVendorsOpen}>
-            <SidebarGroupLabel asChild className={groupLabelClass}>
-              <CollapsibleTrigger className="flex w-full items-center justify-between">
-                <span>Vendors</span>
-                <ChevronDown
-                  className={cn(
-                    "transition-transform duration-200",
-                    isSpreadsheetMode ? "h-3 w-3" : "h-4 w-4",
-                    vendorsOpen && "rotate-180"
-                  )}
-                />
-              </CollapsibleTrigger>
-            </SidebarGroupLabel>
-            <CollapsibleContent>
-              <SidebarGroupContent>
-                <SidebarMenu>
-                  {vendorsNavigation.map((item) => {
-                    const isActive =
-                      location.pathname === item.href ||
-                      location.pathname.startsWith(item.href + "/");
-                    return (
-                      <SidebarMenuItem key={item.name}>
-                        <SidebarMenuButton
-                          asChild
-                          isActive={isActive}
-                          tooltip={item.name}
-                          className={menuButtonClass}
-                        >
-                          <Link to={item.href}>
-                            <item.icon className={iconClass} />
-                            <span>{item.name}</span>
-                          </Link>
-                        </SidebarMenuButton>
-                      </SidebarMenuItem>
-                    );
-                  })}
-                </SidebarMenu>
-              </SidebarGroupContent>
-            </CollapsibleContent>
-          </Collapsible>
-        </SidebarGroup>
-
-        {/* Staffing Section */}
-        <SidebarGroup>
-          <Collapsible open={staffingOpen} onOpenChange={setStaffingOpen}>
-            <SidebarGroupLabel asChild className={groupLabelClass}>
-              <CollapsibleTrigger className="flex w-full items-center justify-between">
-                <span>Staffing</span>
-                <ChevronDown
-                  className={cn(
-                    "transition-transform duration-200",
-                    isSpreadsheetMode ? "h-3 w-3" : "h-4 w-4",
-                    staffingOpen && "rotate-180"
-                  )}
-                />
-              </CollapsibleTrigger>
-            </SidebarGroupLabel>
-            <CollapsibleContent>
-              <SidebarGroupContent>
-                <SidebarMenu>
-                  {staffingNavigation.map((item) => {
-                    if (item.requiresManager && !isAdmin && !isManager)
-                      return null;
-                    const isActive = location.pathname === item.href;
-                    return (
-                      <SidebarMenuItem key={item.name}>
-                        <SidebarMenuButton
-                          asChild
-                          isActive={isActive}
-                          tooltip={item.name}
-                          className={menuButtonClass}
-                        >
-                          <Link to={item.href}>
-                            <item.icon className={iconClass} />
-                            <span>{item.name}</span>
-                          </Link>
-                        </SidebarMenuButton>
-                      </SidebarMenuItem>
-                    );
-                  })}
-                </SidebarMenu>
-              </SidebarGroupContent>
-            </CollapsibleContent>
-          </Collapsible>
-        </SidebarGroup>
+        {renderGroup("Sales", salesOpen, setGroup("sales", setSalesOpen), salesNav)}
+        {renderGroup("Operations", operationsOpen, setGroup("operations", setOperationsOpen), operationsNav)}
+        {renderGroup("Recruiting", recruitingOpen, setGroup("recruiting", setRecruitingOpen), recruitingNav)}
+        {renderGroup("Workforce", workforceOpen, setGroup("workforce", setWorkforceOpen), workforceNav)}
+        {renderGroup("Vendors & Purchasing", vendorsOpen, setGroup("vendors", setVendorsOpen), vendorsNav)}
       </SidebarContent>
 
-      {/* Footer with Account Section */}
+      {/* Footer: Administration */}
       <SidebarFooter className="border-t border-sidebar-border">
         <SidebarGroup>
-          <Collapsible open={accountOpen} onOpenChange={setAccountOpen}>
+          <Collapsible open={adminOpen} onOpenChange={setGroup("administration", setAdminOpen)}>
             <SidebarGroupLabel asChild className={groupLabelClass}>
               <CollapsibleTrigger className="flex w-full items-center justify-between">
-                <span>Account</span>
+                <span>Administration</span>
                 <ChevronDown
                   className={cn(
                     "transition-transform duration-200",
                     isSpreadsheetMode ? "h-3 w-3" : "h-4 w-4",
-                    accountOpen && "rotate-180"
+                    adminOpen && "rotate-180"
                   )}
                 />
               </CollapsibleTrigger>
@@ -332,7 +299,6 @@ export function AppSidebar() {
             <CollapsibleContent>
               <SidebarGroupContent>
                 <SidebarMenu>
-                  {/* User Management - show if admin OR has permission */}
                   {(isAdmin || userMgmtPerms.canView) && (
                     <SidebarMenuItem>
                       <SidebarMenuButton
@@ -348,8 +314,7 @@ export function AppSidebar() {
                       </SidebarMenuButton>
                     </SidebarMenuItem>
                   )}
-                  
-                  {/* Permissions Management - show if admin OR has permission */}
+
                   {(isAdmin || permsMgmtPerms.canView) && (
                     <SidebarMenuItem>
                       <SidebarMenuButton
@@ -365,8 +330,7 @@ export function AppSidebar() {
                       </SidebarMenuButton>
                     </SidebarMenuItem>
                   )}
-                  
-                  {/* Admin-only features (portal previews) */}
+
                   {isAdmin && (
                     <>
                       <SidebarMenuItem>
@@ -397,8 +361,7 @@ export function AppSidebar() {
                       </SidebarMenuItem>
                     </>
                   )}
-                  
-                  {/* Audit Logs - show if admin OR has permission */}
+
                   {(isAdmin || auditLogsPerms.canView) && (
                     <SidebarMenuItem>
                       <SidebarMenuButton
@@ -414,8 +377,7 @@ export function AppSidebar() {
                       </SidebarMenuButton>
                     </SidebarMenuItem>
                   )}
-                  
-                  {/* Trash - show if admin OR manager */}
+
                   {(isAdmin || isManager) && (
                     <SidebarMenuItem>
                       <SidebarMenuButton
@@ -431,8 +393,7 @@ export function AppSidebar() {
                       </SidebarMenuButton>
                     </SidebarMenuItem>
                   )}
-                  
-                  {/* Document Center - show if admin/manager/accounting OR has permission */}
+
                   {(isAdmin || isManager || isAccounting || documentCenterPerms.canView) && (
                     <SidebarMenuItem>
                       <SidebarMenuButton
@@ -448,7 +409,7 @@ export function AppSidebar() {
                       </SidebarMenuButton>
                     </SidebarMenuItem>
                   )}
-                  
+
                   <SidebarMenuItem>
                     <SidebarMenuButton
                       asChild
@@ -462,6 +423,21 @@ export function AppSidebar() {
                       </Link>
                     </SidebarMenuButton>
                   </SidebarMenuItem>
+
+                  <SidebarMenuItem>
+                    <SidebarMenuButton
+                      asChild
+                      isActive={location.pathname === "/settings/quickbooks"}
+                      tooltip="QuickBooks"
+                      className={menuButtonClass}
+                    >
+                      <Link to="/settings/quickbooks">
+                        <Link2 className={iconClass} />
+                        <span>QuickBooks</span>
+                      </Link>
+                    </SidebarMenuButton>
+                  </SidebarMenuItem>
+
                   <SidebarMenuItem>
                     <SidebarMenuButton
                       asChild
@@ -475,6 +451,7 @@ export function AppSidebar() {
                       </Link>
                     </SidebarMenuButton>
                   </SidebarMenuItem>
+
                   <SidebarMenuItem>
                     <SidebarMenuButton onClick={signOut} tooltip="Sign Out" className={menuButtonClass}>
                       <LogOut className={iconClass} />

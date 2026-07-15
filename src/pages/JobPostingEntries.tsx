@@ -1,6 +1,7 @@
 import { useState, useMemo } from "react";
 import { useParams, useNavigate } from "react-router-dom";
-import { ArrowLeft, Download, FileText, FileSpreadsheet, File, Code } from "lucide-react";
+import { ArrowLeft, Download, FileText, FileSpreadsheet, File, Code, Send } from "lucide-react";
+import { InvitePastWorkersDialog } from "@/components/staffing/InvitePastWorkersDialog";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -45,6 +46,7 @@ export default function JobPostingEntries() {
   const [selectedApp, setSelectedApp] = useState<Application | null>(null);
   const [showDetailDialog, setShowDetailDialog] = useState(false);
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+  const [showInvitePast, setShowInvitePast] = useState(false);
 
   const { data: jobPostings } = useJobPostings();
   const { data: formTemplates } = useApplicationFormTemplates();
@@ -199,8 +201,21 @@ export default function JobPostingEntries() {
               </DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>
+          <Button variant="outline" onClick={() => setShowInvitePast(true)} disabled={!currentPosting}>
+            <Send className="h-4 w-4 mr-2" />
+            Invite past workers
+          </Button>
         </div>
       </div>
+
+      {currentPosting && (
+        <InvitePastWorkersDialog
+          open={showInvitePast}
+          onOpenChange={setShowInvitePast}
+          posting={currentPosting}
+        />
+      )}
+
 
       {/* Stats + Filters Row */}
       <Card>
