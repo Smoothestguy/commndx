@@ -85,6 +85,9 @@ export function InvitePastWorkersDialog({ open, onOpenChange, posting }: Props) 
     if (!open) return;
     setSelected(new Set()); setSearch(""); setRadius("any"); setPersonnelOnly(false);
     setResult(null); setProgress(0);
+    setMessageTemplate(
+      `Fairfield Response Group: We're hiring for {{project_name}} — {{pay_rate}}. Applying takes 2 minutes: {link} Reply STOP to opt out.`
+    );
     (async () => {
       setLoading(true);
       try {
