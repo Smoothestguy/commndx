@@ -8701,6 +8701,18 @@ export type Database = {
         Returns: string
       }
       find_applicant_id_by_email: { Args: { _email: string }; Returns: string }
+      find_duplicate_applicant_groups: {
+        Args: never
+        Returns: {
+          applicant_ids: string[]
+          created_dates: string[]
+          emails: string[]
+          group_key: string
+          match_type: string
+          names: string[]
+          phones: string[]
+        }[]
+      }
       find_duplicate_customers: {
         Args: { p_customer_id: string }
         Returns: {
@@ -8819,6 +8831,10 @@ export type Database = {
           _session_id: string
         }
         Returns: undefined
+      }
+      merge_applicants: {
+        Args: { _keep_id: string; _merge_id: string }
+        Returns: Json
       }
       reset_vendor_bill_sequence_for_new_year: {
         Args: never
