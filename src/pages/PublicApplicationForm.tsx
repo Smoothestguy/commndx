@@ -563,11 +563,18 @@ export default function PublicApplicationForm() {
     setPhotoError(null);
     setSmsConsentError(null);
 
-    // Validate required profile photo
-    const requiresPhoto = coreFields.profilePicture && (formSettings.requireProfilePhoto !== false);
+    // Validate required profile photo (skipped in express mode)
+    const requiresPhoto = !isExpressMode && coreFields.profilePicture && (formSettings.requireProfilePhoto !== false);
     if (requiresPhoto && !data.photo_url) {
       setPhotoError("Profile photo is required");
       toast.error("Please upload a profile photo to submit your application");
+      return;
+    }
+
+    // Position select required when the posting has positions
+    const postingPositions = (posting as any).positions as { position_label: string }[] | undefined;
+    if (postingPositions && postingPositions.length > 0 && !positionApplyingFor) {
+      toast.error("Please select the position you're applying for");
       return;
     }
 
