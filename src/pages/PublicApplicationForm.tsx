@@ -1251,8 +1251,8 @@ export default function PublicApplicationForm() {
                   </Alert>
                 )}
                 
-                {/* Profile Picture - Core Field */}
-                {coreFields.profilePicture && (
+                {/* Profile Picture - Core Field (skipped in express mode) */}
+                {!isExpressMode && coreFields.profilePicture && (
                   <div className="space-y-2">
                     <FormFileUpload
                       value={form.watch("photo_url") || null}
