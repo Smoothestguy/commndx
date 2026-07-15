@@ -128,21 +128,14 @@ const vendorsMenu: NavSection[] = [
   },
 ];
 
-// Reports (unchanged)
+// Reports — only real report/analytics pages. Everything else lives on the Reports Hub.
 const reportsMenu: NavSection[] = [
   {
-    title: "Operations",
+    title: "Reports",
     items: [
-      { name: "Time Tracking", href: "/time-tracking", icon: Clock, description: "Track and manage time entries" },
-      { name: "Project Assignments", href: "/project-assignments", icon: UserCog, description: "Manage personnel assignments", requiresManager: true },
-    ],
-  },
-  {
-    title: "Documents",
-    items: [
-      { name: "Vendor Documents", href: "/vendor-documents", icon: FileText, description: "Vendor document management" },
+      { name: "Reports Hub", href: "/reports", icon: BarChart3, description: "Launchpad for all reports and exports" },
+      { name: "Overhead Analysis", href: "/overhead-analysis", icon: TrendingDown, description: "Non-project labor utilization and margin", requiresManager: true },
       { name: "Document Center", href: "/document-center", icon: FolderSearch, description: "Central document repository" },
-      { name: "Messages", href: "/messages", icon: Send, description: "Internal messaging" },
     ],
   },
 ];
