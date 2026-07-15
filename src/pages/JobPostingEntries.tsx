@@ -224,7 +224,22 @@ export default function JobPostingEntries() {
                 <p className="text-xs text-muted-foreground">Pending</p>
               </div>
             </div>
-            <div className="flex gap-2">
+            <div className="flex gap-2 flex-wrap">
+              {taskOrderPositions && taskOrderPositions.length > 0 && (
+                <Select value={positionFilter} onValueChange={setPositionFilter}>
+                  <SelectTrigger className="w-[180px]">
+                    <SelectValue placeholder="All Positions" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">All Positions</SelectItem>
+                    {taskOrderPositions.map((p) => (
+                      <SelectItem key={p.id} value={p.position_label}>
+                        {p.position_label}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              )}
               <Select value={statusFilter} onValueChange={setStatusFilter}>
                 <SelectTrigger className="w-[150px]">
                   <SelectValue placeholder="All Statuses" />
