@@ -603,9 +603,9 @@ const ProjectDetail = () => {
         <ProjectRateBracketsSection projectId={id!} />
       </div>
 
-      {/* Project Applicants */}
+      {/* Recruiting */}
       <div className="mb-8">
-        <ProjectApplicantsSection projectId={id!} />
+        <ProjectRecruitingSection projectId={id!} />
       </div>
 
       {/* Assigned Personnel */}
