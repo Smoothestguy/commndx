@@ -138,6 +138,7 @@ export default function StaffingApplications() {
 
   // Invite nearby applicants dialog state
   const [invitePosting, setInvitePosting] = useState<any | null>(null);
+  const [invitePastPosting, setInvitePastPosting] = useState<any | null>(null);
   
   const { data: projects } = useProjects();
   const { data: applications, isLoading } = useApplications({
