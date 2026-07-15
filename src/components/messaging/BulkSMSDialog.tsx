@@ -24,6 +24,7 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
 import { useSendBulkSMS } from "@/integrations/supabase/hooks/useBulkSMS";
+import { MessageTemplatePicker } from "./MessageTemplatePicker";
 
 interface Recipient {
   id: string;
