@@ -116,6 +116,29 @@ export function ApplicationDetailDialog({
   const updateApplication = useUpdateApplication();
   const [showRevokeConfirm, setShowRevokeConfirm] = useState(false);
   const [showRemoveFromPostingConfirm, setShowRemoveFromPostingConfirm] = useState(false);
+  const [isAlreadyOnboarded, setIsAlreadyOnboarded] = useState(false);
+
+  // Check if the linked applicant is already onboarded personnel
+  useEffect(() => {
+    let cancelled = false;
+    const applicantId = application?.applicant_id;
+    if (!open || !applicantId) {
+      setIsAlreadyOnboarded(false);
+      return;
+    }
+    supabase
+      .rpc("applicant_is_onboarded", { _applicant_id: applicantId })
+      .then(({ data, error }) => {
+        if (cancelled) return;
+        if (error) {
+          console.warn("[ApplicationDetailDialog] applicant_is_onboarded failed:", error);
+          setIsAlreadyOnboarded(false);
+        } else {
+          setIsAlreadyOnboarded(data === true);
+        }
+      });
+    return () => { cancelled = true; };
+  }, [open, application?.applicant_id]);
 
   // Build field label map from form template
   const fieldLabelMap = useMemo(() => {
