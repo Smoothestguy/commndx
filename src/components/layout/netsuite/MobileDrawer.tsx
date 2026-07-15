@@ -46,30 +46,41 @@ interface MobileDrawerProps {
 }
 
 const mainNavigation = [
-  { name: "Dashboard", href: "/", icon: LayoutDashboard },
-  { name: "Products", href: "/products", icon: Package },
-  { name: "Customers", href: "/customers", icon: Users },
-  { name: "Projects", href: "/projects", icon: FolderKanban },
-  { name: "Personnel", href: "/personnel", icon: Users },
+  { name: "Home", href: "/", icon: LayoutDashboard },
 ];
 
-const transactionsNavigation = [
+const salesNavigation = [
+  { name: "Customers", href: "/customers", icon: Users },
   { name: "Estimates", href: "/estimates", icon: FileText },
   { name: "Invoices", href: "/invoices", icon: Receipt },
-  { name: "Purchase Orders", href: "/purchase-orders", icon: ShoppingCart },
-  { name: "Vendor Bills", href: "/vendor-bills", icon: Receipt },
+  { name: "Products & Services", href: "/products", icon: Package },
+];
+
+const operationsNavigation = [
+  { name: "Projects", href: "/projects", icon: FolderKanban },
+  { name: "Crew Assignments", href: "/project-assignments", icon: UserCog, requiresManager: true },
+  { name: "Time Tracking", href: "/time-tracking", icon: Clock },
+];
+
+const recruitingNavigation = [
+  { name: "Job Postings", href: "/staffing/applications", icon: ClipboardList, requiresManager: true },
+  { name: "Applicant Pool", href: "/staffing/applicants", icon: Users, requiresManager: true },
+  { name: "Duplicates", href: "/staffing/duplicates", icon: FolderSearch, requiresAdmin: true },
+  { name: "Form Templates", href: "/staffing/form-templates", icon: FileText, requiresManager: true },
+  { name: "Badges", href: "/badge-templates", icon: IdCard, requiresManager: true },
+];
+
+const workforceNavigation = [
+  { name: "Personnel", href: "/personnel", icon: Users },
+  { name: "Messages", href: "/messages", icon: Send },
 ];
 
 const vendorsNavigation = [
-  { name: "All Vendors", href: "/vendors", icon: Truck },
-  { name: "Vendor Documents", href: "/vendor-documents", icon: FileText },
-];
-
-const staffingNavigation = [
-  { name: "Time Tracking", href: "/time-tracking", icon: Clock },
-  { name: "Project Assignments", href: "/project-assignments", icon: UserCog, requiresManager: true },
-  { name: "Applications", href: "/staffing/applications", icon: ClipboardList, requiresManager: true },
-  { name: "Badge Templates", href: "/badge-templates", icon: IdCard, requiresManager: true },
+  { name: "Vendors", href: "/vendors", icon: Truck },
+  { name: "Purchase Orders", href: "/purchase-orders", icon: ShoppingCart },
+  { name: "Bills", href: "/vendor-bills", icon: Receipt },
+  { name: "Documents", href: "/vendor-documents", icon: FileText },
+  { name: "Submissions", href: "/admin/contractor-submissions", icon: FolderSearch, requiresAdmin: true },
 ];
 
 const setupNavigation = [
@@ -78,7 +89,6 @@ const setupNavigation = [
   { name: "Audit Logs", href: "/admin/audit-logs", icon: ScrollText, requiresAdmin: true },
   { name: "Document Center", href: "/document-center", icon: FolderSearch },
   { name: "QuickBooks", href: "/settings/quickbooks", icon: Link2 },
-  { name: "Messages", href: "/messages", icon: Send },
   { name: "Settings", href: "/settings", icon: Settings },
 ];
 
