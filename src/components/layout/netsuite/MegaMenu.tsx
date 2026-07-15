@@ -51,59 +51,55 @@ interface NavSection {
   items: NavItem[];
 }
 
-// Menu structure mapped from current sidebar
-const transactionsMenu: NavSection[] = [
+// Sales
+const salesMenu: NavSection[] = [
   {
     title: "Sales",
     items: [
+      { name: "Customers", href: "/customers", icon: Users, description: "Manage customer accounts" },
       { name: "Estimates", href: "/estimates", icon: FileText, description: "Create and manage estimates" },
       { name: "Invoices", href: "/invoices", icon: Receipt, description: "Manage customer invoices" },
-    ],
-  },
-  {
-    title: "Purchasing",
-    items: [
-      { name: "Purchase Orders", href: "/purchase-orders", icon: ShoppingCart, description: "Manage vendor purchase orders" },
-      { name: "Vendor Bills", href: "/vendor-bills", icon: Receipt, description: "Track vendor bills and payments" },
+      { name: "Products & Services", href: "/products", icon: Package, description: "Products and services catalog" },
     ],
   },
 ];
 
-const listsMenu: NavSection[] = [
+// Operations
+const operationsMenu: NavSection[] = [
   {
-    title: "Relationships",
+    title: "Operations",
     items: [
-      { name: "Customers", href: "/customers", icon: Users, description: "Manage customer accounts" },
-      { name: "Vendors", href: "/vendors", icon: Truck, description: "Manage vendor relationships" },
-      { name: "Personnel", href: "/personnel", icon: Users, description: "Manage staff and workers" },
-    ],
-  },
-  {
-    title: "Items",
-    items: [
-      { name: "Products", href: "/products", icon: Package, description: "Products and services catalog" },
       { name: "Projects", href: "/projects", icon: FolderKanban, description: "Manage active projects" },
+      { name: "Crew Assignments", href: "/project-assignments", icon: UserCog, description: "Manage personnel assignments", requiresManager: true },
+      { name: "Time Tracking", href: "/time-tracking", icon: Clock, description: "Track and manage time entries" },
+      { name: "Staffing Map", href: "/staffing/map", icon: Map, description: "Geographic view of staffing", requiresManager: true },
     ],
   },
 ];
 
+// Recruiting
 const recruitingMenu: NavSection[] = [
   {
     title: "Pipeline",
     items: [
-      { name: "Applications", href: "/staffing/applications", icon: ClipboardList, description: "Review job applications", requiresManager: true },
-      { name: "Master Applicants", href: "/staffing/applicants", icon: Users, description: "All applicants — bulk invite to new jobs", requiresManager: true },
+      { name: "Job Postings", href: "/staffing/applications", icon: ClipboardList, description: "Active job postings and applications", requiresManager: true },
+      { name: "Applicant Pool", href: "/staffing/applicants", icon: Users, description: "All applicants — bulk invite to new jobs", requiresManager: true },
+      { name: "Duplicates", href: "/staffing/duplicates", icon: FolderSearch, description: "Merge duplicate applicants", requiresAdmin: true },
     ],
   },
   {
     title: "Setup",
     items: [
       { name: "Form Templates", href: "/staffing/form-templates", icon: FileText, description: "Manage application form templates", requiresManager: true },
-      { name: "Staffing Map", href: "/staffing/map", icon: Map, description: "Geographic view of staffing", requiresManager: true },
+      { name: "Badges", href: "/badge-templates", icon: IdCard, description: "Design employee badges", requiresManager: true },
     ],
   },
+];
+
+// Workforce
+const workforceMenu: NavSection[] = [
   {
-    title: "People",
+    title: "Workforce",
     items: [
       { name: "Personnel", href: "/personnel", icon: Users, description: "Manage staff and workers" },
       { name: "Messages", href: "/messages", icon: Send, description: "Internal messaging" },
@@ -111,6 +107,26 @@ const recruitingMenu: NavSection[] = [
   },
 ];
 
+// Vendors
+const vendorsMenu: NavSection[] = [
+  {
+    title: "Vendors",
+    items: [
+      { name: "Vendors", href: "/vendors", icon: Truck, description: "Manage vendor relationships" },
+      { name: "Purchase Orders", href: "/purchase-orders", icon: ShoppingCart, description: "Manage vendor purchase orders" },
+      { name: "Bills", href: "/vendor-bills", icon: Receipt, description: "Track vendor bills and payments" },
+    ],
+  },
+  {
+    title: "Documents",
+    items: [
+      { name: "Documents", href: "/vendor-documents", icon: FileText, description: "Vendor document management" },
+      { name: "Submissions", href: "/admin/contractor-submissions", icon: FolderSearch, description: "Contractor submissions", requiresAdmin: true },
+    ],
+  },
+];
+
+// Reports (unchanged)
 const reportsMenu: NavSection[] = [
   {
     title: "Operations",
@@ -141,8 +157,8 @@ const setupMenu: NavSection[] = [
   {
     title: "Settings",
     items: [
-      { name: "Badge Templates", href: "/badge-templates", icon: IdCard, description: "Design employee badges", requiresManager: true },
       { name: "QuickBooks", href: "/settings/quickbooks", icon: Link2, description: "QuickBooks integration" },
+      { name: "Document Center", href: "/document-center", icon: FolderSearch, description: "Central document repository" },
       { name: "Settings", href: "/settings", icon: Settings, description: "System settings" },
     ],
   },
@@ -253,40 +269,40 @@ export function MegaMenu({ menuBackground, menuTextColor }: MegaMenuProps) {
           </NavigationMenuLink>
         </NavigationMenuItem>
 
-        {/* Transactions */}
+        {/* Sales */}
         <NavigationMenuItem>
           <NavigationMenuTrigger
             className={cn(
               "bg-transparent text-header-foreground hover:bg-black/10 dark:hover:bg-white/10 hover:text-header-foreground data-[state=open]:bg-black/10 dark:data-[state=open]:bg-white/10",
-              ["/estimates", "/invoices", "/purchase-orders", "/vendor-bills", "/change-orders"].some(
+              ["/customers", "/estimates", "/invoices", "/products"].some(
                 (p) => location.pathname.startsWith(p)
               ) && "bg-black/10 dark:bg-white/10"
             )}
           >
-            Transactions
+            Sales
           </NavigationMenuTrigger>
           <NavigationMenuContent>
             <div style={menuContentStyle} className={cn(!menuBackground && "bg-popover")}>
-              <MegaMenuSection sections={transactionsMenu} isOpen menuTextColor={menuTextColor} />
+              <MegaMenuSection sections={salesMenu} isOpen menuTextColor={menuTextColor} />
             </div>
           </NavigationMenuContent>
         </NavigationMenuItem>
 
-        {/* Lists */}
+        {/* Operations */}
         <NavigationMenuItem>
           <NavigationMenuTrigger
             className={cn(
               "bg-transparent text-header-foreground hover:bg-black/10 dark:hover:bg-white/10 hover:text-header-foreground data-[state=open]:bg-black/10 dark:data-[state=open]:bg-white/10",
-              ["/customers", "/vendors", "/personnel", "/products", "/projects"].some(
+              ["/projects", "/project-assignments", "/time-tracking", "/staffing/map"].some(
                 (p) => location.pathname.startsWith(p)
               ) && "bg-black/10 dark:bg-white/10"
             )}
           >
-            Lists
+            Operations
           </NavigationMenuTrigger>
           <NavigationMenuContent>
             <div style={menuContentStyle} className={cn(!menuBackground && "bg-popover")}>
-              <MegaMenuSection sections={listsMenu} isOpen menuTextColor={menuTextColor} />
+              <MegaMenuSection sections={operationsMenu} isOpen menuTextColor={menuTextColor} />
             </div>
           </NavigationMenuContent>
         </NavigationMenuItem>
@@ -309,6 +325,45 @@ export function MegaMenu({ menuBackground, menuTextColor }: MegaMenuProps) {
             </div>
           </NavigationMenuContent>
         </NavigationMenuItem>
+
+        {/* Workforce */}
+        <NavigationMenuItem>
+          <NavigationMenuTrigger
+            className={cn(
+              "bg-transparent text-header-foreground hover:bg-black/10 dark:hover:bg-white/10 hover:text-header-foreground data-[state=open]:bg-black/10 dark:data-[state=open]:bg-white/10",
+              ["/personnel", "/messages"].some(
+                (p) => location.pathname.startsWith(p)
+              ) && "bg-black/10 dark:bg-white/10"
+            )}
+          >
+            Workforce
+          </NavigationMenuTrigger>
+          <NavigationMenuContent>
+            <div style={menuContentStyle} className={cn(!menuBackground && "bg-popover")}>
+              <MegaMenuSection sections={workforceMenu} isOpen menuTextColor={menuTextColor} />
+            </div>
+          </NavigationMenuContent>
+        </NavigationMenuItem>
+
+        {/* Vendors */}
+        <NavigationMenuItem>
+          <NavigationMenuTrigger
+            className={cn(
+              "bg-transparent text-header-foreground hover:bg-black/10 dark:hover:bg-white/10 hover:text-header-foreground data-[state=open]:bg-black/10 dark:data-[state=open]:bg-white/10",
+              ["/vendors", "/purchase-orders", "/vendor-bills", "/vendor-documents", "/admin/contractor-submissions"].some(
+                (p) => location.pathname.startsWith(p)
+              ) && "bg-black/10 dark:bg-white/10"
+            )}
+          >
+            Vendors
+          </NavigationMenuTrigger>
+          <NavigationMenuContent>
+            <div style={menuContentStyle} className={cn(!menuBackground && "bg-popover")}>
+              <MegaMenuSection sections={vendorsMenu} isOpen menuTextColor={menuTextColor} />
+            </div>
+          </NavigationMenuContent>
+        </NavigationMenuItem>
+
 
         {/* Reports */}
         <NavigationMenuItem>

@@ -46,30 +46,41 @@ interface MobileDrawerProps {
 }
 
 const mainNavigation = [
-  { name: "Dashboard", href: "/", icon: LayoutDashboard },
-  { name: "Products", href: "/products", icon: Package },
-  { name: "Customers", href: "/customers", icon: Users },
-  { name: "Projects", href: "/projects", icon: FolderKanban },
-  { name: "Personnel", href: "/personnel", icon: Users },
+  { name: "Home", href: "/", icon: LayoutDashboard },
 ];
 
-const transactionsNavigation = [
+const salesNavigation = [
+  { name: "Customers", href: "/customers", icon: Users },
   { name: "Estimates", href: "/estimates", icon: FileText },
   { name: "Invoices", href: "/invoices", icon: Receipt },
-  { name: "Purchase Orders", href: "/purchase-orders", icon: ShoppingCart },
-  { name: "Vendor Bills", href: "/vendor-bills", icon: Receipt },
+  { name: "Products & Services", href: "/products", icon: Package },
+];
+
+const operationsNavigation = [
+  { name: "Projects", href: "/projects", icon: FolderKanban },
+  { name: "Crew Assignments", href: "/project-assignments", icon: UserCog, requiresManager: true },
+  { name: "Time Tracking", href: "/time-tracking", icon: Clock },
+];
+
+const recruitingNavigation = [
+  { name: "Job Postings", href: "/staffing/applications", icon: ClipboardList, requiresManager: true },
+  { name: "Applicant Pool", href: "/staffing/applicants", icon: Users, requiresManager: true },
+  { name: "Duplicates", href: "/staffing/duplicates", icon: FolderSearch, requiresAdmin: true },
+  { name: "Form Templates", href: "/staffing/form-templates", icon: FileText, requiresManager: true },
+  { name: "Badges", href: "/badge-templates", icon: IdCard, requiresManager: true },
+];
+
+const workforceNavigation = [
+  { name: "Personnel", href: "/personnel", icon: Users },
+  { name: "Messages", href: "/messages", icon: Send },
 ];
 
 const vendorsNavigation = [
-  { name: "All Vendors", href: "/vendors", icon: Truck },
-  { name: "Vendor Documents", href: "/vendor-documents", icon: FileText },
-];
-
-const staffingNavigation = [
-  { name: "Time Tracking", href: "/time-tracking", icon: Clock },
-  { name: "Project Assignments", href: "/project-assignments", icon: UserCog, requiresManager: true },
-  { name: "Applications", href: "/staffing/applications", icon: ClipboardList, requiresManager: true },
-  { name: "Badge Templates", href: "/badge-templates", icon: IdCard, requiresManager: true },
+  { name: "Vendors", href: "/vendors", icon: Truck },
+  { name: "Purchase Orders", href: "/purchase-orders", icon: ShoppingCart },
+  { name: "Bills", href: "/vendor-bills", icon: Receipt },
+  { name: "Documents", href: "/vendor-documents", icon: FileText },
+  { name: "Submissions", href: "/admin/contractor-submissions", icon: FolderSearch, requiresAdmin: true },
 ];
 
 const setupNavigation = [
@@ -78,7 +89,6 @@ const setupNavigation = [
   { name: "Audit Logs", href: "/admin/audit-logs", icon: ScrollText, requiresAdmin: true },
   { name: "Document Center", href: "/document-center", icon: FolderSearch },
   { name: "QuickBooks", href: "/settings/quickbooks", icon: Link2 },
-  { name: "Messages", href: "/messages", icon: Send },
   { name: "Settings", href: "/settings", icon: Settings },
 ];
 
@@ -86,9 +96,11 @@ export function MobileDrawer({ open, onClose }: MobileDrawerProps) {
   const location = useLocation();
   const { signOut } = useAuth();
   const { isAdmin, isManager } = useUserRole();
-  const [transactionsOpen, setTransactionsOpen] = useState(false);
+  const [salesOpen, setSalesOpen] = useState(false);
+  const [operationsOpen, setOperationsOpen] = useState(false);
+  const [recruitingOpen, setRecruitingOpen] = useState(false);
+  const [workforceOpen, setWorkforceOpen] = useState(false);
   const [vendorsOpen, setVendorsOpen] = useState(false);
-  const [staffingOpen, setStaffingOpen] = useState(false);
   const [setupOpen, setSetupOpen] = useState(false);
 
   const handleNavigate = () => {
@@ -136,22 +148,67 @@ export function MobileDrawer({ open, onClose }: MobileDrawerProps) {
               ))}
             </div>
 
-            {/* Transactions Section */}
+            {/* Sales */}
             <div className="mt-4 px-2">
-              <Collapsible open={transactionsOpen} onOpenChange={setTransactionsOpen}>
+              <Collapsible open={salesOpen} onOpenChange={setSalesOpen}>
                 <CollapsibleTrigger className="flex w-full items-center justify-between rounded-md px-3 py-2 text-sm font-medium text-muted-foreground hover:bg-muted">
-                  <span>Transactions</span>
-                  <ChevronDown className={cn("h-4 w-4 transition-transform", transactionsOpen && "rotate-180")} />
+                  <span>Sales</span>
+                  <ChevronDown className={cn("h-4 w-4 transition-transform", salesOpen && "rotate-180")} />
                 </CollapsibleTrigger>
                 <CollapsibleContent className="mt-1 space-y-1">
-                  {transactionsNavigation.map((item) => (
+                  {salesNavigation.map((item) => (
                     <NavLink key={item.href} item={item} />
                   ))}
                 </CollapsibleContent>
               </Collapsible>
             </div>
 
-            {/* Vendors Section */}
+            {/* Operations */}
+            <div className="mt-2 px-2">
+              <Collapsible open={operationsOpen} onOpenChange={setOperationsOpen}>
+                <CollapsibleTrigger className="flex w-full items-center justify-between rounded-md px-3 py-2 text-sm font-medium text-muted-foreground hover:bg-muted">
+                  <span>Operations</span>
+                  <ChevronDown className={cn("h-4 w-4 transition-transform", operationsOpen && "rotate-180")} />
+                </CollapsibleTrigger>
+                <CollapsibleContent className="mt-1 space-y-1">
+                  {operationsNavigation.map((item) => (
+                    <NavLink key={item.href} item={item} />
+                  ))}
+                </CollapsibleContent>
+              </Collapsible>
+            </div>
+
+            {/* Recruiting */}
+            <div className="mt-2 px-2">
+              <Collapsible open={recruitingOpen} onOpenChange={setRecruitingOpen}>
+                <CollapsibleTrigger className="flex w-full items-center justify-between rounded-md px-3 py-2 text-sm font-medium text-muted-foreground hover:bg-muted">
+                  <span>Recruiting</span>
+                  <ChevronDown className={cn("h-4 w-4 transition-transform", recruitingOpen && "rotate-180")} />
+                </CollapsibleTrigger>
+                <CollapsibleContent className="mt-1 space-y-1">
+                  {recruitingNavigation.map((item) => (
+                    <NavLink key={item.href} item={item} />
+                  ))}
+                </CollapsibleContent>
+              </Collapsible>
+            </div>
+
+            {/* Workforce */}
+            <div className="mt-2 px-2">
+              <Collapsible open={workforceOpen} onOpenChange={setWorkforceOpen}>
+                <CollapsibleTrigger className="flex w-full items-center justify-between rounded-md px-3 py-2 text-sm font-medium text-muted-foreground hover:bg-muted">
+                  <span>Workforce</span>
+                  <ChevronDown className={cn("h-4 w-4 transition-transform", workforceOpen && "rotate-180")} />
+                </CollapsibleTrigger>
+                <CollapsibleContent className="mt-1 space-y-1">
+                  {workforceNavigation.map((item) => (
+                    <NavLink key={item.href} item={item} />
+                  ))}
+                </CollapsibleContent>
+              </Collapsible>
+            </div>
+
+            {/* Vendors */}
             <div className="mt-2 px-2">
               <Collapsible open={vendorsOpen} onOpenChange={setVendorsOpen}>
                 <CollapsibleTrigger className="flex w-full items-center justify-between rounded-md px-3 py-2 text-sm font-medium text-muted-foreground hover:bg-muted">
@@ -160,21 +217,6 @@ export function MobileDrawer({ open, onClose }: MobileDrawerProps) {
                 </CollapsibleTrigger>
                 <CollapsibleContent className="mt-1 space-y-1">
                   {vendorsNavigation.map((item) => (
-                    <NavLink key={item.href} item={item} />
-                  ))}
-                </CollapsibleContent>
-              </Collapsible>
-            </div>
-
-            {/* Staffing Section */}
-            <div className="mt-2 px-2">
-              <Collapsible open={staffingOpen} onOpenChange={setStaffingOpen}>
-                <CollapsibleTrigger className="flex w-full items-center justify-between rounded-md px-3 py-2 text-sm font-medium text-muted-foreground hover:bg-muted">
-                  <span>Staffing</span>
-                  <ChevronDown className={cn("h-4 w-4 transition-transform", staffingOpen && "rotate-180")} />
-                </CollapsibleTrigger>
-                <CollapsibleContent className="mt-1 space-y-1">
-                  {staffingNavigation.map((item) => (
                     <NavLink key={item.href} item={item} />
                   ))}
                 </CollapsibleContent>
