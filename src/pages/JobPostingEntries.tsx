@@ -81,7 +81,14 @@ export default function JobPostingEntries() {
     return formTemplate.fields.filter((f: FormField) => f.type !== "section");
   }, [formTemplate]);
 
-  const filteredApplications = filteredByStatus;
+  const filteredApplications = useMemo(() => {
+    if (positionFilter === "all") return filteredByStatus;
+    return filteredByStatus.filter((app) => {
+      const ans = app.answers as Record<string, unknown> | null;
+      return typeof ans?.position_applying_for === "string" && ans.position_applying_for === positionFilter;
+    });
+  }, [filteredByStatus, positionFilter]);
+
 
   const handleExportCSV = () => {
     const selected = selectedIds.size > 0
