@@ -38,7 +38,7 @@ import { ProjectVendorBillsList } from "@/components/project-hub/ProjectVendorBi
 import { ProjectTimeEntriesList } from "@/components/project-hub/ProjectTimeEntriesList";
 import { ProjectRateBracketsSection } from "@/components/project-hub/ProjectRateBracketsSection";
 import { ProjectPersonnelSection } from "@/components/project-hub/ProjectPersonnelSection";
-import { ProjectApplicantsSection } from "@/components/project-hub/ProjectApplicantsSection";
+import { ProjectRecruitingSection } from "@/components/project-hub/ProjectRecruitingSection";
 import { ProjectAssetAssignmentsSection } from "@/components/project-hub/ProjectAssetAssignmentsSection";
 import { ProjectHotelAssignmentsSection } from "@/components/project-hub/ProjectHotelAssignmentsSection";
 import { ProjectRoomsSection } from "@/components/project-hub/rooms/ProjectRoomsSection";
@@ -603,9 +603,9 @@ const ProjectDetail = () => {
         <ProjectRateBracketsSection projectId={id!} />
       </div>
 
-      {/* Project Applicants */}
+      {/* Recruiting */}
       <div className="mb-8">
-        <ProjectApplicantsSection projectId={id!} />
+        <ProjectRecruitingSection projectId={id!} />
       </div>
 
       {/* Assigned Personnel */}

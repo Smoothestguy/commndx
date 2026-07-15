@@ -67,6 +67,7 @@ type SortDirection = "asc" | "desc";
 
 interface ProjectApplicantsSectionProps {
   projectId: string;
+  hideAddButton?: boolean;
 }
 
 const statusColors: Record<string, string> = {
@@ -106,6 +107,7 @@ const getProfilePicture = (application: Application): string | null => {
 
 export function ProjectApplicantsSection({
   projectId,
+  hideAddButton = false,
 }: ProjectApplicantsSectionProps) {
   const isMobile = useIsMobile();
   const queryClient = useQueryClient();
@@ -615,16 +617,18 @@ export function ProjectApplicantsSection({
                 </div>
               </button>
             </CollapsibleTrigger>
-            <Button
-              size="sm"
-              onClick={(e) => {
-                e.stopPropagation();
-                setIsTaskOrderWizardOpen(true);
-              }}
-            >
-              <Plus className="h-4 w-4 mr-1" />
-              Add Crew / Scope
-            </Button>
+            {!hideAddButton && (
+              <Button
+                size="sm"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setIsTaskOrderWizardOpen(true);
+                }}
+              >
+                <Plus className="h-4 w-4 mr-1" />
+                Add Crew / Scope
+              </Button>
+            )}
           </CardHeader>
           <CollapsibleContent>
             <CardContent>
