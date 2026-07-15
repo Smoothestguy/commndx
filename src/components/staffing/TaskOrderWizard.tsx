@@ -599,11 +599,24 @@ export function TaskOrderWizard({
                 />
               </div>
               <div>
-                <Label>Job Description</Label>
+                <div className="flex items-center justify-between">
+                  <Label>Job Description</Label>
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="sm"
+                    className="h-7 text-xs"
+                    onClick={handleGenerateDescription}
+                  >
+                    <Sparkles className="h-3.5 w-3.5 mr-1" />
+                    Generate description
+                  </Button>
+                </div>
                 <Textarea
                   value={jobDescription}
                   onChange={(e) => setJobDescription(e.target.value)}
                   placeholder="Describe the scope of work…"
+                  rows={5}
                 />
               </div>
               <div>
