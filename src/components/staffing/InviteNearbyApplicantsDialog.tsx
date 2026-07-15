@@ -18,6 +18,7 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { toast } from "sonner";
 import { Loader2, Send, MapPin, Search } from "lucide-react";
 import { useNearbyApplicants } from "@/integrations/supabase/hooks/useNearbyApplicants";
+import { renderMergeTags, AVAILABLE_MERGE_TAGS } from "@/lib/mergeTags";
 
 interface Props {
   open: boolean;
