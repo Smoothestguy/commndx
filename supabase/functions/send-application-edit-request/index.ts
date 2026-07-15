@@ -1,6 +1,7 @@
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import { Resend } from "https://esm.sh/resend@2.0.0";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.49.1";
+import { ctaButton, preheader } from "../_shared/applicant-email.ts";
 
 const resend = new Resend(Deno.env.get("RESEND_API_KEY"));
 
@@ -100,52 +101,52 @@ const handler = async (req: Request): Promise<Response> => {
     const projectName = application.job_postings?.project_task_orders?.projects?.name || "";
 
     // Send the email
-    const emailResponse = await resend.emails.send({
-      from: "Applications <noreply@fairfieldrg.com>",
-      to: [applicant.email],
-      subject: "Action Required: Please Update Your Application",
-      html: `<!DOCTYPE html>
+    const html = `<!DOCTYPE html>
 <html>
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
 </head>
-<body style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif; line-height: 1.6; color: #333; max-width: 600px; margin: 0 auto; padding: 20px;">
-  <div style="background: linear-gradient(135deg, #f97316 0%, #ea580c 100%); padding: 30px 20px; text-align: center; border-radius: 12px 12px 0 0;">
-    <h1 style="color: white; margin: 0; font-size: 24px;">Action Required</h1>
-  </div>
-  
-  <div style="background: #ffffff; padding: 30px 20px; border: 1px solid #e5e7eb; border-top: none; border-radius: 0 0 12px 12px;">
+<body style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif; line-height: 1.6; color: #333; max-width: 600px; margin: 0 auto; padding: 20px; background:#ffffff;">
+  ${preheader("Update your Fairfield application — a couple more details needed.")}
+  <div style="background: #ffffff; padding: 30px 20px; border: 1px solid #e5e7eb; border-radius: 12px;">
+    <h1 style="color:#1d4ed8; margin:0 0 16px; font-size:22px;">Please update your application</h1>
     <p style="font-size: 16px;">Hi ${applicant.first_name},</p>
-    
-    <p>We're reviewing your application for <strong>${positionTitle}</strong>${projectName ? ` at ${projectName}` : ""} and need some additional information to proceed.</p>
-    
-    ${adminMessage ? `<div style="background: #fef3c7; padding: 16px; border-radius: 8px; margin: 20px 0; border-left: 4px solid #f59e0b;">
-      <p style="margin: 0; font-style: italic;">"${adminMessage}"</p>
+    <p>We're reviewing your application for <strong>${positionTitle}</strong>${projectName ? ` at ${projectName}` : ""} and need a bit more information to move forward.</p>
+    ${adminMessage ? `<div style="background: #f8fafc; padding: 16px; border-radius: 8px; margin: 20px 0; border-left: 4px solid #1d4ed8;">
+      <p style="margin: 0; font-style: italic;">${adminMessage}</p>
     </div>` : ""}
-    
-    <div style="background: #f8fafc; padding: 20px; border-radius: 8px; margin: 24px 0;">
-      <h3 style="margin-top: 0; color: #1e40af;">Please update the following:</h3>
+    <div style="background: #f8fafc; padding: 20px; border-radius: 8px; margin: 20px 0;">
+      <h3 style="margin-top: 0; color: #1e40af; font-size:15px;">Please update the following</h3>
       <ul style="margin: 0; padding-left: 20px;">
-        ${missingFields.map(field => `<li style="margin-bottom: 8px;">${field}</li>`).join("")}
+        ${missingFields.map(field => `<li style="margin-bottom: 6px;">${field}</li>`).join("")}
       </ul>
     </div>
-    
-    <div style="text-align: center; margin: 30px 0;">
-      <a href="${editUrl}" target="_blank" rel="noopener noreferrer" style="display: inline-block; background: #f97316; color: white; padding: 14px 28px; text-decoration: none; border-radius: 8px; font-weight: 600; font-size: 16px;">Update My Application</a>
-    </div>
-    
-    <p style="color: #6b7280; font-size: 14px;">This link will expire in 14 days. Your previous responses are saved and will be pre-filled.</p>
-    
-    <hr style="border: none; border-top: 1px solid #e5e7eb; margin: 24px 0;">
-    
-    <p style="color: #9ca3af; font-size: 12px; margin-bottom: 0;">
-      If the button doesn't work, copy and paste this link into your browser:<br>
-      <a href="${editUrl}" target="_blank" rel="noopener noreferrer" style="color: #f97316; word-break: break-all;">${editUrl}</a>
-    </p>
+    ${ctaButton(editUrl, "Update My Application →")}
+    <p style="color: #6b7280; font-size: 14px;">This link is valid for 14 days. Your previous responses are saved and will be pre-filled.</p>
   </div>
 </body>
-</html>`,
+</html>`;
+
+    const text = `Hi ${applicant.first_name},
+
+We're reviewing your application for ${positionTitle}${projectName ? ` at ${projectName}` : ""} and need a bit more information to move forward.
+
+${adminMessage ? `Note from our team: ${adminMessage}\n\n` : ""}Please update the following:
+${missingFields.map(f => `- ${f}`).join("\n")}
+
+Update your application here:
+${editUrl}
+
+This link is valid for 14 days. Your previous responses are saved and will be pre-filled.`;
+
+    const emailResponse = await resend.emails.send({
+      from: "Fairfield <admin@fairfieldrg.com>",
+      to: [applicant.email],
+      reply_to: "admin@fairfieldrg.com",
+      subject: "Please update your Fairfield application — action needed",
+      html,
+      text,
     });
 
     // Check if email sending failed

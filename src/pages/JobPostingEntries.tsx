@@ -41,6 +41,7 @@ export default function JobPostingEntries() {
   const { postingId } = useParams<{ postingId: string }>();
   const navigate = useNavigate();
   const [statusFilter, setStatusFilter] = useState<string>("active");
+  const [positionFilter, setPositionFilter] = useState<string>("all");
   const [selectedApp, setSelectedApp] = useState<Application | null>(null);
   const [showDetailDialog, setShowDetailDialog] = useState(false);
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
@@ -80,7 +81,14 @@ export default function JobPostingEntries() {
     return formTemplate.fields.filter((f: FormField) => f.type !== "section");
   }, [formTemplate]);
 
-  const filteredApplications = filteredByStatus;
+  const filteredApplications = useMemo(() => {
+    if (positionFilter === "all") return filteredByStatus;
+    return filteredByStatus.filter((app) => {
+      const ans = app.answers as Record<string, unknown> | null;
+      return typeof ans?.position_applying_for === "string" && ans.position_applying_for === positionFilter;
+    });
+  }, [filteredByStatus, positionFilter]);
+
 
   const handleExportCSV = () => {
     const selected = selectedIds.size > 0
@@ -216,7 +224,22 @@ export default function JobPostingEntries() {
                 <p className="text-xs text-muted-foreground">Pending</p>
               </div>
             </div>
-            <div className="flex gap-2">
+            <div className="flex gap-2 flex-wrap">
+              {taskOrderPositions && taskOrderPositions.length > 0 && (
+                <Select value={positionFilter} onValueChange={setPositionFilter}>
+                  <SelectTrigger className="w-[180px]">
+                    <SelectValue placeholder="All Positions" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">All Positions</SelectItem>
+                    {taskOrderPositions.map((p) => (
+                      <SelectItem key={p.id} value={p.position_label}>
+                        {p.position_label}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              )}
               <Select value={statusFilter} onValueChange={setStatusFilter}>
                 <SelectTrigger className="w-[150px]">
                   <SelectValue placeholder="All Statuses" />

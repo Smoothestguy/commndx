@@ -8545,6 +8545,11 @@ export type Database = {
           banking_info_updated_at: string
         }[]
       }
+      applicant_is_onboarded: {
+        Args: { _applicant_id: string }
+        Returns: boolean
+      }
+      check_returning_contact: { Args: { _contact: string }; Returns: boolean }
       complete_personnel_onboarding:
         | {
             Args: {
@@ -8691,6 +8696,10 @@ export type Database = {
         Returns: string
       }
       expire_old_invitations: { Args: never; Returns: undefined }
+      find_applicant_id_by_contact: {
+        Args: { _email: string; _phone?: string }
+        Returns: string
+      }
       find_applicant_id_by_email: { Args: { _email: string }; Returns: string }
       find_duplicate_customers: {
         Args: { p_customer_id: string }

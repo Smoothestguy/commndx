@@ -35,6 +35,7 @@ import { SignaturePad } from "@/components/form-builder/SignaturePad";
 import { FormFileUpload } from "@/components/form-builder/FormFileUpload";
 import { useApplicantLookup, FoundApplicantData, LookupResult } from "@/hooks/useApplicantLookup";
 import { SEO } from "@/components/SEO";
+import { PublicJobFactsPanel } from "@/components/staffing/PublicJobFactsPanel";
 
 // Helper function to render fields based on layout
 function renderFieldsWithLayout(
@@ -117,6 +118,14 @@ export default function PublicApplicationForm() {
   const [customFieldsLocked, setCustomFieldsLocked] = useState(false);
   const [lockedAnswerIds, setLockedAnswerIds] = useState<Set<string>>(new Set());
   const { lookupApplicant, isLookingUp, foundApplicant, clearApplicant } = useApplicantLookup();
+
+  // Express apply gate
+  type ExpressPath = null | "returning" | "new";
+  const [expressPath, setExpressPath] = useState<ExpressPath>(null);
+  const [expressContact, setExpressContact] = useState("");
+  const [expressChecking, setExpressChecking] = useState(false);
+  const [positionApplyingFor, setPositionApplyingFor] = useState<string>("");
+  const isExpressMode = expressPath === "returning";
 
   const { data: posting, isLoading, error } = useJobPostingByToken(token || "");
   const submitApplication = useSubmitApplication();
@@ -444,6 +453,43 @@ export default function PublicApplicationForm() {
     toast.info("You can now enter new information.");
   }, [clearApplicant, form, customFields]);
 
+  // Express apply: check if the contact matches any existing applicant/personnel record.
+  // The RPC returns ONLY a boolean — no stored profile data is fetched or rendered.
+  const handleExpressCheck = useCallback(async () => {
+    const contact = expressContact.trim();
+    if (!contact) {
+      toast.error("Enter your email or phone number");
+      return;
+    }
+    setExpressChecking(true);
+    try {
+      const { data, error } = await supabase.rpc("check_returning_contact", { _contact: contact });
+      if (error) throw error;
+      if (data === true) {
+        setExpressPath("returning");
+        // Prefill the matching field so they don't have to retype it.
+        const isEmail = contact.includes("@");
+        if (isEmail) {
+          form.setValue("email", contact.toLowerCase());
+        } else {
+          const digits = contact.replace(/\D/g, "").slice(-10);
+          if (digits.length === 10) form.setValue("phone", digits);
+        }
+        toast.success("Welcome back — we already have your file on record.");
+      } else {
+        setExpressPath("new");
+        toast.info("No prior record found — please fill out the full application.");
+      }
+    } catch (err) {
+      console.error("[Express] check_returning_contact failed:", err);
+      toast.error("Couldn't check your record right now. Continuing with full application.");
+      setExpressPath("new");
+    } finally {
+      setExpressChecking(false);
+    }
+  }, [expressContact, form]);
+
+
   const handleFileUploadStateChange = useCallback((fieldId: string, isUploading: boolean) => {
     setUploadingFields(prev => {
       const has = prev.has(fieldId);
@@ -463,8 +509,11 @@ export default function PublicApplicationForm() {
   const validateCustomFields = () => {
     console.log("[Validation] Starting validation of custom fields");
     console.log("[Validation] Custom answers:", customAnswers);
-    
-    for (const field of customFields) {
+
+    // In express mode, skip non-required custom fields entirely.
+    const fieldsToCheck = isExpressMode ? customFields.filter(f => f.required) : customFields;
+
+    for (const field of fieldsToCheck) {
       if (field.required) {
         const value = customAnswers[field.id];
         console.log(`[Validation] Checking field ${field.id} (${field.type}):`, value);
@@ -514,11 +563,18 @@ export default function PublicApplicationForm() {
     setPhotoError(null);
     setSmsConsentError(null);
 
-    // Validate required profile photo
-    const requiresPhoto = coreFields.profilePicture && (formSettings.requireProfilePhoto !== false);
+    // Validate required profile photo (skipped in express mode)
+    const requiresPhoto = !isExpressMode && coreFields.profilePicture && (formSettings.requireProfilePhoto !== false);
     if (requiresPhoto && !data.photo_url) {
       setPhotoError("Profile photo is required");
       toast.error("Please upload a profile photo to submit your application");
+      return;
+    }
+
+    // Position select required when the posting has positions
+    const postingPositions = (posting as any).positions as { position_label: string }[] | undefined;
+    if (postingPositions && postingPositions.length > 0 && !positionApplyingFor) {
+      toast.error("Please select the position you're applying for");
       return;
     }
 
@@ -574,7 +630,10 @@ export default function PublicApplicationForm() {
           home_zip: extractedZip || data.home_zip,
           photo_url: data.photo_url,
         },
-        answers: customAnswers,
+        answers: {
+          ...customAnswers,
+          ...(positionApplyingFor ? { position_applying_for: positionApplyingFor } : {}),
+        },
         geo: geoData,
         clientSubmittedAt: new Date().toISOString(),
         userAgent: navigator.userAgent,
@@ -1053,10 +1112,70 @@ export default function PublicApplicationForm() {
                 <span>{taskOrder.headcount_needed} position(s) available</span>
               </div>
             </div>
+            <PublicJobFactsPanel
+              taskOrder={taskOrder as any}
+              positions={((posting as any).positions ?? []) as any}
+            />
           </CardContent>
         </Card>
 
+        {/* Express Apply gate */}
+        {expressPath === null && (
+          <Card
+            className={cn(theme.backgroundImage && "backdrop-blur-sm")}
+            style={theme.backgroundImage ? {
+              backgroundColor: `hsl(var(--background) / ${(theme.cardOpacity ?? 90) / 100})`
+            } : undefined}
+          >
+            <CardHeader>
+              <CardTitle className="text-lg">Have you worked with Fairfield before or applied previously?</CardTitle>
+              <CardDescription>
+                If yes, we can skip the long form — just enter your email or phone.
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-3">
+              <Input
+                placeholder="Email or phone number"
+                value={expressContact}
+                onChange={(e) => setExpressContact(e.target.value)}
+                inputMode="email"
+                autoComplete="off"
+                onKeyDown={(e) => {
+                  if (e.key === "Enter") { e.preventDefault(); handleExpressCheck(); }
+                }}
+              />
+              <div className="flex flex-col sm:flex-row gap-2">
+                <Button
+                  type="button"
+                  onClick={handleExpressCheck}
+                  disabled={expressChecking || !expressContact.trim()}
+                  className="flex-1"
+                >
+                  {expressChecking ? (
+                    <><Loader2 className="mr-2 h-4 w-4 animate-spin" /> Checking...</>
+                  ) : (
+                    <>Yes — check my record</>
+                  )}
+                </Button>
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={() => setExpressPath("new")}
+                  className="flex-1"
+                >
+                  I'm new — start full application
+                </Button>
+              </div>
+              <p className="text-xs text-muted-foreground">
+                Your record is never shown here — we only confirm whether we can shorten the form.
+              </p>
+            </CardContent>
+          </Card>
+        )}
+
+
         {/* Application Form */}
+        {expressPath !== null && (
         <Card 
           className={cn(theme.backgroundImage && "backdrop-blur-sm")}
           style={theme.backgroundImage ? { 
@@ -1064,8 +1183,12 @@ export default function PublicApplicationForm() {
           } : undefined}
         >
           <CardHeader>
-            <CardTitle>Apply for this Position</CardTitle>
-            <CardDescription>Fill out the form below to submit your application</CardDescription>
+            <CardTitle>{isExpressMode ? "Confirm and Submit" : "Apply for this Position"}</CardTitle>
+            <CardDescription>
+              {isExpressMode
+                ? "Welcome back — we already have your file. Just confirm your details and submit."
+                : "Fill out the form below to submit your application"}
+            </CardDescription>
           </CardHeader>
           <CardContent>
             <Form {...form}>
@@ -1128,8 +1251,8 @@ export default function PublicApplicationForm() {
                   </Alert>
                 )}
                 
-                {/* Profile Picture - Core Field */}
-                {coreFields.profilePicture && (
+                {/* Profile Picture - Core Field (skipped in express mode) */}
+                {!isExpressMode && coreFields.profilePicture && (
                   <div className="space-y-2">
                     <FormFileUpload
                       value={form.watch("photo_url") || null}
@@ -1293,15 +1416,44 @@ export default function PublicApplicationForm() {
                   />
                 )}
 
-                {/* Custom Fields from Form Template */}
-                {customFields.length > 0 && (
-                  <div className="space-y-4 pt-4 border-t">
-                    <h3 className="font-medium text-sm text-muted-foreground">Additional Questions</h3>
-                    <div className="space-y-4">
-                      {renderFieldsWithLayout(customFields, customLayout, renderCustomField)}
-                    </div>
+                {/* Position select — only when the posting has positions */}
+                {(((posting as any).positions ?? []) as { id: string; position_label: string; advertised_pay_rate: number | null }[]).length > 0 && (
+                  <div className="space-y-2 pt-4 border-t">
+                    <FormLabel>Position applying for *</FormLabel>
+                    <Select value={positionApplyingFor} onValueChange={setPositionApplyingFor}>
+                      <SelectTrigger>
+                        <SelectValue placeholder="Select a position" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {(((posting as any).positions ?? []) as { id: string; position_label: string; advertised_pay_rate: number | null }[]).map((p) => (
+                          <SelectItem key={p.id} value={p.position_label}>
+                            {p.position_label}
+                            {p.advertised_pay_rate != null ? ` — $${Number(p.advertised_pay_rate).toFixed(2)}/hr` : ""}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
                   </div>
                 )}
+
+                {/* Custom Fields from Form Template — in express mode only required fields render */}
+                {(() => {
+                  const visibleFields = isExpressMode ? customFields.filter(f => f.required) : customFields;
+                  if (visibleFields.length === 0) return null;
+                  const visibleLayout = isExpressMode
+                    ? visibleFields.map(f => ({ id: `row_${f.id}`, fieldIds: [f.id] }))
+                    : customLayout;
+                  return (
+                    <div className="space-y-4 pt-4 border-t">
+                      <h3 className="font-medium text-sm text-muted-foreground">
+                        {isExpressMode ? "Required Questions" : "Additional Questions"}
+                      </h3>
+                      <div className="space-y-4">
+                        {renderFieldsWithLayout(visibleFields, visibleLayout, renderCustomField)}
+                      </div>
+                    </div>
+                  );
+                })()}
 
                 {/* SMS Consent Checkbox - TCPA Compliant */}
                 {formSettings.requireSmsConsent && (
@@ -1379,6 +1531,7 @@ export default function PublicApplicationForm() {
             </Form>
           </CardContent>
         </Card>
+        )}
       </div>
     </div>
     </>

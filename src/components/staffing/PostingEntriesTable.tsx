@@ -256,6 +256,7 @@ export function PostingEntriesTable({
                 <TableHead className="min-w-[150px]">Name</TableHead>
                 <TableHead className="min-w-[180px]">Email</TableHead>
                 <TableHead className="min-w-[120px]">Phone</TableHead>
+                <TableHead className="min-w-[140px]">Position</TableHead>
                 {limitedDisplayFields.map((field) => (
                   <TableHead key={field.id} className="min-w-[120px] max-w-[200px]">
                     {field.label}
@@ -329,6 +330,15 @@ export function PostingEntriesTable({
                     </TableCell>
                     <TableCell className="text-sm text-muted-foreground">
                       {app.applicants?.phone || "—"}
+                    </TableCell>
+                    <TableCell>
+                      {typeof answers?.position_applying_for === "string" && answers.position_applying_for ? (
+                        <Badge variant="outline" className="text-xs">
+                          {answers.position_applying_for as string}
+                        </Badge>
+                      ) : (
+                        <span className="text-muted-foreground text-xs">—</span>
+                      )}
                     </TableCell>
                     {limitedDisplayFields.map((field) => (
                       <TableCell key={field.id}>

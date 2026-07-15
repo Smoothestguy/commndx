@@ -1,4 +1,4 @@
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import { format } from "date-fns";
 import { Pencil, User, Save, X, AlertCircle, RefreshCw, Trash2, ShieldCheck, Upload, Calendar, CheckCircle2, MessageSquare, Send } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -116,6 +116,29 @@ export function ApplicationDetailDialog({
   const updateApplication = useUpdateApplication();
   const [showRevokeConfirm, setShowRevokeConfirm] = useState(false);
   const [showRemoveFromPostingConfirm, setShowRemoveFromPostingConfirm] = useState(false);
+  const [isAlreadyOnboarded, setIsAlreadyOnboarded] = useState(false);
+
+  // Check if the linked applicant is already onboarded personnel
+  useEffect(() => {
+    let cancelled = false;
+    const applicantId = application?.applicant_id;
+    if (!open || !applicantId) {
+      setIsAlreadyOnboarded(false);
+      return;
+    }
+    supabase
+      .rpc("applicant_is_onboarded", { _applicant_id: applicantId })
+      .then(({ data, error }) => {
+        if (cancelled) return;
+        if (error) {
+          console.warn("[ApplicationDetailDialog] applicant_is_onboarded failed:", error);
+          setIsAlreadyOnboarded(false);
+        } else {
+          setIsAlreadyOnboarded(data === true);
+        }
+      });
+    return () => { cancelled = true; };
+  }, [open, application?.applicant_id]);
 
   // Build field label map from form template
   const fieldLabelMap = useMemo(() => {
@@ -583,13 +606,19 @@ export function ApplicationDetailDialog({
                       </div>
                     ) : (
                       <>
-                        <div className="flex items-center gap-2">
+                        <div className="flex items-center gap-2 flex-wrap">
                           <h3 className="text-lg font-semibold">
                             {applicant?.first_name} {applicant?.last_name}
                           </h3>
                           <Badge className={statusColors[application.status]}>
                             {application.status}
                           </Badge>
+                          {isAlreadyOnboarded && (
+                            <Badge className="bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-300 flex items-center gap-1">
+                              <ShieldCheck className="h-3 w-3" />
+                              Already onboarded
+                            </Badge>
+                          )}
                         </div>
                         <div className="grid grid-cols-2 gap-2 text-sm">
                           <div>
@@ -810,32 +839,39 @@ export function ApplicationDetailDialog({
               <>
                 {(application.status === "submitted" ||
                   application.status === "updated") && (
-                  <div className="flex flex-wrap gap-2 w-full justify-end">
-                    <Button
-                      variant="outline"
-                      onClick={() => setRequestInfoDialogOpen(true)}
-                      className="flex-1 sm:flex-none"
-                    >
-                      <AlertCircle className="h-4 w-4 sm:mr-1" />
-                      <span className="hidden sm:inline">Request Info</span>
-                      <span className="sm:hidden">Info</span>
-                    </Button>
-                    <Button
-                      variant="destructive"
-                      onClick={handleReject}
-                      disabled={rejectApplication.isPending}
-                      className="flex-1 sm:flex-none"
-                    >
-                      Reject
-                    </Button>
-                    <Button
-                      onClick={handleApprove}
-                      disabled={approveApplication.isPending}
-                      className="flex-1 sm:flex-none"
-                    >
-                      <span className="hidden lg:inline">Approve & Add to Personnel</span>
-                      <span className="lg:hidden">Approve</span>
-                    </Button>
+                  <div className="flex flex-col gap-2 w-full">
+                    {isAlreadyOnboarded && (
+                      <p className="text-xs text-green-700 dark:text-green-400 text-right">
+                        This applicant is already an onboarded personnel record — no onboarding email needed on approval.
+                      </p>
+                    )}
+                    <div className="flex flex-wrap gap-2 w-full justify-end">
+                      <Button
+                        variant="outline"
+                        onClick={() => setRequestInfoDialogOpen(true)}
+                        className="flex-1 sm:flex-none"
+                      >
+                        <AlertCircle className="h-4 w-4 sm:mr-1" />
+                        <span className="hidden sm:inline">Request Info</span>
+                        <span className="sm:hidden">Info</span>
+                      </Button>
+                      <Button
+                        variant="destructive"
+                        onClick={handleReject}
+                        disabled={rejectApplication.isPending}
+                        className="flex-1 sm:flex-none"
+                      >
+                        Reject
+                      </Button>
+                      <Button
+                        onClick={handleApprove}
+                        disabled={approveApplication.isPending}
+                        className="flex-1 sm:flex-none"
+                      >
+                        <span className="hidden lg:inline">Approve & Add to Personnel</span>
+                        <span className="lg:hidden">Approve</span>
+                      </Button>
+                    </div>
                   </div>
                 )}
                 {application.status === "needs_info" && (

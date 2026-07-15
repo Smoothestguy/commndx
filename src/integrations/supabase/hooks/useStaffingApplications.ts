@@ -524,9 +524,9 @@ export const useSubmitApplication = () => {
       // Look up existing applicant by email via SECURITY DEFINER RPC.
       // Anon users have no direct SELECT on applicants, so a normal query would
       // always return null and cause a unique-email conflict on insert below.
-      console.log("[Application] Looking up existing applicant by email via RPC:", applicantData.email);
+      console.log("[Application] Looking up existing applicant by email/phone via RPC:", applicantData.email);
       const { data: existingApplicantId, error: fetchError } = await supabase
-        .rpc("find_applicant_id_by_email", { _email: applicantData.email });
+        .rpc("find_applicant_id_by_contact", { _email: applicantData.email, _phone: applicantData.phone ?? undefined });
 
       if (fetchError) {
         console.error("[Application] Error checking existing applicant:", fetchError);

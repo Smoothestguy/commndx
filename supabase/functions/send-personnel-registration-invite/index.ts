@@ -1,6 +1,7 @@
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { Resend } from "https://esm.sh/resend@2.0.0";
+import { ctaButton, preheader } from "../_shared/applicant-email.ts";
 
 const resend = new Resend(Deno.env.get("RESEND_API_KEY"));
 
@@ -91,59 +92,48 @@ const handler = async (req: Request): Promise<Response> => {
     const recipientName = firstName ? firstName : "there";
 
     // Send email
+    const html = `<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+</head>
+<body style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif; line-height: 1.6; color: #333; max-width: 600px; margin: 0 auto; padding: 20px; background:#ffffff;">
+  ${preheader("Complete your Fairfield onboarding — takes about 10 minutes.")}
+  <div style="background: #ffffff; padding: 30px; border: 1px solid #e5e7eb; border-radius: 12px;">
+    <h1 style="color:#1d4ed8; margin:0 0 16px; font-size:22px;">Complete your ${companyName} registration</h1>
+    <p style="font-size: 16px;">Hi ${recipientName},</p>
+    <p>You've been invited to join our team. Please complete your registration using the button below.</p>
+    ${ctaButton(registrationUrl, "Complete Registration →")}
+    <p style="font-size: 14px; color: #6b7280;">During registration, you'll provide:</p>
+    <ul style="font-size: 14px; color: #6b7280; padding-left:20px;">
+      <li>Personal information</li>
+      <li>Profile photo</li>
+      <li>Work authorization details</li>
+      <li>Emergency contact information</li>
+    </ul>
+    <p style="font-size: 14px; color: #6b7280;">This invitation is valid for 7 days.</p>
+  </div>
+</body>
+</html>`;
+
+    const text = `Hi ${recipientName},
+
+You've been invited to join ${companyName}. Complete your registration here:
+
+${registrationUrl}
+
+During registration, you'll provide personal information, a profile photo, work authorization details, and emergency contact information.
+
+This invitation is valid for 7 days.`;
+
     const emailResponse = await resend.emails.send({
       from: "Fairfield <admin@fairfieldrg.com>",
       to: [email],
-      subject: `Complete Your Personnel Registration - ${companyName}`,
-      html: `
-        <!DOCTYPE html>
-        <html>
-        <head>
-          <meta charset="utf-8">
-          <meta name="viewport" content="width=device-width, initial-scale=1.0">
-        </head>
-        <body style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif; line-height: 1.6; color: #333; max-width: 600px; margin: 0 auto; padding: 20px;">
-          <div style="background: linear-gradient(135deg, #1e40af 0%, #3b82f6 100%); padding: 30px; border-radius: 12px 12px 0 0; text-align: center;">
-            <h1 style="color: white; margin: 0; font-size: 24px;">Welcome to ${companyName}</h1>
-          </div>
-          
-          <div style="background: #ffffff; padding: 30px; border: 1px solid #e5e7eb; border-top: none; border-radius: 0 0 12px 12px;">
-            <p style="font-size: 16px; margin-bottom: 20px;">Hi ${recipientName},</p>
-            
-            <p style="font-size: 16px; margin-bottom: 20px;">
-              You've been invited to join our team! Please complete your registration by clicking the button below.
-            </p>
-            
-            <div style="text-align: center; margin: 30px 0;">
-              <a href="${registrationUrl}" 
-                 style="display: inline-block; background: linear-gradient(135deg, #1e40af 0%, #3b82f6 100%); color: white; padding: 14px 32px; text-decoration: none; border-radius: 8px; font-weight: 600; font-size: 16px;">
-                Complete Registration
-              </a>
-            </div>
-            
-            <p style="font-size: 14px; color: #6b7280; margin-bottom: 20px;">
-              During registration, you'll provide:
-            </p>
-            <ul style="font-size: 14px; color: #6b7280; margin-bottom: 20px;">
-              <li>Personal information</li>
-              <li>Profile photo</li>
-              <li>Work authorization details</li>
-              <li>Emergency contact information</li>
-            </ul>
-            
-            <p style="font-size: 14px; color: #6b7280; margin-bottom: 20px;">
-              This invitation will expire in 7 days.
-            </p>
-            
-            <hr style="border: none; border-top: 1px solid #e5e7eb; margin: 30px 0;">
-            
-            <p style="font-size: 12px; color: #9ca3af; margin: 0;">
-              If you didn't expect this email, you can safely ignore it.
-            </p>
-          </div>
-        </body>
-        </html>
-      `,
+      reply_to: "admin@fairfieldrg.com",
+      subject: `Complete your ${companyName} registration — action needed`,
+      html,
+      text,
     });
 
     if (emailResponse.error) {
