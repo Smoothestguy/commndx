@@ -326,6 +326,45 @@ export function MegaMenu({ menuBackground, menuTextColor }: MegaMenuProps) {
           </NavigationMenuContent>
         </NavigationMenuItem>
 
+        {/* Workforce */}
+        <NavigationMenuItem>
+          <NavigationMenuTrigger
+            className={cn(
+              "bg-transparent text-header-foreground hover:bg-black/10 dark:hover:bg-white/10 hover:text-header-foreground data-[state=open]:bg-black/10 dark:data-[state=open]:bg-white/10",
+              ["/personnel", "/messages"].some(
+                (p) => location.pathname.startsWith(p)
+              ) && "bg-black/10 dark:bg-white/10"
+            )}
+          >
+            Workforce
+          </NavigationMenuTrigger>
+          <NavigationMenuContent>
+            <div style={menuContentStyle} className={cn(!menuBackground && "bg-popover")}>
+              <MegaMenuSection sections={workforceMenu} isOpen menuTextColor={menuTextColor} />
+            </div>
+          </NavigationMenuContent>
+        </NavigationMenuItem>
+
+        {/* Vendors */}
+        <NavigationMenuItem>
+          <NavigationMenuTrigger
+            className={cn(
+              "bg-transparent text-header-foreground hover:bg-black/10 dark:hover:bg-white/10 hover:text-header-foreground data-[state=open]:bg-black/10 dark:data-[state=open]:bg-white/10",
+              ["/vendors", "/purchase-orders", "/vendor-bills", "/vendor-documents", "/admin/contractor-submissions"].some(
+                (p) => location.pathname.startsWith(p)
+              ) && "bg-black/10 dark:bg-white/10"
+            )}
+          >
+            Vendors
+          </NavigationMenuTrigger>
+          <NavigationMenuContent>
+            <div style={menuContentStyle} className={cn(!menuBackground && "bg-popover")}>
+              <MegaMenuSection sections={vendorsMenu} isOpen menuTextColor={menuTextColor} />
+            </div>
+          </NavigationMenuContent>
+        </NavigationMenuItem>
+
+
         {/* Reports */}
         <NavigationMenuItem>
           <NavigationMenuTrigger
