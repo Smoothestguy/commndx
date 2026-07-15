@@ -463,7 +463,7 @@ const Projects = () => {
         )}
       </PullToRefreshWrapper>
 
-      {/* Add/Edit Dialog */}
+      {/* Edit Dialog (existing form) */}
       <ProjectFormDialog
         isOpen={isDialogOpen}
         onClose={() => setIsDialogOpen(false)}
@@ -474,6 +474,13 @@ const Projects = () => {
         editingProject={editingProject}
         isSubmitting={addProject.isPending || updateProject.isPending}
       />
+
+      {/* New Project multi-step wizard */}
+      <ProjectCreateWizard
+        open={isWizardOpen}
+        onOpenChange={setIsWizardOpen}
+      />
+
 
       {/* Mobile FAB */}
       <FloatingActionButton
