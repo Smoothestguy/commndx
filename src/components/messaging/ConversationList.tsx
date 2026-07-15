@@ -219,11 +219,12 @@ export function ConversationList({
                     <Trash2 className="h-4 w-4" />
                   </button>
                 </div>
-                {(conversation.unread_count ?? 0) > 0 && (
-                  <Badge variant="default" className="h-5 min-w-[20px] px-1.5 text-xs font-medium">
-                    {conversation.unread_count}
-                  </Badge>
-                )}
+                {(conversation.unread_count ?? 0) > 0 &&
+                  (mode !== "all" || conversation.is_owned_by_me) && (
+                    <Badge variant="default" className="h-5 min-w-[20px] px-1.5 text-xs font-medium">
+                      {conversation.unread_count}
+                    </Badge>
+                  )}
               </div>
             </button>
           ))}
