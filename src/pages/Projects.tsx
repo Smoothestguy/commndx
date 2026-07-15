@@ -13,6 +13,7 @@ import { ProjectStats } from "@/components/projects/ProjectStats";
 import { ProjectFilters } from "@/components/projects/ProjectFilters";
 import { ProjectEmptyState } from "@/components/projects/ProjectEmptyState";
 import { ProjectFormDialog, initialProjectFormData, type ProjectFormData } from "@/components/projects/ProjectFormDialog";
+import { ProjectCreateWizard } from "@/components/projects/ProjectCreateWizard";
 import { ProjectSection } from "@/components/projects/ProjectSection";
 import { FloatingActionButton } from "@/components/shared/FloatingActionButton";
 import { useIsMobile, useIsTablet } from "@/hooks/use-mobile";
