@@ -1416,15 +1416,44 @@ export default function PublicApplicationForm() {
                   />
                 )}
 
-                {/* Custom Fields from Form Template */}
-                {customFields.length > 0 && (
-                  <div className="space-y-4 pt-4 border-t">
-                    <h3 className="font-medium text-sm text-muted-foreground">Additional Questions</h3>
-                    <div className="space-y-4">
-                      {renderFieldsWithLayout(customFields, customLayout, renderCustomField)}
-                    </div>
+                {/* Position select — only when the posting has positions */}
+                {(((posting as any).positions ?? []) as { id: string; position_label: string; advertised_pay_rate: number | null }[]).length > 0 && (
+                  <div className="space-y-2 pt-4 border-t">
+                    <FormLabel>Position applying for *</FormLabel>
+                    <Select value={positionApplyingFor} onValueChange={setPositionApplyingFor}>
+                      <SelectTrigger>
+                        <SelectValue placeholder="Select a position" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {(((posting as any).positions ?? []) as { id: string; position_label: string; advertised_pay_rate: number | null }[]).map((p) => (
+                          <SelectItem key={p.id} value={p.position_label}>
+                            {p.position_label}
+                            {p.advertised_pay_rate != null ? ` — $${Number(p.advertised_pay_rate).toFixed(2)}/hr` : ""}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
                   </div>
                 )}
+
+                {/* Custom Fields from Form Template — in express mode only required fields render */}
+                {(() => {
+                  const visibleFields = isExpressMode ? customFields.filter(f => f.required) : customFields;
+                  if (visibleFields.length === 0) return null;
+                  const visibleLayout = isExpressMode
+                    ? visibleFields.map(f => ({ id: `row_${f.id}`, fieldIds: [f.id] }))
+                    : customLayout;
+                  return (
+                    <div className="space-y-4 pt-4 border-t">
+                      <h3 className="font-medium text-sm text-muted-foreground">
+                        {isExpressMode ? "Required Questions" : "Additional Questions"}
+                      </h3>
+                      <div className="space-y-4">
+                        {renderFieldsWithLayout(visibleFields, visibleLayout, renderCustomField)}
+                      </div>
+                    </div>
+                  );
+                })()}
 
                 {/* SMS Consent Checkbox - TCPA Compliant */}
                 {formSettings.requireSmsConsent && (
