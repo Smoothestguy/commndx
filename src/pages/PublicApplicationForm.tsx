@@ -507,13 +507,13 @@ export default function PublicApplicationForm() {
   const isAnyFileUploading = uploadingFields.size > 0;
 
   const validateCustomFields = () => {
-    // In express mode only required custom fields are shown/validated.
-    const fieldsToCheck = isExpressMode ? customFields.filter(f => f.required) : customFields;
-    for (const field of fieldsToCheck) {
     console.log("[Validation] Starting validation of custom fields");
     console.log("[Validation] Custom answers:", customAnswers);
-    
-    for (const field of customFields) {
+
+    // In express mode, skip non-required custom fields entirely.
+    const fieldsToCheck = isExpressMode ? customFields.filter(f => f.required) : customFields;
+
+    for (const field of fieldsToCheck) {
       if (field.required) {
         const value = customAnswers[field.id];
         console.log(`[Validation] Checking field ${field.id} (${field.type}):`, value);
