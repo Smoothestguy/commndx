@@ -107,6 +107,7 @@ const getProfilePicture = (application: Application): string | null => {
 
 export function ProjectApplicantsSection({
   projectId,
+  hideAddButton = false,
 }: ProjectApplicantsSectionProps) {
   const isMobile = useIsMobile();
   const queryClient = useQueryClient();
