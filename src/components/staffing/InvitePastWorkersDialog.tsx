@@ -79,6 +79,7 @@ export function InvitePastWorkersDialog({ open, onOpenChange, posting }: Props) 
   const [sending, setSending] = useState(false);
   const [progress, setProgress] = useState(0);
   const [result, setResult] = useState<{ sent: number; failed: number; skipped: number } | null>(null);
+  const [messageTemplate, setMessageTemplate] = useState("");
 
   useEffect(() => {
     if (!open) return;
