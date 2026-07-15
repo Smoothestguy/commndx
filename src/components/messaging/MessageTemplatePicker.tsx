@@ -49,7 +49,8 @@ export function MessageTemplatePicker({ onInsert, disabled, size = "icon" }: Pro
             className={cn(size === "icon" && "h-11 w-11 shrink-0")}
             title="Insert template"
           >
-            <FileText className="h-5 w-5" />
+            <FileText className={cn(size === "icon" ? "h-5 w-5" : "h-4 w-4", size === "sm" && "mr-1")} />
+            {size === "sm" && "Templates"}
           </Button>
         </PopoverTrigger>
         <PopoverContent align="end" className="w-80 p-0">
