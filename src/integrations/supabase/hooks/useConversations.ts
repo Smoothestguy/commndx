@@ -439,6 +439,28 @@ export function useSendConversationMessage() {
 
       if (error) throw error;
 
+      // Ensure current user has a participant row on this conversation
+      // (covers admins replying inside threads they don't own).
+      try {
+        const { data: existingParticipant } = await supabase
+          .from("conversation_participants")
+          .select("id")
+          .eq("conversation_id", conversationId)
+          .eq("participant_type", "user")
+          .eq("participant_id", user.id)
+          .maybeSingle();
+        if (!existingParticipant) {
+          await supabase.from("conversation_participants").insert({
+            conversation_id: conversationId,
+            participant_type: "user",
+            participant_id: user.id,
+            unread_count: 0,
+          });
+        }
+      } catch (e) {
+        // Ignore duplicate-key or race errors
+      }
+
       // If SMS delivery requested, send via edge function
       if (sendViaSMS && recipientPhone && recipientType && recipientId && recipientName) {
         try {
@@ -470,9 +492,11 @@ export function useSendConversationMessage() {
     onSuccess: (_, variables) => {
       queryClient.invalidateQueries({ queryKey: ["conversation-messages", variables.conversationId] });
       queryClient.invalidateQueries({ queryKey: ["conversations"] });
+      queryClient.invalidateQueries({ queryKey: ["conversations", "all"] });
     },
   });
 }
+
 
 export function useGetOrCreateConversation() {
   const { user } = useAuth();
