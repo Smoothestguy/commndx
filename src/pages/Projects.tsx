@@ -286,7 +286,7 @@ const Projects = () => {
   const openNewDialog = () => {
     setEditingProject(null);
     setFormData(initialProjectFormData);
-    setIsDialogOpen(true);
+    setIsWizardOpen(true);
   };
 
   // Handle ?action=add query param to open dialog
