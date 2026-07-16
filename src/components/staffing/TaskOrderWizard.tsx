@@ -288,6 +288,18 @@ export function TaskOrderWizard({
       setStep(1);
       return;
     }
+    if (workSummaryMissing) {
+      setShowWorkSummaryError(true);
+      setStep(2);
+      toast.error("Add a short description of what workers will be doing.");
+      return;
+    }
+    if (positionPayInvalid) {
+      setShowPositionErrors(true);
+      setStep(3);
+      toast.error("Enter a pay rate for each position with \"Show Pay\" on, or turn it off.");
+      return;
+    }
 
     try {
       const payload = buildTaskOrderPayload();
