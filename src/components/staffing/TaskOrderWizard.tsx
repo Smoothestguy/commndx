@@ -255,9 +255,38 @@ export function TaskOrderWizard({
       schedule.hoursPerDay === "" ? null : parseFloat(schedule.hoursPerDay);
     const perDiemNum =
       schedule.perDiemAmount === "" ? null : parseFloat(schedule.perDiemAmount);
+    const cityHint = (() => {
+      const parts = locationAddress.split(",").map((s) => s.trim()).filter(Boolean);
+      return parts.length >= 2 ? parts[parts.length - 2] : "";
+    })();
+    const autoDescription = buildTaskOrderDescription({
+      title,
+      workSummary: schedule.workSummary,
+      locationAddress,
+      city: cityHint,
+      startAt: startAt || null,
+      approxDuration,
+      daysPerWeek: schedule.daysPerWeek,
+      hoursPerDay: schedule.hoursPerDay,
+      scheduleNotes: schedule.scheduleNotes,
+      perDiemAmount: schedule.perDiemAmount,
+      perDiemNotes: schedule.perDiemNotes,
+      lodgingStatus: schedule.lodgingStatus,
+      lodgingNotes: schedule.lodgingNotes,
+      mealsProvided: schedule.mealsProvided,
+      mealsNotes: schedule.mealsNotes,
+      mobDemobPaid: schedule.mobDemobPaid,
+      mobDemobNotes: schedule.mobDemobNotes,
+      positions: positions.map((p) => ({
+        position_label: p.position_label,
+        headcount: p.headcount,
+        advertised_pay_rate: p.advertised_pay_rate,
+        show_pay_publicly: p.show_pay_publicly,
+      })),
+    });
     return {
       title: title.trim(),
-      job_description: jobDescription.trim() || null,
+      job_description: jobDescription.trim() || autoDescription || null,
       work_summary: schedule.workSummary.trim() || null,
       location_address: locationAddress.trim() || null,
       start_at: startAt ? new Date(startAt).toISOString() : null,
