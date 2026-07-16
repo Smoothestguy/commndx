@@ -12,7 +12,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { MegaMenu } from "./MegaMenu";
+import { SidebarTrigger } from "@/components/ui/sidebar";
 import { QuickCreateMenu } from "./QuickCreateMenu";
 import { GlobalSearch } from "./GlobalSearch";
 import { AdminNotificationBell } from "@/components/notifications/AdminNotificationBell";
