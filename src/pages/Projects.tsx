@@ -157,6 +157,30 @@ const Projects = () => {
 
   const isArchivedTab = activeTab === "archived";
 
+  const staleThreshold = useMemo(() => Date.now() - 90 * 24 * 60 * 60 * 1000, []);
+  const isStale = (p: Project) =>
+    activeTab === "active" && !!p.updated_at && new Date(p.updated_at).getTime() < staleThreshold;
+
+  const handleExport = () => {
+    const rows = filteredProjects.map((p) => ({
+      Name: p.name,
+      Customer: getCustomerDisplayName(customers?.find((c) => c.id === p.customer_id)),
+      Status: p.status,
+      Stage: p.stage,
+      "Start Date": p.start_date || "",
+      "End Date": p.end_date || "",
+      City: p.city || "",
+      State: p.state || "",
+      "Crew Count": assignmentCounts?.[p.id] ?? 0,
+      "Customer PO": p.customer_po || "",
+    }));
+    const ws = XLSX.utils.json_to_sheet(rows);
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, "Projects");
+    const stamp = format(new Date(), "yyyy-MM-dd");
+    XLSX.writeFile(wb, `projects-${activeTab}-${stamp}.xlsx`);
+  };
+
   const columns: EnhancedColumn<Project>[] = [
     {
       key: "name",
