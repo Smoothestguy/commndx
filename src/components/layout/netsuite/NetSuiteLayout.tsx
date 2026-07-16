@@ -3,7 +3,8 @@ import { Outlet } from "react-router-dom";
 import { cn } from "@/lib/utils";
 import { TopNavBar } from "./TopNavBar";
 import { RightPanel } from "./RightPanel";
-import { MobileDrawer } from "./MobileDrawer";
+import { MobileNavDrawer } from "../MobileNavDrawer";
+import { BottomNav } from "../BottomNav";
 import { BackgroundMediaLayer } from "../BackgroundMediaLayer";
 import { AppSidebar } from "../AppSidebar";
 import { SidebarProvider } from "@/components/ui/sidebar";
@@ -42,7 +43,7 @@ export function NetSuiteLayout({ children }: NetSuiteLayoutProps) {
 
             <TopNavBar onMobileMenuToggle={() => setMobileMenuOpen(true)} />
 
-            <MobileDrawer open={mobileMenuOpen} onClose={() => setMobileMenuOpen(false)} />
+            <MobileNavDrawer open={mobileMenuOpen} onOpenChange={setMobileMenuOpen} />
 
             <div className="flex flex-1 relative z-[1] w-full">
               {!isMobile && <AppSidebar />}
@@ -66,9 +67,12 @@ export function NetSuiteLayout({ children }: NetSuiteLayoutProps) {
                 />
               )}
             </div>
+
+            {isMobile && <BottomNav onMoreClick={() => setMobileMenuOpen(true)} />}
           </div>
         </MessageBannerProvider>
       </DashboardDraftProvider>
     </SidebarProvider>
   );
 }
+
