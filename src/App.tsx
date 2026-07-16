@@ -772,11 +772,7 @@ const App = () => {
 
                     <Route path="*" element={<NotFound />} />
                   </Routes>
-                  <BottomNav onMoreClick={() => setMoreMenuOpen(true)} />
-                  <MoreMenu
-                    open={moreMenuOpen}
-                    onOpenChange={setMoreMenuOpen}
-                  />
+
                   <ChatInterface />
                   <UpdateNotification />
                   </MessageDrawerProvider>
