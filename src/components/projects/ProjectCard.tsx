@@ -18,6 +18,7 @@ interface ProjectCardProps {
   selected?: boolean;
   onSelectChange?: (checked: boolean) => void;
   extraActions?: React.ReactNode;
+  stale?: boolean;
 }
 
 const stageConfig: Record<ProjectStage, { label: string; variant: "default" | "secondary" | "outline" | "destructive"; className: string }> = {
