@@ -1,9 +1,11 @@
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
+import { Button } from "@/components/ui/button";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 
 export interface ScheduleValue {
+  workSummary: string;
   daysPerWeek: string;
   hoursPerDay: string;
   scheduleNotes: string;
@@ -18,6 +20,7 @@ export interface ScheduleValue {
 }
 
 export const emptySchedule: ScheduleValue = {
+  workSummary: "",
   daysPerWeek: "",
   hoursPerDay: "",
   scheduleNotes: "",
@@ -31,14 +34,74 @@ export const emptySchedule: ScheduleValue = {
   mobDemobNotes: "",
 };
 
+export const WORK_SUMMARY_TEMPLATES: { label: string; text: string }[] = [
+  {
+    label: "General labor",
+    text: "moving materials, site cleanup, and loading/unloading",
+  },
+  {
+    label: "Storm debris removal",
+    text: "cutting, hauling, and loading storm debris",
+  },
+  {
+    label: "Base camp operations",
+    text: "setup, housekeeping, and support services at a base camp",
+  },
+  {
+    label: "Demo & repairs",
+    text: "tear-out, hauling, and general construction support",
+  },
+];
+
 interface Props {
   value: ScheduleValue;
   onChange: (patch: Partial<ScheduleValue>) => void;
+  workSummaryRequired?: boolean;
+  workSummaryError?: string | null;
 }
 
-export function TaskOrderStepSchedule({ value, onChange }: Props) {
+export function TaskOrderStepSchedule({
+  value,
+  onChange,
+  workSummaryRequired = false,
+  workSummaryError = null,
+}: Props) {
   return (
     <div className="space-y-5">
+      <div>
+        <Label>
+          What will they be doing?{workSummaryRequired && <span className="text-destructive"> *</span>}
+        </Label>
+        <div className="flex flex-wrap gap-1.5 mt-1.5 mb-2">
+          {WORK_SUMMARY_TEMPLATES.map((t) => (
+            <Button
+              key={t.label}
+              type="button"
+              variant="outline"
+              size="sm"
+              className="h-7 text-xs"
+              onClick={() => onChange({ workSummary: t.text })}
+            >
+              {t.label}
+            </Button>
+          ))}
+        </div>
+        <Textarea
+          value={value.workSummary}
+          onChange={(e) => onChange({ workSummary: e.target.value })}
+          placeholder="e.g. Loading and hauling storm debris, operating hand tools, site cleanup…"
+          rows={3}
+          aria-invalid={!!workSummaryError}
+          className={workSummaryError ? "border-destructive" : ""}
+        />
+        {workSummaryError && (
+          <p className="text-xs text-destructive mt-1">{workSummaryError}</p>
+        )}
+        <p className="text-xs text-muted-foreground mt-1">
+          Applicants read this first — describe the actual work in one sentence.
+        </p>
+      </div>
+
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
         <div>
           <Label>Days per Week</Label>
