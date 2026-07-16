@@ -20,6 +20,7 @@ import { PortalSwitcherModal } from "@/components/PortalSwitcherModal";
 import { usePortalSwitcher } from "@/hooks/usePortalSwitcher";
 import { NetworkErrorBanner } from "@/components/auth/NetworkErrorBanner";
 import { withTimeout, isNetworkError, classifyNetworkError } from "@/utils/authNetwork";
+import { ForceDarkTheme } from "@/components/ForceDarkTheme";
 
 export default function PortalLogin() {
   const navigate = useNavigate();
@@ -131,6 +132,7 @@ export default function PortalLogin() {
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-background p-4">
+      <ForceDarkTheme />
       <Card className="w-full max-w-md">
         <CardHeader className="text-center">
           <div className="mx-auto mb-4 p-3 rounded-full bg-primary/10 w-fit">

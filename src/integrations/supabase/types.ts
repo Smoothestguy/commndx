@@ -8992,6 +8992,10 @@ export type Database = {
         Args: { _project_id: string; _user_id: string }
         Returns: boolean
       }
+      is_conversation_member: {
+        Args: { conv_id: string; uid: string }
+        Returns: boolean
+      }
       is_personnel: { Args: { _user_id: string }; Returns: boolean }
       is_vendor: { Args: { _user_id: string }; Returns: boolean }
       log_application_attempt_error: {

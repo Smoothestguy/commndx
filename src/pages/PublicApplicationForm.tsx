@@ -98,6 +98,18 @@ const schemaWithHomeZipRequired = baseSchema.extend({
 });
 
 export default function PublicApplicationForm() {
+  // Force dark theme on public applicant form (brand consistency)
+  useEffect(() => {
+    const root = document.documentElement;
+    const hadDark = root.classList.contains("dark");
+    const hadLight = root.classList.contains("light");
+    root.classList.remove("light");
+    root.classList.add("dark");
+    return () => {
+      if (!hadDark) root.classList.remove("dark");
+      if (hadLight) root.classList.add("light");
+    };
+  }, []);
   const { token } = useParams<{ token: string }>();
   const [submitted, setSubmitted] = useState(false);
   const [customFields, setCustomFields] = useState<FormFieldType[]>([]);

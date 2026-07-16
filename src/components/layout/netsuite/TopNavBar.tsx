@@ -17,6 +17,7 @@ import { QuickCreateMenu } from "./QuickCreateMenu";
 import { GlobalSearch } from "./GlobalSearch";
 import { AdminNotificationBell } from "@/components/notifications/AdminNotificationBell";
 import { SessionTimer } from "@/components/session/SessionTimer";
+import { ThemeToggle } from "@/components/ThemeToggle";
 import { useAIAssistant } from "@/contexts/AIAssistantContext";
 import { useTheme } from "next-themes";
 import { useDashboardConfig } from "@/hooks/useDashboardConfig";
@@ -124,6 +125,9 @@ export function TopNavBar({ onMobileMenuToggle }: TopNavBarProps) {
 
           {/* Notifications */}
           {(isAdmin || isManager) && <AdminNotificationBell />}
+
+          {/* Theme toggle */}
+          <ThemeToggle />
 
           {/* User Menu */}
           <DropdownMenu>

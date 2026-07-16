@@ -7,6 +7,7 @@ import { MessageCircle } from "lucide-react";
 import { AdminNotificationBell } from "@/components/notifications/AdminNotificationBell";
 import { useUserRole } from "@/hooks/useUserRole";
 import { SessionTimer } from "@/components/session/SessionTimer";
+import { ThemeToggle } from "@/components/ThemeToggle";
 
 export function AppHeader() {
   const { signOut } = useAuth();
@@ -45,6 +46,8 @@ export function AppHeader() {
 
         {/* Session Timer - visible for users with user management access */}
         <SessionTimer />
+
+        <ThemeToggle className="h-7 w-7 sm:h-8 sm:w-8 text-header-foreground hover:bg-sidebar-accent" />
 
         {showNotificationBell && <AdminNotificationBell />}
       </div>
