@@ -328,19 +328,23 @@ const Projects = () => {
   const renderProjectCards = (projectList: Project[]) => (
     <div className="grid gap-2 grid-cols-1 sm:grid-cols-2">
       {projectList.map((project) => (
-        <ProjectCard
-          key={project.id}
-          project={project}
-          customerName={getCustomerDisplayName(customers?.find(c => c.id === project.customer_id))}
-          assignmentCount={assignmentCounts?.[project.id] ?? 0}
-          onEdit={() => handleEdit(project)}
-          onDelete={() => handleDelete(project.id)}
-          onClick={() => navigate(`/projects/${project.id}`)}
-          compact
-          selectable
-          selected={selectedIds.has(project.id)}
-          onSelectChange={(c) => toggleSelect(project.id, c)}
-        />
+        <ProjectContextMenu key={project.id} project={project} onEdit={handleEdit}>
+          <div>
+            <ProjectCard
+              project={project}
+              customerName={getCustomerDisplayName(customers?.find(c => c.id === project.customer_id))}
+              assignmentCount={assignmentCounts?.[project.id] ?? 0}
+              onEdit={() => handleEdit(project)}
+              onDelete={() => handleDelete(project.id)}
+              onClick={() => navigate(`/projects/${project.id}`)}
+              compact
+              selectable
+              selected={selectedIds.has(project.id)}
+              onSelectChange={(c) => toggleSelect(project.id, c)}
+              extraActions={<ProjectRowActionsMenu project={project} onEdit={handleEdit} />}
+            />
+          </div>
+        </ProjectContextMenu>
       ))}
     </div>
   );
