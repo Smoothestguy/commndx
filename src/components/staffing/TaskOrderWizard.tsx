@@ -203,7 +203,13 @@ export function TaskOrderWizard({
     setJobDescription(
       buildTaskOrderDescription({
         title,
+        workSummary: schedule.workSummary,
         locationAddress,
+        city: (() => {
+          // Try to parse "…, City, ST zip" for city hint
+          const parts = locationAddress.split(",").map((s) => s.trim()).filter(Boolean);
+          return parts.length >= 2 ? parts[parts.length - 2] : "";
+        })(),
         startAt: startAt || null,
         approxDuration,
         daysPerWeek: schedule.daysPerWeek,
@@ -228,8 +234,16 @@ export function TaskOrderWizard({
     toast.success("Description generated. Edit as needed.");
   };
 
+  const workSummaryMissing = !schedule.workSummary.trim();
+  const positionPayInvalid = positions.some(
+    (p) => p.show_pay_publicly && p.advertised_pay_rate == null
+  );
+  const [showWorkSummaryError, setShowWorkSummaryError] = useState(false);
+  const [showPositionErrors, setShowPositionErrors] = useState(false);
+
   const canGoNext = () => {
     if (step === 1) return !!projectId && title.trim().length > 0;
+    if (step === 2) return !workSummaryMissing;
     return true;
   };
 
