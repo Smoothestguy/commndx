@@ -48,11 +48,12 @@ export function ProjectHeaderKpis({ projectId }: Props) {
       const taskOrderIds = (taskOrders || []).map((t) => t.id);
       if (!taskOrderIds.length) return { needed: 0, filled: 0 };
 
-      const posRes: any = await supabase
+      const sb = supabase as any;
+      const posRes = await sb
         .from("task_order_positions")
         .select("headcount")
         .in("task_order_id", taskOrderIds);
-      const appRes: any = await supabase
+      const appRes = await sb
         .from("applications")
         .select("id", { count: "exact", head: true })
         .in("task_order_id", taskOrderIds)
