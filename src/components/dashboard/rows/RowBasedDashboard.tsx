@@ -6,6 +6,8 @@ import { RevenueChartRow } from "./RevenueChartRow";
 import { RecentInvoicesTable } from "./RecentInvoicesTable";
 import { RecentActivityTable } from "./RecentActivityTable";
 import { InvoiceAgingSummary } from "./InvoiceAgingSummary";
+import { RecentRecordsCard } from "./RecentRecordsCard";
+
 
 import { MobileSessionCard } from "@/components/session/MobileSessionCard";
 import { useDashboardConfig } from "@/hooks/useDashboardConfig";
