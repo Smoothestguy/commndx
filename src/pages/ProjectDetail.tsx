@@ -142,6 +142,17 @@ const ProjectDetail = () => {
             <Download className="h-4 w-4 mr-2" />
             Export PDF
           </Button>
+          {canArchive && (project.archived_at ? (
+            <Button variant="outline" onClick={() => unarchiveProject.mutate({ id: project.id, name: project.name })} disabled={unarchiveProject.isPending}>
+              <ArchiveRestore className="h-4 w-4 mr-2" />
+              Unarchive
+            </Button>
+          ) : (
+            <Button variant="outline" onClick={() => archiveProject.mutate({ id: project.id, name: project.name })} disabled={archiveProject.isPending}>
+              <Archive className="h-4 w-4 mr-2" />
+              Archive
+            </Button>
+          ))}
           <Button variant="outline" onClick={() => navigate("/projects")}>
             <ArrowLeft className="h-4 w-4 mr-2" />
             Back
