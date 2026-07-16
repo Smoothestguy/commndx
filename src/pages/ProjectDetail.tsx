@@ -1,7 +1,8 @@
 import { useMemo } from "react";
 import { useParams, Navigate, useNavigate, useSearchParams } from "react-router-dom";
 import { format } from "date-fns";
-import { useProject } from "@/integrations/supabase/hooks/useProjects";
+import { useProject, useArchiveProject, useUnarchiveProject } from "@/integrations/supabase/hooks/useProjects";
+import { useUserRole } from "@/hooks/useUserRole";
 import { useCustomer } from "@/integrations/supabase/hooks/useCustomers";
 import { PageLayout } from "@/components/layout/PageLayout";
 import { Button } from "@/components/ui/button";
