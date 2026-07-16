@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { ChevronDown } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
@@ -13,6 +13,7 @@ interface ProjectSectionProps {
   icon: React.ReactNode;
   count: number;
   defaultOpen?: boolean;
+  storageKey?: string;
   children: React.ReactNode;
   className?: string;
 }
@@ -22,10 +23,23 @@ export function ProjectSection({
   icon,
   count,
   defaultOpen = false,
+  storageKey,
   children,
   className,
 }: ProjectSectionProps) {
-  const [isOpen, setIsOpen] = useState(defaultOpen);
+  const [isOpen, setIsOpen] = useState(() => {
+    if (storageKey && typeof window !== "undefined") {
+      const v = window.localStorage.getItem(storageKey);
+      if (v !== null) return v === "1";
+    }
+    return defaultOpen;
+  });
+
+  useEffect(() => {
+    if (storageKey && typeof window !== "undefined") {
+      window.localStorage.setItem(storageKey, isOpen ? "1" : "0");
+    }
+  }, [isOpen, storageKey]);
 
   if (count === 0) return null;
 
@@ -54,3 +68,4 @@ export function ProjectSection({
     </Collapsible>
   );
 }
+
