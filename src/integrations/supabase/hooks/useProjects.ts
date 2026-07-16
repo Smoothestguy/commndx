@@ -108,7 +108,7 @@ export const useAddProject = () => {
   const { logAction } = useAuditLog();
 
   return useMutation({
-    mutationFn: async (project: Omit<Project, "id" | "created_at" | "updated_at">) => {
+    mutationFn: async (project: Omit<Project, "id" | "created_at" | "updated_at" | "archived_at" | "archived_by"> & { archived_at?: string | null; archived_by?: string | null }) => {
       const { data, error } = await supabase
         .from("projects")
         .insert([project])
