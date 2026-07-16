@@ -47,6 +47,8 @@ export function AppHeader() {
         {/* Session Timer - visible for users with user management access */}
         <SessionTimer />
 
+        <ThemeToggle className="h-7 w-7 sm:h-8 sm:w-8 text-header-foreground hover:bg-sidebar-accent" />
+
         {showNotificationBell && <AdminNotificationBell />}
       </div>
     </header>
