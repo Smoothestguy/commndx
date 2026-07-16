@@ -41,6 +41,7 @@ interface Props {
   onChange: (next: PositionDraft[]) => void;
   rateBrackets: ProjectRateBracket[] | undefined;
   projectSelected: boolean;
+  showErrors?: boolean;
 }
 
 export function TaskOrderStepPositions({
@@ -48,6 +49,7 @@ export function TaskOrderStepPositions({
   onChange,
   rateBrackets,
   projectSelected,
+  showErrors = false,
 }: Props) {
   const totalHeadcount = positions.reduce(
     (s, p) => s + (Number(p.headcount) || 0),
