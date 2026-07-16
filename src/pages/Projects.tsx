@@ -5,7 +5,8 @@ import { PageLayout } from "@/components/layout/PageLayout";
 import { EnhancedDataTable, EnhancedColumn } from "@/components/shared/EnhancedDataTable";
 import { StatusBadge } from "@/components/shared/StatusBadge";
 import { Button } from "@/components/ui/button";
-import { Plus, Edit, Trash2, Loader2, Users as UsersIcon, User, Archive, ArchiveRestore, X } from "lucide-react";
+import { Plus, Loader2, Users as UsersIcon, User, Archive, ArchiveRestore, X } from "lucide-react";
+import { ProjectContextMenu, ProjectRowActionsMenu } from "@/components/projects/ProjectContextMenu";
 import { SearchInput } from "@/components/ui/search-input";
 import { PullToRefreshWrapper } from "@/components/shared/PullToRefreshWrapper";
 import { ProjectCard } from "@/components/projects/ProjectCard";
@@ -248,25 +249,8 @@ const Projects = () => {
       sortable: false,
       filterable: false,
       render: (item) => (
-        <div className="flex items-center gap-1">
-          {!isArchivedTab && (
-            <Button variant="ghost" size="icon" onClick={(e) => { e.stopPropagation(); handleEdit(item); }}>
-              <Edit className="h-4 w-4" />
-            </Button>
-          )}
-          {canArchive && !isArchivedTab && (
-            <Button variant="ghost" size="icon" title="Archive" onClick={(e) => { e.stopPropagation(); archiveProject.mutate({ id: item.id, name: item.name }); }}>
-              <Archive className="h-4 w-4" />
-            </Button>
-          )}
-          {canArchive && isArchivedTab && (
-            <Button variant="ghost" size="icon" title="Unarchive" onClick={(e) => { e.stopPropagation(); unarchiveProject.mutate({ id: item.id, name: item.name }); }}>
-              <ArchiveRestore className="h-4 w-4" />
-            </Button>
-          )}
-          <Button variant="ghost" size="icon" onClick={(e) => { e.stopPropagation(); handleDelete(item.id); }}>
-            <Trash2 className="h-4 w-4 text-destructive" />
-          </Button>
+        <div onClick={(e) => e.stopPropagation()}>
+          <ProjectRowActionsMenu project={item} onEdit={handleEdit} />
         </div>
       ),
     },
@@ -344,19 +328,23 @@ const Projects = () => {
   const renderProjectCards = (projectList: Project[]) => (
     <div className="grid gap-2 grid-cols-1 sm:grid-cols-2">
       {projectList.map((project) => (
-        <ProjectCard
-          key={project.id}
-          project={project}
-          customerName={getCustomerDisplayName(customers?.find(c => c.id === project.customer_id))}
-          assignmentCount={assignmentCounts?.[project.id] ?? 0}
-          onEdit={() => handleEdit(project)}
-          onDelete={() => handleDelete(project.id)}
-          onClick={() => navigate(`/projects/${project.id}`)}
-          compact
-          selectable
-          selected={selectedIds.has(project.id)}
-          onSelectChange={(c) => toggleSelect(project.id, c)}
-        />
+        <ProjectContextMenu key={project.id} project={project} onEdit={handleEdit}>
+          <div>
+            <ProjectCard
+              project={project}
+              customerName={getCustomerDisplayName(customers?.find(c => c.id === project.customer_id))}
+              assignmentCount={assignmentCounts?.[project.id] ?? 0}
+              onEdit={() => handleEdit(project)}
+              onDelete={() => handleDelete(project.id)}
+              onClick={() => navigate(`/projects/${project.id}`)}
+              compact
+              selectable
+              selected={selectedIds.has(project.id)}
+              onSelectChange={(c) => toggleSelect(project.id, c)}
+              extraActions={<ProjectRowActionsMenu project={project} onEdit={handleEdit} />}
+            />
+          </div>
+        </ProjectContextMenu>
       ))}
     </div>
   );
