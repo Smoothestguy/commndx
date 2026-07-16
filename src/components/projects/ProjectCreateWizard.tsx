@@ -125,6 +125,10 @@ export function ProjectCreateWizard({ open, onOpenChange, onProjectCreated }: Pr
   const [approxDuration, setApproxDuration] = useState("");
   const [positions, setPositions] = useState<PositionDraft[]>([]);
   const [submitting, setSubmitting] = useState(false);
+  const [jobDescription, setJobDescription] = useState<string>("");
+  const [descEdited, setDescEdited] = useState(false);
+  const [showWorkSummaryError, setShowWorkSummaryError] = useState(false);
+  const [showPositionErrors, setShowPositionErrors] = useState(false);
 
   // Result / retry state
   const [createdProjectId, setCreatedProjectId] = useState<string | null>(null);
