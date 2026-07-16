@@ -50,6 +50,7 @@ export function ProjectFilters({
   onClearFilters,
   search,
   inline = false,
+  hideStatus = false,
 }: ProjectFiltersProps) {
   const hasActiveFilters = filterStatus !== "all" || filterStage !== "all" || filterCategory !== "all" || search;
 
