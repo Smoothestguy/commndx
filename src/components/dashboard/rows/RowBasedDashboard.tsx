@@ -246,6 +246,11 @@ export function RowBasedDashboard() {
           <RecentActivityTable />
         </div>
 
+        {/* Recent Records (client-side visited pages) */}
+        <RecentRecordsCard />
+
+
+
         {/* Row 5: Revenue Chart */}
         <RevenueChartRow />
 
