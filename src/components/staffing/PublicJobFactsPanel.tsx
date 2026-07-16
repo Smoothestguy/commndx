@@ -8,8 +8,10 @@ interface Props {
   positions: PublicTaskOrderPosition[];
 }
 
+// Positive-only lodging label. Explicit "not provided" is intentionally omitted —
+// negatives never render on the public posting.
 const lodgingLabel = (s?: string | null) =>
-  s === "provided" ? "Lodging provided" : s === "stipend" ? "Lodging stipend" : s === "not_provided" ? "Lodging not provided" : null;
+  s === "provided" ? "Lodging provided" : s === "stipend" ? "Lodging stipend" : null;
 
 export function PublicJobFactsPanel({ taskOrder, positions }: Props) {
   const facts: { icon: React.ReactNode; label: string; note?: string | null }[] = [];

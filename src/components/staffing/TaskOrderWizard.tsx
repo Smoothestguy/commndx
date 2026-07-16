@@ -46,6 +46,7 @@ import {
   PositionDraft,
 } from "./TaskOrderStepPositions";
 import { buildTaskOrderDescription } from "@/lib/taskOrderDescription";
+import { PostingPreviewSection } from "./PostingPreviewSection";
 import { resolvePositionDrafts } from "@/lib/resolvePositions";
 
 interface Props {
@@ -131,6 +132,7 @@ export function TaskOrderWizard({
       );
       setApproxDuration(taskOrder.approx_duration || "");
       setSchedule({
+        workSummary: (taskOrder as any).work_summary || "",
         daysPerWeek:
           taskOrder.days_per_week != null ? String(taskOrder.days_per_week) : "",
         hoursPerDay:
@@ -202,7 +204,13 @@ export function TaskOrderWizard({
     setJobDescription(
       buildTaskOrderDescription({
         title,
+        workSummary: schedule.workSummary,
         locationAddress,
+        city: (() => {
+          // Try to parse "…, City, ST zip" for city hint
+          const parts = locationAddress.split(",").map((s) => s.trim()).filter(Boolean);
+          return parts.length >= 2 ? parts[parts.length - 2] : "";
+        })(),
         startAt: startAt || null,
         approxDuration,
         daysPerWeek: schedule.daysPerWeek,
@@ -227,8 +235,16 @@ export function TaskOrderWizard({
     toast.success("Description generated. Edit as needed.");
   };
 
+  const workSummaryMissing = !schedule.workSummary.trim();
+  const positionPayInvalid = positions.some(
+    (p) => p.show_pay_publicly && p.advertised_pay_rate == null
+  );
+  const [showWorkSummaryError, setShowWorkSummaryError] = useState(false);
+  const [showPositionErrors, setShowPositionErrors] = useState(false);
+
   const canGoNext = () => {
     if (step === 1) return !!projectId && title.trim().length > 0;
+    if (step === 2) return !workSummaryMissing;
     return true;
   };
 
@@ -239,9 +255,39 @@ export function TaskOrderWizard({
       schedule.hoursPerDay === "" ? null : parseFloat(schedule.hoursPerDay);
     const perDiemNum =
       schedule.perDiemAmount === "" ? null : parseFloat(schedule.perDiemAmount);
+    const cityHint = (() => {
+      const parts = locationAddress.split(",").map((s) => s.trim()).filter(Boolean);
+      return parts.length >= 2 ? parts[parts.length - 2] : "";
+    })();
+    const autoDescription = buildTaskOrderDescription({
+      title,
+      workSummary: schedule.workSummary,
+      locationAddress,
+      city: cityHint,
+      startAt: startAt || null,
+      approxDuration,
+      daysPerWeek: schedule.daysPerWeek,
+      hoursPerDay: schedule.hoursPerDay,
+      scheduleNotes: schedule.scheduleNotes,
+      perDiemAmount: schedule.perDiemAmount,
+      perDiemNotes: schedule.perDiemNotes,
+      lodgingStatus: schedule.lodgingStatus,
+      lodgingNotes: schedule.lodgingNotes,
+      mealsProvided: schedule.mealsProvided,
+      mealsNotes: schedule.mealsNotes,
+      mobDemobPaid: schedule.mobDemobPaid,
+      mobDemobNotes: schedule.mobDemobNotes,
+      positions: positions.map((p) => ({
+        position_label: p.position_label,
+        headcount: p.headcount,
+        advertised_pay_rate: p.advertised_pay_rate,
+        show_pay_publicly: p.show_pay_publicly,
+      })),
+    });
     return {
       title: title.trim(),
-      job_description: jobDescription.trim() || null,
+      job_description: jobDescription.trim() || autoDescription || null,
+      work_summary: schedule.workSummary.trim() || null,
       location_address: locationAddress.trim() || null,
       start_at: startAt ? new Date(startAt).toISOString() : null,
       approx_duration: approxDuration.trim() || null,
@@ -270,6 +316,18 @@ export function TaskOrderWizard({
     if (!projectId || !title.trim()) {
       toast.error("Please fill in required fields");
       setStep(1);
+      return;
+    }
+    if (workSummaryMissing) {
+      setShowWorkSummaryError(true);
+      setStep(2);
+      toast.error("Add a short description of what workers will be doing.");
+      return;
+    }
+    if (positionPayInvalid) {
+      setShowPositionErrors(true);
+      setStep(3);
+      toast.error("Enter a pay rate for each position with \"Show Pay\" on, or turn it off.");
       return;
     }
 
@@ -507,16 +565,59 @@ export function TaskOrderWizard({
             <TaskOrderStepSchedule
               value={schedule}
               onChange={(patch) => setSchedule((s) => ({ ...s, ...patch }))}
+              workSummaryRequired
+              workSummaryError={
+                showWorkSummaryError && workSummaryMissing
+                  ? "Required — applicants need to know what they'll be doing."
+                  : null
+              }
             />
           )}
 
           {step === 3 && (
-            <TaskOrderStepPositions
-              positions={positions}
-              onChange={setPositions}
-              rateBrackets={rateBrackets}
-              projectSelected={!!projectId}
-            />
+            <div className="space-y-4">
+              <TaskOrderStepPositions
+                positions={positions}
+                onChange={setPositions}
+                rateBrackets={rateBrackets}
+                projectSelected={!!projectId}
+                showErrors={showPositionErrors}
+              />
+              <PostingPreviewSection
+                generated={buildTaskOrderDescription({
+                  title,
+                  workSummary: schedule.workSummary,
+                  locationAddress,
+                  city: (() => {
+                    const parts = locationAddress.split(",").map((s) => s.trim()).filter(Boolean);
+                    return parts.length >= 2 ? parts[parts.length - 2] : "";
+                  })(),
+                  startAt: startAt || null,
+                  approxDuration,
+                  daysPerWeek: schedule.daysPerWeek,
+                  hoursPerDay: schedule.hoursPerDay,
+                  scheduleNotes: schedule.scheduleNotes,
+                  perDiemAmount: schedule.perDiemAmount,
+                  perDiemNotes: schedule.perDiemNotes,
+                  lodgingStatus: schedule.lodgingStatus,
+                  lodgingNotes: schedule.lodgingNotes,
+                  mealsProvided: schedule.mealsProvided,
+                  mealsNotes: schedule.mealsNotes,
+                  mobDemobPaid: schedule.mobDemobPaid,
+                  mobDemobNotes: schedule.mobDemobNotes,
+                  positions: positions.map((p) => ({
+                    position_label: p.position_label,
+                    headcount: p.headcount,
+                    advertised_pay_rate: p.advertised_pay_rate,
+                    show_pay_publicly: p.show_pay_publicly,
+                  })),
+                })}
+                value={jobDescription}
+                edited={jobDescription.trim().length > 0}
+                onEdit={(t) => setJobDescription(t)}
+                onRegenerate={() => setJobDescription("")}
+              />
+            </div>
           )}
         </div>
 

@@ -5,7 +5,8 @@ import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
 import { format } from "date-fns";
-import { MapPin, Calendar, Users, CheckCircle2, Loader2, Mail, AlertTriangle, Navigation, UserCheck, X } from "lucide-react";
+import { MapPin, Calendar, Users, CheckCircle2, Loader2, Mail, AlertTriangle, Navigation, UserCheck, X, DollarSign } from "lucide-react";
+import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -1102,6 +1103,51 @@ export default function PublicApplicationForm() {
             <CardTitle className="text-xl">{taskOrder.title}</CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
+            {(() => {
+              const publicPositions = (((posting as any).positions ?? []) as {
+                advertised_pay_rate: number | null;
+              }[]);
+              const rates = publicPositions
+                .map((p) => p.advertised_pay_rate)
+                .filter((r): r is number => r != null);
+              const payLabel = rates.length
+                ? rates.every((r) => r === rates[0])
+                  ? `$${rates[0]}/hr`
+                  : `$${Math.min(...rates)}–$${Math.max(...rates)}/hr`
+                : null;
+              // Derive a short city/state chunk from the address (last two comma parts).
+              const addr = taskOrder.location_address || "";
+              const parts = addr.split(",").map((s) => s.trim()).filter(Boolean);
+              const shortLoc = parts.length >= 2
+                ? `${parts[parts.length - 2]}, ${parts[parts.length - 1].split(" ")[0]}`
+                : addr;
+              const openings = taskOrder.headcount_needed || 0;
+              return (
+                <div className="flex flex-wrap gap-2">
+                  {payLabel && (
+                    <Badge className="text-sm px-3 py-1.5 gap-1.5" variant="default">
+                      <DollarSign className="h-4 w-4" /> {payLabel}
+                    </Badge>
+                  )}
+                  {taskOrder.start_at && (
+                    <Badge className="text-sm px-3 py-1.5 gap-1.5" variant="secondary">
+                      <Calendar className="h-4 w-4" /> Starts {format(new Date(taskOrder.start_at), "MMM d")}
+                    </Badge>
+                  )}
+                  {shortLoc && (
+                    <Badge className="text-sm px-3 py-1.5 gap-1.5" variant="secondary">
+                      <MapPin className="h-4 w-4" /> {shortLoc}
+                    </Badge>
+                  )}
+                  {openings > 0 && (
+                    <Badge className="text-sm px-3 py-1.5 gap-1.5" variant="secondary">
+                      <Users className="h-4 w-4" /> {openings} opening{openings === 1 ? "" : "s"}
+                    </Badge>
+                  )}
+                </div>
+              );
+            })()}
+
             {taskOrder.job_description && (
               <p className="text-sm text-muted-foreground whitespace-pre-wrap">
                 {renderMergeTags(taskOrder.job_description, {
@@ -1111,30 +1157,19 @@ export default function PublicApplicationForm() {
                 })}
               </p>
             )}
-            <div className="flex flex-wrap gap-4 text-sm">
-              {taskOrder.location_address && (
-                <div className="flex items-center gap-2 text-muted-foreground">
-                  <MapPin className="h-4 w-4" />
-                  <span>{taskOrder.location_address}</span>
-                </div>
-              )}
-              {taskOrder.start_at && (
-                <div className="flex items-center gap-2 text-muted-foreground">
-                  <Calendar className="h-4 w-4" />
-                  <span>Starts {format(new Date(taskOrder.start_at), "MMM d, yyyy")}</span>
-                </div>
-              )}
-              <div className="flex items-center gap-2 text-muted-foreground">
-                <Users className="h-4 w-4" />
-                <span>{taskOrder.headcount_needed} position(s) available</span>
+            {taskOrder.location_address && (
+              <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                <MapPin className="h-3.5 w-3.5" />
+                <span>{taskOrder.location_address}</span>
               </div>
-            </div>
+            )}
             <PublicJobFactsPanel
               taskOrder={taskOrder as any}
               positions={((posting as any).positions ?? []) as any}
             />
           </CardContent>
         </Card>
+
 
         {/* Express Apply gate */}
         {expressPath === null && (

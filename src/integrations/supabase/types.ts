@@ -5582,6 +5582,7 @@ export type Database = {
           status: Database["public"]["Enums"]["task_order_status"]
           title: string
           updated_at: string
+          work_summary: string | null
         }
         Insert: {
           approx_duration?: string | null
@@ -5608,6 +5609,7 @@ export type Database = {
           status?: Database["public"]["Enums"]["task_order_status"]
           title: string
           updated_at?: string
+          work_summary?: string | null
         }
         Update: {
           approx_duration?: string | null
@@ -5634,6 +5636,7 @@ export type Database = {
           status?: Database["public"]["Enums"]["task_order_status"]
           title?: string
           updated_at?: string
+          work_summary?: string | null
         }
         Relationships: [
           {

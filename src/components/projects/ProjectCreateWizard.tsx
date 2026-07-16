@@ -56,6 +56,7 @@ import {
   PositionDraft,
 } from "@/components/staffing/TaskOrderStepPositions";
 import { buildTaskOrderDescription } from "@/lib/taskOrderDescription";
+import { PostingPreviewSection } from "@/components/staffing/PostingPreviewSection";
 import { resolvePositionDrafts } from "@/lib/resolvePositions";
 import type { ProjectStage } from "@/integrations/supabase/hooks/useProjects";
 
@@ -124,6 +125,10 @@ export function ProjectCreateWizard({ open, onOpenChange, onProjectCreated }: Pr
   const [approxDuration, setApproxDuration] = useState("");
   const [positions, setPositions] = useState<PositionDraft[]>([]);
   const [submitting, setSubmitting] = useState(false);
+  const [jobDescription, setJobDescription] = useState<string>("");
+  const [descEdited, setDescEdited] = useState(false);
+  const [showWorkSummaryError, setShowWorkSummaryError] = useState(false);
+  const [showPositionErrors, setShowPositionErrors] = useState(false);
 
   // Result / retry state
   const [createdProjectId, setCreatedProjectId] = useState<string | null>(null);
@@ -176,6 +181,10 @@ export function ProjectCreateWizard({ open, onOpenChange, onProjectCreated }: Pr
     setFailedStage(null);
     setFailedError("");
     setSuccessOpen(false);
+    setJobDescription("");
+    setDescEdited(false);
+    setShowWorkSummaryError(false);
+    setShowPositionErrors(false);
   }, [open]);
 
   const composedLocation = useMemo(() => {
@@ -199,12 +208,54 @@ export function ProjectCreateWizard({ open, onOpenChange, onProjectCreated }: Pr
   }, [companySettings, formTemplates]);
 
   const totalSteps = hiring ? 4 : 2;
+
+  const positionPayInvalid = positions.some(
+    (p) => p.show_pay_publicly && p.advertised_pay_rate == null
+  );
+  const workSummaryMissing = hiring && !schedule.workSummary.trim();
+
+  const generatedDescription = useMemo(() => {
+    if (!hiring) return "";
+    const startAt = basics.start_date
+      ? new Date(basics.start_date + "T08:00:00").toISOString()
+      : null;
+    return buildTaskOrderDescription({
+      title: basics.name,
+      workSummary: schedule.workSummary,
+      locationAddress: composedLocation,
+      city: basics.city,
+      startAt,
+      approxDuration,
+      daysPerWeek: schedule.daysPerWeek,
+      hoursPerDay: schedule.hoursPerDay,
+      scheduleNotes: schedule.scheduleNotes,
+      perDiemAmount: schedule.perDiemAmount,
+      perDiemNotes: schedule.perDiemNotes,
+      lodgingStatus: schedule.lodgingStatus,
+      lodgingNotes: schedule.lodgingNotes,
+      mealsProvided: schedule.mealsProvided,
+      mealsNotes: schedule.mealsNotes,
+      mobDemobPaid: schedule.mobDemobPaid,
+      mobDemobNotes: schedule.mobDemobNotes,
+      positions: positions.map((p) => ({
+        position_label: p.position_label,
+        headcount: p.headcount,
+        advertised_pay_rate: p.advertised_pay_rate,
+        show_pay_publicly: p.show_pay_publicly,
+      })),
+    });
+  }, [hiring, basics.name, basics.start_date, basics.city, composedLocation, approxDuration, schedule, positions]);
+
   const canNext = () => {
     if (step === 1) {
       return !!basics.name.trim() && !!basics.customer_id && !!basics.start_date;
     }
+    if (step === 3 && hiring) {
+      return !workSummaryMissing;
+    }
     return true;
   };
+
 
   const buildProjectPayload = () => {
     const { use_customer_address, ...rest } = basics;
@@ -231,29 +282,9 @@ export function ProjectCreateWizard({ open, onOpenChange, onProjectCreated }: Pr
         const startAt = basics.start_date
           ? new Date(basics.start_date + "T08:00:00").toISOString()
           : null;
-        const jobDescription = buildTaskOrderDescription({
-          title: basics.name,
-          locationAddress: composedLocation,
-          startAt,
-          approxDuration,
-          daysPerWeek: schedule.daysPerWeek,
-          hoursPerDay: schedule.hoursPerDay,
-          scheduleNotes: schedule.scheduleNotes,
-          perDiemAmount: schedule.perDiemAmount,
-          perDiemNotes: schedule.perDiemNotes,
-          lodgingStatus: schedule.lodgingStatus,
-          lodgingNotes: schedule.lodgingNotes,
-          mealsProvided: schedule.mealsProvided,
-          mealsNotes: schedule.mealsNotes,
-          mobDemobPaid: schedule.mobDemobPaid,
-          mobDemobNotes: schedule.mobDemobNotes,
-          positions: positions.map((p) => ({
-            position_label: p.position_label,
-            headcount: p.headcount,
-            advertised_pay_rate: p.advertised_pay_rate,
-            show_pay_publicly: p.show_pay_publicly,
-          })),
-        });
+        const finalDescription = descEdited && jobDescription.trim()
+          ? jobDescription
+          : generatedDescription;
         const daysNum =
           schedule.daysPerWeek === "" ? null : parseInt(schedule.daysPerWeek, 10);
         const hoursNum =
@@ -268,7 +299,8 @@ export function ProjectCreateWizard({ open, onOpenChange, onProjectCreated }: Pr
             positions.reduce((s, p) => s + (Number(p.headcount) || 0), 0)
           ),
           title: basics.name,
-          job_description: jobDescription,
+          job_description: finalDescription,
+          work_summary: schedule.workSummary.trim() || null,
           location_address: composedLocation || null,
           start_at: startAt,
           approx_duration: approxDuration.trim() || null,
@@ -347,6 +379,20 @@ export function ProjectCreateWizard({ open, onOpenChange, onProjectCreated }: Pr
   };
 
   const handleSubmit = async () => {
+    if (hiring) {
+      if (workSummaryMissing) {
+        setShowWorkSummaryError(true);
+        setStep(3);
+        toast.error("Add a short description of what workers will be doing.");
+        return;
+      }
+      if (positionPayInvalid) {
+        setShowPositionErrors(true);
+        setStep(4);
+        toast.error("Enter a pay rate for each position with \"Show Pay\" on, or turn it off.");
+        return;
+      }
+    }
     setSubmitting(true);
     try {
       // Save project (or reuse if already created via retry)
@@ -546,15 +592,37 @@ export function ProjectCreateWizard({ open, onOpenChange, onProjectCreated }: Pr
               <TaskOrderStepSchedule
                 value={schedule}
                 onChange={(patch) => setSchedule((s) => ({ ...s, ...patch }))}
+                workSummaryRequired
+                workSummaryError={
+                  showWorkSummaryError && workSummaryMissing
+                    ? "Required — applicants need to know what they'll be doing."
+                    : null
+                }
               />
             </div>
           ) : (
-            <TaskOrderStepPositions
-              positions={positions}
-              onChange={setPositions}
-              rateBrackets={rateBrackets}
-              projectSelected={true}
-            />
+            <div className="space-y-4">
+              <TaskOrderStepPositions
+                positions={positions}
+                onChange={setPositions}
+                rateBrackets={rateBrackets}
+                projectSelected={true}
+                showErrors={showPositionErrors}
+              />
+              <PostingPreviewSection
+                generated={generatedDescription}
+                value={jobDescription}
+                edited={descEdited}
+                onEdit={(t) => {
+                  setJobDescription(t);
+                  setDescEdited(true);
+                }}
+                onRegenerate={() => {
+                  setJobDescription("");
+                  setDescEdited(false);
+                }}
+              />
+            </div>
           )}
         </div>
 

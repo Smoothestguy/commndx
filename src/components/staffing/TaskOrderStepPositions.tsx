@@ -41,6 +41,7 @@ interface Props {
   onChange: (next: PositionDraft[]) => void;
   rateBrackets: ProjectRateBracket[] | undefined;
   projectSelected: boolean;
+  showErrors?: boolean;
 }
 
 export function TaskOrderStepPositions({
@@ -48,6 +49,7 @@ export function TaskOrderStepPositions({
   onChange,
   rateBrackets,
   projectSelected,
+  showErrors = false,
 }: Props) {
   const totalHeadcount = positions.reduce(
     (s, p) => s + (Number(p.headcount) || 0),
@@ -210,7 +212,24 @@ export function TaskOrderStepPositions({
                       });
                     }}
                     placeholder="—"
+                    aria-invalid={
+                      showErrors && p.show_pay_publicly && p.advertised_pay_rate == null
+                    }
+                    className={
+                      showErrors && p.show_pay_publicly && p.advertised_pay_rate == null
+                        ? "border-destructive"
+                        : ""
+                    }
                   />
+                  {showErrors && p.show_pay_publicly && p.advertised_pay_rate == null ? (
+                    <p className="text-[11px] text-destructive mt-1">
+                      Pay is required when "Show Pay" is on.
+                    </p>
+                  ) : (
+                    <p className="text-[11px] text-muted-foreground mt-1">
+                      Postings that show pay get significantly more applicants.
+                    </p>
+                  )}
                 </div>
                 <div className="sm:col-span-2 flex flex-col justify-between">
                   <Label className="text-xs">Show Pay</Label>
