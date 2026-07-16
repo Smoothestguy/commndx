@@ -167,6 +167,11 @@ const ProjectDetail = () => {
           <Badge variant={stage.variant} className={`text-xs ${stage.className}`}>
             {stage.label}
           </Badge>
+          {project.archived_at && (
+            <Badge variant="outline" className="text-xs gap-1 border-muted-foreground/50 text-muted-foreground">
+              <Archive className="h-3 w-3" /> Archived
+            </Badge>
+          )}
           {project.customer_po && (
             <Badge variant="outline" className="text-xs gap-1">
               <Hash className="h-3 w-3" /> PO {project.customer_po}
