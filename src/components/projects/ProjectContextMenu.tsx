@@ -31,6 +31,7 @@ import {
   ExternalLink,
   Link as LinkIcon,
   Edit,
+  Copy,
   Archive,
   ArchiveRestore,
   Trash2,
@@ -45,6 +46,7 @@ import {
   useArchiveProject,
   useUnarchiveProject,
   useDeleteProject,
+  useDuplicateProject,
 } from "@/integrations/supabase/hooks/useProjects";
 import { useProjectLifecycle } from "@/hooks/useProjectLifecycle";
 
