@@ -7,6 +7,7 @@ import { MessageCircle } from "lucide-react";
 import { AdminNotificationBell } from "@/components/notifications/AdminNotificationBell";
 import { useUserRole } from "@/hooks/useUserRole";
 import { SessionTimer } from "@/components/session/SessionTimer";
+import { ThemeToggle } from "@/components/ThemeToggle";
 
 export function AppHeader() {
   const { signOut } = useAuth();
