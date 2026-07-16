@@ -139,6 +139,7 @@ const ProjectDetail = () => {
       description="Project details and timeline"
       actions={
         <div className="flex gap-2">
+          {canArchive && <ProjectStatusMenu project={project} />}
           <Button variant="outline" onClick={handleExportPDF}>
             <Download className="h-4 w-4 mr-2" />
             Export PDF
