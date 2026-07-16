@@ -189,13 +189,20 @@ const Projects = () => {
       filterable: true,
       getValue: (item) => item.name,
       render: (item) => (
-        <Link
-          to={`/projects/${item.id}`}
-          className="text-primary hover:underline font-medium"
-          onClick={(e) => e.stopPropagation()}
-        >
-          {item.name}
-        </Link>
+        <div className="flex items-center gap-2">
+          <Link
+            to={`/projects/${item.id}`}
+            className="text-primary hover:underline font-medium"
+            onClick={(e) => e.stopPropagation()}
+          >
+            {item.name}
+          </Link>
+          {isStale(item) && (
+            <Badge variant="outline" title="No updates in 90+ days" className="text-[10px] px-1.5 py-0 h-4 border-amber-500/60 text-amber-600 dark:text-amber-400">
+              Stale
+            </Badge>
+          )}
+        </div>
       ),
     },
     {
