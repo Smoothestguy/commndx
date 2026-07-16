@@ -130,6 +130,17 @@ function renderMenuItems(
           <ItemComp onSelect={() => a.onEdit!(project)}>
             <Edit className="h-4 w-4 mr-2" /> Edit
           </ItemComp>
+          <ItemComp onSelect={a.duplicate}>
+            <Copy className="h-4 w-4 mr-2" /> Duplicate
+          </ItemComp>
+        </>
+      )}
+      {a.canManage && !a.onEdit && (
+        <>
+          <SepComp />
+          <ItemComp onSelect={a.duplicate}>
+            <Copy className="h-4 w-4 mr-2" /> Duplicate
+          </ItemComp>
         </>
       )}
 
