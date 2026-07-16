@@ -60,8 +60,8 @@ export function AppSidebar() {
       <SidebarHeader className="h-12 border-b border-sidebar-border" />
       <SidebarContent>
         {sections.map((section, idx) => {
-          if (section.requiresAdmin && !isAdmin) return null;
-          if (section.requiresManager && !(isAdmin || isManager)) return null;
+          if (!isSectionVisible(section, isAdmin, isManager)) return null;
+
 
           const visibleItems = section.items.filter((i) => isItemVisible(i, isAdmin, isManager));
           if (visibleItems.length === 0) return null;
