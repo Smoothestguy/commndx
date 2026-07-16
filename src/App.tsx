@@ -189,9 +189,8 @@ const NativeStatusBarManager = () => {
 };
 
 const App = () => {
-  const [moreMenuOpen, setMoreMenuOpen] = useState(false);
-
   return (
+
     <QueryClientProvider client={queryClient}>
       <ThemeProvider>
         <NativeStatusBarManager />
