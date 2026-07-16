@@ -25,7 +25,8 @@ export function ChartWidget({ widget, theme, isEditMode }: ChartWidgetProps) {
           const { data } = await supabase
             .from("projects")
             .select("status")
-            .is("deleted_at", null);
+            .is("deleted_at", null)
+            .is("archived_at", null);
 
           if (!data) return [];
 
