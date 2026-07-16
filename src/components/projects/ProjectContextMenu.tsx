@@ -62,6 +62,7 @@ function useRowActions({ project, onEdit }: Props) {
   const archive = useArchiveProject();
   const unarchive = useUnarchiveProject();
   const del = useDeleteProject();
+  const duplicate = useDuplicateProject();
   const lifecycle = useProjectLifecycle();
   const [confirmCancel, setConfirmCancel] = useState(false);
   const [confirmDelete, setConfirmDelete] = useState(false);
