@@ -379,6 +379,20 @@ export function ProjectCreateWizard({ open, onOpenChange, onProjectCreated }: Pr
   };
 
   const handleSubmit = async () => {
+    if (hiring) {
+      if (workSummaryMissing) {
+        setShowWorkSummaryError(true);
+        setStep(3);
+        toast.error("Add a short description of what workers will be doing.");
+        return;
+      }
+      if (positionPayInvalid) {
+        setShowPositionErrors(true);
+        setStep(4);
+        toast.error("Enter a pay rate for each position with \"Show Pay\" on, or turn it off.");
+        return;
+      }
+    }
     setSubmitting(true);
     try {
       // Save project (or reuse if already created via retry)
