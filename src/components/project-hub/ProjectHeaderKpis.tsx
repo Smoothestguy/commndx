@@ -48,17 +48,15 @@ export function ProjectHeaderKpis({ projectId }: Props) {
       const taskOrderIds = (taskOrders || []).map((t) => t.id);
       if (!taskOrderIds.length) return { needed: 0, filled: 0 };
 
-      const [posRes, appRes] = await Promise.all([
-        supabase
-          .from("task_order_positions")
-          .select("headcount")
-          .in("task_order_id", taskOrderIds),
-        supabase
-          .from("applications")
-          .select("id", { count: "exact", head: true })
-          .in("task_order_id", taskOrderIds)
-          .eq("status", "approved"),
-      ]);
+      const posRes: any = await supabase
+        .from("task_order_positions")
+        .select("headcount")
+        .in("task_order_id", taskOrderIds);
+      const appRes: any = await supabase
+        .from("applications")
+        .select("id", { count: "exact", head: true })
+        .in("task_order_id", taskOrderIds)
+        .eq("status", "approved");
       const positions = (posRes.data || []) as Array<{ headcount: number | null }>;
       const needed = positions.reduce((s, p) => s + (p.headcount || 0), 0);
       return { needed, filled: appRes.count || 0 };
