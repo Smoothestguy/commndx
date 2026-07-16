@@ -43,6 +43,23 @@ export const useProjects = () => {
   });
 };
 
+export const useProject = (id: string | undefined) => {
+  return useQuery({
+    queryKey: ["projects", id],
+    queryFn: async () => {
+      if (!id) return null;
+      const { data, error } = await supabase
+        .from("projects")
+        .select("*")
+        .eq("id", id)
+        .maybeSingle();
+      if (error) throw error;
+      return data as Project | null;
+    },
+    enabled: !!id,
+  });
+};
+
 export const useProjectsByCustomer = (customerId: string | null) => {
   return useQuery({
     queryKey: ["projects", "customer", customerId],
