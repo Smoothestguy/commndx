@@ -22,6 +22,7 @@ interface ProjectFiltersProps {
   onClearFilters: () => void;
   search: string;
   inline?: boolean;
+  hideStatus?: boolean;
 }
 
 const stageLabels: Record<ProjectStage, string> = {
