@@ -181,6 +181,10 @@ export function ProjectCreateWizard({ open, onOpenChange, onProjectCreated }: Pr
     setFailedStage(null);
     setFailedError("");
     setSuccessOpen(false);
+    setJobDescription("");
+    setDescEdited(false);
+    setShowWorkSummaryError(false);
+    setShowPositionErrors(false);
   }, [open]);
 
   const composedLocation = useMemo(() => {
