@@ -282,29 +282,9 @@ export function ProjectCreateWizard({ open, onOpenChange, onProjectCreated }: Pr
         const startAt = basics.start_date
           ? new Date(basics.start_date + "T08:00:00").toISOString()
           : null;
-        const jobDescription = buildTaskOrderDescription({
-          title: basics.name,
-          locationAddress: composedLocation,
-          startAt,
-          approxDuration,
-          daysPerWeek: schedule.daysPerWeek,
-          hoursPerDay: schedule.hoursPerDay,
-          scheduleNotes: schedule.scheduleNotes,
-          perDiemAmount: schedule.perDiemAmount,
-          perDiemNotes: schedule.perDiemNotes,
-          lodgingStatus: schedule.lodgingStatus,
-          lodgingNotes: schedule.lodgingNotes,
-          mealsProvided: schedule.mealsProvided,
-          mealsNotes: schedule.mealsNotes,
-          mobDemobPaid: schedule.mobDemobPaid,
-          mobDemobNotes: schedule.mobDemobNotes,
-          positions: positions.map((p) => ({
-            position_label: p.position_label,
-            headcount: p.headcount,
-            advertised_pay_rate: p.advertised_pay_rate,
-            show_pay_publicly: p.show_pay_publicly,
-          })),
-        });
+        const finalDescription = descEdited && jobDescription.trim()
+          ? jobDescription
+          : generatedDescription;
         const daysNum =
           schedule.daysPerWeek === "" ? null : parseInt(schedule.daysPerWeek, 10);
         const hoursNum =
@@ -319,7 +299,8 @@ export function ProjectCreateWizard({ open, onOpenChange, onProjectCreated }: Pr
             positions.reduce((s, p) => s + (Number(p.headcount) || 0), 0)
           ),
           title: basics.name,
-          job_description: jobDescription,
+          job_description: finalDescription,
+          work_summary: schedule.workSummary.trim() || null,
           location_address: composedLocation || null,
           start_at: startAt,
           approx_duration: approxDuration.trim() || null,
