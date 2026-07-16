@@ -74,6 +74,24 @@ export const usePurchaseOrders = () => {
   });
 };
 
+export const usePurchaseOrdersByProject = (projectId: string | undefined) => {
+  return useQuery({
+    queryKey: ["purchase_orders", "project", projectId],
+    queryFn: async () => {
+      if (!projectId) return [];
+      const { data, error } = await supabase
+        .from("purchase_orders")
+        .select("*")
+        .eq("project_id", projectId)
+        .is("deleted_at", null)
+        .order("created_at", { ascending: false });
+      if (error) throw error;
+      return data as PurchaseOrder[];
+    },
+    enabled: !!projectId,
+  });
+};
+
 export const usePurchaseOrder = (id: string) => {
   return useQuery({
     queryKey: ["purchase_orders", id],
