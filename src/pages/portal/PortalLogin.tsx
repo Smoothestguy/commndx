@@ -20,6 +20,7 @@ import { PortalSwitcherModal } from "@/components/PortalSwitcherModal";
 import { usePortalSwitcher } from "@/hooks/usePortalSwitcher";
 import { NetworkErrorBanner } from "@/components/auth/NetworkErrorBanner";
 import { withTimeout, isNetworkError, classifyNetworkError } from "@/utils/authNetwork";
+import { ForceDarkTheme } from "@/components/ForceDarkTheme";
 
 export default function PortalLogin() {
   const navigate = useNavigate();
