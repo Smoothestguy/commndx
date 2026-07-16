@@ -23,8 +23,8 @@ import { UIDensityProvider } from "@/contexts/UIDensityContext";
 import { MessageDrawerProvider } from "@/contexts/MessageDrawerContext";
 import { ProtectedRoute } from "@/components/ProtectedRoute";
 import { ThemeProvider } from "@/components/ThemeProvider";
-import { BottomNav } from "@/components/layout/BottomNav";
-import { MoreMenu } from "@/components/layout/MoreMenu";
+
+
 import { NetSuiteLayout } from "@/components/layout/netsuite/NetSuiteLayout";
 import { useNativeStatusBar } from "@/hooks/useNativeStatusBar";
 import { ChatInterface } from "@/components/ai-assistant/ChatInterface";
