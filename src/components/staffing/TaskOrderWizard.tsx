@@ -131,6 +131,7 @@ export function TaskOrderWizard({
       );
       setApproxDuration(taskOrder.approx_duration || "");
       setSchedule({
+        workSummary: (taskOrder as any).work_summary || "",
         daysPerWeek:
           taskOrder.days_per_week != null ? String(taskOrder.days_per_week) : "",
         hoursPerDay:
