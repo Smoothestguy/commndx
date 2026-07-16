@@ -93,6 +93,10 @@ function useRowActions({ project, onEdit }: Props) {
     archive: () => archive.mutate({ id: project.id, name: project.name }),
     unarchive: () => unarchive.mutate({ id: project.id, name: project.name }),
     doDelete: () => setConfirmDelete(true),
+    duplicate: () =>
+      duplicate.mutate(project.id, {
+        onSuccess: (r) => navigate(`/projects/${r.id}`),
+      }),
     lifecycle,
     confirmCancel,
     setConfirmCancel,
