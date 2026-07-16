@@ -12,7 +12,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { MegaMenu } from "./MegaMenu";
+import { SidebarTrigger } from "@/components/ui/sidebar";
 import { QuickCreateMenu } from "./QuickCreateMenu";
 import { GlobalSearch } from "./GlobalSearch";
 import { AdminNotificationBell } from "@/components/notifications/AdminNotificationBell";
@@ -63,13 +63,8 @@ export function TopNavBar({ onMobileMenuToggle }: TopNavBarProps) {
             />
           </Link>
 
-          {/* Mega Menu Navigation - Desktop only */}
-          <nav className="hidden lg:flex items-center ml-4">
-            <MegaMenu 
-              menuBackground={activeTheme?.menuBackground}
-              menuTextColor={activeTheme?.menuTextColor}
-            />
-          </nav>
+          {/* Sidebar collapse trigger - Desktop only */}
+          <SidebarTrigger className="hidden lg:inline-flex text-header-foreground hover:bg-black/10 dark:hover:bg-white/10 h-8 w-8" />
         </div>
 
         {/* Right Section: Session + Actions + User */}
