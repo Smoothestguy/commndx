@@ -41,6 +41,7 @@ export function ProjectCard({
   selected = false,
   onSelectChange,
   extraActions,
+  stale = false,
 }: ProjectCardProps) {
   const statusColorMap = {
     active: "border-success/30",
