@@ -126,6 +126,9 @@ export function TopNavBar({ onMobileMenuToggle }: TopNavBarProps) {
           {/* Notifications */}
           {(isAdmin || isManager) && <AdminNotificationBell />}
 
+          {/* Theme toggle */}
+          <ThemeToggle />
+
           {/* User Menu */}
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
