@@ -132,6 +132,36 @@ export const useInvoicesByJobOrder = (jobOrderId: string) => {
   });
 };
 
+export const useInvoicesByProject = (projectId: string | undefined) => {
+  return useQuery({
+    queryKey: ["invoices", "project", projectId],
+    queryFn: async () => {
+      if (!projectId) return [];
+      // Fetch job order + change order ids for this project so we can union
+      const [{ data: jobOrders }, { data: changeOrders }] = await Promise.all([
+        supabase.from("job_orders").select("id").eq("project_id", projectId),
+        supabase.from("change_orders").select("id").eq("project_id", projectId),
+      ]);
+      const joIds = (jobOrders || []).map((j) => j.id);
+      const coIds = (changeOrders || []).map((c) => c.id);
+
+      const orClauses = [`project_id.eq.${projectId}`];
+      if (joIds.length) orClauses.push(`job_order_id.in.(${joIds.join(",")})`);
+      if (coIds.length) orClauses.push(`change_order_id.in.(${coIds.join(",")})`);
+
+      const { data, error } = await supabase
+        .from("invoices")
+        .select("*")
+        .or(orClauses.join(","))
+        .is("deleted_at", null)
+        .order("created_at", { ascending: false });
+      if (error) throw error;
+      return data as Invoice[];
+    },
+    enabled: !!projectId,
+  });
+};
+
 export const useAddInvoice = () => {
   const queryClient = useQueryClient();
   const { logAction } = useAuditLog();
