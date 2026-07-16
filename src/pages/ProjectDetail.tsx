@@ -1,7 +1,8 @@
 import { useMemo } from "react";
 import { useParams, Navigate, useNavigate, useSearchParams } from "react-router-dom";
 import { format } from "date-fns";
-import { useProject } from "@/integrations/supabase/hooks/useProjects";
+import { useProject, useArchiveProject, useUnarchiveProject } from "@/integrations/supabase/hooks/useProjects";
+import { useUserRole } from "@/hooks/useUserRole";
 import { useCustomer } from "@/integrations/supabase/hooks/useCustomers";
 import { PageLayout } from "@/components/layout/PageLayout";
 import { Button } from "@/components/ui/button";
@@ -16,6 +17,8 @@ import {
   Calendar,
   User,
   Hash,
+  Archive,
+  ArchiveRestore,
 } from "lucide-react";
 import { stageConfig } from "@/components/projects/ProjectCard";
 import { getCustomerDisplayName } from "@/utils/customerDisplayName";
@@ -41,6 +44,10 @@ const ProjectDetail = () => {
 
   const { data: project, isLoading: projectLoading } = useProject(id);
   const { data: customer } = useCustomer(project?.customer_id);
+  const { isAdmin, isManager } = useUserRole();
+  const canArchive = isAdmin || isManager;
+  const archiveProject = useArchiveProject();
+  const unarchiveProject = useUnarchiveProject();
 
   const tabParam = searchParams.get("tab");
   const activeTab: TabValue = (TABS as readonly string[]).includes(tabParam || "")
@@ -135,6 +142,17 @@ const ProjectDetail = () => {
             <Download className="h-4 w-4 mr-2" />
             Export PDF
           </Button>
+          {canArchive && (project.archived_at ? (
+            <Button variant="outline" onClick={() => unarchiveProject.mutate({ id: project.id, name: project.name })} disabled={unarchiveProject.isPending}>
+              <ArchiveRestore className="h-4 w-4 mr-2" />
+              Unarchive
+            </Button>
+          ) : (
+            <Button variant="outline" onClick={() => archiveProject.mutate({ id: project.id, name: project.name })} disabled={archiveProject.isPending}>
+              <Archive className="h-4 w-4 mr-2" />
+              Archive
+            </Button>
+          ))}
           <Button variant="outline" onClick={() => navigate("/projects")}>
             <ArrowLeft className="h-4 w-4 mr-2" />
             Back
@@ -149,6 +167,11 @@ const ProjectDetail = () => {
           <Badge variant={stage.variant} className={`text-xs ${stage.className}`}>
             {stage.label}
           </Badge>
+          {project.archived_at && (
+            <Badge variant="outline" className="text-xs gap-1 border-muted-foreground/50 text-muted-foreground">
+              <Archive className="h-3 w-3" /> Archived
+            </Badge>
+          )}
           {project.customer_po && (
             <Badge variant="outline" className="text-xs gap-1">
               <Hash className="h-3 w-3" /> PO {project.customer_po}

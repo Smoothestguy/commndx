@@ -81,7 +81,8 @@ export function StatWidget({ widget, theme, isEditMode }: StatWidgetProps) {
               .from("projects")
               .select("*", { count: "exact", head: true })
               .eq("status", "active")
-              .is("deleted_at", null);
+              .is("deleted_at", null)
+              .is("archived_at", null);
             return { value: count ?? 0 };
           }
           break;

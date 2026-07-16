@@ -24,19 +24,43 @@ export interface Project {
   poc_phone: string | null;
   poc_email: string | null;
   mandatory_payroll: boolean;
+  archived_at: string | null;
+  archived_by: string | null;
   created_at: string;
   updated_at: string;
 }
 
-export const useProjects = () => {
+export interface UseProjectsOptions {
+  includeArchived?: boolean;
+}
+
+export const useProjects = (options: UseProjectsOptions = {}) => {
+  const { includeArchived = false } = options;
   return useQuery({
-    queryKey: ["projects"],
+    queryKey: ["projects", { includeArchived }],
+    queryFn: async () => {
+      let q = supabase
+        .from("projects")
+        .select("*")
+        .order("created_at", { ascending: false });
+      if (!includeArchived) q = q.is("archived_at", null);
+      const { data, error } = await q;
+
+      if (error) throw error;
+      return data as Project[];
+    },
+  });
+};
+
+export const useArchivedProjects = () => {
+  return useQuery({
+    queryKey: ["projects", "archived"],
     queryFn: async () => {
       const { data, error } = await supabase
         .from("projects")
         .select("*")
-        .order("created_at", { ascending: false });
-
+        .not("archived_at", "is", null)
+        .order("archived_at", { ascending: false });
       if (error) throw error;
       return data as Project[];
     },
@@ -84,7 +108,7 @@ export const useAddProject = () => {
   const { logAction } = useAuditLog();
 
   return useMutation({
-    mutationFn: async (project: Omit<Project, "id" | "created_at" | "updated_at">) => {
+    mutationFn: async (project: Omit<Project, "id" | "created_at" | "updated_at" | "archived_at" | "archived_by"> & { archived_at?: string | null; archived_by?: string | null }) => {
       const { data, error } = await supabase
         .from("projects")
         .insert([project])
@@ -263,5 +287,64 @@ export const useDeleteProject = () => {
     onError: (error: Error) => {
       toast.error(`Failed to delete project: ${error.message}`);
     },
+  });
+};
+
+export const useArchiveProject = () => {
+  const queryClient = useQueryClient();
+  const { logAction } = useAuditLog();
+  return useMutation({
+    mutationFn: async (project: { id: string; name?: string }) => {
+      const { data: { user } } = await supabase.auth.getUser();
+      const { data, error } = await supabase
+        .from("projects")
+        .update({ archived_at: new Date().toISOString(), archived_by: user?.id ?? null })
+        .eq("id", project.id)
+        .select()
+        .single();
+      if (error) throw error;
+      await logAction({
+        actionType: "update",
+        resourceType: "project",
+        resourceId: project.id,
+        resourceNumber: data.name,
+        metadata: { archived: true } as Json,
+      });
+      return data;
+    },
+    onSuccess: (data) => {
+      queryClient.invalidateQueries({ queryKey: ["projects"] });
+      toast.success(`Project archived: ${data.name}`);
+    },
+    onError: (error: Error) => toast.error(`Failed to archive: ${error.message}`),
+  });
+};
+
+export const useUnarchiveProject = () => {
+  const queryClient = useQueryClient();
+  const { logAction } = useAuditLog();
+  return useMutation({
+    mutationFn: async (project: { id: string; name?: string }) => {
+      const { data, error } = await supabase
+        .from("projects")
+        .update({ archived_at: null, archived_by: null })
+        .eq("id", project.id)
+        .select()
+        .single();
+      if (error) throw error;
+      await logAction({
+        actionType: "update",
+        resourceType: "project",
+        resourceId: project.id,
+        resourceNumber: data.name,
+        metadata: { archived: false } as Json,
+      });
+      return data;
+    },
+    onSuccess: (data) => {
+      queryClient.invalidateQueries({ queryKey: ["projects"] });
+      toast.success(`Project unarchived: ${data.name}`);
+    },
+    onError: (error: Error) => toast.error(`Failed to unarchive: ${error.message}`),
   });
 };

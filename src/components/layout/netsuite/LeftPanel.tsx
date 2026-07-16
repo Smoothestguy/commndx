@@ -95,6 +95,7 @@ export function LeftPanel({ collapsed, onToggleCollapse, backgroundColor, textCo
         .from("projects")
         .select("id, name, created_at")
         .is("deleted_at", null)
+        .is("archived_at", null)
         .order("created_at", { ascending: false })
         .limit(5);
       if (error) throw error;

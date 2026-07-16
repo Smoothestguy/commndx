@@ -149,7 +149,8 @@ export function RightPanel({ collapsed, onToggleCollapse, backgroundColor, textC
       const { data, error } = await supabase
         .from("projects")
         .select("status")
-        .is("deleted_at", null);
+        .is("deleted_at", null)
+        .is("archived_at", null);
       if (error) throw error;
       
       const active = data?.filter(p => p.status === "active").length || 0;

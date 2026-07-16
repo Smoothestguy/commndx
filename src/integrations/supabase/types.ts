@@ -5692,6 +5692,8 @@ export type Database = {
       projects: {
         Row: {
           address: string | null
+          archived_at: string | null
+          archived_by: string | null
           city: string | null
           created_at: string
           customer_field_supervisor_email: string | null
@@ -5729,6 +5731,8 @@ export type Database = {
         }
         Insert: {
           address?: string | null
+          archived_at?: string | null
+          archived_by?: string | null
           city?: string | null
           created_at?: string
           customer_field_supervisor_email?: string | null
@@ -5766,6 +5770,8 @@ export type Database = {
         }
         Update: {
           address?: string | null
+          archived_at?: string | null
+          archived_by?: string | null
           city?: string | null
           created_at?: string
           customer_field_supervisor_email?: string | null

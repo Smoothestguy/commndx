@@ -101,6 +101,7 @@ export default function BadgeTemplateEditor() {
       .from("projects")
       .select("id, name, customer_id")
       .eq("status", "active")
+      .is("archived_at", null)
       .order("name");
     
     if (data) setProjects(data);

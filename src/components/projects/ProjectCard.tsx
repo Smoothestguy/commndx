@@ -9,10 +9,15 @@ interface ProjectCardProps {
   project: Project;
   customerName: string;
   assignmentCount?: number;
-  onEdit: () => void;
-  onDelete: () => void;
+  onEdit?: () => void;
+  onDelete?: () => void;
   onClick: () => void;
-  index?: number; // Made optional - no longer used for staggered animations
+  index?: number;
+  compact?: boolean;
+  selectable?: boolean;
+  selected?: boolean;
+  onSelectChange?: (checked: boolean) => void;
+  extraActions?: React.ReactNode;
 }
 
 const stageConfig: Record<ProjectStage, { label: string; variant: "default" | "secondary" | "outline" | "destructive"; className: string }> = {
@@ -23,13 +28,18 @@ const stageConfig: Record<ProjectStage, { label: string; variant: "default" | "s
   canceled: { label: "Canceled", variant: "outline", className: "border-destructive/50 text-destructive" },
 };
 
-export function ProjectCard({ 
-  project, 
+export function ProjectCard({
+  project,
   customerName,
   assignmentCount = 0,
-  onEdit, 
-  onDelete, 
+  onEdit,
+  onDelete,
   onClick,
+  compact = false,
+  selectable = false,
+  selected = false,
+  onSelectChange,
+  extraActions,
 }: ProjectCardProps) {
   const statusColorMap = {
     active: "border-success/30",
@@ -39,16 +49,59 @@ export function ProjectCard({
 
   const stage = stageConfig[project.stage] || stageConfig.quote;
 
+  if (compact) {
+    return (
+      <div
+        className={`glass rounded-lg p-2.5 transition-all hover:border-primary/30 cursor-pointer group border-l-4 ${statusColorMap[project.status]} min-w-0 flex items-center gap-2 ${selected ? "ring-2 ring-primary" : ""}`}
+        onClick={onClick}
+      >
+        {selectable && (
+          <input
+            type="checkbox"
+            checked={selected}
+            onChange={(e) => onSelectChange?.(e.target.checked)}
+            onClick={(e) => e.stopPropagation()}
+            className="h-4 w-4 flex-shrink-0"
+          />
+        )}
+        <div className="min-w-0 flex-1">
+          <div className="flex items-center gap-1.5 min-w-0">
+            <span className="font-medium text-sm truncate">{project.name}</span>
+            <span className="text-xs text-muted-foreground truncate">· {customerName}</span>
+          </div>
+          <div className="flex items-center gap-2 text-[11px] text-muted-foreground mt-0.5">
+            <Badge variant={stage.variant} className={`text-[9px] px-1.5 py-0 ${stage.className}`}>
+              {stage.label}
+            </Badge>
+            <span className="flex items-center gap-0.5"><Users className="h-3 w-3" />{assignmentCount}</span>
+            <span className="flex items-center gap-0.5"><Calendar className="h-3 w-3" />{format(new Date(project.start_date), "MMM dd")}</span>
+          </div>
+        </div>
+        {extraActions && <div className="flex-shrink-0" onClick={(e) => e.stopPropagation()}>{extraActions}</div>}
+      </div>
+    );
+  }
+
   return (
     <div
-      className={`glass rounded-xl p-3 sm:p-4 transition-all duration-300 hover:border-primary/30 hover:shadow-lg hover:shadow-primary/5 cursor-pointer group animate-fade-in border-l-4 ${statusColorMap[project.status]} min-w-0 overflow-hidden`}
+      className={`glass rounded-xl p-3 sm:p-4 transition-all duration-300 hover:border-primary/30 hover:shadow-lg hover:shadow-primary/5 cursor-pointer group animate-fade-in border-l-4 ${statusColorMap[project.status]} min-w-0 overflow-hidden ${selected ? "ring-2 ring-primary" : ""}`}
       onClick={onClick}
     >
-      {/* Header: Name & Badges */}
       <div className="flex items-start justify-between gap-2 mb-1.5 min-w-0">
-        <h3 className="font-heading text-sm sm:text-lg font-semibold text-foreground group-hover:text-primary transition-colors line-clamp-1 min-w-0 flex-1">
-          {project.name}
-        </h3>
+        <div className="flex items-center gap-2 min-w-0 flex-1">
+          {selectable && (
+            <input
+              type="checkbox"
+              checked={selected}
+              onChange={(e) => onSelectChange?.(e.target.checked)}
+              onClick={(e) => e.stopPropagation()}
+              className="h-4 w-4 flex-shrink-0"
+            />
+          )}
+          <h3 className="font-heading text-sm sm:text-lg font-semibold text-foreground group-hover:text-primary transition-colors line-clamp-1 min-w-0 flex-1">
+            {project.name}
+          </h3>
+        </div>
         <div className="flex items-center gap-1 flex-shrink-0">
           <Badge variant={stage.variant} className={`text-[9px] sm:text-xs px-1.5 py-0 sm:px-2 sm:py-0.5 ${stage.className}`}>
             {stage.label}
@@ -57,7 +110,6 @@ export function ProjectCard({
         </div>
       </div>
 
-      {/* Customer, Team & Date - Compact Row */}
       <div className="flex items-center justify-between gap-2 text-[11px] sm:text-sm text-muted-foreground min-w-0">
         <div className="flex items-center gap-1.5 min-w-0 flex-1">
           <User className="h-3 w-3 sm:h-4 sm:w-4 flex-shrink-0" />
@@ -75,8 +127,8 @@ export function ProjectCard({
         </div>
       </div>
 
-      {/* Chevron indicator - hidden on mobile */}
-      <div className="hidden sm:flex items-center justify-end mt-2 pt-2 border-t border-border/30">
+      <div className="hidden sm:flex items-center justify-end mt-2 pt-2 border-t border-border/30 gap-2">
+        {extraActions && <div onClick={(e) => e.stopPropagation()}>{extraActions}</div>}
         <div className="flex items-center gap-1 text-[10px] text-muted-foreground group-hover:text-primary transition-colors">
           <span>View details</span>
           <ChevronRight className="h-3.5 w-3.5" />
