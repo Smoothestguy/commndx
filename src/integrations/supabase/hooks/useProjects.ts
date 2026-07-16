@@ -24,19 +24,43 @@ export interface Project {
   poc_phone: string | null;
   poc_email: string | null;
   mandatory_payroll: boolean;
+  archived_at: string | null;
+  archived_by: string | null;
   created_at: string;
   updated_at: string;
 }
 
-export const useProjects = () => {
+export interface UseProjectsOptions {
+  includeArchived?: boolean;
+}
+
+export const useProjects = (options: UseProjectsOptions = {}) => {
+  const { includeArchived = false } = options;
   return useQuery({
-    queryKey: ["projects"],
+    queryKey: ["projects", { includeArchived }],
+    queryFn: async () => {
+      let q = supabase
+        .from("projects")
+        .select("*")
+        .order("created_at", { ascending: false });
+      if (!includeArchived) q = q.is("archived_at", null);
+      const { data, error } = await q;
+
+      if (error) throw error;
+      return data as Project[];
+    },
+  });
+};
+
+export const useArchivedProjects = () => {
+  return useQuery({
+    queryKey: ["projects", "archived"],
     queryFn: async () => {
       const { data, error } = await supabase
         .from("projects")
         .select("*")
-        .order("created_at", { ascending: false });
-
+        .not("archived_at", "is", null)
+        .order("archived_at", { ascending: false });
       if (error) throw error;
       return data as Project[];
     },
