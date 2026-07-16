@@ -257,6 +257,7 @@ export function TaskOrderWizard({
     return {
       title: title.trim(),
       job_description: jobDescription.trim() || null,
+      work_summary: schedule.workSummary.trim() || null,
       location_address: locationAddress.trim() || null,
       start_at: startAt ? new Date(startAt).toISOString() : null,
       approx_duration: approxDuration.trim() || null,
