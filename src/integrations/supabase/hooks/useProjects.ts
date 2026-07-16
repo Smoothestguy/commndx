@@ -289,3 +289,62 @@ export const useDeleteProject = () => {
     },
   });
 };
+
+export const useArchiveProject = () => {
+  const queryClient = useQueryClient();
+  const { logAction } = useAuditLog();
+  return useMutation({
+    mutationFn: async (project: { id: string; name?: string }) => {
+      const { data: { user } } = await supabase.auth.getUser();
+      const { data, error } = await supabase
+        .from("projects")
+        .update({ archived_at: new Date().toISOString(), archived_by: user?.id ?? null })
+        .eq("id", project.id)
+        .select()
+        .single();
+      if (error) throw error;
+      await logAction({
+        actionType: "update",
+        resourceType: "project",
+        resourceId: project.id,
+        resourceNumber: data.name,
+        metadata: { archived: true } as Json,
+      });
+      return data;
+    },
+    onSuccess: (data) => {
+      queryClient.invalidateQueries({ queryKey: ["projects"] });
+      toast.success(`Project archived: ${data.name}`);
+    },
+    onError: (error: Error) => toast.error(`Failed to archive: ${error.message}`),
+  });
+};
+
+export const useUnarchiveProject = () => {
+  const queryClient = useQueryClient();
+  const { logAction } = useAuditLog();
+  return useMutation({
+    mutationFn: async (project: { id: string; name?: string }) => {
+      const { data, error } = await supabase
+        .from("projects")
+        .update({ archived_at: null, archived_by: null })
+        .eq("id", project.id)
+        .select()
+        .single();
+      if (error) throw error;
+      await logAction({
+        actionType: "update",
+        resourceType: "project",
+        resourceId: project.id,
+        resourceNumber: data.name,
+        metadata: { archived: false } as Json,
+      });
+      return data;
+    },
+    onSuccess: (data) => {
+      queryClient.invalidateQueries({ queryKey: ["projects"] });
+      toast.success(`Project unarchived: ${data.name}`);
+    },
+    onError: (error: Error) => toast.error(`Failed to unarchive: ${error.message}`),
+  });
+};
