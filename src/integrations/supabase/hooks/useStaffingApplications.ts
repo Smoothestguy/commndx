@@ -7,6 +7,7 @@ export interface TaskOrder {
   project_id: string;
   title: string;
   job_description: string | null;
+  work_summary?: string | null;
   headcount_needed: number;
   start_at: string | null;
   location_address: string | null;
