@@ -56,6 +56,7 @@ import {
   PositionDraft,
 } from "@/components/staffing/TaskOrderStepPositions";
 import { buildTaskOrderDescription } from "@/lib/taskOrderDescription";
+import { PostingPreviewSection } from "@/components/staffing/PostingPreviewSection";
 import { resolvePositionDrafts } from "@/lib/resolvePositions";
 import type { ProjectStage } from "@/integrations/supabase/hooks/useProjects";
 
