@@ -41,6 +41,23 @@ export const useCustomers = () => {
   });
 };
 
+export const useCustomer = (id: string | undefined) => {
+  return useQuery({
+    queryKey: ["customers", id],
+    queryFn: async () => {
+      if (!id) return null;
+      const { data, error } = await supabase
+        .from("customers")
+        .select("*")
+        .eq("id", id)
+        .maybeSingle();
+      if (error) throw error;
+      return data as Customer | null;
+    },
+    enabled: !!id,
+  });
+};
+
 export const useAddCustomer = () => {
   const queryClient = useQueryClient();
   const { logAction } = useAuditLog();

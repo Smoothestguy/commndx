@@ -87,6 +87,23 @@ export const useJobOrders = () => {
   });
 };
 
+export const useJobOrdersByProject = (projectId: string | undefined) => {
+  return useQuery({
+    queryKey: ["job_orders", "project", projectId],
+    queryFn: async () => {
+      if (!projectId) return [];
+      const { data, error } = await supabase
+        .from("job_orders")
+        .select("*")
+        .eq("project_id", projectId)
+        .order("created_at", { ascending: false });
+      if (error) throw error;
+      return data as JobOrder[];
+    },
+    enabled: !!projectId,
+  });
+};
+
 export const useJobOrder = (id: string) => {
   return useQuery({
     queryKey: ["job_orders", id],

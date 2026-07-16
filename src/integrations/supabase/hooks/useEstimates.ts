@@ -94,6 +94,24 @@ export const useEstimates = (options?: { includeClosed?: boolean }) => {
   });
 };
 
+export const useEstimatesByProject = (projectId: string | undefined) => {
+  return useQuery({
+    queryKey: ["estimates", "project", projectId],
+    queryFn: async () => {
+      if (!projectId) return [];
+      const { data, error } = await supabase
+        .from("estimates")
+        .select("*")
+        .eq("project_id", projectId)
+        .is("deleted_at", null)
+        .order("created_at", { ascending: false });
+      if (error) throw error;
+      return data as Estimate[];
+    },
+    enabled: !!projectId,
+  });
+};
+
 export const useBulkUpdateEstimates = () => {
   const queryClient = useQueryClient();
 
