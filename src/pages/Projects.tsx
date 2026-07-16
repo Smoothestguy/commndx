@@ -473,6 +473,17 @@ const Projects = () => {
                 inline
                 hideStatus
               />
+              <div className="ml-auto">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={handleExport}
+                  disabled={filteredProjects.length === 0}
+                >
+                  <Download className="h-4 w-4 mr-1.5" />
+                  Export
+                </Button>
+              </div>
             </div>
           </div>
 
