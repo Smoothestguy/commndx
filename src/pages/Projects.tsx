@@ -1,11 +1,11 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { useNavigate, Link, useSearchParams } from "react-router-dom";
 import { SEO } from "@/components/SEO";
 import { PageLayout } from "@/components/layout/PageLayout";
 import { EnhancedDataTable, EnhancedColumn } from "@/components/shared/EnhancedDataTable";
 import { StatusBadge } from "@/components/shared/StatusBadge";
 import { Button } from "@/components/ui/button";
-import { Plus, Edit, Trash2, Loader2, Users as UsersIcon, User } from "lucide-react";
+import { Plus, Edit, Trash2, Loader2, Users as UsersIcon, User, Archive, ArchiveRestore, X } from "lucide-react";
 import { SearchInput } from "@/components/ui/search-input";
 import { PullToRefreshWrapper } from "@/components/shared/PullToRefreshWrapper";
 import { ProjectCard } from "@/components/projects/ProjectCard";
@@ -16,62 +16,99 @@ import { ProjectFormDialog, initialProjectFormData, type ProjectFormData } from 
 import { ProjectCreateWizard } from "@/components/projects/ProjectCreateWizard";
 import { ProjectSection } from "@/components/projects/ProjectSection";
 import { FloatingActionButton } from "@/components/shared/FloatingActionButton";
-import { useIsMobile, useIsTablet } from "@/hooks/use-mobile";
-import { useProjects, useAddProject, useUpdateProject, useDeleteProject, Project, ProjectStage } from "@/integrations/supabase/hooks/useProjects";
+import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
+import { Badge } from "@/components/ui/badge";
+import { useIsMobile } from "@/hooks/use-mobile";
+import { useUserRole } from "@/hooks/useUserRole";
+import {
+  useProjects,
+  useAddProject,
+  useUpdateProject,
+  useDeleteProject,
+  useArchiveProject,
+  useUnarchiveProject,
+  Project,
+} from "@/integrations/supabase/hooks/useProjects";
 import { useCustomers } from "@/integrations/supabase/hooks/useCustomers";
 import { useAssignmentCountsByProject } from "@/integrations/supabase/hooks/usePersonnelProjectAssignments";
 import { useJobPostingCountsByProject } from "@/integrations/supabase/hooks/useJobPostingCountsByProject";
 import { useProjectCategorization, filterProjectsByCategory, ProjectCategory } from "@/hooks/useProjectCategorization";
 import { format } from "date-fns";
-import { Badge } from "@/components/ui/badge";
 import { stageConfig } from "@/components/projects/ProjectCard";
 import { getCustomerDisplayName } from "@/utils/customerDisplayName";
-import { Users } from "lucide-react";
+
+type TabKey = "active" | "quotes" | "completed" | "on-hold" | "archived";
+const TAB_KEYS: TabKey[] = ["active", "quotes", "completed", "on-hold", "archived"];
+
+function bucketOf(p: Project): TabKey {
+  if (p.archived_at) return "archived";
+  if (p.stage === "quote") return "quotes";
+  if (p.status === "on-hold") return "on-hold";
+  if (p.status === "completed" || p.stage === "complete" || p.stage === "canceled") return "completed";
+  return "active";
+}
 
 const Projects = () => {
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
   const isMobile = useIsMobile();
-  const isTablet = useIsTablet();
-  const { data: projects, isLoading, error, refetch, isFetching } = useProjects();
+  const { isAdmin, isManager } = useUserRole();
+  const canArchive = isAdmin || isManager;
+
+  // Fetch ALL (including archived) so we can bucket + count in one pass
+  const { data: allProjects, isLoading, error, refetch, isFetching } = useProjects({ includeArchived: true });
   const { data: customers } = useCustomers();
   const addProject = useAddProject();
   const updateProject = useUpdateProject();
   const deleteProject = useDeleteProject();
-  
-  // Get assignment counts for all projects
-  const projectIds = projects?.map(p => p.id) || [];
+  const archiveProject = useArchiveProject();
+  const unarchiveProject = useUnarchiveProject();
+
+  const projectIds = allProjects?.map(p => p.id) || [];
   const { data: assignmentCounts } = useAssignmentCountsByProject(projectIds);
   const { data: jobPostingCounts } = useJobPostingCountsByProject(projectIds);
-  
+
   const [search, setSearch] = useState("");
-  const [filterStatus, setFilterStatus] = useState<string>("all");
   const [filterStage, setFilterStage] = useState<string>("all");
   const [filterCategory, setFilterCategory] = useState<ProjectCategory>("all");
-  
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [isWizardOpen, setIsWizardOpen] = useState(false);
   const [editingProject, setEditingProject] = useState<Project | null>(null);
   const [formData, setFormData] = useState<ProjectFormData>(initialProjectFormData);
 
-  // Apply filters (status, stage, search)
-  const baseFilteredProjects = projects
-    ?.filter((p) => {
-      // Search filter
-      const searchMatch =
-        p.name.toLowerCase().includes(search.toLowerCase()) ||
-        getCustomerDisplayName(customers?.find(c => c.id === p.customer_id)).toLowerCase().includes(search.toLowerCase());
-      
-      // Status filter
-      const statusMatch = filterStatus === "all" || p.status === filterStatus;
-      
-      // Stage filter
-      const stageMatch = filterStage === "all" || p.stage === filterStage;
-      
-      return searchMatch && statusMatch && stageMatch;
-    }) || [];
+  const tabParam = (searchParams.get("tab") || "active") as TabKey;
+  const activeTab: TabKey = TAB_KEYS.includes(tabParam) ? tabParam : "active";
+  const setActiveTab = (v: string) => {
+    const next = new URLSearchParams(searchParams);
+    if (v === "active") next.delete("tab"); else next.set("tab", v);
+    setSearchParams(next, { replace: true });
+    setSelectedIds(new Set());
+  };
 
-  // Then apply category filter
+  // Bucket counts
+  const bucketCounts = useMemo(() => {
+    const c: Record<TabKey, number> = { active: 0, quotes: 0, completed: 0, "on-hold": 0, archived: 0 };
+    (allProjects || []).forEach(p => { c[bucketOf(p)]++; });
+    return c;
+  }, [allProjects]);
+
+  // Non-archived (for stats)
+  const nonArchived = useMemo(() => (allProjects || []).filter(p => !p.archived_at), [allProjects]);
+
+  // Projects for current tab
+  const tabProjects = useMemo(() => (allProjects || []).filter(p => bucketOf(p) === activeTab), [allProjects, activeTab]);
+
+  // Apply search + stage filter
+  const baseFilteredProjects = tabProjects.filter((p) => {
+    const searchMatch =
+      p.name.toLowerCase().includes(search.toLowerCase()) ||
+      getCustomerDisplayName(customers?.find(c => c.id === p.customer_id)).toLowerCase().includes(search.toLowerCase());
+    const stageMatch = filterStage === "all" || p.stage === filterStage;
+    return searchMatch && stageMatch;
+  });
+
   const filteredProjects = filterProjectsByCategory(
     baseFilteredProjects,
     filterCategory,
@@ -79,31 +116,54 @@ const Projects = () => {
     jobPostingCounts
   );
 
-  // Get categorization for grouped view (when category filter is "all")
   const categorization = useProjectCategorization(
     baseFilteredProjects,
     assignmentCounts,
     jobPostingCounts
   );
 
-  const hasActiveFilters = filterStatus !== "all" || filterStage !== "all" || filterCategory !== "all" || !!search;
+  const hasActiveFilters = filterStage !== "all" || filterCategory !== "all" || !!search;
+  const clearFilters = () => { setFilterStage("all"); setFilterCategory("all"); setSearch(""); };
 
-  const clearFilters = () => {
-    setFilterStatus("all");
-    setFilterStage("all");
-    setFilterCategory("all");
-    setSearch("");
+  const toggleSelect = (id: string, checked: boolean) => {
+    setSelectedIds(prev => {
+      const next = new Set(prev);
+      if (checked) next.add(id); else next.delete(id);
+      return next;
+    });
   };
 
+  const handleBulkArchive = async () => {
+    const ids = Array.from(selectedIds);
+    for (const id of ids) {
+      const p = allProjects?.find(x => x.id === id);
+      if (!p) continue;
+      await archiveProject.mutateAsync({ id, name: p.name });
+    }
+    setSelectedIds(new Set());
+  };
+
+  const handleBulkUnarchive = async () => {
+    const ids = Array.from(selectedIds);
+    for (const id of ids) {
+      const p = allProjects?.find(x => x.id === id);
+      if (!p) continue;
+      await unarchiveProject.mutateAsync({ id, name: p.name });
+    }
+    setSelectedIds(new Set());
+  };
+
+  const isArchivedTab = activeTab === "archived";
+
   const columns: EnhancedColumn<Project>[] = [
-    { 
-      key: "name", 
+    {
+      key: "name",
       header: "Project Name",
       sortable: true,
       filterable: true,
       getValue: (item) => item.name,
       render: (item) => (
-        <Link 
+        <Link
           to={`/projects/${item.id}`}
           className="text-primary hover:underline font-medium"
           onClick={(e) => e.stopPropagation()}
@@ -112,8 +172,8 @@ const Projects = () => {
         </Link>
       ),
     },
-    { 
-      key: "customer", 
+    {
+      key: "customer",
       header: "Customer",
       sortable: true,
       filterable: true,
@@ -128,9 +188,7 @@ const Projects = () => {
           >
             {getCustomerDisplayName(customer)}
           </Link>
-        ) : (
-          <span className="text-muted-foreground">Unknown</span>
-        );
+        ) : <span className="text-muted-foreground">Unknown</span>;
       },
     },
     {
@@ -157,11 +215,7 @@ const Projects = () => {
       getValue: (item) => item.stage || "quote",
       render: (item) => {
         const stage = stageConfig[item.stage] || stageConfig.quote;
-        return (
-          <Badge variant={stage.variant} className={`text-xs ${stage.className}`}>
-            {stage.label}
-          </Badge>
-        );
+        return <Badge variant={stage.variant} className={`text-xs ${stage.className}`}>{stage.label}</Badge>;
       },
     },
     {
@@ -194,25 +248,23 @@ const Projects = () => {
       sortable: false,
       filterable: false,
       render: (item) => (
-        <div className="flex items-center gap-2">
-          <Button
-            variant="ghost"
-            size="icon"
-            onClick={(e) => {
-              e.stopPropagation();
-              handleEdit(item);
-            }}
-          >
-            <Edit className="h-4 w-4" />
-          </Button>
-          <Button
-            variant="ghost"
-            size="icon"
-            onClick={(e) => {
-              e.stopPropagation();
-              handleDelete(item.id);
-            }}
-          >
+        <div className="flex items-center gap-1">
+          {!isArchivedTab && (
+            <Button variant="ghost" size="icon" onClick={(e) => { e.stopPropagation(); handleEdit(item); }}>
+              <Edit className="h-4 w-4" />
+            </Button>
+          )}
+          {canArchive && !isArchivedTab && (
+            <Button variant="ghost" size="icon" title="Archive" onClick={(e) => { e.stopPropagation(); archiveProject.mutate({ id: item.id, name: item.name }); }}>
+              <Archive className="h-4 w-4" />
+            </Button>
+          )}
+          {canArchive && isArchivedTab && (
+            <Button variant="ghost" size="icon" title="Unarchive" onClick={(e) => { e.stopPropagation(); unarchiveProject.mutate({ id: item.id, name: item.name }); }}>
+              <ArchiveRestore className="h-4 w-4" />
+            </Button>
+          )}
+          <Button variant="ghost" size="icon" onClick={(e) => { e.stopPropagation(); handleDelete(item.id); }}>
             <Trash2 className="h-4 w-4 text-destructive" />
           </Button>
         </div>
@@ -246,13 +298,10 @@ const Projects = () => {
     setIsDialogOpen(true);
   };
 
-  const handleDelete = (id: string) => {
-    deleteProject.mutate(id);
-  };
+  const handleDelete = (id: string) => { deleteProject.mutate(id); };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-
     const { use_customer_address, ...submitFields } = formData;
     const submitData = {
       ...submitFields,
@@ -268,16 +317,11 @@ const Projects = () => {
       poc_email: formData.poc_email || null,
       mandatory_payroll: formData.mandatory_payroll,
     };
-
     if (editingProject) {
-      await updateProject.mutateAsync({
-        id: editingProject.id,
-        ...submitData,
-      });
+      await updateProject.mutateAsync({ id: editingProject.id, ...submitData });
     } else {
       await addProject.mutateAsync(submitData);
     }
-
     setIsDialogOpen(false);
     setEditingProject(null);
     setFormData(initialProjectFormData);
@@ -289,7 +333,6 @@ const Projects = () => {
     setIsWizardOpen(true);
   };
 
-  // Handle ?action=add query param to open dialog
   useEffect(() => {
     if (searchParams.get("action") === "add") {
       openNewDialog();
@@ -298,9 +341,8 @@ const Projects = () => {
     }
   }, [searchParams, setSearchParams]);
 
-  // Helper to render project cards for a list of projects
   const renderProjectCards = (projectList: Project[]) => (
-    <div className="grid gap-3 grid-cols-1 sm:grid-cols-2">
+    <div className="grid gap-2 grid-cols-1 sm:grid-cols-2">
       {projectList.map((project) => (
         <ProjectCard
           key={project.id}
@@ -310,184 +352,221 @@ const Projects = () => {
           onEdit={() => handleEdit(project)}
           onDelete={() => handleDelete(project.id)}
           onClick={() => navigate(`/projects/${project.id}`)}
+          compact
+          selectable
+          selected={selectedIds.has(project.id)}
+          onSelectChange={(c) => toggleSelect(project.id, c)}
         />
       ))}
     </div>
   );
 
-  // Helper to render project table for a list of projects
   const renderProjectTable = (projectList: Project[], tableId: string) => (
     <EnhancedDataTable
       tableId={tableId}
       data={projectList}
       columns={columns}
       onRowClick={(item) => navigate(`/projects/${item.id}`)}
+      selectable
+      selectedIds={selectedIds}
+      onSelectionChange={setSelectedIds}
     />
   );
 
-  // Determine if we show grouped sections or flat list
-  const showGroupedView = filterCategory === "all" && baseFilteredProjects.length > 0;
+  const showGroupedView = activeTab === "active" && filterCategory === "all" && baseFilteredProjects.length > 0;
+
+  const tabLabel = (k: TabKey) => {
+    const labels: Record<TabKey, string> = {
+      active: "Active",
+      quotes: "Quotes",
+      completed: "Completed",
+      "on-hold": "On-Hold",
+      archived: "Archived",
+    };
+    return labels[k];
+  };
 
   return (
     <>
-      <SEO 
+      <SEO
         title="Projects"
         description="Manage and track all your business projects with Command X"
         keywords="project management, customer projects, project tracking, project status"
       />
       <PageLayout
-      title="Projects"
-      description={isMobile ? undefined : "Manage customer projects and track their status"}
-      actions={
-        !isMobile ? (
-          <Button variant="glow" onClick={openNewDialog}>
-            <Plus className="h-4 w-4" />
-            Add Project
-          </Button>
-        ) : undefined
-      }
-    >
-      <PullToRefreshWrapper onRefresh={refetch} isRefreshing={isFetching}>
-        {/* Quick Stats */}
-        {!isLoading && !error && projects && (
-          <ProjectStats 
-            projects={projects} 
-            individualCount={categorization.counts.individual}
-            teamCount={categorization.counts.team}
-          />
-        )}
+        title="Projects"
+        description={isMobile ? undefined : "Manage customer projects and track their status"}
+        actions={
+          !isMobile ? (
+            <Button variant="glow" onClick={openNewDialog}>
+              <Plus className="h-4 w-4" />
+              Add Project
+            </Button>
+          ) : undefined
+        }
+      >
+        <PullToRefreshWrapper onRefresh={refetch} isRefreshing={isFetching}>
+          {!isLoading && !error && allProjects && (
+            <ProjectStats
+              projects={nonArchived}
+              individualCount={categorization.counts.individual}
+              teamCount={categorization.counts.team}
+            />
+          )}
 
-        {/* Search & Filters - Combined Row */}
-        <div className="mb-6 overflow-hidden">
-          <div className="flex flex-wrap items-center gap-2 w-full">
-            <div className="flex-1 min-w-[200px] max-w-md">
-              <SearchInput
-                placeholder="Search projects..."
-                value={search}
-                onChange={setSearch}
-                className="bg-secondary border-border w-full"
+          <Tabs value={activeTab} onValueChange={setActiveTab} className="mb-4">
+            <div className="overflow-x-auto -mx-1 px-1">
+              <TabsList className="w-max">
+                {TAB_KEYS.map(k => (
+                  <TabsTrigger key={k} value={k} className="gap-1.5">
+                    {tabLabel(k)}
+                    <Badge variant="secondary" className="text-[10px] px-1.5 py-0 h-4">
+                      {bucketCounts[k]}
+                    </Badge>
+                  </TabsTrigger>
+                ))}
+              </TabsList>
+            </div>
+          </Tabs>
+
+          <div className="mb-4 overflow-hidden">
+            <div className="flex flex-wrap items-center gap-2 w-full">
+              <div className="flex-1 min-w-[200px] max-w-md">
+                <SearchInput
+                  placeholder="Search projects..."
+                  value={search}
+                  onChange={setSearch}
+                  className="bg-secondary border-border w-full"
+                />
+              </div>
+              <ProjectFilters
+                filterStatus="all"
+                setFilterStatus={() => {}}
+                filterStage={filterStage}
+                setFilterStage={setFilterStage}
+                filterCategory={filterCategory}
+                setFilterCategory={setFilterCategory}
+                activeFiltersCount={hasActiveFilters ? 1 : 0}
+                onClearFilters={clearFilters}
+                search={search}
+                inline
+                hideStatus
               />
             </div>
-            <ProjectFilters
-              filterStatus={filterStatus}
-              setFilterStatus={setFilterStatus}
-              filterStage={filterStage}
-              setFilterStage={setFilterStage}
-              filterCategory={filterCategory}
-              setFilterCategory={setFilterCategory}
-              activeFiltersCount={hasActiveFilters ? 1 : 0}
+          </div>
+
+          {isLoading && (
+            <div className="flex justify-center py-12">
+              <Loader2 className="h-8 w-8 animate-spin text-primary" />
+            </div>
+          )}
+
+          {error && (
+            <div className="text-center py-12 text-destructive">
+              Error loading projects: {error.message}
+            </div>
+          )}
+
+          {!isLoading && !error && filteredProjects.length === 0 && !showGroupedView && (
+            <ProjectEmptyState
+              hasFilters={hasActiveFilters}
+              onAddProject={openNewDialog}
               onClearFilters={clearFilters}
-              search={search}
-              inline
             />
+          )}
+
+          {!isLoading && !error && showGroupedView && (
+            <>
+              <div className="block min-[1180px]:hidden">
+                <ProjectSection
+                  title="Team Projects"
+                  icon={<UsersIcon className="h-4 w-4" />}
+                  count={categorization.counts.team}
+                  storageKey="projects-section-team"
+                  defaultOpen
+                >
+                  {renderProjectCards(categorization.teamProjects)}
+                </ProjectSection>
+                <ProjectSection
+                  title="Individual Contracts"
+                  icon={<User className="h-4 w-4" />}
+                  count={categorization.counts.individual}
+                  storageKey="projects-section-individual"
+                >
+                  {renderProjectCards(categorization.individualProjects)}
+                </ProjectSection>
+              </div>
+              <div className="hidden min-[1180px]:block">
+                <ProjectSection
+                  title="Team Projects"
+                  icon={<UsersIcon className="h-4 w-4" />}
+                  count={categorization.counts.team}
+                  storageKey="projects-section-team"
+                  defaultOpen
+                >
+                  {renderProjectTable(categorization.teamProjects, "projects-team")}
+                </ProjectSection>
+                <ProjectSection
+                  title="Individual Contracts"
+                  icon={<User className="h-4 w-4" />}
+                  count={categorization.counts.individual}
+                  storageKey="projects-section-individual"
+                >
+                  {renderProjectTable(categorization.individualProjects, "projects-individual")}
+                </ProjectSection>
+              </div>
+            </>
+          )}
+
+          {!isLoading && !error && !showGroupedView && filteredProjects.length > 0 && (
+            <>
+              <div className="block min-[1180px]:hidden">
+                {renderProjectCards(filteredProjects)}
+              </div>
+              <div className="hidden min-[1180px]:block">
+                {renderProjectTable(filteredProjects, `projects-${activeTab}`)}
+              </div>
+            </>
+          )}
+        </PullToRefreshWrapper>
+
+        {/* Floating bulk action bar */}
+        {canArchive && selectedIds.size > 0 && (
+          <div className="fixed bottom-20 md:bottom-6 left-1/2 -translate-x-1/2 z-50 bg-popover border border-border shadow-xl rounded-full px-4 py-2 flex items-center gap-3">
+            <span className="text-sm font-medium">{selectedIds.size} selected</span>
+            {isArchivedTab ? (
+              <Button size="sm" onClick={handleBulkUnarchive} disabled={unarchiveProject.isPending}>
+                <ArchiveRestore className="h-4 w-4 mr-1" /> Unarchive selected
+              </Button>
+            ) : (
+              <Button size="sm" onClick={handleBulkArchive} disabled={archiveProject.isPending}>
+                <Archive className="h-4 w-4 mr-1" /> Archive selected
+              </Button>
+            )}
+            <Button size="sm" variant="ghost" onClick={() => setSelectedIds(new Set())}>
+              <X className="h-4 w-4" />
+            </Button>
           </div>
-        </div>
-
-        {/* Loading & Error States */}
-        {isLoading && (
-          <div className="flex justify-center py-12">
-            <Loader2 className="h-8 w-8 animate-spin text-primary" />
-          </div>
-        )}
-        
-        {error && (
-          <div className="text-center py-12 text-destructive">
-            Error loading projects: {error.message}
-          </div>
         )}
 
-        {/* Empty State */}
-        {!isLoading && !error && filteredProjects.length === 0 && !showGroupedView && (
-          <ProjectEmptyState
-            hasFilters={hasActiveFilters}
-            onAddProject={openNewDialog}
-            onClearFilters={clearFilters}
-          />
-        )}
+        <ProjectFormDialog
+          isOpen={isDialogOpen}
+          onClose={() => setIsDialogOpen(false)}
+          onSubmit={handleSubmit}
+          formData={formData}
+          setFormData={setFormData}
+          customers={customers}
+          editingProject={editingProject}
+          isSubmitting={addProject.isPending || updateProject.isPending}
+        />
 
-        {/* Grouped View - when category filter is "all" */}
-        {!isLoading && !error && showGroupedView && (
-          <>
-            {/* Mobile/Tablet Cards - hidden on desktop (1180px+) */}
-            <div className="block min-[1180px]:hidden">
-              <ProjectSection
-                title="Team Projects"
-                icon={<UsersIcon className="h-4 w-4" />}
-                count={categorization.counts.team}
-              >
-                {renderProjectCards(categorization.teamProjects)}
-              </ProjectSection>
-              
-              <ProjectSection
-                title="Individual Contracts"
-                icon={<User className="h-4 w-4" />}
-                count={categorization.counts.individual}
-              >
-                {renderProjectCards(categorization.individualProjects)}
-              </ProjectSection>
-            </div>
+        <ProjectCreateWizard open={isWizardOpen} onOpenChange={setIsWizardOpen} />
 
-            {/* Desktop Table - hidden below 1180px */}
-            <div className="hidden min-[1180px]:block">
-              <ProjectSection
-                title="Team Projects"
-                icon={<UsersIcon className="h-4 w-4" />}
-                count={categorization.counts.team}
-              >
-                {renderProjectTable(categorization.teamProjects, "projects-team")}
-              </ProjectSection>
-              
-              <ProjectSection
-                title="Individual Contracts"
-                icon={<User className="h-4 w-4" />}
-                count={categorization.counts.individual}
-              >
-                {renderProjectTable(categorization.individualProjects, "projects-individual")}
-              </ProjectSection>
-            </div>
-          </>
-        )}
-
-        {/* Flat List View - when a specific category is selected */}
-        {!isLoading && !error && !showGroupedView && filteredProjects.length > 0 && (
-          <>
-            {/* Mobile/Tablet Cards - hidden on desktop (1180px+) */}
-            <div className="block min-[1180px]:hidden">
-              {renderProjectCards(filteredProjects)}
-            </div>
-            {/* Desktop Table - hidden below 1180px */}
-            <div className="hidden min-[1180px]:block">
-              {renderProjectTable(filteredProjects, "projects")}
-            </div>
-          </>
-        )}
-      </PullToRefreshWrapper>
-
-      {/* Edit Dialog (existing form) */}
-      <ProjectFormDialog
-        isOpen={isDialogOpen}
-        onClose={() => setIsDialogOpen(false)}
-        onSubmit={handleSubmit}
-        formData={formData}
-        setFormData={setFormData}
-        customers={customers}
-        editingProject={editingProject}
-        isSubmitting={addProject.isPending || updateProject.isPending}
-      />
-
-      {/* New Project multi-step wizard */}
-      <ProjectCreateWizard
-        open={isWizardOpen}
-        onOpenChange={setIsWizardOpen}
-      />
-
-
-      {/* Mobile FAB */}
-      <FloatingActionButton
-        onClick={openNewDialog}
-        icon={<Plus className="h-5 w-5" />}
-      />
-    </PageLayout>
+        <FloatingActionButton
+          onClick={openNewDialog}
+          icon={<Plus className="h-5 w-5" />}
+        />
+      </PageLayout>
     </>
   );
 };
