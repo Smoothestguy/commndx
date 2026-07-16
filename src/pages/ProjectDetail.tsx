@@ -44,6 +44,10 @@ const ProjectDetail = () => {
 
   const { data: project, isLoading: projectLoading } = useProject(id);
   const { data: customer } = useCustomer(project?.customer_id);
+  const { isAdmin, isManager } = useUserRole();
+  const canArchive = isAdmin || isManager;
+  const archiveProject = useArchiveProject();
+  const unarchiveProject = useUnarchiveProject();
 
   const tabParam = searchParams.get("tab");
   const activeTab: TabValue = (TABS as readonly string[]).includes(tabParam || "")
