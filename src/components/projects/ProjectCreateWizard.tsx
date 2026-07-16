@@ -208,12 +208,54 @@ export function ProjectCreateWizard({ open, onOpenChange, onProjectCreated }: Pr
   }, [companySettings, formTemplates]);
 
   const totalSteps = hiring ? 4 : 2;
+
+  const positionPayInvalid = positions.some(
+    (p) => p.show_pay_publicly && p.advertised_pay_rate == null
+  );
+  const workSummaryMissing = hiring && !schedule.workSummary.trim();
+
+  const generatedDescription = useMemo(() => {
+    if (!hiring) return "";
+    const startAt = basics.start_date
+      ? new Date(basics.start_date + "T08:00:00").toISOString()
+      : null;
+    return buildTaskOrderDescription({
+      title: basics.name,
+      workSummary: schedule.workSummary,
+      locationAddress: composedLocation,
+      city: basics.city,
+      startAt,
+      approxDuration,
+      daysPerWeek: schedule.daysPerWeek,
+      hoursPerDay: schedule.hoursPerDay,
+      scheduleNotes: schedule.scheduleNotes,
+      perDiemAmount: schedule.perDiemAmount,
+      perDiemNotes: schedule.perDiemNotes,
+      lodgingStatus: schedule.lodgingStatus,
+      lodgingNotes: schedule.lodgingNotes,
+      mealsProvided: schedule.mealsProvided,
+      mealsNotes: schedule.mealsNotes,
+      mobDemobPaid: schedule.mobDemobPaid,
+      mobDemobNotes: schedule.mobDemobNotes,
+      positions: positions.map((p) => ({
+        position_label: p.position_label,
+        headcount: p.headcount,
+        advertised_pay_rate: p.advertised_pay_rate,
+        show_pay_publicly: p.show_pay_publicly,
+      })),
+    });
+  }, [hiring, basics.name, basics.start_date, basics.city, composedLocation, approxDuration, schedule, positions]);
+
   const canNext = () => {
     if (step === 1) {
       return !!basics.name.trim() && !!basics.customer_id && !!basics.start_date;
     }
+    if (step === 3 && hiring) {
+      return !workSummaryMissing;
+    }
     return true;
   };
+
 
   const buildProjectPayload = () => {
     const { use_customer_address, ...rest } = basics;
