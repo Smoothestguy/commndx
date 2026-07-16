@@ -33,6 +33,7 @@ import { ProjectFinancialsTab } from "@/components/project-hub/ProjectFinancials
 import { ProjectTimeEntriesList } from "@/components/project-hub/ProjectTimeEntriesList";
 import { ProjectDocuments } from "@/components/projects/ProjectDocuments";
 import { ProjectActivityTimeline } from "@/components/project-hub/ProjectActivityTimeline";
+import { ProjectStatusMenu } from "@/components/projects/ProjectStatusMenu";
 
 const TABS = ["overview", "recruiting", "crew", "financials", "time", "docs"] as const;
 type TabValue = (typeof TABS)[number];
