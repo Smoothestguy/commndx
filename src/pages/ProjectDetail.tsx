@@ -17,6 +17,8 @@ import {
   Calendar,
   User,
   Hash,
+  Archive,
+  ArchiveRestore,
 } from "lucide-react";
 import { stageConfig } from "@/components/projects/ProjectCard";
 import { getCustomerDisplayName } from "@/utils/customerDisplayName";
