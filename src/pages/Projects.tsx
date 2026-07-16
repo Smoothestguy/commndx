@@ -370,6 +370,7 @@ const Projects = () => {
               onDelete={() => handleDelete(project.id)}
               onClick={() => navigate(`/projects/${project.id}`)}
               compact
+              stale={isStale(project)}
               selectable
               selected={selectedIds.has(project.id)}
               onSelectChange={(c) => toggleSelect(project.id, c)}
