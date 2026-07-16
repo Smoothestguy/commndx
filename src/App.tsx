@@ -15,7 +15,7 @@ import {
 const isElectron =
   typeof window !== "undefined" && window.electronAPI?.isElectron;
 const Router = isElectron ? HashRouter : BrowserRouter;
-import { SidebarProvider } from "@/components/ui/sidebar";
+
 import { AuthProvider } from "@/contexts/AuthContext";
 import { AIAssistantProvider } from "@/contexts/AIAssistantContext";
 import { LocationTrackingProvider } from "@/contexts/LocationTrackingContext";
