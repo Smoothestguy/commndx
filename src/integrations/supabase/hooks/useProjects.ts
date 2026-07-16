@@ -348,3 +348,65 @@ export const useUnarchiveProject = () => {
     onError: (error: Error) => toast.error(`Failed to unarchive: ${error.message}`),
   });
 };
+
+export const useDuplicateProject = () => {
+  const queryClient = useQueryClient();
+  const { logAction } = useAuditLog();
+
+  return useMutation({
+    mutationFn: async (sourceId: string): Promise<{ id: string; name: string }> => {
+      const { data: source, error: fetchErr } = await supabase
+        .from("projects")
+        .select("*")
+        .eq("id", sourceId)
+        .single();
+      if (fetchErr) throw fetchErr;
+      if (!source) throw new Error("Source project not found");
+
+      const today = new Date().toISOString().split("T")[0];
+      const insertPayload: Record<string, unknown> = {
+        name: `${source.name} (Copy)`,
+        customer_id: source.customer_id,
+        status: "active",
+        stage: "quote",
+        start_date: today,
+        end_date: null,
+        description: source.description,
+        address: source.address,
+        city: source.city,
+        state: source.state,
+        zip: source.zip,
+        customer_po: null,
+        poc_name: source.poc_name,
+        poc_phone: source.poc_phone,
+        poc_email: source.poc_email,
+        mandatory_payroll: source.mandatory_payroll ?? false,
+        time_clock_enabled: (source as { time_clock_enabled?: boolean | null }).time_clock_enabled ?? false,
+        require_clock_location: (source as { require_clock_location?: boolean | null }).require_clock_location ?? true,
+      };
+
+      const { data, error } = await supabase
+        .from("projects")
+        .insert([insertPayload as never])
+        .select()
+        .single();
+      if (error) throw error;
+
+      await logAction({
+        actionType: "create",
+        resourceType: "project",
+        resourceId: data.id,
+        resourceNumber: data.name,
+        changesAfter: data as unknown as Json,
+        metadata: { duplicated_from: sourceId } as Json,
+      });
+
+      return { id: data.id, name: data.name };
+    },
+    onSuccess: (result) => {
+      queryClient.invalidateQueries({ queryKey: ["projects"] });
+      toast.success(`Duplicated: ${result.name}`);
+    },
+    onError: (error: Error) => toast.error(`Failed to duplicate: ${error.message}`),
+  });
+};

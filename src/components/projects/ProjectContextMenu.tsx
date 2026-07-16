@@ -31,6 +31,7 @@ import {
   ExternalLink,
   Link as LinkIcon,
   Edit,
+  Copy,
   Archive,
   ArchiveRestore,
   Trash2,
@@ -45,6 +46,7 @@ import {
   useArchiveProject,
   useUnarchiveProject,
   useDeleteProject,
+  useDuplicateProject,
 } from "@/integrations/supabase/hooks/useProjects";
 import { useProjectLifecycle } from "@/hooks/useProjectLifecycle";
 
@@ -60,6 +62,7 @@ function useRowActions({ project, onEdit }: Props) {
   const archive = useArchiveProject();
   const unarchive = useUnarchiveProject();
   const del = useDeleteProject();
+  const duplicate = useDuplicateProject();
   const lifecycle = useProjectLifecycle();
   const [confirmCancel, setConfirmCancel] = useState(false);
   const [confirmDelete, setConfirmDelete] = useState(false);
@@ -90,6 +93,10 @@ function useRowActions({ project, onEdit }: Props) {
     archive: () => archive.mutate({ id: project.id, name: project.name }),
     unarchive: () => unarchive.mutate({ id: project.id, name: project.name }),
     doDelete: () => setConfirmDelete(true),
+    duplicate: () =>
+      duplicate.mutate(project.id, {
+        onSuccess: (r) => navigate(`/projects/${r.id}`),
+      }),
     lifecycle,
     confirmCancel,
     setConfirmCancel,
@@ -122,6 +129,17 @@ function renderMenuItems(
           <SepComp />
           <ItemComp onSelect={() => a.onEdit!(project)}>
             <Edit className="h-4 w-4 mr-2" /> Edit
+          </ItemComp>
+          <ItemComp onSelect={a.duplicate}>
+            <Copy className="h-4 w-4 mr-2" /> Duplicate
+          </ItemComp>
+        </>
+      )}
+      {a.canManage && !a.onEdit && (
+        <>
+          <SepComp />
+          <ItemComp onSelect={a.duplicate}>
+            <Copy className="h-4 w-4 mr-2" /> Duplicate
           </ItemComp>
         </>
       )}

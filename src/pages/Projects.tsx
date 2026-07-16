@@ -5,7 +5,8 @@ import { PageLayout } from "@/components/layout/PageLayout";
 import { EnhancedDataTable, EnhancedColumn } from "@/components/shared/EnhancedDataTable";
 import { StatusBadge } from "@/components/shared/StatusBadge";
 import { Button } from "@/components/ui/button";
-import { Plus, Loader2, Users as UsersIcon, User, Archive, ArchiveRestore, X } from "lucide-react";
+import { Plus, Loader2, Users as UsersIcon, User, Archive, ArchiveRestore, X, Download } from "lucide-react";
+import * as XLSX from "xlsx";
 import { ProjectContextMenu, ProjectRowActionsMenu } from "@/components/projects/ProjectContextMenu";
 import { SearchInput } from "@/components/ui/search-input";
 import { PullToRefreshWrapper } from "@/components/shared/PullToRefreshWrapper";
@@ -156,6 +157,30 @@ const Projects = () => {
 
   const isArchivedTab = activeTab === "archived";
 
+  const staleThreshold = useMemo(() => Date.now() - 90 * 24 * 60 * 60 * 1000, []);
+  const isStale = (p: Project) =>
+    activeTab === "active" && !!p.updated_at && new Date(p.updated_at).getTime() < staleThreshold;
+
+  const handleExport = () => {
+    const rows = filteredProjects.map((p) => ({
+      Name: p.name,
+      Customer: getCustomerDisplayName(customers?.find((c) => c.id === p.customer_id)),
+      Status: p.status,
+      Stage: p.stage,
+      "Start Date": p.start_date || "",
+      "End Date": p.end_date || "",
+      City: p.city || "",
+      State: p.state || "",
+      "Crew Count": assignmentCounts?.[p.id] ?? 0,
+      "Customer PO": p.customer_po || "",
+    }));
+    const ws = XLSX.utils.json_to_sheet(rows);
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, "Projects");
+    const stamp = format(new Date(), "yyyy-MM-dd");
+    XLSX.writeFile(wb, `projects-${activeTab}-${stamp}.xlsx`);
+  };
+
   const columns: EnhancedColumn<Project>[] = [
     {
       key: "name",
@@ -164,13 +189,20 @@ const Projects = () => {
       filterable: true,
       getValue: (item) => item.name,
       render: (item) => (
-        <Link
-          to={`/projects/${item.id}`}
-          className="text-primary hover:underline font-medium"
-          onClick={(e) => e.stopPropagation()}
-        >
-          {item.name}
-        </Link>
+        <div className="flex items-center gap-2">
+          <Link
+            to={`/projects/${item.id}`}
+            className="text-primary hover:underline font-medium"
+            onClick={(e) => e.stopPropagation()}
+          >
+            {item.name}
+          </Link>
+          {isStale(item) && (
+            <Badge variant="outline" title="No updates in 90+ days" className="text-[10px] px-1.5 py-0 h-4 border-amber-500/60 text-amber-600 dark:text-amber-400">
+              Stale
+            </Badge>
+          )}
+        </div>
       ),
     },
     {
@@ -338,6 +370,7 @@ const Projects = () => {
               onDelete={() => handleDelete(project.id)}
               onClick={() => navigate(`/projects/${project.id}`)}
               compact
+              stale={isStale(project)}
               selectable
               selected={selectedIds.has(project.id)}
               onSelectChange={(c) => toggleSelect(project.id, c)}
@@ -440,6 +473,17 @@ const Projects = () => {
                 inline
                 hideStatus
               />
+              <div className="ml-auto">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={handleExport}
+                  disabled={filteredProjects.length === 0}
+                >
+                  <Download className="h-4 w-4 mr-1.5" />
+                  Export
+                </Button>
+              </div>
             </div>
           </div>
 

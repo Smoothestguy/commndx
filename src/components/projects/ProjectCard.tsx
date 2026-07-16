@@ -18,6 +18,7 @@ interface ProjectCardProps {
   selected?: boolean;
   onSelectChange?: (checked: boolean) => void;
   extraActions?: React.ReactNode;
+  stale?: boolean;
 }
 
 const stageConfig: Record<ProjectStage, { label: string; variant: "default" | "secondary" | "outline" | "destructive"; className: string }> = {
@@ -40,6 +41,7 @@ export function ProjectCard({
   selected = false,
   onSelectChange,
   extraActions,
+  stale = false,
 }: ProjectCardProps) {
   const statusColorMap = {
     active: "border-success/30",
@@ -67,6 +69,11 @@ export function ProjectCard({
         <div className="min-w-0 flex-1">
           <div className="flex items-center gap-1.5 min-w-0">
             <span className="font-medium text-sm truncate">{project.name}</span>
+            {stale && (
+              <Badge variant="outline" title="No updates in 90+ days" className="text-[9px] px-1 py-0 border-amber-500/60 text-amber-600 dark:text-amber-400 flex-shrink-0">
+                Stale
+              </Badge>
+            )}
             <span className="text-xs text-muted-foreground truncate">· {customerName}</span>
           </div>
           <div className="flex items-center gap-2 text-[11px] text-muted-foreground mt-0.5">
