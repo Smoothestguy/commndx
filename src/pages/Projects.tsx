@@ -249,25 +249,8 @@ const Projects = () => {
       sortable: false,
       filterable: false,
       render: (item) => (
-        <div className="flex items-center gap-1">
-          {!isArchivedTab && (
-            <Button variant="ghost" size="icon" onClick={(e) => { e.stopPropagation(); handleEdit(item); }}>
-              <Edit className="h-4 w-4" />
-            </Button>
-          )}
-          {canArchive && !isArchivedTab && (
-            <Button variant="ghost" size="icon" title="Archive" onClick={(e) => { e.stopPropagation(); archiveProject.mutate({ id: item.id, name: item.name }); }}>
-              <Archive className="h-4 w-4" />
-            </Button>
-          )}
-          {canArchive && isArchivedTab && (
-            <Button variant="ghost" size="icon" title="Unarchive" onClick={(e) => { e.stopPropagation(); unarchiveProject.mutate({ id: item.id, name: item.name }); }}>
-              <ArchiveRestore className="h-4 w-4" />
-            </Button>
-          )}
-          <Button variant="ghost" size="icon" onClick={(e) => { e.stopPropagation(); handleDelete(item.id); }}>
-            <Trash2 className="h-4 w-4 text-destructive" />
-          </Button>
+        <div onClick={(e) => e.stopPropagation()}>
+          <ProjectRowActionsMenu project={item} onEdit={handleEdit} />
         </div>
       ),
     },
