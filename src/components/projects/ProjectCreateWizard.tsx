@@ -592,15 +592,37 @@ export function ProjectCreateWizard({ open, onOpenChange, onProjectCreated }: Pr
               <TaskOrderStepSchedule
                 value={schedule}
                 onChange={(patch) => setSchedule((s) => ({ ...s, ...patch }))}
+                workSummaryRequired
+                workSummaryError={
+                  showWorkSummaryError && workSummaryMissing
+                    ? "Required — applicants need to know what they'll be doing."
+                    : null
+                }
               />
             </div>
           ) : (
-            <TaskOrderStepPositions
-              positions={positions}
-              onChange={setPositions}
-              rateBrackets={rateBrackets}
-              projectSelected={true}
-            />
+            <div className="space-y-4">
+              <TaskOrderStepPositions
+                positions={positions}
+                onChange={setPositions}
+                rateBrackets={rateBrackets}
+                projectSelected={true}
+                showErrors={showPositionErrors}
+              />
+              <PostingPreviewSection
+                generated={generatedDescription}
+                value={jobDescription}
+                edited={descEdited}
+                onEdit={(t) => {
+                  setJobDescription(t);
+                  setDescEdited(true);
+                }}
+                onRegenerate={() => {
+                  setJobDescription("");
+                  setDescEdited(false);
+                }}
+              />
+            </div>
           )}
         </div>
 
