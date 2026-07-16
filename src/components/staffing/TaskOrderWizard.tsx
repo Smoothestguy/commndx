@@ -46,6 +46,7 @@ import {
   PositionDraft,
 } from "./TaskOrderStepPositions";
 import { buildTaskOrderDescription } from "@/lib/taskOrderDescription";
+import { PostingPreviewSection } from "./PostingPreviewSection";
 import { resolvePositionDrafts } from "@/lib/resolvePositions";
 
 interface Props {
