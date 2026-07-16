@@ -1,4 +1,4 @@
-import { useState } from "react";
+
 import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
@@ -23,8 +23,8 @@ import { UIDensityProvider } from "@/contexts/UIDensityContext";
 import { MessageDrawerProvider } from "@/contexts/MessageDrawerContext";
 import { ProtectedRoute } from "@/components/ProtectedRoute";
 import { ThemeProvider } from "@/components/ThemeProvider";
-import { BottomNav } from "@/components/layout/BottomNav";
-import { MoreMenu } from "@/components/layout/MoreMenu";
+
+
 import { NetSuiteLayout } from "@/components/layout/netsuite/NetSuiteLayout";
 import { useNativeStatusBar } from "@/hooks/useNativeStatusBar";
 import { ChatInterface } from "@/components/ai-assistant/ChatInterface";
@@ -189,9 +189,8 @@ const NativeStatusBarManager = () => {
 };
 
 const App = () => {
-  const [moreMenuOpen, setMoreMenuOpen] = useState(false);
-
   return (
+
     <QueryClientProvider client={queryClient}>
       <ThemeProvider>
         <NativeStatusBarManager />
@@ -772,11 +771,7 @@ const App = () => {
 
                     <Route path="*" element={<NotFound />} />
                   </Routes>
-                  <BottomNav onMoreClick={() => setMoreMenuOpen(true)} />
-                  <MoreMenu
-                    open={moreMenuOpen}
-                    onOpenChange={setMoreMenuOpen}
-                  />
+
                   <ChatInterface />
                   <UpdateNotification />
                   </MessageDrawerProvider>
