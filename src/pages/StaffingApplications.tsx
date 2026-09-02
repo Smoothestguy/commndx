@@ -307,10 +307,15 @@ export default function StaffingApplications() {
   }, [search, projectFilter, statusFilter, experienceFilter, postingFilter]);
 
   const copyApplicationLink = (token: string) => {
-    const url = `${window.location.origin}/apply/${token}`;
-    navigator.clipboard.writeText(url);
+    navigator.clipboard.writeText(buildApplyUrl(token));
     toast.success("Application link copied to clipboard");
   };
+
+  const copyShareLink = (token: string) => {
+    navigator.clipboard.writeText(buildApplyShareUrl(token));
+    toast.success("Share link copied — previews show the job details");
+  };
+
 
   const handleEditPosting = (posting: any) => {
     setEditingPosting({
