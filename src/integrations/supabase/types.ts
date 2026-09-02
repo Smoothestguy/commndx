@@ -390,6 +390,8 @@ export type Database = {
           last_error: string | null
           last_name: string | null
           phone: string | null
+          recovery_sms_sent_at: string | null
+          recovery_sms_sid: string | null
           session_id: string
           updated_at: string
           user_agent: string | null
@@ -403,6 +405,8 @@ export type Database = {
           last_error?: string | null
           last_name?: string | null
           phone?: string | null
+          recovery_sms_sent_at?: string | null
+          recovery_sms_sid?: string | null
           session_id: string
           updated_at?: string
           user_agent?: string | null
@@ -416,6 +420,8 @@ export type Database = {
           last_error?: string | null
           last_name?: string | null
           phone?: string | null
+          recovery_sms_sent_at?: string | null
+          recovery_sms_sid?: string | null
           session_id?: string
           updated_at?: string
           user_agent?: string | null

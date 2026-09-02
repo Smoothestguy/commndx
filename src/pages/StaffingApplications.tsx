@@ -1,6 +1,8 @@
 import { useState, useMemo, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { buildApplyUrl, buildApplyShareUrl } from "@/lib/applyLinks";
+import { supabase } from "@/integrations/supabase/client";
+
 
 import { 
   Search, 
@@ -18,6 +20,8 @@ import {
   MapPin,
   ChevronDown,
   Send,
+  MessageSquare,
+
 } from "lucide-react";
 import { InviteNearbyApplicantsDialog } from "@/components/staffing/InviteNearbyApplicantsDialog";
 import { InvitePastWorkersDialog } from "@/components/staffing/InvitePastWorkersDialog";
@@ -318,6 +322,59 @@ export default function StaffingApplications() {
     toast.success("Share link copied — previews show the job details");
   };
 
+  // --- Abandoned applicant recovery SMS ---
+  const [recoveryPostingId, setRecoveryPostingId] = useState<string | null>(null);
+  const [recoveryLoading, setRecoveryLoading] = useState(false);
+  const [recoverySending, setRecoverySending] = useState(false);
+  const [recoveryRecipients, setRecoveryRecipients] = useState<
+    Array<{ first_name: string; phone_masked: string; email: string | null }>
+  >([]);
+
+  const handleTextUnfinished = async (postingId: string) => {
+    setRecoveryLoading(true);
+    try {
+      const { data, error } = await supabase.functions.invoke("send-recovery-sms", {
+        body: { job_posting_id: postingId, dry_run: true },
+      });
+      if (error) throw error;
+      if ((data as any)?.error) throw new Error((data as any).error);
+      const recipients = (data as any)?.recipients ?? [];
+      if (!recipients.length) {
+        toast.info("No unfinished applicants to text for this posting");
+        return;
+      }
+      setRecoveryRecipients(recipients);
+      setRecoveryPostingId(postingId);
+    } catch (e: any) {
+      toast.error(e?.message || "Failed to load unfinished applicants");
+    } finally {
+      setRecoveryLoading(false);
+    }
+  };
+
+  const handleSendRecovery = async () => {
+    if (!recoveryPostingId) return;
+    setRecoverySending(true);
+    try {
+      const { data, error } = await supabase.functions.invoke("send-recovery-sms", {
+        body: { job_posting_id: recoveryPostingId, dry_run: false },
+      });
+      if (error) throw error;
+      if ((data as any)?.error) throw new Error((data as any).error);
+      const sent = (data as any)?.sent ?? 0;
+      const failed = (data as any)?.failed ?? 0;
+      toast.success(`Sent ${sent} text${sent === 1 ? "" : "s"}${failed ? `, ${failed} failed` : ""}`);
+      setRecoveryPostingId(null);
+      setRecoveryRecipients([]);
+    } catch (e: any) {
+      toast.error(e?.message || "Failed to send texts");
+    } finally {
+      setRecoverySending(false);
+    }
+  };
+
+
+
 
   const handleEditPosting = (posting: any) => {
     setEditingPosting({
@@ -476,6 +533,19 @@ export default function StaffingApplications() {
                         <span className="hidden sm:inline">Invite Past Workers</span>
                         <span className="sm:hidden ml-1">Past</span>
                       </Button>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        className="h-9 px-2 text-xs sm:px-3 sm:text-sm"
+                        disabled={recoveryLoading}
+                        onClick={() => handleTextUnfinished(posting.id)}
+                        title="Text applicants who started but never submitted"
+                      >
+                        <MessageSquare className="h-4 w-4 sm:mr-1" />
+                        <span className="hidden sm:inline">Text unfinished</span>
+                        <span className="sm:hidden ml-1">Unfinished</span>
+                      </Button>
+
                       <Button
                         variant="outline"
                         size="sm"
@@ -864,6 +934,54 @@ export default function StaffingApplications() {
         mode="edit"
         taskOrder={editingTaskOrder}
       />
+
+      {/* Recovery SMS confirmation */}
+      <Dialog
+        open={!!recoveryPostingId}
+        onOpenChange={(open) => {
+          if (!open) {
+            setRecoveryPostingId(null);
+            setRecoveryRecipients([]);
+          }
+        }}
+      >
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Text unfinished applicants</DialogTitle>
+            <DialogDescription>
+              {recoveryRecipients.length} recipient
+              {recoveryRecipients.length === 1 ? "" : "s"} will get a bilingual text with the
+              apply link. Each person is only texted once.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="max-h-64 overflow-y-auto space-y-1">
+            {recoveryRecipients.map((r, i) => (
+              <div
+                key={`${r.phone_masked}-${i}`}
+                className="flex items-center justify-between rounded-md border px-3 py-2 text-sm"
+              >
+                <span className="font-medium">{r.first_name}</span>
+                <span className="text-muted-foreground">{r.phone_masked}</span>
+              </div>
+            ))}
+          </div>
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => {
+                setRecoveryPostingId(null);
+                setRecoveryRecipients([]);
+              }}
+            >
+              Cancel
+            </Button>
+            <Button onClick={handleSendRecovery} disabled={recoverySending}>
+              Send {recoveryRecipients.length} texts
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
     </div>
   );
 }

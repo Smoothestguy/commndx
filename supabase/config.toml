@@ -239,3 +239,6 @@ verify_jwt = false
 
 [functions.process-co-signature]
 verify_jwt = false
+
+[functions.send-recovery-sms]
+verify_jwt = true

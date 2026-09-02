@@ -1,0 +1,13 @@
+{
+  "version": "7",
+  "dialect": "postgresql",
+  "entries": [
+    {
+      "idx": 0,
+      "version": "7",
+      "when": 1788377301851,
+      "tag": "0000_add_recovery_sms_to_application_attempts",
+      "breakpoints": true
+    }
+  ]
+}
