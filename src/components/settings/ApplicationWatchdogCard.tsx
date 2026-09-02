@@ -125,6 +125,14 @@ export function ApplicationWatchdogCard() {
               onCheckedChange={(v) => updateSettings.mutate({ auto_recovery_sms_enabled: v })}
             />
           </div>
+          <div className="flex items-center justify-between rounded-md border p-3">
+            <Label htmlFor="wd-sweep" className="pr-3">Hourly safety sweep</Label>
+            <Switch
+              id="wd-sweep"
+              checked={!!settings?.hourly_sweep_enabled}
+              onCheckedChange={(v) => updateSettings.mutate({ hourly_sweep_enabled: v })}
+            />
+          </div>
         </div>
 
         <div className="grid gap-4 sm:grid-cols-3">
