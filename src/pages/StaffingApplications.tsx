@@ -472,6 +472,18 @@ export default function StaffingApplications() {
                           </Badge>
                         )}
                         <QuickApplyStats postingId={posting.id} />
+                        {(watchdogAlerts?.[posting.id] ?? 0) > 0 && (
+                          <Link
+                            to="/settings?tab=watchdog"
+                            onClick={(e) => e.stopPropagation()}
+                          >
+                            <Badge variant="destructive" className="text-xs shrink-0 gap-1">
+                              <ShieldAlert className="h-3 w-3" />
+                              {watchdogAlerts[posting.id]} issue
+                              {watchdogAlerts[posting.id] > 1 ? "s" : ""}
+                            </Badge>
+                          </Link>
+                        )}
                       </div>
                       {posting.project_task_orders && (
                         <TaskOrderFacts
