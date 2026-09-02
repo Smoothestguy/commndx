@@ -27,7 +27,11 @@ export default function AiDevAssistant() {
     selectConversation,
   } = useAiDevConversations();
 
-  const [goal, setGoal] = useState("");
+  // Allow deep links like /admin/ai-dev?prompt=... (used by watchdog escalations)
+  const [goal, setGoal] = useState(
+    () => new URLSearchParams(window.location.search).get("prompt") ?? ""
+  );
+
   const [context, setContext] = useState<ContextData>({});
   const [isProcessing, setIsProcessing] = useState(false);
 
