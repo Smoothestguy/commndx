@@ -6,8 +6,9 @@
 // fires recovery SMS to the applicants that were blocked, and escalates
 // anything it cannot safely fix.
 //
-// Triggered by pg_cron every 5 minutes, by an AFTER INSERT trigger on hard
-// failures, or manually from Settings -> Application Watchdog.
+// Triggered by an AFTER INSERT trigger on public.application_events (event
+// driven, coalesced), by an hourly safety-net cron sweep for stalled attempts,
+// or manually from Settings -> Application Watchdog.
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.86.0";
 
 const corsHeaders = {
