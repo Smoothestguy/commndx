@@ -7,10 +7,12 @@ export interface WatchdogSettings {
   enabled: boolean;
   auto_fix_enabled: boolean;
   auto_recovery_sms_enabled: boolean;
+  hourly_sweep_enabled: boolean;
   cooldown_hours: number;
   alert_phone: string | null;
   alert_email: string | null;
   last_run_at: string | null;
+  last_run_trigger: string | null;
 }
 
 export interface WatchdogIncident {
