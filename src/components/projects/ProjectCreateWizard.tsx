@@ -32,6 +32,8 @@ import {
   AlertTriangle,
 } from "lucide-react";
 import QRCode from "qrcode";
+import { buildApplyUrl, buildApplyShareUrl } from "@/lib/applyLinks";
+
 import { useAddProject } from "@/integrations/supabase/hooks/useProjects";
 import { useCustomers } from "@/integrations/supabase/hooks/useCustomers";
 import { useApplicationFormTemplates } from "@/integrations/supabase/hooks/useApplicationFormTemplates";
@@ -363,8 +365,10 @@ export function ProjectCreateWizard({ open, onOpenChange, onProjectCreated }: Pr
         taskOrderId: taskOrderId!,
         formTemplateId: defaultTemplateId,
       });
-      const url = `${window.location.origin}/apply/${posting.public_token}`;
+      const url = buildApplyUrl(posting.public_token);
       setPublicUrl(url);
+      setShareUrl(buildApplyShareUrl(posting.public_token));
+
       try {
         const qr = await QRCode.toDataURL(url, { width: 220, margin: 1 });
         setQrDataUrl(qr);
