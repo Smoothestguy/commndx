@@ -8792,8 +8792,12 @@ export type Database = {
           cooldown_hours: number
           created_at: string
           enabled: boolean
+          hourly_sweep_enabled: boolean
           id: number
           last_run_at: string | null
+          last_run_trigger: string | null
+          pending_run: boolean
+          running: boolean
           updated_at: string
         }
         Insert: {
@@ -8804,8 +8808,12 @@ export type Database = {
           cooldown_hours?: number
           created_at?: string
           enabled?: boolean
+          hourly_sweep_enabled?: boolean
           id?: number
           last_run_at?: string | null
+          last_run_trigger?: string | null
+          pending_run?: boolean
+          running?: boolean
           updated_at?: string
         }
         Update: {
@@ -8816,8 +8824,12 @@ export type Database = {
           cooldown_hours?: number
           created_at?: string
           enabled?: boolean
+          hourly_sweep_enabled?: boolean
           id?: number
           last_run_at?: string | null
+          last_run_trigger?: string | null
+          pending_run?: boolean
+          running?: boolean
           updated_at?: string
         }
         Relationships: []

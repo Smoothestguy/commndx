@@ -6,8 +6,9 @@
 // fires recovery SMS to the applicants that were blocked, and escalates
 // anything it cannot safely fix.
 //
-// Triggered by pg_cron every 5 minutes, by an AFTER INSERT trigger on hard
-// failures, or manually from Settings -> Application Watchdog.
+// Triggered by an AFTER INSERT trigger on public.application_events (event
+// driven, coalesced), by an hourly safety-net cron sweep for stalled attempts,
+// or manually from Settings -> Application Watchdog.
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.86.0";
 
 const corsHeaders = {
@@ -108,55 +109,27 @@ async function callAI(payload: AnyRec, apiKey: string) {
   return { paused: false, result: JSON.parse(cleaned.slice(start, end + 1)) } as const;
 }
 
-Deno.serve(async (req) => {
-  if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
-
-  const serviceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
-  const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
-  const service = createClient(supabaseUrl, serviceKey);
-
-  try {
-    const body: AnyRec = await req.json().catch(() => ({}));
-    const trigger: string = body?.trigger ?? "manual";
-    const force: boolean = body?.force === true;
-
-    // force (re-diagnose everything) requires an admin/manager JWT
-    if (force) {
-      const authHeader = req.headers.get("Authorization");
-      if (!authHeader) return json({ error: "Unauthorized" }, 401);
-      const { data: { user } } = await service.auth.getUser(
-        authHeader.replace("Bearer ", ""),
-      );
-      if (!user) return json({ error: "Unauthorized" }, 401);
-      const { data: roles } = await service
-        .from("user_roles").select("role").eq("user_id", user.id);
-      if (!roles?.some((r: AnyRec) => ["admin", "manager"].includes(r.role))) {
-        return json({ error: "Forbidden" }, 403);
-      }
-    }
-
-    const { data: settings } = await service
-      .from("watchdog_settings").select("*").eq("id", 1).maybeSingle();
-    if (!settings) return json({ error: "Watchdog settings missing" }, 500);
-    if (!settings.enabled) return json({ skipped: "disabled" });
-
-    // Debounce event-triggered runs
-    if (trigger === "event" && settings.last_run_at) {
-      const age = Date.now() - new Date(settings.last_run_at).getTime();
-      if (age < 60_000) return json({ skipped: "debounced" });
-    }
-
+async function runWatchdog(
+  service: AnyRec,
+  supabaseUrl: string,
+  serviceKey: string,
+  settings: AnyRec,
+  opts: { force?: boolean; since?: string; trigger: string },
+) {
+  const force = opts.force === true;
+  {
     const now = Date.now();
     const MIN = 5 * 60 * 1000;
     const MAX = 24 * 60 * 60 * 1000;
-    let sinceMs = body?.since
-      ? new Date(body.since).getTime()
+    let sinceMs = opts.since
+      ? new Date(opts.since).getTime()
       : settings.last_run_at
       ? new Date(settings.last_run_at).getTime()
       : now - MIN;
     if (now - sinceMs < MIN) sinceMs = now - MIN;
     if (now - sinceMs > MAX) sinceMs = now - MAX;
     const since = new Date(sinceMs).toISOString();
+
 
     // ---- b. gather window data ------------------------------------------
     const { data: events } = await service
@@ -645,21 +618,172 @@ Deno.serve(async (req) => {
       }
     }
 
+    // ---- j. auto-resolve on sustained success ----------------------------
+    let auto_resolved = 0;
+    {
+      const { data: succ } = await service
+        .from("application_events")
+        .select("job_posting_id, created_at")
+        .eq("event_type", "submit_success")
+        .gte("created_at", since);
+
+      const successPostings = [
+        ...new Set((succ ?? []).map((s: AnyRec) => s.job_posting_id).filter(Boolean)),
+      ] as string[];
+
+      for (const postingId of successPostings) {
+        const { data: open } = await service
+          .from("watchdog_incidents")
+          .select("*")
+          .eq("job_posting_id", postingId)
+          .in("status", ["open", "auto_fixed", "escalated"]);
+
+        for (const inc of open ?? []) {
+          if (inc.severity === "high" && inc.event_type === "submit_error") continue;
+
+          const hourAgo = new Date(now - 60 * 60 * 1000).toISOString();
+          const { count: recentSame } = await service
+            .from("application_events")
+            .select("id", { count: "exact", head: true })
+            .eq("job_posting_id", postingId)
+            .eq("event_type", inc.event_type)
+            .gte("created_at", hourAgo)
+            .neq("event_type", "submit_success");
+          if ((recentSame ?? 0) > 0) continue;
+
+          const { count: successes } = await service
+            .from("application_events")
+            .select("id", { count: "exact", head: true })
+            .eq("job_posting_id", postingId)
+            .eq("event_type", "submit_success")
+            .gt("created_at", inc.last_seen);
+          if ((successes ?? 0) < 3) continue;
+
+          await service
+            .from("watchdog_incidents")
+            .update({ status: "resolved" })
+            .eq("id", inc.id);
+          await service.from("watchdog_actions").insert({
+            incident_id: inc.id,
+            action_type: "auto_resolved",
+            target: { incident_id: inc.id, successes: successes ?? 0 },
+          });
+          auto_resolved += 1;
+        }
+      }
+    }
+
     await service
       .from("watchdog_settings")
-      .update({ last_run_at: new Date().toISOString() })
+      .update({
+        last_run_at: new Date().toISOString(),
+        last_run_trigger: opts.trigger,
+      })
       .eq("id", 1);
 
-    return json({
+    return {
       incidents_created,
       incidents_updated,
       actions_taken,
+      auto_resolved,
       escalated,
       window_since: since,
       ...(paused ? { paused } : {}),
-    });
+    };
+  }
+}
+
+Deno.serve(async (req) => {
+  if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
+
+  const serviceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
+  const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
+  const service = createClient(supabaseUrl, serviceKey);
+
+  const loadSettings = async () => {
+    const { data } = await service
+      .from("watchdog_settings").select("*").eq("id", 1).maybeSingle();
+    return data as AnyRec | null;
+  };
+
+  const execute = async (trigger: string, force: boolean, since?: string) => {
+    await service.from("watchdog_settings").update({ running: true }).eq("id", 1);
+    try {
+      const s = (await loadSettings())!;
+      const out = await runWatchdog(service, supabaseUrl, serviceKey, s, {
+        force,
+        since,
+        trigger,
+      });
+      // If more events arrived while we were running, do one more pass.
+      const after = await loadSettings();
+      if (after?.pending_run) {
+        await service.from("watchdog_settings").update({ pending_run: false }).eq("id", 1);
+        await runWatchdog(service, supabaseUrl, serviceKey, after, {
+          trigger,
+        });
+      }
+      return out;
+    } finally {
+      await service.from("watchdog_settings").update({ running: false }).eq("id", 1);
+    }
+  };
+
+  try {
+    const body: AnyRec = await req.json().catch(() => ({}));
+    const trigger: string = body?.trigger ?? "manual";
+    const force: boolean = body?.force === true;
+
+    // force (re-diagnose everything) requires an admin/manager JWT
+    if (force) {
+      const authHeader = req.headers.get("Authorization");
+      if (!authHeader) return json({ error: "Unauthorized" }, 401);
+      const { data: { user } } = await service.auth.getUser(
+        authHeader.replace("Bearer ", ""),
+      );
+      if (!user) return json({ error: "Unauthorized" }, 401);
+      const { data: roles } = await service
+        .from("user_roles").select("role").eq("user_id", user.id);
+      if (!roles?.some((r: AnyRec) => ["admin", "manager"].includes(r.role))) {
+        return json({ error: "Forbidden" }, 403);
+      }
+    }
+
+    const settings = await loadSettings();
+    if (!settings) return json({ error: "Watchdog settings missing" }, 500);
+    if (!settings.enabled) return json({ skipped: "disabled" });
+    if (trigger === "cron" && settings.hourly_sweep_enabled === false) {
+      return json({ skipped: "hourly_sweep_disabled" });
+    }
+
+    // Coalescing debounce for event-driven runs: bursts are batched, never lost.
+    if (trigger === "event") {
+      const age = settings.last_run_at
+        ? Date.now() - new Date(settings.last_run_at).getTime()
+        : Infinity;
+      if (settings.running || age < 30_000) {
+        await service.from("watchdog_settings").update({ pending_run: true }).eq("id", 1);
+        // @ts-ignore EdgeRuntime is available in Supabase Edge Functions
+        EdgeRuntime.waitUntil((async () => {
+          await new Promise((r) => setTimeout(r, 45_000));
+          const s = await loadSettings();
+          if (!s?.pending_run || s?.running) return;
+          await service.from("watchdog_settings").update({ pending_run: false }).eq("id", 1);
+          try {
+            await execute("event", false);
+          } catch (e) {
+            console.error("[watchdog] deferred run failed", String(e));
+          }
+        })());
+        return json({ coalesced: true });
+      }
+    }
+
+    const out = await execute(trigger, force, body?.since);
+    return json(out);
   } catch (e: any) {
     console.error("[watchdog] fatal", e?.message ?? String(e));
     return json({ error: e?.message ?? "Internal error" }, 500);
   }
 });
+

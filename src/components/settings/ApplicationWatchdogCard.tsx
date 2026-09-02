@@ -76,9 +76,10 @@ export function ApplicationWatchdogCard() {
             </CardTitle>
             <CardDescription>
               Watches public job applications for failures, diagnoses them, and applies safe
-              reversible fixes.
+              reversible fixes. Trigger: event-driven.
               {settings?.last_run_at && (
-                <> Last check {formatDistanceToNow(new Date(settings.last_run_at), { addSuffix: true })}.</>
+                <> Last check {formatDistanceToNow(new Date(settings.last_run_at), { addSuffix: true })}
+                  {settings.last_run_trigger ? ` (${settings.last_run_trigger})` : ""}.</>
               )}
             </CardDescription>
           </div>
@@ -122,6 +123,14 @@ export function ApplicationWatchdogCard() {
               id="wd-sms"
               checked={!!settings?.auto_recovery_sms_enabled}
               onCheckedChange={(v) => updateSettings.mutate({ auto_recovery_sms_enabled: v })}
+            />
+          </div>
+          <div className="flex items-center justify-between rounded-md border p-3">
+            <Label htmlFor="wd-sweep" className="pr-3">Hourly safety sweep</Label>
+            <Switch
+              id="wd-sweep"
+              checked={!!settings?.hourly_sweep_enabled}
+              onCheckedChange={(v) => updateSettings.mutate({ hourly_sweep_enabled: v })}
             />
           </div>
         </div>
