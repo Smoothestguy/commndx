@@ -486,6 +486,18 @@ export default function StaffingApplications() {
                         <span className="hidden sm:inline">Copy Link</span>
                         <span className="sm:hidden ml-1">Copy</span>
                       </Button>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        className="h-9 px-2 text-xs sm:px-3 sm:text-sm"
+                        onClick={() => copyShareLink(posting.public_token)}
+                        title="Copy share link (with preview) — shows job details when texted or posted"
+                      >
+                        <Copy className="h-4 w-4 sm:mr-1" />
+                        <span className="hidden sm:inline">Copy Share Link</span>
+                        <span className="sm:hidden ml-1">Share</span>
+                      </Button>
+
                       {posting.project_task_orders?.project_id && (
                         <Button
                           variant="ghost"
