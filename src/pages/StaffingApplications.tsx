@@ -1,5 +1,7 @@
 import { useState, useMemo, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
+import { buildApplyUrl, buildApplyShareUrl } from "@/lib/applyLinks";
+
 import { 
   Search, 
   Plus,
@@ -307,10 +309,15 @@ export default function StaffingApplications() {
   }, [search, projectFilter, statusFilter, experienceFilter, postingFilter]);
 
   const copyApplicationLink = (token: string) => {
-    const url = `${window.location.origin}/apply/${token}`;
-    navigator.clipboard.writeText(url);
+    navigator.clipboard.writeText(buildApplyUrl(token));
     toast.success("Application link copied to clipboard");
   };
+
+  const copyShareLink = (token: string) => {
+    navigator.clipboard.writeText(buildApplyShareUrl(token));
+    toast.success("Share link copied — previews show the job details");
+  };
+
 
   const handleEditPosting = (posting: any) => {
     setEditingPosting({
@@ -479,6 +486,18 @@ export default function StaffingApplications() {
                         <span className="hidden sm:inline">Copy Link</span>
                         <span className="sm:hidden ml-1">Copy</span>
                       </Button>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        className="h-9 px-2 text-xs sm:px-3 sm:text-sm"
+                        onClick={() => copyShareLink(posting.public_token)}
+                        title="Copy share link (with preview) — shows job details when texted or posted"
+                      >
+                        <Copy className="h-4 w-4 sm:mr-1" />
+                        <span className="hidden sm:inline">Copy Share Link</span>
+                        <span className="sm:hidden ml-1">Share</span>
+                      </Button>
+
                       {posting.project_task_orders?.project_id && (
                         <Button
                           variant="ghost"

@@ -32,6 +32,8 @@ import {
   AlertTriangle,
 } from "lucide-react";
 import QRCode from "qrcode";
+import { buildApplyUrl, buildApplyShareUrl } from "@/lib/applyLinks";
+
 import { useAddProject } from "@/integrations/supabase/hooks/useProjects";
 import { useCustomers } from "@/integrations/supabase/hooks/useCustomers";
 import { useApplicationFormTemplates } from "@/integrations/supabase/hooks/useApplicationFormTemplates";
@@ -134,7 +136,9 @@ export function ProjectCreateWizard({ open, onOpenChange, onProjectCreated }: Pr
   const [createdProjectId, setCreatedProjectId] = useState<string | null>(null);
   const [createdTaskOrderId, setCreatedTaskOrderId] = useState<string | null>(null);
   const [publicUrl, setPublicUrl] = useState<string>("");
+  const [shareUrl, setShareUrl] = useState<string>("");
   const [qrDataUrl, setQrDataUrl] = useState<string>("");
+
   const [failedStage, setFailedStage] = useState<FailedStage>(null);
   const [failedError, setFailedError] = useState<string>("");
   const [successOpen, setSuccessOpen] = useState(false);
@@ -361,8 +365,10 @@ export function ProjectCreateWizard({ open, onOpenChange, onProjectCreated }: Pr
         taskOrderId: taskOrderId!,
         formTemplateId: defaultTemplateId,
       });
-      const url = `${window.location.origin}/apply/${posting.public_token}`;
+      const url = buildApplyUrl(posting.public_token);
       setPublicUrl(url);
+      setShareUrl(buildApplyShareUrl(posting.public_token));
+
       try {
         const qr = await QRCode.toDataURL(url, { width: 220, margin: 1 });
         setQrDataUrl(qr);
@@ -436,6 +442,16 @@ export function ProjectCreateWizard({ open, onOpenChange, onProjectCreated }: Pr
       toast.error("Unable to copy — link is shown above");
     }
   };
+
+  const copyShareLink = async () => {
+    try {
+      await navigator.clipboard.writeText(shareUrl || publicUrl);
+      toast.success("Share link copied — previews show the job details");
+    } catch {
+      toast.error("Unable to copy — link is shown above");
+    }
+  };
+
 
   const stepLabels = hiring
     ? ["Project", "Hire?", "Schedule", "Positions"]
@@ -517,7 +533,19 @@ export function ProjectCreateWizard({ open, onOpenChange, onProjectCreated }: Pr
                     <ExternalLink className="h-4 w-4" />
                   </Button>
                 </div>
+                <div className="w-full">
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    onClick={copyShareLink}
+                    title="Copy share link (with preview) — shows job details when texted or posted"
+                  >
+                    <Copy className="h-4 w-4 mr-1" /> Copy share link (with preview)
+                  </Button>
+                </div>
               </div>
+
             </div>
           ) : failedStage ? (
             <div className="space-y-4 py-4">
