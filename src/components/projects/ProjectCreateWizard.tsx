@@ -443,6 +443,16 @@ export function ProjectCreateWizard({ open, onOpenChange, onProjectCreated }: Pr
     }
   };
 
+  const copyShareLink = async () => {
+    try {
+      await navigator.clipboard.writeText(shareUrl || publicUrl);
+      toast.success("Share link copied — previews show the job details");
+    } catch {
+      toast.error("Unable to copy — link is shown above");
+    }
+  };
+
+
   const stepLabels = hiring
     ? ["Project", "Hire?", "Schedule", "Positions"]
     : ["Project", "Hire?"];
@@ -523,6 +533,17 @@ export function ProjectCreateWizard({ open, onOpenChange, onProjectCreated }: Pr
                     <ExternalLink className="h-4 w-4" />
                   </Button>
                 </div>
+                <div className="w-full">
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    onClick={copyShareLink}
+                    title="Copy share link (with preview) — shows job details when texted or posted"
+                  >
+                    <Copy className="h-4 w-4 mr-1" /> Copy share link (with preview)
+                  </Button>
+
               </div>
             </div>
           ) : failedStage ? (
