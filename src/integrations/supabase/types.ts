@@ -317,9 +317,62 @@ export type Database = {
           },
         ]
       }
+      applicant_capabilities: {
+        Row: {
+          applicant_id: string
+          category_id: string
+          confidence: number | null
+          created_at: string
+          evidence: string | null
+          id: string
+          source: string
+          updated_at: string
+          years_experience: number | null
+        }
+        Insert: {
+          applicant_id: string
+          category_id: string
+          confidence?: number | null
+          created_at?: string
+          evidence?: string | null
+          id?: string
+          source: string
+          updated_at?: string
+          years_experience?: number | null
+        }
+        Update: {
+          applicant_id?: string
+          category_id?: string
+          confidence?: number | null
+          created_at?: string
+          evidence?: string | null
+          id?: string
+          source?: string
+          updated_at?: string
+          years_experience?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "applicant_capabilities_applicant_id_fkey"
+            columns: ["applicant_id"]
+            isOneToOne: false
+            referencedRelation: "applicants"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "applicant_capabilities_category_id_fkey"
+            columns: ["category_id"]
+            isOneToOne: false
+            referencedRelation: "capability_categories"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       applicants: {
         Row: {
           address: string | null
+          capabilities_classified_at: string | null
+          capabilities_model: string | null
           city: string | null
           created_at: string
           email: string
@@ -340,6 +393,8 @@ export type Database = {
         }
         Insert: {
           address?: string | null
+          capabilities_classified_at?: string | null
+          capabilities_model?: string | null
           city?: string | null
           created_at?: string
           email: string
@@ -360,6 +415,8 @@ export type Database = {
         }
         Update: {
           address?: string | null
+          capabilities_classified_at?: string | null
+          capabilities_model?: string | null
           city?: string | null
           created_at?: string
           email?: string
@@ -1137,6 +1194,39 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      capability_categories: {
+        Row: {
+          aliases: string[]
+          created_at: string
+          description: string | null
+          id: string
+          is_active: boolean
+          name: string
+          slug: string
+          sort_order: number
+        }
+        Insert: {
+          aliases?: string[]
+          created_at?: string
+          description?: string | null
+          id?: string
+          is_active?: boolean
+          name: string
+          slug: string
+          sort_order?: number
+        }
+        Update: {
+          aliases?: string[]
+          created_at?: string
+          description?: string | null
+          id?: string
+          is_active?: boolean
+          name?: string
+          slug?: string
+          sort_order?: number
+        }
+        Relationships: []
       }
       change_order_approval_log: {
         Row: {
