@@ -1,5 +1,5 @@
 import { useState, useMemo, useEffect } from "react";
-import { useNavigate } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import { buildApplyUrl, buildApplyShareUrl } from "@/lib/applyLinks";
 import { supabase } from "@/integrations/supabase/client";
 
@@ -22,7 +22,9 @@ import {
   Send,
   MessageSquare,
 
+  ShieldAlert,
 } from "lucide-react";
+import { useWatchdogPostingAlerts } from "@/hooks/useApplicationWatchdog";
 import { InviteNearbyApplicantsDialog } from "@/components/staffing/InviteNearbyApplicantsDialog";
 import { InvitePastWorkersDialog } from "@/components/staffing/InvitePastWorkersDialog";
 import { QuickApplyStats } from "@/components/staffing/QuickApplyStats";
@@ -153,6 +155,7 @@ export default function StaffingApplications() {
   });
   const { data: taskOrders } = useTaskOrders();
   const { data: jobPostings } = useJobPostings();
+  const { data: watchdogAlerts } = useWatchdogPostingAlerts();
   const { data: formTemplates } = useApplicationFormTemplates();
 
   const createJobPosting = useCreateJobPosting();
