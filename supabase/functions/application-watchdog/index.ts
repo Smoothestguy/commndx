@@ -175,7 +175,7 @@ Deno.serve(async (req) => {
 
     const { data: attempts } = await service
       .from("application_attempts")
-      .select("id, job_posting_id, first_name, phone, updated_at")
+      .select("id, session_id, job_posting_id, first_name, phone, updated_at")
       .gte("updated_at", since);
 
     const { data: apps } = await service
@@ -612,7 +612,7 @@ Deno.serve(async (req) => {
                     From: from,
                     Body:
                       `Command X Watchdog: ${postingTitle} — ${diagnosis.slice(0, 120)}. ` +
-                      `Action: ${actionLabel}. https://commndx.com/settings?tab=watchdog`,
+                      `Action: ${actionLabel}. https://fairfieldrg.com/settings?tab=watchdog`,
                   }),
                 },
               );
@@ -632,10 +632,10 @@ Deno.serve(async (req) => {
                 "Content-Type": "application/json",
               },
               body: JSON.stringify({
-                from: "Command X Watchdog <onboarding@resend.dev>",
+                from: "Fairfield Watchdog <onboarding@resend.dev>",
                 to: [settings.alert_email],
                 subject: `Watchdog: ${postingTitle} (${severity})`,
-                html: `<p>${diagnosis}</p><p><b>Action:</b> ${actionLabel}</p><p><a href="https://commndx.com/settings?tab=watchdog">Open watchdog</a></p>`,
+                html: `<p>${diagnosis}</p><p><b>Action:</b> ${actionLabel}</p><p><a href="https://fairfieldrg.com/settings?tab=watchdog">Open watchdog</a></p>`,
               }),
             });
           } catch (e) {
