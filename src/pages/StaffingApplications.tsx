@@ -1,5 +1,5 @@
 import { useState, useMemo, useEffect } from "react";
-import { useNavigate } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import { buildApplyUrl, buildApplyShareUrl } from "@/lib/applyLinks";
 import { supabase } from "@/integrations/supabase/client";
 
@@ -22,7 +22,9 @@ import {
   Send,
   MessageSquare,
 
+  ShieldAlert,
 } from "lucide-react";
+import { useWatchdogPostingAlerts } from "@/hooks/useApplicationWatchdog";
 import { InviteNearbyApplicantsDialog } from "@/components/staffing/InviteNearbyApplicantsDialog";
 import { InvitePastWorkersDialog } from "@/components/staffing/InvitePastWorkersDialog";
 import { QuickApplyStats } from "@/components/staffing/QuickApplyStats";
@@ -153,6 +155,7 @@ export default function StaffingApplications() {
   });
   const { data: taskOrders } = useTaskOrders();
   const { data: jobPostings } = useJobPostings();
+  const { data: watchdogAlerts } = useWatchdogPostingAlerts();
   const { data: formTemplates } = useApplicationFormTemplates();
 
   const createJobPosting = useCreateJobPosting();
@@ -472,6 +475,18 @@ export default function StaffingApplications() {
                           </Badge>
                         )}
                         <QuickApplyStats postingId={posting.id} />
+                        {(watchdogAlerts?.[posting.id] ?? 0) > 0 && (
+                          <Link
+                            to="/settings?tab=watchdog"
+                            onClick={(e) => e.stopPropagation()}
+                          >
+                            <Badge variant="destructive" className="text-xs shrink-0 gap-1">
+                              <ShieldAlert className="h-3 w-3" />
+                              {watchdogAlerts[posting.id]} issue
+                              {watchdogAlerts[posting.id] > 1 ? "s" : ""}
+                            </Badge>
+                          </Link>
+                        )}
                       </div>
                       {posting.project_task_orders && (
                         <TaskOrderFacts

@@ -6,8 +6,10 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2.86.0";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
+  "Access-Control-Allow-Headers":
+    "authorization, x-client-info, apikey, content-type, x-internal-key",
 };
+
 
 const json = (body: unknown, status = 200) =>
   new Response(JSON.stringify(body), {
@@ -22,24 +24,34 @@ Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
 
   try {
-    const authHeader = req.headers.get("Authorization");
-    if (!authHeader) return json({ error: "Unauthorized" }, 401);
-
     const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
-    const service = createClient(supabaseUrl, Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!);
+    const serviceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
+    const service = createClient(supabaseUrl, serviceKey);
 
-    const { data: { user }, error: authError } = await service.auth.getUser(
-      authHeader.replace("Bearer ", "")
-    );
-    if (authError || !user) return json({ error: "Unauthorized" }, 401);
+    // Server-to-server callers (the Application Watchdog) present the service
+    // role key in x-internal-key instead of an admin JWT. Everything else
+    // (dedupe, one-text-per-phone guard) still applies.
+    const internalKey = req.headers.get("x-internal-key");
+    const isInternal = !!internalKey && internalKey === serviceKey;
 
-    const { data: roles } = await service
-      .from("user_roles")
-      .select("role")
-      .eq("user_id", user.id);
-    if (!roles?.some((r: any) => ["admin", "manager"].includes(r.role))) {
-      return json({ error: "Forbidden" }, 403);
+    if (!isInternal) {
+      const authHeader = req.headers.get("Authorization");
+      if (!authHeader) return json({ error: "Unauthorized" }, 401);
+
+      const { data: { user }, error: authError } = await service.auth.getUser(
+        authHeader.replace("Bearer ", "")
+      );
+      if (authError || !user) return json({ error: "Unauthorized" }, 401);
+
+      const { data: roles } = await service
+        .from("user_roles")
+        .select("role")
+        .eq("user_id", user.id);
+      if (!roles?.some((r: any) => ["admin", "manager"].includes(r.role))) {
+        return json({ error: "Forbidden" }, 403);
+      }
     }
+
 
     const body = await req.json().catch(() => ({}));
     const jobPostingId: string | undefined = body?.job_posting_id;
