@@ -15,6 +15,13 @@
       "when": 1788378280497,
       "tag": "0001_create_capability_taxonomy",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1788382166174,
+      "tag": "0002_create_application_watchdog",
+      "breakpoints": true
     }
   ]
 }

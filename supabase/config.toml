@@ -245,3 +245,6 @@ verify_jwt = true
 
 [functions.classify-applicants]
 verify_jwt = false
+
+[functions.application-watchdog]
+verify_jwt = false

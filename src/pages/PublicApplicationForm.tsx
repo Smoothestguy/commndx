@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import { renderMergeTags } from "@/lib/mergeTags";
 import { useParams } from "react-router-dom";
 import { useForm } from "react-hook-form";
@@ -43,8 +43,18 @@ import { PublicJobFactsPanel } from "@/components/staffing/PublicJobFactsPanel";
 function renderFieldsWithLayout(
   fields: FormFieldType[], 
   layout: FormRow[] | undefined, 
-  renderField: (field: FormFieldType) => React.ReactNode
+  renderField: (field: FormFieldType) => React.ReactNode,
+  errors: Record<string, string> = {}
 ) {
+  const wrap = (field: FormFieldType) => (
+    <div key={field.id} data-field-id={field.id} className="scroll-mt-24">
+      {renderField(field)}
+      {errors[field.id] && (
+        <p className="mt-1.5 text-sm font-medium text-destructive">{errors[field.id]}</p>
+      )}
+    </div>
+  );
+
   // If we have a layout, use it
   if (layout && layout.length > 0) {
     const fieldMap = new Map(fields.map(f => [f.id, f]));
@@ -64,21 +74,16 @@ function renderFieldsWithLayout(
 
       return (
         <div key={row.id || rowIndex} className={cn("grid gap-4", gridClass)}>
-          {rowFields.map((field) => (
-            <div key={field.id}>
-              {renderField(field)}
-            </div>
-          ))}
+          {rowFields.map((field) => wrap(field))}
         </div>
       );
     });
   }
 
   // Fallback: render each field as full width
-  return fields.map((field) => (
-    <div key={field.id}>{renderField(field)}</div>
-  ));
+  return fields.map((field) => wrap(field));
 }
+
 // Base schema for core fields
 const baseSchema = z.object({
   first_name: z.string().min(1, "First name is required"),
@@ -123,6 +128,9 @@ export default function PublicApplicationForm() {
   const [coreFields, setCoreFields] = useState<CoreFieldsConfig>(DEFAULT_CORE_FIELDS);
   const [formSettings, setFormSettings] = useState<FormSettings>({});
   const [photoError, setPhotoError] = useState<string | null>(null);
+  const [customFieldErrors, setCustomFieldErrors] = useState<Record<string, string>>({});
+  const [submitFailureMessage, setSubmitFailureMessage] = useState<string | null>(null);
+
   const [smsConsent, setSmsConsent] = useState(false);
   const [smsConsentError, setSmsConsentError] = useState<string | null>(null);
   
@@ -144,8 +152,11 @@ export default function PublicApplicationForm() {
   const { data: posting, isLoading, error } = useJobPostingByToken(token || "");
   const submitApplication = useSubmitApplication();
   
-  // Geolocation hook - start capturing on mount
-  const { geoData, isRequesting: isRequestingLocation, requestLocation, hasLocation } = useGeolocation(true);
+  // Geolocation — only prompt on mount when the template actually requires it.
+  // Otherwise we ask silently at submit time with a short timeout (non-blocking).
+  const { geoData, isRequesting: isRequestingLocation, requestLocation, hasLocation } =
+    useGeolocation(!!formSettings.requireLocation);
+
 
   // Translation hook
   const {
@@ -308,7 +319,91 @@ export default function PublicApplicationForm() {
   }, [posting?.id]);
 
 
-  // Helper to check if answer is compatible with field options
+  // ---------------------------------------------------------------------------
+  // Application Watchdog instrumentation.
+  // Every path that stops an applicant is logged to public.application_events
+  // through the anon-safe log_application_event RPC, so failures are never
+  // silent again. Uses the same per-posting sessionStorage session id.
+  // ---------------------------------------------------------------------------
+  const ensureSessionId = useCallback((): string | null => {
+    const scope = posting?.id || token;
+    if (!scope) return null;
+    const storageKey = `application_attempt_session:${scope}`;
+    let sessionId = sessionStorage.getItem(storageKey);
+    if (!sessionId) {
+      sessionId =
+        (crypto as any)?.randomUUID?.() ??
+        `sess_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 10)}`;
+      sessionStorage.setItem(storageKey, sessionId);
+    }
+    return sessionId;
+  }, [posting?.id, token]);
+
+  const logEvent = useCallback(
+    (
+      eventType: string,
+      opts: {
+        stage?: string;
+        fieldId?: string;
+        fieldLabel?: string;
+        errorCode?: string;
+        message?: string;
+      } = {}
+    ) => {
+      const sessionId = ensureSessionId();
+      if (!sessionId) return;
+      supabase
+        .rpc("log_application_event" as any, {
+          _session_id: sessionId,
+          _job_posting_id: posting?.id ?? null,
+          _event_type: eventType,
+          _stage: opts.stage ?? null,
+          _field_id: opts.fieldId ?? null,
+          _field_label: opts.fieldLabel ?? null,
+          _error_code: opts.errorCode ?? null,
+          _message: opts.message ? String(opts.message).slice(0, 500) : null,
+          _user_agent: navigator.userAgent.slice(0, 300),
+        })
+        .then(({ error }) => {
+          if (error) console.warn("[Watchdog] event log failed (non-fatal)", error);
+        });
+    },
+    [ensureSessionId, posting?.id]
+  );
+
+  // Upload failures land in both the attempt row and the event stream.
+  const handleUploadError = useCallback(
+    (reason: string) => {
+      logAttemptError(reason);
+      logEvent("upload_error", { message: reason });
+    },
+    [logAttemptError, logEvent]
+  );
+
+  // Posting / template load failures
+  const loggedLoadError = useRef(false);
+  useEffect(() => {
+    if (error && !loggedLoadError.current) {
+      loggedLoadError.current = true;
+      logEvent("form_load_error", {
+        stage: "posting_fetch",
+        message: (error as any)?.message || "Posting could not be loaded",
+      });
+    }
+  }, [error, logEvent]);
+
+  // Geolocation denials / failures
+  const loggedGeoError = useRef<string | null>(null);
+  useEffect(() => {
+    if (geoData.error && loggedGeoError.current !== geoData.error) {
+      loggedGeoError.current = geoData.error;
+      logEvent("geo_denied", { message: geoData.error });
+    }
+  }, [geoData.error, logEvent]);
+
+
+
+
   const isAnswerCompatible = (answer: any, field: FormFieldType): boolean => {
     if (field.type === "radio" || field.type === "dropdown") {
       // Check if the answer is one of the available options
@@ -494,14 +589,16 @@ export default function PublicApplicationForm() {
         setExpressPath("new");
         toast.info("No prior record found — please fill out the full application.");
       }
-    } catch (err) {
+    } catch (err: any) {
       console.error("[Express] check_returning_contact failed:", err);
+      logEvent("express_check_error", { message: err?.message || String(err) });
       toast.error("Couldn't check your record right now. Continuing with full application.");
       setExpressPath("new");
+
     } finally {
       setExpressChecking(false);
     }
-  }, [expressContact, form]);
+  }, [expressContact, form, logEvent]);
 
 
   const handleFileUploadStateChange = useCallback((fieldId: string, isUploading: boolean) => {
@@ -520,55 +617,72 @@ export default function PublicApplicationForm() {
 
   const isAnyFileUploading = uploadingFields.size > 0;
 
-  const validateCustomFields = () => {
-    console.log("[Validation] Starting validation of custom fields");
-    console.log("[Validation] Custom answers:", customAnswers);
+  // Scroll the first field that failed validation into view.
+  const focusField = (fieldId: string) => {
+    if (typeof document === "undefined") return;
+    const el = document.querySelector(`[data-field-id="${fieldId}"]`);
+    el?.scrollIntoView({ behavior: "smooth", block: "center" });
+  };
 
+  const validateCustomFields = () => {
     // In express mode, skip non-required custom fields entirely.
     const fieldsToCheck = isExpressMode ? customFields.filter(f => f.required) : customFields;
+    const errors: Record<string, string> = {};
+    let firstInvalid: { id: string; label: string; message: string } | null = null;
+
+    const fail = (field: FormFieldType, message: string) => {
+      errors[field.id] = message;
+      if (!firstInvalid) firstInvalid = { id: field.id, label: field.label, message };
+    };
 
     for (const field of fieldsToCheck) {
-      if (field.required) {
-        const value = customAnswers[field.id];
-        console.log(`[Validation] Checking field ${field.id} (${field.type}):`, value);
-        
-        // Check for empty values
-        if (value === undefined || value === "" || value === null) {
-          toast.error(`${field.label} is required`);
-          return false;
-        }
-        
-        // Special validation for file fields - check for empty objects or non-URL strings
-        if (field.type === "file") {
-          const isEmptyObject = typeof value === "object" && Object.keys(value).length === 0;
-          const isValidUrl = typeof value === "string" && value.startsWith("http");
-          
-          if (isEmptyObject || !isValidUrl) {
-            console.error(`[Validation] File field ${field.id} has invalid value:`, value);
-            toast.error(`Please upload a file for ${field.label}`);
-            return false;
-          }
-          console.log(`[Validation] File field ${field.id} is valid URL:`, value);
-        }
-        
-        // Special validation for address
-        if (field.type === "address" && typeof value === "object") {
-          const addr = value as AddressValue;
-          if (!addr.street || !addr.city || !addr.state || !addr.zip) {
-            toast.error(`Please complete all required fields in ${field.label}`);
-            return false;
-          }
-        }
-        // Special validation for multiselect
-        if (field.type === "multiselect" && Array.isArray(value) && value.length === 0) {
-          toast.error(`${field.label} is required`);
-          return false;
+      if (!field.required) continue;
+      const value = customAnswers[field.id];
+
+      if (value === undefined || value === "" || value === null) {
+        fail(field, `${field.label} is required`);
+        continue;
+      }
+
+      if (field.type === "file") {
+        const isEmptyObject = typeof value === "object" && Object.keys(value).length === 0;
+        const isValidUrl = typeof value === "string" && value.startsWith("http");
+        if (isEmptyObject || !isValidUrl) {
+          fail(field, `Please upload a file for ${field.label}`);
+          continue;
         }
       }
+
+      if (field.type === "address" && typeof value === "object") {
+        const addr = value as AddressValue;
+        if (!addr.street || !addr.city || !addr.state || !addr.zip) {
+          fail(field, `Please complete all required fields in ${field.label}`);
+          continue;
+        }
+      }
+
+      if (field.type === "multiselect" && Array.isArray(value) && value.length === 0) {
+        fail(field, `${field.label} is required`);
+      }
     }
-    console.log("[Validation] All custom fields validated successfully");
+
+    setCustomFieldErrors(errors);
+
+    if (firstInvalid) {
+      const invalid = firstInvalid as { id: string; label: string; message: string };
+      logEvent("submit_blocked", {
+        stage: "custom_field_required",
+        fieldId: invalid.id,
+        fieldLabel: invalid.label,
+        message: invalid.message,
+      });
+      toast.error(invalid.message);
+      focusField(invalid.id);
+      return false;
+    }
     return true;
   };
+
 
   const onSubmit = async (data: z.infer<typeof baseSchema>) => {
     if (!posting) return;
@@ -576,11 +690,14 @@ export default function PublicApplicationForm() {
     // Clear previous errors
     setPhotoError(null);
     setSmsConsentError(null);
+    setSubmitFailureMessage(null);
+    setCustomFieldErrors({});
 
     // Validate required profile photo (skipped in express mode)
     const requiresPhoto = !isExpressMode && coreFields.profilePicture && (formSettings.requireProfilePhoto !== false);
     if (requiresPhoto && !data.photo_url) {
       setPhotoError("Profile photo is required");
+      logEvent("submit_blocked", { stage: "photo_required" });
       toast.error("Please upload a profile photo to submit your application");
       return;
     }
@@ -588,12 +705,17 @@ export default function PublicApplicationForm() {
     // Position select required when the posting has positions
     const postingPositions = (posting as any).positions as { position_label: string }[] | undefined;
     if (postingPositions && postingPositions.length > 0 && !positionApplyingFor) {
+      logEvent("submit_blocked", { stage: "position_required" });
       toast.error("Please select the position you're applying for");
       return;
     }
 
     // Validate required location
     if (formSettings.requireLocation && !hasLocation) {
+      logEvent("submit_blocked", {
+        stage: "location_required",
+        message: geoData.error || "No location captured",
+      });
       toast.error("Location access is required to submit this form. Please enable location services and try again.");
       return;
     }
@@ -601,17 +723,44 @@ export default function PublicApplicationForm() {
     // Validate SMS consent if required
     if (formSettings.requireSmsConsent && !smsConsent) {
       setSmsConsentError("You must consent to SMS notifications to complete this application");
+      logEvent("submit_blocked", { stage: "sms_consent_required" });
       toast.error("You must consent to SMS notifications to complete this application");
       return;
     }
 
+
     // Validate custom fields
     if (!validateCustomFields()) return;
 
-    console.log("[Form] Submitting application with data:", data);
-    console.log("[Form] Custom answers:", customAnswers);
-    console.log("[Form] Geo data:", geoData);
-    console.log("[Form] SMS consent:", smsConsent);
+    // When location isn't required we still try to capture it, silently, with a
+    // short timeout — it must never block or delay the submission meaningfully.
+    let geoToSend = geoData;
+    if (!formSettings.requireLocation && !hasLocation && typeof navigator !== "undefined" && navigator.geolocation) {
+      geoToSend = await new Promise<typeof geoData>((resolve) => {
+        let settled = false;
+        const done = (value: typeof geoData) => {
+          if (settled) return;
+          settled = true;
+          resolve(value);
+        };
+        setTimeout(() => done(geoData), 3000);
+        navigator.geolocation.getCurrentPosition(
+          (pos) =>
+            done({
+              lat: pos.coords.latitude,
+              lng: pos.coords.longitude,
+              accuracy: pos.coords.accuracy,
+              source: "device",
+              capturedAt: new Date().toISOString(),
+              error: null,
+            }),
+          () => done(geoData),
+          { enableHighAccuracy: false, timeout: 3000, maximumAge: 300000 }
+        );
+      });
+    }
+
+
 
     try {
       // Extract address fields from customAnswers if present
@@ -648,35 +797,42 @@ export default function PublicApplicationForm() {
           ...customAnswers,
           ...(positionApplyingFor ? { position_applying_for: positionApplyingFor } : {}),
         },
-        geo: geoData,
+        geo: geoToSend,
         clientSubmittedAt: new Date().toISOString(),
         userAgent: navigator.userAgent,
         smsConsent: smsConsent,
         smsConsentPhone: smsConsent ? data.phone : undefined,
         smsConsentTextVersion: smsConsent ? 'v1.0' : undefined,
       });
-      console.log("[Form] Application submitted successfully");
+      logEvent("submit_success", { stage: isExpressMode ? "express" : "full" });
       toast.success("Thank you for applying! We appreciate your interest and will review your application soon.");
       setSubmitted(true);
     } catch (err: any) {
       console.error("[Form] Application submission error:", err);
-      
-      if (err?.message === "DUPLICATE_APPLICATION") {
-        toast.error("You have already applied for this specific position. You can still apply for other open positions.");
+
+      let friendly =
+        "We couldn't send your application just now. Please try again in a moment. / No pudimos enviar tu solicitud. Inténtalo de nuevo en un momento.";
+
+      if (err?.message === "DUPLICATE_APPLICATION" || err?.code === "23505") {
+        friendly =
+          "You've already applied for this position. / Ya aplicaste para esta posición.";
       } else if (err?.message?.includes("row-level security")) {
-        toast.error("Permission error. Please contact support if this persists.");
-        console.error("[Form] RLS policy error - check database policies");
+        friendly =
+          "Something on our side blocked the submission. We've been notified — please try again shortly. / Algo de nuestro lado bloqueó el envío. Ya fuimos notificados; inténtalo pronto.";
       } else if (err?.code === "PGRST301") {
-        toast.error("Database connection error. Please try again.");
-      } else if (err?.code === "23505") {
-        // This could be a unique constraint on applications (applicant_id + job_posting_id)
-        // or on applicants (email) - but we handle applicant reuse now, so this is likely applications
-        toast.error("You have already applied for this specific position.");
-      } else {
-        toast.error(err?.message || "Failed to submit application. Please try again.");
+        friendly =
+          "Connection problem. Please check your signal and try again. / Problema de conexión. Revisa tu señal e inténtalo de nuevo.";
       }
+
+      logEvent("submit_error", {
+        stage: isExpressMode ? "express" : "full",
+        errorCode: err?.code ? String(err.code) : undefined,
+        message: err?.message || String(err),
+      });
+      setSubmitFailureMessage(friendly);
     }
   };
+
 
   const updateCustomAnswer = (fieldId: string, value: any) => {
     setCustomAnswers(prev => ({ ...prev, [fieldId]: value }));
@@ -965,7 +1121,7 @@ export default function PublicApplicationForm() {
               value={value as string | null}
               onChange={(url) => !isFieldLocked && updateCustomAnswer(field.id, url)}
               onUploadStateChange={(isUploading) => handleFileUploadStateChange(field.id, isUploading)}
-              onUploadError={logAttemptError}
+              onUploadError={handleUploadError}
               label={translated.label}
               required={field.required}
               helpText={translated.helpText}
@@ -1244,7 +1400,17 @@ export default function PublicApplicationForm() {
           </CardHeader>
           <CardContent>
             <Form {...form}>
-              <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
+              <form
+                onSubmit={form.handleSubmit(onSubmit, (errors) => {
+                  const firstKey = Object.keys(errors)[0];
+                  logEvent("submit_blocked", {
+                    stage: "core_field_invalid",
+                    fieldId: firstKey,
+                    message: (errors as any)?.[firstKey]?.message,
+                  });
+                })}
+                className="space-y-6"
+              >
                 {/* Returning Applicant Welcome Banner */}
                 {isReturningApplicant && foundApplicant && (
                   <Alert className="border-green-200 bg-green-50 dark:bg-green-950/30 dark:border-green-800">
@@ -1313,7 +1479,7 @@ export default function PublicApplicationForm() {
                         setPhotoError(null);
                       }}
                       onUploadStateChange={(isUploading) => handleFileUploadStateChange("core_photo", isUploading)}
-                      onUploadError={logAttemptError}
+                      onUploadError={handleUploadError}
                       label={`${getCoreLabel('profilePicture')}${formSettings.requireProfilePhoto !== false ? ' *' : ''}`}
                       required={formSettings.requireProfilePhoto !== false}
                       helpText={coreFieldsLocked && foundApplicant?.photo_url
@@ -1501,7 +1667,7 @@ export default function PublicApplicationForm() {
                         {isExpressMode ? "Required Questions" : "Additional Questions"}
                       </h3>
                       <div className="space-y-4">
-                        {renderFieldsWithLayout(visibleFields, visibleLayout, renderCustomField)}
+                        {renderFieldsWithLayout(visibleFields, visibleLayout, renderCustomField, customFieldErrors)}
                       </div>
                     </div>
                   );
@@ -1553,6 +1719,12 @@ export default function PublicApplicationForm() {
                         )}
                       </div>
                     </div>
+                  </div>
+                )}
+
+                {submitFailureMessage && (
+                  <div className="rounded-md border border-destructive/40 bg-destructive/10 p-3 text-sm text-destructive">
+                    {submitFailureMessage}
                   </div>
                 )}
 

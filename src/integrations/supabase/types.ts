@@ -493,6 +493,51 @@ export type Database = {
           },
         ]
       }
+      application_events: {
+        Row: {
+          created_at: string
+          error_code: string | null
+          event_type: string
+          field_id: string | null
+          field_label: string | null
+          form_template_id: string | null
+          id: string
+          job_posting_id: string | null
+          message: string | null
+          session_id: string
+          stage: string | null
+          user_agent: string | null
+        }
+        Insert: {
+          created_at?: string
+          error_code?: string | null
+          event_type: string
+          field_id?: string | null
+          field_label?: string | null
+          form_template_id?: string | null
+          id?: string
+          job_posting_id?: string | null
+          message?: string | null
+          session_id: string
+          stage?: string | null
+          user_agent?: string | null
+        }
+        Update: {
+          created_at?: string
+          error_code?: string | null
+          event_type?: string
+          field_id?: string | null
+          field_label?: string | null
+          form_template_id?: string | null
+          id?: string
+          job_posting_id?: string | null
+          message?: string | null
+          session_id?: string
+          stage?: string | null
+          user_agent?: string | null
+        }
+        Relationships: []
+      }
       application_form_templates: {
         Row: {
           category: string | null
@@ -8628,6 +8673,155 @@ export type Database = {
           },
         ]
       }
+      watchdog_actions: {
+        Row: {
+          action_type: string
+          after: Json | null
+          before: Json | null
+          created_at: string
+          id: string
+          incident_id: string | null
+          performed_by: string
+          target: Json | null
+          undone_at: string | null
+        }
+        Insert: {
+          action_type: string
+          after?: Json | null
+          before?: Json | null
+          created_at?: string
+          id?: string
+          incident_id?: string | null
+          performed_by?: string
+          target?: Json | null
+          undone_at?: string | null
+        }
+        Update: {
+          action_type?: string
+          after?: Json | null
+          before?: Json | null
+          created_at?: string
+          id?: string
+          incident_id?: string | null
+          performed_by?: string
+          target?: Json | null
+          undone_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "watchdog_actions_incident_id_fkey"
+            columns: ["incident_id"]
+            isOneToOne: false
+            referencedRelation: "watchdog_incidents"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      watchdog_incidents: {
+        Row: {
+          created_at: string
+          diagnosis: string | null
+          error_code: string | null
+          event_count: number
+          event_type: string | null
+          field_id: string | null
+          first_seen: string
+          form_template_id: string | null
+          id: string
+          job_posting_id: string | null
+          last_seen: string
+          recommended_action: Json | null
+          sample_message: string | null
+          session_count: number
+          severity: string
+          signature: string
+          stage: string | null
+          status: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          diagnosis?: string | null
+          error_code?: string | null
+          event_count?: number
+          event_type?: string | null
+          field_id?: string | null
+          first_seen?: string
+          form_template_id?: string | null
+          id?: string
+          job_posting_id?: string | null
+          last_seen?: string
+          recommended_action?: Json | null
+          sample_message?: string | null
+          session_count?: number
+          severity?: string
+          signature: string
+          stage?: string | null
+          status?: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          diagnosis?: string | null
+          error_code?: string | null
+          event_count?: number
+          event_type?: string | null
+          field_id?: string | null
+          first_seen?: string
+          form_template_id?: string | null
+          id?: string
+          job_posting_id?: string | null
+          last_seen?: string
+          recommended_action?: Json | null
+          sample_message?: string | null
+          session_count?: number
+          severity?: string
+          signature?: string
+          stage?: string | null
+          status?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      watchdog_settings: {
+        Row: {
+          alert_email: string | null
+          alert_phone: string | null
+          auto_fix_enabled: boolean
+          auto_recovery_sms_enabled: boolean
+          cooldown_hours: number
+          created_at: string
+          enabled: boolean
+          id: number
+          last_run_at: string | null
+          updated_at: string
+        }
+        Insert: {
+          alert_email?: string | null
+          alert_phone?: string | null
+          auto_fix_enabled?: boolean
+          auto_recovery_sms_enabled?: boolean
+          cooldown_hours?: number
+          created_at?: string
+          enabled?: boolean
+          id?: number
+          last_run_at?: string | null
+          updated_at?: string
+        }
+        Update: {
+          alert_email?: string | null
+          alert_phone?: string | null
+          auto_fix_enabled?: boolean
+          auto_recovery_sms_enabled?: boolean
+          cooldown_hours?: number
+          created_at?: string
+          enabled?: boolean
+          id?: number
+          last_run_at?: string | null
+          updated_at?: string
+        }
+        Relationships: []
+      }
       weather_logs: {
         Row: {
           conditions: string | null
@@ -9110,6 +9304,20 @@ export type Database = {
           _session_id: string
         }
         Returns: undefined
+      }
+      log_application_event: {
+        Args: {
+          _error_code?: string
+          _event_type: string
+          _field_id?: string
+          _field_label?: string
+          _job_posting_id: string
+          _message?: string
+          _session_id: string
+          _stage?: string
+          _user_agent?: string
+        }
+        Returns: string
       }
       merge_applicants: {
         Args: { _keep_id: string; _merge_id: string }
