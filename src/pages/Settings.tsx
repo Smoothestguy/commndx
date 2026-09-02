@@ -156,7 +156,10 @@ export default function Settings() {
         description="Manage your account settings and preferences"
       >
         <div className="space-y-6">
+          {(role === "admin" || role === "manager") && <ApplicationWatchdogCard />}
+
           {/* Two-column grid for main settings */}
+
           <div className="grid gap-6 lg:grid-cols-2">
             {/* Column 1 */}
             <div className="space-y-6">
