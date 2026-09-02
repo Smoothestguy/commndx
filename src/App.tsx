@@ -150,6 +150,7 @@ import JobPostingEntries from "./pages/JobPostingEntries";
 import PublicApplicationForm from "./pages/PublicApplicationForm";
 import QuickApply from "./pages/QuickApply";
 import MasterApplicants from "./pages/MasterApplicants";
+import Workforce from "./pages/Workforce";
 import Duplicates from "./pages/Duplicates";
 import EditApplication from "./pages/EditApplication";
 import ApplicationFormTemplates from "./pages/ApplicationFormTemplates";
@@ -583,6 +584,7 @@ const App = () => {
                         path="/staffing/applicants"
                         element={<MasterApplicants />}
                       />
+                      <Route path="/workforce" element={<Workforce />} />
                       <Route
                         path="/staffing/duplicates"
                         element={<Duplicates />}

@@ -6,6 +6,7 @@ import {
   Map,
   Send,
   UserSearch,
+  Boxes,
   Users,
   MessageSquareText,
   Receipt,
@@ -72,6 +73,7 @@ export const sections: NavSection[] = [
     items: [
       { name: "Job Postings", href: "/staffing/applications", icon: Send },
       { name: "Applicant Pool", href: "/staffing/applicants", icon: UserSearch },
+      { name: "Workforce", href: "/workforce", icon: Boxes },
     ],
   },
   {

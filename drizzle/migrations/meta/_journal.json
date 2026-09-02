@@ -8,6 +8,13 @@
       "when": 1788377301851,
       "tag": "0000_add_recovery_sms_to_application_attempts",
       "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "7",
+      "when": 1788378280497,
+      "tag": "0001_create_capability_taxonomy",
+      "breakpoints": true
     }
   ]
 }
