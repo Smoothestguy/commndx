@@ -18,6 +18,8 @@ import {
   MapPin,
   ChevronDown,
   Send,
+  MessageSquare,
+
 } from "lucide-react";
 import { InviteNearbyApplicantsDialog } from "@/components/staffing/InviteNearbyApplicantsDialog";
 import { InvitePastWorkersDialog } from "@/components/staffing/InvitePastWorkersDialog";
@@ -317,6 +319,59 @@ export default function StaffingApplications() {
     navigator.clipboard.writeText(buildApplyShareUrl(token));
     toast.success("Share link copied — previews show the job details");
   };
+
+  // --- Abandoned applicant recovery SMS ---
+  const [recoveryPostingId, setRecoveryPostingId] = useState<string | null>(null);
+  const [recoveryLoading, setRecoveryLoading] = useState(false);
+  const [recoverySending, setRecoverySending] = useState(false);
+  const [recoveryRecipients, setRecoveryRecipients] = useState<
+    Array<{ first_name: string; phone_masked: string; email: string | null }>
+  >([]);
+
+  const handleTextUnfinished = async (postingId: string) => {
+    setRecoveryLoading(true);
+    try {
+      const { data, error } = await supabase.functions.invoke("send-recovery-sms", {
+        body: { job_posting_id: postingId, dry_run: true },
+      });
+      if (error) throw error;
+      if ((data as any)?.error) throw new Error((data as any).error);
+      const recipients = (data as any)?.recipients ?? [];
+      if (!recipients.length) {
+        toast.info("No unfinished applicants to text for this posting");
+        return;
+      }
+      setRecoveryRecipients(recipients);
+      setRecoveryPostingId(postingId);
+    } catch (e: any) {
+      toast.error(e?.message || "Failed to load unfinished applicants");
+    } finally {
+      setRecoveryLoading(false);
+    }
+  };
+
+  const handleSendRecovery = async () => {
+    if (!recoveryPostingId) return;
+    setRecoverySending(true);
+    try {
+      const { data, error } = await supabase.functions.invoke("send-recovery-sms", {
+        body: { job_posting_id: recoveryPostingId, dry_run: false },
+      });
+      if (error) throw error;
+      if ((data as any)?.error) throw new Error((data as any).error);
+      const sent = (data as any)?.sent ?? 0;
+      const failed = (data as any)?.failed ?? 0;
+      toast.success(`Sent ${sent} text${sent === 1 ? "" : "s"}${failed ? `, ${failed} failed` : ""}`);
+      setRecoveryPostingId(null);
+      setRecoveryRecipients([]);
+    } catch (e: any) {
+      toast.error(e?.message || "Failed to send texts");
+    } finally {
+      setRecoverySending(false);
+    }
+  };
+
+
 
 
   const handleEditPosting = (posting: any) => {
