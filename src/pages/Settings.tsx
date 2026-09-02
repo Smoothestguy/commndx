@@ -39,6 +39,8 @@ import { useUserDisplayPreferences } from "@/hooks/useUserDisplayPreferences";
 import { useSessionAccess } from "@/hooks/useSessionAccess";
 import { CheckForUpdatesButton } from "@/components/electron/UpdateNotification";
 import { DeleteAccountSection } from "@/components/settings/DeleteAccountSection";
+import { ApplicationWatchdogCard } from "@/components/settings/ApplicationWatchdogCard";
+
 import AppWalkthroughDownload from "@/components/AppWalkthroughDownload";
 import {
   useCompanySettings,
