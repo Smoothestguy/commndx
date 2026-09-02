@@ -146,6 +146,13 @@ function TaskOrderCard({
     toast.success("Apply link copied");
   };
 
+  const handleCopyShare = () => {
+    if (!posting) return;
+    navigator.clipboard.writeText(buildApplyShareUrl(posting.public_token));
+    toast.success("Share link copied — previews show the job details");
+  };
+
+
   return (
     <Card className="border-l-4 border-l-primary/60">
       <CardHeader className="pb-3">
