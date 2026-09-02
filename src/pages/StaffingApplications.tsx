@@ -934,6 +934,54 @@ export default function StaffingApplications() {
         mode="edit"
         taskOrder={editingTaskOrder}
       />
+
+      {/* Recovery SMS confirmation */}
+      <Dialog
+        open={!!recoveryPostingId}
+        onOpenChange={(open) => {
+          if (!open) {
+            setRecoveryPostingId(null);
+            setRecoveryRecipients([]);
+          }
+        }}
+      >
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Text unfinished applicants</DialogTitle>
+            <DialogDescription>
+              {recoveryRecipients.length} recipient
+              {recoveryRecipients.length === 1 ? "" : "s"} will get a bilingual text with the
+              apply link. Each person is only texted once.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="max-h-64 overflow-y-auto space-y-1">
+            {recoveryRecipients.map((r, i) => (
+              <div
+                key={`${r.phone_masked}-${i}`}
+                className="flex items-center justify-between rounded-md border px-3 py-2 text-sm"
+              >
+                <span className="font-medium">{r.first_name}</span>
+                <span className="text-muted-foreground">{r.phone_masked}</span>
+              </div>
+            ))}
+          </div>
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => {
+                setRecoveryPostingId(null);
+                setRecoveryRecipients([]);
+              }}
+            >
+              Cancel
+            </Button>
+            <Button onClick={handleSendRecovery} disabled={recoverySending}>
+              Send {recoveryRecipients.length} texts
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
     </div>
   );
 }
