@@ -537,6 +537,19 @@ export default function StaffingApplications() {
                         variant="outline"
                         size="sm"
                         className="h-9 px-2 text-xs sm:px-3 sm:text-sm"
+                        disabled={recoveryLoading}
+                        onClick={() => handleTextUnfinished(posting.id)}
+                        title="Text applicants who started but never submitted"
+                      >
+                        <MessageSquare className="h-4 w-4 sm:mr-1" />
+                        <span className="hidden sm:inline">Text unfinished</span>
+                        <span className="sm:hidden ml-1">Unfinished</span>
+                      </Button>
+
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        className="h-9 px-2 text-xs sm:px-3 sm:text-sm"
                         onClick={() => copyApplicationLink(posting.public_token)}
                       >
                         <Copy className="h-4 w-4 sm:mr-1" />
