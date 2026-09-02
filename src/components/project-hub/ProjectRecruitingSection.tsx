@@ -2,6 +2,8 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import QRCode from "qrcode";
+import { buildApplyShareUrl } from "@/lib/applyLinks";
+
 import {
   Briefcase,
   Plus,
@@ -208,6 +210,16 @@ function TaskOrderCard({
                     <Copy className="h-4 w-4 mr-1" />
                     Copy
                   </Button>
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    onClick={handleCopyShare}
+                    title="Copy share link (with preview) — shows job details when texted or posted"
+                  >
+                    <Copy className="h-4 w-4 mr-1" />
+                    Copy share link
+                  </Button>
+
                   <Button
                     size="sm"
                     variant="outline"
