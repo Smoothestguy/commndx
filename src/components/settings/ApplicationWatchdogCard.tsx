@@ -76,9 +76,10 @@ export function ApplicationWatchdogCard() {
             </CardTitle>
             <CardDescription>
               Watches public job applications for failures, diagnoses them, and applies safe
-              reversible fixes.
+              reversible fixes. Trigger: event-driven.
               {settings?.last_run_at && (
-                <> Last check {formatDistanceToNow(new Date(settings.last_run_at), { addSuffix: true })}.</>
+                <> Last check {formatDistanceToNow(new Date(settings.last_run_at), { addSuffix: true })}
+                  {settings.last_run_trigger ? ` (${settings.last_run_trigger})` : ""}.</>
               )}
             </CardDescription>
           </div>
