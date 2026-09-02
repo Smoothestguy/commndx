@@ -134,7 +134,9 @@ export function ProjectCreateWizard({ open, onOpenChange, onProjectCreated }: Pr
   const [createdProjectId, setCreatedProjectId] = useState<string | null>(null);
   const [createdTaskOrderId, setCreatedTaskOrderId] = useState<string | null>(null);
   const [publicUrl, setPublicUrl] = useState<string>("");
+  const [shareUrl, setShareUrl] = useState<string>("");
   const [qrDataUrl, setQrDataUrl] = useState<string>("");
+
   const [failedStage, setFailedStage] = useState<FailedStage>(null);
   const [failedError, setFailedError] = useState<string>("");
   const [successOpen, setSuccessOpen] = useState(false);
