@@ -108,55 +108,27 @@ async function callAI(payload: AnyRec, apiKey: string) {
   return { paused: false, result: JSON.parse(cleaned.slice(start, end + 1)) } as const;
 }
 
-Deno.serve(async (req) => {
-  if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
-
-  const serviceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
-  const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
-  const service = createClient(supabaseUrl, serviceKey);
-
-  try {
-    const body: AnyRec = await req.json().catch(() => ({}));
-    const trigger: string = body?.trigger ?? "manual";
-    const force: boolean = body?.force === true;
-
-    // force (re-diagnose everything) requires an admin/manager JWT
-    if (force) {
-      const authHeader = req.headers.get("Authorization");
-      if (!authHeader) return json({ error: "Unauthorized" }, 401);
-      const { data: { user } } = await service.auth.getUser(
-        authHeader.replace("Bearer ", ""),
-      );
-      if (!user) return json({ error: "Unauthorized" }, 401);
-      const { data: roles } = await service
-        .from("user_roles").select("role").eq("user_id", user.id);
-      if (!roles?.some((r: AnyRec) => ["admin", "manager"].includes(r.role))) {
-        return json({ error: "Forbidden" }, 403);
-      }
-    }
-
-    const { data: settings } = await service
-      .from("watchdog_settings").select("*").eq("id", 1).maybeSingle();
-    if (!settings) return json({ error: "Watchdog settings missing" }, 500);
-    if (!settings.enabled) return json({ skipped: "disabled" });
-
-    // Debounce event-triggered runs
-    if (trigger === "event" && settings.last_run_at) {
-      const age = Date.now() - new Date(settings.last_run_at).getTime();
-      if (age < 60_000) return json({ skipped: "debounced" });
-    }
-
+async function runWatchdog(
+  service: AnyRec,
+  supabaseUrl: string,
+  serviceKey: string,
+  settings: AnyRec,
+  opts: { force?: boolean; since?: string; trigger: string },
+) {
+  const force = opts.force === true;
+  {
     const now = Date.now();
     const MIN = 5 * 60 * 1000;
     const MAX = 24 * 60 * 60 * 1000;
-    let sinceMs = body?.since
-      ? new Date(body.since).getTime()
+    let sinceMs = opts.since
+      ? new Date(opts.since).getTime()
       : settings.last_run_at
       ? new Date(settings.last_run_at).getTime()
       : now - MIN;
     if (now - sinceMs < MIN) sinceMs = now - MIN;
     if (now - sinceMs > MAX) sinceMs = now - MAX;
     const since = new Date(sinceMs).toISOString();
+
 
     // ---- b. gather window data ------------------------------------------
     const { data: events } = await service
