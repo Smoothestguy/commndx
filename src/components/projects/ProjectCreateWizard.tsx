@@ -543,8 +543,9 @@ export function ProjectCreateWizard({ open, onOpenChange, onProjectCreated }: Pr
                   >
                     <Copy className="h-4 w-4 mr-1" /> Copy share link (with preview)
                   </Button>
-
+                </div>
               </div>
+
             </div>
           ) : failedStage ? (
             <div className="space-y-4 py-4">
