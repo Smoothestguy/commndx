@@ -29,6 +29,7 @@ import { useWatchdogPostingAlerts } from "@/hooks/useApplicationWatchdog";
 import { InviteNearbyApplicantsDialog } from "@/components/staffing/InviteNearbyApplicantsDialog";
 import { InvitePastWorkersDialog } from "@/components/staffing/InvitePastWorkersDialog";
 import { QuickApplyStats } from "@/components/staffing/QuickApplyStats";
+import { InviteFunnelBadge } from "@/components/workforce/InviteFunnelBadge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -584,6 +585,7 @@ export default function StaffingApplications() {
                         <span className="sm:hidden ml-1">Share</span>
                       </Button>
 
+                      <InviteFunnelBadge jobPostingId={posting.id} />
                       <Button
                         variant="outline"
                         size="sm"

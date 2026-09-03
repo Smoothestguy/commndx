@@ -83,6 +83,7 @@ function TaskOrderCard({
   const createPosting = useCreateJobPosting();
   const togglePosting = useToggleJobPosting();
 
+  const navigate = useNavigate();
   const [inviteNearbyOpen, setInviteNearbyOpen] = useState(false);
   const [invitePastOpen, setInvitePastOpen] = useState(false);
 
