@@ -1,7 +1,7 @@
 import { useState, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
 import { format } from "date-fns";
-import { Users, UserPlus, UserMinus, Loader2, Mail, Briefcase, ChevronDown, ChevronUp, MessageSquare, Download, History, MapPin, Phone, Pencil, Search, X, MoreVertical, ArrowUp, ArrowDown, Filter } from "lucide-react";
+import { Star, Users, UserPlus, UserMinus, Loader2, Mail, Briefcase, ChevronDown, ChevronUp, MessageSquare, Download, History, MapPin, Phone, Pencil, Search, X, MoreVertical, ArrowUp, ArrowDown, Filter } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { formatCurrency } from "@/lib/utils";
 import {
@@ -58,6 +58,8 @@ import { useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { EditPayRateDialog } from "@/components/project-hub/EditPayRateDialog";
 import { ViewRateHistoryDialog } from "@/components/project-hub/ViewRateHistoryDialog";
+import { RatingDialog, RatingStars } from "@/components/workforce/RatingDialog";
+import { useProjectAssignmentRatings } from "@/integrations/supabase/hooks/useWorkforce";
 
 // Column configuration for sorting/filtering
 const COLUMN_CONFIG = [
@@ -80,7 +82,7 @@ export function ProjectPersonnelSection({ projectId, projectName = "this project
   const navigate = useNavigate();
   const isMobile = useIsMobile();
   const queryClient = useQueryClient();
-  const { isAdmin, isManager } = useUserRole();
+  const { isAdmin, isManager, isUser } = useUserRole();
   
   // Table preferences with sorting, filtering, and column visibility
   const defaultColumnKeys = PERSONNEL_COLUMNS.filter(c => c.defaultVisible).map(c => c.key);
@@ -144,6 +146,34 @@ export function ProjectPersonnelSection({ projectId, projectName = "this project
     personnelName: string;
   } | null>(null);
   
+  const [ratingQueue, setRatingQueue] = useState<
+    { personnelId: string; personnelName: string; assignmentId: string }[]
+  >([]);
+  const [ratingIndex, setRatingIndex] = useState(0);
+  const currentRating = ratingQueue[ratingIndex] ?? null;
+
+  const { data: ratingSummaries } = useProjectAssignmentRatings(projectId);
+  const canRate = isAdmin || isManager || isUser;
+
+  const getRating = (assignmentId: string, personnelId: string) =>
+    ratingSummaries?.byAssignment.get(assignmentId) ??
+    ratingSummaries?.byPersonnel.get(personnelId) ??
+    null;
+
+  const openRating = (rows: { personnelId: string; personnelName: string; assignmentId: string }[]) => {
+    if (!rows.length) return;
+    setRatingQueue(rows);
+    setRatingIndex(0);
+  };
+
+  const advanceRating = () => {
+    setRatingIndex((i) => {
+      if (i + 1 < ratingQueue.length) return i + 1;
+      setRatingQueue([]);
+      return 0;
+    });
+  };
+
   const { data: assignedPersonnel = [], isLoading } = usePersonnelWithAssets(projectId, {
     includeUnassigned: showUnassigned,
   });
@@ -473,6 +503,25 @@ export function ProjectPersonnelSection({ projectId, projectName = "this project
                   <Download className="h-4 w-4 mr-2" />
                   {isMobile ? "Export" : "Export"}
                 </Button>
+                {canRate && (
+                  <Button
+                    onClick={() => openRating(
+                      activePersonnel
+                        .filter(p => selectedIds.has(p.assignmentId))
+                        .map(p => ({
+                          personnelId: p.personnelId,
+                          personnelName: p.name,
+                          assignmentId: p.assignmentId,
+                        }))
+                    )}
+                    size="sm"
+                    variant="outline"
+                    disabled={selectedIds.size === 0}
+                  >
+                    <Star className="h-4 w-4 mr-2" />
+                    {isMobile ? "Rate" : `Rate Crew${selectedIds.size ? ` (${selectedIds.size})` : ""}`}
+                  </Button>
+                )}
                 <Button 
                   onClick={() => setIsBulkSMSDialogOpen(true)} 
                   size="sm"
@@ -680,6 +729,34 @@ export function ProjectPersonnelSection({ projectId, projectName = "this project
                               Bill: {formatCurrency(person.billRate)}/hr
                             </span>
                           )}
+                          {(() => {
+                            const rating = getRating(person.assignmentId, person.personnelId);
+                            if (!rating) return null;
+                            return (
+                              <span className="flex items-center gap-1">
+                                <RatingStars value={rating.average} />
+                                <Badge variant="outline" className="text-xs">Rated</Badge>
+                              </span>
+                            );
+                          })()}
+                          {canRate && !isUnassigned && (
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              className="h-7"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                openRating([{
+                                  personnelId: person.personnelId,
+                                  personnelName: person.name,
+                                  assignmentId: person.assignmentId,
+                                }]);
+                              }}
+                            >
+                              <Star className="h-3 w-3 mr-1" />
+                              Rate
+                            </Button>
+                          )}
                           {isUnassigned && person.unassignedAt ? (
                             <span className="text-muted-foreground ml-auto">
                               Unassigned {format(new Date(person.unassignedAt), "MMM d, yyyy")}
@@ -724,7 +801,7 @@ export function ProjectPersonnelSection({ projectId, projectName = "this project
                         {visibleColumns.some(c => c.key === "assets") && <TableHead>Assets</TableHead>}
                         {visibleColumns.some(c => c.key === "assignedDate") && <SortableHeader columnKey="assignedDate" label="Assigned" />}
                         {showUnassigned && <TableHead>Status</TableHead>}
-                        <TableHead className="w-[80px]">Actions</TableHead>
+                        <TableHead className="w-[120px]">Actions</TableHead>
                       </TableRow>
                     </TableHeader>
                     <TableBody>
@@ -776,6 +853,16 @@ export function ProjectPersonnelSection({ projectId, projectName = "this project
                                           Onboarded
                                         </Badge>
                                       )}
+                                      {(() => {
+                                        const rating = getRating(person.assignmentId, person.personnelId);
+                                        if (!rating) return null;
+                                        return (
+                                          <span className="flex items-center gap-1">
+                                            <RatingStars value={rating.average} />
+                                            <Badge variant="outline" className="text-xs">Rated</Badge>
+                                          </span>
+                                        );
+                                      })()}
                                     </div>
                                     {visibleColumns.some(c => c.key === "email") && (
                                       <p className="text-sm text-muted-foreground">
@@ -929,7 +1016,27 @@ export function ProjectPersonnelSection({ projectId, projectName = "this project
                             )}
                             <TableCell>
                               {!isUnassigned ? (
-                                <div onClick={(e) => e.stopPropagation()}>
+                                <div className="flex items-center gap-1" onClick={(e) => e.stopPropagation()}>
+                                  {canRate && (
+                                    <TooltipProvider>
+                                      <Tooltip>
+                                        <TooltipTrigger asChild>
+                                          <Button
+                                            variant="ghost"
+                                            size="icon"
+                                            onClick={() => openRating([{
+                                              personnelId: person.personnelId,
+                                              personnelName: person.name,
+                                              assignmentId: person.assignmentId,
+                                            }])}
+                                          >
+                                            <Star className="h-4 w-4" />
+                                          </Button>
+                                        </TooltipTrigger>
+                                        <TooltipContent>Rate</TooltipContent>
+                                      </Tooltip>
+                                    </TooltipProvider>
+                                  )}
                                   <Button
                                     variant="ghost"
                                     size="icon"
@@ -1016,6 +1123,26 @@ export function ProjectPersonnelSection({ projectId, projectName = "this project
           personnelName={editPayRateDialog.personnelName}
           assignmentId={editPayRateDialog.assignmentId}
           currentRate={editPayRateDialog.currentRate}
+        />
+      )}
+
+      {/* Rating Dialog (single row or bulk walk-through) */}
+      {currentRating && (
+        <RatingDialog
+          key={`${currentRating.assignmentId}-${ratingIndex}`}
+          open
+          onOpenChange={(open) => {
+            if (!open) advanceRating();
+          }}
+          personnelId={currentRating.personnelId}
+          projectId={projectId}
+          assignmentId={currentRating.assignmentId}
+          personName={
+            ratingQueue.length > 1
+              ? `${currentRating.personnelName} (${ratingIndex + 1} of ${ratingQueue.length})`
+              : currentRating.personnelName
+          }
+          projectName={projectName}
         />
       )}
 
