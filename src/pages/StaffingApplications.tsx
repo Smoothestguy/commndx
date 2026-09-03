@@ -21,6 +21,7 @@ import {
   ChevronDown,
   Send,
   MessageSquare,
+  Users,
 
   ShieldAlert,
 } from "lucide-react";
