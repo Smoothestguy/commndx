@@ -36,6 +36,13 @@
       "when": 1788453802892,
       "tag": "0004_workforce_phase2",
       "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "7",
+      "when": 1788454431704,
+      "tag": "0005_mark_workforce_invite_used",
+      "breakpoints": true
     }
   ]
 }

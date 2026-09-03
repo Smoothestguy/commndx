@@ -9487,6 +9487,10 @@ export type Database = {
         Args: { _token: string }
         Returns: undefined
       }
+      mark_workforce_invite_used: {
+        Args: { _application_id: string; _token: string }
+        Returns: undefined
+      }
       merge_applicants: {
         Args: { _keep_id: string; _merge_id: string }
         Returns: Json
