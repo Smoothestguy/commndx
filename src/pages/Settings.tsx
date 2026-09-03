@@ -163,6 +163,9 @@ export default function Settings() {
 
           {(role === "admin" || role === "manager") && <InvitationDefaultsCard />}
 
+          {(role === "admin" || role === "manager") && <SigninProvidersCard />}
+
+
           {/* Two-column grid for main settings */}
 
           <div className="grid gap-6 lg:grid-cols-2">
