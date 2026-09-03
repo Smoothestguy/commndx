@@ -313,6 +313,57 @@ export const usePersonnelRatings = (personnelId: string | undefined) =>
     },
   });
 
+export type AssignmentRatingSummary = {
+  count: number;
+  average: number;
+  lastRatedAt: string;
+};
+
+/**
+ * Ratings for a whole project, aggregated per assignment row and per personnel,
+ * so the project roster can show inline stars and a "Rated" badge.
+ */
+export const useProjectAssignmentRatings = (projectId: string | undefined) =>
+  useQuery({
+    queryKey: ["project-assignment-ratings", projectId],
+    enabled: !!projectId,
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("personnel_assignment_ratings")
+        .select("*")
+        .eq("project_id", projectId!)
+        .order("created_at", { ascending: false });
+      if (error) throw error;
+      const rows = (data ?? []) as AssignmentRating[];
+
+      const build = (key: (r: AssignmentRating) => string | null) => {
+        const acc = new Map<string, { sum: number; count: number; lastRatedAt: string }>();
+        for (const r of rows) {
+          const k = key(r);
+          if (!k) continue;
+          const prev = acc.get(k);
+          if (prev) {
+            prev.sum += r.overall;
+            prev.count += 1;
+          } else {
+            acc.set(k, { sum: r.overall, count: 1, lastRatedAt: r.created_at });
+          }
+        }
+        const out = new Map<string, AssignmentRatingSummary>();
+        acc.forEach((v, k) =>
+          out.set(k, { count: v.count, average: v.sum / v.count, lastRatedAt: v.lastRatedAt })
+        );
+        return out;
+      };
+
+      return {
+        byAssignment: build((r) => r.assignment_id),
+        byPersonnel: build((r) => r.personnel_id),
+      };
+    },
+  });
+
+
 /**
  * Saves a rating and, for a positive rating, promotes the matching capability
  * categories to source='verified' for the linked applicant.
