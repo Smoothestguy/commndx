@@ -1423,6 +1423,9 @@ export default function PublicApplicationForm() {
           </CardContent>
         </Card>
 
+        {/* Social prefill (hidden entirely unless a provider is enabled) */}
+        <SocialPrefillButtons onProfile={handleSocialProfile} />
+
 
         {/* Express Apply gate */}
         {expressPath === null && (
