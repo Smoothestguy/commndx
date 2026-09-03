@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import QRCode from "qrcode";
@@ -13,6 +14,7 @@ import {
   Send,
   Loader2,
   UserPlus,
+  Users,
 } from "lucide-react";
 import { toast } from "sonner";
 
@@ -40,6 +42,7 @@ import { TaskOrderWizard } from "@/components/staffing/TaskOrderWizard";
 import { InviteNearbyApplicantsDialog } from "@/components/staffing/InviteNearbyApplicantsDialog";
 import { InvitePastWorkersDialog } from "@/components/staffing/InvitePastWorkersDialog";
 import { ProjectApplicantsSection } from "@/components/project-hub/ProjectApplicantsSection";
+import { InviteFunnelBadge } from "@/components/workforce/InviteFunnelBadge";
 
 interface Props {
   projectId: string;
@@ -236,6 +239,15 @@ function TaskOrderCard({
                     <UserPlus className="h-4 w-4 mr-1" />
                     Invite Past Workers
                   </Button>
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    onClick={() => navigate(`/workforce?posting=${posting.id}`)}
+                  >
+                    <Users className="h-4 w-4 mr-1" />
+                    Find candidates
+                  </Button>
+                  <InviteFunnelBadge jobPostingId={posting.id} />
                   <div className="flex items-center gap-2 ml-auto">
                     <Label htmlFor={`open-${posting.id}`} className="text-xs">
                       Accepting applications
