@@ -368,13 +368,74 @@ export type Database = {
           },
         ]
       }
+      applicant_messages: {
+        Row: {
+          applicant_id: string
+          body: string | null
+          channel: string
+          created_at: string
+          created_by: string | null
+          error: string | null
+          id: string
+          job_posting_id: string | null
+          status: string
+          subject: string | null
+          twilio_sid: string | null
+        }
+        Insert: {
+          applicant_id: string
+          body?: string | null
+          channel?: string
+          created_at?: string
+          created_by?: string | null
+          error?: string | null
+          id?: string
+          job_posting_id?: string | null
+          status?: string
+          subject?: string | null
+          twilio_sid?: string | null
+        }
+        Update: {
+          applicant_id?: string
+          body?: string | null
+          channel?: string
+          created_at?: string
+          created_by?: string | null
+          error?: string | null
+          id?: string
+          job_posting_id?: string | null
+          status?: string
+          subject?: string | null
+          twilio_sid?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "applicant_messages_applicant_id_fkey"
+            columns: ["applicant_id"]
+            isOneToOne: false
+            referencedRelation: "applicants"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "applicant_messages_job_posting_id_fkey"
+            columns: ["job_posting_id"]
+            isOneToOne: false
+            referencedRelation: "job_postings"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       applicants: {
         Row: {
           address: string | null
+          availability_status: string
+          available_from: string | null
           capabilities_classified_at: string | null
           capabilities_model: string | null
           city: string | null
           created_at: string
+          do_not_rehire: boolean
+          do_not_rehire_reason: string | null
           email: string
           first_name: string
           geocode_source: string | null
@@ -387,16 +448,21 @@ export type Database = {
           last_name: string
           phone: string | null
           photo_url: string | null
+          sms_opted_out: boolean
           state: string | null
           status: Database["public"]["Enums"]["applicant_status"]
           updated_at: string
         }
         Insert: {
           address?: string | null
+          availability_status?: string
+          available_from?: string | null
           capabilities_classified_at?: string | null
           capabilities_model?: string | null
           city?: string | null
           created_at?: string
+          do_not_rehire?: boolean
+          do_not_rehire_reason?: string | null
           email: string
           first_name: string
           geocode_source?: string | null
@@ -409,16 +475,21 @@ export type Database = {
           last_name: string
           phone?: string | null
           photo_url?: string | null
+          sms_opted_out?: boolean
           state?: string | null
           status?: Database["public"]["Enums"]["applicant_status"]
           updated_at?: string
         }
         Update: {
           address?: string | null
+          availability_status?: string
+          available_from?: string | null
           capabilities_classified_at?: string | null
           capabilities_model?: string | null
           city?: string | null
           created_at?: string
+          do_not_rehire?: boolean
+          do_not_rehire_reason?: string | null
           email?: string
           first_name?: string
           geocode_source?: string | null
@@ -431,6 +502,7 @@ export type Database = {
           last_name?: string
           phone?: string | null
           photo_url?: string | null
+          sms_opted_out?: boolean
           state?: string | null
           status?: Database["public"]["Enums"]["applicant_status"]
           updated_at?: string
@@ -3976,6 +4048,73 @@ export type Database = {
           },
         ]
       }
+      personnel_assignment_ratings: {
+        Row: {
+          assignment_id: string | null
+          attitude: number | null
+          created_at: string
+          id: string
+          notes: string | null
+          overall: number
+          personnel_id: string
+          project_id: string | null
+          rated_by: string | null
+          reliability: number | null
+          skill: number | null
+          would_rehire: boolean
+        }
+        Insert: {
+          assignment_id?: string | null
+          attitude?: number | null
+          created_at?: string
+          id?: string
+          notes?: string | null
+          overall: number
+          personnel_id: string
+          project_id?: string | null
+          rated_by?: string | null
+          reliability?: number | null
+          skill?: number | null
+          would_rehire?: boolean
+        }
+        Update: {
+          assignment_id?: string | null
+          attitude?: number | null
+          created_at?: string
+          id?: string
+          notes?: string | null
+          overall?: number
+          personnel_id?: string
+          project_id?: string | null
+          rated_by?: string | null
+          reliability?: number | null
+          skill?: number | null
+          would_rehire?: boolean
+        }
+        Relationships: [
+          {
+            foreignKeyName: "personnel_assignment_ratings_assignment_id_fkey"
+            columns: ["assignment_id"]
+            isOneToOne: false
+            referencedRelation: "personnel_project_assignments"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "personnel_assignment_ratings_personnel_id_fkey"
+            columns: ["personnel_id"]
+            isOneToOne: false
+            referencedRelation: "personnel"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "personnel_assignment_ratings_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "projects"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       personnel_capabilities: {
         Row: {
           capability: string
@@ -6186,6 +6325,7 @@ export type Database = {
           id: string
           job_posting_id: string
           message: string | null
+          opened_at: string | null
           phone: string | null
           sent_at: string | null
           token: string
@@ -6201,6 +6341,7 @@ export type Database = {
           id?: string
           job_posting_id: string
           message?: string | null
+          opened_at?: string | null
           phone?: string | null
           sent_at?: string | null
           token?: string
@@ -6216,6 +6357,7 @@ export type Database = {
           id?: string
           job_posting_id?: string
           message?: string | null
+          opened_at?: string | null
           phone?: string | null
           sent_at?: string | null
           token?: string
@@ -9276,6 +9418,16 @@ export type Database = {
       get_personnel_id_for_user: { Args: { _user_id: string }; Returns: string }
       get_quick_apply_invite: { Args: { _token: string }; Returns: Json }
       get_vendor_id_for_user: { Args: { _user_id: string }; Returns: string }
+      get_workforce_invite: {
+        Args: { _token: string }
+        Returns: {
+          email: string
+          first_name: string
+          job_posting_id: string
+          last_name: string
+          phone: string
+        }[]
+      }
       has_active_application_for_posting: {
         Args: { _applicant_id: string; _job_posting_id: string }
         Returns: boolean
@@ -9330,6 +9482,10 @@ export type Database = {
           _user_agent?: string
         }
         Returns: string
+      }
+      mark_workforce_invite_opened: {
+        Args: { _token: string }
+        Returns: undefined
       }
       merge_applicants: {
         Args: { _keep_id: string; _merge_id: string }
