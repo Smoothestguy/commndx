@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback, useRef } from "react";
 import { renderMergeTags } from "@/lib/mergeTags";
-import { useParams } from "react-router-dom";
+import { useParams, useSearchParams } from "react-router-dom";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
@@ -117,6 +117,9 @@ export default function PublicApplicationForm() {
     };
   }, []);
   const { token } = useParams<{ token: string }>();
+  const [searchParams] = useSearchParams();
+  // Workforce invite deep link: /apply/<public_token>?inv=<invite_token>
+  const inviteToken = searchParams.get("inv");
   const [submitted, setSubmitted] = useState(false);
   const [customFields, setCustomFields] = useState<FormFieldType[]>([]);
   const [customLayout, setCustomLayout] = useState<FormRow[]>([]);
@@ -338,6 +341,26 @@ export default function PublicApplicationForm() {
     }
     return sessionId;
   }, [posting?.id, token]);
+
+  // Prefill from a workforce invite and skip the Express gate.
+  const [inviteApplied, setInviteApplied] = useState(false);
+  useEffect(() => {
+    if (!inviteToken || inviteApplied) return;
+    let cancelled = false;
+    (async () => {
+      const { data, error } = await supabase.rpc("get_workforce_invite", { _token: inviteToken });
+      const invite = Array.isArray(data) ? data[0] : data;
+      if (cancelled || error || !invite) return;
+      form.setValue("first_name", invite.first_name ?? "");
+      form.setValue("last_name", invite.last_name ?? "");
+      if (invite.phone) form.setValue("phone", invite.phone);
+      if (invite.email) form.setValue("email", invite.email);
+      setExpressPath("returning");
+      setInviteApplied(true);
+      supabase.rpc("mark_workforce_invite_opened", { _token: inviteToken });
+    })();
+    return () => { cancelled = true; };
+  }, [inviteToken, inviteApplied, form]);
 
   const logEvent = useCallback(
     (
@@ -780,7 +803,7 @@ export default function PublicApplicationForm() {
         }
       }
 
-      await submitApplication.mutateAsync({
+      const submitResult = await submitApplication.mutateAsync({
         posting_id: posting.id,
         applicant: {
           first_name: data.first_name,
@@ -805,6 +828,13 @@ export default function PublicApplicationForm() {
         smsConsentTextVersion: smsConsent ? 'v1.0' : undefined,
       });
       logEvent("submit_success", { stage: isExpressMode ? "express" : "full" });
+      if (inviteToken) {
+        const appId = (submitResult as any)?.application?.id ?? (submitResult as any)?.id ?? null;
+        supabase.rpc("mark_workforce_invite_used", {
+          _token: inviteToken,
+          _application_id: appId,
+        });
+      }
       toast.success("Thank you for applying! We appreciate your interest and will review your application soon.");
       setSubmitted(true);
     } catch (err: any) {
