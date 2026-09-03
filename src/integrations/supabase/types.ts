@@ -7330,6 +7330,39 @@ export type Database = {
           },
         ]
       }
+      signin_provider_settings: {
+        Row: {
+          apply_facebook_enabled: boolean
+          apply_google_enabled: boolean
+          facebook_app_id: string | null
+          google_client_id: string | null
+          id: number
+          staff_facebook_enabled: boolean
+          staff_google_enabled: boolean
+          updated_at: string
+        }
+        Insert: {
+          apply_facebook_enabled?: boolean
+          apply_google_enabled?: boolean
+          facebook_app_id?: string | null
+          google_client_id?: string | null
+          id?: number
+          staff_facebook_enabled?: boolean
+          staff_google_enabled?: boolean
+          updated_at?: string
+        }
+        Update: {
+          apply_facebook_enabled?: boolean
+          apply_google_enabled?: boolean
+          facebook_app_id?: string | null
+          google_client_id?: string | null
+          id?: number
+          staff_facebook_enabled?: boolean
+          staff_google_enabled?: boolean
+          updated_at?: string
+        }
+        Relationships: []
+      }
       task_order_positions: {
         Row: {
           advertised_pay_rate: number | null
@@ -9373,6 +9406,7 @@ export type Database = {
           match_type: string
         }[]
       }
+      find_pending_invitation_for_me: { Args: never; Returns: string }
       generate_change_order_number: {
         Args: { p_project_id: string }
         Returns: string
@@ -9416,6 +9450,17 @@ export type Database = {
         }[]
       }
       get_personnel_id_for_user: { Args: { _user_id: string }; Returns: string }
+      get_public_signin_providers: {
+        Args: never
+        Returns: {
+          apply_facebook_enabled: boolean
+          apply_google_enabled: boolean
+          facebook_app_id: string
+          google_client_id: string
+          staff_facebook_enabled: boolean
+          staff_google_enabled: boolean
+        }[]
+      }
       get_quick_apply_invite: { Args: { _token: string }; Returns: Json }
       get_vendor_id_for_user: { Args: { _user_id: string }; Returns: string }
       get_workforce_invite: {

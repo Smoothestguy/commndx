@@ -50,6 +50,13 @@
       "when": 1788454613510,
       "tag": "0006_tighten_workforce_read_policies",
       "breakpoints": true
+    },
+    {
+      "idx": 7,
+      "version": "7",
+      "when": 1788455914617,
+      "tag": "0007_signin_provider_settings",
+      "breakpoints": true
     }
   ]
 }
