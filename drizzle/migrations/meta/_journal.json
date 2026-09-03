@@ -43,6 +43,13 @@
       "when": 1788454431704,
       "tag": "0005_mark_workforce_invite_used",
       "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "7",
+      "when": 1788454613510,
+      "tag": "0006_tighten_workforce_read_policies",
+      "breakpoints": true
     }
   ]
 }
