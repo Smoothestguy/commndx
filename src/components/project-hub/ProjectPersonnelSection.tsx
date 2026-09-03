@@ -1,7 +1,7 @@
 import { useState, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
 import { format } from "date-fns";
-import { Users, UserPlus, UserMinus, Loader2, Mail, Briefcase, ChevronDown, ChevronUp, MessageSquare, Download, History, MapPin, Phone, Pencil, Search, X, MoreVertical, ArrowUp, ArrowDown, Filter } from "lucide-react";
+import { Star, Users, UserPlus, UserMinus, Loader2, Mail, Briefcase, ChevronDown, ChevronUp, MessageSquare, Download, History, MapPin, Phone, Pencil, Search, X, MoreVertical, ArrowUp, ArrowDown, Filter } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { formatCurrency } from "@/lib/utils";
 import {
@@ -58,6 +58,8 @@ import { useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { EditPayRateDialog } from "@/components/project-hub/EditPayRateDialog";
 import { ViewRateHistoryDialog } from "@/components/project-hub/ViewRateHistoryDialog";
+import { RatingDialog, RatingStars } from "@/components/workforce/RatingDialog";
+import { useProjectAssignmentRatings } from "@/integrations/supabase/hooks/useWorkforce";
 
 // Column configuration for sorting/filtering
 const COLUMN_CONFIG = [
@@ -80,7 +82,7 @@ export function ProjectPersonnelSection({ projectId, projectName = "this project
   const navigate = useNavigate();
   const isMobile = useIsMobile();
   const queryClient = useQueryClient();
-  const { isAdmin, isManager } = useUserRole();
+  const { isAdmin, isManager, isUser } = useUserRole();
   
   // Table preferences with sorting, filtering, and column visibility
   const defaultColumnKeys = PERSONNEL_COLUMNS.filter(c => c.defaultVisible).map(c => c.key);
@@ -144,6 +146,34 @@ export function ProjectPersonnelSection({ projectId, projectName = "this project
     personnelName: string;
   } | null>(null);
   
+  const [ratingQueue, setRatingQueue] = useState<
+    { personnelId: string; personnelName: string; assignmentId: string }[]
+  >([]);
+  const [ratingIndex, setRatingIndex] = useState(0);
+  const currentRating = ratingQueue[ratingIndex] ?? null;
+
+  const { data: ratingSummaries } = useProjectAssignmentRatings(projectId);
+  const canRate = isAdmin || isManager || isUser;
+
+  const getRating = (assignmentId: string, personnelId: string) =>
+    ratingSummaries?.byAssignment.get(assignmentId) ??
+    ratingSummaries?.byPersonnel.get(personnelId) ??
+    null;
+
+  const openRating = (rows: { personnelId: string; personnelName: string; assignmentId: string }[]) => {
+    if (!rows.length) return;
+    setRatingQueue(rows);
+    setRatingIndex(0);
+  };
+
+  const advanceRating = () => {
+    setRatingIndex((i) => {
+      if (i + 1 < ratingQueue.length) return i + 1;
+      setRatingQueue([]);
+      return 0;
+    });
+  };
+
   const { data: assignedPersonnel = [], isLoading } = usePersonnelWithAssets(projectId, {
     includeUnassigned: showUnassigned,
   });
