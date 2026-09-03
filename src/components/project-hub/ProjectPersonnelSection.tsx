@@ -503,6 +503,25 @@ export function ProjectPersonnelSection({ projectId, projectName = "this project
                   <Download className="h-4 w-4 mr-2" />
                   {isMobile ? "Export" : "Export"}
                 </Button>
+                {canRate && (
+                  <Button
+                    onClick={() => openRating(
+                      activePersonnel
+                        .filter(p => selectedIds.has(p.assignmentId))
+                        .map(p => ({
+                          personnelId: p.personnelId,
+                          personnelName: p.name,
+                          assignmentId: p.assignmentId,
+                        }))
+                    )}
+                    size="sm"
+                    variant="outline"
+                    disabled={selectedIds.size === 0}
+                  >
+                    <Star className="h-4 w-4 mr-2" />
+                    {isMobile ? "Rate" : `Rate Crew${selectedIds.size ? ` (${selectedIds.size})` : ""}`}
+                  </Button>
+                )}
                 <Button 
                   onClick={() => setIsBulkSMSDialogOpen(true)} 
                   size="sm"
@@ -710,6 +729,34 @@ export function ProjectPersonnelSection({ projectId, projectName = "this project
                               Bill: {formatCurrency(person.billRate)}/hr
                             </span>
                           )}
+                          {(() => {
+                            const rating = getRating(person.assignmentId, person.personnelId);
+                            if (!rating) return null;
+                            return (
+                              <span className="flex items-center gap-1">
+                                <RatingStars value={rating.average} />
+                                <Badge variant="outline" className="text-xs">Rated</Badge>
+                              </span>
+                            );
+                          })()}
+                          {canRate && !isUnassigned && (
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              className="h-7"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                openRating([{
+                                  personnelId: person.personnelId,
+                                  personnelName: person.name,
+                                  assignmentId: person.assignmentId,
+                                }]);
+                              }}
+                            >
+                              <Star className="h-3 w-3 mr-1" />
+                              Rate
+                            </Button>
+                          )}
                           {isUnassigned && person.unassignedAt ? (
                             <span className="text-muted-foreground ml-auto">
                               Unassigned {format(new Date(person.unassignedAt), "MMM d, yyyy")}
@@ -754,7 +801,7 @@ export function ProjectPersonnelSection({ projectId, projectName = "this project
                         {visibleColumns.some(c => c.key === "assets") && <TableHead>Assets</TableHead>}
                         {visibleColumns.some(c => c.key === "assignedDate") && <SortableHeader columnKey="assignedDate" label="Assigned" />}
                         {showUnassigned && <TableHead>Status</TableHead>}
-                        <TableHead className="w-[80px]">Actions</TableHead>
+                        <TableHead className="w-[120px]">Actions</TableHead>
                       </TableRow>
                     </TableHeader>
                     <TableBody>
@@ -806,6 +853,16 @@ export function ProjectPersonnelSection({ projectId, projectName = "this project
                                           Onboarded
                                         </Badge>
                                       )}
+                                      {(() => {
+                                        const rating = getRating(person.assignmentId, person.personnelId);
+                                        if (!rating) return null;
+                                        return (
+                                          <span className="flex items-center gap-1">
+                                            <RatingStars value={rating.average} />
+                                            <Badge variant="outline" className="text-xs">Rated</Badge>
+                                          </span>
+                                        );
+                                      })()}
                                     </div>
                                     {visibleColumns.some(c => c.key === "email") && (
                                       <p className="text-sm text-muted-foreground">
@@ -959,7 +1016,27 @@ export function ProjectPersonnelSection({ projectId, projectName = "this project
                             )}
                             <TableCell>
                               {!isUnassigned ? (
-                                <div onClick={(e) => e.stopPropagation()}>
+                                <div className="flex items-center gap-1" onClick={(e) => e.stopPropagation()}>
+                                  {canRate && (
+                                    <TooltipProvider>
+                                      <Tooltip>
+                                        <TooltipTrigger asChild>
+                                          <Button
+                                            variant="ghost"
+                                            size="icon"
+                                            onClick={() => openRating([{
+                                              personnelId: person.personnelId,
+                                              personnelName: person.name,
+                                              assignmentId: person.assignmentId,
+                                            }])}
+                                          >
+                                            <Star className="h-4 w-4" />
+                                          </Button>
+                                        </TooltipTrigger>
+                                        <TooltipContent>Rate</TooltipContent>
+                                      </Tooltip>
+                                    </TooltipProvider>
+                                  )}
                                   <Button
                                     variant="ghost"
                                     size="icon"
@@ -1046,6 +1123,26 @@ export function ProjectPersonnelSection({ projectId, projectName = "this project
           personnelName={editPayRateDialog.personnelName}
           assignmentId={editPayRateDialog.assignmentId}
           currentRate={editPayRateDialog.currentRate}
+        />
+      )}
+
+      {/* Rating Dialog (single row or bulk walk-through) */}
+      {currentRating && (
+        <RatingDialog
+          key={`${currentRating.assignmentId}-${ratingIndex}`}
+          open
+          onOpenChange={(open) => {
+            if (!open) advanceRating();
+          }}
+          personnelId={currentRating.personnelId}
+          projectId={projectId}
+          assignmentId={currentRating.assignmentId}
+          personName={
+            ratingQueue.length > 1
+              ? `${currentRating.personnelName} (${ratingIndex + 1} of ${ratingQueue.length})`
+              : currentRating.personnelName
+          }
+          projectName={projectName}
         />
       )}
 
