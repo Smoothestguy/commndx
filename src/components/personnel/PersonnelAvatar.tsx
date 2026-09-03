@@ -1,6 +1,8 @@
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { cn } from "@/lib/utils";
 import { useSecureUrl } from "@/hooks/useSecureUrl";
+import { useState } from "react";
+import { PhotoLightbox } from "@/components/shared/PhotoLightbox";
 
 interface PersonnelAvatarProps {
   photoUrl?: string | null;
@@ -8,6 +10,8 @@ interface PersonnelAvatarProps {
   lastName: string;
   size?: "xs" | "sm" | "md" | "lg";
   className?: string;
+  /** When true, clicking the avatar opens a full-size photo viewer. */
+  enableLightbox?: boolean;
 }
 
 const sizeClasses = {
@@ -23,18 +27,38 @@ export function PersonnelAvatar({
   lastName,
   size = "sm",
   className,
+  enableLightbox = false,
 }: PersonnelAvatarProps) {
+  const [lightboxOpen, setLightboxOpen] = useState(false);
   const initials = `${firstName?.[0] || ""}${lastName?.[0] || ""}`.toUpperCase();
   
   // Use signed URL for personnel photos (private bucket)
   const { url: securePhotoUrl } = useSecureUrl('personnel-photos', photoUrl);
 
+  const clickable = enableLightbox && !!securePhotoUrl;
+
   return (
-    <Avatar className={cn(sizeClasses[size], className)}>
-      <AvatarImage src={securePhotoUrl || undefined} alt={`${firstName} ${lastName}`} />
-      <AvatarFallback className="bg-primary/10 text-primary font-medium">
-        {initials || "?"}
-      </AvatarFallback>
-    </Avatar>
+    <>
+      <Avatar
+        className={cn(sizeClasses[size], clickable && "cursor-pointer", className)}
+        onClick={clickable ? () => setLightboxOpen(true) : undefined}
+      >
+        <AvatarImage
+          src={securePhotoUrl || undefined}
+          alt={`${firstName} ${lastName}`}
+          className="object-cover"
+        />
+        <AvatarFallback className="bg-primary/10 text-primary font-medium">
+          {initials || "?"}
+        </AvatarFallback>
+      </Avatar>
+      {clickable && (
+        <PhotoLightbox
+          photos={[{ url: securePhotoUrl as string, caption: `${firstName} ${lastName}` }]}
+          open={lightboxOpen}
+          onOpenChange={setLightboxOpen}
+        />
+      )}
+    </>
   );
 }
