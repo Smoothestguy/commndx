@@ -623,6 +623,71 @@ export default function PublicApplicationForm() {
     }
   }, [expressContact, form, logEvent]);
 
+  // ---------------------------------------------------------------------------
+  // Social prefill (Google / Facebook). Prefill ONLY — no auth account is
+  // created for applicants. Fills empty core fields, uploads the profile photo
+  // into the existing application-files/profile-photos path, and runs the
+  // returning-contact lookup so known applicants land in Express mode.
+  // ---------------------------------------------------------------------------
+  const handleSocialProfile = useCallback(
+    async (profile: SocialProfile) => {
+      try {
+        const setIfEmpty = (field: "first_name" | "last_name" | "email", value?: string) => {
+          if (!value) return;
+          const current = (form.getValues(field) || "").trim();
+          if (!current) form.setValue(field, field === "email" ? value.toLowerCase() : value);
+        };
+        setIfEmpty("first_name", profile.first_name);
+        setIfEmpty("last_name", profile.last_name);
+        setIfEmpty("email", profile.email);
+
+        logEvent("social_prefill", { stage: profile.provider });
+
+        // Profile photo — best effort, never blocks the applicant.
+        if (profile.picture_url && !form.getValues("photo_url")) {
+          try {
+            const res = await fetch(profile.picture_url);
+            if (!res.ok) throw new Error(`photo fetch ${res.status}`);
+            const blob = await res.blob();
+            const ext = (blob.type.split("/")[1] || "jpg").replace("jpeg", "jpg");
+            const path = `profile-photos/${Date.now()}-${Math.random().toString(36).slice(2, 9)}.${ext}`;
+            const { error: upErr } = await supabase.storage
+              .from("application-files")
+              .upload(path, blob, { cacheControl: "3600", upsert: false, contentType: blob.type });
+            if (upErr) throw upErr;
+            const { data: pub } = supabase.storage.from("application-files").getPublicUrl(path);
+            if (pub?.publicUrl) form.setValue("photo_url", pub.publicUrl);
+          } catch (photoErr: any) {
+            console.warn("[SocialPrefill] photo import failed", photoErr);
+            logEvent("upload_error", {
+              stage: profile.provider,
+              message: `social_photo_failed: ${photoErr?.message || photoErr}`,
+            });
+          }
+        }
+
+        // Returning-contact lookup so they can use Express mode.
+        if (profile.email) {
+          try {
+            const { data } = await supabase.rpc("check_returning_contact", { _contact: profile.email });
+            setExpressPath(data === true ? "returning" : "new");
+            if (data === true) toast.success("Welcome back — we already have your file on record.");
+          } catch {
+            setExpressPath((p) => p ?? "new");
+          }
+        } else {
+          setExpressPath((p) => p ?? "new");
+        }
+        toast.success("Prefilled from your profile");
+      } catch (err: any) {
+        console.warn("[SocialPrefill] failed", err);
+      }
+    },
+    [form, logEvent]
+  );
+
+
+
 
   const handleFileUploadStateChange = useCallback((fieldId: string, isUploading: boolean) => {
     setUploadingFields(prev => {
