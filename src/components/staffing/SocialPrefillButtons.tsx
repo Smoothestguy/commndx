@@ -1,7 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Loader2 } from "lucide-react";
-import { GoogleIcon } from "@/components/icons/GoogleIcon";
 import { usePublicSigninProviders } from "@/hooks/useSigninProviders";
 
 export interface SocialProfile {
@@ -181,5 +180,3 @@ export function SocialPrefillButtons({ onProfile, disabled }: Props) {
     </div>
   );
 }
-
-export { GoogleIcon };
