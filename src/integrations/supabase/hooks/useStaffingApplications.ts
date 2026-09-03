@@ -285,6 +285,7 @@ export const useJobPostings = (taskOrderId?: string) => {
           *,
           project_task_orders (
             *,
+            task_order_positions (*),
             projects:project_id (name, city, state, zip, site_lat, site_lng, address)
           )
         `)

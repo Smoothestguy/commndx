@@ -326,6 +326,7 @@ const PersonnelDetail = () => {
               <SecureAvatar
                 bucket="personnel-photos"
                 photoUrl={personnel.photo_url}
+                enableLightbox
                 className="h-24 w-24"
                 fallback={
                   <span className="text-2xl">

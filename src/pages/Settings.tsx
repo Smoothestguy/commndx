@@ -40,6 +40,7 @@ import { useSessionAccess } from "@/hooks/useSessionAccess";
 import { CheckForUpdatesButton } from "@/components/electron/UpdateNotification";
 import { DeleteAccountSection } from "@/components/settings/DeleteAccountSection";
 import { ApplicationWatchdogCard } from "@/components/settings/ApplicationWatchdogCard";
+import { InvitationDefaultsCard } from "@/components/settings/InvitationDefaultsCard";
 
 import AppWalkthroughDownload from "@/components/AppWalkthroughDownload";
 import {
@@ -159,6 +160,8 @@ export default function Settings() {
       >
         <div className="space-y-6">
           {(role === "admin" || role === "manager") && <ApplicationWatchdogCard />}
+
+          {(role === "admin" || role === "manager") && <InvitationDefaultsCard />}
 
           {/* Two-column grid for main settings */}
 

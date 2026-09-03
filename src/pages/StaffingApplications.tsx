@@ -21,6 +21,7 @@ import {
   ChevronDown,
   Send,
   MessageSquare,
+  Users,
 
   ShieldAlert,
 } from "lucide-react";
@@ -28,6 +29,7 @@ import { useWatchdogPostingAlerts } from "@/hooks/useApplicationWatchdog";
 import { InviteNearbyApplicantsDialog } from "@/components/staffing/InviteNearbyApplicantsDialog";
 import { InvitePastWorkersDialog } from "@/components/staffing/InvitePastWorkersDialog";
 import { QuickApplyStats } from "@/components/staffing/QuickApplyStats";
+import { InviteFunnelBadge } from "@/components/workforce/InviteFunnelBadge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -581,6 +583,19 @@ export default function StaffingApplications() {
                         <Copy className="h-4 w-4 sm:mr-1" />
                         <span className="hidden sm:inline">Copy Share Link</span>
                         <span className="sm:hidden ml-1">Share</span>
+                      </Button>
+
+                      <InviteFunnelBadge jobPostingId={posting.id} />
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        className="h-9 px-2 text-xs sm:px-3 sm:text-sm"
+                        onClick={() => navigate(`/workforce?posting=${posting.id}`)}
+                        title="Find candidates in the workforce pool"
+                      >
+                        <Users className="h-4 w-4 sm:mr-1" />
+                        <span className="hidden sm:inline">Find candidates</span>
+                        <span className="sm:hidden ml-1">Candidates</span>
                       </Button>
 
                       {posting.project_task_orders?.project_id && (

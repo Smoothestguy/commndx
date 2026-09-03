@@ -248,3 +248,6 @@ verify_jwt = false
 
 [functions.application-watchdog]
 verify_jwt = false
+
+[functions.send-workforce-invites]
+verify_jwt = true
