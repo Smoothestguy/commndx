@@ -583,6 +583,18 @@ export default function StaffingApplications() {
                         <span className="sm:hidden ml-1">Share</span>
                       </Button>
 
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        className="h-9 px-2 text-xs sm:px-3 sm:text-sm"
+                        onClick={() => navigate(`/workforce?posting=${posting.id}`)}
+                        title="Find candidates in the workforce pool"
+                      >
+                        <Users className="h-4 w-4 sm:mr-1" />
+                        <span className="hidden sm:inline">Find candidates</span>
+                        <span className="sm:hidden ml-1">Candidates</span>
+                      </Button>
+
                       {posting.project_task_orders?.project_id && (
                         <Button
                           variant="ghost"
