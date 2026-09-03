@@ -401,6 +401,7 @@ export const useSaveRating = () => {
       qc.invalidateQueries({ queryKey: ["workforce-pool"] });
       qc.invalidateQueries({ queryKey: ["workforce-history"] });
       qc.invalidateQueries({ queryKey: ["personnel-ratings"] });
+      qc.invalidateQueries({ queryKey: ["project-assignment-ratings"] });
       toast.success("Rating saved");
     },
     onError: (e: Error) => toast.error(`Failed to save rating: ${e.message}`),
