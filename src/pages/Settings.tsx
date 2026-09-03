@@ -41,6 +41,8 @@ import { CheckForUpdatesButton } from "@/components/electron/UpdateNotification"
 import { DeleteAccountSection } from "@/components/settings/DeleteAccountSection";
 import { ApplicationWatchdogCard } from "@/components/settings/ApplicationWatchdogCard";
 import { InvitationDefaultsCard } from "@/components/settings/InvitationDefaultsCard";
+import { SigninProvidersCard } from "@/components/settings/SigninProvidersCard";
+
 
 import AppWalkthroughDownload from "@/components/AppWalkthroughDownload";
 import {
@@ -162,6 +164,9 @@ export default function Settings() {
           {(role === "admin" || role === "manager") && <ApplicationWatchdogCard />}
 
           {(role === "admin" || role === "manager") && <InvitationDefaultsCard />}
+
+          {(role === "admin" || role === "manager") && <SigninProvidersCard />}
+
 
           {/* Two-column grid for main settings */}
 

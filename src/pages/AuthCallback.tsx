@@ -97,14 +97,33 @@ const AuthCallback = () => {
         .eq("user_id", user.id)
         .maybeSingle();
 
-      // If no personnel link, no vendor link, and no role - unauthorized
+      // No role yet: allow only if a pending invitation exists for this email.
       if (!userRole) {
+        const { data: invitationId } = await supabase.rpc("find_pending_invitation_for_me");
+
+        if (invitationId) {
+          const { error: acceptError } = await supabase.rpc("accept_invitation", {
+            _invitation_id: invitationId as string,
+            _user_id: user.id,
+          });
+
+          if (!acceptError) {
+            toast.success("Invitation accepted. Welcome to Command X!");
+            navigate("/");
+            return;
+          }
+          console.error("[AuthCallback] accept_invitation failed:", acceptError);
+        }
+
         // Sign out the unauthorized user to prevent lingering sessions
         await supabase.auth.signOut();
-        toast.error("Access denied. Your account is not authorized.");
+        toast.error(
+          `No Command X account exists for ${userEmail || "this account"}. Ask an admin for an invite.`
+        );
         navigate("/unauthorized");
         return;
       }
+
 
       // Authorized user with role goes to dashboard
       toast.success("Logged in successfully");
