@@ -123,6 +123,24 @@ const Auth = () => {
     }
   };
 
+  const handleFacebookLogin = async () => {
+    setIsOAuthLoading(true);
+    setShowNetworkError(false);
+    try {
+      const { error } = await supabase.auth.signInWithOAuth({
+        provider: "facebook",
+        options: { redirectTo: `${window.location.origin}/auth/callback` },
+      });
+      if (error) {
+        toast.error(error.message);
+        setIsOAuthLoading(false);
+      }
+    } catch {
+      setIsOAuthLoading(false);
+    }
+  };
+
+
   const handleRetry = () => {
     setShowNetworkError(false);
     if (loginEmail && loginPassword) {
