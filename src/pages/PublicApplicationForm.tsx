@@ -38,6 +38,8 @@ import { FormFileUpload } from "@/components/form-builder/FormFileUpload";
 import { useApplicantLookup, FoundApplicantData, LookupResult } from "@/hooks/useApplicantLookup";
 import { SEO } from "@/components/SEO";
 import { PublicJobFactsPanel } from "@/components/staffing/PublicJobFactsPanel";
+import { SocialPrefillButtons, SocialProfile } from "@/components/staffing/SocialPrefillButtons";
+
 
 // Helper function to render fields based on layout
 function renderFieldsWithLayout(
