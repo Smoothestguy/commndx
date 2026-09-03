@@ -81,8 +81,8 @@ export function PhotoLightbox({ photos, index = 0, open, onOpenChange, onIndexCh
                 zoomed
                   ? { maxWidth: "none", maxHeight: "none", width: "auto", height: "auto" }
                   : {
-                      maxWidth: "95vw",
-                      maxHeight: "88vh",
+                      maxWidth: "min(95vw, 100%)",
+                      maxHeight: "min(88vh, 100%)",
                       width: "auto",
                       height: "auto",
                       objectFit: "contain",
@@ -117,7 +117,7 @@ export function PhotoLightbox({ photos, index = 0, open, onOpenChange, onIndexCh
           )}
 
 
-          <div className="flex items-center justify-between gap-3 border-t px-4 py-2 text-sm">
+          <div className="flex shrink-0 items-center justify-between gap-3 border-t px-4 py-2 text-sm">
             <div className="min-w-0 truncate text-muted-foreground">
               <span className="truncate">{filename}</span>
               {photo.date && <span className="ml-2">· {photo.date}</span>}
