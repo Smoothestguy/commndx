@@ -23,6 +23,8 @@ import { PortalSwitcherModal } from "@/components/PortalSwitcherModal";
 import { usePortalSwitcher } from "@/hooks/usePortalSwitcher";
 import { NetworkErrorBanner } from "@/components/auth/NetworkErrorBanner";
 import { isNetworkError } from "@/utils/authNetwork";
+import { supabase } from "@/integrations/supabase/client";
+import { usePublicSigninProviders } from "@/hooks/useSigninProviders";
 
 const Auth = () => {
   const navigate = useNavigate();
@@ -37,6 +39,8 @@ const Auth = () => {
     setIsOpen: setPortalSwitcherOpen,
     openSwitcher,
   } = usePortalSwitcher();
+
+  const { data: providers } = usePublicSigninProviders();
 
   const currentTheme = resolvedTheme || theme;
 
