@@ -49,6 +49,7 @@ import {
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { RequestMissingInfoDialog } from "./RequestMissingInfoDialog";
+import { ApplicationCertifications } from "./ApplicationCertifications";
 import { useUserRole } from "@/hooks/useUserRole";
 import { ApprovalTypeSelectionDialog, type RecordType } from "@/components/personnel/ApprovalTypeSelectionDialog";
 
@@ -714,6 +715,8 @@ export function ApplicationDetailDialog({
                     </div>
                   </div>
                 )}
+
+                <ApplicationCertifications applicationId={application.id} />
 
                 <Separator />
 

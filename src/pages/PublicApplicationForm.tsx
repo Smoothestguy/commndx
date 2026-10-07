@@ -39,6 +39,7 @@ import { useApplicantLookup, FoundApplicantData, LookupResult } from "@/hooks/us
 import { SEO } from "@/components/SEO";
 import { PublicJobFactsPanel } from "@/components/staffing/PublicJobFactsPanel";
 import { SocialPrefillButtons, SocialProfile } from "@/components/staffing/SocialPrefillButtons";
+import { CertificationsFormSection, saveCertifications, type CertEntry } from "@/components/staffing/CertificationsFormSection";
 
 
 // Helper function to render fields based on layout
@@ -774,6 +775,8 @@ export default function PublicApplicationForm() {
   };
 
 
+  const [certEntries, setCertEntries] = useState<CertEntry[]>([]);
+
   const onSubmit = async (data: z.infer<typeof baseSchema>) => {
     if (!posting) return;
 
@@ -895,6 +898,14 @@ export default function PublicApplicationForm() {
         smsConsentTextVersion: smsConsent ? 'v1.0' : undefined,
       });
       logEvent("submit_success", { stage: isExpressMode ? "express" : "full" });
+      if (certEntries.some((c) => c.cert_type)) {
+        const r = submitResult as any;
+        await saveCertifications(
+          certEntries,
+          r?.id ?? r?.application?.id,
+          r?.applicant_id ?? r?.application?.applicant_id,
+        );
+      }
       if (inviteToken) {
         const appId = (submitResult as any)?.application?.id ?? (submitResult as any)?.id ?? null;
         supabase.rpc("mark_workforce_invite_used", {
@@ -1821,6 +1832,8 @@ export default function PublicApplicationForm() {
                     </div>
                   </div>
                 )}
+
+                <CertificationsFormSection entries={certEntries} onChange={setCertEntries} />
 
                 {submitFailureMessage && (
                   <div className="rounded-md border border-destructive/40 bg-destructive/10 p-3 text-sm text-destructive">
