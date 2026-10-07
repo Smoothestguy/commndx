@@ -46,6 +46,9 @@ Deno.serve(async (req) => {
     const message = typeof body?.message === "string" ? body.message.trim() : "";
     const consented_only = body?.consented_only !== false;
     const dry_run = body?.dry_run === true;
+    // "all" (default): every applicant with a non-rejected application on ANY
+    // posting. "posting": only applicants of the advertised posting.
+    const audience = body?.audience === "posting" ? "posting" : "all";
 
     if (!blast_token || blast_token.length > 256) return json({ error: "blast_token required" }, 400);
     if (!UUID_RE.test(job_posting_id)) return json({ error: "Valid job_posting_id required" }, 400);
