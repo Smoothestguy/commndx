@@ -251,3 +251,6 @@ verify_jwt = false
 
 [functions.send-workforce-invites]
 verify_jwt = true
+
+[functions.send-bulk-applicant-sms]
+verify_jwt = false
