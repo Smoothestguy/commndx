@@ -7411,6 +7411,33 @@ export type Database = {
         }
         Relationships: []
       }
+      sms_blast_tokens: {
+        Row: {
+          created_at: string
+          id: string
+          max_recipients: number | null
+          posting_id: string | null
+          token: string
+          used_at: string | null
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          max_recipients?: number | null
+          posting_id?: string | null
+          token: string
+          used_at?: string | null
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          max_recipients?: number | null
+          posting_id?: string | null
+          token?: string
+          used_at?: string | null
+        }
+        Relationships: []
+      }
       task_order_positions: {
         Row: {
           advertised_pay_rate: number | null
