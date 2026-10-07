@@ -70,12 +70,14 @@ Deno.serve(async (req) => {
       return json({ error: "Token not valid for this posting" }, 403);
     }
 
-    // Recipients
-    const { data: apps, error: appsErr } = await client
+    // Recipients — job_posting_id scopes the token + message log rows; the
+    // posting filter on applications applies only when audience = "posting".
+    let appsQuery = client
       .from("applications")
       .select("applicant_id, sms_consent, status, applicants!inner(id, phone)")
-      .eq("job_posting_id", job_posting_id)
       .neq("status", "rejected");
+    if (audience === "posting") appsQuery = appsQuery.eq("job_posting_id", job_posting_id);
+    const { data: apps, error: appsErr } = await appsQuery;
     if (appsErr) return json({ error: "Recipient query failed: " + appsErr.message }, 500);
 
     const byApplicant = new Map<string, { phone: string | null; consent: boolean }>();
