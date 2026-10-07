@@ -368,6 +368,54 @@ export type Database = {
           },
         ]
       }
+      applicant_certifications: {
+        Row: {
+          applicant_id: string | null
+          application_id: string
+          cert_type: string
+          created_at: string
+          expires_on: string | null
+          file_path: string | null
+          id: string
+          other_label: string | null
+        }
+        Insert: {
+          applicant_id?: string | null
+          application_id: string
+          cert_type: string
+          created_at?: string
+          expires_on?: string | null
+          file_path?: string | null
+          id?: string
+          other_label?: string | null
+        }
+        Update: {
+          applicant_id?: string | null
+          application_id?: string
+          cert_type?: string
+          created_at?: string
+          expires_on?: string | null
+          file_path?: string | null
+          id?: string
+          other_label?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "applicant_certifications_applicant_id_fkey"
+            columns: ["applicant_id"]
+            isOneToOne: false
+            referencedRelation: "applicants"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "applicant_certifications_application_id_fkey"
+            columns: ["application_id"]
+            isOneToOne: false
+            referencedRelation: "applications"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       applicant_messages: {
         Row: {
           applicant_id: string
