@@ -682,8 +682,7 @@ export function ProjectApplicantsSection({
                             <TableRow>
                               <SortableHeader column="name" label="Applicant" />
                               <SortableHeader column="position" label="Position" />
-                              <SortableHeader column="city" label="City" />
-                              <SortableHeader column="state" label="State" />
+                              <SortableHeader column="city" label="Location" />
                               <SortableHeader column="status" label="Status" />
                               <SortableHeader column="submitted" label="Applied" />
                               <TableHead className="w-[120px]">Actions</TableHead>
@@ -711,8 +710,7 @@ export function ProjectApplicantsSection({
                             <TableRow>
                               <SortableHeader column="name" label="Applicant" />
                               <SortableHeader column="position" label="Position" />
-                              <SortableHeader column="city" label="City" />
-                              <SortableHeader column="state" label="State" />
+                              <SortableHeader column="city" label="Location" />
                               <SortableHeader column="status" label="Status" />
                               <SortableHeader column="submitted" label="Applied" />
                               <TableHead className="w-[120px]">Actions</TableHead>
