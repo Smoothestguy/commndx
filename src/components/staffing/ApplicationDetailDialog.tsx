@@ -1,3 +1,5 @@
+import { formatApplicantLocation } from "@/lib/applicantLocation";
+import { useApplicantLocations } from "@/hooks/useZipLookup";
 import { useState, useMemo, useEffect } from "react";
 import { format } from "date-fns";
 import { Pencil, User, Save, X, AlertCircle, RefreshCw, Trash2, ShieldCheck, Upload, Calendar, CheckCircle2, MessageSquare, Send } from "lucide-react";
@@ -77,6 +79,7 @@ export function ApplicationDetailDialog({
   onOpenChange,
   application,
 }: ApplicationDetailDialogProps) {
+  const resolveLocation = useApplicantLocations(open ? [application?.applicants] : []);
   const [isEditing, setIsEditing] = useState(false);
   const [actionNotes, setActionNotes] = useState(application?.notes || "");
   const [enlargedImage, setEnlargedImage] = useState<string | null>(null);
@@ -635,8 +638,8 @@ export function ApplicationDetailDialog({
                             {applicant?.phone || "N/A"}
                           </div>
                           <div>
-                            <span className="text-muted-foreground">ZIP:</span>{" "}
-                            {applicant?.home_zip || "N/A"}
+                            <span className="text-muted-foreground">Location:</span>{" "}
+                            {formatApplicantLocation(applicant ? resolveLocation(applicant) : null)}
                           </div>
                           <div>
                             <span className="text-muted-foreground">

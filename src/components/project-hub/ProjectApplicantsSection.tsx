@@ -60,7 +60,8 @@ import { useMessageDrawer } from "@/contexts/MessageDrawerContext";
 import { useNavigate } from "react-router-dom";
 import { toast } from "sonner";
 import { useQueryClient } from "@tanstack/react-query";
-import { getCityWithFallback, getStateWithFallback } from "@/lib/locationUtils";
+import { formatApplicantLocation } from "@/lib/applicantLocation";
+import { useApplicantLocations } from "@/hooks/useZipLookup";
 
 type SortKey = "name" | "position" | "city" | "state" | "status" | "submitted";
 type SortDirection = "asc" | "desc";
@@ -135,6 +136,8 @@ export function ProjectApplicantsSection({
     projectId,
   });
 
+  const resolveLocation = useApplicantLocations(applications.map((app) => app.applicants));
+
   const approveWithType = useApproveApplicationWithType();
   const rejectApplication = useRejectApplication();
 
@@ -206,12 +209,12 @@ export function ProjectApplicantsSection({
             bVal = b.job_postings?.project_task_orders?.title?.toLowerCase() || "";
             break;
           case "city":
-            aVal = (getCityWithFallback(a.applicants?.city, a.answers as Record<string, unknown>) || "").toLowerCase();
-            bVal = (getCityWithFallback(b.applicants?.city, b.answers as Record<string, unknown>) || "").toLowerCase();
+            aVal = ((a.applicants ? resolveLocation(a.applicants).city : null) || "").toLowerCase();
+            bVal = ((b.applicants ? resolveLocation(b.applicants).city : null) || "").toLowerCase();
             break;
           case "state":
-            aVal = (getStateWithFallback(a.applicants?.state, a.answers as Record<string, unknown>) || "").toLowerCase();
-            bVal = (getStateWithFallback(b.applicants?.state, b.answers as Record<string, unknown>) || "").toLowerCase();
+            aVal = ((a.applicants ? resolveLocation(a.applicants).state : null) || "").toLowerCase();
+            bVal = ((b.applicants ? resolveLocation(b.applicants).state : null) || "").toLowerCase();
             break;
           case "status":
             aVal = a.status.toLowerCase();
@@ -234,7 +237,7 @@ export function ProjectApplicantsSection({
       pendingApplications: sortApplications(pending),
       approvedApplications: sortApplications(approved),
     };
-  }, [applications, sortKey, sortDirection]);
+  }, [applications, sortKey, sortDirection, resolveLocation]);
 
   const handleSort = (key: SortKey) => {
     if (sortKey === key) {
@@ -411,10 +414,7 @@ export function ProjectApplicantsSection({
           <span className="text-sm">{positionTitle}</span>
         </TableCell>
         <TableCell className="text-muted-foreground">
-          {getCityWithFallback(applicant.city, application.answers as Record<string, unknown>) || "—"}
-        </TableCell>
-        <TableCell className="text-muted-foreground">
-          {getStateWithFallback(applicant.state, application.answers as Record<string, unknown>) || "—"}
+          {formatApplicantLocation(resolveLocation(applicant))}
         </TableCell>
         <TableCell>
           <Badge className={cn("capitalize", statusColors[application.status])}>
@@ -520,6 +520,7 @@ export function ProjectApplicantsSection({
           </Badge>
         </div>
 
+        <p className="mt-2 text-xs text-muted-foreground">Location: {formatApplicantLocation(resolveLocation(applicant))}</p>
         <div className="mt-3 pt-3 border-t flex items-center justify-between">
           <span className="text-xs text-muted-foreground">
             Applied {application.submitted_at

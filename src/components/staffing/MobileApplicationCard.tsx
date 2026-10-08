@@ -11,7 +11,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { Eye, CheckCircle, XCircle, MoreVertical, Calendar, Briefcase, User, Trash2, CheckCircle2 } from "lucide-react";
 import type { Application } from "@/integrations/supabase/hooks/useStaffingApplications";
-import { getCityWithFallback, getStateWithFallback } from "@/lib/locationUtils";
+import { formatApplicantLocation } from "@/lib/applicantLocation";
 
 const statusColors: Record<string, string> = {
   submitted: "bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-300",
@@ -58,6 +58,7 @@ function getProfilePicture(
 
 interface MobileApplicationCardProps {
   application: Application;
+  location?: string;
   onView: (app: Application) => void;
   onApprove: (app: Application) => void;
   onReject: (app: Application) => void;
@@ -68,6 +69,7 @@ interface MobileApplicationCardProps {
 
 export function MobileApplicationCard({
   application,
+  location,
   onView,
   onApprove,
   onReject,
@@ -178,33 +180,7 @@ export function MobileApplicationCard({
 
             <div className="space-y-1 text-xs text-muted-foreground">
               <div className="flex items-center gap-4">
-                {(() => {
-                  const city = getCityWithFallback(
-                    application.applicants?.city,
-                    application.answers as Record<string, unknown>
-                  );
-                  const state = getStateWithFallback(
-                    application.applicants?.state,
-                    application.answers as Record<string, unknown>
-                  );
-                  return (
-                    <>
-                      {city && (
-                        <div className="flex items-center gap-1">
-                          <span className="font-medium text-foreground/70">City:</span>
-                          <span>{city}</span>
-                        </div>
-                      )}
-                      {state && (
-                        <div className="flex items-center gap-1">
-                          <span className="font-medium text-foreground/70">State:</span>
-                          <span>{state}</span>
-                        </div>
-                      )}
-                      {!city && !state && <span>—</span>}
-                    </>
-                  );
-                })()}
+                <span>Location: {location ?? formatApplicantLocation(application.applicants)}</span>
               </div>
               {application.job_postings?.project_task_orders?.title && (
                 <div className="flex items-center gap-2">

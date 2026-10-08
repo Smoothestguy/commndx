@@ -1,3 +1,5 @@
+import { formatApplicantLocation } from "@/lib/applicantLocation";
+import { useApplicantLocations } from "@/hooks/useZipLookup";
 import { useMemo, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useQuery } from "@tanstack/react-query";
@@ -87,7 +89,9 @@ const useMasterApplicants = () =>
 type SortKey = "name" | "last_applied_at" | "application_count" | "city";
 
 export default function MasterApplicants() {
-  const { data, isLoading } = useMasterApplicants();
+  const { data: rawData, isLoading } = useMasterApplicants();
+  const resolveLocation = useApplicantLocations(rawData ?? []);
+  const data = rawData?.map(resolveLocation);
   const [search, setSearch] = useState("");
   const [status, setStatus] = useState<string>("all");
   const [hasPhone, setHasPhone] = useState<string>("all");
@@ -223,7 +227,7 @@ export default function MasterApplicants() {
                   <TableRow><TableCell colSpan={7} className="text-center py-8 text-muted-foreground">No applicants match your filters.</TableCell></TableRow>
                 ) : filtered.map((r) => {
                   const initials = `${r.first_name?.[0] ?? ""}${r.last_name?.[0] ?? ""}`.toUpperCase();
-                  const loc = [r.city, r.state, r.home_zip].filter(Boolean).join(", ");
+                  const loc = formatApplicantLocation(r);
                   return (
                     <TableRow key={r.id} data-state={selected.has(r.id) ? "selected" : undefined}>
                       <TableCell><Checkbox checked={selected.has(r.id)} onCheckedChange={() => toggle(r.id)} /></TableCell>
