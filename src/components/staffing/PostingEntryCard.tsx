@@ -1,4 +1,5 @@
 import { format } from "date-fns";
+import { formatApplicantLocation } from "@/lib/applicantLocation";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { SecureAvatar } from "@/components/ui/secure-avatar";
@@ -16,6 +17,7 @@ const statusColors: Record<string, string> = {
 
 interface PostingEntryCardProps {
   application: Application;
+  location?: string;
   formFields: FormField[];
   onViewApplication: (app: Application) => void;
   onApprove: (app: Application) => void;
@@ -50,6 +52,7 @@ function getProfilePicture(
 
 export function PostingEntryCard({
   application,
+  location,
   formFields,
   onViewApplication,
   onApprove,
@@ -134,6 +137,7 @@ export function PostingEntryCard({
           </div>
 
           {/* Phone & Date */}
+          <p className="text-sm text-muted-foreground">Location: {location ?? formatApplicantLocation(application.applicants)}</p>
           <div className="flex flex-wrap gap-x-4 gap-y-1 text-sm text-muted-foreground">
             {application.applicants?.phone && (
               <span>{application.applicants.phone}</span>

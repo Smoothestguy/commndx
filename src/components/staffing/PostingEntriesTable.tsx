@@ -1,4 +1,6 @@
 import { useMemo } from "react";
+import { formatApplicantLocation } from "@/lib/applicantLocation";
+import { useApplicantLocations } from "@/hooks/useZipLookup";
 import { format } from "date-fns";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -167,6 +169,7 @@ export function PostingEntriesTable({
   selectedIds = new Set(),
   onSelectionChange,
 }: PostingEntriesTableProps) {
+  const resolveLocation = useApplicantLocations(applications.map((app) => app.applicants));
 
   // Filter out profile picture field from columns (shown separately)
   const displayFields = useMemo(() => {
@@ -225,6 +228,7 @@ export function PostingEntriesTable({
             <PostingEntryCard
               key={app.id}
               application={app}
+              location={formatApplicantLocation(app.applicants ? resolveLocation(app.applicants) : null)}
               formFields={formFields}
               onViewApplication={onViewApplication}
               onApprove={onApprove}
@@ -256,6 +260,7 @@ export function PostingEntriesTable({
                 <TableHead className="min-w-[150px]">Name</TableHead>
                 <TableHead className="min-w-[180px]">Email</TableHead>
                 <TableHead className="min-w-[120px]">Phone</TableHead>
+                <TableHead className="min-w-[160px]">Location</TableHead>
                 <TableHead className="min-w-[140px]">Position</TableHead>
                 {limitedDisplayFields.map((field) => (
                   <TableHead key={field.id} className="min-w-[120px] max-w-[200px]">
@@ -330,6 +335,9 @@ export function PostingEntriesTable({
                     </TableCell>
                     <TableCell className="text-sm text-muted-foreground">
                       {app.applicants?.phone || "—"}
+                    </TableCell>
+                    <TableCell className="text-sm text-muted-foreground">
+                      {formatApplicantLocation(app.applicants ? resolveLocation(app.applicants) : null)}
                     </TableCell>
                     <TableCell>
                       {typeof answers?.position_applying_for === "string" && answers.position_applying_for ? (

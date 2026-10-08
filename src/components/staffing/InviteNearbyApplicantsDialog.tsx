@@ -1,4 +1,6 @@
 import { useMemo, useState, useEffect } from "react";
+import { formatApplicantLocation } from "@/lib/applicantLocation";
+import { useApplicantLocations } from "@/hooks/useZipLookup";
 import { supabase } from "@/integrations/supabase/client";
 import {
   Dialog,
@@ -42,6 +44,7 @@ export const InviteNearbyApplicantsDialog = ({ open, onOpenChange, posting }: Pr
   const [sending, setSending] = useState(false);
 
   const { data: candidates, isLoading } = useNearbyApplicants(project, open);
+  const resolveLocation = useApplicantLocations(open ? candidates ?? [] : []);
 
   useEffect(() => {
     if (!open) return;
@@ -185,7 +188,7 @@ export const InviteNearbyApplicantsDialog = ({ open, onOpenChange, posting }: Pr
             <div className="divide-y">
               {filtered.map((a) => {
                 const name = `${a.first_name ?? ""} ${a.last_name ?? ""}`.trim() || "(no name)";
-                const loc = [a.city, a.state].filter(Boolean).join(", ");
+                const loc = formatApplicantLocation(resolveLocation(a));
                 const distLabel =
                   a.distance_mi != null
                     ? `${a.distance_mi.toFixed(1)} mi`
@@ -221,8 +224,7 @@ export const InviteNearbyApplicantsDialog = ({ open, onOpenChange, posting }: Pr
                       </div>
                       <div className="text-xs text-muted-foreground truncate">
                         {a.phone ?? "no phone"}
-                        {loc ? ` · ${loc}` : ""}
-                        {a.home_zip ? ` · ${a.home_zip}` : ""}
+                        {` · ${loc}`}
                       </div>
                     </div>
                   </label>
