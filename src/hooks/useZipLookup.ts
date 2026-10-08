@@ -1,3 +1,4 @@
+import { useCallback } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { missingApplicantZips, withZipLocation, type ApplicantLocation, type ZipLocations } from "@/lib/applicantLocation";
@@ -17,7 +18,9 @@ export function useZipLookup(zips: string[]) {
 }
 
 /** One batch per staff view; never write ZIP fallbacks back to applicant records. */
+const emptyLookup: ZipLocations = {};
+
 export function useApplicantLocations(applicants: (ApplicantLocation | null | undefined)[]) {
-  const { data: lookup = {} } = useZipLookup(missingApplicantZips(applicants));
-  return <T extends ApplicantLocation>(applicant: T): T => withZipLocation(applicant, lookup);
+  const { data: lookup = emptyLookup } = useZipLookup(missingApplicantZips(applicants));
+  return useCallback(<T extends ApplicantLocation>(applicant: T): T => withZipLocation(applicant, lookup), [lookup]);
 }

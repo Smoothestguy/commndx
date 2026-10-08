@@ -91,7 +91,7 @@ type SortKey = "name" | "last_applied_at" | "application_count" | "city";
 export default function MasterApplicants() {
   const { data: rawData, isLoading } = useMasterApplicants();
   const resolveLocation = useApplicantLocations(rawData ?? []);
-  const data = rawData?.map(resolveLocation);
+  const data = useMemo(() => rawData?.map(resolveLocation), [rawData, resolveLocation]);
   const [search, setSearch] = useState("");
   const [status, setStatus] = useState<string>("all");
   const [hasPhone, setHasPhone] = useState<string>("all");

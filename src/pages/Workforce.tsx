@@ -53,7 +53,7 @@ export default function Workforce() {
   const { data: categories = [], isLoading: catLoading } = useCapabilityCategories();
   const { data: rawPool = [], isLoading: poolLoading, refetch } = useWorkforcePool();
   const resolveLocation = useApplicantLocations(rawPool);
-  const pool = rawPool.map(resolveLocation);
+  const pool = useMemo(() => rawPool.map(resolveLocation), [rawPool, resolveLocation]);
   const { data: history } = useWorkforceHistory();
   const { data: postings = [] } = useJobPostings();
   const classify = useClassifyApplicants();
