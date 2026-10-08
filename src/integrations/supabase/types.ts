@@ -9225,6 +9225,24 @@ export type Database = {
           },
         ]
       }
+      zip_codes: {
+        Row: {
+          city: string
+          state: string
+          zip: string
+        }
+        Insert: {
+          city: string
+          state: string
+          zip: string
+        }
+        Update: {
+          city?: string
+          state?: string
+          zip?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       public_task_order_positions: {

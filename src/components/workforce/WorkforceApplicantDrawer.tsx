@@ -1,3 +1,5 @@
+import { formatApplicantLocation } from "@/lib/applicantLocation";
+import { useApplicantLocations } from "@/hooks/useZipLookup";
 import { useMemo, useState } from "react";
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { Button } from "@/components/ui/button";
@@ -37,6 +39,7 @@ interface Props {
 type TimelineItem = { at: string; label: string; detail?: string | null; kind: string };
 
 export function WorkforceApplicantDrawer({ applicant, categories, open, onOpenChange }: Props) {
+  const resolveLocation = useApplicantLocations(open ? [applicant] : []);
   const [newCategory, setNewCategory] = useState<string>("");
   const [lightbox, setLightbox] = useState<LightboxPhoto | null>(null);
   const [ratingTarget, setRatingTarget] = useState<{
@@ -142,7 +145,7 @@ export function WorkforceApplicantDrawer({ applicant, categories, open, onOpenCh
         <div className="mt-4 space-y-1 text-sm text-muted-foreground">
           <div>{applicant.phone ?? "No phone"}</div>
           <div>{applicant.email}</div>
-          <div>{[applicant.city, applicant.state].filter(Boolean).join(", ") || "No location"}</div>
+          <div>{formatApplicantLocation(resolveLocation(applicant))}</div>
           <div>Status: {applicant.status}</div>
           {applicant.sms_opted_out && <div className="text-destructive">Opted out of SMS</div>}
           {applicant.last_application_at && (

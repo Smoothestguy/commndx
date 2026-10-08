@@ -1,4 +1,6 @@
 import React, { useEffect, useRef, useState, useCallback } from 'react';
+import { formatApplicantLocation } from "@/lib/applicantLocation";
+import { useApplicantLocations } from "@/hooks/useZipLookup";
 import mapboxgl from 'mapbox-gl';
 import 'mapbox-gl/dist/mapbox-gl.css';
 import { supabase } from "@/integrations/supabase/client";
@@ -104,6 +106,7 @@ export function PersonnelApplicantMap({ mapboxToken, isAdmin = false }: Personne
   
   const [personnel, setPersonnel] = useState<PersonnelLocation[]>([]);
   const [applicants, setApplicants] = useState<ApplicantLocation[]>([]);
+  const resolveLocation = useApplicantLocations(applicants);
   const [activeClocks, setActiveClocks] = useState<ActiveClockLocation[]>([]);
   const [loading, setLoading] = useState(true);
   const [selectedPerson, setSelectedPerson] = useState<LocationData | null>(null);
@@ -416,13 +419,17 @@ export function PersonnelApplicantMap({ mapboxToken, isAdmin = false }: Personne
     const p = person as PersonnelLocation | ApplicantLocation;
     
     if (p.address) parts.push(p.address);
+    if (p.type === 'applicant') {
+      parts.push(formatApplicantLocation(resolveLocation(p)));
+      return parts.join('\n');
+    }
     
     const cityState: string[] = [];
     if (p.city) cityState.push(p.city);
     if (p.state) cityState.push(p.state);
     if (cityState.length > 0) parts.push(cityState.join(', '));
     
-    const zip = p.type === 'applicant' ? p.home_zip : p.zip;
+    const zip = p.zip;
     if (zip) parts.push(zip);
     
     return parts.length > 0 ? parts.join('\n') : null;

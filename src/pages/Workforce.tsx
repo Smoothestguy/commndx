@@ -1,3 +1,5 @@
+import { formatApplicantLocation } from "@/lib/applicantLocation";
+import { useApplicantLocations } from "@/hooks/useZipLookup";
 import { useEffect, useMemo, useState } from "react";
 import { useSearchParams } from "react-router-dom";
 import { NetSuitePageLayout } from "@/components/layout/netsuite";
@@ -49,7 +51,9 @@ export default function Workforce() {
   const postingParam = searchParams.get("posting");
 
   const { data: categories = [], isLoading: catLoading } = useCapabilityCategories();
-  const { data: pool = [], isLoading: poolLoading, refetch } = useWorkforcePool();
+  const { data: rawPool = [], isLoading: poolLoading, refetch } = useWorkforcePool();
+  const resolveLocation = useApplicantLocations(rawPool);
+  const pool = useMemo(() => rawPool.map(resolveLocation), [rawPool, resolveLocation]);
   const { data: history } = useWorkforceHistory();
   const { data: postings = [] } = useJobPostings();
   const classify = useClassifyApplicants();
@@ -565,7 +569,7 @@ export default function Workforce() {
                               <div className="truncate max-w-[180px]">{a.email}</div>
                             </TableCell>
                             <TableCell className="text-sm text-muted-foreground">
-                              {[a.city, a.state].filter(Boolean).join(", ") || "—"}
+                              {formatApplicantLocation(a)}
                               {dist != null && (
                                 <div className="text-xs">{Math.round(dist)} mi</div>
                               )}

@@ -11,7 +11,8 @@ import { MobileApplicationCard } from "./MobileApplicationCard";
 import type { Application } from "@/integrations/supabase/hooks/useStaffingApplications";
 import { useApplicationFormTemplates, FormField } from "@/integrations/supabase/hooks/useApplicationFormTemplates";
 import { cn } from "@/lib/utils";
-import { getCityWithFallback, getStateWithFallback } from "@/lib/locationUtils";
+import { formatApplicantLocation } from "@/lib/applicantLocation";
+import { useApplicantLocations } from "@/hooks/useZipLookup";
 
 const statusColors: Record<string, string> = {
   submitted: "bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-300",
@@ -84,6 +85,7 @@ export function ApplicationsTable({
   onSelectionChange,
 }: ApplicationsTableProps) {
   const isMobile = useIsMobile();
+  const resolveLocation = useApplicantLocations(applications.map((app) => app.applicants));
   const { data: formTemplates } = useApplicationFormTemplates();
 
   // Build a map of form template id -> field type map for quick lookup
@@ -153,34 +155,16 @@ export function ApplicationsTable({
       },
     },
     {
-      key: "city",
-      header: "City",
+      key: "location",
+      header: "Location",
       sortable: true,
       filterable: true,
-      getValue: (app) => getCityWithFallback(app.applicants?.city, app.answers as Record<string, unknown>) || "",
-      render: (app: Application) => {
-        const city = getCityWithFallback(app.applicants?.city, app.answers as Record<string, unknown>);
-        return (
-          <span className="text-muted-foreground">
-            {city || "—"}
-          </span>
-        );
-      },
-    },
-    {
-      key: "state",
-      header: "State",
-      sortable: true,
-      filterable: true,
-      getValue: (app) => getStateWithFallback(app.applicants?.state, app.answers as Record<string, unknown>) || "",
-      render: (app: Application) => {
-        const state = getStateWithFallback(app.applicants?.state, app.answers as Record<string, unknown>);
-        return (
-          <span className="text-muted-foreground">
-            {state || "—"}
-          </span>
-        );
-      },
+      getValue: (app) => formatApplicantLocation(app.applicants ? resolveLocation(app.applicants) : null),
+      render: (app: Application) => (
+        <span className="text-muted-foreground">
+          {formatApplicantLocation(app.applicants ? resolveLocation(app.applicants) : null)}
+        </span>
+      ),
     },
     {
       key: "position",
@@ -359,6 +343,7 @@ export function ApplicationsTable({
             <MobileApplicationCard
               key={app.id}
               application={app}
+              location={formatApplicantLocation(app.applicants ? resolveLocation(app.applicants) : null)}
               onView={onViewApplication}
               onApprove={onApprove}
               onReject={onReject}
