@@ -81,6 +81,10 @@ interface AssignHotelDialogProps {
 export function AssignHotelDialog({ open, onOpenChange, projectId, onCreated }: AssignHotelDialogProps) {
   const { data: personnel = [] } = usePersonnelByProject(projectId);
   const createMutation = useCreateHotelAssignment();
+  const [mode, setMode] = useState<"project" | "all">("project");
+  const [search, setSearch] = useState("");
+  const { data: allPersonnel = [] } = useActivePersonnelLite(mode === "all");
+  const { data: assignmentMap = {} } = useActiveProjectAssignmentMap(mode === "all");
 
   const form = useForm<HotelFormValues>({
     resolver: zodResolver(hotelSchema),
