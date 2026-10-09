@@ -1,3 +1,5 @@
+import { ApplicantTagBadges, ApplicantNoteLine } from "@/components/staffing/ApplicantMetaInline";
+import type { CertSummary } from "@/hooks/useApplicantCertSummary";
 import { format } from "date-fns";
 import { formatApplicantLocation } from "@/lib/applicantLocation";
 import { Badge } from "@/components/ui/badge";
@@ -26,6 +28,7 @@ interface PostingEntryCardProps {
   selectable?: boolean;
   isSelected?: boolean;
   onSelectionChange?: (id: string) => void;
+  certs?: CertSummary;
 }
 
 function getProfilePicture(
@@ -61,6 +64,7 @@ export function PostingEntryCard({
   selectable = false,
   isSelected = false,
   onSelectionChange,
+  certs,
 }: PostingEntryCardProps) {
   const answers = application.answers as Record<string, unknown> | null;
   const profilePic = getProfilePicture(answers, formFields, (application.applicants as any)?.photo_url);
@@ -131,6 +135,7 @@ export function PostingEntryCard({
               <p className="text-sm text-muted-foreground truncate">
                 {application.applicants?.email}
               </p>
+              <ApplicantTagBadges applicant={application.applicants as any} certs={certs} className="mt-1" />
             </div>
             <div className="flex flex-col items-end gap-1 shrink-0">
               <Badge className={statusColors[application.status]}>
@@ -146,6 +151,7 @@ export function PostingEntryCard({
 
           {/* Phone & Date */}
           <p className="text-sm text-muted-foreground">Location: {location ?? formatApplicantLocation(application.applicants)}</p>
+          <ApplicantNoteLine applicant={application.applicants as any} />
           <div className="flex flex-wrap gap-x-4 gap-y-1 text-sm text-muted-foreground">
             {application.applicants?.phone && (
               <span>{application.applicants.phone}</span>
