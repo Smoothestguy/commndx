@@ -1,6 +1,7 @@
 import { formatApplicantLocation } from "@/lib/applicantLocation";
 import { useApplicantLocations } from "@/hooks/useZipLookup";
 import { useMemo, useState } from "react";
+import { ApplicantStarButton } from "@/components/staffing/ApplicantStarButton";
 import { supabase } from "@/integrations/supabase/client";
 import { useQuery } from "@tanstack/react-query";
 import {
@@ -30,6 +31,7 @@ type Row = {
   city: string | null;
   state: string | null;
   home_zip: string | null;
+  starred_at?: string | null;
   status: string;
   created_at: string;
   application_count: number;
@@ -44,7 +46,7 @@ const useMasterApplicants = () =>
     queryFn: async (): Promise<Row[]> => {
       const { data: applicants, error } = await supabase
         .from("applicants")
-        .select("id, first_name, last_name, email, phone, photo_url, city, state, home_zip, status, created_at")
+        .select("id, first_name, last_name, email, phone, photo_url, city, state, home_zip, starred_at, status, created_at")
         .order("created_at", { ascending: false });
       if (error) throw error;
 
@@ -117,6 +119,7 @@ export default function MasterApplicants() {
 
     const dir = sortDir === "asc" ? 1 : -1;
     filtered.sort((a, b) => {
+      if (!!a.starred_at !== !!b.starred_at) return a.starred_at ? -1 : 1;
       const av: any = sortKey === "name" ? `${a.last_name} ${a.first_name}`.toLowerCase()
         : sortKey === "city" ? (a.city ?? "").toLowerCase()
         : sortKey === "application_count" ? a.application_count
@@ -233,6 +236,7 @@ export default function MasterApplicants() {
                       <TableCell><Checkbox checked={selected.has(r.id)} onCheckedChange={() => toggle(r.id)} /></TableCell>
                       <TableCell>
                         <div className="flex items-center gap-2">
+                          <ApplicantStarButton applicantId={r.id} starredAt={r.starred_at} />
                           <Avatar className="h-8 w-8">
                             {r.photo_url ? <AvatarImage src={r.photo_url} alt="" /> : null}
                             <AvatarFallback className="text-xs">{initials || "?"}</AvatarFallback>
