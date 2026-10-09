@@ -74,7 +74,7 @@ interface ApplicationsTableProps {
 }
 
 export function ApplicationsTable({
-  applications,
+  applications: rawApplications,
   isLoading,
   onViewApplication,
   onApprove,

@@ -159,7 +159,7 @@ function formatFieldValue(value: unknown, field: FormField): React.ReactNode {
 }
 
 export function PostingEntriesTable({
-  applications,
+  applications: rawApplications,
   formFields,
   isLoading,
   onViewApplication,
