@@ -496,7 +496,9 @@ export type Database = {
           last_name: string
           phone: string | null
           photo_url: string | null
+          role_tags: string[]
           sms_opted_out: boolean
+          staff_notes: string | null
           starred_at: string | null
           starred_by: string | null
           state: string | null
@@ -525,7 +527,9 @@ export type Database = {
           last_name: string
           phone?: string | null
           photo_url?: string | null
+          role_tags?: string[]
           sms_opted_out?: boolean
+          staff_notes?: string | null
           starred_at?: string | null
           starred_by?: string | null
           state?: string | null
@@ -554,7 +558,9 @@ export type Database = {
           last_name?: string
           phone?: string | null
           photo_url?: string | null
+          role_tags?: string[]
           sms_opted_out?: boolean
+          staff_notes?: string | null
           starred_at?: string | null
           starred_by?: string | null
           state?: string | null
