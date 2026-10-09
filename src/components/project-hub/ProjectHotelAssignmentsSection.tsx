@@ -6,6 +6,7 @@ import {
   ChevronDown,
   Loader2,
   LogOut,
+  Send,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import {
@@ -38,9 +39,17 @@ import { useIsMobile } from "@/hooks/use-mobile";
 import {
   useHotelAssignmentsByProject,
   useCheckOutHotel,
+  useSendLodgingDetails,
   type HotelAssignmentWithDetails,
 } from "@/integrations/supabase/hooks/useHotelAssignments";
-import { AssignHotelDialog } from "./AssignHotelDialog";
+import { AssignHotelDialog, LODGING_TYPES } from "./AssignHotelDialog";
+
+const typeLabel = (t?: string | null) => LODGING_TYPES.find((x) => x.value === t)?.label ?? "Hotel";
+
+function SentNote({ a }: { a: HotelAssignmentWithDetails }) {
+  if (!a.notified_at) return null;
+  return <span className="text-xs text-muted-foreground">Sent {format(new Date(a.notified_at), "MMM d")}</span>;
+}
 
 interface ProjectHotelAssignmentsSectionProps {
   projectId: string;
@@ -65,6 +74,9 @@ export function ProjectHotelAssignmentsSection({
 
   const { data: assignments = [], isLoading } = useHotelAssignmentsByProject(projectId);
   const checkOutMutation = useCheckOutHotel();
+  const sendDetails = useSendLodgingDetails();
+  const [pendingSend, setPendingSend] = useState<string[]>([]);
+  const onSend = (id: string) => sendDetails.mutate([id]);
 
   const activeAssignments = assignments.filter((a) => a.status === "active");
 
@@ -102,7 +114,7 @@ export function ProjectHotelAssignmentsSection({
               <div className="space-y-1">
                 <CardTitle className="flex items-center gap-2 text-lg">
                   <Hotel className="h-5 w-5 text-primary" />
-                  Hotel Assignments
+                  Lodging Assignments
                   <ChevronDown
                     className={cn(
                       "h-4 w-4 text-muted-foreground transition-transform duration-200",
@@ -111,7 +123,7 @@ export function ProjectHotelAssignmentsSection({
                   />
                 </CardTitle>
                 <CardDescription>
-                  {activeAssignments.length} active hotel stay{activeAssignments.length !== 1 ? "s" : ""}
+                  {activeAssignments.length} active lodging assignment{activeAssignments.length !== 1 ? "s" : ""}
                 </CardDescription>
               </div>
               <Button
@@ -122,7 +134,7 @@ export function ProjectHotelAssignmentsSection({
                 size="sm"
               >
                 <Plus className="h-4 w-4 mr-2" />
-                {isMobile ? "Add" : "Add Hotel"}
+                {isMobile ? "Add" : "Add Lodging"}
               </Button>
             </CardHeader>
           </CollapsibleTrigger>
@@ -132,22 +144,24 @@ export function ProjectHotelAssignmentsSection({
                 <div className="text-center py-8">
                   <Hotel className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
                   <p className="text-muted-foreground mb-4">
-                    No active hotel assignments for this project
+                    No active lodging assignments for this project
                   </p>
                   <Button variant="outline" onClick={() => setIsAssignDialogOpen(true)}>
                     <Plus className="h-4 w-4 mr-2" />
-                    Add Hotel
+                    Add Lodging
                   </Button>
                 </div>
               ) : isMobile ? (
                 <MobileCards
                   assignments={activeAssignments}
                   onCheckOut={handleCheckOut}
+                  onSend={onSend}
                 />
               ) : (
                 <DesktopTable
                   assignments={activeAssignments}
                   onCheckOut={handleCheckOut}
+                  onSend={onSend}
                 />
               )}
             </CardContent>
@@ -159,7 +173,23 @@ export function ProjectHotelAssignmentsSection({
         open={isAssignDialogOpen}
         onOpenChange={setIsAssignDialogOpen}
         projectId={projectId}
+        onCreated={(ids) => setPendingSend(ids)}
       />
+
+      <AlertDialog open={pendingSend.length > 0} onOpenChange={(o) => !o && setPendingSend([])}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Send lodging details?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Send lodging details to {pendingSend.length} personnel by text/email?
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Skip</AlertDialogCancel>
+            <AlertDialogAction onClick={() => { sendDetails.mutate(pendingSend); setPendingSend([]); }}>Send</AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
 
       <AlertDialog open={!!checkOutId} onOpenChange={() => setCheckOutId(null)}>
         <AlertDialogContent>
@@ -187,9 +217,11 @@ export function ProjectHotelAssignmentsSection({
 function MobileCards({
   assignments,
   onCheckOut,
+  onSend,
 }: {
   assignments: HotelAssignmentWithDetails[];
   onCheckOut: (id: string, label: string) => void;
+  onSend: (id: string) => void;
 }) {
   return (
     <div className="space-y-3">
@@ -197,11 +229,15 @@ function MobileCards({
         <div key={a.id} className="p-4 rounded-lg border bg-card">
           <div className="flex items-start justify-between gap-3">
             <div className="min-w-0">
-              <p className="font-medium truncate">{a.hotel_name}</p>
+              <p className="font-medium truncate">{a.hotel_name} <span className="text-xs text-muted-foreground">· {typeLabel(a.lodging_type)}</span></p>
+              <SentNote a={a} />
               <p className="text-sm text-muted-foreground">
                 {a.personnel?.first_name} {a.personnel?.last_name}
               </p>
             </div>
+            <Button variant="ghost" size="icon" className="flex-shrink-0" onClick={() => onSend(a.id)} title="Send details" aria-label="Send details">
+              <Send className="h-4 w-4" />
+            </Button>
             <Button
               variant="ghost"
               size="icon"
@@ -219,7 +255,7 @@ function MobileCards({
           <div className="mt-3 pt-3 border-t space-y-1 text-sm">
             {a.room_number && (
               <p>
-                <span className="text-muted-foreground">Room:</span> {a.room_number}
+                <span className="text-muted-foreground">Room/Unit:</span> {a.room_number}
               </p>
             )}
             {a.confirmation_number && (
@@ -250,9 +286,11 @@ function MobileCards({
 function DesktopTable({
   assignments,
   onCheckOut,
+  onSend,
 }: {
   assignments: HotelAssignmentWithDetails[];
   onCheckOut: (id: string, label: string) => void;
+  onSend: (id: string) => void;
 }) {
   return (
     <div className="rounded-md border">
@@ -260,13 +298,13 @@ function DesktopTable({
         <TableHeader>
           <TableRow>
             <TableHead>Personnel</TableHead>
-            <TableHead>Hotel</TableHead>
+            <TableHead>Lodging</TableHead>
             <TableHead>Room</TableHead>
             <TableHead>Confirmation #</TableHead>
             <TableHead>Check-in</TableHead>
             <TableHead>Check-out</TableHead>
             <TableHead>Status</TableHead>
-            <TableHead className="w-[80px]">Actions</TableHead>
+            <TableHead className="w-[140px]">Actions</TableHead>
           </TableRow>
         </TableHeader>
         <TableBody>
@@ -277,7 +315,7 @@ function DesktopTable({
               </TableCell>
               <TableCell>
                 <div>
-                  <p>{a.hotel_name}</p>
+                  <p>{a.hotel_name} <span className="text-xs text-muted-foreground">· {typeLabel(a.lodging_type)}</span></p>
                   {a.hotel_city && (
                     <p className="text-xs text-muted-foreground">
                       {a.hotel_city}
@@ -299,7 +337,10 @@ function DesktopTable({
                   {a.status}
                 </Badge>
               </TableCell>
-              <TableCell>
+              <TableCell className="whitespace-nowrap">
+                <Button variant="ghost" size="icon" onClick={() => onSend(a.id)} title="Send details" aria-label="Send details">
+                  <Send className="h-4 w-4" />
+                </Button>
                 <Button
                   variant="ghost"
                   size="icon"
@@ -313,6 +354,7 @@ function DesktopTable({
                 >
                   <LogOut className="h-4 w-4" />
                 </Button>
+                <SentNote a={a} />
               </TableCell>
             </TableRow>
           ))}
