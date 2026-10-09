@@ -282,7 +282,12 @@ export function ApplicationDetailDialog({
     }
   };
 
+  const [showPhotoPrompt, setShowPhotoPrompt] = useState(false);
   const handleApprove = () => {
+    if (application?.applicant_id && !application?.applicants?.photo_url) {
+      setShowPhotoPrompt(true);
+      return;
+    }
     // Show the type selection dialog instead of directly approving
     setShowTypeSelectionDialog(true);
   };

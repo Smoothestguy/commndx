@@ -34,8 +34,10 @@ import { ProjectTimeEntriesList } from "@/components/project-hub/ProjectTimeEntr
 import { ProjectDocuments } from "@/components/projects/ProjectDocuments";
 import { ProjectActivityTimeline } from "@/components/project-hub/ProjectActivityTimeline";
 import { ProjectStatusMenu } from "@/components/projects/ProjectStatusMenu";
+import { ProjectLocationsTab } from "@/components/project-hub/ProjectLocationsTab";
+import { useProjectLocations } from "@/integrations/supabase/hooks/useProjectLocations";
 
-const TABS = ["overview", "recruiting", "crew", "financials", "time", "docs"] as const;
+const TABS = ["overview", "locations", "recruiting", "crew", "financials", "time", "docs"] as const;
 type TabValue = (typeof TABS)[number];
 
 const ProjectDetail = () => {
@@ -47,6 +49,7 @@ const ProjectDetail = () => {
   const { data: customer } = useCustomer(project?.customer_id);
   const { isAdmin, isManager } = useUserRole();
   const canArchive = isAdmin || isManager;
+  const { data: locations = [] } = useProjectLocations(id);
   const archiveProject = useArchiveProject();
   const unarchiveProject = useUnarchiveProject();
 
@@ -213,6 +216,7 @@ const ProjectDetail = () => {
         <div className="overflow-x-auto -mx-1 px-1 mb-4">
           <TabsList className="w-max">
             <TabsTrigger value="overview">Overview</TabsTrigger>
+            <TabsTrigger value="locations">Locations{locations.length > 0 ? ` (${locations.length})` : ""}</TabsTrigger>
             <TabsTrigger value="recruiting">Recruiting</TabsTrigger>
             <TabsTrigger value="crew">Crew &amp; Logistics</TabsTrigger>
             <TabsTrigger value="financials">Financials</TabsTrigger>
@@ -223,6 +227,9 @@ const ProjectDetail = () => {
 
         <TabsContent value="overview">
           <ProjectOverviewTab projectId={id} project={project} />
+        </TabsContent>
+        <TabsContent value="locations">
+          <ProjectLocationsTab projectId={id} />
         </TabsContent>
         <TabsContent value="recruiting">
           <ProjectRecruitingSection projectId={id} />
