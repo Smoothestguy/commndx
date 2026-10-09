@@ -1,3 +1,5 @@
+import { ApplicantTagBadges, ApplicantNoteLine } from "@/components/staffing/ApplicantMetaInline";
+import { useApplicantCertSummary } from "@/hooks/useApplicantCertSummary";
 import { formatApplicantLocation } from "@/lib/applicantLocation";
 import { useApplicantLocations } from "@/hooks/useZipLookup";
 import { useMemo, useState } from "react";
@@ -243,7 +245,13 @@ export default function MasterApplicants() {
                             {r.photo_url ? <AvatarImage src={r.photo_url} alt="" /> : null}
                             <AvatarFallback className="text-xs">{initials || "?"}</AvatarFallback>
                           </Avatar>
-                          <div className="font-medium">{r.first_name} {r.last_name}</div>
+                          <div className="min-w-0">
+                            <div className="flex flex-wrap items-center gap-1.5">
+                              <span className="font-medium">{r.first_name} {r.last_name}</span>
+                              <ApplicantTagBadges applicant={r} certs={certSummary[r.id]} />
+                            </div>
+                            <ApplicantNoteLine applicant={r} className="max-w-[260px]" />
+                          </div>
                         </div>
                       </TableCell>
                       <TableCell className="text-sm">

@@ -525,6 +525,7 @@ export function ProjectApplicantsSection({
               <p className="font-medium truncate">
                 {applicant.first_name} {applicant.last_name}
               </p>
+              <ApplicantTagBadges applicant={applicant as any} certs={certSummary[application.applicant_id]} />
               {applicantAssignmentMap[application.applicant_id] && (
                 <Badge className="bg-primary/10 text-primary border-primary/20 text-xs">
                   Assigned to: {applicantAssignmentMap[application.applicant_id].projectName}
@@ -533,6 +534,7 @@ export function ProjectApplicantsSection({
               <p className="text-sm text-muted-foreground truncate">
                 {positionTitle}
               </p>
+              <ApplicantNoteLine applicant={applicant as any} />
             </div>
           </div>
           <Badge className={cn("capitalize text-xs", statusColors[application.status])}>

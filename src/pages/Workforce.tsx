@@ -1,3 +1,5 @@
+import { ApplicantTagBadges, ApplicantNoteLine } from "@/components/staffing/ApplicantMetaInline";
+import { useApplicantCertSummary } from "@/hooks/useApplicantCertSummary";
 import { formatApplicantLocation } from "@/lib/applicantLocation";
 import { useApplicantLocations } from "@/hooks/useZipLookup";
 import { useEffect, useMemo, useState } from "react";
@@ -558,9 +560,15 @@ export default function Workforce() {
                                     {a.last_name?.[0]}
                                   </AvatarFallback>
                                 </Avatar>
-                                <span className="font-medium">
-                                  {a.first_name} {a.last_name}
-                                </span>
+                                <div className="min-w-0">
+                                  <div className="flex flex-wrap items-center gap-1.5">
+                                    <span className="font-medium">
+                                      {a.first_name} {a.last_name}
+                                    </span>
+                                    <ApplicantTagBadges applicant={a} certs={certSummary[a.id]} />
+                                  </div>
+                                  <ApplicantNoteLine applicant={a} className="max-w-[260px]" />
+                                </div>
                                 {a.do_not_rehire && (
                                   <Badge variant="destructive" className="text-[10px]">
                                     Do not rehire
