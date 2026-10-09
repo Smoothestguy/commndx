@@ -9,6 +9,7 @@ import { DataTable } from "@/components/shared/DataTable";
 import { StatusBadge } from "@/components/shared/StatusBadge";
 import { FileText, Briefcase, Receipt, Plus } from "lucide-react";
 import { ProjectFinancialSummary } from "./ProjectFinancialSummary";
+import { ProjectUnbilledLabor } from "./ProjectUnbilledLabor";
 import { ProjectLaborAllocation } from "./ProjectLaborAllocation";
 import { ProjectRateBracketsSection } from "./ProjectRateBracketsSection";
 import { ProjectVendorBillsList } from "./ProjectVendorBillsList";
@@ -106,15 +107,23 @@ export function ProjectFinancialsTab({ projectId, project, customer }: Props) {
     );
     const totalInvoiced = invoices.reduce((s, i: any) => s + i.total, 0);
     const totalPaid = invoices.reduce((s, i: any) => s + (i.paid_amount || 0), 0);
-    const grossProfit = totalContractValue - totalPOValue;
-    const grossMargin = totalContractValue > 0 ? (grossProfit / totalContractValue) * 100 : 0;
     const timeEntryLaborCost = timeEntryCosts?.totalLaborCost || 0;
     const personnelPaymentCost = projectExpenses?.personnel_total || 0;
     const totalLaborCost = timeEntryLaborCost + personnelPaymentCost;
+    // Non-personnel, non-vendor-bill expenses. The expense hook's vendor_total is
+    // derived from vendor bill line items (already counted in totalVendorBilled),
+    // so there is currently no separate "other" source — kept explicit for future use.
     const totalOtherExpenses = 0;
-    const totalAllCosts = totalPOValue + totalLaborCost;
-    const netProfit = totalContractValue - totalAllCosts;
+    // Actual cost basis: vendor bills + labor + other. POs are commitments, shown separately.
+    const totalDirectCosts = totalVendorBilled + totalLaborCost + totalOtherExpenses;
+    const netProfit = totalContractValue - totalDirectCosts;
     const netMargin = totalContractValue > 0 ? (netProfit / totalContractValue) * 100 : 0;
+    const grossProfit = netProfit;
+    const grossMargin = netMargin;
+    const today = new Date().toISOString().slice(0, 10);
+    const overdue = invoices.filter((i: any) => i.status !== "paid" && i.due_date && i.due_date < today && (i.total - (i.paid_amount || 0)) > 0.005);
+    const overdueCount = overdue.length;
+    const overdueAmount = overdue.reduce((s, i: any) => s + (i.total - (i.paid_amount || 0)), 0);
 
     return {
       originalContractValue,
@@ -132,6 +141,9 @@ export function ProjectFinancialsTab({ projectId, project, customer }: Props) {
       totalOtherExpenses,
       netProfit,
       netMargin,
+      totalDirectCosts,
+      overdueCount,
+      overdueAmount,
       supervisionLaborCost: supervisionBreakdown?.supervisionCost || 0,
       fieldLaborCost: supervisionBreakdown?.fieldCost || 0,
     };
@@ -186,6 +198,7 @@ export function ProjectFinancialsTab({ projectId, project, customer }: Props) {
   return (
     <div className="space-y-8">
       <ProjectFinancialSummary data={financialData} />
+      <ProjectUnbilledLabor projectId={projectId} totalInvoiced={financialData.totalInvoiced} />
       <ProjectLaborAllocation projectId={projectId} />
       <ProjectRateBracketsSection projectId={projectId} />
 
@@ -279,11 +292,13 @@ export function ProjectFinancialsTab({ projectId, project, customer }: Props) {
         projectId={projectId}
         onAddNew={() => navigate(`/change-orders/new?projectId=${projectId}`)}
       />
-      <ProjectTMTicketsList
-        tickets={tmTickets || []}
-        projectId={projectId}
-        onAddNew={() => setIsTMTicketDialogOpen(true)}
-      />
+      {(tmTickets || []).length > 0 && (
+        <ProjectTMTicketsList
+          tickets={tmTickets || []}
+          projectId={projectId}
+          onAddNew={() => setIsTMTicketDialogOpen(true)}
+        />
+      )}
       <ProjectPurchaseOrdersList
         purchaseOrders={purchaseOrders}
         projectId={projectId}
