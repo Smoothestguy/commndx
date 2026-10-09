@@ -4401,11 +4401,13 @@ export type Database = {
       }
       personnel_hotel_assignments: {
         Row: {
+          access_codes: string | null
           check_in: string
           check_out: string | null
           confirmation_number: string | null
           created_at: string
           created_by: string | null
+          host_instructions: string | null
           hotel_address: string | null
           hotel_city: string | null
           hotel_name: string
@@ -4413,8 +4415,11 @@ export type Database = {
           hotel_state: string | null
           hotel_zip: string | null
           id: string
+          lodging_type: string
           nightly_rate: number | null
           notes: string | null
+          notified_at: string | null
+          notified_via: string | null
           personnel_id: string
           personnel_project_assignment_id: string | null
           project_id: string
@@ -4423,11 +4428,13 @@ export type Database = {
           updated_at: string
         }
         Insert: {
+          access_codes?: string | null
           check_in: string
           check_out?: string | null
           confirmation_number?: string | null
           created_at?: string
           created_by?: string | null
+          host_instructions?: string | null
           hotel_address?: string | null
           hotel_city?: string | null
           hotel_name: string
@@ -4435,8 +4442,11 @@ export type Database = {
           hotel_state?: string | null
           hotel_zip?: string | null
           id?: string
+          lodging_type?: string
           nightly_rate?: number | null
           notes?: string | null
+          notified_at?: string | null
+          notified_via?: string | null
           personnel_id: string
           personnel_project_assignment_id?: string | null
           project_id: string
@@ -4445,11 +4455,13 @@ export type Database = {
           updated_at?: string
         }
         Update: {
+          access_codes?: string | null
           check_in?: string
           check_out?: string | null
           confirmation_number?: string | null
           created_at?: string
           created_by?: string | null
+          host_instructions?: string | null
           hotel_address?: string | null
           hotel_city?: string | null
           hotel_name?: string
@@ -4457,8 +4469,11 @@ export type Database = {
           hotel_state?: string | null
           hotel_zip?: string | null
           id?: string
+          lodging_type?: string
           nightly_rate?: number | null
           notes?: string | null
+          notified_at?: string | null
+          notified_via?: string | null
           personnel_id?: string
           personnel_project_assignment_id?: string | null
           project_id?: string
