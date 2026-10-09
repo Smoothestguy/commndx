@@ -137,6 +137,17 @@ export function AssignHotelDialog({ open, onOpenChange, projectId, onCreated }: 
     (p) => p.personnel
   );
 
+  const q = search.trim().toLowerCase();
+  const qDigits = q.replace(/\D/g, "");
+  const filteredAll = (q
+    ? allPersonnel.filter((p) => {
+        const name = `${p.first_name ?? ""} ${p.last_name ?? ""}`.toLowerCase();
+        const phone = (p.phone ?? "").replace(/\D/g, "");
+        return name.includes(q) || (qDigits.length > 0 && phone.includes(qDigits));
+      })
+    : allPersonnel
+  ).slice(0, 200);
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-lg max-h-[90vh] flex flex-col overflow-hidden">
