@@ -47,6 +47,7 @@ export function ProjectLocationsTab({ projectId }: { projectId: string }) {
   const add = useAddProjectLocation();
   const update = useUpdateProjectLocation();
   const del = useDeleteProjectLocation();
+  const { data: staffing } = useLocationStaffingSummary(locations.map((l) => l.id));
 
   const [editing, setEditing] = useState<ProjectLocation | null>(null);
   const [open, setOpen] = useState(false);
