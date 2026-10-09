@@ -23,6 +23,11 @@ export interface HotelAssignment {
   created_at: string;
   updated_at: string;
   created_by: string | null;
+  lodging_type?: string | null;
+  access_codes?: string | null;
+  host_instructions?: string | null;
+  notified_at?: string | null;
+  notified_via?: string | null;
 }
 
 export interface HotelAssignmentWithDetails extends HotelAssignment {
@@ -60,7 +65,10 @@ export function useHotelAssignmentsByProject(projectId: string | undefined) {
 }
 
 export interface CreateHotelAssignmentInput {
-  personnelId: string;
+  personnelIds: string[];
+  lodgingType?: string;
+  accessCodes?: string;
+  hostInstructions?: string;
   projectId: string;
   personnelProjectAssignmentId?: string;
   hotelName: string;
@@ -84,10 +92,8 @@ export function useCreateHotelAssignment() {
     mutationFn: async (input: CreateHotelAssignmentInput) => {
       const { data: { user } } = await supabase.auth.getUser();
 
-      const { data, error } = await supabase
-        .from("personnel_hotel_assignments")
-        .insert({
-          personnel_id: input.personnelId,
+      const rows = input.personnelIds.map((pid) => ({
+          personnel_id: pid,
           project_id: input.projectId,
           personnel_project_assignment_id: input.personnelProjectAssignmentId || null,
           hotel_name: input.hotelName,
@@ -102,20 +108,25 @@ export function useCreateHotelAssignment() {
           check_out: input.checkOut || null,
           nightly_rate: input.nightlyRate || null,
           notes: input.notes || null,
+          lodging_type: input.lodgingType || "hotel",
+          access_codes: input.accessCodes || null,
+          host_instructions: input.hostInstructions || null,
           created_by: user?.id || null,
-        })
-        .select()
-        .single();
+        }));
+      const { data, error } = await (supabase as any)
+        .from("personnel_hotel_assignments")
+        .insert(rows)
+        .select("id");
 
       if (error) throw error;
-      return data;
+      return (data ?? []).map((r: any) => r.id as string);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["hotel-assignments"] });
-      toast.success("Hotel assignment created successfully");
+      toast.success("Lodging assigned");
     },
     onError: (error: Error) => {
-      toast.error(`Failed to create hotel assignment: ${error.message}`);
+      toast.error(`Failed to create lodging assignment: ${error.message}`);
     },
   });
 }
@@ -137,7 +148,7 @@ export function useUpdateHotelAssignment() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["hotel-assignments"] });
-      toast.success("Hotel assignment updated");
+      toast.success("Lodging assignment updated");
     },
     onError: (error: Error) => {
       toast.error(`Failed to update: ${error.message}`);
@@ -164,5 +175,24 @@ export function useCheckOutHotel() {
     onError: (error: Error) => {
       toast.error(`Failed to check out: ${error.message}`);
     },
+  });
+}
+
+export function useSendLodgingDetails() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (assignmentIds: string[]) => {
+      const { data, error } = await supabase.functions.invoke("send-lodging-details", { body: { assignment_ids: assignmentIds } });
+      if (error) throw error;
+      return data as { results: { assignment_id: string; sms: boolean; email: boolean; error?: string }[] };
+    },
+    onSuccess: (data) => {
+      queryClient.invalidateQueries({ queryKey: ["hotel-assignments"] });
+      const ok = data?.results?.filter((r) => r.sms || r.email).length ?? 0;
+      const total = data?.results?.length ?? 0;
+      if (ok === total) toast.success(`Lodging details sent to ${ok}`);
+      else toast.warning(`Sent ${ok} of ${total} — some had no valid phone/email`);
+    },
+    onError: (e: Error) => toast.error(`Failed to send: ${e.message}`),
   });
 }
