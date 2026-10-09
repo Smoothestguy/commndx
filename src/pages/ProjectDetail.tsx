@@ -37,7 +37,7 @@ import { ProjectStatusMenu } from "@/components/projects/ProjectStatusMenu";
 import { ProjectLocationsTab } from "@/components/project-hub/ProjectLocationsTab";
 import { useProjectLocations } from "@/integrations/supabase/hooks/useProjectLocations";
 
-const TABS = ["overview", "locations", "recruiting", "crew", "financials", "time", "docs"] as const;
+const TABS = ["locations", "recruiting", "crew", "financials", "time", "docs"] as const;
 type TabValue = (typeof TABS)[number];
 
 const ProjectDetail = () => {
@@ -56,11 +56,11 @@ const ProjectDetail = () => {
   const tabParam = searchParams.get("tab");
   const activeTab: TabValue = (TABS as readonly string[]).includes(tabParam || "")
     ? (tabParam as TabValue)
-    : "overview";
+    : "locations";
 
   const setActiveTab = (val: string) => {
     const next = new URLSearchParams(searchParams);
-    if (val === "overview") next.delete("tab");
+    if (val === "locations") next.delete("tab");
     else next.set("tab", val);
     setSearchParams(next, { replace: true });
   };
@@ -215,7 +215,6 @@ const ProjectDetail = () => {
       <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
         <div className="overflow-x-auto -mx-1 px-1 mb-4">
           <TabsList className="w-max">
-            <TabsTrigger value="overview">Overview</TabsTrigger>
             <TabsTrigger value="locations">Locations{locations.length > 0 ? ` (${locations.length})` : ""}</TabsTrigger>
             <TabsTrigger value="recruiting">Recruiting</TabsTrigger>
             <TabsTrigger value="crew">Crew &amp; Logistics</TabsTrigger>
@@ -225,9 +224,6 @@ const ProjectDetail = () => {
           </TabsList>
         </div>
 
-        <TabsContent value="overview">
-          <ProjectOverviewTab projectId={id} project={project} />
-        </TabsContent>
         <TabsContent value="locations">
           <ProjectLocationsTab projectId={id} />
         </TabsContent>
@@ -245,6 +241,7 @@ const ProjectDetail = () => {
         </TabsContent>
         <TabsContent value="docs">
           <div className="space-y-8">
+            <ProjectOverviewTab projectId={id} project={project} />
             <ProjectDocuments projectId={id} />
             <ProjectActivityTimeline projectId={id} />
           </div>
