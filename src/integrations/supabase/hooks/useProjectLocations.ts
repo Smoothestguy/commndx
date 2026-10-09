@@ -17,6 +17,9 @@ export interface ProjectLocation {
   poc_email: string | null;
   status: string;
   sort_order: number | null;
+  housing_provided_by: string | null;
+  meals_provided: boolean | null;
+  meals_notes: string | null;
   created_at: string;
   updated_at: string;
 }
@@ -43,11 +46,11 @@ export function useAddProjectLocation() {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: async (input: ProjectLocationInput & { project_id: string }) => {
-      const { error } = await tbl().insert(input);
+      const { data, error } = await tbl().insert(input).select("id").single();
       if (error) throw error;
-      return input.project_id;
+      return { pid: input.project_id, id: data.id as string };
     },
-    onSuccess: (pid) => { qc.invalidateQueries({ queryKey: key(pid) }); toast.success("Location added"); },
+    onSuccess: ({ pid }) => { qc.invalidateQueries({ queryKey: key(pid) }); toast.success("Location added"); },
     onError: (e: any) => toast.error(e?.message ?? "Failed to add location"),
   });
 }

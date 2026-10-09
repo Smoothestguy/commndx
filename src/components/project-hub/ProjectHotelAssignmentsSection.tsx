@@ -229,7 +229,7 @@ function MobileCards({
         <div key={a.id} className="p-4 rounded-lg border bg-card">
           <div className="flex items-start justify-between gap-3">
             <div className="min-w-0">
-              <p className="font-medium truncate">{a.hotel_name} <span className="text-xs text-muted-foreground">· {typeLabel(a.lodging_type)}</span></p>
+              <p className="font-medium truncate">{a.hotel_name} <span className="text-xs text-muted-foreground">· {typeLabel(a.lodging_type)}</span>{a.project_locations?.name && <Badge variant="outline" className="ml-1 text-[10px] text-muted-foreground font-normal">{a.project_locations.name}</Badge>}</p>
               <SentNote a={a} />
               <p className="text-sm text-muted-foreground">
                 {a.personnel?.first_name} {a.personnel?.last_name}
@@ -315,7 +315,7 @@ function DesktopTable({
               </TableCell>
               <TableCell>
                 <div>
-                  <p>{a.hotel_name} <span className="text-xs text-muted-foreground">· {typeLabel(a.lodging_type)}</span></p>
+                  <p>{a.hotel_name} <span className="text-xs text-muted-foreground">· {typeLabel(a.lodging_type)}</span>{a.project_locations?.name && <Badge variant="outline" className="ml-1 text-[10px] text-muted-foreground font-normal">{a.project_locations.name}</Badge>}</p>
                   {a.hotel_city && (
                     <p className="text-xs text-muted-foreground">
                       {a.hotel_city}
