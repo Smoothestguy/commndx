@@ -66,6 +66,11 @@
     --table-stripe: 40 15% 97%;
     --table-border: 220 13% 90%;
 
+    /* Social brand colors */
+    --facebook: 214 89% 52%;
+    --facebook-foreground: 0 0% 100%;
+
+
     /* Status colors */
     --status-success: 142 70% 32%;
     --status-error: 0 72% 45%;
@@ -196,6 +201,10 @@
     --table-header-fg: 0 0% 100%;
     --table-stripe: 0 0% 10%;
     --table-border: 0 0% 17%;
+
+    --facebook: 214 89% 58%;
+    --facebook-foreground: 0 0% 100%;
+
 
     --status-success: 142 65% 45%;
     --status-error: 0 70% 55%;

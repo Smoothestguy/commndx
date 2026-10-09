@@ -91,6 +91,11 @@ export default {
           stripe: "hsl(var(--table-stripe))",
           border: "hsl(var(--table-border))",
         },
+        facebook: {
+          DEFAULT: "hsl(var(--facebook))",
+          foreground: "hsl(var(--facebook-foreground))",
+        },
+
       },
       borderRadius: {
         lg: "var(--radius)",
