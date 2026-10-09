@@ -6,10 +6,17 @@ const EXPIRES_IN = 7200; // 2h signed URLs
 const STALE_MS = 45 * 60 * 1000; // reuse for 45 min, well inside expiry
 
 /**
+ * Buckets that are PUBLIC in this project: their URLs are directly usable.
+ * Anything matching /object/public/<publicBucket>/ must be used as-is —
+ * routing it through createSignedUrls silently breaks rendering.
+ */
+const PUBLIC_BUCKETS = new Set(["application-files", "form-uploads", "logos", "dashboard-backgrounds"]);
+
+/**
  * Batches signed-URL requests per bucket: every avatar that mounts in the same
  * tick is resolved with ONE createSignedUrls call instead of one request each.
  */
-type Pending = { resolve: (u: string | null) => void; reject: (e: unknown) => void };
+type Pending = { resolve: (u: string | null) => void; reject: (e: unknown) => void; fallback: string | null };
 const queues = new Map<string, Map<string, Pending[]>>();
 const timers = new Map<string, ReturnType<typeof setTimeout>>();
 
@@ -28,13 +35,19 @@ function flush(bucket: string) {
       .then(({ data, error }) => {
         if (error) throw error;
         const byPath = new Map((data ?? []).map((d: any) => [d.path, d.error ? null : d.signedUrl]));
-        chunk.forEach((p) => queue.get(p)?.forEach((w) => w.resolve(byPath.get(p) ?? null)));
+        chunk.forEach((p) =>
+          queue.get(p)?.forEach((w) => w.resolve(byPath.get(p) ?? w.fallback ?? null))
+        );
       })
-      .catch((err) => chunk.forEach((p) => queue.get(p)?.forEach((w) => w.reject(err))));
+      .catch((err) =>
+        chunk.forEach((p) =>
+          queue.get(p)?.forEach((w) => (w.fallback ? w.resolve(w.fallback) : w.reject(err)))
+        )
+      );
   }
 }
 
-function requestSignedUrl(bucket: string, path: string): Promise<string | null> {
+function requestSignedUrl(bucket: string, path: string, fallback: string | null = null): Promise<string | null> {
   return new Promise((resolve, reject) => {
     let queue = queues.get(bucket);
     if (!queue) {
@@ -42,7 +55,7 @@ function requestSignedUrl(bucket: string, path: string): Promise<string | null> 
       queues.set(bucket, queue);
     }
     const list = queue.get(path) ?? [];
-    list.push({ resolve, reject });
+    list.push({ resolve, reject, fallback });
     queue.set(path, list);
     if (!timers.has(bucket)) timers.set(bucket, setTimeout(() => flush(bucket), 10));
   });
@@ -52,8 +65,10 @@ function requestSignedUrl(bucket: string, path: string): Promise<string | null> 
 function directUrl(bucket: string, urlOrPath: string): string | null {
   if (urlOrPath.startsWith("data:") || urlOrPath.startsWith("blob:")) return urlOrPath;
   if (urlOrPath.startsWith("http")) {
-    // Our private-bucket URLs need signing; anything else (OAuth photos, already-signed) is used as-is.
-    if (urlOrPath.includes(`/storage/v1/object/public/${bucket}/`)) return null;
+    // Storage URL? Public buckets are used as-is; private-bucket URLs need signing.
+    const m = urlOrPath.match(/\/storage\/v1\/object\/public\/([^/]+)\//);
+    if (m) return PUBLIC_BUCKETS.has(m[1]) ? urlOrPath : null;
+    // Anything else (OAuth photos, already-signed URLs) is used as-is.
     return urlOrPath;
   }
   return null;
@@ -66,6 +81,9 @@ function directUrl(bucket: string, urlOrPath: string): string | null {
 export function useSecureUrl(bucket: string, urlOrPath: string | null | undefined) {
   const direct = urlOrPath ? directUrl(bucket, urlOrPath) : null;
   const path = urlOrPath && !direct ? getPathFromUrl(urlOrPath, bucket) : "";
+  // Safety net: if the original input was an absolute URL, fall back to it when
+  // the signing call fails instead of showing nothing.
+  const fallback = urlOrPath && urlOrPath.startsWith("http") ? urlOrPath : null;
 
   const q = useQuery({
     queryKey: ["signed-url", bucket, path],
@@ -74,7 +92,7 @@ export function useSecureUrl(bucket: string, urlOrPath: string | null | undefine
     gcTime: STALE_MS * 2,
     retry: 1,
     refetchOnWindowFocus: false,
-    queryFn: () => requestSignedUrl(bucket, path),
+    queryFn: () => requestSignedUrl(bucket, path, fallback),
   });
 
   if (direct) return { url: direct, loading: false, error: null as string | null };
