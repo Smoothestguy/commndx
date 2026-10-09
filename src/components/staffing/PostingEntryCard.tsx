@@ -3,6 +3,7 @@ import { formatApplicantLocation } from "@/lib/applicantLocation";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { SecureAvatar } from "@/components/ui/secure-avatar";
+import { ApplicantStarButton } from "./ApplicantStarButton";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Eye, CheckCircle, XCircle, ImageOff } from "lucide-react";
 import type { Application } from "@/integrations/supabase/hooks/useStaffingApplications";
@@ -94,6 +95,13 @@ export function PostingEntryCard({
             />
           </div>
         )}
+
+        <div className="pt-2" onClick={(e) => e.stopPropagation()}>
+          <ApplicantStarButton
+            applicantId={application.applicant_id}
+            starredAt={(application.applicants as any)?.starred_at}
+          />
+        </div>
 
         {/* Avatar */}
         <div className="shrink-0">

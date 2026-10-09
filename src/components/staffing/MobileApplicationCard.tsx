@@ -11,6 +11,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { Eye, CheckCircle, XCircle, MoreVertical, Calendar, Briefcase, User, Trash2, CheckCircle2 } from "lucide-react";
 import type { Application } from "@/integrations/supabase/hooks/useStaffingApplications";
+import { ApplicantStarButton } from "./ApplicantStarButton";
 import { formatApplicantLocation } from "@/lib/applicantLocation";
 
 const statusColors: Record<string, string> = {
@@ -90,6 +91,12 @@ export function MobileApplicationCard({
     >
       <CardContent className="p-4">
         <div className="flex items-start gap-3">
+          <div className="pt-2" onClick={(e) => e.stopPropagation()}>
+            <ApplicantStarButton
+              applicantId={application.applicant_id}
+              starredAt={(application.applicants as any)?.starred_at}
+            />
+          </div>
           <SecureAvatar
             bucket="application-files"
             photoUrl={profilePic}
