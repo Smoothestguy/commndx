@@ -1,3 +1,4 @@
+import { useEffect, useState } from "react";
 import { Star } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useUserRole } from "@/hooks/useUserRole";
@@ -13,7 +14,9 @@ interface Props {
 export function ApplicantStarButton({ applicantId, starredAt, className, size = "sm" }: Props) {
   const { isAdmin, isManager } = useUserRole();
   const toggle = useToggleApplicantStar();
-  const starred = !!starredAt;
+  const [local, setLocal] = useState<boolean>(!!starredAt);
+  useEffect(() => setLocal(!!starredAt), [starredAt]);
+  const starred = local;
   const canToggle = (isAdmin || isManager) && !!applicantId;
   const icon = (
     <Star
@@ -43,7 +46,12 @@ export function ApplicantStarButton({ applicantId, starredAt, className, size = 
       onClick={(e) => {
         e.stopPropagation();
         e.preventDefault();
-        toggle.mutate({ applicantId: applicantId!, starred: !starred });
+        const next = !starred;
+        setLocal(next);
+        toggle.mutate(
+          { applicantId: applicantId!, starred: next },
+          { onError: () => setLocal(!next) },
+        );
       }}
       className={cn(
         "inline-flex items-center justify-center rounded p-1 hover:bg-muted transition-colors disabled:opacity-50",
