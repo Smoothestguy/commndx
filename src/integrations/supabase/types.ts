@@ -3628,6 +3628,7 @@ export type Database = {
       }
       location_requirements: {
         Row: {
+          bill_rate: number | null
           created_at: string
           headcount_needed: number
           id: string
@@ -3637,6 +3638,7 @@ export type Database = {
           updated_at: string
         }
         Insert: {
+          bill_rate?: number | null
           created_at?: string
           headcount_needed?: number
           id?: string
@@ -3646,6 +3648,7 @@ export type Database = {
           updated_at?: string
         }
         Update: {
+          bill_rate?: number | null
           created_at?: string
           headcount_needed?: number
           id?: string
@@ -4415,6 +4418,7 @@ export type Database = {
           hotel_state: string | null
           hotel_zip: string | null
           id: string
+          location_id: string | null
           lodging_type: string
           nightly_rate: number | null
           notes: string | null
@@ -4442,6 +4446,7 @@ export type Database = {
           hotel_state?: string | null
           hotel_zip?: string | null
           id?: string
+          location_id?: string | null
           lodging_type?: string
           nightly_rate?: number | null
           notes?: string | null
@@ -4469,6 +4474,7 @@ export type Database = {
           hotel_state?: string | null
           hotel_zip?: string | null
           id?: string
+          location_id?: string | null
           lodging_type?: string
           nightly_rate?: number | null
           notes?: string | null
@@ -4482,6 +4488,13 @@ export type Database = {
           updated_at?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "personnel_hotel_assignments_location_id_fkey"
+            columns: ["location_id"]
+            isOneToOne: false
+            referencedRelation: "project_locations"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "personnel_hotel_assignments_personnel_id_fkey"
             columns: ["personnel_id"]
@@ -5865,7 +5878,10 @@ export type Database = {
           address: string | null
           city: string | null
           created_at: string
+          housing_provided_by: string
           id: string
+          meals_notes: string | null
+          meals_provided: boolean
           name: string
           poc_email: string | null
           poc_name: string | null
@@ -5883,7 +5899,10 @@ export type Database = {
           address?: string | null
           city?: string | null
           created_at?: string
+          housing_provided_by?: string
           id?: string
+          meals_notes?: string | null
+          meals_provided?: boolean
           name: string
           poc_email?: string | null
           poc_name?: string | null
@@ -5901,7 +5920,10 @@ export type Database = {
           address?: string | null
           city?: string | null
           created_at?: string
+          housing_provided_by?: string
           id?: string
+          meals_notes?: string | null
+          meals_provided?: boolean
           name?: string
           poc_email?: string | null
           poc_name?: string | null
