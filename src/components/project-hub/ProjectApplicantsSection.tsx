@@ -1,4 +1,6 @@
 import { useState, useMemo, useEffect } from "react";
+import { ApplicantStarButton, StarredCountChip } from "@/components/staffing/ApplicantStarButton";
+import { countStarred } from "@/lib/applicantStar";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { format } from "date-fns";
@@ -196,6 +198,9 @@ export function ProjectApplicantsSection({
 
     const sortApplications = (apps: Application[]) => {
       return [...apps].sort((a, b) => {
+        const aStar = !!(a.applicants as any)?.starred_at;
+        const bStar = !!(b.applicants as any)?.starred_at;
+        if (aStar !== bStar) return aStar ? -1 : 1;
         let aVal: string | number = "";
         let bVal: string | number = "";
 
@@ -391,6 +396,10 @@ export function ProjectApplicantsSection({
       >
         <TableCell>
           <div className="flex items-center gap-3">
+            <ApplicantStarButton
+              applicantId={application.applicant_id}
+              starredAt={(applicant as any).starred_at}
+            />
             <SecureAvatar
               bucket="application-files"
               photoUrl={profilePic}
@@ -494,6 +503,10 @@ export function ProjectApplicantsSection({
       >
         <div className="flex items-start justify-between gap-3">
           <div className="flex items-center gap-3 flex-1 min-w-0">
+            <ApplicantStarButton
+              applicantId={application.applicant_id}
+              starredAt={(applicant as any).starred_at}
+            />
             <SecureAvatar
               bucket="application-files"
               photoUrl={profilePic}
@@ -667,6 +680,9 @@ export function ProjectApplicantsSection({
                       )}
                     </TabsTrigger>
                   </TabsList>
+                  <span className="ml-2 align-middle">
+                    <StarredCountChip count={countStarred(applications, (a) => a.applicants as any)} />
+                  </span>
 
                   <TabsContent value="pending">
                     {pendingApplications.length === 0 ? (
