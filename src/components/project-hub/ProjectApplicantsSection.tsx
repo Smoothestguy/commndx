@@ -1,3 +1,5 @@
+import { ApplicantTagBadges, ApplicantNoteLine } from "@/components/staffing/ApplicantMetaInline";
+import { useApplicantCertSummary } from "@/hooks/useApplicantCertSummary";
 import { useState, useMemo, useEffect } from "react";
 import { ApplicantStarButton, StarredCountChip } from "@/components/staffing/ApplicantStarButton";
 import { countStarred } from "@/lib/applicantStar";
@@ -138,6 +140,7 @@ export function ProjectApplicantsSection({
     projectId,
   });
 
+  const certSummary = useApplicantCertSummary(applications.map((a) => a.applicant_id));
   const resolveLocation = useApplicantLocations(applications.map((app) => app.applicants));
 
   const approveWithType = useApproveApplicationWithType();
@@ -408,9 +411,13 @@ export function ProjectApplicantsSection({
               alt={`${applicant.first_name} ${applicant.last_name}`}
             />
             <div>
-              <p className="font-medium">
-                {applicant.first_name} {applicant.last_name}
-              </p>
+              <div className="flex flex-wrap items-center gap-1.5">
+                <p className="font-medium">
+                  {applicant.first_name} {applicant.last_name}
+                </p>
+                <ApplicantTagBadges applicant={applicant as any} certs={certSummary[application.applicant_id]} />
+              </div>
+              <ApplicantNoteLine applicant={applicant as any} className="max-w-[260px]" />
               {applicantAssignmentMap[application.applicant_id] && (
                 <Badge className="bg-primary/10 text-primary border-primary/20 text-xs mt-1">
                   Assigned to: {applicantAssignmentMap[application.applicant_id].projectName}
