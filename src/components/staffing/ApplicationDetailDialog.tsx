@@ -1,4 +1,5 @@
 import { ApplicantStarButton } from "./ApplicantStarButton";
+import { ApplicantMetaEditor } from "./ApplicantMetaEditor";
 import { formatApplicantLocation } from "@/lib/applicantLocation";
 import { useApplicantLocations } from "@/hooks/useZipLookup";
 import { useState, useMemo, useEffect } from "react";
@@ -727,7 +728,7 @@ export function ApplicationDetailDialog({
                   </div>
                 )}
 
-                <ApplicationCertifications applicationId={application.id} />
+                <ApplicationCertifications applicantId={application.applicant_id} />
 
                 <Separator />
 
