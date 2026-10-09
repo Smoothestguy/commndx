@@ -167,19 +167,75 @@ export function AssignHotelDialog({ open, onOpenChange, projectId, onCreated }: 
                 render={({ field }) => (
                   <FormItem>
                     <FormLabel>Personnel * <span className="text-xs text-muted-foreground font-normal">(select everyone sharing this lodging)</span></FormLabel>
-                    <div className="max-h-44 overflow-y-auto rounded-md border divide-y">
-                      {activePersonnel.length === 0 && <p className="p-3 text-sm text-muted-foreground">No crew on this project.</p>}
-                      {activePersonnel.map((a) => {
-                        const checked = field.value.includes(a.personnel_id);
-                        return (
-                          <label key={a.personnel_id} className="flex items-center gap-3 px-3 py-2 min-h-11 cursor-pointer">
-                            <Checkbox checked={checked} onCheckedChange={(c) =>
-                              field.onChange(c ? [...field.value, a.personnel_id] : field.value.filter((x) => x !== a.personnel_id))} />
-                            <span className="text-sm">{a.personnel?.first_name} {a.personnel?.last_name}</span>
-                          </label>
-                        );
-                      })}
+                    <div className="flex items-center gap-2">
+                      <div className="flex rounded-md border overflow-hidden text-xs shrink-0">
+                        {(["project", "all"] as const).map((m) => (
+                          <button
+                            key={m}
+                            type="button"
+                            onClick={() => setMode(m)}
+                            className={cn(
+                              "px-3 py-1.5 min-h-11 sm:min-h-0",
+                              mode === m ? "bg-primary text-primary-foreground" : "bg-transparent text-muted-foreground hover:bg-muted"
+                            )}
+                          >
+                            {m === "project" ? "This project" : "All personnel"}
+                          </button>
+                        ))}
+                      </div>
+                      <div className="relative flex-1">
+                        <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
+                        <Input
+                          value={search}
+                          onChange={(e) => setSearch(e.target.value)}
+                          placeholder="Search name or phone..."
+                          className="pl-8 h-9 text-sm"
+                        />
+                      </div>
                     </div>
+                    <div className="max-h-44 overflow-y-auto rounded-md border divide-y">
+                      {mode === "project" ? (
+                        <>
+                          {activePersonnel.length === 0 && <p className="p-3 text-sm text-muted-foreground">No crew on this project.</p>}
+                          {activePersonnel
+                            .filter((a) => {
+                              if (!q) return true;
+                              const name = `${a.personnel?.first_name ?? ""} ${a.personnel?.last_name ?? ""}`.toLowerCase();
+                              const phone = (a.personnel?.phone ?? "").replace(/\D/g, "");
+                              return name.includes(q) || (qDigits.length > 0 && phone.includes(qDigits));
+                            })
+                            .map((a) => {
+                              const checked = field.value.includes(a.personnel_id);
+                              return (
+                                <label key={a.personnel_id} className="flex items-center gap-3 px-3 py-2 min-h-11 cursor-pointer">
+                                  <Checkbox checked={checked} onCheckedChange={(c) =>
+                                    field.onChange(c ? [...field.value, a.personnel_id] : field.value.filter((x) => x !== a.personnel_id))} />
+                                  <span className="text-sm">{a.personnel?.first_name} {a.personnel?.last_name}</span>
+                                </label>
+                              );
+                            })}
+                        </>
+                      ) : (
+                        <>
+                          {filteredAll.length === 0 && <p className="p-3 text-sm text-muted-foreground">No matching personnel.</p>}
+                          {filteredAll.map((p) => {
+                            const checked = field.value.includes(p.id);
+                            const onProject = assignmentMap[p.id];
+                            return (
+                              <label key={p.id} className="flex items-center gap-3 px-3 py-2 min-h-11 cursor-pointer">
+                                <Checkbox checked={checked} onCheckedChange={(c) =>
+                                  field.onChange(c ? [...field.value, p.id] : field.value.filter((x) => x !== p.id))} />
+                                <span className="text-sm">{p.first_name} {p.last_name}</span>
+                                {onProject && <span className="text-xs text-muted-foreground ml-auto">on {onProject}</span>}
+                              </label>
+                            );
+                          })}
+                        </>
+                      )}
+                    </div>
+                    {field.value.length > 0 && (
+                      <p className="text-xs text-muted-foreground">{field.value.length} selected</p>
+                    )}
                     <FormMessage />
                   </FormItem>
                 )}
