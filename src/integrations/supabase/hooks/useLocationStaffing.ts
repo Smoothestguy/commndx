@@ -191,3 +191,24 @@ export function useActivePersonnelLite(enabled: boolean) {
     },
   });
 }
+
+/** One batched query: all active project assignments -> personnel_id mapped to project name. */
+export function useActiveProjectAssignmentMap(enabled: boolean) {
+  return useQuery({
+    queryKey: ["active-project-assignments-map"],
+    enabled,
+    staleTime: 60_000,
+    queryFn: async () => {
+      const { data, error } = await db.from("personnel_project_assignments")
+        .select("personnel_id, projects:project_id(name)")
+        .eq("status", "active");
+      if (error) throw error;
+      const map: Record<string, string> = {};
+      for (const row of data ?? []) {
+        const name = (row as any).projects?.name;
+        if (row.personnel_id && name && !map[row.personnel_id]) map[row.personnel_id] = name;
+      }
+      return map;
+    },
+  });
+}
