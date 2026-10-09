@@ -1,3 +1,4 @@
+import { ApplicantStarButton } from "@/components/staffing/ApplicantStarButton";
 import { formatApplicantLocation } from "@/lib/applicantLocation";
 import { useApplicantLocations } from "@/hooks/useZipLookup";
 import { useMemo, useState } from "react";
@@ -134,7 +135,8 @@ export function WorkforceApplicantDrawer({ applicant, categories, open, onOpenCh
               </AvatarFallback>
             </Avatar>
             <div>
-              <div>
+              <div className="flex items-center gap-1">
+                <ApplicantStarButton applicantId={applicant.id} starredAt={applicant.starred_at} size="md" />
                 {applicant.first_name} {applicant.last_name}
               </div>
               <RatingStars value={link?.rating ?? null} className="mt-1" />
