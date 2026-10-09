@@ -3575,6 +3575,95 @@ export type Database = {
           },
         ]
       }
+      location_assignments: {
+        Row: {
+          assigned_at: string
+          assigned_by: string | null
+          created_at: string
+          id: string
+          location_id: string
+          personnel_id: string
+          role_label: string | null
+          status: string
+          unassigned_at: string | null
+        }
+        Insert: {
+          assigned_at?: string
+          assigned_by?: string | null
+          created_at?: string
+          id?: string
+          location_id: string
+          personnel_id: string
+          role_label?: string | null
+          status?: string
+          unassigned_at?: string | null
+        }
+        Update: {
+          assigned_at?: string
+          assigned_by?: string | null
+          created_at?: string
+          id?: string
+          location_id?: string
+          personnel_id?: string
+          role_label?: string | null
+          status?: string
+          unassigned_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "location_assignments_location_id_fkey"
+            columns: ["location_id"]
+            isOneToOne: false
+            referencedRelation: "project_locations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "location_assignments_personnel_id_fkey"
+            columns: ["personnel_id"]
+            isOneToOne: false
+            referencedRelation: "personnel"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      location_requirements: {
+        Row: {
+          created_at: string
+          headcount_needed: number
+          id: string
+          location_id: string
+          notes: string | null
+          role_label: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          headcount_needed?: number
+          id?: string
+          location_id: string
+          notes?: string | null
+          role_label: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          headcount_needed?: number
+          id?: string
+          location_id?: string
+          notes?: string | null
+          role_label?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "location_requirements_location_id_fkey"
+            columns: ["location_id"]
+            isOneToOne: false
+            referencedRelation: "project_locations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       locked_period_violations: {
         Row: {
           action: string
