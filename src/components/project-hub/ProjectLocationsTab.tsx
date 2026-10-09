@@ -16,6 +16,8 @@ import { useUserRole } from "@/hooks/useUserRole";
 import {
   ProjectLocation, useAddProjectLocation, useDeleteProjectLocation, useProjectLocations, useUpdateProjectLocation,
 } from "@/integrations/supabase/hooks/useProjectLocations";
+import { useLocationStaffingSummary } from "@/integrations/supabase/hooks/useLocationStaffing";
+import { LocationStaffing } from "./LocationStaffing";
 
 const EMPTY = {
   name: "", project_number: "", scope: "", address: "", city: "", state: "", zip: "",
@@ -128,6 +130,7 @@ export function ProjectLocationsTab({ projectId }: { projectId: string }) {
                   </div>
                 )}
                 {l.scope && <ScopeText text={l.scope} />}
+                <LocationStaffing locationId={l.id} summary={staffing?.[l.id]} canWrite={canWrite} />
               </CardContent>
             </Card>
           ))}
