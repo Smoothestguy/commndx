@@ -497,6 +497,8 @@ export type Database = {
           phone: string | null
           photo_url: string | null
           sms_opted_out: boolean
+          starred_at: string | null
+          starred_by: string | null
           state: string | null
           status: Database["public"]["Enums"]["applicant_status"]
           updated_at: string
@@ -524,6 +526,8 @@ export type Database = {
           phone?: string | null
           photo_url?: string | null
           sms_opted_out?: boolean
+          starred_at?: string | null
+          starred_by?: string | null
           state?: string | null
           status?: Database["public"]["Enums"]["applicant_status"]
           updated_at?: string
@@ -551,6 +555,8 @@ export type Database = {
           phone?: string | null
           photo_url?: string | null
           sms_opted_out?: boolean
+          starred_at?: string | null
+          starred_by?: string | null
           state?: string | null
           status?: Database["public"]["Enums"]["applicant_status"]
           updated_at?: string

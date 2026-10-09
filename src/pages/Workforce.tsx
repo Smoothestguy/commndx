@@ -1,6 +1,8 @@
 import { formatApplicantLocation } from "@/lib/applicantLocation";
 import { useApplicantLocations } from "@/hooks/useZipLookup";
 import { useEffect, useMemo, useState } from "react";
+import { ApplicantStarButton, StarredCountChip } from "@/components/staffing/ApplicantStarButton";
+import { sortStarredBlocks, countStarred } from "@/lib/applicantStar";
 import { useSearchParams } from "react-router-dom";
 import { NetSuitePageLayout } from "@/components/layout/netsuite";
 import { Card, CardContent } from "@/components/ui/card";
@@ -206,7 +208,8 @@ export default function Workforce() {
       const best = (a: WorkforceApplicant) => Math.max(0, ...a.tags.map((t) => t.confidence ?? 1));
       sorted.sort((a, b) => best(b) - best(a));
     }
-    return sorted;
+    // Starred first; chosen sort stays secondary within each block (stable).
+    return sortStarredBlocks(sorted, (a) => a, () => 0);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [
     pool, selected, matchAll, search, sort, showDnr, workedWithFrg, ratedHigh, availableOnly,
@@ -534,6 +537,7 @@ export default function Workforce() {
                             </TableCell>
                             <TableCell>
                               <div className="flex items-center gap-2">
+                                <ApplicantStarButton applicantId={a.id} starredAt={a.starred_at} />
                                 <Avatar
                                   className="h-8 w-8"
                                   onClick={(e) => {
@@ -662,7 +666,8 @@ export default function Workforce() {
 
                 <div className="mt-3 flex items-center justify-between text-sm text-muted-foreground">
                   <span>
-                    {filtered.length} applicant{filtered.length === 1 ? "" : "s"}
+                    {filtered.length} applicant{filtered.length === 1 ? "" : "s"}{" "}
+                    <StarredCountChip count={countStarred(filtered, (a) => a)} />
                     {checked.size > 0 && ` · ${checked.size} selected`}
                     {checked.size > 0 && checked.size < filtered.length && (
                       <button

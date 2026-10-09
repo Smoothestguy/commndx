@@ -8,6 +8,8 @@ import { Eye, CheckCircle, XCircle, User, Trash2, Undo2, Circle, CheckCircle2 } 
 import { EnhancedDataTable, EnhancedColumn } from "@/components/shared/EnhancedDataTable";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { MobileApplicationCard } from "./MobileApplicationCard";
+import { ApplicantStarButton } from "./ApplicantStarButton";
+import { sortStarredFirst } from "@/lib/applicantStar";
 import type { Application } from "@/integrations/supabase/hooks/useStaffingApplications";
 import { useApplicationFormTemplates, FormField } from "@/integrations/supabase/hooks/useApplicationFormTemplates";
 import { cn } from "@/lib/utils";
@@ -72,7 +74,7 @@ interface ApplicationsTableProps {
 }
 
 export function ApplicationsTable({
-  applications,
+  applications: rawApplications,
   isLoading,
   onViewApplication,
   onApprove,
@@ -84,6 +86,10 @@ export function ApplicationsTable({
   selectedIds,
   onSelectionChange,
 }: ApplicationsTableProps) {
+  const applications = useMemo(
+    () => sortStarredFirst(rawApplications, (a) => a.applicants as any),
+    [rawApplications],
+  );
   const isMobile = useIsMobile();
   const resolveLocation = useApplicantLocations(applications.map((app) => app.applicants));
   const { data: formTemplates } = useApplicationFormTemplates();
@@ -116,17 +122,23 @@ export function ApplicationsTable({
       sortable: false,
       filterable: false,
       render: (app: Application) => (
-        <Button
-          variant="ghost"
-          size="icon"
-          className="h-9 w-9"
-          onClick={(e) => {
-            e.stopPropagation();
-            onViewApplication(app);
-          }}
-        >
-          <Eye className="h-4 w-4" />
-        </Button>
+        <div className="flex items-center gap-1">
+          <ApplicantStarButton
+            applicantId={app.applicant_id}
+            starredAt={(app.applicants as any)?.starred_at}
+          />
+          <Button
+            variant="ghost"
+            size="icon"
+            className="h-9 w-9"
+            onClick={(e) => {
+              e.stopPropagation();
+              onViewApplication(app);
+            }}
+          >
+            <Eye className="h-4 w-4" />
+          </Button>
+        </div>
       ),
     },
     {
@@ -363,6 +375,7 @@ export function ApplicationsTable({
       data={applications}
       columns={columns}
       onRowClick={onViewApplication}
+      pinFirst={(app) => !!(app.applicants as any)?.starred_at}
       selectable={selectable}
       selectedIds={selectedIds}
       onSelectionChange={onSelectionChange}

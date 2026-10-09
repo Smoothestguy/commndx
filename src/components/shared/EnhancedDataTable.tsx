@@ -55,6 +55,8 @@ interface EnhancedDataTableProps<T> {
   compact?: boolean;
   defaultSortKey?: string;
   defaultSortDirection?: 'asc' | 'desc';
+  /** Rows returning true stay above others regardless of column sort (stable). */
+  pinFirst?: (item: T) => boolean;
 }
 
 interface SortableHeaderProps {
@@ -113,6 +115,7 @@ export function EnhancedDataTable<T extends { id: string | number }>({
   compact = true,
   defaultSortKey,
   defaultSortDirection = 'desc',
+  pinFirst,
 }: EnhancedDataTableProps<T>) {
   const { isSpreadsheetMode, is2K1Mode, isCompactMode } = useUIDensity();
   const defaultColumnKeys = columns.map(col => String(col.key));
@@ -189,6 +192,10 @@ export function EnhancedDataTable<T extends { id: string | number }>({
     if (preferences.sortKey) {
       const column = columns.find(col => String(col.key) === preferences.sortKey);
       result.sort((a, b) => {
+        if (pinFirst) {
+          const pa = pinFirst(a), pb = pinFirst(b);
+          if (pa !== pb) return pa ? -1 : 1;
+        }
         const aValue = column?.getValue ? column.getValue(a) : a[preferences.sortKey as keyof T];
         const bValue = column?.getValue ? column.getValue(b) : b[preferences.sortKey as keyof T];
         
@@ -202,7 +209,7 @@ export function EnhancedDataTable<T extends { id: string | number }>({
     }
 
     return result;
-  }, [data, preferences.columnFilters, preferences.sortKey, preferences.sortDirection, columns]);
+  }, [data, preferences.columnFilters, preferences.sortKey, preferences.sortDirection, columns, pinFirst]);
 
   const allSelected = processedData.length > 0 && processedData.every(item => selectedIds.has(String(item.id)));
   const someSelected = processedData.some(item => selectedIds.has(String(item.id))) && !allSelected;

@@ -1,3 +1,4 @@
+import { ApplicantStarButton } from "./ApplicantStarButton";
 import { formatApplicantLocation } from "@/lib/applicantLocation";
 import { useApplicantLocations } from "@/hooks/useZipLookup";
 import { useState, useMemo, useEffect } from "react";
@@ -491,7 +492,14 @@ export function ApplicationDetailDialog({
           <DialogHeader className="flex-shrink-0">
             <div className="flex items-center justify-between">
               <div>
-                <DialogTitle>Application Details</DialogTitle>
+                <DialogTitle className="flex items-center gap-1">
+                  <ApplicantStarButton
+                    applicantId={application.applicant_id}
+                    starredAt={(applicant as any)?.starred_at}
+                    size="md"
+                  />
+                  Application Details
+                </DialogTitle>
                 <DialogDescription>
                   Review application from {applicant?.first_name}{" "}
                   {applicant?.last_name}

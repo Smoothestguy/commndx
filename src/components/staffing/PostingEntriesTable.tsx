@@ -23,6 +23,8 @@ import {
 } from "@/components/ui/table";
 
 import { PostingEntryCard } from "./PostingEntryCard";
+import { ApplicantStarButton } from "./ApplicantStarButton";
+import { sortStarredFirst } from "@/lib/applicantStar";
 import type { Application } from "@/integrations/supabase/hooks/useStaffingApplications";
 import type { FormField } from "@/integrations/supabase/hooks/useApplicationFormTemplates";
 
@@ -159,7 +161,7 @@ function formatFieldValue(value: unknown, field: FormField): React.ReactNode {
 }
 
 export function PostingEntriesTable({
-  applications,
+  applications: rawApplications,
   formFields,
   isLoading,
   onViewApplication,
@@ -169,6 +171,10 @@ export function PostingEntriesTable({
   selectedIds = new Set(),
   onSelectionChange,
 }: PostingEntriesTableProps) {
+  const applications = useMemo(
+    () => sortStarredFirst(rawApplications, (a) => a.applicants as any),
+    [rawApplications],
+  );
   const resolveLocation = useApplicantLocations(applications.map((app) => app.applicants));
 
   // Filter out profile picture field from columns (shown separately)
@@ -255,7 +261,7 @@ export function PostingEntriesTable({
                     />
                   </TableHead>
                 )}
-                <TableHead className="w-10"></TableHead>
+                <TableHead className="w-20"></TableHead>
                 <TableHead className="w-14">Photo</TableHead>
                 <TableHead className="min-w-[150px]">Name</TableHead>
                 <TableHead className="min-w-[180px]">Email</TableHead>
@@ -292,14 +298,20 @@ export function PostingEntriesTable({
                       </TableCell>
                     )}
                     <TableCell onClick={(e) => e.stopPropagation()}>
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        className="h-8 w-8"
-                        onClick={() => onViewApplication(app)}
-                      >
-                        <Eye className="h-4 w-4" />
-                      </Button>
+                      <div className="flex items-center gap-0.5">
+                        <ApplicantStarButton
+                          applicantId={app.applicant_id}
+                          starredAt={(app.applicants as any)?.starred_at}
+                        />
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="h-8 w-8"
+                          onClick={() => onViewApplication(app)}
+                        >
+                          <Eye className="h-4 w-4" />
+                        </Button>
+                      </div>
                     </TableCell>
                     <TableCell>
                       <TooltipProvider>
