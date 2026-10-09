@@ -3,7 +3,7 @@ import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { format } from "date-fns";
-import { CalendarIcon, Loader2 } from "lucide-react";
+import { CalendarIcon, Loader2, Search } from "lucide-react";
 import { cn } from "@/lib/utils";
 import {
   Dialog,
@@ -48,6 +48,7 @@ export const LODGING_TYPES = [
 ];
 import { usePersonnelByProject } from "@/integrations/supabase/hooks/usePersonnelProjectAssignments";
 import { useCreateHotelAssignment } from "@/integrations/supabase/hooks/useHotelAssignments";
+import { useActivePersonnelLite, useActiveProjectAssignmentMap } from "@/integrations/supabase/hooks/useLocationStaffing";
 
 const hotelSchema = z.object({
   personnelIds: z.array(z.string()).min(1, "Select at least one person"),
