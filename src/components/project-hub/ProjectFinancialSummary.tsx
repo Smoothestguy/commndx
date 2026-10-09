@@ -3,6 +3,8 @@ import { Progress } from "@/components/ui/progress";
 import { Alert, AlertTitle, AlertDescription } from "@/components/ui/alert";
 import { DollarSign, TrendingUp, TrendingDown, FileText, Receipt, Truck, Users, AlertTriangle, Package } from "lucide-react";
 import { formatCurrency } from "@/lib/utils";
+import { Badge } from "@/components/ui/badge";
+import { useNavigate } from "react-router-dom";
 
 interface FinancialData {
   originalContractValue: number;
@@ -24,6 +26,9 @@ interface FinancialData {
   netMargin: number;
   supervisionLaborCost?: number;
   fieldLaborCost?: number;
+  totalDirectCosts?: number;
+  overdueCount?: number;
+  overdueAmount?: number;
 }
 
 interface ProjectFinancialSummaryProps {
@@ -54,7 +59,9 @@ function StatCard({ label, value, icon, highlight, colorClass }: {
 }
 
 export function ProjectFinancialSummary({ data }: ProjectFinancialSummaryProps) {
-  const totalCosts = data.totalPOValue + data.totalLaborCost;
+  const navigate = useNavigate();
+  const totalCosts = data.totalDirectCosts ?? (data.totalVendorBilled + data.totalLaborCost + data.totalOtherExpenses);
+  const outstanding = data.totalInvoiced - data.totalPaid;
   
   const invoiceProgress = data.totalContractValue > 0 
     ? (data.totalInvoiced / data.totalContractValue) * 100 
@@ -111,8 +118,8 @@ export function ProjectFinancialSummary({ data }: ProjectFinancialSummaryProps) 
             colorClass="text-primary"
           />
           <StatCard
-            label="WO / Sub Costs"
-            value={formatCurrency(data.totalPOValue)}
+            label="Vendor Bills"
+            value={formatCurrency(data.totalVendorBilled)}
             icon={<Truck className="h-3 w-3" />}
           />
           <StatCard
@@ -121,14 +128,14 @@ export function ProjectFinancialSummary({ data }: ProjectFinancialSummaryProps) 
             icon={<Users className="h-3 w-3" />}
           />
           <StatCard
-            label="Total Costs"
+            label="Direct Costs"
             value={formatCurrency(totalCosts)}
             icon={<Package className="h-3 w-3" />}
             highlight
             colorClass="text-orange-500"
           />
           <StatCard
-            label="Net Profit"
+            label="Profit"
             value={formatCurrency(data.netProfit)}
             icon={data.netProfit >= 0 ? <TrendingUp className="h-3 w-3" /> : <TrendingDown className="h-3 w-3" />}
             highlight
@@ -140,6 +147,22 @@ export function ProjectFinancialSummary({ data }: ProjectFinancialSummaryProps) 
             highlight
             colorClass={marginColor}
           />
+        </div>
+
+        {/* AR + commitments */}
+        <div className="grid gap-3 grid-cols-2 sm:grid-cols-4">
+          <StatCard label="Invoiced" value={formatCurrency(data.totalInvoiced)} icon={<Receipt className="h-3 w-3" />} />
+          <StatCard label="Paid" value={formatCurrency(data.totalPaid)} colorClass="text-green-500" />
+          <div className="space-y-1 p-3 rounded-lg bg-secondary/30">
+            <p className="text-xs text-muted-foreground">Outstanding</p>
+            <p className="text-lg font-bold">{formatCurrency(outstanding)}</p>
+            {(data.overdueCount ?? 0) > 0 && (
+              <Badge variant="destructive" className="cursor-pointer text-[10px]" onClick={() => navigate("/invoices")}>
+                {data.overdueCount} overdue · {formatCurrency(data.overdueAmount || 0)}
+              </Badge>
+            )}
+          </div>
+          <StatCard label="Committed (WOs)" value={formatCurrency(data.totalPOValue)} icon={<Truck className="h-3 w-3" />} />
         </div>
 
         {/* Supervision Cost Impact */}
@@ -158,7 +181,7 @@ export function ProjectFinancialSummary({ data }: ProjectFinancialSummaryProps) 
                 <p className="text-xs text-muted-foreground">Margin Before Supervision</p>
                 <p className="text-lg font-bold text-green-500">
                   {data.totalContractValue > 0
-                    ? ((data.totalContractValue - (data.totalPOValue + (data.fieldLaborCost || 0))) / data.totalContractValue * 100).toFixed(1)
+                    ? ((data.totalContractValue - (data.totalVendorBilled + (data.fieldLaborCost || 0))) / data.totalContractValue * 100).toFixed(1)
                     : "0.0"}%
                 </p>
               </div>
