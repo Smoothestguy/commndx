@@ -66,6 +66,7 @@ import { toast } from "sonner";
 import { useQueryClient } from "@tanstack/react-query";
 import { formatApplicantLocation } from "@/lib/applicantLocation";
 import { useApplicantLocations } from "@/hooks/useZipLookup";
+import { PhotoRequestApproveDialog, requestApplicantPhoto } from "@/components/staffing/PhotoRequestApproveDialog";
 
 type SortKey = "name" | "position" | "city" | "state" | "status" | "submitted";
 type SortDirection = "asc" | "desc";
@@ -126,6 +127,7 @@ export function ProjectApplicantsSection({
     useState<Application | null>(null);
   const [isDetailDialogOpen, setIsDetailDialogOpen] = useState(false);
   const [isApprovalDialogOpen, setIsApprovalDialogOpen] = useState(false);
+  const [showPhotoPrompt, setShowPhotoPrompt] = useState(false);
   const [pendingApprovalApp, setPendingApprovalApp] =
     useState<Application | null>(null);
   const [isAssignDialogOpen, setIsAssignDialogOpen] = useState(false);
@@ -300,6 +302,10 @@ export function ProjectApplicantsSection({
 
   const handleApproveClick = (application: Application) => {
     setPendingApprovalApp(application);
+    if (application.applicant_id && !application.applicants?.photo_url) {
+      setShowPhotoPrompt(true);
+      return;
+    }
     setIsApprovalDialogOpen(true);
   };
 
@@ -760,6 +766,16 @@ export function ProjectApplicantsSection({
         open={isDetailDialogOpen}
         onOpenChange={setIsDetailDialogOpen}
         application={selectedApplication}
+      />
+
+      <PhotoRequestApproveDialog
+        open={showPhotoPrompt}
+        onOpenChange={setShowPhotoPrompt}
+        onApproveAnyway={() => setIsApprovalDialogOpen(true)}
+        onApproveAndRequest={() => {
+          if (pendingApprovalApp?.applicant_id) void requestApplicantPhoto(pendingApprovalApp.applicant_id);
+          setIsApprovalDialogOpen(true);
+        }}
       />
 
       {/* Approval Type Selection Dialog */}

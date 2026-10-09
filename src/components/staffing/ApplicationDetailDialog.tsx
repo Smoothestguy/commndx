@@ -55,6 +55,7 @@ import { toast } from "sonner";
 import { RequestMissingInfoDialog } from "./RequestMissingInfoDialog";
 import { ApplicationCertifications } from "./ApplicationCertifications";
 import { useUserRole } from "@/hooks/useUserRole";
+import { PhotoRequestApproveDialog, requestApplicantPhoto } from "@/components/staffing/PhotoRequestApproveDialog";
 import { ApprovalTypeSelectionDialog, type RecordType } from "@/components/personnel/ApprovalTypeSelectionDialog";
 
 const statusColors: Record<string, string> = {
@@ -1136,6 +1137,16 @@ export function ApplicationDetailDialog({
         onOpenChange={setRequestInfoDialogOpen}
         application={application}
         onSuccess={() => onOpenChange(false)}
+      />
+
+      <PhotoRequestApproveDialog
+        open={showPhotoPrompt}
+        onOpenChange={setShowPhotoPrompt}
+        onApproveAnyway={() => setShowTypeSelectionDialog(true)}
+        onApproveAndRequest={() => {
+          if (application?.applicant_id) void requestApplicantPhoto(application.applicant_id);
+          setShowTypeSelectionDialog(true);
+        }}
       />
 
       <ApprovalTypeSelectionDialog
