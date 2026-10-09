@@ -75,10 +75,11 @@ interface AssignHotelDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   projectId: string;
+  locationId?: string | null;
   onCreated?: (assignmentIds: string[]) => void;
 }
 
-export function AssignHotelDialog({ open, onOpenChange, projectId, onCreated }: AssignHotelDialogProps) {
+export function AssignHotelDialog({ open, onOpenChange, projectId, locationId, onCreated }: AssignHotelDialogProps) {
   const { data: personnel = [] } = usePersonnelByProject(projectId);
   const createMutation = useCreateHotelAssignment();
   const [mode, setMode] = useState<"project" | "all">("project");
@@ -114,6 +115,7 @@ export function AssignHotelDialog({ open, onOpenChange, projectId, onCreated }: 
       accessCodes: values.accessCodes,
       hostInstructions: values.hostInstructions,
       projectId,
+      locationId: locationId ?? null,
       hotelName: values.hotelName,
       hotelAddress: values.hotelAddress,
       hotelCity: values.hotelCity,

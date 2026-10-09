@@ -17,7 +17,7 @@ import {
 const CUSTOM = "__custom__";
 const NONE = "__none__";
 
-function RolePicker({ value, onChange, options, allowNone }: { value: string; onChange: (v: string) => void; options: string[]; allowNone?: boolean }) {
+export function RolePicker({ value, onChange, options, allowNone }: { value: string; onChange: (v: string) => void; options: string[]; allowNone?: boolean }) {
   const isCustom = value !== "" && !options.includes(value);
   const [custom, setCustom] = useState(isCustom);
   if (custom) {
@@ -49,6 +49,7 @@ function RequirementsDialog({ locationId, open, onOpenChange }: { locationId: st
   const del = useDeleteLocationRequirement();
   const [role, setRole] = useState("");
   const [count, setCount] = useState(1);
+  const [rate, setRate] = useState("");
   const options = [...ROLE_TAGS] as string[];
 
   return (
@@ -65,6 +66,11 @@ function RequirementsDialog({ locationId, open, onOpenChange }: { locationId: st
                   const n = Math.max(0, parseInt(e.target.value) || 0);
                   if (n !== r.headcount_needed) upd.mutate({ id: r.id, location_id: locationId, headcount_needed: n });
                 }} />
+              <Input type="number" min={0} step="0.01" placeholder="$/hr" defaultValue={r.bill_rate ?? ""} className="h-9 w-24"
+                onBlur={(e) => {
+                  const v = e.target.value.trim() ? Number(e.target.value) : null;
+                  if (v !== (r.bill_rate ?? null)) upd.mutate({ id: r.id, location_id: locationId, bill_rate: v });
+                }} />
               <Button size="icon" variant="ghost" className="h-9 w-9" onClick={() => del.mutate({ id: r.id, location_id: locationId })} aria-label="Delete requirement">
                 <Trash2 className="h-4 w-4 text-destructive" />
               </Button>
@@ -73,8 +79,9 @@ function RequirementsDialog({ locationId, open, onOpenChange }: { locationId: st
           <div className="flex items-center gap-2 pt-2 border-t">
             <RolePicker value={role} onChange={setRole} options={options} />
             <Input type="number" min={1} value={count} onChange={(e) => setCount(Math.max(1, parseInt(e.target.value) || 1))} className="h-9 w-20" />
+            <Input type="number" min={0} step="0.01" placeholder="$/hr" value={rate} onChange={(e) => setRate(e.target.value)} className="h-9 w-24" />
             <Button size="sm" disabled={!role.trim() || add.isPending} onClick={() => {
-              add.mutate({ location_id: locationId, role_label: role.trim(), headcount_needed: count }, { onSuccess: () => { setRole(""); setCount(1); } });
+              add.mutate({ location_id: locationId, role_label: role.trim(), headcount_needed: count, bill_rate: rate.trim() ? Number(rate) : null }, { onSuccess: () => { setRole(""); setCount(1); setRate(""); } });
             }}><Plus className="h-4 w-4 mr-1" />Add</Button>
           </div>
         </div>
@@ -170,7 +177,7 @@ export function LocationStaffing({ locationId, summary, canWrite }: { locationId
           {roles.map(([role, v]) => (
             <Badge key={role} variant="outline" className={cn(
               v.assigned >= v.needed ? "border-success/40 bg-success/15 text-success" : "border-warning/40 bg-warning/15 text-warning",
-            )}>{role} {v.assigned}/{v.needed}</Badge>
+            )}>{role} {v.assigned}/{v.needed}{v.rate != null && ` · $${Number(v.rate).toLocaleString(undefined, { maximumFractionDigits: 2 })}/hr`}</Badge>
           ))}
         </div>
       )}

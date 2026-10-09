@@ -16,12 +16,27 @@ import { useUserRole } from "@/hooks/useUserRole";
 import {
   ProjectLocation, useAddProjectLocation, useDeleteProjectLocation, useProjectLocations, useUpdateProjectLocation,
 } from "@/integrations/supabase/hooks/useProjectLocations";
-import { useLocationStaffingSummary } from "@/integrations/supabase/hooks/useLocationStaffing";
-import { LocationStaffing } from "./LocationStaffing";
+import { useQueryClient } from "@tanstack/react-query";
+import { Switch } from "@/components/ui/switch";
+import { toast } from "sonner";
+import { ROLE_TAGS } from "@/lib/roleTags";
+import {
+  LocationRequirement, saveLocationRequirements, useLocationRequirements, useLocationStaffingSummary,
+} from "@/integrations/supabase/hooks/useLocationStaffing";
+import { LocationStaffing, RolePicker } from "./LocationStaffing";
+import { LocationLodging } from "./LocationLodging";
+
+type ReqRow = { key: string; id?: string; role_label: string; headcount: string; rate: string };
+let rowSeq = 0;
+const newRow = (r?: LocationRequirement): ReqRow => ({
+  key: `r${++rowSeq}`, id: r?.id, role_label: r?.role_label ?? "",
+  headcount: String(r?.headcount_needed ?? 1), rate: r?.bill_rate != null ? String(r.bill_rate) : "",
+});
 
 const EMPTY = {
   name: "", project_number: "", scope: "", address: "", city: "", state: "", zip: "",
   poc_name: "", poc_phone: "", poc_email: "", status: "active", sort_order: "",
+  housing_provided_by: "none", meals_provided: false as boolean, meals_notes: "",
 };
 type FormState = typeof EMPTY;
 
@@ -53,8 +68,17 @@ export function ProjectLocationsTab({ projectId }: { projectId: string }) {
   const [open, setOpen] = useState(false);
   const [form, setForm] = useState<FormState>(EMPTY);
   const [toDelete, setToDelete] = useState<ProjectLocation | null>(null);
+  const [rows, setRows] = useState<ReqRow[]>([]);
+  const [seeded, setSeeded] = useState(false);
+  const [savingReqs, setSavingReqs] = useState(false);
+  const qc = useQueryClient();
+  const { data: existingReqs, isFetched: reqsFetched } = useLocationRequirements(open && editing ? editing.id : undefined);
+  if (open && editing && reqsFetched && !seeded) {
+    setRows((existingReqs ?? []).map(newRow));
+    setSeeded(true);
+  }
 
-  const openNew = () => { setEditing(null); setForm(EMPTY); setOpen(true); };
+  const openNew = () => { setEditing(null); setForm(EMPTY); setRows([newRow()]); setSeeded(true); setOpen(true); };
   const openEdit = (l: ProjectLocation) => {
     setEditing(l);
     setForm({
@@ -62,7 +86,9 @@ export function ProjectLocationsTab({ projectId }: { projectId: string }) {
       city: l.city ?? "", state: l.state ?? "", zip: l.zip ?? "", poc_name: l.poc_name ?? "",
       poc_phone: l.poc_phone ?? "", poc_email: l.poc_email ?? "", status: l.status || "active",
       sort_order: l.sort_order != null ? String(l.sort_order) : "",
+      housing_provided_by: l.housing_provided_by || "none", meals_provided: !!l.meals_provided, meals_notes: l.meals_notes ?? "",
     });
+    setRows([]); setSeeded(false);
     setOpen(true);
   };
 
@@ -74,17 +100,36 @@ export function ProjectLocationsTab({ projectId }: { projectId: string }) {
       address: n(form.address), city: n(form.city), state: n(form.state), zip: n(form.zip),
       poc_name: n(form.poc_name), poc_phone: n(form.poc_phone), poc_email: n(form.poc_email),
       status: form.status, sort_order: form.sort_order.trim() ? Number(form.sort_order) : 0,
+      housing_provided_by: form.housing_provided_by, meals_provided: form.meals_provided,
+      meals_notes: form.meals_provided ? n(form.meals_notes) : null,
     };
-    if (editing) await update.mutateAsync({ id: editing.id, ...payload });
-    else await add.mutateAsync(payload);
+    let locationId: string;
+    if (editing) { await update.mutateAsync({ id: editing.id, ...payload }); locationId = editing.id; }
+    else locationId = (await add.mutateAsync(payload)).id;
+    const clean = rows.filter((r) => r.role_label.trim()).map((r) => ({
+      id: r.id, role_label: r.role_label.trim(), headcount_needed: Math.max(0, parseInt(r.headcount) || 0),
+      bill_rate: r.rate.trim() ? Number(r.rate) : null,
+    }));
+    setSavingReqs(true);
+    try {
+      await saveLocationRequirements(locationId, clean, editing ? existingReqs ?? [] : []);
+    } catch (e: any) {
+      toast.error(`Location saved, but positions failed: ${e?.message ?? e}`);
+    } finally {
+      setSavingReqs(false);
+      qc.invalidateQueries({ queryKey: ["location-requirements", locationId] });
+      qc.invalidateQueries({ queryKey: ["location-staffing-summary"] });
+    }
     setOpen(false);
   };
 
   const f = (k: keyof FormState) => ({
-    value: form[k],
+    value: form[k] as string,
     onChange: (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => setForm({ ...form, [k]: e.target.value }),
   });
-  const saving = add.isPending || update.isPending;
+  const saving = add.isPending || update.isPending || savingReqs;
+  const setRow = (key: string, patch: Partial<ReqRow>) => setRows((rs) => rs.map((r) => (r.key === key ? { ...r, ...patch } : r)));
+  const roleOptions = [...ROLE_TAGS] as string[];
 
   return (
     <div className="space-y-3">
@@ -108,6 +153,9 @@ export function ProjectLocationsTab({ projectId }: { projectId: string }) {
                       <span className="font-semibold truncate">{l.name}</span>
                       {l.project_number && <Badge variant="outline">#{l.project_number}</Badge>}
                       <Badge variant={l.status === "active" ? "default" : "secondary"} className="capitalize">{l.status}</Badge>
+                      {l.housing_provided_by === "customer" && <Badge variant="outline">Housing: Customer</Badge>}
+                      {l.housing_provided_by === "frg" && <Badge variant="outline">Housing: FRG</Badge>}
+                      {l.meals_provided && <Badge variant="outline" title={l.meals_notes ?? undefined}>Meals provided</Badge>}
                     </div>
                     {(l.city || l.state || l.address) && (
                       <p className="text-xs text-muted-foreground flex items-center gap-1 mt-1">
@@ -132,6 +180,7 @@ export function ProjectLocationsTab({ projectId }: { projectId: string }) {
                 )}
                 {l.scope && <ScopeText text={l.scope} />}
                 <LocationStaffing locationId={l.id} summary={staffing?.[l.id]} canWrite={canWrite} />
+                <LocationLodging projectId={projectId} locationId={l.id} housingBy={l.housing_provided_by} canWrite={canWrite} />
               </CardContent>
             </Card>
           ))}
@@ -165,6 +214,38 @@ export function ProjectLocationsTab({ projectId }: { projectId: string }) {
             <div><Label>POC email</Label><Input type="email" {...f("poc_email")} /></div>
             <div><Label>Sort order</Label><Input type="number" {...f("sort_order")} /></div>
             <div className="col-span-2"><Label>Scope</Label><Textarea rows={4} {...f("scope")} /></div>
+            <div className="col-span-2 space-y-2 border-t pt-3">
+              <div className="flex items-center justify-between">
+                <Label>Positions needed</Label>
+                <Button type="button" size="sm" variant="ghost" onClick={() => setRows((rs) => [...rs, newRow()])}><Plus className="h-4 w-4 mr-1" />Add position</Button>
+              </div>
+              {editing && !seeded ? <Loader2 className="h-4 w-4 animate-spin" /> : rows.length === 0 && <p className="text-xs text-muted-foreground">No positions.</p>}
+              {rows.map((r) => (
+                <div key={r.key} className="flex flex-wrap sm:flex-nowrap items-center gap-2">
+                  <div className="flex-1 min-w-[10rem] flex"><RolePicker value={r.role_label} onChange={(v) => setRow(r.key, { role_label: v })} options={roleOptions} /></div>
+                  <Input type="number" min={0} aria-label="Headcount" value={r.headcount} onChange={(e) => setRow(r.key, { headcount: e.target.value })} className="h-9 w-16" />
+                  <Input type="number" min={0} step="0.01" placeholder="Bill $/hr" aria-label="Customer bill rate" value={r.rate} onChange={(e) => setRow(r.key, { rate: e.target.value })} className="h-9 w-24" />
+                  <Button type="button" size="icon" variant="ghost" className="h-9 w-9" aria-label="Remove position" onClick={() => setRows((rs) => rs.filter((x) => x.key !== r.key))}><Trash2 className="h-4 w-4 text-destructive" /></Button>
+                </div>
+              ))}
+            </div>
+            <div className="col-span-2 grid grid-cols-2 gap-3 border-t pt-3">
+              <div><Label>Housing</Label>
+                <Select value={form.housing_provided_by} onValueChange={(v) => setForm({ ...form, housing_provided_by: v })}>
+                  <SelectTrigger><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="none">Not provided</SelectItem>
+                    <SelectItem value="customer">Provided by customer</SelectItem>
+                    <SelectItem value="frg">Provided by FRG</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="flex items-end gap-2 pb-2">
+                <Switch id="meals" checked={form.meals_provided} onCheckedChange={(v) => setForm({ ...form, meals_provided: v })} />
+                <Label htmlFor="meals">Meals provided</Label>
+              </div>
+              {form.meals_provided && <div className="col-span-2"><Label>Meals notes</Label><Input {...f("meals_notes")} placeholder="e.g. Lunch on site" /></div>}
+            </div>
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setOpen(false)}>Cancel</Button>

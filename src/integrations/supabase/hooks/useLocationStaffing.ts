@@ -7,6 +7,7 @@ export interface LocationRequirement {
   location_id: string;
   role_label: string;
   headcount_needed: number;
+  bill_rate: number | null;
   notes: string | null;
 }
 
@@ -23,7 +24,7 @@ export interface LocationAssignment {
 export interface LocationStaffingSummary {
   needed: number;
   assigned: number;
-  byRole: Record<string, { needed: number; assigned: number }>;
+  byRole: Record<string, { needed: number; assigned: number; rate: number | null }>;
 }
 
 const db = supabase as any;
@@ -55,7 +56,7 @@ export function useLocationRequirements(locationId?: string) {
 export function useAddLocationRequirement() {
   const inv = useInvalidate();
   return useMutation({
-    mutationFn: async (input: { location_id: string; role_label: string; headcount_needed: number; notes?: string | null }) => {
+    mutationFn: async (input: { location_id: string; role_label: string; headcount_needed: number; bill_rate?: number | null; notes?: string | null }) => {
       const { error } = await db.from("location_requirements").insert(input);
       if (error) throw error;
       return input.location_id;
@@ -151,7 +152,7 @@ export function useLocationStaffingSummary(locationIds: string[]) {
     enabled: ids.length > 0,
     queryFn: async () => {
       const [r, a] = await Promise.all([
-        db.from("location_requirements").select("location_id, role_label, headcount_needed").in("location_id", ids),
+        db.from("location_requirements").select("location_id, role_label, headcount_needed, bill_rate").in("location_id", ids),
         db.from("location_assignments").select("location_id, role_label").eq("status", "active").in("location_id", ids),
       ]);
       if (r.error) throw r.error;
@@ -162,14 +163,15 @@ export function useLocationStaffingSummary(locationIds: string[]) {
         const s = get(row.location_id);
         const n = Number(row.headcount_needed) || 0;
         s.needed += n;
-        const b = (s.byRole[row.role_label] ??= { needed: 0, assigned: 0 });
+        const b = (s.byRole[row.role_label] ??= { needed: 0, assigned: 0, rate: null });
         b.needed += n;
+        if (row.bill_rate != null && b.rate == null) b.rate = Number(row.bill_rate);
       }
       for (const row of a.data ?? []) {
         const s = get(row.location_id);
         s.assigned += 1;
         if (row.role_label) {
-          const b = (s.byRole[row.role_label] ??= { needed: 0, assigned: 0 });
+          const b = (s.byRole[row.role_label] ??= { needed: 0, assigned: 0, rate: null });
           b.assigned += 1;
         }
       }
@@ -211,4 +213,30 @@ export function useActiveProjectAssignmentMap(enabled: boolean) {
       return map;
     },
   });
+}
+
+/** Diff-save a location's requirement rows (insert/update/delete). */
+export async function saveLocationRequirements(
+  locationId: string,
+  rows: { id?: string; role_label: string; headcount_needed: number; bill_rate: number | null }[],
+  existing: LocationRequirement[],
+) {
+  const keep = new Set(rows.filter((r) => r.id).map((r) => r.id));
+  const toDelete = existing.filter((e) => !keep.has(e.id)).map((e) => e.id);
+  if (toDelete.length) {
+    const { error } = await db.from("location_requirements").delete().in("id", toDelete);
+    if (error) throw error;
+  }
+  for (const r of rows.filter((r) => r.id)) {
+    const e = existing.find((x) => x.id === r.id);
+    if (e && e.role_label === r.role_label && e.headcount_needed === r.headcount_needed && (e.bill_rate ?? null) === r.bill_rate) continue;
+    const { error } = await db.from("location_requirements")
+      .update({ role_label: r.role_label, headcount_needed: r.headcount_needed, bill_rate: r.bill_rate }).eq("id", r.id);
+    if (error) throw error;
+  }
+  const inserts = rows.filter((r) => !r.id).map((r) => ({ location_id: locationId, role_label: r.role_label, headcount_needed: r.headcount_needed, bill_rate: r.bill_rate }));
+  if (inserts.length) {
+    const { error } = await db.from("location_requirements").insert(inserts);
+    if (error) throw error;
+  }
 }

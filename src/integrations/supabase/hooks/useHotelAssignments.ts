@@ -28,6 +28,7 @@ export interface HotelAssignment {
   host_instructions?: string | null;
   notified_at?: string | null;
   notified_via?: string | null;
+  location_id?: string | null;
 }
 
 export interface HotelAssignmentWithDetails extends HotelAssignment {
@@ -36,6 +37,26 @@ export interface HotelAssignmentWithDetails extends HotelAssignment {
     first_name: string;
     last_name: string;
   } | null;
+  project_locations?: { name: string } | null;
+}
+
+const HOTEL_SELECT = `*, personnel ( id, first_name, last_name ), project_locations:location_id ( name )`;
+
+export function useLodgingByLocation(locationId: string | undefined) {
+  return useQuery({
+    queryKey: ["hotel-assignments", "by-location", locationId],
+    enabled: !!locationId,
+    queryFn: async () => {
+      const { data, error } = await (supabase as any)
+        .from("personnel_hotel_assignments")
+        .select(HOTEL_SELECT)
+        .eq("location_id", locationId)
+        .neq("status", "checked_out")
+        .order("check_in", { ascending: false });
+      if (error) throw error;
+      return (data ?? []) as HotelAssignmentWithDetails[];
+    },
+  });
 }
 
 export function useHotelAssignmentsByProject(projectId: string | undefined) {
@@ -44,16 +65,9 @@ export function useHotelAssignmentsByProject(projectId: string | undefined) {
     queryFn: async () => {
       if (!projectId) return [];
 
-      const { data, error } = await supabase
+      const { data, error } = await (supabase as any)
         .from("personnel_hotel_assignments")
-        .select(`
-          *,
-          personnel (
-            id,
-            first_name,
-            last_name
-          )
-        `)
+        .select(HOTEL_SELECT)
         .eq("project_id", projectId)
         .order("check_in", { ascending: false });
 
@@ -70,6 +84,7 @@ export interface CreateHotelAssignmentInput {
   accessCodes?: string;
   hostInstructions?: string;
   projectId: string;
+  locationId?: string | null;
   personnelProjectAssignmentId?: string;
   hotelName: string;
   hotelAddress?: string;
@@ -95,6 +110,7 @@ export function useCreateHotelAssignment() {
       const rows = input.personnelIds.map((pid) => ({
           personnel_id: pid,
           project_id: input.projectId,
+          location_id: input.locationId || null,
           personnel_project_assignment_id: input.personnelProjectAssignmentId || null,
           hotel_name: input.hotelName,
           hotel_address: input.hotelAddress || null,
