@@ -1,3 +1,5 @@
+import { ApplicantTagBadges, ApplicantNoteLine } from "@/components/staffing/ApplicantMetaInline";
+import type { CertSummary } from "@/hooks/useApplicantCertSummary";
 import { format } from "date-fns";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -66,6 +68,7 @@ interface MobileApplicationCardProps {
   onRevokeApproval?: (app: Application) => void;
   onToggleContacted?: (app: Application) => void;
   fieldTypeMap?: Record<string, { label: string; type: string }>;
+  certs?: CertSummary;
 }
 
 export function MobileApplicationCard({
@@ -77,6 +80,7 @@ export function MobileApplicationCard({
   onRevokeApproval,
   onToggleContacted,
   fieldTypeMap = {},
+  certs,
 }: MobileApplicationCardProps) {
   const handleClick = () => {
     onView(application);
@@ -110,6 +114,7 @@ export function MobileApplicationCard({
                 <h3 className="font-semibold text-sm truncate">
                   {application.applicants?.first_name} {application.applicants?.last_name}
                 </h3>
+                <ApplicantTagBadges applicant={application.applicants as any} certs={certs} className="mt-1" />
               </div>
               <div className="flex-shrink-0" onClick={(e) => e.stopPropagation()}>
                 <DropdownMenu>
@@ -189,6 +194,7 @@ export function MobileApplicationCard({
               <div className="flex items-center gap-4">
                 <span>Location: {location ?? formatApplicantLocation(application.applicants)}</span>
               </div>
+              <ApplicantNoteLine applicant={application.applicants as any} />
               {application.job_postings?.project_task_orders?.title && (
                 <div className="flex items-center gap-2">
                   <Briefcase className="h-3.5 w-3.5 flex-shrink-0" />

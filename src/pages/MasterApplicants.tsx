@@ -1,3 +1,5 @@
+import { ApplicantTagBadges, ApplicantNoteLine } from "@/components/staffing/ApplicantMetaInline";
+import { useApplicantCertSummary } from "@/hooks/useApplicantCertSummary";
 import { formatApplicantLocation } from "@/lib/applicantLocation";
 import { useApplicantLocations } from "@/hooks/useZipLookup";
 import { useMemo, useState } from "react";
@@ -32,6 +34,8 @@ type Row = {
   state: string | null;
   home_zip: string | null;
   starred_at?: string | null;
+  role_tags?: string[] | null;
+  staff_notes?: string | null;
   status: string;
   created_at: string;
   application_count: number;
@@ -46,7 +50,7 @@ const useMasterApplicants = () =>
     queryFn: async (): Promise<Row[]> => {
       const { data: applicants, error } = await supabase
         .from("applicants")
-        .select("id, first_name, last_name, email, phone, photo_url, city, state, home_zip, starred_at, status, created_at")
+        .select("id, first_name, last_name, email, phone, photo_url, city, state, home_zip, starred_at, role_tags, staff_notes, status, created_at")
         .order("created_at", { ascending: false });
       if (error) throw error;
 
@@ -135,6 +139,7 @@ export default function MasterApplicants() {
     return filtered;
   }, [data, search, status, hasPhone, sortKey, sortDir]);
 
+  const certSummary = useApplicantCertSummary(filtered.map((r) => r.id));
   const toggle = (id: string) => {
     setSelected((prev) => {
       const next = new Set(prev);
@@ -241,7 +246,13 @@ export default function MasterApplicants() {
                             {r.photo_url ? <AvatarImage src={r.photo_url} alt="" /> : null}
                             <AvatarFallback className="text-xs">{initials || "?"}</AvatarFallback>
                           </Avatar>
-                          <div className="font-medium">{r.first_name} {r.last_name}</div>
+                          <div className="min-w-0">
+                            <div className="flex flex-wrap items-center gap-1.5">
+                              <span className="font-medium">{r.first_name} {r.last_name}</span>
+                              <ApplicantTagBadges applicant={r} certs={certSummary[r.id]} />
+                            </div>
+                            <ApplicantNoteLine applicant={r} className="max-w-[260px]" />
+                          </div>
                         </div>
                       </TableCell>
                       <TableCell className="text-sm">

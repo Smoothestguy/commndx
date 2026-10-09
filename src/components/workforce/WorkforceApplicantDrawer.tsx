@@ -1,3 +1,5 @@
+import { ApplicantMetaEditor } from "@/components/staffing/ApplicantMetaEditor";
+import { ApplicationCertifications } from "@/components/staffing/ApplicationCertifications";
 import { ApplicantStarButton } from "@/components/staffing/ApplicantStarButton";
 import { formatApplicantLocation } from "@/lib/applicantLocation";
 import { useApplicantLocations } from "@/hooks/useZipLookup";
@@ -156,6 +158,17 @@ export function WorkforceApplicantDrawer({ applicant, categories, open, onOpenCh
               {format(new Date(applicant.last_application_at), "MMM d, yyyy")}
             </div>
           )}
+        </div>
+
+        <Separator className="my-4" />
+
+        <ApplicantMetaEditor
+          applicantId={applicant.id}
+          roleTags={applicant.role_tags}
+          staffNotes={applicant.staff_notes}
+        />
+        <div className="mt-4">
+          <ApplicationCertifications applicantId={applicant.id} />
         </div>
 
         <Separator className="my-4" />

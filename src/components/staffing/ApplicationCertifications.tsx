@@ -6,15 +6,16 @@ import { getSignedUrl } from "@/utils/signedUrlUtils";
 import { formatLocalDate, parseLocalDate } from "@/lib/dateUtils";
 import { CERT_BUCKET } from "./CertificationsFormSection";
 
-export function useApplicationCertifications(applicationId?: string) {
+/** Certifications follow the person across postings, so query by applicant. */
+export function useApplicationCertifications(applicantId?: string | null) {
   return useQuery({
-    queryKey: ["applicant-certifications", applicationId],
-    enabled: !!applicationId,
+    queryKey: ["applicant-certifications", applicantId],
+    enabled: !!applicantId,
     queryFn: async () => {
       const { data, error } = await supabase
         .from("applicant_certifications")
         .select("*")
-        .eq("application_id", applicationId!)
+        .eq("applicant_id", applicantId!)
         .order("created_at");
       if (error) throw error;
       return data;
@@ -22,8 +23,8 @@ export function useApplicationCertifications(applicationId?: string) {
   });
 }
 
-export function ApplicationCertifications({ applicationId }: { applicationId?: string }) {
-  const { data: certs = [], isLoading } = useApplicationCertifications(applicationId);
+export function ApplicationCertifications({ applicantId }: { applicantId?: string | null }) {
+  const { data: certs = [], isLoading } = useApplicationCertifications(applicantId);
   if (isLoading || certs.length === 0) return null;
 
   const open = async (path: string) => {

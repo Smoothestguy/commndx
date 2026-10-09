@@ -1,3 +1,5 @@
+import { ApplicantTagBadges, ApplicantNoteLine } from "@/components/staffing/ApplicantMetaInline";
+import { useApplicantCertSummary } from "@/hooks/useApplicantCertSummary";
 import { formatApplicantLocation } from "@/lib/applicantLocation";
 import { useApplicantLocations } from "@/hooks/useZipLookup";
 import { useEffect, useMemo, useState } from "react";
@@ -222,6 +224,7 @@ export default function Workforce() {
   );
 
   const pageRows = filtered.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
+  const certSummary = useApplicantCertSummary(pageRows.map((a) => a.id));
   const totalPages = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
   const catById = useMemo(() => new Map(categories.map((c) => [c.id, c])), [categories]);
   const states = useMemo(
@@ -558,9 +561,15 @@ export default function Workforce() {
                                     {a.last_name?.[0]}
                                   </AvatarFallback>
                                 </Avatar>
-                                <span className="font-medium">
-                                  {a.first_name} {a.last_name}
-                                </span>
+                                <div className="min-w-0">
+                                  <div className="flex flex-wrap items-center gap-1.5">
+                                    <span className="font-medium">
+                                      {a.first_name} {a.last_name}
+                                    </span>
+                                    <ApplicantTagBadges applicant={a} certs={certSummary[a.id]} />
+                                  </div>
+                                  <ApplicantNoteLine applicant={a} className="max-w-[260px]" />
+                                </div>
                                 {a.do_not_rehire && (
                                   <Badge variant="destructive" className="text-[10px]">
                                     Do not rehire

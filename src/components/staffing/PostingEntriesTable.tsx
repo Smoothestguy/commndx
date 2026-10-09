@@ -1,3 +1,5 @@
+import { ApplicantTagBadges, ApplicantNoteLine } from "@/components/staffing/ApplicantMetaInline";
+import { useApplicantCertSummary } from "@/hooks/useApplicantCertSummary";
 import { useMemo } from "react";
 import { formatApplicantLocation } from "@/lib/applicantLocation";
 import { useApplicantLocations } from "@/hooks/useZipLookup";
@@ -175,6 +177,7 @@ export function PostingEntriesTable({
     () => sortStarredFirst(rawApplications, (a) => a.applicants as any),
     [rawApplications],
   );
+  const certSummary = useApplicantCertSummary(applications.map((a) => a.applicant_id));
   const resolveLocation = useApplicantLocations(applications.map((app) => app.applicants));
 
   // Filter out profile picture field from columns (shown separately)
@@ -242,6 +245,7 @@ export function PostingEntriesTable({
               selectable={selectable}
               isSelected={selectedIds.has(app.id)}
               onSelectionChange={handleSelectOne}
+              certs={certSummary[app.applicant_id]}
             />
           ))}
         </div>
@@ -340,7 +344,11 @@ export function PostingEntriesTable({
                       </TooltipProvider>
                     </TableCell>
                     <TableCell className="font-medium">
-                      {app.applicants?.first_name} {app.applicants?.last_name}
+                      <div className="flex flex-wrap items-center gap-1.5">
+                        <span>{app.applicants?.first_name} {app.applicants?.last_name}</span>
+                        <ApplicantTagBadges applicant={app.applicants as any} certs={certSummary[app.applicant_id]} />
+                      </div>
+                      <ApplicantNoteLine applicant={app.applicants as any} className="font-normal max-w-[220px]" />
                     </TableCell>
                     <TableCell className="text-sm text-muted-foreground">
                       {app.applicants?.email}

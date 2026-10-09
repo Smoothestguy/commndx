@@ -39,6 +39,8 @@ export function SecureAvatar({
         <AvatarImage
           src={secureUrl || undefined}
           alt={alt}
+          loading="lazy"
+          decoding="async"
           className={cn("object-cover", loading ? "opacity-0" : "opacity-100 transition-opacity")}
         />
         <AvatarFallback>{fallback}</AvatarFallback>

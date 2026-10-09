@@ -1,3 +1,5 @@
+import { ApplicantTagBadges, ApplicantNoteLine } from "@/components/staffing/ApplicantMetaInline";
+import { useApplicantCertSummary } from "@/hooks/useApplicantCertSummary";
 import { useMemo } from "react";
 import { format } from "date-fns";
 import { Badge } from "@/components/ui/badge";
@@ -91,6 +93,7 @@ export function ApplicationsTable({
     [rawApplications],
   );
   const isMobile = useIsMobile();
+  const certSummary = useApplicantCertSummary(applications.map((a) => a.applicant_id));
   const resolveLocation = useApplicantLocations(applications.map((app) => app.applicants));
   const { data: formTemplates } = useApplicationFormTemplates();
 
@@ -159,9 +162,15 @@ export function ApplicationsTable({
               fallback={<User className="h-4 w-4" />}
               alt="Profile"
             />
-            <p className="font-medium">
-              {app.applicants?.first_name} {app.applicants?.last_name}
-            </p>
+            <div className="min-w-0">
+              <div className="flex flex-wrap items-center gap-1.5">
+                <p className="font-medium">
+                  {app.applicants?.first_name} {app.applicants?.last_name}
+                </p>
+                <ApplicantTagBadges applicant={app.applicants as any} certs={certSummary[app.applicant_id]} />
+              </div>
+              <ApplicantNoteLine applicant={app.applicants as any} className="max-w-[260px]" />
+            </div>
           </div>
         );
       },
@@ -362,6 +371,7 @@ export function ApplicationsTable({
               onRevokeApproval={onRevokeApproval}
               onToggleContacted={onToggleContacted}
               fieldTypeMap={fieldTypeMap}
+              certs={certSummary[app.applicant_id]}
             />
           );
         })}
