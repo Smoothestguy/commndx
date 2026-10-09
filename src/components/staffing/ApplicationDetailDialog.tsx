@@ -728,6 +728,11 @@ export function ApplicationDetailDialog({
                   </div>
                 )}
 
+                <ApplicantMetaEditor
+                  applicantId={application.applicant_id}
+                  roleTags={(applicant as any)?.role_tags}
+                  staffNotes={(applicant as any)?.staff_notes}
+                />
                 <ApplicationCertifications applicantId={application.applicant_id} />
 
                 <Separator />

@@ -32,6 +32,8 @@ export type WorkforceApplicant = {
   city: string | null;
   home_zip: string | null;
   starred_at?: string | null;
+  role_tags?: string[] | null;
+  staff_notes?: string | null;
   state: string | null;
   status: string;
   created_at: string;
@@ -71,7 +73,7 @@ export const useWorkforcePool = () =>
       const { data: applicants, error } = await supabase
         .from("applicants")
         .select(
-          "id, first_name, last_name, email, phone, photo_url, city, state, home_zip, starred_at, status, created_at, capabilities_classified_at, do_not_rehire, do_not_rehire_reason, sms_opted_out, availability_status, available_from, home_lat, home_lng"
+          "id, first_name, last_name, email, phone, photo_url, city, state, home_zip, starred_at, role_tags, staff_notes, status, created_at, capabilities_classified_at, do_not_rehire, do_not_rehire_reason, sms_opted_out, availability_status, available_from, home_lat, home_lng"
         )
         .order("created_at", { ascending: false });
       if (error) throw error;

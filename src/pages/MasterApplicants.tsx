@@ -32,6 +32,8 @@ type Row = {
   state: string | null;
   home_zip: string | null;
   starred_at?: string | null;
+  role_tags?: string[] | null;
+  staff_notes?: string | null;
   status: string;
   created_at: string;
   application_count: number;
@@ -46,7 +48,7 @@ const useMasterApplicants = () =>
     queryFn: async (): Promise<Row[]> => {
       const { data: applicants, error } = await supabase
         .from("applicants")
-        .select("id, first_name, last_name, email, phone, photo_url, city, state, home_zip, starred_at, status, created_at")
+        .select("id, first_name, last_name, email, phone, photo_url, city, state, home_zip, starred_at, role_tags, staff_notes, status, created_at")
         .order("created_at", { ascending: false });
       if (error) throw error;
 
