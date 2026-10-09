@@ -12,6 +12,14 @@ const KEYS = [
   ["application"],
 ];
 
+export function invalidateApplicantQueries(qc: ReturnType<typeof useQueryClient>) {
+  qc.invalidateQueries({
+    predicate: (q) =>
+      KEYS.some((k) => q.queryKey[0] === k[0]) ||
+      q.queryKey.some((p) => typeof p === "string" && /applica|applicant|workforce/i.test(p)),
+  });
+}
+
 export function useToggleApplicantStar() {
   const qc = useQueryClient();
   return useMutation({
