@@ -5119,6 +5119,44 @@ export type Database = {
           },
         ]
       }
+      photo_request_tokens: {
+        Row: {
+          applicant_id: string
+          created_at: string
+          created_by: string | null
+          expires_at: string
+          id: string
+          token: string
+          used_at: string | null
+        }
+        Insert: {
+          applicant_id: string
+          created_at?: string
+          created_by?: string | null
+          expires_at?: string
+          id?: string
+          token?: string
+          used_at?: string | null
+        }
+        Update: {
+          applicant_id?: string
+          created_at?: string
+          created_by?: string | null
+          expires_at?: string
+          id?: string
+          token?: string
+          used_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "photo_request_tokens_applicant_id_fkey"
+            columns: ["applicant_id"]
+            isOneToOne: false
+            referencedRelation: "applicants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       po_addendum_attachments: {
         Row: {
           addendum_id: string
@@ -5714,6 +5752,71 @@ export type Database = {
             columns: ["week_closeout_id"]
             isOneToOne: false
             referencedRelation: "time_week_closeouts"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      project_locations: {
+        Row: {
+          address: string | null
+          city: string | null
+          created_at: string
+          id: string
+          name: string
+          poc_email: string | null
+          poc_name: string | null
+          poc_phone: string | null
+          project_id: string
+          project_number: string | null
+          scope: string | null
+          sort_order: number
+          state: string | null
+          status: string
+          updated_at: string
+          zip: string | null
+        }
+        Insert: {
+          address?: string | null
+          city?: string | null
+          created_at?: string
+          id?: string
+          name: string
+          poc_email?: string | null
+          poc_name?: string | null
+          poc_phone?: string | null
+          project_id: string
+          project_number?: string | null
+          scope?: string | null
+          sort_order?: number
+          state?: string | null
+          status?: string
+          updated_at?: string
+          zip?: string | null
+        }
+        Update: {
+          address?: string | null
+          city?: string | null
+          created_at?: string
+          id?: string
+          name?: string
+          poc_email?: string | null
+          poc_name?: string | null
+          poc_phone?: string | null
+          project_id?: string
+          project_number?: string | null
+          scope?: string | null
+          sort_order?: number
+          state?: string | null
+          status?: string
+          updated_at?: string
+          zip?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "project_locations_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "projects"
             referencedColumns: ["id"]
           },
         ]
@@ -9555,6 +9658,12 @@ export type Database = {
         }[]
       }
       get_personnel_id_for_user: { Args: { _user_id: string }; Returns: string }
+      get_photo_request_info: {
+        Args: { _token: string }
+        Returns: {
+          first_name: string
+        }[]
+      }
       get_public_signin_providers: {
         Args: never
         Returns: {
@@ -9679,6 +9788,10 @@ export type Database = {
           _user_agent?: string
         }
         Returns: undefined
+      }
+      set_photo_by_token: {
+        Args: { _photo_url: string; _token: string }
+        Returns: boolean
       }
       show_limit: { Args: never; Returns: number }
       show_trgm: { Args: { "": string }; Returns: string[] }

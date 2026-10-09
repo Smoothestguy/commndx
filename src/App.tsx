@@ -148,6 +148,7 @@ import AuditLogs from "./pages/AuditLogs";
 import StaffingApplications from "./pages/StaffingApplications";
 import JobPostingEntries from "./pages/JobPostingEntries";
 import PublicApplicationForm from "./pages/PublicApplicationForm";
+import PhotoRequest from "./pages/PhotoRequest";
 import QuickApply from "./pages/QuickApply";
 import MasterApplicants from "./pages/MasterApplicants";
 import Workforce from "./pages/Workforce";
@@ -249,6 +250,7 @@ const App = () => {
                       path="/apply/edit/:editToken"
                       element={<EditApplication />}
                     />
+                    <Route path="/photo/:token" element={<PhotoRequest />} />
                     <Route path="/quick-apply/:token" element={<QuickApply />} />
                     {/* Onboarding Routes */}
                     <Route
