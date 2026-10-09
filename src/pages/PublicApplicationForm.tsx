@@ -5,7 +5,7 @@ import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
 import { format } from "date-fns";
-import { MapPin, Calendar, Users, CheckCircle2, Loader2, Mail, AlertTriangle, Navigation, UserCheck, X, DollarSign } from "lucide-react";
+import { MapPin, Calendar, Users, CheckCircle2, Loader2, Mail, AlertTriangle, Navigation, UserCheck, X, DollarSign, Facebook } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -105,6 +105,44 @@ const schemaWithHomeZipRequired = baseSchema.extend({
     .min(1, "Home ZIP Code is required")
     .regex(/^\d{5}(-\d{4})?$/, "Enter a valid ZIP code (5 digits or 5+4)"),
 });
+
+const FRG_FACEBOOK_URL = "https://www.facebook.com/profile.php?id=100090326967604";
+const REDIRECT_SECONDS = 4;
+
+/**
+ * Rendered only on the post-submit success screen. Counts down, then sends the
+ * applicant to FRG's Facebook page. The explicit button beside it stays usable
+ * for anyone whose browser blocks the automatic navigation.
+ */
+function FacebookFollowRedirect() {
+  const [secondsLeft, setSecondsLeft] = useState(REDIRECT_SECONDS);
+  const redirected = useRef(false);
+
+  useEffect(() => {
+    const startedAt = Date.now();
+    const id = window.setInterval(() => {
+      const remaining = Math.max(
+        0,
+        REDIRECT_SECONDS - Math.floor((Date.now() - startedAt) / 1000),
+      );
+      setSecondsLeft(remaining);
+      if (remaining <= 0) {
+        window.clearInterval(id);
+        if (!redirected.current) {
+          redirected.current = true;
+          window.location.href = FRG_FACEBOOK_URL;
+        }
+      }
+    }, 250);
+    return () => window.clearInterval(id);
+  }, []);
+
+  if (secondsLeft <= 0) return null;
+
+  return (
+    <p className="text-xs text-muted-foreground">Redirecting in {secondsLeft}…</p>
+  );
+}
 
 export default function PublicApplicationForm() {
   // Force dark theme on public applicant form (brand consistency)
@@ -1324,6 +1362,25 @@ export default function PublicApplicationForm() {
               {successMessage || "Thank you for applying. We will review your application and contact you if you're selected."}
             </CardDescription>
           </CardHeader>
+          <CardContent className="space-y-3 text-center">
+            <p className="text-sm font-medium">
+              Follow us on Facebook for new job postings
+              <span className="mt-0.5 block text-muted-foreground">
+                Síguenos en Facebook para nuevos trabajos
+              </span>
+            </p>
+            <Button
+              asChild
+              size="lg"
+              className="w-full bg-facebook text-facebook-foreground hover:bg-facebook/90"
+            >
+              <a href={FRG_FACEBOOK_URL} rel="noopener noreferrer">
+                <Facebook className="h-5 w-5" />
+                Follow us on Facebook
+              </a>
+            </Button>
+            <FacebookFollowRedirect />
+          </CardContent>
         </Card>
       </div>
     );
