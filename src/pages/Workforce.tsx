@@ -224,6 +224,7 @@ export default function Workforce() {
   );
 
   const pageRows = filtered.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
+  const certSummary = useApplicantCertSummary(pageRows.map((a) => a.id));
   const totalPages = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
   const catById = useMemo(() => new Map(categories.map((c) => [c.id, c])), [categories]);
   const states = useMemo(

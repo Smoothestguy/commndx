@@ -139,6 +139,7 @@ export default function MasterApplicants() {
     return filtered;
   }, [data, search, status, hasPhone, sortKey, sortDir]);
 
+  const certSummary = useApplicantCertSummary(filtered.map((r) => r.id));
   const toggle = (id: string) => {
     setSelected((prev) => {
       const next = new Set(prev);
