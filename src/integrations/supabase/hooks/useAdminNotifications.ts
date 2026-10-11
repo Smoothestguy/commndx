@@ -1,7 +1,7 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
-import { useEffect } from "react";
+import { useEffect, useId } from "react";
 
 export interface AdminNotification {
   id: string;
@@ -24,6 +24,7 @@ export interface AdminNotification {
 
 export function useAdminNotifications() {
   const { user } = useAuth();
+  const channelId = useId();
   const queryClient = useQueryClient();
 
   const query = useQuery({
@@ -49,7 +50,7 @@ export function useAdminNotifications() {
     if (!user) return;
 
     const channel = supabase
-      .channel("admin-notifications-changes")
+      .channel(`admin-notifications-changes-${user.id}-${channelId}`)
       .on(
         "postgres_changes",
         {
@@ -67,13 +68,14 @@ export function useAdminNotifications() {
     return () => {
       supabase.removeChannel(channel);
     };
-  }, [user, queryClient]);
+  }, [user, queryClient, channelId]);
 
   return query;
 }
 
 export function useUnreadNotificationCount() {
   const { user } = useAuth();
+  const channelId = useId();
   const queryClient = useQueryClient();
 
   const query = useQuery({
@@ -98,7 +100,7 @@ export function useUnreadNotificationCount() {
     if (!user) return;
 
     const channel = supabase
-      .channel("admin-notifications-count-changes")
+      .channel(`admin-notifications-count-changes-${user.id}-${channelId}`)
       .on(
         "postgres_changes",
         {
@@ -116,7 +118,7 @@ export function useUnreadNotificationCount() {
     return () => {
       supabase.removeChannel(channel);
     };
-  }, [user, queryClient]);
+  }, [user, queryClient, channelId]);
 
   return query;
 }
