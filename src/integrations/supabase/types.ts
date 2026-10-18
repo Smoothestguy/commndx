@@ -1064,6 +1064,13 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
+            foreignKeyName: "asset_assignments_assigned_to_personnel_id_fkey"
+            columns: ["assigned_to_personnel_id"]
+            isOneToOne: false
+            referencedRelation: "personnel_directory"
+            referencedColumns: ["id"]
+          },
+          {
             foreignKeyName: "asset_assignments_project_id_fkey"
             columns: ["project_id"]
             isOneToOne: false
@@ -1788,6 +1795,13 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
+            foreignKeyName: "clock_alerts_personnel_id_fkey"
+            columns: ["personnel_id"]
+            isOneToOne: false
+            referencedRelation: "personnel_directory"
+            referencedColumns: ["id"]
+          },
+          {
             foreignKeyName: "clock_alerts_project_id_fkey"
             columns: ["project_id"]
             isOneToOne: false
@@ -2261,6 +2275,154 @@ export type Database = {
         }
         Relationships: []
       }
+      crew_members: {
+        Row: {
+          created_at: string
+          crew_id: string
+          id: string
+          joined_on: string
+          left_on: string | null
+          personnel_id: string
+          role_label: string | null
+        }
+        Insert: {
+          created_at?: string
+          crew_id: string
+          id?: string
+          joined_on?: string
+          left_on?: string | null
+          personnel_id: string
+          role_label?: string | null
+        }
+        Update: {
+          created_at?: string
+          crew_id?: string
+          id?: string
+          joined_on?: string
+          left_on?: string | null
+          personnel_id?: string
+          role_label?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "crew_members_crew_id_fkey"
+            columns: ["crew_id"]
+            isOneToOne: false
+            referencedRelation: "crews"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "crew_members_personnel_id_fkey"
+            columns: ["personnel_id"]
+            isOneToOne: false
+            referencedRelation: "personnel"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "crew_members_personnel_id_fkey"
+            columns: ["personnel_id"]
+            isOneToOne: false
+            referencedRelation: "personnel_directory"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      crew_mileage_log: {
+        Row: {
+          created_at: string
+          crew_id: string
+          id: string
+          log_date: string
+          logged_by: string | null
+          miles: number
+          notes: string | null
+        }
+        Insert: {
+          created_at?: string
+          crew_id: string
+          id?: string
+          log_date: string
+          logged_by?: string | null
+          miles: number
+          notes?: string | null
+        }
+        Update: {
+          created_at?: string
+          crew_id?: string
+          id?: string
+          log_date?: string
+          logged_by?: string | null
+          miles?: number
+          notes?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "crew_mileage_log_crew_id_fkey"
+            columns: ["crew_id"]
+            isOneToOne: false
+            referencedRelation: "crews"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      crews: {
+        Row: {
+          created_at: string
+          created_by: string | null
+          id: string
+          name: string
+          notes: string | null
+          project_id: string
+          status: string
+          supervisor_personnel_id: string | null
+          truck_count: number
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          name: string
+          notes?: string | null
+          project_id: string
+          status?: string
+          supervisor_personnel_id?: string | null
+          truck_count?: number
+        }
+        Update: {
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          name?: string
+          notes?: string | null
+          project_id?: string
+          status?: string
+          supervisor_personnel_id?: string | null
+          truck_count?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "crews_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "projects"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "crews_supervisor_personnel_id_fkey"
+            columns: ["supervisor_personnel_id"]
+            isOneToOne: false
+            referencedRelation: "personnel"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "crews_supervisor_personnel_id_fkey"
+            columns: ["supervisor_personnel_id"]
+            isOneToOne: false
+            referencedRelation: "personnel_directory"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       customers: {
         Row: {
           address: string | null
@@ -2467,6 +2629,13 @@ export type Database = {
             columns: ["personnel_id"]
             isOneToOne: false
             referencedRelation: "personnel"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "emergency_contacts_personnel_id_fkey"
+            columns: ["personnel_id"]
+            isOneToOne: false
+            referencedRelation: "personnel_directory"
             referencedColumns: ["id"]
           },
         ]
@@ -3051,6 +3220,13 @@ export type Database = {
             referencedRelation: "personnel"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "invitations_personnel_id_fkey"
+            columns: ["personnel_id"]
+            isOneToOne: false
+            referencedRelation: "personnel_directory"
+            referencedColumns: ["id"]
+          },
         ]
       }
       invoice_attachments: {
@@ -3624,12 +3800,20 @@ export type Database = {
             referencedRelation: "personnel"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "location_assignments_personnel_id_fkey"
+            columns: ["personnel_id"]
+            isOneToOne: false
+            referencedRelation: "personnel_directory"
+            referencedColumns: ["id"]
+          },
         ]
       }
       location_attendance: {
         Row: {
           att_date: string
           created_at: string
+          crew_id: string | null
           hours: number | null
           id: string
           location_id: string
@@ -3640,6 +3824,7 @@ export type Database = {
         Insert: {
           att_date: string
           created_at?: string
+          crew_id?: string | null
           hours?: number | null
           id?: string
           location_id: string
@@ -3650,6 +3835,7 @@ export type Database = {
         Update: {
           att_date?: string
           created_at?: string
+          crew_id?: string | null
           hours?: number | null
           id?: string
           location_id?: string
@@ -3658,6 +3844,13 @@ export type Database = {
           status?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "location_attendance_crew_id_fkey"
+            columns: ["crew_id"]
+            isOneToOne: false
+            referencedRelation: "crews"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "location_attendance_location_id_fkey"
             columns: ["location_id"]
@@ -3670,6 +3863,13 @@ export type Database = {
             columns: ["personnel_id"]
             isOneToOne: false
             referencedRelation: "personnel"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "location_attendance_personnel_id_fkey"
+            columns: ["personnel_id"]
+            isOneToOne: false
+            referencedRelation: "personnel_directory"
             referencedColumns: ["id"]
           },
         ]
@@ -4275,6 +4475,13 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
+            foreignKeyName: "personnel_merged_into_id_fkey"
+            columns: ["merged_into_id"]
+            isOneToOne: false
+            referencedRelation: "personnel_directory"
+            referencedColumns: ["id"]
+          },
+          {
             foreignKeyName: "personnel_vendor_id_fkey"
             columns: ["vendor_id"]
             isOneToOne: false
@@ -4342,6 +4549,13 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
+            foreignKeyName: "personnel_assignment_ratings_personnel_id_fkey"
+            columns: ["personnel_id"]
+            isOneToOne: false
+            referencedRelation: "personnel_directory"
+            referencedColumns: ["id"]
+          },
+          {
             foreignKeyName: "personnel_assignment_ratings_project_id_fkey"
             columns: ["project_id"]
             isOneToOne: false
@@ -4378,6 +4592,13 @@ export type Database = {
             columns: ["personnel_id"]
             isOneToOne: false
             referencedRelation: "personnel"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "personnel_capabilities_personnel_id_fkey"
+            columns: ["personnel_id"]
+            isOneToOne: false
+            referencedRelation: "personnel_directory"
             referencedColumns: ["id"]
           },
         ]
@@ -4425,6 +4646,13 @@ export type Database = {
             columns: ["personnel_id"]
             isOneToOne: false
             referencedRelation: "personnel"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "personnel_certifications_personnel_id_fkey"
+            columns: ["personnel_id"]
+            isOneToOne: false
+            referencedRelation: "personnel_directory"
             referencedColumns: ["id"]
           },
         ]
@@ -4481,6 +4709,13 @@ export type Database = {
             columns: ["personnel_id"]
             isOneToOne: false
             referencedRelation: "personnel"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "personnel_documents_personnel_id_fkey"
+            columns: ["personnel_id"]
+            isOneToOne: false
+            referencedRelation: "personnel_directory"
             referencedColumns: ["id"]
           },
         ]
@@ -4586,6 +4821,13 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
+            foreignKeyName: "personnel_hotel_assignments_personnel_id_fkey"
+            columns: ["personnel_id"]
+            isOneToOne: false
+            referencedRelation: "personnel_directory"
+            referencedColumns: ["id"]
+          },
+          {
             foreignKeyName: "personnel_hotel_assignments_personnel_project_assignment_i_fkey"
             columns: ["personnel_project_assignment_id"]
             isOneToOne: false
@@ -4643,6 +4885,13 @@ export type Database = {
             referencedRelation: "personnel"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "personnel_invitations_personnel_id_fkey"
+            columns: ["personnel_id"]
+            isOneToOne: false
+            referencedRelation: "personnel_directory"
+            referencedColumns: ["id"]
+          },
         ]
       }
       personnel_languages: {
@@ -4673,6 +4922,13 @@ export type Database = {
             columns: ["personnel_id"]
             isOneToOne: false
             referencedRelation: "personnel"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "personnel_languages_personnel_id_fkey"
+            columns: ["personnel_id"]
+            isOneToOne: false
+            referencedRelation: "personnel_directory"
             referencedColumns: ["id"]
           },
         ]
@@ -4719,6 +4975,13 @@ export type Database = {
             referencedRelation: "personnel"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "personnel_notification_preferences_personnel_id_fkey"
+            columns: ["personnel_id"]
+            isOneToOne: true
+            referencedRelation: "personnel_directory"
+            referencedColumns: ["id"]
+          },
         ]
       }
       personnel_notifications: {
@@ -4758,6 +5021,13 @@ export type Database = {
             columns: ["personnel_id"]
             isOneToOne: false
             referencedRelation: "personnel"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "personnel_notifications_personnel_id_fkey"
+            columns: ["personnel_id"]
+            isOneToOne: false
+            referencedRelation: "personnel_directory"
             referencedColumns: ["id"]
           },
         ]
@@ -4802,6 +5072,13 @@ export type Database = {
             columns: ["personnel_id"]
             isOneToOne: false
             referencedRelation: "personnel"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "personnel_onboarding_tokens_personnel_id_fkey"
+            columns: ["personnel_id"]
+            isOneToOne: false
+            referencedRelation: "personnel_directory"
             referencedColumns: ["id"]
           },
         ]
@@ -4918,6 +5195,13 @@ export type Database = {
             referencedRelation: "personnel"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "personnel_payments_personnel_id_fkey"
+            columns: ["personnel_id"]
+            isOneToOne: false
+            referencedRelation: "personnel_directory"
+            referencedColumns: ["id"]
+          },
         ]
       }
       personnel_project_assignments: {
@@ -4991,6 +5275,13 @@ export type Database = {
             columns: ["personnel_id"]
             isOneToOne: false
             referencedRelation: "personnel"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "personnel_project_assignments_personnel_id_fkey"
+            columns: ["personnel_id"]
+            isOneToOne: false
+            referencedRelation: "personnel_directory"
             referencedColumns: ["id"]
           },
           {
@@ -5150,6 +5441,13 @@ export type Database = {
             referencedRelation: "personnel"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "personnel_registrations_personnel_id_fkey"
+            columns: ["personnel_id"]
+            isOneToOne: false
+            referencedRelation: "personnel_directory"
+            referencedColumns: ["id"]
+          },
         ]
       }
       personnel_schedules: {
@@ -5195,6 +5493,13 @@ export type Database = {
             columns: ["personnel_id"]
             isOneToOne: false
             referencedRelation: "personnel"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "personnel_schedules_personnel_id_fkey"
+            columns: ["personnel_id"]
+            isOneToOne: false
+            referencedRelation: "personnel_directory"
             referencedColumns: ["id"]
           },
           {
@@ -5315,6 +5620,13 @@ export type Database = {
             columns: ["personnel_id"]
             isOneToOne: true
             referencedRelation: "personnel"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "personnel_w9_forms_personnel_id_fkey"
+            columns: ["personnel_id"]
+            isOneToOne: true
+            referencedRelation: "personnel_directory"
             referencedColumns: ["id"]
           },
         ]
@@ -5927,6 +6239,13 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
+            foreignKeyName: "project_labor_expenses_personnel_id_fkey"
+            columns: ["personnel_id"]
+            isOneToOne: false
+            referencedRelation: "personnel_directory"
+            referencedColumns: ["id"]
+          },
+          {
             foreignKeyName: "project_labor_expenses_personnel_payment_id_fkey"
             columns: ["personnel_payment_id"]
             isOneToOne: false
@@ -6092,6 +6411,13 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
+            foreignKeyName: "project_personnel_rate_history_personnel_id_fkey"
+            columns: ["personnel_id"]
+            isOneToOne: false
+            referencedRelation: "personnel_directory"
+            referencedColumns: ["id"]
+          },
+          {
             foreignKeyName: "project_personnel_rate_history_project_id_fkey"
             columns: ["project_id"]
             isOneToOne: false
@@ -6196,6 +6522,13 @@ export type Database = {
             columns: ["assigned_contractor_id"]
             isOneToOne: false
             referencedRelation: "personnel"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "project_rooms_assigned_contractor_id_fkey"
+            columns: ["assigned_contractor_id"]
+            isOneToOne: false
+            referencedRelation: "personnel_directory"
             referencedColumns: ["id"]
           },
           {
@@ -6365,6 +6698,7 @@ export type Database = {
           customer_pm_name: string | null
           customer_pm_phone: string | null
           customer_po: string | null
+          default_shift_hours: number
           deleted_at: string | null
           deleted_by: string | null
           deployment_mode: boolean
@@ -6373,6 +6707,7 @@ export type Database = {
           geofence_radius_miles: number | null
           id: string
           mandatory_payroll: boolean | null
+          mileage_rate: number | null
           name: string
           our_field_superintendent_id: string | null
           poc_email: string | null
@@ -6405,6 +6740,7 @@ export type Database = {
           customer_pm_name?: string | null
           customer_pm_phone?: string | null
           customer_po?: string | null
+          default_shift_hours?: number
           deleted_at?: string | null
           deleted_by?: string | null
           deployment_mode?: boolean
@@ -6413,6 +6749,7 @@ export type Database = {
           geofence_radius_miles?: number | null
           id?: string
           mandatory_payroll?: boolean | null
+          mileage_rate?: number | null
           name: string
           our_field_superintendent_id?: string | null
           poc_email?: string | null
@@ -6445,6 +6782,7 @@ export type Database = {
           customer_pm_name?: string | null
           customer_pm_phone?: string | null
           customer_po?: string | null
+          default_shift_hours?: number
           deleted_at?: string | null
           deleted_by?: string | null
           deployment_mode?: boolean
@@ -6453,6 +6791,7 @@ export type Database = {
           geofence_radius_miles?: number | null
           id?: string
           mandatory_payroll?: boolean | null
+          mileage_rate?: number | null
           name?: string
           our_field_superintendent_id?: string | null
           poc_email?: string | null
@@ -6484,6 +6823,13 @@ export type Database = {
             columns: ["our_field_superintendent_id"]
             isOneToOne: false
             referencedRelation: "personnel"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "projects_our_field_superintendent_id_fkey"
+            columns: ["our_field_superintendent_id"]
+            isOneToOne: false
+            referencedRelation: "personnel_directory"
             referencedColumns: ["id"]
           },
         ]
@@ -7355,6 +7701,13 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
+            foreignKeyName: "reimbursements_personnel_id_fkey"
+            columns: ["personnel_id"]
+            isOneToOne: false
+            referencedRelation: "personnel_directory"
+            referencedColumns: ["id"]
+          },
+          {
             foreignKeyName: "reimbursements_project_id_fkey"
             columns: ["project_id"]
             isOneToOne: false
@@ -7431,6 +7784,13 @@ export type Database = {
             columns: ["inspector_id"]
             isOneToOne: false
             referencedRelation: "personnel"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "roof_inspections_inspector_id_fkey"
+            columns: ["inspector_id"]
+            isOneToOne: false
+            referencedRelation: "personnel_directory"
             referencedColumns: ["id"]
           },
           {
@@ -8055,6 +8415,13 @@ export type Database = {
             columns: ["personnel_id"]
             isOneToOne: false
             referencedRelation: "personnel"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "time_entries_personnel_id_fkey"
+            columns: ["personnel_id"]
+            isOneToOne: false
+            referencedRelation: "personnel_directory"
             referencedColumns: ["id"]
           },
           {
@@ -9578,6 +9945,30 @@ export type Database = {
       }
     }
     Views: {
+      personnel_directory: {
+        Row: {
+          first_name: string | null
+          id: string | null
+          last_name: string | null
+          photo_url: string | null
+          status: Database["public"]["Enums"]["personnel_status"] | null
+        }
+        Insert: {
+          first_name?: string | null
+          id?: string | null
+          last_name?: string | null
+          photo_url?: string | null
+          status?: Database["public"]["Enums"]["personnel_status"] | null
+        }
+        Update: {
+          first_name?: string | null
+          id?: string | null
+          last_name?: string | null
+          photo_url?: string | null
+          status?: Database["public"]["Enums"]["personnel_status"] | null
+        }
+        Relationships: []
+      }
       public_task_order_positions: {
         Row: {
           advertised_pay_rate: number | null
