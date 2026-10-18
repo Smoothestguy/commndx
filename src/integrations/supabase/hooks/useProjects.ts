@@ -26,6 +26,7 @@ export interface Project {
   mandatory_payroll: boolean;
   archived_at: string | null;
   archived_by: string | null;
+  deployment_mode?: boolean;
   created_at: string;
   updated_at: string;
 }
