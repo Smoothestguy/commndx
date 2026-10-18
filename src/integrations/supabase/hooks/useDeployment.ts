@@ -83,17 +83,31 @@ export function useLastServiced(locationIds: string[], enabled: boolean) {
   });
 }
 
+/** Batch-fetch names from personnel_directory (readable by ALL staff, unlike personnel). */
+async function fetchDirectoryNames(personnelIds: string[]) {
+  const ids = [...new Set(personnelIds)];
+  if (!ids.length) return {} as Record<string, { first_name: string | null; last_name: string | null }>;
+  const { data, error } = await db.from("personnel_directory")
+    .select("id, first_name, last_name").in("id", ids);
+  if (error) throw error;
+  const map: Record<string, { first_name: string | null; last_name: string | null }> = {};
+  for (const r of data ?? []) map[r.id] = { first_name: r.first_name, last_name: r.last_name };
+  return map;
+}
+
 export function useLocationAttendance(locationId: string | undefined, from: string, to: string) {
   return useQuery({
     queryKey: ["location-attendance", locationId, from, to],
     enabled: !!locationId,
     queryFn: async () => {
-      // personnel_directory (not personnel) so plain 'user' field staff can read names
       const { data, error } = await db.from("location_attendance")
-        .select("id, location_id, personnel_id, att_date, status, hours, crew_id, personnel:personnel_id(first_name, last_name)")
+        .select("id, location_id, personnel_id, att_date, status, hours, crew_id")
         .eq("location_id", locationId).gte("att_date", from).lte("att_date", to);
       if (error) throw error;
-      return (data ?? []) as AttendanceRow[];
+      const rows = (data ?? []) as Omit<AttendanceRow, "personnel">[];
+      // Names via personnel_directory so plain 'user' field staff don't see "Unknown"
+      const names = await fetchDirectoryNames(rows.map((r) => r.personnel_id));
+      return rows.map((r) => ({ ...r, personnel: names[r.personnel_id] ?? null })) as AttendanceRow[];
     },
   });
 }
