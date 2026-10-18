@@ -10,7 +10,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Check, ChevronLeft, ChevronRight, Loader2 } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { formatLocalDate, parseLocalDate } from "@/lib/dateUtils";
+import { formatLocalDate } from "@/lib/dateUtils";
 import { useProjectLocations, ProjectLocation } from "@/integrations/supabase/hooks/useProjectLocations";
 import { useLocationAssignments } from "@/integrations/supabase/hooks/useLocationStaffing";
 import {
@@ -290,5 +290,3 @@ export function ProjectDeploymentTab({ projectId }: { projectId: string }) {
   );
 }
 
-// keep parseLocalDate import tree-shaken-safe for future use
-void parseLocalDate;
