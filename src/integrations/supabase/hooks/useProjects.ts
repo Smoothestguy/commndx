@@ -27,6 +27,8 @@ export interface Project {
   archived_at: string | null;
   archived_by: string | null;
   deployment_mode?: boolean;
+  default_shift_hours?: number;
+  mileage_rate?: number | null;
   created_at: string;
   updated_at: string;
 }

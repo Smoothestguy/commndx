@@ -98,10 +98,20 @@ export function useLocationAssignments(locationId?: string) {
     enabled: !!locationId,
     queryFn: async () => {
       const { data, error } = await db.from("location_assignments")
-        .select("id, location_id, personnel_id, role_label, status, assigned_at, personnel:personnel_id(first_name, last_name, status, phone)")
+        .select("id, location_id, personnel_id, role_label, status, assigned_at")
         .eq("location_id", locationId).eq("status", "active").order("assigned_at", { ascending: true });
       if (error) throw error;
-      return (data ?? []) as LocationAssignment[];
+      const rows = (data ?? []) as Omit<LocationAssignment, "personnel">[];
+      // Names via personnel_directory (readable by all staff; personnel is admin/manager-only)
+      const ids = [...new Set(rows.map((r) => r.personnel_id))];
+      let names: Record<string, { first_name: string | null; last_name: string | null }> = {};
+      if (ids.length) {
+        const { data: dir, error: dErr } = await db.from("personnel_directory")
+          .select("id, first_name, last_name").in("id", ids);
+        if (dErr) throw dErr;
+        for (const r of dir ?? []) names[r.id] = { first_name: r.first_name, last_name: r.last_name };
+      }
+      return rows.map((r) => ({ ...r, personnel: names[r.personnel_id] ?? null })) as LocationAssignment[];
     },
   });
 }
