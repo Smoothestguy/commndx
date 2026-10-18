@@ -25,6 +25,8 @@ import {
 } from "@/integrations/supabase/hooks/useLocationStaffing";
 import { LocationStaffing, RolePicker } from "./LocationStaffing";
 import { LocationLodging } from "./LocationLodging";
+import { useLastServiced } from "@/integrations/supabase/hooks/useDeployment";
+import { formatLocalDate } from "@/lib/dateUtils";
 
 type ReqRow = { key: string; id?: string; role_label: string; headcount: string; rate: string };
 let rowSeq = 0;
@@ -36,7 +38,7 @@ const newRow = (r?: LocationRequirement): ReqRow => ({
 const EMPTY = {
   name: "", project_number: "", scope: "", address: "", city: "", state: "", zip: "",
   poc_name: "", poc_phone: "", poc_email: "", status: "active", sort_order: "",
-  housing_provided_by: "none", meals_provided: false as boolean, meals_notes: "",
+  housing_provided_by: "none", meals_provided: false as boolean, meals_notes: "", mobe_date: "", demobe_date: "",
 };
 type FormState = typeof EMPTY;
 
@@ -55,7 +57,7 @@ function ScopeText({ text }: { text: string }) {
   );
 }
 
-export function ProjectLocationsTab({ projectId }: { projectId: string }) {
+export function ProjectLocationsTab({ projectId, deploymentMode = false }: { projectId: string; deploymentMode?: boolean }) {
   const { isAdmin, isManager } = useUserRole();
   const canWrite = isAdmin || isManager;
   const { data: locations = [], isLoading } = useProjectLocations(projectId);
@@ -63,6 +65,7 @@ export function ProjectLocationsTab({ projectId }: { projectId: string }) {
   const update = useUpdateProjectLocation();
   const del = useDeleteProjectLocation();
   const { data: staffing } = useLocationStaffingSummary(locations.map((l) => l.id));
+  const { data: lastServiced } = useLastServiced(locations.map((l) => l.id), deploymentMode);
 
   const [editing, setEditing] = useState<ProjectLocation | null>(null);
   const [open, setOpen] = useState(false);
@@ -87,6 +90,7 @@ export function ProjectLocationsTab({ projectId }: { projectId: string }) {
       poc_phone: l.poc_phone ?? "", poc_email: l.poc_email ?? "", status: l.status || "active",
       sort_order: l.sort_order != null ? String(l.sort_order) : "",
       housing_provided_by: l.housing_provided_by || "none", meals_provided: !!l.meals_provided, meals_notes: l.meals_notes ?? "",
+      mobe_date: l.mobe_date ?? "", demobe_date: l.demobe_date ?? "",
     });
     setRows([]); setSeeded(false);
     setOpen(true);
@@ -102,6 +106,7 @@ export function ProjectLocationsTab({ projectId }: { projectId: string }) {
       status: form.status, sort_order: form.sort_order.trim() ? Number(form.sort_order) : 0,
       housing_provided_by: form.housing_provided_by, meals_provided: form.meals_provided,
       meals_notes: form.meals_provided ? n(form.meals_notes) : null,
+      ...(deploymentMode ? { mobe_date: form.mobe_date || null, demobe_date: form.demobe_date || null } : {}),
     };
     let locationId: string;
     if (editing) { await update.mutateAsync({ id: editing.id, ...payload }); locationId = editing.id; }
@@ -178,6 +183,14 @@ export function ProjectLocationsTab({ projectId }: { projectId: string }) {
                     {l.poc_email && <a href={`mailto:${l.poc_email}`} className="text-primary flex items-center gap-1"><Mail className="h-3 w-3" />{l.poc_email}</a>}
                   </div>
                 )}
+                {deploymentMode && (l.mobe_date || l.demobe_date || lastServiced?.[l.id]) && (
+                  <div className="text-xs text-muted-foreground flex flex-wrap gap-x-3">
+                    {(l.mobe_date || l.demobe_date) && (
+                      <span>Mobe {l.mobe_date ? formatLocalDate(l.mobe_date, "M/d") : "—"} → Demobe {l.demobe_date ? formatLocalDate(l.demobe_date, "M/d") : "—"}</span>
+                    )}
+                    {lastServiced?.[l.id] && <span>Last serviced {formatLocalDate(lastServiced[l.id], "M/d")}</span>}
+                  </div>
+                )}
                 {l.scope && <ScopeText text={l.scope} />}
                 <LocationStaffing locationId={l.id} summary={staffing?.[l.id]} canWrite={canWrite} />
                 <LocationLodging projectId={projectId} locationId={l.id} housingBy={l.housing_provided_by} canWrite={canWrite} />
@@ -212,6 +225,8 @@ export function ProjectLocationsTab({ projectId }: { projectId: string }) {
             <div><Label>POC name</Label><Input {...f("poc_name")} /></div>
             <div><Label>POC phone</Label><Input type="tel" {...f("poc_phone")} /></div>
             <div><Label>POC email</Label><Input type="email" {...f("poc_email")} /></div>
+            {deploymentMode && <div><Label>Mobe date</Label><Input type="date" {...f("mobe_date")} /></div>}
+            {deploymentMode && <div><Label>Demobe date</Label><Input type="date" {...f("demobe_date")} /></div>}
             <div><Label>Sort order</Label><Input type="number" {...f("sort_order")} /></div>
             <div className="col-span-2"><Label>Scope</Label><Textarea rows={4} {...f("scope")} /></div>
             <div className="col-span-2 space-y-2 border-t pt-3">

@@ -20,6 +20,8 @@ export interface ProjectLocation {
   housing_provided_by: string | null;
   meals_provided: boolean | null;
   meals_notes: string | null;
+  mobe_date: string | null;
+  demobe_date: string | null;
   created_at: string;
   updated_at: string;
 }
