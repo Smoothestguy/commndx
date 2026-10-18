@@ -573,7 +573,6 @@ function CrewsSection({ projectId, crews, canEdit }: { projectId: string; crews:
         {crews.length === 0 && <p className="text-sm text-muted-foreground">No crews yet. Crews enable one-tap attendance and mileage logging.</p>}
         {crews.map((c) => {
           const sup = c.supervisor ? fullName(c.supervisor) : null;
-          const techs = c.members.filter((m) => m.personnel_id !== c.supervisor_personnel_id).length;
           return (
             <div key={c.id} className="flex items-center gap-2 border rounded-md px-3 py-2">
               <div className="flex-1 min-w-0">
