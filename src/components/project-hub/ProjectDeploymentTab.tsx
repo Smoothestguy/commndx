@@ -581,7 +581,7 @@ function CrewsSection({ projectId, crews, canEdit }: { projectId: string; crews:
                   <Badge variant={c.status === "active" ? "default" : "secondary"} className="text-[10px]">{c.status}</Badge>
                 </div>
                 <div className="text-[11px] text-muted-foreground truncate">
-                  {sup ? `${sup} (Super)` : "No supervisor"} · {techs + (sup ? 1 : 0) - (sup ? 1 : 0) + techs * 0 + (c.members.length - (sup ? 1 : 0))} members · {c.truck_count ?? 0} truck{(c.truck_count ?? 0) === 1 ? "" : "s"}
+                  {sup ? `${sup} (Super)` : "No supervisor"} · {c.members.length} member{c.members.length === 1 ? "" : "s"} · {c.truck_count ?? 0} truck{(c.truck_count ?? 0) === 1 ? "" : "s"}
                 </div>
               </div>
               {canEdit && (
