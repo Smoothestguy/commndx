@@ -36,8 +36,11 @@ import { ProjectActivityTimeline } from "@/components/project-hub/ProjectActivit
 import { ProjectStatusMenu } from "@/components/projects/ProjectStatusMenu";
 import { ProjectLocationsTab } from "@/components/project-hub/ProjectLocationsTab";
 import { useProjectLocations } from "@/integrations/supabase/hooks/useProjectLocations";
+import { ProjectDeploymentTab } from "@/components/project-hub/ProjectDeploymentTab";
+import { useUpdateProject } from "@/integrations/supabase/hooks/useProjects";
+import { Switch } from "@/components/ui/switch";
 
-const TABS = ["locations", "recruiting", "crew", "financials", "time", "docs"] as const;
+const TABS = ["locations", "deployment", "recruiting", "crew", "financials", "time", "docs"] as const;
 type TabValue = (typeof TABS)[number];
 
 const ProjectDetail = () => {
@@ -52,9 +55,11 @@ const ProjectDetail = () => {
   const { data: locations = [] } = useProjectLocations(id);
   const archiveProject = useArchiveProject();
   const unarchiveProject = useUnarchiveProject();
+  const updateProject = useUpdateProject();
 
+  const deploymentMode = !!project?.deployment_mode;
   const tabParam = searchParams.get("tab");
-  const activeTab: TabValue = (TABS as readonly string[]).includes(tabParam || "")
+  const activeTab: TabValue = (TABS as readonly string[]).includes(tabParam || "") && (tabParam !== "deployment" || deploymentMode)
     ? (tabParam as TabValue)
     : "locations";
 
@@ -182,6 +187,16 @@ const ProjectDetail = () => {
               <Hash className="h-3 w-3" /> PO {project.customer_po}
             </Badge>
           )}
+          {canArchive && (
+            <label className="ml-auto flex items-center gap-2 text-xs text-muted-foreground cursor-pointer" title="Deployment tracking — daily multi-site service & roster grids">
+              <Switch
+                checked={deploymentMode}
+                disabled={updateProject.isPending}
+                onCheckedChange={(v) => updateProject.mutate({ id: project.id, deployment_mode: v })}
+              />
+              Deployment tracking
+            </label>
+          )}
         </div>
         <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-sm text-muted-foreground">
           {customer && (
@@ -216,6 +231,7 @@ const ProjectDetail = () => {
         <div className="overflow-x-auto -mx-1 px-1 mb-4">
           <TabsList className="w-max">
             <TabsTrigger value="locations">Locations{locations.length > 0 ? ` (${locations.length})` : ""}</TabsTrigger>
+            {deploymentMode && <TabsTrigger value="deployment">Deployment</TabsTrigger>}
             <TabsTrigger value="recruiting">Recruiting</TabsTrigger>
             <TabsTrigger value="crew">Crew &amp; Logistics</TabsTrigger>
             <TabsTrigger value="financials">Financials</TabsTrigger>
@@ -225,8 +241,13 @@ const ProjectDetail = () => {
         </div>
 
         <TabsContent value="locations">
-          <ProjectLocationsTab projectId={id} />
+          <ProjectLocationsTab projectId={id} deploymentMode={deploymentMode} />
         </TabsContent>
+        {deploymentMode && (
+          <TabsContent value="deployment">
+            <ProjectDeploymentTab projectId={id} />
+          </TabsContent>
+        )}
         <TabsContent value="recruiting">
           <ProjectRecruitingSection projectId={id} />
         </TabsContent>
