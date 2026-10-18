@@ -10,7 +10,7 @@ export type Database = {
   // Allows to automatically instantiate createClient with right options
   // instead of createClient<Database, { PostgrestVersion: 'XX' }>(URL, KEY)
   __InternalSupabase: {
-    PostgrestVersion: "14.5"
+    PostgrestVersion: "13.0.5"
   }
   public: {
     Tables: {
@@ -3626,6 +3626,54 @@ export type Database = {
           },
         ]
       }
+      location_attendance: {
+        Row: {
+          att_date: string
+          created_at: string
+          hours: number | null
+          id: string
+          location_id: string
+          marked_by: string | null
+          personnel_id: string
+          status: string
+        }
+        Insert: {
+          att_date: string
+          created_at?: string
+          hours?: number | null
+          id?: string
+          location_id: string
+          marked_by?: string | null
+          personnel_id: string
+          status?: string
+        }
+        Update: {
+          att_date?: string
+          created_at?: string
+          hours?: number | null
+          id?: string
+          location_id?: string
+          marked_by?: string | null
+          personnel_id?: string
+          status?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "location_attendance_location_id_fkey"
+            columns: ["location_id"]
+            isOneToOne: false
+            referencedRelation: "project_locations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "location_attendance_personnel_id_fkey"
+            columns: ["personnel_id"]
+            isOneToOne: false
+            referencedRelation: "personnel"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       location_requirements: {
         Row: {
           bill_rate: number | null
@@ -3660,6 +3708,41 @@ export type Database = {
         Relationships: [
           {
             foreignKeyName: "location_requirements_location_id_fkey"
+            columns: ["location_id"]
+            isOneToOne: false
+            referencedRelation: "project_locations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      location_service_log: {
+        Row: {
+          created_at: string
+          id: string
+          location_id: string
+          marked_by: string | null
+          notes: string | null
+          service_date: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          location_id: string
+          marked_by?: string | null
+          notes?: string | null
+          service_date: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          location_id?: string
+          marked_by?: string | null
+          notes?: string | null
+          service_date?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "location_service_log_location_id_fkey"
             columns: ["location_id"]
             isOneToOne: false
             referencedRelation: "project_locations"
@@ -5878,10 +5961,12 @@ export type Database = {
           address: string | null
           city: string | null
           created_at: string
+          demobe_date: string | null
           housing_provided_by: string
           id: string
           meals_notes: string | null
           meals_provided: boolean
+          mobe_date: string | null
           name: string
           poc_email: string | null
           poc_name: string | null
@@ -5899,10 +5984,12 @@ export type Database = {
           address?: string | null
           city?: string | null
           created_at?: string
+          demobe_date?: string | null
           housing_provided_by?: string
           id?: string
           meals_notes?: string | null
           meals_provided?: boolean
+          mobe_date?: string | null
           name: string
           poc_email?: string | null
           poc_name?: string | null
@@ -5920,10 +6007,12 @@ export type Database = {
           address?: string | null
           city?: string | null
           created_at?: string
+          demobe_date?: string | null
           housing_provided_by?: string
           id?: string
           meals_notes?: string | null
           meals_provided?: boolean
+          mobe_date?: string | null
           name?: string
           poc_email?: string | null
           poc_name?: string | null
@@ -6278,6 +6367,7 @@ export type Database = {
           customer_po: string | null
           deleted_at: string | null
           deleted_by: string | null
+          deployment_mode: boolean
           description: string | null
           end_date: string | null
           geofence_radius_miles: number | null
@@ -6317,6 +6407,7 @@ export type Database = {
           customer_po?: string | null
           deleted_at?: string | null
           deleted_by?: string | null
+          deployment_mode?: boolean
           description?: string | null
           end_date?: string | null
           geofence_radius_miles?: number | null
@@ -6356,6 +6447,7 @@ export type Database = {
           customer_po?: string | null
           deleted_at?: string | null
           deleted_by?: string | null
+          deployment_mode?: boolean
           description?: string | null
           end_date?: string | null
           geofence_radius_miles?: number | null
