@@ -38,6 +38,7 @@ import Customers from "./pages/Customers";
 import CustomerDetail from "./pages/CustomerDetail";
 import Projects from "./pages/Projects";
 import ProjectDetail from "./pages/ProjectDetail";
+import FieldMode from "./pages/FieldMode";
 import Vendors from "./pages/Vendors";
 import VendorDetail from "./pages/VendorDetail";
 import VendorBills from "./pages/VendorBills";
@@ -415,6 +416,7 @@ const App = () => {
                       />
                       <Route path="/projects" element={<Projects />} />
                       <Route path="/projects/:id" element={<ProjectDetail />} />
+                      <Route path="/field/:projectId" element={<FieldMode />} />
                       <Route path="/vendors" element={<Vendors />} />
                       <Route path="/vendors/:id" element={<VendorDetail />} />
                       <Route path="/vendor-bills" element={<VendorBills />} />
