@@ -841,6 +841,207 @@ function DeploymentSettings({ projectId, canEdit }: { projectId: string; canEdit
   );
 }
 
+// ---------- Visits (Field Mode admin view) ----------
+
+const visitHours = (v: VisitRow) =>
+  v.check_out_at ? Math.round(((new Date(v.check_out_at).getTime() - new Date(v.check_in_at).getTime()) / 3_600_000) * 10) / 10 : null;
+
+function VisitsCard({ projectId, locations, crews, from, to, canEdit }: {
+  projectId: string; locations: ProjectLocation[]; crews: Crew[]; from: string; to: string; canEdit: boolean;
+}) {
+  const locIds = locations.map((l) => l.id);
+  const { data, isLoading } = useVisitsWindow(locIds, from, to);
+  const updateVisit = useUpdateVisit(projectId);
+  const deleteVisit = useDeleteVisit(projectId);
+  const [expanded, setExpanded] = useState<string | null>(null);
+  const [edit, setEdit] = useState<{ id: string; location_id: string; inAt: string; outAt: string } | null>(null);
+  const [delId, setDelId] = useState<VisitRow | null>(null);
+  const [pdfBusy, setPdfBusy] = useState(false);
+
+  const locName = useMemo(() => Object.fromEntries(locations.map((l) => [l.id, l.name])), [locations]);
+  const crewName = useMemo(() => Object.fromEntries(crews.map((c) => [c.id, c.name])), [crews]);
+  const visits = data?.visits ?? [];
+  const people = data?.people ?? [];
+  const purchases = data?.purchases ?? [];
+  const photos = data?.photos ?? [];
+
+  const toLocalInput = (iso: string | null) => (iso ? format(new Date(iso), "yyyy-MM-dd'T'HH:mm") : "");
+
+  const makePdf = async (locationId?: string) => {
+    if (!data) return;
+    setPdfBusy(true);
+    try {
+      await generateSignInSheetPDF({
+        projectName: (useProjectName(projectId) ?? "Project"),
+        date: to,
+        sites: locations.map((l) => ({ id: l.id, name: l.name, address: l.address, city: l.city, state: l.state })),
+        visits,
+        people,
+        locationId,
+      });
+    } finally {
+      setPdfBusy(false);
+    }
+  };
+
+  return (
+    <Card>
+      <CardHeader className="py-3 flex-row items-center justify-between space-y-0 gap-2 flex-wrap">
+        <CardTitle className="text-sm flex items-center gap-2"><Smartphone className="h-4 w-4" />Visits</CardTitle>
+        <Button size="sm" variant="outline" className="gap-1" disabled={pdfBusy || !visits.length} onClick={() => makePdf()}>
+          {pdfBusy ? <Loader2 className="h-4 w-4 animate-spin" /> : <FileText className="h-4 w-4" />}
+          Sign-in sheet PDF ({formatLocalDate(to, "M/d")})
+        </Button>
+      </CardHeader>
+      <CardContent className="pt-0 space-y-1">
+        {isLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : visits.length === 0 ? (
+          <p className="text-sm text-muted-foreground">No field check-ins in this window. Crews check in from Field Mode.</p>
+        ) : (
+          visits.map((v) => {
+            const vPeople = people.filter((p) => p.visit_id === v.id);
+            const vPurch = purchases.filter((p) => p.visit_id === v.id);
+            const vPhotos = photos.filter((p) => p.visit_id === v.id);
+            const purchTotal = vPurch.reduce((s, p) => s + (Number(p.amount) || 0), 0);
+            const hrs = visitHours(v);
+            const isOpen = expanded === v.id;
+            return (
+              <div key={v.id} className="border rounded-md">
+                <button
+                  type="button"
+                  className="w-full flex items-center gap-2 px-3 py-2 text-left hover:bg-muted/50"
+                  onClick={() => setExpanded(isOpen ? null : v.id)}
+                >
+                  <ChevronDown className={cn("h-4 w-4 shrink-0 transition-transform", !isOpen && "-rotate-90")} />
+                  <div className="flex-1 min-w-0">
+                    <span className="font-medium text-sm">{locName[v.location_id] ?? "Site"}</span>
+                    {v.crew_id && <Badge variant="outline" className="ml-2 text-[10px]">{crewName[v.crew_id] ?? "Crew"}</Badge>}
+                    <span className="block text-[11px] text-muted-foreground">
+                      {formatLocalDate(v.check_in_at, "M/d")} · {format(new Date(v.check_in_at), "h:mm a")} – {v.check_out_at ? format(new Date(v.check_out_at), "h:mm a") : "on site"}
+                      {hrs != null && ` · ${hrs}h`} · {vPeople.length} {vPeople.length === 1 ? "person" : "people"}
+                      {vPurch.length > 0 && ` · ${vPurch.length} receipt${vPurch.length === 1 ? "" : "s"} $${purchTotal.toLocaleString()}`}
+                      {vPhotos.length > 0 && ` · ${vPhotos.length} photo${vPhotos.length === 1 ? "" : "s"}`}
+                    </span>
+                  </div>
+                  {canEdit && (
+                    <span className="flex gap-1 shrink-0" onClick={(e) => e.stopPropagation()}>
+                      <Button size="icon" variant="ghost" className="h-7 w-7" aria-label="Edit visit times"
+                        onClick={() => setEdit({ id: v.id, location_id: v.location_id, inAt: toLocalInput(v.check_in_at), outAt: toLocalInput(v.check_out_at) })}>
+                        <Pencil className="h-3.5 w-3.5" />
+                      </Button>
+                      <Button size="icon" variant="ghost" className="h-7 w-7" aria-label="Delete visit" onClick={() => setDelId(v)}>
+                        <Trash2 className="h-3.5 w-3.5" />
+                      </Button>
+                    </span>
+                  )}
+                </button>
+                {isOpen && (
+                  <div className="border-t px-3 py-2 space-y-2 text-sm">
+                    <div>
+                      <p className="text-[10px] uppercase text-muted-foreground mb-1">People</p>
+                      <div className="flex flex-wrap gap-2">
+                        {vPeople.map((p) => (
+                          <span key={p.personnel_id} className="inline-flex items-center gap-1.5 border rounded-full px-2 py-0.5 text-xs">
+                            {fullName(p.personnel)}
+                            {p.signature_url && (
+                              <a href={p.signature_url} target="_blank" rel="noopener noreferrer">
+                                <img src={p.signature_url} alt="signature" className="h-5 rounded bg-white" loading="lazy" />
+                              </a>
+                            )}
+                          </span>
+                        ))}
+                        {!vPeople.length && <span className="text-xs text-muted-foreground">None recorded.</span>}
+                      </div>
+                    </div>
+                    {vPhotos.length > 0 && (
+                      <div>
+                        <p className="text-[10px] uppercase text-muted-foreground mb-1">Photos</p>
+                        <div className="flex flex-wrap gap-2">
+                          {vPhotos.map((p) => (
+                            <a key={p.id} href={p.photo_url} target="_blank" rel="noopener noreferrer" title={p.caption ?? ""}>
+                              <img src={p.photo_url} alt={p.caption ?? "Site photo"} className="h-14 w-14 object-cover rounded border" loading="lazy" />
+                            </a>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+                    {vPurch.length > 0 && (
+                      <div>
+                        <p className="text-[10px] uppercase text-muted-foreground mb-1">Purchases</p>
+                        <div className="space-y-1">
+                          {vPurch.map((p) => (
+                            <div key={p.id} className="flex items-center gap-2 text-xs">
+                              {p.receipt_url && (
+                                <a href={p.receipt_url} target="_blank" rel="noopener noreferrer">
+                                  <img src={p.receipt_url} alt="Receipt" className="h-8 w-8 object-cover rounded border" loading="lazy" />
+                                </a>
+                              )}
+                              <span className="font-medium">${Number(p.amount ?? 0).toLocaleString()}</span>
+                              <span className="text-muted-foreground">{p.vendor ?? ""}{p.note ? ` — ${p.note}` : ""}</span>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+                    <Button size="sm" variant="ghost" className="gap-1 text-xs" disabled={pdfBusy} onClick={() => makePdf(v.location_id)}>
+                      <FileText className="h-3.5 w-3.5" />Sign-in sheet for this site
+                    </Button>
+                  </div>
+                )}
+              </div>
+            );
+          })
+        )}
+      </CardContent>
+
+      <Dialog open={!!edit} onOpenChange={(o) => !o && setEdit(null)}>
+        <DialogContent className="max-w-xs">
+          <DialogHeader><DialogTitle className="text-base">Edit visit times</DialogTitle></DialogHeader>
+          {edit && (
+            <div className="space-y-3">
+              <div><Label>Check in</Label><Input type="datetime-local" value={edit.inAt} onChange={(e) => setEdit({ ...edit, inAt: e.target.value })} /></div>
+              <div><Label>Check out</Label><Input type="datetime-local" value={edit.outAt} onChange={(e) => setEdit({ ...edit, outAt: e.target.value })} /></div>
+            </div>
+          )}
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setEdit(null)}>Cancel</Button>
+            <Button disabled={!edit?.inAt || updateVisit.isPending} onClick={() => {
+              if (!edit) return;
+              updateVisit.mutate({
+                id: edit.id,
+                location_id: edit.location_id,
+                check_in_at: new Date(edit.inAt).toISOString(),
+                check_out_at: edit.outAt ? new Date(edit.outAt).toISOString() : null,
+              }, { onSuccess: () => setEdit(null) });
+            }}>Save</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <AlertDialog open={!!delId} onOpenChange={(o) => !o && setDelId(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete this visit?</AlertDialogTitle>
+            <AlertDialogDescription>Removes the check-in record; attendance for that day is recalculated from remaining visits.</AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction onClick={() => delId && deleteVisit.mutate({ id: delId.id, location_id: delId.location_id }, { onSuccess: () => setDelId(null) })}>Delete</AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+    </Card>
+  );
+}
+
+// Project name is already loaded by the tab root; this tiny helper avoids prop drilling into the PDF button.
+const projectNameCache: Record<string, string> = {};
+function useProjectName(projectId: string) {
+  const { data: project } = useProject(projectId);
+  const name = (project as any)?.name as string | undefined;
+  if (name) projectNameCache[projectId] = name;
+  return name ?? projectNameCache[projectId] ?? null;
+}
+
 // ---------- Tab root ----------
 
 export function ProjectDeploymentTab({ projectId }: { projectId: string }) {
