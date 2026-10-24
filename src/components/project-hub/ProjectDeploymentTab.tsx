@@ -1064,9 +1064,15 @@ export function ProjectDeploymentTab({ projectId }: { projectId: string }) {
     <div className="space-y-3">
       <div className="flex items-center justify-between gap-2 flex-wrap">
         <SummaryStrip locations={locations} crews={crews} from={r.from} to={r.to} mileageRate={mileageRate} />
-        <DeploymentSettings projectId={projectId} canEdit={canEdit} />
+        <div className="flex items-center gap-2">
+          <Button size="sm" className="gap-1" asChild>
+            <Link to={`/field/${projectId}`}><Smartphone className="h-4 w-4" />Field Mode</Link>
+          </Button>
+          <DeploymentSettings projectId={projectId} canEdit={canEdit} />
+        </div>
       </div>
       <CrewsSection projectId={projectId} crews={crews} canEdit={canEdit} />
+      <VisitsCard projectId={projectId} locations={locations} crews={crews} from={r.from} to={r.to} canEdit={canEdit} />
       <MileageCard crews={crews} from={r.from} to={r.to} mileageRate={mileageRate} canEdit={canEdit} />
       <Tabs defaultValue="service">
         <TabsList>
