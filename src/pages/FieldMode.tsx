@@ -1,0 +1,613 @@
+import { useEffect, useMemo, useRef, useState } from "react";
+import { useNavigate, useParams } from "react-router-dom";
+import { format } from "date-fns";
+import {
+  ArrowLeft, Camera, Check, CheckCircle2, Loader2, MapPin, Receipt, Users, X,
+} from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Dialog, DialogContent } from "@/components/ui/dialog";
+import { cn } from "@/lib/utils";
+import { useProject } from "@/integrations/supabase/hooks/useProjects";
+import { useProjectLocations, ProjectLocation } from "@/integrations/supabase/hooks/useProjectLocations";
+import { useCrews, usePersonnelDirectory, fullName, Crew } from "@/integrations/supabase/hooks/useCrews";
+import {
+  getCoords, todayYmd, useAddPurchase, useAddVisitPhoto, useCheckIn, useCheckOut,
+  useSaveSignature, useTodayVisits, VisitRow,
+} from "@/integrations/supabase/hooks/useFieldMode";
+
+const CREW_KEY = (pid: string) => `fieldModeCrew:${pid}`;
+
+function fmtTime(iso: string) {
+  return format(new Date(iso), "h:mm a");
+}
+function fmtDuration(inIso: string, outIso: string | null) {
+  const end = outIso ? new Date(outIso).getTime() : Date.now();
+  const mins = Math.max(0, Math.round((end - new Date(inIso).getTime()) / 60000));
+  const h = Math.floor(mins / 60);
+  const m = mins % 60;
+  return h > 0 ? `${h}h ${m}m` : `${m}m`;
+}
+
+// ---------- Signature pad (plain canvas, pointer events, no deps) ----------
+
+function SignaturePad({ name, onSave, onSkip, saving }: {
+  name: string; onSave: (blob: Blob) => void; onSkip: () => void; saving: boolean;
+}) {
+  const canvasRef = useRef<HTMLCanvasElement>(null);
+  const drawing = useRef(false);
+  const [hasInk, setHasInk] = useState(false);
+
+  useEffect(() => {
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+    const rect = canvas.getBoundingClientRect();
+    canvas.width = rect.width * 2;
+    canvas.height = rect.height * 2;
+    const ctx = canvas.getContext("2d");
+    if (ctx) {
+      ctx.scale(2, 2);
+      ctx.fillStyle = "#fff";
+      ctx.fillRect(0, 0, rect.width, rect.height);
+      ctx.strokeStyle = "#000";
+      ctx.lineWidth = 3;
+      ctx.lineCap = "round";
+      ctx.lineJoin = "round";
+    }
+  }, [name]);
+
+  const pos = (e: React.PointerEvent) => {
+    const rect = canvasRef.current!.getBoundingClientRect();
+    return { x: e.clientX - rect.left, y: e.clientY - rect.top };
+  };
+  const start = (e: React.PointerEvent) => {
+    (e.target as HTMLElement).setPointerCapture(e.pointerId);
+    drawing.current = true;
+    const ctx = canvasRef.current?.getContext("2d");
+    const { x, y } = pos(e);
+    ctx?.beginPath();
+    ctx?.moveTo(x, y);
+  };
+  const move = (e: React.PointerEvent) => {
+    if (!drawing.current) return;
+    const ctx = canvasRef.current?.getContext("2d");
+    const { x, y } = pos(e);
+    ctx?.lineTo(x, y);
+    ctx?.stroke();
+    setHasInk(true);
+  };
+  const end = () => { drawing.current = false; };
+  const clear = () => {
+    const canvas = canvasRef.current;
+    const ctx = canvas?.getContext("2d");
+    if (canvas && ctx) {
+      ctx.fillStyle = "#fff";
+      ctx.fillRect(0, 0, canvas.width, canvas.height);
+    }
+    setHasInk(false);
+  };
+  const save = () => {
+    canvasRef.current?.toBlob((b) => b && onSave(b), "image/png");
+  };
+
+  return (
+    <div className="flex flex-col h-full">
+      <div className="p-4 text-center">
+        <p className="text-lg font-semibold">{name}, sign here</p>
+        <p className="text-sm text-muted-foreground">One signature covers all of today's sites.</p>
+      </div>
+      <div className="flex-1 px-4 min-h-0">
+        <canvas
+          ref={canvasRef}
+          className="w-full h-full min-h-[40vh] rounded-xl border-2 border-dashed touch-none cursor-crosshair bg-white"
+          onPointerDown={start}
+          onPointerMove={move}
+          onPointerUp={end}
+          onPointerCancel={end}
+        />
+      </div>
+      <div className="p-4 flex gap-3">
+        <Button variant="outline" size="lg" className="h-14 flex-1 text-base" onClick={clear}>Clear</Button>
+        <Button variant="ghost" size="lg" className="h-14" onClick={onSkip}>Skip</Button>
+        <Button size="lg" className="h-14 flex-1 text-base" disabled={!hasInk || saving} onClick={save}>
+          {saving && <Loader2 className="h-5 w-5 animate-spin mr-2" />}Save
+        </Button>
+      </div>
+    </div>
+  );
+}
+
+// ---------- Check-in sheet ----------
+
+function CheckInSheet({ location, crew, crews, projectId, locationIds, onClose }: {
+  location: ProjectLocation; crew: Crew | null; crews: Crew[]; projectId: string;
+  locationIds: string[]; onClose: () => void;
+}) {
+  const crewMembers = useMemo(() => (crew?.members ?? []).map((m) => ({
+    id: m.personnel_id, name: fullName(m.personnel),
+  })), [crew]);
+  const [selected, setSelected] = useState<Set<string>>(() => new Set(crewMembers.map((m) => m.id)));
+  const [extraNames, setExtraNames] = useState<Record<string, string>>({});
+  const [search, setSearch] = useState("");
+  const [showSearch, setShowSearch] = useState(false);
+  const [sigQueue, setSigQueue] = useState<string[]>([]);
+  const [sigVisitId, setSigVisitId] = useState<string | null>(null);
+  const { data: directory = [] } = usePersonnelDirectory(showSearch);
+  const checkIn = useCheckIn(projectId, locationIds);
+  const saveSig = useSaveSignature(projectId);
+
+  const toggle = (id: string) => {
+    setSelected((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id); else next.add(id);
+      return next;
+    });
+  };
+
+  const nameOf = (id: string) =>
+    extraNames[id] ?? crewMembers.find((m) => m.id === id)?.name ??
+    fullName(directory.find((p) => p.id === id) ?? null);
+
+  const searchResults = useMemo(() => {
+    const needle = search.trim().toLowerCase();
+    return directory
+      .filter((p) => !selected.has(p.id))
+      .filter((p) => !needle || fullName(p).toLowerCase().includes(needle))
+      .slice(0, 30);
+  }, [directory, search, selected]);
+
+  const doCheckIn = async () => {
+    const { lat, lng } = await getCoords(); // never blocks
+    checkIn.mutate(
+      { location_id: location.id, crew_id: crew?.id ?? null, memberIds: [...selected], lat, lng },
+      {
+        onSuccess: ({ visitId, needsSignature }) => {
+          if (needsSignature.length) {
+            setSigVisitId(visitId);
+            setSigQueue(needsSignature);
+          } else {
+            onClose();
+          }
+        },
+      },
+    );
+  };
+
+  if (sigVisitId && sigQueue.length) {
+    const pid = sigQueue[0];
+    return (
+      <SignaturePad
+        name={nameOf(pid)}
+        saving={saveSig.isPending}
+        onSkip={() => setSigQueue((q) => q.slice(1))}
+        onSave={(blob) =>
+          saveSig.mutate(
+            { visit_id: sigVisitId, personnel_id: pid, blob },
+            { onSettled: () => setSigQueue((q) => q.slice(1)) },
+          )
+        }
+      />
+    );
+  }
+  if (sigVisitId && !sigQueue.length) {
+    onClose();
+    return null;
+  }
+
+  return (
+    <div className="flex flex-col h-full">
+      <div className="p-4 border-b">
+        <p className="text-xs uppercase text-muted-foreground">Checking in to</p>
+        <p className="text-xl font-bold leading-tight">{location.name}</p>
+        {location.address && (
+          <p className="text-sm text-muted-foreground flex items-center gap-1 mt-1">
+            <MapPin className="h-3.5 w-3.5 shrink-0" />
+            {[location.address, location.city, location.state].filter(Boolean).join(", ")}
+          </p>
+        )}
+      </div>
+
+      <div className="flex-1 overflow-y-auto p-4 space-y-3">
+        <p className="text-sm font-medium flex items-center gap-2">
+          <Users className="h-4 w-4" />Who's on site? ({selected.size})
+        </p>
+        <div className="flex flex-wrap gap-2">
+          {[...selected].map((id) => (
+            <button
+              key={id}
+              type="button"
+              onClick={() => toggle(id)}
+              className="h-12 px-4 rounded-full bg-primary text-primary-foreground font-medium text-sm flex items-center gap-2"
+            >
+              {nameOf(id)}<X className="h-4 w-4" />
+            </button>
+          ))}
+          {crewMembers.filter((m) => !selected.has(m.id)).map((m) => (
+            <button
+              key={m.id}
+              type="button"
+              onClick={() => toggle(m.id)}
+              className="h-12 px-4 rounded-full border-2 border-dashed text-muted-foreground font-medium text-sm"
+            >
+              {m.name}
+            </button>
+          ))}
+        </div>
+        {crewMembers.length === 0 && (
+          <p className="text-sm text-muted-foreground">
+            {crew ? `No members on ${crew.name} — add people below.` : "No crew selected — add people below."}
+          </p>
+        )}
+
+        {showSearch ? (
+          <div className="space-y-2">
+            <Input
+              autoFocus
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              placeholder="Search personnel…"
+              className="h-12 text-base"
+            />
+            <div className="border rounded-lg divide-y max-h-56 overflow-y-auto">
+              {searchResults.map((p) => (
+                <button
+                  key={p.id}
+                  type="button"
+                  className="w-full text-left px-4 py-3 text-sm font-medium hover:bg-muted"
+                  onClick={() => {
+                    setExtraNames((m) => ({ ...m, [p.id]: fullName(p) }));
+                    toggle(p.id);
+                    setSearch("");
+                  }}
+                >
+                  {fullName(p)}
+                </button>
+              ))}
+              {searchResults.length === 0 && <p className="p-3 text-sm text-muted-foreground">No matches.</p>}
+            </div>
+          </div>
+        ) : (
+          <Button variant="outline" className="h-12 w-full" onClick={() => setShowSearch(true)}>
+            + Add person
+          </Button>
+        )}
+      </div>
+
+      <div className="p-4 border-t">
+        <Button
+          size="lg"
+          className="w-full h-16 text-xl font-bold bg-success hover:bg-success/90 text-success-foreground"
+          disabled={selected.size === 0 || checkIn.isPending}
+          onClick={doCheckIn}
+        >
+          {checkIn.isPending ? <Loader2 className="h-6 w-6 animate-spin" /> : `CHECK IN (${selected.size})`}
+        </Button>
+      </div>
+    </div>
+  );
+}
+
+// ---------- Active visit sheet ----------
+
+function ActiveVisitSheet({ visit, location, projectId, defaultShiftHours, onClose }: {
+  visit: VisitRow; location: ProjectLocation; projectId: string; defaultShiftHours: number; onClose: () => void;
+}) {
+  const [mode, setMode] = useState<"menu" | "receipt" | "photo">("menu");
+  const [file, setFile] = useState<File | null>(null);
+  const [amount, setAmount] = useState("");
+  const [vendor, setVendor] = useState("");
+  const [caption, setCaption] = useState("");
+  const receiptInput = useRef<HTMLInputElement>(null);
+  const photoInput = useRef<HTMLInputElement>(null);
+  const addPurchase = useAddPurchase(projectId);
+  const addPhoto = useAddVisitPhoto(projectId);
+  const checkOut = useCheckOut(projectId);
+
+  const openHours = (Date.now() - new Date(visit.check_in_at).getTime()) / 3_600_000;
+  const stale = openHours > 14;
+  const defaultEnd = new Date(new Date(visit.check_in_at).getTime() + defaultShiftHours * 3_600_000);
+
+  const doCheckOut = async (endedAt?: string) => {
+    const { lat, lng } = await getCoords();
+    checkOut.mutate({ visit, lat, lng, endedAt }, { onSuccess: onClose });
+  };
+
+  const saveReceipt = () => {
+    if (!file) return;
+    addPurchase.mutate(
+      { visit_id: visit.id, file, amount: amount.trim() ? Number(amount) : null, vendor: vendor.trim() || null },
+      { onSuccess: () => { setMode("menu"); setFile(null); setAmount(""); setVendor(""); } },
+    );
+  };
+  const savePhoto = async () => {
+    if (!file) return;
+    const { lat, lng } = await getCoords();
+    addPhoto.mutate(
+      { visit_id: visit.id, file, caption: caption.trim() || null, lat, lng },
+      { onSuccess: () => { setMode("menu"); setFile(null); setCaption(""); } },
+    );
+  };
+
+  return (
+    <div className="flex flex-col h-full">
+      <div className="p-4 border-b">
+        <p className="text-xs uppercase text-muted-foreground">On site</p>
+        <p className="text-xl font-bold leading-tight">{location.name}</p>
+        <p className="text-sm text-muted-foreground mt-1">
+          Since {fmtTime(visit.check_in_at)} · {fmtDuration(visit.check_in_at, null)}
+        </p>
+      </div>
+
+      <div className="flex-1 overflow-y-auto p-4 space-y-3">
+        {stale && mode === "menu" && (
+          <div className="rounded-xl border-2 border-warning bg-warning/10 p-4 space-y-2">
+            <p className="font-semibold">Forgot to check out?</p>
+            <p className="text-sm text-muted-foreground">This visit has been open over 14 hours.</p>
+            <Button
+              variant="outline"
+              className="w-full h-12"
+              disabled={checkOut.isPending}
+              onClick={() => doCheckOut(defaultEnd.toISOString())}
+            >
+              End at {fmtTime(defaultEnd.toISOString())}
+            </Button>
+          </div>
+        )}
+
+        {mode === "menu" && (
+          <>
+            <button
+              type="button"
+              onClick={() => { setMode("receipt"); setTimeout(() => receiptInput.current?.click(), 50); }}
+              className="w-full h-20 rounded-xl border-2 flex items-center gap-4 px-5 text-left hover:bg-muted"
+            >
+              <Receipt className="h-8 w-8 shrink-0" />
+              <span><span className="block text-lg font-semibold">Receipt</span>
+                <span className="block text-sm text-muted-foreground">Snap a purchase receipt</span></span>
+            </button>
+            <button
+              type="button"
+              onClick={() => { setMode("photo"); setTimeout(() => photoInput.current?.click(), 50); }}
+              className="w-full h-20 rounded-xl border-2 flex items-center gap-4 px-5 text-left hover:bg-muted"
+            >
+              <Camera className="h-8 w-8 shrink-0" />
+              <span><span className="block text-lg font-semibold">Site photo</span>
+                <span className="block text-sm text-muted-foreground">Document conditions or progress</span></span>
+            </button>
+          </>
+        )}
+
+        {mode === "receipt" && (
+          <div className="space-y-3">
+            {file ? (
+              <img src={URL.createObjectURL(file)} alt="Receipt" className="w-full max-h-64 object-contain rounded-xl border" />
+            ) : (
+              <Button variant="outline" className="w-full h-14" onClick={() => receiptInput.current?.click()}>
+                <Camera className="h-5 w-5 mr-2" />Take receipt photo
+              </Button>
+            )}
+            <div className="flex items-center gap-2">
+              <span className="text-2xl font-bold">$</span>
+              <Input
+                type="number" inputMode="decimal" min={0} step="0.01" value={amount}
+                onChange={(e) => setAmount(e.target.value)} placeholder="Amount (optional)"
+                className="h-14 text-lg"
+              />
+            </div>
+            <Input value={vendor} onChange={(e) => setVendor(e.target.value)} placeholder="Vendor (optional)" className="h-12" />
+            <div className="flex gap-3">
+              <Button variant="outline" className="h-12 flex-1" onClick={() => { setMode("menu"); setFile(null); }}>Back</Button>
+              <Button className="h-12 flex-1" disabled={!file || addPurchase.isPending} onClick={saveReceipt}>
+                {addPurchase.isPending && <Loader2 className="h-4 w-4 animate-spin mr-2" />}Save receipt
+              </Button>
+            </div>
+          </div>
+        )}
+
+        {mode === "photo" && (
+          <div className="space-y-3">
+            {file ? (
+              <img src={URL.createObjectURL(file)} alt="Site" className="w-full max-h-64 object-contain rounded-xl border" />
+            ) : (
+              <Button variant="outline" className="w-full h-14" onClick={() => photoInput.current?.click()}>
+                <Camera className="h-5 w-5 mr-2" />Take site photo
+              </Button>
+            )}
+            <Input value={caption} onChange={(e) => setCaption(e.target.value)} placeholder="Caption (optional)" className="h-12" />
+            <div className="flex gap-3">
+              <Button variant="outline" className="h-12 flex-1" onClick={() => { setMode("menu"); setFile(null); }}>Back</Button>
+              <Button className="h-12 flex-1" disabled={!file || addPhoto.isPending} onClick={savePhoto}>
+                {addPhoto.isPending && <Loader2 className="h-4 w-4 animate-spin mr-2" />}Save photo
+              </Button>
+            </div>
+          </div>
+        )}
+      </div>
+
+      {mode === "menu" && (
+        <div className="p-4 border-t">
+          <Button
+            size="lg"
+            variant="destructive"
+            className="w-full h-16 text-xl font-bold"
+            disabled={checkOut.isPending}
+            onClick={() => doCheckOut()}
+          >
+            {checkOut.isPending ? <Loader2 className="h-6 w-6 animate-spin" /> : "CHECK OUT"}
+          </Button>
+        </div>
+      )}
+
+      <input
+        ref={receiptInput} type="file" accept="image/*" capture="environment" className="hidden"
+        onChange={(e) => setFile(e.target.files?.[0] ?? null)}
+      />
+      <input
+        ref={photoInput} type="file" accept="image/*" capture="environment" className="hidden"
+        onChange={(e) => setFile(e.target.files?.[0] ?? null)}
+      />
+    </div>
+  );
+}
+
+// ---------- Page ----------
+
+export default function FieldMode() {
+  const { projectId } = useParams<{ projectId: string }>();
+  const navigate = useNavigate();
+  const { data: project } = useProject(projectId);
+  const { data: locations = [], isLoading } = useProjectLocations(projectId);
+  const { data: crews = [] } = useCrews(projectId);
+  const locationIds = useMemo(() => locations.map((l) => l.id), [locations]);
+  const { data: bundle } = useTodayVisits(projectId, locationIds);
+
+  const activeCrews = crews.filter((c) => c.status === "active");
+  const [crewId, setCrewId] = useState<string>(() => (projectId ? localStorage.getItem(CREW_KEY(projectId)) : null) ?? "");
+  useEffect(() => {
+    if (!crewId && activeCrews.length) setCrewId(activeCrews[0].id);
+  }, [activeCrews, crewId]);
+  const pickCrew = (id: string) => {
+    setCrewId(id);
+    if (projectId) localStorage.setItem(CREW_KEY(projectId), id);
+  };
+  const crew = activeCrews.find((c) => c.id === crewId) ?? null;
+
+  const [sheet, setSheet] = useState<{ location: ProjectLocation; visit: VisitRow | null } | null>(null);
+
+  const today = todayYmd();
+  const visitsByLocation = useMemo(() => {
+    const m: Record<string, VisitRow[]> = {};
+    for (const v of bundle?.visits ?? []) (m[v.location_id] ??= []).push(v);
+    return m;
+  }, [bundle]);
+
+  const isActiveToday = (l: ProjectLocation) =>
+    !(l.demobe_date && l.demobe_date < today) && !(l.mobe_date && l.mobe_date > today);
+
+  const sortedLocations = useMemo(() => {
+    const status = (l: ProjectLocation) => {
+      const vs = visitsByLocation[l.id] ?? [];
+      if (vs.some((v) => !v.check_out_at)) return 0;
+      if (vs.length) return 1;
+      return isActiveToday(l) ? 2 : 3;
+    };
+    return [...locations].sort((a, b) => status(a) - status(b) || a.name.localeCompare(b.name));
+  }, [locations, visitsByLocation, today]);
+
+  const defaultShiftHours = Number((project as any)?.default_shift_hours ?? 12) || 12;
+
+  return (
+    <div className="fixed inset-0 z-50 bg-background flex flex-col">
+      {/* Sticky header */}
+      <header className="sticky top-0 z-10 border-b bg-background/95 backdrop-blur px-4 py-3 space-y-2">
+        <div className="flex items-center gap-3">
+          <Button size="icon" variant="ghost" className="h-10 w-10 shrink-0" aria-label="Back to project"
+            onClick={() => navigate(`/projects/${projectId}?tab=deployment`)}>
+            <ArrowLeft className="h-5 w-5" />
+          </Button>
+          <div className="min-w-0 flex-1">
+            <p className="font-bold truncate leading-tight">{(project as any)?.name ?? "Field Mode"}</p>
+            <p className="text-xs text-muted-foreground">{format(new Date(), "EEEE, MMM d")}</p>
+          </div>
+        </div>
+        {activeCrews.length > 0 && (
+          <div className="flex gap-2 overflow-x-auto pb-1 -mx-1 px-1">
+            {activeCrews.map((c) => (
+              <button
+                key={c.id}
+                type="button"
+                onClick={() => pickCrew(c.id)}
+                className={cn(
+                  "h-11 px-5 rounded-full font-semibold text-sm whitespace-nowrap border-2 shrink-0",
+                  crewId === c.id ? "bg-primary text-primary-foreground border-primary" : "bg-background",
+                )}
+              >
+                {c.name}
+              </button>
+            ))}
+          </div>
+        )}
+      </header>
+
+      {/* Site list */}
+      <main className="flex-1 overflow-y-auto p-4 space-y-3">
+        {isLoading ? (
+          <div className="flex justify-center py-12"><Loader2 className="h-6 w-6 animate-spin" /></div>
+        ) : sortedLocations.length === 0 ? (
+          <p className="text-center text-muted-foreground py-12">No locations on this project yet.</p>
+        ) : (
+          sortedLocations.map((l) => {
+            const vs = visitsByLocation[l.id] ?? [];
+            const open = vs.find((v) => !v.check_out_at);
+            const lastDone = vs.find((v) => v.check_out_at);
+            return (
+              <button
+                key={l.id}
+                type="button"
+                onClick={() => setSheet({ location: l, visit: open ?? null })}
+                className={cn(
+                  "w-full rounded-2xl border-2 p-5 text-left flex items-center gap-4 min-h-[5.5rem]",
+                  open ? "border-success bg-success/10" : lastDone ? "border-muted bg-muted/40" : "bg-card",
+                )}
+              >
+                <div className="flex-1 min-w-0">
+                  <p className="text-lg font-bold truncate">{l.name}</p>
+                  {l.project_number && <p className="text-xs text-muted-foreground">#{l.project_number}</p>}
+                  {open ? (
+                    <p className="text-sm font-semibold text-success flex items-center gap-2 mt-1">
+                      <span className="relative flex h-3 w-3">
+                        <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-success opacity-75" />
+                        <span className="relative inline-flex rounded-full h-3 w-3 bg-success" />
+                      </span>
+                      ON SITE since {fmtTime(open.check_in_at)}
+                    </p>
+                  ) : lastDone ? (
+                    <p className="text-sm text-muted-foreground flex items-center gap-1.5 mt-1">
+                      <CheckCircle2 className="h-4 w-4 text-success" />
+                      Done · {fmtDuration(lastDone.check_in_at, lastDone.check_out_at)}
+                    </p>
+                  ) : (
+                    <p className="text-sm text-muted-foreground mt-1">Not visited today</p>
+                  )}
+                </div>
+              </button>
+            );
+          })
+        )}
+      </main>
+
+      {/* Full-screen sheet */}
+      <Dialog open={!!sheet} onOpenChange={(o) => !o && setSheet(null)}>
+        <DialogContent className="max-w-none w-full h-[100dvh] p-0 gap-0 rounded-none border-0 [&>button]:hidden">
+          {sheet && (
+            sheet.visit ? (
+              <ActiveVisitSheet
+                visit={sheet.visit}
+                location={sheet.location}
+                projectId={projectId!}
+                defaultShiftHours={defaultShiftHours}
+                onClose={() => setSheet(null)}
+              />
+            ) : (
+              <CheckInSheet
+                location={sheet.location}
+                crew={crew}
+                crews={activeCrews}
+                projectId={projectId!}
+                locationIds={locationIds}
+                onClose={() => setSheet(null)}
+              />
+            )
+          )}
+          <Button
+            size="icon" variant="ghost" aria-label="Close"
+            className="absolute top-3 right-3 h-10 w-10 z-10"
+            onClick={() => setSheet(null)}
+          >
+            <X className="h-5 w-5" />
+          </Button>
+        </DialogContent>
+      </Dialog>
+    </div>
+  );
+}
