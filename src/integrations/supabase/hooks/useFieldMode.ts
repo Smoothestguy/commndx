@@ -250,7 +250,7 @@ async function recomputeAttendanceFromVisits(locationId: string, day: string) {
 
   const hoursByPerson: Record<string, number> = {};
   const crewByPerson: Record<string, string | null> = {};
-  const vmap = new Map((visits ?? []).map((v: any) => [v.id, v]));
+  const vmap = new Map<string, any>((visits ?? []).map((v: any) => [v.id, v] as [string, any]));
   for (const p of people ?? []) {
     const v = vmap.get(p.visit_id);
     if (!v) continue;
