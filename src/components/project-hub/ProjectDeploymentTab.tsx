@@ -755,6 +755,7 @@ function SummaryStrip({ locations, crews, from, to, mileageRate }: {
   const { data: att = [] } = useLocationAttendanceBatch(locIds, from, to);
   const { data: miles = [] } = useCrewMileage(crews.map((c) => c.id), from, to);
   const { data: rl } = useRoleLabels(locIds, crews);
+  const { data: receiptsToday = 0 } = useTodayReceiptsTotal(locIds);
 
   const s = useMemo(() => {
     const personDays = new Set<string>();
