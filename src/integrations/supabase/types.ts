@@ -3950,6 +3950,66 @@ export type Database = {
           },
         ]
       }
+      location_visits: {
+        Row: {
+          check_in_at: string
+          check_in_lat: number | null
+          check_in_lng: number | null
+          check_out_at: string | null
+          check_out_lat: number | null
+          check_out_lng: number | null
+          created_at: string
+          created_by: string | null
+          crew_id: string | null
+          id: string
+          location_id: string
+          notes: string | null
+        }
+        Insert: {
+          check_in_at?: string
+          check_in_lat?: number | null
+          check_in_lng?: number | null
+          check_out_at?: string | null
+          check_out_lat?: number | null
+          check_out_lng?: number | null
+          created_at?: string
+          created_by?: string | null
+          crew_id?: string | null
+          id?: string
+          location_id: string
+          notes?: string | null
+        }
+        Update: {
+          check_in_at?: string
+          check_in_lat?: number | null
+          check_in_lng?: number | null
+          check_out_at?: string | null
+          check_out_lat?: number | null
+          check_out_lng?: number | null
+          created_at?: string
+          created_by?: string | null
+          crew_id?: string | null
+          id?: string
+          location_id?: string
+          notes?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "location_visits_crew_id_fkey"
+            columns: ["crew_id"]
+            isOneToOne: false
+            referencedRelation: "crews"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "location_visits_location_id_fkey"
+            columns: ["location_id"]
+            isOneToOne: false
+            referencedRelation: "project_locations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       locked_period_violations: {
         Row: {
           action: string
@@ -9619,6 +9679,134 @@ export type Database = {
             columns: ["merged_into_id"]
             isOneToOne: false
             referencedRelation: "vendors"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      visit_personnel: {
+        Row: {
+          id: string
+          personnel_id: string
+          signature_url: string | null
+          signed_at: string | null
+          visit_id: string
+        }
+        Insert: {
+          id?: string
+          personnel_id: string
+          signature_url?: string | null
+          signed_at?: string | null
+          visit_id: string
+        }
+        Update: {
+          id?: string
+          personnel_id?: string
+          signature_url?: string | null
+          signed_at?: string | null
+          visit_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "visit_personnel_personnel_id_fkey"
+            columns: ["personnel_id"]
+            isOneToOne: false
+            referencedRelation: "personnel"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "visit_personnel_personnel_id_fkey"
+            columns: ["personnel_id"]
+            isOneToOne: false
+            referencedRelation: "personnel_directory"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "visit_personnel_visit_id_fkey"
+            columns: ["visit_id"]
+            isOneToOne: false
+            referencedRelation: "location_visits"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      visit_photos: {
+        Row: {
+          caption: string | null
+          created_by: string | null
+          id: string
+          lat: number | null
+          lng: number | null
+          photo_url: string
+          taken_at: string
+          visit_id: string
+        }
+        Insert: {
+          caption?: string | null
+          created_by?: string | null
+          id?: string
+          lat?: number | null
+          lng?: number | null
+          photo_url: string
+          taken_at?: string
+          visit_id: string
+        }
+        Update: {
+          caption?: string | null
+          created_by?: string | null
+          id?: string
+          lat?: number | null
+          lng?: number | null
+          photo_url?: string
+          taken_at?: string
+          visit_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "visit_photos_visit_id_fkey"
+            columns: ["visit_id"]
+            isOneToOne: false
+            referencedRelation: "location_visits"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      visit_purchases: {
+        Row: {
+          amount: number | null
+          created_at: string
+          created_by: string | null
+          id: string
+          note: string | null
+          receipt_url: string | null
+          vendor: string | null
+          visit_id: string
+        }
+        Insert: {
+          amount?: number | null
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          note?: string | null
+          receipt_url?: string | null
+          vendor?: string | null
+          visit_id: string
+        }
+        Update: {
+          amount?: number | null
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          note?: string | null
+          receipt_url?: string | null
+          vendor?: string | null
+          visit_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "visit_purchases_visit_id_fkey"
+            columns: ["visit_id"]
+            isOneToOne: false
+            referencedRelation: "location_visits"
             referencedColumns: ["id"]
           },
         ]
