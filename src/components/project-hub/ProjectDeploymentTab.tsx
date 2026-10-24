@@ -1,5 +1,6 @@
 import { useMemo, useRef, useState } from "react";
 import { addDays, format } from "date-fns";
+import { Link } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -13,7 +14,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
-import { Check, ChevronLeft, ChevronRight, Loader2, Pencil, Plus, Settings2, Trash2, Truck, UserMinus, UserPlus, Users } from "lucide-react";
+import { Check, ChevronDown, ChevronLeft, ChevronRight, FileText, Loader2, Pencil, Plus, Settings2, Smartphone, Trash2, Truck, UserMinus, UserPlus, Users } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { formatLocalDate } from "@/lib/dateUtils";
 import { ROLE_TAGS } from "@/lib/roleTags";
@@ -28,6 +29,10 @@ import {
 import {
   Crew, fullName, useAddCrewMember, useCreateCrew, useCrews, usePersonnelDirectory, useRemoveCrewMember, useUpdateCrew,
 } from "@/integrations/supabase/hooks/useCrews";
+import {
+  useDeleteVisit, useTodayReceiptsTotal, useUpdateVisit, useVisitsWindow, VisitRow,
+} from "@/integrations/supabase/hooks/useFieldMode";
+import { generateSignInSheetPDF } from "@/utils/signInSheetPdf";
 
 const db = supabase as any;
 const DAYS = 10;
