@@ -788,6 +788,7 @@ function SummaryStrip({ locations, crews, from, to, mileageRate }: {
         <Item label="Person-days" value={String(s.personDays)} />
         <Item label="Hours" value={s.hours.toLocaleString()} />
         <Item label="Miles" value={s.totalMiles.toLocaleString()} />
+        <Item label="Receipts today" value={`$${receiptsToday.toLocaleString(undefined, { maximumFractionDigits: 2 })}`} />
         <Item label="Est. billable" value={`$${s.billable.toLocaleString(undefined, { maximumFractionDigits: 0 })}`} />
       </div>
       {s.missingRate > 0 && (
