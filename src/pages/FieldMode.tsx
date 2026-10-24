@@ -119,8 +119,8 @@ function SignaturePad({ name, onSave, onSkip, saving }: {
 
 // ---------- Check-in sheet ----------
 
-function CheckInSheet({ location, crew, crews, projectId, locationIds, onClose }: {
-  location: ProjectLocation; crew: Crew | null; crews: Crew[]; projectId: string;
+function CheckInSheet({ location, crew, projectId, locationIds, onClose }: {
+  location: ProjectLocation; crew: Crew | null; projectId: string;
   locationIds: string[]; onClose: () => void;
 }) {
   const crewMembers = useMemo(() => (crew?.members ?? []).map((m) => ({

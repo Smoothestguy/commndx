@@ -853,6 +853,7 @@ function VisitsCard({ projectId, locations, crews, from, to, canEdit }: {
   const { data, isLoading } = useVisitsWindow(locIds, from, to);
   const updateVisit = useUpdateVisit(projectId);
   const deleteVisit = useDeleteVisit(projectId);
+  const projectName = useProjectName(projectId) ?? "Project";
   const [expanded, setExpanded] = useState<string | null>(null);
   const [edit, setEdit] = useState<{ id: string; location_id: string; inAt: string; outAt: string } | null>(null);
   const [delId, setDelId] = useState<VisitRow | null>(null);
