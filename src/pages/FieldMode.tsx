@@ -173,6 +173,11 @@ function CheckInSheet({ location, crew, projectId, locationIds, onClose }: {
     );
   };
 
+  // When the signature queue empties after a check-in, close the sheet (effect, not render).
+  useEffect(() => {
+    if (sigVisitId && sigQueue.length === 0) onClose();
+  }, [sigVisitId, sigQueue, onClose]);
+
   if (sigVisitId && sigQueue.length) {
     const pid = sigQueue[0];
     return (
@@ -189,10 +194,7 @@ function CheckInSheet({ location, crew, projectId, locationIds, onClose }: {
       />
     );
   }
-  if (sigVisitId && !sigQueue.length) {
-    onClose();
-    return null;
-  }
+  if (sigVisitId) return null;
 
   return (
     <div className="flex flex-col h-full">

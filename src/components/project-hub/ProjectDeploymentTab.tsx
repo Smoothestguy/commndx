@@ -873,7 +873,7 @@ function VisitsCard({ projectId, locations, crews, from, to, canEdit }: {
     setPdfBusy(true);
     try {
       await generateSignInSheetPDF({
-        projectName: (useProjectName(projectId) ?? "Project"),
+        projectName,
         date: to,
         sites: locations.map((l) => ({ id: l.id, name: l.name, address: l.address, city: l.city, state: l.state })),
         visits,
