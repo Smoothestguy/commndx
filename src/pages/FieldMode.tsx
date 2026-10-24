@@ -594,7 +594,6 @@ export default function FieldMode() {
               <CheckInSheet
                 location={sheet.location}
                 crew={crew}
-                crews={activeCrews}
                 projectId={projectId!}
                 locationIds={locationIds}
                 onClose={() => setSheet(null)}
