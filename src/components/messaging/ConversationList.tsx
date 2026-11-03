@@ -55,7 +55,7 @@ export function ConversationList({
     if (!dateString) return "";
     const date = new Date(dateString);
     if (isToday(date)) {
-      return format(date, "h:mm a");
+      return format(date, "HH:mm");
     }
     if (isYesterday(date)) {
       return "Yesterday";

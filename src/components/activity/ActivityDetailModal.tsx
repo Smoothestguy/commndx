@@ -52,7 +52,7 @@ export function ActivityDetailModal({ activity, open, onOpenChange }: ActivityDe
       });
 
   const formattedDate = format(new Date(activity.created_at), "EEEE, MMMM d, yyyy");
-  const formattedTime = format(new Date(activity.created_at), "h:mm:ss a");
+  const formattedTime = format(new Date(activity.created_at), "HH:mm:ss");
 
   const handleViewResource = () => {
     if (description.resourceLink) {

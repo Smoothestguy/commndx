@@ -110,7 +110,7 @@ export function EditClockInTimeDialog({
   const projectName = entry.project?.name || "Unknown Project";
   const entryDateFormatted = format(parseISO(entry.entry_date), "MMMM d, yyyy");
   const currentClockIn = entry.clock_in_at
-    ? format(parseISO(entry.clock_in_at), "h:mm:ss a")
+    ? format(parseISO(entry.clock_in_at), "HH:mm:ss")
     : "N/A";
 
   return (
@@ -149,7 +149,7 @@ export function EditClockInTimeDialog({
               <div className="flex justify-between">
                 <span className="text-muted-foreground">Clock-Out:</span>
                 <span className="font-medium">
-                  {format(parseISO(entry.clock_out_at), "h:mm:ss a")}
+                  {format(parseISO(entry.clock_out_at), "HH:mm:ss")}
                 </span>
               </div>
             )}

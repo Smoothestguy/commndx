@@ -131,7 +131,7 @@ export function DirectDepositView({
                       </Button>
                     </div>
                     <p className="text-sm text-muted-foreground">
-                      Signed on {format(new Date(signedAt), "MMMM dd, yyyy 'at' h:mm a")}
+                      Signed on {format(new Date(signedAt), "MMMM dd, yyyy 'at' HH:mm")}
                     </p>
                     {signature && (
                       <div className="border rounded-lg p-4 bg-muted/30">

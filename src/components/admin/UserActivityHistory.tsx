@@ -181,7 +181,7 @@ export function UserActivityHistory({
                             )}
                           </div>
                           <p className="text-xs text-muted-foreground mt-1">
-                            {format(new Date(log.created_at), "MMM d, yyyy 'at' h:mm a")}
+                            {format(new Date(log.created_at), "MMM d, yyyy 'at' HH:mm")}
                           </p>
                           {log.user_email && (
                             <p className="text-xs text-muted-foreground">

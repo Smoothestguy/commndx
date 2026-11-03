@@ -1549,7 +1549,7 @@ export default function UserManagement() {
                                 <p className="font-medium">{getActionLabel()}</p>
                                 <span className="text-sm text-muted-foreground">
                                   {new Date(log.created_at).toLocaleDateString()} at{' '}
-                                  {new Date(log.created_at).toLocaleTimeString()}
+                                  {new Date(log.created_at).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", second: "2-digit", hourCycle: "h23" })}
                                 </span>
                               </div>
                               <div className="text-sm text-muted-foreground">

@@ -50,7 +50,7 @@ export default function SitePunch() {
     setInfo((i) => i ? { ...i, on_site_since: res.action === "in" ? res.at : null } : i);
   };
 
-  const t = (iso: string) => format(new Date(iso), "h:mm a");
+  const t = (iso: string) => format(new Date(iso), "HH:mm");
   const onSite = !!info?.on_site_since;
   const mapsHref = info?.address ? `https://maps.google.com/?q=${encodeURIComponent(info.address)}` : null;
 
@@ -95,7 +95,7 @@ export default function SitePunch() {
                     <MapPin className="h-5 w-5" />{info.address}
                   </a>
                 )}
-                {info.report_at && !onSite && <p className="text-lg text-muted-foreground">Report: {format(new Date(info.report_at), "EEE M/d h:mm a")}</p>}
+                {info.report_at && !onSite && <p className="text-lg text-muted-foreground">Report: {format(new Date(info.report_at), "EEE M/d HH:mm")}</p>}
                 {onSite && <p className="text-xl">On site since {t(info.on_site_since!)}</p>}
               </div>
             )}

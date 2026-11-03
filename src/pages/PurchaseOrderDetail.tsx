@@ -474,7 +474,7 @@ const PurchaseOrderDetail = () => {
                 <p className="text-sm font-medium text-warning">⏳ Awaiting Manager Approval</p>
                 {purchaseOrder.submitted_for_approval_at && (
                   <p className="text-xs text-muted-foreground mt-1">
-                    Submitted: {format(new Date(purchaseOrder.submitted_for_approval_at), "MMM d, yyyy 'at' h:mm a")}
+                    Submitted: {format(new Date(purchaseOrder.submitted_for_approval_at), "MMM d, yyyy 'at' HH:mm")}
                   </p>
                 )}
               </div>
@@ -483,7 +483,7 @@ const PurchaseOrderDetail = () => {
               <div className="bg-success/10 border border-success/20 rounded-lg p-3">
                 <p className="text-sm font-medium text-success">✓ Approved</p>
                 <p className="text-xs text-muted-foreground mt-1">
-                  {format(new Date(purchaseOrder.approved_at), "MMM d, yyyy 'at' h:mm a")}
+                  {format(new Date(purchaseOrder.approved_at), "MMM d, yyyy 'at' HH:mm")}
                 </p>
               </div>
             )}

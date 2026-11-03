@@ -21,7 +21,7 @@ export function TaskOrderFacts({ taskOrder: t, positions, className }: Props) {
   if (t.start_at) {
     facts.push({
       icon: <Calendar className="h-3 w-3" />,
-      text: `Starts ${format(new Date(t.start_at), "MMM d, yyyy h:mm a")}`,
+      text: `Starts ${format(new Date(t.start_at), "MMM d, yyyy HH:mm")}`,
     });
   }
   if (t.approx_duration) {

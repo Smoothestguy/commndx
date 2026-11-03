@@ -43,7 +43,7 @@ function fmtAddr(l?: Loc | null) {
 }
 function fmtReport(d: Date) {
   const tz = "America/Chicago";
-  return `${d.toLocaleDateString("en-US", { weekday: "short", timeZone: tz })} ${d.toLocaleDateString("en-US", { month: "numeric", day: "numeric", timeZone: tz })} ${d.toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit", timeZone: tz })} CT`;
+  return `${d.toLocaleDateString("en-US", { weekday: "short", timeZone: tz })} ${d.toLocaleDateString("en-US", { month: "numeric", day: "numeric", timeZone: tz })} ${d.toLocaleTimeString("en-US", { hour: "2-digit", minute: "2-digit", hourCycle: "h23", timeZone: tz })} CT`;
 }
 const defaultReport = () => format(addDays(new Date(), 1), "yyyy-MM-dd") + "T07:00";
 

@@ -868,7 +868,7 @@ export function PersonnelApplicantMap({ mapboxToken, isAdmin = false }: Personne
               </div>
             </div>
             <div className="text-xs text-muted-foreground">
-              Last updated: {lastRefresh.toLocaleTimeString()} • Active locations refresh every 2 min
+              Last updated: {lastRefresh.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", second: "2-digit", hourCycle: "h23" })} • Active locations refresh every 2 min
             </div>
           </div>
         </div>

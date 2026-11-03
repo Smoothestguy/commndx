@@ -152,7 +152,7 @@ export function PersonnelCommunicationLog({ personnelId }: PersonnelCommunicatio
                     {format(new Date(msg.created_at), "MMM d, yyyy")}
                     <br />
                     <span className="text-muted-foreground text-xs">
-                      {format(new Date(msg.created_at), "h:mm a")}
+                      {format(new Date(msg.created_at), "HH:mm")}
                     </span>
                   </TableCell>
                   <TableCell>

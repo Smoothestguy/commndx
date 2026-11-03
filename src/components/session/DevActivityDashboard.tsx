@@ -376,9 +376,7 @@ export function DevActivityDashboard({ dateRange, targetUserId }: DevActivityDas
                                       <span className="text-xs text-muted-foreground">
                                         {(() => {
                                           const [hours, minutes] = activity.activity_time.split(':').map(Number);
-                                          const period = hours >= 12 ? 'PM' : 'AM';
-                                          const hour12 = hours % 12 || 12;
-                                          return `${hour12}:${minutes.toString().padStart(2, '0')} ${period}`;
+                                          return `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}`;
                                         })()}
                                       </span>
                                     )}

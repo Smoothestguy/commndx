@@ -231,7 +231,7 @@ export function MessageBubble({
           "text-xs",
           isFailed ? "text-destructive" : "text-muted-foreground"
         )}>
-          {format(new Date(timestamp), "h:mm a")}
+          {format(new Date(timestamp), "HH:mm")}
         </span>
         {messageType === "sms" && (
           <Smartphone className={cn(

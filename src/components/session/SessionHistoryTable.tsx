@@ -263,7 +263,7 @@ export function SessionHistoryTable({
               {format(new Date(session.session_start), "MMM d, yyyy")}
             </p>
             <p className="text-sm text-muted-foreground">
-              {format(new Date(session.session_start), "h:mm a")} - {session.session_end ? format(new Date(session.session_end), "h:mm a") : "Now"}
+              {format(new Date(session.session_start), "HH:mm")} - {session.session_end ? format(new Date(session.session_end), "HH:mm") : "Now"}
             </p>
           </div>
           <div className="flex items-center gap-2">
@@ -351,7 +351,7 @@ export function SessionHistoryTable({
                       </TableCell>
                       <TableCell>
                         <div className="flex items-center gap-1">
-                          {format(new Date(session.session_start), "h:mm a")}
+                          {format(new Date(session.session_start), "HH:mm")}
                           {isAdmin && (
                             <Button
                               variant="ghost"
@@ -371,7 +371,7 @@ export function SessionHistoryTable({
                       <TableCell>
                         <div className="flex items-center gap-1">
                           {session.session_end ? (
-                            format(new Date(session.session_end), "h:mm a")
+                            format(new Date(session.session_end), "HH:mm")
                           ) : (
                             <Badge variant="default" className="bg-green-500">
                               Active

@@ -84,7 +84,7 @@ export function PersonnelExpensesCard({ projectId }: { projectId: string }) {
           <div key={e.id} className="flex items-center gap-2 py-1.5 border-b last:border-0 text-sm opacity-70">
             <div className="min-w-0 flex-1">
               <div className="font-medium truncate line-through">{e.person_name} · {catLabel(e.category)}</div>
-              <div className="text-xs text-muted-foreground truncate">Removed by {e.deleted_by_name ?? "unknown"} · {format(new Date(e.deleted_at!), "MMM d, yyyy h:mm a")}</div>
+              <div className="text-xs text-muted-foreground truncate">Removed by {e.deleted_by_name ?? "unknown"} · {format(new Date(e.deleted_at!), "MMM d, yyyy HH:mm")}</div>
             </div>
             <span className="tabular-nums line-through">{money(e.amount)}</span>
             <Button size="sm" variant="ghost" className="h-8" onClick={() => restore.mutate(e.id)}><RotateCcw className="h-3.5 w-3.5 mr-1" />Restore</Button>

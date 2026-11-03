@@ -117,7 +117,7 @@ export function EstimateVersionHistory({ estimateId }: EstimateVersionHistoryPro
                         <div className="flex items-center gap-2">
                           <span className="font-medium">Version {version.version_number}</span>
                           <span className="text-xs text-muted-foreground">
-                            {format(new Date(version.created_at), "MMM d, yyyy 'at' h:mm a")}
+                            {format(new Date(version.created_at), "MMM d, yyyy 'at' HH:mm")}
                           </span>
                         </div>
                         {version.change_summary && (
@@ -164,7 +164,7 @@ export function EstimateVersionHistory({ estimateId }: EstimateVersionHistoryPro
             <AlertDialogDescription>
               This will restore the estimate to its state from{" "}
               {selectedVersion &&
-                format(new Date(selectedVersion.created_at), "MMMM d, yyyy 'at' h:mm a")}
+                format(new Date(selectedVersion.created_at), "MMMM d, yyyy 'at' HH:mm")}
               . Your current changes will be saved as a new version before restoring.
             </AlertDialogDescription>
           </AlertDialogHeader>

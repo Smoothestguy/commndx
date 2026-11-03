@@ -122,7 +122,7 @@ export function ChangeOrderApprovalTimeline({
                       {step.active && !step.completed && " — Waiting..."}
                     </p>
                     {step.date && (
-                      <p className="text-xs text-muted-foreground">{format(new Date(step.date), "MMM d, yyyy 'at' h:mm a")}</p>
+                      <p className="text-xs text-muted-foreground">{format(new Date(step.date), "MMM d, yyyy 'at' HH:mm")}</p>
                     )}
                     {step.extra && <p className="text-xs text-muted-foreground">{step.extra}</p>}
                   </div>
@@ -139,7 +139,7 @@ export function ChangeOrderApprovalTimeline({
             <div className="space-y-2">
               {logs.map((log) => (
                 <div key={log.id} className="text-xs">
-                  <span className="text-muted-foreground">{format(new Date(log.created_at), "MMM d, h:mm a")}</span>
+                  <span className="text-muted-foreground">{format(new Date(log.created_at), "MMM d, HH:mm")}</span>
                   {" — "}
                   <span className="font-medium">{log.actor_name || log.actor_email || "System"}</span>
                   {" — "}

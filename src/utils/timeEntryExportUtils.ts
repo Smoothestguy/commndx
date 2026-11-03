@@ -444,7 +444,7 @@ export function exportTimeEntriesToPDF(
       28
     );
   }
-  doc.text(`Generated: ${format(new Date(), "MMM d, yyyy h:mm a")}`, 14, 35);
+  doc.text(`Generated: ${format(new Date(), "MMM d, yyyy HH:mm")}`, 14, 35);
 
   // Summary box
   doc.setFillColor(248, 250, 252);

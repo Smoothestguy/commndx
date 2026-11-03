@@ -552,7 +552,7 @@ export function EstimateDetailView({ estimateId }: EstimateDetailViewProps) {
                     <Send className="h-4 w-4 text-muted-foreground" />
                     <span className="text-muted-foreground">Sent on:</span>
                     <span className="font-medium">
-                      {format(new Date(estimate.sent_at), "MMM dd, yyyy 'at' h:mm a")}
+                      {format(new Date(estimate.sent_at), "MMM dd, yyyy 'at' HH:mm")}
                     </span>
                   </div>
                   
@@ -563,7 +563,7 @@ export function EstimateDetailView({ estimateId }: EstimateDetailViewProps) {
                         {estimate.customer_approved ? "Approved by customer" : "Approved internally"} on:
                       </span>
                       <span className="font-medium">
-                        {format(new Date(estimate.approved_at), "MMM dd, yyyy 'at' h:mm a")}
+                        {format(new Date(estimate.approved_at), "MMM dd, yyyy 'at' HH:mm")}
                       </span>
                     </div>
                   )}

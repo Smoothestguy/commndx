@@ -103,14 +103,14 @@ export function ViewRateHistoryDialog({
                       <TableCell>
                         {format(
                           new Date(record.effective_from),
-                          "MMM d, yyyy h:mm a"
+                          "MMM d, yyyy HH:mm"
                         )}
                       </TableCell>
                       <TableCell>
                         {record.effective_to
                           ? format(
                               new Date(record.effective_to),
-                              "MMM d, yyyy h:mm a"
+                              "MMM d, yyyy HH:mm"
                             )
                           : "—"}
                       </TableCell>

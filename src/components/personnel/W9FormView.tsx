@@ -242,7 +242,7 @@ export function W9FormView({ personnelId, personnelSsnLastFour, personnelSsnFull
               <Pencil className="h-4 w-4" />
               <AlertTitle>Edit Permission Granted</AlertTitle>
               <AlertDescription>
-                Personnel can edit their W-9 until {format(new Date(w9Form.edit_allowed_until!), "MMM d, yyyy 'at' h:mm a")}
+                Personnel can edit their W-9 until {format(new Date(w9Form.edit_allowed_until!), "MMM d, yyyy 'at' HH:mm")}
               </AlertDescription>
             </Alert>
           )}
@@ -403,7 +403,7 @@ export function W9FormView({ personnelId, personnelSsnLastFour, personnelSsnFull
                 </h3>
                 <div>
                   <Label className="text-muted-foreground text-xs">Verified On</Label>
-                  <p className="font-medium">{format(new Date(w9Form.verified_at), "MMMM d, yyyy 'at' h:mm a")}</p>
+                  <p className="font-medium">{format(new Date(w9Form.verified_at), "MMMM d, yyyy 'at' HH:mm")}</p>
                 </div>
               </div>
             </>

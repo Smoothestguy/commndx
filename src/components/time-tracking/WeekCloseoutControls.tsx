@@ -60,7 +60,7 @@ export function WeekCloseoutControls({ projectId, customerId, currentWeek, onClo
           </Badge>
           {closeout?.closed_at && (
             <span className="text-sm text-muted-foreground">
-              Closed {format(new Date(closeout.closed_at), 'MMM d, h:mm a')}
+              Closed {format(new Date(closeout.closed_at), 'MMM d, HH:mm')}
             </span>
           )}
           {isAdmin && (

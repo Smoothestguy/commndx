@@ -123,7 +123,7 @@ export function ICAFormPreview({ data }: ICAFormPreviewProps) {
                   <p className="font-signature text-xl italic">{data.signature}</p>
                 )}
                 <p className="text-xs text-muted-foreground mt-3">
-                  Signed on {format(new Date(data.signedAt), "MMMM dd, yyyy 'at' h:mm a")}
+                  Signed on {format(new Date(data.signedAt), "MMMM dd, yyyy 'at' HH:mm")}
                 </p>
                 <p className="text-xs mt-2">
                   <strong>Printed Name:</strong> {data.contractorName}

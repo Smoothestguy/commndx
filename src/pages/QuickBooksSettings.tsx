@@ -397,7 +397,7 @@ const QuickBooksSettings = () => {
                       Last sync:{" "}
                       {format(
                         new Date(config.last_sync_at),
-                        "MMM d, yyyy h:mm a"
+                        "MMM d, yyyy HH:mm"
                       )}
                     </span>
                   )}
@@ -864,7 +864,7 @@ const QuickBooksSettings = () => {
                               <span>
                                 {format(
                                   new Date(log.created_at),
-                                  "MMM d, h:mm a"
+                                  "MMM d, HH:mm"
                                 )}
                               </span>
                               {log.details &&

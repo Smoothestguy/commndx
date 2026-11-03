@@ -63,7 +63,7 @@ export function BillPreviewDialog({ bill, open, onClose }: BillPreviewDialogProp
                 <Calendar className="h-4 w-4 text-muted-foreground" />
                 <div>
                   <span className="text-muted-foreground">Submitted:</span>{" "}
-                  <span className="font-medium">{format(parseISO(bill.submitted_at), "MMM d, yyyy 'at' h:mm a")}</span>
+                  <span className="font-medium">{format(parseISO(bill.submitted_at), "MMM d, yyyy 'at' HH:mm")}</span>
                 </div>
               </div>
             )}

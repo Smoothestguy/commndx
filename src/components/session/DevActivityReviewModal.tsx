@@ -62,9 +62,7 @@ const DEFAULT_DURATIONS: Record<string, number> = {
 // Format 24-hour time to 12-hour format
 const formatTime12Hour = (time: string): string => {
   const [hours, minutes] = time.split(":").map(Number);
-  const period = hours >= 12 ? "PM" : "AM";
-  const hour12 = hours % 12 || 12;
-  return `${hour12}:${minutes.toString().padStart(2, "0")} ${period}`;
+  return `${hours.toString().padStart(2, "0")}:${minutes.toString().padStart(2, "0")}`;
 };
 
 export function DevActivityReviewModal({

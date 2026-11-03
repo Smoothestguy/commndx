@@ -44,8 +44,8 @@ export async function generateTimeLogPDF(d: { personName: string; projectName: s
     if (h != null) total += h;
     doc.text(format(new Date(r.in_at), "M/d/yy"), cols[0], y);
     doc.text(doc.splitTextToSize(r.location_name ?? "—", 58)[0], cols[1], y);
-    doc.text(format(new Date(r.in_at), "h:mm a"), cols[2], y);
-    doc.text(r.out_at ? format(new Date(r.out_at), "h:mm a") : "on site", cols[3], y);
+    doc.text(format(new Date(r.in_at), "HH:mm"), cols[2], y);
+    doc.text(r.out_at ? format(new Date(r.out_at), "HH:mm") : "on site", cols[3], y);
     doc.text(h != null ? h.toFixed(2) : "—", cols[4], y);
     const img = imgs[k];
     if (img) { const w = Math.min(30, (img.w / img.h) * 7); doc.addImage(img.dataUrl, "PNG", cols[5], y - 5, w, 7); }

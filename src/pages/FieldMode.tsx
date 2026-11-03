@@ -20,7 +20,7 @@ import {
 const CREW_KEY = (pid: string) => `fieldModeCrew:${pid}`;
 
 function fmtTime(iso: string) {
-  return format(new Date(iso), "h:mm a");
+  return format(new Date(iso), "HH:mm");
 }
 function fmtDuration(inIso: string, outIso: string | null) {
   const end = outIso ? new Date(outIso).getTime() : Date.now();

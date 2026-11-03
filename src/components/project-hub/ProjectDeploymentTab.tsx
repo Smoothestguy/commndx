@@ -971,7 +971,7 @@ export function VisitsCard({ projectId, locations, crews, from, to, canEdit, def
                     {/self check-in/i.test((v as any).notes ?? "") && <Phone className="inline h-3 w-3 ml-1 text-muted-foreground" aria-label="Self check-in via text" />}
                     {v.crew_id && <Badge variant="outline" className="ml-2 text-[10px]">{crewName[v.crew_id] ?? "Crew"}</Badge>}
                     <span className="block text-[11px] text-muted-foreground">
-                      {formatLocalDate(v.check_in_at, "M/d")} · {format(new Date(v.check_in_at), "h:mm a")} – {v.check_out_at ? format(new Date(v.check_out_at), "h:mm a") : "on site"}
+                      {formatLocalDate(v.check_in_at, "M/d")} · {format(new Date(v.check_in_at), "HH:mm")} – {v.check_out_at ? format(new Date(v.check_out_at), "HH:mm") : "on site"}
                       {hrs != null && ` · ${hrs}h`} · {vPeople.length} {vPeople.length === 1 ? "person" : "people"}
                       {vPurch.length > 0 && ` · ${vPurch.length} receipt${vPurch.length === 1 ? "" : "s"} $${purchTotal.toLocaleString()}`}
                       {vPhotos.length > 0 && ` · ${vPhotos.length} photo${vPhotos.length === 1 ? "" : "s"}`}
@@ -997,7 +997,7 @@ export function VisitsCard({ projectId, locations, crews, from, to, canEdit, def
                         {vPeople.map((p) => (
                           <span key={p.personnel_id} className="inline-flex items-center gap-1.5 border rounded-full px-2 py-0.5 text-xs">
                             <button type="button" className="hover:underline" onClick={() => openTrail(p.personnel_id)}>{fullName(p.personnel)}</button>
-                            {p.checked_out_at && <span className="text-muted-foreground">left {format(new Date(p.checked_out_at), "h:mm a")}</span>}
+                            {p.checked_out_at && <span className="text-muted-foreground">left {format(new Date(p.checked_out_at), "HH:mm")}</span>}
                             {p.signature_url && (
                               <a href={p.signature_url} target="_blank" rel="noopener noreferrer">
                                 <img src={p.signature_url} alt="signature" className="h-5 rounded bg-white" loading="lazy" />
@@ -1094,7 +1094,7 @@ export function VisitsCard({ projectId, locations, crews, from, to, canEdit, def
 const sinceLabel = (iso: string) => {
   const mins = Math.max(0, Math.round((Date.now() - new Date(iso).getTime()) / 60000));
   const h = Math.floor(mins / 60), m = mins % 60;
-  return `since ${format(new Date(iso), "h:mm a")} (${h ? `${h}h ${m}m` : `${m}m`})`;
+  return `since ${format(new Date(iso), "HH:mm")} (${h ? `${h}h ${m}m` : `${m}m`})`;
 };
 const trailName = (r: TrailRow) => [r.first_name, r.last_name].filter(Boolean).join(" ") || "Unknown";
 
@@ -1145,7 +1145,7 @@ function TrailView({ projectId, projectName, locations, from, to, personId, setP
   const { data: visitNotes = {} } = useVisitNotes(rows.map((r) => r.visit_id));
   const isManual = (r: TrailRow) => /^manual entry/i.test(visitNotes[r.visit_id] ?? "");
   const total = rows.reduce((s, r) => s + (r.hours != null ? Number(r.hours) : 0), 0);
-  const fmt = (iso: string | null) => (iso ? format(new Date(iso), "M/d h:mm a") : "on site");
+  const fmt = (iso: string | null) => (iso ? format(new Date(iso), "M/d HH:mm") : "on site");
 
   const exportCsv = () => {
     const esc = (v: unknown) => `"${String(v ?? "").replace(/"/g, '""')}"`;
