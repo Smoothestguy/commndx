@@ -13,7 +13,7 @@ import { useProjectLocations, ProjectLocation } from "@/integrations/supabase/ho
 import { useCrews, usePersonnelDirectory, fullName, Crew } from "@/integrations/supabase/hooks/useCrews";
 import {
   getCoords, todayYmd, useAddPurchase, useAddVisitPhoto, useCheckIn, useCheckOut,
-  useSaveSignature, useTodayVisits, VisitRow,
+  useSaveSignature, useTodayVisits, VisitRow, VisitPerson, useCheckOutPerson, useAddPersonToVisit,
 } from "@/integrations/supabase/hooks/useFieldMode";
 
 const CREW_KEY = (pid: string) => `fieldModeCrew:${pid}`;
@@ -291,10 +291,28 @@ function CheckInSheet({ location, crew, projectId, locationIds, onClose }: {
 
 // ---------- Active visit sheet ----------
 
-function ActiveVisitSheet({ visit, location, projectId, defaultShiftHours, onClose }: {
-  visit: VisitRow; location: ProjectLocation; projectId: string; defaultShiftHours: number; onClose: () => void;
+function ActiveVisitSheet({ visit, location, projectId, defaultShiftHours, people, locationIds, onClose }: {
+  visit: VisitRow; location: ProjectLocation; projectId: string; defaultShiftHours: number;
+  people: VisitPerson[]; locationIds: string[]; onClose: () => void;
 }) {
-  const [mode, setMode] = useState<"menu" | "receipt" | "photo">("menu");
+  const [mode, setMode] = useState<"menu" | "receipt" | "photo" | "add">("menu");
+  const [personSheet, setPersonSheet] = useState<VisitPerson | null>(null);
+  const [sigFor, setSigFor] = useState<string | null>(null);
+  const [addSearch, setAddSearch] = useState("");
+  const { data: directory = [] } = usePersonnelDirectory(mode === "add");
+  const checkOutPerson = useCheckOutPerson(projectId);
+  const addPerson = useAddPersonToVisit(projectId, locationIds);
+  const saveSig = useSaveSignature(projectId);
+  const onSite = people.filter((p) => !p.checked_out_at);
+  const leftEarly = people.filter((p) => p.checked_out_at);
+  const sinceOf = (p: VisitPerson) => p.checked_in_at ?? visit.check_in_at;
+  const presentIds = useMemo(() => new Set(people.map((p) => p.personnel_id)), [people]);
+  const addResults = useMemo(() => {
+    const n = addSearch.trim().toLowerCase();
+    return directory.filter((d) => !presentIds.has(d.id))
+      .filter((d) => !n || fullName(d).toLowerCase().includes(n)).slice(0, 30);
+  }, [directory, addSearch, presentIds]);
+  const [addedName, setAddedName] = useState("");
   const [file, setFile] = useState<File | null>(null);
   const [amount, setAmount] = useState("");
   const [vendor, setVendor] = useState("");
@@ -330,6 +348,17 @@ function ActiveVisitSheet({ visit, location, projectId, defaultShiftHours, onClo
     );
   };
 
+  if (sigFor) {
+    return (
+      <SignaturePad
+        name={addedName}
+        saving={saveSig.isPending}
+        onSkip={() => setSigFor(null)}
+        onSave={(blob) => saveSig.mutate({ visit_id: visit.id, personnel_id: sigFor, blob }, { onSettled: () => setSigFor(null) })}
+      />
+    );
+  }
+
   return (
     <div className="flex flex-col h-full">
       <div className="p-4 border-b">
@@ -353,6 +382,51 @@ function ActiveVisitSheet({ visit, location, projectId, defaultShiftHours, onClo
             >
               End at {fmtTime(defaultEnd.toISOString())}
             </Button>
+          </div>
+        )}
+
+        {mode === "menu" && (
+          <div className="space-y-2">
+            <p className="text-xs uppercase text-muted-foreground">On site ({onSite.length})</p>
+            <div className="flex flex-wrap gap-2">
+              {onSite.map((p) => (
+                <button key={p.personnel_id} type="button" onClick={() => setPersonSheet(p)}
+                  className="min-h-12 rounded-full border-2 px-4 text-base font-medium hover:bg-muted">
+                  {p.personnel?.first_name ?? fullName(p.personnel)} · since {fmtTime(sinceOf(p))}
+                </button>
+              ))}
+              <button type="button" onClick={() => { setAddSearch(""); setMode("add"); }}
+                className="min-h-12 rounded-full border-2 border-dashed px-4 text-base font-medium hover:bg-muted">
+                + Add person
+              </button>
+            </div>
+            {leftEarly.length > 0 && (
+              <p className="text-xs text-muted-foreground">
+                Left: {leftEarly.map((p) => `${p.personnel?.first_name ?? fullName(p.personnel)} ${fmtTime(p.checked_out_at!)}`).join(" · ")}
+              </p>
+            )}
+          </div>
+        )}
+
+        {mode === "add" && (
+          <div className="space-y-3">
+            <Input autoFocus value={addSearch} onChange={(e) => setAddSearch(e.target.value)} placeholder="Search name…" className="h-12 text-base" />
+            <div className="divide-y border rounded-xl max-h-[50vh] overflow-y-auto">
+              {addResults.map((d) => (
+                <button key={d.id} type="button" disabled={addPerson.isPending}
+                  className="w-full text-left px-4 py-3 text-base hover:bg-muted"
+                  onClick={() => addPerson.mutate({ visit, personnel_id: d.id }, {
+                    onSuccess: ({ needsSignature }) => {
+                      setMode("menu");
+                      if (needsSignature) { setAddedName(fullName(d)); setSigFor(d.id); }
+                    },
+                  })}>
+                  {fullName(d)}
+                </button>
+              ))}
+              {!addResults.length && <p className="p-4 text-sm text-muted-foreground">No matches.</p>}
+            </div>
+            <Button variant="outline" className="w-full h-12" onClick={() => setMode("menu")}>Back</Button>
           </div>
         )}
 
@@ -439,6 +513,22 @@ function ActiveVisitSheet({ visit, location, projectId, defaultShiftHours, onClo
           </Button>
         </div>
       )}
+
+      <Dialog open={!!personSheet} onOpenChange={(o) => !o && setPersonSheet(null)}>
+        <DialogContent className="max-w-sm">
+          {personSheet && (
+            <div className="space-y-3 pt-2">
+              <p className="text-lg font-semibold">{fullName(personSheet.personnel)}</p>
+              <p className="text-sm text-muted-foreground">On site since {fmtTime(sinceOf(personSheet))} · {fmtDuration(sinceOf(personSheet), null)}</p>
+              <Button variant="destructive" className="w-full h-14 text-lg" disabled={checkOutPerson.isPending}
+                onClick={() => checkOutPerson.mutate({ visit, personnel_id: personSheet.personnel_id }, { onSuccess: () => setPersonSheet(null) })}>
+                {checkOutPerson.isPending ? <Loader2 className="h-5 w-5 animate-spin" /> : `Check out ${personSheet.personnel?.first_name ?? "person"}`}
+              </Button>
+              <Button variant="outline" className="w-full h-12" onClick={() => setPersonSheet(null)}>Cancel</Button>
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
 
       <input
         ref={receiptInput} type="file" accept="image/*" capture="environment" className="hidden"
@@ -588,6 +678,8 @@ export default function FieldMode() {
                 location={sheet.location}
                 projectId={projectId!}
                 defaultShiftHours={defaultShiftHours}
+                people={(bundle?.people ?? []).filter((p) => p.visit_id === sheet.visit!.id)}
+                locationIds={locationIds}
                 onClose={() => setSheet(null)}
               />
             ) : (
