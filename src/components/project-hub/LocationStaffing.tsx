@@ -94,14 +94,16 @@ function RequirementsDialog({ locationId, open, onOpenChange }: { locationId: st
   );
 }
 
-function AssignDialog({ locationId, open, onOpenChange, assignedIds, roleOptions, onAssigned }: {
-  locationId: string; open: boolean; onOpenChange: (o: boolean) => void; assignedIds: Set<string>; roleOptions: string[]; onAssigned?: (ids: string[]) => void;
+export function AssignDialog({ locationId, open, onOpenChange, assignedIds, roleOptions, onAssigned, defaultRole }: {
+  defaultRole?: string; locationId: string; open: boolean; onOpenChange: (o: boolean) => void; assignedIds: Set<string>; roleOptions: string[]; onAssigned?: (ids: string[]) => void;
 }) {
   const { data: people = [], isLoading } = useActivePersonnelLite(open);
   const assign = useAssignPersonnel();
   const [q, setQ] = useState("");
   const [sel, setSel] = useState<Set<string>>(new Set());
-  const [role, setRole] = useState("");
+  const [role, setRole] = useState(defaultRole ?? "");
+  const [seenDefault, setSeenDefault] = useState(defaultRole);
+  if (defaultRole !== seenDefault) { setSeenDefault(defaultRole); setRole(defaultRole ?? ""); }
 
   const filtered = useMemo(() => {
     const s = q.trim().toLowerCase();
@@ -117,7 +119,7 @@ function AssignDialog({ locationId, open, onOpenChange, assignedIds, roleOptions
   const opts = roleOptions.length ? roleOptions : ([...ROLE_TAGS] as string[]);
 
   return (
-    <Dialog open={open} onOpenChange={(o) => { if (!o) { setSel(new Set()); setQ(""); setRole(""); } onOpenChange(o); }}>
+    <Dialog open={open} onOpenChange={(o) => { if (!o) { setSel(new Set()); setQ(""); setRole(defaultRole ?? ""); } onOpenChange(o); }}>
       <DialogContent className="max-w-lg">
         <DialogHeader><DialogTitle>Assign personnel</DialogTitle></DialogHeader>
         <Input placeholder="Search name or phone" value={q} onChange={(e) => setQ(e.target.value)} />
