@@ -27,9 +27,9 @@ export function statusBadgeClass(s: LifecycleStatus) {
   }
 }
 
-export function StatusBadge({ status, projectName, className }: { status: LifecycleStatus; projectName?: string | null; className?: string }) {
+export function StatusBadge({ status, projectName, className, hideProjectName }: { status: LifecycleStatus; projectName?: string | null; className?: string; hideProjectName?: boolean }) {
   const loud = status === "standby" || status === "mobilizing" || status === "activated";
-  const showProj = loud && projectName;
+  const showProj = loud && projectName && !hideProjectName;
   return (
     <Badge variant="outline" className={cn("whitespace-nowrap max-w-[220px] truncate", statusBadgeClass(status), className)}>
       {loud ? STATUS_LABEL[status].toUpperCase() : STATUS_LABEL[status]}
@@ -86,32 +86,40 @@ export function StatusProjectDialog({ open, onOpenChange, personnelIds, status, 
   );
 }
 
-function useOnSiteBadge(personnelId: string, status: LifecycleStatus, projectName: string | null | undefined, className?: string) {
+function useOnSiteBadge(personnelId: string, status: LifecycleStatus, projectName: string | null | undefined, className?: string, hideLocationId?: string | null, hideProject?: boolean) {
   const { data: onSite } = useOnSiteMap();
   const os = onSite?.[personnelId];
   if (!os) return null;
+  const showLoc = !hideLocationId || os.location_id !== hideLocationId;
   return (
     <Tooltip>
       <TooltipTrigger asChild>
         <Badge variant="outline" className={cn("whitespace-nowrap max-w-[220px] truncate border-success bg-success/15 text-success animate-pulse", className)}>
-          ON SITE<span className="ml-1 font-normal truncate">· {os.location_name ?? "site"}</span>
+          ON SITE{showLoc && <span className="ml-1 font-normal truncate">· {os.location_name ?? "site"}</span>}
         </Badge>
       </TooltipTrigger>
-      <TooltipContent>Status: {STATUS_LABEL[status]}{projectName ? ` · ${projectName}` : ""}</TooltipContent>
+      <TooltipContent>On site at {os.location_name ?? "site"} · Status: {STATUS_LABEL[status]}{projectName && !hideProject ? ` · ${projectName}` : ""}</TooltipContent>
     </Tooltip>
   );
 }
 
 /** Badge + dropdown status machine. Reads from shared cached maps (status + on-site), so it's safe in long lists.
  *  When `projectId` is given, project-scoped actions skip the project picker and use that project. */
-export function PersonnelStatusButton({ personnelId, className, projectId, projectName }: { personnelId: string; className?: string; projectId?: string | null; projectName?: string | null }) {
+export function PersonnelStatusButton({ personnelId, className, projectId, projectName, hideProjectName, locationId }: {
+  personnelId: string; className?: string; projectId?: string | null; projectName?: string | null;
+  /** Inside a project page: omit the project name from the badge (only when it is this project). */
+  hideProjectName?: boolean;
+  /** Row's location: ON SITE badge omits the site name when it matches. */
+  locationId?: string | null;
+}) {
   const { status, row } = useCurrentStatus(personnelId);
   const { isAdmin, isManager } = useUserRole();
   const canEdit = isAdmin || isManager;
   const set = useSetStatus();
   const [dlg, setDlg] = useState<null | DlgStatus>(null);
-  const onSiteBadge = useOnSiteBadge(personnelId, status, row?.project_name, className);
-  const badge = onSiteBadge ?? <StatusBadge status={status} projectName={row?.project_name} className={className} />;
+  const hideProj = !!hideProjectName && (!projectId || !row?.project_id || row.project_id === projectId);
+  const onSiteBadge = useOnSiteBadge(personnelId, status, row?.project_name, className, locationId, hideProj);
+  const badge = onSiteBadge ?? <StatusBadge status={status} projectName={row?.project_name} className={className} hideProjectName={hideProj} />;
   if (!canEdit) return badge;
   const locked = !!projectId && dlg !== "demobilized";
   return (

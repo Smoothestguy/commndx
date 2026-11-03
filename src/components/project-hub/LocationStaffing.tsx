@@ -197,7 +197,7 @@ export function LocationStaffing({ locationId, summary, canWrite, projectId, loc
             <span key={a.id} className="inline-flex items-center gap-1 rounded-md border bg-muted/40 pl-2 pr-1 py-0.5 text-xs">
               <span className="font-medium">{[a.personnel?.first_name, a.personnel?.last_name].filter(Boolean).join(" ") || "Unknown"}</span>
               {a.role_label && <span className="text-muted-foreground">· {a.role_label}</span>}
-              <PersonnelStatusButton personnelId={a.personnel_id} projectId={projectId} className="text-[10px] px-1.5 py-0" />
+              <PersonnelStatusButton personnelId={a.personnel_id} projectId={projectId} locationId={locationId} hideProjectName className="text-[10px] px-1.5 py-0" />
               <TextedCaption at={texted[`${a.personnel_id}:${locationId}`]} />
               <button type="button" className="rounded p-1 hover:bg-muted" aria-label="Send site text"
                 onClick={() => setTextIds([a.personnel_id])}><MessageSquare className="h-3 w-3" /></button>
