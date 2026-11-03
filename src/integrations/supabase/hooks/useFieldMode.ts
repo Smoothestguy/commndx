@@ -431,6 +431,52 @@ export function useTrail(projectId: string | undefined, f: { personnelId?: strin
   });
 }
 
+/** Batched visit notes for a set of visit ids (used to flag manual / self entries in the trail). */
+export function useVisitNotes(visitIds: string[]) {
+  const ids = [...new Set(visitIds)].sort();
+  return useQuery({
+    queryKey: ["visit-notes", ids.join(",")],
+    enabled: ids.length > 0,
+    queryFn: async () => {
+      const map: Record<string, string | null> = {};
+      for (let i = 0; i < ids.length; i += 200) {
+        const { data, error } = await db.from("location_visits").select("id, notes").in("id", ids.slice(i, i + 200));
+        if (error) throw error;
+        for (const r of data ?? []) map[r.id] = r.notes;
+      }
+      return map;
+    },
+  });
+}
+
+/** Manager manual time entry: one visit + one visit_personnel row, then recompute attendance. */
+export function useLogManualTime(projectId: string | undefined) {
+  const inv = useInv(projectId);
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (i: { personnel_id: string; location_id: string; day: string; in_at: string; out_at: string; note?: string }) => {
+      const { data: { user } } = await supabase.auth.getUser();
+      const notes = i.note?.trim() ? `Manual entry — ${i.note.trim()}` : "Manual entry";
+      const { data: v, error } = await db.from("location_visits").insert({
+        location_id: i.location_id, check_in_at: i.in_at, check_out_at: i.out_at, notes, created_by: user?.id ?? null,
+      }).select("id").single();
+      if (error) throw error;
+      const { error: pErr } = await db.from("visit_personnel").insert({
+        visit_id: v.id, personnel_id: i.personnel_id, checked_in_at: i.in_at, checked_out_at: i.out_at, checked_in_by: user?.id ?? null,
+      });
+      if (pErr) throw pErr;
+      await recomputeAttendanceFromVisits(i.location_id, i.day);
+    },
+    onSuccess: () => {
+      inv();
+      qc.invalidateQueries({ queryKey: ["personnel-trail"] });
+      qc.invalidateQueries({ queryKey: ["project-roster"] });
+      toast.success("Time logged");
+    },
+    onError: (e: any) => toast.error(e?.message ?? "Failed to log time"),
+  });
+}
+
 /** One person leaves early: stamp their own checked_out_at. */
 export function useCheckOutPerson(projectId: string | undefined) {
   const inv = useInv(projectId);

@@ -5,8 +5,8 @@ import { toast } from "sonner";
 
 const db = supabase as any;
 
-export type LifecycleStatus = "available" | "unavailable" | "standby" | "activated" | "demobilized";
-export const PROJECT_REQUIRED: LifecycleStatus[] = ["standby", "activated"];
+export type LifecycleStatus = "available" | "unavailable" | "standby" | "mobilizing" | "activated" | "demobilized";
+export const PROJECT_REQUIRED: LifecycleStatus[] = ["standby", "mobilizing", "activated"];
 
 export interface CurrentStatus {
   personnel_id: string;
@@ -48,6 +48,32 @@ export function useCurrentStatuses(opts: { ids?: string[]; projectId?: string } 
   return { ...q, list, map: q.data ?? {} };
 }
 
+/** ON SITE is derived: one shared query of every open trail row (out_at IS NULL), mapped by person. */
+export function useOnSiteMap() {
+  return useQuery({
+    queryKey: ["on-site-now", "all"],
+    staleTime: 30_000,
+    refetchInterval: 60_000,
+    queryFn: async () => {
+      const { data, error } = await db.from("personnel_location_trail")
+        .select("personnel_id, location_id, location_name, project_id, in_at").is("out_at", null).limit(5000);
+      if (error) throw error;
+      const map: Record<string, { location_id: string; location_name: string | null; project_id: string; in_at: string }> = {};
+      for (const r of data ?? []) map[r.personnel_id] = r;
+      return map;
+    },
+  });
+}
+
+/** Auto-mark assigned people as mobilizing for a project, skipping those already mobilizing/activated there. */
+export async function autoMobilize(personnelIds: string[], projectId: string, note: string) {
+  if (!personnelIds.length) return;
+  const { data, error } = await db.from("personnel_current_status").select("personnel_id, status, project_id").in("personnel_id", personnelIds);
+  if (error) throw error;
+  const skip = new Set((data ?? []).filter((r: any) => r.project_id === projectId && (r.status === "mobilizing" || r.status === "activated")).map((r: any) => r.personnel_id));
+  await insertStatusRows(personnelIds.filter((id) => !skip.has(id)).map((id) => ({ personnel_id: id, status: "mobilizing" as LifecycleStatus, project_id: projectId, note })));
+}
+
 export function useCurrentStatus(personnelId?: string) {
   const { map, isLoading } = useCurrentStatuses();
   const s = personnelId ? map[personnelId] : undefined;
@@ -68,7 +94,7 @@ export async function insertStatusRows(rows: { personnel_id: string; status: Lif
   if (!rows.length) return;
   const { data: { user } } = await supabase.auth.getUser();
   for (const r of rows) {
-    if (PROJECT_REQUIRED.includes(r.status) && !r.project_id) throw new Error("Project is required for standby/activated");
+    if (PROJECT_REQUIRED.includes(r.status) && !r.project_id) throw new Error("Project is required for standby/mobilizing/activated");
   }
   const { error } = await db.from("personnel_status_log").insert(
     rows.map((r) => ({ personnel_id: r.personnel_id, status: r.status, project_id: r.project_id ?? null, note: r.note || null, set_by: user?.id ?? null })),
