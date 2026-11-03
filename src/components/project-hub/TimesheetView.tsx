@@ -38,13 +38,13 @@ export function TimesheetView({ projectId, projectName, locations, week, setWeek
   return (
     <div className="space-y-2 pt-1">
       <div className="flex flex-wrap items-center gap-2">
-        <div className="flex items-center gap-1">
+        <div className="flex items-center gap-1 w-full sm:w-auto">
           <Button size="icon" variant="outline" className="h-8 w-8" aria-label="Previous week" onClick={() => setWeek(addDays(week, -7))}><ChevronLeft className="h-4 w-4" /></Button>
           <span className="text-sm font-medium px-1 whitespace-nowrap">Mon {monthDay(week)} – Sun {monthDay(addDays(week, 6))}</span>
           <Button size="icon" variant="outline" className="h-8 w-8" aria-label="Next week" onClick={() => setWeek(addDays(week, 7))}><ChevronRight className="h-4 w-4" /></Button>
         </div>
         <Select value={shift} onValueChange={(v) => setShift(v as any)}>
-          <SelectTrigger className="h-8 w-[110px]"><SelectValue /></SelectTrigger>
+          <SelectTrigger className="h-8 w-[calc(50%-0.25rem)] sm:w-[110px]"><SelectValue /></SelectTrigger>
           <SelectContent>
             <SelectItem value="all">All shifts</SelectItem>
             <SelectItem value="day">Day</SelectItem>
@@ -52,13 +52,13 @@ export function TimesheetView({ projectId, projectName, locations, week, setWeek
           </SelectContent>
         </Select>
         <Select value={locId || "all"} onValueChange={(v) => setLocId(v === "all" ? "" : v)}>
-          <SelectTrigger className="h-8 w-[170px]"><SelectValue /></SelectTrigger>
+          <SelectTrigger className="h-8 w-[calc(50%-0.25rem)] sm:w-[170px]"><SelectValue /></SelectTrigger>
           <SelectContent>
             <SelectItem value="all">All locations</SelectItem>
             {locations.map((l) => <SelectItem key={l.id} value={l.id}>{l.name}</SelectItem>)}
           </SelectContent>
         </Select>
-        <Input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Search person…" className="h-8 w-[160px]" />
+        <Input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Search person…" className="h-8 flex-1 min-w-0 sm:flex-none sm:w-[160px]" />
         <Button size="sm" variant="outline" className="h-8 gap-1 ml-auto" disabled={busy || !entries.length} onClick={async () => {
           setBusy(true);
           try { await exportWeekTimesheet(projectName, week, entries); }
@@ -70,17 +70,17 @@ export function TimesheetView({ projectId, projectName, locations, week, setWeek
         <p className="text-sm text-muted-foreground">No hours this week.</p>
       ) : (
         <TooltipProvider delayDuration={150}>
-          <div className="overflow-x-auto">
+          <div className="overflow-x-auto max-w-full">
             <table className="w-full text-xs tabular-nums">
               <thead className="text-muted-foreground"><tr>
-                <th className="text-left py-1 pr-2">Person</th>
-                {days.map((d) => <th key={d} className="text-right px-1 whitespace-nowrap">{dayLabel(d)}</th>)}
+                <th className="sticky left-0 z-10 bg-card text-left py-1 pr-2">Person</th>
+                {days.map((d) => <th key={d} className="text-right px-1 whitespace-nowrap"><span className="sm:hidden">{dayLabel(d).slice(0, 2)} {Number(d.slice(8))}</span><span className="hidden sm:inline">{dayLabel(d)}</span></th>)}
                 <th className="text-right pl-2">Total</th>
               </tr></thead>
               <tbody className="divide-y">
                 {rows.map((r) => (
                   <tr key={r.personnel_id} className="hover:bg-muted/50 cursor-pointer" onClick={() => onPerson(r.personnel_id, week)}>
-                    <td className="py-1.5 pr-2 font-medium whitespace-nowrap">{r.name}</td>
+                    <td className="sticky left-0 z-10 bg-card py-1.5 pr-2 font-medium whitespace-nowrap max-w-[8.5rem] truncate sm:max-w-none">{r.name}</td>
                     {days.map((d) => {
                       const c = r.days[d]; const h = cellH(c);
                       const both = shift === "all" && c && c.day > 0 && c.night > 0;
@@ -99,7 +99,7 @@ export function TimesheetView({ projectId, projectName, locations, week, setWeek
                 ))}
               </tbody>
               <tfoot><tr className="border-t font-semibold">
-                <td className="py-1.5 pr-2">Total</td>
+                <td className="sticky left-0 z-10 bg-card py-1.5 pr-2">Total</td>
                 {colTotals.map((t, i) => <td key={i} className="text-right px-1">{t ? fmtH(t) : ""}</td>)}
                 <td className="text-right pl-2">{fmtH(grand)}</td>
               </tr></tfoot>

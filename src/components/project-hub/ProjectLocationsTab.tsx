@@ -156,8 +156,8 @@ export function ProjectLocationsTab({ projectId, projectName, deploymentMode = f
 
   return (
     <div className="space-y-3">
-      <div className="flex items-center justify-between">
-        <h3 className="text-sm font-semibold text-muted-foreground">Sites / Locations</h3>
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <h3 className="text-sm font-semibold text-muted-foreground whitespace-nowrap">Sites / Locations</h3>
         <div className="flex items-center gap-2">
           {locations.length > 0 && (
             <div className="inline-flex rounded-md border p-0.5" role="group" aria-label="View">
@@ -177,10 +177,10 @@ export function ProjectLocationsTab({ projectId, projectName, deploymentMode = f
         <LocationsGrid projectId={projectId} projectName={projectName} locations={locations} staffing={staffing} lastServiced={lastServiced}
           deploymentMode={deploymentMode} canWrite={canWrite} onOpenCard={(id) => { chooseView("cards"); setScrollTo(id); }} />
       ) : (
-        <div className="grid gap-3 md:grid-cols-2 2xl:grid-cols-3">
+        <div className="grid grid-cols-1 gap-3 md:grid-cols-2 2xl:grid-cols-3">
           {locations.map((l) => (
-            <Card key={l.id} id={`location-card-${l.id}`} className="scroll-mt-20 transition-shadow">
-              <CardContent className="p-4 space-y-2">
+            <Card key={l.id} id={`location-card-${l.id}`} className="scroll-mt-20 transition-shadow min-w-0">
+              <CardContent className="p-3 sm:p-4 space-y-2">
                 <div className="flex items-start justify-between gap-2">
                   <div className="min-w-0">
                     <div className="flex flex-wrap items-center gap-2">

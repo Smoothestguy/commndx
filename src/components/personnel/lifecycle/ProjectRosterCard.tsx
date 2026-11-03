@@ -47,7 +47,7 @@ export function ProjectRosterCard({ projectId }: { projectId: string }) {
   const toggle = (id: string) => setSel((s) => (s.includes(id) ? s.filter((x) => x !== id) : [...s, id]));
 
   const Row = ({ r }: { r: RosterRow }) => (
-    <div className="flex items-center gap-2 py-2 border-b last:border-0">
+    <div className="flex items-center gap-1 sm:gap-2 py-2 border-b last:border-0">
       {showCosts && r.status === "standby" && <Checkbox checked={sel.includes(r.personnel_id)} onCheckedChange={() => toggle(r.personnel_id)} aria-label="Select" />}
       <div className="min-w-0 flex-1">
         <div className="font-medium text-sm truncate">{nm(r)}</div>
@@ -57,7 +57,7 @@ export function ProjectRosterCard({ projectId }: { projectId: string }) {
           {r.status === "activated" && <> · {r.hours.toFixed(1)}h{showCosts && <> · {r.laborCost != null ? money(r.laborCost) : "no rate"}</>}</>}
         </div>
       </div>
-      <PersonnelStatusButton personnelId={r.personnel_id} projectId={projectId} projectName={(project as any)?.name} hideProjectName />
+      <PersonnelStatusButton personnelId={r.personnel_id} projectId={projectId} projectName={(project as any)?.name} hideProjectName className="max-w-[7rem] sm:max-w-none" />
       <Button size="icon" variant="ghost" className="h-9 w-9" aria-label="Send site text" onClick={() => setTextFor(r.personnel_id)}><MessageSquare className="h-4 w-4" /></Button>
       {showCosts && <Button size="icon" variant="ghost" className="h-9 w-9" aria-label="Log time" onClick={() => setLogFor(r)}><Clock className="h-4 w-4" /></Button>}
       <Button size="icon" variant="ghost" className="h-9 w-9" aria-label="Add expense" onClick={() => setExpFor(r.personnel_id)}><Receipt className="h-4 w-4" /></Button>

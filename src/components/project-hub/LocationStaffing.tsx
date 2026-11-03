@@ -174,10 +174,10 @@ export function LocationStaffing({ locationId, summary, canWrite, projectId, loc
   return (
     <div className="pt-2 border-t space-y-2">
       <div className="flex items-center justify-between gap-2">
-        <span className="text-sm font-medium">Staffed {assigned}/{needed}</span>
+        <span className="text-sm font-medium whitespace-nowrap">Staffed {assigned}/{needed}</span>
         {canWrite && (
           <div className="flex gap-1">
-            <Button size="sm" variant="ghost" className="h-8 px-2" onClick={() => setReqOpen(true)}><ListChecks className="h-4 w-4 mr-1" />Requirements</Button>
+            <Button size="sm" variant="ghost" className="h-8 px-2" onClick={() => setReqOpen(true)}><ListChecks className="h-4 w-4 sm:mr-1" /><span className="hidden sm:inline">Requirements</span></Button>
             <Button size="sm" variant="ghost" className="h-8 px-2" onClick={() => setAsgOpen(true)}><UserPlus className="h-4 w-4 mr-1" />Assign</Button>
           </div>
         )}
@@ -194,7 +194,7 @@ export function LocationStaffing({ locationId, summary, canWrite, projectId, loc
       {assignments.length > 0 && (
         <div className="flex flex-wrap gap-1">
           {assignments.map((a) => (
-            <span key={a.id} className="inline-flex items-center gap-1 rounded-md border bg-muted/40 pl-2 pr-1 py-0.5 text-xs">
+            <span key={a.id} className="inline-flex max-w-full flex-wrap items-center gap-1 rounded-md border bg-muted/40 pl-2 pr-1 py-0.5 text-xs">
               <span className="font-medium">{[a.personnel?.first_name, a.personnel?.last_name].filter(Boolean).join(" ") || "Unknown"}</span>
               {a.role_label && <span className="text-muted-foreground">· {a.role_label}</span>}
               <PersonnelStatusButton personnelId={a.personnel_id} projectId={projectId} locationId={locationId} hideProjectName className="text-[10px] px-1.5 py-0" />
