@@ -1,3 +1,4 @@
+import { PersonnelStatusButton } from "@/components/personnel/lifecycle/PersonnelStatusButton";
 import { useMemo, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -187,6 +188,7 @@ export function LocationStaffing({ locationId, summary, canWrite }: { locationId
             <span key={a.id} className="inline-flex items-center gap-1 rounded-md border bg-muted/40 pl-2 pr-1 py-0.5 text-xs">
               <span className="font-medium">{[a.personnel?.first_name, a.personnel?.last_name].filter(Boolean).join(" ") || "Unknown"}</span>
               {a.role_label && <span className="text-muted-foreground">· {a.role_label}</span>}
+              <PersonnelStatusButton personnelId={a.personnel_id} className="text-[10px] px-1.5 py-0" />
               {canWrite && (
                 <button type="button" className="ml-0.5 rounded p-1 hover:bg-muted" aria-label="Unassign"
                   onClick={() => unassign.mutate({ id: a.id, location_id: locationId })}><X className="h-3 w-3" /></button>
