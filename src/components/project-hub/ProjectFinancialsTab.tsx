@@ -27,6 +27,8 @@ import { useExpensesByProject } from "@/integrations/supabase/hooks/useExpenseRe
 import { useProjectTimeEntryCosts } from "@/integrations/supabase/hooks/useProjectLaborExpenses";
 import { AddTMTicketDialog } from "@/components/tm-tickets/AddTMTicketDialog";
 import { CreateJobOrderDialog } from "@/components/job-orders/CreateJobOrderDialog";
+import { PersonnelExpensesCard } from "@/components/personnel/lifecycle/PersonnelExpensesCard";
+import { useProjectPersonnelExpenses } from "@/integrations/supabase/hooks/usePersonnelStatus";
 import { CreateProjectInvoiceDialog } from "@/components/invoices/CreateProjectInvoiceDialog";
 
 interface Props {
@@ -46,6 +48,7 @@ export function ProjectFinancialsTab({ projectId, project, customer }: Props) {
   const { data: vendorBills } = useVendorBills({ project_id: projectId });
   const { data: projectExpenses } = useExpensesByProject(projectId);
   const { data: timeEntryCosts } = useProjectTimeEntryCosts(projectId);
+  const { data: personnelExpenses = [] } = useProjectPersonnelExpenses(projectId);
 
   const [isTMTicketDialogOpen, setIsTMTicketDialogOpen] = useState(false);
   const [isJobOrderDialogOpen, setIsJobOrderDialogOpen] = useState(false);
@@ -113,7 +116,8 @@ export function ProjectFinancialsTab({ projectId, project, customer }: Props) {
     // Non-personnel, non-vendor-bill expenses. The expense hook's vendor_total is
     // derived from vendor bill line items (already counted in totalVendorBilled),
     // so there is currently no separate "other" source — kept explicit for future use.
-    const totalOtherExpenses = 0;
+    // Per-person project expenses (travel, per diem, fuel, …) captured via personnel_expenses.
+    const totalOtherExpenses = personnelExpenses.reduce((s, e) => s + e.amount, 0);
     // Actual cost basis: vendor bills + labor + other. POs are commitments, shown separately.
     const totalDirectCosts = totalVendorBilled + totalLaborCost + totalOtherExpenses;
     const netProfit = totalContractValue - totalDirectCosts;
@@ -147,7 +151,7 @@ export function ProjectFinancialsTab({ projectId, project, customer }: Props) {
       supervisionLaborCost: supervisionBreakdown?.supervisionCost || 0,
       fieldLaborCost: supervisionBreakdown?.fieldCost || 0,
     };
-  }, [jobOrders, changeOrders, tmTickets, purchaseOrders, invoices, vendorBills, projectExpenses, timeEntryCosts, supervisionBreakdown]);
+  }, [jobOrders, changeOrders, tmTickets, purchaseOrders, invoices, vendorBills, projectExpenses, timeEntryCosts, supervisionBreakdown, personnelExpenses]);
 
   const estimateColumns = [
     { key: "number", header: "Estimate #" },
@@ -198,6 +202,7 @@ export function ProjectFinancialsTab({ projectId, project, customer }: Props) {
   return (
     <div className="space-y-8">
       <ProjectFinancialSummary data={financialData} />
+      <PersonnelExpensesCard projectId={projectId} />
       <ProjectUnbilledLabor projectId={projectId} totalInvoiced={financialData.totalInvoiced} />
       <ProjectLaborAllocation projectId={projectId} />
       <ProjectRateBracketsSection projectId={projectId} />

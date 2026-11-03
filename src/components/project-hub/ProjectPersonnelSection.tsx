@@ -1,3 +1,4 @@
+import { PersonnelStatusButton } from "@/components/personnel/lifecycle/PersonnelStatusButton";
 import { useState, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
 import { format } from "date-fns";
@@ -729,6 +730,7 @@ export function ProjectPersonnelSection({ projectId, projectName = "this project
                               Bill: {formatCurrency(person.billRate)}/hr
                             </span>
                           )}
+                          {person.personnelId && <PersonnelStatusButton personnelId={person.personnelId} />}
                           {(() => {
                             const rating = getRating(person.assignmentId, person.personnelId);
                             if (!rating) return null;
@@ -853,6 +855,7 @@ export function ProjectPersonnelSection({ projectId, projectName = "this project
                                           Onboarded
                                         </Badge>
                                       )}
+                                      {person.personnelId && <PersonnelStatusButton personnelId={person.personnelId} />}
                                       {(() => {
                                         const rating = getRating(person.assignmentId, person.personnelId);
                                         if (!rating) return null;

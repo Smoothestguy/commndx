@@ -24,6 +24,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import { useGetOrCreateConversation } from "@/integrations/supabase/hooks/useConversations";
 import { useMessageDrawer } from "@/contexts/MessageDrawerContext";
 import { InviteToPortalDialog } from "@/components/personnel/InviteToPortalDialog";
+import { StatusHistoryCard } from "@/components/personnel/lifecycle/StatusHistoryCard";
 import { PersonnelProjectsList } from "@/components/personnel/PersonnelProjectsList";
 import { PersonnelCommunicationLog } from "@/components/personnel/PersonnelCommunicationLog";
 import { W9FormView } from "@/components/personnel/W9FormView";
@@ -658,7 +659,8 @@ const PersonnelDetail = () => {
             )}
           </TabsContent>
 
-          <TabsContent value="projects">
+          <TabsContent value="projects" className="space-y-4">
+            <StatusHistoryCard personnelId={personnel.id} />
             <PersonnelProjectsList personnelId={personnel.id} />
           </TabsContent>
 

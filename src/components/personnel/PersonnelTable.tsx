@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { PersonnelStatusButton } from "@/components/personnel/lifecycle/PersonnelStatusButton";
 import { useNavigate, Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -324,6 +325,11 @@ export function PersonnelTable({
       filterable: true,
       getValue: (person) => person.status || "active",
       render: (person: Personnel) => getStatusBadge(person.status),
+    },
+    {
+      key: "lifecycle",
+      header: "Deployment",
+      render: (person: Personnel) => <PersonnelStatusButton personnelId={person.id} />,
     },
     {
       key: "everify_status",

@@ -4780,6 +4780,67 @@ export type Database = {
           },
         ]
       }
+      personnel_expenses: {
+        Row: {
+          amount: number
+          category: string
+          created_at: string
+          created_by: string | null
+          id: string
+          incurred_on: string
+          note: string | null
+          personnel_id: string
+          project_id: string
+          receipt_url: string | null
+        }
+        Insert: {
+          amount: number
+          category?: string
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          incurred_on?: string
+          note?: string | null
+          personnel_id: string
+          project_id: string
+          receipt_url?: string | null
+        }
+        Update: {
+          amount?: number
+          category?: string
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          incurred_on?: string
+          note?: string | null
+          personnel_id?: string
+          project_id?: string
+          receipt_url?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "personnel_expenses_personnel_id_fkey"
+            columns: ["personnel_id"]
+            isOneToOne: false
+            referencedRelation: "personnel"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "personnel_expenses_personnel_id_fkey"
+            columns: ["personnel_id"]
+            isOneToOne: false
+            referencedRelation: "personnel_directory"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "personnel_expenses_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "projects"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       personnel_hotel_assignments: {
         Row: {
           access_codes: string | null
@@ -5564,6 +5625,61 @@ export type Database = {
           },
           {
             foreignKeyName: "personnel_schedules_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "projects"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      personnel_status_log: {
+        Row: {
+          created_at: string
+          effective_at: string
+          id: string
+          note: string | null
+          personnel_id: string
+          project_id: string | null
+          set_by: string | null
+          status: string
+        }
+        Insert: {
+          created_at?: string
+          effective_at?: string
+          id?: string
+          note?: string | null
+          personnel_id: string
+          project_id?: string | null
+          set_by?: string | null
+          status: string
+        }
+        Update: {
+          created_at?: string
+          effective_at?: string
+          id?: string
+          note?: string | null
+          personnel_id?: string
+          project_id?: string | null
+          set_by?: string | null
+          status?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "personnel_status_log_personnel_id_fkey"
+            columns: ["personnel_id"]
+            isOneToOne: false
+            referencedRelation: "personnel"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "personnel_status_log_personnel_id_fkey"
+            columns: ["personnel_id"]
+            isOneToOne: false
+            referencedRelation: "personnel_directory"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "personnel_status_log_project_id_fkey"
             columns: ["project_id"]
             isOneToOne: false
             referencedRelation: "projects"
@@ -6778,6 +6894,7 @@ export type Database = {
           site_lat: number | null
           site_lng: number | null
           stage: Database["public"]["Enums"]["project_stage"]
+          standby_rate: number | null
           start_date: string
           state: string | null
           status: Database["public"]["Enums"]["project_status"]
@@ -6820,6 +6937,7 @@ export type Database = {
           site_lat?: number | null
           site_lng?: number | null
           stage?: Database["public"]["Enums"]["project_stage"]
+          standby_rate?: number | null
           start_date: string
           state?: string | null
           status?: Database["public"]["Enums"]["project_status"]
@@ -6862,6 +6980,7 @@ export type Database = {
           site_lat?: number | null
           site_lng?: number | null
           stage?: Database["public"]["Enums"]["project_stage"]
+          standby_rate?: number | null
           start_date?: string
           state?: string | null
           status?: Database["public"]["Enums"]["project_status"]
@@ -10163,6 +10282,42 @@ export type Database = {
       }
     }
     Views: {
+      personnel_current_status: {
+        Row: {
+          effective_at: string | null
+          first_name: string | null
+          last_name: string | null
+          note: string | null
+          personnel_id: string | null
+          project_id: string | null
+          project_name: string | null
+          set_by: string | null
+          status: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "personnel_status_log_personnel_id_fkey"
+            columns: ["personnel_id"]
+            isOneToOne: false
+            referencedRelation: "personnel"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "personnel_status_log_personnel_id_fkey"
+            columns: ["personnel_id"]
+            isOneToOne: false
+            referencedRelation: "personnel_directory"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "personnel_status_log_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "projects"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       personnel_directory: {
         Row: {
           first_name: string | null

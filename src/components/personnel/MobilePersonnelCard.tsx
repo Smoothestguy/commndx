@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { PersonnelStatusButton } from "@/components/personnel/lifecycle/PersonnelStatusButton";
 import { useNavigate, Link } from "react-router-dom";
 import { Card, CardContent } from "@/components/ui/card";
 import { SecureAvatar } from "@/components/ui/secure-avatar";
@@ -270,6 +271,7 @@ export const MobilePersonnelCard = ({
 
             <div className="flex flex-wrap gap-1">
               {getStatusBadge()}
+              <PersonnelStatusButton personnelId={personnel.id} />
               {getEVerifyBadge()}
               {personnel.portal_required === false && (
                 <Badge variant="outline" className="gap-1 text-xs">
