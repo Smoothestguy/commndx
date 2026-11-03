@@ -30,9 +30,10 @@ import {
   Crew, fullName, useAddCrewMember, useCreateCrew, useCrews, usePersonnelDirectory, useRemoveCrewMember, useUpdateCrew,
 } from "@/integrations/supabase/hooks/useCrews";
 import {
-  useDeleteVisit, useTodayReceiptsTotal, useUpdateVisit, useVisitsWindow, VisitRow,
+  useDeleteVisit, useTodayReceiptsTotal, useUpdateVisit, useVisitsWindow, VisitRow, useOnSiteNow, useTrail, TrailRow,
 } from "@/integrations/supabase/hooks/useFieldMode";
 import { generateSignInSheetPDF } from "@/utils/signInSheetPdf";
+import { generateTimeLogPDF } from "@/utils/timeLogPdf";
 
 const db = supabase as any;
 const DAYS = 10;
@@ -858,6 +859,9 @@ function VisitsCard({ projectId, locations, crews, from, to, canEdit }: {
   const [edit, setEdit] = useState<{ id: string; location_id: string; inAt: string; outAt: string } | null>(null);
   const [delId, setDelId] = useState<VisitRow | null>(null);
   const [pdfBusy, setPdfBusy] = useState(false);
+  const [view, setView] = useState<"visits" | "trail">("visits");
+  const [trailPerson, setTrailPerson] = useState<string>("");
+  const openTrail = (pid: string) => { setTrailPerson(pid); setView("trail"); };
 
   const locName = useMemo(() => Object.fromEntries(locations.map((l) => [l.id, l.name])), [locations]);
   const crewName = useMemo(() => Object.fromEntries(crews.map((c) => [c.id, c.name])), [crews]);
@@ -895,7 +899,17 @@ function VisitsCard({ projectId, locations, crews, from, to, canEdit }: {
         </Button>
       </CardHeader>
       <CardContent className="pt-0 space-y-1">
-        {isLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : visits.length === 0 ? (
+        <OnSiteNowBoard projectId={projectId} onPerson={openTrail} />
+        <Tabs value={view} onValueChange={(v) => setView(v as any)} className="pt-2">
+          <TabsList className="h-8">
+            <TabsTrigger value="visits" className="text-xs">Visits</TabsTrigger>
+            <TabsTrigger value="trail" className="text-xs">Trail</TabsTrigger>
+          </TabsList>
+        </Tabs>
+        {view === "trail" ? (
+          <TrailView projectId={projectId} projectName={projectName} locations={locations} from={from} to={to}
+            personId={trailPerson} setPersonId={setTrailPerson} />
+        ) : isLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : visits.length === 0 ? (
           <p className="text-sm text-muted-foreground">No field check-ins in this window. Crews check in from Field Mode.</p>
         ) : (
           visits.map((v) => {
@@ -942,7 +956,8 @@ function VisitsCard({ projectId, locations, crews, from, to, canEdit }: {
                       <div className="flex flex-wrap gap-2">
                         {vPeople.map((p) => (
                           <span key={p.personnel_id} className="inline-flex items-center gap-1.5 border rounded-full px-2 py-0.5 text-xs">
-                            {fullName(p.personnel)}
+                            <button type="button" className="hover:underline" onClick={() => openTrail(p.personnel_id)}>{fullName(p.personnel)}</button>
+                            {p.checked_out_at && <span className="text-muted-foreground">left {format(new Date(p.checked_out_at), "h:mm a")}</span>}
                             {p.signature_url && (
                               <a href={p.signature_url} target="_blank" rel="noopener noreferrer">
                                 <img src={p.signature_url} alt="signature" className="h-5 rounded bg-white" loading="lazy" />
@@ -1031,6 +1046,142 @@ function VisitsCard({ projectId, locations, crews, from, to, canEdit }: {
         </AlertDialogContent>
       </AlertDialog>
     </Card>
+  );
+}
+
+// ---------- On site now + Trail ----------
+
+const sinceLabel = (iso: string) => {
+  const mins = Math.max(0, Math.round((Date.now() - new Date(iso).getTime()) / 60000));
+  const h = Math.floor(mins / 60), m = mins % 60;
+  return `since ${format(new Date(iso), "h:mm a")} (${h ? `${h}h ${m}m` : `${m}m`})`;
+};
+const trailName = (r: TrailRow) => [r.first_name, r.last_name].filter(Boolean).join(" ") || "Unknown";
+
+function OnSiteNowBoard({ projectId, onPerson }: { projectId: string; onPerson: (pid: string) => void }) {
+  const { data = [], isLoading } = useOnSiteNow(projectId);
+  return (
+    <div className="rounded-md border p-2">
+      <p className="text-[10px] uppercase text-muted-foreground mb-1 flex items-center gap-1">
+        <span className="h-2 w-2 rounded-full bg-success animate-pulse" />On site now ({data.length})
+      </p>
+      {isLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : data.length === 0 ? (
+        <p className="text-sm text-muted-foreground">No one on site</p>
+      ) : (
+        <div className="divide-y">
+          {data.map((r) => (
+            <div key={r.visit_personnel_id} className="flex items-center gap-2 py-1 text-sm flex-wrap">
+              <button type="button" className="font-medium hover:underline" onClick={() => onPerson(r.personnel_id)}>{trailName(r)}</button>
+              <span className="text-muted-foreground">@ {r.location_name ?? "Site"}</span>
+              <span className="ml-auto text-xs text-muted-foreground">{sinceLabel(r.in_at)}</span>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
+function TrailView({ projectId, projectName, locations, from, to, personId, setPersonId }: {
+  projectId: string; projectName: string; locations: ProjectLocation[]; from: string; to: string;
+  personId: string; setPersonId: (id: string) => void;
+}) {
+  const [locId, setLocId] = useState<string>("");
+  const [pickOpen, setPickOpen] = useState(false);
+  const [busy, setBusy] = useState(false);
+  const { data: rows = [], isLoading } = useTrail(projectId, { personnelId: personId || null, locationId: locId || null, from, to });
+  // Person options come from the trail itself (unfiltered by person) so the list only shows people who have entries.
+  const { data: allRows = [] } = useTrail(projectId, { locationId: locId || null, from, to });
+  const peopleOpts = useMemo(() => {
+    const m = new Map<string, string>();
+    for (const r of allRows) m.set(r.personnel_id, trailName(r));
+    return [...m.entries()].sort((a, b) => a[1].localeCompare(b[1]));
+  }, [allRows]);
+  const personName = personId ? (peopleOpts.find(([id]) => id === personId)?.[1] ?? (rows[0] ? trailName(rows[0]) : "Person")) : "";
+  const total = rows.reduce((s, r) => s + (r.hours != null ? Number(r.hours) : 0), 0);
+  const fmt = (iso: string | null) => (iso ? format(new Date(iso), "M/d h:mm a") : "on site");
+
+  const exportCsv = () => {
+    const esc = (v: unknown) => `"${String(v ?? "").replace(/"/g, '""')}"`;
+    const lines = [["Person", "Location", "In", "Out", "Hours"].join(",")].concat(
+      rows.map((r) => [trailName(r), r.location_name ?? "", r.in_at, r.out_at ?? "", r.hours ?? ""].map(esc).join(",")),
+    );
+    const url = URL.createObjectURL(new Blob([lines.join("\n")], { type: "text/csv" }));
+    const a = document.createElement("a");
+    a.href = url; a.download = `personnel-trail-${from}-to-${to}.csv`; a.click();
+    URL.revokeObjectURL(url);
+  };
+
+  return (
+    <div className="space-y-2 pt-1">
+      <div className="flex flex-wrap items-center gap-2">
+        <Popover open={pickOpen} onOpenChange={setPickOpen}>
+          <PopoverTrigger asChild>
+            <Button size="sm" variant="outline" className="h-8 max-w-[220px] truncate">{personName || "All people"}</Button>
+          </PopoverTrigger>
+          <PopoverContent className="w-64 p-2" align="start">
+            <TrailPersonSearch opts={peopleOpts} onPick={(id) => { setPersonId(id); setPickOpen(false); }} />
+          </PopoverContent>
+        </Popover>
+        <Select value={locId || "all"} onValueChange={(v) => setLocId(v === "all" ? "" : v)}>
+          <SelectTrigger className="h-8 w-[180px]"><SelectValue /></SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">All locations</SelectItem>
+            {locations.map((l) => <SelectItem key={l.id} value={l.id}>{l.name}</SelectItem>)}
+          </SelectContent>
+        </Select>
+        {personId && <span className="text-sm font-medium">Total {total.toFixed(2)}h</span>}
+        <div className="ml-auto flex gap-1">
+          <Button size="sm" variant="outline" className="h-8" disabled={!rows.length} onClick={exportCsv}>CSV</Button>
+          {personId && (
+            <Button size="sm" variant="outline" className="h-8 gap-1" disabled={busy || !rows.length} onClick={async () => {
+              setBusy(true);
+              try { await generateTimeLogPDF({ personName, projectName, from, to, rows }); } finally { setBusy(false); }
+            }}>
+              {busy ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <FileText className="h-3.5 w-3.5" />}Time log PDF
+            </Button>
+          )}
+        </div>
+      </div>
+      {isLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : rows.length === 0 ? (
+        <p className="text-sm text-muted-foreground">No movement in this window.</p>
+      ) : (
+        <div className="overflow-x-auto">
+          <table className="w-full text-xs">
+            <thead className="text-muted-foreground"><tr className="text-left">
+              <th className="py-1 pr-2">Person</th><th className="pr-2">Location</th><th className="pr-2">In</th><th className="pr-2">Out</th><th className="text-right">Hours</th>
+            </tr></thead>
+            <tbody className="divide-y">
+              {rows.map((r) => (
+                <tr key={r.visit_personnel_id}>
+                  <td className="py-1.5 pr-2"><button type="button" className="font-medium hover:underline text-left" onClick={() => setPersonId(r.personnel_id)}>{trailName(r)}</button></td>
+                  <td className="pr-2">{r.location_name ?? "—"}</td>
+                  <td className="pr-2 whitespace-nowrap">{fmt(r.in_at)}</td>
+                  <td className="pr-2 whitespace-nowrap">{fmt(r.out_at)}</td>
+                  <td className="text-right">{r.hours != null ? Number(r.hours).toFixed(2) : "—"}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
+    </div>
+  );
+}
+
+function TrailPersonSearch({ opts, onPick }: { opts: [string, string][]; onPick: (id: string) => void }) {
+  const [q, setQ] = useState("");
+  const list = opts.filter(([, n]) => n.toLowerCase().includes(q.trim().toLowerCase()));
+  return (
+    <div className="space-y-1">
+      <Input autoFocus value={q} onChange={(e) => setQ(e.target.value)} placeholder="Search person…" className="h-8" />
+      <div className="max-h-56 overflow-y-auto">
+        <button type="button" className="w-full text-left px-2 py-1.5 text-sm hover:bg-muted" onClick={() => onPick("")}>All people</button>
+        {list.map(([id, n]) => (
+          <button key={id} type="button" className="w-full text-left px-2 py-1.5 text-sm hover:bg-muted" onClick={() => onPick(id)}>{n}</button>
+        ))}
+      </div>
+    </div>
   );
 }
 
