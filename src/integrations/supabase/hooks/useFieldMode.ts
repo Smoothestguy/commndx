@@ -2,6 +2,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { format } from "date-fns";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
+import { insertStatusRows } from "./usePersonnelStatus";
 
 const db = supabase as any;
 const BUCKET = "field-captures";
@@ -189,6 +190,24 @@ async function fetchTodaySignatures(locationIds: string[], personnelIds: string[
   return map;
 }
 
+/** Silent auto-activation: anyone checked in who isn't already ACTIVATED on this project gets an appended status row. */
+async function autoActivate(projectId: string | undefined, locationId: string, personnelIds: string[]) {
+  if (!projectId || !personnelIds.length) return;
+  try {
+    const [{ data: cur }, { data: loc }] = await Promise.all([
+      db.from("personnel_current_status").select("personnel_id, status, project_id").in("personnel_id", personnelIds),
+      db.from("project_locations").select("name").eq("id", locationId).maybeSingle(),
+    ]);
+    const already = new Set((cur ?? []).filter((r: any) => r.status === "activated" && r.project_id === projectId).map((r: any) => r.personnel_id));
+    const ids = personnelIds.filter((id) => !already.has(id));
+    if (ids.length) {
+      await insertStatusRows(ids.map((pid) => ({ personnel_id: pid, status: "activated" as const, project_id: projectId, note: `Auto: checked in at ${loc?.name ?? "site"}` })));
+    }
+  } catch (e) {
+    console.warn("Auto-activate failed", e); // never block check-in
+  }
+}
+
 export function useCheckIn(projectId: string | undefined, locationIds: string[]) {
   const inv = useInv(projectId);
   return useMutation({
@@ -214,6 +233,7 @@ export function useCheckIn(projectId: string | undefined, locationIds: string[])
         const { error: pErr } = await db.from("visit_personnel").upsert(rows, { onConflict: "visit_id,personnel_id" });
         if (pErr) throw pErr;
       }
+      await autoActivate(projectId, location_id, memberIds);
       return { visitId: visit.id as string, needsSignature: memberIds.filter((pid) => !signed[pid]) };
     },
     onSuccess: (_r, v) => inv(v.location_id),
@@ -446,6 +466,7 @@ export function useAddPersonToVisit(projectId: string | undefined, locationIds: 
         if (error.code === "23505") throw new Error("Already on this visit");
         throw error;
       }
+      await autoActivate(projectId, visit.location_id, [personnel_id]);
       return { needsSignature: !signed[personnel_id], locationId: visit.location_id };
     },
     onSuccess: (r) => inv(r.locationId),
