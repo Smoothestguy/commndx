@@ -20,7 +20,7 @@ export function RoleSelect({ value, onChange, canEdit, priorityRoles = [], class
   return (
     <Select value={value ?? NONE} onValueChange={(v) => { const next = v === NONE ? null : v; if (next !== (value ?? null)) onChange(next); }}>
       <SelectTrigger
-        className={cn("h-6 w-auto max-w-full gap-1 border-dashed border-transparent bg-transparent px-1 py-0 text-xs hover:border-border focus:ring-1 [&>span]:truncate", !value && "text-muted-foreground", className)}
+        className={cn("h-6 w-auto max-w-full gap-1 border-dashed border-transparent bg-transparent px-1 py-0 text-xs hover:border-border focus:ring-1 [&>span]:line-clamp-none [&>span]:whitespace-nowrap [&>span]:overflow-hidden [&>span]:text-ellipsis shrink-0", !value && "text-muted-foreground", className)}
         aria-label="Change role"
         onClick={(e) => e.stopPropagation()}
       >
