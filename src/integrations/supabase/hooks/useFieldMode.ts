@@ -524,3 +524,19 @@ export function useAddPersonToVisit(projectId: string | undefined, locationIds: 
 
 /** Field-captured personnel expense (receipt → field-captures/receipts). Same insert path as staff-side expenses. */
 export { useAddPersonnelExpense as useAddFieldExpense } from "./usePersonnelStatus";
+
+/** Hours per person+location for a date range, one query. Key: `${personnel_id}:${location_id}` */
+export function useTrailHoursByPersonLocation(projectId: string | undefined, from: string, to: string, enabled = true) {
+  return useQuery({
+    queryKey: ["personnel-trail", projectId, "hours-by-pl", from, to],
+    enabled: !!projectId && enabled,
+    queryFn: async () => {
+      const { data, error } = await db.from("personnel_location_trail").select("personnel_id, location_id, hours")
+        .eq("project_id", projectId).gte("in_at", dayStart(from)).lte("in_at", dayEnd(to)).limit(5000);
+      if (error) throw error;
+      const m: Record<string, number> = {};
+      for (const r of data ?? []) { const k = `${r.personnel_id}:${r.location_id}`; m[k] = (m[k] ?? 0) + (Number(r.hours) || 0); }
+      return m;
+    },
+  });
+}

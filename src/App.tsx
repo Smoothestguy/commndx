@@ -23,6 +23,7 @@ import { UIDensityProvider } from "@/contexts/UIDensityContext";
 import { MessageDrawerProvider } from "@/contexts/MessageDrawerContext";
 import { ProtectedRoute } from "@/components/ProtectedRoute";
 import { ThemeProvider } from "@/components/ThemeProvider";
+import { ThemeSync } from "@/components/ThemeSync";
 
 
 import { NetSuiteLayout } from "@/components/layout/netsuite/NetSuiteLayout";
@@ -203,6 +204,7 @@ const App = () => {
           <Sonner />
           <Router>
             <AuthProvider>
+              <ThemeSync />
               <LocationTrackingProvider>
                 <AIAssistantProvider>
                   <MessageDrawerProvider>

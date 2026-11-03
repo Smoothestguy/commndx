@@ -1,4 +1,6 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
+import { LayoutGrid, Rows3 } from "lucide-react";
+import { LocationsGrid } from "./LocationsGrid";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -66,6 +68,20 @@ export function ProjectLocationsTab({ projectId, deploymentMode = false }: { pro
   const del = useDeleteProjectLocation();
   const { data: staffing } = useLocationStaffingSummary(locations.map((l) => l.id));
   const { data: lastServiced } = useLastServiced(locations.map((l) => l.id), deploymentMode);
+
+  const viewKey = `locations-view:${projectId}`;
+  const [view, setView] = useState<"cards" | "grid" | null>(() => {
+    try { const v = localStorage.getItem(viewKey); return v === "cards" || v === "grid" ? v : null; } catch { return null; }
+  });
+  const effectiveView = view ?? (locations.length > 4 ? "grid" : "cards");
+  const chooseView = (v: "cards" | "grid") => { setView(v); try { localStorage.setItem(viewKey, v); } catch { /* ignore */ } };
+  const [scrollTo, setScrollTo] = useState<string | null>(null);
+  useEffect(() => {
+    if (!scrollTo || effectiveView !== "cards") return;
+    const el = document.getElementById(`location-card-${scrollTo}`);
+    if (el) { el.scrollIntoView({ behavior: "smooth", block: "start" }); el.classList.add("ring-2", "ring-primary"); setTimeout(() => el.classList.remove("ring-2", "ring-primary"), 1600); }
+    setScrollTo(null);
+  }, [scrollTo, effectiveView]);
 
   const [editing, setEditing] = useState<ProjectLocation | null>(null);
   const [open, setOpen] = useState(false);
@@ -140,17 +156,28 @@ export function ProjectLocationsTab({ projectId, deploymentMode = false }: { pro
     <div className="space-y-3">
       <div className="flex items-center justify-between">
         <h3 className="text-sm font-semibold text-muted-foreground">Sites / Locations</h3>
-        {canWrite && <Button size="sm" onClick={openNew}><Plus className="h-4 w-4 mr-1" />Add location</Button>}
+        <div className="flex items-center gap-2">
+          {locations.length > 0 && (
+            <div className="inline-flex rounded-md border p-0.5" role="group" aria-label="View">
+              <Button size="sm" variant={effectiveView === "cards" ? "secondary" : "ghost"} className="h-7 px-2 text-xs" onClick={() => chooseView("cards")}><LayoutGrid className="h-3.5 w-3.5 mr-1" />Cards</Button>
+              <Button size="sm" variant={effectiveView === "grid" ? "secondary" : "ghost"} className="h-7 px-2 text-xs" onClick={() => chooseView("grid")}><Rows3 className="h-3.5 w-3.5 mr-1" />Grid</Button>
+            </div>
+          )}
+          {canWrite && <Button size="sm" onClick={openNew}><Plus className="h-4 w-4 mr-1" />Add location</Button>}
+        </div>
       </div>
 
       {isLoading ? (
         <div className="flex justify-center py-8"><Loader2 className="h-5 w-5 animate-spin" /></div>
       ) : locations.length === 0 ? (
         <Card><CardContent className="py-8 text-center text-sm text-muted-foreground">No locations yet.</CardContent></Card>
+      ) : effectiveView === "grid" ? (
+        <LocationsGrid projectId={projectId} locations={locations} staffing={staffing} lastServiced={lastServiced}
+          deploymentMode={deploymentMode} canWrite={canWrite} onOpenCard={(id) => { chooseView("cards"); setScrollTo(id); }} />
       ) : (
         <div className="grid gap-3 md:grid-cols-2 2xl:grid-cols-3">
           {locations.map((l) => (
-            <Card key={l.id}>
+            <Card key={l.id} id={`location-card-${l.id}`} className="scroll-mt-20 transition-shadow">
               <CardContent className="p-4 space-y-2">
                 <div className="flex items-start justify-between gap-2">
                   <div className="min-w-0">

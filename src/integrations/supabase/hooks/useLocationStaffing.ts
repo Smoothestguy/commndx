@@ -250,3 +250,28 @@ export async function saveLocationRequirements(
     if (error) throw error;
   }
 }
+
+/** All active assignments across many locations in one round-trip (+ one name lookup). */
+export function useLocationsAssignments(locationIds: string[]) {
+  const ids = [...new Set(locationIds)].sort();
+  return useQuery({
+    // Under the summary key so every staffing mutation invalidates it.
+    queryKey: ["location-staffing-summary", "assignments", ids],
+    enabled: ids.length > 0,
+    queryFn: async () => {
+      const { data, error } = await db.from("location_assignments")
+        .select("id, location_id, personnel_id, role_label, status, assigned_at")
+        .in("location_id", ids).eq("status", "active").order("assigned_at", { ascending: true });
+      if (error) throw error;
+      const rows = (data ?? []) as Omit<LocationAssignment, "personnel">[];
+      const pids = [...new Set(rows.map((r) => r.personnel_id))];
+      const names: Record<string, { first_name: string | null; last_name: string | null }> = {};
+      if (pids.length) {
+        const { data: dir, error: dErr } = await db.from("personnel_directory").select("id, first_name, last_name").in("id", pids);
+        if (dErr) throw dErr;
+        for (const r of dir ?? []) names[r.id] = { first_name: r.first_name, last_name: r.last_name };
+      }
+      return rows.map((r) => ({ ...r, personnel: names[r.personnel_id] ?? null })) as LocationAssignment[];
+    },
+  });
+}

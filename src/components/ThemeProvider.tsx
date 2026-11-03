@@ -7,7 +7,7 @@ export function ThemeProvider({ children, ...props }: ThemeProviderProps) {
     <NextThemesProvider
       attribute="class"
       defaultTheme="dark"
-      enableSystem={false}
+      enableSystem
       storageKey="commandx-theme"
       disableTransitionOnChange={false}
       {...props}
