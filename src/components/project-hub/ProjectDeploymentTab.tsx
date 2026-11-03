@@ -1,5 +1,5 @@
 import { TimesheetView } from "./TimesheetView";
-import { addDays, chicagoParts, classifyShift, currentWeekStart } from "@/lib/shifts";
+import { addDays as addDaysStr, chicagoParts, classifyShift, currentWeekStart } from "@/lib/shifts";
 import { sourceFromNotes, type TimesheetEntry } from "@/integrations/supabase/hooks/useTimekeeping";
 import { exportPersonTimesheet } from "@/utils/timesheetExport";
 import { ProjectRosterCard } from "@/components/personnel/lifecycle/ProjectRosterCard";
@@ -938,7 +938,7 @@ export function VisitsCard({ projectId, locations, crews, from, to, canEdit, def
         </Tabs>
         {view === "timesheet" ? (
           <TimesheetView projectId={projectId} projectName={projectName} locations={locations} week={tsWeek} setWeek={setTsWeek}
-            onPerson={(pid, w) => { setTrailPerson(pid); setTrailRange({ from: w, to: addDays(w, 6) }); setView("trail"); }} />
+            onPerson={(pid, w) => { setTrailPerson(pid); setTrailRange({ from: w, to: addDaysStr(w, 6) }); setView("trail"); }} />
         ) : view === "trail" ? (
           <>
             {trailRange && (
