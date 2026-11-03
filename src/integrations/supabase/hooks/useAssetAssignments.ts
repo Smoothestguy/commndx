@@ -399,7 +399,7 @@ export function useAssignAssetToLocation() {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: async (i: AssignToLocationInput) => {
-      const billing = i.billable === undefined ? {} : { billable: i.billable, day_rate: i.billable ? i.dayRate ?? null : i.dayRate ?? null };
+      const billing = i.billable === undefined ? {} : { billable: i.billable, day_rate: i.dayRate ?? null };
       if (i.assignmentId) {
         const { error } = await supabase.from("asset_assignments")
           .update({ location_id: i.locationId, ...billing, ...(i.startAt ? { start_at: i.startAt } : {}) })
@@ -416,10 +416,10 @@ export function useAssignAssetToLocation() {
       if (error) throw error;
       await supabase.from("assets").update({ status: "assigned" }).eq("id", i.assetId);
     },
-    onSuccess: () => {
+    onSuccess: (_d, v) => {
       qc.invalidateQueries({ queryKey: ["asset-assignments"] });
       qc.invalidateQueries({ queryKey: ["assets"] });
-      toast.success("Asset assigned");
+      toast.success(v.assignmentId ? "Asset updated" : "Asset assigned");
     },
     onError: (e: Error) => toast.error(`Failed to assign asset: ${e.message}`),
   });
