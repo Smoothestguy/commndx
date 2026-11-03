@@ -181,7 +181,7 @@ export function LocationsGrid({ projectId, projectName, locations, staffing, las
   return (
     <div className="space-y-2">
       <div className="flex flex-wrap items-center gap-2">
-        <div className="relative flex-1 min-w-[12rem] max-w-sm">
+        <div className="relative basis-full sm:basis-auto flex-1 min-w-[12rem] sm:max-w-sm">
           <Search className="absolute left-2 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
           <Input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Search people…" className="h-8 pl-7 text-xs" />
         </div>

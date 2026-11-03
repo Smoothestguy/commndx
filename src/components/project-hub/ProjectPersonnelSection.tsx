@@ -473,7 +473,7 @@ export function ProjectPersonnelSection({ projectId, projectName = "this project
       <Collapsible open={isOpen} onOpenChange={setIsOpen}>
         <Card>
           <CollapsibleTrigger asChild>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-4 cursor-pointer hover:bg-accent/50 transition-colors rounded-t-lg">
+            <CardHeader className="flex flex-row flex-wrap items-center justify-between gap-2 space-y-0 pb-4 cursor-pointer hover:bg-accent/50 transition-colors rounded-t-lg">
               <div className="space-y-1">
                 <CardTitle className="flex items-center gap-2 text-lg">
                   <Users className="h-5 w-5 text-primary" />
@@ -493,7 +493,7 @@ export function ProjectPersonnelSection({ projectId, projectName = "this project
                   )}
                 </CardDescription>
               </div>
-              <div className="flex items-center gap-2" onClick={(e) => e.stopPropagation()}>
+              <div className="flex flex-wrap items-center gap-2" onClick={(e) => e.stopPropagation()}>
                 <ColumnPicker columns={columns} onColumnsChange={setColumns} />
                 <Button 
                   onClick={() => setIsExportDialogOpen(true)} 
