@@ -809,6 +809,8 @@ function DeploymentSettings({ projectId, canEdit }: { projectId: string; canEdit
   const [hours, setHours] = useState("");
   const [rate, setRate] = useState("");
   const [sbRate, setSbRate] = useState("");
+  const [dayStartT, setDayStartT] = useState("06:00");
+  const [nightStartT, setNightStartT] = useState("18:00");
   const [open, setOpen] = useState(false);
 
   const openRef = useRef(false);
@@ -817,6 +819,8 @@ function DeploymentSettings({ projectId, canEdit }: { projectId: string; canEdit
     setHours(project?.default_shift_hours != null ? String(project.default_shift_hours) : "12");
     setRate(project?.mileage_rate != null ? String(project.mileage_rate) : "");
     setSbRate((project as any)?.standby_rate != null ? String((project as any).standby_rate) : "");
+    setDayStartT(String((project as any)?.day_shift_start ?? "06:00").slice(0, 5));
+    setNightStartT(String((project as any)?.night_shift_start ?? "18:00").slice(0, 5));
   } else if (!open && openRef.current) openRef.current = false;
 
   if (!canEdit) return null;
@@ -829,6 +833,14 @@ function DeploymentSettings({ projectId, canEdit }: { projectId: string; canEdit
       <PopoverContent className="w-64 space-y-3" align="end">
         <div><Label>Default shift hours</Label>
           <Input type="number" inputMode="decimal" min={0} step="0.5" value={hours} onChange={(e) => setHours(e.target.value)} />
+        </div>
+        <div className="grid grid-cols-2 gap-2">
+          <div><Label className="text-xs">Day shift starts</Label>
+            <Input type="time" value={dayStartT} onChange={(e) => setDayStartT(e.target.value)} />
+          </div>
+          <div><Label className="text-xs">Night shift starts</Label>
+            <Input type="time" value={nightStartT} onChange={(e) => setNightStartT(e.target.value)} />
+          </div>
         </div>
         <div><Label>Mileage rate ($/mile, optional)</Label>
           <Input type="number" inputMode="decimal" min={0} step="0.01" value={rate} onChange={(e) => setRate(e.target.value)} placeholder="e.g. 0.70" />
@@ -843,6 +855,8 @@ function DeploymentSettings({ projectId, canEdit }: { projectId: string; canEdit
             default_shift_hours: hours.trim() ? Number(hours) : 12,
             mileage_rate: rate.trim() ? Number(rate) : null,
             standby_rate: sbRate.trim() ? Number(sbRate) : null,
+            day_shift_start: dayStartT || "06:00",
+            night_shift_start: nightStartT || "18:00",
           } as any, { onSuccess: () => setOpen(false) })}
         >{update.isPending && <Loader2 className="h-4 w-4 animate-spin mr-1" />}Save</Button>
       </PopoverContent>
@@ -855,8 +869,9 @@ function DeploymentSettings({ projectId, canEdit }: { projectId: string; canEdit
 const visitHours = (v: VisitRow) =>
   v.check_out_at ? Math.round(((new Date(v.check_out_at).getTime() - new Date(v.check_in_at).getTime()) / 3_600_000) * 10) / 10 : null;
 
-function VisitsCard({ projectId, locations, crews, from, to, canEdit }: {
+export function VisitsCard({ projectId, locations, crews, from, to, canEdit, defaultView = "visits" }: {
   projectId: string; locations: ProjectLocation[]; crews: Crew[]; from: string; to: string; canEdit: boolean;
+  defaultView?: "visits" | "trail" | "timesheet";
 }) {
   const locIds = locations.map((l) => l.id);
   const { data, isLoading } = useVisitsWindow(locIds, from, to);
@@ -867,9 +882,11 @@ function VisitsCard({ projectId, locations, crews, from, to, canEdit }: {
   const [edit, setEdit] = useState<{ id: string; location_id: string; inAt: string; outAt: string } | null>(null);
   const [delId, setDelId] = useState<VisitRow | null>(null);
   const [pdfBusy, setPdfBusy] = useState(false);
-  const [view, setView] = useState<"visits" | "trail">("visits");
+  const [view, setView] = useState<"visits" | "trail" | "timesheet">(defaultView);
   const [trailPerson, setTrailPerson] = useState<string>("");
-  const openTrail = (pid: string) => { setTrailPerson(pid); setView("trail"); };
+  const [trailRange, setTrailRange] = useState<{ from: string; to: string } | null>(null);
+  const [tsWeek, setTsWeek] = useState(() => currentWeekStart());
+  const openTrail = (pid: string) => { setTrailPerson(pid); setTrailRange(null); setView("trail"); };
 
   const locName = useMemo(() => Object.fromEntries(locations.map((l) => [l.id, l.name])), [locations]);
   const crewName = useMemo(() => Object.fromEntries(crews.map((c) => [c.id, c.name])), [crews]);
@@ -908,15 +925,25 @@ function VisitsCard({ projectId, locations, crews, from, to, canEdit }: {
       </CardHeader>
       <CardContent className="pt-0 space-y-1">
         <OnSiteNowBoard projectId={projectId} onPerson={openTrail} />
-        <Tabs value={view} onValueChange={(v) => setView(v as any)} className="pt-2">
+        <Tabs value={view} onValueChange={(v) => { setView(v as any); if (v !== "trail") setTrailRange(null); }} className="pt-2">
           <TabsList className="h-8">
             <TabsTrigger value="visits" className="text-xs">Visits</TabsTrigger>
             <TabsTrigger value="trail" className="text-xs">Trail</TabsTrigger>
+            <TabsTrigger value="timesheet" className="text-xs">Timesheet</TabsTrigger>
           </TabsList>
         </Tabs>
-        {view === "trail" ? (
-          <TrailView projectId={projectId} projectName={projectName} locations={locations} from={from} to={to}
-            personId={trailPerson} setPersonId={setTrailPerson} />
+        {view === "timesheet" ? (
+          <TimesheetView projectId={projectId} projectName={projectName} locations={locations} week={tsWeek} setWeek={setTsWeek}
+            onPerson={(pid, w) => { setTrailPerson(pid); setTrailRange({ from: w, to: addDays(w, 6) }); setView("trail"); }} />
+        ) : view === "trail" ? (
+          <>
+            {trailRange && (
+              <p className="text-[11px] text-muted-foreground pt-1">Week {formatLocalDate(trailRange.from, "M/d")}–{formatLocalDate(trailRange.to, "M/d")} ·{" "}
+                <button type="button" className="underline" onClick={() => setTrailRange(null)}>use page dates</button></p>
+            )}
+            <TrailView projectId={projectId} projectName={projectName} locations={locations} from={trailRange?.from ?? from} to={trailRange?.to ?? to}
+              personId={trailPerson} setPersonId={setTrailPerson} />
+          </>
         ) : isLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : visits.length === 0 ? (
           <p className="text-sm text-muted-foreground">No field check-ins in this window. Crews check in from Field Mode.</p>
         ) : (
@@ -1101,6 +1128,7 @@ function TrailView({ projectId, projectName, locations, from, to, personId, setP
   const [logOpen, setLogOpen] = useState(false);
   const { isAdmin: tAdmin, isManager: tManager } = useUserRole();
   const canLog = tAdmin || tManager;
+  const { data: project } = useProject(projectId);
   const { data: rows = [], isLoading } = useTrail(projectId, { personnelId: personId || null, locationId: locId || null, from, to });
   // Person options come from the trail itself (unfiltered by person) so the list only shows people who have entries.
   const { data: allRows = [] } = useTrail(projectId, { locationId: locId || null, from, to });
@@ -1155,6 +1183,22 @@ function TrailView({ projectId, projectName, locations, from, to, personId, setP
             }}>
               {busy ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <FileText className="h-3.5 w-3.5" />}Time log PDF
             </Button>
+          )}
+          {personId && (
+            <Button size="sm" variant="outline" className="h-8" disabled={busy || !rows.length} onClick={async () => {
+              setBusy(true);
+              try {
+                const p = project as any;
+                const entries: TimesheetEntry[] = rows.map((r) => ({
+                  id: r.visit_personnel_id, personnel_id: r.personnel_id, name: trailName(r), location_id: r.location_id,
+                  location_name: r.location_name ?? "—", visit_id: r.visit_id, in_at: r.in_at, out_at: r.out_at,
+                  date: chicagoParts(r.in_at).date, shift: classifyShift(r.in_at, p?.day_shift_start ?? "06:00", p?.night_shift_start ?? "18:00"),
+                  hours: r.out_at ? Math.round((Number(r.hours) || 0) * 100) / 100 : 0, open: !r.out_at,
+                  source: sourceFromNotes(visitNotes[r.visit_id]),
+                }));
+                await exportPersonTimesheet(personName, projectName, `${from}_${to}`, entries);
+              } finally { setBusy(false); }
+            }}>XLSX</Button>
           )}
         </div>
       </div>
