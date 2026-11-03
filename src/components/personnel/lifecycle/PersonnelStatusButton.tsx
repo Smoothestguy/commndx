@@ -81,8 +81,8 @@ export function StatusProjectDialog({ open, onOpenChange, personnelIds, status, 
 /** Badge + dropdown status machine. Reads from the shared cached status map, so it's safe in long lists. */
 export function PersonnelStatusButton({ personnelId, className }: { personnelId: string; className?: string }) {
   const { status, row } = useCurrentStatus(personnelId);
-  const { isAdmin, isManager, role } = useUserRole() as any;
-  const canEdit = isAdmin || isManager || role === "user";
+  const { isAdmin, isManager } = useUserRole();
+  const canEdit = isAdmin || isManager;
   const set = useSetStatus();
   const [dlg, setDlg] = useState<null | "standby" | "activated" | "demobilized">(null);
   const badge = <StatusBadge status={status} projectName={row?.project_name} className={className} />;

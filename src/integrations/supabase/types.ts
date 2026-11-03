@@ -4786,6 +4786,8 @@ export type Database = {
           category: string
           created_at: string
           created_by: string | null
+          deleted_at: string | null
+          deleted_by: string | null
           id: string
           incurred_on: string
           note: string | null
@@ -4798,6 +4800,8 @@ export type Database = {
           category?: string
           created_at?: string
           created_by?: string | null
+          deleted_at?: string | null
+          deleted_by?: string | null
           id?: string
           incurred_on?: string
           note?: string | null
@@ -4810,6 +4814,8 @@ export type Database = {
           category?: string
           created_at?: string
           created_by?: string | null
+          deleted_at?: string | null
+          deleted_by?: string | null
           id?: string
           incurred_on?: string
           note?: string | null
