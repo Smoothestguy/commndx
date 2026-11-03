@@ -125,6 +125,7 @@ export function ChatMessage({ message }: ChatMessageProps) {
           {message.timestamp.toLocaleTimeString([], {
             hour: "2-digit",
             minute: "2-digit",
+            hourCycle: "h23",
           })}
         </div>
       </div>
