@@ -40,9 +40,58 @@ import {
 } from "@/components/ui/alert-dialog";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { 
-  useAssetAssignmentsByProject, 
+  AssetBillingRow,
+  useAssignAssetToLocation,
+  useProjectAssetBilling,
   useUnassignAsset 
 } from "@/integrations/supabase/hooks/useAssetAssignments";
+import { useProjectLocations } from "@/integrations/supabase/hooks/useProjectLocations";
+import { useUserRole } from "@/hooks/useUserRole";
+import { Switch } from "@/components/ui/switch";
+import { Input } from "@/components/ui/input";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { assetBillingText } from "./LocationAssets";
+
+/** Inline location + billing editors; same asset_assignments row the location views use. */
+function AssetLocationCell({ row, projectId, locations, canEdit }: {
+  row: AssetBillingRow; projectId: string; locations: { id: string; name: string }[]; canEdit: boolean;
+}) {
+  const assign = useAssignAssetToLocation();
+  const name = locations.find((l) => l.id === row.location_id)?.name;
+  if (!canEdit) return name ? <Badge variant="outline" className="font-normal"><MapPin className="h-3 w-3 mr-1" />{name}</Badge> : <span className="text-muted-foreground">Project-wide</span>;
+  return (
+    <Select value={row.location_id ?? "none"} onValueChange={(v) => assign.mutate({ projectId, assignmentId: row.id, locationId: v === "none" ? null : v })}>
+      <SelectTrigger className="h-8 w-44 text-xs"><SelectValue /></SelectTrigger>
+      <SelectContent>
+        <SelectItem value="none">Project-wide</SelectItem>
+        {locations.map((l) => <SelectItem key={l.id} value={l.id}>{l.name}</SelectItem>)}
+      </SelectContent>
+    </Select>
+  );
+}
+
+function AssetBillingCell({ row, projectId, canEdit }: { row: AssetBillingRow; projectId: string; canEdit: boolean }) {
+  const assign = useAssignAssetToLocation();
+  const [rate, setRate] = useState(row.day_rate != null ? String(row.day_rate) : "");
+  const text = assetBillingText(row);
+  if (!canEdit) return null;
+  const save = (billable: boolean, r: string) => {
+    const n = r.trim() === "" ? null : Number(r);
+    assign.mutate({ projectId, assignmentId: row.id, locationId: row.location_id, billable, dayRate: n != null && Number.isFinite(n) ? n : null });
+  };
+  return (
+    <div className="flex items-center gap-2">
+      <Switch checked={row.billable} onCheckedChange={(b) => save(b, rate)} aria-label="Billable" />
+      {row.billable && (
+        <Input type="number" inputMode="decimal" min={0} step="0.01" className="h-8 w-24 text-xs" value={rate}
+          placeholder={row.assets?.default_day_rate != null ? `${row.assets.default_day_rate} (default)` : "$/day"}
+          onChange={(e) => setRate(e.target.value)}
+          onBlur={() => { if (rate !== (row.day_rate != null ? String(row.day_rate) : "")) save(true, rate); }} />
+      )}
+      {text && <span className={cn("text-xs whitespace-nowrap", row.rate == null ? "text-warning" : "text-muted-foreground")}>{text}</span>}
+    </div>
+  );
+}
 import { AssignAssetDialog } from "./AssignAssetDialog";
 
 interface ProjectAssetAssignmentsSectionProps {
@@ -75,7 +124,10 @@ export function ProjectAssetAssignmentsSection({
   const [assetToUnassign, setAssetToUnassign] = useState<{ label: string } | null>(null);
   const [isOpen, setIsOpen] = useState(false);
   
-  const { data: assignments = [], isLoading } = useAssetAssignmentsByProject(projectId);
+  const { rows: assignments, isLoading } = useProjectAssetBilling(projectId);
+  const { data: locations = [] } = useProjectLocations(projectId);
+  const { isAdmin, isManager } = useUserRole();
+  const canEdit = isAdmin || isManager;
   const unassignMutation = useUnassignAsset();
 
   const activeAssignments = assignments.filter(a => a.status === "active");
@@ -191,6 +243,8 @@ export function ProjectAssetAssignmentsSection({
                           <Badge variant="outline" className={statusColors[assignment.status]}>
                             {assignment.status}
                           </Badge>
+                          <AssetLocationCell row={assignment} projectId={projectId} locations={locations} canEdit={canEdit} />
+                          {canEdit && <div className="w-full"><AssetBillingCell row={assignment} projectId={projectId} canEdit={canEdit} /></div>}
                           {assignment.personnel && (
                             <span className="text-muted-foreground">
                               → {assignment.personnel.first_name} {assignment.personnel.last_name}
@@ -214,6 +268,8 @@ export function ProjectAssetAssignmentsSection({
                       <TableRow>
                         <TableHead>Asset</TableHead>
                         <TableHead>Type</TableHead>
+                        <TableHead>Location</TableHead>
+                        {canEdit && <TableHead>Billing</TableHead>}
                         <TableHead>Assigned To</TableHead>
                         <TableHead>Start Date</TableHead>
                         <TableHead>End Date</TableHead>
@@ -248,6 +304,8 @@ export function ProjectAssetAssignmentsSection({
                                 {asset.type}
                               </Badge>
                             </TableCell>
+                            <TableCell><AssetLocationCell row={assignment} projectId={projectId} locations={locations} canEdit={canEdit} /></TableCell>
+                            {canEdit && <TableCell><AssetBillingCell row={assignment} projectId={projectId} canEdit={canEdit} /></TableCell>}
                             <TableCell>
                               {assignment.personnel ? (
                                 <span>
