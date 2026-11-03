@@ -29,6 +29,7 @@ export interface Project {
   deployment_mode?: boolean;
   default_shift_hours?: number;
   mileage_rate?: number | null;
+  standby_rate?: number | null;
   created_at: string;
   updated_at: string;
 }
