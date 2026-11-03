@@ -4,7 +4,7 @@ export interface RosterExportRow {
 }
 
 const r2 = (n: number) => Math.round(n * 100) / 100;
-const safe = (s: string) => s.replace(/[^\w\- ]+/g, "").trim().replace(/\s+/g, "-") || "project";
+const safe = (s: string) => s.replace(/[^\w\- ]+/g, "").trim().replace(/\s+/g, "-").replace(/-{2,}/g, "-") || "project";
 export const rosterFileBase = (projectName: string, date: string) => `${safe(projectName)}-roster-${date}`;
 
 function download(blob: Blob, name: string) {
