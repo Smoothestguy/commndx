@@ -125,7 +125,7 @@ export function LocationsGrid({ projectId, locations, staffing, lastServiced, de
     const Icon = !active ? ArrowUpDown : sort.dir === "asc" ? ArrowUp : ArrowDown;
     return (
       <th className={cn("px-2 py-1.5 font-medium", className)} aria-sort={active ? (sort.dir === "asc" ? "ascending" : "descending") : "none"}>
-        <button type="button" onClick={() => clickSort(k)} className={cn("inline-flex items-center gap-1 hover:text-foreground", active && "text-foreground")}>
+        <button type="button" onClick={() => clickSort(k)} className={cn("inline-flex items-center gap-1 hover:text-foreground", className?.includes("text-right") && "w-full justify-end", active && "text-foreground")}>
           {label}<Icon className={cn("h-3 w-3", !active && "opacity-40")} />
         </button>
       </th>
@@ -155,7 +155,7 @@ export function LocationsGrid({ projectId, locations, staffing, lastServiced, de
             <col className="w-14" />
             <col className="w-14" />
             {showPhone && <col className="w-8" />}
-            <col className={canWrite ? "w-16" : "w-9"} />
+            <col className={canWrite ? "w-[4.5rem]" : "w-9"} />
           </colgroup>
           <thead className="sticky top-0 z-10 bg-muted text-muted-foreground">
             <tr className="text-left">
@@ -235,9 +235,9 @@ export function LocationsGrid({ projectId, locations, staffing, lastServiced, de
                   {isOpen && !search && open.map(([role, v]) => (
                     <tr key={`open-${role}`} className="border-t text-muted-foreground">
                       <td colSpan={cols - 1} className="px-2 py-1 pl-7 italic">{role} — {v.needed - v.assigned} open{fmtRate(v.rate)}</td>
-                      <td className="px-2 py-1 text-right">
+                      <td className="px-1 py-1 text-right">
                         {canWrite && (
-                          <Button size="sm" variant="outline" className="h-6 px-2 text-xs" onClick={() => setAssignFor({ locationId: l.id, role })}>Assign</Button>
+                          <Button size="sm" variant="outline" className="h-6 px-1.5 text-[11px]" onClick={() => setAssignFor({ locationId: l.id, role })}>Assign</Button>
                         )}
                       </td>
                     </tr>
