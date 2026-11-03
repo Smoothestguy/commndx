@@ -455,7 +455,7 @@ function CrewDialog({ open, onOpenChange, projectId, crew }: {
 }) {
   const { isAdmin: crewAdmin, isManager: crewManager } = useUserRole();
   const crewCanEdit = crewAdmin || crewManager;
-  const setMemberRole = useUpdateCrewMemberRole(projectId);
+  const updateMemberRole = useUpdateCrewMemberRole(projectId);
   const create = useCreateCrew(projectId);
   const update = useUpdateCrew(projectId);
   const addMember = useAddCrewMember(projectId);
@@ -515,7 +515,7 @@ function CrewDialog({ open, onOpenChange, projectId, crew }: {
                   <div key={m.id} className="flex items-center gap-2 px-2 py-1.5">
                     <span className="text-sm flex-1 truncate">{fullName(m.personnel)}</span>
                     {crewCanEdit
-                      ? <RoleSelect value={m.role_label} canEdit onChange={(role_label) => setMemberRole.mutate({ id: m.id, role_label })} className="max-w-[9rem] border-border text-[11px]" />
+                      ? <RoleSelect value={m.role_label} canEdit onChange={(role_label) => updateMemberRole.mutate({ id: m.id, role_label })} className="max-w-[9rem] border-border text-[11px]" />
                       : m.role_label && <Badge variant="outline" className="text-[10px]">{m.role_label}</Badge>}
                     <span className="text-[10px] text-muted-foreground">joined {formatLocalDate(m.joined_on, "M/d")}</span>
                     <Button
