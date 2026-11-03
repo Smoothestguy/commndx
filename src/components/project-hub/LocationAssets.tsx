@@ -1,6 +1,6 @@
 import { useMemo, useState } from "react";
 import { format } from "date-fns";
-import { Key, MapPin, Package, Plus, Settings, Square, Truck, X } from "lucide-react";
+import { Pencil, Key, MapPin, Package, Plus, Settings, Square, Truck, X } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
@@ -15,6 +15,7 @@ import {
   AssetBillingRow, useAssignAssetToLocation, useEndAssetAssignment, useProjectAssetBilling, useUnassignAsset,
 } from "@/integrations/supabase/hooks/useAssetAssignments";
 import { fmtMoney0 } from "@/lib/assetBilling";
+import { EditAssetDialog, type EditableAsset } from "./EditAssetDialog";
 
 export function AssetIcon({ type, className = "h-3.5 w-3.5" }: { type?: string | null; className?: string }) {
   const I = type === "vehicle" ? Truck : type === "equipment" ? Settings : type === "key" ? Key : type === "location" ? MapPin : Package;
@@ -139,9 +140,11 @@ export function LocationAssets({ projectId, locationId, locationName, canWrite, 
   const end = useEndAssetAssignment();
   const unassign = useUnassignAsset();
   const [open, setOpen] = useState(false);
+  const [editAsset, setEditAsset] = useState<EditableAsset | null>(null);
 
   return (
     <div className="space-y-1.5">
+      {canBill && <EditAssetDialog asset={editAsset} open={!!editAsset} onOpenChange={(o) => !o && setEditAsset(null)} />}
       <div className="flex items-center justify-between">
         <span className="text-xs font-medium text-muted-foreground">Assets{here.length ? ` (${here.length})` : ""}</span>
         {canWrite && <Button size="sm" variant="ghost" className="h-7 px-2 text-xs" onClick={() => setOpen(true)}><Plus className="h-3 w-3 mr-1" />Assign asset</Button>}
@@ -158,6 +161,11 @@ export function LocationAssets({ projectId, locationId, locationName, canWrite, 
                 </Badge>
               )}
               {r.end_at && <span className="text-muted-foreground">ended {format(new Date(r.end_at), "M/d")}</span>}
+              {canBill && r.assets && (
+                <Tooltip><TooltipTrigger asChild>
+                  <button type="button" className="rounded p-1 hover:bg-muted" aria-label="Edit asset" onClick={() => setEditAsset(r.assets as EditableAsset)}><Pencil className="h-3 w-3" /></button>
+                </TooltipTrigger><TooltipContent>Edit asset (registry)</TooltipContent></Tooltip>
+              )}
               {canWrite && !r.end_at && (
                 <Tooltip><TooltipTrigger asChild>
                   <button type="button" className="rounded p-1 hover:bg-muted" aria-label="End assignment" onClick={() => end.mutate(r.id)}><Square className="h-3 w-3" /></button>

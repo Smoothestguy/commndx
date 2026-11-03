@@ -9,8 +9,10 @@ import {
   Key, 
   MapPin,
   Settings,
-  UserMinus
+  UserMinus,
+  Pencil
 } from "lucide-react";
+import { EditAssetDialog, type EditableAsset } from "./EditAssetDialog";
 import { cn } from "@/lib/utils";
 import {
   Collapsible,
@@ -123,6 +125,7 @@ export function ProjectAssetAssignmentsSection({
   const [unassignConfirmId, setUnassignConfirmId] = useState<string | null>(null);
   const [assetToUnassign, setAssetToUnassign] = useState<{ label: string } | null>(null);
   const [isOpen, setIsOpen] = useState(false);
+  const [editAsset, setEditAsset] = useState<EditableAsset | null>(null);
   
   const { rows: assignments, isLoading } = useProjectAssetBilling(projectId);
   const { data: locations = [] } = useProjectLocations(projectId);
@@ -230,6 +233,11 @@ export function ProjectAssetAssignmentsSection({
                               </p>
                             </div>
                           </div>
+                          {canEdit && (
+                            <Button variant="ghost" size="icon" aria-label="Edit asset" title="Edit asset" onClick={() => setEditAsset(asset)}>
+                              <Pencil className="h-4 w-4" />
+                            </Button>
+                          )}
                           <Button
                             variant="ghost"
                             size="icon"
@@ -274,7 +282,7 @@ export function ProjectAssetAssignmentsSection({
                         <TableHead>Start Date</TableHead>
                         <TableHead>End Date</TableHead>
                         <TableHead>Status</TableHead>
-                        <TableHead className="w-[80px]">Actions</TableHead>
+                        <TableHead className="w-[100px]">Actions</TableHead>
                       </TableRow>
                     </TableHeader>
                     <TableBody>
@@ -333,6 +341,11 @@ export function ProjectAssetAssignmentsSection({
                               </Badge>
                             </TableCell>
                             <TableCell>
+                              {canEdit && (
+                                <Button variant="ghost" size="icon" aria-label="Edit asset" title="Edit asset" onClick={() => setEditAsset(asset)}>
+                                  <Pencil className="h-4 w-4" />
+                                </Button>
+                              )}
                               <Button
                                 variant="ghost"
                                 size="icon"
@@ -355,6 +368,7 @@ export function ProjectAssetAssignmentsSection({
       </Collapsible>
 
       {/* Assign Asset Dialog */}
+      <EditAssetDialog asset={editAsset} open={!!editAsset} onOpenChange={(o) => !o && setEditAsset(null)} />
       <AssignAssetDialog
         open={isAssignDialogOpen}
         onOpenChange={setIsAssignDialogOpen}

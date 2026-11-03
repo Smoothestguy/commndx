@@ -223,6 +223,7 @@ export function useUpdateAsset() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["assets"] });
+      queryClient.invalidateQueries({ queryKey: ["asset-assignments"] }); // joined default_day_rate drives billing
       toast.success("Asset updated successfully");
     },
     onError: (error: Error) => {
