@@ -1,3 +1,5 @@
+import { RoleSelect } from "./RoleSelect";
+import { useUpdateAssignmentRole } from "@/integrations/supabase/hooks/useLocationStaffing";
 import { Fragment, useEffect, useMemo, useState } from "react";
 import { endOfWeek, format, startOfWeek } from "date-fns";
 import { Link } from "react-router-dom";
@@ -65,6 +67,11 @@ export function LocationsGrid({ projectId, projectName, locations, staffing, las
   const wkTo = format(endOfWeek(now, { weekStartsOn: 1 }), "yyyy-MM-dd");
   const { data: hours = {} } = useTrailHoursByPersonLocation(projectId, wkFrom, wkTo);
   const unassign = useUnassignPersonnel();
+  const setRole = useUpdateAssignmentRole();
+  const roleEdit = (a: (typeof assignments)[number], locId: string, cls?: string) => (
+    <RoleSelect value={a.role_label} canEdit={canWrite} priorityRoles={Object.keys(staffing?.[locId]?.byRole ?? {})} className={cls}
+      onChange={(role_label) => setRole.mutate({ id: a.id, location_id: locId, role_label })} />
+  );
   const { data: statusMap = {} } = useAllCurrentStatuses();
   const { data: onSite = {} } = useOnSiteMap();
   const [sort, setSort] = useState<{ key: SortKey; dir: "asc" | "desc" }>({ key: "status", dir: "desc" });
@@ -240,7 +247,7 @@ export function LocationsGrid({ projectId, projectName, locations, staffing, las
               {isOpen && rows.map((a) => {
                 const k = `${a.personnel_id}:${l.id}`;
                 const h = hours[k];
-                const line2 = [a.role_label, texted[k] && `texted ${format(new Date(texted[k]), "M/d")}`, h ? `${h.toFixed(1)} h` : null].filter(Boolean).join(" · ");
+                const line2 = [texted[k] && `texted ${format(new Date(texted[k]), "M/d")}`, h ? `${h.toFixed(1)} h` : null].filter(Boolean).join(" · ");
                 return (
                   <div key={a.id} className="border-t px-2 py-1.5 pl-6">
                     <div className="flex items-center gap-2 min-w-0">
@@ -248,7 +255,11 @@ export function LocationsGrid({ projectId, projectName, locations, staffing, las
                       <PersonnelStatusButton personnelId={a.personnel_id} projectId={projectId} locationId={l.id} hideProjectName className="text-[10px] px-1.5 py-0 max-w-[9rem] shrink-0" />
                     </div>
                     <div className="flex items-center gap-2 min-w-0">
-                      <span className="truncate flex-1 min-w-0 text-muted-foreground tabular-nums">{line2 || "\u00a0"}</span>
+                      <span className="flex-1 min-w-0 flex items-center gap-1 text-muted-foreground tabular-nums">
+                        {(canWrite || a.role_label) && <span className="min-w-0 max-w-[55%] flex">{roleEdit(a, l.id, canWrite ? "-ml-1" : undefined)}</span>}
+                        {line2 && <span className="truncate">{(canWrite || a.role_label) ? "· " : ""}{line2}</span>}
+                        {!line2 && !canWrite && !a.role_label && "\u00a0"}
+                      </span>
                       <span className="flex items-center shrink-0">
                         <IconBtn label="Send site text" onClick={() => setTextFor({ locationId: l.id, ids: [a.personnel_id] })}><MessageSquare className="h-4 w-4" /></IconBtn>
                         {showPhone && phones[a.personnel_id] && (
@@ -349,7 +360,7 @@ export function LocationsGrid({ projectId, projectName, locations, staffing, las
                         <td className="px-2 py-1 pl-7 font-medium truncate">
                           <Link to={`/personnel/${a.personnel_id}`} className="hover:underline underline-offset-2" title={nameOf(a)}>{nameOf(a)}</Link>
                         </td>
-                        <td className="px-2 py-1 text-muted-foreground truncate" title={a.role_label ?? undefined}>{a.role_label ?? ""}</td>
+                        <td className="px-1 py-0.5 text-muted-foreground truncate" title={a.role_label ?? undefined}>{roleEdit(a, l.id, "max-w-full")}</td>
                         <td className="px-2 py-1 overflow-hidden">
                           <PersonnelStatusButton personnelId={a.personnel_id} projectId={projectId} locationId={l.id} hideProjectName className="text-[10px] px-1.5 py-0 max-w-[7.5rem]" />
                         </td>
