@@ -475,3 +475,6 @@ export function useAddPersonToVisit(projectId: string | undefined, locationIds: 
     onError: (e: any) => toast.error(e?.message ?? "Failed to add person"),
   });
 }
+
+/** Field-captured personnel expense (receipt → field-captures/receipts). Same insert path as staff-side expenses. */
+export { useAddPersonnelExpense as useAddFieldExpense } from "./usePersonnelStatus";

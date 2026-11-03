@@ -1,3 +1,4 @@
+import { AddExpenseDialog } from "@/components/personnel/lifecycle/AddExpenseDialog";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { format } from "date-fns";
@@ -298,6 +299,7 @@ function ActiveVisitSheet({ visit, location, projectId, defaultShiftHours, peopl
   const [mode, setMode] = useState<"menu" | "receipt" | "photo" | "add">("menu");
   const [personSheet, setPersonSheet] = useState<VisitPerson | null>(null);
   const [sigFor, setSigFor] = useState<string | null>(null);
+  const [expOpen, setExpOpen] = useState(false);
   const [addSearch, setAddSearch] = useState("");
   const { data: directory = [] } = usePersonnelDirectory(mode === "add");
   const checkOutPerson = useCheckOutPerson(projectId);
@@ -434,6 +436,15 @@ function ActiveVisitSheet({ visit, location, projectId, defaultShiftHours, peopl
           <>
             <button
               type="button"
+              onClick={() => setExpOpen(true)}
+              className="w-full h-20 rounded-xl border-2 border-success/50 bg-success/10 flex items-center gap-4 px-5 text-left hover:bg-success/20"
+            >
+              <span className="text-3xl shrink-0" aria-hidden>💵</span>
+              <span><span className="block text-lg font-semibold">Expense</span>
+                <span className="block text-sm text-muted-foreground">Per diem, fuel, travel — for someone on site</span></span>
+            </button>
+            <button
+              type="button"
               onClick={() => { setMode("receipt"); setTimeout(() => receiptInput.current?.click(), 50); }}
               className="w-full h-20 rounded-xl border-2 flex items-center gap-4 px-5 text-left hover:bg-muted"
             >
@@ -514,6 +525,8 @@ function ActiveVisitSheet({ visit, location, projectId, defaultShiftHours, peopl
         </div>
       )}
 
+      <AddExpenseDialog open={expOpen} onOpenChange={setExpOpen} projectId={projectId} lockProject
+        people={onSite.map((p) => ({ id: p.personnel_id, name: [p.personnel?.first_name, p.personnel?.last_name].filter(Boolean).join(" ") || "Unknown" }))} />
       <Dialog open={!!personSheet} onOpenChange={(o) => !o && setPersonSheet(null)}>
         <DialogContent className="max-w-sm">
           {personSheet && (
