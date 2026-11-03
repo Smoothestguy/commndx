@@ -232,7 +232,7 @@ export function TimeClockAdminTab() {
                           <div className="flex items-center gap-2">
                             <span className="text-sm">
                               {entry.clock_in_at
-                                ? format(parseISO(entry.clock_in_at), "h:mm a")
+                                ? format(parseISO(entry.clock_in_at), "HH:mm")
                                 : "—"}
                             </span>
                             {(entry.clock_in_lat || entry.clock_in_lng) && (
@@ -243,7 +243,7 @@ export function TimeClockAdminTab() {
                         <td className="p-3">
                           {entry.clock_out_at ? (
                             <span className="text-sm">
-                              {format(parseISO(entry.clock_out_at), "h:mm a")}
+                              {format(parseISO(entry.clock_out_at), "HH:mm")}
                             </span>
                           ) : (
                             <Badge variant="secondary" className="text-xs">Active</Badge>
@@ -332,11 +332,11 @@ function TimeEntryCard({
         <div className="flex items-center gap-1">
           <Clock className="h-3.5 w-3.5 text-muted-foreground" />
           {entry.clock_in_at
-            ? format(parseISO(entry.clock_in_at), "h:mm a")
+            ? format(parseISO(entry.clock_in_at), "HH:mm")
             : "—"}
           {" → "}
           {entry.clock_out_at
-            ? format(parseISO(entry.clock_out_at), "h:mm a")
+            ? format(parseISO(entry.clock_out_at), "HH:mm")
             : "Active"}
         </div>
       </div>

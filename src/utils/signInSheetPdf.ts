@@ -101,7 +101,7 @@ export async function generateSignInSheetPDF(data: SignInSheetData) {
       const crewCount = data.people.filter((p) => p.visit_id === v.id).length;
       doc.setFontSize(9);
       doc.text(
-        `In: ${format(new Date(v.check_in_at), "h:mm a")}   Out: ${v.check_out_at ? format(new Date(v.check_out_at), "h:mm a") : "—"}   Hours: ${hrs ?? "—"}   Crew: ${crewCount}`,
+        `In: ${format(new Date(v.check_in_at), "HH:mm")}   Out: ${v.check_out_at ? format(new Date(v.check_out_at), "HH:mm") : "—"}   Hours: ${hrs ?? "—"}   Crew: ${crewCount}`,
         margin + 5,
         y,
       );
@@ -194,7 +194,7 @@ export async function generateSignInSheetPDF(data: SignInSheetData) {
     doc.setPage(i);
     doc.setFontSize(8);
     doc.text(
-      `Generated ${format(new Date(), "MMM d, yyyy 'at' h:mm a")} — Page ${i} of ${pages}`,
+      `Generated ${format(new Date(), "MMM d, yyyy 'at' HH:mm")} — Page ${i} of ${pages}`,
       pageWidth / 2,
       pageHeight - 10,
       { align: "center" },

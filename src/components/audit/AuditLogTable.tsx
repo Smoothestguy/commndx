@@ -78,7 +78,7 @@ const AuditLogRow = ({ log }: { log: AuditLog }) => {
               {format(new Date(log.created_at), "MMM d, yyyy")}
             </span>
             <span className="text-xs text-muted-foreground">
-              {format(new Date(log.created_at), "h:mm:ss a")}
+              {format(new Date(log.created_at), "HH:mm:ss")}
             </span>
           </div>
         </TableCell>

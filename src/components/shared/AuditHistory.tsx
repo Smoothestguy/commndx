@@ -82,7 +82,7 @@ export const AuditHistory = ({
               <div className="flex items-center gap-1 mt-1 text-xs text-muted-foreground">
                 <Clock className="h-3 w-3" />
                 <span>
-                  {format(new Date(log.created_at), "MMM d, yyyy 'at' h:mm a")}
+                  {format(new Date(log.created_at), "MMM d, yyyy 'at' HH:mm")}
                 </span>
               </div>
               {log.changes_after && Object.keys(log.changes_after).length > 0 && (

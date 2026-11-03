@@ -61,8 +61,8 @@ export function monthDay(date: string): string {
   return `${mon} ${d}`;
 }
 
-/** Chicago local "h:mm AM" for display/exports. */
+/** Chicago local 24-hour "HH:mm" for display/exports. */
 export function chicagoTime(iso: string | null): string {
   if (!iso) return "";
-  return new Date(iso).toLocaleTimeString("en-US", { timeZone: SHIFT_TZ, hour: "numeric", minute: "2-digit" });
+  return new Date(iso).toLocaleTimeString("en-US", { timeZone: SHIFT_TZ, hour: "2-digit", minute: "2-digit", hourCycle: "h23" });
 }

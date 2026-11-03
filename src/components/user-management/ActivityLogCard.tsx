@@ -103,7 +103,7 @@ export function ActivityLogCard({ log, index }: ActivityLogCardProps) {
               {getActionLabel()}
             </h3>
             <span className="text-xs text-muted-foreground whitespace-nowrap flex-shrink-0">
-              {format(new Date(log.created_at), isMobile ? "MMM d" : "MMM d, h:mm a")}
+              {format(new Date(log.created_at), isMobile ? "MMM d" : "MMM d, HH:mm")}
             </span>
           </div>
 

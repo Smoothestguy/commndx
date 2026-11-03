@@ -422,7 +422,7 @@ export default function VendorDetail() {
                     <span className="font-medium">Invitation pending</span>
                   </div>
                   <p className="text-sm text-muted-foreground mt-1">
-                    Expires: {format(new Date(pendingInvitation.expires_at), "MMM d, yyyy 'at' h:mm a")}
+                    Expires: {format(new Date(pendingInvitation.expires_at), "MMM d, yyyy 'at' HH:mm")}
                   </p>
                 </div>
                 <Button 

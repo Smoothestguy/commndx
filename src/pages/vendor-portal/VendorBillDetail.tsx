@@ -160,7 +160,7 @@ export default function VendorBillDetail() {
               </CardHeader>
               <CardContent>
                 <p className="text-sm text-muted-foreground">
-                  Submitted on {format(new Date(bill.submitted_at), "MMM d, yyyy 'at' h:mm a")}
+                  Submitted on {format(new Date(bill.submitted_at), "MMM d, yyyy 'at' HH:mm")}
                 </p>
               </CardContent>
             </Card>

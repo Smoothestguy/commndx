@@ -169,7 +169,7 @@ export const RegistrationReviewDialog = ({
             </DialogTitle>
             <DialogDescription>
               Submitted{" "}
-              {format(new Date(registration.created_at), "MMM d, yyyy 'at' h:mm a")}
+              {format(new Date(registration.created_at), "MMM d, yyyy 'at' HH:mm")}
             </DialogDescription>
           </DialogHeader>
 

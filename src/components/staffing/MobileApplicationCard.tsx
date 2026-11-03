@@ -213,7 +213,7 @@ export function MobileApplicationCard({
                 <span>
                   {format(
                     new Date((application as any).submitted_at || application.created_at),
-                    "MMM d, yyyy h:mm a"
+                    "MMM d, yyyy HH:mm"
                   )}
                 </span>
               </div>

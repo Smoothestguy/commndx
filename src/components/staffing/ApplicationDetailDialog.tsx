@@ -784,7 +784,7 @@ export function ApplicationDetailDialog({
                         <div key={note.id} className="p-3 bg-muted rounded-lg">
                           <div className="flex items-center justify-between text-xs text-muted-foreground mb-1">
                             <span className="font-medium">{note.user_name}</span>
-                            <span>{format(new Date(note.created_at), "MMM d, yyyy h:mm a")}</span>
+                            <span>{format(new Date(note.created_at), "MMM d, yyyy HH:mm")}</span>
                           </div>
                           <p className="text-sm whitespace-pre-wrap">{note.content}</p>
                         </div>

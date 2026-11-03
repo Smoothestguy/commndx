@@ -114,7 +114,7 @@ export default function PortalNotifications() {
                         
                         <div className="flex items-center justify-between mt-3">
                           <span className="text-xs text-muted-foreground">
-                            {format(parseISO(notification.created_at), "MMM d, yyyy 'at' h:mm a")}
+                            {format(parseISO(notification.created_at), "MMM d, yyyy 'at' HH:mm")}
                           </span>
                           
                           {!notification.is_read && (

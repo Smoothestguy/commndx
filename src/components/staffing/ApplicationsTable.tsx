@@ -214,7 +214,7 @@ export function ApplicationsTable({
         const timestamp = app.submitted_at || app.created_at;
         return (
           <span className="text-muted-foreground text-sm">
-            {format(new Date(timestamp), "MMM d, yyyy h:mm a")}
+            {format(new Date(timestamp), "MMM d, yyyy HH:mm")}
           </span>
         );
       },

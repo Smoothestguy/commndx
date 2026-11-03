@@ -445,8 +445,8 @@ export function ProjectApplicantsSection({
         </TableCell>
         <TableCell className="text-sm text-muted-foreground">
           {application.submitted_at
-            ? format(new Date(application.submitted_at), "MMM d, yyyy h:mm a")
-            : format(new Date(application.created_at), "MMM d, yyyy h:mm a")}
+            ? format(new Date(application.submitted_at), "MMM d, yyyy HH:mm")
+            : format(new Date(application.created_at), "MMM d, yyyy HH:mm")}
         </TableCell>
         <TableCell>
           <div 
@@ -552,8 +552,8 @@ export function ProjectApplicantsSection({
         <div className="mt-3 pt-3 border-t flex items-center justify-between">
           <span className="text-xs text-muted-foreground">
             Applied {application.submitted_at
-              ? format(new Date(application.submitted_at), "MMM d, yyyy h:mm a")
-              : format(new Date(application.created_at), "MMM d, yyyy h:mm a")}
+              ? format(new Date(application.submitted_at), "MMM d, yyyy HH:mm")
+              : format(new Date(application.created_at), "MMM d, yyyy HH:mm")}
           </span>
           <div 
             className="flex items-center gap-1"

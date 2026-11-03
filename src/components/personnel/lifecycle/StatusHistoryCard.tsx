@@ -33,7 +33,7 @@ export function StatusHistoryCard({ personnelId }: { personnelId: string }) {
                   <StatusBadge status={r.status} projectName={r.project_name} />
                   {r.status !== "standby" && r.status !== "activated" && r.project_name && <span className="text-xs text-muted-foreground">{r.project_name}</span>}
                 </div>
-                <p className="text-xs text-muted-foreground mt-0.5">{format(new Date(r.effective_at), "MMM d, yyyy h:mm a")} · by {r.set_by_name}</p>
+                <p className="text-xs text-muted-foreground mt-0.5">{format(new Date(r.effective_at), "MMM d, yyyy HH:mm")} · by {r.set_by_name}</p>
                 {r.note && <p className="text-sm mt-0.5">{r.note}</p>}
               </li>
             ))}

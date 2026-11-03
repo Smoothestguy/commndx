@@ -389,7 +389,7 @@ export function generateSessionActivityDescription(activity: SessionActivity): A
 export function formatActivityTime(dateString: string): string {
   try {
     const date = new Date(dateString);
-    return format(date, "h:mm a");
+    return format(date, "HH:mm");
   } catch {
     return "";
   }

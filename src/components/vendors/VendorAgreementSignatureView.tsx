@@ -135,7 +135,7 @@ export function VendorAgreementSignatureView({
                   </Button>
                 </div>
                 <p className="text-sm text-muted-foreground">
-                  Signed on {format(new Date(vendorAgreementSignedAt), "MMMM dd, yyyy 'at' h:mm a")}
+                  Signed on {format(new Date(vendorAgreementSignedAt), "MMMM dd, yyyy 'at' HH:mm")}
                 </p>
                 {renderSignature(vendorAgreementSignature, "Vendor Agreement Signature")}
               </div>
@@ -168,7 +168,7 @@ export function VendorAgreementSignatureView({
                   </Button>
                 </div>
                 <p className="text-sm text-muted-foreground">
-                  Signed on {format(new Date(w9SignedAt), "MMMM dd, yyyy 'at' h:mm a")}
+                  Signed on {format(new Date(w9SignedAt), "MMMM dd, yyyy 'at' HH:mm")}
                 </p>
                 {renderSignature(w9Signature, "W-9 Signature")}
               </div>
@@ -261,7 +261,7 @@ export function VendorAgreementSignatureView({
                         <p className="font-signature text-xl italic">{vendorAgreementSignature}</p>
                       )}
                       <p className="text-xs text-muted-foreground mt-3">
-                        Signed on {format(new Date(vendorAgreementSignedAt), "MMMM dd, yyyy 'at' h:mm a")}
+                        Signed on {format(new Date(vendorAgreementSignedAt), "MMMM dd, yyyy 'at' HH:mm")}
                       </p>
                       <p className="text-xs mt-2"><strong>Vendor Name:</strong> {vendorName}</p>
                       {companyName && <p className="text-xs mt-1"><strong>Company:</strong> {companyName}</p>}

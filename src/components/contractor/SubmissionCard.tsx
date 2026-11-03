@@ -153,7 +153,7 @@ export function SubmissionCard({ submission }: SubmissionCardProps) {
               <div>
                 <span className="text-muted-foreground">Submitted:</span>
                 <p className="font-medium">
-                  {format(new Date(submission.created_at), "MMM d, yyyy 'at' h:mm a")}
+                  {format(new Date(submission.created_at), "MMM d, yyyy 'at' HH:mm")}
                 </p>
               </div>
             </div>

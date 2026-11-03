@@ -444,7 +444,7 @@ export function exportApplicationsToPDF(
   doc.setFontSize(18);
   doc.text("Applications Report", 14, 20);
   doc.setFontSize(10);
-  doc.text(`Generated: ${format(new Date(), "MMM d, yyyy h:mm a")}`, 14, 28);
+  doc.text(`Generated: ${format(new Date(), "MMM d, yyyy HH:mm")}`, 14, 28);
   
   // Note about full data
   if (formFields.length > exportableFields.length + 4) {

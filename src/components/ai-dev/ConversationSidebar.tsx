@@ -61,7 +61,7 @@ export function ConversationSidebar({
                         {conv.title || "Untitled"}
                       </p>
                       <p className="text-xs text-muted-foreground">
-                        {format(new Date(conv.updated_at), "MMM d, h:mm a")}
+                        {format(new Date(conv.updated_at), "MMM d, HH:mm")}
                       </p>
                     </div>
                   </div>

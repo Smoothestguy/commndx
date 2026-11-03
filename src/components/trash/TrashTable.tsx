@@ -98,7 +98,7 @@ export function TrashTable({ items, isLoading, showEntityType = true }: TrashTab
                 <TableCell className="font-medium">{item.identifier}</TableCell>
                 <TableCell>{item.name || "-"}</TableCell>
                 <TableCell>
-                  {format(new Date(item.deleted_at), "MMM d, yyyy h:mm a")}
+                  {format(new Date(item.deleted_at), "MMM d, yyyy HH:mm")}
                 </TableCell>
                 <TableCell className="text-right">
                   <div className="flex items-center justify-end gap-2">

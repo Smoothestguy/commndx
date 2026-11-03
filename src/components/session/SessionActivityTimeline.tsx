@@ -178,7 +178,7 @@ export function SessionActivityTimeline({
                       <p className="text-sm">{activity.action_name}</p>
                     )}
                     <p className="text-xs text-muted-foreground">
-                      {format(new Date(activity.created_at), "MMM d, h:mm:ss a")}
+                      {format(new Date(activity.created_at), "MMM d, HH:mm:ss")}
                     </p>
                   </div>
                 </div>

@@ -996,7 +996,7 @@ export function ProjectPersonnelSection({ projectId, projectName = "this project
                                       <TooltipContent className="max-w-xs">
                                         <div className="space-y-1">
                                           <p className="font-medium">
-                                            {person.unassignedAt && format(new Date(person.unassignedAt), "MMM d, yyyy 'at' h:mm a")}
+                                            {person.unassignedAt && format(new Date(person.unassignedAt), "MMM d, yyyy 'at' HH:mm")}
                                           </p>
                                           <p className="text-sm">
                                             Reason: {getReasonLabel(person.unassignedReason)}

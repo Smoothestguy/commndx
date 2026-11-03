@@ -15,7 +15,7 @@ function fmtReport(iso: string) {
   const tz = "America/Chicago";
   const wd = d.toLocaleDateString("en-US", { weekday: "short", timeZone: tz });
   const md = d.toLocaleDateString("en-US", { month: "numeric", day: "numeric", timeZone: tz });
-  const t = d.toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit", timeZone: tz });
+  const t = d.toLocaleTimeString("en-US", { hour: "2-digit", minute: "2-digit", hourCycle: "h23", timeZone: tz });
   return `${wd} ${md} ${t} CT`;
 }
 

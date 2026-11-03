@@ -126,7 +126,7 @@ export function InviteToPortalDialog({
           
           {hasExistingInvitation && existingInvitationDate && (
             <div className="text-sm text-orange-600 bg-orange-50 dark:bg-orange-950/20 p-3 rounded-lg">
-              Previous invitation sent on {format(new Date(existingInvitationDate), "MMM dd, yyyy 'at' h:mm a")}.
+              Previous invitation sent on {format(new Date(existingInvitationDate), "MMM dd, yyyy 'at' HH:mm")}.
               Sending a new invitation will replace the existing one.
             </div>
           )}

@@ -85,7 +85,7 @@ export function ClockBlockedList() {
                     <div className="flex items-center gap-2">
                       <Clock className="h-4 w-4 text-muted-foreground" />
                       {entry.clock_out_at
-                        ? format(new Date(entry.clock_out_at), "MMM d, h:mm a")
+                        ? format(new Date(entry.clock_out_at), "MMM d, HH:mm")
                         : "-"}
                     </div>
                   </TableCell>
@@ -97,7 +97,7 @@ export function ClockBlockedList() {
                   <TableCell>
                     {entry.clock_blocked_until ? (
                       <span className="text-sm text-muted-foreground">
-                        {format(new Date(entry.clock_blocked_until), "MMM d, h:mm a")}
+                        {format(new Date(entry.clock_blocked_until), "MMM d, HH:mm")}
                       </span>
                     ) : (
                       "-"

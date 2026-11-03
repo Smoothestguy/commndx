@@ -311,7 +311,7 @@ export function SyncMappingDrilldown({ entityType, open, onOpenChange }: SyncMap
                             </TableCell>
                             <TableCell className="text-muted-foreground">
                               {r.lastSyncedAt
-                                ? format(new Date(r.lastSyncedAt), "MMM d, h:mm a")
+                                ? format(new Date(r.lastSyncedAt), "MMM d, HH:mm")
                                 : "—"}
                             </TableCell>
                           </>

@@ -91,7 +91,7 @@ export function AgreementSignatureView({
                   </Button>
                 </div>
                 <p className="text-sm text-muted-foreground">
-                  Signed on {format(new Date(icaSignedAt), "MMMM dd, yyyy 'at' h:mm a")}
+                  Signed on {format(new Date(icaSignedAt), "MMMM dd, yyyy 'at' HH:mm")}
                 </p>
                 {renderSignature(icaSignature, "ICA Signature")}
               </div>
@@ -125,7 +125,7 @@ export function AgreementSignatureView({
                 </div>
                 {w9SignedAt && (
                   <p className="text-sm text-muted-foreground">
-                    Signed on {format(new Date(w9SignedAt), "MMMM dd, yyyy 'at' h:mm a")}
+                    Signed on {format(new Date(w9SignedAt), "MMMM dd, yyyy 'at' HH:mm")}
                   </p>
                 )}
                 {!hasW9Form && renderSignature(w9Signature, "W-9 Signature")}
@@ -212,7 +212,7 @@ export function AgreementSignatureView({
                   )}
                   {w9SignedAt && (
                     <p className="text-xs text-muted-foreground mt-2">
-                      Signed on {format(new Date(w9SignedAt), "MMMM dd, yyyy 'at' h:mm a")}
+                      Signed on {format(new Date(w9SignedAt), "MMMM dd, yyyy 'at' HH:mm")}
                     </p>
                   )}
                 </div>

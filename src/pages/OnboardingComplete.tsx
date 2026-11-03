@@ -159,7 +159,7 @@ const OnboardingComplete = () => {
             
             {personnelData?.completedAt && (
               <p className="text-xs text-muted-foreground mt-4 text-center border-t pt-4">
-                Submitted on {format(new Date(personnelData.completedAt), "MMMM d, yyyy 'at' h:mm a")}
+                Submitted on {format(new Date(personnelData.completedAt), "MMMM d, yyyy 'at' HH:mm")}
               </p>
             )}
           </CardContent>
