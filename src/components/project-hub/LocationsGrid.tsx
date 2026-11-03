@@ -2,7 +2,12 @@ import { Fragment, useEffect, useMemo, useState } from "react";
 import { endOfWeek, format, startOfWeek } from "date-fns";
 import { Link } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
-import { ArrowDown, ArrowUp, ArrowUpDown, ChevronDown, ChevronRight, ExternalLink, MessageSquare, Phone, Search, UserPlus, X } from "lucide-react";
+import { Download, ArrowDown, ArrowUp, ArrowUpDown, ChevronDown, ChevronRight, ExternalLink, MessageSquare, Phone, Search, UserPlus, X } from "lucide-react";
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
+import { STATUS_LABEL } from "@/components/personnel/lifecycle/PersonnelStatusButton";
+import { exportRosterCsv, exportRosterXlsx, rosterFileBase, type RosterExportRow } from "@/utils/rosterExport";
+import { toast } from "sonner";
+import type { LifecycleStatus } from "@/integrations/supabase/hooks/usePersonnelStatus";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { supabase } from "@/integrations/supabase/client";
 import { useAllCurrentStatuses, useOnSiteMap } from "@/integrations/supabase/hooks/usePersonnelStatus";
@@ -38,8 +43,9 @@ function IconBtn({ label, onClick, children }: { label: string; onClick: () => v
 
 const fmtRate = (r: number | null) => (r != null ? ` · $${Number(r).toLocaleString(undefined, { maximumFractionDigits: 2 })}/hr` : "");
 
-export function LocationsGrid({ projectId, locations, staffing, lastServiced, deploymentMode, canWrite, onOpenCard }: {
+export function LocationsGrid({ projectId, projectName, locations, staffing, lastServiced, deploymentMode, canWrite, onOpenCard }: {
   projectId: string;
+  projectName?: string;
   locations: ProjectLocation[];
   staffing?: Record<string, LocationStaffingSummary>;
   lastServiced?: Record<string, string>;
@@ -132,6 +138,34 @@ export function LocationsGrid({ projectId, locations, staffing, lastServiced, de
     );
   };
 
+  // Status text mirrors the grid badge: ON SITE (with site when different) else lifecycle label.
+  const statusText = (a: (typeof assignments)[number], locId: string) => {
+    const os = onSite[a.personnel_id];
+    if (os) return os.location_id === locId ? "ON SITE" : `ON SITE · ${os.location_name ?? "site"}`;
+    const st = (statusMap[a.personnel_id]?.status ?? "available") as LifecycleStatus;
+    return STATUS_LABEL[st] ?? st;
+  };
+  const doExport = async (kind: "xlsx" | "csv") => {
+    const out: RosterExportRow[] = [];
+    for (const l of locations) {
+      const rows = sortRows((byLoc[l.id] ?? []).filter((a) => !search || nameOf(a).toLowerCase().includes(search) || (a.role_label ?? "").toLowerCase().includes(search)), l.id);
+      for (const a of rows) {
+        const k = `${a.personnel_id}:${l.id}`;
+        out.push({
+          location: l.name, projectNumber: l.project_number ?? "", name: nameOf(a), role: a.role_label ?? "",
+          status: statusText(a, l.id), phone: phones[a.personnel_id] ?? "",
+          texted: texted[k] ? format(new Date(texted[k]), "M/d/yyyy") : "", hours: hours[k] ?? 0,
+        });
+      }
+    }
+    if (!out.length) { toast.info("No people to export"); return; }
+    const base = rosterFileBase(projectName ?? "project", format(new Date(), "yyyy-MM-dd"));
+    try {
+      if (kind === "csv") exportRosterCsv(out, canWrite, base);
+      else await exportRosterXlsx(out, canWrite, base);
+    } catch (e) { console.error(e); toast.error("Export failed"); }
+  };
+
   const assignLoc = assignFor ? locations.find((l) => l.id === assignFor.locationId) : undefined;
   const assignedIdsFor = useMemo(() => new Set((assignFor ? byLoc[assignFor.locationId] ?? [] : []).map((a) => a.personnel_id)), [assignFor, byLoc]);
 
@@ -144,6 +178,15 @@ export function LocationsGrid({ projectId, locations, staffing, lastServiced, de
         </div>
         <Button size="sm" variant="ghost" className="h-8 text-xs" onClick={() => setCollapsed(new Set())}>Expand all</Button>
         <Button size="sm" variant="ghost" className="h-8 text-xs" onClick={() => setCollapsed(new Set(locIds))}>Collapse all</Button>
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <Button size="sm" variant="outline" className="h-8 text-xs"><Download className="h-3.5 w-3.5 mr-1" />Export</Button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="end">
+            <DropdownMenuItem onClick={() => doExport("xlsx")}>Excel (.xlsx)</DropdownMenuItem>
+            <DropdownMenuItem onClick={() => doExport("csv")}>CSV</DropdownMenuItem>
+          </DropdownMenuContent>
+        </DropdownMenu>
       </div>
 
       <div className="border rounded-md overflow-auto max-h-[75vh]">

@@ -59,7 +59,7 @@ function ScopeText({ text }: { text: string }) {
   );
 }
 
-export function ProjectLocationsTab({ projectId, deploymentMode = false }: { projectId: string; deploymentMode?: boolean }) {
+export function ProjectLocationsTab({ projectId, projectName, deploymentMode = false }: { projectId: string; projectName?: string; deploymentMode?: boolean }) {
   const { isAdmin, isManager } = useUserRole();
   const canWrite = isAdmin || isManager;
   const { data: locations = [], isLoading } = useProjectLocations(projectId);
@@ -172,7 +172,7 @@ export function ProjectLocationsTab({ projectId, deploymentMode = false }: { pro
       ) : locations.length === 0 ? (
         <Card><CardContent className="py-8 text-center text-sm text-muted-foreground">No locations yet.</CardContent></Card>
       ) : effectiveView === "grid" ? (
-        <LocationsGrid projectId={projectId} locations={locations} staffing={staffing} lastServiced={lastServiced}
+        <LocationsGrid projectId={projectId} projectName={projectName} locations={locations} staffing={staffing} lastServiced={lastServiced}
           deploymentMode={deploymentMode} canWrite={canWrite} onOpenCard={(id) => { chooseView("cards"); setScrollTo(id); }} />
       ) : (
         <div className="grid gap-3 md:grid-cols-2 2xl:grid-cols-3">

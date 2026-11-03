@@ -242,7 +242,7 @@ const ProjectDetail = () => {
         </div>
 
         <TabsContent value="locations">
-          <ProjectLocationsTab projectId={id} deploymentMode={deploymentMode} />
+          <ProjectLocationsTab projectId={id} projectName={project.name} deploymentMode={deploymentMode} />
         </TabsContent>
         {deploymentMode && (
           <TabsContent value="deployment">
