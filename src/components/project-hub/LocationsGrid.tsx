@@ -152,7 +152,7 @@ export function LocationsGrid({ projectId, projectName, locations, staffing, las
       for (const a of rows) {
         const k = `${a.personnel_id}:${l.id}`;
         out.push({
-          location: l.name, projectNumber: l.project_number ?? "", name: nameOf(a), role: a.role_label ?? "",
+          location: l.name, projectNumber: l.project_number ?? "", name: nameOf(a).trim(), role: a.role_label ?? "",
           status: statusText(a, l.id), phone: phones[a.personnel_id] ?? "",
           texted: texted[k] ? format(new Date(texted[k]), "M/d/yyyy") : "", hours: hours[k] ?? 0,
         });
