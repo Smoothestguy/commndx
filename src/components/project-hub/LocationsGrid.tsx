@@ -25,6 +25,10 @@ import { useTrailHoursByPersonLocation } from "@/integrations/supabase/hooks/use
 import { autoMobilize, useInvalidateStatus } from "@/integrations/supabase/hooks/usePersonnelStatus";
 import { SendSiteTextDialog, useLastSiteTexts } from "./SendSiteTextDialog";
 import { AssignDialog } from "./LocationStaffing";
+import { AssetIcon, AssignLocationAssetDialog, assetsAtLocation } from "./LocationAssets";
+import { useEndAssetAssignment, useProjectAssetBilling, useUnassignAsset } from "@/integrations/supabase/hooks/useAssetAssignments";
+import { fmtMoney0 } from "@/lib/assetBilling";
+import { Package, Square } from "lucide-react";
 
 type SortKey = "name" | "role" | "status" | "texted" | "hrs";
 // Higher = further along the lifecycle; on site ranks above everything.
@@ -81,6 +85,11 @@ export function LocationsGrid({ projectId, projectName, locations, staffing, las
   });
   const showPhone = canWrite && Object.keys(phones).length > 0;
   const cols = showPhone ? 7 : 6;
+  const { rows: assetRows } = useProjectAssetBilling(projectId);
+  const endAsset = useEndAssetAssignment();
+  const unassignAsset = useUnassignAsset();
+  const [assetFor, setAssetFor] = useState<string | null>(null);
+  const locationNames = useMemo(() => Object.fromEntries(locations.map((l) => [l.id, l.name])), [locations]);
   const invStatus = useInvalidateStatus();
 
   const storeKey = `locations-grid-collapsed:${projectId}`;
@@ -220,6 +229,7 @@ export function LocationsGrid({ projectId, projectName, locations, staffing, las
               if (search && rows.length === 0) return null;
               const isOpen = search ? true : !collapsed.has(l.id);
               const open = Object.entries(s?.byRole ?? {}).filter(([, v]) => v.needed > v.assigned);
+              const locAssets = assetsAtLocation(assetRows, l.id);
               const full = (s?.needed ?? 0) > 0 && (s?.assigned ?? 0) >= (s?.needed ?? 0);
               return (
                 <Fragment key={l.id}>
@@ -232,6 +242,7 @@ export function LocationsGrid({ projectId, projectName, locations, staffing, las
                         </button>
                         {l.project_number && <Badge variant="outline" className="text-[10px] px-1.5 py-0 shrink-0">#{l.project_number}</Badge>}
                         <span className={cn("font-medium shrink-0", full ? "text-success" : "text-warning")}>{s?.assigned ?? 0}/{s?.needed ?? 0}</span>
+                        {locAssets.length > 0 && <span className="text-muted-foreground shrink-0">· {locAssets.length} asset{locAssets.length === 1 ? "" : "s"}</span>}
                         {l.housing_provided_by === "customer" && <Badge variant="outline" className="hidden md:inline-flex text-[10px] px-1.5 py-0 shrink-0">Housing: Cust</Badge>}
                         {l.housing_provided_by === "frg" && <Badge variant="outline" className="hidden md:inline-flex text-[10px] px-1.5 py-0 shrink-0">Housing: FRG</Badge>}
                         {l.mobe_date && !l.demobe_date && <span className="text-muted-foreground shrink-0">Mobe {formatLocalDate(l.mobe_date, "M/d")}</span>}
@@ -240,6 +251,7 @@ export function LocationsGrid({ projectId, projectName, locations, staffing, las
                         <span className="ml-auto flex items-center gap-0.5 shrink-0">
                           {locHrs > 0 && <span className="mr-1 text-muted-foreground" title="Total hours this week">{locHrs.toFixed(1)} h</span>}
                           {canWrite && <IconBtn label="Assign people" onClick={() => setAssignFor({ locationId: l.id })}><UserPlus className="h-3.5 w-3.5" /></IconBtn>}
+                          {canWrite && <IconBtn label="Assign asset" onClick={() => setAssetFor(l.id)}><Package className="h-3.5 w-3.5" /></IconBtn>}
                           <IconBtn label="Open location card" onClick={() => onOpenCard(l.id)}><ExternalLink className="h-3.5 w-3.5" /></IconBtn>
                         </span>
                       </div>
@@ -275,6 +287,27 @@ export function LocationsGrid({ projectId, projectName, locations, staffing, las
                       </tr>
                     );
                   })}
+                  {isOpen && !search && locAssets.map((r) => (
+                    <tr key={`asset-${r.id}`} className="border-t hover:bg-muted/30">
+                      <td className="px-2 py-1 pl-7 truncate" title={r.assets?.label ?? undefined}>
+                        <span className="inline-flex items-center gap-1.5 min-w-0"><AssetIcon type={r.assets?.type} className="h-3.5 w-3.5 shrink-0 text-muted-foreground" /><span className="truncate">{r.assets?.label ?? "Asset"}</span></span>
+                      </td>
+                      <td className="px-2 py-1 text-muted-foreground capitalize truncate">{r.assets?.type ?? ""}</td>
+                      <td className="px-2 py-1 truncate">
+                        {canWrite && (r.billable
+                          ? <span className={r.rate == null ? "text-warning" : "text-success"}>{r.rate == null ? "billable · no rate" : `billable ${fmtMoney0(r.rate)}/day`}</span>
+                          : <span className="text-muted-foreground">— not billed</span>)}
+                        {r.end_at && <span className="ml-1 text-muted-foreground">ended {format(new Date(r.end_at), "M/d")}</span>}
+                      </td>
+                      <td className="px-2 py-1 text-muted-foreground">{r.days}d</td>
+                      <td className="px-2 py-1 text-right">{canWrite && r.billable && r.accrued != null ? fmtMoney0(r.accrued) : ""}</td>
+                      {showPhone && <td />}
+                      <td className="px-1 py-1 text-right whitespace-nowrap">
+                        {canWrite && !r.end_at && <IconBtn label="End (stop day-rate clock)" onClick={() => endAsset.mutate(r.id)}><Square className="h-3.5 w-3.5" /></IconBtn>}
+                        {canWrite && <IconBtn label="Unassign asset" onClick={() => unassignAsset.mutate(r.id)}><X className="h-3.5 w-3.5" /></IconBtn>}
+                      </td>
+                    </tr>
+                  ))}
                   {isOpen && !search && open.map(([role, v]) => (
                     <tr key={`open-${role}`} className="border-t text-muted-foreground">
                       <td colSpan={cols - 1} className="px-2 py-1 pl-7 italic">{role} — {v.needed - v.assigned} open{fmtRate(v.rate)}</td>
@@ -285,7 +318,7 @@ export function LocationsGrid({ projectId, projectName, locations, staffing, las
                       </td>
                     </tr>
                   ))}
-                  {isOpen && !search && rows.length === 0 && open.length === 0 && (
+                  {isOpen && !search && rows.length === 0 && open.length === 0 && locAssets.length === 0 && (
                     <tr className="border-t"><td colSpan={cols} className="px-2 py-1 pl-7 text-muted-foreground">No one assigned.</td></tr>
                   )}
                 </Fragment>
@@ -310,6 +343,10 @@ export function LocationsGrid({ projectId, projectName, locations, staffing, las
             autoMobilize(ids, projectId, `Assigned to ${assignLoc?.name ?? "location"}`).then(invStatus).catch((e) => console.warn("auto-mobilize failed", e));
           }}
         />
+      )}
+      {canWrite && assetFor && (
+        <AssignLocationAssetDialog open={!!assetFor} onOpenChange={(o) => !o && setAssetFor(null)} projectId={projectId}
+          locationId={assetFor} locationName={locationNames[assetFor]} rows={assetRows} locationNames={locationNames} />
       )}
       <SendSiteTextDialog open={!!textFor} onOpenChange={(o) => !o && setTextFor(null)} personnelIds={textFor?.ids ?? []} locationId={textFor?.locationId ?? ""} />
     </div>
