@@ -1,6 +1,11 @@
 import { Fragment, useEffect, useMemo, useState } from "react";
 import { endOfWeek, format, startOfWeek } from "date-fns";
-import { ChevronDown, ChevronRight, ExternalLink, MessageSquare, Search, UserPlus, X } from "lucide-react";
+import { Link } from "react-router-dom";
+import { useQuery } from "@tanstack/react-query";
+import { ArrowDown, ArrowUp, ArrowUpDown, ChevronDown, ChevronRight, ExternalLink, MessageSquare, Phone, Search, UserPlus, X } from "lucide-react";
+import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
+import { supabase } from "@/integrations/supabase/client";
+import { useAllCurrentStatuses, useOnSiteMap } from "@/integrations/supabase/hooks/usePersonnelStatus";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -15,6 +20,21 @@ import { useTrailHoursByPersonLocation } from "@/integrations/supabase/hooks/use
 import { autoMobilize, useInvalidateStatus } from "@/integrations/supabase/hooks/usePersonnelStatus";
 import { SendSiteTextDialog, useLastSiteTexts } from "./SendSiteTextDialog";
 import { AssignDialog } from "./LocationStaffing";
+
+type SortKey = "name" | "role" | "status" | "texted" | "hrs";
+// Higher = further along the lifecycle; on site ranks above everything.
+const STATUS_RANK: Record<string, number> = { onsite: 7, activated: 6, mobilizing: 5, standby: 4, available: 3, unavailable: 2, demobilized: 1 };
+
+function IconBtn({ label, onClick, children }: { label: string; onClick: () => void; children: React.ReactNode }) {
+  return (
+    <Tooltip>
+      <TooltipTrigger asChild>
+        <button type="button" className="rounded p-1 text-muted-foreground hover:bg-muted hover:text-foreground" aria-label={label} onClick={onClick}>{children}</button>
+      </TooltipTrigger>
+      <TooltipContent>{label}</TooltipContent>
+    </Tooltip>
+  );
+}
 
 const fmtRate = (r: number | null) => (r != null ? ` · $${Number(r).toLocaleString(undefined, { maximumFractionDigits: 2 })}/hr` : "");
 
@@ -35,6 +55,26 @@ export function LocationsGrid({ projectId, locations, staffing, lastServiced, de
   const wkTo = format(endOfWeek(now, { weekStartsOn: 1 }), "yyyy-MM-dd");
   const { data: hours = {} } = useTrailHoursByPersonLocation(projectId, wkFrom, wkTo);
   const unassign = useUnassignPersonnel();
+  const { data: statusMap = {} } = useAllCurrentStatuses();
+  const { data: onSite = {} } = useOnSiteMap();
+  const [sort, setSort] = useState<{ key: SortKey; dir: "asc" | "desc" }>({ key: "status", dir: "desc" });
+  const clickSort = (key: SortKey) => setSort((s) => s.key === key ? { key, dir: s.dir === "asc" ? "desc" : "asc" } : { key, dir: key === "name" || key === "role" ? "asc" : "desc" });
+  const pidKey = useMemo(() => [...new Set(assignments.map((a) => a.personnel_id))].sort(), [assignments]);
+  // Phones: one batched read, managers/admins only (RLS restricts personnel anyway).
+  const { data: phones = {} } = useQuery({
+    queryKey: ["locations-grid-phones", pidKey],
+    enabled: canWrite && pidKey.length > 0,
+    staleTime: 5 * 60_000,
+    queryFn: async () => {
+      const { data, error } = await supabase.from("personnel").select("id, phone").in("id", pidKey);
+      if (error) throw error;
+      const m: Record<string, string> = {};
+      for (const r of data ?? []) if (r.phone) m[r.id] = r.phone;
+      return m;
+    },
+  });
+  const showPhone = canWrite && Object.keys(phones).length > 0;
+  const cols = showPhone ? 7 : 6;
   const invStatus = useInvalidateStatus();
 
   const storeKey = `locations-grid-collapsed:${projectId}`;
@@ -57,6 +97,41 @@ export function LocationsGrid({ projectId, locations, staffing, lastServiced, de
   const search = q.trim().toLowerCase();
   const nameOf = (a: (typeof assignments)[number]) => [a.personnel?.first_name, a.personnel?.last_name].filter(Boolean).join(" ") || "Unknown";
 
+  const rankOf = (a: (typeof assignments)[number], locId: string) => {
+    const os = onSite[a.personnel_id];
+    if (os && os.project_id === projectId) return STATUS_RANK.onsite + (os.location_id === locId ? 0.5 : 0);
+    return STATUS_RANK[statusMap[a.personnel_id]?.status ?? "available"] ?? 0;
+  };
+  const sortRows = (rows: typeof assignments, locId: string) => {
+    const m = sort.dir === "asc" ? 1 : -1;
+    const val = (a: (typeof assignments)[number]): string | number => {
+      const k = `${a.personnel_id}:${locId}`;
+      switch (sort.key) {
+        case "name": return nameOf(a).toLowerCase();
+        case "role": return (a.role_label ?? "").toLowerCase();
+        case "status": return rankOf(a, locId);
+        case "texted": return texted[k] ? new Date(texted[k]).getTime() : 0;
+        case "hrs": return hours[k] ?? 0;
+      }
+    };
+    return [...rows].sort((x, y) => {
+      const a = val(x), b = val(y);
+      const c = a < b ? -1 : a > b ? 1 : 0;
+      return c * m || nameOf(x).localeCompare(nameOf(y));
+    });
+  };
+  const SortTh = ({ k, label, className }: { k: SortKey; label: string; className?: string }) => {
+    const active = sort.key === k;
+    const Icon = !active ? ArrowUpDown : sort.dir === "asc" ? ArrowUp : ArrowDown;
+    return (
+      <th className={cn("px-2 py-1.5 font-medium", className)} aria-sort={active ? (sort.dir === "asc" ? "ascending" : "descending") : "none"}>
+        <button type="button" onClick={() => clickSort(k)} className={cn("inline-flex items-center gap-1 hover:text-foreground", active && "text-foreground")}>
+          {label}<Icon className={cn("h-3 w-3", !active && "opacity-40")} />
+        </button>
+      </th>
+    );
+  };
+
   const assignLoc = assignFor ? locations.find((l) => l.id === assignFor.locationId) : undefined;
   const assignedIdsFor = useMemo(() => new Set((assignFor ? byLoc[assignFor.locationId] ?? [] : []).map((a) => a.personnel_id)), [assignFor, byLoc]);
 
@@ -72,21 +147,33 @@ export function LocationsGrid({ projectId, locations, staffing, lastServiced, de
       </div>
 
       <div className="border rounded-md overflow-auto max-h-[75vh]">
-        <table className="w-full text-xs tabular-nums min-w-[720px]">
+        <table className="w-full table-fixed text-xs tabular-nums min-w-[600px]">
+          <colgroup>
+            <col />
+            <col className="w-28" />
+            <col className="w-36" />
+            <col className="w-14" />
+            <col className="w-14" />
+            {showPhone && <col className="w-8" />}
+            <col className={canWrite ? "w-16" : "w-9"} />
+          </colgroup>
           <thead className="sticky top-0 z-10 bg-muted text-muted-foreground">
             <tr className="text-left">
-              <th className="px-2 py-1.5 font-medium">Name</th>
-              <th className="px-2 py-1.5 font-medium">Role</th>
-              <th className="px-2 py-1.5 font-medium">Status</th>
-              <th className="px-2 py-1.5 font-medium">Texted</th>
-              <th className="px-2 py-1.5 font-medium text-right">Hrs (wk)</th>
-              <th className="px-2 py-1.5 font-medium text-right w-24">Actions</th>
+              <SortTh k="name" label="Name" className="pl-7" />
+              <SortTh k="role" label="Role" />
+              <SortTh k="status" label="Status" />
+              <SortTh k="texted" label="Texted" />
+              <SortTh k="hrs" label="Hrs" className="text-right" />
+              {showPhone && <th className="px-1 py-1.5"><span className="sr-only">Phone</span></th>}
+              <th className="px-2 py-1.5"><span className="sr-only">Actions</span></th>
             </tr>
           </thead>
           <tbody>
             {locations.map((l) => {
               const s = staffing?.[l.id];
-              const rows = (byLoc[l.id] ?? []).filter((a) => !search || nameOf(a).toLowerCase().includes(search) || (a.role_label ?? "").toLowerCase().includes(search));
+              const allRows = byLoc[l.id] ?? [];
+              const locHrs = allRows.reduce((t, a) => t + (hours[`${a.personnel_id}:${l.id}`] ?? 0), 0);
+              const rows = sortRows(allRows.filter((a) => !search || nameOf(a).toLowerCase().includes(search) || (a.role_label ?? "").toLowerCase().includes(search)), l.id);
               if (search && rows.length === 0) return null;
               const isOpen = search ? true : !collapsed.has(l.id);
               const open = Object.entries(s?.byRole ?? {}).filter(([, v]) => v.needed > v.assigned);
@@ -94,29 +181,23 @@ export function LocationsGrid({ projectId, locations, staffing, lastServiced, de
               return (
                 <Fragment key={l.id}>
                   <tr className="border-t bg-muted/40 hover:bg-muted/60">
-                    <td colSpan={6} className="px-2 py-1">
-                      <div className="flex items-center gap-2 whitespace-nowrap">
-                        <button type="button" onClick={() => toggle(l.id)} className="flex items-center gap-1 font-semibold min-w-0" aria-expanded={isOpen}>
+                    <td colSpan={cols} className="px-2 py-1">
+                      <div className="flex items-center gap-2 whitespace-nowrap min-w-0">
+                        <button type="button" onClick={() => toggle(l.id)} className="flex items-center gap-1 font-semibold min-w-0 flex-1 sm:flex-initial text-left" aria-expanded={isOpen} title={l.name}>
                           {isOpen ? <ChevronDown className="h-3.5 w-3.5 shrink-0" /> : <ChevronRight className="h-3.5 w-3.5 shrink-0" />}
-                          <span className="truncate max-w-[16rem]">{l.name}</span>
+                          <span className="truncate">{l.name}</span>
                         </button>
-                        {l.project_number && <Badge variant="outline" className="text-[10px] px-1.5 py-0">#{l.project_number}</Badge>}
-                        <span className={cn("font-medium", full ? "text-success" : "text-warning")}>{s?.assigned ?? 0}/{s?.needed ?? 0}</span>
-                        {l.housing_provided_by === "customer" && <Badge variant="outline" className="text-[10px] px-1.5 py-0">Housing: Cust</Badge>}
-                        {l.housing_provided_by === "frg" && <Badge variant="outline" className="text-[10px] px-1.5 py-0">Housing: FRG</Badge>}
-                        {(l.mobe_date || l.demobe_date) && (
-                          <span className="text-muted-foreground">{l.mobe_date ? formatLocalDate(l.mobe_date, "M/d") : "—"}→{l.demobe_date ? formatLocalDate(l.demobe_date, "M/d") : "—"}</span>
-                        )}
-                        {deploymentMode && lastServiced?.[l.id] && <span className="text-muted-foreground">Svc {formatLocalDate(lastServiced[l.id], "M/d")}</span>}
-                        <span className="ml-auto flex items-center gap-1">
-                          {canWrite && (
-                            <Button size="sm" variant="ghost" className="h-6 px-1.5 text-xs" onClick={() => setAssignFor({ locationId: l.id })}>
-                              <UserPlus className="h-3 w-3 mr-1" />Assign
-                            </Button>
-                          )}
-                          <Button size="sm" variant="ghost" className="h-6 px-1.5 text-xs" onClick={() => onOpenCard(l.id)}>
-                            <ExternalLink className="h-3 w-3 mr-1" />Open card
-                          </Button>
+                        {l.project_number && <Badge variant="outline" className="text-[10px] px-1.5 py-0 shrink-0">#{l.project_number}</Badge>}
+                        <span className={cn("font-medium shrink-0", full ? "text-success" : "text-warning")}>{s?.assigned ?? 0}/{s?.needed ?? 0}</span>
+                        {l.housing_provided_by === "customer" && <Badge variant="outline" className="hidden md:inline-flex text-[10px] px-1.5 py-0 shrink-0">Housing: Cust</Badge>}
+                        {l.housing_provided_by === "frg" && <Badge variant="outline" className="hidden md:inline-flex text-[10px] px-1.5 py-0 shrink-0">Housing: FRG</Badge>}
+                        {l.mobe_date && !l.demobe_date && <span className="text-muted-foreground shrink-0">Mobe {formatLocalDate(l.mobe_date, "M/d")}</span>}
+                        {l.demobe_date && <span className="text-muted-foreground shrink-0">{l.mobe_date ? `${formatLocalDate(l.mobe_date, "M/d")}–` : "Demobe "}{formatLocalDate(l.demobe_date, "M/d")}</span>}
+                        {deploymentMode && lastServiced?.[l.id] && <span className="hidden md:inline text-muted-foreground shrink-0">Svc {formatLocalDate(lastServiced[l.id], "M/d")}</span>}
+                        <span className="ml-auto flex items-center gap-0.5 shrink-0">
+                          {locHrs > 0 && <span className="mr-1 text-muted-foreground" title="Total hours this week">{locHrs.toFixed(1)} h</span>}
+                          {canWrite && <IconBtn label="Assign people" onClick={() => setAssignFor({ locationId: l.id })}><UserPlus className="h-3.5 w-3.5" /></IconBtn>}
+                          <IconBtn label="Open location card" onClick={() => onOpenCard(l.id)}><ExternalLink className="h-3.5 w-3.5" /></IconBtn>
                         </span>
                       </div>
                     </td>
@@ -126,27 +207,34 @@ export function LocationsGrid({ projectId, locations, staffing, lastServiced, de
                     const h = hours[k];
                     return (
                       <tr key={a.id} className="border-t hover:bg-muted/30">
-                        <td className="px-2 py-1 pl-7 font-medium whitespace-nowrap">{nameOf(a)}</td>
-                        <td className="px-2 py-1 text-muted-foreground whitespace-nowrap">{a.role_label ?? "—"}</td>
-                        <td className="px-2 py-1"><PersonnelStatusButton personnelId={a.personnel_id} projectId={projectId} className="text-[10px] px-1.5 py-0" /></td>
-                        <td className="px-2 py-1 text-muted-foreground">{texted[k] ? format(new Date(texted[k]), "M/d") : "—"}</td>
-                        <td className="px-2 py-1 text-right">{h ? h.toFixed(2) : "—"}</td>
-                        <td className="px-2 py-1 text-right whitespace-nowrap">
-                          <button type="button" className="rounded p-1 hover:bg-muted" aria-label="Send site text" onClick={() => setTextFor({ locationId: l.id, ids: [a.personnel_id] })}>
-                            <MessageSquare className="h-3.5 w-3.5" />
-                          </button>
-                          {canWrite && (
-                            <button type="button" className="rounded p-1 hover:bg-muted" aria-label="Unassign" onClick={() => unassign.mutate({ id: a.id, location_id: l.id })}>
-                              <X className="h-3.5 w-3.5" />
-                            </button>
-                          )}
+                        <td className="px-2 py-1 pl-7 font-medium truncate">
+                          <Link to={`/personnel/${a.personnel_id}`} className="hover:underline underline-offset-2" title={nameOf(a)}>{nameOf(a)}</Link>
+                        </td>
+                        <td className="px-2 py-1 text-muted-foreground truncate" title={a.role_label ?? undefined}>{a.role_label ?? ""}</td>
+                        <td className="px-2 py-1 overflow-hidden">
+                          <PersonnelStatusButton personnelId={a.personnel_id} projectId={projectId} locationId={l.id} hideProjectName className="text-[10px] px-1.5 py-0 max-w-[7.5rem]" />
+                        </td>
+                        <td className="px-2 py-1 text-muted-foreground">{texted[k] ? format(new Date(texted[k]), "M/d") : ""}</td>
+                        <td className="px-2 py-1 text-right">{h ? h.toFixed(1) : ""}</td>
+                        {showPhone && (
+                          <td className="px-1 py-1 text-center">
+                            {phones[a.personnel_id] && (
+                              <a href={`tel:${phones[a.personnel_id]}`} className="inline-flex rounded p-1 text-muted-foreground hover:bg-muted hover:text-foreground" aria-label={`Call ${nameOf(a)}`} title={phones[a.personnel_id]}>
+                                <Phone className="h-3.5 w-3.5" />
+                              </a>
+                            )}
+                          </td>
+                        )}
+                        <td className="px-1 py-1 text-right whitespace-nowrap">
+                          <IconBtn label="Send site text" onClick={() => setTextFor({ locationId: l.id, ids: [a.personnel_id] })}><MessageSquare className="h-3.5 w-3.5" /></IconBtn>
+                          {canWrite && <IconBtn label="Unassign" onClick={() => unassign.mutate({ id: a.id, location_id: l.id })}><X className="h-3.5 w-3.5" /></IconBtn>}
                         </td>
                       </tr>
                     );
                   })}
                   {isOpen && !search && open.map(([role, v]) => (
                     <tr key={`open-${role}`} className="border-t text-muted-foreground">
-                      <td colSpan={5} className="px-2 py-1 pl-7 italic">{role} — {v.needed - v.assigned} open{fmtRate(v.rate)}</td>
+                      <td colSpan={cols - 1} className="px-2 py-1 pl-7 italic">{role} — {v.needed - v.assigned} open{fmtRate(v.rate)}</td>
                       <td className="px-2 py-1 text-right">
                         {canWrite && (
                           <Button size="sm" variant="outline" className="h-6 px-2 text-xs" onClick={() => setAssignFor({ locationId: l.id, role })}>Assign</Button>
@@ -155,7 +243,7 @@ export function LocationsGrid({ projectId, locations, staffing, lastServiced, de
                     </tr>
                   ))}
                   {isOpen && !search && rows.length === 0 && open.length === 0 && (
-                    <tr className="border-t"><td colSpan={6} className="px-2 py-1 pl-7 text-muted-foreground">No one assigned.</td></tr>
+                    <tr className="border-t"><td colSpan={cols} className="px-2 py-1 pl-7 text-muted-foreground">No one assigned.</td></tr>
                   )}
                 </Fragment>
               );
