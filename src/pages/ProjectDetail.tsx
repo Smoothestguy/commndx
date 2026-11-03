@@ -36,6 +36,7 @@ import { ProjectActivityTimeline } from "@/components/project-hub/ProjectActivit
 import { ProjectStatusMenu } from "@/components/projects/ProjectStatusMenu";
 import { ProjectLocationsTab } from "@/components/project-hub/ProjectLocationsTab";
 import { useProjectLocations } from "@/integrations/supabase/hooks/useProjectLocations";
+import { ProjectRosterCard } from "@/components/personnel/lifecycle/ProjectRosterCard";
 import { ProjectDeploymentTab } from "@/components/project-hub/ProjectDeploymentTab";
 import { useUpdateProject } from "@/integrations/supabase/hooks/useProjects";
 import { Switch } from "@/components/ui/switch";
@@ -251,7 +252,8 @@ const ProjectDetail = () => {
         <TabsContent value="recruiting">
           <ProjectRecruitingSection projectId={id} />
         </TabsContent>
-        <TabsContent value="crew">
+        <TabsContent value="crew" className="space-y-4">
+          {!deploymentMode && <ProjectRosterCard projectId={id} />}
           <ProjectCrewTab projectId={id} projectName={project.name} />
         </TabsContent>
         <TabsContent value="financials">
