@@ -14,6 +14,7 @@ export interface Asset {
   operating_hours: string | null;
   instructions: string | null;
   serial_number: string | null;
+  default_day_rate?: number | null;
   status: "available" | "assigned" | "maintenance" | "retired";
   metadata: Record<string, unknown>;
   created_at: string;
@@ -140,6 +141,7 @@ export interface CreateAssetInput {
   operating_hours?: string;
   instructions?: string;
   serial_number?: string;
+  default_day_rate?: number | null;
   status?: AssetStatus;
   metadata?: Json;
 }
@@ -162,6 +164,7 @@ export function useCreateAsset() {
         operating_hours: input.operating_hours,
         instructions: input.instructions,
         serial_number: input.serial_number,
+        default_day_rate: input.default_day_rate ?? null,
         status: input.status || "available",
         metadata: input.metadata || {},
         created_by: user?.id || null,
@@ -197,6 +200,7 @@ export interface UpdateAssetInput {
   operating_hours?: string | null;
   instructions?: string | null;
   serial_number?: string | null;
+  default_day_rate?: number | null;
   status?: AssetStatus;
   metadata?: Json;
 }

@@ -1,7 +1,9 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
+import { useMemo } from "react";
 import type { Asset } from "./useAssets";
+import { assetAccrual, type AssetAccrual } from "@/lib/assetBilling";
 
 export interface AssetAssignment {
   id: string;
@@ -16,6 +18,9 @@ export interface AssetAssignment {
   unassigned_reason: string | null;
   unassigned_notes: string | null;
   notes: string | null;
+  location_id: string | null;
+  billable: boolean;
+  day_rate: number | null;
   status: "active" | "returned" | "transferred";
   created_at: string;
   updated_at: string;
@@ -66,7 +71,8 @@ export function useAssetAssignmentsByProject(projectId: string | undefined, filt
             instructions,
             serial_number,
             status,
-            metadata
+            metadata,
+            default_day_rate
           ),
           personnel (
             id,
@@ -354,5 +360,83 @@ export function useUpdateAssetAssignment() {
     onError: (error: Error) => {
       toast.error(`Failed to update assignment: ${error.message}`);
     },
+  });
+}
+
+// ---------- Location + per-diem billing (same asset_assignments rows) ----------
+
+export interface AssetBillingRow extends AssetAssignmentWithDetails, AssetAccrual {}
+
+/** One query (shared with ProjectAssetAssignmentsSection) + per-diem math. Includes ended/returned rows for billing. */
+export function useProjectAssetBilling(projectId: string | undefined) {
+  const q = useAssetAssignmentsByProject(projectId);
+  const rows = useMemo<AssetBillingRow[]>(() => (q.data ?? []).map((a) => ({
+    ...a,
+    ...assetAccrual({
+      billable: !!a.billable, start_at: a.start_at,
+      end_at: a.end_at ?? (a.status !== "active" ? a.unassigned_at : null),
+      day_rate: a.day_rate, default_day_rate: a.assets?.default_day_rate ?? null,
+    }),
+  })), [q.data]);
+  const billable = rows.filter((r) => r.billable);
+  const equipmentTotal = billable.reduce((t, r) => t + (r.accrued ?? 0), 0);
+  const missingRate = billable.filter((r) => r.accrued == null).length;
+  return { ...q, rows, billable, equipmentTotal, missingRate };
+}
+
+export interface AssignToLocationInput {
+  projectId: string;
+  locationId: string | null;
+  /** Existing project assignment to move/update; omit to create a new project assignment for assetId. */
+  assignmentId?: string;
+  assetId?: string;
+  billable?: boolean;
+  dayRate?: number | null;
+  startAt?: string;
+}
+
+export function useAssignAssetToLocation() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (i: AssignToLocationInput) => {
+      const billing = i.billable === undefined ? {} : { billable: i.billable, day_rate: i.billable ? i.dayRate ?? null : i.dayRate ?? null };
+      if (i.assignmentId) {
+        const { error } = await supabase.from("asset_assignments")
+          .update({ location_id: i.locationId, ...billing, ...(i.startAt ? { start_at: i.startAt } : {}) })
+          .eq("id", i.assignmentId);
+        if (error) throw error;
+        return;
+      }
+      if (!i.assetId) throw new Error("Pick an asset");
+      const { data: { user } } = await supabase.auth.getUser();
+      const { error } = await supabase.from("asset_assignments").insert({
+        project_id: i.projectId, asset_id: i.assetId, location_id: i.locationId,
+        assigned_by: user?.id ?? null, start_at: i.startAt ?? new Date().toISOString(), ...billing,
+      });
+      if (error) throw error;
+      await supabase.from("assets").update({ status: "assigned" }).eq("id", i.assetId);
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["asset-assignments"] });
+      qc.invalidateQueries({ queryKey: ["assets"] });
+      toast.success("Asset assigned");
+    },
+    onError: (e: Error) => toast.error(`Failed to assign asset: ${e.message}`),
+  });
+}
+
+/** Stops the per-diem clock (sets end_at); the assignment row stays for history/billing. */
+export function useEndAssetAssignment() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (assignmentId: string) => {
+      const { error } = await supabase.from("asset_assignments").update({ end_at: new Date().toISOString() }).eq("id", assignmentId);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["asset-assignments"] });
+      toast.success("Asset assignment ended");
+    },
+    onError: (e: Error) => toast.error(`Failed to end assignment: ${e.message}`),
   });
 }
