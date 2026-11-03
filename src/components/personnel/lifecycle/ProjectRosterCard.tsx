@@ -41,7 +41,7 @@ export function ProjectRosterCard({ projectId }: { projectId: string }) {
 
   const Row = ({ r }: { r: RosterRow }) => (
     <div className="flex items-center gap-2 py-2 border-b last:border-0">
-      {r.status === "standby" && <Checkbox checked={sel.includes(r.personnel_id)} onCheckedChange={() => toggle(r.personnel_id)} aria-label="Select" />}
+      {showCosts && r.status === "standby" && <Checkbox checked={sel.includes(r.personnel_id)} onCheckedChange={() => toggle(r.personnel_id)} aria-label="Select" />}
       <div className="min-w-0 flex-1">
         <div className="font-medium text-sm truncate">{nm(r)}</div>
         <div className="text-xs text-muted-foreground">
@@ -79,7 +79,7 @@ export function ProjectRosterCard({ projectId }: { projectId: string }) {
             <section>
               <div className="flex items-center justify-between mb-1">
                 <h4 className="text-xs font-semibold text-warning">STANDBY ({standby.length})</h4>
-                {sel.length > 0 && <Button size="sm" onClick={() => setActivateOpen(true)}>Activate all ({sel.length})</Button>}
+                {showCosts && sel.length > 0 && <Button size="sm" onClick={() => setActivateOpen(true)}>Activate all ({sel.length})</Button>}
               </div>
               {standby.map((r) => <Row key={r.personnel_id} r={r} />)}
             </section>

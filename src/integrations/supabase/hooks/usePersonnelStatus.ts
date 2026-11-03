@@ -221,15 +221,18 @@ export interface PersonnelExpense {
   id: string; personnel_id: string; project_id: string; amount: number; category: string;
   note: string | null; receipt_url: string | null; incurred_on: string; created_at: string;
   person_name?: string;
+  deleted_at?: string | null; deleted_by?: string | null; deleted_by_name?: string | null;
 }
 
-export function useProjectPersonnelExpenses(projectId?: string) {
+/** Active (non-removed) expenses by default. includeDeleted=true also returns soft-deleted rows (admin review). */
+export function useProjectPersonnelExpenses(projectId?: string, includeDeleted = false) {
   return useQuery({
-    queryKey: ["personnel-expenses", projectId],
+    queryKey: ["personnel-expenses", projectId, includeDeleted ? "with-deleted" : "active"],
     enabled: !!projectId,
     queryFn: async () => {
-      const { data, error } = await db.from("personnel_expenses").select("*")
-        .eq("project_id", projectId).order("incurred_on", { ascending: false }).order("created_at", { ascending: false });
+      let q = db.from("personnel_expenses").select("*").eq("project_id", projectId);
+      if (!includeDeleted) q = q.is("deleted_at", null);
+      const { data, error } = await q.order("incurred_on", { ascending: false }).order("created_at", { ascending: false });
       if (error) throw error;
       const ids = [...new Set((data ?? []).map((r: any) => r.personnel_id))];
       let names: Record<string, string> = {};
@@ -237,7 +240,13 @@ export function useProjectPersonnelExpenses(projectId?: string) {
         const { data: ppl } = await db.from("personnel_directory").select("id, first_name, last_name").in("id", ids);
         names = Object.fromEntries((ppl ?? []).map((p: any) => [p.id, [p.first_name, p.last_name].filter(Boolean).join(" ")]));
       }
-      return (data ?? []).map((r: any) => ({ ...r, amount: Number(r.amount), person_name: names[r.personnel_id] || "Unknown" })) as PersonnelExpense[];
+      const delIds = [...new Set((data ?? []).map((r: any) => r.deleted_by).filter(Boolean))];
+      let delNames: Record<string, string> = {};
+      if (delIds.length) {
+        const { data: pr } = await db.from("profiles").select("id, first_name, last_name, email").in("id", delIds);
+        delNames = Object.fromEntries((pr ?? []).map((p: any) => [p.id, [p.first_name, p.last_name].filter(Boolean).join(" ") || p.email || "Unknown"]));
+      }
+      return (data ?? []).map((r: any) => ({ ...r, amount: Number(r.amount), person_name: names[r.personnel_id] || "Unknown", deleted_by_name: r.deleted_by ? delNames[r.deleted_by] ?? null : null })) as PersonnelExpense[];
     },
   });
 }
@@ -288,10 +297,24 @@ export function useDeletePersonnelExpense() {
   const inv = useInvExpenses();
   return useMutation({
     mutationFn: async (id: string) => {
-      const { error } = await db.from("personnel_expenses").delete().eq("id", id);
+      const { data: { user } } = await supabase.auth.getUser();
+      const { error } = await db.from("personnel_expenses")
+        .update({ deleted_at: new Date().toISOString(), deleted_by: user?.id ?? null }).eq("id", id);
       if (error) throw error;
     },
-    onSuccess: () => { inv(); toast.success("Expense deleted"); },
-    onError: (e: any) => toast.error(e?.message ?? "Failed to delete expense"),
+    onSuccess: () => { inv(); toast.success("Expense removed"); },
+    onError: (e: any) => toast.error(e?.message ?? "Failed to remove expense"),
+  });
+}
+
+export function useRestorePersonnelExpense() {
+  const inv = useInvExpenses();
+  return useMutation({
+    mutationFn: async (id: string) => {
+      const { error } = await db.from("personnel_expenses").update({ deleted_at: null, deleted_by: null }).eq("id", id);
+      if (error) throw error;
+    },
+    onSuccess: () => { inv(); toast.success("Expense restored"); },
+    onError: (e: any) => toast.error(e?.message ?? "Failed to restore expense"),
   });
 }
