@@ -8289,6 +8289,61 @@ export type Database = {
         }
         Relationships: []
       }
+      site_checkin_tokens: {
+        Row: {
+          created_at: string
+          created_by: string | null
+          expires_at: string
+          id: string
+          last_used_at: string | null
+          location_id: string
+          personnel_id: string
+          report_at: string | null
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string | null
+          expires_at?: string
+          id?: string
+          last_used_at?: string | null
+          location_id: string
+          personnel_id: string
+          report_at?: string | null
+        }
+        Update: {
+          created_at?: string
+          created_by?: string | null
+          expires_at?: string
+          id?: string
+          last_used_at?: string | null
+          location_id?: string
+          personnel_id?: string
+          report_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "site_checkin_tokens_location_id_fkey"
+            columns: ["location_id"]
+            isOneToOne: false
+            referencedRelation: "project_locations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "site_checkin_tokens_personnel_id_fkey"
+            columns: ["personnel_id"]
+            isOneToOne: false
+            referencedRelation: "personnel"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "site_checkin_tokens_personnel_id_fkey"
+            columns: ["personnel_id"]
+            isOneToOne: false
+            referencedRelation: "personnel_directory"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       sms_blast_tokens: {
         Row: {
           created_at: string
@@ -10719,6 +10774,7 @@ export type Database = {
         }[]
       }
       get_quick_apply_invite: { Args: { _token: string }; Returns: Json }
+      get_site_checkin_info: { Args: { p_token: string }; Returns: Json }
       get_vendor_id_for_user: { Args: { _user_id: string }; Returns: string }
       get_workforce_invite: {
         Args: { _token: string }
@@ -10838,6 +10894,10 @@ export type Database = {
       }
       show_limit: { Args: never; Returns: number }
       show_trgm: { Args: { "": string }; Returns: string[] }
+      site_punch: {
+        Args: { p_lat?: number; p_lng?: number; p_token: string }
+        Returns: Json
+      }
       update_applicant_geo: {
         Args: {
           _applicant_id: string
