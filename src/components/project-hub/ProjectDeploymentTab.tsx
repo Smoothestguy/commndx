@@ -1,3 +1,4 @@
+import { ProjectRosterCard } from "@/components/personnel/lifecycle/ProjectRosterCard";
 import { useMemo, useRef, useState } from "react";
 import { addDays, format } from "date-fns";
 import { Link } from "react-router-dom";
@@ -806,6 +807,7 @@ function DeploymentSettings({ projectId, canEdit }: { projectId: string; canEdit
   const update = useUpdateProject();
   const [hours, setHours] = useState("");
   const [rate, setRate] = useState("");
+  const [sbRate, setSbRate] = useState("");
   const [open, setOpen] = useState(false);
 
   const openRef = useRef(false);
@@ -813,6 +815,7 @@ function DeploymentSettings({ projectId, canEdit }: { projectId: string; canEdit
     openRef.current = true;
     setHours(project?.default_shift_hours != null ? String(project.default_shift_hours) : "12");
     setRate(project?.mileage_rate != null ? String(project.mileage_rate) : "");
+    setSbRate((project as any)?.standby_rate != null ? String((project as any).standby_rate) : "");
   } else if (!open && openRef.current) openRef.current = false;
 
   if (!canEdit) return null;
@@ -829,12 +832,16 @@ function DeploymentSettings({ projectId, canEdit }: { projectId: string; canEdit
         <div><Label>Mileage rate ($/mile, optional)</Label>
           <Input type="number" inputMode="decimal" min={0} step="0.01" value={rate} onChange={(e) => setRate(e.target.value)} placeholder="e.g. 0.70" />
         </div>
+        <div><Label>Standby rate ($/person/day, optional)</Label>
+          <Input type="number" inputMode="decimal" min={0} step="0.01" value={sbRate} onChange={(e) => setSbRate(e.target.value)} placeholder="e.g. 150" />
+        </div>
         <Button
           size="sm" className="w-full" disabled={update.isPending}
           onClick={() => update.mutate({
             id: projectId,
             default_shift_hours: hours.trim() ? Number(hours) : 12,
             mileage_rate: rate.trim() ? Number(rate) : null,
+            standby_rate: sbRate.trim() ? Number(sbRate) : null,
           } as any, { onSuccess: () => setOpen(false) })}
         >{update.isPending && <Loader2 className="h-4 w-4 animate-spin mr-1" />}Save</Button>
       </PopoverContent>
@@ -1223,6 +1230,7 @@ export function ProjectDeploymentTab({ projectId }: { projectId: string }) {
           <DeploymentSettings projectId={projectId} canEdit={canEdit} />
         </div>
       </div>
+      <ProjectRosterCard projectId={projectId} />
       <CrewsSection projectId={projectId} crews={crews} canEdit={canEdit} />
       <VisitsCard projectId={projectId} locations={locations} crews={crews} from={r.from} to={r.to} canEdit={canEdit} />
       <MileageCard crews={crews} from={r.from} to={r.to} mileageRate={mileageRate} canEdit={canEdit} />
