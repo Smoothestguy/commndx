@@ -1,3 +1,4 @@
+import { useProjectAssetBilling } from "@/integrations/supabase/hooks/useAssetAssignments";
 import { TimesheetView } from "./TimesheetView";
 import { addDays as addDaysStr, chicagoParts, classifyShift, currentWeekStart } from "@/lib/shifts";
 import { sourceFromNotes, type TimesheetEntry } from "@/integrations/supabase/hooks/useTimekeeping";
@@ -763,6 +764,7 @@ function SummaryStrip({ locations, crews, from, to, mileageRate }: {
   const { data: miles = [] } = useCrewMileage(crews.map((c) => c.id), from, to);
   const { data: rl } = useRoleLabels(locIds, crews);
   const { data: receiptsToday = 0 } = useTodayReceiptsTotal(locIds);
+  const equipment = useProjectAssetBilling(locations[0]?.project_id);
 
   const s = useMemo(() => {
     const personDays = new Set<string>();
@@ -797,7 +799,9 @@ function SummaryStrip({ locations, crews, from, to, mileageRate }: {
         <Item label="Miles" value={s.totalMiles.toLocaleString()} />
         <Item label="Receipts today" value={`$${receiptsToday.toLocaleString(undefined, { maximumFractionDigits: 2 })}`} />
         <Item label="Est. billable" value={`$${s.billable.toLocaleString(undefined, { maximumFractionDigits: 0 })}`} />
+        {equipment.billable.length > 0 && <Item label="Equipment" value={`$${equipment.equipmentTotal.toLocaleString(undefined, { maximumFractionDigits: 0 })}${equipment.missingRate ? "*" : ""}`} />}
       </div>
+      {equipment.missingRate > 0 && <p className="text-[11px] text-warning">* {equipment.missingRate} billable asset{equipment.missingRate === 1 ? "" : "s"} with no day rate.</p>}
       {s.missingRate > 0 && (
         <p className="text-[11px] text-warning">{s.missingRate} row{s.missingRate === 1 ? "" : "s"} missing a bill rate — hours counted but not billed.</p>
       )}

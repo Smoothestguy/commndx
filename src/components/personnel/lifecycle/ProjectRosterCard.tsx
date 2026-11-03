@@ -1,3 +1,4 @@
+import { useProjectAssetBilling } from "@/integrations/supabase/hooks/useAssetAssignments";
 import { useMemo, useState } from "react";
 import { format } from "date-fns";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -22,6 +23,7 @@ export function ProjectRosterCard({ projectId }: { projectId: string }) {
   const standbyRate = (project as any)?.standby_rate != null ? Number((project as any).standby_rate) : null;
   const { rows, isLoading } = useProjectRoster(projectId, showCosts);
   const { data: expenses = [] } = useProjectPersonnelExpenses(projectId);
+  const equipment = useProjectAssetBilling(projectId);
   const [sel, setSel] = useState<string[]>([]);
   const [activateOpen, setActivateOpen] = useState(false);
   const [expFor, setExpFor] = useState<string | null>(null);
@@ -67,11 +69,12 @@ export function ProjectRosterCard({ projectId }: { projectId: string }) {
       <SendSiteTextDialog open={!!textFor} onOpenChange={(o) => !o && setTextFor(null)} personnelIds={textFor ? [textFor] : []} projectId={projectId} />
       <CardHeader className="pb-2 space-y-2">
         <CardTitle className="text-base">Roster</CardTitle>
-        <div className="grid grid-cols-2 sm:grid-cols-5 gap-2 text-xs">
+        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-2 text-xs">
           <Stat label="Activated hours" value={`${totals.hours.toFixed(1)}h`} />
           {showCosts && <Stat label="Labor cost" value={money(totals.labor)} hint={totals.laborMissing ? `${totals.laborMissing} missing rate` : undefined} />}
           <Stat label="Standby accrued" value={standbyRate != null ? money(totals.standbyAccrued) : "—"} hint={standbyRate == null ? "set standby rate" : `${totals.standbyDays} person-days`} />
           <Stat label="Expenses" value={money(totals.exp)} />
+          {showCosts && <Stat label="Equipment" value={money(equipment.equipmentTotal)} hint={equipment.missingRate ? `${equipment.missingRate} no rate` : `${equipment.billable.length} billable · not in cost total`} />}
           {showCosts && <Stat label="Grand total" value={money(totals.grand)} strong />}
         </div>
       </CardHeader>
