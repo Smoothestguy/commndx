@@ -28,7 +28,7 @@ import {
   LogOut,
   Monitor
 } from "lucide-react";
-import { useTheme } from "next-themes";
+import { useThemePreference } from "@/components/ThemeSync";
 import { Switch } from "@/components/ui/switch";
 import { useUserRole } from "@/hooks/useUserRole";
 import { usePermissionCheck } from "@/hooks/usePermissionCheck";
@@ -56,7 +56,7 @@ import { FileText } from "lucide-react";
 export default function Settings() {
   const { user, signOut } = useAuth();
   const { toast } = useToast();
-  const { theme, setTheme } = useTheme();
+  const { theme, setPreference } = useThemePreference();
   const { role, loading: roleLoading } = useUserRole();
   const { canView: hasUserMgmtPermission } =
     usePermissionCheck("user_management");
@@ -387,7 +387,7 @@ export default function Settings() {
                     <Switch
                       checked={theme === "dark"}
                       onCheckedChange={(checked) =>
-                        setTheme(checked ? "dark" : "light")
+                        setPreference(checked ? "dark" : "light")
                       }
                     />
                   </div>
