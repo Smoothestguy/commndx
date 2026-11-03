@@ -25,7 +25,7 @@ const hoursBetween = (a: string, b: string | null) =>
   b ? Math.round(((new Date(b).getTime() - new Date(a).getTime()) / 3_600_000) * 10) / 10 : null;
 
 /** Load a public signature image into a data URL for jsPDF. Returns null on failure. */
-async function loadImage(src: string): Promise<{ dataUrl: string; w: number; h: number } | null> {
+export async function loadImage(src: string): Promise<{ dataUrl: string; w: number; h: number } | null> {
   return new Promise((resolve) => {
     const img = new Image();
     img.crossOrigin = "anonymous";
