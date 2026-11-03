@@ -256,7 +256,7 @@ export function LocationsGrid({ projectId, projectName, locations, staffing, las
                     </div>
                     <div className="flex items-center gap-2 min-w-0">
                       <span className="flex-1 min-w-0 flex items-center gap-1 text-muted-foreground tabular-nums">
-                        {(canWrite || a.role_label) && <span className="min-w-0 max-w-[55%] flex">{roleEdit(a, l.id, canWrite ? "-ml-1" : undefined)}</span>}
+                        {(canWrite || a.role_label) && <span className="min-w-0 max-w-[60%] shrink-0 flex">{roleEdit(a, l.id, canWrite ? "-ml-1" : undefined)}</span>}
                         {line2 && <span className="truncate">{(canWrite || a.role_label) ? "· " : ""}{line2}</span>}
                         {!line2 && !canWrite && !a.role_label && "\u00a0"}
                       </span>
