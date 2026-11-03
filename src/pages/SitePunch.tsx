@@ -9,7 +9,7 @@ import { AlertCircle, CheckCircle2, Loader2, MapPin } from "lucide-react";
 type Info = { valid: boolean; reason?: string; first_name?: string; location_name?: string; address?: string | null; report_at?: string | null; on_site_since?: string | null };
 type Done = { action: "in" | "out"; at: string } | null;
 
-const OFFICE_PHONE = "(000) 000-0000"; // TODO: replace with real office number
+const OFFICE_PHONE = "(281) 748-3832";
 
 function getPos(): Promise<{ lat: number; lng: number } | null> {
   return new Promise((resolve) => {
