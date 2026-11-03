@@ -24,7 +24,7 @@ export const exportToCSV = (data: any[], filename: string) => {
     const date = new Date(log.created_at);
     return [
       date.toLocaleDateString(),
-      date.toLocaleTimeString(),
+      date.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", second: "2-digit", hourCycle: "h23" }),
       log.action,
       log.target_email,
       log.target_role,
@@ -54,7 +54,7 @@ export const exportToJSON = (data: any[], filename: string) => {
   // Format data for export
   const exportData = data.map(log => ({
     date: new Date(log.created_at).toLocaleDateString(),
-    time: new Date(log.created_at).toLocaleTimeString(),
+    time: new Date(log.created_at).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", second: "2-digit", hourCycle: "h23" }),
     action: log.action,
     targetEmail: log.target_email,
     targetRole: log.target_role,

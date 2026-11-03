@@ -67,15 +67,15 @@ export function ClockInModal({
     return isValidCoordinates(projectGeofence.site_lat, projectGeofence.site_lng);
   }, [projectGeofence]);
 
-  // Format scheduled time for display (convert "HH:MM:SS" to "h:mm AM/PM")
+  // Format scheduled time for display (convert "HH:MM:SS" to 24-hour "HH:mm")
   const formatScheduledTime = (timeStr: string): string => {
     const [hours, minutes] = timeStr.split(":").map(Number);
     const date = new Date();
     date.setHours(hours, minutes, 0, 0);
     return date.toLocaleTimeString("en-US", {
-      hour: "numeric",
+      hour: "2-digit",
       minute: "2-digit",
-      hour12: true,
+      hour12: false,
     });
   };
 
