@@ -36,6 +36,7 @@ import {
 } from "@/integrations/supabase/hooks/useDeployment";
 import {
   Crew, fullName, useAddCrewMember, useCreateCrew, useCrews, usePersonnelDirectory, useRemoveCrewMember, useUpdateCrew,
+  useUpdateCrewMemberRole,
 } from "@/integrations/supabase/hooks/useCrews";
 import {
   useDeleteVisit, useTodayReceiptsTotal, useUpdateVisit, useVisitsWindow, VisitRow, useOnSiteNow, useTrail, TrailRow, useVisitNotes,
