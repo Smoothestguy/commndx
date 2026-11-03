@@ -21,7 +21,10 @@ export interface VisitRow {
 }
 
 export interface VisitPerson {
+  id: string;
   visit_id: string;
+  checked_in_at: string | null;
+  checked_out_at: string | null;
   personnel_id: string;
   signature_url: string | null;
   signed_at: string | null;
@@ -96,7 +99,7 @@ async function fetchVisitBundle(locationIds: string[], fromIso: string, toIso: s
   if (!vids.length) return { visits: visits ?? [], people: [], purchases: [], photos: [] };
 
   const [ppl, pur, pho] = await Promise.all([
-    db.from("visit_personnel").select("visit_id, personnel_id, signature_url, signed_at").in("visit_id", vids),
+    db.from("visit_personnel").select("id, visit_id, personnel_id, signature_url, signed_at, checked_in_at, checked_out_at").in("visit_id", vids),
     db.from("visit_purchases").select("id, visit_id, amount, vendor, note, receipt_url, created_at").in("visit_id", vids),
     db.from("visit_photos").select("id, visit_id, photo_url, caption, taken_at").in("visit_id", vids),
   ]);
@@ -157,6 +160,8 @@ function useInv(projectId: string | undefined) {
     qc.invalidateQueries({ queryKey: ["today-visits", projectId] });
     qc.invalidateQueries({ queryKey: ["visits-window"] });
     qc.invalidateQueries({ queryKey: ["today-receipts"] });
+    qc.invalidateQueries({ queryKey: ["on-site-now", projectId] });
+    qc.invalidateQueries({ queryKey: ["personnel-trail", projectId] });
     if (locationId) {
       qc.invalidateQueries({ queryKey: ["location-attendance", locationId] });
       qc.invalidateQueries({ queryKey: ["location-attendance-batch"] });
@@ -234,30 +239,22 @@ export function useSaveSignature(projectId: string | undefined) {
 }
 
 /**
- * Recompute one day's attendance at a location from actual visit times:
- * hours per person = sum of (check_out - check_in) across today's visits there, rounded to 0.1.
+ * Recompute one day's attendance at a location from personnel_location_trail —
+ * each person's real individual in/out times (their own or inherited from the visit), rounded to 0.1h.
  */
 async function recomputeAttendanceFromVisits(locationId: string, day: string) {
-  const { data: visits, error } = await db.from("location_visits")
-    .select("id, crew_id, check_in_at, check_out_at")
-    .eq("location_id", locationId).gte("check_in_at", dayStart(day)).lte("check_in_at", dayEnd(day));
+  const { data, error } = await db.from("personnel_location_trail")
+    .select("personnel_id, crew_id, in_at, out_at, hours")
+    .eq("location_id", locationId).gte("in_at", dayStart(day)).lte("in_at", dayEnd(day));
   if (error) throw error;
-  const vids = (visits ?? []).map((v: any) => v.id);
-  if (!vids.length) return;
-  const { data: people, error: pErr } = await db.from("visit_personnel")
-    .select("visit_id, personnel_id").in("visit_id", vids);
-  if (pErr) throw pErr;
-
+  if (!data?.length) return;
   const hoursByPerson: Record<string, number> = {};
   const crewByPerson: Record<string, string | null> = {};
-  const vmap = new Map<string, any>((visits ?? []).map((v: any) => [v.id, v] as [string, any]));
-  for (const p of people ?? []) {
-    const v = vmap.get(p.visit_id);
-    if (!v) continue;
-    const end = v.check_out_at ? new Date(v.check_out_at).getTime() : Date.now();
-    const h = Math.max(0, (end - new Date(v.check_in_at).getTime()) / 3_600_000);
-    hoursByPerson[p.personnel_id] = (hoursByPerson[p.personnel_id] ?? 0) + h;
-    crewByPerson[p.personnel_id] = v.crew_id ?? null;
+  for (const r of data as TrailRow[]) {
+    const h = r.hours != null ? Number(r.hours)
+      : Math.max(0, (Date.now() - new Date(r.in_at).getTime()) / 3_600_000);
+    hoursByPerson[r.personnel_id] = (hoursByPerson[r.personnel_id] ?? 0) + h;
+    crewByPerson[r.personnel_id] = r.crew_id ?? null;
   }
   const { data: { user } } = await supabase.auth.getUser();
   const rows = Object.entries(hoursByPerson).map(([pid, h]) => ({
@@ -269,10 +266,8 @@ async function recomputeAttendanceFromVisits(locationId: string, day: string) {
     crew_id: crewByPerson[pid],
     marked_by: user?.id ?? null,
   }));
-  if (rows.length) {
-    const { error: uErr } = await db.from("location_attendance").upsert(rows, { onConflict: "location_id,personnel_id,att_date" });
-    if (uErr) throw uErr;
-  }
+  const { error: uErr } = await db.from("location_attendance").upsert(rows, { onConflict: "location_id,personnel_id,att_date" });
+  if (uErr) throw uErr;
 }
 
 export function useCheckOut(projectId: string | undefined) {
@@ -358,5 +353,102 @@ export function useDeleteVisit(projectId: string | undefined) {
     },
     onSuccess: (lid) => { inv(lid); toast.success("Visit deleted"); },
     onError: (e: any) => toast.error(e?.message ?? "Failed to delete visit"),
+  });
+}
+
+// ---------- Per-person tracking (personnel_location_trail) ----------
+
+export interface TrailRow {
+  visit_personnel_id: string;
+  personnel_id: string;
+  first_name: string | null;
+  last_name: string | null;
+  visit_id: string;
+  location_id: string;
+  location_name: string | null;
+  project_id: string;
+  crew_id: string | null;
+  in_at: string;
+  out_at: string | null;
+  hours: number | null;
+  signature_url: string | null;
+  checked_in_by: string | null;
+}
+
+const TRAIL_COLS = "visit_personnel_id, personnel_id, first_name, last_name, visit_id, location_id, location_name, project_id, crew_id, in_at, out_at, hours, signature_url, checked_in_by";
+
+/** Who is on site right now across the project (out_at IS NULL). */
+export function useOnSiteNow(projectId: string | undefined) {
+  return useQuery({
+    queryKey: ["on-site-now", projectId],
+    enabled: !!projectId,
+    refetchInterval: 60_000,
+    queryFn: async () => {
+      const { data, error } = await db.from("personnel_location_trail").select(TRAIL_COLS)
+        .eq("project_id", projectId).is("out_at", null).order("in_at", { ascending: true });
+      if (error) throw error;
+      return (data ?? []) as TrailRow[];
+    },
+  });
+}
+
+/** Movement trail for a project in a date window, newest first. */
+export function useTrail(projectId: string | undefined, f: { personnelId?: string | null; locationId?: string | null; from: string; to: string }) {
+  return useQuery({
+    queryKey: ["personnel-trail", projectId, f.personnelId ?? null, f.locationId ?? null, f.from, f.to],
+    enabled: !!projectId,
+    queryFn: async () => {
+      let q = db.from("personnel_location_trail").select(TRAIL_COLS)
+        .eq("project_id", projectId).gte("in_at", dayStart(f.from)).lte("in_at", dayEnd(f.to));
+      if (f.personnelId) q = q.eq("personnel_id", f.personnelId);
+      if (f.locationId) q = q.eq("location_id", f.locationId);
+      const { data, error } = await q.order("in_at", { ascending: false }).limit(2000);
+      if (error) throw error;
+      return (data ?? []) as TrailRow[];
+    },
+  });
+}
+
+/** One person leaves early: stamp their own checked_out_at. */
+export function useCheckOutPerson(projectId: string | undefined) {
+  const inv = useInv(projectId);
+  return useMutation({
+    mutationFn: async ({ visit, personnel_id }: { visit: VisitRow; personnel_id: string }) => {
+      const { error } = await db.from("visit_personnel")
+        .update({ checked_out_at: new Date().toISOString() })
+        .eq("visit_id", visit.id).eq("personnel_id", personnel_id);
+      if (error) throw error;
+      await recomputeAttendanceFromVisits(visit.location_id, format(new Date(visit.check_in_at), "yyyy-MM-dd"));
+      return visit.location_id;
+    },
+    onSuccess: (lid) => { inv(lid); toast.success("Checked out"); },
+    onError: (e: any) => toast.error(e?.message ?? "Check-out failed"),
+  });
+}
+
+/** Add someone mid-visit with their own check-in time; signature copied forward if signed today. */
+export function useAddPersonToVisit(projectId: string | undefined, locationIds: string[]) {
+  const inv = useInv(projectId);
+  return useMutation({
+    mutationFn: async ({ visit, personnel_id }: { visit: VisitRow; personnel_id: string }) => {
+      const { data: { user } } = await supabase.auth.getUser();
+      const signed = await fetchTodaySignatures(locationIds, [personnel_id]);
+      const now = new Date().toISOString();
+      const { error } = await db.from("visit_personnel").insert({
+        visit_id: visit.id,
+        personnel_id,
+        checked_in_at: now,
+        checked_in_by: user?.id ?? null,
+        signature_url: signed[personnel_id]?.signature_url ?? null,
+        signed_at: signed[personnel_id]?.signed_at ?? null,
+      });
+      if (error) {
+        if (error.code === "23505") throw new Error("Already on this visit");
+        throw error;
+      }
+      return { needsSignature: !signed[personnel_id], locationId: visit.location_id };
+    },
+    onSuccess: (r) => inv(r.locationId),
+    onError: (e: any) => toast.error(e?.message ?? "Failed to add person"),
   });
 }
