@@ -1,3 +1,4 @@
+import { RoleSelect } from "./RoleSelect";
 import { useProjectAssetBilling } from "@/integrations/supabase/hooks/useAssetAssignments";
 import { TimesheetView } from "./TimesheetView";
 import { addDays as addDaysStr, chicagoParts, classifyShift, currentWeekStart } from "@/lib/shifts";
@@ -35,6 +36,7 @@ import {
 } from "@/integrations/supabase/hooks/useDeployment";
 import {
   Crew, fullName, useAddCrewMember, useCreateCrew, useCrews, usePersonnelDirectory, useRemoveCrewMember, useUpdateCrew,
+  useUpdateCrewMemberRole,
 } from "@/integrations/supabase/hooks/useCrews";
 import {
   useDeleteVisit, useTodayReceiptsTotal, useUpdateVisit, useVisitsWindow, VisitRow, useOnSiteNow, useTrail, TrailRow, useVisitNotes,
@@ -451,6 +453,9 @@ function PersonPicker({ value, onChange, excludeIds, placeholder }: {
 function CrewDialog({ open, onOpenChange, projectId, crew }: {
   open: boolean; onOpenChange: (o: boolean) => void; projectId: string; crew: Crew | null;
 }) {
+  const { isAdmin: crewAdmin, isManager: crewManager } = useUserRole();
+  const crewCanEdit = crewAdmin || crewManager;
+  const updateMemberRole = useUpdateCrewMemberRole(projectId);
   const create = useCreateCrew(projectId);
   const update = useUpdateCrew(projectId);
   const addMember = useAddCrewMember(projectId);
@@ -509,7 +514,9 @@ function CrewDialog({ open, onOpenChange, projectId, crew }: {
                 {crew.members.map((m) => (
                   <div key={m.id} className="flex items-center gap-2 px-2 py-1.5">
                     <span className="text-sm flex-1 truncate">{fullName(m.personnel)}</span>
-                    {m.role_label && <Badge variant="outline" className="text-[10px]">{m.role_label}</Badge>}
+                    {crewCanEdit
+                      ? <RoleSelect value={m.role_label} canEdit onChange={(role_label) => updateMemberRole.mutate({ id: m.id, role_label })} className="max-w-[9rem] border-border text-[11px]" />
+                      : m.role_label && <Badge variant="outline" className="text-[10px]">{m.role_label}</Badge>}
                     <span className="text-[10px] text-muted-foreground">joined {formatLocalDate(m.joined_on, "M/d")}</span>
                     <Button
                       size="icon" variant="ghost" className="h-7 w-7" aria-label={`Remove ${fullName(m.personnel)}`}

@@ -1,3 +1,5 @@
+import { RoleSelect } from "./RoleSelect";
+import { useUpdateAssignmentRole } from "@/integrations/supabase/hooks/useLocationStaffing";
 import { PersonnelStatusButton } from "@/components/personnel/lifecycle/PersonnelStatusButton";
 import { useMemo, useState } from "react";
 import { Button } from "@/components/ui/button";
@@ -162,6 +164,8 @@ export function LocationStaffing({ locationId, summary, canWrite, projectId, loc
   const invStatus = useInvalidateStatus();
   const { data: assignments = [] } = useLocationAssignments(locationId);
   const unassign = useUnassignPersonnel();
+  const setRole = useUpdateAssignmentRole();
+  const reqRoles = Object.keys(summary?.byRole ?? {});
   const [reqOpen, setReqOpen] = useState(false);
   const [asgOpen, setAsgOpen] = useState(false);
   const [textIds, setTextIds] = useState<string[] | null>(null);
@@ -196,7 +200,9 @@ export function LocationStaffing({ locationId, summary, canWrite, projectId, loc
           {assignments.map((a) => (
             <span key={a.id} className="inline-flex max-w-full flex-wrap items-center gap-1 rounded-md border bg-muted/40 pl-2 pr-1 py-0.5 text-xs">
               <span className="font-medium">{[a.personnel?.first_name, a.personnel?.last_name].filter(Boolean).join(" ") || "Unknown"}</span>
-              {a.role_label && <span className="text-muted-foreground">· {a.role_label}</span>}
+              {canWrite
+                ? <span className="text-muted-foreground inline-flex items-center">·<RoleSelect value={a.role_label} canEdit priorityRoles={reqRoles} onChange={(role_label) => setRole.mutate({ id: a.id, location_id: locationId, role_label })} className="max-w-[9rem]" /></span>
+                : a.role_label && <span className="text-muted-foreground">· {a.role_label}</span>}
               <PersonnelStatusButton personnelId={a.personnel_id} projectId={projectId} locationId={locationId} hideProjectName className="text-[10px] px-1.5 py-0" />
               <TextedCaption at={texted[`${a.personnel_id}:${locationId}`]} />
               <button type="button" className="rounded p-1 hover:bg-muted" aria-label="Send site text"

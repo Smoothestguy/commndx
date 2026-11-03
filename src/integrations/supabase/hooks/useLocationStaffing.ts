@@ -142,6 +142,27 @@ export function useAssignPersonnel() {
   });
 }
 
+/** Change role on an existing assignment; optimistic across all cached assignment lists. */
+export function useUpdateAssignmentRole() {
+  const qc = useQueryClient();
+  const inv = useInvalidate();
+  return useMutation({
+    mutationFn: async ({ id, role_label }: { id: string; location_id: string; role_label: string | null }) => {
+      const { error } = await db.from("location_assignments").update({ role_label }).eq("id", id);
+      if (error) throw error;
+    },
+    onMutate: async ({ id, location_id, role_label }) => {
+      const keys = [asgKey(location_id), ["location-staffing-summary", "assignments"]];
+      await Promise.all(keys.map((k) => qc.cancelQueries({ queryKey: k })));
+      const snaps = keys.flatMap((k) => qc.getQueriesData<any[]>({ queryKey: k }));
+      for (const [k, d] of snaps) if (Array.isArray(d)) qc.setQueryData(k, d.map((a: any) => (a.id === id ? { ...a, role_label } : a)));
+      return { snaps };
+    },
+    onError: (e: any, _v, ctx) => { ctx?.snaps.forEach(([k, d]) => qc.setQueryData(k, d)); toast.error(e?.message ?? "Failed to update role"); },
+    onSettled: (_d, _e, v) => inv(v.location_id),
+  });
+}
+
 export function useUnassignPersonnel() {
   const inv = useInvalidate();
   return useMutation({
