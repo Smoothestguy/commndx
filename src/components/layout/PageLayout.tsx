@@ -45,7 +45,7 @@ function PageLayoutContent({
     >
       <div ref={swipeRef} className="max-w-[1600px] 3xl:max-w-[1920px] 4xl:max-w-[2400px] 5xl:max-w-[3000px] mx-auto w-full">
         <header className={cn(
-          "relative z-[2] flex flex-row items-center justify-between",
+          "relative z-[2] flex flex-col items-stretch sm:flex-row sm:items-center justify-between",
           // Use density tokens for margins
           "gap-[var(--density-spacing-xs)] mb-[var(--density-spacing-lg)]"
         )}>
@@ -65,7 +65,7 @@ function PageLayoutContent({
           </div>
           {(actions || rightActions) && (
             <div className={cn(
-              "flex items-center shrink-0",
+              "flex flex-wrap items-center shrink-0 max-w-full",
               "gap-[var(--density-spacing-xs)]"
             )}>
               {actions}
