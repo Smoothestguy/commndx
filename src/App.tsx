@@ -150,6 +150,7 @@ import StaffingApplications from "./pages/StaffingApplications";
 import JobPostingEntries from "./pages/JobPostingEntries";
 import PublicApplicationForm from "./pages/PublicApplicationForm";
 import PhotoRequest from "./pages/PhotoRequest";
+import SitePunch from "./pages/SitePunch";
 import QuickApply from "./pages/QuickApply";
 import MasterApplicants from "./pages/MasterApplicants";
 import Workforce from "./pages/Workforce";
@@ -252,6 +253,7 @@ const App = () => {
                       element={<EditApplication />}
                     />
                     <Route path="/photo/:token" element={<PhotoRequest />} />
+                    <Route path="/punch/:token" element={<SitePunch />} />
                     <Route path="/quick-apply/:token" element={<QuickApply />} />
                     {/* Onboarding Routes */}
                     <Route

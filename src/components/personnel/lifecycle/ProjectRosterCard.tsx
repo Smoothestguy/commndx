@@ -3,7 +3,8 @@ import { format } from "date-fns";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
-import { Loader2, Receipt } from "lucide-react";
+import { Loader2, MessageSquare, Receipt } from "lucide-react";
+import { SendSiteTextDialog } from "@/components/project-hub/SendSiteTextDialog";
 import { useUserRole } from "@/hooks/useUserRole";
 import { useProject } from "@/integrations/supabase/hooks/useProjects";
 import { useProjectPersonnelExpenses, useProjectRoster, RosterRow } from "@/integrations/supabase/hooks/usePersonnelStatus";
@@ -23,6 +24,7 @@ export function ProjectRosterCard({ projectId }: { projectId: string }) {
   const [sel, setSel] = useState<string[]>([]);
   const [activateOpen, setActivateOpen] = useState(false);
   const [expFor, setExpFor] = useState<string | null>(null);
+  const [textFor, setTextFor] = useState<string | null>(null);
 
   const activated = rows.filter((r) => r.status === "activated");
   const standby = rows.filter((r) => r.status === "standby");
@@ -51,12 +53,14 @@ export function ProjectRosterCard({ projectId }: { projectId: string }) {
         </div>
       </div>
       <PersonnelStatusButton personnelId={r.personnel_id} />
+      <Button size="icon" variant="ghost" className="h-9 w-9" aria-label="Send site text" onClick={() => setTextFor(r.personnel_id)}><MessageSquare className="h-4 w-4" /></Button>
       <Button size="icon" variant="ghost" className="h-9 w-9" aria-label="Add expense" onClick={() => setExpFor(r.personnel_id)}><Receipt className="h-4 w-4" /></Button>
     </div>
   );
 
   return (
     <Card>
+      <SendSiteTextDialog open={!!textFor} onOpenChange={(o) => !o && setTextFor(null)} personnelIds={textFor ? [textFor] : []} projectId={projectId} />
       <CardHeader className="pb-2 space-y-2">
         <CardTitle className="text-base">Roster</CardTitle>
         <div className="grid grid-cols-2 sm:grid-cols-5 gap-2 text-xs">
