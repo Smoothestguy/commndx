@@ -55,7 +55,7 @@ export function ProjectRosterCard({ projectId }: { projectId: string }) {
           {r.status === "activated" && <> · {r.hours.toFixed(1)}h{showCosts && <> · {r.laborCost != null ? money(r.laborCost) : "no rate"}</>}</>}
         </div>
       </div>
-      <PersonnelStatusButton personnelId={r.personnel_id} projectId={projectId} projectName={(project as any)?.name} />
+      <PersonnelStatusButton personnelId={r.personnel_id} projectId={projectId} projectName={(project as any)?.name} hideProjectName />
       <Button size="icon" variant="ghost" className="h-9 w-9" aria-label="Send site text" onClick={() => setTextFor(r.personnel_id)}><MessageSquare className="h-4 w-4" /></Button>
       {showCosts && <Button size="icon" variant="ghost" className="h-9 w-9" aria-label="Log time" onClick={() => setLogFor(r)}><Clock className="h-4 w-4" /></Button>}
       <Button size="icon" variant="ghost" className="h-9 w-9" aria-label="Add expense" onClick={() => setExpFor(r.personnel_id)}><Receipt className="h-4 w-4" /></Button>
