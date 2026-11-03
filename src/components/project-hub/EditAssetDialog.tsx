@@ -1,0 +1,74 @@
+import { useState } from "react";
+import { Button } from "@/components/ui/button";
+import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { ASSET_STATUSES, ASSET_TYPES, AssetStatus, useUpdateAsset } from "@/integrations/supabase/hooks/useAssets";
+
+export interface EditableAsset {
+  id: string; label: string; type: string; serial_number: string | null; description: string | null;
+  status: string; default_day_rate?: number | null;
+}
+
+/** Edits the registry asset (source of truth for default day rate). Callers gate to manager+. */
+export function EditAssetDialog({ asset, open, onOpenChange }: { asset: EditableAsset | null; open: boolean; onOpenChange: (o: boolean) => void }) {
+  const update = useUpdateAsset();
+  const [f, setF] = useState({ label: "", type: "", serial: "", description: "", status: "available", rate: "" });
+  const [lastOpen, setLastOpen] = useState(false);
+  if (open !== lastOpen) {
+    setLastOpen(open);
+    if (open && asset) setF({
+      label: asset.label, type: asset.type, serial: asset.serial_number ?? "", description: asset.description ?? "",
+      status: asset.status, rate: asset.default_day_rate != null ? String(asset.default_day_rate) : "",
+    });
+  }
+  const rateNum = f.rate.trim() === "" ? null : Number(f.rate);
+  const rateBad = rateNum != null && (!Number.isFinite(rateNum) || rateNum < 0);
+  const types = ASSET_TYPES.some((t) => t.value === f.type) || !f.type ? ASSET_TYPES : [...ASSET_TYPES, { value: f.type as any, label: f.type }];
+
+  const save = () => {
+    if (!asset) return;
+    update.mutate({
+      id: asset.id, label: f.label.trim(), type: f.type, serial_number: f.serial.trim() || null,
+      description: f.description.trim() || null, status: f.status as AssetStatus, default_day_rate: rateNum,
+    }, { onSuccess: () => onOpenChange(false) });
+  };
+
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent className="max-w-md">
+        <DialogHeader><DialogTitle>Edit asset</DialogTitle></DialogHeader>
+        <div className="space-y-3">
+          <div className="space-y-1.5"><Label>Label / Name</Label><Input className="h-11" value={f.label} onChange={(e) => setF({ ...f, label: e.target.value })} /></div>
+          <div className="grid grid-cols-2 gap-3">
+            <div className="space-y-1.5"><Label>Type</Label>
+              <Select value={f.type} onValueChange={(v) => setF({ ...f, type: v })}>
+                <SelectTrigger className="h-11"><SelectValue /></SelectTrigger>
+                <SelectContent>{types.map((t) => <SelectItem key={t.value} value={t.value}>{t.label}</SelectItem>)}</SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-1.5"><Label>Status</Label>
+              <Select value={f.status} onValueChange={(v) => setF({ ...f, status: v })}>
+                <SelectTrigger className="h-11"><SelectValue /></SelectTrigger>
+                <SelectContent>{ASSET_STATUSES.map((s) => <SelectItem key={s.value} value={s.value}>{s.label}</SelectItem>)}</SelectContent>
+              </Select>
+            </div>
+          </div>
+          <div className="space-y-1.5"><Label>Serial number</Label><Input className="h-11" value={f.serial} onChange={(e) => setF({ ...f, serial: e.target.value })} /></div>
+          <div className="space-y-1.5"><Label>Day rate ($/day)</Label>
+            <Input type="number" inputMode="decimal" min={0} step="0.01" className="h-11" value={f.rate} placeholder="No default rate"
+              onChange={(e) => setF({ ...f, rate: e.target.value })} />
+            <p className="text-xs text-muted-foreground">{rateBad ? <span className="text-destructive">Enter a valid rate</span> : "Default for billable assignments without their own rate."}</p>
+          </div>
+          <div className="space-y-1.5"><Label>Description</Label><Textarea rows={2} value={f.description} onChange={(e) => setF({ ...f, description: e.target.value })} /></div>
+        </div>
+        <DialogFooter>
+          <Button variant="outline" onClick={() => onOpenChange(false)}>Cancel</Button>
+          <Button disabled={!f.label.trim() || !f.type || rateBad || update.isPending} onClick={save}>Save</Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  );
+}
