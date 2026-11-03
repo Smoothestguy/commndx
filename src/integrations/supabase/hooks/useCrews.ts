@@ -116,6 +116,26 @@ export function useAddCrewMember(projectId: string) {
   });
 }
 
+export function useUpdateCrewMemberRole(projectId: string) {
+  const qc = useQueryClient();
+  const inv = useInv(projectId);
+  return useMutation({
+    mutationFn: async ({ id, role_label }: { id: string; role_label: string | null }) => {
+      const { error } = await db.from("crew_members").update({ role_label }).eq("id", id);
+      if (error) throw error;
+    },
+    onMutate: async ({ id, role_label }) => {
+      const key = ["crews", projectId];
+      await qc.cancelQueries({ queryKey: key });
+      const prev = qc.getQueryData<any[]>(key);
+      if (Array.isArray(prev)) qc.setQueryData(key, prev.map((c: any) => ({ ...c, members: (c.members ?? []).map((m: any) => (m.id === id ? { ...m, role_label } : m)) })));
+      return { prev };
+    },
+    onError: (e: any, _v, ctx) => { if (ctx?.prev) qc.setQueryData(["crews", projectId], ctx.prev); toast.error(e?.message ?? "Failed to update role"); },
+    onSettled: () => inv(),
+  });
+}
+
 /** Soft-remove: sets left_on = today, preserving membership history. */
 export function useRemoveCrewMember(projectId: string) {
   const inv = useInv(projectId);
