@@ -6,7 +6,8 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Camera, Loader2 } from "lucide-react";
-import { formatLocalDate } from "@/lib/dateUtils";
+import { format } from "date-fns";
+const today = () => format(new Date(), "yyyy-MM-dd");
 import { EXPENSE_CATEGORIES, useAddPersonnelExpense, useCurrentStatus, useStatusProjects } from "@/integrations/supabase/hooks/usePersonnelStatus";
 
 export function AddExpenseDialog({ open, onOpenChange, personnelId, people, projectId, lockProject }: {
@@ -23,14 +24,14 @@ export function AddExpenseDialog({ open, onOpenChange, personnelId, people, proj
   const [amount, setAmount] = useState("");
   const [category, setCategory] = useState("per_diem");
   const [note, setNote] = useState("");
-  const [date, setDate] = useState(formatLocalDate(new Date()));
+  const [date, setDate] = useState(today());
   const [file, setFile] = useState<File | null>(null);
   const [lastOpen, setLastOpen] = useState(false);
   if (open !== lastOpen) {
     setLastOpen(open);
     if (open) {
       setPid(personnelId ?? (people?.length === 1 ? people[0].id : ""));
-      setProj(projectId ?? ""); setAmount(""); setCategory("per_diem"); setNote(""); setDate(formatLocalDate(new Date())); setFile(null);
+      setProj(projectId ?? ""); setAmount(""); setCategory("per_diem"); setNote(""); setDate(today()); setFile(null);
     }
   }
   const effectiveProj = proj || (!lockProject ? row?.project_id ?? "" : "");
