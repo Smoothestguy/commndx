@@ -1,4 +1,5 @@
 import { ProjectRosterCard } from "@/components/personnel/lifecycle/ProjectRosterCard";
+import { LogTimeDialog } from "@/components/personnel/lifecycle/LogTimeDialog";
 import { useMemo, useRef, useState } from "react";
 import { addDays, format } from "date-fns";
 import { Link } from "react-router-dom";
@@ -15,7 +16,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
-import { Check, ChevronDown, ChevronLeft, ChevronRight, FileText, Loader2, Pencil, Phone, Plus, Settings2, Smartphone, Trash2, Truck, UserMinus, UserPlus, Users } from "lucide-react";
+import { Check, Clock, ChevronDown, ChevronLeft, ChevronRight, FileText, Loader2, Pencil, Phone, Plus, Settings2, Smartphone, Trash2, Truck, UserMinus, UserPlus, Users } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { formatLocalDate } from "@/lib/dateUtils";
 import { ROLE_TAGS } from "@/lib/roleTags";
@@ -31,7 +32,7 @@ import {
   Crew, fullName, useAddCrewMember, useCreateCrew, useCrews, usePersonnelDirectory, useRemoveCrewMember, useUpdateCrew,
 } from "@/integrations/supabase/hooks/useCrews";
 import {
-  useDeleteVisit, useTodayReceiptsTotal, useUpdateVisit, useVisitsWindow, VisitRow, useOnSiteNow, useTrail, TrailRow,
+  useDeleteVisit, useTodayReceiptsTotal, useUpdateVisit, useVisitsWindow, VisitRow, useOnSiteNow, useTrail, TrailRow, useVisitNotes,
 } from "@/integrations/supabase/hooks/useFieldMode";
 import { generateSignInSheetPDF } from "@/utils/signInSheetPdf";
 import { generateTimeLogPDF } from "@/utils/timeLogPdf";
@@ -1097,6 +1098,9 @@ function TrailView({ projectId, projectName, locations, from, to, personId, setP
   const [locId, setLocId] = useState<string>("");
   const [pickOpen, setPickOpen] = useState(false);
   const [busy, setBusy] = useState(false);
+  const [logOpen, setLogOpen] = useState(false);
+  const { isAdmin: tAdmin, isManager: tManager } = useUserRole();
+  const canLog = tAdmin || tManager;
   const { data: rows = [], isLoading } = useTrail(projectId, { personnelId: personId || null, locationId: locId || null, from, to });
   // Person options come from the trail itself (unfiltered by person) so the list only shows people who have entries.
   const { data: allRows = [] } = useTrail(projectId, { locationId: locId || null, from, to });
@@ -1106,6 +1110,8 @@ function TrailView({ projectId, projectName, locations, from, to, personId, setP
     return [...m.entries()].sort((a, b) => a[1].localeCompare(b[1]));
   }, [allRows]);
   const personName = personId ? (peopleOpts.find(([id]) => id === personId)?.[1] ?? (rows[0] ? trailName(rows[0]) : "Person")) : "";
+  const { data: visitNotes = {} } = useVisitNotes(rows.map((r) => r.visit_id));
+  const isManual = (r: TrailRow) => /^manual entry/i.test(visitNotes[r.visit_id] ?? "");
   const total = rows.reduce((s, r) => s + (r.hours != null ? Number(r.hours) : 0), 0);
   const fmt = (iso: string | null) => (iso ? format(new Date(iso), "M/d h:mm a") : "on site");
 
@@ -1140,6 +1146,7 @@ function TrailView({ projectId, projectName, locations, from, to, personId, setP
         </Select>
         {personId && <span className="text-sm font-medium">Total {total.toFixed(2)}h</span>}
         <div className="ml-auto flex gap-1">
+          {canLog && <Button size="sm" variant="outline" className="h-8 gap-1" onClick={() => setLogOpen(true)}><Clock className="h-3.5 w-3.5" />Log time</Button>}
           <Button size="sm" variant="outline" className="h-8" disabled={!rows.length} onClick={exportCsv}>CSV</Button>
           {personId && (
             <Button size="sm" variant="outline" className="h-8 gap-1" disabled={busy || !rows.length} onClick={async () => {
@@ -1163,7 +1170,7 @@ function TrailView({ projectId, projectName, locations, from, to, personId, setP
               {rows.map((r) => (
                 <tr key={r.visit_personnel_id}>
                   <td className="py-1.5 pr-2"><button type="button" className="font-medium hover:underline text-left" onClick={() => setPersonId(r.personnel_id)}>{trailName(r)}</button></td>
-                  <td className="pr-2">{r.location_name ?? "—"}</td>
+                  <td className="pr-2">{r.location_name ?? "—"}{isManual(r) && <Pencil className="inline h-3 w-3 ml-1 text-muted-foreground" aria-label="Manual entry" />}</td>
                   <td className="pr-2 whitespace-nowrap">{fmt(r.in_at)}</td>
                   <td className="pr-2 whitespace-nowrap">{fmt(r.out_at)}</td>
                   <td className="text-right">{r.hours != null ? Number(r.hours).toFixed(2) : "—"}</td>
@@ -1173,6 +1180,8 @@ function TrailView({ projectId, projectName, locations, from, to, personId, setP
           </table>
         </div>
       )}
+      {canLog && <LogTimeDialog open={logOpen} onOpenChange={setLogOpen} projectId={projectId}
+        personnelId={personId || null} personName={personName || undefined} />}
     </div>
   );
 }
