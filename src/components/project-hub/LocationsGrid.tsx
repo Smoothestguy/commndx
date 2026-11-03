@@ -198,7 +198,91 @@ export function LocationsGrid({ projectId, projectName, locations, staffing, las
         </DropdownMenu>
       </div>
 
-      <div className="border rounded-md overflow-auto max-h-[75vh]">
+      {/* Phones: stacked list, no horizontal scroll */}
+      <div className="sm:hidden border rounded-md divide-y">
+        {locations.map((l) => {
+          const s = staffing?.[l.id];
+          const allRows = byLoc[l.id] ?? [];
+          const locHrs = allRows.reduce((t, a) => t + (hours[`${a.personnel_id}:${l.id}`] ?? 0), 0);
+          const rows = sortRows(allRows.filter((a) => !search || nameOf(a).toLowerCase().includes(search) || (a.role_label ?? "").toLowerCase().includes(search)), l.id);
+          if (search && rows.length === 0) return null;
+          const isOpen = search ? true : !collapsed.has(l.id);
+          const open = Object.entries(s?.byRole ?? {}).filter(([, v]) => v.needed > v.assigned);
+          const locAssets = assetsAtLocation(assetRows, l.id);
+          const full = (s?.needed ?? 0) > 0 && (s?.assigned ?? 0) >= (s?.needed ?? 0);
+          const meta = [
+            l.project_number && `#${l.project_number}`,
+            locAssets.length > 0 && `${locAssets.length} asset${locAssets.length === 1 ? "" : "s"}`,
+            l.housing_provided_by === "customer" && "Housing: Cust",
+            l.housing_provided_by === "frg" && "Housing: FRG",
+            l.mobe_date && !l.demobe_date && `Mobe ${formatLocalDate(l.mobe_date, "M/d")}`,
+            l.demobe_date && `${l.mobe_date ? `${formatLocalDate(l.mobe_date, "M/d")}–` : "Demobe "}${formatLocalDate(l.demobe_date, "M/d")}`,
+            deploymentMode && lastServiced?.[l.id] && `Svc ${formatLocalDate(lastServiced[l.id], "M/d")}`,
+            locHrs > 0 && `${locHrs.toFixed(1)} h this wk`,
+          ].filter(Boolean) as string[];
+          return (
+            <div key={l.id} className="text-xs">
+              <div className="bg-muted/40 px-2 py-1.5">
+                <div className="flex items-center gap-2 min-w-0">
+                  <button type="button" onClick={() => toggle(l.id)} className="flex items-center gap-1 font-semibold min-w-0 flex-1 text-left" aria-expanded={isOpen}>
+                    {isOpen ? <ChevronDown className="h-3.5 w-3.5 shrink-0" /> : <ChevronRight className="h-3.5 w-3.5 shrink-0" />}
+                    <span className="truncate">{l.name}</span>
+                  </button>
+                  <span className={cn("font-medium shrink-0 tabular-nums", full ? "text-success" : "text-warning")}>{s?.assigned ?? 0}/{s?.needed ?? 0}</span>
+                  <span className="flex items-center shrink-0">
+                    {canWrite && <IconBtn label="Assign people" onClick={() => setAssignFor({ locationId: l.id })}><UserPlus className="h-4 w-4" /></IconBtn>}
+                    {canWrite && <IconBtn label="Assign asset" onClick={() => setAssetFor(l.id)}><Package className="h-4 w-4" /></IconBtn>}
+                    <IconBtn label="Open location card" onClick={() => onOpenCard(l.id)}><ExternalLink className="h-4 w-4" /></IconBtn>
+                  </span>
+                </div>
+                {isOpen && meta.length > 0 && <div className="pl-5 mt-0.5 text-[11px] text-muted-foreground">{meta.join(" · ")}</div>}
+              </div>
+              {isOpen && rows.map((a) => {
+                const k = `${a.personnel_id}:${l.id}`;
+                const h = hours[k];
+                const line2 = [a.role_label, texted[k] && `texted ${format(new Date(texted[k]), "M/d")}`, h ? `${h.toFixed(1)} h` : null].filter(Boolean).join(" · ");
+                return (
+                  <div key={a.id} className="border-t px-2 py-1.5 pl-6">
+                    <div className="flex items-center gap-2 min-w-0">
+                      <Link to={`/personnel/${a.personnel_id}`} className="font-medium truncate flex-1 min-w-0 hover:underline">{nameOf(a)}</Link>
+                      <PersonnelStatusButton personnelId={a.personnel_id} projectId={projectId} locationId={l.id} hideProjectName className="text-[10px] px-1.5 py-0 max-w-[9rem] shrink-0" />
+                    </div>
+                    <div className="flex items-center gap-2 min-w-0">
+                      <span className="truncate flex-1 min-w-0 text-muted-foreground tabular-nums">{line2 || "\u00a0"}</span>
+                      <span className="flex items-center shrink-0">
+                        <IconBtn label="Send site text" onClick={() => setTextFor({ locationId: l.id, ids: [a.personnel_id] })}><MessageSquare className="h-4 w-4" /></IconBtn>
+                        {showPhone && phones[a.personnel_id] && (
+                          <a href={`tel:${phones[a.personnel_id]}`} className="inline-flex rounded p-1 text-muted-foreground hover:bg-muted" aria-label={`Call ${nameOf(a)}`}><Phone className="h-4 w-4" /></a>
+                        )}
+                        {canWrite && <IconBtn label="Unassign" onClick={() => unassign.mutate({ id: a.id, location_id: l.id })}><X className="h-4 w-4" /></IconBtn>}
+                      </span>
+                    </div>
+                  </div>
+                );
+              })}
+              {isOpen && !search && locAssets.map((r) => (
+                <div key={`asset-${r.id}`} className="border-t px-2 py-1.5 pl-6 flex items-center gap-2 min-w-0">
+                  <AssetIcon type={r.assets?.type} className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />
+                  <span className="truncate flex-1 min-w-0">{r.assets?.label ?? "Asset"} <span className="text-muted-foreground">· {r.days}d{canWrite && r.billable ? (r.rate == null ? " · no rate" : ` · ${fmtMoney0(r.rate)}/day`) : ""}</span></span>
+                  {canWrite && !r.end_at && <IconBtn label="End (stop day-rate clock)" onClick={() => endAsset.mutate(r.id)}><Square className="h-4 w-4" /></IconBtn>}
+                  {canWrite && <IconBtn label="Unassign asset" onClick={() => unassignAsset.mutate(r.id)}><X className="h-4 w-4" /></IconBtn>}
+                </div>
+              ))}
+              {isOpen && !search && open.map(([role, v]) => (
+                <div key={`open-${role}`} className="border-t px-2 py-1.5 pl-6 flex items-center gap-2 text-muted-foreground">
+                  <span className="italic truncate flex-1 min-w-0">{role} — {v.needed - v.assigned} open{fmtRate(v.rate)}</span>
+                  {canWrite && <Button size="sm" variant="outline" className="h-7 px-2 text-[11px]" onClick={() => setAssignFor({ locationId: l.id, role })}>Assign</Button>}
+                </div>
+              ))}
+              {isOpen && !search && rows.length === 0 && open.length === 0 && locAssets.length === 0 && (
+                <div className="border-t px-2 py-1.5 pl-6 text-muted-foreground">No one assigned.</div>
+              )}
+            </div>
+          );
+        })}
+      </div>
+
+      <div className="hidden sm:block border rounded-md overflow-auto max-h-[75vh]">
         <table className="w-full table-fixed text-xs tabular-nums min-w-[600px]">
           <colgroup>
             <col />
