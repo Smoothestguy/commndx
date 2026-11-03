@@ -6,7 +6,8 @@ import { Input } from "@/components/ui/input";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { ListChecks, Loader2, Plus, Trash2, UserPlus, X } from "lucide-react";
+import { ListChecks, Loader2, MessageSquare, Plus, Trash2, UserPlus, X } from "lucide-react";
+import { SendSiteTextDialog, TextedCaption, useLastSiteTexts } from "./SendSiteTextDialog";
 import { ROLE_TAGS } from "@/lib/roleTags";
 import { cn } from "@/lib/utils";
 import {
@@ -92,8 +93,8 @@ function RequirementsDialog({ locationId, open, onOpenChange }: { locationId: st
   );
 }
 
-function AssignDialog({ locationId, open, onOpenChange, assignedIds, roleOptions }: {
-  locationId: string; open: boolean; onOpenChange: (o: boolean) => void; assignedIds: Set<string>; roleOptions: string[];
+function AssignDialog({ locationId, open, onOpenChange, assignedIds, roleOptions, onAssigned }: {
+  locationId: string; open: boolean; onOpenChange: (o: boolean) => void; assignedIds: Set<string>; roleOptions: string[]; onAssigned?: (ids: string[]) => void;
 }) {
   const { data: people = [], isLoading } = useActivePersonnelLite(open);
   const assign = useAssignPersonnel();
@@ -141,7 +142,7 @@ function AssignDialog({ locationId, open, onOpenChange, assignedIds, roleOptions
           <Button variant="outline" onClick={() => onOpenChange(false)}>Cancel</Button>
           <Button disabled={sel.size === 0 || assign.isPending} onClick={() => {
             assign.mutate({ location_id: locationId, personnel_ids: [...sel], role_label: role.trim() || null }, {
-              onSuccess: () => { setSel(new Set()); onOpenChange(false); },
+              onSuccess: () => { const ids = [...sel]; setSel(new Set()); onOpenChange(false); onAssigned?.(ids); },
             });
           }}>
             {assign.isPending && <Loader2 className="h-4 w-4 mr-1 animate-spin" />}Assign {sel.size || ""}
@@ -157,6 +158,8 @@ export function LocationStaffing({ locationId, summary, canWrite }: { locationId
   const unassign = useUnassignPersonnel();
   const [reqOpen, setReqOpen] = useState(false);
   const [asgOpen, setAsgOpen] = useState(false);
+  const [textIds, setTextIds] = useState<string[] | null>(null);
+  const { data: texted = {} } = useLastSiteTexts([locationId]);
   const roles = Object.entries(summary?.byRole ?? {}).filter(([, v]) => v.needed > 0);
   const assignedIds = useMemo(() => new Set(assignments.map((a) => a.personnel_id)), [assignments]);
   const needed = summary?.needed ?? 0;
@@ -189,6 +192,9 @@ export function LocationStaffing({ locationId, summary, canWrite }: { locationId
               <span className="font-medium">{[a.personnel?.first_name, a.personnel?.last_name].filter(Boolean).join(" ") || "Unknown"}</span>
               {a.role_label && <span className="text-muted-foreground">· {a.role_label}</span>}
               <PersonnelStatusButton personnelId={a.personnel_id} className="text-[10px] px-1.5 py-0" />
+              <TextedCaption at={texted[`${a.personnel_id}:${locationId}`]} />
+              <button type="button" className="rounded p-1 hover:bg-muted" aria-label="Send site text"
+                onClick={() => setTextIds([a.personnel_id])}><MessageSquare className="h-3 w-3" /></button>
               {canWrite && (
                 <button type="button" className="ml-0.5 rounded p-1 hover:bg-muted" aria-label="Unassign"
                   onClick={() => unassign.mutate({ id: a.id, location_id: locationId })}><X className="h-3 w-3" /></button>
@@ -200,8 +206,9 @@ export function LocationStaffing({ locationId, summary, canWrite }: { locationId
       {canWrite && <RequirementsDialog locationId={locationId} open={reqOpen} onOpenChange={setReqOpen} />}
       {canWrite && (
         <AssignDialog locationId={locationId} open={asgOpen} onOpenChange={setAsgOpen} assignedIds={assignedIds}
-          roleOptions={Object.keys(summary?.byRole ?? {})} />
+          roleOptions={Object.keys(summary?.byRole ?? {})} onAssigned={(ids) => ids.length && setTextIds(ids)} />
       )}
+      <SendSiteTextDialog open={!!textIds} onOpenChange={(o) => !o && setTextIds(null)} personnelIds={textIds ?? []} locationId={locationId} />
     </div>
   );
 }

@@ -15,7 +15,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
-import { Check, ChevronDown, ChevronLeft, ChevronRight, FileText, Loader2, Pencil, Plus, Settings2, Smartphone, Trash2, Truck, UserMinus, UserPlus, Users } from "lucide-react";
+import { Check, ChevronDown, ChevronLeft, ChevronRight, FileText, Loader2, Pencil, Phone, Plus, Settings2, Smartphone, Trash2, Truck, UserMinus, UserPlus, Users } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { formatLocalDate } from "@/lib/dateUtils";
 import { ROLE_TAGS } from "@/lib/roleTags";
@@ -936,6 +936,7 @@ function VisitsCard({ projectId, locations, crews, from, to, canEdit }: {
                   <ChevronDown className={cn("h-4 w-4 shrink-0 transition-transform", !isOpen && "-rotate-90")} />
                   <div className="flex-1 min-w-0">
                     <span className="font-medium text-sm">{locName[v.location_id] ?? "Site"}</span>
+                    {/self check-in/i.test((v as any).notes ?? "") && <Phone className="inline h-3 w-3 ml-1 text-muted-foreground" aria-label="Self check-in via text" />}
                     {v.crew_id && <Badge variant="outline" className="ml-2 text-[10px]">{crewName[v.crew_id] ?? "Crew"}</Badge>}
                     <span className="block text-[11px] text-muted-foreground">
                       {formatLocalDate(v.check_in_at, "M/d")} · {format(new Date(v.check_in_at), "h:mm a")} – {v.check_out_at ? format(new Date(v.check_out_at), "h:mm a") : "on site"}
