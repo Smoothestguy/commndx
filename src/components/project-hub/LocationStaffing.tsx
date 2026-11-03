@@ -8,6 +8,7 @@ import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { ListChecks, Loader2, MessageSquare, Plus, Trash2, UserPlus, X } from "lucide-react";
 import { SendSiteTextDialog, TextedCaption, useLastSiteTexts } from "./SendSiteTextDialog";
+import { autoMobilize, useInvalidateStatus } from "@/integrations/supabase/hooks/usePersonnelStatus";
 import { ROLE_TAGS } from "@/lib/roleTags";
 import { cn } from "@/lib/utils";
 import {
@@ -153,7 +154,10 @@ function AssignDialog({ locationId, open, onOpenChange, assignedIds, roleOptions
   );
 }
 
-export function LocationStaffing({ locationId, summary, canWrite }: { locationId: string; summary?: LocationStaffingSummary; canWrite: boolean }) {
+export function LocationStaffing({ locationId, summary, canWrite, projectId, locationName }: {
+  locationId: string; summary?: LocationStaffingSummary; canWrite: boolean; projectId?: string; locationName?: string;
+}) {
+  const invStatus = useInvalidateStatus();
   const { data: assignments = [] } = useLocationAssignments(locationId);
   const unassign = useUnassignPersonnel();
   const [reqOpen, setReqOpen] = useState(false);
@@ -191,7 +195,7 @@ export function LocationStaffing({ locationId, summary, canWrite }: { locationId
             <span key={a.id} className="inline-flex items-center gap-1 rounded-md border bg-muted/40 pl-2 pr-1 py-0.5 text-xs">
               <span className="font-medium">{[a.personnel?.first_name, a.personnel?.last_name].filter(Boolean).join(" ") || "Unknown"}</span>
               {a.role_label && <span className="text-muted-foreground">· {a.role_label}</span>}
-              <PersonnelStatusButton personnelId={a.personnel_id} className="text-[10px] px-1.5 py-0" />
+              <PersonnelStatusButton personnelId={a.personnel_id} projectId={projectId} className="text-[10px] px-1.5 py-0" />
               <TextedCaption at={texted[`${a.personnel_id}:${locationId}`]} />
               <button type="button" className="rounded p-1 hover:bg-muted" aria-label="Send site text"
                 onClick={() => setTextIds([a.personnel_id])}><MessageSquare className="h-3 w-3" /></button>
@@ -206,7 +210,12 @@ export function LocationStaffing({ locationId, summary, canWrite }: { locationId
       {canWrite && <RequirementsDialog locationId={locationId} open={reqOpen} onOpenChange={setReqOpen} />}
       {canWrite && (
         <AssignDialog locationId={locationId} open={asgOpen} onOpenChange={setAsgOpen} assignedIds={assignedIds}
-          roleOptions={Object.keys(summary?.byRole ?? {})} onAssigned={(ids) => ids.length && setTextIds(ids)} />
+          roleOptions={Object.keys(summary?.byRole ?? {})} onAssigned={(ids) => {
+            if (!ids.length) return;
+            setTextIds(ids);
+            // Silent: mark newly assigned people as mobilizing for this project (skips those already mobilizing/activated here).
+            if (projectId) autoMobilize(ids, projectId, `Assigned to ${locationName ?? "location"}`).then(invStatus).catch((e) => console.warn("auto-mobilize failed", e));
+          }} />
       )}
       <SendSiteTextDialog open={!!textIds} onOpenChange={(o) => !o && setTextIds(null)} personnelIds={textIds ?? []} locationId={locationId} />
     </div>

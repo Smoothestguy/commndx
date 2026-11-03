@@ -192,7 +192,7 @@ export function ProjectLocationsTab({ projectId, deploymentMode = false }: { pro
                   </div>
                 )}
                 {l.scope && <ScopeText text={l.scope} />}
-                <LocationStaffing locationId={l.id} summary={staffing?.[l.id]} canWrite={canWrite} />
+                <LocationStaffing locationId={l.id} summary={staffing?.[l.id]} canWrite={canWrite} projectId={l.project_id} locationName={l.name} />
                 <LocationLodging projectId={projectId} locationId={l.id} housingBy={l.housing_provided_by} canWrite={canWrite} />
               </CardContent>
             </Card>
