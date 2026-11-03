@@ -6880,6 +6880,7 @@ export type Database = {
           customer_pm_name: string | null
           customer_pm_phone: string | null
           customer_po: string | null
+          day_shift_start: string
           default_shift_hours: number
           deleted_at: string | null
           deleted_by: string | null
@@ -6891,6 +6892,7 @@ export type Database = {
           mandatory_payroll: boolean | null
           mileage_rate: number | null
           name: string
+          night_shift_start: string
           our_field_superintendent_id: string | null
           poc_email: string | null
           poc_name: string | null
@@ -6923,6 +6925,7 @@ export type Database = {
           customer_pm_name?: string | null
           customer_pm_phone?: string | null
           customer_po?: string | null
+          day_shift_start?: string
           default_shift_hours?: number
           deleted_at?: string | null
           deleted_by?: string | null
@@ -6934,6 +6937,7 @@ export type Database = {
           mandatory_payroll?: boolean | null
           mileage_rate?: number | null
           name: string
+          night_shift_start?: string
           our_field_superintendent_id?: string | null
           poc_email?: string | null
           poc_name?: string | null
@@ -6966,6 +6970,7 @@ export type Database = {
           customer_pm_name?: string | null
           customer_pm_phone?: string | null
           customer_po?: string | null
+          day_shift_start?: string
           default_shift_hours?: number
           deleted_at?: string | null
           deleted_by?: string | null
@@ -6977,6 +6982,7 @@ export type Database = {
           mandatory_payroll?: boolean | null
           mileage_rate?: number | null
           name?: string
+          night_shift_start?: string
           our_field_superintendent_id?: string | null
           poc_email?: string | null
           poc_name?: string | null
